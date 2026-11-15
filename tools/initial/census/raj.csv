@@ -1,0 +1,28 @@
+# country: RAJ
+# title: províncias e agências, Census of India de 1921 (18 mar. 1921)
+# source: Census of India 1921, Vol. I India, Part II Tables (J. T. Marten, Calcutta, 1923), Imperial Table I e Table XXIII (distritos e divisões); OCR em https://archive.org/details/india.history.resource.109689 (https://archive.org/download/india.history.resource.109689/109689_djvu.txt), conferido com https://archive.org/details/india.history.resource.92354 e por homens + mulheres; a soma das linhas + Aden (56500) dá o total da Índia, 318942480
+# note: Bengala oeste e Rajshahi vão com Bihar e Orissa porque Purulia (Manbhum) e Islampur (Purnea) passaram depois a Bengala; ainda assim o grupo leste não tem Ganjam (parte) e Koraput, de Madras, hoje em Odisha
+# note: NWFP inclui 2825136 das agências e áreas tribais, em grande parte estimadas; no Baluchistão as áreas tribais usaram ficha simplificada; Birmânia exclui tratos não administrados
+# note: Gujarat leva só Cutch, Kathiawar, Mahi Kantha, Rewa Kantha e Palanpur dos Bombay States; Cambay, Surat Agency e Dangs (em Other States) ficaram no grupo Decão
+# note: Aden (56500) faz parte da Presidência de Bombaim no censo e fica de fora
+group,population,states
+Bengala (Burdwan Presidency e Rajshahi) + Cooch Behar + Bihar e Orissa com os estados,66412048,IND-BENGAL;BGD-RAJSHAHI;IND-BIHAR;IND-CHOTA-NAGPUR;IND-ORISSA
+Divisão de Dacca,12837311,BGD-DACCA
+Divisão de Chittagong,6000524,BGD-CHITTAGONG
+Tripura (estado),304437,IND-TRIPURA
+Assam (território britânico com Sylhet),7606230,IND-ASSAM
+Manipur (estado),384016,IND-MANIPUR
+Sikkim (estado),81721,IND-SIKKIM
+Andamão e Nicobar,27086,IND-ANDAMAN
+Províncias Unidas + estados (Rampur Tehri Garhwal Benares),46510668,IND-UNITED-PROVINCES;IND-KUMAON
+Délhi,488188,IND-DELHI
+Punjab + Punjab States,25101060,IND-PUNJAB;PAK-PUNJAB;IND-HILL-STATES
+Jammu e Caxemira (estado),3320518,IND-KASHMIR
+NWFP (distritos + agências e áreas tribais),5076476,PAK-NWFP
+Baluchistão (distritos + estados),799625,PAK-BALUCHISTAN
+Sind + Khairpur,3472508,PAK-SIND
+Rajputana (agência) + Ajmer-Merwara,10339655,IND-RAJPUTANA
+Gujarat (distritos de Bombaim sem Thana + Baroda + agências do Gujarat),9830517,IND-GUJARAT
+Províncias Centrais sem Berar e Vidarbha + estados + Central India + Gwalior,19452848,IND-CENTRAL-INDIA;IND-CHHATTISGARH
+Decão e Sul (Bombaim restante + Vidarbha e Berar + Hyderabad + Mysore + Coorg + Madras com estados),87628352,IND-BOMBAY;IND-HYDERABAD;IND-MYSORE;IND-MADRAS;IND-ANDHRA;IND-MALABAR
+Birmânia (com os estados shan),13212192,MMR-LOWER;MMR-UPPER;MMR-SHAN

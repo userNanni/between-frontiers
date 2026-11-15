@@ -1,0 +1,55 @@
+# country: USA
+# title: estados, censos de 1920 e 1930 interpolados para 1925-01-01
+# source: U.S. Census Bureau, censos de 1920 (1 jan.) e 1930 (1 abr.), totais por estado (via Wikipedia, "List of U.S. states and territories by historical population"); 1925 = 1920 + 0,488 × (1930 − 1920)
+group,population,states
+Alabama,2493574,USA-AL
+Alaska,57105,USA-AK
+Arizona,383630,USA-AZ
+Arkansas,1802095,USA-AR
+California,4524601,USA-CA
+Colorado,986537,USA-CO
+Connecticut,1491006,USA-CT
+Delaware,230504,USA-DE
+District of Columbia,461619,USA-DC
+Florida,1212244,USA-FL
+Hawaii,310719,USA-HI
+Idaho,438288,USA-ID
+Illinois,7043993,USA-IL
+Indiana,3080688,USA-IN
+Iowa,2436664,USA-IA
+Kansas,1823765,USA-KS
+Kentucky,2513194,USA-KY
+Louisiana,1946353,USA-LA
+Maine,782360,USA-ME
+Maryland,1538375,USA-MD
+Massachusetts,4046138,USA-MA
+Michigan,4241047,USA-MI
+Minnesota,2473382,USA-MN
+Mississippi,1897545,USA-MS
+Missouri,3513962,USA-MO
+Montana,543385,USA-MT
+Nebraska,1336172,USA-NE
+Nevada,84066,USA-NV
+New Hampshire,453917,USA-NH
+New Jersey,3587815,USA-NJ
+New Mexico,391065,USA-NM
+New York,11459772,USA-NY
+North Carolina,2857243,USA-NC
+North Dakota,663444,USA-ND
+Ohio,6192220,USA-OH
+Oklahoma,2207675,USA-OK
+Oregon,866509,USA-OR
+Pennsylvania,9164565,USA-PA
+Rhode Island,644933,USA-RI
+South Carolina,1710573,USA-SC
+South Dakota,664011,USA-SD
+Tennessee,2473821,USA-TN
+Texas,5229801,USA-TX
+Utah,477908,USA-UT
+Vermont,355932,USA-VT
+Virginia,2364144,USA-VA
+Washington,1457486,USA-WA
+West Virginia,1593214,USA-WV
+Wisconsin,2781792,USA-WI
+Wyoming,209603,USA-WY
+Georgia,2902014,USA-GA

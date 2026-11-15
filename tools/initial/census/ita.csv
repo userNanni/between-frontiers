@@ -1,0 +1,24 @@
+# country: ITA
+# title: compartimenti, censo de 1921 (1 dez. 1921, população presente)
+# source: VI Censimento della popolazione del Regno d'Italia (1 dez. 1921), Ministero dell'Economia Nazionale. Compartimenti antigos: totais por província e compartimento publicados em The Statesman's Year-Book 1923 (Macmillan), pp. 1054-1055, https://archive.org/details/in.ernet.dli.2015.97231 (texto OCR https://archive.org/download/in.ernet.dli.2015.97231/2015.97231.The--Statesmans-Year--Book-1923_djvu.txt). Venezia Giulia e Venezia Tridentina: volumes do censo de 1921 (Roma 1925), prospetto por distrito, https://archive.org/details/CensimentoPopolazioneVeneziaGiulia e https://archive.org/details/CensimentoDellaPopolazioneVeneziaTridentina
+# note: os números do Statesman's Year-Book 1923 são os primeiros publicados (somam 37276738 nos compartimenti antigos; o total definitivo do Reino, 38710576, dá cerca de 0,4% a menos); cada compartimento foi conferido contra a soma das províncias
+# note: Lazio, Umbria e Campania vão juntas: em 1927 o circondario de Rieti passou da Umbria para o Lazio e a Terra di Lavoro (Caserta) foi repartida entre Campania e Lazio (Sora, Gaeta)
+# note: Abruzzi e Molise ainda tinha o circondario de Cittaducale (passou a Rieti em 1927); Toscana ainda tinha a Romagna toscana (passou a Forlì em 1923); Lombardia (Pavia) ainda tinha Bobbio (passou a Piacenza em 1923)
+# note: Veneto inclui a província de Udine (Friuli), sem Cervignano e Tarvisio, que em 1921 eram da Venezia Giulia
+group,population,states
+Piemonte (com Aosta),3384811,ITA-PIEMONTE
+Liguria,1310388,ITA-LIGURIA
+Lombardia,5110320,ITA-LOMBARDIA
+Veneto (com Udine),3953474,ITA-VENETO
+Venezia Tridentina sem o distrito de Ampezzo,641747,ITA-VENEZIA-TRIDENTINA
+Venezia Giulia sem Zara e os distritos de Tarvisio e Lussino e Volosca-Abbazia,833939,ITA-VENEZIA-GIULIA
+Emilia,2953150,ITA-EMILIA
+Toscana,2830747,ITA-TOSCANA
+Marche,1149672,ITA-MARCHE
+Lazio + Umbria + Campania,5833475,ITA-LAZIO;ITA-UMBRIA;ITA-CAMPANIA
+Abruzzi e Molise (com Cittaducale),1436537,ITA-ABRUZZI-E-MOLISE
+Puglie,2344314,ITA-PUGLIE
+Basilicata,467812,ITA-BASILICATA
+Calabrie,1503201,ITA-CALABRIA
+Sicilia,4132156,ITA-SICILIA
+Sardegna,866681,ITA-SARDEGNA

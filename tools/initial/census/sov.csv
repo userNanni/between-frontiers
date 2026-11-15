@@ -1,0 +1,21 @@
+# country: SOV
+# title: repúblicas e autonomias, recenseamento de toda a União de 17 dez. 1926
+# source: Diretoria Central de Estatística da URSS (TsSU), Recenseamento de Toda a União de 17 dez. 1926 (população presente), via Demoscope Weekly: https://www.demoscope.ru/weekly/ssp/sng_nac_26.php?reg=<1592|1752|2168|2265|2275|2294|2314|2330|2346|2356|2376|2543> e https://www.demoscope.ru/weekly/ssp/rus_nac_26.php?reg=<1476|1572|1582|788> e https://www.demoscope.ru/weekly/ssp/ussr_nac_26.php (total = cidadãos da URSS + estrangeiros); total da RSFSR (100891244) conferido em https://ru.wikipedia.org/wiki/Всесоюзная_перепись_населения_1926_года
+# note: as linhas 'sem ...' são o total da república menos as autonomias listadas à parte (subtração de números do mesmo censo); RSFSR = URSS menos as outras cinco repúblicas
+# note: BLR fica de fora: a RSS da Bielorrússia tinha 4983240 hab. em 1926 mas o BLR do jogo (Minsk, Vitebsk, Mogilev, Gomel) inclui o oeste das regiões de Minsk e Vitebsk, polonês em 1926 (voivodias de Wilno e Nowogródek)
+# note: a RSFSR do jogo inclui pedaços que eram da Finlândia, da Estônia e da Letônia em 1926 (norte de RUS-LENINGRAD e RUS-KR, Pechenga, Pechory e Pytalovo); UKR-51 inclui o sul da Bessarábia, romeno em 1926; o okrug de Khujand (hoje Tadjiquistão) era da RSS do Uzbequistão, por isso UZB e TJK vão juntos
+group,population,states
+RSFSR sem as ASSR Cazaque e Quirguiz e sem a Crimeia,92681411,RUS-AL;RUS-ALT;RUS-AMU;RUS-ARKHANGELSK;RUS-AST;RUS-BA;RUS-BEL;RUS-BRY;RUS-BU;RUS-CHE;RUS-CHECHNYA-INGUSHETIA;RUS-CU;RUS-DA;RUS-IRK;RUS-IVA;RUS-KAM;RUS-KB;RUS-KC;RUS-KEM;RUS-KGN;RUS-KHABAROVSK;RUS-KIR;RUS-KL;RUS-KLU;RUS-KO;RUS-KOS;RUS-KR;RUS-KRASNOYARSK;RUS-KRS;RUS-KUBAN;RUS-LENINGRAD;RUS-LIP;RUS-MAGADAN;RUS-ME;RUS-MO;RUS-MOSKVA;RUS-MUR;RUS-NGR;RUS-NIZ;RUS-NVS;RUS-OMS;RUS-ORE;RUS-ORL;RUS-PER;RUS-PNZ;RUS-PRI;RUS-PSK;RUS-ROS;RUS-RYA;RUS-SA;RUS-SAK;RUS-SAM;RUS-SAR;RUS-SE;RUS-SMO;RUS-STA;RUS-SVE;RUS-TA;RUS-TAM;RUS-TOM;RUS-TUL;RUS-TVE;RUS-TYUMEN;RUS-UD;RUS-ULY;RUS-VGG;RUS-VLA;RUS-VLG;RUS-VOR;RUS-YAR;RUS-ZAB
+ASSR da Crimeia (RSFSR),713823,RUS-KRYM
+RSS da Ucrânia com a ASSR Moldava (sem o sul da Bessarábia que o jogo põe em UKR-51),29018187,UKR-05;UKR-09;UKR-12;UKR-14;UKR-18;UKR-23;UKR-35;UKR-48;UKR-51;UKR-53;UKR-59;UKR-63;UKR-65;UKR-68;UKR-71;UKR-74;UKR-KYIV;SOV-MOLDAVIAN-ASSR
+RSS da Armênia,880464,ARM
+RSS do Azerbaijão sem Nakhichevan (com a AO do Alto Karabakh),2209662,AZE-AZARBAYCAN
+ASSR de Nakhichevan,104909,AZE-NAXCIVAN
+RSS da Geórgia sem Abecásia e Adjária (com a AO da Ossétia do Sul),2333521,GEO
+RSS da Abecásia,201016,GEO-ABKHAZIA
+ASSR da Adjária,131957,GEO-AJARIA
+RSS do Uzbequistão com a ASSR Tadjique e o okrug de Khujand,5272801,UZB-BUKHARA;UZB-FERGANA;UZB-KHOREZM;UZB-SAMARKAND;UZB-TASHKENT;TJK
+RSS do Turcomenistão,1000914,TKM
+ASSR Cazaque sem a AO Caracalpaque,6198465,KAZ-EAST;KAZ-NORTH;KAZ-SOUTH;KAZ-WEST
+AO Caracalpaque (na ASSR Cazaque),304541,UZB-KARAKALPAKSTAN
+ASSR Quirguiz,993004,KGZ

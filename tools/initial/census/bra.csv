@@ -1,0 +1,26 @@
+# country: BRA
+# title: estados, censo de 1920 (1 set. 1920)
+# source: Directoria Geral de Estatística, Recenseamento do Brazil de 1920; IBGE SIDRA tabela 1286 (População nos Censos Demográficos, por UF), https://apisidra.ibge.gov.br/values/t/1286/n3/all/v/allxp/p/all
+# note: o IBGE soma o antigo Distrito Federal (cidade do Rio) ao Rio de Janeiro; Rondônia (1943) saiu de Mato Grosso e de uma parte do Amazonas
+group,population,states
+Acre,92379,BRA-AC
+Alagoas,978748,BRA-AL
+Amazonas (com o atual Roraima),363166,BRA-AM
+Bahia,3334465,BRA-BA
+Ceará,1319228,BRA-CE
+Espírito Santo,457328,BRA-ES
+Goiás (com o atual Tocantins e o DF),511919,BRA-GO
+Maranhão,874337,BRA-MA
+Minas Gerais,5888174,BRA-MG
+Mato Grosso (com MS e quase todo o atual Rondônia),246612,BRA-MT
+Pará (com o atual Amapá),983507,BRA-PA
+Paraíba,961106,BRA-PB
+Pernambuco,2154835,BRA-PE
+Piauí,609003,BRA-PI
+Paraná,685711,BRA-PR
+Rio de Janeiro + Distrito Federal,2717244,BRA-RJ
+Rio Grande do Norte,537135,BRA-RN
+Rio Grande do Sul,2182713,BRA-RS
+Santa Catarina,668743,BRA-SC
+Sergipe,477064,BRA-SE
+São Paulo,4592188,BRA-SP

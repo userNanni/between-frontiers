@@ -1,0 +1,103 @@
+# Labour force around 1925 (see data/scenario/1925/INITIAL.md, "Força de trabalho").
+# participation = economically active (gainfully occupied, incl. unemployed) / total population.
+# agriculture = agriculture, forestry, hunting, fishing; industry = mining, manufacturing,
+# construction, utilities; services = the rest (trade, transport, public service, domestic service,
+# professions, armed forces). basis: census = rounded from the census named in note;
+# est = estimate (regional analogue or interpolation), reasoning in note.
+country,colonies,participation,agriculture,industry,services,basis,note
+GBR,false,0.46,0.08,0.49,0.43,census,GB 1921 census and NI 1926; agriculture+fishing 7-8%
+GBR,true,0.42,0.78,0.07,0.15,est,analogue of Nigeria/Gold Coast/Malaya/Ceylon colonial censuses 1921-1931
+IRL,false,0.43,0.53,0.15,0.32,census,Irish Free State 1926 census
+FRA,false,0.53,0.38,0.33,0.29,census,1926 census (active 21.4 M)
+FRA,true,0.45,0.80,0.06,0.14,est,analogue of Algeria 1926 and Indochina; West Africa near 0.9 agriculture
+BEL,false,0.44,0.19,0.47,0.34,census,1920 census
+BEL,true,0.45,0.86,0.05,0.09,est,Congo and Ruanda-Urundi; mining wage labour about 0.04
+NLD,false,0.41,0.24,0.36,0.40,census,1920 census
+NLD,true,0.35,0.69,0.10,0.21,census,Dutch East Indies 1930 census (Volkstelling) back to 1925
+LUX,false,0.45,0.32,0.40,0.28,est,1922 census rounded; steel towns of the south
+CHE,false,0.48,0.26,0.45,0.29,census,1920 census
+ESP,false,0.36,0.57,0.22,0.21,census,1920 census (women under-recorded)
+ESP,true,0.40,0.75,0.06,0.19,est,Spanish Morocco and Guinea; analogue of French Morocco
+POR,false,0.42,0.57,0.22,0.21,census,1920 census
+POR,true,0.45,0.86,0.04,0.10,est,Angola and Mozambique; analogue of tropical Africa
+ITA,false,0.46,0.56,0.25,0.19,census,1921 census
+ITA,true,0.40,0.75,0.07,0.18,est,Libya Eritrea Somalia; pastoral majority
+SMR,false,0.45,0.50,0.25,0.25,est,analogue of Emilia-Romagna 1921
+GER,false,0.51,0.305,0.414,0.281,census,1925 census (16 June; active 32.0 M)
+SAA,false,0.42,0.07,0.62,0.31,est,Saar coal and steel district; Saar 1927 census rounded
+DNZ,false,0.45,0.10,0.38,0.52,est,port city with rural hinterland; 1923/1929 Danzig censuses rounded
+AUT,false,0.50,0.33,0.36,0.31,census,1923 census (interpolated toward 1934 shares)
+HUN,false,0.45,0.56,0.20,0.24,census,1920 census
+CZE,false,0.47,0.40,0.34,0.26,census,1921 census
+POL,false,0.50,0.68,0.16,0.16,census,1921 census and 1931 census (agriculture 65% of active)
+LTU,false,0.53,0.78,0.07,0.15,census,1923 census
+LAT,false,0.55,0.66,0.13,0.21,census,1925 census
+EST,false,0.50,0.59,0.17,0.24,census,1922 census
+FIN,false,0.47,0.65,0.15,0.20,census,1920 census
+SWE,false,0.47,0.40,0.35,0.25,census,1920 census
+NOR,false,0.42,0.37,0.27,0.36,census,1920 census (fishing in agriculture)
+DEN,false,0.47,0.35,0.27,0.38,census,1921 census
+DEN,true,0.40,0.75,0.05,0.20,est,Greenland: hunting and fishing households
+ISL,false,0.42,0.57,0.14,0.29,census,1920 census (farming 43% fishing 18%)
+SOV,false,0.55,0.80,0.08,0.12,census,1926 census (17 Dec) and Gosplan labour balance 1928
+ROM,false,0.55,0.78,0.08,0.14,census,1930 census back to 1925
+YUG,false,0.50,0.79,0.10,0.11,census,1921 census
+BUL,false,0.55,0.80,0.08,0.12,census,1926 census
+ALB,false,0.45,0.85,0.05,0.10,est,analogue of Yugoslav Macedonia
+GRE,false,0.40,0.54,0.16,0.30,census,1928 census
+TUR,false,0.48,0.82,0.07,0.11,census,1927 census
+LIE,false,0.45,0.40,0.35,0.25,est,1930 census rounded (textile mills of the valley)
+MCO,false,0.48,0.01,0.15,0.84,est,casino and hotel economy
+AND,false,0.45,0.60,0.10,0.30,est,pastoral valleys and smuggling trade
+USA,false,0.40,0.24,0.33,0.43,census,1920 and 1930 censuses of gainful workers interpolated
+USA,true,0.38,0.67,0.13,0.20,est,Philippines 1918 census and Puerto Rico 1920 census weighted
+CAN,false,0.37,0.33,0.28,0.39,census,1921 census
+NFL,false,0.36,0.45,0.20,0.35,est,1921 census rounded; cod fishery counted in agriculture
+MEX,false,0.33,0.71,0.12,0.17,census,1921 census
+GUA,false,0.33,0.73,0.11,0.16,est,1921 census and 1950 shares
+HON,false,0.32,0.75,0.08,0.17,est,banana enclaves; 1950 shares back-projected
+SAL,false,0.33,0.72,0.11,0.17,est,1930 census rounded
+NIC,false,0.32,0.72,0.10,0.18,est,1950 shares back-projected
+CRI,false,0.35,0.64,0.13,0.23,census,1927 census
+PAN,false,0.34,0.52,0.12,0.36,est,1930 census rounded; Canal Zone services nearby
+CUB,false,0.36,0.48,0.18,0.34,census,1919 census
+HAI,false,0.45,0.85,0.05,0.10,est,peasant smallholders; no census
+DOM,false,0.35,0.70,0.10,0.20,est,1920 census rounded; sugar estates
+COL,false,0.35,0.70,0.12,0.18,est,1938 census (agriculture 0.73) back-projected
+VEN,false,0.35,0.65,0.13,0.22,est,1926 census and 1936 shares; oil camps small in labour
+ECU,false,0.35,0.68,0.13,0.19,est,1950 census shares back-projected
+PER,false,0.35,0.62,0.15,0.23,est,1940 census shares back-projected
+BOL,false,0.40,0.72,0.12,0.16,est,1950 census shares back-projected; tin mines in industry
+CHL,false,0.36,0.37,0.28,0.35,census,1920 census (nitrate and copper mining in industry)
+ARG,false,0.40,0.35,0.29,0.36,est,1914 census and 1925 ECLA sector estimates
+URY,false,0.40,0.30,0.27,0.43,est,1908 census and Montevideo weight
+PRY,false,0.38,0.65,0.12,0.23,est,1950 census shares back-projected
+BRA,false,0.32,0.69,0.14,0.17,census,1920 census (women under-recorded)
+CHN,false,0.52,0.79,0.08,0.13,est,Liu and Yeh labour force 1933 and Buck farm surveys 1929-33
+JAP,false,0.48,0.51,0.22,0.27,census,1920 census (primary 0.54) toward 1930 census (0.50)
+JAP,true,0.45,0.78,0.07,0.15,census,Korea 1930 census (agriculture 0.80) and Taiwan 1930 census (0.67) weighted
+MGL,false,0.50,0.90,0.02,0.08,est,nomadic herders; lamas in services
+TUV,false,0.50,0.90,0.02,0.08,est,analogue of Mongolia
+TIB,false,0.50,0.88,0.03,0.09,est,herders and farmers; monks in services
+SIA,false,0.52,0.86,0.03,0.11,census,1929 census and 1937 census (agriculture 0.89)
+AFG,false,0.45,0.85,0.05,0.10,est,analogue of Baluchistan and NWFP 1921
+PRS,false,0.45,0.78,0.09,0.13,est,1956 census (0.56) back-projected; carpet weaving in industry
+NEP,false,0.50,0.93,0.02,0.05,est,1952 census shares
+BHU,false,0.50,0.93,0.02,0.05,est,analogue of Nepal
+RAJ,false,0.46,0.73,0.11,0.16,census,Census of India 1921 (workers 0.46 of population)
+IRQ,false,0.40,0.78,0.07,0.15,est,tribal agriculture; analogue of Syria 1930s
+TRJ,false,0.40,0.70,0.08,0.22,est,Bedouin herders and Amman garrison
+HEJ,false,0.40,0.50,0.10,0.40,est,pilgrim economy of Mecca and Jeddah
+NEJ,false,0.42,0.85,0.03,0.12,est,nomadic and oasis farming
+YEM,false,0.45,0.88,0.04,0.08,est,terraced farming; no census
+OMA,false,0.42,0.80,0.05,0.15,est,date gardens and fishing
+KUW,false,0.45,0.40,0.10,0.50,est,pearling and fishing (agriculture) and trade
+EGY,false,0.37,0.69,0.10,0.21,census,1927 census
+ETH,false,0.50,0.90,0.03,0.07,est,peasant and pastoral; no census
+LBR,false,0.45,0.85,0.04,0.11,est,analogue of Sierra Leone
+SAF,false,0.40,0.54,0.20,0.26,census,1921 census of all races (gold mines in industry)
+SAF,true,0.45,0.70,0.12,0.18,est,South West Africa: herding and diamond mines
+AUS,false,0.42,0.23,0.32,0.45,census,1921 census
+AUS,true,0.45,0.88,0.04,0.08,est,Papua and New Guinea: village gardens and plantations
+NZL,false,0.41,0.27,0.25,0.48,census,1926 census
+NZL,true,0.45,0.85,0.04,0.11,est,Western Samoa and Cook Islands: village agriculture
