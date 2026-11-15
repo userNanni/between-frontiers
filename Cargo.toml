@@ -33,6 +33,7 @@ egui_kittest = { version = "0.37.0", features = ["wgpu", "snapshot", "eframe"] }
 wgpu = "30.0.2"
 shapefile = "0.9.0"
 geo = "0.33.1"
+zip = { version = "9.6.0", default-features = false, features = ["deflate-flate2-zlib-rs"] }
 
 [profile.dev.package."*"]
 opt-level = 2

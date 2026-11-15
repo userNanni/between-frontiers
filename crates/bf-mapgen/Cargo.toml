@@ -8,5 +8,11 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+bf-sim.workspace = true
 serde.workspace = true
 ron.workspace = true
+png.workspace = true
+blake3.workspace = true
+shapefile.workspace = true
+geo.workspace = true
+zip.workspace = true

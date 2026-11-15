@@ -1,0 +1,397 @@
+// Owner of every Natural Earth admin-1 province on 1925-01-01. Read by `bf-mapgen`.
+// Format and approximations: docs/map-pipeline.pt-BR.md.
+(
+    start_date: "1925-01-01",
+    // Natural Earth adm0_a3 codes left off the map.
+    excluded_countries: ["ATA"],
+    // Default owner per Natural Earth adm0_a3 (admin-1 features use `adm0_a3`; admin-0 units with
+    // no admin-1 feature get the key `ADM0-<A3>`).
+    countries: {
+        "ABW": "NLD", // Aruba
+        "AFG": "AFG", // Afghanistan
+        "AGO": "POR", // Angola
+        "AIA": "GBR", // Anguilla
+        "ALB": "ALB", // Albania
+        "ALD": "FIN", // Aland
+        "AND": "AND", // Andorra
+        "ARE": "GBR", // United Arab Emirates
+        "ARG": "ARG", // Argentina
+        "ARM": "SOV", // Armenia
+        "ASM": "USA", // American Samoa
+        "ATC": "GBR", // Ashmore and Cartier Islands: British until 1933
+        "ATF": "FRA", // French Southern and Antarctic Lands
+        "ATG": "GBR", // Antigua and Barbuda
+        "AUS": "AUS", // Australia
+        "AUT": "AUT", // Austria
+        "AZE": "SOV", // Azerbaijan
+        "BDI": "BEL", // Burundi
+        "BEL": "BEL", // Belgium
+        "BEN": "FRA", // Benin
+        "BFA": "FRA", // Burkina Faso
+        "BGD": "RAJ", // Bangladesh
+        "BGR": "BUL", // Bulgaria
+        "BHR": "GBR", // Bahrain
+        "BHS": "GBR", // The Bahamas
+        "BIH": "YUG", // Bosnia and Herzegovina
+        "BJN": "COL", // Bajo Nuevo Bank (Petrel Is.): claimed by Colombia
+        "BLM": "FRA", // Saint Barthelemy
+        "BLR": "SOV", // Belarus
+        "BLZ": "GBR", // Belize
+        "BMU": "GBR", // Bermuda
+        "BOL": "BOL", // Bolivia
+        "BRA": "BRA", // Brazil
+        "BRB": "GBR", // Barbados
+        "BRI": "BRA", // Brazilian Island
+        "BRN": "GBR", // Brunei
+        "BRT": "GBR", // Bir Tawil: administered by the Anglo-Egyptian Sudan
+        "BTN": "BHU", // Bhutan
+        "BWA": "GBR", // Botswana
+        "CAF": "FRA", // Central African Republic
+        "CAN": "CAN", // Canada
+        "CHE": "CHE", // Switzerland
+        "CHL": "CHL", // Chile
+        "CHN": "CHN", // China
+        "CIV": "FRA", // Ivory Coast
+        "CLP": "FRA", // Clipperton Island: French claim, arbitrated in 1931
+        "CMR": "FRA", // Cameroon
+        "CNM": "GBR", // Cyprus No Mans Area
+        "COD": "BEL", // Democratic Republic of the Congo
+        "COG": "FRA", // Republic of the Congo
+        "COK": "NZL", // Cook Islands: annexed in 1901
+        "COL": "COL", // Colombia
+        "COM": "FRA", // Comoros
+        "CPV": "POR", // Cabo Verde
+        "CRI": "CRI", // Costa Rica
+        "CSI": "AUS", // Coral Sea Islands
+        "CUB": "CUB", // Cuba
+        "CUW": "NLD", // Curaçao
+        "CYM": "GBR", // Cayman Islands
+        "CYN": "GBR", // Northern Cyprus
+        "CYP": "GBR", // Cyprus
+        "CZE": "CZE", // Czechia
+        "DEU": "GER", // Germany
+        "DJI": "FRA", // Djibouti
+        "DMA": "GBR", // Dominica
+        "DNK": "DEN", // Denmark
+        "DOM": "DOM", // Dominican Republic
+        "DZA": "FRA", // Algeria
+        "ECU": "ECU", // Ecuador
+        "EGY": "EGY", // Egypt
+        "ERI": "ITA", // Eritrea
+        "ESB": "GBR", // Dhekelia Sovereign Base Area
+        "ESP": "ESP", // Spain
+        "EST": "EST", // Estonia
+        "ETH": "ETH", // Ethiopia
+        "FIN": "FIN", // Finland
+        "FJI": "GBR", // Fiji
+        "FLK": "GBR", // Falkland Islands
+        "FRA": "FRA", // France
+        "FRO": "DEN", // Faroe Islands
+        "FSM": "JAP", // Federated States of Micronesia
+        "GAB": "FRA", // Gabon
+        "GBR": "GBR", // United Kingdom
+        "GEO": "SOV", // Georgia
+        "GGY": "GBR", // Guernsey
+        "GHA": "GBR", // Ghana
+        "GIB": "GBR", // Gibraltar
+        "GIN": "FRA", // Guinea
+        "GMB": "GBR", // Gambia
+        "GNB": "POR", // Guinea-Bissau
+        "GNQ": "ESP", // Equatorial Guinea
+        "GRC": "GRE", // Greece
+        "GRD": "GBR", // Grenada
+        "GRL": "DEN", // Greenland
+        "GTM": "GUA", // Guatemala
+        "GUM": "USA", // Guam
+        "GUY": "GBR", // Guyana
+        "HKG": "GBR", // Hong Kong S.A.R.
+        "HMD": "GBR", // Heard Island and McDonald Islands: British until 1947
+        "HND": "HON", // Honduras
+        "HRV": "YUG", // Croatia
+        "HTI": "HAI", // Haiti
+        "HUN": "HUN", // Hungary
+        "IDN": "NLD", // Indonesia
+        "IMN": "GBR", // Isle of Man
+        "IND": "RAJ", // India
+        "IOA": "GBR", // Indian Ocean Territories: Christmas and Cocos islands, Straits Settlements
+        "IOT": "GBR", // British Indian Ocean Territory
+        "IRL": "IRL", // Ireland
+        "IRN": "PRS", // Iran
+        "IRQ": "IRQ", // Iraq: British mandate
+        "ISL": "ISL", // Iceland
+        "ISR": "GBR", // Israel: Palestine mandate
+        "ITA": "ITA", // Italy
+        "JAM": "GBR", // Jamaica
+        "JEY": "GBR", // Jersey
+        "JOR": "TRJ", // Jordan: Aqaba and Ma`an overridden below
+        "JPN": "JAP", // Japan
+        "KAB": "SOV", // Baykonur Cosmodrome
+        "KAS": "RAJ", // Siachen Glacier
+        "KAZ": "SOV", // Kazakhstan
+        "KEN": "GBR", // Kenya
+        "KGZ": "SOV", // Kyrgyzstan
+        "KHM": "FRA", // Cambodia
+        "KIR": "GBR", // Kiribati
+        "KNA": "GBR", // Saint Kitts and Nevis
+        "KOR": "JAP", // South Korea
+        "KOS": "YUG", // Kosovo
+        "KWT": "KUW", // Kuwait
+        "LAO": "FRA", // Laos
+        "LBN": "FRA", // Lebanon: French mandate
+        "LBR": "LBR", // Liberia
+        "LBY": "ITA", // Libya
+        "LCA": "GBR", // Saint Lucia
+        "LIE": "LIE", // Liechtenstein
+        "LKA": "GBR", // Sri Lanka
+        "LSO": "GBR", // Lesotho
+        "LTU": "LTU", // Lithuania
+        "LUX": "LUX", // Luxembourg
+        "LVA": "LAT", // Latvia
+        "MAC": "POR", // Macao S.A.R
+        "MAF": "FRA", // Saint Martin
+        "MAR": "FRA", // Morocco
+        "MCO": "MCO", // Monaco
+        "MDA": "ROM", // Moldova: Bessarabia; left bank overridden below
+        "MDG": "FRA", // Madagascar
+        "MDV": "GBR", // Maldives
+        "MEX": "MEX", // Mexico
+        "MHL": "JAP", // Marshall Islands
+        "MKD": "YUG", // North Macedonia
+        "MLI": "FRA", // Mali
+        "MLT": "GBR", // Malta
+        "MMR": "RAJ", // Myanmar
+        "MNE": "YUG", // Montenegro
+        "MNG": "MGL", // Mongolia
+        "MNP": "JAP", // Northern Mariana Islands
+        "MOZ": "POR", // Mozambique
+        "MRT": "FRA", // Mauritania
+        "MSR": "GBR", // Montserrat
+        "MUS": "GBR", // Mauritius
+        "MWI": "GBR", // Malawi
+        "MYS": "GBR", // Malaysia
+        "NAM": "SAF", // Namibia: South West Africa mandate
+        "NCL": "FRA", // New Caledonia
+        "NER": "FRA", // Niger
+        "NFK": "AUS", // Norfolk Island: Australian territory since 1914
+        "NGA": "GBR", // Nigeria
+        "NIC": "NIC", // Nicaragua
+        "NIU": "NZL", // Niue: annexed in 1901
+        "NLD": "NLD", // Netherlands
+        "NOR": "NOR", // Norway
+        "NPL": "NEP", // Nepal
+        "NRU": "AUS", // Nauru: mandate
+        "NZL": "NZL", // New Zealand
+        "OMN": "OMA", // Oman
+        "PAK": "RAJ", // Pakistan
+        "PAN": "PAN", // Panama
+        "PCN": "GBR", // Pitcairn Islands
+        "PER": "PER", // Peru
+        "PGA": "GBR", // Spratly Islands: no 1925 owner on the tag list; British claim of 1877
+        "PHL": "USA", // Philippines
+        "PLW": "JAP", // Palau
+        "PNG": "AUS", // Papua New Guinea: Papua and the New Guinea mandate
+        "POL": "POL", // Poland
+        "PRI": "USA", // Puerto Rico
+        "PRK": "JAP", // North Korea
+        "PRT": "POR", // Portugal
+        "PRY": "PRY", // Paraguay
+        "PSX": "GBR", // Palestine: Palestine mandate
+        "PYF": "FRA", // French Polynesia
+        "QAT": "GBR", // Qatar
+        "ROU": "ROM", // Romania
+        "RUS": "SOV", // Russia
+        "RWA": "BEL", // Rwanda
+        "SAH": "ESP", // Western Sahara: Rio de Oro and Saguia el-Hamra
+        "SAU": "NEJ", // Saudi Arabia: Hejaz provinces overridden below
+        "SCR": "USA", // Scarborough Reef: administered with the Philippines
+        "SDN": "GBR", // Sudan: Anglo-Egyptian condominium
+        "SDS": "GBR", // South Sudan: Anglo-Egyptian condominium
+        "SEN": "FRA", // Senegal
+        "SER": "COL", // Serranilla Bank: claimed by Colombia
+        "SGP": "GBR", // Singapore
+        "SGS": "GBR", // South Georgia and the Islands
+        "SHN": "GBR", // Saint Helena
+        "SLB": "GBR", // Solomon Islands
+        "SLE": "GBR", // Sierra Leone
+        "SLV": "SAL", // El Salvador
+        "SMR": "SMR", // San Marino
+        "SOL": "GBR", // Somaliland: British Somaliland
+        "SOM": "ITA", // Somalia
+        "SPI": "CHL", // Southern Patagonian Ice Field: undemarcated ice field
+        "SPM": "FRA", // Saint Pierre and Miquelon
+        "SRB": "YUG", // Republic of Serbia
+        "STP": "POR", // São Tomé and Principe
+        "SUR": "NLD", // Suriname
+        "SVK": "CZE", // Slovakia
+        "SVN": "YUG", // Slovenia
+        "SWE": "SWE", // Sweden
+        "SWZ": "GBR", // eSwatini
+        "SXM": "NLD", // Sint Maarten
+        "SYC": "GBR", // Seychelles
+        "SYR": "FRA", // Syria: French mandate
+        "TCA": "GBR", // Turks and Caicos Islands
+        "TCD": "FRA", // Chad
+        "TGO": "FRA", // Togo
+        "THA": "SIA", // Thailand
+        "TJK": "SOV", // Tajikistan
+        "TKM": "SOV", // Turkmenistan
+        "TLS": "POR", // East Timor
+        "TON": "GBR", // Tonga: British protected state
+        "TTO": "GBR", // Trinidad and Tobago
+        "TUN": "FRA", // Tunisia
+        "TUR": "TUR", // Turkey
+        "TUV": "GBR", // Tuvalu
+        "TWN": "JAP", // Taiwan
+        "TZA": "GBR", // United Republic of Tanzania
+        "UGA": "GBR", // Uganda
+        "UKR": "SOV", // Ukraine
+        "UMI": "USA", // United States Minor Outlying Islands
+        "URY": "URY", // Uruguay
+        "USA": "USA", // United States of America
+        "USG": "USA", // US Naval Base Guantanamo Bay
+        "UZB": "SOV", // Uzbekistan
+        "VAT": "ITA", // Vatican: Lateran Treaty is 1929
+        "VCT": "GBR", // Saint Vincent and the Grenadines
+        "VEN": "VEN", // Venezuela
+        "VGB": "GBR", // British Virgin Islands
+        "VIR": "USA", // United States Virgin Islands
+        "VNM": "FRA", // Vietnam
+        "VUT": "GBR", // Vanuatu: New Hebrides, Anglo-French condominium
+        "WLF": "FRA", // Wallis and Futuna
+        "WSB": "GBR", // Akrotiri Sovereign Base Area
+        "WSM": "NZL", // Samoa: Western Samoa mandate
+        "YEM": "YEM", // Yemen: Aden Protectorate overridden below
+        "ZAF": "SAF", // South Africa
+        "ZMB": "GBR", // Zambia
+        "ZWE": "GBR", // Zimbabwe
+    },
+    // Owner per adm1_code where it differs from the country default.
+    provinces: {
+        // Europe
+        "DEU-1581": "SAA", // Saarland: Saar Territory under the League of Nations
+        "POL-3139": "GER", // Warmian-Masurian: East Prussia
+        "POL-3141": "GER", // Lower Silesian
+        "POL-3142": "GER", // West Pomeranian
+        "POL-3143": "GER", // Lubusz
+        "POL-3167": "GER", // Opole: the part of Upper Silesia left to Germany in 1922
+        "RUS-2324": "GER", // Kaliningrad: East Prussia
+        "LTU-1075": "POL", // Vilnius: Wilno region, Polish since 1922
+        "BLR-2338": "POL", // Brest: Polesie
+        "BLR-2344": "POL", // Grodno
+        "UKR-286": "POL", // Rivne: Volhynia
+        "UKR-289": "POL", // Ivano-Frankivs'k: Eastern Galicia
+        "UKR-291": "POL", // L'viv: Eastern Galicia
+        "UKR-292": "POL", // Ternopil': Eastern Galicia
+        "UKR-318": "POL", // Volyn: Volhynia
+        "UKR-293": "CZE", // Transcarpathia: Subcarpathian Ruthenia
+        "UKR-288": "ROM", // Chernivtsi: Northern Bukovina and Khotyn
+        "BGR-2259": "ROM", // Dobrich: Southern Dobruja
+        "BGR-2261": "ROM", // Silistra: Southern Dobruja
+        "MDA-1628": "SOV", // Stîngă Nistrului: left bank of the Dniester, Moldavian ASSR
+        "MDA-1637": "SOV", // Grigoriopol: left bank
+        "MDA-1638": "SOV", // Transnistria: left bank
+        "MDA-1645": "SOV", // Labelled Rezina in the source; it is Rîbniţa, on the left bank
+        "MDA-1652": "SOV", // Camenca: left bank
+        "HRV-1592": "ITA", // Istarska: Istria
+        "SVN-1010": "ITA", // Cerkno: Slovenian Littoral
+        "SVN-1012": "ITA", // Idrija: Slovenian Littoral
+        "SVN-1018": "ITA", // Tolmin: Slovenian Littoral
+        "SVN-1022": "ITA", // Ajdovščina: Slovenian Littoral
+        "SVN-1023": "ITA", // Bovec: Slovenian Littoral
+        "SVN-1024": "ITA", // Brda: Slovenian Littoral
+        "SVN-1025": "ITA", // Divaca: Slovenian Littoral
+        "SVN-1026": "ITA", // Hrpelje-Kozina: Slovenian Littoral
+        "SVN-1027": "ITA", // Izola: Slovenian Littoral
+        "SVN-1028": "ITA", // Kanal: Slovenian Littoral
+        "SVN-1029": "ITA", // Kobarid: Slovenian Littoral
+        "SVN-1030": "ITA", // Komen: Slovenian Littoral
+        "SVN-1031": "ITA", // Koper: Slovenian Littoral
+        "SVN-1032": "ITA", // Miren-Kostanjevica: Slovenian Littoral
+        "SVN-1033": "ITA", // Piran: Slovenian Littoral
+        "SVN-1034": "ITA", // Sežana: Slovenian Littoral
+        "SVN-1035": "ITA", // Vipava: Slovenian Littoral
+        "SVN-260": "ITA", // Nova Goriška: Slovenian Littoral
+        "SVN-261": "ITA", // Šempeter-Vrtojba: Slovenian Littoral
+        "SVN-954": "ITA", // Ilirska Bistrica: Slovenian Littoral
+        "SVN-977": "ITA", // Pivka: Slovenian Littoral
+        "SVN-978": "ITA", // Postojna: Slovenian Littoral
+        "TUR-2289": "FRA", // Hatay: Sanjak of Alexandretta, French mandate of Syria
+        "BVT+00?": "GBR", // Bouvet Island: British claim; Norway annexed it in 1927-1928
+        // Americas
+        "CAN-686": "NFL", // Newfoundland and Labrador
+        "PER-575": "CHL", // Tacna: under Chile until 1929
+        // Africa
+        "CMR-1477": "GBR", // Nord-Ouest: British Cameroons
+        "CMR-799": "GBR", // Sud-Ouest: British Cameroons
+        "MAR-1445": "ESP", // Tanger - Tétouan: Spanish protectorate zone
+        "MAR-3456": "ESP", // Laâyoune - Boujdour - Sakia El Hamra (Moroccan part): Cape Juby strip
+        "MAR-3469": "ESP", // Oued el Dahab (Moroccan part): Rio de Oro
+        // Asia and Middle East
+        "CHN-1662": "TIB", // Xizang
+        "RUS-2605": "TUV", // Tuva: Tannu Tuva
+        "IND-2445": "POR", // Dadra and Nagar Haveli and Daman and Diu: Portuguese India
+        "IND-3265": "POR", // Goa: Portuguese India
+        "IND-3262": "FRA", // Puducherry: French India
+        "JOR-849": "HEJ", // Aqaba: Hejaz until the British annexed it to Transjordan in mid-1925
+        "JOR-853": "HEJ", // Ma`an: idem
+        "SAU-845": "HEJ", // Al Madinah
+        "SAU-848": "HEJ", // Tabuk
+        "SAU-885": "HEJ", // Al Bahah
+        "SAU-888": "HEJ", // Makkah: Mecca and Ta'if were taken by Nejd in October 1924, Jeddah held out
+        "YEM-157": "GBR", // Lahij: Aden Protectorate
+        "YEM-332": "GBR", // Al Mahrah: Aden Protectorate (Mahra Sultanate)
+        "YEM-336": "GBR", // Shabwah: Aden Protectorate
+        "YEM-3497": "GBR", // Hadramawt: Aden Protectorate
+        "YEM-3510": "GBR", // `Adan: Aden
+        "YEM-3511": "GBR", // Abyan: Aden Protectorate
+        // Oceania
+        "NZL-5472": "GBR", // Tokelau: Gilbert and Ellice Islands until 1926
+    },
+    // Pieces cut out of a province by a lon/lat mask. Each piece becomes its own province with
+    // the key "<from>~<suffix>"; the rest keeps the original key and owner.
+    carves: [
+        (
+            from: "GRC-3013", // Notio Aigaio
+            suffix: "dodecanese",
+            name: "Dodecanese",
+            owner: "ITA",
+            // Every island east of Amorgos and Anafi, Kastellorizo included.
+            mask: [(26.2, 35.2), (30.0, 35.2), (30.0, 37.7), (26.2, 37.7)],
+        ),
+        (
+            from: "RUS-2616", // Sakhalin oblast
+            suffix: "karafuto",
+            name: "Karafuto",
+            owner: "JAP",
+            // Sakhalin island south of the 50th parallel.
+            mask: [(140.0, 45.0), (145.2, 45.0), (145.2, 50.0), (140.0, 50.0)],
+        ),
+        (
+            from: "RUS-2616", // Sakhalin oblast
+            suffix: "kurils",
+            name: "Kuril Islands",
+            owner: "JAP",
+            mask: [(145.2, 43.0), (157.5, 43.0), (157.5, 51.5), (145.2, 51.5)],
+        ),
+        (
+            from: "CHN-1813", // Liaoning
+            suffix: "kwantung",
+            name: "Kwantung",
+            owner: "JAP",
+            // Liaodong peninsula south of the Pulandian-Pikou line; rough.
+            mask: [(120.8, 38.5), (123.0, 38.5), (123.0, 39.45), (120.8, 39.45)],
+        ),
+        (
+            from: "POL-3140", // Pomeranian
+            suffix: "danzig",
+            name: "Danzig",
+            owner: "DNZ",
+            // Free City of Danzig, hand-drawn and rough: to be replaced by OpenHistoricalMap.
+            mask: [
+                (18.56, 54.55), (18.56, 54.47), (18.40, 54.37), (18.36, 54.27), (18.45, 54.18),
+                (18.70, 54.15), (18.80, 54.12), (18.95, 54.08), (19.10, 54.10), (19.25, 54.17),
+                (19.32, 54.27), (19.30, 54.40), (19.30, 54.55),
+            ],
+        ),
+    ],
+)
