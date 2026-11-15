@@ -1,0 +1,988 @@
+resource,deposit,lon,lat,state,size,discovered,output_1925,potential,source
+# ---- coal (Mt raw coal, hard coal and lignite) ----
+coal,Pennsylvania anthracite and bituminous fields,-78.5,40.6,,5,1760,179,250,MRUS1925
+coal,West Virginia (Pocahontas and Kanawha),-81.0,38.0,,5,1800,111,180,MRUS1925
+coal,Illinois basin (Illinois),-89.3,39.0,,4,1810,61,100,MRUS1925
+coal,Kentucky eastern and western fields,-84.5,37.3,,4,1820,55,150,MRUS1925
+coal,Ohio Appalachian field,-81.5,40.0,,3,1800,26,50,MRUS1925
+coal,Indiana (Illinois basin),-87.3,39.0,,3,1840,19,35,MRUS1925
+coal,Alabama Warrior and Cahaba fields,-87.0,33.5,,3,1850,19,25,MRUS1925
+coal,Virginia southwest field,-82.3,37.0,,3,1840,11,40,MRUS1925
+coal,Colorado Raton and Front Range fields,-104.8,37.2,,3,1860,9.5,20,MRUS1925
+coal,Wyoming Rock Springs and Hanna fields,-108.5,41.6,,3,1868,6,10,MRUS1925
+coal,Powder River basin (surface mining from the 1970s),-105.5,44.3,,5,1880,0,410,MRUS1925; MCS
+coal,Utah Book Cliffs and Wasatch Plateau,-111.0,39.6,,2,1870,4.2,25,MRUS1925
+coal,Tennessee Cumberland Plateau,-84.6,36.2,,2,1840,5,8,MRUS1925
+coal,Kansas Cherokee basin,-94.8,37.3,,2,1870,3.2,5,MRUS1925
+coal,Iowa field,-92.9,41.0,,2,1870,4,6,MRUS1925
+coal,Washington Roslyn and Wilkeson,-121.9,47.2,,1,1880,2.3,4,MRUS1925
+coal,Missouri field,-93.8,38.4,,2,1860,2.7,5,MRUS1925
+coal,Oklahoma McAlester field,-95.6,34.9,,2,1870,2.6,5,MRUS1925
+coal,Montana fields (Colstrip later),-106.6,45.9,,3,1880,2.7,40,MRUS1925
+coal,New Mexico Raton and San Juan basin,-108.2,36.5,,3,1880,2.4,30,MRUS1925
+coal,Maryland Georges Creek,-79.0,39.6,,1,1820,2.2,3,MRUS1925
+coal,Texas lignite belt,-96.5,31.3,,3,1880,0.9,50,MRUS1925
+coal,Arkansas Arkoma field,-94.2,35.3,,1,1880,1.4,2,MRUS1925
+coal,North Dakota lignite,-101.5,47.2,,3,1880,1.4,30,MRUS1925
+coal,Alaska Matanuska and Healy,-149.0,61.7,,2,1916,0.1,2,MRUS1925
+coal,South Wales coalfield,-3.4,51.7,,5,1750,51,60,IMRB1925
+coal,Northumberland and Durham coalfield,-1.6,54.8,,5,1600,50,55,IMRB1925
+coal,Yorkshire coalfield,-1.4,53.6,,5,1700,44,55,IMRB1925
+coal,Nottinghamshire Derbyshire Leicestershire coalfields,-1.2,53.1,,4,1700,36,45,IMRB1925
+coal,Lancashire and Cumberland coalfields,-2.6,53.6,,3,1700,17,20,IMRB1925
+coal,Staffordshire Warwickshire Shropshire coalfields,-2.0,52.7,,3,1700,19,22,IMRB1925
+coal,Lanarkshire and Ayrshire coalfields,-4.0,55.8,,3,1700,19,22,IMRB1925
+coal,Fife and Lothians coalfields,-3.2,56.1,,3,1700,13,18,IMRB1925
+coal,Kent coalfield,1.25,51.2,,1,1890,0.2,5,IMRB1925
+coal,Bristol and Somerset coalfield,-2.5,51.3,,1,1700,1,1.5,IMRB1925
+coal,Castlecomer plateau,-7.2,52.8,,1,1700,0.1,0.2,IMRB1925
+coal,Ruhr and Aachen hard coal,7.2,51.5,,5,1800,108,150,IMRB1925
+coal,Rhineland lignite (Ville),6.7,50.9,,4,1880,40,120,IMRB1925
+coal,Saar basin,7.0,49.3,,4,1800,13,18,IMRB1925
+coal,Upper Silesia (German part; Gleiwitz Hindenburg Beuthen),18.8,50.3,GER-OBERSCHLESIEN,4,1800,14,30,IMRB1925
+coal,Lower Silesia Waldenburg,16.3,50.75,,2,1800,5.5,7,IMRB1925
+coal,Saxony Zwickau hard coal and Leipzig lignite,12.5,50.72,,4,1850,19,80,IMRB1925
+coal,Central German lignite (Halle Bitterfeld Geiseltal),12.0,51.4,,5,1850,55,100,IMRB1925
+coal,Lower Lusatia lignite,14.0,51.6,,4,1870,25,120,IMRB1925
+coal,Thuringia Altenburg lignite,12.4,51.05,DEU-TH,2,1870,5,10,IMRB1925
+coal,Upper Bavaria and Upper Palatinate coal,11.0,47.8,,1,1850,2.5,4,IMRB1925
+coal,Hessian lignite,9.2,51.0,,1,1850,2,4,IMRB1925
+coal,Helmstedt lignite and Deister coal,11.0,52.2,,2,1850,3,8,IMRB1925
+coal,Nord-Pas-de-Calais basin,2.9,50.4,,4,1720,31,35,IMRB1925
+coal,Lorraine coal basin,6.6,49.1,,3,1860,5,15,IMRB1925
+coal,Loire basin (Saint-Étienne),4.4,45.45,,2,1700,4,5,IMRB1925
+coal,Blanzy-Montceau basin,4.3,46.67,,2,1770,2.3,3,IMRB1925
+coal,Gard basin (Alès),4.1,44.1,,2,1800,2,3,IMRB1925
+coal,Carmaux basin,2.15,44.05,,2,1750,1.2,2,IMRB1925
+coal,Commentry and Brassac,2.75,46.29,,1,1800,0.8,1,IMRB1925
+coal,Provence lignite (Gardanne),5.47,43.45,,1,1800,0.8,1.5,IMRB1925
+coal,Hainaut basins (Borinage Centre Charleroi),4.3,50.4,,4,1700,18,20,IMRB1925
+coal,Liège basin,5.55,50.62,,2,1700,5,6,IMRB1925
+coal,Campine basin,5.5,51.0,,3,1901,0.5,10,IMRB1925
+coal,South Limburg mines,5.9,50.9,,3,1850,7,13,IMRB1925
+coal,Polish Upper Silesia,19.0,50.25,,5,1800,22,40,IMRB1925
+coal,Dąbrowa basin,19.2,50.35,POL-KIELCE,3,1800,5,10,IMRB1925
+coal,Kraków basin (Jaworzno Chrzanów),19.3,50.2,POL-KRAKOW,2,1800,2,4,IMRB1925
+coal,Ostrava-Karviná basin,18.3,49.8,,4,1780,10,25,IMRB1925
+coal,North Bohemian lignite and Kladno,13.6,50.5,,4,1800,22,80,IMRB1925
+coal,Handlová lignite,18.75,48.73,,1,1909,0.2,3,IMRB1925
+coal,Styrian brown coal (Fohnsdorf Köflach),14.7,47.2,,2,1800,2.3,4,IMRB1925
+coal,Hausruck lignite,13.7,48.1,,1,1850,0.5,1,IMRB1925
+coal,Tatabánya and Dorog brown coal,18.4,47.6,,2,1890,2.5,8,IMRB1925
+coal,Salgótarján and Borsod brown coal,20.6,48.2,,2,1850,3,10,IMRB1925
+coal,Pécs (Mecsek) hard coal,18.2,46.1,,2,1800,1.2,3,IMRB1925
+coal,Trbovlje-Zagorje brown coal,15.05,46.15,,2,1800,1.8,5,IMRB1925
+coal,Central Bosnian brown coal (Kakanj Zenica Kreka),18.1,44.2,,3,1880,1.5,12,IMRB1925
+coal,Serbian lignite (Kostolac Kolubara),20.3,44.4,,3,1870,1,40,IMRB1925
+coal,Kosovo lignite,21.0,42.7,,3,1920,0,10,hist.
+coal,Sulcis coal,8.5,39.2,,2,1870,0.2,2,IMRB1925
+coal,Valdarno lignite,11.5,43.5,,2,1860,0.8,2,IMRB1925
+coal,Arsa (Raša) coal,14.05,45.1,,1,1800,0.3,1.2,IMRB1925
+coal,Asturian central basin,-5.7,43.3,,3,1800,4.3,8,IMRB1925
+coal,León and Bierzo basins,-6.5,42.8,,2,1850,1,3,IMRB1925
+coal,Peñarroya-Belmez basin,-5.3,38.3,,2,1850,0.7,1.5,IMRB1925
+coal,Puertollano basin,-4.1,38.7,,1,1873,0.4,1,IMRB1925
+coal,Teruel lignite (Utrillas),-0.85,40.8,,1,1900,0.2,1,IMRB1925
+coal,Berga lignite,1.85,42.1,,1,1880,0.3,0.6,IMRB1925
+coal,As Pontes lignite (mined from 1976),-7.85,43.45,,2,1920,0,12,hist.
+coal,Douro coalfield (São Pedro da Cova),-8.5,41.15,,1,1800,0.25,0.4,IMRB1925
+coal,Donbass (Donetsk part),37.8,48.0,,5,1800,7.5,120,IMRB1925
+coal,Donbass (Luhansk part),39.3,48.5,,5,1800,5,80,IMRB1925
+coal,Donbass (Shakhty part),40.2,47.7,,4,1800,1.5,30,IMRB1925
+coal,Kuznetsk basin,86.5,54.0,,5,1850,1,250,IMRB1925
+coal,Moscow basin lignite,37.8,53.9,,3,1850,0.7,40,IMRB1925
+coal,Kizel basin,57.6,59.0,,2,1800,0.6,12,IMRB1925
+coal,Chelyabinsk lignite,61.3,55.0,,2,1907,0.4,25,IMRB1925
+coal,Karaganda basin (developed 1930s),73.1,49.8,,4,1833,0.05,130,hist.
+coal,Ekibastuz (surface mining from 1954),75.3,51.7,,4,1876,0,85,hist.
+coal,Cheremkhovo basin,103.1,53.1,,3,1890,0.6,30,IMRB1925
+coal,Suchan (Partizansk) field,133.2,43.1,,2,1890,0.3,15,IMRB1925
+coal,Tkibuli coal,42.98,42.35,,1,1846,0.1,2,IMRB1925
+coal,Kansk-Achinsk lignite basin,92.0,56.2,,5,1900,0,60,hist.
+coal,Pechora basin (Vorkuta),64.0,67.5,,4,1930,0,30,hist.
+coal,South Yakutian basin (Neryungri),124.7,56.7,,3,1952,0,15,hist.
+coal,Angren lignite,70.1,41.0,,3,1933,0,12,hist.
+coal,Chikuho and Miike coalfields,130.7,33.65,,4,1800,19,25,IMRB1925
+coal,Nagasaki and Saga coalfields (Takashima Karatsu),129.8,33.2,,2,1800,2.5,4,IMRB1925
+coal,Ishikari coalfield,141.9,43.1,,4,1880,6,20,IMRB1925
+coal,Jōban coalfield,140.9,37.05,,2,1880,2.5,4,IMRB1925
+coal,Ube coalfield,131.25,33.95,,2,1880,1,3,IMRB1925
+coal,Karafuto coalfields,142.7,47.5,,2,1910,0.4,5,IMRB1925
+coal,Pyongyang anthracite field,125.9,39.1,,3,1900,0.4,20,IMRB1925
+coal,Samcheok anthracite (developed 1930s),129.1,37.4,,3,1920,0,15,hist.
+coal,North Hamgyong lignite (Aoji),129.6,42.3,,2,1910,0.1,6,IMRB1925
+coal,Keelung coalfield,121.7,25.05,,2,1880,1.7,2.5,IMRB1925
+coal,Fushun Benxi and Fuxin coalfields,123.9,41.85,,5,1900,6.5,40,IMRB1925
+coal,Kailuan (Kaiping) mines,118.2,39.6,,4,1878,4.5,25,IMRB1925
+coal,Shanxi coalfields (Datong Yangquan and native pits),113.3,38.5,,5,1800,3,300,IMRB1925
+coal,Shandong coalfields (Zichuan Boshan Zaozhuang),117.9,36.6,,3,1880,2.5,50,IMRB1925
+coal,Henan coalfields (Jiaozuo Pingdingshan),113.2,35.25,,3,1900,1.5,60,IMRB1925
+coal,Hunan coalfields,111.9,27.7,,2,1880,0.6,20,IMRB1925
+coal,Pingxiang coalfield,113.85,27.6,,2,1898,0.8,10,IMRB1925
+coal,Sichuan native coal pits,104.0,29.5,,3,1800,1,60,IMRB1925
+coal,Huainan coalfield,117.0,32.6,,3,1910,0.3,70,IMRB1925
+coal,Xuzhou coalfield,117.2,34.3,,2,1880,0.4,25,IMRB1925
+coal,Heilongjiang coalfields (Hegang Jixi),130.3,47.3,,3,1910,0.2,60,IMRB1925
+coal,Guizhou coalfields,106.7,26.6,,3,1880,0.3,50,IMRB1925
+coal,Shenfu-Dongsheng field (Inner Mongolia part),110.0,39.5,,5,1982,0,400,hist.
+coal,Shenfu-Dongsheng field (Shaanxi part),110.5,38.8,,5,1982,0,250,hist.
+coal,Jharia coalfield,86.4,23.75,,4,1890,13,60,IMRB1925
+coal,Raniganj coalfield,87.1,23.6,,3,1774,6,30,IMRB1925
+coal,Korba coalfield (developed 1950s),82.7,22.35,,4,1870,0,100,hist.
+coal,Pench and Wardha valley coalfields,79.3,20.0,,2,1870,0.7,30,IMRB1925
+coal,Singareni coalfield,80.6,17.55,,3,1871,0.7,40,IMRB1925
+coal,Makum coalfield,95.8,27.3,,1,1880,0.3,1,IMRB1925
+coal,Talcher coalfield,85.2,20.95,,4,1837,0.05,100,IMRB1925
+coal,Singrauli coalfield (developed 1960s),82.6,24.1,,4,1840,0,80,hist.
+coal,Salt Range coal,72.0,32.6,,1,1880,0.1,1,IMRB1925
+coal,Newcastle Hunter and Illawarra fields,151.5,-32.8,,4,1800,11,60,IMRB1925
+coal,Ipswich field and Bowen basin,149.5,-23.5,,5,1840,1.2,150,IMRB1925
+coal,Latrobe valley brown coal and Wonthaggi,146.4,-38.2,,4,1890,2,60,IMRB1925
+coal,Collie coalfield,116.15,-33.35,,2,1883,0.4,6,IMRB1925
+coal,Tasmanian coal (Fingal),147.95,-41.6,,1,1850,0.1,1,IMRB1925
+coal,Leigh Creek coalfield,138.4,-30.5,,1,1888,0,3,hist.
+coal,West Coast coalfields (Westport Greymouth),171.5,-42.0,,2,1860,1.4,3,IMRB1925
+coal,Waikato coalfield,175.1,-37.6,,2,1870,0.9,3,IMRB1925
+coal,Witbank Highveld and Waterberg coalfields,29.2,-25.9,,5,1890,8,260,IMRB1925
+coal,Natal coalfields (Dundee Vryheid),30.2,-28.1,,3,1880,3,6,IMRB1925
+coal,Orange Free State coalfields (Sasolburg Vierfontein),27.85,-26.85,,3,1890,1.4,30,IMRB1925
+coal,Wankie colliery,26.45,-18.35,,3,1903,1,5,IMRB1925
+coal,Enugu colliery,7.5,6.45,,2,1915,0.36,1,IMRB1925
+coal,Moatize coalfield,33.7,-16.1,,4,1858,0,15,hist.
+coal,Alberta coalfields (Drumheller Crowsnest),-113.5,51.0,,4,1880,5.9,30,IMRB1925
+coal,Nova Scotia coalfields (Sydney Pictou),-60.2,46.15,,3,1720,4,7,IMRB1925
+coal,British Columbia coalfields (Crowsnest Elk Valley Nanaimo),-114.9,49.5,,4,1850,2.4,35,IMRB1925
+coal,Estevan lignite,-103.0,49.1,,2,1890,0.4,10,IMRB1925
+coal,Minto coalfield,-66.05,46.1,,1,1800,0.2,0.3,IMRB1925
+coal,Sabinas basin,-101.1,27.9,,2,1884,1.4,12,IMRB1925
+coal,Cerrejón (mined from 1985),-72.6,11.1,,4,1864,0,35,hist.
+coal,Cundinamarca and Boyacá coal,-73.6,5.3,,2,1850,0.3,8,IMRB1925
+coal,Rio Grande do Sul coal (São Jerônimo Candiota),-51.7,-30.0,,2,1850,0.3,6,IMRB1925
+coal,Santa Catarina coal (Criciúma),-49.4,-28.7,,2,1885,0.1,6,IMRB1925
+coal,Lota-Coronel coalfield,-73.15,-37.05,,2,1852,1.4,2.5,IMRB1925
+coal,Goyllarisquizga coal,-76.5,-10.5,,1,1900,0.2,0.5,IMRB1925
+coal,Zonguldak coalfield,31.8,41.45,,3,1848,1.2,8,IMRB1925
+coal,Afşin-Elbistan lignite,37.0,38.3,,4,1966,0,30,hist.
+coal,Pernik and Maritsa lignite,23.1,42.6,,4,1891,1.2,35,IMRB1925
+coal,Jiu valley hard coal,23.35,45.4,,3,1860,1.6,10,IMRB1925
+coal,Anina-Reșița coal,21.85,45.08,,1,1790,0.3,0.6,IMRB1925
+coal,Oltenia lignite (Motru Rovinari),23.1,44.8,,4,1900,0.2,35,IMRB1925
+coal,Ptolemaida lignite,21.7,40.5,,4,1920,0,50,hist.
+coal,Hongay and Campha coalfields,107.1,21.0,,3,1888,1.2,40,IMRB1925
+coal,Ombilin coalfield,100.8,-0.7,,2,1892,0.6,2,IMRB1925
+coal,Bukit Asam coalfield,103.8,-3.75,,4,1919,0.3,30,IMRB1925
+coal,East Borneo coal (Kutai),117.2,-0.5,,5,1880,0.1,300,IMRB1925; MCS
+coal,Batu Arang coalfield,101.47,3.32,,1,1915,0.4,0.8,IMRB1925
+coal,Nalaikh coal,106.95,47.75,,1,1922,0.01,1,hist.
+coal,Tavan Tolgoi coal,105.6,43.6,,4,1952,0,30,hist.
+coal,Spitsbergen coal (Longyearbyen Barentsburg),15.6,78.2,,2,1906,0.45,1,IMRB1925
+coal,Skåne coal (Höganäs),12.55,56.2,,1,1797,0.4,0.5,IMRB1925
+# ---- iron ore (Mt gross) ----
+iron_ore,Mesabi Vermilion and Cuyuna ranges,-92.5,47.5,,5,1866,41,65,MRUS1925
+iron_ore,Marquette Menominee and Gogebic ranges (Michigan),-87.8,46.4,,4,1844,14.2,18,MRUS1925
+iron_ore,Gogebic range (Wisconsin),-90.2,46.4,,2,1884,1.5,2.5,MRUS1925
+iron_ore,Birmingham red ore,-86.9,33.5,,3,1860,6.6,8,MRUS1925
+iron_ore,Adirondack magnetite,-73.8,44.2,,2,1800,0.6,3,MRUS1925
+iron_ore,Iron Springs district,-113.4,37.7,,2,1850,0.4,3,MRUS1925
+iron_ore,Sunrise mine,-104.7,42.35,,1,1898,0.2,1,MRUS1925
+iron_ore,Wabana (Bell Island),-53.0,47.6,,3,1895,1.3,3,IMRB1925
+iron_ore,Labrador Trough (Schefferville Mont-Wright),-66.8,54.8,,5,1947,0,30,hist.
+iron_ore,Labrador Trough (Carol Lake Wabush),-66.9,52.9,,5,1949,0,25,hist.
+iron_ore,Steep Rock Lake,-91.6,48.8,,3,1938,0,4,hist.
+iron_ore,Cerro de Mercado,-104.7,24.05,,2,1552,0.05,2,MRUS1925
+iron_ore,Daiquirí and Mayarí ores,-75.6,20.0,,2,1884,0.6,1.5,MRUS1925
+iron_ore,Cerro Bolívar and El Pao,-62.8,7.5,,4,1947,0,25,hist.
+iron_ore,Quadrilátero Ferrífero (Itabira),-43.3,-19.6,,5,1910,0.02,150,MRUS1925
+iron_ore,Carajás,-50.2,-6.05,,5,1967,0,200,hist.
+iron_ore,Urucum (Corumbá),-57.6,-19.25,,3,1900,0,3,hist.
+iron_ore,El Tofo and El Romeral,-71.3,-29.4,,3,1913,1.5,3,MRUS1925
+iron_ore,Marcona (mined from 1953),-75.1,-15.2,,3,1905,0,8,hist.
+iron_ore,Cleveland ironstone,-1.0,54.5,,3,1850,3,6,IMRB1925
+iron_ore,Northamptonshire and Lincolnshire ironstone,-0.68,52.49,,4,1850,5,12,IMRB1925
+iron_ore,Cumberland and Furness haematite,-3.45,54.5,,2,1700,1.3,2,IMRB1925
+iron_ore,Banbury ironstone,-1.35,52.06,,2,1860,0.5,2,IMRB1925
+iron_ore,Lorraine minette (Briey Longwy Moselle),5.9,49.3,,5,1870,33,50,IMRB1925
+iron_ore,Normandy ironstone (May-sur-Orne Soumont),-0.35,49.05,,3,1890,1.7,3,IMRB1925
+iron_ore,Anjou iron ore (Segré),-0.9,47.7,,2,1900,0.6,1.5,IMRB1925
+iron_ore,Luxembourg minette,6.0,49.5,,4,1850,6.7,8,IMRB1925
+iron_ore,Siegerland siderite,8.0,50.85,,3,1500,2,2.5,IMRB1925
+iron_ore,Lahn-Dill ores,8.3,50.6,,2,1500,1,1.5,IMRB1925
+iron_ore,Salzgitter and Peine ores,10.35,52.15,,4,1860,1.4,13,IMRB1925
+iron_ore,Amberg-Sulzbach ores,11.85,49.45,,2,1500,0.8,1.5,IMRB1925
+iron_ore,Kiruna and Malmberget,20.2,67.85,,5,1890,7,25,IMRB1925
+iron_ore,Bergslagen (Grängesberg),14.95,60.1,,3,1500,2.4,6,IMRB1925
+iron_ore,Sydvaranger and Dunderland,30.0,69.7,,3,1906,0.65,4,IMRB1925
+iron_ore,Vizcaya ores (Bilbao),-2.95,43.25,,3,1800,2.5,4,IMRB1925
+iron_ore,Santander ores,-3.8,43.4,,2,1850,0.8,1.5,IMRB1925
+iron_ore,Alquife and Almería ores,-3.1,37.2,,2,1890,1.3,3,IMRB1925
+iron_ore,León and Asturias ores,-6.6,42.6,,1,1880,0.4,1,IMRB1925
+iron_ore,Ojos Negros,-1.5,40.75,,2,1900,0.5,1.5,IMRB1925
+iron_ore,Elba,10.4,42.8,,2,1500,0.5,1,IMRB1925
+iron_ore,Cogne,7.35,45.6,,1,1900,0.1,0.5,IMRB1925
+iron_ore,Erzberg,14.9,47.53,,3,1200,1,4,IMRB1925
+iron_ore,Nučice and Bohemian ores,14.1,50.0,,2,1800,0.8,1.5,IMRB1925
+iron_ore,Slovak ores (Rudňany Gelnica),20.6,48.85,,2,1800,0.7,1.5,IMRB1925
+iron_ore,Częstochowa ores,19.1,50.8,,2,1800,0.4,1.5,IMRB1925
+iron_ore,Rudabánya,20.6,48.4,,1,1880,0.2,0.5,IMRB1925
+iron_ore,Ljubija and Vareš,17.5,44.5,,3,1890,0.3,4,IMRB1925
+iron_ore,Hunedoara ores (Ghelari),22.8,45.7,,2,1800,0.1,2,IMRB1925
+iron_ore,Greek iron ores,24.05,37.7,,1,1870,0.2,0.5,IMRB1925
+iron_ore,Kryvyi Rih,33.4,47.9,,5,1881,1.8,100,IMRB1925
+iron_ore,Kerch ores,36.4,45.3,,3,1895,0.1,5,IMRB1925
+iron_ore,Middle Urals (Nizhny Tagil Kachkanar),59.95,57.9,,4,1700,0.6,40,IMRB1925
+iron_ore,Magnitnaya mountain and Bakal,59.0,53.4,,4,1747,0.2,15,IMRB1925
+iron_ore,Kursk Magnetic Anomaly (Belgorod part),37.55,51.3,,5,1931,0,100,hist.
+iron_ore,Kursk Magnetic Anomaly (Kursk part),35.3,52.25,,4,1931,0,50,hist.
+iron_ore,Sokolov-Sarbai,63.1,52.95,,4,1949,0,40,hist.
+iron_ore,Kostomuksha,30.6,64.6,,3,1946,0,25,hist.
+iron_ore,Olenegorsk and Kovdor,33.4,68.15,,3,1932,0,20,hist.
+iron_ore,Angara-Ilim ores,104.1,56.6,,3,1932,0,10,hist.
+iron_ore,Ouenza and Bou Khadra,8.12,35.95,,3,1913,1.4,3.5,IMRB1925
+iron_ore,Beni Saf,-1.38,35.3,,2,1870,0.4,1,IMRB1925
+iron_ore,Djerissa,8.6,35.85,,2,1907,0.8,1.2,IMRB1925
+iron_ore,Uixan (Rif mines),-3.0,35.2,ESP-MARRUECOS,2,1914,0.6,1.2,IMRB1925
+iron_ore,Noamundi and Singhbhum ores,85.5,22.15,,4,1910,0.4,20,IMRB1925
+iron_ore,Gurumahisani and Barbil ores,85.5,21.9,,5,1904,0.6,60,IMRB1925
+iron_ore,Bailadila (mined from 1968),81.25,18.65,,4,1899,0,30,hist.
+iron_ore,Goa ores (exported from 1947),74.1,15.4,,3,1905,0,15,hist.
+iron_ore,Bellary-Hospet and Bababudan ores,76.4,15.15,,4,1900,0.02,30,IMRB1925
+iron_ore,Anshan and Benxi ores,123.0,41.1,,4,1909,0.7,30,IMRB1925
+iron_ore,Daye ores,114.9,30.1,,3,1890,0.8,6,IMRB1925
+iron_ore,Longyan (Xuanhua) ores,115.0,40.6,,2,1914,0.2,5,IMRB1925
+iron_ore,Bayan Obo (iron),109.95,41.8,,4,1927,0,15,hist.
+iron_ore,Shilu (Hainan),109.1,19.25,,3,1935,0,5,hist.
+iron_ore,Panzhihua titanomagnetite,101.7,26.6,,4,1936,0,15,hist.
+iron_ore,Jaeryeong and Eunryul ores,125.2,38.4,,2,1900,0.35,1.5,IMRB1925
+iron_ore,Musan magnetite,129.2,42.2,,4,1920,0,8,hist.
+iron_ore,Kamaishi,141.75,39.3,,1,1857,0.15,0.5,IMRB1925
+iron_ore,Johore and Trengganu ores,102.95,1.85,,2,1920,0.2,1,IMRB1925
+iron_ore,Iron Knob and Middleback Range,137.15,-32.75,,3,1899,0.8,4,IMRB1925
+iron_ore,Pilbara (Hamersley Newman),118.5,-22.7,,5,1952,0,850,hist.; MCS
+iron_ore,Yampi Sound (Koolan Cockatoo),123.75,-16.15,,2,1880,0,2,hist.
+iron_ore,Savage River,145.2,-41.55,,2,1877,0,2.5,hist.
+iron_ore,Thabazimbi,27.4,-24.6,,3,1919,0,3,hist.
+iron_ore,Sishen,22.95,-27.7,,5,1940,0,40,hist.
+iron_ore,Bomi Hills,-10.85,6.85,,3,1935,0,3,hist.
+iron_ore,Mount Nimba,-8.5,7.55,,4,1955,0,12,hist.
+iron_ore,Marampa,-12.48,8.68,,3,1926,0,3,hist.
+iron_ore,Simandou,-8.9,8.6,,5,1997,0,120,hist.
+iron_ore,Kédia d'Idjil (Zouérat),-12.4,22.7,,4,1952,0,13,hist.
+iron_ore,Belinga,13.2,1.1,,4,1955,0,20,hist.
+iron_ore,Divriği,38.1,39.4,,3,1937,0,3,hist.
+# ---- copper (kt Cu content) ----
+copper,Arizona porphyries (Bisbee Jerome Morenci Globe-Miami Ajo Ray),-110.9,33.4,,5,1870,340,1000,MRUS1925
+copper,Bingham Canyon,-112.15,40.52,,5,1896,110,330,MRUS1925
+copper,Butte,-112.5,46.0,,4,1880,110,150,MRUS1925
+copper,Keweenaw native copper,-88.4,47.2,,3,1845,78,100,MRUS1925
+copper,Ely (Robinson district),-114.9,39.25,,3,1900,40,120,MRUS1925
+copper,Chino (Santa Rita),-108.05,32.8,,4,1910,32,180,MRUS1925
+copper,Kennecott,-142.85,61.5,,3,1900,30,45,MRUS1925
+copper,Ducktown,-84.4,35.0,,1,1850,8,10,MRUS1925
+copper,Shasta copper belt,-122.4,40.7,,1,1896,6,10,MRUS1925
+copper,British Columbia (Britannia Anyox Copper Mountain Highland Valley),-121.0,50.5,,4,1890,30,300,IMRB1925
+copper,Sudbury (copper of the nickel ores),-81.0,46.5,,4,1883,18,150,IMRB1925
+copper,Noranda (Horne) and Gaspé,-79.0,48.25,,3,1923,0,80,hist.
+copper,Flin Flon,-101.88,54.77,,3,1915,0,60,hist.
+copper,Kidd Creek,-81.35,48.7,,4,1963,0,120,hist.
+copper,Cananea and Nacozari (Sonora),-110.3,30.95,,5,1899,40,450,MRUS1925
+copper,El Boleo,-112.3,27.35,,2,1885,10,15,MRUS1925
+copper,Matahambre,-83.95,22.6,,2,1913,6,10,MRUS1925
+copper,Chuquicamata and northern small mines,-68.9,-22.3,,5,1915,110,600,MRUS1925
+copper,Potrerillos (from 1927),-69.47,-26.25,,3,1920,0,60,hist.
+copper,Collahuasi,-68.7,-20.98,,4,1880,0,500,hist.
+copper,Los Pelambres,-70.48,-31.7,CHL-NORTE,4,1920,0,400,hist.
+copper,El Salvador,-69.55,-26.25,,3,1959,0,100,hist.
+copper,Escondida,-69.07,-24.27,,5,1981,0,1200,hist.; MCS
+copper,El Teniente,-70.35,-34.08,,5,1905,80,470,MRUS1925
+copper,Río Blanco (Andina),-70.27,-33.15,,4,1920,0,250,hist.
+copper,Cerro de Pasco and Morococha,-76.25,-10.68,,3,1902,38,80,MRUS1925
+copper,Antamina,-77.05,-9.53,,4,1850,0,400,hist.
+copper,Toquepala and Cuajone,-70.6,-17.25,,4,1950,0,250,hist.
+copper,Corocoro,-68.45,-17.18,,2,1870,6,10,MRUS1925
+copper,Bajo de la Alumbrera,-66.6,-27.33,,3,1949,0,190,hist.
+copper,Carajás copper (Salobo Sossego),-50.4,-6.0,,4,1977,0,300,hist.
+copper,Cobre Panamá,-80.6,8.8,,4,1968,0,350,hist.
+copper,Rio Tinto and Tharsis,-6.6,37.7,,3,1873,30,45,IMRB1925
+copper,São Domingos and Aljustrel,-7.5,37.65,,2,1858,2,5,IMRB1925
+copper,Neves-Corvo,-7.97,37.57,,3,1977,0,80,hist.
+copper,Mansfeld copper shale,11.5,51.6,,2,1200,20,30,IMRB1925
+copper,Lubin-Głogów (Polkowice) copper shale,16.2,51.4,,5,1957,0,450,hist.
+copper,Bor and Majdanpek,22.1,44.08,,3,1903,10,120,IMRB1925
+copper,Løkken,9.7,63.1,,2,1654,3,8,IMRB1925
+copper,Sulitjelma,16.08,67.12,,2,1887,3,6,IMRB1925
+copper,Boliden and Aitik,20.95,64.87,,3,1924,0,90,hist.
+copper,Outokumpu,29.0,62.73,,3,1910,1,35,IMRB1925
+copper,Middle Urals copper (Krasnouralsk Kirovgrad),60.0,58.4,,4,1700,6,200,IMRB1925
+copper,Karabash,60.2,55.5,,2,1910,1,20,IMRB1925
+copper,Gai,57.5,51.5,,3,1950,0,80,hist.
+copper,Alaverdi,44.65,41.1,,2,1770,2,15,IMRB1925
+copper,Kajaran (Zangezur),46.15,39.15,,3,1940,0,50,hist.
+copper,Kounrad (Balkhash),75.0,46.95,,4,1928,0,100,hist.
+copper,Dzhezkazgan,67.6,47.8,,4,1910,0,200,hist.
+copper,Almalyk (Kalmakyr),69.6,40.85,,4,1931,0,120,hist.
+copper,Norilsk,88.2,69.35,,4,1935,0,150,hist.
+copper,Talnakh and Oktyabrsky,88.4,69.5,,5,1960,0,300,hist.
+copper,Udokan,118.6,56.6,,5,1949,0,130,hist.
+copper,Monchegorsk (copper-nickel),32.9,67.95,,2,1930,0,30,hist.
+copper,Ergani,39.75,38.28,,2,1900,0,25,hist.
+copper,Murgul,41.55,41.27,,2,1900,0,15,hist.
+copper,Skouriotissa and Mavrovouni,32.88,35.08,,2,1921,3,20,IMRB1925
+copper,Sar Cheshmeh,55.87,29.95,,4,1967,0,250,hist.
+copper,Reko Diq,62.06,29.13,,4,1978,0,200,hist.
+copper,Katanga copper (Kolwezi Likasi Lubumbashi),26.5,-11.0,,5,1906,90,1500,IMRB1925; MCS
+copper,Bwana Mkubwa,28.7,-13.05,,2,1902,1,5,IMRB1925
+copper,Copperbelt sulphides (Roan Antelope Nkana Mufulira Nchanga),28.2,-12.8,,5,1928,0,800,hist.
+copper,Tsumeb copper,17.7,-19.25,,3,1906,10,40,IMRB1925
+copper,O'okiep (Namaqualand),17.9,-29.6,,2,1852,7,50,IMRB1925
+copper,Palabora,31.13,-23.98,,4,1956,0,130,hist.
+copper,Kilembe,30.0,0.2,,2,1906,0,15,hist.
+copper,Ashio,139.43,36.63,,2,1610,13,20,IMRB1925
+copper,Besshi,133.3,33.9,,2,1691,12,15,IMRB1925
+copper,Hitachi,140.62,36.6,,2,1905,15,20,IMRB1925
+copper,Kosaka and Hanaoka,140.75,40.33,,2,1880,12,15,IMRB1925
+copper,Ikuno and Akenobe,134.8,35.2,,2,1600,8,12,IMRB1925
+copper,Kinkaseki,121.85,25.1,,2,1905,2,5,IMRB1925
+copper,Dongchuan,103.1,26.1,,3,1700,1,30,IMRB1925
+copper,Dexing,117.7,28.95,,4,1957,0,150,hist.
+copper,Lepanto,120.8,16.85,,2,1906,0,30,hist.
+copper,Atlas (Toledo),123.8,10.35,,3,1955,0,100,hist.
+copper,Ertsberg and Grasberg,137.1,-4.06,,5,1936,0,800,hist.
+copper,Panguna (Bougainville),155.5,-6.3,,4,1964,0,180,hist.
+copper,Ok Tedi,141.13,-5.22,,4,1968,0,200,hist.
+copper,Mount Lyell,145.55,-42.06,,3,1893,7,30,IMRB1925
+copper,Mount Morgan,150.4,-23.65,,2,1882,3,10,IMRB1925
+copper,Mount Isa copper,139.5,-20.73,,4,1930,0,250,hist.
+copper,Olympic Dam,136.88,-30.44,,5,1975,0,230,hist.
+copper,Wallaroo-Moonta (closed 1923),137.7,-34.0,,2,1860,0,5,IMRB1925
+copper,Cobar,145.83,-31.5,,2,1870,0.5,50,IMRB1925
+copper,Singhbhum copper belt,86.45,22.6,,2,1924,1,30,IMRB1925
+copper,Khetri,75.78,27.98,,2,1900,0,30,hist.
+copper,Malanjkhand,80.7,22.0,,3,1969,0,60,hist.
+copper,Erdenet,104.1,49.03,,4,1964,0,130,hist.
+copper,Oyu Tolgoi,106.85,43.0,,5,2001,0,300,hist.
+# ---- bauxite (kt gross) ----
+bauxite,Arkansas bauxite (Saline and Pulaski counties),-92.6,34.6,,3,1887,315,2000,MRUS1925; DS140
+bauxite,Alabama and Georgia bauxite,-85.1,31.9,,1,1888,7,50,MRUS1925
+bauxite,Var bauxite (Brignoles),6.06,43.4,,3,1870,300,700,IMRB1925
+bauxite,Hérault bauxite (Bédarieux Villeveyrac),3.6,43.5,,2,1890,120,300,IMRB1925
+bauxite,Bakony and Vértes bauxite (Gánt Halimba Nyirád; mined from 1926),18.0,47.25,,4,1920,0,2900,hist.
+bauxite,Dalmatian bauxite (Drniš Sinj Obrovac),16.2,43.7,,3,1913,60,1000,IMRB1925
+bauxite,Herzegovina bauxite (Mostar),17.8,43.35,,3,1920,5,1500,IMRB1925
+bauxite,Nikšić bauxite,18.95,42.8,,3,1920,0,1000,hist.
+bauxite,Istrian bauxite,13.9,45.25,,2,1900,150,300,IMRB1925
+bauxite,Abruzzi bauxite (Lecce nei Marsi),13.7,41.9,,1,1910,10,40,IMRB1925
+bauxite,Parnassos-Giona bauxite (exported from 1926),22.45,38.55,,4,1920,0,3000,hist.
+bauxite,Vogelsberg bauxite,9.2,50.5,,1,1910,10,30,IMRB1925
+bauxite,Bihor bauxite,22.5,46.75,,2,1908,5,600,IMRB1925
+bauxite,Tikhvin bauxite (mined from 1929),33.6,59.65,,2,1916,0,500,hist.
+bauxite,North Urals bauxite (Krasnaya Shapochka),60.0,60.0,,4,1931,0,3500,hist.
+bauxite,Turgai bauxite (Krasnooktyabrsk Arkalyk),63.1,52.6,,3,1949,0,4500,hist.
+bauxite,Middle Timan bauxite,53.0,63.0,,4,1970,0,3000,hist.
+bauxite,Demerara bauxite (Mackenzie),-58.3,6.0,,4,1914,165,4000,IMRB1925; DS140
+bauxite,Moengo bauxite,-54.4,5.6,,4,1915,85,7000,IMRB1925
+bauxite,Jamaican bauxite,-77.3,18.1,,5,1942,0,15000,hist.
+bauxite,Los Pijiguaos,-66.75,6.6,,4,1977,0,6000,hist.
+bauxite,Trombetas and Paragominas,-56.4,-1.5,,5,1966,0,35000,hist.; MCS
+bauxite,Poços de Caldas and Ouro Preto bauxite,-46.55,-21.8,,3,1919,1,2000,hist.
+bauxite,Boké Fria and Kindia bauxite,-13.85,11.1,,5,1955,0,100000,hist.; MCS
+bauxite,Awaso,-2.5,6.25,,2,1914,0,1000,hist.
+bauxite,Weipa,141.9,-12.65,,5,1955,0,35000,hist.; MCS
+bauxite,Gove,136.8,-12.2,,4,1955,0,12000,hist.
+bauxite,Darling Range,116.1,-32.6,,5,1957,0,35000,hist.; MCS
+bauxite,Lohardaga bauxite,84.68,23.43,,3,1900,5,3000,IMRB1925
+bauxite,East Coast bauxite (Panchpatmali),82.9,18.85,,5,1975,0,12000,hist.
+bauxite,Bintan bauxite (mined from 1935),104.5,1.05,,2,1924,0,1300,hist.
+bauxite,Shanxi bauxite,111.5,37.5,,5,1953,0,30000,hist.; MCS
+bauxite,Henan bauxite,113.0,34.75,,4,1953,0,25000,hist.
+bauxite,Guangxi bauxite (Pingguo),106.6,23.3,,4,1958,0,20000,hist.
+bauxite,Guizhou bauxite,106.7,26.8,,3,1955,0,10000,hist.
+bauxite,Central Highlands bauxite (Tân Rai),107.8,12.0,,4,1975,0,3000,hist.
+bauxite,Seydişehir,31.85,37.4,,2,1953,0,800,hist.
+bauxite,Az Zabirah,43.6,27.95,,4,1979,0,5000,hist.
+# ---- oil (Mt crude) ----
+oil,California fields (Los Angeles basin and San Joaquin),-118.1,33.9,,5,1865,31.6,57,MRUS1925
+oil,Oklahoma fields (Cushing Seminole Healdton),-96.7,35.9,,5,1897,24.1,40,MRUS1925
+oil,Texas Gulf Coast and North-Central fields,-97.5,31.5,,5,1894,19.8,80,MRUS1925
+oil,Permian basin (Texas),-102.3,31.4,,5,1926,0,250,hist.; MCS
+oil,East Texas field,-94.85,32.4,,5,1930,0,50,hist.
+oil,Kansas fields (El Dorado),-96.85,37.8,,3,1892,5.3,10,MRUS1925
+oil,North Louisiana fields (Caddo Homer Haynesville),-93.5,32.6,,3,1904,2.9,15,MRUS1925
+oil,Louisiana Gulf offshore,-91.0,28.8,,5,1947,0,75,hist.
+oil,Salt Creek and Wyoming fields,-106.2,43.4,,3,1889,3.5,20,MRUS1925
+oil,Smackover and El Dorado,-92.7,33.25,,3,1921,10.5,11,MRUS1925
+oil,Pennsylvania Appalachian fields,-79.6,41.6,,2,1859,1.05,2,MRUS1925
+oil,West Virginia Appalachian fields,-80.9,38.9,,1,1860,0.8,1,MRUS1925
+oil,Ohio fields (Lima-Indiana trend),-81.9,40.0,,1,1860,1,1.5,MRUS1925
+oil,New York Allegany field,-78.3,42.1,,1,1865,0.3,0.5,MRUS1925
+oil,Illinois basin fields,-87.9,38.9,,2,1905,1,9,MRUS1925
+oil,Kentucky fields,-85.3,37.0,,1,1880,1,1.5,MRUS1925
+oil,Kevin-Sunburst and Montana fields,-111.9,48.8,,2,1922,0.5,4,MRUS1925
+oil,Colorado fields,-104.9,38.4,,1,1876,0.3,4,MRUS1925
+oil,San Juan basin (Hogback),-108.4,36.7,,2,1922,0.1,5,MRUS1925
+oil,Permian basin (New Mexico),-103.3,32.7,,4,1927,0,60,hist.
+oil,Williston basin (Bakken),-103.2,48.0,,4,1951,0,60,hist.; MCS
+oil,Prudhoe Bay,-148.5,70.3,,5,1968,0,100,hist.
+oil,Petrolia and Oil Springs,-82.2,42.85,,1,1858,0.03,0.2,IMRB1925
+oil,Turner Valley,-114.3,50.65,,2,1914,0.02,1.5,IMRB1925
+oil,Leduc and Alberta conventional fields,-113.55,53.3,,5,1947,0,80,hist.
+oil,Athabasca oil sands,-111.5,57.0,,5,1967,0,160,hist.; MCS
+oil,Weyburn and Saskatchewan fields,-103.85,49.65,,3,1952,0,25,hist.
+oil,Hibernia and Grand Banks,-48.8,46.75,CAN-NL,4,1979,0,15,hist.
+oil,Norman Wells,-126.85,65.3,,1,1920,0,1.5,hist.
+oil,Faja de Oro (Golden Lane),-97.6,21.3,,4,1908,10,25,MRUS1925
+oil,Pánuco and Ébano,-98.35,22.1,,3,1901,6,10,MRUS1925
+oil,Poza Rica,-97.45,20.55,,4,1930,0,15,hist.
+oil,Reforma (Chiapas-Tabasco),-93.2,17.9,,5,1972,0,40,hist.
+oil,Cantarell,-92.0,19.4,,5,1976,0,110,hist.
+oil,Trinidad fields,-61.4,10.2,,3,1908,0.65,10,IMRB1925
+oil,Maracaibo basin,-71.3,10.2,,5,1914,2.7,130,MRUS1925
+oil,Eastern Venezuela (Quiriquire Oficina El Furrial),-63.3,9.75,,4,1928,0,60,hist.
+oil,Orinoco heavy oil belt,-64.5,8.5,,5,1936,0,60,hist.
+oil,La Cira-Infantas (Barrancabermeja),-73.8,7.05,,3,1918,0.15,5,MRUS1925
+oil,Llanos (Caño Limón Cusiana),-71.0,6.5,,4,1983,0,40,hist.
+oil,Santa Elena peninsula,-80.85,-2.25,,1,1911,0.1,0.5,MRUS1925
+oil,Ecuadorian Oriente (Lago Agrio),-76.9,0.08,,4,1967,0,28,hist.
+oil,Talara and Negritos,-81.25,-4.6,,2,1869,1.2,3.5,MRUS1925
+oil,Peruvian Oriente (Trompeteros),-75.0,-3.8,,3,1971,0,8,hist.
+oil,Comodoro Rivadavia and Neuquén,-67.5,-45.85,,4,1907,0.85,35,MRUS1925
+oil,Mendoza fields,-69.0,-33.0,,3,1932,0,8,hist.
+oil,Camiri,-63.5,-20.05,,2,1927,0,2,hist.
+oil,Recôncavo (Lobato Candeias),-38.5,-12.9,,2,1939,0,9,hist.
+oil,Campos basin,-40.5,-22.5,BRA-RJ,5,1974,0,80,hist.
+oil,Santos basin pre-salt,-42.5,-25.5,BRA-RJ,5,2006,0,120,hist.
+oil,Prahova fields (Ploiești Moreni Câmpina),25.9,45.0,,4,1857,2.3,15,IMRB1925
+oil,Moinești field,26.5,46.45,,1,1860,0.05,1,IMRB1925
+oil,Borysław,23.43,49.28,,2,1854,0.8,2,IMRB1925
+oil,Wietze and Nienhagen,9.95,52.65,,2,1859,0.08,7,IMRB1925
+oil,Pechelbronn,7.9,48.93,,1,1740,0.07,0.1,IMRB1925
+oil,Parentis,-1.1,44.35,,2,1954,0,2,hist.
+oil,Schoonebeek,6.88,52.65,,2,1943,0,2,hist.
+oil,Matzen and Zistersdorf,16.6,48.5,,2,1934,0,3,hist.
+oil,Algyő,20.2,46.35,,2,1965,0,2,hist.
+oil,Kuçova,19.9,40.8,,2,1928,0,2.5,hist.
+oil,Forties and central North Sea,0.98,57.73,,5,1970,0,70,hist.
+oil,Brent and northern North Sea (UK),1.72,61.05,,5,1971,0,70,hist.
+oil,Ekofisk,3.2,56.55,NOR-SORLANDET,4,1969,0,40,hist.
+oil,Statfjord Gullfaks Oseberg and Troll,3.0,61.0,NOR-VESTLANDET,5,1974,0,120,hist.
+oil,Danish North Sea (Dan),4.9,55.5,DNK-JYLLAND,2,1971,0,18,hist.
+oil,Baku Absheron fields,49.9,40.4,,5,1846,5,20,IMRB1925
+oil,Caspian offshore (Neft Daşları Azeri-Chirag-Guneshli),50.6,40.2,AZE-AZARBAYCAN,5,1949,0,45,hist.
+oil,Grozny fields,45.7,43.3,,4,1893,1.6,21,IMRB1925
+oil,Maikop fields,39.7,44.6,,2,1909,0.2,3,IMRB1925
+oil,Emba fields (Dossor Makat),53.0,47.5,,2,1911,0.2,3,IMRB1925
+oil,Mangyshlak (Uzen),52.85,43.35,,4,1961,0,25,hist.
+oil,Tengiz,53.4,46.15,,5,1979,0,30,hist.
+oil,Kashagan,51.6,46.5,KAZ-WEST,5,2000,0,20,hist.
+oil,Cheleken and Nebit Dag,53.2,39.5,,2,1876,0.05,10,IMRB1925
+oil,Fergana fields,71.8,40.6,,1,1904,0.03,2,IMRB1925
+oil,Ishimbay and Tuymazy (Bashkiria),56.05,53.45,,4,1932,0,50,hist.
+oil,Romashkino,52.2,54.6,,5,1948,0,100,hist.
+oil,Kuybyshev fields (Zhigulevsk),49.5,53.4,RUS-SAM,4,1937,0,35,hist.
+oil,Perm fields,56.75,58.5,,3,1929,0,25,hist.
+oil,Ukhta and Usinsk,53.7,63.6,,3,1930,0,20,hist.
+oil,Samotlor and West Siberian fields,76.75,61.15,,5,1965,0,350,hist.
+oil,Vankor,83.5,67.8,,3,1988,0,22,hist.
+oil,Okha (North Sakhalin),142.9,53.5,,2,1880,0.02,3,IMRB1925
+oil,Sakhalin shelf,143.5,52.5,RUS-SAK,4,1977,0,18,hist.
+oil,Dnieper-Donets fields,33.0,50.0,UKR-53,2,1950,0,8,hist.
+oil,Masjed Soleyman,49.3,31.95,,5,1908,4.3,15,IMRB1925
+oil,Khuzestan fields (Haft Kel Agha Jari Ahvaz Marun),49.6,31.0,,5,1928,0,250,hist.
+oil,Kirkuk,44.4,35.47,,5,1927,0,60,hist.
+oil,Zubair and Rumaila,47.35,30.4,,5,1949,0,170,hist.
+oil,Dammam Abqaiq and Safaniya,50.1,26.3,,5,1938,0,150,hist.
+oil,Ghawar,49.3,25.0,,5,1948,0,280,hist.
+oil,Burgan,47.95,28.95,,5,1938,0,150,hist.
+oil,Awali,50.55,26.05,,2,1932,0,4,hist.
+oil,Dukhan,50.8,25.4,,3,1940,0,40,hist.
+oil,Abu Dhabi fields (Murban Bab Umm Shaif),53.5,23.5,,5,1958,0,150,hist.
+oil,Fahud and Yibal,56.4,22.3,,4,1962,0,45,hist.
+oil,Marib,45.3,15.4,,2,1984,0,20,hist.
+oil,Jazira fields (Karatchok Suwaydiyah),42.0,36.9,,3,1959,0,30,hist.
+oil,Raman and Batman,41.1,37.85,,2,1940,0,3,hist.
+oil,Gemsa and Hurghada (Ras Gharib),33.6,27.6,,2,1910,0.17,3,IMRB1925
+oil,Gulf of Suez (El Morgan),33.4,28.25,,4,1965,0,40,hist.
+oil,Sirte basin (Zelten Sarir Amal),19.8,28.9,,5,1959,0,120,hist.
+oil,Hassi Messaoud,6.07,31.68,,5,1956,0,60,hist.
+oil,El Borma,9.2,31.7,,2,1964,0,5,hist.
+oil,Niger delta,6.3,4.7,,5,1956,0,120,hist.
+oil,Gamba and Rabi-Kounga,10.0,-2.0,,3,1956,0,18,hist.
+oil,Cabinda (Malongo),12.2,-5.4,,4,1966,0,25,hist.
+oil,Angolan deepwater,11.8,-7.5,,5,1996,0,80,hist.
+oil,Pointe-Noire offshore,11.8,-4.8,,3,1969,0,15,hist.
+oil,Heglig and Muglad basin,29.4,10.0,,3,1979,0,20,hist.
+oil,Zafiro,8.5,3.9,GNQ,3,1995,0,15,hist.
+oil,Yenangyaung and Chauk,94.85,20.35,,2,1887,1,1.3,IMRB1925
+oil,Digboi,95.6,27.4,,2,1889,0.08,0.4,IMRB1925
+oil,Naharkatiya and Upper Assam fields,95.0,27.2,IND-ASSAM,3,1953,0,3,hist.
+oil,Bombay High,71.3,19.4,IND-BOMBAY,4,1974,0,21,hist.
+oil,Cambay basin (Ankleshwar),73.0,21.6,,3,1958,0,8,hist.
+oil,Barmer basin (Mangala),71.4,25.9,,3,2004,0,9,hist.
+oil,Khaur and Attock fields,72.45,33.25,,1,1915,0.03,0.5,IMRB1925
+oil,Palembang fields,104.0,-3.2,,3,1896,1.2,6,IMRB1925
+oil,Pangkalan Brandan (Langkat),98.25,4.0,,2,1885,0.6,1,IMRB1925
+oil,Minas and Duri,101.45,0.75,,5,1941,0,45,hist.
+oil,Balikpapan (Sanga Sanga) and Tarakan,117.2,-0.6,,3,1897,1,8,IMRB1925
+oil,Cepu field,111.6,-7.15,,1,1893,0.3,1,IMRB1925
+oil,Miri field,113.98,4.4,,2,1910,0.6,1,IMRB1925
+oil,Sarawak and Sabah offshore,112.5,4.5,MYS-SARAWAK,4,1962,0,30,hist.
+oil,Seria,114.33,4.6,,4,1929,0,12,hist.
+oil,Echigo and Akita fields,138.8,37.6,,1,1888,0.25,0.5,IMRB1925
+oil,Yumen,97.55,39.8,,2,1939,0,3,hist.
+oil,Karamay and Tarim,84.9,45.6,,4,1955,0,30,hist.
+oil,Daqing,125.0,46.6,,5,1959,0,56,hist.
+oil,Shengli,118.5,37.45,,4,1961,0,33,hist.
+oil,Liaohe,122.0,41.2,,3,1964,0,15,hist.
+oil,Bohai Bay offshore,119.0,38.5,CHN-ZHILI,4,1967,0,30,hist.
+oil,Changqing (Ordos basin),108.0,37.0,,4,1970,0,25,hist.
+oil,Yanchang,109.95,36.6,,1,1907,0,0.2,IMRB1925
+oil,Bach Ho,108.0,9.75,VNM,3,1975,0,17,hist.
+oil,Bass Strait,148.0,-38.4,,4,1965,0,25,hist.
+oil,Barrow Island and North West Shelf oil,116.0,-20.0,,3,1964,0,15,hist.
+# ---- natural gas (bcm marketed) ----
+natural_gas,Oklahoma gas fields,-97.0,35.5,,4,1900,7.4,70,MRUS1925
+natural_gas,Monroe and North Louisiana gas,-92.0,32.6,,4,1916,5.4,100,MRUS1925
+natural_gas,Louisiana Gulf offshore gas,-91.0,28.8,,5,1947,0,140,hist.
+natural_gas,Haynesville shale,-93.7,32.2,,4,2008,0,100,hist.
+natural_gas,California gas (Kettleman Hills Elk Hills),-119.0,35.3,,3,1900,5.4,20,MRUS1925
+natural_gas,Texas gas (Panhandle and Gulf Coast),-101.5,35.6,,5,1918,4,250,MRUS1925
+natural_gas,West Virginia gas,-80.9,38.6,,3,1860,4.4,8,MRUS1925
+natural_gas,Pennsylvania conventional gas,-79.5,41.0,,3,1860,2.5,6,MRUS1925
+natural_gas,Marcellus shale,-77.0,41.6,,5,2004,0,200,hist.
+natural_gas,Ohio gas,-82.0,40.5,,2,1880,1.4,3,MRUS1925
+natural_gas,Hugoton field (Kansas),-101.3,37.2,,4,1922,0.8,25,MRUS1925
+natural_gas,Kentucky gas,-82.8,37.6,,1,1890,0.6,2,MRUS1925
+natural_gas,Wyoming gas (later Jonah and Pinedale),-108.0,42.5,,3,1910,0.3,50,MRUS1925
+natural_gas,San Juan and Permian gas (New Mexico),-107.8,36.6,,3,1927,0,50,hist.
+natural_gas,Medicine Hat and Turner Valley gas,-110.7,50.0,,3,1904,0.3,20,IMRB1925
+natural_gas,Alberta gas after Leduc (Deep Basin),-118.5,55.0,,5,1947,0,120,hist.
+natural_gas,Southwestern Ontario gas,-81.5,42.5,,1,1889,0.15,1,IMRB1925
+natural_gas,Peace River gas (British Columbia),-121.0,56.5,,4,1952,0,40,hist.
+natural_gas,Transylvanian methane (Sărmășel Bazna),24.2,46.6,,4,1909,0.3,30,IMRB1925
+natural_gas,Dashava,24.1,49.25,,3,1921,0.05,10,IMRB1925
+natural_gas,Baku associated gas,49.9,40.4,,2,1900,0.2,15,IMRB1925
+natural_gas,Sichuan gas (Zigong brine-well gas),104.75,29.35,,4,1800,0.01,60,hist.
+natural_gas,Shebelinka,36.5,49.45,,4,1950,0,30,hist.
+natural_gas,Orenburg gas,55.1,51.6,,4,1966,0,48,hist.
+natural_gas,Urengoy Medvezhye and Yamburg,76.5,66.0,,5,1966,0,550,hist.
+natural_gas,Bovanenkovo (Yamal),68.4,70.4,,5,1971,0,120,hist.
+natural_gas,North Stavropol gas,42.0,45.1,,3,1950,0,15,hist.
+natural_gas,Gazli,63.45,40.13,,4,1956,0,35,hist.
+natural_gas,Shatlyk and Dauletabad,61.5,36.8,,5,1968,0,80,hist.
+natural_gas,Galkynysh,62.4,37.4,,5,2006,0,40,hist.
+natural_gas,Karachaganak,52.35,51.4,,4,1979,0,20,hist.
+natural_gas,Shah Deniz,50.1,39.8,,4,1999,0,25,hist.
+natural_gas,Groningen,6.8,53.25,,5,1959,0,90,hist.
+natural_gas,Southern North Sea gas (Leman),2.15,53.1,,4,1966,0,60,hist.
+natural_gas,Troll and Norwegian gas,3.7,60.65,,5,1979,0,120,hist.
+natural_gas,Po valley gas (Caviaga),9.9,45.2,,3,1944,0,15,hist.
+natural_gas,Lower Saxony gas,9.0,52.8,,3,1958,0,20,hist.
+natural_gas,Lacq gas,-0.62,43.42,,3,1951,0,7,hist.
+natural_gas,Hassi R'Mel,3.27,32.9,,5,1956,0,100,hist.
+natural_gas,Nile delta gas (Abu Madi Zohr),31.5,31.4,EGY-EASTERN-DELTA,4,1967,0,70,hist.
+natural_gas,Niger delta gas,6.3,4.7,,4,1956,0,50,hist.
+natural_gas,South Pars,52.5,27.5,,5,1990,0,250,hist.
+natural_gas,North Field,51.5,26.3,,5,1971,0,180,hist.
+natural_gas,Ghawar associated and Saudi gas,49.3,25.0,,4,1948,0,120,hist.
+natural_gas,Abu Dhabi gas,53.5,23.5,,3,1958,0,55,hist.
+natural_gas,Sui,69.17,28.6,,3,1952,0,15,hist.
+natural_gas,Titas,91.1,23.95,,3,1962,0,25,hist.
+natural_gas,Bombay High gas,71.3,19.4,IND-BOMBAY,3,1974,0,30,hist.
+natural_gas,Arun,97.15,5.2,,4,1971,0,25,hist.
+natural_gas,Badak and Bontang,117.4,-0.3,,4,1972,0,40,hist.
+natural_gas,Sarawak offshore gas,112.5,4.5,MYS-SARAWAK,4,1970,0,60,hist.
+natural_gas,North West Shelf and Gorgon,116.0,-20.0,,5,1971,0,110,hist.
+natural_gas,Gippsland basin gas,148.0,-38.4,,3,1965,0,10,hist.
+natural_gas,Moomba,140.2,-28.1,,3,1963,0,8,hist.
+natural_gas,Kapuni and Maui,174.0,-39.4,,3,1959,0,6,hist.
+natural_gas,Sulige (Ordos basin),108.5,38.8,,5,2000,0,50,hist.
+natural_gas,Tarim basin gas (Kela-2),83.0,41.5,,4,1998,0,30,hist.
+natural_gas,Trinidad offshore gas,-60.8,10.4,TTO,3,1968,0,40,hist.
+natural_gas,Loma La Lata,-68.7,-38.4,,4,1977,0,40,hist.
+natural_gas,Tarija gas (San Alberto),-63.8,-21.5,,3,1990,0,20,hist.
+natural_gas,Camisea,-72.75,-11.9,,3,1984,0,15,hist.
+natural_gas,Rovuma basin,40.8,-11.0,,5,2010,0,30,hist.
+natural_gas,Leviathan and Tamar,33.75,32.6,GBR-PALESTINE,4,2009,0,25,hist.
+# ---- gold (t Au) ----
+gold,Witwatersrand (incl. Far West Rand),28.0,-26.2,,5,1886,299,1000,IMRB1925
+gold,Orange Free State goldfield (Welkom),26.75,-27.98,,5,1946,0,300,hist.
+gold,California Mother Lode and placers,-120.6,38.5,,3,1848,19,30,MRUS1925
+gold,Alaska (Juneau Fairbanks Nome),-147.7,64.8,,3,1880,9,25,MRUS1925
+gold,Homestake,-103.75,44.35,,3,1876,9.5,15,MRUS1925
+gold,Cripple Creek and Colorado lode mines,-105.18,38.75,,3,1890,9,15,MRUS1925
+gold,Bingham by-product and Utah mines,-112.15,40.52,,2,1900,6,20,MRUS1925
+gold,Arizona by-product and Oatman,-114.4,35.0,,2,1900,6,8,MRUS1925
+gold,Nevada lode mines (Goldfield Tonopah Comstock),-117.2,37.7,,3,1859,5,20,MRUS1925
+gold,Carlin trend,-116.3,40.9,,5,1961,0,250,hist.
+gold,Montana gold,-112.0,46.6,,1,1862,2,4,MRUS1925
+gold,Benguet (Baguio),120.6,16.4,,3,1903,4,30,MRUS1925
+gold,Porcupine and Kirkland Lake,-81.3,48.5,,5,1909,46,90,IMRB1925
+gold,Red Lake,-93.8,51.05,,4,1926,0,25,hist.
+gold,Hemlo,-85.9,48.7,,4,1981,0,30,hist.
+gold,Abitibi (Noranda Malartic Val-d'Or),-78.0,48.1,,4,1923,0,40,hist.
+gold,British Columbia lode gold,-121.0,50.5,,2,1860,6,10,IMRB1925
+gold,Klondike,-139.4,64.05,,2,1896,1.2,5,IMRB1925
+gold,Yellowknife,-114.35,62.45,,3,1934,0,15,hist.
+gold,Guanajuato,-101.25,21.02,,2,1550,4,6,MRUS1925
+gold,Pachuca-Real del Monte,-98.7,20.15,,2,1550,4,6,MRUS1925
+gold,El Oro-Tlalpujahua,-100.15,19.8,,2,1780,4,5,MRUS1925
+gold,Chihuahua gold,-106.0,28.6,,2,1700,4,6,MRUS1925
+gold,Sonora gold,-110.0,29.5,,3,1700,3,30,MRUS1925
+gold,San Dimas (Durango),-105.9,24.1,,2,1757,3,5,MRUS1925
+gold,Rosario (San Juancito),-87.05,14.2,,1,1880,1,2,MRUS1925
+gold,Nicaraguan mines (Bonanza Siuna La Libertad),-84.6,13.6,,1,1880,0.5,4,MRUS1925
+gold,Antioquia gold,-75.6,6.5,,3,1550,4.5,50,MRUS1925
+gold,Portovelo,-79.62,-3.72,,2,1896,1,15,MRUS1925
+gold,Peruvian gold (by-product and placers),-76.0,-11.0,,3,1550,3,50,MRUS1925
+gold,Yanacocha,-78.5,-7.0,,5,1986,0,100,hist.
+gold,Chilean gold,-70.0,-27.5,,2,1550,1,40,MRUS1925
+gold,Morro Velho,-43.83,-19.98,,3,1834,3.5,60,MRUS1925
+gold,Tapajós and Serra Pelada,-55.5,-6.0,,4,1958,0,50,hist.
+gold,Guyanese placers,-59.0,6.0,,2,1880,0.3,15,IMRB1925
+gold,Surinamese placers,-55.2,4.5,,1,1880,0.2,30,IMRB1925
+gold,French Guiana placers,-53.5,4.2,,1,1855,1,3,IMRB1925
+gold,El Callao,-61.8,7.35,,2,1850,0.3,15,MRUS1925
+gold,Lena (Bodaybo) goldfield,114.2,57.85,,3,1846,8,20,IMRB1925
+gold,Aldan goldfield,125.4,58.6,,3,1923,6,20,IMRB1925
+gold,Kolyma goldfield,150.8,62.5,,5,1928,0,80,hist.
+gold,Urals gold (Berezovsky Kochkar),60.8,56.9,,2,1745,4,10,IMRB1925
+gold,Yenisei goldfield (later Olimpiada),92.5,59.0,,4,1840,2,50,IMRB1925
+gold,Transbaikal gold (Balei),116.85,51.6,,2,1840,3,10,IMRB1925
+gold,Muruntau,64.57,41.5,,5,1958,0,80,hist.
+gold,Kalgoorlie Golden Mile,121.47,-30.75,,5,1893,14,230,IMRB1925
+gold,Bendigo and Ballarat,144.28,-36.76,,2,1851,3,10,IMRB1925
+gold,Charters Towers and Queensland gold,146.25,-20.08,,2,1872,1,25,IMRB1925
+gold,New South Wales gold (Cadia later),148.97,-33.45,,2,1851,1,30,IMRB1925
+gold,Tennant Creek,134.2,-19.65,,2,1932,0,10,hist.
+gold,Waihi,175.85,-37.4,,2,1878,3,10,IMRB1925
+gold,Otago and Reefton gold,169.8,-45.3,,2,1861,1,8,IMRB1925
+gold,Southern Rhodesian gold belts (Globe and Phoenix Cam and Motor),29.8,-19.0,,3,1890,18,25,IMRB1925
+gold,Obuasi,-1.67,6.2,,4,1897,3,30,IMRB1925
+gold,Tarkwa and Prestea,-1.99,5.3,,3,1877,3.5,30,IMRB1925
+gold,Kilo-Moto,30.2,2.0,,3,1905,4,10,IMRB1925
+gold,Lupa and Lake Victoria goldfields (Geita),32.2,-2.9,,3,1922,0.1,50,IMRB1925
+gold,Siguiri placers,-9.2,11.4,,2,1900,0.5,20,IMRB1925
+gold,Sadiola and Morila,-11.7,13.9,,4,1987,0,60,hist.
+gold,Kolar Gold Fields,78.27,12.95,,3,1880,12.5,15,IMRB1925
+gold,Sado,138.4,38.05,,1,1601,1,1,IMRB1925
+gold,Kushikino and Yamagano,130.3,31.7,,2,1900,3,4,IMRB1925
+gold,Hishikari,130.65,32.0,,3,1981,0,8,hist.
+gold,Konomai and Hokkaido gold,143.4,44.1,,2,1917,3,4,IMRB1925
+gold,Kinkaseki and Zuifang gold,121.85,25.1,,2,1890,2,3,IMRB1925
+gold,Unsan,125.85,40.1,,3,1895,4,15,IMRB1925
+gold,Zhaoyuan goldfield,120.4,37.4,,3,1870,1,120,IMRB1925; MCS
+gold,Heilongjiang placers (Mohe),122.5,52.9,,2,1880,1,10,IMRB1925
+gold,Lebong Donok and Simau,102.3,-3.1,,2,1900,2,5,IMRB1925
+gold,Grasberg gold,137.1,-4.06,,5,1936,0,80,hist.
+gold,Bulolo and Edie Creek,146.65,-7.2,,2,1926,0,10,hist.
+gold,Lihir,152.6,-3.1,,4,1982,0,25,hist.
+# ---- lead and zinc (kt Pb + Zn content) ----
+lead_zinc,Southeast Missouri lead belt (Viburnum Trend later) and Joplin,-90.6,37.8,,4,1720,230,500,MRUS1925
+lead_zinc,Tri-State district (Picher),-94.83,36.98,,4,1890,300,400,MRUS1925
+lead_zinc,Tri-State district (Galena Kansas),-94.64,37.07,,2,1877,70,100,MRUS1925
+lead_zinc,Coeur d'Alene,-115.95,47.5,,4,1884,165,250,MRUS1925
+lead_zinc,Utah lead-zinc (Park City Tintic Bingham),-111.5,40.6,,3,1870,160,200,MRUS1925
+lead_zinc,Butte zinc,-112.5,46.0,,3,1880,80,120,MRUS1925
+lead_zinc,Franklin and Sterling Hill,-74.6,41.1,,3,1840,100,120,MRUS1925
+lead_zinc,Leadville,-106.3,39.25,,3,1877,60,80,MRUS1925
+lead_zinc,Upper Mississippi Valley zinc,-90.4,42.7,,2,1820,30,40,MRUS1925
+lead_zinc,East Tennessee zinc (Mascot-Jefferson City),-83.75,36.06,,2,1850,15,120,MRUS1925
+lead_zinc,Red Dog,-162.87,68.07,,5,1968,0,600,hist.
+lead_zinc,Sullivan,-116.0,49.68,,5,1892,160,400,IMRB1925
+lead_zinc,Pine Point,-114.4,60.85,,4,1951,0,250,hist.
+lead_zinc,Kidd Creek zinc,-81.35,48.7,,4,1963,0,300,hist.
+lead_zinc,Brunswick No. 12,-65.85,47.48,,4,1953,0,350,hist.
+lead_zinc,Buchans,-56.87,48.82,,2,1905,0,50,hist.
+lead_zinc,Faro,-133.0,62.35,,3,1965,0,200,hist.
+lead_zinc,Santa Eulalia Parral and Naica,-105.88,28.6,,4,1700,120,300,MRUS1925
+lead_zinc,Fresnillo and Zacatecas,-102.87,23.17,,3,1550,30,200,MRUS1925
+lead_zinc,Charcas (San Luis Potosí),-100.85,22.65,,3,1580,40,100,MRUS1925
+lead_zinc,Sierra Mojada,-103.7,27.3,,2,1879,40,50,MRUS1925
+lead_zinc,Durango lead-zinc (Velardeña),-104.0,25.3,,2,1890,20,50,MRUS1925
+lead_zinc,Central Peru lead-zinc (Cerro de Pasco Casapalca),-76.25,-10.68,,4,1902,30,1000,MRUS1925; MCS
+lead_zinc,Bolivian lead-zinc (Potosí Oruro),-66.0,-19.5,,3,1900,10,150,MRUS1925
+lead_zinc,Aguilar (mined from 1929),-65.7,-23.2,,2,1925,0,60,hist.
+lead_zinc,Broken Hill,141.45,-31.95,,5,1883,300,450,IMRB1925
+lead_zinc,Mount Isa lead-zinc (mined from 1931),139.5,-20.73,,5,1923,0,500,hist.
+lead_zinc,Century,138.6,-18.75,,4,1990,0,500,hist.
+lead_zinc,McArthur River,136.1,-16.45,,5,1955,0,300,hist.
+lead_zinc,Rosebery and Read,145.53,-41.78,,3,1893,20,100,IMRB1925
+lead_zinc,Upper Silesian lead-zinc (German part; Beuthen),18.9,50.35,GER-OBERSCHLESIEN,3,1800,60,100,IMRB1925
+lead_zinc,Rammelsberg and Upper Harz,10.42,51.9,,3,968,40,80,IMRB1925
+lead_zinc,Rhineland lead-zinc (Stolberg Bensberg Meggen),8.1,51.13,,3,1800,30,80,IMRB1925
+lead_zinc,Polish Upper Silesian zinc (Szarlej),18.95,50.33,,4,1800,90,150,IMRB1925
+lead_zinc,Olkusz zinc,19.55,50.28,,3,1300,10,150,IMRB1925
+lead_zinc,Vieille-Montagne (Moresnet),5.9,50.72,,1,1800,5,5,IMRB1925
+lead_zinc,Cévennes lead-zinc (Les Malines),3.5,43.95,,1,1880,5,20,IMRB1925
+lead_zinc,Linares-La Carolina,-3.63,38.1,,3,1800,70,80,IMRB1925
+lead_zinc,Cartagena-Mazarrón,-0.95,37.6,,3,1840,40,60,IMRB1925
+lead_zinc,Peñarroya lead,-5.3,38.3,,2,1870,25,30,IMRB1925
+lead_zinc,Reocín zinc,-4.08,43.36,,3,1856,35,70,IMRB1925
+lead_zinc,Iglesiente and Montevecchio,8.5,39.3,,3,1850,55,150,IMRB1925
+lead_zinc,Raibl (Cave del Predil),13.57,46.43,,1,1500,5,10,IMRB1925
+lead_zinc,Trepča (from 1930),20.88,42.93,,4,1920,0,120,hist.
+lead_zinc,Mežica,14.85,46.52,,2,1665,10,30,IMRB1925
+lead_zinc,Laurion,24.05,37.72,,2,1864,15,20,IMRB1925
+lead_zinc,Ammeberg zinc,14.95,58.87,,2,1857,15,20,IMRB1925
+lead_zinc,Navan and Tara,-6.73,52.66,,4,1970,0,200,hist.
+lead_zinc,Bleiberg,13.67,46.62,,2,1300,12,30,IMRB1925
+lead_zinc,Příbram,14.0,49.7,,1,1300,8,20,IMRB1925
+lead_zinc,Ridder and Zyryanovsk (Rudny Altai),83.55,50.35,,4,1786,1,400,IMRB1925
+lead_zinc,Sadon,44.03,42.85,,2,1850,2,30,IMRB1925
+lead_zinc,Dalnegorsk (Tetyukhe),135.55,44.35,,3,1907,1,80,IMRB1925
+lead_zinc,Achisai and Karatau lead-zinc,68.4,43.5,,3,1928,0,100,hist.
+lead_zinc,Bawdwin,97.3,23.1,,4,1909,75,120,IMRB1925
+lead_zinc,Kamioka,137.3,36.33,,3,1874,10,100,IMRB1925
+lead_zinc,Shuikoushan,112.6,26.4,,3,1896,8,100,IMRB1925
+lead_zinc,Jinding,99.4,26.4,,4,1966,0,200,hist.
+lead_zinc,Fankou,113.6,25.15,,3,1958,0,150,hist.
+lead_zinc,Tunisian lead-zinc,8.3,35.75,,2,1880,15,25,IMRB1925
+lead_zinc,Algerian lead-zinc (Kef Oum Teboul Ouarsenis),7.4,36.5,,2,1880,15,25,IMRB1925
+lead_zinc,Touissit and Bou Beker,-1.75,34.45,,3,1926,0,100,hist.
+lead_zinc,Tsumeb lead,17.7,-19.25,,4,1906,20,80,IMRB1925
+lead_zinc,Broken Hill (Kabwe),28.45,-14.45,,3,1902,5,60,IMRB1925
+lead_zinc,Anguran,47.4,36.6,,2,1900,0,50,hist.
+lead_zinc,Zawar,73.7,24.35,,3,1900,0,200,hist.
+lead_zinc,Rampura Agucha,74.7,25.85,,4,1977,0,600,hist.
+# ---- tin (kt Sn content) ----
+tin,Kinta valley and Selangor tin fields,101.1,4.6,,5,1848,47,70,IMRB1925
+tin,Phuket and southern Siam tin,98.35,7.9,,3,1500,7,20,IMRB1925
+tin,Tavoy and Mergui tin,98.6,13.0,,2,1880,2,6,IMRB1925
+tin,Mawchi tin-tungsten,97.17,18.8,,2,1914,0.5,3,IMRB1925
+tin,Bangka,106.1,-2.1,,4,1710,22,40,IMRB1925
+tin,Belitung,107.9,-2.85,,3,1851,10,20,IMRB1925
+tin,Singkep and Riau tin,104.55,-0.5,,2,1880,1,3,IMRB1925
+tin,Llallagua-Catavi Potosí and Oruro tin,-66.6,-18.4,,5,1860,32,45,MRUS1925; IMRB1925
+tin,Gejiu,103.15,23.37,,4,1700,9,40,IMRB1925
+tin,Dachang (Guangxi),107.6,24.8,,3,1900,0.5,20,IMRB1925
+tin,Jos Plateau,8.9,9.85,,3,1903,6,12,IMRB1925
+tin,Manono,27.4,-7.3,,3,1915,1,15,IMRB1925
+tin,Ruanda-Urundi tin,29.5,-1.9,,2,1930,0,3,hist.
+tin,Cornish tin,-5.2,50.2,,2,1000,2.5,4,IMRB1925
+tin,Renison and Mount Bischoff,145.43,-41.8,,2,1871,1.5,5,IMRB1925
+tin,Herberton and eastern Australian tin,145.4,-17.38,,1,1880,1.5,3,IMRB1925
+tin,Zaaiplaats,28.65,-24.0,,1,1905,1,2,IMRB1925
+tin,Galician and northern Portuguese tin,-7.5,41.8,,1,1900,0.5,3,IMRB1925
+tin,Pia Ouac and Tinh Tuc,105.9,22.65,,1,1910,0.3,1,IMRB1925
+tin,Phontiou,104.85,17.9,,1,1920,0.3,1,IMRB1925
+tin,Rondônia cassiterite,-63.0,-9.5,,4,1952,0,30,hist.
+tin,Pitinga,-60.1,-0.75,,3,1979,0,10,hist.
+tin,Chukotka tin (Pevek Iultin),179.0,67.8,RUS-MAGADAN,3,1937,0,10,hist.
+tin,Deputatsky,139.9,69.3,,3,1951,0,6,hist.
+tin,Solnechny (Komsomolsk),136.6,50.7,,3,1955,0,8,hist.
+tin,San Rafael,-70.3,-14.23,,3,1966,0,40,hist.
+# ---- nickel (kt Ni content) ----
+nickel,Sudbury basin,-81.0,46.5,,5,1883,33,280,IMRB1925
+nickel,New Caledonian laterites,165.5,-21.5,,5,1864,3.5,220,IMRB1925; MCS
+nickel,Evje,7.8,58.6,,1,1870,0.3,1,IMRB1925
+nickel,Petsamo (Kolosjoki; Finnish 1920-1944),30.2,69.4,FIN-OULU,4,1921,0,30,hist.
+nickel,Norilsk,88.2,69.35,,4,1935,0,50,hist.
+nickel,Talnakh and Oktyabrsky,88.4,69.5,,5,1960,0,200,hist.
+nickel,Monchegorsk,32.9,67.95,,3,1930,0,40,hist.
+nickel,Ufaley and Urals nickel,60.6,55.95,,2,1930,0,15,hist.
+nickel,Orsk-Khalilovo,58.6,51.2,,2,1934,0,20,hist.
+nickel,Thompson,-97.85,55.75,,4,1956,0,60,hist.
+nickel,Voisey's Bay,-62.1,56.33,,4,1993,0,60,hist.
+nickel,Raglan,-73.6,61.65,,3,1957,0,40,hist.
+nickel,Kambalda and Western Australian nickel,121.65,-31.2,,4,1966,0,150,hist.
+nickel,Nicaro and Moa,-74.9,20.6,,4,1943,0,70,hist.
+nickel,Soroako,121.35,-2.55,,5,1968,0,600,hist.; MCS
+nickel,Halmahera (Weda Bay),127.9,0.5,,5,2000,0,600,hist.; MCS
+nickel,Surigao and Philippine laterites,125.5,9.65,,4,1970,0,350,hist.
+nickel,Niquelândia,-48.5,-14.5,,3,1935,0,60,hist.
+nickel,Selebi-Phikwe,27.8,-21.95,,2,1963,0,30,hist.
+nickel,Jinchuan,102.2,38.5,,4,1958,0,150,hist.
+nickel,Bonao (Falcondo),-70.4,18.95,,3,1956,0,30,hist.
+nickel,Cerro Matoso,-75.55,7.9,,3,1956,0,50,hist.
+# ---- manganese (kt gross ore) ----
+manganese,Chiatura,43.28,42.3,,5,1879,750,2500,IMRB1925
+manganese,Nikopol basin,34.4,47.6,,5,1883,350,6000,IMRB1925
+manganese,Central Provinces manganese belt (Nagpur Balaghat),79.5,21.6,,4,1900,600,1500,IMRB1925
+manganese,Balaghat manganese (eastern belt),80.2,21.8,,3,1900,0,400,IMRB1925
+manganese,Sandur and Bellary manganese,76.55,15.1,,2,1900,50,400,IMRB1925
+manganese,Keonjhar and Singhbhum manganese,85.5,21.9,,3,1910,100,800,IMRB1925
+manganese,Minas Gerais manganese (Morro da Mina Lafaiete),-43.8,-20.65,,3,1894,300,1000,IMRB1925
+manganese,Serra do Navio,-52.0,0.9,,3,1946,0,1000,hist.
+manganese,Carajás Azul,-50.4,-6.0,,4,1971,0,2500,hist.
+manganese,Nsuta,-1.97,5.28,,3,1914,330,600,IMRB1925
+manganese,Umm Bogma (Sinai),33.35,29.0,,2,1918,150,200,IMRB1925
+manganese,Postmasburg,23.05,-28.3,,2,1922,10,1000,IMRB1925
+manganese,Kalahari manganese field,22.9,-27.2,,5,1940,0,15000,hist.; MCS
+manganese,Moanda,13.2,-1.55,,5,1953,0,9000,hist.; MCS
+manganese,Groote Eylandt,136.6,-14.0,,5,1960,0,5000,hist.
+manganese,Imini (mined from 1929),-7.2,31.15,,2,1918,0,300,hist.
+manganese,Guangxi manganese (Daxin),107.2,22.8,,3,1900,10,2000,IMRB1925
+manganese,Butte and US manganese,-112.5,46.0,,1,1900,80,150,MRUS1925
+manganese,Ponupo and Oriente manganese,-75.9,20.1,,1,1890,20,200,MRUS1925
+manganese,Japanese manganese,141.5,40.5,,1,1900,50,300,IMRB1925
+manganese,Dzhezdy,67.0,48.05,,3,1940,0,2000,hist.
+manganese,Molango,-98.7,20.8,,3,1960,0,1000,hist.
+# ---- chromium (kt chromite gross) ----
+chromium,Selukwe and Great Dyke chromite,30.0,-19.6,,5,1906,130,600,IMRB1925
+chromium,New Caledonian chromite (Tiébaghi),164.2,-20.45,,3,1880,60,100,IMRB1925
+chromium,Hindubagh chromite,67.8,30.8,,2,1901,30,40,IMRB1925
+chromium,Mysore chromite,76.3,12.4,,1,1907,10,30,IMRB1925
+chromium,Sukinda chromite,85.9,20.95,,5,1949,0,3500,hist.; MCS
+chromium,Bursa and western Anatolian chromite,29.0,39.7,,3,1848,20,400,IMRB1925
+chromium,Guleman,39.6,38.4,,3,1936,0,300,hist.
+chromium,Domokos chromite,22.3,39.1,,1,1920,10,50,IMRB1925
+chromium,Sarany chromite,58.8,58.55,,3,1880,20,300,IMRB1925
+chromium,Kempirsai (Donskoy),57.55,50.4,,5,1936,0,4000,hist.; MCS
+chromium,Radusha chromite,21.15,42.1,,2,1920,5,100,IMRB1925
+chromium,San'in chromite (Wakamatsu),133.5,35.3,,1,1900,15,60,IMRB1925
+chromium,Camagüey chromite,-77.6,21.5,,2,1918,5,150,MRUS1925
+chromium,Bushveld chromite (Lydenburg Rustenburg),27.0,-25.6,,5,1865,5,15000,IMRB1925; MCS
+chromium,Masinloc and Acoje,120.0,15.55,,4,1934,0,800,hist.
+chromium,Bulqizë,20.25,41.5,,4,1937,0,1000,hist.
+chromium,Kemi,24.6,65.75,,4,1959,0,2500,hist.
+chromium,Campo Formoso,-40.3,-10.5,,2,1910,0,600,hist.
+chromium,Andriamena,47.4,-17.45,,3,1949,0,200,hist.
+chromium,Faryab and Esfandagheh chromite,57.0,27.9,,3,1950,0,300,hist.
+chromium,Stillwater chromite,-109.8,45.4,,2,1900,0.3,150,MRUS1925
+# ---- tungsten (t WO3 content) ----
+tungsten,Southern Jiangxi wolframite (Dayu Xihuashan),114.4,25.4,,5,1907,3600,40000,IMRB1925; MCS
+tungsten,Shizhuyuan and Hunan tungsten,113.1,25.75,,5,1953,0,30000,hist.
+tungsten,Guangdong wolframite (Lianping),114.5,24.4,,3,1915,600,5000,IMRB1925
+tungsten,Tavoy wolframite,98.4,14.1,,3,1909,800,3000,IMRB1925
+tungsten,Mawchi wolframite,97.17,18.8,,2,1914,200,1000,IMRB1925
+tungsten,Malayan wolframite and scheelite,102.0,4.5,,1,1910,150,500,IMRB1925
+tungsten,Siamese wolframite,99.0,9.5,,1,1915,60,300,IMRB1925
+tungsten,Sangdong,128.85,37.15,,4,1916,60,5000,IMRB1925
+tungsten,Boulder county tungsten,-105.4,40.05,,2,1900,150,300,MRUS1925
+tungsten,Atolia and Pine Creek,-118.7,37.35,,3,1904,200,3000,MRUS1925
+tungsten,Nevada tungsten (Mill City),-118.1,40.65,,2,1916,50,2000,MRUS1925
+tungsten,Yellow Pine,-115.3,44.95,,2,1941,0,2000,hist.
+tungsten,Bolivian tungsten (Chojlla),-67.5,-16.5,,3,1905,300,2500,MRUS1925
+tungsten,Los Cóndores,-65.4,-32.6,,1,1910,60,300,MRUS1925
+tungsten,Panasqueira,-7.75,40.17,,3,1898,200,2500,IMRB1925
+tungsten,Galician tungsten,-8.0,42.5,,1,1905,30,1000,IMRB1925
+tungsten,Cornish wolfram,-5.2,50.2,,1,1880,30,200,IMRB1925
+tungsten,King Island,143.9,-40.05,,3,1911,30,1500,IMRB1925
+tungsten,Tyrnyauz,42.5,43.4,,4,1934,0,5000,hist.
+tungsten,Akchatau,74.0,47.95,,2,1940,0,1500,hist.
+tungsten,Ingichka,65.95,39.85,,2,1940,0,1000,hist.
+tungsten,Mittersill,12.47,47.2,,3,1967,0,1500,hist.
+tungsten,Cantung,-128.2,61.95,,3,1954,0,3000,hist.
+# ---- sulfur (kt S content; native, pyrite and recovered) ----
+sulfur,Texas Frasch domes (Big Gulf Hoskins Mound),-95.6,29.0,,5,1912,1430,4000,MRUS1925
+sulfur,Louisiana Frasch domes (Sulphur closed 1924; Grande Ecaille later),-93.37,30.24,,4,1865,0,3000,MRUS1925
+sulfur,Sicilian native sulfur,14.0,37.4,,4,1500,270,400,IMRB1925
+sulfur,Japanese native sulfur,142.0,43.5,,2,1880,50,250,IMRB1925
+sulfur,Aucanquilcha and Chilean volcanic sulfur,-68.4,-21.2,,1,1900,20,80,IMRB1925
+sulfur,Jáltipan and Isthmus Frasch domes,-94.7,17.95,,4,1954,0,1800,hist.
+sulfur,Tarnobrzeg native sulfur,21.68,50.57,,4,1953,0,4000,hist.
+sulfur,Mishraq,43.35,36.0,,3,1969,0,500,hist.
+sulfur,Gaurdak,66.05,37.8,,2,1928,0,300,hist.
+sulfur,Lacq (recovered from sour gas),-0.62,43.42,,3,1951,0,1700,hist.
+sulfur,Alberta sour gas sulfur,-114.5,51.5,,4,1952,0,6500,hist.
+sulfur,Astrakhan (recovered from sour gas),47.8,46.6,,4,1976,0,5000,hist.
+sulfur,Tengiz (recovered from sour gas),53.4,46.15,,4,1979,0,3000,hist.
+sulfur,Huelva pyrite belt (Rio Tinto Tharsis),-6.6,37.7,,5,1873,1150,1600,IMRB1925
+sulfur,Alentejo pyrite (São Domingos Aljustrel),-7.5,37.65,,2,1858,160,300,IMRB1925
+sulfur,Løkken and Folldal pyrite,9.7,63.1,,3,1654,250,350,IMRB1925
+sulfur,Sulitjelma pyrite,16.08,67.12,,2,1887,90,100,IMRB1925
+sulfur,Tuscan pyrite (Gavorrano Massa Marittima),10.9,42.95,,3,1900,270,400,IMRB1925
+sulfur,Yanahara and Japanese pyrite,134.0,34.95,,2,1900,180,400,IMRB1925
+sulfur,Meggen pyrite,8.1,51.13,,2,1850,180,220,IMRB1925
+sulfur,Cyprus pyrite,32.88,35.08,,2,1921,90,400,IMRB1925
+sulfur,Ducktown and Appalachian pyrite,-84.4,35.0,,1,1850,90,150,MRUS1925
+sulfur,Sain-Bel pyrite,4.6,45.82,,1,1840,90,120,IMRB1925
+sulfur,Urals pyrite (Degtyarsk),60.1,56.7,,2,1914,50,600,IMRB1925
+# ---- phosphate (kt rock gross) ----
+phosphate,Bone Valley and Florida phosphate,-81.9,27.9,,5,1881,2800,40000,MRUS1925
+phosphate,Tennessee brown rock,-87.2,35.55,,2,1893,600,2000,MRUS1925
+phosphate,Western Phosphate Field (Idaho),-111.4,42.7,,4,1906,50,6000,MRUS1925
+phosphate,Lee Creek (Aurora),-76.8,35.3,,4,1953,0,6000,hist.
+phosphate,Gafsa basin,8.4,34.4,,4,1885,2600,8000,IMRB1925
+phosphate,Kouif and Djebel Onk,8.3,35.5,,3,1893,900,1500,IMRB1925
+phosphate,Khouribga and Youssoufia,-6.9,32.88,,5,1917,700,30000,IMRB1925; MCS
+phosphate,Bou Craa,-12.75,26.3,,4,1947,0,3000,hist.
+phosphate,Red Sea and Nile valley phosphate (Safaga Quseir Sebaiya),34.2,26.1,,3,1908,200,4000,IMRB1925
+phosphate,Nauru,166.92,-0.53,,3,1900,330,2500,IMRB1925
+phosphate,Ocean Island (Banaba),169.53,-0.86,GBR-GILBERT-ELLICE,2,1900,250,500,IMRB1925
+phosphate,Makatea,-148.25,-15.85,,2,1908,150,300,IMRB1925
+phosphate,Christmas Island,105.63,-10.48,,3,1899,120,1500,IMRB1925
+phosphate,Angaur,134.13,6.9,,1,1909,60,100,IMRB1925
+phosphate,Somme phosphate,2.3,49.9,,1,1880,150,200,IMRB1925
+phosphate,Mons basin phosphate,3.95,50.45,,1,1880,100,200,IMRB1925
+phosphate,Yegoryevsk phosphorite,38.95,55.4,RUS-MOSKVA,1,1900,50,1000,IMRB1925
+phosphate,Khibiny apatite,33.75,67.65,,5,1926,0,20000,hist.
+phosphate,Karatau phosphorite,69.8,43.6,,4,1936,0,10000,hist.
+phosphate,Ruseifa and Eshidiya,36.05,32.0,,4,1935,0,8000,hist.
+phosphate,Oron and Negev phosphate,35.15,30.9,,3,1950,0,4000,hist.
+phosphate,Taïba,-16.9,15.0,,3,1948,0,2000,hist.
+phosphate,Hahotoé-Kpogamé,1.35,6.35,,3,1952,0,3000,hist.
+phosphate,Araxá and Tapira,-46.95,-19.6,,3,1955,0,6000,hist.
+phosphate,Kunyang,102.6,24.7,,4,1939,0,20000,hist.
+phosphate,Kaiyang and Guizhou phosphate,106.95,27.05,,4,1955,0,20000,hist.
+phosphate,Al Jalamid and Umm Wu'al,39.0,31.3,,4,1965,0,6000,hist.
+phosphate,Khneifiss,37.8,34.4,,2,1962,0,2000,hist.
+phosphate,Phosphate Hill (Duchess),139.97,-21.88,,2,1966,0,2000,hist.
+phosphate,Phalaborwa apatite,31.13,-23.98,,3,1951,0,3000,hist.
+phosphate,Lao Cai apatite (mined from 1940),104.0,22.4,,2,1924,0,1500,hist.
+phosphate,Jhamarkotra,73.85,24.45,,2,1968,0,2000,hist.
+phosphate,Bayóvar (Sechura),-80.8,-5.8,,3,1955,0,4000,hist.
+# ---- potash (kt K2O) ----
+potash,Stassfurt-Magdeburg potash,11.57,51.85,,5,1856,450,1200,IMRB1925
+potash,Hanover potash district,10.0,52.5,,4,1890,300,800,IMRB1925
+potash,South Harz and Werra potash (Thuringia),10.13,50.83,,5,1890,380,1500,IMRB1925
+potash,Werra-Fulda potash (Hesse),9.95,50.85,,4,1900,100,1200,IMRB1925
+potash,Alsatian potash basin,7.3,47.8,,4,1904,300,1700,IMRB1925
+potash,Súria and Cardona potash,1.75,41.85,,3,1912,5,600,IMRB1925
+potash,Kałusz potash,24.35,49.0,,2,1860,20,200,IMRB1925
+potash,Stebnik potash,23.55,49.3,,2,1880,10,100,IMRB1925
+potash,Dallol potash (worked 1918-1929),40.3,14.25,,2,1906,10,50,IMRB1925
+potash,Searles Lake,-117.35,35.75,,2,1914,20,200,MRUS1925
+potash,Carlsbad potash (found in 1925 drilling),-103.95,32.35,,4,1926,0,2500,hist.
+potash,Upper Kama potash (Solikamsk Berezniki; found Oct 1925),56.75,59.55,,5,1926,0,6500,hist.
+potash,Starobin (Soligorsk),27.55,52.8,,5,1949,0,7000,hist.
+potash,Saskatchewan potash,-104.5,51.5,,5,1943,0,14000,hist.; MCS
+potash,Sussex potash,-65.5,45.65,,2,1971,0,600,hist.
+potash,Dead Sea works (Sodom),35.39,31.05,GBR-PALESTINE,3,1929,0,2300,hist.
+potash,Dead Sea (Safi),35.5,31.05,JOR,3,1956,0,1500,hist.
+potash,Boulby,-0.82,54.55,,2,1939,0,600,hist.
+potash,Qarhan salt lake,95.0,36.8,,4,1957,0,6000,hist.
+potash,Salar de Atacama potash,-68.25,-23.5,,3,1962,0,1000,hist.
+potash,Taquari-Vassouras,-37.05,-10.75,,2,1963,0,300,hist.
+# ---- uranium (t U content; 1925 output is the uranium in radium ore) ----
+uranium,Shinkolobwe,26.55,-11.05,,4,1915,60,2000,IMRB1925; hist.
+uranium,Joachimsthal (Jáchymov),12.9,50.37,,2,1850,5,400,IMRB1925
+uranium,Příbram uranium,14.0,49.7,,3,1947,0,2000,hist.
+uranium,Uravan carnotite belt (radium mining ended 1923),-108.8,38.3,,3,1898,0,2000,MRUS1925
+uranium,Utah carnotite (San Rafael Swell Lisbon Valley),-109.3,38.2,,3,1904,0,2500,MRUS1925
+uranium,Grants belt (Ambrosia Lake),-107.85,35.4,,4,1950,0,6000,hist.
+uranium,Wyoming basins (Gas Hills Shirley basin),-107.5,42.85,,4,1953,0,4000,hist.
+uranium,South Texas uranium,-98.0,28.6,,2,1954,0,1500,hist.
+uranium,Port Radium,-118.0,66.1,,2,1930,0,300,hist.
+uranium,Beaverlodge (Uranium City),-108.5,59.55,,3,1952,0,1500,hist.
+uranium,Athabasca unconformity deposits (Key Lake McArthur River Cigar Lake),-105.5,57.8,,5,1968,0,15000,hist.
+uranium,Elliot Lake,-82.65,46.4,,4,1953,0,8000,hist.
+uranium,Urgeiriça,-7.9,40.5,,1,1913,1,300,IMRB1925
+uranium,Limousin uranium (Bessines),1.37,46.1,,3,1948,0,2500,hist.
+uranium,Erzgebirge uranium (Wismut Saxony),12.7,50.6,,4,1946,0,4000,hist.
+uranium,Ronneburg,12.2,50.85,,4,1950,0,3500,hist.
+uranium,Mounana,13.1,-1.4,,2,1956,0,1200,hist.
+uranium,Arlit and Akouta,7.38,18.75,,5,1957,0,4500,hist.
+uranium,Rössing,15.05,-22.48,,4,1966,0,4000,hist.
+uranium,Witwatersrand uranium (by-product),27.5,-26.4,,4,1945,0,6000,hist.
+uranium,Rum Jungle,130.98,-13.0,,2,1949,0,300,hist.
+uranium,Alligator Rivers (Ranger Jabiluka),132.9,-12.68,,5,1969,0,5000,hist.
+uranium,Mary Kathleen,140.0,-20.75,,2,1954,0,800,hist.
+uranium,Olympic Dam uranium,136.88,-30.44,,5,1975,0,4000,hist.
+uranium,Chu-Sarysu and Syrdarya ISR fields,68.0,45.8,,5,1970,0,23000,hist.; MCS
+uranium,Uchkuduk and Kyzylkum uranium,63.55,42.15,,4,1952,0,3500,hist.
+uranium,Zhovti Vody,33.5,48.35,,3,1946,0,1500,hist.
+uranium,Streltsovka (Krasnokamensk),118.1,50.1,,4,1963,0,3500,hist.
+uranium,Jaduguda,86.35,22.65,,2,1951,0,400,hist.
+# ---- rare earths (kt REO; monazite mined before 1925 was a thorium ore) ----
+rare_earths,Bayan Obo rare earths,109.95,41.8,,5,1936,0,100,hist.; MCS
+rare_earths,South China ion-adsorption clays (Longnan),114.8,24.9,,4,1969,0,40,hist.
+rare_earths,Maoniuping,101.95,28.4,,3,1985,0,30,hist.
+rare_earths,Mountain Pass,-115.53,35.48,,4,1949,0,40,hist.; MCS
+rare_earths,Mount Weld,122.55,-28.86,,4,1988,0,25,hist.; MCS
+rare_earths,Lovozero loparite,34.75,67.85,,3,1934,0,10,hist.
+rare_earths,Tomtor,116.0,71.0,,3,1977,0,10,hist.
+rare_earths,Travancore and Kerala monazite sands (rare earths from 1950),76.6,8.95,,2,1950,0,5,hist.
+rare_earths,Bahia and Espírito Santo monazite sands (rare earths from 1948),-40.3,-20.8,,2,1948,0,3,hist.
+rare_earths,Steenkampskraal,18.75,-31.25,,1,1952,0,1,hist.
+rare_earths,Kvanefjeld,-45.9,60.97,,3,1956,0,20,hist.
+rare_earths,Kachin ion-adsorption clays,98.0,25.5,,3,2014,0,30,hist.; MCS
