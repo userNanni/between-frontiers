@@ -2,4 +2,5 @@
 
 pub mod game;
 pub mod indicators;
+pub mod resources;
 pub mod scenario;
