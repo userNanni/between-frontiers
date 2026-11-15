@@ -219,13 +219,10 @@ fn stats(ui: &mut Ui, rect: Rect, i18n: &I18n, world: &World, c: &Country) {
         None => vec![i18n.tr("bar-quality-tip"), i18n.tr("bar-quality-missing")],
     };
 
-    let source = |s: &str| i18n.tr_args("bar-source", &[("source", Arg::String(s.to_owned()))]);
-    let economic_source = source(&c.def.source);
-    let social_source = if source_social.is_empty() {
-        String::new()
-    } else {
-        source(&source_social)
-    };
+    // The free-text notes in the data are for maintainers (and in English); players see the
+    // localized list of sources.
+    let economic_source = i18n.tr("source-economy");
+    let social_source = i18n.tr("source-social");
 
     let entries: Vec<(Icon, &str, String, Vec<String>, String)> = vec![
         (
