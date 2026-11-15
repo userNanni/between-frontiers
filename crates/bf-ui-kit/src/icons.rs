@@ -17,6 +17,14 @@ pub enum Icon {
     Menu,
     Shield,
     Chart,
+    Globe,
+    Star,
+    Map,
+    Grid,
+    Density,
+    Crown,
+    Coin,
+    Pie,
 }
 
 impl Icon {
@@ -35,6 +43,14 @@ impl Icon {
             Icon::Menu => include_image!("../../../assets/icons/menu.svg"),
             Icon::Shield => include_image!("../../../assets/icons/shield.svg"),
             Icon::Chart => include_image!("../../../assets/icons/chart.svg"),
+            Icon::Globe => include_image!("../../../assets/icons/globe.svg"),
+            Icon::Star => include_image!("../../../assets/icons/star.svg"),
+            Icon::Map => include_image!("../../../assets/icons/map.svg"),
+            Icon::Grid => include_image!("../../../assets/icons/grid.svg"),
+            Icon::Density => include_image!("../../../assets/icons/density.svg"),
+            Icon::Crown => include_image!("../../../assets/icons/crown.svg"),
+            Icon::Coin => include_image!("../../../assets/icons/coin.svg"),
+            Icon::Pie => include_image!("../../../assets/icons/pie.svg"),
         }
     }
 }

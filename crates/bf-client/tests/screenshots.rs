@@ -120,6 +120,16 @@ fn walk_through_the_screens() {
     h.hover_at(quality.center());
     h.run_steps(8);
     shot(&mut h, "06b-barra-tooltip");
+
+    // 6c. Tooltip of GDP, in the compact rows.
+    let gdp = h
+        .get_all(egui_kittest::kittest::by().label_contains("PIB:"))
+        .next()
+        .expect("GDP figure")
+        .rect();
+    h.hover_at(gdp.center());
+    h.run_steps(8);
+    shot(&mut h, "06c-pib-tooltip");
     h.hover_at(egui::pos2(800.0, 500.0));
 
     // 7. Back to the main menu: "Continue" now offers the new campaign.
