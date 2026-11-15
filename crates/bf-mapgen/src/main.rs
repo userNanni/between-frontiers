@@ -469,7 +469,7 @@ fn write_previews(dir: &Path, frame: &Frame, buf: &[u16], map: &MapFile) -> Resu
     )?;
     // Close-ups for checking borders: (name, west, north, east, south, step); a step of 0 means
     // a 4x zoom.
-    let windows: [(&str, f64, f64, f64, f64, u32); 12] = [
+    let windows: [(&str, f64, f64, f64, f64, u32); 14] = [
         ("europe", -12.0, 71.0, 42.0, 34.0, 1),
         ("east-europe", 12.0, 62.0, 42.0, 43.0, 1),
         ("middle-east", 25.0, 42.0, 62.0, 11.0, 1),
@@ -482,6 +482,8 @@ fn write_previews(dir: &Path, frame: &Frame, buf: &[u16], map: &MapFile) -> Resu
         ("cameroon", 2.0, 14.0, 17.0, 1.0, 0),
         ("kwantung", 118.0, 42.0, 126.0, 37.0, 0),
         ("sakhalin", 138.0, 55.0, 158.0, 42.0, 0),
+        ("shandong", 119.0, 39.0, 124.0, 35.5, 0),
+        ("leizhou", 108.5, 22.5, 112.0, 20.0, 0),
     ];
     for (name, west, north, east, south, step) in windows {
         let (x0, y0) = frame.to_pixel(west, north);
@@ -595,6 +597,39 @@ mod tests {
             .collect();
         let listed: BTreeSet<&str> = owners.metropoles.keys().map(String::as_str).collect();
         assert_eq!(with_colonies, listed);
+    }
+
+    #[test]
+    fn crown_dependencies_are_metropole() {
+        let map = committed_map();
+        for key in ["IMN+00?", "JEY+00?", "GGY+00?"] {
+            let p = map
+                .provinces
+                .iter()
+                .find(|p| p.key == key)
+                .unwrap_or_else(|| panic!("no province {key}"));
+            assert_eq!(p.owner, "GBR", "{key}");
+            assert!(!p.colony, "{key} is a colony");
+        }
+    }
+
+    #[test]
+    fn leases_in_china_are_carved_colonies() {
+        let map = committed_map();
+        for (key, owner) in [
+            ("CHN-1814~weihaiwei", "GBR"),
+            ("CHN-1180~guangzhouwan", "FRA"),
+            ("CHN-1813~kwantung", "JAP"),
+        ] {
+            let p = map
+                .provinces
+                .iter()
+                .find(|p| p.key == key)
+                .unwrap_or_else(|| panic!("no province {key}"));
+            assert_eq!(p.owner, owner, "{key}");
+            assert!(p.colony, "{key} is not a colony");
+            assert!(p.pixels > 0, "{key} has no pixels");
+        }
     }
 
     #[test]
