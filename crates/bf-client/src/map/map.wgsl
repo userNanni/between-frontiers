@@ -52,9 +52,15 @@ fn table_coord(id: u32) -> vec2<i32> {
     return vec2<i32>(i32(id % 256u), i32(id / 256u));
 }
 
+// The owner table holds the owner index in the low 15 bits and the colony flag in bit 15.
 fn owner_of(id: u32) -> u32 {
     if (id == 0u) { return 0u; }
-    return textureLoad(owners, table_coord(id), 0).r;
+    return textureLoad(owners, table_coord(id), 0).r & 0x7FFFu;
+}
+
+fn is_colony(id: u32) -> bool {
+    if (id == 0u) { return false; }
+    return (textureLoad(owners, table_coord(id), 0).r & 0x8000u) != 0u;
 }
 
 fn hash(p: vec2<f32>) -> f32 {
@@ -106,6 +112,12 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
         let rim = 1.0 - smoothstep(0.0, 0.10, field.g);
         col = mix(col, col * 0.72, rim * 0.55);
         col *= 0.92 + grain * 0.12;
+        if (is_colony(id)) {
+            // Colonies: same colour as the owner, with diagonal hatching in screen space.
+            let stripe = fract((in.pos.x + in.pos.y) / 9.0);
+            let ink = smoothstep(0.30, 0.38, stripe) * (1.0 - smoothstep(0.62, 0.70, stripe));
+            col = mix(col, col * 0.74, ink * 0.75);
+        }
         if (owner != 0u && owner == u.hovered && owner != u.selected) {
             col = mix(col, vec3<f32>(1.0), 0.14);
         }

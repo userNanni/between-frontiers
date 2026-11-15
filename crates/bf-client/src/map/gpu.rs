@@ -67,7 +67,8 @@ impl MapGpu {
         );
         let mut owner_table = vec![0u16; (TABLE_WIDTH * table_rows) as usize];
         for (i, owner) in data.owner_of.iter().enumerate() {
-            owner_table[i] = *owner;
+            let colony = if data.colony_of[i] { 0x8000 } else { 0 };
+            owner_table[i] = (*owner & 0x7FFF) | colony;
         }
         let owners = upload(
             device,

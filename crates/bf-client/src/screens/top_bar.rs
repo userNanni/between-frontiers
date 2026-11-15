@@ -12,6 +12,7 @@ use bf_ui_kit::tokens::{color, radius, size, space};
 use bf_ui_kit::{Icon, icon_button, paint_icon};
 use egui::{Align2, Color32, Pos2, Rect, Sense, Stroke, Ui, Vec2};
 
+use crate::flags::{Flags, paint_flag};
 use crate::sim::Snapshot;
 use crate::text::{country_name, date_long, difficulty_key, money_exact, status_line};
 use crate::world::{Country, World};
@@ -41,13 +42,22 @@ pub fn show(
     screen: Rect,
     i18n: &I18n,
     world: Option<&World>,
+    flags: &Flags,
     player: Option<usize>,
     snap: &Snapshot,
 ) -> BarResponse {
     let mut out = BarResponse::default();
     time_panel(ui, screen, i18n, snap, &mut out);
     if let (Some(world), Some(p)) = (world, player) {
-        corner_panel(ui, screen, i18n, world, &world.countries[p], &mut out);
+        corner_panel(
+            ui,
+            screen,
+            i18n,
+            world,
+            flags,
+            &world.countries[p],
+            &mut out,
+        );
     }
     out
 }
@@ -251,6 +261,18 @@ fn items(i18n: &I18n, world: &World, c: &Country) -> (Vec<Item>, Vec<Item>, Vec<
     // Row 2: size of the country.
     let gdp = money_short(i18n, c.gdp);
     let population = i18n.compact_short(pop);
+    let has_colonies = c.def.colonies.is_some() || !c.colonial_provinces.is_empty();
+    let split = |metro: String, colonies: String, total: String| -> Vec<(String, String)> {
+        if has_colonies {
+            vec![
+                (i18n.tr("hud-metropole"), metro),
+                (i18n.tr("hud-colonies"), colonies),
+                (i18n.tr("hud-total"), total),
+            ]
+        } else {
+            vec![]
+        }
+    };
     let density = i18n.tr_args(
         "hud-density-value",
         &[(
@@ -289,7 +311,11 @@ fn items(i18n: &I18n, world: &World, c: &Country) -> (Vec<Item>, Vec<Item>, Vec<
                 "bar-population",
                 &population,
                 vec![i18n.tr("bar-population-tip"), i18n.int(pop as i64)],
-                vec![],
+                split(
+                    i18n.compact(pop),
+                    i18n.compact(c.colonial_population()),
+                    i18n.compact(c.total_population()),
+                ),
                 vec![rank(i18n, c.rank_population), economy.clone()],
             ),
             value: population,
@@ -339,8 +365,8 @@ fn items(i18n: &I18n, world: &World, c: &Country) -> (Vec<Item>, Vec<Item>, Vec<
     ];
 
     // Row 3: place in the world.
-    let gdp_share = pct(i18n, c.gdp / world.world_gdp.max(1.0));
-    let pop_share = pct(i18n, pop / world.world_population.max(1.0));
+    let gdp_share = pct(i18n, c.total_gdp() / world.world_gdp.max(1.0));
+    let pop_share = pct(i18n, c.total_population() / world.world_population.max(1.0));
     let rank_value =
         |r: usize| i18n.tr_args("hud-rank-value", &[("rank", Arg::String(r.to_string()))]);
     let quality_rank = c.rank_quality.map_or(unknown.clone(), rank_value);
@@ -361,7 +387,10 @@ fn items(i18n: &I18n, world: &World, c: &Country) -> (Vec<Item>, Vec<Item>, Vec<
             tip: tip(
                 "hud-gdp-share",
                 &gdp_share,
-                vec![i18n.tr("hud-gdp-share-tip")],
+                vec![
+                    i18n.tr("hud-gdp-share-tip"),
+                    i18n.tr("hud-includes-colonies"),
+                ],
                 vec![],
                 vec![i18n.tr_args(
                     "hud-world-total",
@@ -376,7 +405,10 @@ fn items(i18n: &I18n, world: &World, c: &Country) -> (Vec<Item>, Vec<Item>, Vec<
             tip: tip(
                 "hud-pop-share",
                 &pop_share,
-                vec![i18n.tr("hud-pop-share-tip")],
+                vec![
+                    i18n.tr("hud-pop-share-tip"),
+                    i18n.tr("hud-includes-colonies"),
+                ],
                 vec![],
                 vec![i18n.tr_args(
                     "hud-world-total",
@@ -434,6 +466,7 @@ fn corner_panel(
     screen: Rect,
     i18n: &I18n,
     world: &World,
+    flags: &Flags,
     c: &Country,
     out: &mut BarResponse,
 ) {
@@ -483,7 +516,7 @@ fn corner_panel(
         }
     }
 
-    banner_ui(ui, banner, i18n, world, c, out);
+    banner_ui(ui, banner, i18n, world, flags, c, out);
 }
 
 fn cell_ui(ui: &mut Ui, cell: Rect, item: &Item, headline: bool, salt: (&str, usize)) {
@@ -623,14 +656,12 @@ fn banner_ui(
     banner: Rect,
     i18n: &I18n,
     world: &World,
+    flags: &Flags,
     c: &Country,
     out: &mut BarResponse,
 ) {
-    let (r, g, b) = c.def.color;
-    let fill = Color32::from_rgb(r, g, b);
     let response = ui.interact(banner, ui.make_persistent_id("hud-banner"), Sense::click());
-    let painter = ui.painter();
-    painter.add(
+    ui.painter().add(
         egui::Shadow {
             offset: [0, 4],
             blur: 14,
@@ -639,27 +670,16 @@ fn banner_ui(
         }
         .as_shape(banner, radius::MD),
     );
-    painter.rect(
+    paint_flag(ui, banner, flags, c, color::ACCENT);
+    if response.hovered() {
+        ui.painter()
+            .rect_filled(banner, radius::SM, Color32::from_white_alpha(16));
+    }
+    ui.painter().rect_stroke(
         banner,
-        radius::MD,
-        fill,
+        radius::SM,
         Stroke::new(1.5, color::ACCENT),
         egui::StrokeKind::Inside,
-    );
-    // A soft fold so the banner reads as cloth, not a swatch.
-    let shade =
-        Rect::from_min_max(Pos2::new(banner.center().x, banner.top()), banner.max).shrink(1.5);
-    painter.rect_filled(
-        shade,
-        radius::SM,
-        Color32::from_black_alpha(if response.hovered() { 10 } else { 34 }),
-    );
-    painter.text(
-        banner.center(),
-        Align2::CENTER_CENTER,
-        c.tag(),
-        serif(22.0),
-        Color32::from_rgba_unmultiplied(255, 248, 230, 210),
     );
 
     // Economic rank medallion under the banner.

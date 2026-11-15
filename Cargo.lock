@@ -453,6 +453,7 @@ dependencies = [
  "egui",
  "egui-wgpu",
  "egui_kittest",
+ "image",
  "laplace-schelling",
  "png 0.18.1",
  "ron",

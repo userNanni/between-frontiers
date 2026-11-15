@@ -18,6 +18,7 @@ egui-wgpu.workspace = true
 wgpu.workspace = true
 bytemuck.workspace = true
 png.workspace = true
+image.workspace = true
 serde.workspace = true
 ron.workspace = true
 directories.workspace = true

@@ -579,6 +579,8 @@ pub struct ListRow<'a> {
     pub subtitle: &'a str,
     pub trailing: &'a str,
     pub mark: Option<Color32>,
+    /// Image shown instead of the colour mark, e.g. a flag (3:2).
+    pub image: Option<egui::TextureId>,
     pub selected: bool,
 }
 
@@ -605,7 +607,25 @@ impl ListRow<'_> {
         let painter = ui.painter();
         painter.rect(rect, radius::MD, fill, stroke, StrokeKind::Inside);
         let mut x = rect.left() + space::LG;
-        if let Some(mark) = self.mark {
+        if let Some(tex) = self.image {
+            let r = Rect::from_center_size(
+                egui::pos2(x + 15.0, rect.center().y),
+                Vec2::new(30.0, 20.0),
+            );
+            painter.image(
+                tex,
+                r,
+                Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)),
+                Color32::WHITE,
+            );
+            painter.rect_stroke(
+                r,
+                radius::SM,
+                Stroke::new(1.0, Color32::from_black_alpha(140)),
+                StrokeKind::Inside,
+            );
+            x += 30.0 + space::MD;
+        } else if let Some(mark) = self.mark {
             let r = Rect::from_center_size(egui::pos2(x + 9.0, rect.center().y), Vec2::splat(18.0));
             painter.rect(
                 r,

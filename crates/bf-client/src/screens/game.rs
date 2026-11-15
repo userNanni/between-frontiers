@@ -101,7 +101,15 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
     }
 
     // Top bar
-    let bar_out = top_bar::show(ui, rect, &shared.i18n, shared.world.as_ref(), player, &snap);
+    let bar_out = top_bar::show(
+        ui,
+        rect,
+        &shared.i18n,
+        shared.world.as_ref(),
+        &shared.flags,
+        player,
+        &snap,
+    );
     if bar_out.open_country {
         state.selected = player;
     }

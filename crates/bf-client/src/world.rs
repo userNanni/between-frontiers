@@ -16,10 +16,15 @@ pub struct Province {
 
 pub struct Country {
     pub def: CountryDef,
+    /// Metropole provinces.
     pub provinces: Vec<u16>,
+    pub colonial_provinces: Vec<u16>,
+    /// Metropole area.
     pub area_km2: f64,
-    /// GDP in 2011 international dollars.
+    pub colonial_area_km2: f64,
+    /// Metropole GDP in 2011 international dollars.
     pub gdp: f64,
+    pub colonial_gdp: f64,
     pub rank_population: usize,
     pub rank_gdp: usize,
     /// Present when literacy and life expectancy are known.
@@ -34,6 +39,22 @@ pub struct Country {
 impl Country {
     pub fn tag(&self) -> &str {
         &self.def.tag
+    }
+
+    pub fn colonial_population(&self) -> f64 {
+        self.def
+            .colonies
+            .as_ref()
+            .map_or(0.0, |c| c.population as f64)
+    }
+
+    /// Metropole and colonies.
+    pub fn total_population(&self) -> f64 {
+        self.def.population as f64 + self.colonial_population()
+    }
+
+    pub fn total_gdp(&self) -> f64 {
+        self.gdp + self.colonial_gdp
     }
 
     pub fn is_subject(&self) -> bool {
@@ -99,9 +120,15 @@ impl World {
             .iter()
             .map(|def| Country {
                 gdp: def.population as f64 * def.gdp_per_capita as f64,
+                colonial_gdp: def
+                    .colonies
+                    .as_ref()
+                    .map_or(0.0, |c| c.population as f64 * c.gdp_per_capita as f64),
                 def: def.clone(),
                 provinces: Vec::new(),
+                colonial_provinces: Vec::new(),
                 area_km2: 0.0,
+                colonial_area_km2: 0.0,
                 rank_population: 0,
                 rank_gdp: 0,
                 quality: match (def.life_expectancy, def.literacy) {
@@ -120,8 +147,14 @@ impl World {
             .collect();
         for p in &provinces {
             if let Some(o) = p.owner {
-                countries[o].provinces.push(p.def.id);
-                countries[o].area_km2 += p.def.area_km2 as f64;
+                let c = &mut countries[o];
+                if p.def.colony {
+                    c.colonial_provinces.push(p.def.id);
+                    c.colonial_area_km2 += p.def.area_km2 as f64;
+                } else {
+                    c.provinces.push(p.def.id);
+                    c.area_km2 += p.def.area_km2 as f64;
+                }
             }
         }
         for i in 0..countries.len() {
@@ -142,7 +175,12 @@ impl World {
         for (rank, &i) in order.iter().enumerate() {
             countries[i].rank_population = rank + 1;
         }
-        order.sort_by(|&a, &b| countries[b].gdp.total_cmp(&countries[a].gdp));
+        // Economic rank counts the colonies: it measures weight in the world, not welfare.
+        order.sort_by(|&a, &b| {
+            countries[b]
+                .total_gdp()
+                .total_cmp(&countries[a].total_gdp())
+        });
         for (rank, &i) in order.iter().enumerate() {
             countries[i].rank_gdp = rank + 1;
         }
@@ -156,8 +194,8 @@ impl World {
         for (rank, &i) in with_quality.iter().enumerate() {
             countries[i].rank_quality = Some(rank + 1);
         }
-        let world_population = countries.iter().map(|c| c.def.population as f64).sum();
-        let world_gdp = countries.iter().map(|c| c.gdp).sum();
+        let world_population = countries.iter().map(|c| c.total_population()).sum();
+        let world_gdp = countries.iter().map(|c| c.total_gdp()).sum();
         Self {
             start,
             world_population,

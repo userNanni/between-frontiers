@@ -70,7 +70,7 @@ pub fn difficulty_key(world: &World, country: &Country) -> &'static str {
     let rank = world
         .countries
         .iter()
-        .filter(|c| !c.is_subject() && c.gdp > country.gdp)
+        .filter(|c| !c.is_subject() && c.total_gdp() > country.total_gdp())
         .count()
         + 1;
     match rank {

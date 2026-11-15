@@ -18,6 +18,7 @@ pub struct Shared {
     pub world: Option<World>,
     pub map: Option<MapData>,
     pub map_view: Option<MapView>,
+    pub flags: crate::flags::Flags,
     /// Why the map or the scenario could not load; screens that need them show it.
     pub load_error: Option<String>,
     pub saves: Vec<Save>,
@@ -99,6 +100,7 @@ impl App {
             world: None,
             map: None,
             map_view: None,
+            flags: Default::default(),
             load_error: None,
             saves: Vec::new(),
             toast: None,
@@ -113,6 +115,11 @@ impl App {
                 let mut view = MapView::new(&map);
                 view.show_labels = shared.settings.map_labels;
                 shared.map_view = Some(view);
+                shared.flags = crate::flags::Flags::load(
+                    &cc.egui_ctx,
+                    &shared.paths.assets.join("flags"),
+                    &world,
+                );
                 shared.map = Some(map);
                 shared.world = Some(world);
             }

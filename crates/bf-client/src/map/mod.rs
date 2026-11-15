@@ -24,6 +24,8 @@ pub struct MapData {
     pub province_count: u32,
     /// Owner index of each province id (index 0 = water). Owner index is country index + 1.
     pub owner_of: Vec<u16>,
+    /// Whether each province id is a colony of its owner.
+    pub colony_of: Vec<bool>,
     /// Political palette, by province id.
     pub palette: Vec<[u8; 4]>,
     pub field_width: u32,
@@ -92,8 +94,10 @@ impl MapData {
     pub fn build(world: &World, width: u32, height: u32, ids: Vec<u16>) -> Self {
         let province_count = world.provinces.len() as u32;
         let mut owner_of = vec![0u16; province_count as usize + 1];
+        let mut colony_of = vec![false; province_count as usize + 1];
         for p in &world.provinces {
             owner_of[p.def.id as usize] = p.owner.map_or(0, |c| c as u16 + 1);
+            colony_of[p.def.id as usize] = p.def.colony;
         }
         let palette = political_palette(world);
         let (field_width, field_height, fields) = distance_fields(width, height, &ids, &owner_of);
@@ -104,6 +108,7 @@ impl MapData {
             ids,
             province_count,
             owner_of,
+            colony_of,
             palette,
             field_width,
             field_height,
