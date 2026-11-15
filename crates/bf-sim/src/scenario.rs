@@ -1,0 +1,97 @@
+//! Scenario data as stored in text files. These types are the contract between the data
+//! pipeline (`bf-mapgen`, `data/scenario/*`) and the game.
+//!
+//! - `assets/map/provinces.png`: 16-bit grayscale PNG. Each pixel holds a province id;
+//!   0 is water or land outside any province. Projection and extent are in [`MapMeta`].
+//! - `assets/map/provinces.ron`: [`MapFile`].
+//! - `data/scenario/1925/countries.ron`: [`CountriesFile`].
+//! - Names live in the Fluent files, never here: `country-<TAG>`, `country-<TAG>-adj`,
+//!   `country-<TAG>-capital`, `government-<key>`.
+
+use serde::{Deserialize, Serialize};
+
+/// Country tag: three upper-case ASCII letters, e.g. `BRA`.
+pub type Tag = String;
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct MapFile {
+    pub meta: MapMeta,
+    pub provinces: Vec<ProvinceDef>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct MapMeta {
+    /// Texture size in pixels.
+    pub width: u32,
+    pub height: u32,
+    /// Projection name, e.g. `"miller"`. The texture spans longitude -180..180.
+    pub projection: String,
+    /// Latitude of the top and bottom edges of the texture, in degrees.
+    pub lat_top: f64,
+    pub lat_bottom: f64,
+    /// Where the geometry came from and under which licence.
+    pub sources: Vec<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ProvinceDef {
+    /// Pixel value in `provinces.png`, starting at 1, contiguous.
+    pub id: u16,
+    /// Stable key from the source data (Natural Earth `adm1_code`).
+    pub key: String,
+    /// Display name as in the source (proper noun, not translated).
+    pub name: String,
+    /// Owner on the scenario start date.
+    pub owner: Tag,
+    /// Label anchor in texture pixels.
+    pub center: (f32, f32),
+    pub area_km2: f32,
+    /// Pixels in the texture; 0 when the province is too small to be drawn.
+    pub pixels: u32,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct CountriesFile {
+    /// ISO date, e.g. `"1925-01-01"`.
+    pub start_date: String,
+    pub countries: Vec<CountryDef>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct CountryDef {
+    pub tag: Tag,
+    /// Map colour, sRGB.
+    pub color: (u8, u8, u8),
+    pub status: Status,
+    /// Key of `government-<key>` in the Fluent files.
+    pub government: String,
+    /// Capital position, for locating the capital province.
+    pub capital_lon_lat: (f64, f64),
+    /// Population on the start date.
+    pub population: u64,
+    /// GDP per capita in 2011 international dollars (Maddison Project 2023 unit).
+    pub gdp_per_capita: u32,
+    /// Free-text source note for `population` and `gdp_per_capita`.
+    pub source: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Status {
+    Sovereign,
+    /// Self-governing or protected subject of another country (dominion, mandate, protectorate,
+    /// satellite). Colonies under direct rule are provinces of the overlord instead.
+    Subject {
+        overlord: Tag,
+        kind: SubjectKind,
+    },
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum SubjectKind {
+    Dominion,
+    Mandate,
+    Protectorate,
+    Satellite,
+    /// British Raj style: a separate administration under the overlord's crown.
+    CrownColony,
+}

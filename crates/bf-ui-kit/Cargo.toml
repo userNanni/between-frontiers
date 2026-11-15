@@ -1,0 +1,11 @@
+[package]
+name = "bf-ui-kit"
+description = "Design tokens and components over egui. Screens never call raw egui widgets."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+egui.workspace = true

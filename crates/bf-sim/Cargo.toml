@@ -1,0 +1,13 @@
+[package]
+name = "bf-sim"
+description = "Between Frontiers game rules on top of the Laplace-Schelling engine."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+laplace-schelling.workspace = true
+serde.workspace = true
+ron.workspace = true

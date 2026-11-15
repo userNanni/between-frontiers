@@ -1,0 +1,3 @@
+//! Game client.
+
+fn main() {}
