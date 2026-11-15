@@ -1,0 +1,245 @@
+//! Invariants of the 1925 country data: `data/scenario/1925/countries.ron` against the
+//! `CountriesFile` contract, and the Fluent names in both locales.
+
+use std::collections::{BTreeMap, BTreeSet};
+use std::path::PathBuf;
+
+use bf_sim::scenario::{CountriesFile, Status, SubjectKind};
+
+const TAGS: &[&str] = &[
+    // Europe
+    "GBR", "IRL", "FRA", "BEL", "NLD", "LUX", "CHE", "ESP", "POR", "ITA", "SMR", "GER", "SAA",
+    "DNZ", "AUT", "HUN", "CZE", "POL", "LTU", "LAT", "EST", "FIN", "SWE", "NOR", "DEN", "ISL",
+    "SOV", "ROM", "YUG", "BUL", "ALB", "GRE", "TUR", "LIE", "MCO", "AND", //
+    // Americas
+    "USA", "CAN", "NFL", "MEX", "GUA", "HON", "SAL", "NIC", "CRI", "PAN", "CUB", "HAI", "DOM",
+    "COL", "VEN", "ECU", "PER", "BOL", "CHL", "ARG", "URY", "PRY", "BRA", //
+    // Asia and Middle East
+    "CHN", "JAP", "MGL", "TUV", "TIB", "SIA", "AFG", "PRS", "NEP", "BHU", "RAJ", "IRQ", "TRJ",
+    "HEJ", "NEJ", "YEM", "OMA", "KUW", //
+    // Africa and Oceania
+    "EGY", "ETH", "LBR", "SAF", "AUS", "NZL",
+];
+
+const SUBJECTS: &[(&str, &str, SubjectKind)] = &[
+    ("IRL", "GBR", SubjectKind::Dominion),
+    ("CAN", "GBR", SubjectKind::Dominion),
+    ("NFL", "GBR", SubjectKind::Dominion),
+    ("AUS", "GBR", SubjectKind::Dominion),
+    ("NZL", "GBR", SubjectKind::Dominion),
+    ("SAF", "GBR", SubjectKind::Dominion),
+    ("RAJ", "GBR", SubjectKind::CrownColony),
+    ("IRQ", "GBR", SubjectKind::Mandate),
+    ("TRJ", "GBR", SubjectKind::Mandate),
+    ("BHU", "GBR", SubjectKind::Protectorate),
+    ("OMA", "GBR", SubjectKind::Protectorate),
+    ("KUW", "GBR", SubjectKind::Protectorate),
+    ("MGL", "SOV", SubjectKind::Satellite),
+    ("TUV", "SOV", SubjectKind::Satellite),
+];
+
+const GOVERNMENTS: &[&str] = &[
+    "parliamentary_monarchy",
+    "constitutional_monarchy",
+    "absolute_monarchy",
+    "presidential_republic",
+    "parliamentary_republic",
+    "one_party_state",
+    "military_dictatorship",
+    "theocracy",
+    "colonial_administration",
+    "free_city",
+];
+
+const LOCALES: &[&str] = &["pt-BR", "en"];
+
+fn repo_root() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
+}
+
+fn load() -> CountriesFile {
+    let path = repo_root().join("data/scenario/1925/countries.ron");
+    let text = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
+    ron::from_str(&text).unwrap_or_else(|e| panic!("{}: {e}", path.display()))
+}
+
+/// Message id -> attribute names, from simple line parsing of a Fluent file.
+fn fluent_messages(locale: &str, file: &str) -> BTreeMap<String, BTreeSet<String>> {
+    let path = repo_root().join("assets/i18n").join(locale).join(file);
+    let text = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
+    let mut messages = BTreeMap::new();
+    let mut current: Option<String> = None;
+    for (n, line) in text.lines().enumerate() {
+        if line.trim().is_empty() || line.starts_with('#') {
+            continue;
+        }
+        if let Some(attr) = line
+            .trim_start()
+            .strip_prefix('.')
+            .filter(|_| line.starts_with(' '))
+        {
+            let (name, value) = attr
+                .split_once('=')
+                .unwrap_or_else(|| panic!("{file}:{}: bad attribute", n + 1));
+            assert!(
+                !value.trim().is_empty(),
+                "{locale}/{file}:{}: empty attribute value",
+                n + 1
+            );
+            let id = current
+                .as_ref()
+                .unwrap_or_else(|| panic!("{file}:{}: attribute outside a message", n + 1));
+            let attrs: &mut BTreeSet<String> =
+                messages.get_mut(id).expect("current message exists");
+            attrs.insert(name.trim().to_owned());
+            continue;
+        }
+        let (id, value) = line
+            .split_once('=')
+            .unwrap_or_else(|| panic!("{locale}/{file}:{}: expected `id = value`", n + 1));
+        let id = id.trim().to_owned();
+        assert!(
+            id.chars().next().is_some_and(|c| c.is_ascii_alphabetic())
+                && id
+                    .chars()
+                    .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_'),
+            "{locale}/{file}:{}: bad message id {id:?}",
+            n + 1
+        );
+        assert!(
+            !value.trim().is_empty(),
+            "{locale}/{file}:{}: empty value for {id}",
+            n + 1
+        );
+        assert!(
+            messages.insert(id.clone(), BTreeSet::new()).is_none(),
+            "{locale}/{file}: duplicate {id}"
+        );
+        current = Some(id);
+    }
+    messages
+}
+
+#[test]
+fn start_date_and_tag_list() {
+    let file = load();
+    assert_eq!(file.start_date, "1925-01-01");
+    let tags: Vec<&str> = file.countries.iter().map(|c| c.tag.as_str()).collect();
+    let unique: BTreeSet<&str> = tags.iter().copied().collect();
+    assert_eq!(unique.len(), tags.len(), "duplicate tags");
+    let expected: BTreeSet<&str> = TAGS.iter().copied().collect();
+    assert_eq!(expected.len(), TAGS.len());
+    assert_eq!(unique, expected);
+    for tag in &tags {
+        assert!(
+            tag.len() == 3 && tag.chars().all(|c| c.is_ascii_uppercase()),
+            "bad tag {tag}"
+        );
+    }
+}
+
+#[test]
+fn subjects_and_overlords() {
+    let file = load();
+    let by_tag: BTreeMap<&str, _> = file.countries.iter().map(|c| (c.tag.as_str(), c)).collect();
+    for country in &file.countries {
+        let expected = SUBJECTS.iter().find(|(t, _, _)| *t == country.tag);
+        match (&country.status, expected) {
+            (Status::Sovereign, None) => {}
+            (Status::Subject { overlord, kind }, Some((_, want_overlord, want_kind))) => {
+                assert_eq!(overlord, want_overlord, "{}", country.tag);
+                assert_eq!(kind, want_kind, "{}", country.tag);
+                let lord = by_tag
+                    .get(overlord.as_str())
+                    .unwrap_or_else(|| panic!("{}: unknown overlord", country.tag));
+                assert_eq!(
+                    lord.status,
+                    Status::Sovereign,
+                    "{}: overlord {overlord} is not sovereign",
+                    country.tag
+                );
+            }
+            (status, _) => panic!("{}: unexpected status {status:?}", country.tag),
+        }
+    }
+}
+
+#[test]
+fn values_in_range() {
+    let file = load();
+    let mut colors = BTreeSet::new();
+    for c in &file.countries {
+        assert!(
+            GOVERNMENTS.contains(&c.government.as_str()),
+            "{}: government {}",
+            c.tag,
+            c.government
+        );
+        assert!(c.population > 0, "{}: population", c.tag);
+        assert!(
+            (100..100_000).contains(&c.gdp_per_capita),
+            "{}: gdp_per_capita {}",
+            c.tag,
+            c.gdp_per_capita
+        );
+        let (lon, lat) = c.capital_lon_lat;
+        assert!(
+            (-180.0..=180.0).contains(&lon) && (-90.0..=90.0).contains(&lat),
+            "{}: capital",
+            c.tag
+        );
+        assert!(!c.source.trim().is_empty(), "{}: source", c.tag);
+        assert!(
+            colors.insert(c.color),
+            "{}: colour {:?} already used",
+            c.tag,
+            c.color
+        );
+    }
+    let world: u64 = file.countries.iter().map(|c| c.population).sum();
+    assert!(
+        (1_850_000_000..2_050_000_000).contains(&world),
+        "world population {world}"
+    );
+}
+
+#[test]
+fn fluent_names_in_every_locale() {
+    let file = load();
+    let mut ids_by_locale = Vec::new();
+    for locale in LOCALES {
+        let countries = fluent_messages(locale, "countries.ftl");
+        let governments = fluent_messages(locale, "governments.ftl");
+        for c in &file.countries {
+            let name = format!("country-{}", c.tag);
+            let attrs = countries
+                .get(&name)
+                .unwrap_or_else(|| panic!("{locale}: missing {name}"));
+            assert!(
+                attrs.contains("article"),
+                "{locale}: {name} has no .article"
+            );
+            let capital = format!("country-{}-capital", c.tag);
+            assert!(
+                countries.contains_key(&capital),
+                "{locale}: missing {capital}"
+            );
+        }
+        for key in GOVERNMENTS {
+            let id = format!("government-{key}");
+            assert!(governments.contains_key(&id), "{locale}: missing {id}");
+        }
+        let ids: BTreeSet<String> = countries
+            .into_keys()
+            .chain(governments.into_keys())
+            .collect();
+        ids_by_locale.push((locale, ids));
+    }
+    let (first, reference) = &ids_by_locale[0];
+    for (locale, ids) in &ids_by_locale[1..] {
+        assert_eq!(
+            ids, reference,
+            "message ids differ between {first} and {locale}"
+        );
+    }
+}
