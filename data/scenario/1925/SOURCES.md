@@ -27,9 +27,8 @@ Concretely:
   POR, ITA, DEN, USA, JAP, SAF, AUS, NZL), and metropole plus colonies add up to the empire totals
   of the component tables below; `crates/bf-sim/tests/countries_1925.rs` checks both.
 - In the component tables the metropole rows are named under each heading; every other row is a
-  colony. Where the province map assigns a territory differently (Weihaiwei and Guangzhouwan are
-  inside Chinese provinces on the map; the Canal Zone inside Panama; Aden town is counted in RAJ by
-  the Census of India), the tables say exactly which pieces were counted where, so the numbers can
+  colony. Where the province map assigns a territory differently (the Canal Zone is inside Panama
+  on the map; Aden town is counted in RAJ by the Census of India), the tables say exactly which pieces were counted where, so the numbers can
   be moved.
 
 ## Sources
@@ -167,9 +166,23 @@ parchment background (232, 220, 190).
   Littoral ≈ 0.6 M, Fiume and Zara ≈ 0.07 M).
 - **GRE**: Maddison minus the Dodecanese (≈ 120 000, Italian). **TUR**: Maddison minus the Sanjak of
   Alexandretta (≈ 220 000, French Syria).
-- **CHN**: Maddison China (modern PRC without Taiwan) minus Tibet (1.0 M), the Kwantung Leased
-  Territory (0.85 M, JAP), Weihaiwei (0.15 M, GBR) and Guangzhouwan (0.21 M, FRA), all estimates.
-  GDP per capita interpolated between 1913 and 1929.
+- **CHN**: Maddison China (modern PRC without Taiwan) minus Tibet (1.0 M, estimate), the Kwantung
+  Leased Territory (0.85 M, JAP, estimate), Weihaiwei (157 000, GBR) and Guangzhouwan (200 000,
+  FRA). All three leases are carved out of the Chinese provinces on the map. GDP per capita
+  interpolated between 1913 and 1929.
+- **GBR, Weihaiwei**: censuses of 1911 (147 177) and 1921 (154 416), carried on at their 0.48 %/year
+  for 3.5 years: 157 000. The lease ran until 1 October 1930.
+- **FRA, Guangzhouwan**: linear between the colony's figures of 1911 (189 000) and 1931 (206 000):
+  200 000.
+- **GBR, Crown dependencies** (metropole since they hold British subjects with the same rights;
+  see `docs/map-pipeline.pt-BR.md`): 141 000. Jersey from the censuses of 19 June 1921 (49 701) and
+  26 April 1931 (50 462), 49 970 on 1925-01-01; Guernsey with Herm and Jethou from the same censuses
+  (38 315 and 40 643), 39 150; Sark 611 and 571, about 600; Alderney about 1 500 (no 1921 or 1931
+  total was found; about 1 400 people were evacuated in June 1940); the Isle of Man about 50 000
+  residents. The Manx count of 19 June 1921 (60 284) took everyone present in the holiday season,
+  visitors included, so it is not used; the April 1931 census counted about 49 300, and its first
+  returns reported a fall of only 726 against the comparable 1921 figure, so the resident population
+  stayed close to 50 000. GDP per capita and social indicators as the United Kingdom.
 - **TIB**: 1.0 M for the territory ruled from Lhasa (Ü-Tsang, western Kham, Ngari); estimates of the
   period range from about 1 M for this area to 3–4 M for all ethnic Tibet. GDP per capita 700 $,
   as Mongolia and Bhutan, a little below Nepal (847).
@@ -227,7 +240,7 @@ parchment background (232, 220, 190).
 - **RAJ**: Maddison "India" before 1947 is undivided British India with the princely states (Census
   of India totals, which include Aden and exclude French and Portuguese India); plus Burma.
 - **Small colonies** missing from OWID in 1925 (Réunion, Guadeloupe, Martinique, French Guiana,
-  New Caledonia, Curaçao, Macau, Bermuda, the Channel Islands, the Faroes, Greenland, Guam and
+  New Caledonia, Curaçao, Macau, Bermuda, the Faroes, Greenland, Guam and
   others) carry rounded figures from the censuses of the 1920s; they add up to about 1.4 M worldwide.
 - **Splits of modern countries** (all estimates): Somalia (British Somaliland 340 000, Jubaland
   120 000, which passes from Kenya to Italy on 29 June 1925, rest Italian); Cameroon (southern
@@ -246,19 +259,22 @@ parchment background (232, 220, 190).
    European settlers against the interior) are left for later. The component tables make that easy.
 4. The Rif Republic controlled most of the Spanish zone of Morocco in early 1925; here the zone is
    counted in ESP.
+5. The Isle of Man's resident population (about 50 000) is inferred from the 1931 count and the
+   reported change since 1921, not read from the 1921 report's table of residents; Alderney's
+   1 500 is an estimate.
 
 ## Summary
 
-World total: **1 948 030 000** (1 688 897 000 in the tags' own figures, 259 133 000 in colonies). OWID's world for 1 January 1925 is ≈ 1 970 M, but its
+World total: **1 948 031 000** (1 689 041 000 in the tags' own figures, 258 990 000 in colonies). OWID's world for 1 January 1925 is ≈ 1 970 M, but its
 modern-border series do not always agree with the censuses: for example OWID India + Pakistan +
 Bangladesh is 365 M in 1925, while the Census of India line (1921: 305.7 M, 1931: 338.2 M, both
 without Burma) and Maddison give 318 M.
 
 | Tag | Name | Population | GDP pc (2011$) | Colonies population | Colonies GDP pc | Status | Estimated part |
 |---|---|---:|---:|---:|---:|---|---|
-| GBR | United Kingdom | 44 987 000 | 8 199 | 72 820 000 | 1 093 | Sovereign | population; GDP pc |
+| GBR | United Kingdom | 45 128 000 | 8 199 | 72 687 000 | 1 079 | Sovereign | population; GDP pc |
 | IRL | Irish Free State | 2 995 000 | 4 101 | — | — | Dominion of GBR | population; GDP pc |
-| FRA | France | 40 460 000 | 6 641 | 65 970 000 | 1 194 | Sovereign | population; GDP pc |
+| FRA | France | 40 460 000 | 6 641 | 65 960 000 | 1 194 | Sovereign | population; GDP pc |
 | BEL | Belgium | 7 743 000 | 7 438 | 11 530 000 | 800 | Sovereign | population; GDP pc |
 | NLD | Netherlands | 7 315 000 | 8 019 | 58 003 000 | 1 497 | Sovereign | population; GDP pc |
 | LUX | Luxembourg | 282 000 | 8 000 | — | — | Sovereign | GDP pc |
@@ -315,7 +331,7 @@ without Burma) and Maddison give 318 M.
 | URY | Uruguay | 1 516 000 | 4 208 | — | — | Sovereign | population; GDP pc |
 | PRY | Paraguay | 776 000 | 2 000 | — | — | Sovereign | population; GDP pc |
 | BRA | Brazil | 30 028 000 | 1 298 | — | — | Sovereign | population; GDP pc |
-| CHN | China | 477 366 000 | 998 | — | — | Sovereign | — |
+| CHN | China | 477 369 000 | 998 | — | — | Sovereign | — |
 | JAP | Japan | 59 104 000 | 3 414 | 24 411 000 | 1 579 | Sovereign | population; GDP pc |
 | MGL | Mongolia | 682 000 | 700 | — | — | Satellite of SOV | GDP pc |
 | TUV | Tannu Tuva | 70 000 | 700 | — | — | Satellite of SOV | population; GDP pc |
@@ -347,14 +363,14 @@ Project Database 2023; `OWID` = Our World in Data population; `census interp A/B
 the two censuses; `est` = estimate explained above; `proxy` = 800 $ sub-Saharan proxy; a
 three-letter code = that country's Maddison value.
 
-#### GBR: metropole 44 987 000 people at 8 199 $; colonies 72 820 000 at 1 093 $
+#### GBR: metropole 45 128 000 people at 8 199 $; colonies 72 687 000 at 1 079 $
 
-Metropole: United Kingdom (GB + N. Ireland). Colonies: the other rows.
+Metropole: United Kingdom (GB + N. Ireland); Isle of Man, Channel Islands. Colonies: the other rows.
 
 | Component | Population | GDP pc (2011$) | Population source | GDP pc source |
 |---|---:|---:|---|---|
 | United Kingdom (GB + N. Ireland) | 44 987 000 | 8 199 | MPD | MPD |
-| Isle of Man, Channel Islands | 140 000 | 8 199 | est | GBR |
+| Isle of Man, Channel Islands | 141 000 | 8 199 | census interp 1921/1931 + est | GBR |
 | Malta, Gibraltar | 235 000 | 2 000 | OWID MLT + est | est |
 | Cyprus | 326 000 | 1 500 | OWID | est |
 | Aden Protectorate | 687 000 | 900 | OWID YEM x 0.20 minus Aden town (in RAJ) | est |
@@ -366,7 +382,7 @@ Metropole: United Kingdom (GB + N. Ireland). Colonies: the other rows.
 | Singapore | 480 000 | 3 255 | MPD | MPD |
 | Brunei | 29 000 | 1 500 | OWID | est |
 | Hong Kong | 616 000 | 2 814 | MPD | MPD interp 1913-1950 |
-| Weihaiwei | 150 000 | 998 | est | CHN |
+| Weihaiwei | 157 000 | 998 | census proj 1911/1921 | CHN |
 | British Somaliland | 340 000 | 800 | est | proxy |
 | Jubaland (Kenya until Jun 1925) | 120 000 | 800 | est | proxy |
 | Nigeria | 24 523 000 | 880 | OWID | MPD |
@@ -397,7 +413,7 @@ Metropole: United Kingdom (GB + N. Ireland). Colonies: the other rows.
 |---|---:|---:|---|---|
 | Irish Free State | 2 995 000 | 4 101 | MPD | MPD |
 
-#### FRA: metropole 40 460 000 people at 6 641 $; colonies 65 970 000 at 1 194 $
+#### FRA: metropole 40 460 000 people at 6 641 $; colonies 65 960 000 at 1 194 $
 
 Metropole: France (metropolitan). Colonies: the other rows.
 
@@ -430,7 +446,7 @@ Metropole: France (metropolitan). Colonies: the other rows.
 | Comoros | 134 000 | 800 | OWID | proxy |
 | French Somaliland | 46 000 | 800 | OWID | proxy |
 | French Cameroun (mandate) | 2 632 000 | 800 | OWID CMR minus British south | proxy |
-| Guangzhouwan | 210 000 | 998 | est | CHN |
+| Guangzhouwan | 200 000 | 998 | interp 1911/1931 | CHN |
 | French India | 290 000 | 1 113 | est (censuses) | IND |
 | Reunion, Guadeloupe, Martinique, Guiana, SPM | 715 000 | 1 300 | est (1921/1926 censuses) | est |
 | New Caledonia, Polynesia, Wallis, 1/2 New Hebrides | 124 000 | 1 300 | est + OWID | est |
@@ -811,11 +827,11 @@ Metropole: United States (48 states, AK, HI). Colonies: the other rows.
 |---|---:|---:|---|---|
 | Brazil | 30 028 000 | 1 298 | MPD | MPD |
 
-#### CHN: 477 366 000 people, 998 $ per person
+#### CHN: 477 369 000 people, 998 $ per person
 
 | Component | Population | GDP pc (2011$) | Population source | GDP pc source |
 |---|---:|---:|---|---|
-| China (MPD minus Tibet and leased territories) | 477 366 000 | 998 | MPD minus TIB/leases | MPD interp 1913-1929 |
+| China (MPD minus Tibet and leased territories) | 477 369 000 | 998 | MPD minus TIB/leases | MPD interp 1913-1929 |
 
 #### JAP: metropole 59 104 000 people at 3 414 $; colonies 24 411 000 at 1 579 $
 
@@ -1098,7 +1114,7 @@ rows that borrow it (Weihaiwei, Guangzhouwan, Kwantung).
 
 | Tag | Literacy | Life exp. | Urban | Colonies literacy | Colonies life exp. | Colonies urban | Literacy | Life exp. | Urban |
 |---|---:|---:|---:|---:|---:|---:|---|---|---|
-| GBR | 0.967 | 58.4 | 0.706 | 0.135 | 27.9 | 0.098 | back-projected | series | series |
+| GBR | 0.967 | 58.4 | 0.706 | 0.133 | 27.8 | 0.097 | back-projected | series | series |
 | IRL | 0.967 | 57.3 | 0.371 | — | — | — | back-projected | series | series |
 | FRA | 0.935 | 54.4 | 0.503 | 0.074 | 28.2 | 0.115 | series | series | series |
 | BEL | 0.932 | 57.1 | 0.798 | 0.167 | 26.7 | 0.074 | series | series | series |
@@ -1187,7 +1203,7 @@ rows that borrow it (Weihaiwei, Guangzhouwan, Kwantung).
 | Tag | Component | Population | Literacy | Life exp. | Urban | Series used |
 |---|---|---:|---:|---:|---:|---|
 | GBR | United Kingdom (GB + N. Ireland) | 44 987 000 | 0.967 b | 58.4 | 0.706 | United Kingdom |
-| GBR | Isle of Man, Channel Islands | 140 000 | 0.967 b | 58.4 | 0.706 | United Kingdom |
+| GBR | Isle of Man, Channel Islands | 141 000 | 0.967 b | 58.4 | 0.706 | United Kingdom |
 | GBR | Malta, Gibraltar | 235 000 | 0.378 b | 43.0 e | 0.740 | lit Malta; LE est; urban Malta |
 | GBR | Cyprus | 326 000 | 0.428 b | 48.5 | 0.130 | Cyprus |
 | GBR | Aden Protectorate | 687 000 | 0.014 b | 22.8 b | 0.045 | Yemen |
@@ -1199,7 +1215,7 @@ rows that borrow it (Weihaiwei, Guangzhouwan, Kwantung).
 | GBR | Singapore | 480 000 | 0.289 b | 36.8 b | 0.633 | Singapore |
 | GBR | Brunei | 29 000 | 0.146 b | 34.4 b | 0.213 | Brunei |
 | GBR | Hong Kong | 616 000 | 0.378 b | 35.0 e | 0.850 e | lit Hong Kong; LE est; urban est |
-| GBR | Weihaiwei | 150 000 | 0.205 e | 30.0 b | 0.068 | lit est (China); LE China; urban China |
+| GBR | Weihaiwei | 157 000 | 0.205 e | 30.0 b | 0.068 | lit est (China); LE China; urban China |
 | GBR | British Somaliland | 340 000 | 0.014 b | 28.2 b | 0.081 | lit Somaliland; LE Somalia; urban Somalia |
 | GBR | Jubaland (Kenya until Jun 1925) | 120 000 | 0.014 b | 28.2 b | 0.081 | lit Somaliland; LE Somalia; urban Somalia |
 | GBR | Nigeria | 24 523 000 | 0.060 b | 24.2 b | 0.079 | Nigeria |
@@ -1251,7 +1267,7 @@ rows that borrow it (Weihaiwei, Guangzhouwan, Kwantung).
 | FRA | Comoros | 134 000 | 0.115 b | 25.4 b | 0.052 | Comoros |
 | FRA | French Somaliland | 46 000 | 0.014 b | 27.7 b | 0.317 | Djibouti |
 | FRA | French Cameroun (mandate) | 2 632 000 | 0.035 b | 26.3 b | 0.077 | Cameroon |
-| FRA | Guangzhouwan | 210 000 | 0.205 e | 30.0 b | 0.068 | lit est (China); LE China; urban China |
+| FRA | Guangzhouwan | 200 000 | 0.205 e | 30.0 b | 0.068 | lit est (China); LE China; urban China |
 | FRA | French India | 290 000 | 0.086 | 27.6 | 0.116 | India |
 | FRA | Reunion, Guadeloupe, Martinique, Guiana, SPM | 715 000 | 0.428 b | 35.3 b | 0.390 | lit Reunion + Guadeloupe + Martinique + French Guiana + Saint Pierre and Miquelon; LE Reunion + Guadeloupe + Martinique + French Guiana; urban Reunion + Guadeloupe + Martinique + French Guiana + Saint Pierre and Miquelon |
 | FRA | New Caledonia, Polynesia, Wallis, 1/2 New Hebrides | 124 000 | 0.195 b | 30.3 b | 0.112 | lit New Caledonia + French Polynesia + Vanuatu; LE New Caledonia + French Polynesia + Wallis and Futuna + Vanuatu; urban New Caledonia + Vanuatu |
@@ -1337,7 +1353,7 @@ rows that borrow it (Weihaiwei, Guangzhouwan, Kwantung).
 | URY | Uruguay | 1 516 000 | 0.679 b | 51.0 | 0.621 | Uruguay |
 | PRY | Paraguay | 776 000 | 0.483 b | 35.5 | 0.276 | Paraguay |
 | BRA | Brazil | 30 028 000 | 0.373 | 33.0 | 0.288 | Brazil |
-| CHN | China (MPD minus Tibet and leased territories) | 477 366 000 | 0.205 e | 30.0 b | 0.068 | lit est (Buck); LE China; urban China |
+| CHN | China (MPD minus Tibet and leased territories) | 477 369 000 | 0.205 e | 30.0 b | 0.068 | lit est (Buck); LE China; urban China |
 | JAP | Japan proper | 59 104 000 | 0.946 b | 44.4 | 0.261 | Japan |
 | JAP | Korea | 19 306 000 | 0.212 b | 31.2 | 0.180 | lit South Korea; LE South Korea + North Korea; urban South Korea + North Korea |
 | JAP | Taiwan | 4 004 000 | 0.200 e | 38.0 e | 0.170 | lit est; LE est; urban Taiwan |

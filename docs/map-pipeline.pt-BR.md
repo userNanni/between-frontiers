@@ -35,7 +35,8 @@ cargo run -p bf-mapgen --release
 2. `provinces`: exceções por `adm1_code`. Chave inexistente é erro.
 3. `carves`: recortes. Uma máscara em lon/lat corta um pedaço de uma província e cria outra com a
    chave `<adm1_code>~<sufixo>`. Serve para fronteira que é paralelo, meridiano ou mar (Sacalina no
-   paralelo 50, Dodecaneso, Curilas). O de Danzig é desenhado à mão e grosseiro.
+   paralelo 50, Dodecaneso, Curilas) e para enclave pequeno com contorno conhecido (Weihaiwei e
+   Guangzhouwan, do OpenHistoricalMap). O de Danzig é desenhado à mão e grosseiro.
 4. `excluded_countries`: unidades fora do mapa.
 5. `metropoles`: a metrópole de cada dono que tem colônias (ver abaixo). Gera o campo `colony` de
    `provinces.ron`.
@@ -51,9 +52,11 @@ súditos e donos das próprias províncias. Colônia de administração direta �
 `colony: true` (o estado não incorporado do Victoria 3): a população dela entra em `colonies` de
 `countries.ron`, nunca nos números nacionais.
 
-O critério é o estatuto legal em 1º de janeiro de 1925: metrópole é o território que fazia parte
-do Estado, com a população representada no parlamento nacional; o resto que o dono governa direto
-é colônia, inclusive mandato e protetorado sem tag. Cada entrada de `metropoles` tem:
+O critério é o estatuto da população em 1º de janeiro de 1925, não o mapa jurídico: metrópole é o
+território cujo povo tinha os direitos dos cidadãos (ou súditos) do centro do Estado; o resto que o
+dono governa direto é colônia, inclusive mandato e protetorado sem tag. É a regra que põe a Argélia,
+francesa na lei, entre as colônias, e as dependências da Coroa, fora do Reino Unido na lei, na
+metrópole. Cada entrada de `metropoles` tem:
 
 - `countries`: códigos `adm0_a3` cujas províncias, quando são daquele dono, são metrópole. Província
   do dono em outro `adm0_a3` é colônia (recorte herda o `adm0_a3` da província de origem).
@@ -70,8 +73,8 @@ donos com província colonial).
 
 | Dono | Metrópole | Colônias | Decisão discutível |
 |---|---|---|---|
-| GBR | Grã-Bretanha e Irlanda do Norte | Todo o resto, inclusive Ilha de Man, Jersey e Guernsey | As dependências da Coroa não são colônia no sentido comum, mas não fazem parte do Reino Unido nem votam em Westminster; seguem a regra legal (140 mil pessoas) |
-| FRA | França continental e Córsega | Argélia, Tunísia, Marrocos, Síria e Líbano (mandatos), Indochina, AOF, AEF, Madagascar, Índia, Antilhas, Guiana, Reunião, Pacífico | **Argélia:** três departamentos franceses desde 1848, mas a maioria muçulmana era súdita sob o *indigénat*, sem cidadania, com governador-geral, orçamento próprio (1900) e as Délégations financières. A lei a chamava de França; o Estado a governava como colônia. Fica colônia, como no Victoria 3, que exige incorporar. As "velhas colônias" só viram departamentos em 1946; Mayotte era parte da colônia de Madagascar |
+| GBR | Grã-Bretanha e Irlanda do Norte, com a Ilha de Man, Jersey e Guernsey (com Alderney e Sark) | Todo o resto, inclusive Weihaiwei | **Dependências da Coroa:** não fazem parte do Reino Unido nem votam em Westminster, mas a população era de súditos britânicos com os mesmos direitos, sem estatuto colonial; pela regra da população (a mesma da Argélia), são metrópole. 141 mil pessoas, com os números do Reino Unido |
+| FRA | França continental e Córsega | Argélia, Tunísia, Marrocos, Síria e Líbano (mandatos), Indochina com Guangzhouwan, AOF, AEF, Madagascar, Índia, Antilhas, Guiana, Reunião, Pacífico | **Argélia:** três departamentos franceses desde 1848, mas a maioria muçulmana era súdita sob o *indigénat*, sem cidadania, com governador-geral, orçamento próprio (1900) e as Délégations financières. A lei a chamava de França; o Estado a governava como colônia. Fica colônia, como no Victoria 3, que exige incorporar. As "velhas colônias" só viram departamentos em 1946; Mayotte era parte da colônia de Madagascar |
 | BEL | Bélgica | Congo, Ruanda-Urundi (mandato) | — |
 | NLD | Países Baixos europeus | Índias Orientais, Suriname, Curaçao com Aruba, Bonaire, Saba, Santo Eustáquio, São Martinho | A revisão constitucional de 1922 chamou as colônias de partes do Reino, sem mudar o governo delas |
 | ESP | Península, Baleares, Canárias, Ceuta e Melilla | Zona do protetorado no Marrocos (com Tânger), Saara, Guiné | Ceuta e Melilla eram praças de soberania ligadas a Cádis e Málaga |
@@ -84,9 +87,9 @@ donos com província colonial).
 | NZL | Nova Zelândia com Chatham, Kermadec e as subantárticas | Samoa Ocidental (mandato), Ilhas Cook, Niue | As Cook e Niue foram anexadas aos limites da Nova Zelândia em 1901, mas com governo à parte |
 | SAF | União Sul-Africana | Sudoeste Africano (mandato), com Walvis Bay | Walvis Bay era da Província do Cabo, mas administrada com o mandato desde 1922 |
 
-Sem colônia: GER (perdeu as suas em 1919), SOV, CHN e os demais. Os arrendamentos na China
-(Weihaiwei, Kwangchowan, Kwantung) são colônia do arrendatário quando há recorte; os que não têm
-recorte ficam na província chinesa (ver Aproximações). RAJ conta a Birmânia, província da Índia
+Sem colônia: GER (perdeu as suas em 1919), SOV, CHN e os demais. Os três arrendamentos na China
+(Kwantung, Weihaiwei, Guangzhouwan) são recortados da província chinesa e são colônia do
+arrendatário; a população deles sai de CHN e entra em `colonies` do dono. RAJ conta a Birmânia, província da Índia
 Britânica até 1937, como parte dele.
 
 ## Saídas
@@ -130,6 +133,8 @@ partir do OpenHistoricalMap.
 | Karafuto (JAP), de Sacalina | Ilha ao sul de 50° N | Exato |
 | Curilas (JAP), de Sacalina | Ilhas a leste de 145,2° E | Exato |
 | Kwantung (JAP), de Liaoning | Península ao sul de 39,45° N | Retângulo; área próxima da real (3.530 × 3.462 km²) |
+| Weihaiwei (GBR), de Shandong | Contorno do OpenHistoricalMap (relação 2848211, CC0), simplificado a 0,004° | Bom: 772 km² de terra contra 746 km² reais (288 milhas², com Liugong). A ilha de Liugong não existe no Natural Earth 1:10m; 45 pixels |
+| Guangzhouwan (FRA), de Guangdong | Contorno do OpenHistoricalMap (relação 2889933, CC0), simplificado a 0,004° | Razoável: 986 km² de terra contra 842 km² de terra firme reais (84.244 ha; 1.300 km² com a água da baía). Entram Donghai, Naozhou e Nansan; a sobra vem da costa generalizada do Natural Earth 1:10m e do contorno largo no interior; 48 pixels |
 | Danzig (DNZ), de Pomerânia | Polígono desenhado à mão | Grosseiro: 1.593 km² contra 1.966 km² reais |
 
 ### Unidade inteira para o dono da maior parte
@@ -193,8 +198,6 @@ partir do OpenHistoricalMap.
 
 **Ásia**
 
-- Shandong → CHN. Weihaiwei era arrendamento britânico até 1930.
-- Guangdong → CHN. Kwangchowan era arrendamento francês.
 - Bengala Ocidental → RAJ. Chandernagore era francesa.
 - Balochistão → RAJ. Gwadar era de Omã.
 - Puducherry: todos os enclaves (Pondicherry, Karaikal, Mahé, Yanam) → FRA.
