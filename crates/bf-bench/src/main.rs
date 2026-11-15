@@ -6,6 +6,7 @@
 //! `--check-determinism` it runs a second time on a different thread count and fails if any
 //! hash differs. The world is a synthetic toy until the game's systems exist.
 
+mod game;
 mod world;
 
 use std::process::ExitCode;
@@ -29,6 +30,7 @@ Usage: bf-bench [options]
   --budget-ms MS        fail when the total simulation time exceeds MS
   --budget-tick-ms MS   fail when the slowest tick exceeds MS
   --out PATH            JSON report path (default bf-bench-report.json)
+  --game                run the real campaign on the 1925 scenario instead of the toy world
 ";
 
 struct Options {
@@ -39,6 +41,7 @@ struct Options {
     budget_ms: Option<f64>,
     budget_tick_ms: Option<f64>,
     out: String,
+    game: bool,
 }
 
 fn parse_args() -> Result<Options, String> {
@@ -50,6 +53,7 @@ fn parse_args() -> Result<Options, String> {
         budget_ms: None,
         budget_tick_ms: None,
         out: "bf-bench-report.json".to_owned(),
+        game: false,
     };
     let mut args = std::env::args().skip(1);
     while let Some(flag) = args.next() {
@@ -72,6 +76,7 @@ fn parse_args() -> Result<Options, String> {
                     .map_err(|_| number_error("--seed"))?
             }
             "--check-determinism" => options.check_determinism = true,
+            "--game" => options.game = true,
             "--budget-ms" => {
                 options.budget_ms = Some(
                     value("--budget-ms")?
@@ -359,6 +364,21 @@ fn main() -> ExitCode {
             return ExitCode::from(if message.is_empty() { 0 } else { 64 });
         }
     };
+    if options.game {
+        return match game::main(
+            options.years,
+            options.seed,
+            options.threads,
+            options.check_determinism,
+            &options.out,
+        ) {
+            Ok(()) => ExitCode::SUCCESS,
+            Err(e) => {
+                eprintln!("bf-bench --game: {e}");
+                ExitCode::FAILURE
+            }
+        };
+    }
     let end = Date::new(world::START.year + options.years as i32, 1, 1);
     let primary = run(options.seed, options.threads, end);
 
