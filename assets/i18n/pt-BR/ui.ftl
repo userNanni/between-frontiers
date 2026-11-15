@@ -208,3 +208,5 @@ hud-includes-colonies = Inclui as colônias.
 country-colonies = Colônias
 country-colonies-value = { $population } · { $provinces } províncias
 settings-map-relief = Relevo do terreno no mapa
+saves-error-load = Não foi possível abrir a campanha: { $error }
+hud-engine = Dia { $tick } da simulação · estado { $hash }

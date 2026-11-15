@@ -8,6 +8,8 @@ use serde::{Deserialize, Serialize};
 
 pub const FORMAT: u32 = 1;
 const META: &str = "campaign.ron";
+/// The engine save (snapshot and command history), next to the campaign file.
+pub const WORLD_FILE: &str = "world.lss";
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct SaveMeta {
