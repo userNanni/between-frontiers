@@ -190,6 +190,24 @@ fn walk_through_the_screens() {
     h.hover_at(population.center());
     h.run_steps(8);
     shot(&mut h, "06d-franca-colonias");
+    // Every figure that has a colonial part splits it in its tooltip.
+    for figure in ["População:", "PIB:", "Área:", "Estados:"] {
+        h.hover_at(egui::pos2(800.0, 600.0));
+        h.run_steps(4);
+        let cell = h
+            .get_all(egui_kittest::kittest::by().label_contains(figure))
+            .next()
+            .unwrap_or_else(|| panic!("{figure} in the HUD"))
+            .rect();
+        h.hover_at(cell.center());
+        h.run_steps(8);
+        assert!(
+            h.get_all(egui_kittest::kittest::by().label("Colônias"))
+                .next()
+                .is_some(),
+            "{figure} tooltip lacks the colonial line"
+        );
+    }
     h.hover_at(egui::pos2(800.0, 600.0));
 
     // 6e. Close-up of the Alps: pastel colours with the terrain shading under them.

@@ -66,10 +66,12 @@ impl MapGpu {
             &vec![0u8; (TABLE_WIDTH * table_rows * 4) as usize],
             4,
         );
-        let mut owner_table = vec![0u16; (TABLE_WIDTH * table_rows) as usize];
+        // Per province: owner index in bits 0-14, colony flag in bit 15, state id in 16-31.
+        let mut owner_table = vec![0u32; (TABLE_WIDTH * table_rows) as usize];
         for (i, owner) in data.owner_of.iter().enumerate() {
             let colony = if data.colony_of[i] { 0x8000 } else { 0 };
-            owner_table[i] = (*owner & 0x7FFF) | colony;
+            let state = u32::from(data.state_of[i]) << 16;
+            owner_table[i] = u32::from(*owner & 0x7FFF) | colony | state;
         }
         let owners = upload(
             device,
@@ -77,9 +79,9 @@ impl MapGpu {
             "map owners",
             TABLE_WIDTH,
             table_rows,
-            wgpu::TextureFormat::R16Uint,
+            wgpu::TextureFormat::R32Uint,
             bytemuck::cast_slice(&owner_table),
-            2,
+            4,
         );
         let fields = upload(
             device,

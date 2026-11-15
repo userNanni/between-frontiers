@@ -5,11 +5,20 @@
 use std::path::Path;
 
 use bf_sim::indicators::{QualityOfLife, quality_of_life};
-use bf_sim::scenario::{CountriesFile, CountryDef, MapFile, ProvinceDef, Status};
+use bf_sim::scenario::{CountriesFile, CountryDef, MapFile, ProvinceDef, StateDef, Status};
 use laplace_schelling::calendar::Date;
 
 pub struct Province {
     pub def: ProvinceDef,
+    /// Index into [`World::countries`].
+    pub owner: Option<usize>,
+    /// Index into [`World::states`]; `None` for maps written before states existed.
+    pub state: Option<usize>,
+}
+
+/// A state: the unit of the simulation, made of provinces of one owner.
+pub struct State {
+    pub def: StateDef,
     /// Index into [`World::countries`].
     pub owner: Option<usize>,
 }
@@ -19,6 +28,9 @@ pub struct Country {
     /// Metropole provinces.
     pub provinces: Vec<u16>,
     pub colonial_provinces: Vec<u16>,
+    /// Metropole and colonial states (indices into [`World::states`]).
+    pub states: Vec<usize>,
+    pub colonial_states: Vec<usize>,
     /// Metropole area.
     pub area_km2: f64,
     pub colonial_area_km2: f64,
@@ -69,6 +81,8 @@ pub struct World {
     pub world_gdp: f64,
     pub countries: Vec<Country>,
     pub provinces: Vec<Province>,
+    /// Sorted by id: `states[i].def.id == i + 1`.
+    pub states: Vec<State>,
     pub map: MapFile,
 }
 
@@ -110,10 +124,25 @@ impl World {
             .iter()
             .map(|def| Province {
                 owner: index_of(&def.owner),
+                state: None,
                 def: def.clone(),
             })
             .collect();
         provinces.sort_by_key(|p| p.def.id);
+        let mut states: Vec<State> = map
+            .states
+            .iter()
+            .map(|def| State {
+                owner: index_of(&def.owner),
+                def: def.clone(),
+            })
+            .collect();
+        states.sort_by_key(|s| s.def.id);
+        for p in &mut provinces {
+            p.state = usize::from(p.def.state)
+                .checked_sub(1)
+                .filter(|&i| states.get(i).is_some_and(|s| s.def.id == p.def.state));
+        }
 
         let mut countries: Vec<Country> = file
             .countries
@@ -127,6 +156,8 @@ impl World {
                 def: def.clone(),
                 provinces: Vec::new(),
                 colonial_provinces: Vec::new(),
+                states: Vec::new(),
+                colonial_states: Vec::new(),
                 area_km2: 0.0,
                 colonial_area_km2: 0.0,
                 rank_population: 0,
@@ -154,6 +185,15 @@ impl World {
                 } else {
                     c.provinces.push(p.def.id);
                     c.area_km2 += p.def.area_km2 as f64;
+                }
+            }
+        }
+        for (i, st) in states.iter().enumerate() {
+            if let Some(o) = st.owner {
+                if st.def.colony {
+                    countries[o].colonial_states.push(i);
+                } else {
+                    countries[o].states.push(i);
                 }
             }
         }
@@ -202,8 +242,19 @@ impl World {
             world_gdp,
             countries,
             provinces,
+            states,
             map,
         }
+    }
+
+    /// Tooltip text for a province: the state name (the province name on maps without states)
+    /// and the owner.
+    pub fn place_name(&self, province: u16) -> Option<(&str, Option<usize>)> {
+        let p = self.provinces.get(usize::from(province).checked_sub(1)?)?;
+        let name = p
+            .state
+            .map_or(p.def.name.as_str(), |s| self.states[s].def.name.as_str());
+        Some((name, p.owner))
     }
 
     /// Finds the capital provinces from the capital coordinates, using the projection.

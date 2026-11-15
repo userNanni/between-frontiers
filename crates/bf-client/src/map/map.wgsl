@@ -1,7 +1,7 @@
 // Political map: one draw call over the map rectangle.
 //
 // `ids` holds the province id of every texel (0 = water). `palette` and `owners` are indexed by
-// province id, laid out in rows of 256. `fields` is a quarter-resolution distance field:
+// province id, laid out in rows of 256; `owners` also carries the state of each province. `fields` is a quarter-resolution distance field:
 // r = distance from water to the nearest land, g = distance from land to the nearest border.
 
 struct Uniforms {
@@ -53,10 +53,21 @@ fn table_coord(id: u32) -> vec2<i32> {
     return vec2<i32>(i32(id % 256u), i32(id / 256u));
 }
 
-// The owner table holds the owner index in the low 15 bits and the colony flag in bit 15.
+// The owner table holds the owner index in bits 0-14, the colony flag in bit 15 and the state id
+// in bits 16-31.
 fn owner_of(id: u32) -> u32 {
     if (id == 0u) { return 0u; }
     return textureLoad(owners, table_coord(id), 0).r & 0x7FFFu;
+}
+
+fn state_of(id: u32) -> u32 {
+    if (id == 0u) { return 0u; }
+    return textureLoad(owners, table_coord(id), 0).r >> 16u;
+}
+
+// Whether the neighbour `n` is land of another state (water is a coast, not a state border).
+fn other_state(n: u32, state: u32) -> bool {
+    return n != 0u && state_of(n) != state;
 }
 
 fn is_colony(id: u32) -> bool {
@@ -158,11 +169,24 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     let country_edge = id != 0u && (o0 != me || o1 != me || o2 != me || o3 != me);
     let province_edge = id != 0u && (n0 != id || n1 != id || n2 != id || n3 != id);
     let coast = id != 0u && (n0 == 0u || n1 == 0u || n2 == 0u || n3 == 0u);
+    // State borders: a hint at world scale; from mid zoom on, darker and twice as wide as
+    // province borders, so the two read apart.
+    let state_k = 1.0 - smoothstep(1.5, 6.0, u.texel_per_px);
+    let st = state_of(id);
+    let w2 = w * (1.0 + state_k);
+    let state_edge = id != 0u && (other_state(n0, st) || other_state(n1, st)
+        || other_state(n2, st) || other_state(n3, st)
+        || other_state(id_at(t + vec2<f32>(w2, 0.0)), st)
+        || other_state(id_at(t - vec2<f32>(w2, 0.0)), st)
+        || other_state(id_at(t + vec2<f32>(0.0, w2)), st)
+        || other_state(id_at(t - vec2<f32>(0.0, w2)), st));
 
-    if (province_edge && !country_edge) {
-        // Province borders fade in as the camera zooms in.
+    if (state_edge && !country_edge) {
+        col = mix(col, col * 0.42, 0.12 + state_k * 0.63);
+    } else if (province_edge && !country_edge) {
+        // Province borders, fainter, fade in as the camera zooms in.
         let k = 1.0 - smoothstep(0.6, 2.2, u.texel_per_px);
-        col = mix(col, col * 0.55, k * 0.6);
+        col = mix(col, col * 0.62, k * 0.5);
     }
     if (country_edge) {
         col = mix(col, INK, select(0.85, 0.7, coast));

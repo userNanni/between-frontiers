@@ -92,9 +92,25 @@ pub fn show(shared: &Shared, ui: &mut Ui, country: usize) {
     );
     bf_ui_kit::stat_row(
         ui,
-        &i18n.tr("stat-provinces"),
-        &i18n.int(c.provinces.len() as i64),
+        &i18n.tr("stat-states"),
+        &i18n.int(c.states.len() as i64),
     );
+    if c.def.colonies.is_some() || !c.colonial_states.is_empty() {
+        let value = i18n.tr_args(
+            "country-colonies-value",
+            &[
+                (
+                    "population",
+                    Arg::String(i18n.compact(c.colonial_population())),
+                ),
+                (
+                    "states",
+                    Arg::String(i18n.int(c.colonial_states.len() as i64)),
+                ),
+            ],
+        );
+        bf_ui_kit::stat_row(ui, &i18n.tr("country-colonies"), &value);
+    }
     if !c.subjects.is_empty() {
         let names: Vec<String> = c
             .subjects

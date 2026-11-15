@@ -292,6 +292,8 @@ dezenas de milhões de pessoas são divididas.
 
 - Com 900, toda unidade histórica reconhecível existe sem exigir desenho abaixo do primeiro nível
   administrativo, onde não há fonte livre.
+- Em uso: 870 estados em 1925, agrupados por `data/scenario/1925/states.ron`. As regras, as
+  aproximações e o que falta para os 900 estão em `docs/map-pipeline.pt-BR.md`, "Estados".
 - Em 2025 a média por estado chega a cerca de 9 milhões. Os extremos são grandes em qualquer
   cenário: dezenas de milhões em Bengala, poucos milhares no Yukon.
 - O mundo de 1925 tinha de 62 a 76 Estados soberanos, conforme o critério, e mais de uma centena de
