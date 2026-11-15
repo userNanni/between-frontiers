@@ -36,6 +36,8 @@ struct Province {
     key: String,
     name: String,
     owner: String,
+    /// Natural Earth `adm0_a3` of the unit the province comes from (of the parent for a carve).
+    adm0: String,
     geometry: MultiPolygon<f64>,
 }
 
@@ -77,6 +79,7 @@ fn run() -> Result<(), String> {
     let mut provinces = collect_provinces(&owners, admin1, admin0)?;
     apply_carves(&owners, &mut provinces)?;
     provinces.sort_by(|a, b| a.key.cmp(&b.key));
+    let colony = mark_colonies(&owners, &provinces)?;
     if provinces.len() >= usize::from(u16::MAX) {
         return Err(format!(
             "{} provinces do not fit in 16 bits",
@@ -121,8 +124,7 @@ fn run() -> Result<(), String> {
                 center: (round_to(cx, 100.0) as f32, round_to(cy, 100.0) as f32),
                 area_km2: round_to(p.geometry.geodesic_area_unsigned() / 1e6, 10.0) as f32,
                 pixels: pixels[id],
-                // Filled from the ownership file once colonies are marked there.
-                colony: false,
+                colony: colony[i],
             }
         })
         .collect();
@@ -213,6 +215,7 @@ fn collect_provinces(
             key,
             name,
             owner,
+            adm0: adm0.to_string(),
             geometry: f.geometry.clone(),
         });
     }
@@ -248,6 +251,7 @@ fn collect_provinces(
             key: format!("{ADM0_KEY_PREFIX}{adm0}"),
             name: f.get("ADMIN").to_string(),
             owner: owner.clone(),
+            adm0: adm0.to_string(),
             geometry: rest.orient(Direction::Default),
         });
     }
@@ -304,14 +308,66 @@ fn apply_carves(owners: &OwnersFile, provinces: &mut Vec<Province>) -> Result<()
             ));
         }
         provinces[i].geometry = rest.orient(Direction::Default);
+        let adm0 = provinces[i].adm0.clone();
         provinces.push(Province {
             key,
             name: carve.name.clone(),
             owner: carve.owner.clone(),
+            adm0,
             geometry: piece.orient(Direction::Default),
         });
     }
     Ok(())
+}
+
+/// Colony flag per province, in the order of `provinces`. Checks that every entry of
+/// `metropoles` matches the map: listed countries and keys must hold provinces of that owner,
+/// and every listed owner must end up with both metropole and colonies.
+fn mark_colonies(owners: &OwnersFile, provinces: &[Province]) -> Result<Vec<bool>, String> {
+    let mut errors = Vec::new();
+    for (tag, metropole) in &owners.metropoles {
+        let owned: Vec<&Province> = provinces.iter().filter(|p| &p.owner == tag).collect();
+        for country in &metropole.countries {
+            if !owned.iter().any(|p| &p.adm0 == country) {
+                errors.push(format!("{tag}: no province of {country}"));
+            }
+        }
+        for key in metropole.provinces.iter().chain(&metropole.colonies) {
+            match owned.iter().find(|p| &p.key == key) {
+                None => errors.push(format!("{tag}: {key} is not a province of {tag}")),
+                Some(p) => {
+                    let in_countries = metropole.countries.contains(&p.adm0);
+                    let as_colony = metropole.colonies.contains(key);
+                    if in_countries != as_colony {
+                        let list = if as_colony { "colonies" } else { "provinces" };
+                        errors.push(format!("{tag}: {key} ({}) is redundant in {list}", p.adm0));
+                    }
+                }
+            }
+        }
+        let metropole_count = owned
+            .iter()
+            .filter(|p| metropole.contains(&p.key, &p.adm0))
+            .count();
+        if metropole_count == 0 || metropole_count == owned.len() {
+            errors.push(format!(
+                "{tag}: {metropole_count} of {} provinces in the metropole",
+                owned.len()
+            ));
+        }
+    }
+    if !errors.is_empty() {
+        return Err(format!("metropoles: {}", errors.join("; ")));
+    }
+    Ok(provinces
+        .iter()
+        .map(|p| {
+            owners
+                .metropoles
+                .get(&p.owner)
+                .is_some_and(|m| !m.contains(&p.key, &p.adm0))
+        })
+        .collect())
 }
 
 /// Polygons in texture pixels; each polygon is its exterior followed by its holes.
@@ -441,10 +497,14 @@ fn write_previews(dir: &Path, frame: &Frame, buf: &[u16], map: &MapFile) -> Resu
 
 fn print_summary(map: &MapFile, png_path: &Path) {
     let mut per_tag: BTreeMap<&str, (usize, u64)> = BTreeMap::new();
+    let mut colonies: BTreeMap<&str, usize> = BTreeMap::new();
     for p in &map.provinces {
         let e = per_tag.entry(p.owner.as_str()).or_default();
         e.0 += 1;
         e.1 += u64::from(p.pixels);
+        if p.colony {
+            *colonies.entry(p.owner.as_str()).or_default() += 1;
+        }
     }
     let zero = map.provinces.iter().filter(|p| p.pixels == 0).count();
     let size = fs::metadata(png_path).map(|m| m.len()).unwrap_or(0);
@@ -468,6 +528,7 @@ fn print_summary(map: &MapFile, png_path: &Path) {
         .map(|(k, _)| *k)
         .collect();
     println!("tags without pixels: {invisible:?}");
+    println!("colonial provinces per owner: {colonies:?}");
 }
 
 const ATTRIBUTION: &str = "\
@@ -504,6 +565,22 @@ mod tests {
             assert!(owners::is_tag(&p.owner), "{} owned by {}", p.key, p.owner);
         }
         assert!(map.provinces.windows(2).all(|w| w[0].key < w[1].key));
+    }
+
+    #[test]
+    fn colonies_belong_to_owners_with_a_metropole() {
+        let map = committed_map();
+        let text =
+            fs::read_to_string(repo_root().join("data/scenario/1925/province_owners.ron")).unwrap();
+        let owners = OwnersFile::parse(&text).unwrap();
+        let with_colonies: BTreeSet<&str> = map
+            .provinces
+            .iter()
+            .filter(|p| p.colony)
+            .map(|p| p.owner.as_str())
+            .collect();
+        let listed: BTreeSet<&str> = owners.metropoles.keys().map(String::as_str).collect();
+        assert_eq!(with_colonies, listed);
     }
 
     #[test]

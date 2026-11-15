@@ -33,6 +33,36 @@ pub struct OwnersFile {
     pub provinces: BTreeMap<String, String>,
     /// Pieces cut out of a province, applied in order.
     pub carves: Vec<Carve>,
+    /// Metropole of every owner that rules colonies directly. A province of a listed owner
+    /// outside its metropole is a colony; owners not listed have none.
+    #[serde(default)]
+    pub metropoles: BTreeMap<String, Metropole>,
+}
+
+/// The territory legally part of a state on the start date (Victoria 3's incorporated states).
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Metropole {
+    /// Natural Earth `adm0_a3` codes whose provinces, when owned by this tag, are metropole.
+    pub countries: Vec<String>,
+    /// Province keys (`adm1_code` or carve keys) of other units that are metropole too.
+    #[serde(default)]
+    pub provinces: Vec<String>,
+    /// Province keys inside `countries` that are colonies all the same.
+    #[serde(default)]
+    pub colonies: Vec<String>,
+}
+
+impl Metropole {
+    /// Whether a province of this owner, with the given key and `adm0_a3`, is in the metropole.
+    pub fn contains(&self, key: &str, adm0: &str) -> bool {
+        let listed = |keys: &[String]| keys.iter().any(|k| k == key);
+        if self.countries.iter().any(|c| c == adm0) {
+            !listed(&self.colonies)
+        } else {
+            listed(&self.provinces)
+        }
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -74,6 +104,11 @@ impl OwnersFile {
                 self.carves
                     .iter()
                     .map(|c| (c.from.as_str(), c.owner.as_str())),
+            )
+            .chain(
+                self.metropoles
+                    .keys()
+                    .map(|tag| ("metropoles", tag.as_str())),
             );
         let bad: Vec<String> = owners
             .filter(|(_, tag)| !is_tag(tag))
@@ -130,6 +165,22 @@ mod tests {
                 assert!((-180.0..=180.0).contains(&lon) && (-90.0..=90.0).contains(&lat));
             }
         }
+    }
+
+    #[test]
+    fn metropole_membership() {
+        let file = OwnersFile::parse(
+            r#"(start_date: "1925-01-01", excluded_countries: [], countries: {}, provinces: {},
+                carves: [], metropoles: {"JAP": (countries: ["JPN"],
+                provinces: ["RUS-2616~kurils"], colonies: ["JPN-1"])})"#,
+        )
+        .unwrap();
+        let jap = &file.metropoles["JAP"];
+        assert!(jap.contains("JPN-2", "JPN"));
+        assert!(!jap.contains("JPN-1", "JPN"));
+        assert!(jap.contains("RUS-2616~kurils", "RUS"));
+        assert!(!jap.contains("RUS-2616~karafuto", "RUS"));
+        assert!(!jap.contains("KOR-1", "KOR"));
     }
 
     #[test]
