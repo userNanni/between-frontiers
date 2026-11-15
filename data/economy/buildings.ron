@@ -1,0 +1,383 @@
+// Economy catalogue: buildings and production methods. Format: bf_sim::economy::BuildingsFile.
+// Quantities per building level per year; jobs per level. Calibration pending (docs/economy.pt-BR.md).
+(
+    buildings: [
+        (key: "grain_farm", group: "agriculture", resource: None, farm: Some("grain_farm"), methods: [
+            (key: "traditional", available_from: 1925, inputs: [("tools", 2)], outputs: [("grain", 6000)], jobs: [("peasant", 850), ("farm_laborer", 100), ("landowner", 20), ("clergy", 5)]),
+            (key: "mechanized", available_from: 1925, inputs: [("tools", 6), ("machinery", 4), ("fuel", 30)], outputs: [("grain", 7800)], jobs: [("farm_laborer", 380), ("skilled_worker", 40), ("landowner", 20), ("engineer", 5)]),
+            (key: "fertilized", available_from: 1925, inputs: [("tools", 6), ("machinery", 4), ("fuel", 30), ("fertilizer", 40)], outputs: [("grain", 10800)], jobs: [("farm_laborer", 380), ("skilled_worker", 40), ("landowner", 20), ("engineer", 5)]),
+            (key: "green_revolution", available_from: 1965, inputs: [("machinery", 8), ("fuel", 50), ("fertilizer", 90), ("chemicals", 10)], outputs: [("grain", 18000)], jobs: [("farm_laborer", 250), ("skilled_worker", 50), ("landowner", 20), ("engineer", 10)]),
+        ]),
+        (key: "maize_farm", group: "agriculture", resource: None, farm: Some("maize_farm"), methods: [
+            (key: "traditional", available_from: 1925, inputs: [("tools", 2)], outputs: [("maize", 7500)], jobs: [("peasant", 850), ("farm_laborer", 100), ("landowner", 20), ("clergy", 5)]),
+            (key: "mechanized", available_from: 1925, inputs: [("tools", 6), ("machinery", 4), ("fuel", 30)], outputs: [("maize", 9750)], jobs: [("farm_laborer", 380), ("skilled_worker", 40), ("landowner", 20), ("engineer", 5)]),
+            (key: "fertilized", available_from: 1925, inputs: [("tools", 6), ("machinery", 4), ("fuel", 30), ("fertilizer", 40)], outputs: [("maize", 13500)], jobs: [("farm_laborer", 380), ("skilled_worker", 40), ("landowner", 20), ("engineer", 5)]),
+            (key: "green_revolution", available_from: 1965, inputs: [("machinery", 8), ("fuel", 50), ("fertilizer", 90), ("chemicals", 10)], outputs: [("maize", 22500)], jobs: [("farm_laborer", 250), ("skilled_worker", 50), ("landowner", 20), ("engineer", 10)]),
+        ]),
+        (key: "rice_paddy", group: "agriculture", resource: None, farm: Some("rice_paddy"), methods: [
+            (key: "traditional", available_from: 1925, inputs: [("tools", 2)], outputs: [("rice", 5000)], jobs: [("peasant", 850), ("farm_laborer", 100), ("landowner", 20), ("clergy", 5)]),
+            (key: "mechanized", available_from: 1925, inputs: [("tools", 6), ("machinery", 4), ("fuel", 30)], outputs: [("rice", 6500)], jobs: [("farm_laborer", 380), ("skilled_worker", 40), ("landowner", 20), ("engineer", 5)]),
+            (key: "fertilized", available_from: 1925, inputs: [("tools", 6), ("machinery", 4), ("fuel", 30), ("fertilizer", 40)], outputs: [("rice", 9000)], jobs: [("farm_laborer", 380), ("skilled_worker", 40), ("landowner", 20), ("engineer", 5)]),
+            (key: "green_revolution", available_from: 1965, inputs: [("machinery", 8), ("fuel", 50), ("fertilizer", 90), ("chemicals", 10)], outputs: [("rice", 15000)], jobs: [("farm_laborer", 250), ("skilled_worker", 50), ("landowner", 20), ("engineer", 10)]),
+        ]),
+        (key: "cotton_plantation", group: "agriculture", resource: None, farm: Some("cotton_plantation"), methods: [
+            (key: "smallholding", available_from: 1925, inputs: [("tools", 2)], outputs: [("cotton", 350)], jobs: [("peasant", 850), ("farm_laborer", 100), ("landowner", 20), ("clergy", 5)]),
+            (key: "plantation", available_from: 1925, inputs: [("tools", 4), ("transportation", 3)], outputs: [("cotton", 472.5)], jobs: [("farm_laborer", 880), ("landowner", 30), ("clerk", 10), ("manager", 5)]),
+            (key: "fertilized", available_from: 1935, inputs: [("tools", 5), ("transportation", 3), ("fertilizer", 30), ("chemicals", 5)], outputs: [("cotton", 665)], jobs: [("farm_laborer", 650), ("landowner", 30), ("clerk", 15), ("engineer", 5), ("manager", 5)]),
+        ]),
+        (key: "sugarcane_plantation", group: "agriculture", resource: None, farm: Some("sugarcane_plantation"), methods: [
+            (key: "smallholding", available_from: 1925, inputs: [("tools", 2)], outputs: [("sugar", 1800)], jobs: [("peasant", 850), ("farm_laborer", 100), ("landowner", 20), ("clergy", 5)]),
+            (key: "plantation", available_from: 1925, inputs: [("tools", 4), ("transportation", 3)], outputs: [("sugar", 2430)], jobs: [("farm_laborer", 880), ("landowner", 30), ("clerk", 10), ("manager", 5)]),
+            (key: "fertilized", available_from: 1935, inputs: [("tools", 5), ("transportation", 3), ("fertilizer", 30), ("chemicals", 5)], outputs: [("sugar", 3420)], jobs: [("farm_laborer", 650), ("landowner", 30), ("clerk", 15), ("engineer", 5), ("manager", 5)]),
+        ]),
+        (key: "sugar_beet_farm", group: "agriculture", resource: None, farm: Some("sugar_beet_farm"), methods: [
+            (key: "traditional", available_from: 1925, inputs: [("tools", 2)], outputs: [("sugar", 1500)], jobs: [("peasant", 850), ("farm_laborer", 100), ("landowner", 20), ("clergy", 5)]),
+            (key: "mechanized", available_from: 1925, inputs: [("tools", 6), ("machinery", 4), ("fuel", 30)], outputs: [("sugar", 1950)], jobs: [("farm_laborer", 380), ("skilled_worker", 40), ("landowner", 20), ("engineer", 5)]),
+            (key: "fertilized", available_from: 1925, inputs: [("tools", 6), ("machinery", 4), ("fuel", 30), ("fertilizer", 40)], outputs: [("sugar", 2700)], jobs: [("farm_laborer", 380), ("skilled_worker", 40), ("landowner", 20), ("engineer", 5)]),
+            (key: "green_revolution", available_from: 1965, inputs: [("machinery", 8), ("fuel", 50), ("fertilizer", 90), ("chemicals", 10)], outputs: [("sugar", 4500)], jobs: [("farm_laborer", 250), ("skilled_worker", 50), ("landowner", 20), ("engineer", 10)]),
+        ]),
+        (key: "coffee_plantation", group: "agriculture", resource: None, farm: Some("coffee_plantation"), methods: [
+            (key: "smallholding", available_from: 1925, inputs: [("tools", 2)], outputs: [("coffee", 300)], jobs: [("peasant", 850), ("farm_laborer", 100), ("landowner", 20), ("clergy", 5)]),
+            (key: "plantation", available_from: 1925, inputs: [("tools", 4), ("transportation", 3)], outputs: [("coffee", 405)], jobs: [("farm_laborer", 880), ("landowner", 30), ("clerk", 10), ("manager", 5)]),
+            (key: "fertilized", available_from: 1935, inputs: [("tools", 5), ("transportation", 3), ("fertilizer", 30), ("chemicals", 5)], outputs: [("coffee", 570)], jobs: [("farm_laborer", 650), ("landowner", 30), ("clerk", 15), ("engineer", 5), ("manager", 5)]),
+        ]),
+        (key: "tea_plantation", group: "agriculture", resource: None, farm: Some("tea_plantation"), methods: [
+            (key: "smallholding", available_from: 1925, inputs: [("tools", 2)], outputs: [("tea", 250)], jobs: [("peasant", 850), ("farm_laborer", 100), ("landowner", 20), ("clergy", 5)]),
+            (key: "plantation", available_from: 1925, inputs: [("tools", 4), ("transportation", 3)], outputs: [("tea", 337.5)], jobs: [("farm_laborer", 880), ("landowner", 30), ("clerk", 10), ("manager", 5)]),
+            (key: "fertilized", available_from: 1935, inputs: [("tools", 5), ("transportation", 3), ("fertilizer", 30), ("chemicals", 5)], outputs: [("tea", 475)], jobs: [("farm_laborer", 650), ("landowner", 30), ("clerk", 15), ("engineer", 5), ("manager", 5)]),
+        ]),
+        (key: "cocoa_plantation", group: "agriculture", resource: None, farm: Some("cocoa_plantation"), methods: [
+            (key: "smallholding", available_from: 1925, inputs: [("tools", 2)], outputs: [("cocoa", 300)], jobs: [("peasant", 850), ("farm_laborer", 100), ("landowner", 20), ("clergy", 5)]),
+            (key: "plantation", available_from: 1925, inputs: [("tools", 4), ("transportation", 3)], outputs: [("cocoa", 405)], jobs: [("farm_laborer", 880), ("landowner", 30), ("clerk", 10), ("manager", 5)]),
+            (key: "fertilized", available_from: 1935, inputs: [("tools", 5), ("transportation", 3), ("fertilizer", 30), ("chemicals", 5)], outputs: [("cocoa", 570)], jobs: [("farm_laborer", 650), ("landowner", 30), ("clerk", 15), ("engineer", 5), ("manager", 5)]),
+        ]),
+        (key: "rubber_plantation", group: "agriculture", resource: None, farm: Some("rubber_plantation"), methods: [
+            (key: "smallholding", available_from: 1925, inputs: [("tools", 2)], outputs: [("natural_rubber", 250)], jobs: [("peasant", 850), ("farm_laborer", 100), ("landowner", 20), ("clergy", 5)]),
+            (key: "plantation", available_from: 1925, inputs: [("tools", 4), ("transportation", 3)], outputs: [("natural_rubber", 337.5)], jobs: [("farm_laborer", 880), ("landowner", 30), ("clerk", 10), ("manager", 5)]),
+            (key: "fertilized", available_from: 1935, inputs: [("tools", 5), ("transportation", 3), ("fertilizer", 30), ("chemicals", 5)], outputs: [("natural_rubber", 475)], jobs: [("farm_laborer", 650), ("landowner", 30), ("clerk", 15), ("engineer", 5), ("manager", 5)]),
+        ]),
+        (key: "tobacco_plantation", group: "agriculture", resource: None, farm: Some("tobacco_plantation"), methods: [
+            (key: "smallholding", available_from: 1925, inputs: [("tools", 2)], outputs: [("tobacco", 220)], jobs: [("peasant", 850), ("farm_laborer", 100), ("landowner", 20), ("clergy", 5)]),
+            (key: "plantation", available_from: 1925, inputs: [("tools", 4), ("transportation", 3)], outputs: [("tobacco", 297)], jobs: [("farm_laborer", 880), ("landowner", 30), ("clerk", 10), ("manager", 5)]),
+            (key: "fertilized", available_from: 1935, inputs: [("tools", 5), ("transportation", 3), ("fertilizer", 30), ("chemicals", 5)], outputs: [("tobacco", 418)], jobs: [("farm_laborer", 650), ("landowner", 30), ("clerk", 15), ("engineer", 5), ("manager", 5)]),
+        ]),
+        (key: "fruit_plantation", group: "agriculture", resource: None, farm: Some("fruit_plantation"), methods: [
+            (key: "smallholding", available_from: 1925, inputs: [("tools", 2)], outputs: [("fruit", 3000)], jobs: [("peasant", 850), ("farm_laborer", 100), ("landowner", 20), ("clergy", 5)]),
+            (key: "plantation", available_from: 1925, inputs: [("tools", 4), ("transportation", 3)], outputs: [("fruit", 4050)], jobs: [("farm_laborer", 880), ("landowner", 30), ("clerk", 10), ("manager", 5)]),
+            (key: "fertilized", available_from: 1935, inputs: [("tools", 5), ("transportation", 3), ("fertilizer", 30), ("chemicals", 5)], outputs: [("fruit", 5700)], jobs: [("farm_laborer", 650), ("landowner", 30), ("clerk", 15), ("engineer", 5), ("manager", 5)]),
+        ]),
+        (key: "fiber_plantation", group: "agriculture", resource: None, farm: Some("fiber_plantation"), methods: [
+            (key: "smallholding", available_from: 1925, inputs: [("tools", 2)], outputs: [("plant_fibers", 1000)], jobs: [("peasant", 850), ("farm_laborer", 100), ("landowner", 20), ("clergy", 5)]),
+            (key: "plantation", available_from: 1925, inputs: [("tools", 4), ("transportation", 3)], outputs: [("plant_fibers", 1350)], jobs: [("farm_laborer", 880), ("landowner", 30), ("clerk", 10), ("manager", 5)]),
+            (key: "fertilized", available_from: 1935, inputs: [("tools", 5), ("transportation", 3), ("fertilizer", 30), ("chemicals", 5)], outputs: [("plant_fibers", 1900)], jobs: [("farm_laborer", 650), ("landowner", 30), ("clerk", 15), ("engineer", 5), ("manager", 5)]),
+        ]),
+        (key: "vineyard", group: "agriculture", resource: None, farm: Some("vineyard"), methods: [
+            (key: "smallholding", available_from: 1925, inputs: [("tools", 2)], outputs: [("beverages", 900)], jobs: [("peasant", 850), ("farm_laborer", 100), ("landowner", 20), ("clergy", 5)]),
+            (key: "plantation", available_from: 1925, inputs: [("tools", 4), ("transportation", 3)], outputs: [("beverages", 1215)], jobs: [("farm_laborer", 880), ("landowner", 30), ("clerk", 10), ("manager", 5)]),
+            (key: "fertilized", available_from: 1935, inputs: [("tools", 5), ("transportation", 3), ("fertilizer", 30), ("chemicals", 5)], outputs: [("beverages", 1710)], jobs: [("farm_laborer", 650), ("landowner", 30), ("clerk", 15), ("engineer", 5), ("manager", 5)]),
+        ]),
+        (key: "livestock_ranch", group: "agriculture", resource: None, farm: Some("livestock_ranch"), methods: [
+            (key: "open_range", available_from: 1925, inputs: [("tools", 1)], outputs: [("meat", 400), ("wool", 60)], jobs: [("farm_laborer", 600), ("landowner", 30), ("clergy", 2)]),
+            (key: "feedlot", available_from: 1950, inputs: [("maize", 2500), ("machinery", 4), ("chemicals", 5)], outputs: [("meat", 1400)], jobs: [("farm_laborer", 300), ("skilled_worker", 40), ("landowner", 20), ("engineer", 5)]),
+        ]),
+        (key: "dairy_farm", group: "agriculture", resource: None, farm: Some("dairy_farm"), methods: [
+            (key: "hand_milking", available_from: 1925, inputs: [("grain", 400), ("tools", 2)], outputs: [("dairy", 2500), ("meat", 80)], jobs: [("peasant", 500), ("farm_laborer", 200), ("landowner", 15)]),
+            (key: "milking_machines", available_from: 1930, inputs: [("grain", 600), ("machinery", 4), ("electricity", 80)], outputs: [("dairy", 5000), ("meat", 120)], jobs: [("farm_laborer", 250), ("skilled_worker", 40), ("landowner", 15)]),
+        ]),
+        (key: "forestry", group: "agriculture", resource: None, farm: Some("forestry"), methods: [
+            (key: "axe_and_saw", available_from: 1925, inputs: [("tools", 3)], outputs: [("timber", 30000)], jobs: [("laborer", 800), ("manager", 5), ("capitalist", 5)]),
+            (key: "chainsaw", available_from: 1950, inputs: [("tools", 3), ("machinery", 3), ("fuel", 40)], outputs: [("timber", 80000)], jobs: [("laborer", 450), ("skilled_worker", 40), ("manager", 5), ("capitalist", 5)]),
+        ]),
+        (key: "fishery", group: "agriculture", resource: None, farm: Some("fishery"), methods: [
+            (key: "sail_and_oar", available_from: 1925, inputs: [("tools", 2)], outputs: [("fish", 1200)], jobs: [("peasant", 700), ("farm_laborer", 100), ("capitalist", 5)]),
+            (key: "steam_trawler", available_from: 1925, inputs: [("ships", 3), ("coal", 500)], outputs: [("fish", 4000)], jobs: [("laborer", 500), ("skilled_worker", 80), ("capitalist", 10)]),
+            (key: "factory_ship", available_from: 1955, inputs: [("ships", 6), ("fuel", 900), ("electricity", 50)], outputs: [("fish", 11000)], jobs: [("laborer", 300), ("skilled_worker", 120), ("engineer", 10), ("capitalist", 10)]),
+        ]),
+        (key: "coal_mine", group: "extraction", resource: Some("coal"), farm: None, methods: [
+            (key: "pick_and_shovel", available_from: 1925, inputs: [("tools", 4), ("explosives", 3)], outputs: [("coal", 250000)], jobs: [("laborer", 850), ("skilled_worker", 60), ("manager", 8), ("capitalist", 5)]),
+            (key: "mechanized_mining", available_from: 1925, inputs: [("tools", 4), ("explosives", 5), ("machinery", 6), ("electricity", 300)], outputs: [("coal", 450000)], jobs: [("laborer", 550), ("skilled_worker", 150), ("engineer", 15), ("manager", 10), ("capitalist", 5)]),
+            (key: "open_pit", available_from: 1950, inputs: [("explosives", 8), ("machinery", 10), ("fuel", 400)], outputs: [("coal", 875000)], jobs: [("laborer", 300), ("skilled_worker", 150), ("engineer", 20), ("manager", 10), ("capitalist", 5)]),
+        ]),
+        (key: "iron_mine", group: "extraction", resource: Some("iron_ore"), farm: None, methods: [
+            (key: "pick_and_shovel", available_from: 1925, inputs: [("tools", 4), ("explosives", 3)], outputs: [("iron_ore", 300000)], jobs: [("laborer", 850), ("skilled_worker", 60), ("manager", 8), ("capitalist", 5)]),
+            (key: "mechanized_mining", available_from: 1925, inputs: [("tools", 4), ("explosives", 5), ("machinery", 6), ("electricity", 300)], outputs: [("iron_ore", 540000)], jobs: [("laborer", 550), ("skilled_worker", 150), ("engineer", 15), ("manager", 10), ("capitalist", 5)]),
+            (key: "open_pit", available_from: 1950, inputs: [("explosives", 8), ("machinery", 10), ("fuel", 400)], outputs: [("iron_ore", 1.05e+06)], jobs: [("laborer", 300), ("skilled_worker", 150), ("engineer", 20), ("manager", 10), ("capitalist", 5)]),
+        ]),
+        (key: "copper_mine", group: "extraction", resource: Some("copper"), farm: None, methods: [
+            (key: "pick_and_shovel", available_from: 1925, inputs: [("tools", 4), ("explosives", 3)], outputs: [("copper_ore", 2500)], jobs: [("laborer", 850), ("skilled_worker", 60), ("manager", 8), ("capitalist", 5)]),
+            (key: "mechanized_mining", available_from: 1925, inputs: [("tools", 4), ("explosives", 5), ("machinery", 6), ("electricity", 300)], outputs: [("copper_ore", 4500)], jobs: [("laborer", 550), ("skilled_worker", 150), ("engineer", 15), ("manager", 10), ("capitalist", 5)]),
+            (key: "open_pit", available_from: 1950, inputs: [("explosives", 8), ("machinery", 10), ("fuel", 400)], outputs: [("copper_ore", 8750)], jobs: [("laborer", 300), ("skilled_worker", 150), ("engineer", 20), ("manager", 10), ("capitalist", 5)]),
+        ]),
+        (key: "bauxite_mine", group: "extraction", resource: Some("bauxite"), farm: None, methods: [
+            (key: "pick_and_shovel", available_from: 1925, inputs: [("tools", 4), ("explosives", 3)], outputs: [("bauxite", 60000)], jobs: [("laborer", 850), ("skilled_worker", 60), ("manager", 8), ("capitalist", 5)]),
+            (key: "mechanized_mining", available_from: 1925, inputs: [("tools", 4), ("explosives", 5), ("machinery", 6), ("electricity", 300)], outputs: [("bauxite", 108000)], jobs: [("laborer", 550), ("skilled_worker", 150), ("engineer", 15), ("manager", 10), ("capitalist", 5)]),
+            (key: "open_pit", available_from: 1950, inputs: [("explosives", 8), ("machinery", 10), ("fuel", 400)], outputs: [("bauxite", 210000)], jobs: [("laborer", 300), ("skilled_worker", 150), ("engineer", 20), ("manager", 10), ("capitalist", 5)]),
+        ]),
+        (key: "gold_mine", group: "extraction", resource: Some("gold"), farm: None, methods: [
+            (key: "pick_and_shovel", available_from: 1925, inputs: [("tools", 4), ("explosives", 3)], outputs: [("gold", 900)], jobs: [("laborer", 850), ("skilled_worker", 60), ("manager", 8), ("capitalist", 5)]),
+            (key: "mechanized_mining", available_from: 1925, inputs: [("tools", 4), ("explosives", 5), ("machinery", 6), ("electricity", 300)], outputs: [("gold", 1620)], jobs: [("laborer", 550), ("skilled_worker", 150), ("engineer", 15), ("manager", 10), ("capitalist", 5)]),
+            (key: "open_pit", available_from: 1950, inputs: [("explosives", 8), ("machinery", 10), ("fuel", 400)], outputs: [("gold", 3150)], jobs: [("laborer", 300), ("skilled_worker", 150), ("engineer", 20), ("manager", 10), ("capitalist", 5)]),
+        ]),
+        (key: "lead_zinc_mine", group: "extraction", resource: Some("lead_zinc"), farm: None, methods: [
+            (key: "pick_and_shovel", available_from: 1925, inputs: [("tools", 4), ("explosives", 3)], outputs: [("lead_zinc_ore", 6000)], jobs: [("laborer", 850), ("skilled_worker", 60), ("manager", 8), ("capitalist", 5)]),
+            (key: "mechanized_mining", available_from: 1925, inputs: [("tools", 4), ("explosives", 5), ("machinery", 6), ("electricity", 300)], outputs: [("lead_zinc_ore", 10800)], jobs: [("laborer", 550), ("skilled_worker", 150), ("engineer", 15), ("manager", 10), ("capitalist", 5)]),
+            (key: "open_pit", available_from: 1950, inputs: [("explosives", 8), ("machinery", 10), ("fuel", 400)], outputs: [("lead_zinc_ore", 21000)], jobs: [("laborer", 300), ("skilled_worker", 150), ("engineer", 20), ("manager", 10), ("capitalist", 5)]),
+        ]),
+        (key: "tin_mine", group: "extraction", resource: Some("tin"), farm: None, methods: [
+            (key: "pick_and_shovel", available_from: 1925, inputs: [("tools", 4), ("explosives", 3)], outputs: [("tin_ore", 500)], jobs: [("laborer", 850), ("skilled_worker", 60), ("manager", 8), ("capitalist", 5)]),
+            (key: "mechanized_mining", available_from: 1925, inputs: [("tools", 4), ("explosives", 5), ("machinery", 6), ("electricity", 300)], outputs: [("tin_ore", 900)], jobs: [("laborer", 550), ("skilled_worker", 150), ("engineer", 15), ("manager", 10), ("capitalist", 5)]),
+            (key: "open_pit", available_from: 1950, inputs: [("explosives", 8), ("machinery", 10), ("fuel", 400)], outputs: [("tin_ore", 1750)], jobs: [("laborer", 300), ("skilled_worker", 150), ("engineer", 20), ("manager", 10), ("capitalist", 5)]),
+        ]),
+        (key: "nickel_mine", group: "extraction", resource: Some("nickel"), farm: None, methods: [
+            (key: "pick_and_shovel", available_from: 1925, inputs: [("tools", 4), ("explosives", 3)], outputs: [("nickel_ore", 900)], jobs: [("laborer", 850), ("skilled_worker", 60), ("manager", 8), ("capitalist", 5)]),
+            (key: "mechanized_mining", available_from: 1925, inputs: [("tools", 4), ("explosives", 5), ("machinery", 6), ("electricity", 300)], outputs: [("nickel_ore", 1620)], jobs: [("laborer", 550), ("skilled_worker", 150), ("engineer", 15), ("manager", 10), ("capitalist", 5)]),
+            (key: "open_pit", available_from: 1950, inputs: [("explosives", 8), ("machinery", 10), ("fuel", 400)], outputs: [("nickel_ore", 3150)], jobs: [("laborer", 300), ("skilled_worker", 150), ("engineer", 20), ("manager", 10), ("capitalist", 5)]),
+        ]),
+        (key: "manganese_mine", group: "extraction", resource: Some("manganese"), farm: None, methods: [
+            (key: "pick_and_shovel", available_from: 1925, inputs: [("tools", 4), ("explosives", 3)], outputs: [("manganese_ore", 40000)], jobs: [("laborer", 850), ("skilled_worker", 60), ("manager", 8), ("capitalist", 5)]),
+            (key: "mechanized_mining", available_from: 1925, inputs: [("tools", 4), ("explosives", 5), ("machinery", 6), ("electricity", 300)], outputs: [("manganese_ore", 72000)], jobs: [("laborer", 550), ("skilled_worker", 150), ("engineer", 15), ("manager", 10), ("capitalist", 5)]),
+            (key: "open_pit", available_from: 1950, inputs: [("explosives", 8), ("machinery", 10), ("fuel", 400)], outputs: [("manganese_ore", 140000)], jobs: [("laborer", 300), ("skilled_worker", 150), ("engineer", 20), ("manager", 10), ("capitalist", 5)]),
+        ]),
+        (key: "chromium_mine", group: "extraction", resource: Some("chromium"), farm: None, methods: [
+            (key: "pick_and_shovel", available_from: 1925, inputs: [("tools", 4), ("explosives", 3)], outputs: [("chromite", 30000)], jobs: [("laborer", 850), ("skilled_worker", 60), ("manager", 8), ("capitalist", 5)]),
+            (key: "mechanized_mining", available_from: 1925, inputs: [("tools", 4), ("explosives", 5), ("machinery", 6), ("electricity", 300)], outputs: [("chromite", 54000)], jobs: [("laborer", 550), ("skilled_worker", 150), ("engineer", 15), ("manager", 10), ("capitalist", 5)]),
+            (key: "open_pit", available_from: 1950, inputs: [("explosives", 8), ("machinery", 10), ("fuel", 400)], outputs: [("chromite", 105000)], jobs: [("laborer", 300), ("skilled_worker", 150), ("engineer", 20), ("manager", 10), ("capitalist", 5)]),
+        ]),
+        (key: "tungsten_mine", group: "extraction", resource: Some("tungsten"), farm: None, methods: [
+            (key: "pick_and_shovel", available_from: 1925, inputs: [("tools", 4), ("explosives", 3)], outputs: [("tungsten_ore", 300)], jobs: [("laborer", 850), ("skilled_worker", 60), ("manager", 8), ("capitalist", 5)]),
+            (key: "mechanized_mining", available_from: 1925, inputs: [("tools", 4), ("explosives", 5), ("machinery", 6), ("electricity", 300)], outputs: [("tungsten_ore", 540)], jobs: [("laborer", 550), ("skilled_worker", 150), ("engineer", 15), ("manager", 10), ("capitalist", 5)]),
+            (key: "open_pit", available_from: 1950, inputs: [("explosives", 8), ("machinery", 10), ("fuel", 400)], outputs: [("tungsten_ore", 1050)], jobs: [("laborer", 300), ("skilled_worker", 150), ("engineer", 20), ("manager", 10), ("capitalist", 5)]),
+        ]),
+        (key: "sulfur_mine", group: "extraction", resource: Some("sulfur"), farm: None, methods: [
+            (key: "pick_and_shovel", available_from: 1925, inputs: [("tools", 4), ("explosives", 3)], outputs: [("sulfur", 20000)], jobs: [("laborer", 850), ("skilled_worker", 60), ("manager", 8), ("capitalist", 5)]),
+            (key: "mechanized_mining", available_from: 1925, inputs: [("tools", 4), ("explosives", 5), ("machinery", 6), ("electricity", 300)], outputs: [("sulfur", 36000)], jobs: [("laborer", 550), ("skilled_worker", 150), ("engineer", 15), ("manager", 10), ("capitalist", 5)]),
+            (key: "open_pit", available_from: 1950, inputs: [("explosives", 8), ("machinery", 10), ("fuel", 400)], outputs: [("sulfur", 70000)], jobs: [("laborer", 300), ("skilled_worker", 150), ("engineer", 20), ("manager", 10), ("capitalist", 5)]),
+        ]),
+        (key: "phosphate_mine", group: "extraction", resource: Some("phosphate"), farm: None, methods: [
+            (key: "pick_and_shovel", available_from: 1925, inputs: [("tools", 4), ("explosives", 3)], outputs: [("phosphate_rock", 80000)], jobs: [("laborer", 850), ("skilled_worker", 60), ("manager", 8), ("capitalist", 5)]),
+            (key: "mechanized_mining", available_from: 1925, inputs: [("tools", 4), ("explosives", 5), ("machinery", 6), ("electricity", 300)], outputs: [("phosphate_rock", 144000)], jobs: [("laborer", 550), ("skilled_worker", 150), ("engineer", 15), ("manager", 10), ("capitalist", 5)]),
+            (key: "open_pit", available_from: 1950, inputs: [("explosives", 8), ("machinery", 10), ("fuel", 400)], outputs: [("phosphate_rock", 280000)], jobs: [("laborer", 300), ("skilled_worker", 150), ("engineer", 20), ("manager", 10), ("capitalist", 5)]),
+        ]),
+        (key: "potash_mine", group: "extraction", resource: Some("potash"), farm: None, methods: [
+            (key: "pick_and_shovel", available_from: 1925, inputs: [("tools", 4), ("explosives", 3)], outputs: [("potash", 30000)], jobs: [("laborer", 850), ("skilled_worker", 60), ("manager", 8), ("capitalist", 5)]),
+            (key: "mechanized_mining", available_from: 1925, inputs: [("tools", 4), ("explosives", 5), ("machinery", 6), ("electricity", 300)], outputs: [("potash", 54000)], jobs: [("laborer", 550), ("skilled_worker", 150), ("engineer", 15), ("manager", 10), ("capitalist", 5)]),
+            (key: "open_pit", available_from: 1950, inputs: [("explosives", 8), ("machinery", 10), ("fuel", 400)], outputs: [("potash", 105000)], jobs: [("laborer", 300), ("skilled_worker", 150), ("engineer", 20), ("manager", 10), ("capitalist", 5)]),
+        ]),
+        (key: "uranium_mine", group: "extraction", resource: Some("uranium"), farm: None, methods: [
+            (key: "pick_and_shovel", available_from: 1925, inputs: [("tools", 4), ("explosives", 3)], outputs: [("uranium_ore", 50000)], jobs: [("laborer", 850), ("skilled_worker", 60), ("manager", 8), ("capitalist", 5)]),
+            (key: "mechanized_mining", available_from: 1925, inputs: [("tools", 4), ("explosives", 5), ("machinery", 6), ("electricity", 300)], outputs: [("uranium_ore", 90000)], jobs: [("laborer", 550), ("skilled_worker", 150), ("engineer", 15), ("manager", 10), ("capitalist", 5)]),
+            (key: "open_pit", available_from: 1950, inputs: [("explosives", 8), ("machinery", 10), ("fuel", 400)], outputs: [("uranium_ore", 175000)], jobs: [("laborer", 300), ("skilled_worker", 150), ("engineer", 20), ("manager", 10), ("capitalist", 5)]),
+        ]),
+        (key: "rare_earth_mine", group: "extraction", resource: Some("rare_earths"), farm: None, methods: [
+            (key: "pick_and_shovel", available_from: 1950, inputs: [("tools", 4), ("explosives", 3)], outputs: [("rare_earth_ore", 400)], jobs: [("laborer", 850), ("skilled_worker", 60), ("manager", 8), ("capitalist", 5)]),
+            (key: "mechanized_mining", available_from: 1950, inputs: [("tools", 4), ("explosives", 5), ("machinery", 6), ("electricity", 300)], outputs: [("rare_earth_ore", 720)], jobs: [("laborer", 550), ("skilled_worker", 150), ("engineer", 15), ("manager", 10), ("capitalist", 5)]),
+            (key: "open_pit", available_from: 1950, inputs: [("explosives", 8), ("machinery", 10), ("fuel", 400)], outputs: [("rare_earth_ore", 1400)], jobs: [("laborer", 300), ("skilled_worker", 150), ("engineer", 20), ("manager", 10), ("capitalist", 5)]),
+        ]),
+        (key: "oil_well", group: "extraction", resource: Some("oil"), farm: None, methods: [
+            (key: "cable_tool", available_from: 1925, inputs: [("tools", 3), ("steel", 20)], outputs: [("crude_oil", 60000), ("natural_gas", 8000)], jobs: [("laborer", 400), ("skilled_worker", 100), ("engineer", 15), ("manager", 8), ("capitalist", 5)]),
+            (key: "rotary_drilling", available_from: 1925, inputs: [("machinery", 6), ("steel", 40), ("fuel", 500)], outputs: [("crude_oil", 150000), ("natural_gas", 25000)], jobs: [("laborer", 250), ("skilled_worker", 150), ("engineer", 30), ("manager", 10), ("capitalist", 5)]),
+            (key: "offshore", available_from: 1960, inputs: [("machinery", 12), ("steel", 120), ("fuel", 1500), ("ships", 4)], outputs: [("crude_oil", 300000), ("natural_gas", 60000)], jobs: [("laborer", 150), ("skilled_worker", 200), ("engineer", 60), ("manager", 12), ("capitalist", 5)]),
+        ]),
+        (key: "gas_field", group: "extraction", resource: Some("natural_gas"), farm: None, methods: [
+            (key: "rotary_drilling", available_from: 1930, inputs: [("machinery", 6), ("steel", 40)], outputs: [("natural_gas", 200000)], jobs: [("laborer", 200), ("skilled_worker", 120), ("engineer", 30), ("manager", 10), ("capitalist", 5)]),
+            (key: "offshore", available_from: 1965, inputs: [("machinery", 12), ("steel", 120), ("ships", 4)], outputs: [("natural_gas", 450000)], jobs: [("laborer", 120), ("skilled_worker", 160), ("engineer", 50), ("manager", 12), ("capitalist", 5)]),
+        ]),
+        (key: "steel_mill", group: "heavy_industry", resource: None, farm: None, methods: [
+            (key: "blast_furnace_open_hearth", available_from: 1925, inputs: [("iron_ore", 60000), ("coal", 50000)], outputs: [("steel", 30000)], jobs: [("laborer", 600), ("skilled_worker", 250), ("engineer", 30), ("clerk", 40), ("manager", 15), ("capitalist", 5)]),
+            (key: "basic_oxygen", available_from: 1955, inputs: [("iron_ore", 70000), ("coal", 40000), ("chemicals", 200)], outputs: [("steel", 50000)], jobs: [("laborer", 350), ("skilled_worker", 330), ("engineer", 60), ("clerk", 60), ("manager", 20), ("capitalist", 5)]),
+            (key: "electric_arc", available_from: 1925, inputs: [("iron_ore", 30000), ("electricity", 25000), ("ferroalloys", 400)], outputs: [("steel", 30000)], jobs: [("laborer", 350), ("skilled_worker", 330), ("engineer", 60), ("clerk", 60), ("manager", 20), ("capitalist", 5)]),
+        ]),
+        (key: "aluminium_smelter", group: "heavy_industry", resource: None, farm: None, methods: [
+            (key: "hall_heroult", available_from: 1925, inputs: [("bauxite", 8000), ("electricity", 35000), ("coal", 1500), ("chemicals", 150)], outputs: [("aluminium", 2000)], jobs: [("laborer", 600), ("skilled_worker", 250), ("engineer", 30), ("clerk", 40), ("manager", 15), ("capitalist", 5)]),
+        ]),
+        (key: "copper_smelter", group: "heavy_industry", resource: None, farm: None, methods: [
+            (key: "reverberatory", available_from: 1925, inputs: [("copper_ore", 3000), ("coal", 8000)], outputs: [("copper", 2900), ("sulfur", 500)], jobs: [("laborer", 600), ("skilled_worker", 250), ("engineer", 30), ("clerk", 40), ("manager", 15), ("capitalist", 5)]),
+            (key: "flash_smelting", available_from: 1950, inputs: [("copper_ore", 5000), ("electricity", 8000)], outputs: [("copper", 4900), ("sulfur", 1500)], jobs: [("laborer", 350), ("skilled_worker", 330), ("engineer", 60), ("clerk", 60), ("manager", 20), ("capitalist", 5)]),
+        ]),
+        (key: "base_metal_smelter", group: "heavy_industry", resource: None, farm: None, methods: [
+            (key: "reverberatory", available_from: 1925, inputs: [("lead_zinc_ore", 8000), ("tin_ore", 300), ("coal", 6000)], outputs: [("base_metals", 8000)], jobs: [("laborer", 600), ("skilled_worker", 250), ("engineer", 30), ("clerk", 40), ("manager", 15), ("capitalist", 5)]),
+            (key: "electric_furnace", available_from: 1940, inputs: [("lead_zinc_ore", 12000), ("tin_ore", 500), ("electricity", 12000)], outputs: [("base_metals", 12000)], jobs: [("laborer", 350), ("skilled_worker", 330), ("engineer", 60), ("clerk", 60), ("manager", 20), ("capitalist", 5)]),
+        ]),
+        (key: "ferroalloy_plant", group: "heavy_industry", resource: None, farm: None, methods: [
+            (key: "electric_furnace", available_from: 1925, inputs: [("manganese_ore", 8000), ("chromite", 4000), ("nickel_ore", 150), ("tungsten_ore", 30), ("electricity", 15000)], outputs: [("ferroalloys", 5000)], jobs: [("laborer", 350), ("skilled_worker", 330), ("engineer", 60), ("clerk", 60), ("manager", 20), ("capitalist", 5)]),
+        ]),
+        (key: "oil_refinery", group: "heavy_industry", resource: None, farm: None, methods: [
+            (key: "thermal_cracking", available_from: 1925, inputs: [("crude_oil", 100000), ("coal", 3000)], outputs: [("fuel", 80000), ("chemicals", 500)], jobs: [("laborer", 600), ("skilled_worker", 250), ("engineer", 30), ("clerk", 40), ("manager", 15), ("capitalist", 5)]),
+            (key: "catalytic_cracking", available_from: 1937, inputs: [("crude_oil", 100000), ("electricity", 5000), ("chemicals", 300)], outputs: [("fuel", 90000), ("chemicals", 3000)], jobs: [("laborer", 350), ("skilled_worker", 330), ("engineer", 60), ("clerk", 60), ("manager", 20), ("capitalist", 5)]),
+        ]),
+        (key: "chemical_plant", group: "heavy_industry", resource: None, farm: None, methods: [
+            (key: "coal_chemistry", available_from: 1925, inputs: [("coal", 20000), ("sulfur", 3000), ("potash", 1000)], outputs: [("chemicals", 8000)], jobs: [("laborer", 600), ("skilled_worker", 250), ("engineer", 30), ("clerk", 40), ("manager", 15), ("capitalist", 5)]),
+            (key: "petrochemistry", available_from: 1945, inputs: [("crude_oil", 15000), ("natural_gas", 8000), ("sulfur", 2000)], outputs: [("chemicals", 14000)], jobs: [("laborer", 350), ("skilled_worker", 330), ("engineer", 60), ("clerk", 60), ("manager", 20), ("capitalist", 5)]),
+        ]),
+        (key: "fertilizer_plant", group: "heavy_industry", resource: None, farm: None, methods: [
+            (key: "superphosphate", available_from: 1925, inputs: [("phosphate_rock", 20000), ("sulfur", 4000), ("potash", 3000)], outputs: [("fertilizer", 12000)], jobs: [("laborer", 600), ("skilled_worker", 250), ("engineer", 30), ("clerk", 40), ("manager", 15), ("capitalist", 5)]),
+            (key: "haber_bosch", available_from: 1925, inputs: [("natural_gas", 20000), ("coal", 15000), ("electricity", 8000), ("phosphate_rock", 10000), ("potash", 4000)], outputs: [("fertilizer", 25000)], jobs: [("laborer", 350), ("skilled_worker", 330), ("engineer", 60), ("clerk", 60), ("manager", 20), ("capitalist", 5)]),
+        ]),
+        (key: "explosives_plant", group: "heavy_industry", resource: None, farm: None, methods: [
+            (key: "chemical_synthesis", available_from: 1925, inputs: [("chemicals", 3000), ("sulfur", 800), ("fertilizer", 1500)], outputs: [("explosives", 2500)], jobs: [("laborer", 600), ("skilled_worker", 250), ("engineer", 30), ("clerk", 40), ("manager", 15), ("capitalist", 5)]),
+        ]),
+        (key: "cement_plant", group: "heavy_industry", resource: None, farm: None, methods: [
+            (key: "wet_kiln", available_from: 1925, inputs: [("coal", 30000)], outputs: [("cement", 120000)], jobs: [("laborer", 600), ("skilled_worker", 250), ("engineer", 30), ("clerk", 40), ("manager", 15), ("capitalist", 5)]),
+            (key: "dry_kiln", available_from: 1960, inputs: [("coal", 18000), ("electricity", 8000)], outputs: [("cement", 200000)], jobs: [("laborer", 350), ("skilled_worker", 330), ("engineer", 60), ("clerk", 60), ("manager", 20), ("capitalist", 5)]),
+        ]),
+        (key: "rare_earth_refinery", group: "heavy_industry", resource: None, farm: None, methods: [
+            (key: "solvent_extraction", available_from: 1955, inputs: [("rare_earth_ore", 300), ("chemicals", 2000), ("electricity", 5000)], outputs: [("electronic_components", 900)], jobs: [("laborer", 350), ("skilled_worker", 330), ("engineer", 60), ("clerk", 60), ("manager", 20), ("capitalist", 5)]),
+        ]),
+        (key: "nuclear_fuel_plant", group: "heavy_industry", resource: None, farm: None, methods: [
+            (key: "gaseous_diffusion", available_from: 1945, inputs: [("uranium_ore", 200000), ("chemicals", 2000), ("electricity", 200000)], outputs: [("nuclear_fuel", 15000)], jobs: [("laborer", 350), ("skilled_worker", 330), ("engineer", 60), ("clerk", 60), ("manager", 20), ("capitalist", 5)]),
+            (key: "centrifuge", available_from: 1970, inputs: [("uranium_ore", 200000), ("chemicals", 1500), ("electricity", 40000)], outputs: [("nuclear_fuel", 20000)], jobs: [("laborer", 350), ("skilled_worker", 330), ("engineer", 60), ("clerk", 60), ("manager", 20), ("capitalist", 5)]),
+        ]),
+        (key: "synthetic_rubber_plant", group: "heavy_industry", resource: None, farm: None, methods: [
+            (key: "emulsion_polymerization", available_from: 1931, inputs: [("chemicals", 4000), ("crude_oil", 6000), ("electricity", 4000)], outputs: [("synthetic_rubber", 4000)], jobs: [("laborer", 350), ("skilled_worker", 330), ("engineer", 60), ("clerk", 60), ("manager", 20), ("capitalist", 5)]),
+        ]),
+        (key: "plastics_plant", group: "heavy_industry", resource: None, farm: None, methods: [
+            (key: "bakelite", available_from: 1925, inputs: [("chemicals", 2500), ("coal", 3000)], outputs: [("plastics", 1500)], jobs: [("laborer", 600), ("skilled_worker", 250), ("engineer", 30), ("clerk", 40), ("manager", 15), ("capitalist", 5)]),
+            (key: "polyethylene", available_from: 1939, inputs: [("crude_oil", 8000), ("natural_gas", 4000), ("electricity", 4000)], outputs: [("plastics", 6000)], jobs: [("laborer", 350), ("skilled_worker", 330), ("engineer", 60), ("clerk", 60), ("manager", 20), ("capitalist", 5)]),
+        ]),
+        (key: "glassworks", group: "light_industry", resource: None, farm: None, methods: [
+            (key: "hand_blown", available_from: 1925, inputs: [("coal", 4000)], outputs: [("glass", 3000)], jobs: [("laborer", 750), ("skilled_worker", 150), ("clerk", 40), ("manager", 10), ("capitalist", 5)]),
+            (key: "float_glass", available_from: 1959, inputs: [("natural_gas", 3000), ("electricity", 2000)], outputs: [("glass", 9000)], jobs: [("laborer", 450), ("skilled_worker", 300), ("engineer", 20), ("clerk", 60), ("manager", 15), ("capitalist", 5)]),
+        ]),
+        (key: "paper_mill", group: "light_industry", resource: None, farm: None, methods: [
+            (key: "wood_pulp", available_from: 1925, inputs: [("timber", 30000), ("chemicals", 500), ("coal", 3000)], outputs: [("paper", 6000)], jobs: [("laborer", 750), ("skilled_worker", 150), ("clerk", 40), ("manager", 10), ("capitalist", 5)]),
+        ]),
+        (key: "textile_mill", group: "light_industry", resource: None, farm: None, methods: [
+            (key: "power_loom", available_from: 1925, inputs: [("cotton", 800), ("wool", 150), ("plant_fibers", 100), ("coal", 1500)], outputs: [("textiles", 1000)], jobs: [("laborer", 750), ("skilled_worker", 150), ("clerk", 40), ("manager", 10), ("capitalist", 5)]),
+            (key: "automatic_loom", available_from: 1925, inputs: [("cotton", 1300), ("wool", 250), ("plant_fibers", 150), ("electricity", 2500), ("machinery", 3)], outputs: [("textiles", 1700)], jobs: [("laborer", 450), ("skilled_worker", 300), ("engineer", 20), ("clerk", 60), ("manager", 15), ("capitalist", 5)]),
+        ]),
+        (key: "garment_factory", group: "light_industry", resource: None, farm: None, methods: [
+            (key: "workshop", available_from: 1925, inputs: [("textiles", 500), ("tools", 4)], outputs: [("clothes", 1200)], jobs: [("laborer", 750), ("skilled_worker", 150), ("clerk", 40), ("manager", 10), ("capitalist", 5)]),
+            (key: "assembly_line", available_from: 1925, inputs: [("textiles", 500), ("tools", 6), ("machinery", 6), ("electricity", 3000)], outputs: [("clothes", 2400)], jobs: [("laborer", 450), ("skilled_worker", 300), ("engineer", 20), ("clerk", 60), ("manager", 15), ("capitalist", 5)]),
+            (key: "automation", available_from: 1970, inputs: [("textiles", 500), ("machinery", 12), ("electronic_components", 10), ("electricity", 6000)], outputs: [("clothes", 4800)], jobs: [("laborer", 200), ("skilled_worker", 350), ("engineer", 60), ("clerk", 80), ("manager", 20), ("capitalist", 5)]),
+        ]),
+        (key: "food_industry", group: "light_industry", resource: None, farm: None, methods: [
+            (key: "canning", available_from: 1925, inputs: [("grain", 8000), ("meat", 500), ("fruit", 3000), ("sugar", 800), ("steel", 100)], outputs: [("processed_food", 6000)], jobs: [("laborer", 750), ("skilled_worker", 150), ("clerk", 40), ("manager", 10), ("capitalist", 5)]),
+            (key: "refrigeration", available_from: 1930, inputs: [("grain", 12000), ("meat", 1000), ("fruit", 5000), ("sugar", 1200), ("electricity", 3000), ("plastics", 50)], outputs: [("processed_food", 11000)], jobs: [("laborer", 450), ("skilled_worker", 300), ("engineer", 20), ("clerk", 60), ("manager", 15), ("capitalist", 5)]),
+        ]),
+        (key: "furniture_workshop", group: "light_industry", resource: None, farm: None, methods: [
+            (key: "workshop", available_from: 1925, inputs: [("timber", 4000), ("tools", 4)], outputs: [("furniture", 800)], jobs: [("laborer", 750), ("skilled_worker", 150), ("clerk", 40), ("manager", 10), ("capitalist", 5)]),
+            (key: "assembly_line", available_from: 1925, inputs: [("timber", 4000), ("tools", 6), ("machinery", 6), ("electricity", 3000)], outputs: [("furniture", 1600)], jobs: [("laborer", 450), ("skilled_worker", 300), ("engineer", 20), ("clerk", 60), ("manager", 15), ("capitalist", 5)]),
+            (key: "automation", available_from: 1970, inputs: [("timber", 4000), ("machinery", 12), ("electronic_components", 10), ("electricity", 6000)], outputs: [("furniture", 3200)], jobs: [("laborer", 200), ("skilled_worker", 350), ("engineer", 60), ("clerk", 80), ("manager", 20), ("capitalist", 5)]),
+        ]),
+        (key: "household_goods_factory", group: "light_industry", resource: None, farm: None, methods: [
+            (key: "workshop", available_from: 1925, inputs: [("steel", 80), ("glass", 100), ("base_metals", 20), ("tools", 4)], outputs: [("household_goods", 900)], jobs: [("laborer", 750), ("skilled_worker", 150), ("clerk", 40), ("manager", 10), ("capitalist", 5)]),
+            (key: "assembly_line", available_from: 1925, inputs: [("steel", 80), ("glass", 100), ("base_metals", 20), ("tools", 6), ("machinery", 6), ("electricity", 3000)], outputs: [("household_goods", 1800)], jobs: [("laborer", 450), ("skilled_worker", 300), ("engineer", 20), ("clerk", 60), ("manager", 15), ("capitalist", 5)]),
+            (key: "automation", available_from: 1970, inputs: [("steel", 80), ("glass", 100), ("base_metals", 20), ("machinery", 12), ("electronic_components", 10), ("electricity", 6000)], outputs: [("household_goods", 3600)], jobs: [("laborer", 200), ("skilled_worker", 350), ("engineer", 60), ("clerk", 80), ("manager", 20), ("capitalist", 5)]),
+        ]),
+        (key: "tool_works", group: "light_industry", resource: None, farm: None, methods: [
+            (key: "workshop", available_from: 1925, inputs: [("steel", 400), ("ferroalloys", 20), ("tools", 4)], outputs: [("tools", 1500)], jobs: [("laborer", 750), ("skilled_worker", 150), ("clerk", 40), ("manager", 10), ("capitalist", 5)]),
+            (key: "assembly_line", available_from: 1925, inputs: [("steel", 400), ("ferroalloys", 20), ("tools", 6), ("machinery", 6), ("electricity", 3000)], outputs: [("tools", 3000)], jobs: [("laborer", 450), ("skilled_worker", 300), ("engineer", 20), ("clerk", 60), ("manager", 15), ("capitalist", 5)]),
+            (key: "automation", available_from: 1970, inputs: [("steel", 400), ("ferroalloys", 20), ("machinery", 12), ("electronic_components", 10), ("electricity", 6000)], outputs: [("tools", 6000)], jobs: [("laborer", 200), ("skilled_worker", 350), ("engineer", 60), ("clerk", 80), ("manager", 20), ("capitalist", 5)]),
+        ]),
+        (key: "pharmaceutical_plant", group: "light_industry", resource: None, farm: None, methods: [
+            (key: "workshop", available_from: 1925, inputs: [("chemicals", 600), ("glass", 100), ("tools", 4)], outputs: [("medicines", 1500)], jobs: [("laborer", 750), ("skilled_worker", 150), ("clerk", 40), ("manager", 10), ("capitalist", 5)]),
+            (key: "assembly_line", available_from: 1925, inputs: [("chemicals", 600), ("glass", 100), ("tools", 6), ("machinery", 6), ("electricity", 3000)], outputs: [("medicines", 3000)], jobs: [("laborer", 450), ("skilled_worker", 300), ("engineer", 20), ("clerk", 60), ("manager", 15), ("capitalist", 5)]),
+            (key: "automation", available_from: 1970, inputs: [("chemicals", 600), ("glass", 100), ("machinery", 12), ("electronic_components", 10), ("electricity", 6000)], outputs: [("medicines", 6000)], jobs: [("laborer", 200), ("skilled_worker", 350), ("engineer", 60), ("clerk", 80), ("manager", 20), ("capitalist", 5)]),
+        ]),
+        (key: "luxury_workshop", group: "light_industry", resource: None, farm: None, methods: [
+            (key: "workshop", available_from: 1925, inputs: [("gold", 15), ("textiles", 30), ("furniture", 50), ("tools", 4)], outputs: [("luxury_goods", 600)], jobs: [("laborer", 750), ("skilled_worker", 150), ("clerk", 40), ("manager", 10), ("capitalist", 5)]),
+            (key: "assembly_line", available_from: 1925, inputs: [("gold", 15), ("textiles", 30), ("furniture", 50), ("tools", 6), ("machinery", 6), ("electricity", 3000)], outputs: [("luxury_goods", 1200)], jobs: [("laborer", 450), ("skilled_worker", 300), ("engineer", 20), ("clerk", 60), ("manager", 15), ("capitalist", 5)]),
+            (key: "automation", available_from: 1970, inputs: [("gold", 15), ("textiles", 30), ("furniture", 50), ("machinery", 12), ("electronic_components", 10), ("electricity", 6000)], outputs: [("luxury_goods", 2400)], jobs: [("laborer", 200), ("skilled_worker", 350), ("engineer", 60), ("clerk", 80), ("manager", 20), ("capitalist", 5)]),
+        ]),
+        (key: "machinery_plant", group: "heavy_industry", resource: None, farm: None, methods: [
+            (key: "workshop", available_from: 1925, inputs: [("steel", 1200), ("ferroalloys", 50), ("tools", 20), ("tools", 8)], outputs: [("machinery", 1500)], jobs: [("laborer", 600), ("skilled_worker", 250), ("engineer", 30), ("clerk", 40), ("manager", 15), ("capitalist", 5)]),
+            (key: "assembly_line", available_from: 1925, inputs: [("steel", 1200), ("ferroalloys", 50), ("tools", 20), ("tools", 8), ("machinery", 8), ("electricity", 6000)], outputs: [("machinery", 3000)], jobs: [("laborer", 350), ("skilled_worker", 330), ("engineer", 60), ("clerk", 60), ("manager", 20), ("capitalist", 5)]),
+            (key: "automation", available_from: 1970, inputs: [("steel", 1200), ("ferroalloys", 50), ("tools", 20), ("machinery", 15), ("computers", 5), ("electronic_components", 20), ("electricity", 10000)], outputs: [("machinery", 6000)], jobs: [("laborer", 150), ("skilled_worker", 350), ("engineer", 120), ("clerk", 80), ("manager", 25), ("capitalist", 5)]),
+        ]),
+        (key: "engine_works", group: "heavy_industry", resource: None, farm: None, methods: [
+            (key: "workshop", available_from: 1925, inputs: [("steel", 900), ("aluminium", 60), ("ferroalloys", 40), ("tools", 8)], outputs: [("engines", 1400)], jobs: [("laborer", 600), ("skilled_worker", 250), ("engineer", 30), ("clerk", 40), ("manager", 15), ("capitalist", 5)]),
+            (key: "assembly_line", available_from: 1925, inputs: [("steel", 900), ("aluminium", 60), ("ferroalloys", 40), ("tools", 8), ("machinery", 8), ("electricity", 6000)], outputs: [("engines", 2800)], jobs: [("laborer", 350), ("skilled_worker", 330), ("engineer", 60), ("clerk", 60), ("manager", 20), ("capitalist", 5)]),
+            (key: "automation", available_from: 1970, inputs: [("steel", 900), ("aluminium", 60), ("ferroalloys", 40), ("machinery", 15), ("computers", 5), ("electronic_components", 20), ("electricity", 10000)], outputs: [("engines", 5600)], jobs: [("laborer", 150), ("skilled_worker", 350), ("engineer", 120), ("clerk", 80), ("manager", 25), ("capitalist", 5)]),
+        ]),
+        (key: "electrical_works", group: "heavy_industry", resource: None, farm: None, methods: [
+            (key: "workshop", available_from: 1925, inputs: [("copper", 300), ("steel", 300), ("plastics", 30), ("tools", 8)], outputs: [("electrical_equipment", 1600)], jobs: [("laborer", 600), ("skilled_worker", 250), ("engineer", 30), ("clerk", 40), ("manager", 15), ("capitalist", 5)]),
+            (key: "assembly_line", available_from: 1925, inputs: [("copper", 300), ("steel", 300), ("plastics", 30), ("tools", 8), ("machinery", 8), ("electricity", 6000)], outputs: [("electrical_equipment", 3200)], jobs: [("laborer", 350), ("skilled_worker", 330), ("engineer", 60), ("clerk", 60), ("manager", 20), ("capitalist", 5)]),
+            (key: "automation", available_from: 1970, inputs: [("copper", 300), ("steel", 300), ("plastics", 30), ("machinery", 15), ("computers", 5), ("electronic_components", 20), ("electricity", 10000)], outputs: [("electrical_equipment", 6400)], jobs: [("laborer", 150), ("skilled_worker", 350), ("engineer", 120), ("clerk", 80), ("manager", 25), ("capitalist", 5)]),
+        ]),
+        (key: "automobile_plant", group: "heavy_industry", resource: None, farm: None, methods: [
+            (key: "workshop", available_from: 1925, inputs: [("steel", 1000), ("engines", 300), ("glass", 100), ("natural_rubber", 60), ("electrical_equipment", 80), ("tools", 8)], outputs: [("automobiles", 2400)], jobs: [("laborer", 600), ("skilled_worker", 250), ("engineer", 30), ("clerk", 40), ("manager", 15), ("capitalist", 5)]),
+            (key: "assembly_line", available_from: 1925, inputs: [("steel", 1000), ("engines", 300), ("glass", 100), ("natural_rubber", 60), ("electrical_equipment", 80), ("tools", 8), ("machinery", 8), ("electricity", 6000)], outputs: [("automobiles", 4800)], jobs: [("laborer", 350), ("skilled_worker", 330), ("engineer", 60), ("clerk", 60), ("manager", 20), ("capitalist", 5)]),
+            (key: "automation", available_from: 1970, inputs: [("steel", 1000), ("engines", 300), ("glass", 100), ("synthetic_rubber", 60), ("electrical_equipment", 80), ("machinery", 15), ("computers", 5), ("electronic_components", 20), ("electricity", 10000)], outputs: [("automobiles", 9600)], jobs: [("laborer", 150), ("skilled_worker", 350), ("engineer", 120), ("clerk", 80), ("manager", 25), ("capitalist", 5)]),
+        ]),
+        (key: "rolling_stock_works", group: "heavy_industry", resource: None, farm: None, methods: [
+            (key: "workshop", available_from: 1925, inputs: [("steel", 1500), ("engines", 150), ("timber", 500), ("tools", 8)], outputs: [("rolling_stock", 1500)], jobs: [("laborer", 600), ("skilled_worker", 250), ("engineer", 30), ("clerk", 40), ("manager", 15), ("capitalist", 5)]),
+            (key: "assembly_line", available_from: 1925, inputs: [("steel", 1500), ("engines", 150), ("timber", 500), ("tools", 8), ("machinery", 8), ("electricity", 6000)], outputs: [("rolling_stock", 3000)], jobs: [("laborer", 350), ("skilled_worker", 330), ("engineer", 60), ("clerk", 60), ("manager", 20), ("capitalist", 5)]),
+            (key: "automation", available_from: 1970, inputs: [("steel", 1500), ("engines", 150), ("timber", 500), ("machinery", 15), ("computers", 5), ("electronic_components", 20), ("electricity", 10000)], outputs: [("rolling_stock", 6000)], jobs: [("laborer", 150), ("skilled_worker", 350), ("engineer", 120), ("clerk", 80), ("manager", 25), ("capitalist", 5)]),
+        ]),
+        (key: "shipyard", group: "heavy_industry", resource: None, farm: None, methods: [
+            (key: "riveted_hull", available_from: 1925, inputs: [("steel", 3000), ("engines", 300), ("timber", 1000)], outputs: [("ships", 2500)], jobs: [("laborer", 600), ("skilled_worker", 250), ("engineer", 30), ("clerk", 40), ("manager", 15), ("capitalist", 5)]),
+            (key: "welded_hull", available_from: 1938, inputs: [("steel", 3500), ("engines", 400), ("electricity", 6000)], outputs: [("ships", 4500)], jobs: [("laborer", 350), ("skilled_worker", 330), ("engineer", 60), ("clerk", 60), ("manager", 20), ("capitalist", 5)]),
+        ]),
+        (key: "aircraft_plant", group: "heavy_industry", resource: None, farm: None, methods: [
+            (key: "wood_and_fabric", available_from: 1925, inputs: [("timber", 800), ("textiles", 100), ("engines", 300)], outputs: [("aircraft", 900)], jobs: [("laborer", 600), ("skilled_worker", 250), ("engineer", 30), ("clerk", 40), ("manager", 15), ("capitalist", 5)]),
+            (key: "all_metal", available_from: 1933, inputs: [("aluminium", 300), ("engines", 450), ("electrical_equipment", 80)], outputs: [("aircraft", 1800)], jobs: [("laborer", 350), ("skilled_worker", 330), ("engineer", 60), ("clerk", 60), ("manager", 20), ("capitalist", 5)]),
+            (key: "jet", available_from: 1950, inputs: [("aluminium", 500), ("engines", 700), ("electronic_components", 150), ("ferroalloys", 80)], outputs: [("aircraft", 3200)], jobs: [("laborer", 150), ("skilled_worker", 380), ("engineer", 150), ("clerk", 80), ("manager", 25), ("capitalist", 5)]),
+        ]),
+        (key: "electronics_plant", group: "heavy_industry", resource: None, farm: None, methods: [
+            (key: "vacuum_tubes", available_from: 1925, inputs: [("glass", 200), ("copper", 100), ("base_metals", 30), ("electricity", 3000)], outputs: [("consumer_electronics", 1200)], jobs: [("laborer", 450), ("skilled_worker", 300), ("engineer", 20), ("clerk", 60), ("manager", 15), ("capitalist", 5)]),
+            (key: "transistors", available_from: 1955, inputs: [("chemicals", 300), ("copper", 120), ("electricity", 6000), ("plastics", 120)], outputs: [("consumer_electronics", 2400), ("electronic_components", 1500)], jobs: [("laborer", 200), ("skilled_worker", 350), ("engineer", 60), ("clerk", 80), ("manager", 20), ("capitalist", 5)]),
+            (key: "integrated_circuits", available_from: 1965, inputs: [("chemicals", 500), ("copper", 150), ("electricity", 12000), ("plastics", 200), ("rare_earth_ore", 5)], outputs: [("consumer_electronics", 4000), ("electronic_components", 5000), ("computers", 400)], jobs: [("laborer", 150), ("skilled_worker", 300), ("engineer", 200), ("clerk", 100), ("manager", 25), ("capitalist", 5)]),
+        ]),
+        (key: "appliance_factory", group: "light_industry", resource: None, farm: None, methods: [
+            (key: "assembly_line", available_from: 1925, inputs: [("steel", 500), ("electrical_equipment", 150), ("plastics", 20), ("electricity", 3000)], outputs: [("appliances", 1400)], jobs: [("laborer", 450), ("skilled_worker", 300), ("engineer", 20), ("clerk", 60), ("manager", 15), ("capitalist", 5)]),
+            (key: "automation", available_from: 1970, inputs: [("steel", 600), ("electrical_equipment", 200), ("plastics", 80), ("electronic_components", 30), ("electricity", 5000)], outputs: [("appliances", 3500)], jobs: [("laborer", 200), ("skilled_worker", 350), ("engineer", 60), ("clerk", 80), ("manager", 20), ("capitalist", 5)]),
+        ]),
+        (key: "small_arms_factory", group: "military_industry", resource: None, farm: None, methods: [
+            (key: "arsenal", available_from: 1925, inputs: [("steel", 300), ("timber", 50), ("tools", 10)], outputs: [("small_arms", 900)], jobs: [("laborer", 500), ("skilled_worker", 350), ("engineer", 40), ("clerk", 50), ("manager", 15), ("capitalist", 5)]),
+            (key: "mass_production", available_from: 1935, inputs: [("steel", 300), ("timber", 50), ("tools", 10), ("machinery", 8), ("electricity", 5000)], outputs: [("small_arms", 2250)], jobs: [("laborer", 300), ("skilled_worker", 420), ("engineer", 80), ("clerk", 70), ("manager", 20), ("capitalist", 5)]),
+        ]),
+        (key: "munitions_plant", group: "military_industry", resource: None, farm: None, methods: [
+            (key: "arsenal", available_from: 1925, inputs: [("explosives", 400), ("base_metals", 200), ("copper", 80)], outputs: [("ammunition", 1200)], jobs: [("laborer", 500), ("skilled_worker", 350), ("engineer", 40), ("clerk", 50), ("manager", 15), ("capitalist", 5)]),
+            (key: "mass_production", available_from: 1935, inputs: [("explosives", 400), ("base_metals", 200), ("copper", 80), ("machinery", 8), ("electricity", 5000)], outputs: [("ammunition", 3000)], jobs: [("laborer", 300), ("skilled_worker", 420), ("engineer", 80), ("clerk", 70), ("manager", 20), ("capitalist", 5)]),
+        ]),
+        (key: "artillery_foundry", group: "military_industry", resource: None, farm: None, methods: [
+            (key: "arsenal", available_from: 1925, inputs: [("steel", 900), ("ferroalloys", 60)], outputs: [("artillery", 900)], jobs: [("laborer", 500), ("skilled_worker", 350), ("engineer", 40), ("clerk", 50), ("manager", 15), ("capitalist", 5)]),
+            (key: "mass_production", available_from: 1935, inputs: [("steel", 900), ("ferroalloys", 60), ("machinery", 8), ("electricity", 5000)], outputs: [("artillery", 2250)], jobs: [("laborer", 300), ("skilled_worker", 420), ("engineer", 80), ("clerk", 70), ("manager", 20), ("capitalist", 5)]),
+        ]),
+        (key: "armor_plant", group: "military_industry", resource: None, farm: None, methods: [
+            (key: "arsenal", available_from: 1925, inputs: [("steel", 1500), ("engines", 300), ("ferroalloys", 120)], outputs: [("armored_vehicles", 1000)], jobs: [("laborer", 500), ("skilled_worker", 350), ("engineer", 40), ("clerk", 50), ("manager", 15), ("capitalist", 5)]),
+            (key: "mass_production", available_from: 1935, inputs: [("steel", 1500), ("engines", 300), ("ferroalloys", 120), ("machinery", 8), ("electricity", 5000)], outputs: [("armored_vehicles", 2500)], jobs: [("laborer", 300), ("skilled_worker", 420), ("engineer", 80), ("clerk", 70), ("manager", 20), ("capitalist", 5)]),
+        ]),
+        (key: "naval_yard", group: "military_industry", resource: None, farm: None, methods: [
+            (key: "arsenal", available_from: 1925, inputs: [("steel", 4000), ("engines", 500), ("ferroalloys", 200), ("electrical_equipment", 100)], outputs: [("warships", 2500)], jobs: [("laborer", 500), ("skilled_worker", 350), ("engineer", 40), ("clerk", 50), ("manager", 15), ("capitalist", 5)]),
+            (key: "mass_production", available_from: 1935, inputs: [("steel", 4000), ("engines", 500), ("ferroalloys", 200), ("electrical_equipment", 100), ("machinery", 8), ("electricity", 5000)], outputs: [("warships", 6250)], jobs: [("laborer", 300), ("skilled_worker", 420), ("engineer", 80), ("clerk", 70), ("manager", 20), ("capitalist", 5)]),
+        ]),
+        (key: "military_aircraft_plant", group: "military_industry", resource: None, farm: None, methods: [
+            (key: "arsenal", available_from: 1925, inputs: [("aluminium", 400), ("engines", 500), ("electrical_equipment", 80)], outputs: [("military_aircraft", 1500)], jobs: [("laborer", 500), ("skilled_worker", 350), ("engineer", 40), ("clerk", 50), ("manager", 15), ("capitalist", 5)]),
+            (key: "mass_production", available_from: 1935, inputs: [("aluminium", 400), ("engines", 500), ("electrical_equipment", 80), ("machinery", 8), ("electricity", 5000)], outputs: [("military_aircraft", 3750)], jobs: [("laborer", 300), ("skilled_worker", 420), ("engineer", 80), ("clerk", 70), ("manager", 20), ("capitalist", 5)]),
+        ]),
+        (key: "power_plant", group: "energy", resource: None, farm: None, methods: [
+            (key: "coal_fired", available_from: 1925, inputs: [("coal", 60000)], outputs: [("electricity", 120000)], jobs: [("laborer", 200), ("skilled_worker", 200), ("engineer", 40), ("clerk", 20), ("manager", 10), ("capitalist", 5)]),
+            (key: "oil_fired", available_from: 1925, inputs: [("fuel", 35000)], outputs: [("electricity", 130000)], jobs: [("laborer", 200), ("skilled_worker", 200), ("engineer", 40), ("clerk", 20), ("manager", 10), ("capitalist", 5)]),
+            (key: "gas_fired", available_from: 1950, inputs: [("natural_gas", 45000)], outputs: [("electricity", 150000)], jobs: [("laborer", 200), ("skilled_worker", 200), ("engineer", 40), ("clerk", 20), ("manager", 10), ("capitalist", 5)]),
+            (key: "hydroelectric", available_from: 1925, inputs: [("machinery", 3)], outputs: [("electricity", 150000)], jobs: [("skilled_worker", 150), ("engineer", 40), ("clerk", 15), ("manager", 8), ("capitalist", 5)]),
+            (key: "nuclear", available_from: 1956, inputs: [("nuclear_fuel", 3000), ("electronic_components", 20)], outputs: [("electricity", 400000)], jobs: [("skilled_worker", 250), ("engineer", 150), ("clerk", 30), ("manager", 15), ("capitalist", 5)]),
+        ]),
+        (key: "railway", group: "infrastructure", resource: None, farm: None, methods: [
+            (key: "steam_railway", available_from: 1925, inputs: [("coal", 15000), ("rolling_stock", 30), ("steel", 200)], outputs: [("transportation", 9000)], jobs: [("laborer", 500), ("skilled_worker", 250), ("engineer", 20), ("clerk", 80), ("manager", 15), ("capitalist", 5)]),
+            (key: "diesel_railway", available_from: 1935, inputs: [("fuel", 6000), ("rolling_stock", 40), ("steel", 200)], outputs: [("transportation", 14000)], jobs: [("laborer", 300), ("skilled_worker", 300), ("engineer", 30), ("clerk", 80), ("manager", 15), ("capitalist", 5)]),
+            (key: "electric_railway", available_from: 1925, inputs: [("electricity", 30000), ("rolling_stock", 40), ("copper", 20)], outputs: [("transportation", 14000)], jobs: [("laborer", 300), ("skilled_worker", 300), ("engineer", 40), ("clerk", 80), ("manager", 15), ("capitalist", 5)]),
+        ]),
+        (key: "road_transport", group: "infrastructure", resource: None, farm: None, methods: [
+            (key: "road_haulage", available_from: 1925, inputs: [("fuel", 4000), ("automobiles", 60), ("natural_rubber", 20)], outputs: [("transportation", 8000)], jobs: [("laborer", 600), ("skilled_worker", 150), ("clerk", 60), ("manager", 15), ("capitalist", 5)]),
+        ]),
+        (key: "port", group: "infrastructure", resource: None, farm: None, methods: [
+            (key: "break_bulk", available_from: 1925, inputs: [("ships", 10), ("coal", 3000)], outputs: [("transportation", 10000)], jobs: [("laborer", 800), ("skilled_worker", 100), ("clerk", 80), ("manager", 15), ("capitalist", 5)]),
+            (key: "containers", available_from: 1960, inputs: [("ships", 15), ("fuel", 4000), ("machinery", 8), ("electricity", 4000)], outputs: [("transportation", 30000)], jobs: [("laborer", 250), ("skilled_worker", 250), ("engineer", 20), ("clerk", 80), ("manager", 15), ("capitalist", 5)]),
+        ]),
+        (key: "trade_center", group: "services", resource: None, farm: None, methods: [
+            (key: "shops", available_from: 1925, inputs: [("paper", 30), ("transportation", 200)], outputs: [("services", 6000)], jobs: [("clerk", 700), ("laborer", 200), ("manager", 40), ("capitalist", 20)]),
+            (key: "department_stores", available_from: 1925, inputs: [("paper", 40), ("transportation", 300), ("electricity", 1500)], outputs: [("services", 9000)], jobs: [("clerk", 650), ("laborer", 150), ("manager", 50), ("capitalist", 20)]),
+            (key: "supermarkets", available_from: 1955, inputs: [("paper", 50), ("transportation", 400), ("electricity", 3000), ("plastics", 60), ("computers", 2)], outputs: [("services", 15000)], jobs: [("clerk", 550), ("laborer", 150), ("manager", 60), ("capitalist", 20)]),
+        ]),
+        (key: "bank", group: "services", resource: None, farm: None, methods: [
+            (key: "ledger_banking", available_from: 1925, inputs: [("paper", 80)], outputs: [("finance", 3000)], jobs: [("clerk", 750), ("professional", 100), ("manager", 80), ("capitalist", 40)]),
+            (key: "computerized_banking", available_from: 1960, inputs: [("paper", 60), ("computers", 10), ("electricity", 2000)], outputs: [("finance", 8000)], jobs: [("clerk", 500), ("professional", 200), ("engineer", 50), ("manager", 100), ("capitalist", 40)]),
+        ]),
+        (key: "telecom_exchange", group: "services", resource: None, farm: None, methods: [
+            (key: "telegraph_telephone", available_from: 1925, inputs: [("copper", 30), ("electrical_equipment", 20)], outputs: [("telecommunications", 3000)], jobs: [("clerk", 600), ("skilled_worker", 200), ("engineer", 30), ("manager", 20), ("capitalist", 5)]),
+            (key: "automatic_exchange", available_from: 1925, inputs: [("copper", 40), ("electrical_equipment", 40), ("electricity", 1500)], outputs: [("telecommunications", 6000)], jobs: [("clerk", 300), ("skilled_worker", 300), ("engineer", 60), ("manager", 20), ("capitalist", 5)]),
+            (key: "digital_network", available_from: 1975, inputs: [("electronic_components", 60), ("computers", 20), ("electricity", 3000)], outputs: [("telecommunications", 20000)], jobs: [("clerk", 200), ("skilled_worker", 250), ("engineer", 200), ("manager", 25), ("capitalist", 5)]),
+        ]),
+    ],
+)
