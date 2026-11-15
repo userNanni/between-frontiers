@@ -53,21 +53,40 @@ três consumidores da mesma biblioteca.
 
 ### Cliente em Linux e Windows
 
-- **Recomendação:** Electron com interface em React/TypeScript e mapa em WebGL2, núcleo carregado
-  como módulo nativo. É o mesmo Chromium nos dois sistemas, então o que roda no Linux roda igual no
-  Windows.
-- **Alternativa nativa:** winit + wgpu + egui. Dá um executável de algumas dezenas de MB e mais
-  controle, ao custo de construir toda tela densa em um toolkit menos produtivo.
-- **Distribuição:** nos dois casos o jogador baixa um arquivo só (AppImage no Linux, `.exe`
-  portátil no Windows). A diferença é o que vai dentro: o pacote Electron carrega o Chromium, o
-  Node, o JavaScript da interface e o núcleo Rust como módulo nativo, o que custa download e
-  memória maiores e uma fronteira entre dois runtimes.
-- **Descartado:** Tauri, porque no Linux usa WebKitGTK, onde o WebGL pode cair em rasterização por
-  software sem aviso.
+O cliente é nativo: um executável só, sem navegador embutido.
+
+- **Janela e GPU:** winit e wgpu (Vulkan no Linux, DirectX 12 ou Vulkan no Windows).
+- **Quadro:** o renderizador do mapa desenha primeiro; a interface é composta por cima, no mesmo
+  dispositivo de GPU.
+- **Simulação fora da thread da interface.** A interface lê um view-model pronto e emite comandos;
+  nunca espera o tick.
 - **Garantia:** o CI compila e roda testes e benchmark em Linux e Windows desde o primeiro PR com
   código. macOS não é meta do primeiro dia.
 
-Como o núcleo não conhece o cliente, trocar Electron por cliente nativo depois não toca a simulação.
+#### Toolkit de interface
+
+| Toolkit | Mapa próprio em wgpu | Aparência | Risco |
+|---|---|---|---|
+| Slint | Integração oficial: desenha por baixo da interface ou importa textura | Linguagem declarativa de componentes, estilo livre, prévia ao vivo | API de wgpu ainda marcada como instável |
+| egui | A mais simples: a interface entra no nosso passo de renderização | Estilo global, layout básico; cara de ferramenta sem muito trabalho | Baixo |
+| GPUI + gpui-component | Não há API estável para embutir textura; só em forks | A mais próxima do shadcn: mais de 75 componentes prontos | Alto: feito para o editor Zed, pré-1.0 |
+| Dioxus Native (Blitz) | Integração recente | HTML e CSS sem navegador | Alto: beta, desempenho não é foco |
+
+- **Recomendação:** Slint na interface do jogo, confirmado por um protótipo na fase 0: a mesma
+  tela (mapa, tabela densa, tooltip aninhado) em Slint e em egui, com tempo de quadro medido.
+- **egui** fica para as ferramentas de desenvolvimento (inspetor de estado, painel do benchmark).
+- **Licença:** o Slint é oferecido sob GPLv3, que combina com a AGPL; egui é MIT ou Apache-2.0.
+
+#### Sistema de design
+
+Não existe um shadcn pronto para o toolkit recomendado. O que o shadcn tem de reaproveitável é o
+método: os componentes moram no repositório e são nossos.
+
+- **Tokens** em um arquivo só: cores, espaçamento, raio, tipografia, duração de animação.
+- **Cerca de quinze componentes próprios:** painel, botão, aba, tabela, tooltip aninhado, barra de
+  progresso, gráfico de linha, ícone, lista virtualizada, janela arrastável, alerta.
+- **Fontes embutidas** com todos os acentos do português; ícones em SVG.
+- **Tela densa primeiro:** o componente só entra no kit depois de provado numa tela real do jogo.
 
 ## Modelo de população
 
@@ -109,10 +128,44 @@ em estado × profissão:
 - **Desemprego** recai primeiro sobre quem a lei e o preconceito discriminam.
 - **Idade** é um vetor de faixas dentro da linha. **Ideologia e apoio partidário** são percentuais
   dentro da linha.
-- **Cauda longa:** comunidade abaixo de um limiar no estado entra numa linha "outras minorias", que
-  guarda a composição. Ela volta a ser linha própria se crescer.
+- **Cauda longa:** comunidade de baixa importância no estado entra numa linha "outras minorias",
+  que guarda a composição. A regra está em "Quais comunidades viram linha".
 
 É o modelo do Europa Universalis V (location × cultura × religião × classe, sem local de trabalho).
+
+### Quais comunidades viram linha
+
+Curva ABC sobre a importância, não sobre o tamanho.
+
+**Importância = fatia da população × relevância**, com relevância mínima de 1.
+
+- Grupo grande sem poder aparece: a relevância nunca zera o tamanho.
+- Grupo pequeno com poder aparece: a relevância multiplica.
+- Grupo pequeno sem poder não aparece: vai para "outras minorias".
+
+O que aumenta a relevância de uma comunidade num país:
+
+| Fator | Exemplo |
+|---|---|
+| Fatia da elite maior que a fatia da população (terra, capital, oficialato, burocracia) | Brancos na África do Sul |
+| Organização própria (partido, igreja, movimento, milícia) | Católicos na Irlanda do Norte |
+| Estatuto legal distinto, privilegiado ou perseguido | Judeus na Alemanha depois de 1933 |
+| Pátria ou patrono no exterior | Alemães dos Sudetos |
+| Concentração territorial (maioria em algum estado) | Catalães, curdos |
+
+Regras:
+
+- **Corte:** ordena por importância, dentro do país e dentro do estado. Classes A e B (até 95% da
+  importância acumulada) viram linha; a classe C entra em "outras minorias".
+- **Alvo de perseguição conta como relevância.** Ser perseguido é tão relevante para a simulação
+  quanto mandar.
+- **A relevância muda durante a partida.** Uma lei que mira um grupo ou um movimento que nasce
+  promove a comunidade a linha própria. Ao ser promovida, ela herda as médias de "outras
+  minorias", porque até ali não tinha estado próprio.
+- **Histerese:** o limite para rebaixar é menor que o de promover, para a linha não piscar.
+- **Fixação nos dados:** o cenário de 1925 pode marcar comunidades que a história tornou centrais
+  depois, para que já nasçam como linha (tutsis e hutus em Ruanda-Urundi, por exemplo).
+- **Teto por estado:** o orçamento de linhas vale mesmo quando a curva pediria mais.
 
 ### O que se perde
 
@@ -201,8 +254,9 @@ Cada tecnologia passa, por país, por quatro estágios inspirados na escala TRL.
 
 ### Quantos estados
 
-Meta: cerca de 900, a confirmar quando o mapa for desenhado. Fica entre o Victoria 3 (675 regiões
-de estado) e o Hearts of Iron IV (1.081 estados).
+Decidido: cerca de 900. Fica entre o Victoria 3 (675 regiões de estado) e o Hearts of Iron IV
+(1.081 estados). Os estados brasileiros, americanos e mexicanos entram inteiros; só unidades de
+dezenas de milhões de pessoas são divididas.
 
 | Cenário | Média em 1925 | O que representa |
 |---|---|---|
@@ -249,6 +303,6 @@ As correções podem voltar para o OpenHistoricalMap.
 
 ## Decisões em aberto
 
-1. Cliente: Electron (recomendado) ou nativo.
-2. Número exato de estados e limiar da cauda longa de comunidades.
+1. Toolkit de interface: Slint (recomendado) ou egui, pelo protótipo da fase 0.
+2. Parâmetros da curva ABC das comunidades: pesos da relevância, corte e teto de linhas por estado.
 3. Lista de comunidades (pares cultura + religião) de 1925.
