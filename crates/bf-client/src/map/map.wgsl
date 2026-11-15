@@ -14,6 +14,10 @@ struct Uniforms {
     selected: u32,
     dim: f32,
     relief: f32,
+    pastel: f32,
+    _pad0: f32,
+    _pad1: f32,
+    _pad2: f32,
 };
 
 @group(0) @binding(0) var<uniform> u: Uniforms;
@@ -99,7 +103,6 @@ const SEA_SHALLOW: vec3<f32> = vec3<f32>(0.255, 0.384, 0.427);
 const BEYOND: vec3<f32> = vec3<f32>(0.043, 0.059, 0.078);
 // Country colours are softened toward this paper tone, so the relief reads through them.
 const PAPER: vec3<f32> = vec3<f32>(0.93, 0.89, 0.80);
-const PASTEL: f32 = 0.34;
 const SUNLIT: vec3<f32> = vec3<f32>(1.0, 0.97, 0.90);
 const SHADOW_TINT: vec3<f32> = vec3<f32>(0.80, 0.84, 0.95);
 
@@ -124,7 +127,7 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
         col *= 0.94 + grain * 0.08;
     } else {
         let owner = owner_of(id);
-        col = mix(textureLoad(palette, table_coord(id), 0).rgb, PAPER, PASTEL);
+        col = mix(textureLoad(palette, table_coord(id), 0).rgb, PAPER, u.pastel);
         // Terrain: the hillshade is centred on 0.5 (flat). Light faces get warmer and brighter,
         // shadows darker and slightly cooler.
         let hill = (textureSampleLevel(relief_tex, field_sampler, t / u.map_size, 0.0).r - 0.5) * 2.0 * u.relief;
