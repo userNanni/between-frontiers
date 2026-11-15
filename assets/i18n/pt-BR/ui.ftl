@@ -175,3 +175,29 @@ bar-date-tip = Velocidade { $speed } de 5. Clique para pausar ou continuar.
 bar-menu = Menu (Esc)
 source-economy = Fontes: Maddison Project 2023 e Our World in Data; estimativas próprias onde faltam dados.
 source-social = Fontes: Our World in Data e HYDE; estimativas próprias onde faltam dados.
+
+## Painel do canto
+
+hud-per-capita = Renda per capita
+hud-per-capita-tip = PIB dividido pela população. A barra vai de US$ 300 a US$ 40.000, a faixa do século.
+hud-density = Densidade
+hud-density-value = { $value }/km²
+hud-density-tip = Pessoas por km² de território.
+hud-area = Área
+hud-area-tip = Território governado diretamente, colônias incluídas.
+hud-provinces = Províncias
+hud-provinces-tip = Províncias do mapa sob o país.
+hud-subjects = Súditos
+hud-subjects-tip = Países sob a suserania deste: domínios, mandatos, protetorados e satélites.
+hud-subjects-none = Nenhum súdito.
+hud-gdp-share = Fatia do PIB mundial
+hud-gdp-share-tip = Parte de tudo o que o mundo produz que sai deste país.
+hud-pop-share = Fatia da população mundial
+hud-pop-share-tip = Parte da humanidade que vive neste país.
+hud-rank-quality = Posição em qualidade de vida
+hud-rank-population = Posição em população
+hud-rank-value = { $rank }º
+hud-due-to = Isso se deve a:
+hud-world-total = Total do mundo: { $value }
+hud-life-bar = A barra vai de 20 a 85 anos.
+hud-medal-tip = { $rank }ª economia do mundo

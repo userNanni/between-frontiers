@@ -77,10 +77,7 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
             .and_then(|t| w.countries.iter().position(|c| c.tag() == t))
     });
 
-    let map_rect = Rect::from_min_max(
-        egui::pos2(rect.left(), rect.top() + top_bar::HEIGHT),
-        rect.max,
-    );
+    let map_rect = rect;
     let i18n = &shared.i18n;
     if let (Some(map), Some(view), Some(world)) = (&shared.map, &mut shared.map_view, &shared.world)
     {
@@ -104,8 +101,7 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
     }
 
     // Top bar
-    let bar = Rect::from_min_size(rect.min, egui::vec2(rect.width(), top_bar::HEIGHT));
-    let bar_out = top_bar::show(ui, bar, &shared.i18n, shared.world.as_ref(), player, &snap);
+    let bar_out = top_bar::show(ui, rect, &shared.i18n, shared.world.as_ref(), player, &snap);
     if bar_out.open_country {
         state.selected = player;
     }
@@ -123,7 +119,10 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
     // Country panel for the clicked country.
     if let Some(country) = state.selected {
         let side = Rect::from_min_max(
-            egui::pos2(rect.right() - 380.0 - space::LG, bar.bottom() + space::LG),
+            egui::pos2(
+                rect.right() - 380.0 - space::LG,
+                rect.top() + top_bar::RIGHT_BOTTOM,
+            ),
             egui::pos2(rect.right() - space::LG, rect.bottom() - space::LG),
         );
         bf_ui_kit::paint_overlay(ui, side);

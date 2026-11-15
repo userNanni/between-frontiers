@@ -43,6 +43,9 @@ impl Country {
 
 pub struct World {
     pub start: Date,
+    /// World totals on the start date.
+    pub world_population: f64,
+    pub world_gdp: f64,
     pub countries: Vec<Country>,
     pub provinces: Vec<Province>,
     pub map: MapFile,
@@ -153,8 +156,12 @@ impl World {
         for (rank, &i) in with_quality.iter().enumerate() {
             countries[i].rank_quality = Some(rank + 1);
         }
+        let world_population = countries.iter().map(|c| c.def.population as f64).sum();
+        let world_gdp = countries.iter().map(|c| c.gdp).sum();
         Self {
             start,
+            world_population,
+            world_gdp,
             countries,
             provinces,
             map,

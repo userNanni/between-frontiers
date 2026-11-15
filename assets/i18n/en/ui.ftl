@@ -163,3 +163,29 @@ bar-date-tip = Speed { $speed } of 5. Click to pause or resume.
 bar-menu = Menu (Esc)
 source-economy = Sources: Maddison Project 2023 and Our World in Data; own estimates where data is missing.
 source-social = Sources: Our World in Data and HYDE; own estimates where data is missing.
+
+## Corner panel
+
+hud-per-capita = Income per capita
+hud-per-capita-tip = GDP divided by population. The bar runs from $300 to $40,000, the century's range.
+hud-density = Density
+hud-density-value = { $value }/km²
+hud-density-tip = People per km² of territory.
+hud-area = Area
+hud-area-tip = Territory ruled directly, colonies included.
+hud-provinces = Provinces
+hud-provinces-tip = Map provinces under the country.
+hud-subjects = Subjects
+hud-subjects-tip = Countries under this one's overlordship: dominions, mandates, protectorates and satellites.
+hud-subjects-none = No subjects.
+hud-gdp-share = Share of world GDP
+hud-gdp-share-tip = Part of everything the world produces that comes from this country.
+hud-pop-share = Share of world population
+hud-pop-share-tip = Part of humanity living in this country.
+hud-rank-quality = Rank in quality of life
+hud-rank-population = Rank in population
+hud-rank-value = #{ $rank }
+hud-due-to = This is due to:
+hud-world-total = World total: { $value }
+hud-life-bar = The bar runs from 20 to 85 years.
+hud-medal-tip = #{ $rank } economy in the world
