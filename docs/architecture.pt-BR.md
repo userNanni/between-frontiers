@@ -56,8 +56,12 @@ três consumidores da mesma biblioteca.
 - **Recomendação:** Electron com interface em React/TypeScript e mapa em WebGL2, núcleo carregado
   como módulo nativo. É o mesmo Chromium nos dois sistemas, então o que roda no Linux roda igual no
   Windows.
-- **Alternativa nativa:** winit + wgpu + egui. Dá um binário só e mais controle, ao custo de
-  construir toda tela densa em um toolkit menos produtivo.
+- **Alternativa nativa:** winit + wgpu + egui. Dá um executável de algumas dezenas de MB e mais
+  controle, ao custo de construir toda tela densa em um toolkit menos produtivo.
+- **Distribuição:** nos dois casos o jogador baixa um arquivo só (AppImage no Linux, `.exe`
+  portátil no Windows). A diferença é o que vai dentro: o pacote Electron carrega o Chromium, o
+  Node, o JavaScript da interface e o núcleo Rust como módulo nativo, o que custa download e
+  memória maiores e uma fronteira entre dois runtimes.
 - **Descartado:** Tauri, porque no Linux usa WebKitGTK, onde o WebGL pode cair em rasterização por
   software sem aviso.
 - **Garantia:** o CI compila e roda testes e benchmark em Linux e Windows desde o primeiro PR com
@@ -120,10 +124,28 @@ política.
 
 ### Tamanho
 
-Ilustração, não medida: 800 estados × 6 comunidades acima do limiar × 12 profissões dá cerca de 58
-mil linhas demográficas; a tabela de emprego fica abaixo de 800 × 12 × 10 = 96 mil células. O total
-não é fixo, mas é limitado pelo limiar da cauda longa, e o benchmark de 100 anos acusa se ele
-crescer.
+Referência do Victoria 3: 675 regiões de estado para cerca de um bilhão de pessoas, e relatos de
+jogadores de 140 a 160 mil pops entre 1900 e 1936. É nessa faixa que o jogo fica lento.
+
+Ilustração, não medida: 900 estados × 6 comunidades acima do limiar × 12 profissões dá cerca de 65
+mil linhas demográficas; a tabela de emprego fica abaixo de 900 × 12 × 10 = 108 mil células.
+
+- O total não é fixo, mas é limitado pelo limiar da cauda longa.
+- **O limiar cresce com a população.** O mundo vai de 2 para 8 bilhões de pessoas; o número de
+  linhas não pode acompanhar. Limiar e lote mínimo de migração são proporção da população do
+  estado, não número absoluto.
+- O benchmark de 100 anos registra a contagem de linhas por década e falha se ela passar do
+  orçamento.
+
+### O segundo meio século
+
+Levado além de 1936, o Victoria 3 esvazia o campesinato e vira desemprego em massa, e seus
+agregados estouram 32 bits com PIB na casa dos bilhões. De 1925 a 2025 isso precisa de regra
+própria, não de extensão da regra de 1925:
+
+- transição demográfica (fecundidade e mortalidade caem com renda, educação e urbanização);
+- serviços como setor dominante e empregador da mão de obra que sai do campo e da fábrica;
+- todo agregado (população, dinheiro, PIB, bens) em 64 bits.
 
 ## Desempenho
 
@@ -174,20 +196,59 @@ Cada tecnologia passa, por país, por quatro estágios inspirados na escala TRL.
 ## Mapa
 
 - Textura de ids de província e paleta por modo de mapa, em um draw call; seleção lendo a textura.
-- Estados são conjuntos de províncias; o número de estados define o orçamento do tick.
-- **Fronteiras de 1925:** o repositório é aberto e o projeto pode cobrar por servidor de
-  multiplayer, então dado com cláusula de uso não comercial fica de fora. A base é desenhada sobre
-  dado de domínio público.
+- Estados são conjuntos de províncias. O estado é a unidade da simulação; a província é só visual
+  e, mais tarde, de frente de guerra. O número de estados define o orçamento do tick.
+
+### Quantos estados
+
+Meta: cerca de 900, a confirmar quando o mapa for desenhado. Fica entre o Victoria 3 (675 regiões
+de estado) e o Hearts of Iron IV (1.081 estados).
+
+| Cenário | Média em 1925 | O que representa |
+|---|---|---|
+| ~500 | 4,0 milhões | Estados dos EUA e do Brasil, províncias chinesas e indianas inteiras; cada colônia africana é um estado |
+| ~900 | 2,2 milhões | O anterior, com Bengala, Províncias Unidas e Sichuan divididas, os maiores estados principescos, URSS por governorado, Nigéria, Congo e Sudão por província |
+| ~1.500 | 1,3 milhão | O anterior, com departamentos franceses, prefeituras japonesas e São Paulo e Minas divididos |
+
+- Com 900, toda unidade histórica reconhecível existe sem exigir desenho abaixo do primeiro nível
+  administrativo, onde não há fonte livre.
+- Em 2025 a média por estado chega a cerca de 9 milhões. Os extremos são grandes em qualquer
+  cenário: dezenas de milhões em Bengala, poucos milhares no Yukon.
+- O mundo de 1925 tinha de 62 a 76 Estados soberanos, conforme o critério, e mais de uma centena de
+  dependências.
+
+### Fontes de dados
+
+O repositório é aberto e o projeto pode cobrar por servidor de multiplayer, então dado com cláusula
+de uso não comercial fica de fora, e dado sob GPL não entra nos dados sob CC BY-SA.
+
+| Fonte | Licença | Uso |
+|---|---|---|
+| Natural Earth | Domínio público | Base física: costa, rios, relevo |
+| OpenHistoricalMap | CC0 | Países e colônias em 1925; subdivisões onde existem |
+| Cliopatria (Seshat) | CC BY 4.0 | Conferência das fronteiras políticas |
+| geoBoundaries | CC BY 4.0 | Subdivisões atuais, redesenhadas para 1925 onde o OpenHistoricalMap é vazio |
+| HYDE 3.3 | CC BY 4.0 | População de 1920 e 1930 em grade, somada por estado |
+| Maddison Project 2023 | CC BY 4.0 | PIB per capita por país |
+| Wikidata | CC0 | Identificadores, datas, cidades |
+| Atlas de época no Wikimedia Commons (Stieler, Andrees) | Por arquivo | Referência de desenho |
+
+Ficam de fora: CShapes (não comercial), GADM (não comercial), historical-basemaps (GPL-3.0), os
+scans da coleção David Rumsey (não comercial) e os livros de McEvedy & Jones, Chandler e Modelski
+(direito autoral).
+
+O OpenHistoricalMap cobre bem as Américas, a Alemanha, a Polônia e a Itália em 1925. China, Japão,
+França, o interior da África e as Índias Holandesas estão quase vazios e terão de ser desenhados.
+As correções podem voltar para o OpenHistoricalMap.
 
 ## Licença
 
-- Código: AGPL-3.0-or-later. Quem hospedar uma versão modificada tem de publicar o código, o que
-  protege um eventual serviço pago de multiplayer sem fechar nada.
-- Dados e textos do jogo: CC BY-SA 4.0.
+- Código, engine incluída: AGPL-3.0-or-later. Quem hospedar uma versão modificada tem de publicar o
+  código, o que protege um eventual serviço pago de multiplayer sem fechar nada.
+- Dados e textos do jogo: CC BY-SA 4.0, com arquivo de atribuição para as fontes CC BY.
 
 ## Decisões em aberto
 
 1. Cliente: Electron (recomendado) ou nativo.
-2. Número de estados e limiar da cauda longa de comunidades.
-3. Licença da engine: AGPL junto com o jogo, ou permissiva para que outros projetos a usem.
-4. Fonte de dados das fronteiras e da demografia de 1925.
+2. Número exato de estados e limiar da cauda longa de comunidades.
+3. Lista de comunidades (pares cultura + religião) de 1925.
