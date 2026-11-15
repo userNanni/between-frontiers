@@ -1,5 +1,5 @@
 //! Map preprocessing tool: builds `assets/map/provinces.png` and `assets/map/provinces.ron` from
-//! Natural Earth admin-1 polygons and the 1925 ownership file. Deterministic: the same inputs
+//! Natural Earth admin-1 polygons, the 1925 ownership file and the 1925 state rules. Deterministic: the same inputs
 //! give byte-identical outputs. See `docs/map-pipeline.pt-BR.md`.
 
 mod geom;
@@ -9,13 +9,14 @@ mod projection;
 mod raster;
 mod relief;
 mod sources;
+mod states;
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs::{self, File};
 use std::io::BufWriter;
 use std::path::{Path, PathBuf};
 
-use bf_sim::scenario::{MapFile, MapMeta, ProvinceDef};
+use bf_sim::scenario::{MapFile, MapMeta, ProvinceDef, StateDef};
 use geo::orient::Direction;
 use geo::{
     Area, BooleanOps, BoundingRect, GeodesicArea, Intersects, LineString, MultiPolygon, Orient,
@@ -39,8 +40,15 @@ struct Province {
     owner: String,
     /// Natural Earth `adm0_a3` of the unit the province comes from (of the parent for a carve).
     adm0: String,
+    /// ISO 3166-2 code; empty for carves and admin-0 units.
+    iso: String,
+    /// Natural Earth attributes the state rules may group by.
+    fields: Vec<(String, String)>,
     geometry: MultiPolygon<f64>,
 }
+
+/// Natural Earth admin-1 attributes available to `Field` rules in `states.ron`.
+const STATE_FIELDS: [&str; 2] = ["region", "region_sub"];
 
 fn main() {
     if let Err(e) = run() {
@@ -74,7 +82,16 @@ fn run() -> Result<(), String> {
 
     let admin1 = sources::read_features(
         &admin1_shp,
-        &["adm1_code", "adm0_a3", "name", "name_en", "admin"],
+        &[
+            "adm1_code",
+            "adm0_a3",
+            "name",
+            "name_en",
+            "admin",
+            "iso_3166_2",
+            "region",
+            "region_sub",
+        ],
     )?;
     let admin0 = sources::read_features(&admin0_shp, &["ADM0_A3", "ADMIN"])?;
     let mut provinces = collect_provinces(&owners, admin1, admin0)?;
@@ -106,7 +123,7 @@ fn run() -> Result<(), String> {
         pixels[id as usize] += 1;
     }
 
-    let defs: Vec<ProvinceDef> = provinces
+    let mut defs: Vec<ProvinceDef> = provinces
         .iter()
         .zip(&projected)
         .enumerate()
@@ -126,6 +143,7 @@ fn run() -> Result<(), String> {
                 area_km2: round_to(p.geometry.geodesic_area_unsigned() / 1e6, 10.0) as f32,
                 pixels: pixels[id],
                 colony: colony[i],
+                state: 0,
             }
         })
         .collect();
@@ -135,6 +153,18 @@ fn run() -> Result<(), String> {
     if let Some(p) = defs.iter().find(|p| p.area_km2 > 5.0e6) {
         return Err(format!("{} has an area of {} km2", p.key, p.area_km2));
     }
+
+    let states_path = root.join("data/scenario/1925/states.ron");
+    let states_text =
+        fs::read_to_string(&states_path).map_err(|e| format!("{}: {e}", states_path.display()))?;
+    let rules = states::StatesFile::parse(&states_text)?;
+    if rules.start_date != START_DATE {
+        return Err(format!(
+            "states.ron is for {}, expected {START_DATE}",
+            rules.start_date
+        ));
+    }
+    let (state_defs, notes) = build_states(&rules, &provinces, &mut defs, &frame, &buf)?;
 
     let map = MapFile {
         meta: MapMeta {
@@ -158,9 +188,11 @@ fn run() -> Result<(), String> {
                 ),
                 "Owners on 1925-01-01: data/scenario/1925/province_owners.ron, CC BY-SA 4.0"
                     .to_string(),
+                "States on 1925-01-01: data/scenario/1925/states.ron, CC BY-SA 4.0".to_string(),
             ],
         },
         provinces: defs,
+        states: state_defs,
     };
 
     let out_dir = root.join("assets/map");
@@ -183,7 +215,111 @@ fn run() -> Result<(), String> {
 
     write_previews(&root.join("target-preview"), &frame, &buf, &map)?;
     print_summary(&map, &png_path);
+    print_states(&map, &notes);
     Ok(())
+}
+
+/// Groups the provinces into states, sets `ProvinceDef::state` and checks the result.
+fn build_states(
+    rules: &states::StatesFile,
+    provinces: &[Province],
+    defs: &mut [ProvinceDef],
+    frame: &Frame,
+    buf: &[u16],
+) -> Result<(Vec<StateDef>, Vec<String>), String> {
+    let info: Vec<states::ProvinceInfo> = provinces
+        .iter()
+        .zip(defs.iter())
+        .map(|(p, d)| states::ProvinceInfo {
+            key: &p.key,
+            name: &p.name,
+            owner: &p.owner,
+            colony: d.colony,
+            adm0: &p.adm0,
+            iso: &p.iso,
+            fields: &p.fields,
+            area_km2: f64::from(d.area_km2),
+        })
+        .collect();
+    let grouping = states::group(rules, &info)?;
+    if grouping.states.len() >= usize::from(u16::MAX) {
+        return Err(format!(
+            "{} states do not fit in 16 bits",
+            grouping.states.len()
+        ));
+    }
+    let mut state_of_id = vec![0u32; defs.len() + 1];
+    for (i, &s) in grouping.state_of.iter().enumerate() {
+        state_of_id[i + 1] = s as u32 + 1;
+        defs[i].state = (s + 1) as u16;
+    }
+    let centers = states::centers(
+        buf,
+        frame.width,
+        frame.height,
+        &state_of_id,
+        grouping.states.len(),
+    );
+    let tiny: BTreeSet<&str> = rules.tiny.iter().map(String::as_str).collect();
+    let mut errors = Vec::new();
+    let out: Vec<StateDef> = grouping
+        .states
+        .iter()
+        .zip(centers)
+        .enumerate()
+        .map(|(si, (g, center))| {
+            let first = &defs[g.members[0]];
+            let pixels: u32 = g.members.iter().map(|&i| defs[i].pixels).sum();
+            match (pixels == 0, tiny.contains(g.key.as_str())) {
+                (true, false) => errors.push(format!(
+                    "{} ({}) has no pixel; attach it or list it in `tiny`",
+                    g.key, g.name
+                )),
+                (false, true) => {
+                    errors.push(format!("{} has pixels; remove it from `tiny`", g.key))
+                }
+                _ => {}
+            }
+            let center = center.unwrap_or_else(|| {
+                let largest = g
+                    .members
+                    .iter()
+                    .max_by(|&&a, &&b| defs[a].area_km2.total_cmp(&defs[b].area_km2))
+                    .expect("a state has provinces");
+                defs[*largest].center
+            });
+            let area: f64 = g.members.iter().map(|&i| f64::from(defs[i].area_km2)).sum();
+            StateDef {
+                id: (si + 1) as u16,
+                key: g.key.clone(),
+                name: g.name.clone(),
+                owner: first.owner.clone(),
+                colony: first.colony,
+                center,
+                area_km2: round_to(area, 10.0) as f32,
+                provinces: g.members.iter().map(|&i| defs[i].id).collect(),
+            }
+        })
+        .collect();
+    let keys: BTreeSet<&str> = out.iter().map(|s| s.key.as_str()).collect();
+    for t in &tiny {
+        if !keys.contains(t) {
+            errors.push(format!("tiny state {t} does not exist"));
+        }
+    }
+    for s in &out {
+        let mixed = s.provinces.iter().any(|&id| {
+            let p = &defs[usize::from(id) - 1];
+            p.owner != s.owner || p.colony != s.colony
+        });
+        if mixed {
+            errors.push(format!("{} mixes owners or colony status", s.key));
+        }
+    }
+    if !errors.is_empty() {
+        return Err(format!("states:\n  {}", errors.join("\n  ")));
+    }
+    Ok((out, grouping.notes))
 }
 
 fn round_to(v: f64, factor: f64) -> f64 {
@@ -228,6 +364,11 @@ fn collect_provinces(
             name,
             owner,
             adm0: adm0.to_string(),
+            iso: f.get("iso_3166_2").to_string(),
+            fields: STATE_FIELDS
+                .iter()
+                .map(|&k| (k.to_string(), f.get(k).to_string()))
+                .collect(),
             geometry: f.geometry.clone(),
         });
     }
@@ -264,6 +405,8 @@ fn collect_provinces(
             name: f.get("ADMIN").to_string(),
             owner: owner.clone(),
             adm0: adm0.to_string(),
+            iso: String::new(),
+            fields: Vec::new(),
             geometry: rest.orient(Direction::Default),
         });
     }
@@ -326,6 +469,8 @@ fn apply_carves(owners: &OwnersFile, provinces: &mut Vec<Province>) -> Result<()
             name: carve.name.clone(),
             owner: carve.owner.clone(),
             adm0,
+            iso: String::new(),
+            fields: Vec::new(),
             geometry: piece.orient(Direction::Default),
         });
     }
@@ -454,6 +599,7 @@ fn write_previews(dir: &Path, frame: &Frame, buf: &[u16], map: &MapFile) -> Resu
         }
     }
     let colors = preview::country_colors(TAGS_1925.len(), &touching);
+    write_state_previews(dir, frame, buf, map)?;
     let full = (0, 0, frame.width, frame.height);
     preview::write(
         &dir.join("owners-preview.png"),
@@ -509,6 +655,63 @@ fn write_previews(dir: &Path, frame: &Frame, buf: &[u16], map: &MapFile) -> Resu
     Ok(())
 }
 
+/// States coloured apart, with state borders in black: `states-*.png`.
+fn write_state_previews(
+    dir: &Path,
+    frame: &Frame,
+    buf: &[u16],
+    map: &MapFile,
+) -> Result<(), String> {
+    let mut state_of = vec![0usize; map.provinces.len() + 1];
+    for p in &map.provinces {
+        state_of[p.id as usize] = usize::from(p.state) - 1;
+    }
+    let mut touching = BTreeSet::new();
+    let w = frame.width as usize;
+    for (i, &id) in buf.iter().enumerate() {
+        if id == 0 {
+            continue;
+        }
+        for j in [
+            (i % w + 1 < w).then(|| i + 1),
+            buf.get(i + w).map(|_| i + w),
+        ]
+        .into_iter()
+        .flatten()
+        {
+            let other = buf[j];
+            let (a, b) = (state_of[id as usize], state_of[other as usize]);
+            if other != 0 && a != b {
+                touching.insert((a.min(b), a.max(b)));
+            }
+        }
+    }
+    let colors = preview::country_colors(map.states.len(), &touching);
+    let windows: [(&str, f64, f64, f64, f64, u32); 4] = [
+        ("world", -180.0, 84.0, 180.0, -58.0, 4),
+        ("europe", -12.0, 71.0, 42.0, 34.0, 1),
+        ("asia", 60.0, 55.0, 150.0, 0.0, 2),
+        ("americas", -125.0, 60.0, -30.0, -56.0, 2),
+    ];
+    for (name, west, north, east, south, step) in windows {
+        let (x0, y0) = frame.to_pixel(west, north);
+        let (x1, y1) = frame.to_pixel(east, south);
+        let window = (
+            (x0 as u32).min(frame.width),
+            y0.max(0.0) as u32,
+            (x1 as u32).min(frame.width),
+            (y1 as u32).min(frame.height),
+        );
+        preview::write(
+            &dir.join(format!("states-{name}.png")),
+            &preview::Grid::sample(buf, frame.width, window, step),
+            &state_of,
+            &colors,
+        )?;
+    }
+    Ok(())
+}
+
 fn print_summary(map: &MapFile, png_path: &Path) {
     let mut per_tag: BTreeMap<&str, (usize, u64)> = BTreeMap::new();
     let mut colonies: BTreeMap<&str, usize> = BTreeMap::new();
@@ -545,6 +748,63 @@ fn print_summary(map: &MapFile, png_path: &Path) {
     println!("colonial provinces per owner: {colonies:?}");
 }
 
+fn print_states(map: &MapFile, notes: &[String]) {
+    for note in notes {
+        println!("note: {note}");
+    }
+    let mut per_owner: BTreeMap<&str, (usize, usize)> = BTreeMap::new();
+    for s in &map.states {
+        let e = per_owner.entry(s.owner.as_str()).or_default();
+        if s.colony {
+            e.1 += 1;
+        } else {
+            e.0 += 1;
+        }
+    }
+    let colonial: usize = per_owner.values().map(|v| v.1).sum();
+    println!(
+        "{} states ({} colonial) from {} provinces",
+        map.states.len(),
+        colonial,
+        map.provinces.len()
+    );
+    let mut owners: Vec<(&str, (usize, usize))> = per_owner.into_iter().collect();
+    owners.sort_by(|a, b| (b.1.0 + b.1.1).cmp(&(a.1.0 + a.1.1)).then(a.0.cmp(b.0)));
+    let line: Vec<String> = owners
+        .iter()
+        .map(|(tag, (m, c))| {
+            if *c == 0 {
+                format!("{tag} {m}")
+            } else {
+                format!("{tag} {m}+{c}")
+            }
+        })
+        .collect();
+    println!("states per owner (metropole+colonies): {}", line.join(", "));
+    let mut by_area: Vec<&StateDef> = map.states.iter().collect();
+    by_area.sort_by(|a, b| b.area_km2.total_cmp(&a.area_km2).then(a.key.cmp(&b.key)));
+    let fmt = |s: &&StateDef| format!("{} {} ({:.0} km2)", s.key, s.name, s.area_km2);
+    println!(
+        "biggest: {}",
+        by_area
+            .iter()
+            .take(8)
+            .map(fmt)
+            .collect::<Vec<_>>()
+            .join("; ")
+    );
+    println!(
+        "smallest: {}",
+        by_area
+            .iter()
+            .rev()
+            .take(8)
+            .map(fmt)
+            .collect::<Vec<_>>()
+            .join("; ")
+    );
+}
+
 const ATTRIBUTION: &str = "\
 # Map data attribution
 
@@ -557,6 +817,8 @@ const ATTRIBUTION: &str = "\
   centred on flat ground for `relief.png`. Public domain.
 - **Owners on 1925-01-01**: `data/scenario/1925/province_owners.ron`, written for Between
   Frontiers and released under CC BY-SA 4.0 with the rest of the game data.
+- **States on 1925-01-01**: `data/scenario/1925/states.ron`, written for Between Frontiers and
+  released under CC BY-SA 4.0.
 
 Natural Earth shows modern boundaries; where they cannot express the 1925 border the owner is an
 approximation, listed in `docs/map-pipeline.pt-BR.md`.
@@ -614,6 +876,39 @@ mod tests {
     }
 
     #[test]
+    fn every_province_is_in_one_state() {
+        let map = committed_map();
+        let n = map.states.len();
+        assert!(
+            (850..=950).contains(&n),
+            "{n} states; the plan is about 900"
+        );
+        let mut keys = BTreeSet::new();
+        let mut members = vec![0usize; map.provinces.len() + 1];
+        for (i, s) in map.states.iter().enumerate() {
+            assert_eq!(usize::from(s.id), i + 1, "{}", s.key);
+            assert!(keys.insert(s.key.as_str()), "duplicate key {}", s.key);
+            assert!(!s.provinces.is_empty(), "{} is empty", s.key);
+            assert!(s.provinces.windows(2).all(|w| w[0] < w[1]), "{}", s.key);
+            for &id in &s.provinces {
+                let p = &map.provinces[usize::from(id) - 1];
+                assert_eq!(p.state, s.id, "{} in {}", p.key, s.key);
+                assert_eq!(p.owner, s.owner, "{} in {} mixes owners", p.key, s.key);
+                assert_eq!(
+                    p.colony, s.colony,
+                    "{} in {} mixes colony status",
+                    p.key, s.key
+                );
+                members[usize::from(id)] += 1;
+            }
+        }
+        assert!(map.states.windows(2).all(|w| w[0].key < w[1].key));
+        for p in &map.provinces {
+            assert_eq!(members[usize::from(p.id)], 1, "{}", p.key);
+        }
+    }
+
+    #[test]
     fn leases_in_china_are_carved_colonies() {
         let map = committed_map();
         for (key, owner) in [
@@ -629,6 +924,49 @@ mod tests {
             assert_eq!(p.owner, owner, "{key}");
             assert!(p.colony, "{key} is not a colony");
             assert!(p.pixels > 0, "{key} has no pixels");
+        }
+    }
+
+    #[test]
+    fn states_have_pixels_unless_listed_as_tiny() {
+        let map = committed_map();
+        let text = fs::read_to_string(repo_root().join("data/scenario/1925/states.ron")).unwrap();
+        let rules = states::StatesFile::parse(&text).unwrap();
+        let tiny: BTreeSet<&str> = rules.tiny.iter().map(String::as_str).collect();
+        for s in &map.states {
+            let pixels: u32 = s
+                .provinces
+                .iter()
+                .map(|&id| map.provinces[usize::from(id) - 1].pixels)
+                .sum();
+            assert_eq!(pixels == 0, tiny.contains(s.key.as_str()), "{}", s.key);
+            let (x, y) = s.center;
+            assert!(
+                x >= 0.0 && y >= 0.0 && x < map.meta.width as f32 && y < map.meta.height as f32
+            );
+        }
+    }
+
+    #[test]
+    fn state_centres_fall_inside_their_state() {
+        let map = committed_map();
+        let file = File::open(repo_root().join("assets/map/provinces.png")).unwrap();
+        let mut reader = png::Decoder::new(std::io::BufReader::new(file))
+            .read_info()
+            .unwrap();
+        let mut bytes = vec![0; reader.output_buffer_size().unwrap()];
+        reader.next_frame(&mut bytes).unwrap();
+        let w = map.meta.width as usize;
+        for s in map.states.iter().filter(|s| {
+            s.provinces
+                .iter()
+                .any(|&id| map.provinces[usize::from(id) - 1].pixels > 0)
+        }) {
+            let (x, y) = (s.center.0 as usize, s.center.1 as usize);
+            let i = (y * w + x) * 2;
+            let id = u16::from_be_bytes([bytes[i], bytes[i + 1]]);
+            assert!(id != 0, "{} centre is in the sea", s.key);
+            assert_eq!(map.provinces[usize::from(id) - 1].state, s.id, "{}", s.key);
         }
     }
 
