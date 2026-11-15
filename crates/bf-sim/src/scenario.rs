@@ -5,8 +5,8 @@
 //!   0 is water or land outside any province. Projection and extent are in [`MapMeta`].
 //! - `assets/map/provinces.ron`: [`MapFile`].
 //! - `data/scenario/1925/countries.ron`: [`CountriesFile`].
-//! - Names live in the Fluent files, never here: `country-<TAG>`, `country-<TAG>-adj`,
-//!   `country-<TAG>-capital`, `government-<key>`.
+//! - Names live in the Fluent files, never here: `country-<TAG>` (with an `.article`
+//!   attribute), `country-<TAG>-capital`, `government-<key>`.
 
 use serde::{Deserialize, Serialize};
 
