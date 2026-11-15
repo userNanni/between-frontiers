@@ -842,7 +842,17 @@ fn time_panel(ui: &mut Ui, screen: Rect, i18n: &I18n, snap: &Snapshot, out: &mut
             painter.rect_filled(Rect::from_min_size(min, pip), 2, fill);
         }
     }
-    let tip = i18n.tr_args("bar-date-tip", &[("speed", Arg::Num(snap.speed as f64))]);
+    let tip = format!(
+        "{}\n{}",
+        i18n.tr_args("bar-date-tip", &[("speed", Arg::Num(snap.speed as f64))]),
+        i18n.tr_args(
+            "hud-engine",
+            &[
+                ("tick", Arg::String(i18n.int(snap.tick as i64))),
+                ("hash", Arg::String(snap.hash.clone())),
+            ],
+        )
+    );
     if response
         .on_hover_cursor(egui::CursorIcon::PointingHand)
         .on_hover_text(bf_ui_kit::tooltip_text(&tip))

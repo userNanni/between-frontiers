@@ -111,6 +111,43 @@ fn walk_through_the_screens() {
     assert!(matches!(h.state().screen, Screen::Game(_)));
     shot(&mut h, "06-campanha");
 
+    // 6a. The engine runs: unpause, let days pass, pause, save from the menu, reopen with
+    // "Continue" and find the same date and state hash.
+    let game_snapshot = |h: &Harness<'_, App>| match &h.state().screen {
+        Screen::Game(g) => g.snapshot(),
+        _ => panic!("not in a campaign"),
+    };
+    h.key_press(egui::Key::Space);
+    let started = std::time::Instant::now();
+    while game_snapshot(&h).tick < 20 && started.elapsed().as_secs() < 20 {
+        std::thread::sleep(std::time::Duration::from_millis(50));
+        h.run_steps(1);
+    }
+    h.key_press(egui::Key::Space);
+    std::thread::sleep(std::time::Duration::from_millis(400));
+    h.run_steps(2);
+    let before = game_snapshot(&h);
+    assert!(
+        before.paused && before.tick >= 20,
+        "simulation did not run: {before:?}"
+    );
+    assert_eq!(before.player.as_deref(), Some("BRA"));
+    h.get_by_label("Menu (Esc)").click();
+    h.run_steps(2);
+    h.get_by_label("Salvar").click();
+    h.run_steps(2);
+    shot(&mut h, "06a-salvo");
+    let ctx = h.ctx.clone();
+    h.state_mut().apply(Transition::Menu, &ctx);
+    h.run_steps(2);
+    h.get_by_label("Continuar").click();
+    h.run_steps(3);
+    let after = game_snapshot(&h);
+    assert_eq!(
+        (after.date, after.tick, after.hash.clone()),
+        (before.date, before.tick, before.hash.clone())
+    );
+
     // 6b. Tooltip of the quality-of-life figure in the top bar.
     let quality = h
         .get_all(egui_kittest::kittest::by().label_contains("Qualidade de vida"))

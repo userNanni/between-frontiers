@@ -155,9 +155,18 @@ impl App {
                 Screen::Saves(screens::saves::State::new(shared))
             }
             Transition::Pick(save) => Screen::Pick(screens::pick::State::new(save)),
-            Transition::Game(save) => {
-                Screen::Game(Box::new(screens::game::State::new(shared, save, ctx)))
-            }
+            Transition::Game(save) => match screens::game::State::new(shared, save, ctx) {
+                Ok(state) => Screen::Game(Box::new(state)),
+                Err(e) => {
+                    let now = ctx.input(|i| i.time);
+                    let msg = shared
+                        .i18n
+                        .tr_args("saves-error-load", &[("error", bf_i18n::Arg::String(e))]);
+                    shared.toast(msg, now);
+                    shared.refresh_saves();
+                    Screen::Saves(screens::saves::State::new(shared))
+                }
+            },
             Transition::Quit => {
                 ctx.send_viewport_cmd(egui::ViewportCommand::Close);
                 return;

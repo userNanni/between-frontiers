@@ -1,28 +1,42 @@
-//! The simulation runs off the interface thread. The interface reads a published snapshot and
-//! sends commands; it never waits for a tick.
-//!
-//! Phase 0 only advances the calendar; the systems arrive with the economy phase.
+//! The simulation runs off the interface thread, on the Laplace-Schelling engine. The interface
+//! reads a published snapshot and sends commands; it never waits for a tick, only for a save.
 
+use std::path::PathBuf;
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
+use bf_sim::game::{GameCommand, Session};
 use laplace_schelling::calendar::Date;
 
 /// Days per second at each speed, 1 to 5.
 const DAYS_PER_SECOND: [f64; 5] = [1.0, 3.0, 8.0, 20.0, 60.0];
+/// Most ticks run between two looks at the command queue, so the interface stays responsive.
+const MAX_TICKS_PER_BATCH: u32 = 32;
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Snapshot {
     pub date: Date,
+    pub tick: u64,
     pub paused: bool,
     /// 1 to 5.
     pub speed: u8,
+    /// Short state hash, refreshed when the game pauses and on the first of each month.
+    pub hash: String,
+    /// Tag the world says the player controls.
+    pub player: Option<String>,
 }
 
 pub enum Command {
     SetPaused(bool),
     SetSpeed(u8),
+    Issue(GameCommand),
+    /// Writes the engine save to `path`; replies with the error text on failure.
+    Save {
+        path: PathBuf,
+        label: String,
+        reply: Sender<Result<(), String>>,
+    },
 }
 
 pub struct SimHandle {
@@ -30,18 +44,29 @@ pub struct SimHandle {
     snapshot: Arc<Mutex<Snapshot>>,
 }
 
+fn short(hash: &laplace_schelling::StateHash) -> String {
+    hash.to_string().chars().take(12).collect()
+}
+
+fn snapshot_of(session: &Session, paused: bool, speed: u8) -> Snapshot {
+    Snapshot {
+        date: session.clock().date,
+        tick: session.clock().tick,
+        paused,
+        speed,
+        hash: short(&session.state_hash()),
+        player: session.world().player_tag().map(str::to_owned),
+    }
+}
+
 impl SimHandle {
-    pub fn start(date: Date, repaint: impl Fn() + Send + 'static) -> Self {
-        let snapshot = Arc::new(Mutex::new(Snapshot {
-            date,
-            paused: true,
-            speed: 2,
-        }));
+    pub fn start(session: Session, repaint: impl Fn() + Send + 'static) -> Self {
+        let snapshot = Arc::new(Mutex::new(snapshot_of(&session, true, 2)));
         let (tx, rx) = channel();
         let shared = Arc::clone(&snapshot);
         std::thread::Builder::new()
             .name("simulation".into())
-            .spawn(move || run(rx, shared, repaint))
+            .spawn(move || run(session, rx, shared, repaint))
             .expect("spawn simulation thread");
         Self {
             commands: tx,
@@ -50,51 +75,98 @@ impl SimHandle {
     }
 
     pub fn snapshot(&self) -> Snapshot {
-        *self.snapshot.lock().unwrap_or_else(|e| e.into_inner())
+        self.snapshot
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone()
     }
 
     pub fn send(&self, command: Command) {
         let _ = self.commands.send(command);
     }
+
+    /// Asks the simulation thread to write a save and waits for it.
+    pub fn save(&self, path: PathBuf, label: String) -> Result<(), String> {
+        let (reply, answer) = channel();
+        self.send(Command::Save { path, label, reply });
+        answer
+            .recv_timeout(Duration::from_secs(30))
+            .map_err(|e| e.to_string())?
+    }
 }
 
-fn run(rx: Receiver<Command>, shared: Arc<Mutex<Snapshot>>, repaint: impl Fn()) {
-    let mut state = *shared.lock().unwrap_or_else(|e| e.into_inner());
+fn write_save(session: &Session, path: &std::path::Path, label: &str) -> Result<(), String> {
+    let bytes = session
+        .save(env!("CARGO_PKG_VERSION"), label)
+        .map_err(|e| e.to_string())?;
+    if let Some(dir) = path.parent() {
+        std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
+    }
+    let tmp = path.with_extension("tmp");
+    std::fs::write(&tmp, bytes).map_err(|e| e.to_string())?;
+    std::fs::rename(tmp, path).map_err(|e| e.to_string())
+}
+
+fn run(
+    mut session: Session,
+    rx: Receiver<Command>,
+    shared: Arc<Mutex<Snapshot>>,
+    repaint: impl Fn(),
+) {
+    let (mut paused, mut speed) = (true, 2u8);
+    let mut hash = short(&session.state_hash());
     let mut debt = 0.0f64;
     let mut last = Instant::now();
     loop {
-        let timeout = if state.paused {
+        let timeout = if paused {
             Duration::from_millis(250)
         } else {
             Duration::from_millis(8)
         };
+        let mut changed = false;
         match rx.recv_timeout(timeout) {
-            Ok(Command::SetPaused(p)) => state.paused = p,
-            Ok(Command::SetSpeed(s)) => state.speed = s.clamp(1, 5),
+            Ok(Command::SetPaused(p)) => {
+                paused = p;
+                changed = true;
+            }
+            Ok(Command::SetSpeed(s)) => {
+                speed = s.clamp(1, 5);
+                changed = true;
+            }
+            Ok(Command::Issue(c)) => {
+                // Applies at the start of the next tick and enters the history then.
+                session.submit(c);
+            }
+            Ok(Command::Save { path, label, reply }) => {
+                let _ = reply.send(write_save(&session, &path, &label));
+            }
             Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {}
             Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => return,
         }
         let now = Instant::now();
         let dt = now.duration_since(last).as_secs_f64();
         last = now;
-        let mut changed = false;
-        if !state.paused {
-            debt += dt * DAYS_PER_SECOND[(state.speed - 1) as usize];
+        if paused {
+            debt = 0.0;
+        } else {
+            debt = (debt + dt * DAYS_PER_SECOND[(speed - 1) as usize])
+                .min(f64::from(MAX_TICKS_PER_BATCH));
             while debt >= 1.0 {
-                state.date = state.date.next_day();
+                session.sim.step();
                 debt -= 1.0;
                 changed = true;
+                if session.clock().date.day == 1 {
+                    hash = short(&session.state_hash());
+                }
             }
-        } else {
-            debt = 0.0;
         }
-        let mut s = shared.lock().unwrap_or_else(|e| e.into_inner());
-        if *s != state {
-            *s = state;
-            changed = true;
-        }
-        drop(s);
         if changed {
+            if paused {
+                hash = short(&session.state_hash());
+            }
+            let mut snap = snapshot_of(&session, paused, speed);
+            snap.hash = hash.clone();
+            *shared.lock().unwrap_or_else(|e| e.into_inner()) = snap;
             repaint();
         }
     }

@@ -10,6 +10,7 @@ use crate::saves::{self, Save};
 use crate::settings::Autosave;
 use crate::sim::{Command, SimHandle};
 use crate::text::country_name;
+use bf_sim::game::{GameCommand, GameWorld, Session};
 
 pub struct State {
     save: Save,
@@ -20,29 +21,62 @@ pub struct State {
 }
 
 impl State {
-    pub fn new(_shared: &Shared, save: Save, ctx: &egui::Context) -> Self {
+    /// Opens the campaign's engine save, or starts the simulation when the campaign has none
+    /// yet (a country was just chosen).
+    pub fn new(shared: &Shared, save: Save, ctx: &egui::Context) -> Result<Self, String> {
+        let path = save.dir.join(saves::WORLD_FILE);
+        let session = if path.is_file() {
+            let bytes = std::fs::read(&path).map_err(|e| e.to_string())?;
+            Session::load(&bytes, 0).map_err(|e| e.to_string())?
+        } else {
+            let world = shared.world.as_ref().ok_or("scenario not loaded")?;
+            let game = GameWorld::from_scenario(
+                &save.meta.scenario,
+                world.countries.iter().map(|c| &c.def),
+            );
+            let mut session = Session::new(game, save.meta.seed, save.meta.date, 0);
+            if let Some(tag) = &save.meta.player {
+                session.submit(GameCommand::ChoosePlayer { tag: tag.clone() });
+            }
+            session
+        };
         let repaint = ctx.clone();
-        let sim = SimHandle::start(save.meta.date, move || repaint.request_repaint());
-        Self {
+        let sim = SimHandle::start(session, move || repaint.request_repaint());
+        let state = Self {
             last_autosave: save.meta.date,
             save,
             sim,
             selected: None,
             menu_open: false,
+        };
+        if !path.is_file() {
+            state.sim.save(path, state.save.meta.name.clone())?;
         }
+        Ok(state)
+    }
+
+    /// What the simulation last published.
+    pub fn snapshot(&self) -> crate::sim::Snapshot {
+        self.sim.snapshot()
     }
 
     fn write(&mut self, shared: &mut Shared, now: f64, announce: bool) {
         self.save.meta.date = self.sim.snapshot().date;
         self.save.meta.last_played = saves::now();
-        match saves::write(&self.save) {
+        let result = self
+            .sim
+            .save(
+                self.save.dir.join(saves::WORLD_FILE),
+                self.save.meta.name.clone(),
+            )
+            .and_then(|()| saves::write(&self.save).map_err(|e| e.to_string()));
+        match result {
             Ok(()) if announce => shared.toast(shared.tr("game-menu-saved"), now),
             Ok(()) => {}
             Err(e) => {
-                let msg = shared.i18n.tr_args(
-                    "saves-error-io",
-                    &[("error", bf_i18n::Arg::String(e.to_string()))],
-                );
+                let msg = shared
+                    .i18n
+                    .tr_args("saves-error-io", &[("error", bf_i18n::Arg::String(e))]);
                 shared.toast(msg, now);
             }
         }
