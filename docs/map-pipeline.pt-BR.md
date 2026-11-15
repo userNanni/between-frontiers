@@ -28,7 +28,7 @@ cargo run -p bf-mapgen --release
 
 ## Arquivo de donos
 
-`province_owners.ron` tem quatro partes:
+`province_owners.ron` tem cinco partes:
 
 1. `countries`: dono padrão por `adm0_a3` do Natural Earth. Toda unidade usada precisa de entrada,
    e entrada que não casa com nenhuma unidade é erro.
@@ -37,10 +37,57 @@ cargo run -p bf-mapgen --release
    chave `<adm1_code>~<sufixo>`. Serve para fronteira que é paralelo, meridiano ou mar (Sacalina no
    paralelo 50, Dodecaneso, Curilas). O de Danzig é desenhado à mão e grosseiro.
 4. `excluded_countries`: unidades fora do mapa.
+5. `metropoles`: a metrópole de cada dono que tem colônias (ver abaixo). Gera o campo `colony` de
+   `provinces.ron`.
 
 Todo dono precisa estar na lista de tags de 1925 (`TAGS_1925` em
 `crates/bf-mapgen/src/owners.rs`; vai para `countries.ron` quando ele existir). Colônia de
 administração direta pertence à tag da metrópole.
+
+## Metrópole e colônias
+
+Como no Victoria 3, domínios, o Raj, mandatos, protetorados e satélites com tag própria são
+súditos e donos das próprias províncias. Colônia de administração direta é província do dono com
+`colony: true` (o estado não incorporado do Victoria 3): a população dela entra em `colonies` de
+`countries.ron`, nunca nos números nacionais.
+
+O critério é o estatuto legal em 1º de janeiro de 1925: metrópole é o território que fazia parte
+do Estado, com a população representada no parlamento nacional; o resto que o dono governa direto
+é colônia, inclusive mandato e protetorado sem tag. Cada entrada de `metropoles` tem:
+
+- `countries`: códigos `adm0_a3` cujas províncias, quando são daquele dono, são metrópole. Província
+  do dono em outro `adm0_a3` é colônia (recorte herda o `adm0_a3` da província de origem).
+- `provinces`: chaves de fora desses países que também são metrópole (as Curilas, recortadas de
+  Sacalina).
+- `colonies`: chaves dentro desses países que são colônia mesmo assim (os departamentos
+  ultramarinos atuais da França).
+
+Dono que não aparece não tem colônia. O `bf-mapgen` recusa país ou chave que não seja do dono,
+entrada redundante e dono que fique sem metrópole ou sem colônia. Testes:
+`cargo test -p bf-mapgen` (o mapa gravado bate com a lista de donos) e
+`crates/bf-sim/tests/countries_1925.rs` (`colonies` em `countries.ron` existe exatamente para os
+donos com província colonial).
+
+| Dono | Metrópole | Colônias | Decisão discutível |
+|---|---|---|---|
+| GBR | Grã-Bretanha e Irlanda do Norte | Todo o resto, inclusive Ilha de Man, Jersey e Guernsey | As dependências da Coroa não são colônia no sentido comum, mas não fazem parte do Reino Unido nem votam em Westminster; seguem a regra legal (140 mil pessoas) |
+| FRA | França continental e Córsega | Argélia, Tunísia, Marrocos, Síria e Líbano (mandatos), Indochina, AOF, AEF, Madagascar, Índia, Antilhas, Guiana, Reunião, Pacífico | **Argélia:** três departamentos franceses desde 1848, mas a maioria muçulmana era súdita sob o *indigénat*, sem cidadania, com governador-geral, orçamento próprio (1900) e as Délégations financières. A lei a chamava de França; o Estado a governava como colônia. Fica colônia, como no Victoria 3, que exige incorporar. As "velhas colônias" só viram departamentos em 1946; Mayotte era parte da colônia de Madagascar |
+| BEL | Bélgica | Congo, Ruanda-Urundi (mandato) | — |
+| NLD | Países Baixos europeus | Índias Orientais, Suriname, Curaçao com Aruba, Bonaire, Saba, Santo Eustáquio, São Martinho | A revisão constitucional de 1922 chamou as colônias de partes do Reino, sem mudar o governo delas |
+| ESP | Península, Baleares, Canárias, Ceuta e Melilla | Zona do protetorado no Marrocos (com Tânger), Saara, Guiné | Ceuta e Melilla eram praças de soberania ligadas a Cádis e Málaga |
+| POR | Portugal com Açores e Madeira (ilhas adjacentes) | Angola, Moçambique, Guiné, Cabo Verde, São Tomé, Timor, Índia, Macau | — |
+| ITA | Itália com a Marcha Juliana, Fiume, Zara e o Vaticano | Líbia, Eritreia, Somália, Dodecaneso | O Dodecaneso era possessão, nunca anexado |
+| USA | 48 estados, Alasca e Havaí | Filipinas, Porto Rico, Guam, Samoa, Ilhas Virgens, Guantánamo, ilhas menores | **Alasca e Havaí** eram territórios *incorporados* (Organic Act de 1900; Rassmussen v. US, 1905): a Constituição valia por inteiro e o destino era virar estado. Os *não incorporados* dos Insular Cases são colônia |
+| JAP | *Naichi*: ilhas principais, Okinawa e Curilas (Hokkaido) | *Gaichi*: Coreia, Taiwan, Karafuto, Kwantung, Mandato dos Mares do Sul | **Coreia** era anexada (1910), mas governada pelo Governo-Geral, fora da Constituição Meiji e da Dieta. **Karafuto** só vira *naichi* em 1943 |
+| DEN | Dinamarca e Faroé | Groenlândia | **Faroé** era um *amt* do reino, com cadeiras no Folketing e no Landsting: metrópole. A Groenlândia foi colônia até 1953 |
+| AUS | Austrália (estados, territórios federais, Lord Howe, Macquarie) | Papua, Nova Guiné (mandato), Nauru, Norfolk, Ilhas do Mar de Coral | — |
+| NZL | Nova Zelândia com Chatham, Kermadec e as subantárticas | Samoa Ocidental (mandato), Ilhas Cook, Niue | As Cook e Niue foram anexadas aos limites da Nova Zelândia em 1901, mas com governo à parte |
+| SAF | União Sul-Africana | Sudoeste Africano (mandato), com Walvis Bay | Walvis Bay era da Província do Cabo, mas administrada com o mandato desde 1922 |
+
+Sem colônia: GER (perdeu as suas em 1919), SOV, CHN e os demais. Os arrendamentos na China
+(Weihaiwei, Kwangchowan, Kwantung) são colônia do arrendatário quando há recorte; os que não têm
+recorte ficam na província chinesa (ver Aproximações). RAJ conta a Birmânia, província da Índia
+Britânica até 1937, como parte dele.
 
 ## Saídas
 

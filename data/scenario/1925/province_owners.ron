@@ -1,4 +1,5 @@
-// Owner of every Natural Earth admin-1 province on 1925-01-01. Read by `bf-mapgen`.
+// Owner of every Natural Earth admin-1 province on 1925-01-01, and the metropole of each colonial
+// power (the rest of its provinces are colonies). Read by `bf-mapgen`.
 // Format and approximations: docs/map-pipeline.pt-BR.md.
 (
     start_date: "1925-01-01",
@@ -394,4 +395,71 @@
             ],
         ),
     ],
+    // Metropole of every owner that rules colonies directly: the territory legally part of the
+    // state on 1925-01-01 (Victoria 3's incorporated states). Any other province of a listed owner
+    // is a colony (`colony: true` in provinces.ron) and its people count in the owner's colonial
+    // figures, never in the national ones. Owners not listed (GER, SOV, CHN, POL…) have no
+    // colonies. Tagged subjects (dominions, RAJ, mandates and protectorates with a tag) are not
+    // colonies: they own their provinces. Reasons: docs/map-pipeline.pt-BR.md, "Metrópole e
+    // colônias".
+    // - `countries`: adm0_a3 codes whose provinces owned by the tag are metropole.
+    // - `provinces`: keys outside those countries that are metropole too.
+    // - `colonies`: keys inside those countries that are colonies all the same.
+    metropoles: {
+        // Great Britain and Northern Ireland. The Crown dependencies (Isle of Man, Jersey,
+        // Guernsey) are not part of the United Kingdom and count as colonies.
+        "GBR": (countries: ["GBR"]),
+        // Metropolitan France with Corsica. Algeria's three départements were French territory
+        // but its Muslim majority were subjects under the indigénat, not citizens, with a
+        // Governor-General and a separate budget: a colony, as in Victoria 3. The old colonies
+        // became départements only in 1946; Mayotte was part of the Madagascar colony.
+        "FRA": (
+            countries: ["FRA"],
+            colonies: [
+                "FRA-1442", // Martinique
+                "FRA-2000", // Guyane française
+                "FRA-4601", // La Réunion
+                "FRA-4602", // Mayotte
+                "FRA-4603", // Guadeloupe
+            ],
+        ),
+        // Congo and the Ruanda-Urundi mandate are colonies.
+        "BEL": (countries: ["BEL"]),
+        // The East Indies, Suriname and Curaçao (with Aruba, Bonaire and the Windward Islands)
+        // were colonies until the 1922 constitution renamed them "parts of the realm" in name only.
+        "NLD": (
+            countries: ["NLD"],
+            colonies: [
+                "NLD-5147", // Saba
+                "NLD-5148", // St. Eustatius
+                "NLD-5149", // Bonaire
+            ],
+        ),
+        // Peninsular Spain, the Balearics, the Canaries (provinces since 1927, part of Spain long
+        // before) and the plazas de soberanía Ceuta and Melilla. Morocco zone, Sahara and Guinea
+        // are colonies.
+        "ESP": (countries: ["ESP"]),
+        // Portugal with the Azores and Madeira (adjacent islands, districts of the Republic).
+        "POR": (countries: ["PRT"]),
+        // Italy with the Julian March, Fiume and Zara (annexed 1920–1924, provinces of the
+        // Kingdom) and the Vatican (Rome until 1929). Libya, Eritrea, Somalia and the Dodecanese
+        // (a possession, never annexed) are colonies.
+        "ITA": (countries: ["ITA", "VAT", "SVN", "HRV"]),
+        // The 48 states with the incorporated territories Alaska and Hawaii (Rassmussen 1905,
+        // Organic Act 1900). The unincorporated ones (Philippines, Puerto Rico, Guam, Samoa, the
+        // Virgin Islands, Guantánamo, the minor islands) are colonies.
+        "USA": (countries: ["USA"]),
+        // Naichi: the home islands with Okinawa and the Kurils (Hokkaido). Gaichi: Korea, Taiwan,
+        // Karafuto (naichi only from 1943), Kwantung and the South Seas Mandate are colonies.
+        "JAP": (countries: ["JPN"], provinces: ["RUS-2616~kurils"]),
+        // Denmark with the Faroes, an amt of the kingdom with seats in the Rigsdag. Greenland was a
+        // colony until 1953. Iceland has its own tag.
+        "DEN": (countries: ["DNK", "FRO"]),
+        // Dominions with territories of their own: Papua, the New Guinea mandate, Nauru, Norfolk
+        // and the Coral Sea Islands (AUS); Western Samoa, the Cook Islands and Niue (NZL); South
+        // West Africa (SAF).
+        "AUS": (countries: ["AUS"]),
+        "NZL": (countries: ["NZL"]),
+        "SAF": (countries: ["ZAF"]),
+    },
 )

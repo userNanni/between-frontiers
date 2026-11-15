@@ -132,6 +132,29 @@ fn walk_through_the_screens() {
     shot(&mut h, "06c-pib-tooltip");
     h.hover_at(egui::pos2(800.0, 500.0));
 
+    // 6d. A colonial power: France, with the population split into metropole and colonies.
+    let mut fra = saves::create(
+        &user.join("saves"),
+        "Terceira República",
+        1925,
+        laplace_schelling::calendar::Date::new(1925, 1, 1),
+    )
+    .unwrap();
+    fra.meta.player = Some("FRA".into());
+    saves::write(&fra).unwrap();
+    let ctx = h.ctx.clone();
+    h.state_mut().apply(Transition::Game(fra), &ctx);
+    h.run_steps(3);
+    let population = h
+        .get_all(egui_kittest::kittest::by().label_contains("População:"))
+        .next()
+        .expect("population figure")
+        .rect();
+    h.hover_at(population.center());
+    h.run_steps(8);
+    shot(&mut h, "06d-franca-colonias");
+    h.hover_at(egui::pos2(800.0, 600.0));
+
     // 7. Back to the main menu: "Continue" now offers the new campaign.
     let ctx = h.ctx.clone();
     h.state_mut().apply(Transition::Menu, &ctx);

@@ -5,23 +5,32 @@ licensed CC BY-SA 4.0. This file records where every number comes from and how i
 
 ## Rule: what a tag counts
 
-`population` and `gdp_per_capita` cover **all territory the tag rules directly on 1925-01-01**,
-colonies included, because colonies under direct rule are provinces of the owner in the game
-(`Status` in `crates/bf-sim/src/scenario.rs`). Concretely:
+A tag's `population`, `gdp_per_capita`, `literacy`, `life_expectancy` and `urbanization` are the
+**metropole's**: the territory legally part of the state on 1925-01-01. Colonies under direct rule
+are provinces of the owner with `colony: true` in `assets/map/provinces.ron` (Victoria 3's
+unincorporated states); their people are summed in the tag's `colonies` (population,
+population-weighted GDP per capita and social indicators) and **never** in the national figures.
+Concretely:
 
-- Colonies, protectorates and League mandates **without a tag of their own** count under the power
-  that administers them (Nigeria, Malaya, Palestine and Bahrain under GBR; Indochina, Morocco and
-  Syria under FRA; the Dutch East Indies under NLD; Korea, Taiwan and Kwantung under JAP; the
-  Philippines under USA; Papua and New Guinea under AUS; South West Africa under SAF; Western Samoa
-  under NZL).
+- Which provinces are metropole and which are colonies is data: the `metropoles` section of
+  `province_owners.ron`, with every judgement call (Algeria, Alaska and Hawaii, Korea, the Faroes,
+  the Crown dependencies) explained in `docs/map-pipeline.pt-BR.md`, "Metrópole e colônias".
+- Colonies, protectorates and League mandates **without a tag of their own** are colonies of the
+  power that administers them (Nigeria, Malaya, Palestine and Bahrain of GBR; Indochina, Algeria,
+  Morocco and Syria of FRA; the Dutch East Indies of NLD; Korea, Taiwan and Kwantung of JAP; the
+  Philippines and Puerto Rico of USA; Papua and New Guinea of AUS; South West Africa of SAF; Western
+  Samoa of NZL).
 - Subjects with a tag (dominions, RAJ, mandates and protectorates in the tag list, MGL, TUV) count
-  only their own territory; they are **not** added to the overlord.
-- Consequence: the GDP per capita of colonial powers is the average over the whole empire, far below
-  the metropole (GBR 3 806 overall against 8 199 for the United Kingdom alone; NLD 2 227 against
-  8 019). The metropole value is the first row of each tag in the component tables below.
-
-Where the province map ends up assigning a territory differently, the component tables say exactly
-which pieces were counted where, so the numbers can be moved.
+  only their own territory and are **not** added to the overlord. RAJ has no colonies: Burma was a
+  province of British India until 1937 and is part of RAJ's own figures.
+- `colonies` is `Some` exactly for the 13 owners with colonial provinces (GBR, FRA, BEL, NLD, ESP,
+  POR, ITA, DEN, USA, JAP, SAF, AUS, NZL), and metropole plus colonies add up to the empire totals
+  of the component tables below; `crates/bf-sim/tests/countries_1925.rs` checks both.
+- In the component tables the metropole rows are named under each heading; every other row is a
+  colony. Where the province map assigns a territory differently (Weihaiwei and Guangzhouwan are
+  inside Chinese provinces on the map; the Canal Zone inside Panama; Aden town is counted in RAJ by
+  the Census of India), the tables say exactly which pieces were counted where, so the numbers can
+  be moved.
 
 ## Sources
 
@@ -31,6 +40,8 @@ which pieces were counted where, so the numbers can be moved.
 | Our World in Data, "Population" (HYDE 3.3, Gapminder v7, UN WPP 2024), `population.csv` | CC BY 4.0 | Population of modern-border components without a Maddison series (Gapminder v7 for 1800–1949) |
 | Official censuses of the period (listed per row) | Official statistics; only the published totals are used, as facts | Population of 1925 territories that differ from modern borders |
 | Wikidata | CC0 | Capital coordinates (city centre, rounded to 4 decimals) |
+| E. Frankema and M. Jerven, African Population Database v4.1 (African Economic History Network) | Licence not checked; only published totals are cited, as facts | Population of Ethiopia |
+| Buck (1937), Gamble (1921, 1954), Rawski (1979) and the census figures quoted under "China's literacy" | Published figures cited as facts | Literacy of China |
 
 No non-commercial, GPL or copyrighted-book source was used (see `docs/architecture.pt-BR.md`,
 "Fontes de dados"). The raw downloads live in `data/raw/` (gitignored); to rebuild them, fetch
@@ -56,9 +67,9 @@ Attribution:
 3. **Order of preference for population:** census of the 1925 territory when the territory differs
    from modern borders or Maddison lacks the series; then Maddison annual; then OWID annual. Two
    deliberate exceptions: Afghanistan uses the Maddison 1913–1950 interpolation because the OWID
-   series jumps from 6.6 M (1913) to 10.2 M (1920) and back to 6.6 M (1930); Ethiopia is an estimate
-   (see below) because the OWID series is flat at 17.48 M from 1920 to 1940, a placeholder rather
-   than an estimate.
+   series jumps from 6.6 M (1913) to 10.2 M (1920) and back to 6.6 M (1930); Ethiopia follows the
+   Frankema–Jerven reconstruction (see below) because the OWID series is flat at 17.48 M from 1917
+   to 1948, a placeholder rather than an estimate.
 4. **Composite tags.** Population is the sum of the components; GDP per capita is the
    population-weighted mean of the components.
 5. **Proxies** (all marked `est`, `proxy` or with a three-letter code in the GDP column):
@@ -165,9 +176,25 @@ parchment background (232, 220, 190).
 - **MGL**: linear between the counts of 1918 (647 500) and 1935 (738 200). GDP per capita 700 $
   (Maddison has only 1950: 677). **TUV**: about 60 000 Tuvans and 10 000 Russian settlers; GDP as
   Mongolia.
-- **ETH**: 14.0 M. The UN puts Ethiopia (without Eritrea) at about 18 M in 1950; 1 %/year back to
-  1925 gives 14 M. The OWID series is flat at 17.5 M (see Method 3); League of Nations era guesses
-  were 6–12 M. GDP per capita 600 $ (Maddison 1950: 622).
+- **ETH**: 13.3 M (13 311 000) for the Ethiopian Empire without Italian Eritrea. Ethiopia had no
+  census before 1984, so every figure before 1950 is a back-projection from the UN benchmark: UN
+  *World Population Prospects 2024* puts Ethiopia at 17.67 M in 1950 (Eritrea separate, 0.81 M). The
+  value is the mean of 1924 (13.245 M) and 1925 (13.377 M) in the African Population Database of
+  E. Frankema and M. Jerven (v4.1, African Economic History Network; method in "Writing History
+  Backwards or Sideways", *Economic History Review* 67(4), 2014, 907–931), which carries the WPP
+  2024 value back with decade-specific growth rates (12.73 M in 1920, 14.06 M in 1930, 15.23 M in
+  1940; about 1.1 %/year from 1925 to 1950). Only these published totals are used, as facts.
+  Earlier Gapminder versions agree within about 0.6 M (v3: 12.96 M, v5: 12.72 M for 1925); a
+  plain 1 %/year back from 17.67 M gives 13.7 M, the previous value here (14.0 M) came from a rounded
+  18 M for 1950.
+  - **OWID's 17.5 M is not a 1925 estimate, nor a 1940 one.** The OWID series (Gapminder v7 before
+    1950) is 17 476 313 in every year from 1917 to 1948 and drifts *down* from 17.86 M in 1890: it
+    inherits Clio Infra's total population, which repeats 18.43 M (the WPP 2010 value for 1950) in
+    every decade back to 1850, and joins WPP 2024 in 1950. It implies zero growth for three decades.
+  - Contemporary guesses were not counts and ran low: *The Statesman's Year-Book* 1919, "over 8
+    millions"; in 1935, 10–15 M in British accounts and "probably twelve millions" from Ethiopian
+    officials. They are consistent with about 13 M.
+  - GDP per capita 600 $ (Maddison has only 1950: 622, Ethiopia with Eritrea).
 - **HEJ / NEJ**: OWID Saudi Arabia split 30/70. Hejaz without Mecca and Taif ≈ 0.73 M; Nejd with
   al-Hasa, Ha'il, Asir and the occupied Mecca ≈ 1.70 M. GDP per capita 1 000 $ (Hejaz, pilgrimage
   trade) and 900 $ (Nejd), near the Maddison 1913 value for Saudi Arabia (956); the 1950 value
@@ -210,106 +237,108 @@ parchment background (232, 220, 190).
 
 ## Doubts left open
 
-1. Ethiopia's population (14 M here, 17.5 M in OWID).
+1. Ethiopia's population is a back-projection either way (13.3 M here, after Frankema and Jerven;
+   OWID's flat 17.5 M is a placeholder, see the notes). The Frankema–Jerven database licence was
+   not checked; only its published totals are cited.
 2. The census totals were transcribed from the published reports as cited above and checked for
    consistency against Maddison, but not yet against the original tables one by one.
-3. Whether the game wants colonial GDP averaged into the empire's GDP per capita (the rule applied
-   here) or will keep separate per-province values later; the component tables make either easy.
+3. Colonial figures are one aggregate per owner; per-province values (for instance Algeria's
+   European settlers against the interior) are left for later. The component tables make that easy.
 4. The Rif Republic controlled most of the Spanish zone of Morocco in early 1925; here the zone is
    counted in ESP.
 
 ## Summary
 
-World total: **1 948 720 000**. OWID's world for 1 January 1925 is ≈ 1 970 M, but its
+World total: **1 948 030 000** (1 688 897 000 in the tags' own figures, 259 133 000 in colonies). OWID's world for 1 January 1925 is ≈ 1 970 M, but its
 modern-border series do not always agree with the censuses: for example OWID India + Pakistan +
 Bangladesh is 365 M in 1925, while the Census of India line (1921: 305.7 M, 1931: 338.2 M, both
 without Burma) and Maddison give 318 M.
 
-| Tag | Name | Population | GDP pc (2011$) | Status | Estimated part |
-|---|---|---:|---:|---|---|
-| GBR | United Kingdom | 117 808 000 | 3 806 | Sovereign | population; GDP pc |
-| IRL | Irish Free State | 2 995 000 | 4 101 | Dominion of GBR | population; GDP pc |
-| FRA | France | 106 431 000 | 3 264 | Sovereign | population; GDP pc |
-| BEL | Belgium | 19 273 000 | 3 467 | Sovereign | population; GDP pc |
-| NLD | Netherlands | 65 319 000 | 2 227 | Sovereign | population; GDP pc |
-| LUX | Luxembourg | 282 000 | 8 000 | Sovereign | GDP pc |
-| CHE | Switzerland | 3 903 000 | 8 385 | Sovereign | population; GDP pc |
-| ESP | Spain | 23 104 000 | 3 624 | Sovereign | population; GDP pc |
-| POR | Portugal | 15 042 000 | 1 459 | Sovereign | population; GDP pc |
-| ITA | Italy | 42 288 000 | 4 357 | Sovereign | population; GDP pc |
-| SMR | San Marino | 12 900 | 4 580 | Sovereign | GDP pc |
-| GER | Germany | 62 238 000 | 5 630 | Sovereign | GDP pc |
-| SAA | Saar Basin Territory | 740 000 | 5 630 | Sovereign | population; GDP pc |
-| DNZ | Free City of Danzig | 375 000 | 5 630 | Sovereign | GDP pc |
-| AUT | Austria | 6 572 000 | 5 367 | Sovereign | population; GDP pc |
-| HUN | Hungary | 8 266 000 | 3 633 | Sovereign | population; GDP pc |
-| CZE | Czechoslovakia | 14 052 000 | 4 154 | Sovereign | — |
-| POL | Poland | 28 752 000 | 3 202 | Sovereign | — |
-| LTU | Lithuania | 2 197 000 | 2 200 | Sovereign | GDP pc |
-| LAT | Latvia | 1 845 000 | 3 400 | Sovereign | GDP pc |
-| EST | Estonia | 1 111 000 | 3 200 | Sovereign | GDP pc |
-| FIN | Finland | 3 288 000 | 3 711 | Sovereign | population; GDP pc |
-| SWE | Sweden | 6 033 000 | 5 488 | Sovereign | population; GDP pc |
-| NOR | Norway | 2 738 000 | 4 733 | Sovereign | population; GDP pc |
-| DEN | Denmark | 3 443 000 | 6 931 | Sovereign | population; GDP pc |
-| ISL | Iceland | 102 000 | 3 037 | Sovereign | GDP pc |
-| SOV | Soviet Union | 140 889 000 | 1 776 | Sovereign | — |
-| ROM | Romania | 16 710 000 | 1 395 | Sovereign | GDP pc |
-| YUG | Kingdom of the Serbs, Croats and Slovenes | 12 736 000 | 1 758 | Sovereign | GDP pc |
-| BUL | Bulgaria | 5 268 000 | 1 949 | Sovereign | GDP pc |
-| ALB | Albania | 954 000 | 1 428 | Sovereign | population |
-| GRE | Greece | 5 859 000 | 3 411 | Sovereign | GDP pc |
-| TUR | Turkey | 13 794 000 | 1 199 | Sovereign | GDP pc |
-| LIE | Liechtenstein | 12 100 | 5 367 | Sovereign | GDP pc |
-| MCO | Monaco | 24 700 | 6 641 | Sovereign | GDP pc |
-| AND | Andorra | 5 300 | 3 720 | Sovereign | GDP pc |
-| USA | United States | 128 600 000 | 10 217 | Sovereign | population; GDP pc |
-| CAN | Canada | 9 472 000 | 6 918 | Dominion of GBR | population; GDP pc |
-| NFL | Newfoundland | 270 000 | 3 500 | Dominion of GBR | GDP pc |
-| MEX | Mexico | 15 732 000 | 2 640 | Sovereign | population; GDP pc |
-| GUA | Guatemala | 1 674 000 | 2 327 | Sovereign | population; GDP pc |
-| HON | Honduras | 835 000 | 2 042 | Sovereign | population; GDP pc |
-| SAL | El Salvador | 1 285 000 | 1 476 | Sovereign | population; GDP pc |
-| NIC | Nicaragua | 660 000 | 2 316 | Sovereign | population; GDP pc |
-| CRI | Costa Rica | 455 000 | 2 654 | Sovereign | population; GDP pc |
-| PAN | Panama | 496 000 | 2 514 | Sovereign | population; GDP pc |
-| CUB | Cuba | 3 388 000 | 2 560 | Sovereign | population; GDP pc |
-| HAI | Haiti | 2 254 000 | 1 100 | Sovereign | population; GDP pc |
-| DOM | Dominican Republic | 1 047 000 | 1 300 | Sovereign | GDP pc |
-| COL | Colombia | 6 972 000 | 2 000 | Sovereign | population; GDP pc |
-| VEN | Venezuela | 3 096 000 | 2 289 | Sovereign | population; GDP pc |
-| ECU | Ecuador | 1 858 000 | 1 765 | Sovereign | population; GDP pc |
-| PER | Peru | 5 031 000 | 2 455 | Sovereign | population; GDP pc |
-| BOL | Bolivia | 2 250 000 | 2 144 | Sovereign | population; GDP pc |
-| CHL | Chile | 3 944 000 | 4 903 | Sovereign | population; GDP pc |
-| ARG | Argentina | 10 206 000 | 6 247 | Sovereign | population; GDP pc |
-| URY | Uruguay | 1 516 000 | 4 208 | Sovereign | population; GDP pc |
-| PRY | Paraguay | 776 000 | 2 000 | Sovereign | population; GDP pc |
-| BRA | Brazil | 30 028 000 | 1 298 | Sovereign | population; GDP pc |
-| CHN | China | 477 366 000 | 998 | Sovereign | — |
-| JAP | Japan | 83 515 000 | 2 878 | Sovereign | population; GDP pc |
-| MGL | Mongolia | 682 000 | 700 | Satellite of SOV | GDP pc |
-| TUV | Tannu Tuva | 70 000 | 700 | Satellite of SOV | population; GDP pc |
-| TIB | Tibet | 1 000 000 | 700 | Sovereign | population; GDP pc |
-| SIA | Siam | 10 794 000 | 1 283 | Sovereign | population |
-| AFG | Afghanistan | 6 424 000 | 1 000 | Sovereign | GDP pc |
-| PRS | Persia | 10 660 000 | 1 634 | Sovereign | — |
-| NEP | Nepal | 5 556 000 | 847 | Sovereign | — |
-| BHU | Bhutan | 258 000 | 700 | Protectorate of GBR | GDP pc |
-| RAJ | British Raj | 332 004 000 | 1 119 | CrownColony of GBR | population; GDP pc |
-| IRQ | Iraq | 3 683 000 | 1 516 | Mandate of GBR | — |
-| TRJ | Transjordan | 209 000 | 1 880 | Mandate of GBR | — |
-| HEJ | Hejaz | 729 000 | 1 000 | Sovereign | GDP pc |
-| NEJ | Nejd | 1 701 000 | 900 | Sovereign | GDP pc |
-| YEM | Yemen | 2 949 000 | 900 | Sovereign | GDP pc |
-| OMA | Muscat and Oman | 426 000 | 900 | Protectorate of GBR | GDP pc |
-| KUW | Kuwait | 119 000 | 1 200 | Protectorate of GBR | GDP pc |
-| EGY | Egypt | 13 904 000 | 1 598 | Sovereign | — |
-| ETH | Ethiopia | 14 000 000 | 600 | Sovereign | population; GDP pc |
-| LBR | Liberia | 612 000 | 1 599 | Sovereign | GDP pc |
-| SAF | Union of South Africa | 7 888 000 | 2 133 | Dominion of GBR | GDP pc |
-| AUS | Australia | 6 438 000 | 8 155 | Dominion of GBR | population; GDP pc |
-| NZL | New Zealand | 1 426 000 | 8 114 | Dominion of GBR | population; GDP pc |
+| Tag | Name | Population | GDP pc (2011$) | Colonies population | Colonies GDP pc | Status | Estimated part |
+|---|---|---:|---:|---:|---:|---|---|
+| GBR | United Kingdom | 44 987 000 | 8 199 | 72 820 000 | 1 093 | Sovereign | population; GDP pc |
+| IRL | Irish Free State | 2 995 000 | 4 101 | — | — | Dominion of GBR | population; GDP pc |
+| FRA | France | 40 460 000 | 6 641 | 65 970 000 | 1 194 | Sovereign | population; GDP pc |
+| BEL | Belgium | 7 743 000 | 7 438 | 11 530 000 | 800 | Sovereign | population; GDP pc |
+| NLD | Netherlands | 7 315 000 | 8 019 | 58 003 000 | 1 497 | Sovereign | population; GDP pc |
+| LUX | Luxembourg | 282 000 | 8 000 | — | — | Sovereign | GDP pc |
+| CHE | Switzerland | 3 903 000 | 8 385 | — | — | Sovereign | population; GDP pc |
+| ESP | Spain | 22 180 000 | 3 720 | 923 000 | 1 310 | Sovereign | population; GDP pc |
+| POR | Portugal | 6 339 000 | 2 305 | 8 704 000 | 843 | Sovereign | population; GDP pc |
+| ITA | Italy | 39 638 000 | 4 580 | 2 651 000 | 1 026 | Sovereign | population; GDP pc |
+| SMR | San Marino | 12 900 | 4 580 | — | — | Sovereign | GDP pc |
+| GER | Germany | 62 238 000 | 5 630 | — | — | Sovereign | GDP pc |
+| SAA | Saar Basin Territory | 740 000 | 5 630 | — | — | Sovereign | population; GDP pc |
+| DNZ | Free City of Danzig | 375 000 | 5 630 | — | — | Sovereign | GDP pc |
+| AUT | Austria | 6 572 000 | 5 367 | — | — | Sovereign | population; GDP pc |
+| HUN | Hungary | 8 266 000 | 3 633 | — | — | Sovereign | population; GDP pc |
+| CZE | Czechoslovakia | 14 052 000 | 4 154 | — | — | Sovereign | — |
+| POL | Poland | 28 752 000 | 3 202 | — | — | Sovereign | — |
+| LTU | Lithuania | 2 197 000 | 2 200 | — | — | Sovereign | GDP pc |
+| LAT | Latvia | 1 845 000 | 3 400 | — | — | Sovereign | GDP pc |
+| EST | Estonia | 1 111 000 | 3 200 | — | — | Sovereign | GDP pc |
+| FIN | Finland | 3 288 000 | 3 711 | — | — | Sovereign | population; GDP pc |
+| SWE | Sweden | 6 033 000 | 5 488 | — | — | Sovereign | population; GDP pc |
+| NOR | Norway | 2 738 000 | 4 733 | — | — | Sovereign | population; GDP pc |
+| DEN | Denmark | 3 429 000 | 6 956 | 14 000 | 800 | Sovereign | population; GDP pc |
+| ISL | Iceland | 102 000 | 3 037 | — | — | Sovereign | GDP pc |
+| SOV | Soviet Union | 140 889 000 | 1 776 | — | — | Sovereign | — |
+| ROM | Romania | 16 710 000 | 1 395 | — | — | Sovereign | GDP pc |
+| YUG | Kingdom of the Serbs, Croats and Slovenes | 12 736 000 | 1 758 | — | — | Sovereign | GDP pc |
+| BUL | Bulgaria | 5 268 000 | 1 949 | — | — | Sovereign | GDP pc |
+| ALB | Albania | 954 000 | 1 428 | — | — | Sovereign | population |
+| GRE | Greece | 5 859 000 | 3 411 | — | — | Sovereign | GDP pc |
+| TUR | Turkey | 13 794 000 | 1 199 | — | — | Sovereign | GDP pc |
+| LIE | Liechtenstein | 12 100 | 5 367 | — | — | Sovereign | GDP pc |
+| MCO | Monaco | 24 700 | 6 641 | — | — | Sovereign | GDP pc |
+| AND | Andorra | 5 300 | 3 720 | — | — | Sovereign | GDP pc |
+| USA | United States | 115 421 000 | 11 150 | 13 179 000 | 2 051 | Sovereign | population; GDP pc |
+| CAN | Canada | 9 472 000 | 6 918 | — | — | Dominion of GBR | population; GDP pc |
+| NFL | Newfoundland | 270 000 | 3 500 | — | — | Dominion of GBR | GDP pc |
+| MEX | Mexico | 15 732 000 | 2 640 | — | — | Sovereign | population; GDP pc |
+| GUA | Guatemala | 1 674 000 | 2 327 | — | — | Sovereign | population; GDP pc |
+| HON | Honduras | 835 000 | 2 042 | — | — | Sovereign | population; GDP pc |
+| SAL | El Salvador | 1 285 000 | 1 476 | — | — | Sovereign | population; GDP pc |
+| NIC | Nicaragua | 660 000 | 2 316 | — | — | Sovereign | population; GDP pc |
+| CRI | Costa Rica | 455 000 | 2 654 | — | — | Sovereign | population; GDP pc |
+| PAN | Panama | 496 000 | 2 514 | — | — | Sovereign | population; GDP pc |
+| CUB | Cuba | 3 388 000 | 2 560 | — | — | Sovereign | population; GDP pc |
+| HAI | Haiti | 2 254 000 | 1 100 | — | — | Sovereign | population; GDP pc |
+| DOM | Dominican Republic | 1 047 000 | 1 300 | — | — | Sovereign | GDP pc |
+| COL | Colombia | 6 972 000 | 2 000 | — | — | Sovereign | population; GDP pc |
+| VEN | Venezuela | 3 096 000 | 2 289 | — | — | Sovereign | population; GDP pc |
+| ECU | Ecuador | 1 858 000 | 1 765 | — | — | Sovereign | population; GDP pc |
+| PER | Peru | 5 031 000 | 2 455 | — | — | Sovereign | population; GDP pc |
+| BOL | Bolivia | 2 250 000 | 2 144 | — | — | Sovereign | population; GDP pc |
+| CHL | Chile | 3 944 000 | 4 903 | — | — | Sovereign | population; GDP pc |
+| ARG | Argentina | 10 206 000 | 6 247 | — | — | Sovereign | population; GDP pc |
+| URY | Uruguay | 1 516 000 | 4 208 | — | — | Sovereign | population; GDP pc |
+| PRY | Paraguay | 776 000 | 2 000 | — | — | Sovereign | population; GDP pc |
+| BRA | Brazil | 30 028 000 | 1 298 | — | — | Sovereign | population; GDP pc |
+| CHN | China | 477 366 000 | 998 | — | — | Sovereign | — |
+| JAP | Japan | 59 104 000 | 3 414 | 24 411 000 | 1 579 | Sovereign | population; GDP pc |
+| MGL | Mongolia | 682 000 | 700 | — | — | Satellite of SOV | GDP pc |
+| TUV | Tannu Tuva | 70 000 | 700 | — | — | Satellite of SOV | population; GDP pc |
+| TIB | Tibet | 1 000 000 | 700 | — | — | Sovereign | population; GDP pc |
+| SIA | Siam | 10 794 000 | 1 283 | — | — | Sovereign | population |
+| AFG | Afghanistan | 6 424 000 | 1 000 | — | — | Sovereign | GDP pc |
+| PRS | Persia | 10 660 000 | 1 634 | — | — | Sovereign | — |
+| NEP | Nepal | 5 556 000 | 847 | — | — | Sovereign | — |
+| BHU | Bhutan | 258 000 | 700 | — | — | Protectorate of GBR | GDP pc |
+| RAJ | British Raj | 332 004 000 | 1 119 | — | — | CrownColony of GBR | population; GDP pc |
+| IRQ | Iraq | 3 683 000 | 1 516 | — | — | Mandate of GBR | — |
+| TRJ | Transjordan | 209 000 | 1 880 | — | — | Mandate of GBR | — |
+| HEJ | Hejaz | 729 000 | 1 000 | — | — | Sovereign | GDP pc |
+| NEJ | Nejd | 1 701 000 | 900 | — | — | Sovereign | GDP pc |
+| YEM | Yemen | 2 949 000 | 900 | — | — | Sovereign | GDP pc |
+| OMA | Muscat and Oman | 426 000 | 900 | — | — | Protectorate of GBR | GDP pc |
+| KUW | Kuwait | 119 000 | 1 200 | — | — | Protectorate of GBR | GDP pc |
+| EGY | Egypt | 13 904 000 | 1 598 | — | — | Sovereign | — |
+| ETH | Ethiopia | 13 311 000 | 600 | — | — | Sovereign | population; GDP pc |
+| LBR | Liberia | 612 000 | 1 599 | — | — | Sovereign | GDP pc |
+| SAF | Union of South Africa | 7 578 000 | 2 171 | 311 000 | 1 200 | Dominion of GBR | GDP pc |
+| AUS | Australia | 5 881 000 | 8 851 | 557 000 | 800 | Dominion of GBR | population; GDP pc |
+| NZL | New Zealand | 1 366 000 | 8 435 | 60 000 | 800 | Dominion of GBR | population; GDP pc |
 
 ## Components per tag
 
@@ -318,7 +347,9 @@ Project Database 2023; `OWID` = Our World in Data population; `census interp A/B
 the two censuses; `est` = estimate explained above; `proxy` = 800 $ sub-Saharan proxy; a
 three-letter code = that country's Maddison value.
 
-#### GBR: 117 808 000 people, 3 806 $ per person
+#### GBR: metropole 44 987 000 people at 8 199 $; colonies 72 820 000 at 1 093 $
+
+Metropole: United Kingdom (GB + N. Ireland). Colonies: the other rows.
 
 | Component | Population | GDP pc (2011$) | Population source | GDP pc source |
 |---|---:|---:|---|---|
@@ -366,7 +397,9 @@ three-letter code = that country's Maddison value.
 |---|---:|---:|---|---|
 | Irish Free State | 2 995 000 | 4 101 | MPD | MPD |
 
-#### FRA: 106 431 000 people, 3 264 $ per person
+#### FRA: metropole 40 460 000 people at 6 641 $; colonies 65 970 000 at 1 194 $
+
+Metropole: France (metropolitan). Colonies: the other rows.
 
 | Component | Population | GDP pc (2011$) | Population source | GDP pc source |
 |---|---:|---:|---|---|
@@ -402,7 +435,9 @@ three-letter code = that country's Maddison value.
 | Reunion, Guadeloupe, Martinique, Guiana, SPM | 715 000 | 1 300 | est (1921/1926 censuses) | est |
 | New Caledonia, Polynesia, Wallis, 1/2 New Hebrides | 124 000 | 1 300 | est + OWID | est |
 
-#### BEL: 19 273 000 people, 3 467 $ per person
+#### BEL: metropole 7 743 000 people at 7 438 $; colonies 11 530 000 at 800 $
+
+Metropole: Belgium. Colonies: the other rows.
 
 | Component | Population | GDP pc (2011$) | Population source | GDP pc source |
 |---|---:|---:|---|---|
@@ -411,7 +446,9 @@ three-letter code = that country's Maddison value.
 | Ruanda (mandate) | 1 435 000 | 800 | OWID | proxy |
 | Urundi (mandate) | 1 512 000 | 800 | OWID | proxy |
 
-#### NLD: 65 319 000 people, 2 227 $ per person
+#### NLD: metropole 7 315 000 people at 8 019 $; colonies 58 003 000 at 1 497 $
+
+Metropole: Netherlands. Colonies: the other rows.
 
 | Component | Population | GDP pc (2011$) | Population source | GDP pc source |
 |---|---:|---:|---|---|
@@ -431,7 +468,9 @@ three-letter code = that country's Maddison value.
 |---|---:|---:|---|---|
 | Switzerland | 3 903 000 | 8 385 | MPD | MPD |
 
-#### ESP: 23 104 000 people, 3 624 $ per person
+#### ESP: metropole 22 180 000 people at 3 720 $; colonies 923 000 at 1 310 $
+
+Metropole: Spain (incl. Canaries, Ceuta, Melilla). Colonies: the other rows.
 
 | Component | Population | GDP pc (2011$) | Population source | GDP pc source |
 |---|---:|---:|---|---|
@@ -440,7 +479,9 @@ three-letter code = that country's Maddison value.
 | Ifni, Spanish Sahara | 50 000 | 800 | est | proxy |
 | Spanish Guinea | 123 000 | 800 | OWID | proxy |
 
-#### POR: 15 042 000 people, 1 459 $ per person
+#### POR: metropole 6 339 000 people at 2 305 $; colonies 8 704 000 at 843 $
+
+Metropole: Portugal (incl. Azores, Madeira). Colonies: the other rows.
 
 | Component | Population | GDP pc (2011$) | Population source | GDP pc source |
 |---|---:|---:|---|---|
@@ -454,7 +495,9 @@ three-letter code = that country's Maddison value.
 | Portuguese India | 580 000 | 1 113 | est (1921 census) | IND |
 | Macau | 160 000 | 2 000 | est | est |
 
-#### ITA: 42 288 000 people, 4 357 $ per person
+#### ITA: metropole 39 638 000 people at 4 580 $; colonies 2 651 000 at 1 026 $
+
+Metropole: Italy (modern borders); Julian March, Fiume, Zara (now SVN/HRV). Colonies: the other rows.
 
 | Component | Population | GDP pc (2011$) | Population source | GDP pc source |
 |---|---:|---:|---|---|
@@ -549,7 +592,9 @@ three-letter code = that country's Maddison value.
 |---|---:|---:|---|---|
 | Norway | 2 738 000 | 4 733 | MPD | MPD |
 
-#### DEN: 3 443 000 people, 6 931 $ per person
+#### DEN: metropole 3 429 000 people at 6 956 $; colonies 14 000 at 800 $
+
+Metropole: Denmark; Faroe Islands. Colonies: the other rows.
 
 | Component | Population | GDP pc (2011$) | Population source | GDP pc source |
 |---|---:|---:|---|---|
@@ -623,7 +668,9 @@ three-letter code = that country's Maddison value.
 |---|---:|---:|---|---|
 | Andorra | 5 000 | 3 720 | OWID | ESP |
 
-#### USA: 128 600 000 people, 10 217 $ per person
+#### USA: metropole 115 421 000 people at 11 150 $; colonies 13 179 000 at 2 051 $
+
+Metropole: United States (48 states, AK, HI). Colonies: the other rows.
 
 | Component | Population | GDP pc (2011$) | Population source | GDP pc source |
 |---|---:|---:|---|---|
@@ -770,7 +817,9 @@ three-letter code = that country's Maddison value.
 |---|---:|---:|---|---|
 | China (MPD minus Tibet and leased territories) | 477 366 000 | 998 | MPD minus TIB/leases | MPD interp 1913-1929 |
 
-#### JAP: 83 515 000 people, 2 878 $ per person
+#### JAP: metropole 59 104 000 people at 3 414 $; colonies 24 411 000 at 1 579 $
+
+Metropole: Japan proper. Colonies: the other rows.
 
 | Component | Population | GDP pc (2011$) | Population source | GDP pc source |
 |---|---:|---:|---|---|
@@ -884,11 +933,11 @@ three-letter code = that country's Maddison value.
 |---|---:|---:|---|---|
 | Egypt | 13 904 000 | 1 598 | census interp 1917/1927 | MPD interp 1913-1950 |
 
-#### ETH: 14 000 000 people, 600 $ per person
+#### ETH: 13 311 000 people, 600 $ per person
 
 | Component | Population | GDP pc (2011$) | Population source | GDP pc source |
 |---|---:|---:|---|---|
-| Ethiopia | 14 000 000 | 600 | est | est |
+| Ethiopia | 13 311 000 | 600 | est | est |
 
 #### LBR: 612 000 people, 1 599 $ per person
 
@@ -896,21 +945,27 @@ three-letter code = that country's Maddison value.
 |---|---:|---:|---|---|
 | Liberia | 612 000 | 1 599 | OWID | MPD |
 
-#### SAF: 7 888 000 people, 2 133 $ per person
+#### SAF: metropole 7 578 000 people at 2 171 $; colonies 311 000 at 1 200 $
+
+Metropole: Union of South Africa. Colonies: the other rows.
 
 | Component | Population | GDP pc (2011$) | Population source | GDP pc source |
 |---|---:|---:|---|---|
 | Union of South Africa | 7 578 000 | 2 171 | census interp 1921/1936 | MPD |
 | South West Africa (mandate) | 311 000 | 1 200 | OWID | est |
 
-#### AUS: 6 438 000 people, 8 155 $ per person
+#### AUS: metropole 5 881 000 people at 8 851 $; colonies 557 000 at 800 $
+
+Metropole: Australia. Colonies: the other rows.
 
 | Component | Population | GDP pc (2011$) | Population source | GDP pc source |
 |---|---:|---:|---|---|
 | Australia | 5 881 000 | 8 851 | MPD | MPD |
 | Papua, New Guinea (mandate), Nauru | 557 000 | 800 | OWID | proxy |
 
-#### NZL: 1 426 000 people, 8 114 $ per person
+#### NZL: metropole 1 366 000 people at 8 435 $; colonies 60 000 at 800 $
+
+Metropole: New Zealand. Colonies: the other rows.
 
 | Component | Population | GDP pc (2011$) | Population source | GDP pc source |
 |---|---:|---:|---|---|
@@ -922,10 +977,9 @@ three-letter code = that country's Maddison value.
 `literacy` (share of adults who can read and write), `life_expectancy` (years at birth) and
 `urbanization` (share of the population in urban areas) for 1925, with a short `social_source` per
 tag. They follow **the same territory rule as population**: a tag's value is the
-population-weighted mean over every component in the tables above (metropole plus colonies,
-weights = the component populations listed there). The metropole-only value (first component row)
-is listed next to it, because the game may end up showing metropole figures instead. Every tag has
-all three values; no `None` was needed.
+population-weighted mean over its metropole components in the tables above, and the `colonies`
+value the mean over its colonial components (weights = the component populations listed there).
+Every tag and every `colonies` entry has all three values; no `None` was needed.
 
 ### Social sources
 
@@ -982,124 +1036,151 @@ Licence notes:
      the metropole or a neighbour (named in "Series used") or an estimate.
 4. **Urbanization.** HYDE gives every country for 1920 and 1930; 1925 is their mean. National urban
    definitions, as harmonised by HYDE. City-states and enclaves HYDE does not list are estimates.
-5. **Tag value** = population-weighted mean over the components. Shares rounded to 3 decimals, life
+5. **Tag value** = population-weighted mean over the metropole components; **colonial value** the
+   same over the colonial components. Shares rounded to 3 decimals, life
    expectancy to 0.1 year.
 6. **Labels.** In `social_source` and the table below an indicator is "series" when at least 90 % of
-   the tag's population takes interpolated series values, otherwise "back-projected" or "estimate",
+   the population in question (metropole or colonies) takes interpolated series values, otherwise "back-projected" or "estimate",
    whichever covers more people. In the component table `b` marks a back-projected value and `e` an
    estimate.
 
 ### World check
 
-Population-weighted over the 83 tags: **literacy 0.410, life expectancy 36.7 years, urban share
-0.215.** For comparison, OWID's world rows (not used as input): literacy 31.6 % in 1920 and 32.5 % in
-1930 (van Zanden et al.), life expectancy 34.1 in 1913 and 46.4 in 1950 (Riley; UN), HYDE urban
-share 21.3 % in 1925. Literacy is above the OWID world line mostly because of China (a quarter of
-the world here): its 0.289 is back-projected from UNESCO's 47.5 % for 1950; at 0.20 the world mean
-would be 0.388.
+Population-weighted over the 83 tags and the 13 colonial aggregates: **literacy 0.389, life
+expectancy 36.8 years, urban share 0.215.** For comparison, OWID's world rows (not used as input):
+literacy 31.6 % in 1920 and 32.5 % in 1930 (van Zanden et al.), life expectancy 34.1 in 1913 and
+46.4 in 1950 (Riley; UN), HYDE urban share 21.3 % in 1925. Literacy is still about six points above the
+OWID world line, down from 0.410 when China was 0.289 (back-projected from UNESCO 1950); which
+other tags carry the rest of the gap has not been checked.
+
+### China's literacy
+
+`literacy` for CHN is **0.205** for adults (men about 0.355, women about 0.045; the contract holds
+one value). It is an estimate, not the log-odds rule, because the rule's only anchor is wrong for
+China:
+
+| Source | Figure | Base |
+|---|---|---|
+| J. L. Buck, *Land Utilization in China* (Nanking, 1937), p. 373, survey of 1929–1933 in 22 provinces | Men 30 % could read a common letter (45 % had attended school); women 1 % (2 %) | Rural, ages 7+ |
+| S. D. Gamble, *Ting Hsien: A North China Rural Community* (1954), p. 185 | About 20 % overall; men about one third, women 3 % | Model county in Hebei, 1930s, ages 6+ |
+| S. D. Gamble and J. S. Burgess, *Peking: A Social Survey* (1921), p. 507 | About 70 % | Peking 1918–1919, urban |
+| E. S. Rawski, *Education and Popular Literacy in Ch'ing China* (1979), pp. 8–23 | Men 30–45 %, women 2–10 % | Late Qing, "functional" literacy |
+| Mass Education Movement (James Yen), 1929 | "Over 200 million" illiterates above age 12 | Contemporary claim |
+| PRC, commonly cited for 1949 | About 80 % illiterate | Whole population |
+| 1982 census, cohort aged 60+ (born by 1922) | Men 39 %, women 5 % literate | After the 1950s adult campaigns |
+| UNESCO, *World Illiteracy at Mid-Century* (1957), via OWID | 47.5 % literate around 1950 (midpoint of a 5-point band) | Ages 15+ |
+
+Rural China (about nine tenths of the people) is taken from Buck and Gamble (men 0.32, women
+0.03); the towns from the urban surveys (men 0.65, women 0.20). Weighted, men 0.355 and women 0.045,
+0.205 for adults. That sits at the low end of Rawski's late-Qing range, as expected, since Buck's
+test (read a common letter) is stricter than her functional literacy, and it agrees with the 1949
+figure and with the 1982 census cohort that was adult or near it in the 1920s and 1930s. The
+UNESCO 1950 midpoint is rejected as an anchor: it is at the level the 1964 census implies after
+the literacy campaigns of the 1950s (about 48 % at ages 13+), so back-projecting from it overstates
+1925. Buck's page reference and the urban surveys were read as quoted in Gao, *Risen from Chaos*
+(PhD thesis, LSE, 2015, ch. 3) and in S. Chakrabarty, "Women and adult literacy in China" (IGNCA);
+the 1982 cohort table as reproduced there. The same estimate replaces China's series in the colonial
+rows that borrow it (Weihaiwei, Guangzhouwan, Kwantung).
 
 ### Social doubts left open
 
-1. **China's literacy** (0.289). The rule follows UNESCO's 1950 figure, which is high against the
-   rural surveys of the 1930s (roughly a fifth of adults). Worth deciding before tuning the quality
-   of life index, since China weighs a quarter of the world.
-2. **Empire or metropole.** Colonial empires fall far below their metropoles (GBR literacy 0.453
-   against 0.967; NLD 0.187 against 0.967; life expectancy 39.5 against 58.4 for GBR). Both are in
-   the table.
-3. **Recalled census figures.** The estimates for POL, SOV, ROM, LTU, LAT and EST lean on the
+1. **China's literacy** is now an estimate (0.205, see "China's literacy" above), not the
+   back-projection from UNESCO 1950 (0.289). Buck's page reference and the urban surveys were read
+   in secondary sources, not in the originals.
+2. **Recalled census figures.** The estimates for POL, SOV, ROM, LTU, LAT and EST lean on the
    literacy figures of the 1921–1930 censuses as reported in the secondary literature; they were not
    checked against the census tables.
-4. **HYDE licence label** (CC BY 4.0 in the repository, CC BY-NC 4.0 in OWID's metadata).
-5. **Southern Africa.** The UN 1950 values are high (Zimbabwe 49.4, Zambia 46.8), so the ratio rule
+3. **HYDE licence label** (CC BY 4.0 in the repository, CC BY-NC 4.0 in OWID's metadata).
+4. **Southern Africa.** The UN 1950 values are high (Zimbabwe 49.4, Zambia 46.8), so the ratio rule
    gives 31–34 years for the Rhodesias against 23–30 for most of the continent.
 
 ### Social indicators per tag
 
-| Tag | Literacy | Life exp. | Urban | Metropole literacy | Metropole life exp. | Metropole urban | Literacy | Life exp. | Urban |
+| Tag | Literacy | Life exp. | Urban | Colonies literacy | Colonies life exp. | Colonies urban | Literacy | Life exp. | Urban |
 |---|---:|---:|---:|---:|---:|---:|---|---|---|
-| GBR | 0.453 | 39.5 | 0.330 | 0.967 | 58.4 | 0.706 | back-projected | back-projected | series |
-| IRL | 0.967 | 57.3 | 0.371 | = | = | = | back-projected | series | series |
-| FRA | 0.402 | 38.1 | 0.263 | 0.935 | 54.4 | 0.503 | back-projected | back-projected | series |
-| BEL | 0.474 | 38.9 | 0.365 | 0.932 | 57.1 | 0.798 | back-projected | back-projected | series |
-| NLD | 0.187 | 33.0 | 0.159 | 0.967 | 63.1 | 0.542 | back-projected | back-projected | series |
-| LUX | 0.925 | 54.8 | 0.608 | = | = | = | back-projected | series | series |
-| CHE | 0.967 | 59.9 | 0.331 | = | = | = | back-projected | series | series |
-| ESP | 0.590 | 46.2 | 0.453 | 0.612 | 47.0 | 0.464 | series | series | series |
-| POR | 0.176 | 33.4 | 0.131 | 0.373 | 45.2 | 0.225 | back-projected | back-projected | series |
-| ITA | 0.708 | 49.7 | 0.408 | 0.753 | 51.3 | 0.434 | series | series | series |
-| SMR | 0.759 | 51.3 | 0.150 | = | = | = | back-projected | series | estimate |
-| GER | 0.967 | 57.4 | 0.383 | = | = | = | back-projected | series | series |
-| SAA | 0.967 | 57.4 | 0.750 | = | = | = | back-projected | series | estimate |
-| DNZ | 0.967 | 57.4 | 0.700 | = | = | = | back-projected | series | estimate |
-| AUT | 0.967 | 53.0 | 0.547 | = | = | = | back-projected | series | series |
-| HUN | 0.883 | 46.1 | 0.338 | = | = | = | series | series | series |
-| CZE | 0.946 | 51.3 | 0.293 | = | = | = | back-projected | series | series |
-| POL | 0.700 | 47.1 | 0.327 | = | = | = | estimate | back-projected | series |
-| LTU | 0.670 | 50.5 | 0.230 | = | = | = | estimate | series | series |
-| LAT | 0.860 | 54.1 | 0.375 | = | = | = | estimate | series | series |
-| EST | 0.900 | 52.8 | 0.396 | = | = | = | estimate | series | series |
-| FIN | 0.770 | 53.4 | 0.291 | = | = | = | series | series | series |
-| SWE | 0.967 | 62.5 | 0.596 | = | = | = | back-projected | series | series |
-| NOR | 0.967 | 62.5 | 0.458 | = | = | = | back-projected | series | series |
-| DEN | 0.967 | 61.8 | 0.521 | 0.967 | 61.9 | 0.523 | back-projected | series | series |
-| ISL | 0.967 | 58.2 | 0.585 | = | = | = | back-projected | series | series |
-| SOV | 0.470 | 38.3 | 0.231 | = | = | = | estimate | back-projected | series |
-| ROM | 0.520 | 38.8 | 0.142 | = | = | = | estimate | back-projected | series |
-| YUG | 0.506 | 40.0 | 0.112 | = | = | = | back-projected | estimate | series |
-| BUL | 0.591 | 45.1 | 0.159 | = | = | = | series | series | series |
-| ALB | 0.150 | 30.3 | 0.114 | = | = | = | estimate | back-projected | series |
-| GRE | 0.543 | 47.0 | 0.138 | = | = | = | series | series | series |
-| TUR | 0.077 | 30.5 | 0.198 | = | = | = | back-projected | back-projected | series |
-| LIE | 0.967 | 55.6 | 0.100 | = | = | = | back-projected | series | estimate |
-| MCO | 0.925 | 54.4 | 1.000 | = | = | = | back-projected | series | estimate |
-| AND | 0.612 | 47.0 | 0.350 | = | = | = | series | series | series |
-| USA | 0.902 | 56.1 | 0.507 | 0.949 | 58.5 | 0.537 | series | back-projected | series |
-| CAN | 0.949 | 59.3 | 0.528 | = | = | = | series | series | series |
-| NFL | 0.850 | 52.0 | 0.250 | = | = | = | estimate | estimate | estimate |
-| MEX | 0.359 | 32.1 | 0.303 | = | = | = | series | series | series |
-| GUA | 0.146 | 25.5 | 0.202 | = | = | = | back-projected | series | series |
-| HON | 0.255 | 31.5 | 0.135 | = | = | = | back-projected | series | series |
-| SAL | 0.212 | 28.5 | 0.272 | = | = | = | back-projected | series | series |
-| NIC | 0.212 | 26.0 | 0.281 | = | = | = | back-projected | series | series |
-| CRI | 0.607 | 39.5 | 0.269 | = | = | = | back-projected | series | series |
-| PAN | 0.483 | 34.0 | 0.285 | = | = | = | back-projected | back-projected | series |
-| CUB | 0.666 | 38.8 | 0.451 | = | = | = | series | series | series |
-| HAI | 0.060 | 25.3 | 0.097 | = | = | = | back-projected | back-projected | series |
-| DOM | 0.249 | 24.0 | 0.194 | = | = | = | back-projected | back-projected | series |
-| COL | 0.488 | 33.0 | 0.311 | = | = | = | series | series | series |
-| VEN | 0.332 | 31.5 | 0.351 | = | = | = | back-projected | series | series |
-| ECU | 0.378 | 32.9 | 0.220 | = | = | = | back-projected | back-projected | series |
-| PER | 0.289 | 30.9 | 0.319 | = | = | = | back-projected | back-projected | series |
-| BOL | 0.178 | 33.0 | 0.222 | = | = | = | back-projected | series | series |
-| CHL | 0.694 | 34.8 | 0.392 | = | = | = | series | series | series |
-| ARG | 0.721 | 50.6 | 0.521 | = | = | = | series | series | series |
-| URY | 0.679 | 51.0 | 0.621 | = | = | = | back-projected | series | series |
-| PRY | 0.483 | 35.5 | 0.276 | = | = | = | back-projected | series | series |
-| BRA | 0.373 | 33.0 | 0.288 | = | = | = | series | series | series |
-| CHN | 0.289 | 30.0 | 0.068 | = | = | = | back-projected | back-projected | series |
-| JAP | 0.734 | 40.9 | 0.240 | 0.946 | 44.4 | 0.261 | back-projected | series | series |
-| MGL | 0.050 | 26.2 | 0.124 | = | = | = | estimate | back-projected | series |
-| TUV | 0.030 | 26.2 | 0.124 | = | = | = | estimate | back-projected | series |
-| TIB | 0.030 | 25.0 | 0.040 | = | = | = | estimate | estimate | estimate |
-| SIA | 0.332 | 35.4 | 0.131 | = | = | = | back-projected | back-projected | series |
-| AFG | 0.014 | 22.8 | 0.046 | = | = | = | back-projected | back-projected | series |
-| PRS | 0.060 | 26.0 | 0.217 | = | = | = | back-projected | back-projected | series |
-| NEP | 0.014 | 25.5 | 0.020 | = | = | = | back-projected | back-projected | series |
-| BHU | 0.014 | 24.0 | 0.016 | = | = | = | back-projected | back-projected | series |
-| RAJ | 0.098 | 27.7 | 0.113 | 0.086 | 27.6 | 0.112 | series | series | series |
-| IRQ | 0.060 | 25.4 | 0.280 | = | = | = | back-projected | back-projected | series |
-| TRJ | 0.087 | 27.8 | 0.290 | = | = | = | back-projected | back-projected | series |
-| HEJ | 0.050 | 27.2 | 0.300 | = | = | = | estimate | back-projected | estimate |
-| NEJ | 0.014 | 27.2 | 0.174 | = | = | = | back-projected | back-projected | series |
-| YEM | 0.014 | 22.8 | 0.045 | = | = | = | back-projected | back-projected | series |
-| OMA | 0.014 | 22.8 | 0.069 | = | = | = | back-projected | back-projected | series |
-| KUW | 0.087 | 35.6 | 0.600 | = | = | = | back-projected | series | estimate |
-| EGY | 0.130 | 32.2 | 0.264 | = | = | = | series | back-projected | series |
-| ETH | 0.014 | 24.1 | 0.037 | = | = | = | back-projected | back-projected | series |
-| LBR | 0.035 | 25.8 | 0.092 | = | = | = | back-projected | back-projected | series |
-| SAF | 0.244 | 29.3 | 0.222 | 0.249 | 29.3 | 0.227 | back-projected | back-projected | series |
-| AUS | 0.887 | 59.7 | 0.483 | 0.967 | 63.2 | 0.528 | back-projected | series | series |
-| NZL | 0.958 | 62.7 | 0.587 | 0.967 | 64.0 | 0.609 | back-projected | estimate | series |
+| GBR | 0.967 | 58.4 | 0.706 | 0.135 | 27.9 | 0.098 | back-projected | series | series |
+| IRL | 0.967 | 57.3 | 0.371 | — | — | — | back-projected | series | series |
+| FRA | 0.935 | 54.4 | 0.503 | 0.074 | 28.2 | 0.115 | series | series | series |
+| BEL | 0.932 | 57.1 | 0.798 | 0.167 | 26.7 | 0.074 | series | series | series |
+| NLD | 0.967 | 63.1 | 0.542 | 0.089 | 29.2 | 0.111 | back-projected | series | series |
+| LUX | 0.925 | 54.8 | 0.608 | — | — | — | back-projected | series | series |
+| CHE | 0.967 | 59.9 | 0.331 | — | — | — | back-projected | series | series |
+| ESP | 0.612 | 47.0 | 0.464 | 0.067 | 26.4 | 0.189 | series | series | series |
+| POR | 0.373 | 45.2 | 0.225 | 0.032 | 24.8 | 0.062 | series | back-projected | series |
+| ITA | 0.753 | 51.3 | 0.429 | 0.044 | 26.3 | 0.095 | series | series | series |
+| SMR | 0.759 | 51.3 | 0.150 | — | — | — | back-projected | series | estimate |
+| GER | 0.967 | 57.4 | 0.383 | — | — | — | back-projected | series | series |
+| SAA | 0.967 | 57.4 | 0.750 | — | — | — | back-projected | series | estimate |
+| DNZ | 0.967 | 57.4 | 0.700 | — | — | — | back-projected | series | estimate |
+| AUT | 0.967 | 53.0 | 0.547 | — | — | — | back-projected | series | series |
+| HUN | 0.883 | 46.1 | 0.338 | — | — | — | series | series | series |
+| CZE | 0.946 | 51.3 | 0.293 | — | — | — | back-projected | series | series |
+| POL | 0.700 | 47.1 | 0.327 | — | — | — | estimate | back-projected | series |
+| LTU | 0.670 | 50.5 | 0.230 | — | — | — | estimate | series | series |
+| LAT | 0.860 | 54.1 | 0.375 | — | — | — | estimate | series | series |
+| EST | 0.900 | 52.8 | 0.396 | — | — | — | estimate | series | series |
+| FIN | 0.770 | 53.4 | 0.291 | — | — | — | series | series | series |
+| SWE | 0.967 | 62.5 | 0.596 | — | — | — | back-projected | series | series |
+| NOR | 0.967 | 62.5 | 0.458 | — | — | — | back-projected | series | series |
+| DEN | 0.967 | 61.9 | 0.521 | 0.967 | 26.9 | 0.312 | back-projected | series | series |
+| ISL | 0.967 | 58.2 | 0.585 | — | — | — | back-projected | series | series |
+| SOV | 0.470 | 38.3 | 0.231 | — | — | — | estimate | back-projected | series |
+| ROM | 0.520 | 38.8 | 0.142 | — | — | — | estimate | back-projected | series |
+| YUG | 0.506 | 40.0 | 0.112 | — | — | — | back-projected | estimate | series |
+| BUL | 0.591 | 45.1 | 0.159 | — | — | — | series | series | series |
+| ALB | 0.150 | 30.3 | 0.114 | — | — | — | estimate | back-projected | series |
+| GRE | 0.543 | 47.0 | 0.138 | — | — | — | series | series | series |
+| TUR | 0.077 | 30.5 | 0.198 | — | — | — | back-projected | back-projected | series |
+| LIE | 0.967 | 55.6 | 0.100 | — | — | — | back-projected | series | estimate |
+| MCO | 0.925 | 54.4 | 1.000 | — | — | — | back-projected | series | estimate |
+| AND | 0.612 | 47.0 | 0.350 | — | — | — | series | series | series |
+| USA | 0.949 | 58.5 | 0.537 | 0.498 | 35.1 | 0.244 | series | series | series |
+| CAN | 0.949 | 59.3 | 0.528 | — | — | — | series | series | series |
+| NFL | 0.850 | 52.0 | 0.250 | — | — | — | estimate | estimate | estimate |
+| MEX | 0.359 | 32.1 | 0.303 | — | — | — | series | series | series |
+| GUA | 0.146 | 25.5 | 0.202 | — | — | — | back-projected | series | series |
+| HON | 0.255 | 31.5 | 0.135 | — | — | — | back-projected | series | series |
+| SAL | 0.212 | 28.5 | 0.272 | — | — | — | back-projected | series | series |
+| NIC | 0.212 | 26.0 | 0.281 | — | — | — | back-projected | series | series |
+| CRI | 0.607 | 39.5 | 0.269 | — | — | — | back-projected | series | series |
+| PAN | 0.483 | 34.0 | 0.285 | — | — | — | back-projected | back-projected | series |
+| CUB | 0.666 | 38.8 | 0.451 | — | — | — | series | series | series |
+| HAI | 0.060 | 25.3 | 0.097 | — | — | — | back-projected | back-projected | series |
+| DOM | 0.249 | 24.0 | 0.194 | — | — | — | back-projected | back-projected | series |
+| COL | 0.488 | 33.0 | 0.311 | — | — | — | series | series | series |
+| VEN | 0.332 | 31.5 | 0.351 | — | — | — | back-projected | series | series |
+| ECU | 0.378 | 32.9 | 0.220 | — | — | — | back-projected | back-projected | series |
+| PER | 0.289 | 30.9 | 0.319 | — | — | — | back-projected | back-projected | series |
+| BOL | 0.178 | 33.0 | 0.222 | — | — | — | back-projected | series | series |
+| CHL | 0.694 | 34.8 | 0.392 | — | — | — | series | series | series |
+| ARG | 0.721 | 50.6 | 0.521 | — | — | — | series | series | series |
+| URY | 0.679 | 51.0 | 0.621 | — | — | — | back-projected | series | series |
+| PRY | 0.483 | 35.5 | 0.276 | — | — | — | back-projected | series | series |
+| BRA | 0.373 | 33.0 | 0.288 | — | — | — | series | series | series |
+| CHN | 0.205 | 30.0 | 0.068 | — | — | — | estimate | back-projected | series |
+| JAP | 0.946 | 44.4 | 0.261 | 0.216 | 32.4 | 0.189 | back-projected | series | series |
+| MGL | 0.050 | 26.2 | 0.124 | — | — | — | estimate | back-projected | series |
+| TUV | 0.030 | 26.2 | 0.124 | — | — | — | estimate | back-projected | series |
+| TIB | 0.030 | 25.0 | 0.040 | — | — | — | estimate | estimate | estimate |
+| SIA | 0.332 | 35.4 | 0.131 | — | — | — | back-projected | back-projected | series |
+| AFG | 0.014 | 22.8 | 0.046 | — | — | — | back-projected | back-projected | series |
+| PRS | 0.060 | 26.0 | 0.217 | — | — | — | back-projected | back-projected | series |
+| NEP | 0.014 | 25.5 | 0.020 | — | — | — | back-projected | back-projected | series |
+| BHU | 0.014 | 24.0 | 0.016 | — | — | — | back-projected | back-projected | series |
+| RAJ | 0.098 | 27.7 | 0.113 | — | — | — | series | series | series |
+| IRQ | 0.060 | 25.4 | 0.280 | — | — | — | back-projected | back-projected | series |
+| TRJ | 0.087 | 27.8 | 0.290 | — | — | — | back-projected | back-projected | series |
+| HEJ | 0.050 | 27.2 | 0.300 | — | — | — | estimate | back-projected | estimate |
+| NEJ | 0.014 | 27.2 | 0.174 | — | — | — | back-projected | back-projected | series |
+| YEM | 0.014 | 22.8 | 0.045 | — | — | — | back-projected | back-projected | series |
+| OMA | 0.014 | 22.8 | 0.069 | — | — | — | back-projected | back-projected | series |
+| KUW | 0.087 | 35.6 | 0.600 | — | — | — | back-projected | series | estimate |
+| EGY | 0.130 | 32.2 | 0.264 | — | — | — | series | back-projected | series |
+| ETH | 0.014 | 24.1 | 0.037 | — | — | — | back-projected | back-projected | series |
+| LBR | 0.035 | 25.8 | 0.092 | — | — | — | back-projected | back-projected | series |
+| SAF | 0.249 | 29.3 | 0.227 | 0.115 | 28.5 | 0.107 | back-projected | back-projected | series |
+| AUS | 0.967 | 63.2 | 0.528 | 0.037 | 22.9 | 0.008 | back-projected | series | series |
+| NZL | 0.967 | 64.0 | 0.609 | 0.759 | 33.5 | 0.088 | back-projected | estimate | series |
 
 ### Social indicators per component
 
@@ -1118,7 +1199,7 @@ would be 0.388.
 | GBR | Singapore | 480 000 | 0.289 b | 36.8 b | 0.633 | Singapore |
 | GBR | Brunei | 29 000 | 0.146 b | 34.4 b | 0.213 | Brunei |
 | GBR | Hong Kong | 616 000 | 0.378 b | 35.0 e | 0.850 e | lit Hong Kong; LE est; urban est |
-| GBR | Weihaiwei | 150 000 | 0.289 b | 30.0 b | 0.068 | China |
+| GBR | Weihaiwei | 150 000 | 0.205 e | 30.0 b | 0.068 | lit est (China); LE China; urban China |
 | GBR | British Somaliland | 340 000 | 0.014 b | 28.2 b | 0.081 | lit Somaliland; LE Somalia; urban Somalia |
 | GBR | Jubaland (Kenya until Jun 1925) | 120 000 | 0.014 b | 28.2 b | 0.081 | lit Somaliland; LE Somalia; urban Somalia |
 | GBR | Nigeria | 24 523 000 | 0.060 b | 24.2 b | 0.079 | Nigeria |
@@ -1170,7 +1251,7 @@ would be 0.388.
 | FRA | Comoros | 134 000 | 0.115 b | 25.4 b | 0.052 | Comoros |
 | FRA | French Somaliland | 46 000 | 0.014 b | 27.7 b | 0.317 | Djibouti |
 | FRA | French Cameroun (mandate) | 2 632 000 | 0.035 b | 26.3 b | 0.077 | Cameroon |
-| FRA | Guangzhouwan | 210 000 | 0.289 b | 30.0 b | 0.068 | China |
+| FRA | Guangzhouwan | 210 000 | 0.205 e | 30.0 b | 0.068 | lit est (China); LE China; urban China |
 | FRA | French India | 290 000 | 0.086 | 27.6 | 0.116 | India |
 | FRA | Reunion, Guadeloupe, Martinique, Guiana, SPM | 715 000 | 0.428 b | 35.3 b | 0.390 | lit Reunion + Guadeloupe + Martinique + French Guiana + Saint Pierre and Miquelon; LE Reunion + Guadeloupe + Martinique + French Guiana; urban Reunion + Guadeloupe + Martinique + French Guiana + Saint Pierre and Miquelon |
 | FRA | New Caledonia, Polynesia, Wallis, 1/2 New Hebrides | 124 000 | 0.195 b | 30.3 b | 0.112 | lit New Caledonia + French Polynesia + Vanuatu; LE New Caledonia + French Polynesia + Wallis and Futuna + Vanuatu; urban New Caledonia + Vanuatu |
@@ -1256,12 +1337,12 @@ would be 0.388.
 | URY | Uruguay | 1 516 000 | 0.679 b | 51.0 | 0.621 | Uruguay |
 | PRY | Paraguay | 776 000 | 0.483 b | 35.5 | 0.276 | Paraguay |
 | BRA | Brazil | 30 028 000 | 0.373 | 33.0 | 0.288 | Brazil |
-| CHN | China (MPD minus Tibet and leased territories) | 477 366 000 | 0.289 b | 30.0 b | 0.068 | China |
+| CHN | China (MPD minus Tibet and leased territories) | 477 366 000 | 0.205 e | 30.0 b | 0.068 | lit est (Buck); LE China; urban China |
 | JAP | Japan proper | 59 104 000 | 0.946 b | 44.4 | 0.261 | Japan |
 | JAP | Korea | 19 306 000 | 0.212 b | 31.2 | 0.180 | lit South Korea; LE South Korea + North Korea; urban South Korea + North Korea |
 | JAP | Taiwan | 4 004 000 | 0.200 e | 38.0 e | 0.170 | lit est; LE est; urban Taiwan |
 | JAP | Karafuto | 195 000 | 0.946 b | 44.4 | 0.300 e | lit Japan; LE Japan; urban est |
-| JAP | Kwantung Leased Territory | 850 000 | 0.289 b | 30.0 b | 0.450 e | lit China; LE China; urban est |
+| JAP | Kwantung Leased Territory | 850 000 | 0.205 e | 30.0 b | 0.450 e | lit est (China); LE China; urban est |
 | JAP | South Seas Mandate | 56 000 | 0.300 e | 35.0 b | 0.100 e | lit est; LE Micronesia (country) + Palau + Marshall Islands; urban est |
 | MGL | Mongolia | 682 000 | 0.050 e | 26.2 b | 0.124 | lit est; LE Mongolia; urban Mongolia |
 | TUV | Tannu Tuva | 70 000 | 0.030 e | 26.2 b | 0.124 | lit est; LE Mongolia; urban Mongolia |
@@ -1281,7 +1362,7 @@ would be 0.388.
 | OMA | Muscat and Oman | 426 000 | 0.014 b | 22.8 b | 0.069 | Oman |
 | KUW | Kuwait | 119 000 | 0.087 b | 35.6 | 0.600 e | lit Kuwait; LE Kuwait; urban est |
 | EGY | Egypt | 13 904 000 | 0.130 | 32.2 b | 0.264 | Egypt |
-| ETH | Ethiopia | 14 000 000 | 0.014 b | 24.1 b | 0.037 | Ethiopia |
+| ETH | Ethiopia | 13 311 000 | 0.014 b | 24.1 b | 0.037 | Ethiopia |
 | LBR | Liberia | 612 000 | 0.035 b | 25.8 b | 0.092 | Liberia |
 | SAF | Union of South Africa | 7 578 000 | 0.249 b | 29.3 b | 0.227 | South Africa |
 | SAF | South West Africa (mandate) | 311 000 | 0.115 b | 28.5 b | 0.107 | lit Botswana; LE Namibia; urban Namibia |
@@ -1338,3 +1419,5 @@ Every value marked `e` above, with its reasoning.
 - **HEJ, Hejaz (Jeddah, Medina; Mecca lost Oct 1924)**, urban share 0.300: Jeddah, Medina, Yanbu are a large part of the Hejaz left to King Ali.
 - **KUW, Kuwait**, urban share 0.600: Kuwait town held most of the settled people.
 - **NZL, New Zealand**, life expectancy 64.0: no series before 1948; New Zealand had the longest lives of the period, a little above Australia (63.2).
+- **CHN, China**, literacy 0.205: Buck's 1929–1933 survey and the urban surveys; see "China's literacy".
+- **GBR, Weihaiwei; FRA, Guangzhouwan; JAP, Kwantung Leased Territory**, literacy 0.205: as China.
