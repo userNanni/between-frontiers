@@ -105,11 +105,5 @@ pub fn show(shared: &Shared, ui: &mut Ui, country: usize) {
         bf_ui_kit::small(ui, &names.join(" · "));
     }
     bf_ui_kit::gap(ui, space::XS);
-    bf_ui_kit::small(
-        ui,
-        &i18n.tr_args(
-            "stat-source",
-            &[("source", Arg::String(c.def.source.clone()))],
-        ),
-    );
+    bf_ui_kit::small(ui, &i18n.tr("source-economy"));
 }
