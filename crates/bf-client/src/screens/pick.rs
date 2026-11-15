@@ -66,17 +66,16 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
         state.selected = None;
     }
 
-    // Tooltip with the country and province under the pointer.
+    // Tooltip with the state and country under the pointer.
     if let (Some(id), Some(pos)) = (
         response.hovered_province,
         ui.input(|i| i.pointer.hover_pos()),
-    ) {
-        let p = &world.provinces[id as usize - 1];
-        let owner = p
-            .owner
+    ) && let Some((state, owner)) = world.place_name(id)
+    {
+        let owner = owner
             .map(names)
             .unwrap_or_else(|| shared.i18n.tr("map-unowned"));
-        paint_tip(ui, pos, &owner, &p.def.name);
+        paint_tip(ui, pos, state, &owner);
     }
 
     // Title banner
@@ -187,7 +186,7 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
     out
 }
 
-/// Small tooltip next to the pointer: country name, province name below.
+/// Small tooltip next to the pointer: the state in bold, its country below.
 pub fn paint_tip(ui: &Ui, pointer: egui::Pos2, title: &str, detail: &str) {
     let painter = ui.ctx().layer_painter(egui::LayerId::new(
         egui::Order::Tooltip,

@@ -5,11 +5,20 @@
 use std::path::Path;
 
 use bf_sim::indicators::{QualityOfLife, quality_of_life};
-use bf_sim::scenario::{CountriesFile, CountryDef, MapFile, ProvinceDef, Status};
+use bf_sim::scenario::{CountriesFile, CountryDef, MapFile, ProvinceDef, StateDef, Status};
 use laplace_schelling::calendar::Date;
 
 pub struct Province {
     pub def: ProvinceDef,
+    /// Index into [`World::countries`].
+    pub owner: Option<usize>,
+    /// Index into [`World::states`]; `None` for maps written before states existed.
+    pub state: Option<usize>,
+}
+
+/// A state: the unit of the simulation, made of provinces of one owner.
+pub struct State {
+    pub def: StateDef,
     /// Index into [`World::countries`].
     pub owner: Option<usize>,
 }
@@ -69,6 +78,8 @@ pub struct World {
     pub world_gdp: f64,
     pub countries: Vec<Country>,
     pub provinces: Vec<Province>,
+    /// Sorted by id: `states[i].def.id == i + 1`.
+    pub states: Vec<State>,
     pub map: MapFile,
 }
 
@@ -110,10 +121,25 @@ impl World {
             .iter()
             .map(|def| Province {
                 owner: index_of(&def.owner),
+                state: None,
                 def: def.clone(),
             })
             .collect();
         provinces.sort_by_key(|p| p.def.id);
+        let mut states: Vec<State> = map
+            .states
+            .iter()
+            .map(|def| State {
+                owner: index_of(&def.owner),
+                def: def.clone(),
+            })
+            .collect();
+        states.sort_by_key(|s| s.def.id);
+        for p in &mut provinces {
+            p.state = usize::from(p.def.state)
+                .checked_sub(1)
+                .filter(|&i| states.get(i).is_some_and(|s| s.def.id == p.def.state));
+        }
 
         let mut countries: Vec<Country> = file
             .countries
@@ -202,8 +228,19 @@ impl World {
             world_gdp,
             countries,
             provinces,
+            states,
             map,
         }
+    }
+
+    /// Tooltip text for a province: the state name (the province name on maps without states)
+    /// and the owner.
+    pub fn place_name(&self, province: u16) -> Option<(&str, Option<usize>)> {
+        let p = self.provinces.get(usize::from(province).checked_sub(1)?)?;
+        let name = p
+            .state
+            .map_or(p.def.name.as_str(), |s| self.states[s].def.name.as_str());
+        Some((name, p.owner))
     }
 
     /// Finds the capital provinces from the capital coordinates, using the projection.

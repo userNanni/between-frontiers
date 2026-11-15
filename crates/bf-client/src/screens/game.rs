@@ -127,10 +127,10 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
         if let (Some(id), Some(pos)) = (
             response.hovered_province,
             ui.input(|i| i.pointer.hover_pos()),
-        ) {
-            let p = &world.provinces[id as usize - 1];
-            let owner = p.owner.map(names).unwrap_or_else(|| i18n.tr("map-unowned"));
-            paint_tip(ui, pos, &owner, &p.def.name);
+        ) && let Some((state, owner)) = world.place_name(id)
+        {
+            let owner = owner.map(names).unwrap_or_else(|| i18n.tr("map-unowned"));
+            paint_tip(ui, pos, state, &owner);
         }
     }
 
