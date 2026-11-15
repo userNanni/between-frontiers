@@ -12,3 +12,5 @@ laplace-schelling.workspace = true
 rayon.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+bf-sim.workspace = true
+ron.workspace = true

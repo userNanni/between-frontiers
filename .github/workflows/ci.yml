@@ -57,6 +57,9 @@ jobs:
       - name: Bench smoke (5 years, 1 thread vs all threads)
         run: cargo run -p bf-bench --release -- --years 5 --check-determinism --out bench-smoke-${{ runner.os }}.json
 
+      - name: Game smoke (real 1925 scenario, save and reload, determinism)
+        run: cargo run -p bf-bench --release -- --game --years 10 --check-determinism --out game-smoke-${{ runner.os }}.json
+
       - uses: actions/upload-artifact@v4
         with:
           name: bench-smoke-${{ runner.os }}

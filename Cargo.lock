@@ -434,8 +434,10 @@ checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
 name = "bf-bench"
 version = "0.0.1"
 dependencies = [
+ "bf-sim",
  "laplace-schelling",
  "rayon",
+ "ron",
  "serde",
  "serde_json",
 ]
