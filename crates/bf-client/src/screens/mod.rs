@@ -2,6 +2,7 @@
 
 pub mod country_panel;
 pub mod game;
+pub mod lens_panel;
 pub mod menu;
 pub mod pick;
 pub mod saves;

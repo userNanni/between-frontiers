@@ -2,6 +2,7 @@
 //! country labels painted by egui on top.
 
 pub mod gpu;
+pub mod lens;
 
 use std::collections::BTreeSet;
 use std::path::Path;
@@ -460,7 +461,12 @@ pub struct MapView {
     pub show_labels: bool,
     /// 0 turns the terrain shading off, 1 is full.
     pub relief_strength: f32,
-    palette_dirty: Option<Arc<Vec<[u8; 4]>>>,
+    /// Map mode.
+    pub lens: lens::Lens,
+    /// Current province colours and a version that changes with them; the GPU side uploads a
+    /// version it has not seen, whichever frame gets drawn.
+    palette: Arc<Vec<[u8; 4]>>,
+    palette_version: u64,
 }
 
 impl MapView {
@@ -471,12 +477,15 @@ impl MapView {
             selected_owner: None,
             show_labels: true,
             relief_strength: 1.0,
-            palette_dirty: Some(Arc::new(map.palette.clone())),
+            lens: lens::Lens::Political,
+            palette: Arc::new(map.palette.clone()),
+            palette_version: 1,
         }
     }
 
     pub fn set_palette(&mut self, palette: Vec<[u8; 4]>) {
-        self.palette_dirty = Some(Arc::new(palette));
+        self.palette = Arc::new(palette);
+        self.palette_version += 1;
     }
 
     pub fn show(
@@ -592,7 +601,8 @@ impl MapView {
             rect,
             gpu::MapCallback {
                 uniforms,
-                palette: self.palette_dirty.take(),
+                palette: Arc::clone(&self.palette),
+                palette_version: self.palette_version,
             },
         ));
 

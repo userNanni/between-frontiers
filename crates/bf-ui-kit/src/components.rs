@@ -458,6 +458,15 @@ pub fn segmented<T: PartialEq + Clone>(
                 );
                 let size = Vec2::new(galley.size().x + space::LG * 2.0, control::HEIGHT_SM);
                 let (rect, response) = ui.allocate_exact_size(size, Sense::click());
+                let text = label.clone();
+                response.widget_info(|| {
+                    egui::WidgetInfo::selected(
+                        egui::Role::RadioButton,
+                        true,
+                        selected,
+                        text.clone(),
+                    )
+                });
                 let hover = response.hovered();
                 let (fill, text) = if selected {
                     (color::ACCENT_SOFT, color::ACCENT)

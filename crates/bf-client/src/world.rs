@@ -76,6 +76,10 @@ impl Country {
 
 pub struct World {
     pub start: Date,
+    /// Deposits per state (index into [`World::states`]); empty when the data is missing.
+    pub deposits: Vec<Vec<bf_sim::resources::Deposit>>,
+    /// Land per state; `None` when the data is missing.
+    pub land: Vec<Option<bf_sim::resources::StateLand>>,
     /// World totals on the start date.
     pub world_population: f64,
     pub world_gdp: f64,
@@ -236,8 +240,12 @@ impl World {
         }
         let world_population = countries.iter().map(|c| c.total_population()).sum();
         let world_gdp = countries.iter().map(|c| c.total_gdp()).sum();
+        let deposits = vec![Vec::new(); states.len()];
+        let land = vec![None; states.len()];
         Self {
             start,
+            deposits,
+            land,
             world_population,
             world_gdp,
             countries,
@@ -291,4 +299,39 @@ pub fn project(meta: &bf_sim::scenario::MapMeta, lon: f64, lat: f64) -> Option<(
         return None;
     }
     Some((x as f32, y as f32))
+}
+
+impl World {
+    /// Attaches deposits and land read from the scenario, matched to states by key.
+    pub fn attach_resources(
+        &mut self,
+        deposits: Option<bf_sim::resources::DepositsFile>,
+        land: Option<bf_sim::resources::LandFile>,
+    ) {
+        let index: std::collections::HashMap<String, usize> = self
+            .states
+            .iter()
+            .enumerate()
+            .map(|(i, s)| (s.def.key.clone(), i))
+            .collect();
+        if let Some(file) = deposits {
+            for sd in file.states {
+                if let Some(&i) = index.get(&sd.state) {
+                    self.deposits[i].extend(sd.deposits);
+                }
+            }
+        }
+        if let Some(file) = land {
+            for sl in file.states {
+                if let Some(&i) = index.get(&sl.state) {
+                    self.land[i] = Some(sl);
+                }
+            }
+        }
+    }
+
+    /// Whether any deposit or land data was loaded.
+    pub fn has_resources(&self) -> bool {
+        self.deposits.iter().any(|d| !d.is_empty()) || self.land.iter().any(Option::is_some)
+    }
 }
