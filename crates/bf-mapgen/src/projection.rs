@@ -53,7 +53,6 @@ impl Frame {
     }
 
     /// Lon/lat of a texture point.
-    #[cfg(test)]
     pub fn to_lon_lat(self, x: f64, y: f64) -> (f64, f64) {
         let lon = (x / self.scale - PI).to_degrees();
         let lat = miller_lat(self.y_top - y / self.scale);

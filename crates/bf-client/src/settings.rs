@@ -18,6 +18,8 @@ pub struct Settings {
     /// Interface scale in percent.
     pub ui_scale: u32,
     pub map_labels: bool,
+    /// Terrain shading on the map.
+    pub map_relief: bool,
     pub autosave: Autosave,
 }
 
@@ -27,6 +29,7 @@ impl Default for Settings {
             locale: default_locale().code().to_owned(),
             ui_scale: 100,
             map_labels: true,
+            map_relief: true,
             autosave: Autosave::Yearly,
         }
     }

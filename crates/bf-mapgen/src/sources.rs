@@ -33,9 +33,21 @@ pub const ADMIN0: Source = Source {
 /// Natural Earth release the hashes above belong to.
 pub const NATURAL_EARTH_VERSION: &str = "5.1.1";
 
+/// Natural Earth 1:50m shaded relief raster (10800×5400, 8-bit, equirectangular).
+pub const SHADED_RELIEF: Source = Source {
+    stem: "SR_50M",
+    url: "https://naciscdn.org/naturalearth/50m/raster/SR_50M.zip",
+    blake3: "403c983172414b9617fcd1164f200f3831e30a31bbc57f46e4277a43a7c6cb08",
+};
+
 /// Makes sure the archive is in `raw_dir`, matches its hash and is unpacked. Returns the path of
 /// the `.shp` file.
 pub fn fetch(source: &Source, raw_dir: &Path) -> Result<PathBuf, String> {
+    fetch_file(source, raw_dir, &format!("{}.shp", source.stem))
+}
+
+/// Like [`fetch`], for an archive whose useful file is `inner` (relative to the unpacked folder).
+pub fn fetch_file(source: &Source, raw_dir: &Path, inner: &str) -> Result<PathBuf, String> {
     fs::create_dir_all(raw_dir).map_err(|e| format!("{}: {e}", raw_dir.display()))?;
     let archive = raw_dir.join(format!("{}.zip", source.stem));
     if !archive.exists() {
@@ -66,7 +78,7 @@ pub fn fetch(source: &Source, raw_dir: &Path) -> Result<PathBuf, String> {
     }
 
     let dir = raw_dir.join(source.stem);
-    let shp = dir.join(format!("{}.shp", source.stem));
+    let shp = dir.join(inner);
     if !shp.exists() {
         let mut zip = zip::ZipArchive::new(io::Cursor::new(bytes)).map_err(|e| e.to_string())?;
         zip.extract(&dir)

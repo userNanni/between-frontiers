@@ -8,3 +8,4 @@ dist/
 /crates/*/tests/snapshots/*.diff.png
 /crates/*/tests/snapshots/*.new.png
 /bf-bench-report.json
+/target-preview/
