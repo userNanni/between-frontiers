@@ -121,6 +121,8 @@ fn run() -> Result<(), String> {
                 center: (round_to(cx, 100.0) as f32, round_to(cy, 100.0) as f32),
                 area_km2: round_to(p.geometry.geodesic_area_unsigned() / 1e6, 10.0) as f32,
                 pixels: pixels[id],
+                // Filled from the ownership file once colonies are marked there.
+                colony: false,
             }
         })
         .collect();
