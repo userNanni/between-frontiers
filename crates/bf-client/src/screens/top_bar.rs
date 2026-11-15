@@ -284,7 +284,13 @@ fn items(i18n: &I18n, world: &World, c: &Country) -> (Vec<Item>, Vec<Item>, Vec<
         "stat-area-value",
         &[("value", Arg::String(i18n.compact_short(c.area_km2)))],
     );
-    let provinces = i18n.int(c.provinces.len() as i64);
+    let states = i18n.int(c.states.len() as i64);
+    let area_of = |v: f64| {
+        i18n.tr_args(
+            "stat-area-value",
+            &[("value", Arg::String(i18n.compact_short(v)))],
+        )
+    };
     let row2 = vec![
         Item {
             icon: Icon::Chart,
@@ -293,13 +299,21 @@ fn items(i18n: &I18n, world: &World, c: &Country) -> (Vec<Item>, Vec<Item>, Vec<
                 "bar-gdp",
                 &gdp,
                 vec![i18n.tr("bar-gdp-tip"), due.clone()],
-                vec![
-                    (i18n.tr("bar-population"), i18n.compact(pop)),
-                    (
-                        i18n.tr("hud-per-capita"),
-                        format!("× {}", money_exact(i18n, gdppc)),
+                [
+                    vec![
+                        (i18n.tr("bar-population"), i18n.compact(pop)),
+                        (
+                            i18n.tr("hud-per-capita"),
+                            format!("× {}", money_exact(i18n, gdppc)),
+                        ),
+                    ],
+                    split(
+                        money_short(i18n, c.gdp),
+                        money_short(i18n, c.colonial_gdp),
+                        money_short(i18n, c.total_gdp()),
                     ),
-                ],
+                ]
+                .concat(),
                 vec![rank(i18n, c.rank_gdp), economy.clone()],
             ),
             value: gdp,
@@ -345,7 +359,11 @@ fn items(i18n: &I18n, world: &World, c: &Country) -> (Vec<Item>, Vec<Item>, Vec<
                         &[("value", Arg::String(i18n.int(c.area_km2.round() as i64)))],
                     ),
                 ],
-                vec![],
+                split(
+                    area_of(c.area_km2),
+                    area_of(c.colonial_area_km2),
+                    area_of(c.area_km2 + c.colonial_area_km2),
+                ),
                 vec![],
             ),
             value: area,
@@ -354,13 +372,17 @@ fn items(i18n: &I18n, world: &World, c: &Country) -> (Vec<Item>, Vec<Item>, Vec<
             icon: Icon::Grid,
             bar: None,
             tip: tip(
-                "hud-provinces",
-                &provinces,
-                vec![i18n.tr("hud-provinces-tip")],
-                vec![],
+                "hud-states",
+                &states,
+                vec![i18n.tr("hud-states-tip")],
+                split(
+                    i18n.int(c.states.len() as i64),
+                    i18n.int(c.colonial_states.len() as i64),
+                    i18n.int((c.states.len() + c.colonial_states.len()) as i64),
+                ),
                 vec![],
             ),
-            value: provinces,
+            value: states,
         },
     ];
 

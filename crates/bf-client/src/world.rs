@@ -28,6 +28,9 @@ pub struct Country {
     /// Metropole provinces.
     pub provinces: Vec<u16>,
     pub colonial_provinces: Vec<u16>,
+    /// Metropole and colonial states (indices into [`World::states`]).
+    pub states: Vec<usize>,
+    pub colonial_states: Vec<usize>,
     /// Metropole area.
     pub area_km2: f64,
     pub colonial_area_km2: f64,
@@ -153,6 +156,8 @@ impl World {
                 def: def.clone(),
                 provinces: Vec::new(),
                 colonial_provinces: Vec::new(),
+                states: Vec::new(),
+                colonial_states: Vec::new(),
                 area_km2: 0.0,
                 colonial_area_km2: 0.0,
                 rank_population: 0,
@@ -180,6 +185,15 @@ impl World {
                 } else {
                     c.provinces.push(p.def.id);
                     c.area_km2 += p.def.area_km2 as f64;
+                }
+            }
+        }
+        for (i, st) in states.iter().enumerate() {
+            if let Some(o) = st.owner {
+                if st.def.colony {
+                    countries[o].colonial_states.push(i);
+                } else {
+                    countries[o].states.push(i);
                 }
             }
         }
