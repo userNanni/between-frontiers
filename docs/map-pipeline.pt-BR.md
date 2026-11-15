@@ -1,7 +1,7 @@
 # Pipeline do mapa
 
-`bf-mapgen` gera a textura de províncias e a lista de províncias a partir do Natural Earth e do
-arquivo de donos de 1925. Roda offline, uma vez por mudança de dado, e o resultado vai para o
+`bf-mapgen` gera a textura de províncias e a lista de províncias e estados a partir do Natural
+Earth, do arquivo de donos e das regras de estados de 1925. Roda offline, uma vez por mudança de dado, e o resultado vai para o
 repositório.
 
 ```bash
@@ -15,6 +15,7 @@ cargo run -p bf-mapgen --release
 | `data/raw/ne_10m_admin_1_states_provinces_lakes.zip` | Natural Earth 5.1.1, Admin 1 com grandes lagos | Domínio público |
 | `data/raw/ne_10m_admin_0_countries_lakes.zip` | Natural Earth 5.1.1, Admin 0 com grandes lagos | Domínio público |
 | `data/scenario/1925/province_owners.ron` | Escrito à mão para o jogo | CC BY-SA 4.0 |
+| `data/scenario/1925/states.ron` | Escrito à mão para o jogo | CC BY-SA 4.0 |
 
 - Os zips são baixados com `curl` na primeira execução e ficam em `data/raw/` (fora do git).
 - Cada zip tem o BLAKE3 fixado em `crates/bf-mapgen/src/sources.rs`. Se o Natural Earth publicar
@@ -97,9 +98,9 @@ Britânica até 1937, como parte dele.
 | Arquivo | Conteúdo |
 |---|---|
 | `assets/map/provinces.png` | PNG cinza de 16 bits, 8192 × 4103. Pixel = id da província (1..N); 0 = água |
-| `assets/map/provinces.ron` | `MapFile` de `bf_sim::scenario`: meta e uma linha por província |
+| `assets/map/provinces.ron` | `MapFile` de `bf_sim::scenario`: meta, uma linha por província e uma por estado |
 | `assets/map/ATTRIBUTION.md` | Crédito ao Natural Earth |
-| `target-preview/*.png` | Prévia por dono, com bordas e recortes de conferência. Não vai para o git |
+| `target-preview/*.png` | Prévia por dono (`owners-*`) e por estado (`states-*`), com bordas e recortes de conferência. Não vai para o git |
 
 - **Projeção:** Miller cilíndrica, longitude -180..180, latitude 84 N no topo. A altura é a do
   paralelo 58 S arredondada para pixel inteiro; o `lat_bottom` exato (-57,9957) está no `meta`.
@@ -117,7 +118,101 @@ Britânica até 1937, como parte dele.
   `HashMap`; os testes conferem que o PNG bate com a contagem de pixels do RON.
 
 Testes: `cargo test -p bf-mapgen` (projeção ida e volta, rasterização com buraco, tags, ids
-contíguos e PNG coerente com o RON).
+contíguos, PNG coerente com o RON e as regras de estado, ver abaixo).
+
+## Estados
+
+O estado é a unidade da simulação (população, economia); a província fica como unidade de desenho
+e, mais tarde, de frente de guerra. Decisão de `docs/architecture.pt-BR.md` ("Quantos estados"):
+cerca de 900, com os estados do Brasil, dos EUA e do México inteiros. O `bf-mapgen` agrupa as
+províncias segundo `data/scenario/1925/states.ron` e grava em `provinces.ron`:
+
+- `ProvinceDef.state`: id do estado (1..N, contíguo, na ordem das chaves).
+- `MapFile.states`: um `StateDef` por estado, com `key` estável (`BRA-SP`, `FRA-BRETAGNE`), `name`
+  (nome próprio, na língua da fonte ou da época), `owner`, `colony`, `center` (polo de
+  inacessibilidade da maior parte contínua do estado, calculado na textura), `area_km2` e
+  `provinces`.
+
+`provinces.png` não muda: o estado é só metadado. Hoje são **870 estados** (220 coloniais), a
+partir de 4.606 províncias; o `bf-mapgen` imprime a distribuição por dono e os maiores e menores.
+
+### Regras
+
+Aplicadas nesta ordem:
+
+1. `states`: estados explícitos, com a lista de províncias. Cada item é uma chave de província
+   (`adm1_code`, chave de recorte `<origem>~<sufixo>`, `ADM0-<A3>`) ou um código ISO 3166-2, que
+   pega todas as províncias com aquele código (o Natural Earth parte algumas unidades ISO, como
+   Dublin e Manila). Uma província só pode estar num estado explícito.
+2. `attach`: ilhotas e fragmentos que entram no estado de outra província (Vaticano em Roma,
+   Scarborough em Zambales, a ilha Macquarie na Tasmânia, os fragmentos `+99?` do Natural Earth).
+   Origem e destino precisam ter o mesmo dono e o mesmo estatuto colonial.
+3. `countries`: regra por `adm0_a3` para o que sobrou.
+   - `Admin1`: cada unidade de primeiro nível vira um estado, com chave `<A3>-<sufixo ISO>`.
+   - `Whole(name, key)`: a unidade inteira vira um estado. Unidades com a mesma `key` formam um
+     estado só (Ilhas de Sotavento, Palestina, Chipre), e uma `key` igual à de um estado explícito
+     junta-se a ele: é assim que o "resto" de um país vira um estado (Nord-Norge, Centro do Peru).
+   - `Field(field, names)`: um estado por valor de `region` ou `region_sub` do Natural Earth;
+     `names` renomeia valores, e valores com o mesmo nome se juntam.
+4. Recorte (`~`) fora de estado explícito vira estado próprio (`RUS-KARAFUTO`, `POL-DANZIG`,
+   `CHN-KWANTUNG`, `CHN-WEIHAIWEI`, `CHN-GUANGZHOUWAN`, `GRC-DODECANESE`). Unidade sem regra vira
+   um estado por província.
+5. Um grupo que misturaria donos, ou colônia e metrópole em 1º de janeiro de 1925, é partido: a
+   maior parte fica com a chave e o nome, as outras recebem chave própria e o `bf-mapgen` imprime
+   uma nota. Hoje nenhum grupo é partido; as regras já separam esses casos.
+6. `tiny`: estados sem nenhum pixel que podem existir assim (Gibraltar, Spratly, Ashmore, Coral
+   Sea). Todo outro estado precisa de pelo menos um pixel, e entrada de `tiny` que tenha pixel é
+   erro.
+
+O `bf-mapgen` recusa seletor que não casa com província, província em dois estados explícitos,
+regra para país inexistente, nome de `Field` que não aparece e chave repetida. Testes
+(`cargo test -p bf-mapgen`): toda província num estado só, ids contíguos e chaves ordenadas,
+nenhum estado mistura donos nem estatuto colonial, contagem entre 850 e 950, pixel ou `tiny`, e
+`center` dentro do próprio estado.
+
+### Famílias de regra
+
+| Família | Onde | Como |
+|---|---|---|
+| Primeiro nível inteiro | EUA (48 estados, Alasca, Havaí, Distrito de Colúmbia), México (31 estados e DF), Canadá, Áustria, Bélgica, Países Baixos, Polônia, Ucrânia e RSFSR (oblasts e repúblicas, perto das *guberniyas* e autonomias de 1925), China, Austrália | `Admin1`, com fusões explícitas onde a unidade moderna não existia |
+| Estados de 1925 refeitos com unidades modernas | Brasil, China, Índia britânica, Alemanha, Polônia, Romênia, Coreia, Itália, Argélia, Congo Belga, Nigéria, África do Sul | Listas explícitas por código ISO |
+| Regiões históricas | França (regiões de 1956–2015, perto das províncias do Antigo Regime), Reino Unido (regiões estatísticas, Escócia em três), Irlanda (quatro províncias), Espanha (regiões históricas), Japão (regiões tradicionais), Suécia (*landsdelar*), Noruega (*landsdeler*), Finlândia (*läänit*), Tchecoslováquia (terras), Suíça (*Grossregionen*), Turquia (NUTS-1), Pérsia, Iraque (os três vilaiete otomanos), Síria (os Estados do mandato) | Explícitas ou `Field` com `names` |
+| Agrupamento por região do Natural Earth | Hungria, Portugal, Sião, Filipinas, Ceilão (as nove províncias), Uganda (as quatro províncias), Sudão anglo-egípcio, Azerbaijão | `Field` |
+| País ou colônia inteiro | Países pequenos (Letônia, Estônia, Bulgária em duas, América Central, Uruguai, Paraguai…) e quase todas as colônias (AOF e AEF colônia a colônia, Quênia em três, Tanganica, Rodésias…) | `Whole`, com o nome da época (Haute-Volta, Dahomey, Gold Coast, Nan'yō) |
+
+### Aproximações principais
+
+- **Brasil:** os 26 estados e o DF modernos viram os 20 estados e o território do Acre de 1925:
+  Tocantins e o DF atual voltam a Goiás, Mato Grosso do Sul e Rondônia a Mato Grosso, Roraima ao
+  Amazonas, Amapá ao Pará. O Distrito Federal de 1925 (a cidade do Rio) não tem unidade própria no
+  Natural Earth e fica dentro do estado do Rio de Janeiro. São 21 estados.
+- **EUA e México:** unidades modernas; as fronteiras são as de 1925.
+- **Alemanha:** Länder modernos (Baden e Württemberg juntos, Hannover e Oldenburg dentro da Baixa
+  Saxônia, a Renânia e a Vestfália juntas, Anhalt na Saxônia-Anhalt). Ostpreußen, Pommern,
+  Nieder- e Oberschlesien saem das voivodias polonesas; a Lubúsquia entra em Brandemburgo.
+- **Itália:** regiões modernas como *compartimenti*: Vale de Aosta no Piemonte, Molise com o
+  Abruzzo, Friul no Vêneto; a Venezia Giulia junta Gorizia, Trieste, o Litoral esloveno e a Ístria.
+- **França:** Normandia numa peça só; Aquitânia, Centre e Ródano-Alpes partidos em Guyenne,
+  Gascogne, Orléanais, Berry-Touraine e Savoie.
+- **Índia britânica:** só o primeiro nível moderno. Bengala sai em quatro (oeste com Khulna, Daca,
+  Chittagong, Rajshahi), mas as Províncias Unidas, Bihar e os grandes estados principescos não se
+  dividem: Hyderabad é Telangana, Mysore é Karnataka, a Rajputana é o Rajastão, a Índia Central é
+  Madhya Pradesh. Sylhet vai para Assam, como em 1925.
+- **China:** províncias modernas com Chongqing em Sichuan, Hainan em Guangdong, Ningxia em Gansu,
+  Pequim e Tianjin em Zhili, Xangai em Jiangsu. Rehe, Chahar e Suiyuan ficam dentro da Mongólia
+  Interior.
+- **URSS:** oblasts modernos, com fusões onde a divisão é posterior (Moscou e Leningrado com as
+  cidades, okrugs autônomos dentro das oblasts, Adiguéia no Kuban). As repúblicas da Ásia Central
+  saem por região histórica (Bucara, Samarcanda, Fergana, Khorezm); o Cazaquistão em quatro.
+- **Japão:** regiões tradicionais partidas onde passavam de 4 milhões de pessoas (Kantō, Kinki,
+  Kyūshū, Tōhoku).
+- **Etiópia:** regiões modernas no lugar das províncias de 1925, com Adis Abeba em Shewa.
+- **Coreia:** as treze províncias do Governo-Geral, refeitas com as províncias e cidades das duas
+  Coreias.
+
+Faltam para chegar a 900, e voltam quando houver desenho abaixo do primeiro nível
+(OpenHistoricalMap): Bengala ocidental, Províncias Unidas e Sichuan divididas, os maiores estados
+principescos separados das províncias britânicas, e o Distrito Federal brasileiro.
 
 ## Aproximações
 

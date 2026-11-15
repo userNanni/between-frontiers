@@ -9,6 +9,8 @@
   centred on flat ground for `relief.png`. Public domain.
 - **Owners on 1925-01-01**: `data/scenario/1925/province_owners.ron`, written for Between
   Frontiers and released under CC BY-SA 4.0 with the rest of the game data.
+- **States on 1925-01-01**: `data/scenario/1925/states.ron`, written for Between Frontiers and
+  released under CC BY-SA 4.0.
 
 Natural Earth shows modern boundaries; where they cannot express the 1925 border the owner is an
 approximation, listed in `docs/map-pipeline.pt-BR.md`.
