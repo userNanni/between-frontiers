@@ -48,6 +48,11 @@ pub struct ProvinceDef {
     pub area_km2: f32,
     /// Pixels in the texture; 0 when the province is too small to be drawn.
     pub pixels: u32,
+    /// Colony of the owner on the start date: ruled directly but not part of the metropole
+    /// (Victoria 3's unincorporated states). Its people count in the owner's colonial figures,
+    /// never in the national ones.
+    #[serde(default)]
+    pub colony: bool,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -67,13 +72,15 @@ pub struct CountryDef {
     pub government: String,
     /// Capital position, for locating the capital province.
     pub capital_lon_lat: (f64, f64),
-    /// Population on the start date.
+    /// Population of the metropole (non-colonial provinces) on the start date.
     pub population: u64,
-    /// GDP per capita in 2011 international dollars (Maddison Project 2023 unit).
+    /// GDP per capita of the metropole, in 2011 international dollars (Maddison Project 2023
+    /// unit).
     pub gdp_per_capita: u32,
     /// Free-text source note for `population` and `gdp_per_capita`.
     pub source: String,
-    /// Share of adults (15 and older) who can read and write, 0 to 1. `None` when unknown.
+    /// Share of adults (15 and older) in the metropole who can read and write, 0 to 1. `None`
+    /// when unknown.
     #[serde(default)]
     pub literacy: Option<f32>,
     /// Life expectancy at birth, in years. `None` when unknown.
@@ -85,6 +92,26 @@ pub struct CountryDef {
     /// Free-text source note for `literacy`, `life_expectancy` and `urbanization`.
     #[serde(default)]
     pub social_source: String,
+    /// Figures of the colonies taken together; `None` for a country without colonies.
+    #[serde(default)]
+    pub colonies: Option<ColonialStats>,
+    /// Flag image under `assets/flags/`, e.g. `"BRA.png"`; `None` until one is drawn.
+    #[serde(default)]
+    pub flag: Option<String>,
+}
+
+/// Aggregate figures of a country's colonies on the start date.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ColonialStats {
+    pub population: u64,
+    /// 2011 international dollars.
+    pub gdp_per_capita: u32,
+    #[serde(default)]
+    pub literacy: Option<f32>,
+    #[serde(default)]
+    pub life_expectancy: Option<f32>,
+    #[serde(default)]
+    pub urbanization: Option<f32>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
