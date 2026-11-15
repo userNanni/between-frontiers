@@ -383,6 +383,45 @@
             mask: [(120.8, 38.5), (123.0, 38.5), (123.0, 39.45), (120.8, 39.45)],
         ),
         (
+            from: "CHN-1814", // Shandong
+            suffix: "weihaiwei",
+            name: "Weihaiwei",
+            owner: "GBR",
+            // British lease until 1 October 1930: Liugong island, the bay and a belt ten miles
+            // deep along its coast. OpenHistoricalMap relation 2848211 (CC0), simplified to
+            // 0.004 degrees; the outline runs at sea where it does not matter.
+            mask: [
+                (121.935, 37.471), (121.980, 37.363), (122.005, 37.324), (122.033, 37.298),
+                (122.069, 37.280), (122.126, 37.265), (122.176, 37.261), (122.240, 37.265),
+                (122.300, 37.282), (122.358, 37.309), (122.387, 37.336), (122.427, 37.410),
+                (122.423, 37.468), (122.340, 37.468), (122.311, 37.500), (122.269, 37.515),
+                (122.244, 37.543), (122.218, 37.561), (122.203, 37.584), (122.163, 37.610),
+                (122.088, 37.629), (122.055, 37.626), (122.025, 37.611), (122.001, 37.586),
+                (121.964, 37.570), (121.943, 37.540), (121.919, 37.532),
+            ],
+        ),
+        (
+            from: "CHN-1180", // Guangdong
+            suffix: "guangzhouwan",
+            name: "Guangzhouwan",
+            owner: "FRA",
+            // Kouang-Tchéou-Wan, French lease attached to Indochina: the bay of the Maxie river,
+            // the islands of Donghai and Naozhou and the two banks fixed in November 1899.
+            // OpenHistoricalMap relation 2889933 (CC0), simplified to 0.004 degrees.
+            mask: [
+                (110.677, 21.198), (110.553, 21.260), (110.476, 21.322), (110.434, 21.327),
+                (110.390, 21.314), (110.335, 21.279), (110.272, 21.263), (110.256, 21.253),
+                (110.233, 21.202), (110.154, 21.110), (110.143, 21.087), (110.110, 21.048),
+                (110.106, 21.034), (110.143, 20.971), (110.170, 20.960), (110.187, 20.940),
+                (110.238, 20.909), (110.284, 20.917), (110.355, 20.945), (110.407, 20.950),
+                (110.421, 20.946), (110.422, 20.917), (110.440, 20.893), (110.477, 20.870),
+                (110.500, 20.863), (110.533, 20.832), (110.593, 20.821), (110.623, 20.824),
+                (110.652, 20.844), (110.692, 20.917), (110.689, 20.946), (110.670, 20.969),
+                (110.594, 21.001), (110.604, 21.050), (110.622, 21.080), (110.647, 21.145),
+                (110.674, 21.175),
+            ],
+        ),
+        (
             from: "POL-3140", // Pomeranian
             suffix: "danzig",
             name: "Danzig",
@@ -406,9 +445,10 @@
     // - `provinces`: keys outside those countries that are metropole too.
     // - `colonies`: keys inside those countries that are colonies all the same.
     metropoles: {
-        // Great Britain and Northern Ireland. The Crown dependencies (Isle of Man, Jersey,
-        // Guernsey) are not part of the United Kingdom and count as colonies.
-        "GBR": (countries: ["GBR"]),
+        // Great Britain and Northern Ireland with the Crown dependencies (Isle of Man, Jersey,
+        // Guernsey with Alderney and Sark): outside the United Kingdom in law, but their people
+        // were British subjects with the same rights, the test applied to Algeria.
+        "GBR": (countries: ["GBR", "IMN", "JEY", "GGY"]),
         // Metropolitan France with Corsica. Algeria's three départements were French territory
         // but its Muslim majority were subjects under the indigénat, not citizens, with a
         // Governor-General and a separate budget: a colony, as in Victoria 3. The old colonies

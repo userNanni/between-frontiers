@@ -317,10 +317,11 @@ fn fluent_names_in_every_locale() {
 }
 
 /// Empire totals (metropole plus colonies) before the figures were split, for every owner with
-/// colonies: tag, population, GDP per capita.
+/// colonies: tag, population, GDP per capita. GBR and FRA moved when the Weihaiwei and
+/// Guangzhouwan rows took census figures.
 const EMPIRES: &[(&str, u64, u32)] = &[
-    ("GBR", 117_808_000, 3806),
-    ("FRA", 106_431_000, 3264),
+    ("GBR", 117_815_000, 3806),
+    ("FRA", 106_420_000, 3265),
     ("BEL", 19_273_000, 3467),
     ("NLD", 65_319_000, 2227),
     ("ESP", 23_104_000, 3624),
