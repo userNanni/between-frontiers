@@ -94,7 +94,8 @@ pub struct Deposit {
     pub discovered: i32,
     /// Output in 1925, in the resource's unit; 0 when not mined yet.
     pub output_1925: f32,
-    /// What the deposit could yield per year at 1925 technology when fully developed.
+    /// The most the deposit yielded in a year over the century: the long-run ceiling. How much
+    /// of it a mine reaches in a given year depends on its production method.
     pub potential: f32,
     /// Named field or mine, e.g. "Katanga Copperbelt"; short source note.
     pub note: String,
