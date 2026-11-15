@@ -2,7 +2,7 @@
 
 use bf_i18n::Arg;
 use bf_ui_kit::{Tone, tokens::space};
-use egui::{Color32, Ui};
+use egui::Ui;
 
 use crate::app::Shared;
 use crate::text::{country_name, difficulty_key, money, money_exact, status_line};
@@ -16,8 +16,7 @@ pub fn show(shared: &Shared, ui: &mut Ui, country: usize) {
     ui.spacing_mut().item_spacing.y = space::MD;
 
     ui.horizontal(|ui| {
-        let (r, g, b) = c.def.color;
-        bf_ui_kit::swatch(ui, Color32::from_rgb(r, g, b), 28.0);
+        crate::flags::flag(ui, &shared.flags, c, 32.0);
         ui.add_space(space::XS);
         bf_ui_kit::title(ui, &country_name(i18n, tag));
     });
@@ -106,11 +105,5 @@ pub fn show(shared: &Shared, ui: &mut Ui, country: usize) {
         bf_ui_kit::small(ui, &names.join(" · "));
     }
     bf_ui_kit::gap(ui, space::XS);
-    bf_ui_kit::small(
-        ui,
-        &i18n.tr_args(
-            "stat-source",
-            &[("source", Arg::String(c.def.source.clone()))],
-        ),
-    );
+    bf_ui_kit::small(ui, &i18n.tr("source-economy"));
 }

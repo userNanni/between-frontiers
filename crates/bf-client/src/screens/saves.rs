@@ -150,7 +150,14 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
                                 )),
                             )],
                         );
+                        let image = save
+                            .meta
+                            .player
+                            .as_ref()
+                            .and_then(|tag| shared.flags.get(tag))
+                            .map(|t| t.id());
                         let row = ListRow {
+                            image,
                             title: &save.meta.name,
                             subtitle: &subtitle,
                             trailing: &trailing,
