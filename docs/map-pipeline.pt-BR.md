@@ -1,0 +1,193 @@
+# Pipeline do mapa
+
+`bf-mapgen` gera a textura de províncias e a lista de províncias a partir do Natural Earth e do
+arquivo de donos de 1925. Roda offline, uma vez por mudança de dado, e o resultado vai para o
+repositório.
+
+```bash
+cargo run -p bf-mapgen --release
+```
+
+## Entradas
+
+| Arquivo | Origem | Licença |
+|---|---|---|
+| `data/raw/ne_10m_admin_1_states_provinces_lakes.zip` | Natural Earth 5.1.1, Admin 1 com grandes lagos | Domínio público |
+| `data/raw/ne_10m_admin_0_countries_lakes.zip` | Natural Earth 5.1.1, Admin 0 com grandes lagos | Domínio público |
+| `data/scenario/1925/province_owners.ron` | Escrito à mão para o jogo | CC BY-SA 4.0 |
+
+- Os zips são baixados com `curl` na primeira execução e ficam em `data/raw/` (fora do git).
+- Cada zip tem o BLAKE3 fixado em `crates/bf-mapgen/src/sources.rs`. Se o Natural Earth publicar
+  outra versão no mesmo endereço, a ferramenta para com erro: leia as notas da versão, troque o
+  hash e gere de novo.
+- O admin-0 só entra para as unidades sem nenhum polígono no admin-1 (bancos de areia, o campo de
+  gelo da Patagônia). As que já estão cobertas pelo admin-1 (Bir Tawil, zona-tampão de Chipre) são
+  descartadas; das outras fica só a parte que nenhum polígono do admin-1 cobre. A chave delas é
+  `ADM0-<A3>`.
+- A Antártida (`ATA`) fica fora.
+
+## Arquivo de donos
+
+`province_owners.ron` tem quatro partes:
+
+1. `countries`: dono padrão por `adm0_a3` do Natural Earth. Toda unidade usada precisa de entrada,
+   e entrada que não casa com nenhuma unidade é erro.
+2. `provinces`: exceções por `adm1_code`. Chave inexistente é erro.
+3. `carves`: recortes. Uma máscara em lon/lat corta um pedaço de uma província e cria outra com a
+   chave `<adm1_code>~<sufixo>`. Serve para fronteira que é paralelo, meridiano ou mar (Sacalina no
+   paralelo 50, Dodecaneso, Curilas). O de Danzig é desenhado à mão e grosseiro.
+4. `excluded_countries`: unidades fora do mapa.
+
+Todo dono precisa estar na lista de tags de 1925 (`TAGS_1925` em
+`crates/bf-mapgen/src/owners.rs`; vai para `countries.ron` quando ele existir). Colônia de
+administração direta pertence à tag da metrópole.
+
+## Saídas
+
+| Arquivo | Conteúdo |
+|---|---|
+| `assets/map/provinces.png` | PNG cinza de 16 bits, 8192 × 4103. Pixel = id da província (1..N); 0 = água |
+| `assets/map/provinces.ron` | `MapFile` de `bf_sim::scenario`: meta e uma linha por província |
+| `assets/map/ATTRIBUTION.md` | Crédito ao Natural Earth |
+| `target-preview/*.png` | Prévia por dono, com bordas e recortes de conferência. Não vai para o git |
+
+- **Projeção:** Miller cilíndrica, longitude -180..180, latitude 84 N no topo. A altura é a do
+  paralelo 58 S arredondada para pixel inteiro; o `lat_bottom` exato (-57,9957) está no `meta`.
+- **Rasterização:** um pixel pertence à província cujo polígono contém o centro dele (par-ímpar,
+  com buracos). Sem anti-aliasing. Centro em cima de aresta compartilhada fica com um lado só, então
+  não há buraco nem sobreposição entre vizinhos.
+- **Ids:** províncias ordenadas pela chave e numeradas de 1 a N, sem buracos. Mudar o conjunto de
+  províncias renumera.
+- **`center`:** polo de inacessibilidade (algoritmo *polylabel*) da maior parte da província, em
+  pixels. Fica dentro do polígono mesmo em província em forma de C, onde o centroide cairia fora.
+- **`area_km2`:** área geodésica no elipsoide WGS 84, da geometria inteira.
+- **`pixels`:** 0 quando a província é pequena demais para ter um centro de pixel. A província
+  continua na lista (Vaticano, ilhotas, recifes). Toda tag tem pelo menos um pixel; Mônaco tem 2.
+- **Determinismo:** mesmas entradas, saídas idênticas byte a byte. Nada depende de ordem de
+  `HashMap`; os testes conferem que o PNG bate com a contagem de pixels do RON.
+
+Testes: `cargo test -p bf-mapgen` (projeção ida e volta, rasterização com buraco, tags, ids
+contíguos e PNG coerente com o RON).
+
+## Aproximações
+
+O Natural Earth tem fronteiras atuais. Onde o primeiro nível administrativo não exprime a
+fronteira de 1925, a unidade inteira vai para o dono da maior parte. Todas serão redesenhadas a
+partir do OpenHistoricalMap.
+
+### Recortes (fronteira certa, ou quase)
+
+| Recorte | Como | Qualidade |
+|---|---|---|
+| Dodecaneso (ITA), de Notio Aigaio | Ilhas a leste de 26,2° E | Exato |
+| Karafuto (JAP), de Sacalina | Ilha ao sul de 50° N | Exato |
+| Curilas (JAP), de Sacalina | Ilhas a leste de 145,2° E | Exato |
+| Kwantung (JAP), de Liaoning | Península ao sul de 39,45° N | Retângulo; área próxima da real (3.530 × 3.462 km²) |
+| Danzig (DNZ), de Pomerânia | Polígono desenhado à mão | Grosseiro: 1.593 km² contra 1.966 km² reais |
+
+### Unidade inteira para o dono da maior parte
+
+**Polônia e Alemanha**
+
+- Silésia (Śląskie) → POL. Gliwice, Bytom e Zabrze ficaram com a Alemanha em 1922.
+- Opole → GER. Partes do leste foram para a Polônia.
+- Pomerânia (Pomorskie), fora Danzig → POL. Lębork, Bytów, Słupsk, Malbork e Sztum eram alemães.
+- Grande Polônia (Wielkopolskie) → POL. A franja oeste era alemã.
+- Vármia-Masúria → GER. Działdowo (Soldau) era polonês.
+- Lubúsquia → GER. Algumas áreas do leste eram polonesas.
+- Sarre: o Sarre atual (2.570 km²) é maior que o Território do Sarre de 1925 (1.912 km²).
+
+**Linha polonesa-soviética e Lituânia**
+
+- Minsk e Vitebsk → SOV. Os distritos do oeste (Maladzyechna, Vileyka, Myadzel, Valozhyn,
+  Stowbtsy, Nesvizh; Braslaw, Pastavy, Hlybokaye, Miory) eram poloneses.
+- Vilnius (condado) → POL. Ukmergė e Širvintos eram lituanos.
+- Utena → LTU. Ignalina e Visaginas eram poloneses.
+- Alytus → LTU. O sul de Varėna era polonês.
+
+**Fronteiras soviéticas a oeste**
+
+- Odessa → SOV. O Budjak (sul da Bessarábia: Izmail, Bilhorod-Dnistrovskyi, Bolhrad) era romeno.
+- Oblast de Leningrado → SOV. O norte do istmo da Carélia (Viipuri) era finlandês; Ivangorod,
+  estoniano.
+- Carélia (república) → SOV. A Carélia do Ladoga (Sortavala, Suojärvi) era finlandesa.
+- Murmansk → SOV. Petsamo era finlandês.
+- Pskov → SOV. Petseri (Pechory) era estoniano; Abrene (Pytalovo), letão.
+- Sacalina do norte: ocupada pelo Japão até maio de 1925; fica SOV, que tinha a soberania.
+
+**Adriático e Bálcãs**
+
+- Primorje-Gorski Kotar → YUG. Fiume (Rijeka), Abbazia (Opatija) e Cres-Lošinj eram italianos.
+- Zadar → YUG. A cidade de Zara era italiana.
+- Dubrovnik-Neretva → YUG. Lagosta (Lastovo) era italiana.
+- Eslovênia, por município: o Litoral esloveno vai para ITA. Logatec, Žiri e Gorenja vas-Poljane
+  ficam YUG, embora uma faixa do oeste (Hotedršica) fosse italiana.
+- Vlorë → ALB. A ilha de Saseno era italiana.
+
+**Marrocos**
+
+- Tânger-Tetuão → ESP. A zona internacional de Tânger fica dentro.
+- Taza-Al Hoceima-Taounate → FRA. Al Hoceima era da zona espanhola.
+- Oriental → FRA. Nador era da zona espanhola.
+- Guelmim-Es-Semara → FRA. O enclave de Ifni era espanhol (ocupado só em 1934).
+- A República do Rif (Abd el-Krim) controlava em 1925 a maior parte da zona espanhola. Não há tag;
+  fica ESP.
+
+**Oriente Médio**
+
+- Meca (região) → HEJ. Ibn Saud tomou Meca e Taif em outubro de 1924; Jidá resistia.
+- Al Bahah → HEJ, com a mesma ressalva.
+- Aqaba e Ma'an → HEJ. A Grã-Bretanha só anexou a região à Transjordânia em meados de 1925.
+- Hodeidah e Hajjah → YEM. A Tihama, com Hodeidah, era do Idrisi de Asir até abril de 1925.
+- Al Dali' → YEM. O Imã ocupava a parte do Protetorado de Áden.
+- Lahij e o resto do Protetorado de Áden → GBR, embora o Imã ocupasse trechos até 1928.
+- Golã: segue o recorte do Natural Earth (Israel ou Síria). Em 1925 era do mandato francês.
+- Zona neutra Kuwait-Arábia: segue o recorte atual.
+
+**Ásia**
+
+- Shandong → CHN. Weihaiwei era arrendamento britânico até 1930.
+- Guangdong → CHN. Kwangchowan era arrendamento francês.
+- Bengala Ocidental → RAJ. Chandernagore era francesa.
+- Balochistão → RAJ. Gwadar era de Omã.
+- Puducherry: todos os enclaves (Pondicherry, Karaikal, Mahé, Yanam) → FRA.
+- Dadra e Nagar Haveli e Damão e Diu → POR.
+
+**Américas**
+
+- Panamá e Colón → PAN. A Zona do Canal era dos EUA.
+- Amazonas (Colômbia) → COL. O trapézio de Letícia e a margem norte do Putumayo estavam sob o Peru
+  até 1930.
+- Chaco paraguaio → PRY. A Bolívia tinha fortins no oeste.
+- Tacna → CHL. Tarata voltou ao Peru em setembro de 1925.
+
+**África**
+
+- Al Butnan → ITA. Jaghbub era egípcio até dezembro de 1925.
+- As fronteiras do Togo e dos Camarões saem certas no primeiro nível: o Togo britânico está em
+  Gana, os Camarões do Sul são Noroeste e Sudoeste, e os do Norte estão na Nigéria.
+
+### Donos sem tag própria
+
+A lista de tags não tem estes casos. Ficam com o dono mais próximo:
+
+| Lugar | Dono | Situação em 1925 |
+|---|---|---|
+| República do Rif | ESP | Independente de fato |
+| Asir e Jizan (Idrisi) | NEJ | Emirado sob proteção saudita a partir de 1926 |
+| Novas Hébridas (Vanuatu) | GBR | Condomínio anglo-francês |
+| Tonga | GBR | Estado protegido britânico |
+| Spratly | GBR | Reivindicação britânica de 1877; França anexa em 1933 |
+| Scarborough | USA | Junto das Filipinas |
+| Bouvet | GBR | Reivindicação britânica; Noruega anexa em 1927–1928 |
+| Bajo Nuevo e Serranilla | COL | Reivindicados pela Colômbia e pelos EUA |
+| Campo de gelo da Patagônia | CHL | Sem demarcação |
+| Tokelau | GBR | Ilhas Gilbert e Ellice até 1926 |
+| Vaticano | ITA | Tratado de Latrão só em 1929 |
+| Tânger | ESP | Zona internacional (convênio em vigor em junho de 1925) |
+| Sudão | GBR | Condomínio anglo-egípcio |
+
+### Seguindo a lista de tags, contra a data
+
+- Jubalândia → ITA. A transferência do Quênia para a Itália foi em 29 de junho de 1925.
+- Svalbard → NOR. A soberania norueguesa entrou em vigor em 14 de agosto de 1925.
