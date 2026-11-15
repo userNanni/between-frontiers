@@ -81,6 +81,18 @@ pub fn show(shared: &mut Shared, ui: &mut Ui, rect: Rect) -> bool {
                 bf_ui_kit::body(ui, &shared.tr("settings-map-labels"));
             });
 
+            ui.horizontal(|ui| {
+                let mut relief = shared.settings.map_relief;
+                if bf_ui_kit::toggle(ui, &mut relief).changed() {
+                    shared.settings.map_relief = relief;
+                    if let Some(v) = &mut shared.map_view {
+                        v.relief_strength = if relief { 1.0 } else { 0.0 };
+                    }
+                    shared.persist_settings();
+                }
+                bf_ui_kit::body(ui, &shared.tr("settings-map-relief"));
+            });
+
             let folder = shared.paths.saves().display().to_string();
             bf_ui_kit::field(
                 ui,

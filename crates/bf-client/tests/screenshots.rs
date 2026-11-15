@@ -155,6 +155,17 @@ fn walk_through_the_screens() {
     shot(&mut h, "06d-franca-colonias");
     h.hover_at(egui::pos2(800.0, 600.0));
 
+    // 6e. Close-up of the Alps: pastel colours with the terrain shading under them.
+    {
+        let app = h.state_mut();
+        let meta = app.shared.world.as_ref().unwrap().map.meta.clone();
+        let (x, y) = bf_client::world::project(&meta, 10.5, 46.0).unwrap();
+        let view = app.shared.map_view.as_mut().unwrap();
+        view.camera.as_mut().unwrap().look_at(egui::pos2(x, y), 2.2);
+    }
+    h.run_steps(3);
+    shot(&mut h, "06e-relevo-alpes");
+
     // 7. Back to the main menu: "Continue" now offers the new campaign.
     let ctx = h.ctx.clone();
     h.state_mut().apply(Transition::Menu, &ctx);

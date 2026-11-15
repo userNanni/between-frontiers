@@ -20,7 +20,8 @@ pub struct Uniforms {
     pub hovered: u32,
     pub selected: u32,
     pub dim: f32,
-    pub _pad: f32,
+    /// Terrain shading strength, 0 to 1.
+    pub relief: f32,
 }
 
 /// Lives in egui-wgpu's callback resources for the whole session.
@@ -90,6 +91,16 @@ impl MapGpu {
             &data.fields,
             2,
         );
+        let relief = upload(
+            device,
+            queue,
+            "map relief",
+            data.relief.width,
+            data.relief.height,
+            wgpu::TextureFormat::R8Unorm,
+            &data.relief.pixels,
+            1,
+        );
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             label: Some("map fields"),
             mag_filter: wgpu::FilterMode::Linear,
@@ -136,6 +147,7 @@ impl MapGpu {
                     ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
                     count: None,
                 },
+                tex(6, wgpu::TextureSampleType::Float { filterable: true }),
             ],
         });
         let view = |t: &wgpu::Texture| t.create_view(&wgpu::TextureViewDescriptor::default());
@@ -166,6 +178,10 @@ impl MapGpu {
                 wgpu::BindGroupEntry {
                     binding: 5,
                     resource: wgpu::BindingResource::Sampler(&sampler),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 6,
+                    resource: wgpu::BindingResource::TextureView(&view(&relief)),
                 },
             ],
         });

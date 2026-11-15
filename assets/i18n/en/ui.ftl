@@ -195,3 +195,4 @@ hud-total = Total
 hud-includes-colonies = Colonies included.
 country-colonies = Colonies
 country-colonies-value = { $population } · { $provinces } provinces
+settings-map-relief = Terrain relief on the map

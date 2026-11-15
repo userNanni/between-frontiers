@@ -482,6 +482,7 @@ dependencies = [
  "ron",
  "serde",
  "shapefile",
+ "tiff",
  "zip",
 ]
 

@@ -114,6 +114,7 @@ impl App {
                 }
                 let mut view = MapView::new(&map);
                 view.show_labels = shared.settings.map_labels;
+                view.relief_strength = if shared.settings.map_relief { 1.0 } else { 0.0 };
                 shared.map_view = Some(view);
                 shared.flags = crate::flags::Flags::load(
                     &cc.egui_ctx,
@@ -214,7 +215,9 @@ fn load_world(paths: &Paths) -> Result<(World, MapData), String> {
         ));
     }
     world.locate_capitals(&ids);
-    let map = MapData::build(&world, w, h, ids);
+    let relief = crate::map::Relief::load(&map_dir.join("relief.png"))
+        .unwrap_or_else(crate::map::Relief::flat);
+    let map = MapData::build(&world, w, h, ids, relief);
     Ok((world, map))
 }
 

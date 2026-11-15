@@ -33,6 +33,34 @@ pub struct MapData {
     /// RG8: r = sea distance to land, g = land distance to a country border.
     pub fields: Vec<u8>,
     pub labels: Vec<Label>,
+    /// Shaded relief, 8-bit, 128 = flat; same extent as the ids, any resolution.
+    pub relief: Relief,
+}
+
+pub struct Relief {
+    pub width: u32,
+    pub height: u32,
+    pub pixels: Vec<u8>,
+}
+
+impl Relief {
+    /// A 1×1 flat relief, for when `relief.png` is missing.
+    pub fn flat() -> Self {
+        Self {
+            width: 1,
+            height: 1,
+            pixels: vec![128],
+        }
+    }
+
+    pub fn load(path: &Path) -> Option<Self> {
+        let img = image::open(path).ok()?.to_luma8();
+        Some(Self {
+            width: img.width(),
+            height: img.height(),
+            pixels: img.into_raw(),
+        })
+    }
 }
 
 /// A country name placed over one contiguous block of its provinces.
@@ -91,7 +119,7 @@ pub fn read_ids(path: &Path) -> Result<(u32, u32, Vec<u16>), LoadError> {
 }
 
 impl MapData {
-    pub fn build(world: &World, width: u32, height: u32, ids: Vec<u16>) -> Self {
+    pub fn build(world: &World, width: u32, height: u32, ids: Vec<u16>, relief: Relief) -> Self {
         let province_count = world.provinces.len() as u32;
         let mut owner_of = vec![0u16; province_count as usize + 1];
         let mut colony_of = vec![false; province_count as usize + 1];
@@ -114,6 +142,7 @@ impl MapData {
             field_height,
             fields,
             labels,
+            relief,
         }
     }
 
@@ -424,6 +453,8 @@ pub struct MapView {
     pub hovered_owner: Option<usize>,
     pub selected_owner: Option<usize>,
     pub show_labels: bool,
+    /// 0 turns the terrain shading off, 1 is full.
+    pub relief_strength: f32,
     palette_dirty: Option<Arc<Vec<[u8; 4]>>>,
 }
 
@@ -434,6 +465,7 @@ impl MapView {
             hovered_owner: None,
             selected_owner: None,
             show_labels: true,
+            relief_strength: 1.0,
             palette_dirty: Some(Arc::new(map.palette.clone())),
         }
     }
@@ -549,7 +581,7 @@ impl MapView {
             hovered: self.hovered_owner.map_or(0, |o| o as u32 + 1),
             selected: self.selected_owner.map_or(0, |o| o as u32 + 1),
             dim: if mode == MapMode::Backdrop { 0.35 } else { 0.0 },
-            _pad: 0.0,
+            relief: self.relief_strength,
         };
         ui.painter().add(egui_wgpu::Callback::new_paint_callback(
             rect,
