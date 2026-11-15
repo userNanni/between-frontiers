@@ -20,7 +20,6 @@ bytemuck.workspace = true
 png.workspace = true
 serde.workspace = true
 ron.workspace = true
-postcard.workspace = true
 directories.workspace = true
 
 [dev-dependencies]

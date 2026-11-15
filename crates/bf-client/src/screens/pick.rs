@@ -1,0 +1,219 @@
+//! Country choice for a new campaign: the world map, a sidebar with the selected country and the
+//! button that starts the campaign.
+
+use bf_ui_kit::{
+    Button, ButtonSize,
+    tokens::{color, space},
+};
+use egui::{Rect, Sense, Ui};
+
+use super::{country_panel, region};
+use crate::app::{Shared, Transition};
+use crate::map::MapMode;
+use crate::saves::{self, Save};
+use crate::text::country_name;
+
+const SIDEBAR_W: f32 = 400.0;
+const FOOTER_H: f32 = 96.0;
+
+pub struct State {
+    save: Save,
+    selected: Option<usize>,
+}
+
+impl State {
+    pub fn new(save: Save) -> Self {
+        Self {
+            save,
+            selected: None,
+        }
+    }
+
+    /// Selects a country as if the player had clicked it (used by tests and screenshots).
+    pub fn select(&mut self, country: Option<usize>) {
+        self.selected = country;
+    }
+}
+
+pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> Option<Transition> {
+    let mut out = None;
+    let i18n = &shared.i18n;
+    let Some((map, view, world)) = (match (&shared.map, &mut shared.map_view, &shared.world) {
+        (Some(m), Some(v), Some(w)) => Some((m, v, w)),
+        _ => None,
+    }) else {
+        let msg = shared.load_error.clone().unwrap_or_default();
+        region(ui, rect.shrink(48.0), |ui| {
+            bf_ui_kit::title(ui, &shared.tr("pick-title"));
+            bf_ui_kit::error_text(ui, &msg);
+            if Button::secondary(&shared.tr("pick-back"))
+                .show(ui)
+                .clicked()
+            {
+                out = Some(Transition::Saves);
+            }
+        });
+        return out;
+    };
+
+    view.selected_owner = state.selected;
+    let names = |c: usize| country_name(i18n, world.countries[c].tag());
+    let response = view.show(ui, rect, map, world, &names, MapMode::Interactive);
+    if let Some(id) = response.clicked_province {
+        state.selected = world.provinces[id as usize - 1].owner;
+    }
+    if response.clicked_sea {
+        state.selected = None;
+    }
+
+    // Tooltip with the country and province under the pointer.
+    if let (Some(id), Some(pos)) = (
+        response.hovered_province,
+        ui.input(|i| i.pointer.hover_pos()),
+    ) {
+        let p = &world.provinces[id as usize - 1];
+        let owner = p
+            .owner
+            .map(names)
+            .unwrap_or_else(|| shared.i18n.tr("map-unowned"));
+        paint_tip(ui, pos, &owner, &p.def.name);
+    }
+
+    // Title banner
+    let banner = Rect::from_center_size(
+        egui::pos2(
+            rect.center().x
+                - if state.selected.is_some() {
+                    SIDEBAR_W / 2.0
+                } else {
+                    0.0
+                },
+            rect.top() + 58.0,
+        ),
+        egui::vec2(700.0, 76.0),
+    );
+    bf_ui_kit::paint_overlay(ui, banner);
+    ui.interact(
+        banner,
+        ui.make_persistent_id("banner"),
+        Sense::click_and_drag(),
+    );
+    region(ui, banner.shrink2(egui::vec2(space::XL, space::MD)), |ui| {
+        ui.vertical_centered(|ui| {
+            ui.spacing_mut().item_spacing.y = 2.0;
+            bf_ui_kit::heading(ui, &shared.i18n.tr("pick-title"));
+            bf_ui_kit::small(ui, &shared.i18n.tr("pick-hint"));
+        });
+    });
+
+    // Back
+    let back = Rect::from_min_size(
+        rect.min + egui::vec2(space::LG, space::LG + 16.0),
+        egui::vec2(240.0, 40.0),
+    );
+    region(ui, back, |ui| {
+        if Button::secondary(&format!("←  {}", shared.i18n.tr("pick-back")))
+            .show(ui)
+            .clicked()
+        {
+            out = Some(Transition::Saves);
+        }
+    });
+
+    // Sidebar
+    if let Some(country) = state.selected {
+        let side = Rect::from_min_max(
+            egui::pos2(rect.right() - SIDEBAR_W - space::LG, rect.top() + space::LG),
+            egui::pos2(rect.right() - space::LG, rect.bottom() - space::LG),
+        );
+        bf_ui_kit::paint_overlay(ui, side);
+        ui.interact(
+            side,
+            ui.make_persistent_id("sidebar"),
+            Sense::click_and_drag(),
+        );
+        let body = Rect::from_min_max(
+            side.min + egui::vec2(space::XL, space::XL),
+            egui::pos2(side.right() - space::XL, side.bottom() - FOOTER_H),
+        );
+        region(ui, body, |ui| {
+            egui::ScrollArea::vertical()
+                .auto_shrink([false, false])
+                .show(ui, |ui| country_panel::show(shared, ui, country));
+        });
+        bf_ui_kit::paint_rule(ui, side, side.bottom() - FOOTER_H + space::SM);
+        let footer = Rect::from_min_max(
+            egui::pos2(
+                side.left() + space::XL,
+                side.bottom() - FOOTER_H + space::LG + space::SM,
+            ),
+            egui::pos2(side.right() - space::XL, side.bottom() - space::LG),
+        );
+        region(ui, footer, |ui| {
+            if Button::primary(&shared.i18n.tr("pick-start"))
+                .size(ButtonSize::Large)
+                .width(f32::INFINITY)
+                .show(ui)
+                .clicked()
+            {
+                let tag = shared
+                    .world
+                    .as_ref()
+                    .map(|w| w.countries[country].tag().to_owned());
+                state.save.meta.player = tag;
+                state.save.meta.last_played = saves::now();
+                match saves::write(&state.save) {
+                    Ok(()) => out = Some(Transition::Game(state.save.clone())),
+                    Err(e) => {
+                        let now = ui.input(|i| i.time);
+                        let msg = shared.i18n.tr_args(
+                            "saves-error-io",
+                            &[("error", bf_i18n::Arg::String(e.to_string()))],
+                        );
+                        shared.toast(msg, now);
+                    }
+                }
+            }
+        });
+    }
+
+    if ui.input(|i| i.key_pressed(egui::Key::Escape)) {
+        if state.selected.is_some() {
+            state.selected = None;
+        } else {
+            out = Some(Transition::Saves);
+        }
+    }
+    out
+}
+
+/// Small tooltip next to the pointer: country name, province name below.
+pub fn paint_tip(ui: &Ui, pointer: egui::Pos2, title: &str, detail: &str) {
+    let painter = ui.ctx().layer_painter(egui::LayerId::new(
+        egui::Order::Tooltip,
+        egui::Id::unique("map-tip"),
+    ));
+    let t = painter.layout_no_wrap(
+        title.to_owned(),
+        bf_ui_kit::theme::sans_semibold(14.0),
+        color::TEXT,
+    );
+    let d = painter.layout_no_wrap(
+        detail.to_owned(),
+        bf_ui_kit::theme::sans(12.5),
+        color::TEXT_MUTED,
+    );
+    let size = egui::vec2(t.size().x.max(d.size().x), t.size().y + d.size().y + 2.0)
+        + egui::vec2(20.0, 14.0);
+    let r = Rect::from_min_size(pointer + egui::vec2(18.0, 20.0), size);
+    painter.rect(
+        r,
+        bf_ui_kit::tokens::radius::MD,
+        color::SURFACE_OVERLAY,
+        egui::Stroke::new(1.0, color::BORDER_STRONG),
+        egui::StrokeKind::Inside,
+    );
+    let th = t.size().y;
+    painter.galley(r.min + egui::vec2(10.0, 7.0), t, color::TEXT);
+    painter.galley(r.min + egui::vec2(10.0, 9.0 + th), d, color::TEXT_MUTED);
+}
