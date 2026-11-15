@@ -72,15 +72,20 @@ O cliente é nativo: um executável só, sem navegador embutido.
 | GPUI + gpui-component | Não há API estável para embutir textura; só em forks | A mais próxima do shadcn: mais de 75 componentes prontos | Alto: feito para o editor Zed, pré-1.0 |
 | Dioxus Native (Blitz) | Integração recente | HTML e CSS sem navegador | Alto: beta, desempenho não é foco |
 
-- **Recomendação:** Slint na interface do jogo, confirmado por um protótipo na fase 0: a mesma
-  tela (mapa, tabela densa, tooltip aninhado) em Slint e em egui, com tempo de quadro medido.
-- **egui** fica para as ferramentas de desenvolvimento (inspetor de estado, painel do benchmark).
-- **Licença:** o Slint é oferecido sob GPLv3, que combina com a AGPL; egui é MIT ou Apache-2.0.
+- **Decidido: egui**, na interface do jogo e nas ferramentas de desenvolvimento (inspetor de
+  estado, painel do benchmark). Um toolkit só, com a integração mais simples ao nosso
+  renderizador e o menor risco.
+- **O custo conhecido** é a aparência: o estilo do egui é global e o layout é básico. O sistema de
+  design abaixo existe para pagar esse custo uma vez, nos componentes, e não em cada tela.
+- **Licença:** egui é MIT ou Apache-2.0.
 
 #### Sistema de design
 
-Não existe um shadcn pronto para o toolkit recomendado. O que o shadcn tem de reaproveitável é o
-método: os componentes moram no repositório e são nossos.
+Não existe um shadcn pronto para egui; há crates de tema e de tokens, não um kit de componentes.
+O que o shadcn tem de reaproveitável é o método: os componentes moram no repositório e são nossos.
+
+- **Nenhuma tela chama widget cru do egui.** Toda tela usa os componentes do kit, que aplicam os
+  tokens. É o que impede o estilo global do egui de vazar de uma tela para outra.
 
 - **Tokens** em um arquivo só: cores, espaçamento, raio, tipografia, duração de animação.
 - **Cerca de quinze componentes próprios:** painel, botão, aba, tabela, tooltip aninhado, barra de
@@ -163,9 +168,30 @@ Regras:
   promove a comunidade a linha própria. Ao ser promovida, ela herda as médias de "outras
   minorias", porque até ali não tinha estado próprio.
 - **Histerese:** o limite para rebaixar é menor que o de promover, para a linha não piscar.
-- **Fixação nos dados:** o cenário de 1925 pode marcar comunidades que a história tornou centrais
-  depois, para que já nasçam como linha (tutsis e hutus em Ruanda-Urundi, por exemplo).
+- **Sem fixação por retrospecto.** O cenário de 1925 não marca um grupo porque ele ficou
+  importante depois. Tutsis e hutus já são linha em Ruanda-Urundi pelo tamanho; o que vier depois
+  tem de sair da simulação.
 - **Teto por estado:** o orçamento de linhas vale mesmo quando a curva pediria mais.
+
+### Ninguém some em "outras minorias"
+
+A linha "outras minorias" de um estado guarda a contagem de pessoas de cada comunidade. O que ela
+não guarda é estado próprio por comunidade (riqueza, alfabetização, pirâmide etária).
+
+- **Imigração lenta acumula.** Cada chegada soma na contagem da comunidade dentro da linha. Os
+  nascimentos da linha são repartidos pela composição.
+- **A importância é recalculada todo ano** sobre essa contagem. Quando passa do limite, por
+  tamanho ou por relevância, a comunidade vira linha própria.
+- **Onda grande já chega como linha.** Um fluxo de refugiados ou de colonos acima do lote mínimo
+  nasce com estado próprio (pobre, jovem, sem terra), em vez de herdar a média das minorias.
+- **Assimilação é regra explícita, nunca efeito do agrupamento.** A taxa depende da lei, da
+  discriminação e da concentração: comunidade concentrada e discriminada assimila menos.
+- **A comunidade é a mesma no mundo inteiro.** A diáspora e a população da pátria têm o mesmo
+  identificador, o que permite remessa, retorno e movimento de exilados.
+
+Caso de teste: os tutsis exilados em Uganda a partir de 1959. Entram como minoria pequena, não
+somem, organizam-se décadas depois e voltam armados em 1990. O modelo tem de permitir os três
+passos: persistir na contagem, ganhar relevância por organização e agir sobre a pátria.
 
 ### O que se perde
 
@@ -303,6 +329,6 @@ As correções podem voltar para o OpenHistoricalMap.
 
 ## Decisões em aberto
 
-1. Toolkit de interface: Slint (recomendado) ou egui, pelo protótipo da fase 0.
-2. Parâmetros da curva ABC das comunidades: pesos da relevância, corte e teto de linhas por estado.
-3. Lista de comunidades (pares cultura + religião) de 1925.
+1. Parâmetros da curva ABC das comunidades: pesos da relevância, corte e teto de linhas por estado.
+2. Lista de comunidades (pares cultura + religião) de 1925.
+3. Regra de assimilação: taxa base e peso de lei, discriminação e concentração.
