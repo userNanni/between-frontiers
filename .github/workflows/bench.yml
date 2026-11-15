@@ -1,0 +1,72 @@
+name: Nightly bench
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  bench:
+    name: 100 years (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Run the 100-year benchmark (1 thread vs all threads)
+        shell: bash
+        run: |
+          cargo run -p bf-bench --release -- --years 100 --check-determinism \
+            --out bench-${{ runner.os }}.json | tee bench-${{ runner.os }}.txt
+          {
+            echo '### bf-bench, ${{ runner.os }}'
+            echo '```'
+            cat bench-${{ runner.os }}.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bench-${{ runner.os }}
+          path: bench-${{ runner.os }}.json
+          retention-days: 90
+
+  cross-platform:
+    name: same hashes on Linux and Windows
+    needs: bench
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: bench-*
+          merge-multiple: true
+
+      - name: Compare state hashes
+        shell: bash
+        run: |
+          set -euo pipefail
+          fingerprint() { jq -c '{final: .run.final_hash, chain: .run.tick_chain_hash, years: [.run.years[].hash]}' "$1"; }
+          linux=$(fingerprint bench-Linux.json)
+          windows=$(fingerprint bench-Windows.json)
+          jq -r '"Linux final:   \(.run.final_hash)"' bench-Linux.json
+          jq -r '"Windows final: \(.run.final_hash)"' bench-Windows.json
+          if [ "$linux" != "$windows" ]; then
+            echo "::error::state hashes differ between Linux and Windows"
+            exit 1
+          fi
