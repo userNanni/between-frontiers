@@ -596,6 +596,13 @@ impl MapView {
             selected: self.selected_owner.map_or(0, |o| o as u32 + 1),
             dim: if mode == MapMode::Backdrop { 0.35 } else { 0.0 },
             relief: self.relief_strength,
+            // Map modes carry meaning in their colours; soften only the political map.
+            pastel: if self.lens == lens::Lens::Political {
+                0.34
+            } else {
+                0.08
+            },
+            _pad: [0.0; 3],
         };
         ui.painter().add(egui_wgpu::Callback::new_paint_callback(
             rect,

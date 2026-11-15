@@ -22,6 +22,9 @@ pub struct Uniforms {
     pub dim: f32,
     /// Terrain shading strength, 0 to 1.
     pub relief: f32,
+    /// How far country colours are softened toward paper (political map) or not (map modes).
+    pub pastel: f32,
+    pub _pad: [f32; 3],
 }
 
 /// Lives in egui-wgpu's callback resources for the whole session.
