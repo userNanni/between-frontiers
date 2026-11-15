@@ -6,6 +6,7 @@ pub mod menu;
 pub mod pick;
 pub mod saves;
 pub mod settings;
+pub mod top_bar;
 
 use egui::{Rect, Ui, UiBuilder};
 

@@ -1,17 +1,15 @@
 //! The campaign: map, top bar with date and speed, in-game menu.
 
-use bf_ui_kit::{Button, ButtonSize, tokens::space};
+use bf_ui_kit::{Button, tokens::space};
 use egui::{Color32, Rect, Sense, Ui};
 
-use super::{country_panel, pick::paint_tip, region};
+use super::{country_panel, pick::paint_tip, region, top_bar};
 use crate::app::{Shared, Transition};
 use crate::map::MapMode;
 use crate::saves::{self, Save};
 use crate::settings::Autosave;
 use crate::sim::{Command, SimHandle};
-use crate::text::{country_name, date_long};
-
-const BAR_H: f32 = 56.0;
+use crate::text::country_name;
 
 pub struct State {
     save: Save,
@@ -79,7 +77,10 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
             .and_then(|t| w.countries.iter().position(|c| c.tag() == t))
     });
 
-    let map_rect = Rect::from_min_max(egui::pos2(rect.left(), rect.top() + BAR_H), rect.max);
+    let map_rect = Rect::from_min_max(
+        egui::pos2(rect.left(), rect.top() + top_bar::HEIGHT),
+        rect.max,
+    );
     let i18n = &shared.i18n;
     if let (Some(map), Some(view), Some(world)) = (&shared.map, &mut shared.map_view, &shared.world)
     {
@@ -103,80 +104,20 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
     }
 
     // Top bar
-    let bar = Rect::from_min_size(rect.min, egui::vec2(rect.width(), BAR_H));
-    ui.painter()
-        .rect_filled(bar, 0, bf_ui_kit::tokens::color::SURFACE);
-    ui.painter().hline(
-        bar.x_range(),
-        bar.bottom(),
-        egui::Stroke::new(1.0, bf_ui_kit::tokens::color::BORDER),
-    );
-    region(ui, bar.shrink2(egui::vec2(space::LG, space::SM)), |ui| {
-        ui.horizontal_centered(|ui| {
-            if let (Some(p), Some(world)) = (player, &shared.world) {
-                let (r, g, b) = world.countries[p].def.color;
-                bf_ui_kit::swatch(ui, Color32::from_rgb(r, g, b), 22.0);
-                bf_ui_kit::heading(ui, &country_name(&shared.i18n, world.countries[p].tag()));
-            }
-            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                if Button::secondary(&shared.tr("game-menu"))
-                    .size(ButtonSize::Small)
-                    .show(ui)
-                    .clicked()
-                {
-                    state.menu_open = true;
-                }
-                ui.add_space(space::MD);
-                // Children of a right-to-left layout come out reversed; lay the controls left to right.
-                ui.allocate_ui_with_layout(
-                    egui::vec2(262.0, 40.0),
-                    egui::Layout::left_to_right(egui::Align::Center),
-                    |ui| {
-                        let label = if snap.paused { "▶" } else { "❚❚" };
-                        let variant = if snap.paused {
-                            bf_ui_kit::Variant::Primary
-                        } else {
-                            bf_ui_kit::Variant::Secondary
-                        };
-                        if Button::new(label, variant)
-                            .size(ButtonSize::Small)
-                            .width(44.0)
-                            .show(ui)
-                            .clicked()
-                        {
-                            state.sim.send(Command::SetPaused(!snap.paused));
-                        }
-                        let mut speed = snap.speed;
-                        let options: Vec<(u8, String)> =
-                            (1..=5).map(|s| (s, s.to_string())).collect();
-                        if bf_ui_kit::segmented(ui, &mut speed, &options) {
-                            state.sim.send(Command::SetSpeed(speed));
-                            state.sim.send(Command::SetPaused(false));
-                        }
-                    },
-                );
-            });
-        });
-    });
-    // Date in the middle of the bar.
-    let date_text = date_long(&shared.i18n, snap.date);
-    let painter = ui.painter();
-    let center = bar.center();
-    painter.text(
-        center - egui::vec2(0.0, if snap.paused { 7.0 } else { 0.0 }),
-        egui::Align2::CENTER_CENTER,
-        date_text,
-        bf_ui_kit::theme::serif(22.0),
-        bf_ui_kit::tokens::color::TEXT,
-    );
-    if snap.paused {
-        painter.text(
-            center + egui::vec2(0.0, 14.0),
-            egui::Align2::CENTER_CENTER,
-            shared.tr("game-paused").to_uppercase(),
-            bf_ui_kit::theme::sans_semibold(10.5),
-            bf_ui_kit::tokens::color::ACCENT,
-        );
+    let bar = Rect::from_min_size(rect.min, egui::vec2(rect.width(), top_bar::HEIGHT));
+    let bar_out = top_bar::show(ui, bar, &shared.i18n, shared.world.as_ref(), player, &snap);
+    if bar_out.open_country {
+        state.selected = player;
+    }
+    if bar_out.toggle_pause {
+        state.sim.send(Command::SetPaused(!snap.paused));
+    }
+    if let Some(speed) = bar_out.speed {
+        state.sim.send(Command::SetSpeed(speed));
+    }
+    if bar_out.open_menu {
+        state.menu_open = true;
+        state.sim.send(Command::SetPaused(true));
     }
 
     // Country panel for the clicked country.

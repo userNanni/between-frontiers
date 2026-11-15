@@ -251,15 +251,34 @@ impl I18n {
         self.locale.number_format().decimal(value, digits)
     }
 
+    /// Large numbers abbreviated for tight spaces: `45,1 mi`, `1,9 bi`, `45.1M`.
+    pub fn compact_short(&self, value: f64) -> String {
+        self.compact_with(
+            value,
+            [
+                "number-short-thousands",
+                "number-short-millions",
+                "number-short-billions",
+            ],
+        )
+    }
+
     /// Large numbers in words: `45,1 milhões`, `1,9 bilhão`, `45.1 million`.
     pub fn compact(&self, value: f64) -> String {
+        self.compact_with(
+            value,
+            ["number-thousands", "number-millions", "number-billions"],
+        )
+    }
+
+    fn compact_with(&self, value: f64, ids: [&str; 3]) -> String {
         let abs = value.abs();
         let (scaled, id) = if abs >= 1e9 {
-            (value / 1e9, "number-billions")
+            (value / 1e9, ids[2])
         } else if abs >= 1e6 {
-            (value / 1e6, "number-millions")
+            (value / 1e6, ids[1])
         } else if abs >= 1e4 {
-            (value / 1e3, "number-thousands")
+            (value / 1e3, ids[0])
         } else {
             return self.int(value.round() as i64);
         };
