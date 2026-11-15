@@ -4,7 +4,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
 
-use bf_sim::scenario::{CountriesFile, Status, SubjectKind};
+use bf_sim::scenario::{CountriesFile, MapFile, Status, SubjectKind};
 
 const TAGS: &[&str] = &[
     // Europe
@@ -196,7 +196,11 @@ fn values_in_range() {
             c.color
         );
     }
-    let world: u64 = file.countries.iter().map(|c| c.population).sum();
+    let world: u64 = file
+        .countries
+        .iter()
+        .map(|c| c.population + c.colonies.as_ref().map_or(0, |col| col.population))
+        .sum();
     assert!(
         (1_850_000_000..2_050_000_000).contains(&world),
         "world population {world}"
@@ -229,11 +233,37 @@ fn social_indicators() {
             "{}: social_source",
             c.tag
         );
-        let p = c.population as f64;
-        people += p;
-        literate += p * f64::from(lit);
-        years += p * f64::from(life);
-        urban += p * f64::from(urb);
+        let mut parts = vec![(c.population, lit, life, urb)];
+        if let Some(col) = &c.colonies {
+            let (Some(lit), Some(life), Some(urb)) =
+                (col.literacy, col.life_expectancy, col.urbanization)
+            else {
+                panic!("{}: colonies miss a social indicator", c.tag);
+            };
+            assert!(
+                (0.0..=1.0).contains(&lit),
+                "{}: colonial literacy {lit}",
+                c.tag
+            );
+            assert!(
+                (15.0..=75.0).contains(&life),
+                "{}: colonial life_expectancy {life}",
+                c.tag
+            );
+            assert!(
+                (0.0..=1.0).contains(&urb),
+                "{}: colonial urbanization {urb}",
+                c.tag
+            );
+            parts.push((col.population, lit, life, urb));
+        }
+        for (pop, lit, life, urb) in parts {
+            let p = pop as f64;
+            people += p;
+            literate += p * f64::from(lit);
+            years += p * f64::from(life);
+            urban += p * f64::from(urb);
+        }
     }
     // World means weighted by population, against the 1925 orders of magnitude.
     let (lit, life, urb) = (literate / people, years / people, urban / people);
@@ -282,6 +312,94 @@ fn fluent_names_in_every_locale() {
         assert_eq!(
             ids, reference,
             "message ids differ between {first} and {locale}"
+        );
+    }
+}
+
+/// Empire totals (metropole plus colonies) before the figures were split, for every owner with
+/// colonies: tag, population, GDP per capita.
+const EMPIRES: &[(&str, u64, u32)] = &[
+    ("GBR", 117_808_000, 3806),
+    ("FRA", 106_431_000, 3264),
+    ("BEL", 19_273_000, 3467),
+    ("NLD", 65_319_000, 2227),
+    ("ESP", 23_104_000, 3624),
+    ("POR", 15_042_000, 1459),
+    ("ITA", 42_288_000, 4357),
+    ("USA", 128_600_000, 10217),
+    ("JAP", 83_515_000, 2878),
+    ("DEN", 3_443_000, 6931),
+    ("SAF", 7_888_000, 2133),
+    ("AUS", 6_438_000, 8155),
+    ("NZL", 1_426_000, 8114),
+];
+
+#[test]
+fn metropole_and_colonies_add_up_to_the_empire() {
+    let file = load();
+    let with_colonies: BTreeSet<&str> = file
+        .countries
+        .iter()
+        .filter(|c| c.colonies.is_some())
+        .map(|c| c.tag.as_str())
+        .collect();
+    let expected: BTreeSet<&str> = EMPIRES.iter().map(|(t, _, _)| *t).collect();
+    assert_eq!(with_colonies, expected);
+    for &(tag, pop, gdp) in EMPIRES {
+        let c = file.countries.iter().find(|c| c.tag == tag).unwrap();
+        let col = c.colonies.as_ref().unwrap();
+        assert!(col.population > 0, "{tag}: colonial population");
+        assert!(
+            (100..100_000).contains(&col.gdp_per_capita),
+            "{tag}: colonial gdp_per_capita {}",
+            col.gdp_per_capita
+        );
+        let total = c.population + col.population;
+        // Populations are rounded to the thousand.
+        assert!(total.abs_diff(pop) <= 1_000, "{tag}: {total} against {pop}");
+        let weighted = (c.population as f64 * f64::from(c.gdp_per_capita)
+            + col.population as f64 * f64::from(col.gdp_per_capita))
+            / total as f64;
+        assert!(
+            (weighted - f64::from(gdp)).abs() <= 1.0,
+            "{tag}: GDP per capita {weighted:.1} against {gdp}"
+        );
+    }
+}
+
+#[test]
+fn colonies_match_the_map() {
+    let file = load();
+    let path = repo_root().join("assets/map/provinces.ron");
+    let text = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
+    let map: MapFile = ron::from_str(&text).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
+    let mut metropole = BTreeSet::new();
+    let mut colonial = BTreeSet::new();
+    for p in &map.provinces {
+        if p.colony {
+            colonial.insert(p.owner.as_str());
+        } else {
+            metropole.insert(p.owner.as_str());
+        }
+    }
+    for c in &file.countries {
+        assert_eq!(
+            c.colonies.is_some(),
+            colonial.contains(c.tag.as_str()),
+            "{}: colonies in countries.ron and colony provinces in provinces.ron disagree",
+            c.tag
+        );
+        assert!(
+            metropole.contains(c.tag.as_str()),
+            "{}: no metropolitan province",
+            c.tag
+        );
+    }
+    let tags: BTreeSet<&str> = file.countries.iter().map(|c| c.tag.as_str()).collect();
+    for owner in colonial {
+        assert!(
+            tags.contains(owner),
+            "colonies owned by unknown tag {owner}"
         );
     }
 }
