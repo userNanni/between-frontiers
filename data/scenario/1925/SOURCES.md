@@ -916,3 +916,425 @@ three-letter code = that country's Maddison value.
 |---|---:|---:|---|---|
 | New Zealand | 1 366 000 | 8 435 | MPD | MPD |
 | Western Samoa, Cook Is., Niue | 60 000 | 800 | OWID + est | proxy |
+
+## Social indicators: literacy, life expectancy, urbanization
+
+`literacy` (share of adults who can read and write), `life_expectancy` (years at birth) and
+`urbanization` (share of the population in urban areas) for 1925, with a short `social_source` per
+tag. They follow **the same territory rule as population**: a tag's value is the
+population-weighted mean over every component in the tables above (metropole plus colonies,
+weights = the component populations listed there). The metropole-only value (first component row)
+is listed next to it, because the game may end up showing metropole figures instead. Every tag has
+all three values; no `None` was needed.
+
+### Social sources
+
+| Series (Our World in Data) | Download | Origins used and their licences |
+|---|---|---|
+| "Literacy rate", indicator 1271900, updated 2026-05-12 | `https://ourworldindata.org/grapher/cross-country-literacy-rates.csv?v=1&csvType=full&useColumnShortNames=true` | UNESCO (1953) *Progress of literacy in various countries* and UNESCO (1957) *World illiteracy at mid-century*, CC BY 3.0 IGO; van Zanden et al. (2014) *How Was Life? Global Well-being since 1820*, ch. "Education", OECD, CC BY 4.0 |
+| "Life expectancy – Riley; Zijdeman et al.; HMD; UN WPP – Long-run data", indicator 1118466, updated 2025-10-22 | `https://ourworldindata.org/grapher/life-expectancy.csv?v=1&csvType=full&useColumnShortNames=true` | Human Mortality Database (2025), CC BY 4.0; Zijdeman, Ribeira da Silva et al. (2015) *Life Expectancy at Birth (Total)*, Clio Infra / IISH, CC0 1.0; UN *World Population Prospects 2024* (1950 values), CC BY 3.0 IGO |
+| "Population share in urban areas" (chart "Share of population living in urbanized areas"), indicator 1269916, updated 2026-06-08 | `https://ourworldindata.org/grapher/urbanization-last-500-years.csv?v=1&csvType=full&useColumnShortNames=true` | HYDE 3.5, "HYDE data for the Global Carbon Budget (2025)", PBL / Utrecht University, doi:10.24416/UU01-F45D44, CC BY 4.0 (see the licence note below) |
+| "Population" (already listed above) | as above | Weights when one component spans several modern countries |
+
+Chart pages: `https://ourworldindata.org/grapher/cross-country-literacy-rates`,
+`https://ourworldindata.org/grapher/life-expectancy`,
+`https://ourworldindata.org/grapher/urbanization-last-500-years`. Downloaded 2026-11-15. OWID's own
+processing is CC BY 4.0. Attribution: Our World in Data (2026), "Literacy rate", "Life expectancy"
+and "Share of population living in urbanized areas", based on the origins in the table.
+
+Licence notes:
+
+- **HYDE 3.5.** OWID's metadata labels this origin CC BY-NC 4.0, but the dataset's own landing
+  page (`https://public.yoda.uu.nl/geo/UU01/F45D44.html`) and its DataCite record both give
+  **CC BY 4.0**, as for HYDE 3.3 (doi:10.24416/UU01-AEZZIT). The repository of record is followed
+  here; the mismatch is listed under the doubts below.
+- **Riley (2005)** is the only origin of the life-expectancy series under restrictive terms (JSTOR).
+  OWID uses it only for regional and world rows before 1950. No regional or world row was used as
+  input here; the world rows appear only as a comparison in the world check.
+- Buringh and van Zanden (literacy before 1800) feed only points before 1870, which are ignored.
+
+### Social method
+
+1. **Mapping.** Each component is mapped to the modern-border OWID entities that cover it (the
+   "Series used" column). When it spans several, they are weighted by their OWID population for
+   1925; entities without a value for that indicator are dropped and the rest reweighted.
+2. **Literacy.**
+   - Two points between 1870 and 1950 around 1925: linear interpolation.
+   - Only a later point (often the single 1950 UNESCO value): back-projected in log-odds,
+     `logit(p1925) = logit(p_y) − 0.80 × (y − 1925) / 25`. 0.80 is the median 1925→1950 log-odds
+     gain over the 24 countries with both values (range 0.15, Colombia, to 2.98, Finland).
+   - Many 1950 values are midpoints of UNESCO bands (3.0 = "under 5 %", 7.5 = "5–10 %", …), so
+     back-projected values below about 0.10 are orders of magnitude, not measurements.
+   - The historical figures mix age bases (10+, 7+, all ages in the Census of India); they are
+     taken as given and treated as adult literacy.
+   - Where the 1950 value belongs to other borders or comes after a mass literacy campaign (Poland,
+     USSR, Romania, Albania, Mongolia), the rule would overstate 1925, so these are estimates.
+3. **Life expectancy.**
+   - Two points between 1870 and 1950 around 1925: linear interpolation.
+   - Only a later point before 1950: that value minus 0.41 years per year, the median 1925–1935
+     gain over the 27 countries with both and life expectancy under 45.
+   - Only the 1950 UN value, at most 55: `0.68 × LE1950`, 0.68 being the median ratio
+     LE1925 / LE1950 over the 29 countries with both and LE1925 under 45. Floor 22.8, the lowest
+     country value for 1925 in the series (Pakistan); the floor binds for 15 components: Aden
+     Protectorate, Nyasaland, southern Sudan, Sierra Leone, Gambia (GBR); French Sudan, Ivory Coast,
+     Upper Volta (FRA); Angola, Portuguese Timor (POR); Libya, Eritrea (ITA); AFG, YEM, OMA.
+   - Only a 1950 value above 55: the ratio rule does not fit rich or small territories, so they take
+     the metropole or a neighbour (named in "Series used") or an estimate.
+4. **Urbanization.** HYDE gives every country for 1920 and 1930; 1925 is their mean. National urban
+   definitions, as harmonised by HYDE. City-states and enclaves HYDE does not list are estimates.
+5. **Tag value** = population-weighted mean over the components. Shares rounded to 3 decimals, life
+   expectancy to 0.1 year.
+6. **Labels.** In `social_source` and the table below an indicator is "series" when at least 90 % of
+   the tag's population takes interpolated series values, otherwise "back-projected" or "estimate",
+   whichever covers more people. In the component table `b` marks a back-projected value and `e` an
+   estimate.
+
+### World check
+
+Population-weighted over the 83 tags: **literacy 0.410, life expectancy 36.7 years, urban share
+0.215.** For comparison, OWID's world rows (not used as input): literacy 31.6 % in 1920 and 32.5 % in
+1930 (van Zanden et al.), life expectancy 34.1 in 1913 and 46.4 in 1950 (Riley; UN), HYDE urban
+share 21.3 % in 1925. Literacy is above the OWID world line mostly because of China (a quarter of
+the world here): its 0.289 is back-projected from UNESCO's 47.5 % for 1950; at 0.20 the world mean
+would be 0.388.
+
+### Social doubts left open
+
+1. **China's literacy** (0.289). The rule follows UNESCO's 1950 figure, which is high against the
+   rural surveys of the 1930s (roughly a fifth of adults). Worth deciding before tuning the quality
+   of life index, since China weighs a quarter of the world.
+2. **Empire or metropole.** Colonial empires fall far below their metropoles (GBR literacy 0.453
+   against 0.967; NLD 0.187 against 0.967; life expectancy 39.5 against 58.4 for GBR). Both are in
+   the table.
+3. **Recalled census figures.** The estimates for POL, SOV, ROM, LTU, LAT and EST lean on the
+   literacy figures of the 1921–1930 censuses as reported in the secondary literature; they were not
+   checked against the census tables.
+4. **HYDE licence label** (CC BY 4.0 in the repository, CC BY-NC 4.0 in OWID's metadata).
+5. **Southern Africa.** The UN 1950 values are high (Zimbabwe 49.4, Zambia 46.8), so the ratio rule
+   gives 31–34 years for the Rhodesias against 23–30 for most of the continent.
+
+### Social indicators per tag
+
+| Tag | Literacy | Life exp. | Urban | Metropole literacy | Metropole life exp. | Metropole urban | Literacy | Life exp. | Urban |
+|---|---:|---:|---:|---:|---:|---:|---|---|---|
+| GBR | 0.453 | 39.5 | 0.330 | 0.967 | 58.4 | 0.706 | back-projected | back-projected | series |
+| IRL | 0.967 | 57.3 | 0.371 | = | = | = | back-projected | series | series |
+| FRA | 0.402 | 38.1 | 0.263 | 0.935 | 54.4 | 0.503 | back-projected | back-projected | series |
+| BEL | 0.474 | 38.9 | 0.365 | 0.932 | 57.1 | 0.798 | back-projected | back-projected | series |
+| NLD | 0.187 | 33.0 | 0.159 | 0.967 | 63.1 | 0.542 | back-projected | back-projected | series |
+| LUX | 0.925 | 54.8 | 0.608 | = | = | = | back-projected | series | series |
+| CHE | 0.967 | 59.9 | 0.331 | = | = | = | back-projected | series | series |
+| ESP | 0.590 | 46.2 | 0.453 | 0.612 | 47.0 | 0.464 | series | series | series |
+| POR | 0.176 | 33.4 | 0.131 | 0.373 | 45.2 | 0.225 | back-projected | back-projected | series |
+| ITA | 0.708 | 49.7 | 0.408 | 0.753 | 51.3 | 0.434 | series | series | series |
+| SMR | 0.759 | 51.3 | 0.150 | = | = | = | back-projected | series | estimate |
+| GER | 0.967 | 57.4 | 0.383 | = | = | = | back-projected | series | series |
+| SAA | 0.967 | 57.4 | 0.750 | = | = | = | back-projected | series | estimate |
+| DNZ | 0.967 | 57.4 | 0.700 | = | = | = | back-projected | series | estimate |
+| AUT | 0.967 | 53.0 | 0.547 | = | = | = | back-projected | series | series |
+| HUN | 0.883 | 46.1 | 0.338 | = | = | = | series | series | series |
+| CZE | 0.946 | 51.3 | 0.293 | = | = | = | back-projected | series | series |
+| POL | 0.700 | 47.1 | 0.327 | = | = | = | estimate | back-projected | series |
+| LTU | 0.670 | 50.5 | 0.230 | = | = | = | estimate | series | series |
+| LAT | 0.860 | 54.1 | 0.375 | = | = | = | estimate | series | series |
+| EST | 0.900 | 52.8 | 0.396 | = | = | = | estimate | series | series |
+| FIN | 0.770 | 53.4 | 0.291 | = | = | = | series | series | series |
+| SWE | 0.967 | 62.5 | 0.596 | = | = | = | back-projected | series | series |
+| NOR | 0.967 | 62.5 | 0.458 | = | = | = | back-projected | series | series |
+| DEN | 0.967 | 61.8 | 0.521 | 0.967 | 61.9 | 0.523 | back-projected | series | series |
+| ISL | 0.967 | 58.2 | 0.585 | = | = | = | back-projected | series | series |
+| SOV | 0.470 | 38.3 | 0.231 | = | = | = | estimate | back-projected | series |
+| ROM | 0.520 | 38.8 | 0.142 | = | = | = | estimate | back-projected | series |
+| YUG | 0.506 | 40.0 | 0.112 | = | = | = | back-projected | estimate | series |
+| BUL | 0.591 | 45.1 | 0.159 | = | = | = | series | series | series |
+| ALB | 0.150 | 30.3 | 0.114 | = | = | = | estimate | back-projected | series |
+| GRE | 0.543 | 47.0 | 0.138 | = | = | = | series | series | series |
+| TUR | 0.077 | 30.5 | 0.198 | = | = | = | back-projected | back-projected | series |
+| LIE | 0.967 | 55.6 | 0.100 | = | = | = | back-projected | series | estimate |
+| MCO | 0.925 | 54.4 | 1.000 | = | = | = | back-projected | series | estimate |
+| AND | 0.612 | 47.0 | 0.350 | = | = | = | series | series | series |
+| USA | 0.902 | 56.1 | 0.507 | 0.949 | 58.5 | 0.537 | series | back-projected | series |
+| CAN | 0.949 | 59.3 | 0.528 | = | = | = | series | series | series |
+| NFL | 0.850 | 52.0 | 0.250 | = | = | = | estimate | estimate | estimate |
+| MEX | 0.359 | 32.1 | 0.303 | = | = | = | series | series | series |
+| GUA | 0.146 | 25.5 | 0.202 | = | = | = | back-projected | series | series |
+| HON | 0.255 | 31.5 | 0.135 | = | = | = | back-projected | series | series |
+| SAL | 0.212 | 28.5 | 0.272 | = | = | = | back-projected | series | series |
+| NIC | 0.212 | 26.0 | 0.281 | = | = | = | back-projected | series | series |
+| CRI | 0.607 | 39.5 | 0.269 | = | = | = | back-projected | series | series |
+| PAN | 0.483 | 34.0 | 0.285 | = | = | = | back-projected | back-projected | series |
+| CUB | 0.666 | 38.8 | 0.451 | = | = | = | series | series | series |
+| HAI | 0.060 | 25.3 | 0.097 | = | = | = | back-projected | back-projected | series |
+| DOM | 0.249 | 24.0 | 0.194 | = | = | = | back-projected | back-projected | series |
+| COL | 0.488 | 33.0 | 0.311 | = | = | = | series | series | series |
+| VEN | 0.332 | 31.5 | 0.351 | = | = | = | back-projected | series | series |
+| ECU | 0.378 | 32.9 | 0.220 | = | = | = | back-projected | back-projected | series |
+| PER | 0.289 | 30.9 | 0.319 | = | = | = | back-projected | back-projected | series |
+| BOL | 0.178 | 33.0 | 0.222 | = | = | = | back-projected | series | series |
+| CHL | 0.694 | 34.8 | 0.392 | = | = | = | series | series | series |
+| ARG | 0.721 | 50.6 | 0.521 | = | = | = | series | series | series |
+| URY | 0.679 | 51.0 | 0.621 | = | = | = | back-projected | series | series |
+| PRY | 0.483 | 35.5 | 0.276 | = | = | = | back-projected | series | series |
+| BRA | 0.373 | 33.0 | 0.288 | = | = | = | series | series | series |
+| CHN | 0.289 | 30.0 | 0.068 | = | = | = | back-projected | back-projected | series |
+| JAP | 0.734 | 40.9 | 0.240 | 0.946 | 44.4 | 0.261 | back-projected | series | series |
+| MGL | 0.050 | 26.2 | 0.124 | = | = | = | estimate | back-projected | series |
+| TUV | 0.030 | 26.2 | 0.124 | = | = | = | estimate | back-projected | series |
+| TIB | 0.030 | 25.0 | 0.040 | = | = | = | estimate | estimate | estimate |
+| SIA | 0.332 | 35.4 | 0.131 | = | = | = | back-projected | back-projected | series |
+| AFG | 0.014 | 22.8 | 0.046 | = | = | = | back-projected | back-projected | series |
+| PRS | 0.060 | 26.0 | 0.217 | = | = | = | back-projected | back-projected | series |
+| NEP | 0.014 | 25.5 | 0.020 | = | = | = | back-projected | back-projected | series |
+| BHU | 0.014 | 24.0 | 0.016 | = | = | = | back-projected | back-projected | series |
+| RAJ | 0.098 | 27.7 | 0.113 | 0.086 | 27.6 | 0.112 | series | series | series |
+| IRQ | 0.060 | 25.4 | 0.280 | = | = | = | back-projected | back-projected | series |
+| TRJ | 0.087 | 27.8 | 0.290 | = | = | = | back-projected | back-projected | series |
+| HEJ | 0.050 | 27.2 | 0.300 | = | = | = | estimate | back-projected | estimate |
+| NEJ | 0.014 | 27.2 | 0.174 | = | = | = | back-projected | back-projected | series |
+| YEM | 0.014 | 22.8 | 0.045 | = | = | = | back-projected | back-projected | series |
+| OMA | 0.014 | 22.8 | 0.069 | = | = | = | back-projected | back-projected | series |
+| KUW | 0.087 | 35.6 | 0.600 | = | = | = | back-projected | series | estimate |
+| EGY | 0.130 | 32.2 | 0.264 | = | = | = | series | back-projected | series |
+| ETH | 0.014 | 24.1 | 0.037 | = | = | = | back-projected | back-projected | series |
+| LBR | 0.035 | 25.8 | 0.092 | = | = | = | back-projected | back-projected | series |
+| SAF | 0.244 | 29.3 | 0.222 | 0.249 | 29.3 | 0.227 | back-projected | back-projected | series |
+| AUS | 0.887 | 59.7 | 0.483 | 0.967 | 63.2 | 0.528 | back-projected | series | series |
+| NZL | 0.958 | 62.7 | 0.587 | 0.967 | 64.0 | 0.609 | back-projected | estimate | series |
+
+### Social indicators per component
+
+| Tag | Component | Population | Literacy | Life exp. | Urban | Series used |
+|---|---|---:|---:|---:|---:|---|
+| GBR | United Kingdom (GB + N. Ireland) | 44 987 000 | 0.967 b | 58.4 | 0.706 | United Kingdom |
+| GBR | Isle of Man, Channel Islands | 140 000 | 0.967 b | 58.4 | 0.706 | United Kingdom |
+| GBR | Malta, Gibraltar | 235 000 | 0.378 b | 43.0 e | 0.740 | lit Malta; LE est; urban Malta |
+| GBR | Cyprus | 326 000 | 0.428 b | 48.5 | 0.130 | Cyprus |
+| GBR | Aden Protectorate | 687 000 | 0.014 b | 22.8 b | 0.045 | Yemen |
+| GBR | Palestine (mandate) | 824 000 | 0.250 e | 31.1 b | 0.350 e | lit est; LE Palestine; urban est |
+| GBR | Bahrain, Qatar, Trucial States | 198 000 | 0.057 b | 27.8 b | 0.207 | lit Bahrain + Qatar; LE Bahrain + Qatar + United Arab Emirates; urban Bahrain + Qatar + United Arab Emirates |
+| GBR | Ceylon | 5 478 000 | 0.428 | 36.1 | 0.126 | Sri Lanka |
+| GBR | Maldives | 68 000 | 0.542 b | 24.8 b | 0.070 e | lit Maldives; LE Maldives; urban est |
+| GBR | Malaya, Sarawak, N. Borneo | 3 906 000 | 0.212 b | 33.0 b | 0.162 | Malaysia |
+| GBR | Singapore | 480 000 | 0.289 b | 36.8 b | 0.633 | Singapore |
+| GBR | Brunei | 29 000 | 0.146 b | 34.4 b | 0.213 | Brunei |
+| GBR | Hong Kong | 616 000 | 0.378 b | 35.0 e | 0.850 e | lit Hong Kong; LE est; urban est |
+| GBR | Weihaiwei | 150 000 | 0.289 b | 30.0 b | 0.068 | China |
+| GBR | British Somaliland | 340 000 | 0.014 b | 28.2 b | 0.081 | lit Somaliland; LE Somalia; urban Somalia |
+| GBR | Jubaland (Kenya until Jun 1925) | 120 000 | 0.014 b | 28.2 b | 0.081 | lit Somaliland; LE Somalia; urban Somalia |
+| GBR | Nigeria | 24 523 000 | 0.060 b | 24.2 b | 0.079 | Nigeria |
+| GBR | Gold Coast + Br. Togoland | 3 379 000 | 0.115 b | 30.1 | 0.123 | Ghana |
+| GBR | Nyasaland | 1 975 000 | 0.035 b | 22.8 b | 0.027 | Malawi |
+| GBR | N. Rhodesia | 1 547 000 | 0.115 b | 31.8 b | 0.093 | Zambia |
+| GBR | S. Rhodesia | 1 673 000 | 0.115 b | 33.6 b | 0.085 | Zimbabwe |
+| GBR | Kenya | 3 805 000 | 0.115 b | 23.1 b | 0.045 | Kenya |
+| GBR | Uganda | 3 793 000 | 0.146 b | 23.1 b | 0.022 | Uganda |
+| GBR | Anglo-Egyptian Sudan (N) | 5 498 000 | 0.035 b | 31.1 b | 0.060 | Sudan |
+| GBR | Anglo-Egyptian Sudan (S) | 2 213 000 | 0.035 b | 22.8 b | 0.060 | lit Sudan; LE South Sudan; urban Sudan |
+| GBR | Tanganyika + Zanzibar | 5 089 000 | 0.035 b | 27.9 b | 0.028 | Tanzania |
+| GBR | Sierra Leone | 1 344 000 | 0.035 b | 22.8 b | 0.096 | Sierra Leone |
+| GBR | Gambia | 205 000 | 0.035 b | 22.8 b | 0.049 | Gambia |
+| GBR | Bechuanaland | 249 000 | 0.115 b | 31.4 b | 0.022 | Botswana |
+| GBR | Basutoland | 351 000 | 0.332 b | 30.3 b | 0.011 | Lesotho |
+| GBR | Swaziland | 164 000 | 0.087 b | 29.5 b | 0.014 | Eswatini |
+| GBR | British Cameroons (south) | 350 000 | 0.035 b | 26.3 b | 0.077 | Cameroon |
+| GBR | Mauritius, Seychelles, St Helena | 448 000 | 0.324 b | 31.5 | 0.169 | lit Mauritius + Seychelles + Saint Helena; LE Mauritius; urban Mauritius |
+| GBR | Jamaica | 905 000 | 0.542 b | 38.9 | 0.180 | Jamaica |
+| GBR | Trinidad and Tobago | 380 000 | 0.607 b | 41.6 | 0.168 | Trinidad and Tobago |
+| GBR | Other British Caribbean, Guiana, Honduras | 931 000 | 0.656 b | 35.9 b | 0.210 | lit Guyana + Barbados + Belize + Bahamas + Grenada + Antigua and Barbuda + Bermuda; LE Guyana + Barbados + Belize + Grenada + Saint Lucia + Saint Vincent and the Grenadines + Dominica + Saint Kitts and Nevis; urban Guyana + Barbados + Belize + Bahamas + Grenada + Saint Lucia + Saint Vincent and the Grenadines + Antigua and Barbuda + Dominica + Saint Kitts and Nevis |
+| GBR | Fiji, Solomons, Gilbert & Ellice, Tonga, 1/2 New Hebrides | 401 000 | 0.371 b | 32.0 b | 0.102 | lit Fiji + Solomon Islands + Kiribati + Tonga + Vanuatu; LE Fiji + Solomon Islands + Kiribati + Tuvalu + Tonga + Vanuatu; urban Fiji + Solomon Islands + Tonga + Vanuatu |
+| IRL | Irish Free State | 2 995 000 | 0.967 b | 57.3 | 0.371 | Ireland |
+| FRA | France (metropolitan) | 40 460 000 | 0.935 | 54.4 | 0.503 | France |
+| FRA | Algeria | 6 122 000 | 0.087 b | 29.3 | 0.175 | Algeria |
+| FRA | Tunisia | 2 448 000 | 0.087 b | 29.3 | 0.252 | Tunisia |
+| FRA | Syria (mandate) | 2 460 000 | 0.146 b | 28.9 b | 0.216 | Syria |
+| FRA | Lebanon (mandate) | 836 000 | 0.289 b | 38.0 e | 0.236 | lit Lebanon; LE est; urban Lebanon |
+| FRA | Indochina: Vietnam | 18 028 000 | 0.087 b | 32.7 b | 0.102 | Vietnam |
+| FRA | Indochina: Laos | 960 000 | 0.087 b | 26.5 b | 0.051 | Laos |
+| FRA | Indochina: Cambodia | 2 837 000 | 0.087 b | 26.8 b | 0.080 | Cambodia |
+| FRA | French Morocco (incl. Tangier) | 5 275 000 | 0.060 b | 26.4 b | 0.208 | Morocco |
+| FRA | Sanjak of Alexandretta | 220 000 | 0.146 b | 28.9 b | 0.216 | Syria |
+| FRA | Senegal | 1 666 000 | 0.014 b | 23.1 b | 0.134 | Senegal |
+| FRA | French Sudan | 3 225 000 | 0.014 b | 22.8 b | 0.061 | lit Senegal; LE Mali; urban Mali |
+| FRA | Mauritania | 440 000 | 0.014 b | 26.1 b | 0.024 | lit Senegal; LE Mauritania; urban Mauritania |
+| FRA | Guinea | 1 980 000 | 0.014 b | 24.2 b | 0.045 | lit Senegal; LE Guinea; urban Guinea |
+| FRA | Ivory Coast | 1 816 000 | 0.014 b | 22.8 b | 0.060 | lit Senegal; LE Cote d'Ivoire; urban Cote d'Ivoire |
+| FRA | Upper Volta | 2 976 000 | 0.014 b | 22.8 b | 0.029 | lit Senegal; LE Burkina Faso; urban Burkina Faso |
+| FRA | Niger | 1 750 000 | 0.014 b | 26.5 | 0.037 | lit Senegal; LE Niger; urban Niger |
+| FRA | Dahomey | 1 522 000 | 0.035 b | 24.1 b | 0.032 | lit Togo; LE Benin; urban Benin |
+| FRA | Togo (mandate) | 939 000 | 0.035 b | 28.5 b | 0.033 | Togo |
+| FRA | Gabon | 336 000 | 0.014 b | 26.7 b | 0.090 | lit Central African Republic; LE Gabon; urban Gabon |
+| FRA | Middle Congo | 559 000 | 0.014 b | 26.9 b | 0.175 | lit Central African Republic; LE Congo; urban Congo |
+| FRA | Ubangi-Shari | 1 014 000 | 0.014 b | 24.1 b | 0.115 | Central African Republic |
+| FRA | Chad | 1 768 000 | 0.014 b | 24.0 b | 0.035 | lit Central African Republic; LE Chad; urban Chad |
+| FRA | Madagascar | 2 642 000 | 0.178 b | 27.0 b | 0.062 | Madagascar |
+| FRA | Comoros | 134 000 | 0.115 b | 25.4 b | 0.052 | Comoros |
+| FRA | French Somaliland | 46 000 | 0.014 b | 27.7 b | 0.317 | Djibouti |
+| FRA | French Cameroun (mandate) | 2 632 000 | 0.035 b | 26.3 b | 0.077 | Cameroon |
+| FRA | Guangzhouwan | 210 000 | 0.289 b | 30.0 b | 0.068 | China |
+| FRA | French India | 290 000 | 0.086 | 27.6 | 0.116 | India |
+| FRA | Reunion, Guadeloupe, Martinique, Guiana, SPM | 715 000 | 0.428 b | 35.3 b | 0.390 | lit Reunion + Guadeloupe + Martinique + French Guiana + Saint Pierre and Miquelon; LE Reunion + Guadeloupe + Martinique + French Guiana; urban Reunion + Guadeloupe + Martinique + French Guiana + Saint Pierre and Miquelon |
+| FRA | New Caledonia, Polynesia, Wallis, 1/2 New Hebrides | 124 000 | 0.195 b | 30.3 b | 0.112 | lit New Caledonia + French Polynesia + Vanuatu; LE New Caledonia + French Polynesia + Wallis and Futuna + Vanuatu; urban New Caledonia + Vanuatu |
+| BEL | Belgium | 7 743 000 | 0.932 | 57.1 | 0.798 | Belgium |
+| BEL | Belgian Congo | 8 583 000 | 0.212 b | 26.0 b | 0.094 | Democratic Republic of Congo |
+| BEL | Ruanda (mandate) | 1 435 000 | 0.035 b | 29.4 b | 0.014 | Rwanda |
+| BEL | Urundi (mandate) | 1 512 000 | 0.035 b | 27.8 b | 0.015 | lit Rwanda; LE Burundi; urban Burundi |
+| NLD | Netherlands | 7 315 000 | 0.967 b | 63.1 | 0.542 | Netherlands |
+| NLD | Dutch East Indies | 57 810 000 | 0.087 b | 29.2 b | 0.110 | Indonesia |
+| NLD | Suriname, Curacao | 193 000 | 0.542 b | 34.5 b | 0.421 | lit Suriname + Netherlands Antilles; LE Suriname; urban Suriname + Netherlands Antilles |
+| LUX | Luxembourg | 282 000 | 0.925 b | 54.8 | 0.608 | Luxembourg |
+| CHE | Switzerland | 3 903 000 | 0.967 b | 59.9 | 0.331 | Switzerland |
+| ESP | Spain (incl. Canaries, Ceuta, Melilla) | 22 180 000 | 0.612 | 47.0 | 0.464 | Spain |
+| ESP | Spanish Morocco | 750 000 | 0.060 b | 26.4 b | 0.208 | Morocco |
+| ESP | Ifni, Spanish Sahara | 50 000 | 0.060 b | 23.8 b | 0.179 | lit Morocco; LE Western Sahara; urban Western Sahara |
+| ESP | Spanish Guinea | 123 000 | 0.115 b | 27.3 b | 0.076 | Equatorial Guinea |
+| POR | Portugal (incl. Azores, Madeira) | 6 339 000 | 0.373 | 45.2 b | 0.225 | Portugal |
+| POR | Angola | 3 002 000 | 0.014 b | 22.8 b | 0.055 | Angola |
+| POR | Mozambique | 3 972 000 | 0.014 b | 25.4 b | 0.019 | Mozambique |
+| POR | Portuguese Guinea | 366 000 | 0.014 b | 24.3 b | 0.077 | Guinea-Bissau |
+| POR | Cape Verde | 166 000 | 0.115 b | 30.6 b | 0.093 | Cape Verde |
+| POR | Sao Tome | 59 000 | 0.087 b | 26.6 b | 0.108 | Sao Tome and Principe |
+| POR | Portuguese Timor | 399 000 | 0.014 b | 22.8 b | 0.079 | East Timor |
+| POR | Portuguese India | 580 000 | 0.150 e | 27.6 | 0.116 | lit est; LE India; urban India |
+| POR | Macau | 160 000 | 0.378 b | 35.0 e | 0.950 e | lit Macao; LE est; urban est |
+| ITA | Italy (modern borders) | 38 988 000 | 0.753 | 51.3 | 0.434 | Italy |
+| ITA | Julian March, Fiume, Zara (now SVN/HRV) | 650 000 | 0.753 | 51.3 | 0.125 | lit Italy; LE Italy; urban Slovenia + Croatia |
+| ITA | Italian Somaliland | 1 200 000 | 0.014 b | 28.2 b | 0.081 | lit Somaliland; LE Somalia; urban Somalia |
+| ITA | Libya | 714 000 | 0.035 b | 22.8 b | 0.143 | Libya |
+| ITA | Eritrea | 617 000 | 0.014 b | 22.8 b | 0.057 | Eritrea |
+| ITA | Dodecanese | 120 000 | 0.543 | 47.0 | 0.138 | Greece |
+| SMR | San Marino | 13 000 | 0.759 b | 51.3 | 0.150 e | lit San Marino; LE Italy; urban est |
+| GER | German Reich (excl. Saar) | 62 238 000 | 0.967 b | 57.4 | 0.383 | Germany |
+| SAA | Saar Basin | 740 000 | 0.967 b | 57.4 | 0.750 e | lit Germany; LE Germany; urban est |
+| DNZ | Free City of Danzig | 375 000 | 0.967 b | 57.4 | 0.700 e | lit Germany; LE Germany; urban est |
+| AUT | Austria | 6 572 000 | 0.967 b | 53.0 | 0.547 | Austria |
+| HUN | Hungary | 8 266 000 | 0.883 | 46.1 | 0.338 | Hungary |
+| CZE | Czechoslovakia | 14 052 000 | 0.946 b | 51.3 | 0.293 | lit Czechoslovakia; LE Czechia + Slovakia; urban Czechia + Slovakia |
+| POL | Poland (1925 borders) | 28 752 000 | 0.700 e | 47.1 b | 0.327 | lit est; LE Poland + Lithuania + Belarus + Ukraine; urban Poland |
+| LTU | Lithuania (incl. Memel) | 2 197 000 | 0.670 e | 50.5 | 0.230 | lit est; LE Lithuania; urban Lithuania |
+| LAT | Latvia | 1 845 000 | 0.860 e | 54.1 | 0.375 | lit est; LE Latvia; urban Latvia |
+| EST | Estonia | 1 111 000 | 0.900 e | 52.8 | 0.396 | lit est; LE Estonia; urban Estonia |
+| FIN | Finland | 3 288 000 | 0.770 | 53.4 | 0.291 | Finland |
+| SWE | Sweden | 6 033 000 | 0.967 b | 62.5 | 0.596 | Sweden |
+| NOR | Norway | 2 738 000 | 0.967 b | 62.5 | 0.458 | Norway |
+| DEN | Denmark | 3 407 000 | 0.967 b | 61.9 | 0.523 | Denmark |
+| DEN | Faroe Islands | 22 000 | 0.967 b | 61.9 | 0.200 e | lit Faroe Islands; LE Denmark; urban est |
+| DEN | Greenland | 14 000 | 0.967 b | 26.9 b | 0.312 | Greenland |
+| ISL | Iceland | 102 000 | 0.967 b | 58.2 | 0.585 | Iceland |
+| SOV | USSR (1926 borders) | 140 889 000 | 0.470 e | 38.3 b | 0.231 | lit est; LE Russia + Ukraine + Belarus + Kazakhstan + Uzbekistan + Azerbaijan + Armenia + Kyrgyzstan + Tajikistan + Turkmenistan; urban Russia + Ukraine + Belarus + Kazakhstan + Uzbekistan + Georgia + Azerbaijan + Armenia + Kyrgyzstan + Tajikistan + Turkmenistan |
+| ROM | Greater Romania | 16 710 000 | 0.520 e | 38.8 b | 0.142 | lit est; LE Romania + Moldova; urban Romania + Moldova |
+| YUG | Kingdom SCS | 12 736 000 | 0.506 b | 40.0 e | 0.112 | lit Yugoslavia; LE est; urban Croatia + Slovenia + Bosnia and Herzegovina + North Macedonia |
+| BUL | Bulgaria | 5 268 000 | 0.591 | 45.1 | 0.159 | Bulgaria |
+| ALB | Albania | 954 000 | 0.150 e | 30.3 b | 0.114 | lit est; LE Albania; urban Albania |
+| GRE | Greece (excl. Dodecanese) | 5 859 000 | 0.543 | 47.0 | 0.138 | Greece |
+| TUR | Turkey (excl. Hatay) | 13 794 000 | 0.077 b | 30.5 b | 0.198 | Turkey |
+| LIE | Liechtenstein | 12 000 | 0.967 b | 55.6 | 0.100 e | lit Liechtenstein; LE Switzerland + Austria; urban est |
+| MCO | Monaco | 25 000 | 0.925 b | 54.4 | 1.000 e | lit Monaco; LE France; urban est |
+| AND | Andorra | 5 000 | 0.612 | 47.0 | 0.350 | lit Spain; LE Spain; urban Andorra |
+| USA | United States (48 states, AK, HI) | 115 421 000 | 0.949 | 58.5 | 0.537 | United States |
+| USA | Philippines | 11 688 000 | 0.491 | 34.7 b | 0.233 | Philippines |
+| USA | Puerto Rico | 1 419 000 | 0.542 b | 38.0 e | 0.324 | lit Puerto Rico; LE est; urban Puerto Rico |
+| USA | Guam, Am. Samoa, Virgin Is., Canal Zone | 72 000 | 0.798 b | 40.0 e | 0.425 | lit Guam + American Samoa + United States Virgin Islands; LE est; urban American Samoa + United States Virgin Islands |
+| CAN | Canada (excl. Newfoundland) | 9 472 000 | 0.949 | 59.3 | 0.528 | Canada |
+| NFL | Newfoundland and Labrador | 270 000 | 0.850 e | 52.0 e | 0.250 e | est |
+| MEX | Mexico | 15 732 000 | 0.359 | 32.1 | 0.303 | Mexico |
+| GUA | Guatemala | 1 674 000 | 0.146 b | 25.5 | 0.202 | Guatemala |
+| HON | Honduras | 835 000 | 0.255 b | 31.5 | 0.135 | Honduras |
+| SAL | El Salvador | 1 285 000 | 0.212 b | 28.5 | 0.272 | El Salvador |
+| NIC | Nicaragua | 660 000 | 0.212 b | 26.0 | 0.281 | Nicaragua |
+| CRI | Costa Rica | 455 000 | 0.607 b | 39.5 | 0.269 | Costa Rica |
+| PAN | Panama | 496 000 | 0.483 b | 34.0 b | 0.285 | Panama |
+| CUB | Cuba | 3 388 000 | 0.666 | 38.8 | 0.451 | Cuba |
+| HAI | Haiti | 2 254 000 | 0.060 b | 25.3 b | 0.097 | Haiti |
+| DOM | Dominican Republic | 1 047 000 | 0.249 b | 24.0 b | 0.194 | Dominican Republic |
+| COL | Colombia | 6 972 000 | 0.488 | 33.0 | 0.311 | Colombia |
+| VEN | Venezuela | 3 096 000 | 0.332 b | 31.5 | 0.351 | Venezuela |
+| ECU | Ecuador | 1 858 000 | 0.378 b | 32.9 b | 0.220 | Ecuador |
+| PER | Peru | 5 031 000 | 0.289 b | 30.9 b | 0.319 | Peru |
+| BOL | Bolivia | 2 250 000 | 0.178 b | 33.0 | 0.222 | Bolivia |
+| CHL | Chile | 3 944 000 | 0.694 | 34.8 | 0.392 | Chile |
+| ARG | Argentina | 10 206 000 | 0.721 | 50.6 | 0.521 | Argentina |
+| URY | Uruguay | 1 516 000 | 0.679 b | 51.0 | 0.621 | Uruguay |
+| PRY | Paraguay | 776 000 | 0.483 b | 35.5 | 0.276 | Paraguay |
+| BRA | Brazil | 30 028 000 | 0.373 | 33.0 | 0.288 | Brazil |
+| CHN | China (MPD minus Tibet and leased territories) | 477 366 000 | 0.289 b | 30.0 b | 0.068 | China |
+| JAP | Japan proper | 59 104 000 | 0.946 b | 44.4 | 0.261 | Japan |
+| JAP | Korea | 19 306 000 | 0.212 b | 31.2 | 0.180 | lit South Korea; LE South Korea + North Korea; urban South Korea + North Korea |
+| JAP | Taiwan | 4 004 000 | 0.200 e | 38.0 e | 0.170 | lit est; LE est; urban Taiwan |
+| JAP | Karafuto | 195 000 | 0.946 b | 44.4 | 0.300 e | lit Japan; LE Japan; urban est |
+| JAP | Kwantung Leased Territory | 850 000 | 0.289 b | 30.0 b | 0.450 e | lit China; LE China; urban est |
+| JAP | South Seas Mandate | 56 000 | 0.300 e | 35.0 b | 0.100 e | lit est; LE Micronesia (country) + Palau + Marshall Islands; urban est |
+| MGL | Mongolia | 682 000 | 0.050 e | 26.2 b | 0.124 | lit est; LE Mongolia; urban Mongolia |
+| TUV | Tannu Tuva | 70 000 | 0.030 e | 26.2 b | 0.124 | lit est; LE Mongolia; urban Mongolia |
+| TIB | Tibet (Lhasa-ruled) | 1 000 000 | 0.030 e | 25.0 e | 0.040 e | est |
+| SIA | Siam | 10 794 000 | 0.332 b | 35.4 b | 0.131 | Thailand |
+| AFG | Afghanistan | 6 424 000 | 0.014 b | 22.8 b | 0.046 | Afghanistan |
+| PRS | Persia | 10 660 000 | 0.060 b | 26.0 b | 0.217 | Iran |
+| NEP | Nepal | 5 556 000 | 0.014 b | 25.5 b | 0.020 | Nepal |
+| BHU | Bhutan | 258 000 | 0.014 b | 24.0 b | 0.016 | Bhutan |
+| RAJ | British India (undivided, incl. princely states, Aden) | 318 300 000 | 0.086 | 27.6 | 0.112 | lit India; LE India; urban India + Pakistan + Bangladesh |
+| RAJ | Burma | 13 704 000 | 0.375 | 30.4 b | 0.129 | Myanmar |
+| IRQ | Iraq | 3 683 000 | 0.060 b | 25.4 b | 0.280 | Iraq |
+| TRJ | Transjordan | 209 000 | 0.087 b | 27.8 b | 0.290 | Jordan |
+| HEJ | Hejaz (Jeddah, Medina; Mecca lost Oct 1924) | 729 000 | 0.050 e | 27.2 b | 0.300 e | lit est; LE Saudi Arabia; urban est |
+| NEJ | Nejd and dependencies (incl. Mecca, Asir) | 1 701 000 | 0.014 b | 27.2 b | 0.174 | Saudi Arabia |
+| YEM | Mutawakkilite Yemen | 2 949 000 | 0.014 b | 22.8 b | 0.045 | Yemen |
+| OMA | Muscat and Oman | 426 000 | 0.014 b | 22.8 b | 0.069 | Oman |
+| KUW | Kuwait | 119 000 | 0.087 b | 35.6 | 0.600 e | lit Kuwait; LE Kuwait; urban est |
+| EGY | Egypt | 13 904 000 | 0.130 | 32.2 b | 0.264 | Egypt |
+| ETH | Ethiopia | 14 000 000 | 0.014 b | 24.1 b | 0.037 | Ethiopia |
+| LBR | Liberia | 612 000 | 0.035 b | 25.8 b | 0.092 | Liberia |
+| SAF | Union of South Africa | 7 578 000 | 0.249 b | 29.3 b | 0.227 | South Africa |
+| SAF | South West Africa (mandate) | 311 000 | 0.115 b | 28.5 b | 0.107 | lit Botswana; LE Namibia; urban Namibia |
+| AUS | Australia | 5 881 000 | 0.967 b | 63.2 | 0.528 | Australia |
+| AUS | Papua, New Guinea (mandate), Nauru | 557 000 | 0.037 b | 22.9 b | 0.008 | lit Papua New Guinea + Nauru; LE Papua New Guinea; urban Papua New Guinea |
+| NZL | New Zealand | 1 366 000 | 0.967 b | 64.0 e | 0.609 | lit New Zealand; LE est; urban New Zealand |
+| NZL | Western Samoa, Cook Is., Niue | 60 000 | 0.759 b | 33.5 b | 0.088 | lit Samoa + Cook Islands + Niue; LE Samoa + Cook Islands + Niue; urban Samoa |
+
+### Social estimates
+
+Every value marked `e` above, with its reasoning.
+
+- **GBR, Malta, Gibraltar**, life expectancy 43.0: below Cyprus (48.5): Malta had one of the highest infant mortality rates in Europe in the 1920s.
+- **GBR, Palestine (mandate)**, literacy 0.250: Arab majority as Syria and Transjordan (~0.12) plus a Jewish sixth at ~0.85.
+- **GBR, Palestine (mandate)**, urban share 0.350: between Syria and Lebanon; Jerusalem, Jaffa, Haifa, Tel Aviv.
+- **GBR, Maldives**, urban share 0.070: Male (~5 000) out of ~70 000.
+- **GBR, Hong Kong**, life expectancy 35.0: Chinese majority with plague and TB; a few years above China (29).
+- **GBR, Hong Kong**, urban share 0.850: a port city with the New Territories; most people in Victoria and Kowloon.
+- **FRA, Lebanon (mandate)**, life expectancy 38.0: no series before 1950; above Syria (29) for Beirut and Mount Lebanon, below Cyprus (48.5).
+- **POR, Portuguese India**, literacy 0.150: Goa: above British India (0.09) for its Catholic schools, far below Portugal.
+- **POR, Macau**, life expectancy 35.0: as Hong Kong.
+- **POR, Macau**, urban share 0.950: a city territory.
+- **SMR, San Marino**, urban share 0.150: the town of San Marino and Borgo Maggiore; the rest is rural.
+- **SAA, Saar Basin**, urban share 0.750: dense mining and steel district; well above the Reich average.
+- **DNZ, Free City of Danzig**, urban share 0.700: Danzig and Zoppot hold about two thirds of the people.
+- **POL, Poland (1925 borders)**, literacy 0.700: the 1950 value (0.925) is for post-1945 borders; the 1921 and 1931 censuses put literacy at ages 10+ near 0.67 and 0.77.
+- **LTU, Lithuania (incl. Memel)**, literacy 0.670: no series; the 1923 census put literacy near two thirds, below Latvia and Estonia.
+- **LAT, Latvia**, literacy 0.860: no series; the 1925 census put literacy in the mid-80s.
+- **EST, Estonia**, literacy 0.900: no series; Estonia had the highest literacy of the former Russian Empire (~0.9 in the 1922 census).
+- **DEN, Faroe Islands**, urban share 0.200: fishing villages; Torshavn ~3 000.
+- **SOV, USSR (1926 borders)**, literacy 0.470: the 1926 census counted 0.51 literate at ages 9+; adults were less literate than the schooled young; the 1950 USSR value reflects the literacy campaigns.
+- **ROM, Greater Romania**, literacy 0.520: the 1930 census counted ~0.57 literate at ages 7+; 1925 adults a little lower.
+- **YUG, Kingdom SCS**, life expectancy 40.0: the successor states have only 1950 values, and the ratio rule skips the richer ones (above 55), which would bias the mean down; between Romania (38.8) and Bulgaria (45.1).
+- **ALB, Albania**, literacy 0.150: the 1950 value (0.725) reflects the post-1945 campaign; inter-war estimates put illiteracy above 80 %.
+- **LIE, Liechtenstein**, urban share 0.100: villages; Vaduz ~1 500.
+- **MCO, Monaco**, urban share 1.000: a city-state.
+- **USA, Puerto Rico**, life expectancy 38.0: between Cuba (38.8) and Jamaica (38.9) in 1925; the 1950 UN value (60.4) follows the 1940s health campaigns.
+- **USA, Guam, Am. Samoa, Virgin Is., Canal Zone**, life expectancy 40.0: as Puerto Rico and the Canal Zone garrison mix.
+- **NFL, Newfoundland and Labrador**, literacy 0.850: below Canada (0.95): outport schooling was thin.
+- **NFL, Newfoundland and Labrador**, life expectancy 52.0: below Canada (59.3) and the Maritimes: TB and outport poverty.
+- **NFL, Newfoundland and Labrador**, urban share 0.250: St John's (~40 000) and a few towns out of ~270 000.
+- **JAP, Taiwan**, literacy 0.200: no series; as Korea under Japanese rule (0.21).
+- **JAP, Taiwan**, life expectancy 38.0: no series before 1950; between Korea (31) and Japan (44), with the Japanese public-health campaigns.
+- **JAP, Karafuto**, urban share 0.300: settler colony; Toyohara and the ports.
+- **JAP, Kwantung Leased Territory**, urban share 0.450: Dairen and Port Arthur hold about half the people.
+- **JAP, South Seas Mandate**, literacy 0.300: mission and Japanese primary schools; well below Guam (0.75).
+- **JAP, South Seas Mandate**, urban share 0.100: Koror, Garapan and a few ports.
+- **MGL, Mongolia**, literacy 0.050: the 1950 value (0.575) reflects the 1940s campaign; in the 1920s reading was largely confined to lamas.
+- **TUV, Tannu Tuva**, literacy 0.030: below Mongolia; Tuvan had no script until 1930.
+- **TIB, Tibet (Lhasa-ruled)**, literacy 0.030: as Nepal and Bhutan, a little above for monastic reading.
+- **TIB, Tibet (Lhasa-ruled)**, life expectancy 25.0: as Nepal and Bhutan in the 1950 x 0.68 rule (~25).
+- **TIB, Tibet (Lhasa-ruled)**, urban share 0.040: Lhasa (~25 000), Shigatse, Gyantse out of ~1 M.
+- **HEJ, Hejaz (Jeddah, Medina; Mecca lost Oct 1924)**, literacy 0.050: Jeddah and Medina towns above Arabia's 0.014.
+- **HEJ, Hejaz (Jeddah, Medina; Mecca lost Oct 1924)**, urban share 0.300: Jeddah, Medina, Yanbu are a large part of the Hejaz left to King Ali.
+- **KUW, Kuwait**, urban share 0.600: Kuwait town held most of the settled people.
+- **NZL, New Zealand**, life expectancy 64.0: no series before 1948; New Zealand had the longest lives of the period, a little above Australia (63.2).

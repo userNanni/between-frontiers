@@ -203,6 +203,48 @@ fn values_in_range() {
     );
 }
 
+/// Tags allowed to leave a social indicator as `None` (none so far).
+const SOCIAL_NONE: &[&str] = &[];
+
+#[test]
+fn social_indicators() {
+    let file = load();
+    let (mut people, mut literate, mut years, mut urban) = (0.0, 0.0, 0.0, 0.0);
+    for c in &file.countries {
+        let allowed = SOCIAL_NONE.contains(&c.tag.as_str());
+        let (Some(lit), Some(life), Some(urb)) = (c.literacy, c.life_expectancy, c.urbanization)
+        else {
+            assert!(allowed, "{}: missing a social indicator", c.tag);
+            continue;
+        };
+        assert!((0.0..=1.0).contains(&lit), "{}: literacy {lit}", c.tag);
+        assert!(
+            (15.0..=75.0).contains(&life),
+            "{}: life_expectancy {life}",
+            c.tag
+        );
+        assert!((0.0..=1.0).contains(&urb), "{}: urbanization {urb}", c.tag);
+        assert!(
+            !c.social_source.trim().is_empty(),
+            "{}: social_source",
+            c.tag
+        );
+        let p = c.population as f64;
+        people += p;
+        literate += p * f64::from(lit);
+        years += p * f64::from(life);
+        urban += p * f64::from(urb);
+    }
+    // World means weighted by population, against the 1925 orders of magnitude.
+    let (lit, life, urb) = (literate / people, years / people, urban / people);
+    assert!((0.30..=0.45).contains(&lit), "world literacy {lit}");
+    assert!(
+        (30.0..=40.0).contains(&life),
+        "world life expectancy {life}"
+    );
+    assert!((0.18..=0.25).contains(&urb), "world urbanization {urb}");
+}
+
 #[test]
 fn fluent_names_in_every_locale() {
     let file = load();
