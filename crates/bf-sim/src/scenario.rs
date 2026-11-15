@@ -73,6 +73,18 @@ pub struct CountryDef {
     pub gdp_per_capita: u32,
     /// Free-text source note for `population` and `gdp_per_capita`.
     pub source: String,
+    /// Share of adults (15 and older) who can read and write, 0 to 1. `None` when unknown.
+    #[serde(default)]
+    pub literacy: Option<f32>,
+    /// Life expectancy at birth, in years. `None` when unknown.
+    #[serde(default)]
+    pub life_expectancy: Option<f32>,
+    /// Share of the population living in urban areas, 0 to 1. `None` when unknown.
+    #[serde(default)]
+    pub urbanization: Option<f32>,
+    /// Free-text source note for `literacy`, `life_expectancy` and `urbanization`.
+    #[serde(default)]
+    pub social_source: String,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
