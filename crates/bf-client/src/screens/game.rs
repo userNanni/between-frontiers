@@ -127,11 +127,15 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
         if let (Some(id), Some(pos)) = (
             response.hovered_province,
             ui.input(|i| i.pointer.hover_pos()),
-        ) && let Some((state, owner)) = world.place_name(id)
+        ) && let Some((state_name, owner)) = world.place_name(id)
         {
             let owner = owner.map(names).unwrap_or_else(|| i18n.tr("map-unowned"));
-            paint_tip(ui, pos, state, &owner);
+            let extra = world.provinces[id as usize - 1].state.and_then(|s| {
+                super::lens_panel::tooltip_line(i18n, world, s, view.lens, snap.date.year)
+            });
+            paint_tip(ui, pos, state_name, &owner, extra.as_deref());
         }
+        super::lens_panel::show(ui, rect, i18n, world, view, snap.date.year);
     }
 
     // Top bar

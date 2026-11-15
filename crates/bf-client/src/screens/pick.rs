@@ -70,13 +70,17 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
     if let (Some(id), Some(pos)) = (
         response.hovered_province,
         ui.input(|i| i.pointer.hover_pos()),
-    ) && let Some((state, owner)) = world.place_name(id)
+    ) && let Some((state_name, owner)) = world.place_name(id)
     {
         let owner = owner
             .map(names)
             .unwrap_or_else(|| shared.i18n.tr("map-unowned"));
-        paint_tip(ui, pos, state, &owner);
+        let extra = world.provinces[id as usize - 1].state.and_then(|s| {
+            super::lens_panel::tooltip_line(&shared.i18n, world, s, view.lens, world.start.year)
+        });
+        paint_tip(ui, pos, state_name, &owner, extra.as_deref());
     }
+    super::lens_panel::show(ui, rect, &shared.i18n, world, view, world.start.year);
 
     // Title banner
     let banner = Rect::from_center_size(
@@ -186,8 +190,9 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
     out
 }
 
-/// Small tooltip next to the pointer: the state in bold, its country below.
-pub fn paint_tip(ui: &Ui, pointer: egui::Pos2, title: &str, detail: &str) {
+/// Small tooltip next to the pointer: the state in bold, its country below, and a line from
+/// the current map mode when there is one.
+pub fn paint_tip(ui: &Ui, pointer: egui::Pos2, title: &str, detail: &str, extra: Option<&str>) {
     let painter = ui.ctx().layer_painter(egui::LayerId::new(
         egui::Order::Tooltip,
         egui::Id::unique("map-tip"),
@@ -202,8 +207,19 @@ pub fn paint_tip(ui: &Ui, pointer: egui::Pos2, title: &str, detail: &str) {
         bf_ui_kit::theme::sans(12.5),
         color::TEXT_MUTED,
     );
-    let size = egui::vec2(t.size().x.max(d.size().x), t.size().y + d.size().y + 2.0)
-        + egui::vec2(20.0, 14.0);
+    let e = extra.map(|x| {
+        painter.layout_no_wrap(
+            x.to_owned(),
+            bf_ui_kit::theme::sans_medium(12.5),
+            color::ACCENT,
+        )
+    });
+    let e_h = e.as_ref().map_or(0.0, |g| g.size().y + 3.0);
+    let e_w = e.as_ref().map_or(0.0, |g| g.size().x);
+    let size = egui::vec2(
+        t.size().x.max(d.size().x).max(e_w),
+        t.size().y + d.size().y + 2.0 + e_h,
+    ) + egui::vec2(20.0, 14.0);
     let r = Rect::from_min_size(pointer + egui::vec2(18.0, 20.0), size);
     painter.rect(
         r,
@@ -213,6 +229,10 @@ pub fn paint_tip(ui: &Ui, pointer: egui::Pos2, title: &str, detail: &str) {
         egui::StrokeKind::Inside,
     );
     let th = t.size().y;
+    let dh = d.size().y;
     painter.galley(r.min + egui::vec2(10.0, 7.0), t, color::TEXT);
     painter.galley(r.min + egui::vec2(10.0, 9.0 + th), d, color::TEXT_MUTED);
+    if let Some(e) = e {
+        painter.galley(r.min + egui::vec2(10.0, 12.0 + th + dh), e, color::ACCENT);
+    }
 }

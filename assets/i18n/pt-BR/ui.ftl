@@ -210,3 +210,21 @@ country-colonies-value = { $population } · { $states } estados
 settings-map-relief = Relevo do terreno no mapa
 saves-error-load = Não foi possível abrir a campanha: { $error }
 hud-engine = Dia { $tick } da simulação · estado { $hash }
+
+## Modos de mapa
+
+lens-title = Modo do mapa
+lens-political = Político
+lens-resources = Recursos
+lens-climate = Clima
+lens-farms = Agro
+lens-no-data = Os dados de recursos e de terra ainda não foram carregados.
+legend-deposit = Tamanho da jazida
+legend-small = Pequena
+legend-large = Classe mundial
+legend-suitability = Aptidão
+legend-low = Baixa
+legend-high = Alta
+tip-deposit = { $resource }: jazida de tamanho { $size } de 5
+tip-climate = Clima { $climate } em { $share } do território
+tip-farm = { $farm }: aptidão { $value }

@@ -30,6 +30,8 @@ pub struct MapGpu {
     bind_group: wgpu::BindGroup,
     uniforms: wgpu::Buffer,
     palette: wgpu::Texture,
+    /// Version of the palette last written to `palette`.
+    palette_version: u64,
     table_rows: u32,
 }
 
@@ -223,6 +225,7 @@ impl MapGpu {
             bind_group,
             uniforms,
             palette,
+            palette_version: 0,
             table_rows,
         };
         gpu.set_palette(queue, &data.palette);
@@ -304,8 +307,9 @@ fn upload(
 /// One frame's draw of the map.
 pub struct MapCallback {
     pub uniforms: Uniforms,
-    /// New palette to upload before drawing, when the map mode or the data changed.
-    pub palette: Option<std::sync::Arc<Vec<[u8; 4]>>>,
+    /// Province colours and their version; uploaded when the version is new.
+    pub palette: std::sync::Arc<Vec<[u8; 4]>>,
+    pub palette_version: u64,
 }
 
 impl CallbackTrait for MapCallback {
@@ -317,10 +321,11 @@ impl CallbackTrait for MapCallback {
         _encoder: &mut wgpu::CommandEncoder,
         resources: &mut CallbackResources,
     ) -> Vec<wgpu::CommandBuffer> {
-        if let Some(gpu) = resources.get::<MapGpu>() {
+        if let Some(gpu) = resources.get_mut::<MapGpu>() {
             queue.write_buffer(&gpu.uniforms, 0, bytemuck::bytes_of(&self.uniforms));
-            if let Some(p) = &self.palette {
-                gpu.set_palette(queue, p);
+            if gpu.palette_version != self.palette_version {
+                gpu.set_palette(queue, &self.palette);
+                gpu.palette_version = self.palette_version;
             }
         }
         Vec::new()

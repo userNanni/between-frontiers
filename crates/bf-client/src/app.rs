@@ -209,6 +209,18 @@ impl App {
     }
 }
 
+/// A data file that may not exist yet; a file that exists but does not parse is logged.
+fn read_optional<T: serde::de::DeserializeOwned>(path: &std::path::Path) -> Option<T> {
+    let text = std::fs::read_to_string(path).ok()?;
+    match ron::from_str(&text) {
+        Ok(v) => Some(v),
+        Err(e) => {
+            log(&format!("{}: {e}", path.display()));
+            None
+        }
+    }
+}
+
 fn load_world(paths: &Paths) -> Result<(World, MapData), String> {
     let map_dir = paths.assets.join("map");
     let mut world = World::load(
@@ -224,6 +236,10 @@ fn load_world(paths: &Paths) -> Result<(World, MapData), String> {
         ));
     }
     world.locate_capitals(&ids);
+    let scenario = paths.data.join("scenario/1925");
+    let deposits = read_optional(&scenario.join("deposits.ron"));
+    let land = read_optional(&scenario.join("land.ron"));
+    world.attach_resources(deposits, land);
     let relief = crate::map::Relief::load(&map_dir.join("relief.png"))
         .unwrap_or_else(crate::map::Relief::flat);
     let map = MapData::build(&world, w, h, ids, relief);

@@ -198,3 +198,21 @@ country-colonies-value = { $population } · { $states } states
 settings-map-relief = Terrain relief on the map
 saves-error-load = Could not open the campaign: { $error }
 hud-engine = Simulation day { $tick } · state { $hash }
+
+## Map modes
+
+lens-title = Map mode
+lens-political = Political
+lens-resources = Resources
+lens-climate = Climate
+lens-farms = Farming
+lens-no-data = Resource and land data are not loaded yet.
+legend-deposit = Deposit size
+legend-small = Small
+legend-large = World class
+legend-suitability = Suitability
+legend-low = Low
+legend-high = High
+tip-deposit = { $resource }: deposit of size { $size } of 5
+tip-climate = { $climate } climate on { $share } of the land
+tip-farm = { $farm }: suitability { $value }

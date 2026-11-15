@@ -221,6 +221,32 @@ fn walk_through_the_screens() {
     h.run_steps(3);
     shot(&mut h, "06e-relevo-alpes");
 
+    // 6f. Map modes: copper deposits, climate, coffee suitability, then back to political.
+    {
+        let app = h.state_mut();
+        let view = app.shared.map_view.as_mut().unwrap();
+        view.camera = None;
+    }
+    h.run_steps(2);
+    h.get_by_label("Recursos").click();
+    h.run_steps(2);
+    h.get_by_label("Cobre").click();
+    h.run_steps(3);
+    shot(&mut h, "06f-modo-cobre");
+    h.get_by_label("Bauxita").click();
+    h.run_steps(3);
+    shot(&mut h, "06g-modo-bauxita");
+    h.get_by_label("Clima").click();
+    h.run_steps(3);
+    shot(&mut h, "06h-modo-clima");
+    h.get_by_label("Agro").click();
+    h.run_steps(2);
+    h.get_by_label("Cafezal").click();
+    h.run_steps(3);
+    shot(&mut h, "06i-modo-cafe");
+    h.get_by_label("Político").click();
+    h.run_steps(2);
+
     // 7. Back to the main menu: "Continue" now offers the new campaign.
     let ctx = h.ctx.clone();
     h.state_mut().apply(Transition::Menu, &ctx);
