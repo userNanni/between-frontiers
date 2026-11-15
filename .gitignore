@@ -4,3 +4,6 @@ dist/
 .env
 .env.*
 *.log
+/data/raw/
+/crates/*/tests/snapshots/*.diff.png
+/crates/*/tests/snapshots/*.new.png

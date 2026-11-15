@@ -1,0 +1,12 @@
+[package]
+name = "bf-bench"
+description = "Headless 100-year benchmark: determinism hash and per-system cost."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+laplace-schelling.workspace = true
+bf-sim.workspace = true

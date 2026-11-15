@@ -1,0 +1,12 @@
+[package]
+name = "bf-mapgen"
+description = "Offline tool: builds the province id texture and province metadata from open map data."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+serde.workspace = true
+ron.workspace = true

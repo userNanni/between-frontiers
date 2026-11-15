@@ -1,0 +1,12 @@
+[package]
+name = "laplace-schelling"
+description = "Deterministic simulation engine core: tick scheduler, fixed-point arithmetic, seeded RNG, state hash, save container."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+serde.workspace = true
+blake3.workspace = true

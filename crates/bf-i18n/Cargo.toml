@@ -1,0 +1,12 @@
+[package]
+name = "bf-i18n"
+description = "Fluent localisation (pt-BR and en) and locale-aware number formatting."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+fluent-bundle.workspace = true
+unic-langid.workspace = true
