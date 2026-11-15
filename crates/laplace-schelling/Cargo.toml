@@ -10,3 +10,8 @@ repository.workspace = true
 [dependencies]
 serde.workspace = true
 blake3.workspace = true
+rayon.workspace = true
+postcard.workspace = true
+
+[dev-dependencies]
+ron.workspace = true

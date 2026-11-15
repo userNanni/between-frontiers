@@ -1,0 +1,88 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  check:
+    name: check (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+
+      # The client (eframe + wgpu, x11 and wayland) loads these libraries with dlopen at run
+      # time, so today nothing links against them; the headers keep the build working if a
+      # dependency switches to linking, and let windowed/GPU tests run later.
+      - name: Install system libraries
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            pkg-config libxkbcommon-dev libwayland-dev libx11-dev libxcursor-dev \
+            libxrandr-dev libxi-dev libgl1-mesa-dev
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Format
+        run: cargo fmt --all --check
+
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Test
+        run: cargo test --workspace
+
+      - name: Bench smoke (5 years, 1 thread vs all threads)
+        run: cargo run -p bf-bench --release -- --years 5 --check-determinism --out bench-smoke-${{ runner.os }}.json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bench-smoke-${{ runner.os }}
+          path: bench-smoke-${{ runner.os }}.json
+          retention-days: 7
+
+  cross-platform:
+    name: same hashes on Linux and Windows
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: bench-smoke-*
+          merge-multiple: true
+
+      - name: Compare state hashes
+        shell: bash
+        run: |
+          set -euo pipefail
+          fingerprint() { jq -c '{final: .run.final_hash, chain: .run.tick_chain_hash, years: [.run.years[].hash]}' "$1"; }
+          linux=$(fingerprint bench-smoke-Linux.json)
+          windows=$(fingerprint bench-smoke-Windows.json)
+          echo "Linux:   $linux"
+          echo "Windows: $windows"
+          if [ "$linux" != "$windows" ]; then
+            echo "::error::state hashes differ between Linux and Windows"
+            exit 1
+          fi
