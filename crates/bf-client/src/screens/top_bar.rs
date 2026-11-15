@@ -167,7 +167,6 @@ fn pct(i18n: &I18n, share: f32) -> String {
 
 fn stats(ui: &mut Ui, rect: Rect, i18n: &I18n, world: &World, c: &Country) {
     let unknown = i18n.tr("bar-unknown");
-    let source_social = c.def.social_source.clone();
     let rank = |r: usize| i18n.tr_args("bar-rank", &[("rank", Arg::String(r.to_string()))]);
 
     let gdp_value = i18n.tr_args(
