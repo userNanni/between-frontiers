@@ -4,8 +4,10 @@
 //! That keeps egui's global style from leaking from one screen into another.
 
 pub mod components;
+pub mod icons;
 pub mod theme;
 pub mod tokens;
 
 pub use components::*;
+pub use icons::{Icon, icon, icon_button, paint_icon};
 pub use theme::install;

@@ -4,6 +4,7 @@
 
 use std::path::Path;
 
+use bf_sim::indicators::{QualityOfLife, quality_of_life};
 use bf_sim::scenario::{CountriesFile, CountryDef, MapFile, ProvinceDef, Status};
 use laplace_schelling::calendar::Date;
 
@@ -21,6 +22,9 @@ pub struct Country {
     pub gdp: f64,
     pub rank_population: usize,
     pub rank_gdp: usize,
+    /// Present when literacy and life expectancy are known.
+    pub quality: Option<QualityOfLife>,
+    pub rank_quality: Option<usize>,
     pub overlord: Option<usize>,
     pub subjects: Vec<usize>,
     /// Province holding the capital, when the map has one under it.
@@ -97,6 +101,15 @@ impl World {
                 area_km2: 0.0,
                 rank_population: 0,
                 rank_gdp: 0,
+                quality: match (def.life_expectancy, def.literacy) {
+                    (Some(life), Some(lit)) => Some(quality_of_life(
+                        def.gdp_per_capita as f64,
+                        life as f64,
+                        lit as f64,
+                    )),
+                    _ => None,
+                },
+                rank_quality: None,
                 overlord: None,
                 subjects: Vec::new(),
                 capital_province: None,
@@ -129,6 +142,16 @@ impl World {
         order.sort_by(|&a, &b| countries[b].gdp.total_cmp(&countries[a].gdp));
         for (rank, &i) in order.iter().enumerate() {
             countries[i].rank_gdp = rank + 1;
+        }
+        let mut with_quality: Vec<usize> = (0..countries.len())
+            .filter(|&i| countries[i].quality.is_some())
+            .collect();
+        with_quality.sort_by(|&a, &b| {
+            let q = |i: usize| countries[i].quality.map_or(0.0, |q| q.index);
+            q(b).total_cmp(&q(a))
+        });
+        for (rank, &i) in with_quality.iter().enumerate() {
+            countries[i].rank_quality = Some(rank + 1);
         }
         Self {
             start,

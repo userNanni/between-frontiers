@@ -111,6 +111,17 @@ fn walk_through_the_screens() {
     assert!(matches!(h.state().screen, Screen::Game(_)));
     shot(&mut h, "06-campanha");
 
+    // 6b. Tooltip of the quality-of-life figure in the top bar.
+    let quality = h
+        .get_all(egui_kittest::kittest::by().label_contains("Qualidade de vida"))
+        .next()
+        .expect("quality figure in the top bar")
+        .rect();
+    h.hover_at(quality.center());
+    h.run_steps(8);
+    shot(&mut h, "06b-barra-tooltip");
+    h.hover_at(egui::pos2(800.0, 500.0));
+
     // 7. Back to the main menu: "Continue" now offers the new campaign.
     let ctx = h.ctx.clone();
     h.state_mut().apply(Transition::Menu, &ctx);
@@ -119,6 +130,20 @@ fn walk_through_the_screens() {
     // 8. Same menu in English.
     let mut en = harness(user.clone(), "en");
     shot(&mut en, "08-menu-en");
+
+    // 9. A campaign with a long country name, in English.
+    let mut yug = saves::create(
+        &user.join("saves"),
+        "Yugoslav test",
+        7,
+        laplace_schelling::calendar::Date::new(1925, 1, 1),
+    )
+    .unwrap();
+    yug.meta.player = Some("YUG".into());
+    saves::write(&yug).unwrap();
+    let ctx = en.ctx.clone();
+    en.state_mut().apply(Transition::Game(yug), &ctx);
+    shot(&mut en, "09-campaign-en-long-name");
 
     let _ = std::fs::remove_dir_all(&user);
 }

@@ -94,6 +94,7 @@ fn widget(fill: egui::Color32, stroke: egui::Color32, text: egui::Color32) -> Wi
 
 /// Installs fonts and the base style. Call once at start-up.
 pub fn install(ctx: &Context) {
+    egui_extras::install_image_loaders(ctx);
     ctx.set_fonts(fonts());
     ctx.all_styles_mut(|style| {
         style.text_styles = [
