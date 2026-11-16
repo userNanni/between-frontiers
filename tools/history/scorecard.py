@@ -39,6 +39,12 @@ MIN_COVERAGE = 0.8
 MAX_GAP = {"gdppc": 25, "urban": 20, "literacy": 60, "life_expectancy": 25}
 # Vital rates in the reference (vital.csv) and the simulation's names for them.
 VITAL = ("births", "deaths", "life_expectancy")
+# Units whose net migration by decade the scorecard shows.
+MIGRATION_UNITS = [
+    ("USA", "metropole"), ("CAN", "metropole"), ("AUS", "metropole"), ("ARG", "metropole"),
+    ("BRA", "metropole"), ("GBR", "metropole"), ("FRA", "metropole"), ("GER", "metropole"),
+    ("ITA", "metropole"), ("ESP", "metropole"), ("MEX", "metropole"), ("SOV", "metropole"),
+]
 # Maddison's former states and the modern countries they cover.
 AGGREGATES = {
     "SUN": "RUS UKR BLR KAZ UZB TKM KGZ TJK GEO ARM AZE EST LVA LTU MDA".split(),
@@ -430,7 +436,13 @@ def build(sim_path):
             return None
         pop = sum(s["population"][i] for s in region_states[region])
         gdp = sum(s["gdp"][i] for s in region_states[region])
-        return {"population": pop, "gdp": gdp, "gdp_per_capita": gdp / pop if pop else None}
+        out = {"population": pop, "gdp": gdp, "gdp_per_capita": gdp / pop if pop else None}
+        # Vital rates weighted by population (older history files have none).
+        for k in VITAL + ("migration",):
+            rows = [(st[k][i], st["population"][i]) for st in region_states[region] if st.get(k)]
+            n = sum(p for _, p in rows)
+            out[k] = sum(v * p for v, p in rows) / n if n else None
+        return out
 
     all_isos = [(iso, 1.0) for iso in units.region_of]
     world = {
@@ -602,6 +614,58 @@ def build(sim_path):
             row["inflation"] = [mean([c["inflation"][j] for j in idx]), ref_wdi(ref, members, "inflation", recent)]
         other_rows.append(row)
 
+    # Births, deaths and life expectancy by region and year (decades from 1950, plus 1925-45 for
+    # life expectancy); net migration of the reference is what population change leaves after
+    # births and deaths.
+    def ref_migration(members, y):
+        a, b = aggregate(ref, members, y), aggregate(ref, members, y + 1)
+        if not (a["population"] and b["population"]) or a["births"] is None or a["deaths"] is None:
+            return None
+        return 1000 * (b["population"] - a["population"]) / a["population"] - (a["births"] - a["deaths"])
+
+    vital_years = [1925, 1935, 1945] + list(range(1950, 2021, 10))
+    vital_rows = []
+    for r in ["World"] + regions:
+        row = {"region": r, "years": {}}
+        for y in vital_years:
+            if y not in sim.idx:
+                continue
+            if r == "World":
+                rows = [region_rows[g][y]["sim"] for g in regions if region_rows[g][y]["sim"]]
+                n = sum(x["population"] for x in rows)
+                sv = {k: (sum((x[k] or 0) * x["population"] for x in rows) / n if n and all(x[k] is not None for x in rows) else None)
+                      for k in VITAL + ("migration",)}
+                fv = aggregate(ref, all_isos, y)
+                fm = None
+            else:
+                sv = region_rows[r][y]["sim"]
+                fv = region_rows[r][y]["ref"]
+                fm = ref_migration(region_isos[r], y)
+            row["years"][y] = {k: [sv.get(k), fv.get(k)] for k in VITAL}
+            row["years"][y]["migration"] = [sv.get("migration"), fm]
+        vital_rows.append(row)
+
+    # Net migration by decade, people a year, for the units where it mattered most.
+    migration_rows = []
+    for key in [k for k in MIGRATION_UNITS if k in units.members]:
+        t = sim.units.get(key)
+        if t is None or not t.get("migration"):
+            continue
+        row = {"unit": f"{key[0]}/{key[1]}", "decades": {}}
+        for d0 in range(1925, 2025, 10):
+            ys = [y for y in range(d0, d0 + 10) if y in sim.idx]
+            if not ys:
+                continue
+            sim_n = sum(t["migration"][sim.idx[y]] * t["population"][sim.idx[y]] / 1000 for y in ys) / len(ys)
+            refs = [ref_migration(units.members[key], y) for y in ys]
+            pops = [aggregate(ref, units.members[key], y)["population"] for y in ys]
+            ok = [(m, p) for m, p in zip(refs, pops) if m is not None and p]
+            ref_n = sum(m * p / 1000 for m, p in ok) / len(ok) if len(ok) == len(ys) else None
+            row["decades"][d0] = [sim_n, ref_n]
+        migration_rows.append(row)
+
+    arrival_rows = arrivals_table(sim_path, sim)
+
     deviations = find_deviations(table, largest, world, region_rows, regions, period_rows, last_ref_gdp, last_pop)
     return {
         "sim_years": [sim.years[0], sim.years[-1]],
@@ -614,6 +678,10 @@ def build(sim_path):
         "largest_other": other_rows,
         "recent_years": [recent[0], recent[-1]] if recent else None,
         "units": unit_rows,
+        "vital_regions": vital_rows,
+        "migration": migration_rows,
+        "arrivals": arrival_rows,
+        "waves": json.load(open(sim_path, encoding="utf-8")).get("waves") or [],
         "largest": [f"{t}/{p}" for t, p in largest],
         "deviations": deviations,
         "deviation_groups": group_deviations(deviations),
@@ -626,6 +694,53 @@ def build(sim_path):
             "units": {f"{t}/{p}": table[(t, p)] for t, p in largest},
         },
     }
+
+
+# Arrivals compared with immigration records: (row, destination unit, origin units in the
+# simulation, destination and origin in immigration.csv). Origin None = everyone.
+ARRIVALS = [
+    ("Brasil ← Itália", "BRA/metropole", ["ITA/metropole"], "BRA", "ITA"),
+    ("Brasil ← Portugal", "BRA/metropole", ["POR/metropole"], "BRA", "PRT"),
+    ("Brasil ← Espanha", "BRA/metropole", ["ESP/metropole"], "BRA", "ESP"),
+    ("Brasil ← Alemanha", "BRA/metropole", ["GER/metropole"], "BRA", "DEU"),
+    ("Brasil ← Japão", "BRA/metropole", ["JAP/metropole", "JAP/colonies"], "BRA", "JPN"),
+    ("Brasil ← URSS", "BRA/metropole", ["SOV/metropole"], "BRA", "RUS"),
+    ("Brasil ← todos", "BRA/metropole", None, "BRA", None),
+    ("EUA ← todos", "USA/metropole", None, "USA", None),
+    ("Argentina ← todos", "ARG/metropole", None, None, None),
+    ("Canadá ← todos", "CAN/metropole", None, None, None),
+    ("Austrália ← todos", "AUS/metropole", None, None, None),
+]
+
+
+def arrivals_table(sim_path, sim):
+    """Arrivals a year by decade, simulated (the run's roads) against the records."""
+    with open(sim_path, encoding="utf-8") as f:
+        pairs = json.load(f).get("migration_pairs") or []
+    if not pairs:
+        return []
+    records = defaultdict(lambda: defaultdict(float))  # (dest, origin) -> year -> people
+    path = os.path.join(DATA, "immigration.csv")
+    if os.path.exists(path):
+        for r in read_csv(path):
+            records[(r["destination"], r["origin"])][int(r["year"])] = float(r["arrivals"])
+            records[(r["destination"], None)][int(r["year"])] += float(r["arrivals"])
+    out = []
+    for label, dest, origins, rdest, rorigin in ARRIVALS:
+        row = {"label": label, "decades": {}}
+        for d0 in range(1925, 2025, 10):
+            ys = [y for y in range(d0, d0 + 10) if y in sim.idx]
+            if not ys:
+                continue
+            simv = 0.0
+            for p in pairs:
+                if p["dest"] == dest and (origins is None or p["origin"] in origins):
+                    simv += sum(p["arrivals"][sim.idx[y]] for y in ys)
+            ref = records.get((rdest, rorigin), {}) if rdest else {}
+            have = [ref[y] for y in ys if y in ref]
+            row["decades"][d0] = [simv / len(ys), sum(have) / len(have) if have else None, len(have)]
+        out.append(row)
+    return out
 
 
 def find_deviations(table, largest, world, region_rows, regions, period_rows, last_gdp, last_pop):
@@ -854,6 +969,76 @@ def markdown(card):
                 tfr = "–" if d.get("fertility") is None else f"{d['fertility']:.1f}"
                 cells.append(f"{pair(d['births'])} · {pair(d['deaths'])} · {pair(d['life_expectancy'])} · {mig} · {tfr}")
             L.append(f"| {name} | " + " | ".join(cells) + " |")
+    if card.get("vital_regions"):
+        L.append("\n## Natalidade, mortalidade e migração por região (simulado / real)\n")
+        L.append("Por mil habitantes ao ano: natalidade · mortalidade · migração líquida (a real é o que sobra da "
+                 "variação da população depois de nascimentos e mortes, ONU de 1950). Até 1945, só a "
+                 "expectativa de vida (anos) tem referência.\n")
+        vys = [y for y in (1925, 1935, 1945) if any(y in r["years"] for r in card["vital_regions"])]
+        if vys:
+            L.append("| Região | " + " | ".join(f"e0 {y}" for y in vys) + " |")
+            L.append("|---|" + "---|" * len(vys))
+            for r in card["vital_regions"]:
+                cells = []
+                for y in vys:
+                    v = r["years"].get(y)
+                    a, b = (v or {}).get("life_expectancy", [None, None])
+                    cells.append(f"{'–' if a is None else f'{a:.0f}'}/{'–' if b is None else f'{b:.0f}'}")
+                L.append(f"| {r['region']} | " + " | ".join(cells) + " |")
+            L.append("")
+        dys = [y for y in range(1950, 2021, 10) if any(y in r["years"] for r in card["vital_regions"])]
+        L.append("| Região | " + " | ".join(str(y) for y in dys) + " |")
+        L.append("|---|" + "---|" * len(dys))
+
+        def pr(v, plus=False):
+            a, b = v
+            f = (lambda x: f"{x:+.1f}") if plus else (lambda x: f"{x:.0f}")
+            return f"{'–' if a is None else f(a)}/{'–' if b is None else f(b)}"
+
+        for r in card["vital_regions"]:
+            cells = []
+            for y in dys:
+                v = r["years"].get(y)
+                cells.append("–" if not v else f"{pr(v['births'])} · {pr(v['deaths'])} · {pr(v['migration'], True)}")
+            L.append(f"| {r['region']} | " + " | ".join(cells) + " |")
+    if card.get("migration"):
+        L.append("\n## Migração líquida por década (simulado / real)\n")
+        L.append("Milhares de pessoas por ano, média da década; positivo entra. A real é a variação da "
+                 "população menos nascimentos e mortes (só de 1950, quando a ONU tem as taxas).\n")
+        ds = sorted({d for r in card["migration"] for d in r["decades"]}, key=int)
+        L.append("| Unidade | " + " | ".join(f"{d}s" for d in ds) + " |")
+        L.append("|---|" + "---|" * len(ds))
+        for r in card["migration"]:
+            cells = []
+            for d in ds:
+                a, b = r["decades"].get(d, [None, None])
+                cells.append(f"{'–' if a is None else f'{a / 1000:+.0f}'}/{'–' if b is None else f'{b / 1000:+.0f}'}")
+            L.append(f"| {r['unit']} | " + " | ".join(cells) + " |")
+    if card.get("arrivals"):
+        L.append("\n## Chegadas de imigrantes por década (simulado / registrado)\n")
+        L.append("Milhares por ano, média da década. Brasil: IBGE/MTIC, *Estatística Migratória de 1952*, "
+                 "tabela 8 (só os anos cujas colunas somam o total; entre colchetes, quantos anos da década). "
+                 "EUA: DHS, residentes permanentes. A simulação conta quem chegou pela estrada origem → "
+                 "destino, sem os filhos.\n")
+        ds = sorted({int(d) for r in card["arrivals"] for d in r["decades"]})
+        L.append("| Estrada | " + " | ".join(f"{d}s" for d in ds) + " |")
+        L.append("|---|" + "---|" * len(ds))
+        for r in card["arrivals"]:
+            cells = []
+            for d in ds:
+                a, b, n = r["decades"].get(d, r["decades"].get(str(d), [None, None, 0]))
+                sa = "–" if a is None else f"{a / 1000:.1f}"
+                sb = "–" if b is None else f"{b / 1000:.1f}" + (f" [{n}]" if n < 10 else "")
+                cells.append(f"{sa} / {sb}")
+            L.append(f"| {r['label']} | " + " | ".join(cells) + " |")
+        if card.get("waves"):
+            L.append("\n### Ondas de migração\n")
+            L.append("| Origem → destino | Abriu | Fechou | Por quê abriu | Por quê fechou | Pessoas (mil) |")
+            L.append("|---|---|---|---|---|---:|")
+            for w in sorted(card["waves"], key=lambda w: -w["people"])[:30]:
+                until = "aberta" if not w["until"] else f"{w['until'][0]}-{w['until'][1]:02d}"
+                L.append(f"| {w['origin']} → {w['dest']} | {w['from'][0]}-{w['from'][1]:02d} | {until} | "
+                         f"{w['cause']} | {w['end'] or '–'} | {w['people'] / 1000:.0f} |")
     if card.get("production"):
         L.append("\n## Produção mundial (simulado / real)\n")
         units = card["production_units"]

@@ -26,6 +26,9 @@ use crate::politics::{Politics, Scope};
 use crate::polity::{POLITY, effects_in_force};
 use crate::research_system::RESEARCH;
 
+pub mod migration;
+pub use migration::{Diaspora, Push, Wave, WaveEnd, WaveRecord};
+
 pub const DEMOGRAPHY: ResourceId = ResourceId(13);
 
 /// Five-year age groups: 0–4, 5–9, …, 75–79 and 80 and over.
@@ -65,8 +68,8 @@ const LIFE_AT_KNOT: [i64; 5] = [277, 389, 525, 680, 820];
 
 /// Health level from living standard alone: comfort (tier 3 needs met), the mothers'
 /// schooling, and hunger.
-const H_COMFORT: Fixed = milli(450);
-const H_SCHOOLING: Fixed = milli(250);
+const H_COMFORT: Fixed = milli(380);
+const H_SCHOOLING: Fixed = milli(350);
 const H_OFFSET: Fixed = milli(50);
 const H_HUNGER: Fixed = milli(250);
 /// Health level modern medicine reaches: a base, comfort and hospital care.
@@ -86,16 +89,16 @@ const MEDICINE_FULL: Fixed = milli(800);
 
 /// Children per woman before and after the transition; without modern contraception the
 /// transition stops this much higher (withdrawal, late marriage).
-const TFR_HIGH: Fixed = milli(6200);
-const TFR_LOW: Fixed = milli(1600);
-const TFR_WITHOUT_PILL: Fixed = milli(500);
+const TFR_HIGH: Fixed = milli(6500);
+const TFR_LOW: Fixed = milli(1750);
+const TFR_WITHOUT_PILL: Fixed = milli(350);
 /// Weights of the transition score and where the transition starts and ends.
-const F_SURVIVAL: Fixed = milli(300);
-const F_SCHOOLING: Fixed = milli(350);
-const F_OFF_FARM: Fixed = milli(200);
-const F_COMFORT: Fixed = milli(150);
+const F_SURVIVAL: Fixed = milli(250);
+const F_SCHOOLING: Fixed = milli(550);
+const F_OFF_FARM: Fixed = milli(100);
+const F_COMFORT: Fixed = milli(100);
 const F_CONTRACEPTION: Fixed = milli(100);
-const F_START: Fixed = milli(460);
+const F_START: Fixed = milli(450);
 const F_END: Fixed = milli(950);
 /// Child deaths before 5 (per mille) at which survival counts as 0 and as 1 in the score.
 const Q5_HIGH: i64 = 500;
@@ -103,27 +106,7 @@ const Q5_LOW: i64 = 20;
 
 /// Months for the mothers' schooling to close the gap with today's literacy: girls at school
 /// now are mothers in 15 to 20 years.
-const SCHOOLING_MONTHS: i64 = 180;
-
-/// Income ratio (destination over origin) below which nobody moves, and the extra ratio at
-/// which the pull is full.
-const GAP_START: Fixed = milli(1800);
-const GAP_FULL: Fixed = milli(3000);
-/// Most of a territory's people who emigrate in a year, at the full pull of a country next
-/// door that speaks a related language and lets everyone in.
-const EMIGRATION_RATE: i64 = 3; // per mille a year
-/// Most immigrants a territory takes in a year, per mille of its people.
-const IMMIGRATION_CAP: i64 = 8;
-/// Distance at which the pull halves, in km.
-const DISTANCE_KM: i64 = 5000;
-/// Pull multiplier within a language family and within an empire. The empire gets none: at 2,
-/// Belgium, the Netherlands and Portugal sat at the immigration cap for sixty years, while the
-/// real colonial flows stayed small until the 1960s.
-const SAME_FAMILY: i64 = 2;
-const SAME_EMPIRE: i64 = 1;
-/// Share of the people who can pay for the passage at no literacy; it grows with literacy
-/// squared (who reads hears of the jobs abroad and saves for the ticket).
-const AFFORD_BASE: Fixed = milli(100);
+const SCHOOLING_MONTHS: i64 = 240;
 
 /// Age pyramid and migration links of every state, saved and hashed.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -137,6 +120,14 @@ pub struct DemographyState {
     pub vital: Vec<Vital>,
     /// Territories (`market * 2 + colony`): centre of population and language family.
     pub territories: Vec<Territory>,
+    /// People abroad by origin, destination and culture, sorted by them.
+    #[serde(default)]
+    pub diaspora: Vec<Diaspora>,
+    /// Mass migrations under way, and those that ended.
+    #[serde(default)]
+    pub waves: Vec<Wave>,
+    #[serde(default)]
+    pub waves_ended: Vec<WaveRecord>,
 }
 
 /// Rates of a region, per thousand people a year, and what produced them.
@@ -160,6 +151,13 @@ pub struct Territory {
     /// Index into [`crate::communities::CULTURE_FAMILIES`] of the largest language family;
     /// `u8::MAX` when unknown.
     pub family: u8,
+    /// Index into the scenario's cultures of the largest culture; `u16::MAX` when unknown.
+    #[serde(default = "no_culture")]
+    pub culture: u16,
+}
+
+fn no_culture() -> u16 {
+    u16::MAX
 }
 
 impl HashState for Vital {
@@ -181,6 +179,7 @@ impl HashState for Territory {
         self.lat.hash_state(h);
         self.lon.hash_state(h);
         self.family.hash_state(h);
+        self.culture.hash_state(h);
     }
 }
 
@@ -193,6 +192,9 @@ impl HashState for DemographyState {
         self.schooling.hash_state(h);
         self.vital.hash_state(h);
         self.territories.hash_state(h);
+        self.diaspora.hash_state(h);
+        self.waves.hash_state(h);
+        self.waves_ended.hash_state(h);
     }
 }
 
@@ -243,6 +245,8 @@ pub fn territories(
     let mut acc = vec![(0f64, 0f64, 0f64); n];
     let families = crate::communities::CULTURE_FAMILIES.len();
     let mut by_family = vec![vec![0f64; families]; n];
+    let cultures = communities.map_or(0, |c| c.cultures.len());
+    let mut by_culture = vec![vec![0f64; cultures]; n];
     let meta = &map.meta;
     let miller = |lat: f64| {
         1.25 * (std::f64::consts::FRAC_PI_4 + 0.4 * lat.to_radians())
@@ -275,12 +279,14 @@ pub fn territories(
                 {
                     by_family[t][f] += people * f64::from(share);
                 }
+                by_culture[t][culture] += people * f64::from(share);
             }
         }
     }
     acc.iter()
         .zip(&by_family)
-        .map(|(&(p, lat, lon), fam)| {
+        .zip(&by_culture)
+        .map(|((&(p, lat, lon), fam), cul)| {
             let (lat, lon) = if p > 0.0 {
                 (lat / p, lon / p)
             } else {
@@ -292,10 +298,17 @@ pub fn territories(
                 .filter(|(_, v)| **v > 0.0)
                 .max_by(|a, b| a.1.total_cmp(b.1).then(b.0.cmp(&a.0)))
                 .map_or(u8::MAX, |(i, _)| i as u8);
+            let culture = cul
+                .iter()
+                .enumerate()
+                .filter(|(_, v)| **v > 0.0)
+                .max_by(|a, b| a.1.total_cmp(b.1).then(b.0.cmp(&a.0)))
+                .map_or(u16::MAX, |(i, _)| i as u16);
             Territory {
                 lat: Fixed::from_ratio((lat * 10.0).round() as i64, 10),
                 lon: Fixed::from_ratio((lon * 10.0).round() as i64, 10),
                 family,
+                culture,
             }
         })
         .collect()
@@ -405,7 +418,7 @@ fn month(
 /// Years of the past a pyramid is grown over, and the share of today's development (comfort,
 /// schooling, work off the farm) the region had at their start.
 const PAST_YEARS: i64 = 60;
-const PAST_DEVELOPMENT: Fixed = milli(600);
+const PAST_DEVELOPMENT: Fixed = milli(750);
 
 /// The age structure of the start: a population stable at the rates of `PAST_YEARS` ago, when
 /// it had `PAST_DEVELOPMENT` of today's development, then grown through those years as the
@@ -462,6 +475,8 @@ pub struct Demography {
     kinds: PublicKinds,
     /// The law catalogue and the indices of the `immigration` and `emigration` effects.
     laws: Option<(Arc<Politics>, usize, usize)>,
+    /// Farm land each building kind works, if any.
+    farm_of: Vec<Option<u8>>,
 }
 
 impl Demography {
@@ -471,7 +486,13 @@ impl Demography {
             let index = |k| crate::politics::effect_index(k).expect("migration law effect");
             (p, index("immigration"), index("emigration"))
         });
-        Self { cat, kinds, laws }
+        let farm_of = cat.buildings.iter().map(|b| b.farm).collect();
+        Self {
+            cat,
+            kinds,
+            laws,
+            farm_of,
+        }
     }
 
     /// What the laws in force in `country` let through, per mille of the open flow:
@@ -488,7 +509,7 @@ impl Demography {
 }
 
 /// What a region contributes to its territory's migration, and its own month.
-struct RegionMonth {
+pub(crate) struct RegionMonth {
     ages: [i64; AGE_GROUPS],
     schooling: Fixed,
     births: i64,
@@ -498,18 +519,22 @@ struct RegionMonth {
     people: i64,
     income: Fixed,
     literacy_people: Fixed,
+    /// Basic needs met (tier 1) times people.
+    food_people: Fixed,
     idle_workers: i64,
     workers: i64,
     urban: i64,
     /// Labourers able to work, and those in jobs.
     labourers: i64,
     labourers_employed: i64,
+    /// Farm levels the land still allows, and the land's ceiling, in levels.
+    land_free: i64,
+    land_total: i64,
 }
 
 pub struct DemographyChanges {
     regions: Vec<RegionMonth>,
-    /// Net migrants by region this month (immigrants positive).
-    moves: Vec<i64>,
+    plan: migration::Plan,
 }
 
 fn average(r: &Region, tier: usize) -> Fixed {
@@ -600,6 +625,14 @@ impl System<GameWorld> for Demography {
                 };
                 let (births, deaths) = month(&mut ages, &rates, tfr);
                 let p = &r.pops[prof::PEASANT];
+                let land_total: i64 = r.land.iter().map(|l| l.1).sum();
+                let built: i64 = r
+                    .plants
+                    .iter()
+                    .filter(|pl| self.farm_of[usize::from(pl.kind)].is_some())
+                    .map(|pl| pl.levels)
+                    .sum();
+                let land_free = (land_total - built).max(0);
                 let urban: i64 = r
                     .pops
                     .iter()
@@ -617,27 +650,34 @@ impl System<GameWorld> for Demography {
                     people,
                     income: r.pops.iter().map(|p| p.income).sum(),
                     literacy_people: r.literacy * people,
+                    food_people: food * people,
                     idle_workers: (workers(p.size) - p.employed).max(0),
                     workers: r.pops.iter().map(|p| workers(p.size)).sum(),
                     urban,
                     labourers: workers(r.pops[prof::LABORER].size),
                     labourers_employed: r.pops[prof::LABORER].employed,
+                    land_free,
+                    land_total,
                 }
             })
             .collect();
         let laws: Vec<(i64, i64)> = (0..econ.markets.len())
             .map(|c| self.migration_laws(world, c))
             .collect();
-        let moves = migration(world, &regions, &laws);
-        DemographyChanges { regions, moves }
+        let now = ctx.date.year * 12 + i32::from(ctx.date.month) - 1;
+        let plan = migration::plan(world, &regions, &laws, now);
+        DemographyChanges { regions, plan }
     }
 
-    fn apply(&self, _ctx: &TickCtx, changes: DemographyChanges, world: &mut GameWorld) {
+    fn apply(&self, _ctx: &TickCtx, mut changes: DemographyChanges, world: &mut GameWorld) {
         let state = &mut world.demography;
         let n = world.econ.regions.len();
         state.ages.resize(n, [0; AGE_GROUPS]);
         state.schooling.resize(n, Fixed::ZERO);
         state.vital.resize(n, Vital::default());
+        state.diaspora = std::mem::take(&mut changes.plan.diaspora);
+        state.waves = std::mem::take(&mut changes.plan.waves);
+        state.waves_ended.append(&mut changes.plan.ended);
         for (ri, (r, m)) in world
             .econ
             .regions
@@ -646,7 +686,7 @@ impl System<GameWorld> for Demography {
             .enumerate()
         {
             let mut ages = m.ages;
-            let moved = changes.moves[ri];
+            let moved = changes.plan.moves[ri];
             shift_migrants(&mut ages, moved);
             let target: i64 = ages.iter().sum();
             distribute(r, target - m.people, moved);
@@ -732,205 +772,6 @@ fn distribute(r: &mut Region, change: i64, moved: i64) {
     }
 }
 
-/// Territory facts of the month.
-struct Land {
-    people: i64,
-    income_per_head: Fixed,
-    literacy: Fixed,
-    idle: Fixed,
-    /// Share of the labourers in jobs, to the fourth power: how much room the towns have for
-    /// newcomers.
-    jobs: Fixed,
-}
-
-/// Net migrants of every region this month.
-fn migration(world: &GameWorld, regions: &[RegionMonth], laws: &[(i64, i64)]) -> Vec<i64> {
-    let econ = &world.econ;
-    let state = &world.demography;
-    let nt = econ.markets.len() * 2;
-    let mut moves = vec![0i64; regions.len()];
-    if state.territories.len() != nt {
-        return moves;
-    }
-    // Territory sums, in region order.
-    let mut people = vec![0i64; nt];
-    let mut income = vec![Fixed::ZERO; nt];
-    let mut literate = vec![Fixed::ZERO; nt];
-    let mut idle = vec![0i64; nt];
-    let mut work = vec![0i64; nt];
-    let mut lab = vec![(0i64, 0i64); nt];
-    let mut market_people = vec![0i64; econ.markets.len()];
-    let mut market_income = vec![Fixed::ZERO; econ.markets.len()];
-    for (r, m) in econ.regions.iter().zip(regions) {
-        let t = usize::from(r.market) * 2 + usize::from(r.colony);
-        people[t] += m.people;
-        income[t] += m.income;
-        literate[t] += m.literacy_people;
-        idle[t] += m.idle_workers;
-        work[t] += m.workers;
-        lab[t].0 += m.labourers;
-        lab[t].1 += m.labourers_employed;
-        market_people[usize::from(r.market)] += m.people;
-        market_income[usize::from(r.market)] += m.income;
-    }
-    // Real income per head: the country's GDP per head at base prices, split between
-    // metropole and colonies by money income per head.
-    let lands: Vec<Land> = (0..nt)
-        .map(|t| {
-            let mi = t / 2;
-            let m = &econ.markets[mi];
-            let n = people[t];
-            if n <= 0 || market_people[mi] <= 0 || market_income[mi] <= Fixed::ZERO {
-                return Land {
-                    people: n,
-                    income_per_head: Fixed::ZERO,
-                    literacy: Fixed::ZERO,
-                    idle: Fixed::ZERO,
-                    jobs: Fixed::ZERO,
-                };
-            }
-            let gdp_pc = m.gdp_last_year / market_people[mi];
-            let relative =
-                income[t].mul_div(Fixed::from_int(market_people[mi]), market_income[mi]) / n;
-            Land {
-                people: n,
-                income_per_head: gdp_pc * relative,
-                literacy: literate[t] / n,
-                idle: if work[t] > 0 {
-                    Fixed::from_ratio(idle[t], work[t])
-                } else {
-                    Fixed::ZERO
-                },
-                jobs: if lab[t].0 > 0 {
-                    let e = Fixed::from_ratio(lab[t].1.min(lab[t].0), lab[t].0);
-                    e * e * e * e
-                } else {
-                    Fixed::ONE
-                },
-            }
-        })
-        .collect();
-    // Distance factor between territories: 1 / (1 + (d / DISTANCE_KM)²).
-    let cos: Vec<Fixed> = state.territories.iter().map(|t| cos_deg(t.lat)).collect();
-    let pull_of = |i: usize, j: usize| -> Fixed {
-        let (a, b) = (&lands[i], &lands[j]);
-        if i == j || a.people <= 0 || b.people <= 0 || a.income_per_head <= Fixed::ZERO {
-            return Fixed::ZERO;
-        }
-        let ratio = b.income_per_head / a.income_per_head;
-        let gap = ((ratio - GAP_START) / GAP_FULL).clamp(Fixed::ZERO, Fixed::ONE);
-        if gap <= Fixed::ZERO {
-            return Fixed::ZERO;
-        }
-        let (ti, tj) = (&state.territories[i], &state.territories[j]);
-        let dlat = (ti.lat - tj.lat) * milli(111_200); // km
-        let mut dlon = (ti.lon - tj.lon).abs();
-        if dlon > Fixed::from_int(180) {
-            dlon = Fixed::from_int(360) - dlon;
-        }
-        let dlon = dlon * milli(111_200) * ((cos[i] + cos[j]) / 2);
-        let d2 = (dlat * dlat + dlon * dlon) / (DISTANCE_KM * DISTANCE_KM);
-        let distance = Fixed::ONE / (Fixed::ONE + d2);
-        let mut link = 1;
-        if ti.family != u8::MAX && ti.family == tj.family {
-            link *= SAME_FAMILY;
-        }
-        if i / 2 == j / 2 {
-            link *= SAME_EMPIRE;
-        }
-        let (imm, _) = laws[j / 2];
-        (gap * distance * b.jobs * link).mul_ratio(imm, 1000)
-    };
-    // Flows by origin; then cut each destination to its cap.
-    let mut flows: Vec<(usize, usize, i64)> = Vec::new();
-    let mut inflow = vec![0i64; nt];
-    for i in 0..nt {
-        if lands[i].people <= 0 {
-            continue;
-        }
-        let pulls: Vec<(usize, Fixed)> = (0..nt)
-            .map(|j| (j, pull_of(i, j)))
-            .filter(|(_, p)| *p > Fixed::ZERO)
-            .collect();
-        if pulls.is_empty() {
-            continue;
-        }
-        let best = pulls
-            .iter()
-            .map(|(_, p)| *p)
-            .max()
-            .unwrap_or(Fixed::ZERO)
-            .min(Fixed::ONE);
-        let (_, emi) = laws[i / 2];
-        let lit = lands[i].literacy;
-        let afford = AFFORD_BASE + (Fixed::ONE - AFFORD_BASE) * lit * lit;
-        let push = Fixed::ONE + lands[i].idle;
-        // Emigrants this month.
-        let out = (Fixed::from_int(lands[i].people) * best * afford * push)
-            .mul_ratio(EMIGRATION_RATE * emi, 1000 * 1000 * 12)
-            .to_int_floor();
-        if out <= 0 {
-            continue;
-        }
-        // Shares by pull × size of the destination.
-        let weights: Vec<(usize, i128)> = pulls
-            .iter()
-            .map(|&(j, p)| (j, i128::from(p.raw()) * i128::from(lands[j].people)))
-            .collect();
-        let total: i128 = weights.iter().map(|(_, w)| *w).sum();
-        if total <= 0 {
-            continue;
-        }
-        for (j, w) in weights {
-            let n = (i128::from(out) * w / total) as i64;
-            if n > 0 {
-                flows.push((i, j, n));
-                inflow[j] += n;
-            }
-        }
-    }
-    let cap: Vec<i64> = lands
-        .iter()
-        .map(|l| l.people * IMMIGRATION_CAP / 12_000)
-        .collect();
-    let mut net = vec![0i64; nt];
-    for (i, j, n) in flows {
-        let n = if inflow[j] > cap[j] {
-            (i128::from(n) * i128::from(cap[j]) / i128::from(inflow[j])) as i64
-        } else {
-            n
-        };
-        net[i] -= n;
-        net[j] += n;
-    }
-    // Into regions: emigrants by population, immigrants by town population.
-    let mut town = vec![0i64; nt];
-    for (r, m) in econ.regions.iter().zip(regions) {
-        town[usize::from(r.market) * 2 + usize::from(r.colony)] += m.urban;
-    }
-    for (ri, (r, m)) in econ.regions.iter().zip(regions).enumerate() {
-        let t = usize::from(r.market) * 2 + usize::from(r.colony);
-        let n = net[t];
-        moves[ri] = if n < 0 && people[t] > 0 {
-            (i128::from(n) * i128::from(m.people) / i128::from(people[t])) as i64
-        } else if n > 0 && town[t] > 0 {
-            (i128::from(n) * i128::from(m.urban) / i128::from(town[t])) as i64
-        } else {
-            0
-        };
-    }
-    moves
-}
-
-/// Cosine of a latitude in degrees (|lat| ≤ 90), by its Taylor series.
-fn cos_deg(lat: Fixed) -> Fixed {
-    let x = lat.abs().min(Fixed::from_int(90)) * milli(17)
-        + lat.abs().min(Fixed::from_int(90)).mul_ratio(453, 1_000_000);
-    let x2 = x * x;
-    let x4 = x2 * x2;
-    (Fixed::ONE - x2 / 2 + x4 / 24 - x4 * x2 / 720).clamp(Fixed::ZERO, Fixed::ONE)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1005,9 +846,9 @@ mod tests {
 
     #[test]
     fn cosine() {
-        assert_eq!(cos_deg(Fixed::ZERO), Fixed::ONE);
-        let c60 = cos_deg(Fixed::from_int(60));
+        assert_eq!(migration::cos_deg(Fixed::ZERO), Fixed::ONE);
+        let c60 = migration::cos_deg(Fixed::from_int(60));
         assert!((milli(490)..=milli(510)).contains(&c60), "{c60:?}");
-        assert!(cos_deg(Fixed::from_int(90)) <= milli(20));
+        assert!(migration::cos_deg(Fixed::from_int(90)) <= milli(20));
     }
 }

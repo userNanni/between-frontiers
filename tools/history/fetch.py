@@ -27,6 +27,11 @@ OWID_META = "https://ourworldindata.org/grapher/{}.metadata.json?v=1&csvType=ful
 # name -> (url, raw file)
 DOWNLOADS = {
     "maddison": ("https://dataverse.nl/api/access/datafile/421302", "mpd2023_web.xlsx"),
+    # IBGE / Ministério do Trabalho, "Movimento da População: Estatística Migratória de 1952"
+    # (1955): table 8, immigrants into Brazil by nationality, 1884-1952.
+    "brazil_immigration": ("https://biblioteca.ibge.gov.br/visualizacao/livros/liv84438.pdf", "ibge_liv84438.pdf"),
+    # US DHS, Yearbook of Immigration Statistics 2023, table 1 (lawful permanent residents).
+    "usa_immigration": ("https://ohss.dhs.gov/topics/immigration/yearbook/2023/table1", "dhs_yearbook2023_table1.html"),
 }
 OWID_CHARTS = {
     "population": "population",
@@ -203,6 +208,70 @@ def build_vital():
     )
 
 
+# Brazil's table 8 columns after the total, and the modern country each nationality is.
+BRAZIL_ORIGINS = [("DEU", "germans"), ("ESP", "spaniards"), ("ITA", "italians"), ("JPN", "japanese"),
+                  ("PRT", "portuguese"), ("RUS", "russians"), ("other", "others")]
+
+
+def brazil_rows(text, first=1925, last=1952):
+    """Rows of table 8 read from the PDF text. The scan has OCR noise (I for 1, O for 0); a
+    year is kept only when its seven nationalities add up to its total, so nothing guessed
+    enters the file."""
+    import re
+
+    fix = str.maketrans({"I": "1", "l": "1", "i": "1", "O": "0", "o": "0", "S": "5", "s": "5", "!": "1"})
+    rows = {}
+    for line in text.splitlines():
+        m = re.match(r"^\s*([I1l][89I][0-9I][0-9I])\s*[\. ·•'o]*(.*)$", line)
+        if not m:
+            continue
+        year = int(m.group(1).translate(fix))
+        if not first <= year <= last:
+            continue
+        rest = re.sub(r"^[\s\.·•'o]+", "", m.group(2))
+        vals = []
+        for g in [g for g in re.split(r"\s{2,}", rest.strip()) if g]:
+            if re.fullmatch(r"-+", g.strip()):
+                vals.append(0)
+                continue
+            t = g.strip().translate(fix).replace(" ", "")
+            if not re.fullmatch(r"\d+", t):
+                vals = None
+                break
+            vals.append(int(t))
+        if vals and len(vals) == 8 and sum(vals[1:]) == vals[0]:
+            rows[year] = vals
+    return rows
+
+
+def build_immigration():
+    import html
+    import re
+    import subprocess
+
+    out = []
+    pdf = os.path.join(RAW, "ibge_liv84438.pdf")
+    if os.path.exists(pdf):
+        text = subprocess.run(["pdftotext", "-layout", pdf, "-"], capture_output=True, text=True, check=True).stdout
+        for year, vals in sorted(brazil_rows(text).items()):
+            for (iso, _), v in zip(BRAZIL_ORIGINS, vals[1:]):
+                out.append(("BRA", year, iso, v))
+    page = os.path.join(RAW, "dhs_yearbook2023_table1.html")
+    if os.path.exists(page):
+        with open(page, encoding="utf-8") as f:
+            cells = [html.unescape(re.sub("<[^>]+>", "", c)).strip()
+                     for c in re.findall(r"<t[dh][^>]*>(.*?)</t[dh]>", f.read(), re.S)]
+        for a, b in zip(cells, cells[1:]):
+            if re.fullmatch(r"\d{4}", a) and re.fullmatch(r"[\d,]+", b) and FIRST <= int(a) <= LAST:
+                out.append(("USA", int(a), "all", int(b.replace(",", ""))))
+    write(
+        "immigration.csv",
+        ["destination", "year", "origin", "arrivals"],
+        out,
+        "Immigrants arriving: Brazil by nationality (IBGE/MTIC, Estatistica Migratoria de 1952, table 8; years whose columns add up to the total) and USA (DHS Yearbook 2023, table 1). See SOURCES.md.",
+    )
+
+
 def build_share(slug, column, out, note, scale=0.01):
     rows = []
     for code, year, r in owid_rows(slug):
@@ -308,6 +377,7 @@ def main():
         "Adult literacy rate, Our World in Data (UNESCO, van Zanden et al., World Bank). See SOURCES.md.",
     )
     build_vital()
+    build_immigration()
     build_production()
     build_wdi()
     build_fdi()

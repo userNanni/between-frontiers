@@ -149,6 +149,9 @@ impl GameData {
                 &self.map,
                 self.communities.as_ref(),
             ),
+            diaspora: self.communities.as_ref().map_or_else(Vec::new, |c| {
+                crate::demography::migration::initial_diaspora(&world.econ, &self.map, c).0
+            }),
             ..Default::default()
         };
         if let Some(tree) = &self.tree {
