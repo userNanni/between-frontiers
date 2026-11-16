@@ -84,6 +84,9 @@ pub struct Market {
     /// GDP at 1925 base prices accumulated this year, and the last full year.
     pub gdp_running: Fixed,
     pub gdp_last_year: Fixed,
+    /// Productivity from technology by building group, relative to 1925; empty means 1.
+    #[serde(default)]
+    pub tech_tfp: Vec<Fixed>,
     /// Workers on the state payroll (civil servants, clergy, soldiers), counted monthly.
     pub gov_workers: i64,
 }
@@ -181,6 +184,7 @@ impl HashState for Market {
             v.hash_state(h);
         }
         h.write_i64(self.gov_workers);
+        self.tech_tfp.hash_state(h);
     }
 }
 

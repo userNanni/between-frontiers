@@ -812,6 +812,7 @@ pub fn build(cat: &Catalogue, inp: &Inputs) -> Economy {
             construction: vec![Fixed::ZERO; ng],
             gdp_running: Fixed::ZERO,
             gdp_last_year: fx(target_gdp),
+            tech_tfp: Vec::new(),
             gov_workers: 0,
         });
     }

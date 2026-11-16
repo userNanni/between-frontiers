@@ -228,3 +228,19 @@ legend-high = Alta
 tip-deposit = { $resource }: jazida de tamanho { $size } de 5
 tip-climate = Clima { $climate } em { $share } do território
 tip-farm = { $farm }: aptidão { $value }
+
+## Pesquisa
+bar-research = Pesquisa (R)
+research-title = Pesquisa
+research-close = Fechar
+research-summary = { $points } pontos de pesquisa por mês · foco: { $focus }
+research-focus-auto = escolha automática
+research-focus-clear = Deixar o país escolher
+research-set-focus = Pesquisar
+research-focused = Em foco
+research-locked = Requer outras tecnologias
+research-requires = Requer: { $list }
+research-unlocks = Libera: { $list }
+research-history = Na história: protótipo em { $demonstrated }, indústria em { $industrialized }
+research-first-industrial = Feita em escala pela primeira vez neste jogo em { $year }
+research-state-buyer = O Estado pode ser o primeiro comprador

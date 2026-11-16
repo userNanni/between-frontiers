@@ -36,6 +36,8 @@ pub struct Method {
 pub struct Building {
     pub key: String,
     pub group: String,
+    /// Index into `economy::BUILDING_GROUPS`.
+    pub group_ix: u8,
     /// Index into `RESOURCES`.
     pub resource: Option<u8>,
     /// Index into `FARMS`.
@@ -127,6 +129,11 @@ impl Catalogue {
             bs.push(Building {
                 key: b.key.clone(),
                 group: b.group.clone(),
+                group_ix: crate::economy::BUILDING_GROUPS
+                    .iter()
+                    .position(|g| *g == b.group)
+                    .ok_or_else(|| CatalogueError(format!("unknown group {}", b.group)))?
+                    as u8,
                 stagnant: b.group == "services",
                 resource: b
                     .resource

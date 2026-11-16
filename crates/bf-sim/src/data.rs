@@ -62,6 +62,14 @@ impl GameData {
         })
     }
 
+    /// The rules the schedule runs with.
+    pub fn rules(&self) -> crate::game::Rules {
+        crate::game::Rules {
+            catalogue: Arc::clone(&self.catalogue),
+            tree: self.tree.clone(),
+        }
+    }
+
     /// The world on the start date, economy included.
     pub fn new_world(&self) -> GameWorld {
         let mut world = GameWorld::from_scenario("1925", &self.countries.countries);

@@ -9,7 +9,9 @@ use rayon::prelude::*;
 use super::catalogue::{Catalogue, GoodIx};
 use super::prof::{self, P};
 use super::state::{Economy, Market, Region};
-use super::{SAVE_RATE, TAX_RATE, WAGE_WEIGHT, fill, labor_share, milli, workers};
+use super::{
+    SAVE_RATE, TAX_RATE, Unlocks, WAGE_WEIGHT, fill, labor_share, milli, plant_tfp, workers,
+};
 use crate::game::GameWorld;
 
 pub const ECON: ResourceId = ResourceId(10);
@@ -70,6 +72,7 @@ const CONSTRUCTION_WEEKS: i64 = 8;
 
 pub struct Week {
     pub cat: Arc<Catalogue>,
+    pub tree: Option<Arc<crate::research::TechTree>>,
 }
 
 /// What a pop wants to buy this week.
@@ -108,13 +111,13 @@ fn need_mix(
     cat: &Catalogue,
     need: usize,
     prices: &[Fixed],
-    year: i32,
+    exists: &[bool],
 ) -> (Vec<(GoodIx, Fixed)>, Fixed) {
     let n = &cat.needs[need];
     let options: Vec<(GoodIx, Fixed, Fixed)> = n
         .goods
         .iter()
-        .filter(|(g, w)| cat.goods[*g as usize].available_from <= year && *w > Fixed::ZERO)
+        .filter(|(g, w)| exists[*g as usize] && *w > Fixed::ZERO)
         .map(|(g, w)| (*g, *w, prices[*g as usize] / *w))
         .collect();
     let Some(cheapest) = options.iter().map(|o| o.2).min() else {
@@ -145,7 +148,7 @@ fn need_mix(
 pub(crate) fn plan_pop(
     cat: &Catalogue,
     prices: &[Fixed],
-    year: i32,
+    exists: &[bool],
     size: i64,
     budget: Fixed,
     staple_in_kind: Fixed,
@@ -159,7 +162,7 @@ pub(crate) fn plan_pop(
             in_kind = fill(staple_in_kind, qty);
             qty = (qty - staple_in_kind).max(Fixed::ZERO);
         }
-        let (mix, unit_cost) = need_mix(cat, i, prices, year);
+        let (mix, unit_cost) = need_mix(cat, i, prices, exists);
         let cost = qty * unit_cost;
         tier_cost[(n.tier - 1) as usize] += cost;
         need_cost.push((qty, mix, cost));
@@ -246,6 +249,14 @@ fn peasant_surplus(r: &Region, staple: Fixed) -> Fixed {
     staple * (milli(160) + gain * milli(340))
 }
 
+/// Staples the jobless grow for themselves. Smallholders get half the gain of farm technology
+/// (better seed, fertilizer): the Green Revolution reached them too.
+fn subsistence_food(r: &Region, m: &Market) -> Fixed {
+    let agri = m.tech_tfp.first().copied().unwrap_or(Fixed::ONE);
+    let gain = Fixed::ONE + (agri - Fixed::ONE).max(Fixed::ZERO) * milli(500);
+    r.subsistence.mul_ratio(unemployed_people(r), 1000) * gain
+}
+
 fn unemployed_people(r: &Region) -> i64 {
     // Dependents of the jobless count too: they eat from the same plot.
     r.pops
@@ -271,7 +282,7 @@ impl MulDivFloor for i64 {
     }
 }
 
-fn region_orders(cat: &Catalogue, econ: &Economy, r: &Region, year: i32) -> RegionOrders {
+fn region_orders(cat: &Catalogue, econ: &Economy, r: &Region, exists: &[bool]) -> RegionOrders {
     let g = cat.goods.len();
     let m = &econ.markets[r.market as usize];
     let mut demand = vec![Fixed::ZERO; g];
@@ -279,7 +290,7 @@ fn region_orders(cat: &Catalogue, econ: &Economy, r: &Region, year: i32) -> Regi
     for p in &r.plants {
         let b = &cat.buildings[p.kind as usize];
         let method = &b.methods[p.method as usize];
-        let scale = plant_scale(p.levels, p.staffing) * r.tfp_for(b) * p.utilization;
+        let scale = plant_scale(p.levels, p.staffing) * plant_tfp(r, m, b) * p.utilization;
         for (gi, q) in &method.inputs {
             demand[*gi as usize] += *q * scale;
         }
@@ -288,7 +299,7 @@ fn region_orders(cat: &Catalogue, econ: &Economy, r: &Region, year: i32) -> Regi
             supply[*gi as usize] += *q * out_scale;
         }
     }
-    let staple = r.subsistence.mul_ratio(unemployed_people(r), 1000);
+    let staple = subsistence_food(r, m);
     if let Some(grain) = cat.good("grain") {
         supply[grain as usize] += peasant_surplus(r, staple);
     }
@@ -310,7 +321,7 @@ fn region_orders(cat: &Catalogue, econ: &Economy, r: &Region, year: i32) -> Regi
             let plan = plan_pop(
                 cat,
                 &m.price,
-                year,
+                exists,
                 pop.size,
                 budget.max(Fixed::ZERO),
                 own_food,
@@ -334,18 +345,17 @@ fn clear_market(
     demand: &[Fixed],
     supply: &[Fixed],
     trade: &[Fixed],
-    year: i32,
+    exists: &[bool],
 ) -> Market {
     let g = cat.goods.len();
     // The state's own purchases and construction join the demand.
     let mut demand = demand.to_vec();
     let budget = m.treasury.max(Fixed::ZERO) * STATE_SPENDING * milli(400);
     for (key, per_mille) in STATE_BASKET {
-        if let Some(gi) = cat.good(key) {
-            let good = &cat.goods[gi as usize];
-            if good.available_from <= year {
-                demand[gi as usize] += budget.mul_ratio(per_mille, 1000) / m.price[gi as usize];
-            }
+        if let Some(gi) = cat.good(key)
+            && exists[gi as usize]
+        {
+            demand[gi as usize] += budget.mul_ratio(per_mille, 1000) / m.price[gi as usize];
         }
     }
     for (gi, left) in m.construction.iter().enumerate() {
@@ -408,7 +418,7 @@ fn settle_region(
     for p in &r.plants {
         let b = &cat.buildings[p.kind as usize];
         let method = &b.methods[p.method as usize];
-        let scale = plant_scale(p.levels, p.staffing) * r.tfp_for(b) * p.utilization;
+        let scale = plant_scale(p.levels, p.staffing) * plant_tfp(r, m, b) * p.utilization;
         let mut cost = Fixed::ZERO;
         let mut cost_base = Fixed::ZERO;
         // Missing inputs cut output by their share in the value of the output (a linear
@@ -492,7 +502,7 @@ fn settle_region(
     }
     // Smallholders sell what they grow beyond their own table.
     if let Some(grain) = cat.good("grain") {
-        let surplus = peasant_surplus(r, r.subsistence.mul_ratio(unemployed_people(r), 1000));
+        let surplus = peasant_surplus(r, subsistence_food(r, m));
         let sold = surplus * m.sell_ratio[grain as usize] * m.price[grain as usize];
         wages[prof::PEASANT] += sold;
         gdp += sold;
@@ -547,8 +557,7 @@ fn settle_region(
     }
     // Food the jobless grow for themselves counts in GDP at the base price of grain.
     if let Some(grain) = cat.good("grain") {
-        gdp += r.subsistence.mul_ratio(unemployed_people(r), 1000)
-            * cat.goods[grain as usize].base_price;
+        gdp += subsistence_food(r, m) * cat.goods[grain as usize].base_price;
     }
     RegionSettlement {
         pops,
@@ -584,11 +593,12 @@ impl System<GameWorld> for Week {
     fn compute(&self, ctx: &TickCtx, world: &GameWorld) -> WeekChanges {
         let cat = &*self.cat;
         let econ = &world.econ;
-        let year = ctx.date.year;
+        let unlocks = Unlocks::new(cat, ctx.date.year, self.tree.as_deref(), &world.research);
+        let exists = &unlocks.goods;
         let orders: Vec<RegionOrders> = econ
             .regions
             .par_iter()
-            .map(|r| region_orders(cat, econ, r, year))
+            .map(|r| region_orders(cat, econ, r, exists))
             .collect();
         let g = cat.goods.len();
         let mut demand = vec![vec![Fixed::ZERO; g]; econ.markets.len()];
@@ -635,7 +645,9 @@ impl System<GameWorld> for Week {
             .markets
             .iter()
             .enumerate()
-            .map(|(mi, m)| clear_market(cat, m.clone(), &demand[mi], &supply[mi], &trade[mi], year))
+            .map(|(mi, m)| {
+                clear_market(cat, m.clone(), &demand[mi], &supply[mi], &trade[mi], exists)
+            })
             .collect();
         let regions: Vec<RegionSettlement> = econ
             .regions
@@ -791,5 +803,6 @@ pub fn plan_pop_public(
     budget: Fixed,
     in_kind: Fixed,
 ) -> Vec<(GoodIx, Fixed)> {
-    plan_pop(cat, prices, year, size, budget, in_kind).orders
+    let exists = Unlocks::by_year(cat, year).goods;
+    plan_pop(cat, prices, &exists, size, budget, in_kind).orders
 }

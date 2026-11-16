@@ -1,6 +1,6 @@
 # Pesquisa: tecnologia com maturidade por país
 
-Estado: fase 2 em andamento. O contrato está em `crates/bf-sim/src/research.rs`, os dados em
+Estado: fase 2 ligada à simulação. O contrato está em `crates/bf-sim/src/research.rs`, os dados em
 `data/research/technologies.ron` e os nomes em `assets/i18n/*/research.ftl`.
 
 ## A ideia
@@ -42,11 +42,44 @@ O jogador escolhe a tecnologia em foco; o resto do esforço se espalha pelas can
 países escolhem sozinhos, por regra determinística (barata, pedida pela demanda, do ramo forte do
 país), até a IA da fase 6.
 
+## Como a simulação aplica
+
+- **Esforço:** engenheiros e profissionais empregados, vezes a alfabetização, vezes o efeito
+  `research` (computador, internet). 70 % vai para a ciência em foco (ou a mais barata aberta) e
+  30 % para protótipos do que já é ciência.
+- **Custo:** cai até 75 % com a parcela do PIB mundial que já sabe; dobra a cada cinco anos de
+  adiantamento sobre a história (`ahead`), o que segura o líder perto das datas reais.
+- **Imitação:** o que já é feito em escala lá fora se copia, um estágio por vez, sem pesquisa
+  própria, mais rápido onde se lê e quanto maior a parcela do mundo que já faz.
+- **Uso sem fabricar:** os efeitos de mortalidade, fecundidade e alfabetização chegam pelo uso
+  (vacina, antibiótico, pílula importados), em 15 anos a partir da primeira fábrica no mundo,
+  mais depressa onde se lê. A pílula só baixa a natalidade na proporção da alfabetização ao
+  quadrado (a escola das mães).
+- **Escolha de método:** lucro = valor adicionado − salário de mercado × trabalhadores. Mecanizar
+  compensa onde o trabalho é caro e não onde é barato; antes, com o lucro como fração fixa do valor
+  adicionado, quase nenhuma fábrica trocava de método.
+- **Produtividade:** a de cada grupo de edifícios, relativa ao estágio de 1925 do país, multiplica
+  a da região; a convergência da produtividade de base entre regiões (instituições, escola)
+  continua. A subsistência ganha metade do ganho agrícola (Revolução Verde).
+
 ## Calibração
 
 O benchmark de 100 anos compara o ano em que cada tecnologia chega ao protótipo e à indústria com os
 anos históricos (`demonstrated`, `industrialized`) e acusa desvio grande. A produtividade da
 fronteira deve crescer perto de 1,5 a 2 % ao ano.
+
+Primeira rodada com a árvore completa (1925–2025, sem população por censo):
+
+| | 1935 | 1965 | 1995 | 2025 |
+|---|---|---|---|---|
+| População (bilhões) | 2,16 | 3,25 | 4,83 | 6,76 |
+| PIB mundial (US$ tri, preços de 1925) | 6,0 | 14,8 | 32,9 | 49,7 |
+| Tecnologias feitas em escala | 31 | 88 | 126 | 164 |
+
+As 133 tecnologias posteriores a 1925 chegam ao protótipo, em média, 1,5 ano depois da história
+(desvio absoluto médio de 2,8 anos); 129 chegam à indústria, 1,7 ano depois. Abertos: população
+17 % abaixo dos 8,1 bilhões reais e urbanização caindo (0,44 → 0,29), porque a mecanização tira
+emprego do campo sem a migração e a construção da fase 3.
 
 ## A árvore de 1925 a 2025
 

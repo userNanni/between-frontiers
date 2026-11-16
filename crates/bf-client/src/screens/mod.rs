@@ -5,6 +5,7 @@ pub mod game;
 pub mod lens_panel;
 pub mod menu;
 pub mod pick;
+pub mod research;
 pub mod saves;
 pub mod settings;
 pub mod top_bar;

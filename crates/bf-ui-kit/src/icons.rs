@@ -25,12 +25,14 @@ pub enum Icon {
     Crown,
     Coin,
     Pie,
+    Flask,
 }
 
 impl Icon {
     pub fn source(self) -> ImageSource<'static> {
         match self {
             Icon::Coins => include_image!("../../../assets/icons/coins.svg"),
+            Icon::Flask => include_image!("../../../assets/icons/flask.svg"),
             Icon::People => include_image!("../../../assets/icons/people.svg"),
             Icon::Heart => include_image!("../../../assets/icons/heart.svg"),
             Icon::Book => include_image!("../../../assets/icons/book.svg"),

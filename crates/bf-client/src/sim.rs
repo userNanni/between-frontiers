@@ -7,6 +7,7 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use bf_sim::game::{GameCommand, Session};
+use bf_sim::research::Stage;
 use laplace_schelling::calendar::Date;
 
 /// Days per second at each speed, 1 to 5.
@@ -25,6 +26,40 @@ pub struct Snapshot {
     pub hash: String,
     /// Tag the world says the player controls.
     pub player: Option<String>,
+    /// Where the player's country stands in research; `None` without research data.
+    pub research: Option<ResearchView>,
+}
+
+/// The player's research, copied out of the world for the interface.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ResearchView {
+    pub stages: Vec<Stage>,
+    /// 0–1 toward the next stage.
+    pub progress: Vec<f32>,
+    pub focus: Option<u16>,
+    /// Research effort per month.
+    pub points: f32,
+    /// Year each technology first reached each stage anywhere (0 = not yet).
+    pub firsts: Vec<[i32; 5]>,
+}
+
+fn research_view(session: &Session) -> Option<ResearchView> {
+    let w = session.world();
+    let tag = w.player_tag()?;
+    let c = w.countries.iter().position(|(_, c)| c.tag == tag)?;
+    let r = &w.research;
+    Some(ResearchView {
+        stages: r.stage.get(c)?.clone(),
+        progress: r
+            .progress
+            .get(c)?
+            .iter()
+            .map(|p| p.to_f64_lossy() as f32)
+            .collect(),
+        focus: r.focus.get(c).copied().flatten(),
+        points: r.points.get(c).map_or(0.0, |p| p.to_f64_lossy() as f32),
+        firsts: r.firsts.clone(),
+    })
 }
 
 pub enum Command {
@@ -56,6 +91,7 @@ fn snapshot_of(session: &Session, paused: bool, speed: u8) -> Snapshot {
         speed,
         hash: short(&session.state_hash()),
         player: session.world().player_tag().map(str::to_owned),
+        research: research_view(session),
     }
 }
 

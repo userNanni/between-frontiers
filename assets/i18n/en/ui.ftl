@@ -216,3 +216,19 @@ legend-high = High
 tip-deposit = { $resource }: deposit of size { $size } of 5
 tip-climate = { $climate } climate on { $share } of the land
 tip-farm = { $farm }: suitability { $value }
+
+## Research
+bar-research = Research (R)
+research-title = Research
+research-close = Close
+research-summary = { $points } research points a month · focus: { $focus }
+research-focus-auto = chosen automatically
+research-focus-clear = Let the country choose
+research-set-focus = Research
+research-focused = In focus
+research-locked = Needs other technologies
+research-requires = Requires: { $list }
+research-unlocks = Unlocks: { $list }
+research-history = In history: prototype in { $demonstrated }, industry in { $industrialized }
+research-first-industrial = First made at scale in this game in { $year }
+research-state-buyer = The state can be the first buyer
