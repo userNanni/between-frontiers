@@ -24,7 +24,8 @@ const GOODS: &[(&str, &str, f64)] = &[
     ("aluminium", "aluminium", 1000.0),
     ("copper", "copper", 1000.0),
     ("textiles", "textiles", 1000.0),
-    ("automobiles", "automobiles", 1.0),
+    // A vehicle of 1925 is 8.79 lots of $1,000 (docs/economy.pt-BR.md, "Produção de 1925").
+    ("automobiles", "automobiles", 8787.0),
     ("coal", "", 0.0),
     ("crude_oil", "", 0.0),
     ("natural_gas", "", 0.0),

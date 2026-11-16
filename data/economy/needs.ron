@@ -2,6 +2,10 @@
 // 4): weight of the need in the money left after every tier is met. Spare money goes mostly to
 // services and less to goods: the rich of 1925 hired servants, travelled and banked more than
 // they bought steel.
+// `automobile` buys the car and the fuel to run it: fuel is weighted so that its spending is
+// about 27% of the spending on cars, as in the United States of 1925 (456 gallons of motor fuel
+// per registered vehicle, factory value $684 per vehicle; Historical Statistics of the United
+// States, Colonial Times to 1970, series Q 148-156; US government work, public domain).
 (
     needs: [
         (key: "staple_food", tier: 1, per_capita: 0.3, goods: [("grain", 1), ("rice", 1), ("maize", 0.9)]),
