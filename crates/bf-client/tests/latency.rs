@@ -111,6 +111,27 @@ fn pause_and_autosave_latency() {
         .map(|f| format!("{f:.0}"))
         .collect();
     println!("frames over 50 ms: {}", slow.join(", "));
+    let saved = saves::list(&user.join("saves"))
+        .into_iter()
+        .find(|s| s.meta.name == "latency")
+        .expect("the campaign's save");
+    println!("autosaved at {:?}", saved.meta.date);
+    let world = std::fs::read(saved.dir.join(saves::WORLD_FILE)).unwrap();
+    let session = bf_sim::game::Session::load(&world, 0, None).unwrap();
+    let t = Instant::now();
+    let hash = session.state_hash();
+    println!(
+        "one state hash: {:.1} ms ({})",
+        t.elapsed().as_secs_f64() * 1e3,
+        hash.to_string().chars().take(12).collect::<String>()
+    );
+    let t = Instant::now();
+    let bytes = session.save("test", "latency").unwrap();
+    println!(
+        "one save: {:.1} ms, {:.1} MB",
+        t.elapsed().as_secs_f64() * 1e3,
+        bytes.len() as f64 / 1e6
+    );
 
     // Pause at speed 5, ten times.
     let mut waits = Vec::new();
