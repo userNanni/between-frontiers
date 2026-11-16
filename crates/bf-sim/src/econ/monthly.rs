@@ -594,23 +594,25 @@ impl System<GameWorld> for Investment {
             }
         }
         let construction = cat.construction;
-        // A kind is worth more levels when the ones there run full, or when the country buys
-        // abroad a large share of what they make: importing what could be made at home, at
-        // home wages, is the opening for a new plant.
         let busy: Vec<Vec<bool>> = used
             .iter()
             .zip(&built)
-            .enumerate()
-            .map(|(mi, (u, b))| {
-                let m = &econ.markets[mi];
+            .map(|(u, b)| {
                 u.iter()
                     .zip(b)
-                    .enumerate()
-                    .map(|(kind, (u, b))| {
-                        *b <= Fixed::ZERO
-                            || *u >= *b * BUSY_UTILIZATION
-                            || imported_share(cat, m, kind) >= substitution_share(m)
-                    })
+                    .map(|(u, b)| *b <= Fixed::ZERO || *u >= *b * BUSY_UTILIZATION)
+                    .collect()
+            })
+            .collect();
+        // Import substitution: a country that buys abroad a large share of what a kind makes
+        // builds it at home, at home wages, even with the existing levels idle. Only in the
+        // metropole: colonial rule kept the colonies' market for the metropole's industry.
+        let importing: Vec<Vec<bool>> = econ
+            .markets
+            .iter()
+            .map(|m| {
+                (0..nk)
+                    .map(|kind| imported_share(cat, m, kind) >= substitution_share(m))
                     .collect()
             })
             .collect();
@@ -653,7 +655,10 @@ impl System<GameWorld> for Investment {
                     let busy_here = match local {
                         Some(_) => current
                             .is_none_or(|p| p.levels <= 0 || p.utilization >= BUSY_UTILIZATION),
-                        None => busy[r.market as usize][kind],
+                        None => {
+                            busy[r.market as usize][kind]
+                                || (!r.colony && importing[r.market as usize][kind])
+                        }
                     };
                     if !busy_here {
                         continue;
