@@ -413,6 +413,9 @@ pub struct Build {
 
 pub struct InvestmentChanges {
     builds: Vec<Build>,
+    /// Money each market's pool has left this month after the works it started at home: the
+    /// reading point for capital that crosses borders (not applied; the hash does not see it).
+    pub leftover: Vec<Fixed>,
     closes: Vec<(usize, u16)>,
     public: Vec<super::state::Project>,
 }
@@ -699,6 +702,7 @@ impl System<GameWorld> for Investment {
             by_market[r.market as usize].extend(list);
         }
         let mut builds = Vec::new();
+        let mut leftover = Vec::with_capacity(econ.markets.len());
         for (mi, mut list) in by_market.into_iter().enumerate() {
             let m = &econ.markets[mi];
             let mut budget = m.pool - committed(cat, m);
@@ -720,10 +724,12 @@ impl System<GameWorld> for Investment {
                 builds.push(build);
                 started += 1;
             }
+            leftover.push(budget);
         }
         let public = super::public::public_works(cat, econ, &unlocks);
         InvestmentChanges {
             builds,
+            leftover,
             closes,
             public,
         }
