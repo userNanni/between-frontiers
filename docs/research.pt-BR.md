@@ -81,6 +81,10 @@ As 133 tecnologias posteriores a 1925 chegam ao protótipo, em média, 1,5 ano d
 17 % abaixo dos 8,1 bilhões reais e urbanização caindo (0,44 → 0,29), porque a mecanização tira
 emprego do campo sem a migração e a construção da fase 3.
 
+Com a árvore em níveis (requisitos novos e custo crescente ao longo de cada requisito), o
+protótipo chega em média 2,5 anos depois da história (desvio absoluto 3,5) e a indústria 2,1 anos
+depois (125 de 133 até 2025); população e PIB de 2025 quase não mudam (6,75 bilhões, US$ 49,5 tri).
+
 ## A árvore de 1925 a 2025
 
 168 tecnologias em 12 campos e 6 eras (`data/research/technologies.ron`). Regras que os testes de
@@ -93,8 +97,23 @@ emprego do campo sem a migração e a construção da fase 3.
   tem tecnologia: é como o edifício funciona em 1925 (por isso o alumínio Hall-Héroult, único método
   da fundição, fica livre).
 - Datas históricas dentro da era, com folga de 5 anos; custo cresce cerca de 2,5× por era.
+- **É uma árvore de verdade:** toda tecnologia posterior a 1925 nasce de pelo menos uma outra, e
+  custa pelo menos 10 % mais que cada um dos seus requisitos.
+- **Níveis:** duas colunas por era (`LEVELS_PER_ERA`). O nível de uma tecnologia é o primeiro da
+  sua era ou um a mais que o maior nível dos seus requisitos, o que vier depois. São 13 níveis,
+  do 1 (≈ 40 pontos) ao 13 (≈ 6000 pontos); a mediana do custo nunca cai de um nível para o
+  seguinte.
 - Produtividade: nas eras 1–5, Σ ln(1 + g) por grupo fica perto de 1,55 (≈ 4,7× em cem anos) nos
   grupos industriais e na agropecuária, e perto de 0,5 nos serviços. O cabeçalho do arquivo explica
   como os pesos foram escalados.
 - Tecnologia de era 1 em diante começa desconhecida, ou no estágio de ciência onde a ideia já existia
   em 1925 (televisão, foguete a combustível líquido, radar, milho híbrido).
+
+## A tela
+
+A árvore é um grafo, como nos editores de nós (xyflow): colunas são os níveis, com a era e o
+custo típico no cabeçalho; linhas são os campos; curvas ligam cada tecnologia aos requisitos.
+Arrastar move, a roda do mouse aproxima, o minimapa no canto mostra onde se está e leva a
+qualquer ponto, e "Ajustar" mostra a árvore inteira. Passar o mouse por uma tecnologia acende o
+que ela pede e o que ela libera; o caminho até a tecnologia em foco fica animado. As abas de era
+levam à primeira coluna da era. Com o zoom afastado, o cartão vira só a faixa do estágio.

@@ -142,6 +142,13 @@ fn walk_through_the_screens() {
     h.key_press(egui::Key::R);
     h.run_steps(3);
     shot(&mut h, "06r-pesquisa");
+    // Hovering a card lights up what it needs and what it leads to.
+    h.hover_at(egui::pos2(704.0, 410.0));
+    h.run_steps(2);
+    shot(&mut h, "06s-pesquisa-caminho");
+    h.get_by_label("Ajustar").click();
+    h.run_steps(2);
+    shot(&mut h, "06t-pesquisa-inteira");
     h.key_press(egui::Key::Escape);
     h.run_steps(2);
     h.get_by_label("Menu (Esc)").click();
