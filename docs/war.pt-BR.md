@@ -38,9 +38,9 @@ em gerações diferentes. É o corte contra a planilha: 33 tipos, cada um com 1 
 
 | Domínio | Tipos (tecnologia de entrada → gerações) |
 |---|---|
-| Terra (11) | `irregular` (milícia e guerrilha; sem tecnologia); `garrison`; `infantry` (`machine_gun` → `arms_mass_production`, `composite_armor`); `light_infantry` (montanha, selva, fuzileiro; `machine_gun`); `cavalry`; `artillery` (→ `motor_vehicle`, `guided_missile`, `precision_guided_munitions`); `engineers`; `anti_air` (`aviation` → `radar`, `guided_missile`, `missile_defense`); `armor` (`tank` → `armored_warfare`, `composite_armor`); `mechanized` (`motor_vehicle`, motorizada → `armored_warfare`, mecanizada → `composite_armor`); `airborne` (`stressed_skin_aircraft` → `gas_turbine`, aeromóvel) |
+| Terra (11) | `irregular` (milícia e guerrilha; sem tecnologia); `garrison`; `infantry` (`machine_gun` → `arms_mass_production`, `guided_missile`); `light_infantry` (montanha, selva, fuzileiro; `machine_gun` → `arms_mass_production`, `guided_missile`); `cavalry`; `artillery` (→ `motor_vehicle`, `guided_missile`, `precision_guided_munitions`); `engineers` (→ `earthmoving_machinery`); `anti_air` (`aviation` → `radar`, `guided_missile`); `armor` (`tank` → `armored_warfare`, `composite_armor`); `mechanized` (`motor_vehicle`, motorizada → `armored_warfare`, mecanizada → `composite_armor`); `airborne` (`stressed_skin_aircraft` → `gas_turbine`, aeromóvel) |
 | Mar (9) | `battleship` (encouraçado e cruzador de batalha); `carrier` (`aircraft_carrier` → `jet_engine`, `nuclear_power`); `cruiser` (→ `guided_missile`); `destroyer` (→ `radar`, `guided_missile`); `submarine` (→ `nuclear_submarine`, `cruise_missile`); `escort` (aviso, corveta, fragata; → `radar`, `guided_missile`); `coastal` (navio de defesa costeira, torpedeiro, canhoneira, monitor); `mine_warfare`; `transport` (transporte e desembarque) |
-| Ar (8) | `fighter` (`aviation` → `stressed_skin_aircraft`, `jet_engine`, `guided_missile`, `stealth_aircraft`); `attack` (bombardeiro tático; → `stressed_skin_aircraft`, `jet_engine`, `precision_guided_munitions`, `satellite_guided_munitions`); `strategic_bomber` (`strategic_bomber` → `jet_engine`, `cruise_missile`, `stealth_aircraft`); `patrol` (reconhecimento e patrulha marítima; → `radar`, `jet_engine`); `air_transport` (→ `stressed_skin_aircraft`, `jet_engine`); `naval_aviation` (`aircraft_carrier` → `stressed_skin_aircraft`, `jet_engine`); `helicopter`; `drone` (`armed_drone` → `loitering_munition`) |
+| Ar (8) | `fighter` (`aviation` → `stressed_skin_aircraft`, `jet_engine`, `guided_missile`, `stealth_aircraft`); `attack` (bombardeiro tático; → `stressed_skin_aircraft`, `jet_engine`, `precision_guided_munitions`, `satellite_guided_munitions`); `strategic_bomber` (`strategic_bomber` → `jet_engine`, `cruise_missile`, `stealth_aircraft`); `patrol` (reconhecimento e patrulha marítima; → `radar`, `jet_engine`); `air_transport` (→ `stressed_skin_aircraft`, `jet_engine`); `naval_aviation` (`aircraft_carrier` → `stressed_skin_aircraft`, `jet_engine`); `helicopter` (→ `precision_guided_munitions`); `drone` (`armed_drone` → `loitering_munition`) |
 | Estratégico (5) | `ballistic_missile` (→ `hypersonic_glide_vehicle`); `missile_submarine` (`nuclear_submarine` + `ballistic_missile`); `nuclear_warhead` (`atomic_bomb` → `thermonuclear_weapon`); `satellite` (`artificial_satellite` → `gps`); `missile_defense` |
 
 **Quantos o jogo aguenta.** O Victoria 3 tem cerca de 20 tipos de unidade e o Cold War Era 34
@@ -59,9 +59,9 @@ o jogador paga), ou é uma regra única de `rules.ron` aplicada a ele.
 
 | Atributo | Regra | Onde |
 |---|---|---|
-| Poder de fogo em terra | soma do equipamento do elemento, em lotes, vezes o peso de fogo de cada bem (`fire_per_lot`), vezes o preenchimento daquele bem (o que a unidade tem sobre o que deveria ter) | `rules.ron`, um peso por bem militar; o lote é US$ 1.000 a preço-base, então equipamento mais caro (geração nova) é mais fogo |
+| Poder de fogo em terra | soma do equipamento que a unidade de fato tem (o preenchimento fica à vista: o que tem sobre o que deveria ter), na unidade de cada bem, vezes o peso de fogo do bem (`fire_per_unit`) | `rules.ron`, um peso por bem; o lote é US$ 1.000 a preço-base, então equipamento mais caro (geração nova) é mais fogo |
 | Proteção | parcela do valor do equipamento em blindados, vezes `protection_per_armor_share`, até o teto | `rules.ron` |
-| Fogo naval | tonelagem do navio vezes a parcela do papel (canhão, torpedo, antissubmarino, antiaérea): um encouraçado é casco e canhão, um contratorpedeiro é torpedo e antissubmarino | papéis no tipo, peso em `rules.ron` |
+| Fogo naval | valor do equipamento do navio em lotes vezes a parcela do papel (canhão, torpedo, antissubmarino, antiaérea, antinavio): um encouraçado é casco e canhão, um contratorpedeiro é torpedo e antissubmarino; a geração nova custa mais e atira mais | papéis no tipo |
 | Resistência do navio | tonelagem: dano em toneladas afunda o navio quando passa da sua tonelagem | tipo |
 | Poder aéreo | custo do avião em lotes vezes a parcela do papel | papéis no tipo |
 | Treino | semanas de treino do tipo; o fator vai do piso (recruta) a 1 (treino completo) | `rules.ron`, `training_floor` |
@@ -159,8 +159,13 @@ peso e os elementos recebidos.
 | Terreno | quem defende multiplica pelo fator de defesa do terreno e pela fortificação; quem ataca multiplica pelo fator da sua classe de mobilidade no terreno (o blindado no pântano perde) |
 | Ar | 1 − `air_weight` × (1 − superioridade aérea do lado) |
 
-As perdas de cada lado são `lethality` × poder do outro × (1 − proteção própria), nunca mais que o
-efetivo. Se o poder de quem ataca passa o de quem defende, a frente anda
+As perdas de cada lado são uma taxa sobre o próprio efetivo:
+`land_lethality` × 2 × (parcela do poder que é do inimigo) × (1 − proteção própria). Com poderes
+iguais, cada lado perde `land_lethality` (1,5 % por semana em `rules.ron`); contra um inimigo que
+tem todo o poder, o dobro; nunca mais que o efetivo. A taxa não cresce com o equipamento caro: dois
+exércitos de 2025 se desgastam no mesmo ritmo que dois de 1925, e quem tem mais equipamento ganha
+pela parcela do poder, não pelo número absoluto. O exército sem saída se desfaz pelo avanço da
+frente (cerco, na fatia que ligar a guerra), não pela taxa. Se o poder de quem ataca passa o de quem defende, a frente anda
 `velocidade × (1 − poder do defensor ÷ poder do atacante)` quilômetros na semana. O resultado volta
 com a decomposição: cada termo dos dois lados e a razão entre eles, que multiplicadas dão a razão
 de poder ("número 1,8×, equipamento 0,9×, suprimento 0,6×, terreno 0,7×: a ofensiva para").
@@ -169,8 +174,10 @@ de poder ("número 1,8×, equipamento 0,9×, suprimento 0,6×, terreno 0,7×: a 
 
 `war::naval_step` resolve um encontro numa zona marítima. Cada lado soma, por grupo de navios:
 canhão e torpedo contra os navios de superfície do outro; antissubmarino contra os submarinos do
-outro; aviões a bordo contra a superfície, menos a antiaérea do alvo. O dano, em toneladas, se
-divide entre os grupos alvo pela parcela de tonelagem; afunda `dano ÷ tonelagem do navio` navios
+outro; aviões a bordo contra a superfície, menos a antiaérea do alvo. Como em terra, cada frota
+perde `naval_lethality` da sua tonelagem de superfície por semana com golpes iguais e até o dobro
+com todos do outro lado; os submarinos perdem pela parcela do antissubmarino do outro sobre os
+próprios torpedos. O dano, em toneladas, se divide entre os grupos alvo pela parcela de tonelagem; afunda `dano ÷ tonelagem do navio` navios
 inteiros, e o resto fica como avaria. Treino e combustível multiplicam como em terra. A
 decomposição mostra canhão, torpedo, ar, antissubmarino, treino, suprimento e número.
 
@@ -182,8 +189,9 @@ sobrou do passo e luta em terra com o fator de terreno `amphibious`.
 ### Passo de combate no ar
 
 `war::air_step` disputa uma zona (a de uma frente ou a de um estado bombardeado): a superioridade
-de um lado é o seu poder ar-ar sobre a soma dos dois. As perdas seguem `air_lethality` como em
-terra, divididas pela quantidade de aviões de cada grupo. O que sobra de ataque ao solo e de
+de um lado é o seu poder ar-ar sobre a soma dos dois. Cada lado perde `air_lethality` dos seus aviões
+com superioridade igual e até o dobro sem ela, divididos entre os grupos pela quantidade, por maior
+resto. O que sobra de ataque ao solo e de
 bombardeio estratégico, vezes a superioridade, vira golpe: ataque ao solo soma ao fogo da frente;
 bombardeio estratégico tira capacidade (fábricas, ferrovia, usina) do estado alvo; ataque naval
 entra no passo do mar. A superioridade alimenta o termo "ar" dos outros dois.
@@ -281,6 +289,39 @@ Cada uma nasce como painel registrado no HUD modular, com atalho no registro de 
 - **Exaustão e paz:** os termos da exaustão dos dois lados, as exigências na mesa e a proposta.
 - **Crise:** a escada com o degrau atual, o casus belli, a exigência, o prazo e quem tomou lado.
 - **Lente de guerra no mapa:** ocupação, devastação, terreno de combate.
+
+## Forças de 1º de janeiro de 1925
+
+`data/scenario/1925/forces.ron`, gerado por `tools/war/forces_1925.py` (fontes, licenças e regras
+de leitura em `tools/war/SOURCES.md`). Contagem: 44 países, 182 linhas, das quais 30 com
+`estimate` e 152 com o número impresso na fonte; 40 países com exército (5,84 milhões de homens),
+27 com marinha e 20 com aviação.
+
+- **Fonte principal:** *Armaments Year-Book* da Liga das Nações, 1º ano (1924), domínio público;
+  números de 1923-1924, os mais próximos que as fontes abertas imprimem. O Hansard (respostas do
+  War Office e do Air Ministry) cobre exércitos e aviações que o Year-Book não totaliza; o
+  *Brassey's* de 1925 e a Wikipedia, os navios das marinhas menores e a Reichsmarine.
+- **Exército inteiro como `infantry`** em 1925: a fonte dá o efetivo, não a divisão por arma; a
+  artilharia e a cavalaria orgânicas estão no equipamento do elemento. Tropas coloniais entram como
+  `garrison` nas colônias.
+- **Estimativas:** tetos de tratado tomados como efetivo (Alemanha, Hungria, Bulgária), números de
+  outro ano (Pérsia 1926, México 1920, Irlanda pela meta de 1924) e a divisão por tipo das
+  aviações que só têm total (França, Estados Unidos, Itália e outras cinco), pelas parcelas das
+  aviações que a fonte divide (caça 25 %, bombardeio 14 %, reconhecimento 61 %).
+- **Conferido no teste:** os navios capitais retidos pelo Tratado de Washington (18 americanos,
+  22 britânicos, 10 japoneses) e Versalhes (Alemanha sem aviação nem submarino).
+
+### Lacunas
+
+- **Reserva e milícia:** Suíça (500.000 mobilizáveis, nenhum efetivo permanente), Austrália e
+  África do Sul (forças de tempo parcial), Guarda Nacional americana, Exército Territorial
+  britânico. Pedem uma regra de reserva (homens treinados fora do serviço, chamados na
+  mobilização), que entra com a mobilização.
+- Sem número em fonte aberta: exército de Egito, Peru, Colômbia, Venezuela, Uruguai, Bolívia,
+  Paraguai, Equador, Cuba, Sião, Afeganistão e Etiópia; aviação de URSS, Polônia, Romênia,
+  Bélgica, Turquia, Brasil e Argentina; destróieres alemães.
+- O *Armaments Year-Book* de 1925-26 daria números de 1924-25 e a divisão por arma; não foi achado
+  em scan aberto.
 
 ## Pedidos a outros arquivos
 

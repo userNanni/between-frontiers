@@ -121,13 +121,13 @@ impl Military {
         }
         for (g, q) in &mut out {
             if *g == r.ammunition && activity == Activity::Combat {
-                *q = *q * r.combat_ammunition;
+                *q *= r.combat_ammunition;
             }
             if *g == r.fuel && activity != Activity::Peace {
-                *q = *q * r.moving_fuel;
+                *q *= r.moving_fuel;
             }
             if winter {
-                *q = *q * r.winter_upkeep;
+                *q *= r.winter_upkeep;
             }
             *q = *q * elements as i64;
         }

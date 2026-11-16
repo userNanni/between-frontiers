@@ -118,7 +118,22 @@ contrariam causa visível e pouco sorteio.
 | Superestados (formação de uniões) | uniões aduaneiras e monetárias com data (BLEU, Suíça–Liechtenstein, União Monetária Latina) | atrás: falta a regra de formação |
 | — | regime monetário por país (ouro, divisa-ouro, fixo, prata, papel, moeda alheia) e tarifa média de 1925 | só nosso |
 
-## Fases seguintes: o que o CWE tem e nós ainda não
+## Fase 5: guerra (só o contrato, o catálogo e as forças de 1925)
+
+Contagem nas definições de `common/` do CWE no commit `8316f96` (2026-11-16). Desenho nosso em
+`war.pt-BR.md`; nada roda ainda.
+
+| Sistema | CWE | Nós | Diferença |
+|---|---|---|---|
+| Tipos de unidade | 34 em 4 grupos (11 de infantaria, 10 de artilharia, 10 aéreos, 3 de fuzileiros); a marinha herda o Victoria 3 | 33 em 4 domínios (terra 11, mar 9, ar 8, estratégico 5), com 1 a 5 gerações por tecnologia | contagem parecida; nossa geração substitui o tipo novo por tecnologia |
+| Combate | o do Victoria 3: batalha com sorteio e modificadores de general | passo semanal sem sorteio, poder com seis termos nomeados em terra, perdas como taxa do efetivo; mar e ar com passo próprio | à frente em causa visível; atrás até ligar |
+| Suprimento | o do Victoria 3, percentual por frente | toneladas pelo caminho, trecho a trecho, gargalo nomeado | só nosso |
+| Mobilização | 24 opções de mobilização | lei de conscrição sobre a pirâmide, reservados no trabalho essencial | atrás em variedade; as opções viram leis e ordens de indústria |
+| Guerra nuclear, química e biológica | decisões, ultimato e ataque nuclear | ogiva como estoque e dissuasão; uso numa fatia própria; química e biológica não planejadas | atrás até a fatia nuclear |
+| Fim da guerra | pontuação de guerra do Victoria 3 | exaustão medida por termos e paz pelas exigências da crise | só nosso |
+| 1925 | começa em 1950 | 44 países com forças de fonte anotada (182 linhas, 30 estimadas) | — |
+
+
 
 | Sistema do CWE | Nossa fase | Nota |
 |---|---|---|
