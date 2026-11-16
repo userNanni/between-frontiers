@@ -72,6 +72,12 @@ impl<W: Send + Sync + 'static, C: Command<W>> Simulation<W, C> {
         &self.log
     }
 
+    /// Commands queued for ticks not yet run, in the order they will apply. A save must keep
+    /// them: a command issued while paused applies only at the next tick.
+    pub fn pending(&self) -> &[Stamped<C>] {
+        &self.pending
+    }
+
     /// Queues a command for the start of the next tick and returns its stamp.
     pub fn submit(&mut self, issuer: Issuer, command: C) -> (u64, u64) {
         let stamped = Stamped {

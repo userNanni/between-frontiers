@@ -618,10 +618,16 @@ pub fn main(
     check: bool,
     out: &str,
     history_out: Option<&str>,
+    save_at: &[Date],
 ) -> Result<(), String> {
     let data = GameData::load(&root())?;
     let end = Date::new(1925 + years as i32, 1, 1);
     let mid = Date::new(1925 + (years / 2) as i32, 1, 1);
+    let save_points = if save_at.is_empty() {
+        vec![mid]
+    } else {
+        save_at.to_vec()
+    };
     println!(
         "bf-bench --game: {} markets, {} regions, data: deposits {}, land {}, population {}, industry {}",
         data.countries.countries.len(),
@@ -638,14 +644,22 @@ pub fn main(
         crate::history::write(h, path)?;
     }
 
-    let half = run(&data, new_session(&data, seed, threads), mid, false, None);
-    let bytes = half
-        .session
-        .save(env!("CARGO_PKG_VERSION"), "bench")
-        .map_err(|e| e.to_string())?;
-    let reloaded = Session::load(&bytes, threads, Some(data.rules())).map_err(|e| e.to_string())?;
-    let resumed = run(&data, reloaded, end, false, None);
-    let save_load_ok = resumed.session.state_hash() == main.session.state_hash();
+    // Save at each point, reload and finish: the end must not change.
+    let mut reloads = Vec::new();
+    for &at in &save_points {
+        let half = run(&data, new_session(&data, seed, threads), at, false, None);
+        let bytes = half
+            .session
+            .save(env!("CARGO_PKG_VERSION"), "bench")
+            .map_err(|e| e.to_string())?;
+        let reloaded =
+            Session::load(&bytes, threads, Some(data.rules())).map_err(|e| e.to_string())?;
+        let resumed = run(&data, reloaded, end, false, None);
+        let ok = resumed.session.state_hash() == main.session.state_hash();
+        reloads.push((at, bytes.len(), ok));
+    }
+    let save_load_ok = reloads.iter().all(|r| r.2);
+    let bytes_len = reloads.first().map_or(0, |r| r.1);
 
     let determinism = if check {
         let other = if threads == 1 { 0 } else { 1 };
@@ -665,7 +679,7 @@ pub fn main(
         final_hash: main.session.state_hash(),
         yearly_hashes: main.yearly.clone(),
         decades: main.decades.clone(),
-        save_bytes: bytes.len(),
+        save_bytes: bytes_len,
         save_load_mid_run_ok: save_load_ok,
         determinism_ok: determinism,
         systems: crate::system_reports(main.session.sim.schedule().stats()),
@@ -674,17 +688,17 @@ pub fn main(
     print_timings(&report.technologies);
     crate::print_systems(&report.systems);
     println!(
-        "simulation {:.1} s, slowest tick {:.1} ms, save {:.1} MB at {}, reload → {}",
+        "simulation {:.1} s, slowest tick {:.1} ms",
         report.total_ms / 1000.0,
-        report.slowest_tick_ms,
-        bytes.len() as f64 / 1e6,
-        mid.year,
-        if save_load_ok {
-            "same final hash"
-        } else {
-            "DIVERGED"
-        }
+        report.slowest_tick_ms
     );
+    for (at, len, ok) in &reloads {
+        println!(
+            "save {:.1} MB at {at}, reload → {}",
+            *len as f64 / 1e6,
+            if *ok { "same final hash" } else { "DIVERGED" }
+        );
+    }
     if let Some(ok) = determinism {
         println!(
             "determinism across thread counts: {}",
