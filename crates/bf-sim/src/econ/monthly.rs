@@ -232,12 +232,12 @@ impl System<GameWorld> for Labour {
             for (plant, s) in r.plants.iter_mut().zip(c.staffing) {
                 plant.staffing = s;
             }
-            if let (Some(k), Some(levels)) = (self.cat.informal, c.informal) {
-                if levels > 0 || r.plants.iter().any(|p| p.kind == k) {
-                    let p = r.plant_mut(k);
-                    p.levels = levels;
-                    p.method = 0;
-                }
+            if let (Some(k), Some(levels)) = (self.cat.informal, c.informal)
+                && (levels > 0 || r.plants.iter().any(|p| p.kind == k))
+            {
+                let p = r.plant_mut(k);
+                p.levels = levels;
+                p.method = 0;
             }
             let gov: i64 = [prof::CIVIL_SERVANT, prof::SOLDIER, prof::CLERGY]
                 .iter()
