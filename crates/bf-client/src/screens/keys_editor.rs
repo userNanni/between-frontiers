@@ -913,7 +913,8 @@ fn files(shared: &mut Shared, ui: &mut Ui, st: &mut State) {
     let w = ui.available_width();
     bf_ui_kit::text_field(ui, name, w);
     let path = folder.join(name.as_str());
-    ui.horizontal(|ui| {
+    // A long folder (Windows' profile paths) wraps the button onto the next line.
+    ui.horizontal_wrapped(|ui| {
         bf_ui_kit::small(
             ui,
             &shared.i18n.tr_args(
