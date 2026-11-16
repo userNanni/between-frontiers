@@ -496,13 +496,17 @@ pub fn best_method(
 const BUSY_UTILIZATION: Fixed = milli(900);
 
 /// Share of a good's demand bought abroad above which a plant making it is worth building at
-/// home even with the existing ones idle. Reading point for the trade law: the tariff of
-/// `protective_tariffs` or `free_trade` will move it (politics); for now the rule of 1925.
+/// home even with the existing ones idle, under free trade.
 const SUBSTITUTION_SHARE: Fixed = milli(250);
+/// A tariff lowers that share by half its rate: behind protective tariffs (25 %) a country
+/// builds what it imports at an eighth of the demand; under autarky, at any import at all.
+const TARIFF_PULL: Fixed = milli(500);
+const MIN_SUBSTITUTION_SHARE: Fixed = milli(50);
 
-/// The import share that opens import substitution in market `m` (`SUBSTITUTION_SHARE`).
-pub fn substitution_share(_m: &super::Market) -> Fixed {
-    SUBSTITUTION_SHARE
+/// The import share that opens import substitution in market `m`, under the trade law in
+/// force (the metropole's).
+pub fn substitution_share(m: &super::Market) -> Fixed {
+    (SUBSTITUTION_SHARE - m.laws.effects[0].tariff * TARIFF_PULL).max(MIN_SUBSTITUTION_SHARE)
 }
 
 /// Share of the demand for the main output of building `kind` that market `m` imported last
@@ -620,8 +624,17 @@ impl System<GameWorld> for Investment {
             .map(|(ri, r)| {
                 let m = &econ.markets[r.market as usize];
                 let view = super::local::View::last_week(cat, m, r, &national[r.market as usize]);
-                let idle: i64 =
-                    workers(r.pops[prof::PEASANT].size) - r.pops[prof::PEASANT].employed;
+                // Hands a new plant can hire here: idle peasants, jobless labourers and those
+                // working on their own in town, who take a plant's wage over the street.
+                let idle_of = |pi: usize| (workers(r.pops[pi].size) - r.pops[pi].employed).max(0);
+                let informal: i64 = cat.informal.map_or(0, |k| {
+                    r.plants
+                        .iter()
+                        .filter(|p| p.kind == k)
+                        .map(|p| p.levels * cat.buildings[k as usize].methods[0].workers)
+                        .sum()
+                });
+                let idle: i64 = idle_of(prof::PEASANT) + idle_of(prof::LABORER) + informal;
                 let mut out = Vec::new();
                 for (kind, b) in cat.buildings.iter().enumerate() {
                     if b.public || b.informal {
