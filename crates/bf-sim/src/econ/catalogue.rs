@@ -37,6 +37,10 @@ pub struct Method {
     /// Transport the output needs to reach its buyers, per level per week, already among the
     /// inputs: a plant without it in its state reaches the market only in part.
     pub freight: Fixed,
+    /// Value of the outputs of a level at base prices.
+    pub output_value: Fixed,
+    /// The jobs weighted by `WAGE_WEIGHT`: the wage bill is shared in these proportions.
+    pub job_weight: Fixed,
 }
 
 #[derive(Clone, Debug)]
@@ -54,6 +58,10 @@ pub struct Building {
     pub stagnant: bool,
     /// Built and paid for by the state (`BuildingDef::public`).
     pub public: bool,
+    /// Its profits go to landowners rather than capitalists.
+    pub agriculture: bool,
+    /// Share of value added paid as wages ([`super::labor_share`]).
+    pub labor_share: Fixed,
     pub methods: Vec<Method>,
 }
 
@@ -66,9 +74,11 @@ pub struct Need {
     /// Who has the need: urban professions, rural ones, or everyone (`None`).
     pub urban: Option<bool>,
     pub goods: Vec<(GoodIx, Fixed)>,
+    /// Weight of the need in spending beyond the tiers ([`super::week::spare_weight`]).
+    pub spare_weight: Fixed,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct Catalogue {
     pub goods: Vec<Good>,
     pub buildings: Vec<Building>,
@@ -77,6 +87,15 @@ pub struct Catalogue {
     pub local: Vec<GoodIx>,
     /// The good freight is paid in (transport).
     pub freight: Option<GoodIx>,
+    /// Goods and needs the rules name, looked up once instead of by key every week.
+    pub grain: Option<GoodIx>,
+    pub construction: Option<GoodIx>,
+    pub staple_need: Option<usize>,
+    /// Goods the state buys whole (category `public`: schools, hospitals).
+    pub public_goods: Vec<GoodIx>,
+    /// [`super::week::STATE_BASKET`] and [`super::week::UPKEEP_BASKET`] by good index.
+    pub state_basket: Vec<(GoodIx, i64)>,
+    pub upkeep_basket: Vec<(GoodIx, i64)>,
 }
 
 /// Freight per building group: transport bought per unit of output value at base prices, per
@@ -149,8 +168,13 @@ impl Catalogue {
                         .map(|(g, q)| Ok((gx(g)?, per_week(*q))))
                         .collect::<Result<_, CatalogueError>>()?,
                     workers: jobs.iter().map(|(_, n)| n).sum(),
+                    job_weight: jobs
+                        .iter()
+                        .map(|(p, n)| super::WAGE_WEIGHT[*p as usize] * *n)
+                        .sum(),
                     jobs,
                     freight: Fixed::ZERO,
+                    output_value: Fixed::ZERO,
                 });
             }
             bs.push(Building {
@@ -163,6 +187,8 @@ impl Catalogue {
                     as u8,
                 stagnant: b.group == "services",
                 public: b.public,
+                agriculture: b.group == "agriculture",
+                labor_share: super::labor_share(&b.group),
                 resource: b
                     .resource
                     .as_ref()
@@ -176,7 +202,7 @@ impl Catalogue {
                 methods,
             });
         }
-        let ns = needs
+        let ns: Vec<Need> = needs
             .needs
             .iter()
             .map(|n| {
@@ -185,6 +211,7 @@ impl Catalogue {
                     tier: n.tier,
                     per_capita: fx(n.per_capita).mul_ratio(1_000_000, WEEKS),
                     urban: n.urban,
+                    spare_weight: super::week::spare_weight(&n.key),
                     goods: n
                         .goods
                         .iter()
@@ -206,10 +233,7 @@ impl Catalogue {
                 national_with: g.national_with.clone(),
             })
             .collect();
-        let freight = goods
-            .iter()
-            .position(|g| g.key == "transportation")
-            .map(|i| i as GoodIx);
+        let freight = gx("transportation").ok();
         // Freight joins the inputs of the plants that ship goods.
         if let Some(fg) = freight {
             let fprice = goods[fg as usize].base_price;
@@ -236,15 +260,36 @@ impl Catalogue {
                 }
             }
         }
-        let local = (0..goods.len())
-            .filter(|&g| goods[g].local)
-            .map(|g| g as GoodIx)
-            .collect();
+        for m in bs.iter_mut().flat_map(|b| b.methods.iter_mut()) {
+            m.output_value = m
+                .outputs
+                .iter()
+                .map(|(g, q)| *q * goods[*g as usize].base_price)
+                .sum();
+        }
+        let goods_where = |keep: &dyn Fn(&Good) -> bool| -> Vec<GoodIx> {
+            (0..goods.len())
+                .filter(|&g| keep(&goods[g]))
+                .map(|g| g as GoodIx)
+                .collect()
+        };
+        let basket = |items: &[(&str, i64)]| -> Result<Vec<(GoodIx, i64)>, CatalogueError> {
+            items
+                .iter()
+                .map(|(k, share)| Ok((gx(k)?, *share)))
+                .collect()
+        };
         Ok(Self {
+            grain: gx("grain").ok(),
+            construction: gx("construction").ok(),
+            staple_need: ns.iter().position(|n| n.key == "staple_food"),
+            local: goods_where(&|g| g.local),
+            public_goods: goods_where(&|g| g.category == "public"),
+            state_basket: basket(&super::week::STATE_BASKET)?,
+            upkeep_basket: basket(&super::week::UPKEEP_BASKET)?,
             goods,
             buildings: bs,
             needs: ns,
-            local,
             freight,
         })
     }

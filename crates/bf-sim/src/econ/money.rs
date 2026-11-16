@@ -365,13 +365,7 @@ pub fn activity(cat: &Catalogue, regions: &[Region], markets: &[Market]) -> Vec<
         let mi = r.market as usize;
         for p in &r.plants {
             let b = &cat.buildings[p.kind as usize];
-            let v: Fixed = b.methods[p.method as usize]
-                .outputs
-                .iter()
-                .map(|(g, q)| *q * cat.goods[*g as usize].base_price)
-                .sum::<Fixed>()
-                * r.tfp_for(b)
-                * p.levels;
+            let v = b.methods[p.method as usize].output_value * r.tfp_for(b) * p.levels;
             capacity[mi] += v;
             used[mi] += v * p.utilization;
         }

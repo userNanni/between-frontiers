@@ -87,6 +87,41 @@ pub fn labor_share(group: &str) -> Fixed {
     }
 }
 
+/// The limits of a price, as shares of the base price. Prices move a quarter of the way each
+/// week toward base × (1 + 0.75 × tension), within the band; to the ceiling when nothing is
+/// offered, to the floor when nothing is asked, to base when neither.
+pub struct PriceBand {
+    pub floor: Fixed,
+    pub ceiling: Fixed,
+}
+
+impl PriceBand {
+    const SPEED: Fixed = milli(250);
+    const RESPONSE: Fixed = milli(750);
+
+    /// Next week's price. `tension` (shortage over the smaller side, negative for a glut) is
+    /// asked for only when both sides are positive.
+    pub fn next(
+        &self,
+        old: Fixed,
+        base: Fixed,
+        supply: Fixed,
+        demand: Fixed,
+        tension: impl FnOnce() -> Fixed,
+    ) -> Fixed {
+        let target = if supply <= Fixed::ZERO && demand <= Fixed::ZERO {
+            base
+        } else if supply <= Fixed::ZERO {
+            base * self.ceiling
+        } else if demand <= Fixed::ZERO {
+            base * self.floor
+        } else {
+            base * (Fixed::ONE + tension() * Self::RESPONSE).clamp(self.floor, self.ceiling)
+        };
+        old + (target - old) * Self::SPEED
+    }
+}
+
 /// `a / b` capped at 1; 1 when `b` is not positive (nothing was asked).
 pub fn fill(a: Fixed, b: Fixed) -> Fixed {
     if b <= Fixed::ZERO || a >= b {
