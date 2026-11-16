@@ -19,7 +19,7 @@ const GAP_FULL: Fixed = milli(3000);
 /// Most of a territory's people who emigrate in a year in the steady flow, at the full pull.
 const EMIGRATION_RATE: i64 = 3; // per mille a year
 /// Most immigrants a territory takes in a year from the steady flow, per mille of its people.
-const IMMIGRATION_CAP: i64 = 8;
+const IMMIGRATION_CAP: i64 = 5;
 /// Distance at which the pull halves, in km.
 const DISTANCE_KM: i64 = 8000;
 /// Pull multiplier within a language family and within an empire. The empire gets none: at 2,
@@ -31,15 +31,17 @@ const SAME_EMPIRE: i64 = 1;
 /// squared (who reads hears of the jobs abroad and saves for the ticket).
 const AFFORD_BASE: Fixed = milli(50);
 
-/// Free farm land: the share of a territory's land ceiling still unfarmed. A destination with
-/// `1 / LAND_PULL` more of it than the origin pulls fully, if it is not poorer than
-/// `LAND_MIN_RATIO` of the origin's income (the frontiers of the Americas, Siberia, Australia).
-const LAND_PULL: i64 = 2;
-const LAND_MIN_RATIO: Fixed = milli(400);
+/// Land per farmer (the land's ceiling in farm levels over peasants and farm labourers): a
+/// destination with `LAND_START` times the origin's starts to pull, with `LAND_START +
+/// LAND_FULL` times pulls fully, if it is not poorer than `LAND_MIN_RATIO` of the origin's
+/// income (the frontiers of the Americas, Siberia, Australia).
+const LAND_START: Fixed = milli(2000);
+const LAND_FULL: Fixed = milli(4000);
+const LAND_MIN_RATIO: Fixed = milli(300);
 /// The diaspora pulls by itself (letters, tickets, a job waiting): at full chain it adds this
 /// to the gap, toward a destination at least `NETWORK_MIN_RATIO` of the origin's income.
-const NETWORK: Fixed = milli(300);
-const NETWORK_MIN_RATIO: Fixed = milli(600);
+const NETWORK: Fixed = milli(500);
+const NETWORK_MIN_RATIO: Fixed = milli(250);
 /// A wave needs at least this pull toward its destination.
 const WAVE_MIN_PULL: Fixed = milli(250);
 
@@ -62,8 +64,8 @@ const PRESSURE_PULL: Fixed = milli(500);
 /// Emigrants of a wave, per mille of the origin a year, at full pressure; most a destination
 /// takes from waves, per mille of its people a year; least share of its labourers in jobs
 /// for a destination to stay open.
-const WAVE_RATE: i64 = 6;
-const WAVE_CAP: i64 = 15;
+const WAVE_RATE: i64 = 3;
+const WAVE_CAP: i64 = 8;
 const WAVE_JOBS: Fixed = milli(500);
 
 /// People of one origin living in one destination, by culture: the descendants of who was
@@ -161,8 +163,8 @@ struct Land {
     jobs: Fixed,
     /// Births minus deaths this month.
     natural: i64,
-    /// Share of the land ceiling still unfarmed.
-    free_land: Fixed,
+    /// Land ceiling in farm levels per thousand farmers.
+    land: Fixed,
 }
 
 /// The month's migration.
@@ -486,8 +488,8 @@ fn lands(world: &GameWorld, regions: &[RegionMonth], nt: usize) -> Vec<Land> {
         natural[t] += m.births - m.deaths;
         lab[t].0 += m.labourers;
         lab[t].1 += m.labourers_employed;
-        land[t].0 += m.land_free;
-        land[t].1 += m.land_total;
+        land[t].0 += m.land_total;
+        land[t].1 += m.farmers;
         market_people[usize::from(r.market)] += m.people;
         market_income[usize::from(r.market)] += m.income;
     }
@@ -505,8 +507,8 @@ fn lands(world: &GameWorld, regions: &[RegionMonth], nt: usize) -> Vec<Land> {
                 hunger: Fixed::ZERO,
                 jobs: Fixed::ONE,
                 natural: natural[t],
-                free_land: if land[t].1 > 0 {
-                    Fixed::from_ratio(land[t].0, land[t].1)
+                land: if land[t].1 > 0 {
+                    Fixed::from_ratio(land[t].0 * 1000, land[t].1)
                 } else {
                     Fixed::ZERO
                 },
@@ -551,8 +553,8 @@ fn pull(
     }
     let ratio = b.income_per_head / a.income_per_head;
     let income = ((ratio - GAP_START) / GAP_FULL).clamp(Fixed::ZERO, Fixed::ONE);
-    let land = if ratio >= LAND_MIN_RATIO {
-        ((b.free_land - a.free_land) * LAND_PULL).clamp(Fixed::ZERO, Fixed::ONE)
+    let land = if ratio >= LAND_MIN_RATIO && a.land > Fixed::ZERO {
+        ((b.land / a.land - LAND_START) / LAND_FULL).clamp(Fixed::ZERO, Fixed::ONE)
     } else {
         Fixed::ZERO
     };

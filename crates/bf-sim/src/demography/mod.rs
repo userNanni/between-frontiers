@@ -73,7 +73,7 @@ const H_SCHOOLING: Fixed = milli(350);
 const H_OFFSET: Fixed = milli(50);
 const H_HUNGER: Fixed = milli(250);
 /// Health level modern medicine reaches: a base, comfort and hospital care.
-const H_MODERN: Fixed = milli(620);
+const H_MODERN: Fixed = milli(700);
 const H_MODERN_COMFORT: Fixed = milli(250);
 const H_MODERN_CARE: Fixed = milli(130);
 /// Share of the medicine a country uses that reaches a state with no hospitals and no schools
@@ -99,7 +99,7 @@ const F_OFF_FARM: Fixed = milli(100);
 const F_COMFORT: Fixed = milli(100);
 const F_CONTRACEPTION: Fixed = milli(100);
 const F_START: Fixed = milli(450);
-const F_END: Fixed = milli(950);
+const F_END: Fixed = milli(850);
 /// Child deaths before 5 (per mille) at which survival counts as 0 and as 1 in the score.
 const Q5_HIGH: i64 = 500;
 const Q5_LOW: i64 = 20;
@@ -512,8 +512,6 @@ pub struct Demography {
     kinds: PublicKinds,
     /// The law catalogue and the indices of the `immigration` and `emigration` effects.
     laws: Option<(Arc<Politics>, usize, usize)>,
-    /// Farm land each building kind works, if any.
-    farm_of: Vec<Option<u8>>,
 }
 
 impl Demography {
@@ -523,13 +521,7 @@ impl Demography {
             let index = |k| crate::politics::effect_index(k).expect("migration law effect");
             (p, index("immigration"), index("emigration"))
         });
-        let farm_of = cat.buildings.iter().map(|b| b.farm).collect();
-        Self {
-            cat,
-            kinds,
-            laws,
-            farm_of,
-        }
+        Self { cat, kinds, laws }
     }
 
     /// What the laws in force in `country` let through, per mille of the open flow:
@@ -564,9 +556,9 @@ pub(crate) struct RegionMonth {
     /// Labourers able to work, and those in jobs.
     labourers: i64,
     labourers_employed: i64,
-    /// Farm levels the land still allows, and the land's ceiling, in levels.
-    land_free: i64,
+    /// The land's ceiling in farm levels, and the people who work the land.
     land_total: i64,
+    farmers: i64,
 }
 
 pub struct DemographyChanges {
@@ -663,13 +655,7 @@ impl System<GameWorld> for Demography {
                 let (births, deaths) = month(&mut ages, &rates, tfr);
                 let p = &r.pops[prof::PEASANT];
                 let land_total: i64 = r.land.iter().map(|l| l.1).sum();
-                let built: i64 = r
-                    .plants
-                    .iter()
-                    .filter(|pl| self.farm_of[usize::from(pl.kind)].is_some())
-                    .map(|pl| pl.levels)
-                    .sum();
-                let land_free = (land_total - built).max(0);
+                let farmers = r.pops[prof::PEASANT].size + r.pops[prof::FARM_LABORER].size;
                 let urban: i64 = r
                     .pops
                     .iter()
@@ -693,8 +679,8 @@ impl System<GameWorld> for Demography {
                     urban,
                     labourers: workers(r.pops[prof::LABORER].size),
                     labourers_employed: r.pops[prof::LABORER].employed,
-                    land_free,
                     land_total,
+                    farmers,
                 }
             })
             .collect();
