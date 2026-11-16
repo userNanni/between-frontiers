@@ -14,8 +14,11 @@ use crate::live::LiveFigures;
 
 /// Days per second at each speed, 1 to 5.
 const DAYS_PER_SECOND: [f64; 5] = [1.0, 3.0, 8.0, 20.0, 60.0];
-/// Most ticks run between two looks at the command queue, so the interface stays responsive.
-const MAX_TICKS_PER_BATCH: u32 = 32;
+/// Most days the simulation owes the clock: past this it stops catching up.
+const MAX_DEBT_DAYS: f64 = 32.0;
+/// Longest run of ticks between two published snapshots. The command queue is read between
+/// every two ticks, so a pause waits at most for the tick under way.
+const BATCH_BUDGET: Duration = Duration::from_millis(50);
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Snapshot {
@@ -107,6 +110,7 @@ fn snapshot_of(
     session: &Session,
     paused: bool,
     speed: u8,
+    hash: String,
     figures: Option<Arc<LiveFigures>>,
 ) -> Snapshot {
     Snapshot {
@@ -114,7 +118,7 @@ fn snapshot_of(
         tick: session.clock().tick,
         paused,
         speed,
-        hash: short(&session.state_hash()),
+        hash,
         player: session.world().player_tag().map(str::to_owned),
         research: research_view(session),
         local: Arc::new(local_view(session)),
@@ -152,7 +156,8 @@ fn local_view(session: &Session) -> Vec<[f32; 2]> {
 impl SimHandle {
     pub fn start(session: Session, repaint: impl Fn() + Send + 'static) -> Self {
         let figures = figures_of(&session, &None);
-        let snapshot = Arc::new(Mutex::new(snapshot_of(&session, true, 2, figures)));
+        let hash = short(&session.state_hash());
+        let snapshot = Arc::new(Mutex::new(snapshot_of(&session, true, 2, hash, figures)));
         let (tx, rx) = channel();
         let shared = Arc::clone(&snapshot);
         std::thread::Builder::new()
@@ -178,11 +183,17 @@ impl SimHandle {
 
     /// Asks the simulation thread to write a save and waits for it.
     pub fn save(&self, path: PathBuf, label: String) -> Result<(), String> {
+        self.save_later(path, label)
+            .recv_timeout(Duration::from_secs(30))
+            .map_err(|e| e.to_string())?
+    }
+
+    /// Asks the simulation thread to write a save; the answer comes on the returned channel, so
+    /// the interface keeps drawing meanwhile.
+    pub fn save_later(&self, path: PathBuf, label: String) -> Receiver<Result<(), String>> {
         let (reply, answer) = channel();
         self.send(Command::Save { path, label, reply });
         answer
-            .recv_timeout(Duration::from_secs(30))
-            .map_err(|e| e.to_string())?
     }
 }
 
@@ -198,71 +209,112 @@ fn write_save(session: &Session, path: &std::path::Path, label: &str) -> Result<
     std::fs::rename(tmp, path).map_err(|e| e.to_string())
 }
 
+/// The loop's state that commands change.
+struct Control {
+    paused: bool,
+    speed: u8,
+    /// A command changed what the interface shows.
+    changed: bool,
+}
+
+/// Applies one command.
+fn apply(session: &mut Session, ctl: &mut Control, command: Command) {
+    match command {
+        Command::SetPaused(p) => {
+            ctl.paused = p;
+            ctl.changed = true;
+        }
+        Command::SetSpeed(s) => {
+            ctl.speed = s.clamp(1, 5);
+            ctl.changed = true;
+        }
+        // Applies at the start of the next tick and enters the history then.
+        Command::Issue(c) => session.submit(c),
+        Command::Save { path, label, reply } => {
+            let _ = reply.send(write_save(session, &path, &label));
+        }
+    }
+}
+
+/// Applies every command waiting; `false` when the interface is gone.
+fn drain(session: &mut Session, ctl: &mut Control, rx: &Receiver<Command>) -> bool {
+    loop {
+        match rx.try_recv() {
+            Ok(c) => apply(session, ctl, c),
+            Err(std::sync::mpsc::TryRecvError::Empty) => return true,
+            Err(std::sync::mpsc::TryRecvError::Disconnected) => return false,
+        }
+    }
+}
+
 fn run(
     mut session: Session,
     rx: Receiver<Command>,
     shared: Arc<Mutex<Snapshot>>,
     repaint: impl Fn(),
 ) {
-    let (mut paused, mut speed) = (true, 2u8);
-    let mut hash = short(&session.state_hash());
-    let mut figures = shared
-        .lock()
-        .unwrap_or_else(|e| e.into_inner())
-        .figures
-        .clone();
+    let mut ctl = Control {
+        paused: true,
+        speed: 2,
+        changed: false,
+    };
+    // The hash shown, and the tick it belongs to: computed only when a snapshot shows a new
+    // one (on pause, and on the first of the month).
+    let (mut hash, mut figures) = {
+        let s = shared.lock().unwrap_or_else(|e| e.into_inner());
+        (s.hash.clone(), s.figures.clone())
+    };
+    let mut hash_tick = session.clock().tick;
     let mut debt = 0.0f64;
     let mut last = Instant::now();
     loop {
-        let timeout = if paused {
+        let timeout = if ctl.paused {
             Duration::from_millis(250)
         } else {
             Duration::from_millis(8)
         };
-        let mut changed = false;
+        ctl.changed = false;
         match rx.recv_timeout(timeout) {
-            Ok(Command::SetPaused(p)) => {
-                paused = p;
-                changed = true;
-            }
-            Ok(Command::SetSpeed(s)) => {
-                speed = s.clamp(1, 5);
-                changed = true;
-            }
-            Ok(Command::Issue(c)) => {
-                // Applies at the start of the next tick and enters the history then.
-                session.submit(c);
-            }
-            Ok(Command::Save { path, label, reply }) => {
-                let _ = reply.send(write_save(&session, &path, &label));
-            }
+            Ok(c) => apply(&mut session, &mut ctl, c),
             Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {}
             Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => return,
+        }
+        if !drain(&mut session, &mut ctl, &rx) {
+            return;
         }
         let now = Instant::now();
         let dt = now.duration_since(last).as_secs_f64();
         last = now;
-        if paused {
+        let mut month_turned = false;
+        if ctl.paused {
             debt = 0.0;
         } else {
-            debt = (debt + dt * DAYS_PER_SECOND[(speed - 1) as usize])
-                .min(f64::from(MAX_TICKS_PER_BATCH));
-            while debt >= 1.0 {
+            debt = (debt + dt * DAYS_PER_SECOND[(ctl.speed - 1) as usize]).min(MAX_DEBT_DAYS);
+            let batch = Instant::now();
+            while debt >= 1.0 && !ctl.paused && batch.elapsed() < BATCH_BUDGET {
                 session.sim.step();
                 debt -= 1.0;
-                changed = true;
-                if session.clock().date.day == 1 {
-                    hash = short(&session.state_hash());
+                ctl.changed = true;
+                month_turned |= session.clock().date.day == 1;
+                if !drain(&mut session, &mut ctl, &rx) {
+                    return;
                 }
             }
         }
-        if changed {
-            if paused {
+        if ctl.changed {
+            let tick = session.clock().tick;
+            if (ctl.paused || month_turned) && tick != hash_tick {
                 hash = short(&session.state_hash());
+                hash_tick = tick;
             }
             figures = figures_of(&session, &figures);
-            let mut snap = snapshot_of(&session, paused, speed, figures.clone());
-            snap.hash = hash.clone();
+            let snap = snapshot_of(
+                &session,
+                ctl.paused,
+                ctl.speed,
+                hash.clone(),
+                figures.clone(),
+            );
             *shared.lock().unwrap_or_else(|e| e.into_inner()) = snap;
             repaint();
         }

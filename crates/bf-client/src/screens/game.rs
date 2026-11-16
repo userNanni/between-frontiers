@@ -28,6 +28,14 @@ pub struct State {
     /// Figures the HUD shows, as last read from the simulation.
     live_figures: Option<std::sync::Arc<crate::live::LiveFigures>>,
     last_autosave: laplace_schelling::calendar::Date,
+    /// An autosave the simulation is writing: its answer, and the date and time it records.
+    autosaving: Option<Autosaving>,
+}
+
+struct Autosaving {
+    answer: std::sync::mpsc::Receiver<Result<(), String>>,
+    date: laplace_schelling::calendar::Date,
+    played: u64,
 }
 
 impl State {
@@ -57,6 +65,7 @@ impl State {
         let sim = SimHandle::start(session, move || repaint.request_repaint());
         let state = Self {
             last_autosave: save.meta.date,
+            autosaving: None,
             save,
             sim,
             selected: None,
@@ -80,6 +89,8 @@ impl State {
     }
 
     fn write(&mut self, shared: &mut Shared, now: f64, announce: bool) {
+        // A pending autosave was queued first: this save's world lands after it and wins.
+        self.autosaving = None;
         self.save.meta.date = self.sim.snapshot().date;
         self.save.meta.last_played = saves::now();
         let result = self
@@ -116,9 +127,39 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
         }
         Autosave::Yearly => snap.date.year != state.last_autosave.year,
     };
-    if due {
+    if due && state.autosaving.is_none() {
+        // The simulation writes the world while the interface keeps drawing; the campaign's
+        // metadata follows once the world is on disk.
         state.last_autosave = snap.date;
-        state.write(shared, now, false);
+        let answer = state.sim.save_later(
+            state.save.dir.join(saves::WORLD_FILE),
+            state.save.meta.name.clone(),
+        );
+        state.autosaving = Some(Autosaving {
+            answer,
+            date: snap.date,
+            played: saves::now(),
+        });
+    }
+    if let Some(pending) = &state.autosaving {
+        let result = match pending.answer.try_recv() {
+            Ok(r) => Some(r),
+            Err(std::sync::mpsc::TryRecvError::Empty) => None,
+            Err(e) => Some(Err(e.to_string())),
+        };
+        if let Some(result) = result {
+            state.save.meta.date = pending.date;
+            state.save.meta.last_played = pending.played;
+            state.autosaving = None;
+            if let Err(e) =
+                result.and_then(|()| saves::write(&state.save).map_err(|e| e.to_string()))
+            {
+                let msg = shared
+                    .i18n
+                    .tr_args("saves-error-io", &[("error", bf_i18n::Arg::String(e))]);
+                shared.toast(msg, now);
+            }
+        }
     }
 
     let player = shared.world.as_ref().and_then(|w| {
