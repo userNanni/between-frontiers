@@ -24,7 +24,7 @@ pub struct Good {
     pub national_with: Option<String>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct Method {
     pub key: String,
     pub available_from: i32,
@@ -43,7 +43,22 @@ pub struct Method {
     pub job_weight: Fixed,
 }
 
-#[derive(Clone, Debug)]
+impl Method {
+    /// Outputs less inputs of a level, each good valued at `price`.
+    pub fn value_added(&self, price: impl Fn(usize) -> Fixed) -> Fixed {
+        let value = |items: &[(GoodIx, Fixed)]| -> Fixed {
+            items.iter().map(|(g, q)| *q * price(*g as usize)).sum()
+        };
+        value(&self.outputs) - value(&self.inputs)
+    }
+
+    /// Weekly profit of a level at `price`: value added × productivity, less wages.
+    pub fn profit(&self, price: &[Fixed], tfp: Fixed, wage: Fixed) -> Fixed {
+        self.value_added(|g| price[g]) * tfp - wage * self.workers
+    }
+}
+
+#[derive(Clone, Debug, Default)]
 pub struct Building {
     pub key: String,
     pub group: String,
