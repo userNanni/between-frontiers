@@ -12,6 +12,13 @@ use crate::world::World;
 
 // Wide enough for the five families in English and Portuguese.
 const WIDTH: f32 = 440.0;
+/// Sets the map's lens and recolours it, open picker or not (a command calls this; the
+/// `map.mode_*` commands can pass the family's first lens).
+pub fn choose(view: &mut MapView, world: &World, lens: Lens, year: i32) {
+    view.lens = lens;
+    view.set_palette(lens::palette(world, lens, year));
+}
+
 /// The collapsed picker: a button with a magnifier and the lens in use.
 pub const BUTTON: Vec2 = Vec2::new(200.0, 40.0);
 
@@ -274,8 +281,7 @@ pub fn show(
     legend(ui, i18n, current, world);
 
     if next != current {
-        view.lens = next;
-        view.set_palette(lens::palette(world, next, year));
+        choose(view, world, next, year);
     }
     LensResponse { toggle_pin, chosen }
 }
