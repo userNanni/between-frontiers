@@ -84,6 +84,7 @@ pub fn main() -> Result<(), String> {
         Some(bf_sim::game::Rules {
             catalogue: cat.clone(),
             tree: None,
+            politics: None,
         }),
     );
     let world_supply = |e: &bf_sim::econ::Economy| -> Vec<f64> {

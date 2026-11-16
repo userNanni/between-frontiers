@@ -94,6 +94,10 @@ pub struct GameWorld {
     /// Stage of every technology in every country; empty without the research data.
     #[serde(default)]
     pub research: crate::research::ResearchState,
+    /// Laws in force, interest groups and movements of every country; empty without the
+    /// politics data.
+    #[serde(default)]
+    pub politics: crate::polity::PoliticsState,
 }
 
 impl HashState for GameWorld {
@@ -110,6 +114,11 @@ impl HashState for GameWorld {
         self.econ.hash_state(h);
         h.section("research");
         self.research.hash_state(h);
+        // Old worlds without politics keep their hash.
+        if !self.politics.is_empty() {
+            h.section("politics");
+            self.politics.hash_state(h);
+        }
     }
 }
 
@@ -125,6 +134,7 @@ impl GameWorld {
             census: Vec::new(),
             econ: crate::econ::Economy::default(),
             research: crate::research::ResearchState::default(),
+            politics: crate::polity::PoliticsState::default(),
         }
     }
 
@@ -175,6 +185,10 @@ pub enum GameCommand {
         tag: String,
         bank: crate::econ::money::CentralBank,
     },
+    /// Asks for a law (index in `politics::Politics::laws`) in place of the one in force in its
+    /// group. The politics system enacts it on the same day; unknown tags and laws, and colonial
+    /// laws for a country without colonies, are no-ops.
+    SetLaw { tag: String, law: u16 },
 }
 
 impl Command<GameWorld> for GameCommand {
@@ -243,6 +257,14 @@ impl Command<GameWorld> for GameCommand {
                 };
                 if let Some(m) = world.econ.markets.get_mut(ci) {
                     m.money.bank = *bank;
+                }
+            }
+            GameCommand::SetLaw { tag, law } => {
+                let Some(ci) = world.countries.iter().position(|(_, c)| c.tag == *tag) else {
+                    return;
+                };
+                if ci < world.politics.laws.len() {
+                    world.politics.request(ci as u16, *law);
                 }
             }
             GameCommand::SetPublicPriority { tag, weights } => {
@@ -317,6 +339,8 @@ impl System<GameWorld> for Census {
 pub struct Rules {
     pub catalogue: Arc<Catalogue>,
     pub tree: Option<Arc<crate::research::TechTree>>,
+    /// Laws, interest groups and movements; without them politics stands still.
+    pub politics: Option<Arc<crate::politics::Politics>>,
 }
 
 pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
@@ -325,8 +349,12 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
     if let Some(Rules {
         catalogue: cat,
         tree,
+        politics,
     }) = rules
     {
+        if let Some(p) = politics {
+            s.add(crate::polity::PoliticsSystem::new(p));
+        }
         s.add(crate::econ::week::Week {
             cat: Arc::clone(&cat),
             tree: tree.clone(),
