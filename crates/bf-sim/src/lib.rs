@@ -2,6 +2,7 @@
 
 pub mod communities;
 pub mod data;
+pub mod diplomacy;
 pub mod econ;
 pub mod economy;
 pub mod game;

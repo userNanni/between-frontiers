@@ -105,6 +105,15 @@ governo entram quando a fase 3 ligar o peso político; política externa e armas
 Não entram de propósito: ideologia sorteada com o líder e movimento com peso de criação, que
 contrariam causa visível e pouco sorteio.
 
+## Fase 4: diplomacia (só o contrato e os dados de 1925)
+
+| Sistema do CWE | Nós (`diplomacy.pt-BR.md`) | Diferença |
+|---|---|---|
+| ONU funcional (adesão, FMI, missões de paz, sanções) | Liga das Nações com membros datados, Conselho permanente e territórios que governa (Sarre) ou protege (Danzig); sem regra ainda | atrás até ligar; a Liga de 1925 é fraca de propósito, e o FMI casa com o regime monetário já registrado por país |
+| Estados clientes como esfera de influência | sujeição de `countries.ron` com o instrumento citado, e proteção sem sujeição (Cuba, Panamá, Haiti, Egito, Nejd) como tratado desigual | à frente nos dados: a tutela informal tem nome, data e lado forte |
+| Superestados (formação de uniões) | uniões aduaneiras e monetárias com data (BLEU, Suíça–Liechtenstein, União Monetária Latina) | atrás: falta a regra de formação |
+| — | regime monetário por país (ouro, divisa-ouro, fixo, prata, papel, moeda alheia) e tarifa média de 1925 | só nosso |
+
 ## Fases seguintes: o que o CWE tem e nós ainda não
 
 | Sistema do CWE | Nossa fase | Nota |

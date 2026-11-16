@@ -4,6 +4,7 @@
 use std::path::Path;
 use std::sync::Arc;
 
+use crate::diplomacy::DiplomacyFile;
 use crate::econ::{Catalogue, setup};
 use crate::economy::{BuildingsFile, GoodsFile, NeedsFile};
 use crate::game::GameWorld;
@@ -23,6 +24,8 @@ pub struct GameData {
     pub land: Option<LandFile>,
     pub population: Option<PopulationFile>,
     pub industry: Option<IndustryFile>,
+    /// Organizations, treaties, monetary regimes and tariffs (phase 4; not simulated yet).
+    pub diplomacy: Option<DiplomacyFile>,
     /// The technology tree, when `data/research/technologies.ron` exists.
     pub tree: Option<Arc<TechTree>>,
     /// Who lives where, when `data/scenario/1925/communities.ron` exists. Not in the tick yet.
@@ -97,6 +100,7 @@ impl GameData {
             land: optional(&scenario.join("land.ron"))?,
             population: optional(&scenario.join("population.ron"))?,
             industry: optional(&scenario.join("industry.ron"))?,
+            diplomacy: optional(&scenario.join("diplomacy.ron"))?,
         })
     }
 
