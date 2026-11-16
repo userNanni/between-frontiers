@@ -279,16 +279,9 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
         if let Some(r) = place(PanelId::MapModes) {
             if shared.hud.layout.map_modes_open {
                 // Kept open: the panel as it always was, with a link to fold it.
-                fold_lens |= super::lens_panel::show(
-                    ui,
-                    r.min,
-                    i18n,
-                    world,
-                    view,
-                    snap.date.year,
-                    Some(true),
-                )
-                .toggle_pin;
+                fold_lens |=
+                    super::lens_panel::show(ui, r, i18n, world, view, snap.date.year, Some(true))
+                        .toggle_pin;
             } else {
                 // Folded into a button; open, it shows the panel over the rest of the HUD,
                 // further down.
@@ -417,12 +410,24 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
         && let (Some(view), Some(world)) = (&mut shared.map_view, &shared.world)
     {
         let catcher = ui.interact(rect, ui.make_persistent_id("lens-outside"), Sense::click());
-        let popup = lens_popup(r, super::lens_panel::size(view.lens), rect);
+        let ctx = ui.ctx().clone();
+        let lens = view.lens;
+        let free = shared
+            .hud
+            .layout
+            .free
+            .map(|a| crate::hud::clamp_into(a.rect(rect), rect));
+        let popup = lens_popup(
+            r,
+            |max_h| super::lens_panel::size(&ctx, lens, max_h),
+            rect,
+            free,
+        );
         // Open over the HUD: the tips of what it covers go.
         keys::cover(ui, popup);
         let res = super::lens_panel::show(
             ui,
-            popup.min,
+            popup,
             &shared.i18n,
             world,
             view,
@@ -790,7 +795,12 @@ fn hud_sizes(
         out.insert(
             PanelId::MapModes,
             if shared.hud.layout.map_modes_open {
-                super::lens_panel::size(view.lens)
+                // Kept open, it may take most of the screen's height; the list scrolls past it.
+                super::lens_panel::size(
+                    ctx,
+                    view.lens,
+                    screen.height() - top_bar::LEFT_BOTTOM - crate::hud::GAP * 2.0,
+                )
             } else {
                 super::lens_panel::BUTTON
             },
@@ -855,18 +865,80 @@ pub fn toggle_lens_picker(state: &mut State) {
     state.lens_open = !state.lens_open;
 }
 
-/// Where the open picker goes: beside its button, toward the middle of the screen (up from a
-/// button in the lower half, left from one in the right half), kept on screen.
-pub fn lens_popup(button: Rect, size: egui::Vec2, screen: Rect) -> Rect {
-    let x = if button.center().x > screen.center().x {
-        button.right() - size.x
-    } else {
-        button.left()
-    };
-    let y = if button.center().y > screen.center().y {
-        button.top() - space::SM - size.y
-    } else {
-        button.bottom() + space::SM
-    };
-    crate::hud::clamp_into(Rect::from_min_size(egui::pos2(x, y), size), screen)
+/// Where the open picker goes, beside its button: above or below it and aligned on its left or
+/// right edge, whichever way leaves room for the most of the panel (its size for a height is
+/// `size_for`), then toward the middle of the screen. Never off the screen and never in the
+/// free area when a way out of it exists.
+pub fn lens_popup(
+    button: Rect,
+    size_for: impl Fn(f32) -> egui::Vec2,
+    screen: Rect,
+    free: Option<Rect>,
+) -> Rect {
+    let margin = crate::hud::GAP;
+    let gap = space::SM;
+    let up_room = button.top() - gap - (screen.top() + margin);
+    let down_room = screen.bottom() - margin - (button.bottom() + gap);
+    // Toward the middle first, for ties.
+    let up_first = button.center().y > screen.center().y;
+    let left_first = button.center().x <= screen.center().x;
+    let width = size_for(screen.height()).x;
+    let fit_x = |x: f32| x.clamp(screen.left(), (screen.right() - width).max(screen.left()));
+    // Columns: aligned on the button's left or right edge; when the free area is in the way,
+    // also beside the free area, as a last resort.
+    let mut columns: Vec<(f32, bool, usize)> = Vec::new();
+    for (j, left) in [left_first, !left_first].into_iter().enumerate() {
+        let x = if left {
+            button.left()
+        } else {
+            button.right() - width
+        };
+        columns.push((fit_x(x), true, j));
+    }
+    if let Some(f) = free {
+        for x in [f.left() - margin - width, f.right() + margin] {
+            if x >= screen.left() && x + width <= screen.right() {
+                columns.push((x, false, 2));
+            }
+        }
+    }
+    let mut ways = Vec::new();
+    for (k, up) in [up_first, !up_first].into_iter().enumerate() {
+        for &(x, aligned, j) in &columns {
+            // A free area in the column cuts the room on that side.
+            let column = egui::Rangef::new(x, x + width);
+            let mut room = if up { up_room } else { down_room };
+            if let Some(f) = free
+                && f.x_range().intersects(column)
+            {
+                if up && f.bottom() <= button.top() {
+                    room = room.min(button.top() - gap - f.bottom() - margin);
+                } else if !up && f.top() >= button.bottom() {
+                    room = room.min(f.top() - margin - button.bottom() - gap);
+                }
+            }
+            if room <= 0.0 {
+                continue;
+            }
+            let size = size_for(room);
+            let y = if up {
+                button.top() - gap - size.y
+            } else {
+                button.bottom() + gap
+            };
+            let r = crate::hud::clamp_into(Rect::from_min_size(egui::pos2(x, y), size), screen);
+            let clear = free.is_none_or(|f| !f.intersects(r));
+            // Clear of the free area first, then beside the button, then the most height, then
+            // toward the middle.
+            let pref = 10 - (k * 3 + j) as i32;
+            ways.push((r, (clear, aligned, r.height().round() as i32, pref)));
+        }
+    }
+    let best = ways.into_iter().max_by_key(|(_, key)| *key);
+    best.map(|(r, _)| r).unwrap_or_else(|| {
+        crate::hud::clamp_into(
+            Rect::from_min_size(button.min, size_for(screen.height())),
+            screen,
+        )
+    })
 }

@@ -80,11 +80,11 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
         });
         paint_tip(ui, pos, state_name, &owner, extra.as_deref());
     }
-    let size = super::lens_panel::size(view.lens);
+    let size = super::lens_panel::size(ui.ctx(), view.lens, rect.height() * 0.6);
     let origin = egui::pos2(rect.left() + 12.0, rect.bottom() - 12.0 - size.y);
     super::lens_panel::show(
         ui,
-        origin,
+        Rect::from_min_size(origin, size),
         &shared.i18n,
         world,
         view,
