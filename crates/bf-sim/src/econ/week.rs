@@ -11,7 +11,7 @@ use super::local::View;
 use super::prof::{self, P};
 use super::public::{self, CLASS_OF, PUBLIC_PAY};
 use super::state::{Economy, Market, Plant, Region};
-use super::{PriceBand, SAVE_RATE, Unlocks, WAGE_WEIGHT, fill, milli, plant_tfp, workers};
+use super::{PAYOUT, PriceBand, SAVE_RATE, Unlocks, WAGE_WEIGHT, fill, milli, plant_tfp, workers};
 use crate::game::GameWorld;
 
 pub const ECON: ResourceId = ResourceId(10);
@@ -62,6 +62,11 @@ pub struct Week {
 }
 
 /// What a pop wants to buy this week.
+/// Most a pop spends on its upper needs (tiers 3 and 4), in multiples of their weighted cost.
+/// The richest of 1925 (owners at some $60,000 a head) spent most of their income on servants,
+/// travel and luxury; what is beyond this is invested (`PopPlan::unplaced`).
+const SPARE_CEILING: Fixed = Fixed::from_int(120);
+
 pub(crate) struct PopPlan {
     pub(crate) orders: Vec<(GoodIx, Fixed)>,
     /// Money the full need of each tier would cost, and what the plan covers.
@@ -69,6 +74,9 @@ pub(crate) struct PopPlan {
     tier_planned: [Fixed; 4],
     /// Share of tier 1 already covered by the pop's own food.
     in_kind: Fixed,
+    /// Budget the plan found nothing to spend on: the needs of the rich have a ceiling, and
+    /// what they cannot consume they invest (it goes to the pool, not to the buffer).
+    pub(crate) unplaced: Fixed,
 }
 
 struct RegionOrders {
@@ -204,8 +212,8 @@ pub(crate) fn plan_pop(
         .map(|(i, (_, _, c))| *c * cat.needs[i].spare_weight)
         .sum();
     let extra = if extra > Fixed::ZERO && weighted_upper > Fixed::ZERO {
-        // Same money, redistributed by weight.
-        (left / weighted_upper).min(Fixed::from_int(40))
+        // Same money, redistributed by weight, up to `SPARE_CEILING` times the upper needs.
+        (left / weighted_upper).min(SPARE_CEILING)
     } else {
         Fixed::ZERO
     };
@@ -226,11 +234,13 @@ pub(crate) fn plan_pop(
             }
         }
     }
+    let placed: Fixed = tier_planned.iter().copied().sum();
     PopPlan {
         orders,
         tier_cost,
         tier_planned,
         in_kind,
+        unplaced: (budget - placed).max(Fixed::ZERO),
     }
 }
 
@@ -470,7 +480,7 @@ fn settle_region(
             }
         }
         if profit > Fixed::ZERO {
-            let to_owners = profit.mul_ratio(1, 2);
+            let to_owners = profit * PAYOUT;
             if b.agriculture {
                 owners_land += to_owners;
             } else {
@@ -519,6 +529,9 @@ fn settle_region(
         wages[pi] += pay;
         payroll += pay;
     }
+    // The state's own output is counted at cost, as national accounts do: what it pays its
+    // servants, soldiers and clergy.
+    gdp += payroll;
     let mut taxes = Fixed::ZERO;
     let mut pops = Vec::with_capacity(P);
     for (pi, pop) in r.pops.iter().enumerate() {
@@ -526,6 +539,7 @@ fn settle_region(
         let tax = gross * m.budget.tax_rates[CLASS_OF[pi]];
         taxes += tax;
         let income = gross - tax;
+        let unplaced = orders.pops[pi].as_ref().map_or(Fixed::ZERO, |p| p.unplaced);
         let (spent, satisfaction) = match &orders.pops[pi] {
             Some(plan) => {
                 let mut spent = Fixed::ZERO;
@@ -555,8 +569,10 @@ fn settle_region(
         // Savings go to the country's investment pool; the buffer keeps what was meant for
         // consumption but not spent.
         let saved = income * SAVE_RATE[pi];
-        pool += saved;
-        pops.push((income, pop.savings - spent + income - saved, satisfaction));
+        let buffer = pop.savings - spent + income - saved;
+        let invested = unplaced.min(buffer).max(Fixed::ZERO);
+        pool += saved + invested;
+        pops.push((income, buffer - invested, satisfaction));
     }
     // Food the jobless grow for themselves counts in GDP at the base price of grain.
     if let Some(grain) = cat.grain {

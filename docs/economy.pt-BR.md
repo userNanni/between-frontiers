@@ -83,6 +83,82 @@ níveis, do básico ao afluente; dentro de cada uma, a população troca de bem 
 ou milho; carvão por lenha, querosene ou gás). Os números por habitante são de partida. Desde a fase 3,
 uma necessidade pode ser só das profissões urbanas (aluguel de moradia urbana) ou só das rurais (abrigo).
 
+## 1925: o tamanho e o fluxo do dinheiro
+
+O setup (`econ/setup.rs`) põe as plantas, as pessoas e o dinheiro de 1925 de modo que a primeira
+semana compre o que as plantas fazem. Até a fase 3 ele dimensionava as plantas por gastos
+supostos (consumo 70 % do PIB, investimento 10 %, compras do Estado 2,6 %), enquanto as regras
+semanais pagavam outra coisa: a renda inicial dos pops era 54 % do PIB, o fundo recebia o dobro
+do que gastava e a folha do Estado não entrava no PIB. A demanda ficava abaixo da oferta na
+primeira semana, as plantas cortavam a utilização e o nível baixo se sustentava: o primeiro ano
+media 57 % do PIB do cenário.
+
+Agora, em seis rodadas, o setup alterna entre plantas para um gasto e o gasto que essas plantas
+pagam pelas regras da simulação: salários pela `labor_share` e pelo `WAGE_WEIGHT`, 75 % do lucro
+aos donos (`PAYOUT`) e o resto ao fundo, a folha do Estado, impostos por classe, poupança por
+profissão e o que o plano de consumo não consegue gastar. Cada bloco é escalado para que o valor
+adicionado das plantas, a folha do Estado e a comida dos camponeses (comida e vendida) deem o PIB
+do cenário, e a produtividade do bloco é a que lota essas plantas com os trabalhadores que ele
+tem (antes ela supunha US$ 6 mil por trabalhador e cortava indústria e serviços em até 40 %).
+Os pops começam com a renda dessas contas; o fundo, no nível em que a manutenção gasta o que
+entra; o Tesouro, com a receita e a folha previstas.
+
+Outras peças da mesma correção:
+
+- **Folha do Estado no PIB.** O PIB medido soma o que o Estado paga a servidores, soldados e
+  clero (produção pública pelo custo, como nas contas nacionais).
+- **O que os ricos não gastam é investido.** O plano de consumo tem teto (`SPARE_CEILING`, 120
+  vezes o custo ponderado das necessidades de cima); o orçamento que ele não consegue colocar vai
+  ao fundo (`PopPlan::unplaced`), em vez de ficar parado na poupança. Os donos de 1925 são 0,6 % da
+  população com 14 a 20 % da renda.
+- **Plantas nos estados com gente.** Indústria e serviços vão às cidades do bloco até 88 % da
+  população de cada estado (`TOWN_ROOM`); fazendas e minas, à terra que tem gente para
+  trabalhá-la. Antes, o corte por estado jogava fora 6 % do valor adicionado.
+- **Comida da própria terra primeiro.** Bens de fazenda atendem a demanda do próprio bloco antes
+  de ir ao mundo; o comércio semanal só alcança 85 % da sobra, e os exportadores ficavam com
+  fazenda parada. Minas mantêm as parcelas de 1925.
+
+Resultado em 1925: PIB medido 96 % do cenário no mundo (era 57 %); os 20 maiores entre 0,85 e
+0,98 do PIB por habitante do Maddison (eram 0,46 a 0,68). O placar está em `history.pt-BR.md`.
+
+### Produção de 1925 contra `industry.ron`
+
+| Bem | Simulado | Referência | Causa da diferença fechada |
+|---|---|---|---|
+| Aço | 90,9 Mt | 90,5 Mt | A obra usava 0,089 t de aço por US$ 1 000; agora 0,022 (método manual) e 0,031 (mecanizado) |
+| Cimento | 58,4 Mt | 62,0 Mt | A obra usava 0,89 t de cimento por US$ 1 000, intensidade do concreto moderno, e a moradia rural comprava cimento; agora 0,087 t e a moradia rural é obra e madeira |
+| Veículos | 5,7 M | 4,9 M | Carro era "mobilidade" (nível 3) de todo trabalhador; agora é a necessidade "automóvel" (nível 4), com a gasolina junto |
+| Combustível | 39 Mt | 128 Mt | Subiu de 13 Mt com a gasolina dos carros; óleo de navio, ferrovia e indústria e querosene não estão modelados |
+| Petróleo bruto | 45 Mt | ≈ 141 Mt | Segue o combustível |
+| Carvão | 1 321 Mt | ≈ 1 205 Mt | — |
+| Eletricidade | 93 TWh | 195 TWh | Não fechada: as plantas de 1925 nascem no primeiro método, sem eletricidade |
+
+Faixa declarada: ±15 % para aço, cimento, carvão e veículos; eletricidade, combustível e
+petróleo ficam fora dela e estão em "Aberto". O valor de um veículo é a média de fábrica dos EUA
+em 1925 (US$ 684, *Historical Statistics of the United States*, séries Q 148–151, domínio
+público) a preços de 2011 (CPI-U, BLS, fator 12,85): US$ 8 787, ou 8,79 lotes de `automobiles`.
+O gasto de gasolina por carro na necessidade "automóvel" segue o mesmo volume: 456 galões por
+veículo registrado (séries Q 152 e Q 156), cerca de 27 % do que se gasta comprando carros.
+
+## Investimento e crescimento
+
+Com 1925 no tamanho certo, as plantas rodam cheias e o investimento constrói de verdade (só se
+constrói o tipo que roda acima de 90 %; na `main` as plantas rodavam a 80 % e isso freava o
+investimento por acaso). Três regras faltavam para o crescimento não disparar:
+
+- **O capital acompanha a produtividade.** Um nível custa `CAPITAL_YEARS` (3) anos do valor que
+  adiciona **na produtividade em que vai rodar** (`monthly::level_capital`). Antes o custo era a
+  produtividade 1: nos EUA (produtividade 4,8) um nível saía por menos de meio ano de produção.
+  Três anos é a ordem da razão capital-produto.
+- **Trocar de método é investir.** A troca anual paga o equipamento do método novo (a parte da
+  cesta de construção do grupo que não é obra) com o fundo do país, as de maior ganho por dinheiro
+  primeiro, até onde o fundo der (`yearly::paid_switches`). Antes era de graça, e em 1926 a
+  capacidade subia 28 % num ano.
+- **O capital se gasta.** Cada planta privada perde 1,5 % dos níveis por ano
+  (`yearly::DEPRECIATION`, fração acumulada em `Plant::wear`); prédios públicos ficam com o
+  Estado. A manutenção que o fundo compra (`purchases.ron`, `upkeep`) agora é três quintos obra
+  e dois quintos equipamento, como a formação bruta de capital de antes da guerra.
+
 ## Ordem de trabalho do mercado
 
 1. Preço por estado e por mercado nacional: oferta e demanda fecham semanalmente, com preço sensível à escassez.
@@ -91,4 +167,18 @@ uma necessidade pode ser só das profissões urbanas (aluguel de moradia urbana)
 4. Moeda, câmbio e inflação, por último (feito na fase 3, fatia 3c: `state.pt-BR.md`).
 
 Cada passo entra com o benchmark de 100 anos verde e com a calibração de 1925 conferida: produção mundial de cada
-bem, PIB e consumo por habitante dentro das faixas dos dados históricos.
+bem, PIB e consumo por habitante dentro das faixas dos dados históricos. Para conferir 1925:
+`bf-bench --diag-1925` (PIB alvo e medido por país, onde o valor adicionado se perde, demanda de
+cada bem por origem, produção contra `industry.ron`; `BF_DIAG_YEARS=N` acompanha N anos).
+
+## Aberto
+
+- **Eletricidade de 1925 (0,48 da referência).** As plantas nascem no primeiro método de cada
+  edifício; a eletrificação de 1925 (motores, linhas de montagem, bondes) teria de entrar no setup
+  pela eletricidade de cada país em `industry.ron`.
+- **Combustível e petróleo (0,3).** Navios, ferrovias e indústria queimam só carvão; querosene de
+  iluminação não existe. O petróleo fica alto demais depois de 1985 (1,7× em 2025).
+- **Investimento alto.** O fundo recebe cerca de 21 % do PIB, e a construção fica em 13 % do PIB
+  (contra 6 a 8 % na história); por isso as intensidades de aço e cimento da obra calibradas em
+  1925 são baixas por unidade, e o aço do século ainda sai 1,7 a 2 vezes o real.
+- **Estrutura setorial dos pobres.** Ver `history.pt-BR.md`, "Depois da correção de 1925".

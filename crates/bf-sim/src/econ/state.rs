@@ -38,6 +38,10 @@ pub struct Plant {
     pub profit: Fixed,
     /// Weeks in a row with a loss; a level closes after a quarter of losses.
     pub losing_weeks: u16,
+    /// Levels worn out but not yet retired: depreciation accrues in fractions of a level and a
+    /// level goes when a whole one has worn out (`yearly::DEPRECIATION`).
+    #[serde(default)]
+    pub wear: Fixed,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -318,6 +322,7 @@ impl HashState for Plant {
         self.utilization.hash_state(h);
         self.profit.hash_state(h);
         h.write_u16(self.losing_weeks);
+        self.wear.hash_state(h);
     }
 }
 
@@ -436,6 +441,7 @@ impl Region {
                         utilization: Fixed::ONE,
                         profit: Fixed::ZERO,
                         losing_weeks: 0,
+                        wear: Fixed::ZERO,
                     },
                 );
                 i

@@ -13,6 +13,11 @@ use super::week::ECON;
 use super::{Unlocks, fill, milli, plant_tfp};
 use crate::game::GameWorld;
 
+/// Share of a private plant's levels that wears out each year: capital lasts about sixty years,
+/// and what the pool spends on new levels first replaces what wore out. Public buildings are
+/// the state's to keep.
+pub const DEPRECIATION: Fixed = milli(15);
+
 /// A plant switches when another method earns this much more.
 const SWITCH_MARGIN: Fixed = milli(1100);
 /// Literacy speed with no schools, and the gain at full enrolment: half the children in
@@ -27,6 +32,8 @@ pub struct Yearly {
 
 pub struct YearlyChanges {
     methods: Vec<Vec<u8>>,
+    /// Equipment the switches ordered, by market: (good, quantity).
+    switches: Vec<Orders>,
     literacy: Vec<Fixed>,
     tfp: Vec<Fixed>,
     records: Vec<YearRecord>,
@@ -89,9 +96,15 @@ impl System<GameWorld> for Yearly {
                         }
                     })
                     .collect();
-                power_at_hand(cat, r, m, &national[r.market as usize], candidates)
+                let gains: Vec<Fixed> = candidates
+                    .iter()
+                    .map(|c| c.map_or(Fixed::ZERO, |(_, g)| g))
+                    .collect();
+                let methods = power_at_hand(cat, r, m, &national[r.market as usize], candidates);
+                (methods, gains)
             })
             .collect();
+        let (methods, switches) = paid_switches(cat, econ, methods);
         // Schooling: literacy closes part of its gap each year, faster where people are richer
         // and where schools reach more of the children.
         let school = cat.building("school");
@@ -186,6 +199,7 @@ impl System<GameWorld> for Yearly {
         }
         YearlyChanges {
             methods,
+            switches,
             literacy,
             tfp,
             records,
@@ -206,8 +220,21 @@ impl System<GameWorld> for Yearly {
             if ctx.tick > 0 {
                 for (p, m) in r.plants.iter_mut().zip(methods) {
                     p.method = m;
+                    if !self.cat.buildings[p.kind as usize].public {
+                        p.wear += Fixed::from_int(p.levels) * DEPRECIATION;
+                        let gone = p.wear.to_int_floor().min(p.levels);
+                        p.levels -= gone;
+                        p.wear -= Fixed::from_int(gone);
+                    }
                 }
                 r.tfp = tfp;
+            }
+        }
+        if ctx.tick > 0 {
+            for (m, goods) in econ.markets.iter_mut().zip(changes.switches) {
+                for (g, q) in goods {
+                    m.construction[g as usize] += q;
+                }
             }
         }
         // Last year's inflation and the central banks; taxes for the year ahead.
@@ -224,6 +251,93 @@ impl System<GameWorld> for Yearly {
             }
         }
     }
+}
+
+/// Goods a market orders: (good, quantity).
+type Orders = Vec<(u16, Fixed)>;
+
+/// A new method is new equipment: the switches the plants want (`wanted`: methods by region
+/// and the gain per level of each switch) are paid by the country's investment pool, the most
+/// profitable for the money first, as far as the pool goes. A switch costs the equipment part
+/// (what is not building work) of the construction basket of a level of the new method; it
+/// joins the market's construction orders like the machines of a new level.
+fn paid_switches(
+    cat: &Catalogue,
+    econ: &super::Economy,
+    wanted: Vec<(Vec<u8>, Vec<Fixed>)>,
+) -> (Vec<Vec<u8>>, Vec<Orders>) {
+    let mut budget: Vec<Fixed> = econ
+        .markets
+        .iter()
+        .map(|m| m.pool - super::monthly::committed(cat, m))
+        .collect();
+    // (gain per unit of cost, region, plant, cost)
+    let mut offers: Vec<Vec<(Fixed, usize, usize, Fixed)>> = vec![Vec::new(); econ.markets.len()];
+    for (ri, (r, (methods, gains))) in econ.regions.iter().zip(&wanted).enumerate() {
+        for (i, p) in r.plants.iter().enumerate() {
+            let new = methods[i];
+            if new == p.method {
+                continue;
+            }
+            let tfp = plant_tfp(
+                r,
+                &econ.markets[r.market as usize],
+                &cat.buildings[p.kind as usize],
+            );
+            let level_cost = switch_cost(cat, p.kind as usize, new, tfp);
+            let cost = level_cost * p.levels;
+            let ratio = if level_cost > Fixed::ZERO {
+                gains[i] / level_cost
+            } else {
+                Fixed::MAX
+            };
+            offers[r.market as usize].push((ratio, ri, i, cost));
+        }
+    }
+    let mut methods: Vec<Vec<u8>> = econ
+        .regions
+        .iter()
+        .map(|r| r.plants.iter().map(|p| p.method).collect())
+        .collect();
+    let mut orders: Vec<Orders> = vec![Vec::new(); econ.markets.len()];
+    for (mi, mut list) in offers.into_iter().enumerate() {
+        list.sort_by(|a, b| b.0.cmp(&a.0).then(a.1.cmp(&b.1)).then(a.2.cmp(&b.2)));
+        let m = &econ.markets[mi];
+        for (_, ri, i, cost) in list {
+            if cost > budget[mi] {
+                continue;
+            }
+            budget[mi] -= cost;
+            let r = &econ.regions[ri];
+            let p = &r.plants[i];
+            let new = wanted[ri].0[i];
+            let tfp = plant_tfp(r, m, &cat.buildings[p.kind as usize]);
+            methods[ri][i] = new;
+            let bd = &cat.buildings[p.kind as usize];
+            for &(g, share, work) in &bd.construction {
+                if !work {
+                    let money =
+                        (super::monthly::level_capital(cat, p.kind as usize, new as usize, tfp)
+                            * p.levels)
+                            .mul_ratio(share, 1000);
+                    orders[mi].push((g, money / m.price[g as usize]));
+                }
+            }
+        }
+    }
+    (methods, orders)
+}
+
+/// What switching a level to `method` costs: the equipment share of its capital
+/// (`monthly::level_capital`).
+fn switch_cost(cat: &Catalogue, kind: usize, method: u8, tfp: Fixed) -> Fixed {
+    let equipment: i64 = cat.buildings[kind]
+        .construction
+        .iter()
+        .filter(|(_, _, work)| !work)
+        .map(|(_, share, _)| *share)
+        .sum();
+    super::monthly::level_capital(cat, kind, method as usize, tfp).mul_ratio(equipment, 1000)
 }
 
 /// The methods the plants of `r` run next year, from the switches they want (`candidates`, new
@@ -356,6 +470,7 @@ mod tests {
             utilization: Fixed::ONE,
             profit: Fixed::ZERO,
             losing_weeks: 0,
+            wear: Fixed::ZERO,
         }
     }
 

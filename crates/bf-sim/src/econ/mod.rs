@@ -61,6 +61,9 @@ pub const WAGE_WEIGHT: [Fixed; prof::P] = [
     milli(1000),
     milli(1000),
 ];
+/// Share of a plant's profit paid out to its owners; the rest stays with the firm, in the
+/// country's investment pool.
+pub const PAYOUT: Fixed = milli(750);
 /// Share of income each profession saves.
 pub const SAVE_RATE: [Fixed; prof::P] = [
     milli(0),

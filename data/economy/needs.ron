@@ -2,12 +2,16 @@
 // 4): weight of the need in the money left after every tier is met. Spare money goes mostly to
 // services and less to goods: the rich of 1925 hired servants, travelled and banked more than
 // they bought steel.
+// `automobile` buys the car and the fuel to run it: fuel is weighted so that its spending is
+// about 27% of the spending on cars, as in the United States of 1925 (456 gallons of motor fuel
+// per registered vehicle, factory value $684 per vehicle; Historical Statistics of the United
+// States, Colonial Times to 1970, series Q 148-156; US government work, public domain).
 (
     needs: [
         (key: "staple_food", tier: 1, per_capita: 0.3, goods: [("grain", 1), ("rice", 1), ("maize", 0.9)]),
         (key: "domestic_fuel", tier: 1, per_capita: 0.25, goods: [("timber", 0.15), ("coal", 1), ("fuel", 1.4), ("natural_gas", 1.2), ("electricity", 0.4)]),
         (key: "basic_clothing", tier: 1, per_capita: 0.02, goods: [("textiles", 4), ("clothes", 1)]),
-        (key: "shelter", tier: 1, per_capita: 0.08, urban: Some(false), goods: [("services", 1), ("timber", 0.2), ("cement", 0.13)]),
+        (key: "shelter", tier: 1, per_capita: 0.08, urban: Some(false), goods: [("services", 1), ("timber", 0.2)]),
         (key: "urban_housing", tier: 1, per_capita: 1, urban: Some(true), goods: [("housing", 1)]),
         (key: "protein", tier: 2, per_capita: 0.06, goods: [("meat", 1), ("fish", 0.9), ("dairy", 0.35)]),
         (key: "diet_variety", tier: 2, per_capita: 0.15, goods: [("fruit", 1), ("processed_food", 1.2), ("sugar", 0.8)]),
@@ -15,12 +19,12 @@
         (key: "clothing", tier: 2, per_capita: 0.08, goods: [("clothes", 1)]),
         (key: "stimulants", tier: 2, per_capita: 0.006, goods: [("coffee", 1), ("tea", 1), ("tobacco", 0.8), ("cocoa", 0.9), ("beverages", 0.25), ("sugar", 0.15)]),
         (key: "healthcare", tier: 2, per_capita: 0.03, goods: [("medicines", 1)]),
-        (key: "mobility", tier: 3, per_capita: 0.12, spare: 0.8, goods: [("transportation", 1), ("automobiles", 0.5)]),
+        (key: "mobility", tier: 3, per_capita: 0.12, spare: 0.8, goods: [("transportation", 1)]),
         (key: "communication", tier: 3, per_capita: 0.05, spare: 0.6, goods: [("telecommunications", 1), ("paper", 0.05), ("consumer_electronics", 0.6)]),
-        (key: "comfort", tier: 3, per_capita: 0.06, spare: 0.3, goods: [("appliances", 1), ("consumer_electronics", 0.8), ("electricity", 0.0005)]),
+        (key: "comfort", tier: 3, per_capita: 0.06, spare: 0.3, goods: [("services", 1), ("furniture", 1), ("appliances", 1), ("consumer_electronics", 0.8), ("electricity", 0.0005)]),
         (key: "services", tier: 3, per_capita: 0.25, spare: 1, goods: [("services", 1)]),
         (key: "savings", tier: 4, per_capita: 0.1, spare: 1, goods: [("finance", 1)]),
-        (key: "automobile", tier: 4, per_capita: 0.05, spare: 0.3, goods: [("automobiles", 1)]),
+        (key: "automobile", tier: 4, per_capita: 0.05, spare: 0.1, goods: [("automobiles", 1), ("fuel", 0.108)]),
         (key: "luxury", tier: 4, per_capita: 0.05, spare: 0.5, goods: [("luxury_goods", 1), ("beverages", 0.1), ("tobacco", 0.05)]),
     ],
 )
