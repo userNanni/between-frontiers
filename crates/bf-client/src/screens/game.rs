@@ -22,6 +22,10 @@ pub struct State {
     research_open: bool,
     /// The government window while it is open.
     government: Option<super::government::Window>,
+    /// The journal window while it is open.
+    journal: Option<super::journal::Window>,
+    /// What the side panel shows folded.
+    fold: super::outliner::Fold,
     research_camera: Option<super::research::TreeCamera>,
     /// Month the live map lenses were last coloured for.
     live_month: Option<(i32, u8)>,
@@ -54,15 +58,20 @@ impl State {
             let bytes = std::fs::read(&path).map_err(|e| e.to_string())?;
             Session::load(&bytes, 0, rules.clone()).map_err(|e| e.to_string())?
         } else {
-            let mut session =
-                Session::new(data.new_world(), save.meta.seed, save.meta.date, 0, rules);
+            let mut session = Session::new(
+                data.new_world(),
+                save.meta.seed,
+                save.meta.date,
+                0,
+                rules.clone(),
+            );
             if let Some(tag) = &save.meta.player {
                 session.submit(GameCommand::ChoosePlayer { tag: tag.clone() });
             }
             session
         };
         let repaint = ctx.clone();
-        let sim = SimHandle::start(session, move || repaint.request_repaint());
+        let sim = SimHandle::start(session, rules.clone(), move || repaint.request_repaint());
         let state = Self {
             last_autosave: save.meta.date,
             autosaving: None,
@@ -73,6 +82,8 @@ impl State {
             rules: data.rules(),
             research_open: false,
             government: None,
+            journal: None,
+            fold: super::outliner::Fold::default(),
             research_camera: None,
             live_month: None,
             live_figures: None,
@@ -81,6 +92,24 @@ impl State {
             state.sim.save(path, state.save.meta.name.clone())?;
         }
         Ok(state)
+    }
+
+    /// Pins or unpins a journal entry and records it with the campaign.
+    fn toggle_pin(&mut self, shared: &mut Shared, id: &str, now: f64) {
+        let pinned = &mut self.save.meta.pinned;
+        match pinned.iter().position(|p| p == id) {
+            Some(i) => {
+                pinned.remove(i);
+            }
+            None => pinned.push(id.to_owned()),
+        }
+        if let Err(e) = saves::write(&self.save) {
+            let msg = shared.i18n.tr_args(
+                "saves-error-io",
+                &[("error", bf_i18n::Arg::String(e.to_string()))],
+            );
+            shared.toast(msg, now);
+        }
     }
 
     /// What the simulation last published.
@@ -224,9 +253,48 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
             });
             paint_tip(ui, pos, state_name, &owner, extra.as_deref());
         }
-        // The government window covers the map; its mode picker would show through.
-        if state.government.is_none() {
+        // The government and journal windows cover the map; the mode picker would show
+        // through.
+        if state.government.is_none() && state.journal.is_none() {
             super::lens_panel::show(ui, rect, i18n, world, view, snap.date.year);
+        }
+    }
+
+    // Side panel under the country figures, above the map mode picker, while no window covers
+    // the map.
+    if state.government.is_none() && state.journal.is_none() && !state.research_open {
+        let top = rect.top() + top_bar::LEFT_BOTTOM;
+        let bottom = shared
+            .map_view
+            .as_ref()
+            .map_or(rect.bottom(), |v| super::lens_panel::top(rect, v.lens))
+            - space::MD;
+        let res = super::outliner::show(
+            ui,
+            rect,
+            top,
+            bottom,
+            super::outliner::Sources {
+                i18n: &shared.i18n,
+                world: shared.world.as_ref(),
+                catalogue: &state.rules.catalogue,
+                tree: state.rules.tree.as_deref(),
+                snap: &snap,
+                pinned: &state.save.meta.pinned,
+            },
+            &mut state.fold,
+        );
+        if res.open_budget {
+            state.government = Some(super::government::Window::default());
+        }
+        if res.open_research {
+            state.research_open = true;
+        }
+        if let Some(picked) = res.open_journal {
+            state.journal = Some(super::journal::Window { picked });
+        }
+        if let Some(id) = res.unpin {
+            state.toggle_pin(shared, &id, now);
         }
     }
 
@@ -252,9 +320,13 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
     if bar_out.open_research {
         state.research_open = !state.research_open;
         state.government = None;
+        state.journal = None;
     }
     if bar_out.open_government {
         toggle_government(state);
+    }
+    if bar_out.open_journal {
+        toggle_journal(state);
     }
     if bar_out.open_menu {
         state.menu_open = true;
@@ -334,15 +406,63 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
         }
     }
 
+    // Journal window.
+    if state.journal.is_some() && !state.research_open && state.government.is_none() {
+        let pinned = state.save.meta.pinned.clone();
+        let res = super::journal::show(
+            ui,
+            rect,
+            &shared.i18n,
+            shared.world.as_ref(),
+            snap.journal.as_deref(),
+            &pinned,
+            state.journal.as_mut().expect("journal open"),
+        );
+        for id in res.toggle_pin {
+            state.toggle_pin(shared, &id, now);
+        }
+        if let Some(screen) = res.open {
+            use super::government::{Tab, Window};
+            state.journal = None;
+            let tab = match screen {
+                crate::journal::Screen::Budget => Some(Tab::Budget),
+                crate::journal::Screen::Money => Some(Tab::Money),
+                crate::journal::Screen::Laws => Some(Tab::Laws),
+                crate::journal::Screen::Research => None,
+            };
+            match tab {
+                Some(tab) => {
+                    state.government = Some(Window {
+                        tab,
+                        ..Window::default()
+                    })
+                }
+                None => state.research_open = true,
+            }
+        }
+        if res.close {
+            state.journal = None;
+        }
+    }
+
     // Keyboard
-    let (research_key, government_key) =
-        ui.input(|i| (i.key_pressed(egui::Key::R), i.key_pressed(egui::Key::G)));
+    let (research_key, government_key, journal_key) = ui.input(|i| {
+        (
+            i.key_pressed(egui::Key::R),
+            i.key_pressed(egui::Key::G),
+            i.key_pressed(egui::Key::J),
+        )
+    });
     if research_key && !state.menu_open {
         state.research_open = !state.research_open;
         state.government = None;
+        state.journal = None;
     }
     if government_key && !state.menu_open {
         toggle_government(state);
+    }
+    if journal_key && !state.menu_open {
+        toggle_journal(state);
     }
     let (space_key, esc, speed_key) = ui.input(|i| {
         let speed = [
@@ -372,6 +492,8 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
                 state.research_open = false;
             } else if state.government.is_some() {
                 state.government = None;
+            } else if state.journal.is_some() {
+                state.journal = None;
             } else if state.selected.is_some() {
                 state.selected = None;
             } else {
@@ -440,4 +562,15 @@ fn toggle_government(state: &mut State) {
         None => Some(super::government::Window::default()),
     };
     state.research_open = false;
+    state.journal = None;
+}
+
+/// Opens the journal on its first entry, or closes it; the other windows give way.
+fn toggle_journal(state: &mut State) {
+    state.journal = match state.journal {
+        Some(_) => None,
+        None => Some(super::journal::Window::default()),
+    };
+    state.research_open = false;
+    state.government = None;
 }

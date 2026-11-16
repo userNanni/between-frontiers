@@ -3,6 +3,7 @@
 pub mod app;
 pub mod flags;
 pub mod government;
+pub mod journal;
 pub mod laws_view;
 pub mod live;
 pub mod map;

@@ -18,7 +18,7 @@ fn literal_ids(dir: &Path, out: &mut Vec<(String, PathBuf)>) {
             continue;
         }
         let text = std::fs::read_to_string(&path).unwrap();
-        for call in ["tr(\"", "tr_args(\n", "tr_args(\"", "attr(\""] {
+        for call in ["tr(\"", "tr_args(\n", "tr_args(\"", "attr(\"", "label(\""] {
             let mut rest = text.as_str();
             while let Some(i) = rest.find(call) {
                 rest = &rest[i + call.len()..];
