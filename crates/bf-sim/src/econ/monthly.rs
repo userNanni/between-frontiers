@@ -553,7 +553,7 @@ impl System<GameWorld> for Investment {
                 }
             }
         }
-        let construction = cat.good("construction");
+        let construction = cat.construction;
         let busy: Vec<Vec<bool>> = used
             .iter()
             .zip(&built)

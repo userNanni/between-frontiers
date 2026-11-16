@@ -92,7 +92,7 @@ pub fn room(cat: &Catalogue, r: &Region, kind: Option<usize>) -> i64 {
 /// Weekly income per head of the town's working people and of the country's, each with the
 /// food the jobless grow (shared by everyone, as the market shares it) at the base price.
 fn pay(cat: &Catalogue, r: &Region, m: &super::state::Market) -> (Fixed, Fixed) {
-    let in_kind = cat.good("grain").map_or(Fixed::ZERO, |g| {
+    let in_kind = cat.grain.map_or(Fixed::ZERO, |g| {
         super::week::subsistence_food(r, m) * cat.goods[g as usize].base_price
             / r.population().max(1)
     });
