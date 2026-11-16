@@ -124,3 +124,44 @@ Sem referência por licença: aço por país (os termos do British Geological Su
 o dado; o placar usa a série só na máquina que a baixou), cimento por país e veículos (sem fonte
 livre por país). Sem referência por falta de série: cereais antes de 1961, emprego por setor antes
 de 1991, contas públicas antes de 1972.
+
+
+## Placar de eventos (formato de entrada)
+
+Para perguntas de "aconteceu? quando?" (uma lei, uma crise, um regime), outro sistema pode gravar
+um arquivo JSON que o placar vai ler ao lado das séries. Ainda sem uso: o formato fica fixado aqui
+para quem for produzir os dados (o thread de política, primeiro).
+
+Arquivo: `target/history/events.json`, gravado pela rodada (por exemplo, por uma opção do
+`bf-bench` como `--events-out`), com a lista de perguntas e respostas:
+
+```json
+{
+  "version": 1,
+  "events": [
+    {
+      "id": "GBR-women-suffrage-equal",
+      "country": "GBR",
+      "question": "Voto feminino em igualdade com o masculino",
+      "reference_date": "1928-07-02",
+      "simulated_date": "1931-03-01",
+      "source": "Representation of the People (Equal Franchise) Act 1928"
+    }
+  ]
+}
+```
+
+| Campo | Tipo | Significado |
+|---|---|---|
+| `id` | texto | Chave estável, única no arquivo: `<tag>-<assunto>`, em inglês, minúsculas e hifens |
+| `country` | texto | Tag de 1925 (`GBR`, `SOV`…), como em `countries.ron`; `WORLD` para eventos sem país |
+| `question` | texto | A pergunta em uma linha, para a tabela do placar |
+| `reference_date` | `AAAA-MM-DD` ou `null` | Quando aconteceu na história; `null` se não aconteceu até 2025 |
+| `simulated_date` | `AAAA-MM-DD` ou `null` | Quando aconteceu na rodada; `null` se não aconteceu até o fim dela |
+| `source` | texto, opcional | Onde está a data de referência (lei, livro, base de dados) |
+
+Datas no lugar de anos porque a simulação anda por dia; quem só souber o ano grava `AAAA-01-01`.
+O placar vai contar acertos (os dois `null` ou as duas datas dentro de uma janela, por exemplo 5
+anos), eventos que aconteceram só de um lado, e o atraso médio em anos entre os que aconteceram dos
+dois, por país e no total. As datas de referência seguem a regra do repositório: com fonte, nunca
+de memória.
