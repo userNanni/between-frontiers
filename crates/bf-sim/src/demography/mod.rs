@@ -199,6 +199,43 @@ impl HashState for DemographyState {
 }
 
 impl DemographyState {
+    /// Share of a country's people (metropole and colonies) who came from another country or
+    /// descend from those who did, 0–1: the diaspora stock whose destination is the country.
+    /// Moves within a country (metropole and colonies) do not count. The `immigrant_share` the
+    /// politics measures.
+    pub fn immigrant_share(&self, econ: &Economy, country: usize) -> Fixed {
+        let people: i64 = econ
+            .regions
+            .iter()
+            .filter(|r| usize::from(r.market) == country)
+            .map(|r| r.population())
+            .sum();
+        if people <= 0 {
+            return Fixed::ZERO;
+        }
+        let abroad: i64 = self
+            .immigrants_by_origin(country)
+            .iter()
+            .map(|(_, n)| *n)
+            .sum();
+        Fixed::from_ratio(abroad.min(people), people)
+    }
+
+    /// People of foreign origin in a country by origin country (index of the market), largest
+    /// first.
+    pub fn immigrants_by_origin(&self, country: usize) -> Vec<(usize, i64)> {
+        let mut by = std::collections::BTreeMap::new();
+        for d in &self.diaspora {
+            let (o, t) = (usize::from(d.origin) / 2, usize::from(d.dest) / 2);
+            if t == country && o != country && d.people > 0 {
+                *by.entry(o).or_insert(0i64) += d.people;
+            }
+        }
+        let mut out: Vec<(usize, i64)> = by.into_iter().collect();
+        out.sort_by_key(|&(o, n)| (-n, o));
+        out
+    }
+
     pub fn is_empty(&self) -> bool {
         self.territories.is_empty() && self.ages.is_empty()
     }
