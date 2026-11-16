@@ -274,7 +274,7 @@ O teste de 100 anos da fase 1 fecha determinístico: população 2,1 → 7,6 bil
 | Mortalidade cai por calendário a partir de 1935 | Vacinas, antibióticos e saneamento como tecnologias | 2 |
 | Nível novo aparece na hora; sem fila de obras | Setor de construção como edifício próprio, com empregados e insumos, que gera pontos de construção; fila por país, obra pública e privada; o nível só funciona quando a obra termina, e falta de material atrasa | 3 |
 | Só o capital privado constrói | O Estado investe pelo orçamento: infraestrutura, escolas, hospitais, indústria estatal | 3 |
-| Urbanização cai: a população cresce mais rápido que os empregos | Migração interna campo-cidade por salário e emprego, moradia urbana como necessidade e a construção pública; lei de migração | 3 |
+| Urbanização cai: a população cresce mais rápido que os empregos (a mecanização da fase 2 piorou: 0,44 → 0,29) | Migração interna campo-cidade por salário e emprego, moradia urbana como necessidade e a construção pública; lei de migração | 3 |
 | Moeda única mundial com "banco central automático" por mercado | Moeda por país, banco central com juro, inflação, orçamento, impostos por classe e títulos públicos | 3 |
 | Dívida não existe | Juro = taxa mundial + prêmio de risco (dívida, inflação, parcela em moeda estrangeira, histórico de calote) − poupança interna. O caso japonês sai do modelo: dívida alta em moeda própria, comprada em casa e pelo banco central, com juro perto de zero; dívida em dólar leva ao calote com muito menos | 3 |
 | Comércio mundial em pool, sem tarifa nem custo de transporte | Tarifas, acordos, blocos comerciais, frete por distância e porto | 4 |

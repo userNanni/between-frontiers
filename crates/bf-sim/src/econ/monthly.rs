@@ -10,7 +10,7 @@ use super::catalogue::Catalogue;
 use super::prof::{self, P};
 use super::state::Region;
 use super::week::ECON;
-use super::{WORKER_SHARE, fill, labor_share, milli, workers};
+use super::{Unlocks, WORKER_SHARE, fill, milli, plant_tfp, workers};
 use crate::game::GameWorld;
 
 // ---------------------------------------------------------------------------------------------
@@ -210,20 +210,30 @@ pub fn vital_rates(
     food: Fixed,
     comfort: Fixed,
     health: Fixed,
-    year: i32,
+    medicine: Fixed,
+    contraception: Fixed,
 ) -> (Fixed, Fixed) {
     // Fertility falls late: mass schooling has to reach mothers before families shrink, so
     // literacy enters squared. Mortality falls early: vaccines and antibiotics spread after
     // 1935 even where incomes stay low.
     let transition = (literacy * literacy * milli(550) + urban * milli(250) + comfort * milli(200))
         .min(Fixed::ONE);
-    let births = Fixed::from_int(44) - transition * 34;
-    let medicine = Fixed::from_ratio(i64::from((year - 1935).clamp(0, 35)), 35);
+    let births = Fixed::from_int(44)
+        - transition * 34
+        - contraception * crate::research_system::CONTRACEPTION_BIRTHS;
     let tech = milli(150) + medicine * milli(850);
     let deaths =
         (Fixed::from_int(30) - transition * 18 - tech * (milli(500) + health * milli(500)) * 16)
             * (milli(1400) - food * milli(400));
-    (births, deaths.max(Fixed::from_int(6)))
+    (
+        births.max(Fixed::from_int(7)),
+        deaths.max(Fixed::from_int(6)),
+    )
+}
+
+/// Without research data, medicine arrives by the calendar: from 1935 to 1970.
+pub fn calendar_medicine(year: i32) -> Fixed {
+    Fixed::from_ratio(i64::from((year - 1935).clamp(0, 35)), 35)
 }
 
 pub struct Demography;
@@ -254,7 +264,26 @@ impl System<GameWorld> for Demography {
                         .sum::<Fixed>()
                         / total
                 };
-                let (b, d) = vital_rates(r.literacy, r.urban_share(), avg(0), avg(2), avg(1), year);
+                let (medicine, contraception) = match world.research.effects.get(r.market as usize)
+                {
+                    // The early wave (sulfa drugs, penicillin, vaccines, DDT) does most of the
+                    // work; later medicine adds less. Contraception lowers births where women
+                    // went to school.
+                    Some(e) => (
+                        (e[0] * milli(2000)).min(Fixed::ONE),
+                        e[1] * r.literacy * r.literacy,
+                    ),
+                    None => (calendar_medicine(year), Fixed::ZERO),
+                };
+                let (b, d) = vital_rates(
+                    r.literacy,
+                    r.urban_share(),
+                    avg(0),
+                    avg(2),
+                    avg(1),
+                    medicine,
+                    contraception,
+                );
                 let net = b - d;
                 r.pops
                     .iter()
@@ -339,6 +368,7 @@ const LOSING_WEEKS_TO_CLOSE: u16 = 13;
 
 pub struct Investment {
     pub cat: Arc<Catalogue>,
+    pub tree: Option<Arc<crate::research::TechTree>>,
 }
 
 pub struct Build {
@@ -370,31 +400,64 @@ fn base_value_added(cat: &Catalogue, kind: usize, method: usize) -> Fixed {
     (out - inp).max(Fixed::ZERO)
 }
 
-/// Best method a building can use in `year` at market prices, with its weekly owners' profit
-/// per level.
+/// Average weekly pay of a worker in each market: what a method that needs fewer hands saves.
+pub fn market_wages(econ: &crate::econ::Economy) -> Vec<Fixed> {
+    let mut pay = vec![Fixed::ZERO; econ.markets.len()];
+    let mut hands = vec![0i64; econ.markets.len()];
+    for r in &econ.regions {
+        for (pi, p) in r.pops.iter().enumerate() {
+            if matches!(
+                pi,
+                prof::CAPITALIST
+                    | prof::LANDOWNER
+                    | prof::CIVIL_SERVANT
+                    | prof::CLERGY
+                    | prof::SOLDIER
+            ) || p.employed <= 0
+            {
+                continue;
+            }
+            pay[r.market as usize] += p.income;
+            hands[r.market as usize] += p.employed;
+        }
+    }
+    pay.iter()
+        .zip(hands)
+        .map(|(p, h)| if h > 0 { *p / h } else { Fixed::ZERO })
+        .collect()
+}
+
+/// Best method a building can use at market prices, with its weekly owners' profit per level:
+/// value added less the market wage of the workers it needs. Mechanizing pays where labour is
+/// dear and not where it is cheap.
+#[allow(clippy::too_many_arguments)]
 pub fn best_method(
     cat: &Catalogue,
     kind: usize,
-    year: i32,
+    unlocks: &Unlocks<'_>,
+    country: usize,
     price: &[Fixed],
     buy: &[Fixed],
     tfp: Fixed,
+    wage: Fixed,
 ) -> Option<(u8, Fixed)> {
     let b = &cat.buildings[kind];
     let mut best: Option<(u8, Fixed)> = None;
     for (mi, m) in b.methods.iter().enumerate() {
-        if m.available_from > year {
+        if !unlocks.method(cat, country, kind, mi) {
             continue;
         }
         // A method whose inputs the market cannot supply is not an option.
-        if m.inputs.iter().any(|(g, _)| {
-            buy[*g as usize] < milli(500) || cat.goods[*g as usize].available_from > year
-        }) {
+        if m.inputs
+            .iter()
+            .any(|(g, _)| buy[*g as usize] < milli(500) || !unlocks.goods[*g as usize])
+        {
             continue;
         }
         let out: Fixed = m.outputs.iter().map(|(g, q)| *q * price[*g as usize]).sum();
         let inp: Fixed = m.inputs.iter().map(|(g, q)| *q * price[*g as usize]).sum();
-        let profit = (out - inp) * tfp * (Fixed::ONE - labor_share(&b.group));
+        let _ = b;
+        let profit = (out - inp) * tfp - wage * m.workers;
         if best.is_none_or(|(_, p)| profit > p) {
             best = Some((mi as u8, profit));
         }
@@ -419,6 +482,8 @@ impl System<GameWorld> for Investment {
         let cat = &*self.cat;
         let econ = &world.econ;
         let year = ctx.date.year;
+        let unlocks = Unlocks::new(cat, year, self.tree.as_deref(), &world.research);
+        let wages = market_wages(econ);
         let mut closes = Vec::new();
         for (ri, r) in econ.regions.iter().enumerate() {
             for p in &r.plants {
@@ -485,9 +550,16 @@ impl System<GameWorld> for Investment {
                     if existing >= ceiling {
                         continue;
                     }
-                    let Some((method, profit)) =
-                        best_method(cat, kind, year, &m.price, &m.buy_ratio, r.tfp_for(b))
-                    else {
+                    let Some((method, profit)) = best_method(
+                        cat,
+                        kind,
+                        &unlocks,
+                        r.market as usize,
+                        &m.price,
+                        &m.buy_ratio,
+                        plant_tfp(r, m, b),
+                        wages[r.market as usize],
+                    ) else {
                         continue;
                     };
                     if cat.buildings[kind].methods[method as usize].workers > idle {

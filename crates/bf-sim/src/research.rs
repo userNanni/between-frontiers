@@ -382,11 +382,14 @@ pub struct ResearchState {
     pub progress: Vec<Vec<Fixed>>,
     /// Technology the country chose to research; `None` lets the country pick by itself.
     pub focus: Vec<Option<u16>>,
-    /// Research effort produced last week, by country.
+    /// Research effort produced last month, by country.
     pub points: Vec<Fixed>,
     /// Year each technology first reached each stage anywhere (0 = not yet), by technology,
     /// indexed by `Stage as usize`.
     pub firsts: Vec<[i32; 5]>,
+    /// Strength of each of [`EFFECTS`] by country, 0–1 of what the whole tree gives.
+    #[serde(default)]
+    pub effects: Vec<[Fixed; 5]>,
 }
 
 impl ResearchState {
@@ -413,6 +416,7 @@ impl ResearchState {
             progress: vec![vec![Fixed::ZERO; tree.techs.len()]; n],
             focus: vec![None; n],
             points: vec![Fixed::ZERO; n],
+            effects: vec![[Fixed::ZERO; 5]; n],
             stage,
             firsts,
         }
@@ -474,6 +478,12 @@ impl HashState for ResearchState {
         for f in &self.firsts {
             for y in f {
                 h.write_i64(i64::from(*y));
+            }
+        }
+        h.write_len(self.effects.len());
+        for e in &self.effects {
+            for v in e {
+                v.hash_state(h);
             }
         }
     }

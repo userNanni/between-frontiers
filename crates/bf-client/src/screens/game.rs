@@ -18,6 +18,9 @@ pub struct State {
     sim: SimHandle,
     selected: Option<usize>,
     menu_open: bool,
+    rules: bf_sim::game::Rules,
+    research_open: bool,
+    research_era: Option<u8>,
     last_autosave: laplace_schelling::calendar::Date,
 }
 
@@ -32,18 +35,13 @@ impl State {
             .parent()
             .ok_or("data folder has no parent")?;
         let data = GameData::load(root)?;
-        let catalogue = Some(data.catalogue.clone());
+        let rules = Some(data.rules());
         let session = if path.is_file() {
             let bytes = std::fs::read(&path).map_err(|e| e.to_string())?;
-            Session::load(&bytes, 0, catalogue).map_err(|e| e.to_string())?
+            Session::load(&bytes, 0, rules.clone()).map_err(|e| e.to_string())?
         } else {
-            let mut session = Session::new(
-                data.new_world(),
-                save.meta.seed,
-                save.meta.date,
-                0,
-                catalogue,
-            );
+            let mut session =
+                Session::new(data.new_world(), save.meta.seed, save.meta.date, 0, rules);
             if let Some(tag) = &save.meta.player {
                 session.submit(GameCommand::ChoosePlayer { tag: tag.clone() });
             }
@@ -57,6 +55,9 @@ impl State {
             sim,
             selected: None,
             menu_open: false,
+            rules: data.rules(),
+            research_open: false,
+            research_era: None,
         };
         if !path.is_file() {
             state.sim.save(path, state.save.meta.name.clone())?;
@@ -166,6 +167,9 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
     if let Some(speed) = bar_out.speed {
         state.sim.send(Command::SetSpeed(speed));
     }
+    if bar_out.open_research {
+        state.research_open = !state.research_open;
+    }
     if bar_out.open_menu {
         state.menu_open = true;
         state.sim.send(Command::SetPaused(true));
@@ -193,7 +197,38 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
         });
     }
 
+    // Research screen.
+    if state.research_open
+        && let (Some(tree), Some(view)) = (&state.rules.tree, &snap.research)
+    {
+        let era = state
+            .research_era
+            .get_or_insert_with(|| super::research::current_era(snap.date.year));
+        let res = super::research::show(
+            ui,
+            rect,
+            &shared.i18n,
+            tree,
+            &state.rules.catalogue,
+            view,
+            era,
+        );
+        if res.close {
+            state.research_open = false;
+        }
+        if let (Some(focus), Some(tag)) = (res.focus, &state.save.meta.player) {
+            state.sim.send(Command::Issue(GameCommand::SetResearch {
+                tag: tag.clone(),
+                tech: focus,
+            }));
+        }
+    }
+
     // Keyboard
+    let research_key = ui.input(|i| i.key_pressed(egui::Key::R));
+    if research_key && !state.menu_open {
+        state.research_open = !state.research_open;
+    }
     let (space_key, esc, speed_key) = ui.input(|i| {
         let speed = [
             egui::Key::Num1,
@@ -218,7 +253,9 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
             state.sim.send(Command::SetSpeed(s as u8 + 1));
         }
         if esc {
-            if state.selected.is_some() {
+            if state.research_open {
+                state.research_open = false;
+            } else if state.selected.is_some() {
                 state.selected = None;
             } else {
                 state.menu_open = true;

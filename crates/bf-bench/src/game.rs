@@ -7,6 +7,7 @@ use std::time::Instant;
 
 use bf_sim::data::GameData;
 use bf_sim::game::{GameCommand, Session};
+use bf_sim::research::Stage;
 use laplace_schelling::{Date, Fixed, StateHash};
 use serde::Serialize;
 
@@ -24,7 +25,19 @@ pub struct Decade {
     /// Market × good cells with trade whose price sits at the floor or the ceiling.
     pub prices_at_limit: usize,
     pub priced_cells: usize,
+    /// Technologies made at scale somewhere.
+    pub techs_industrial: usize,
     pub ms: f64,
+}
+
+/// When a technology first worked and was first made at scale, in history and in the run.
+#[derive(Clone, Serialize)]
+pub struct TechTiming {
+    pub key: String,
+    pub demonstrated: i32,
+    pub industrialized: i32,
+    pub prototype: Option<i32>,
+    pub industrial: Option<i32>,
 }
 
 #[derive(Serialize)]
@@ -42,6 +55,7 @@ pub struct GameReport {
     pub save_bytes: usize,
     pub save_load_mid_run_ok: bool,
     pub determinism_ok: Option<bool>,
+    pub technologies: Vec<TechTiming>,
 }
 
 fn root() -> PathBuf {
@@ -54,7 +68,7 @@ fn new_session(data: &GameData, seed: u64, threads: usize) -> Session {
         seed,
         Date::new(1925, 1, 1),
         threads,
-        Some(data.catalogue.clone()),
+        Some(data.rules()),
     );
     s.submit(GameCommand::ChoosePlayer { tag: "BRA".into() });
     s
@@ -62,6 +76,12 @@ fn new_session(data: &GameData, seed: u64, threads: usize) -> Session {
 
 fn snapshot(data: &GameData, s: &Session, ms: f64) -> Decade {
     let w = s.world();
+    let techs_industrial = w
+        .research
+        .firsts
+        .iter()
+        .filter(|f| f[Stage::Industrial as usize] > 0)
+        .count();
     let e = &w.econ;
     let population: i64 = e.regions.iter().map(|r| r.population()).sum();
     let gdp: i64 = e
@@ -114,6 +134,7 @@ fn snapshot(data: &GameData, s: &Session, ms: f64) -> Decade {
             .sum(),
         prices_at_limit: at_limit,
         priced_cells: cells,
+        techs_industrial,
         ms,
     }
 }
@@ -149,7 +170,7 @@ fn run(data: &GameData, mut session: Session, until: Date, report: bool) -> Run 
             if report && (d.year % 10 == 5 || every_year) {
                 let snap = snapshot(data, &session, since);
                 println!(
-                    "{}: pop {:>5.0} M  GDP {:>7.0} bn  per head {:>6}  needs {:.2}  literacy {:.2}  urban {:.2}  levels {:>7}  prices at limit {}/{}  ({:.0} ms)",
+                    "{}: pop {:>5.0} M  GDP {:>7.0} bn  per head {:>6}  needs {:.2}  literacy {:.2}  urban {:.2}  levels {:>7}  prices at limit {}/{}  techs {}  ({:.0} ms)",
                     snap.year,
                     snap.population as f64 / 1e6,
                     snap.gdp as f64 / 1e9,
@@ -160,8 +181,72 @@ fn run(data: &GameData, mut session: Session, until: Date, report: bool) -> Run 
                     snap.plant_levels,
                     snap.prices_at_limit,
                     snap.priced_cells,
+                    snap.techs_industrial,
                     since
                 );
+                if std::env::var_os("BF_TECH").is_some() {
+                    let w = session.world();
+                    let mut e = [0.0f64; 5];
+                    let mut total = 0.0;
+                    for (c, eff) in w.research.effects.iter().enumerate() {
+                        let pop: i64 = w
+                            .econ
+                            .regions
+                            .iter()
+                            .filter(|r| r.market as usize == c)
+                            .map(|r| r.population())
+                            .sum();
+                        total += pop as f64;
+                        for k in 0..5 {
+                            e[k] += eff[k].to_f64_lossy() * pop as f64;
+                        }
+                    }
+                    let (mut modern, mut all) = (0i64, 0i64);
+                    for r in &w.econ.regions {
+                        for p in &r.plants {
+                            all += p.levels;
+                            if data.catalogue.buildings[p.kind as usize].methods[p.method as usize]
+                                .available_from
+                                > 1925
+                                || data.tree.as_ref().is_some_and(|t| {
+                                    t.method_tech[p.kind as usize][p.method as usize].is_some()
+                                })
+                            {
+                                modern += p.levels;
+                            }
+                        }
+                    }
+                    println!(
+                        "      levels on tech-gated methods: {:.2}",
+                        modern as f64 / all.max(1) as f64
+                    );
+                    for tag in ["USA", "GBR", "BRA", "CHN", "RAJ", "SOV"] {
+                        if let Some(c) = w.countries.iter().position(|(_, x)| x.tag == tag) {
+                            let tfp: Vec<String> = w.econ.markets[c]
+                                .tech_tfp
+                                .iter()
+                                .map(|v| format!("{:.2}", v.to_f64_lossy()))
+                                .collect();
+                            let ind = w.research.stage[c]
+                                .iter()
+                                .filter(|s| **s >= Stage::Industrial)
+                                .count();
+                            println!(
+                                "      {tag}: tech tfp {} industrial {ind} points {:.0}",
+                                tfp.join(" "),
+                                w.research.points[c].to_f64_lossy()
+                            );
+                        }
+                    }
+                    println!(
+                        "      effects (pop-weighted): mortality {:.2} fertility {:.2} literacy {:.2} research {:.2} trade {:.2}",
+                        e[0] / total,
+                        e[1] / total,
+                        e[2] / total,
+                        e[3] / total,
+                        e[4] / total
+                    );
+                }
                 decades.push(snap);
                 since = 0.0;
             }
@@ -197,8 +282,7 @@ pub fn main(years: u32, seed: u64, threads: usize, check: bool, out: &str) -> Re
         .session
         .save(env!("CARGO_PKG_VERSION"), "bench")
         .map_err(|e| e.to_string())?;
-    let reloaded =
-        Session::load(&bytes, threads, Some(data.catalogue.clone())).map_err(|e| e.to_string())?;
+    let reloaded = Session::load(&bytes, threads, Some(data.rules())).map_err(|e| e.to_string())?;
     let resumed = run(&data, reloaded, end, false);
     let save_load_ok = resumed.session.state_hash() == main.session.state_hash();
 
@@ -223,7 +307,9 @@ pub fn main(years: u32, seed: u64, threads: usize, check: bool, out: &str) -> Re
         save_bytes: bytes.len(),
         save_load_mid_run_ok: save_load_ok,
         determinism_ok: determinism,
+        technologies: timings(&data, &main.session),
     };
+    print_timings(&report.technologies);
     println!(
         "simulation {:.1} s, slowest tick {:.1} ms, save {:.1} MB at {}, reload → {}",
         report.total_ms / 1000.0,
@@ -267,5 +353,65 @@ pub fn main(years: u32, seed: u64, threads: usize, check: bool, out: &str) -> Re
         Ok(())
     } else {
         Err(failures.join("; "))
+    }
+}
+
+fn timings(data: &GameData, s: &Session) -> Vec<TechTiming> {
+    let Some(tree) = &data.tree else {
+        return Vec::new();
+    };
+    let firsts = &s.world().research.firsts;
+    tree.techs
+        .iter()
+        .enumerate()
+        .map(|(t, tech)| {
+            let at = |stage: Stage| firsts.get(t).map(|f| f[stage as usize]).filter(|y| *y > 0);
+            TechTiming {
+                key: tech.key.clone(),
+                demonstrated: tech.demonstrated,
+                industrialized: tech.industrialized,
+                prototype: at(Stage::Prototype),
+                industrial: at(Stage::Industrial),
+            }
+        })
+        .collect()
+}
+
+/// Run against history: how many technologies arrived, and how early or late (era 0 left out).
+fn print_timings(t: &[TechTiming]) {
+    let later: Vec<&TechTiming> = t.iter().filter(|x| x.demonstrated > 1925).collect();
+    if later.is_empty() {
+        return;
+    }
+    let stat = |pick: &dyn Fn(&TechTiming) -> (Option<i32>, i32)| {
+        let lags: Vec<i32> = later
+            .iter()
+            .filter_map(|x| {
+                let (sim, hist) = pick(x);
+                sim.map(|y| y - hist)
+            })
+            .collect();
+        let n = lags.len().max(1) as f64;
+        let mean = lags.iter().sum::<i32>() as f64 / n;
+        let abs = lags.iter().map(|l| l.abs()).sum::<i32>() as f64 / n;
+        (lags.len(), mean, abs)
+    };
+    let (np, mp, ap) = stat(&|x| (x.prototype, x.demonstrated));
+    let (ni, mi, ai) = stat(&|x| (x.industrial, x.industrialized));
+    let due_p = later.iter().filter(|x| x.demonstrated <= 2025).count();
+    println!(
+        "technologies after 1925: prototype {np}/{due_p} (lag {mp:+.1} y, |lag| {ap:.1}), industrial {ni}/{due_p} (lag {mi:+.1} y, |lag| {ai:.1})"
+    );
+    if std::env::var_os("BF_TECH").is_some() {
+        for x in t {
+            println!(
+                "  {:<28} proto {:>4} sim {:>6}   industry {:>4} sim {:>6}",
+                x.key,
+                x.demonstrated,
+                x.prototype.map_or("-".into(), |y| y.to_string()),
+                x.industrialized,
+                x.industrial.map_or("-".into(), |y| y.to_string())
+            );
+        }
     }
 }

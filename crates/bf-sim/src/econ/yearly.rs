@@ -10,7 +10,7 @@ use super::catalogue::Catalogue;
 use super::monthly::best_method;
 use super::state::YearRecord;
 use super::week::ECON;
-use super::{fill, milli};
+use super::{Unlocks, fill, milli, plant_tfp};
 use crate::game::GameWorld;
 
 /// A plant switches when another method earns this much more.
@@ -18,6 +18,7 @@ const SWITCH_MARGIN: Fixed = milli(1100);
 
 pub struct Yearly {
     pub cat: Arc<Catalogue>,
+    pub tree: Option<Arc<crate::research::TechTree>>,
 }
 
 pub struct YearlyChanges {
@@ -42,6 +43,8 @@ impl System<GameWorld> for Yearly {
         let cat = &*self.cat;
         let econ = &world.econ;
         let year = ctx.date.year;
+        let unlocks = Unlocks::new(cat, year, self.tree.as_deref(), &world.research);
+        let wages = super::monthly::market_wages(econ);
         let methods = econ
             .regions
             .par_iter()
@@ -62,15 +65,18 @@ impl System<GameWorld> for Yearly {
                                 .iter()
                                 .map(|(g, q)| *q * m.price[*g as usize])
                                 .sum();
-                            (out - inp) * r.tfp_for(&cat.buildings[p.kind as usize])
+                            (out - inp) * plant_tfp(r, m, &cat.buildings[p.kind as usize])
+                                - wages[r.market as usize] * me.workers
                         };
                         match best_method(
                             cat,
                             p.kind as usize,
-                            year,
+                            &unlocks,
+                            r.market as usize,
                             &m.price,
                             &m.buy_ratio,
-                            r.tfp_for(&cat.buildings[p.kind as usize]),
+                            plant_tfp(r, m, &cat.buildings[p.kind as usize]),
+                            wages[r.market as usize],
                         ) {
                             Some((mi, profit))
                                 if mi != p.method
@@ -96,7 +102,13 @@ impl System<GameWorld> for Yearly {
                     .map(|p| p.satisfaction[1] * p.size)
                     .sum::<Fixed>()
                     / total;
-                let speed = milli(8) + comfort * milli(25);
+                // Mass schooling, radio and television speed it up.
+                let boost = world
+                    .research
+                    .effects
+                    .get(r.market as usize)
+                    .map_or(Fixed::ONE, |e| Fixed::ONE + e[2] * milli(300));
+                let speed = (milli(8) + comfort * milli(25)) * boost;
                 r.literacy + (Fixed::ONE - r.literacy) * speed
             })
             .collect();
@@ -112,7 +124,13 @@ impl System<GameWorld> for Yearly {
             .regions
             .iter()
             .map(|r| {
-                let own = milli(4) + r.literacy * milli(14);
+                // With research, technology moves productivity by building group and only the
+                // rest of the 1925 gap (institutions, schooling) closes here.
+                let own = if world.research.is_empty() {
+                    milli(4) + r.literacy * milli(14)
+                } else {
+                    Fixed::ZERO
+                };
                 let gap = ((leader - r.tfp) / r.tfp.max(milli(1))).min(Fixed::from_int(2));
                 let catch_up = gap * (milli(5) + r.literacy * milli(20));
                 r.tfp * (Fixed::ONE + own + catch_up)

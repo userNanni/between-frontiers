@@ -137,6 +137,13 @@ fn walk_through_the_screens() {
         "simulation did not run: {before:?}"
     );
     assert_eq!(before.player.as_deref(), Some("BRA"));
+
+    // 6r. Research screen: R opens it on the era with open technologies; Esc closes it.
+    h.key_press(egui::Key::R);
+    h.run_steps(3);
+    shot(&mut h, "06r-pesquisa");
+    h.key_press(egui::Key::Escape);
+    h.run_steps(2);
     h.get_by_label("Menu (Esc)").click();
     h.run_steps(2);
     h.get_by_label("Salvar").click();

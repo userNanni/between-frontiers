@@ -76,7 +76,16 @@ pub fn main() -> Result<(), String> {
             spent / budget.to_f64_lossy() * 100.0
         );
     }
-    let mut s = Session::new(world, 1, Date::new(1925, 1, 1), 0, Some(cat.clone()));
+    let mut s = Session::new(
+        world,
+        1,
+        Date::new(1925, 1, 1),
+        0,
+        Some(bf_sim::game::Rules {
+            catalogue: cat.clone(),
+            tree: None,
+        }),
+    );
     let world_supply = |e: &bf_sim::econ::Economy| -> Vec<f64> {
         (0..cat.goods.len())
             .map(|gi| {

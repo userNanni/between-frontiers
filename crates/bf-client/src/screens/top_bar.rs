@@ -35,6 +35,7 @@ pub struct BarResponse {
     pub toggle_pause: bool,
     pub speed: Option<u8>,
     pub open_menu: bool,
+    pub open_research: bool,
 }
 
 pub fn show(
@@ -758,7 +759,7 @@ fn time_panel(ui: &mut Ui, screen: Rect, i18n: &I18n, snap: &Snapshot, out: &mut
     let button = 36.0;
     let small = 28.0;
     let date_w = 210.0;
-    let inner_w = small + date_w + small + button + button + space::SM * 4.0;
+    let inner_w = small + date_w + small + button * 3.0 + space::SM * 5.0;
     let panel = Rect::from_min_size(
         Pos2::new(
             screen.right() - MARGIN - inner_w - PAD * 2.0,
@@ -784,6 +785,7 @@ fn time_panel(ui: &mut Ui, screen: Rect, i18n: &I18n, snap: &Snapshot, out: &mut
     let date_rect = next(date_w, TIME_H - 14.0);
     let plus_rect = next(small, small);
     let pause_rect = next(button, button);
+    let research_rect = next(button, button);
     let menu_rect = next(button, button);
 
     let mut at = |r: Rect, f: &mut dyn FnMut(&mut Ui)| {
@@ -808,6 +810,11 @@ fn time_panel(ui: &mut Ui, screen: Rect, i18n: &I18n, snap: &Snapshot, out: &mut
         };
         if icon_button(ui, icon, button, &tip, snap.paused).clicked() {
             out.toggle_pause = true;
+        }
+    });
+    at(research_rect, &mut |ui| {
+        if icon_button(ui, Icon::Flask, button, &i18n.tr("bar-research"), false).clicked() {
+            out.open_research = true;
         }
     });
     at(menu_rect, &mut |ui| {

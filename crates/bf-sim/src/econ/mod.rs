@@ -12,7 +12,7 @@ pub mod yearly;
 
 use laplace_schelling::Fixed;
 
-pub use catalogue::Catalogue;
+pub use catalogue::{Building, Catalogue};
 pub use state::{Economy, Market, Plant, Pop, Region, YearRecord};
 
 /// Profession indices, in the order of `economy::PROFESSIONS`.
@@ -98,4 +98,60 @@ pub fn fill(a: Fixed, b: Fixed) -> Fixed {
 /// Workers among `size` people.
 pub fn workers(size: i64) -> i64 {
     (Fixed::from_int(size) * WORKER_SHARE).to_int_floor()
+}
+
+/// What exists and what each country may build: by year without research data, by the stage of
+/// each technology with it.
+pub struct Unlocks<'a> {
+    year: i32,
+    tech: Option<(
+        &'a crate::research::TechTree,
+        &'a crate::research::ResearchState,
+    )>,
+    /// Goods that exist in the world (someone can make them).
+    pub goods: Vec<bool>,
+}
+
+impl<'a> Unlocks<'a> {
+    pub fn new(
+        cat: &Catalogue,
+        year: i32,
+        tree: Option<&'a crate::research::TechTree>,
+        research: &'a crate::research::ResearchState,
+    ) -> Self {
+        let tech = tree.filter(|_| !research.is_empty()).map(|t| (t, research));
+        let goods = (0..cat.goods.len())
+            .map(|g| match tech {
+                Some((t, r)) => r.good_exists(t, g),
+                None => cat.goods[g].available_from <= year,
+            })
+            .collect();
+        Self { year, tech, goods }
+    }
+
+    /// Calendar rules only: what history had made by `year`.
+    pub fn by_year(cat: &Catalogue, year: i32) -> Unlocks<'static> {
+        Unlocks {
+            year,
+            tech: None,
+            goods: cat.goods.iter().map(|g| g.available_from <= year).collect(),
+        }
+    }
+
+    /// Whether `country` may build `building` with `method`.
+    pub fn method(&self, cat: &Catalogue, country: usize, building: usize, method: usize) -> bool {
+        match self.tech {
+            Some((t, r)) => r.can_build(t, country, building, method),
+            None => cat.buildings[building].methods[method].available_from <= self.year,
+        }
+    }
+}
+
+/// Productivity of a plant of building `b` in region `r` of market `m`.
+pub fn plant_tfp(r: &Region, m: &Market, b: &Building) -> Fixed {
+    r.tfp_for(b)
+        * m.tech_tfp
+            .get(usize::from(b.group_ix))
+            .copied()
+            .unwrap_or(Fixed::ONE)
 }

@@ -227,12 +227,24 @@ impl System<GameWorld> for Census {
 }
 
 /// The systems of the game. Without a catalogue only the census runs (tools and old tests).
-pub fn schedule(threads: usize, cat: Option<Arc<Catalogue>>) -> Schedule<GameWorld> {
+/// What the rules need besides the world: the economy catalogue and the technology tree.
+#[derive(Clone)]
+pub struct Rules {
+    pub catalogue: Arc<Catalogue>,
+    pub tree: Option<Arc<crate::research::TechTree>>,
+}
+
+pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
     let mut s = Schedule::new(threads);
     s.add(Census);
-    if let Some(cat) = cat {
+    if let Some(Rules {
+        catalogue: cat,
+        tree,
+    }) = rules
+    {
         s.add(crate::econ::week::Week {
             cat: Arc::clone(&cat),
+            tree: tree.clone(),
         });
         s.add(crate::econ::monthly::Labour {
             cat: Arc::clone(&cat),
@@ -240,8 +252,15 @@ pub fn schedule(threads: usize, cat: Option<Arc<Catalogue>>) -> Schedule<GameWor
         s.add(crate::econ::monthly::Demography);
         s.add(crate::econ::monthly::Investment {
             cat: Arc::clone(&cat),
+            tree: tree.clone(),
         });
-        s.add(crate::econ::yearly::Yearly { cat });
+        if let Some(tree) = &tree {
+            s.add(crate::research_system::Research {
+                cat: Arc::clone(&cat),
+                tree: Arc::clone(tree),
+            });
+        }
+        s.add(crate::econ::yearly::Yearly { cat, tree });
     }
     s
 }
@@ -286,10 +305,10 @@ impl Session {
         seed: u64,
         start: Date,
         threads: usize,
-        cat: Option<Arc<Catalogue>>,
+        rules: Option<Rules>,
     ) -> Self {
         Self {
-            sim: Simulation::new(world, seed, start, schedule(threads, cat)),
+            sim: Simulation::new(world, seed, start, schedule(threads, rules)),
             earlier: Vec::new(),
         }
     }
@@ -338,11 +357,7 @@ impl Session {
     }
 
     /// Restores a campaign and checks the snapshot against its recorded hash.
-    pub fn load(
-        bytes: &[u8],
-        threads: usize,
-        cat: Option<Arc<Catalogue>>,
-    ) -> Result<Self, LoadError> {
+    pub fn load(bytes: &[u8], threads: usize, rules: Option<Rules>) -> Result<Self, LoadError> {
         let file: SaveFile<GameCommand> =
             SaveFile::decode(bytes, GAME_ID).map_err(LoadError::Save)?;
         let world: GameWorld = decode_snapshot(&file.snapshot).map_err(LoadError::Save)?;
@@ -357,7 +372,7 @@ impl Session {
             world,
             file.header.seed,
             file.header.clock,
-            schedule(threads, cat),
+            schedule(threads, rules),
         );
         // Commands stamped for ticks not yet run go back into the queue.
         sim.replay(&file.log);
