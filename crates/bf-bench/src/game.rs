@@ -366,7 +366,13 @@ struct Run {
     ticks: u64,
 }
 
-fn run(data: &GameData, mut session: Session, until: Date, report: bool) -> Run {
+fn run(
+    data: &GameData,
+    mut session: Session,
+    until: Date,
+    report: bool,
+    mut history: Option<&mut crate::history::History>,
+) -> Run {
     let (mut yearly, mut decades) = (Vec::new(), Vec::new());
     let (mut total, mut slowest, mut since) = (0.0f64, 0.0f64, 0.0f64);
     let mut ticks = 0;
@@ -383,6 +389,9 @@ fn run(data: &GameData, mut session: Session, until: Date, report: bool) -> Run 
         since += ms;
         slowest = slowest.max(ms);
         ticks += 1;
+        if let Some(h) = history.as_deref_mut() {
+            h.tick(data, &session);
+        }
         let d = session.clock().date;
         if d.month == 1 && d.day == 1 {
             yearly.push(session.state_hash());
@@ -602,7 +611,14 @@ fn run(data: &GameData, mut session: Session, until: Date, report: bool) -> Run 
     }
 }
 
-pub fn main(years: u32, seed: u64, threads: usize, check: bool, out: &str) -> Result<(), String> {
+pub fn main(
+    years: u32,
+    seed: u64,
+    threads: usize,
+    check: bool,
+    out: &str,
+    history_out: Option<&str>,
+) -> Result<(), String> {
     let data = GameData::load(&root())?;
     let end = Date::new(1925 + years as i32, 1, 1);
     let mid = Date::new(1925 + (years / 2) as i32, 1, 1);
@@ -615,20 +631,25 @@ pub fn main(years: u32, seed: u64, threads: usize, check: bool, out: &str) -> Re
         data.population.is_some(),
         data.industry.is_some()
     );
-    let main = run(&data, new_session(&data, seed, threads), end, true);
+    let session = new_session(&data, seed, threads);
+    let mut history = history_out.map(|_| crate::history::History::new(&data, &session));
+    let main = run(&data, session, end, true, history.as_mut());
+    if let (Some(h), Some(path)) = (history, history_out) {
+        crate::history::write(h, path)?;
+    }
 
-    let half = run(&data, new_session(&data, seed, threads), mid, false);
+    let half = run(&data, new_session(&data, seed, threads), mid, false, None);
     let bytes = half
         .session
         .save(env!("CARGO_PKG_VERSION"), "bench")
         .map_err(|e| e.to_string())?;
     let reloaded = Session::load(&bytes, threads, Some(data.rules())).map_err(|e| e.to_string())?;
-    let resumed = run(&data, reloaded, end, false);
+    let resumed = run(&data, reloaded, end, false, None);
     let save_load_ok = resumed.session.state_hash() == main.session.state_hash();
 
     let determinism = if check {
         let other = if threads == 1 { 0 } else { 1 };
-        let alt = run(&data, new_session(&data, seed, other), end, false);
+        let alt = run(&data, new_session(&data, seed, other), end, false, None);
         Some(alt.yearly == main.yearly)
     } else {
         None

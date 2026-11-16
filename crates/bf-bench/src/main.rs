@@ -8,6 +8,7 @@
 
 mod diag;
 mod game;
+mod history;
 mod world;
 
 use std::process::ExitCode;
@@ -32,6 +33,7 @@ Usage: bf-bench [options]
   --budget-tick-ms MS   fail when the slowest tick exceeds MS
   --out PATH            JSON report path (default bf-bench-report.json)
   --game                run the real campaign on the 1925 scenario instead of the toy world
+  --history-out PATH    with --game: write every country's yearly series to PATH (JSON)
 ";
 
 struct Options {
@@ -43,6 +45,7 @@ struct Options {
     budget_tick_ms: Option<f64>,
     out: String,
     game: bool,
+    history_out: Option<String>,
 }
 
 fn parse_args() -> Result<Options, String> {
@@ -55,6 +58,7 @@ fn parse_args() -> Result<Options, String> {
         budget_tick_ms: None,
         out: "bf-bench-report.json".to_owned(),
         game: false,
+        history_out: None,
     };
     let mut args = std::env::args().skip(1);
     while let Some(flag) = args.next() {
@@ -94,6 +98,7 @@ fn parse_args() -> Result<Options, String> {
                 )
             }
             "--out" => options.out = value("--out")?,
+            "--history-out" => options.history_out = Some(value("--history-out")?),
             "-h" | "--help" => return Err(String::new()),
             other => return Err(format!("unknown option {other}")),
         }
@@ -390,6 +395,7 @@ fn main() -> ExitCode {
             options.threads,
             options.check_determinism,
             &options.out,
+            options.history_out.as_deref(),
         ) {
             Ok(()) => ExitCode::SUCCESS,
             Err(e) => {

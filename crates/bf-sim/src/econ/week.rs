@@ -249,7 +249,7 @@ fn plant_run<'c>(
 
 /// Grain smallholders bring to market: a sixth of what they eat, rising to half as farming
 /// methods improve.
-fn peasant_surplus(r: &Region, staple: Fixed) -> Fixed {
+pub fn peasant_surplus(r: &Region, staple: Fixed) -> Fixed {
     let gain = if r.tfp_start > Fixed::ZERO {
         (r.tfp / r.tfp_start - Fixed::ONE).clamp(Fixed::ZERO, Fixed::ONE)
     } else {
@@ -260,7 +260,7 @@ fn peasant_surplus(r: &Region, staple: Fixed) -> Fixed {
 
 /// Staples the jobless grow for themselves. Smallholders get half the gain of farm technology
 /// (better seed, fertilizer): the Green Revolution reached them too.
-pub(crate) fn subsistence_food(r: &Region, m: &Market) -> Fixed {
+pub fn subsistence_food(r: &Region, m: &Market) -> Fixed {
     let agri = m.tech_tfp.first().copied().unwrap_or(Fixed::ONE);
     let gain = Fixed::ONE + (agri - Fixed::ONE).max(Fixed::ZERO) * milli(500);
     r.subsistence.mul_ratio(unemployed_people(r), 1000) * gain
