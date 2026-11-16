@@ -172,7 +172,9 @@ fn steps(h: &mut Harness<'_, App>) {
     h.run_steps(4);
 }
 
-/// Opens a campaign for Brazil and lets a few days run, so the windows have figures.
+/// Opens a campaign for Turkey and lets a week run, so the windows have figures. Turkey's
+/// budget has every source of revenue from the start: income tax, tax on consumption (its
+/// taxation law caps the income tax) and profit of state firms.
 fn open_campaign(h: &mut Harness<'_, App>, user: &std::path::Path) {
     let mut save = saves::create(
         &user.join("saves"),
@@ -181,7 +183,7 @@ fn open_campaign(h: &mut Harness<'_, App>, user: &std::path::Path) {
         laplace_schelling::calendar::Date::new(1925, 1, 1),
     )
     .unwrap();
-    save.meta.player = Some("BRA".into());
+    save.meta.player = Some("TUR".into());
     saves::write(&save).unwrap();
     let ctx = h.ctx.clone();
     h.state_mut().apply(Transition::Game(save), &ctx);
@@ -192,7 +194,7 @@ fn open_campaign(h: &mut Harness<'_, App>, user: &std::path::Path) {
     };
     h.key_press(egui::Key::Space);
     let started = std::time::Instant::now();
-    while snap(h).tick < 3 && started.elapsed().as_secs() < 120 {
+    while snap(h).tick < 8 && started.elapsed().as_secs() < 180 {
         std::thread::sleep(std::time::Duration::from_millis(20));
         h.run_steps(1);
     }

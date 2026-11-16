@@ -9,6 +9,18 @@ gov-money-basis = Rates and inflation in % a year; indices with 1925 = 100. Hove
 
 ## Budget
 gov-revenue = Revenue per year
+gov-income-tax = Income tax
+gov-tip-income-tax = The three classes' income tax, the lines above.
+gov-indirect-tax = Tax on consumption
+gov-cap-class = { $class } { $cap }
+gov-tip-indirect =
+    The taxation law in force caps the income tax: { $caps }.
+    What the caps keep the rule from charging (the mean cut of the three classes) is charged on what people buy, up to { $ceiling }.
+    Rate on consumption: { $rate }. Last week: { $week }.
+gov-state-firms = Profit of state firms
+gov-tip-state-firms =
+    The state owns { $ownership } of industry; { $paid } of what that share earns goes to the treasury, by the ownership law in force.
+    Last week: { $week }.
 gov-revenue-total = Total revenue
 gov-class-0 = Lower class
 gov-class-1 = Middle class
@@ -21,7 +33,7 @@ gov-tip-class-tax =
     Income after tax: { $income } a year.
     Rate: { $rate }. Tax = income × rate ÷ (1 − rate) = { $tax }.
 gov-tip-revenue =
-    Income tax last week: { $week } × 52 = { $year } ({ $gdp } of GDP).
+    Revenue last week, every source: { $week } × 52 = { $year } ({ $gdp } of GDP).
     Quarter's average: { $avg } a year.
 gov-spending = Spending per year
 gov-spending-total = Total spending
