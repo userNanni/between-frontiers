@@ -16,3 +16,4 @@ cmd-system-ui-scale-down = Interface menor
     .short = UI menor
 cmd-system-ui-stream = Interface para transmissão
     .short = UI transmissão
+settings-ui-scale-step-tip = Um passo menor ou maior. Ctrl + − e Ctrl + = fazem o mesmo em qualquer tela.

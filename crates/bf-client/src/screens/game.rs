@@ -390,7 +390,7 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
         state.selected.or(player.filter(|_| state.edit.on)),
         place(PanelId::CountryPanel),
     ) {
-        bf_ui_kit::paint_overlay(ui, side);
+        super::frame(ui, side, "country-panel");
         ui.interact(
             side,
             ui.make_persistent_id("game-side"),
@@ -412,11 +412,10 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
         let catcher = ui.interact(rect, ui.make_persistent_id("lens-outside"), Sense::click());
         let ctx = ui.ctx().clone();
         let lens = view.lens;
-        let free = shared
-            .hud
-            .layout
-            .free
-            .map(|a| crate::hud::clamp_into(a.rect(rect), rect));
+        let free = shared.hud.layout.free.map(|a| {
+            let area = crate::hud::hud_area(&shared.hud.layout, rect);
+            crate::hud::clamp_into(a.rect(area), area)
+        });
         let popup = lens_popup(
             r,
             |max_h| super::lens_panel::size(&ctx, lens, max_h),
@@ -690,7 +689,7 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
             .rect_filled(rect, 0, Color32::from_black_alpha(140));
         let panel = Rect::from_center_size(rect.center(), egui::vec2(360.0, 352.0));
         keys::cover(ui, rect);
-        bf_ui_kit::paint_overlay(ui, panel);
+        super::frame(ui, panel, "game-menu");
         ui.interact(
             rect,
             ui.make_persistent_id("menu-block"),
@@ -780,7 +779,8 @@ fn hud_sizes(
 ) -> std::collections::BTreeMap<PanelId, egui::Vec2> {
     let mut out = std::collections::BTreeMap::new();
     let editing = state.edit.on;
-    let window = state.government.is_some() || state.journal.is_some();
+    // The windows and the research screen cover the map.
+    let window = state.government.is_some() || state.journal.is_some() || state.research_open;
     if player.is_some() {
         out.insert(
             PanelId::Country,

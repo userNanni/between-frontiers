@@ -273,7 +273,7 @@ pub fn show(
         screen.max - Vec2::splat(space::XL),
     );
     keys::cover(ui, panel);
-    bf_ui_kit::paint_overlay(ui, panel);
+    super::frame(ui, panel, "research-panel");
     let block = ui.interact(
         screen,
         ui.make_persistent_id("research-block"),

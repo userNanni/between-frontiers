@@ -16,9 +16,11 @@ pub fn show(shared: &mut Shared, ui: &mut Ui, rect: Rect) -> bool {
     }
     let mut done = false;
     let panel = centered(rect, egui::vec2(600.0, 700.0));
+    super::mark_frame(ui, panel, "settings");
     region(ui, panel, |ui| {
         bf_ui_kit::overlay_frame().show(ui, |ui| {
-            ui.set_width(panel.width() - space::XL * 2.0);
+            // Less the frame's own stroke on each side.
+            ui.set_width(panel.width() - space::XL * 2.0 - 2.0);
             // On a short logical screen the settings scroll inside their frame.
             egui::ScrollArea::vertical()
                 .max_height(panel.height() - space::XL * 2.0)
@@ -187,24 +189,29 @@ fn scale_field(shared: &mut Shared, ui: &mut Ui) {
         }
         match choice {
             Choice::Fixed(p) => {
-                let mut value = p;
-                let options: Vec<(u32, String)> = FIXED
-                    .iter()
-                    .map(|s| {
-                        (
-                            *s,
-                            shared.i18n.tr_args(
-                                "settings-ui-scale-value",
-                                &[("percent", Arg::Num(*s as f64))],
-                            ),
-                        )
-                    })
-                    .collect();
-                ui.horizontal_wrapped(|ui| {
-                    if bf_ui_kit::segmented(ui, &mut value, &options) {
-                        next = Some(Choice::Fixed(value));
-                    }
-                });
+                // A stepper over the fixed steps: fits any width.
+                let i = FIXED.iter().position(|s| *s == p).unwrap_or(1);
+                let value = shared.i18n.tr_args(
+                    "settings-ui-scale-value",
+                    &[("percent", Arg::Num(p as f64))],
+                );
+                let tip = shared.tr("settings-ui-scale-step-tip");
+                let step = super::gov_ui::stepper(
+                    ui,
+                    &value,
+                    &tip,
+                    i > 0,
+                    i + 1 < FIXED.len(),
+                    super::gov_ui::StepTips {
+                        family: 'Q',
+                        id: "settings.scale",
+                        row: 0,
+                    },
+                );
+                if step != 0 {
+                    let j = (i as i32 + step).clamp(0, FIXED.len() as i32 - 1) as usize;
+                    next = Some(Choice::Fixed(FIXED[j]));
+                }
             }
             Choice::Stream(t) => {
                 let mut value = t;

@@ -296,6 +296,7 @@ pub mod id {
     pub const UI_SCALE_UP: &str = "system.ui_scale_up";
     pub const UI_SCALE_DOWN: &str = "system.ui_scale_down";
     pub const UI_STREAM: &str = "system.ui_stream";
+    pub const HUD_CENTER_BAND: &str = "hud.center_band";
 }
 
 fn builtin() -> Vec<CommandDef> {
@@ -430,5 +431,6 @@ fn builtin() -> Vec<CommandDef> {
     out.push(CommandDef::new(UI_SCALE_UP, System).keys([k(Equal).ctrl()]));
     out.push(CommandDef::new(UI_SCALE_DOWN, System).keys([k(Minus).ctrl()]));
     out.push(CommandDef::new(UI_STREAM, System).hint('T'));
+    out.push(CommandDef::new(HUD_CENTER_BAND, Windows));
     out
 }

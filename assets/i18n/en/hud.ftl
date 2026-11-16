@@ -95,3 +95,7 @@ tile-short-works = Works queued
 tile-short-research = Research
 hud-blocks-lead = In use · large row
 hud-blocks-rest = The others
+
+hud-center-band = On an ultrawide screen, keep the HUD to the 16:9 band in the middle
+cmd-hud-center-band = HUD in the middle band
+    .short = Middle band

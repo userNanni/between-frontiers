@@ -74,6 +74,12 @@ impl PanelId {
         }
     }
 
+    /// Opened on demand and closed again: with no room among the others it may cover them
+    /// (a small logical screen), as a window does.
+    pub fn is_layer(self) -> bool {
+        self == PanelId::CountryPanel
+    }
+
     /// The panel may grow shorter to make room, down to this height.
     pub fn min_height(self) -> Option<f32> {
         match self {
@@ -285,6 +291,10 @@ pub struct Layout {
     /// The map mode picker kept open as a panel; folded into a button otherwise.
     #[serde(default)]
     pub map_modes_open: bool,
+    /// On a screen wider than 16:9, the HUD keeps to a 16:9 band in the middle, so nothing sits
+    /// at the far ends of an ultrawide screen.
+    #[serde(default)]
+    pub center_band: bool,
 }
 
 impl Default for Layout {
@@ -345,6 +355,7 @@ impl Layout {
             tiles,
             overview: None,
             map_modes_open: false,
+            center_band: false,
         }
     }
 
@@ -558,9 +569,22 @@ fn overlaps(a: Rect, b: Rect) -> bool {
 /// anchor, kept inside the screen, then at the nearest place off the free area and off the
 /// panels placed before it; a panel that may shrink can give up height instead. One with no
 /// clear place near stays where it is.
+/// The part of the screen the HUD takes: all of it, or the 16:9 band in its middle.
+pub fn hud_area(layout: &Layout, screen: Rect) -> Rect {
+    let band = screen.height() * 16.0 / 9.0;
+    if layout.center_band && screen.width() > band + 1.0 {
+        Rect::from_center_size(screen.center(), egui::vec2(band, screen.height()))
+    } else {
+        screen
+    }
+}
+
 pub fn resolve(layout: &Layout, screen: Rect, sizes: &BTreeMap<PanelId, Vec2>) -> Resolved {
+    let screen = hud_area(layout, screen);
     let free = layout.free.map(|a| clamp_into(a.rect(screen), screen));
     let mut rects: BTreeMap<PanelId, Rect> = BTreeMap::new();
+    // Panels laid over the others for want of room: no block for the panels after them.
+    let mut layered: Vec<PanelId> = Vec::new();
     for p in PanelId::ALL {
         let place = layout.place(p);
         let Some(size) = sizes.get(&p) else { continue };
@@ -568,9 +592,29 @@ pub fn resolve(layout: &Layout, screen: Rect, sizes: &BTreeMap<PanelId, Vec2>) -
             continue;
         }
         let mut r = clamp_into(place.rect(screen, *size), screen);
-        let blocks: Vec<Rect> = free.into_iter().chain(rects.values().copied()).collect();
+        let blocks: Vec<Rect> = free
+            .into_iter()
+            .chain(
+                rects
+                    .iter()
+                    .filter(|(q, _)| !layered.contains(q))
+                    .map(|(_, r)| *r),
+            )
+            .collect();
         if let Some(c) = clear_place(r, &blocks, screen, p.min_height()) {
             r = c;
+        } else if p.is_layer()
+            && let Some(c) = clear_place(
+                r,
+                &free.into_iter().collect::<Vec<_>>(),
+                screen,
+                p.min_height(),
+            )
+        {
+            // No room among the others: a panel that opens on demand covers them for a while,
+            // never the free area.
+            r = c;
+            layered.push(p);
         }
         rects.insert(p, r);
     }
@@ -659,6 +703,14 @@ pub fn reset(hud: &mut Hud) {
 
 pub fn set_free_area(hud: &mut Hud, area: Option<Area>) {
     hud.layout.free = area;
+    hud.layout.preset = Preset::Custom;
+    hud.changed();
+}
+
+/// Keeps the HUD to a 16:9 band in the middle of a wide screen, or lets it use the whole
+/// screen (a command calls this).
+pub fn toggle_center_band(hud: &mut Hud) {
+    hud.layout.center_band = !hud.layout.center_band;
     hud.layout.preset = Preset::Custom;
     hud.changed();
 }

@@ -16,3 +16,4 @@ cmd-system-ui-scale-down = Smaller interface
     .short = Smaller UI
 cmd-system-ui-stream = Interface for a stream
     .short = Stream UI
+settings-ui-scale-step-tip = One step smaller or larger. Ctrl + − and Ctrl + = do the same anywhere.

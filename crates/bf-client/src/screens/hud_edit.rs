@@ -253,7 +253,10 @@ pub fn show(
             hatch(ui, r, color::POSITIVE);
             if veil.drag_stopped() {
                 if r.width() >= 40.0 && r.height() >= 40.0 {
-                    hud::set_free_area(hud_state, Some(Area::of_rect(r, screen)));
+                    hud::set_free_area(
+                        hud_state,
+                        Some(Area::of_rect(r, hud::hud_area(&hud_state.layout, screen))),
+                    );
                     out.save = true;
                 }
                 edit.marking = false;
@@ -273,7 +276,13 @@ pub fn show(
         if !edit.marking
             && let Some(moved) = free_area_grips(ui, free, screen)
         {
-            hud::set_free_area(hud_state, Some(Area::of_rect(moved.0, screen)));
+            hud::set_free_area(
+                hud_state,
+                Some(Area::of_rect(
+                    moved.0,
+                    hud::hud_area(&hud_state.layout, screen),
+                )),
+            );
             out.save |= moved.1;
         }
     }
@@ -372,10 +381,11 @@ pub fn show(
                     .map(|(_, r)| *r)
                     .chain(resolved.free)
                     .collect();
-                let moved = snap(Rect::from_min_size(at - grab, size), &others, screen);
+                let area = hud::hud_area(&hud_state.layout, screen);
+                let moved = snap(Rect::from_min_size(at - grab, size), &others, area);
                 hud_state
                     .layout
-                    .set_place(p, Placement::of_rect(moved, screen, true));
+                    .set_place(p, Placement::of_rect(moved, area, true));
                 hud_state.changed();
             }
             if resp.drag_stopped() || !ui.input(|i| i.pointer.any_down()) {
@@ -406,7 +416,7 @@ fn toolbar(
         Rect::from_center_size(screen.center() + edit.toolbar, vec2(width, height)),
         screen,
     );
-    bf_ui_kit::paint_overlay(ui, rect);
+    super::frame(ui, rect, "hud-toolbar");
     let bg = ui
         .interact(rect, id.with("block"), Sense::click_and_drag())
         .on_hover_cursor(egui::CursorIcon::Grab);
@@ -512,6 +522,17 @@ fn toolbar(
                 hud::set_free_area(hud_state, None);
                 out.save = true;
             }
+        }
+    });
+
+    // Ultrawide screens: the HUD in the 16:9 band of the middle.
+    ui.horizontal_wrapped(|ui| {
+        let mut band = hud_state.layout.center_band;
+        let changed = bf_ui_kit::toggle(ui, &mut band).changed();
+        bf_ui_kit::small(ui, &i18n.tr("hud-center-band"));
+        if changed || keys::fired(ui.ctx(), id::HUD_CENTER_BAND) {
+            hud::toggle_center_band(hud_state);
+            out.save = true;
         }
     });
 
@@ -695,7 +716,7 @@ fn block_editor(
         Rect::from_center_size(screen.center(), vec2(inner_w + pad * 2.0, height)),
         screen,
     );
-    bf_ui_kit::paint_overlay(ui, card);
+    super::frame(ui, card, "hud-blocks");
     ui.interact(
         card,
         ui.make_persistent_id(("hud-blocks", which as u8)),

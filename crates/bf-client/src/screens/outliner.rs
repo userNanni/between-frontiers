@@ -83,7 +83,7 @@ pub fn show(ui: &mut Ui, rect: Rect, src: Sources<'_>, fold: &mut Fold) -> Respo
     let room = rect.height().max(HEADER_H + 8.0);
     let height = size(ui.ctx(), fold).y.min(room);
     let panel = Rect::from_min_size(rect.min, Vec2::new(WIDTH, height));
-    bf_ui_kit::paint_overlay(ui, panel);
+    super::frame(ui, panel, "overview");
     ui.interact(panel, id.with("block"), Sense::click_and_drag());
     let inner = panel.shrink2(Vec2::new(space::MD, space::SM));
     let mut child = ui.new_child(egui::UiBuilder::new().max_rect(inner));

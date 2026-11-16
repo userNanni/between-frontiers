@@ -95,3 +95,7 @@ tile-short-works = Obras na fila
 tile-short-research = Pesquisa
 hud-blocks-lead = Em uso · destaque
 hud-blocks-rest = Demais
+
+hud-center-band = Em tela ultralarga, manter o HUD na faixa 16:9 do meio
+cmd-hud-center-band = HUD na faixa do meio
+    .short = Faixa do meio
