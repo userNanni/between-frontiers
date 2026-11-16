@@ -42,6 +42,8 @@ pub struct Snapshot {
     /// The player's treasury, currency and debt, read at every publication; `None` without a
     /// player or an economy.
     pub government: Option<Arc<crate::government::GovernmentView>>,
+    /// The player's laws, interest groups and movements; `None` without the politics data.
+    pub laws: Option<Arc<crate::laws_view::Live>>,
 }
 
 /// The player's research, copied out of the world for the interface.
@@ -124,6 +126,7 @@ fn snapshot_of(
         local: Arc::new(local_view(session)),
         figures,
         government: crate::government::read(session.world(), session.clock().date).map(Arc::new),
+        laws: crate::laws_view::Live::read(session.world()).map(Arc::new),
     }
 }
 
