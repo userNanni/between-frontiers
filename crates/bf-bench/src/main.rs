@@ -35,6 +35,8 @@ Usage: bf-bench [options]
   --out PATH            JSON report path (default bf-bench-report.json)
   --game                run the real campaign on the 1925 scenario instead of the toy world
   --history-out PATH    with --game: write every country's yearly series to PATH (JSON)
+  --save-at DATES       with --game: save, reload and finish from each YYYY-MM-DD in this
+                        comma-separated list (default: 1 January of the middle year)
 ";
 
 struct Options {
@@ -45,8 +47,26 @@ struct Options {
     budget_ms: Option<f64>,
     budget_tick_ms: Option<f64>,
     out: String,
+    save_at: Vec<Date>,
     game: bool,
     history_out: Option<String>,
+}
+
+/// `YYYY-MM-DD`.
+fn parse_date(text: &str) -> Result<Date, String> {
+    let bad = || format!("--save-at: {text} is not YYYY-MM-DD");
+    let mut parts = text
+        .trim()
+        .split('-')
+        .map(|p| p.parse::<i64>().map_err(|_| bad()));
+    let (y, m, d) = match (parts.next(), parts.next(), parts.next(), parts.next()) {
+        (Some(y), Some(m), Some(d), None) => (y?, m?, d?),
+        _ => return Err(bad()),
+    };
+    if !(1..=12).contains(&m) || !(1..=31).contains(&d) {
+        return Err(bad());
+    }
+    Ok(Date::new(y as i32, m as u8, d as u8))
 }
 
 fn parse_args() -> Result<Options, String> {
@@ -58,6 +78,7 @@ fn parse_args() -> Result<Options, String> {
         budget_ms: None,
         budget_tick_ms: None,
         out: "bf-bench-report.json".to_owned(),
+        save_at: Vec::new(),
         game: false,
         history_out: None,
     };
@@ -100,6 +121,12 @@ fn parse_args() -> Result<Options, String> {
             }
             "--out" => options.out = value("--out")?,
             "--history-out" => options.history_out = Some(value("--history-out")?),
+            "--save-at" => {
+                options.save_at = value("--save-at")?
+                    .split(',')
+                    .map(parse_date)
+                    .collect::<Result<_, _>>()?
+            }
             "-h" | "--help" => return Err(String::new()),
             other => return Err(format!("unknown option {other}")),
         }
@@ -406,6 +433,7 @@ fn main() -> ExitCode {
             options.check_determinism,
             &options.out,
             options.history_out.as_deref(),
+            &options.save_at,
         ) {
             Ok(()) => ExitCode::SUCCESS,
             Err(e) => {

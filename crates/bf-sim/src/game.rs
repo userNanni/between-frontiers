@@ -445,9 +445,16 @@ impl Session {
     }
 
     /// Every command applied in this campaign, oldest first.
+    /// Every command of the campaign: applied before the last load, applied since, and queued
+    /// for the next tick.
     pub fn history(&self) -> CommandLog<GameCommand> {
         let mut log = CommandLog::new();
-        for entry in self.earlier.iter().chain(self.sim.log().entries()) {
+        for entry in self
+            .earlier
+            .iter()
+            .chain(self.sim.log().entries())
+            .chain(self.sim.pending())
+        {
             log.push(entry.clone());
         }
         log
@@ -561,6 +568,20 @@ mod tests {
         // Both continue identically.
         s.sim.run_until(Date::new(1930, 1, 2));
         loaded.sim.run_until(Date::new(1930, 1, 2));
+        assert_eq!(loaded.state_hash(), s.state_hash());
+    }
+
+    /// A command issued before the next tick (the player's choice on the first day, a law
+    /// changed while paused) is in the save and applies after the load.
+    #[test]
+    fn a_save_keeps_the_commands_not_yet_applied() {
+        let mut s = session(2);
+        let bytes = s.save("test", "first day").unwrap();
+        let mut loaded = Session::load(&bytes, 1, None).unwrap();
+        assert_eq!(loaded.history().len(), 1);
+        s.sim.run_until(Date::new(1925, 3, 1));
+        loaded.sim.run_until(Date::new(1925, 3, 1));
+        assert_eq!(loaded.world().player_tag(), Some("BRA"));
         assert_eq!(loaded.state_hash(), s.state_hash());
     }
 
