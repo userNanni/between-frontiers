@@ -38,7 +38,8 @@ fn basket_orders<'a>(
         .collect()
 }
 
-/// What the pool buys for upkeep this week.
+/// What the pool orders for upkeep this week, from last week's pool and prices. The same
+/// quantities join the demand and are paid for, so the pool pays for what it got.
 fn upkeep_orders(cat: &Catalogue, m: &Market) -> Vec<(GoodIx, Fixed)> {
     let money = m.pool.max(Fixed::ZERO) * UPKEEP_SHARE;
     basket_orders(cat.upkeep_basket.iter(), money, &m.price)
@@ -106,6 +107,8 @@ pub struct WeekChanges {
     world_price: Vec<Fixed>,
     /// Local goods of each region this week.
     local: Vec<Vec<super::state::LocalGood>>,
+    /// What each market's pool ordered for upkeep.
+    upkeep: Vec<Vec<(GoodIx, Fixed)>>,
 }
 
 /// Cost-weighted choice among the goods that meet a need: shares fall with the square of the
@@ -388,6 +391,7 @@ fn clear_market(
     supply: &[Fixed],
     trade: &[Fixed],
     exists: &[bool],
+    upkeep: &[(GoodIx, Fixed)],
 ) -> (Market, Vec<(GoodIx, Fixed)>) {
     let g = cat.goods.len();
     // The state's own purchases and construction join the demand.
@@ -409,7 +413,7 @@ fn clear_market(
         }
     }
     // Capital that found no project still turns over: maintenance, housing, roads.
-    for (gi, q) in upkeep_orders(cat, &m) {
+    for &(gi, q) in upkeep {
         demand[gi as usize] += q;
     }
     for gi in 0..g {
@@ -720,12 +724,14 @@ impl System<GameWorld> for Week {
                 };
             }
         }
+        let upkeep: Vec<_> = econ.markets.iter().map(|m| upkeep_orders(cat, m)).collect();
         let (mut markets, state_orders): (Vec<Market>, Vec<_>) = econ
             .markets
             .iter()
             .enumerate()
             .map(|(mi, m)| {
-                clear_market(cat, m.clone(), &demand[mi], &supply[mi], &trade[mi], exists)
+                let (d, s, t) = (&demand[mi], &supply[mi], &trade[mi]);
+                clear_market(cat, m.clone(), d, s, t, exists, &upkeep[mi])
             })
             .unzip();
         super::local::finish(
@@ -773,6 +779,7 @@ impl System<GameWorld> for Week {
             regions,
             world_price,
             local,
+            upkeep,
         }
     }
 
@@ -852,7 +859,7 @@ impl System<GameWorld> for Week {
                     m.pool -= bought * m.price[gi];
                 }
             }
-            for (gi, q) in upkeep_orders(cat, m) {
+            for &(gi, q) in &changes.upkeep[mi] {
                 m.pool -= q * m.buy_ratio[gi as usize] * m.price[gi as usize];
             }
         }
