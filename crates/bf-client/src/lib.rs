@@ -2,6 +2,7 @@
 
 pub mod app;
 pub mod flags;
+pub mod live;
 pub mod map;
 pub mod paths;
 pub mod saves;

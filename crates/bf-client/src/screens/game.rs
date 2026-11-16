@@ -23,6 +23,8 @@ pub struct State {
     research_camera: Option<super::research::TreeCamera>,
     /// Month the live map lenses were last coloured for.
     live_month: Option<(i32, u8)>,
+    /// Figures the HUD shows, as last read from the simulation.
+    live_figures: Option<std::sync::Arc<crate::live::LiveFigures>>,
     last_autosave: laplace_schelling::calendar::Date,
 }
 
@@ -61,6 +63,7 @@ impl State {
             research_open: false,
             research_camera: None,
             live_month: None,
+            live_figures: None,
         };
         if !path.is_file() {
             state.sim.save(path, state.save.meta.name.clone())?;
@@ -125,9 +128,22 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
     });
 
     // Live map lenses: the world takes the simulation's figures; the map recolours once a
-    // month, or at once when the lens opens.
+    // month, or at once when the lens opens. The HUD's country figures change with the month too.
     if let Some(world) = &mut shared.world {
         world.live_local = std::sync::Arc::clone(&snap.local);
+        // New month, or the world lost its figures on a trip through another screen.
+        let fresh = world.live.is_some() != snap.figures.is_some()
+            || match (&snap.figures, &state.live_figures) {
+                (Some(new), Some(old)) => !std::sync::Arc::ptr_eq(new, old),
+                (new, old) => new.is_some() != old.is_some(),
+            };
+        if fresh {
+            world.live = snap
+                .figures
+                .as_deref()
+                .map(|f| crate::world::FigureTable::live(&world.countries, f));
+            state.live_figures = snap.figures.clone();
+        }
         let month = (snap.date.year, snap.date.month);
         if let Some(view) = &mut shared.map_view
             && matches!(view.lens, crate::map::lens::Lens::Local(_))

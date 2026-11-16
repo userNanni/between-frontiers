@@ -1,12 +1,15 @@
 //! Read-only view of the scenario for the client: countries, provinces and derived figures.
 //!
-//! Phase 0 has no simulation state yet, so this is built straight from the scenario files.
+//! Built from the scenario files; during a campaign the simulation's figures are laid over the
+//! scenario's (`World::live`), refreshed once a month.
 
 use std::path::Path;
 
 use bf_sim::indicators::{QualityOfLife, quality_of_life};
 use bf_sim::scenario::{CountriesFile, CountryDef, MapFile, ProvinceDef, StateDef, Status};
 use laplace_schelling::calendar::Date;
+
+use crate::live::LiveFigures;
 
 pub struct Province {
     pub def: ProvinceDef,
@@ -34,14 +37,6 @@ pub struct Country {
     /// Metropole area.
     pub area_km2: f64,
     pub colonial_area_km2: f64,
-    /// Metropole GDP in 2011 international dollars.
-    pub gdp: f64,
-    pub colonial_gdp: f64,
-    pub rank_population: usize,
-    pub rank_gdp: usize,
-    /// Present when literacy and life expectancy are known.
-    pub quality: Option<QualityOfLife>,
-    pub rank_quality: Option<usize>,
     pub overlord: Option<usize>,
     pub subjects: Vec<usize>,
     /// Province holding the capital, when the map has one under it.
@@ -53,24 +48,183 @@ impl Country {
         &self.def.tag
     }
 
-    pub fn colonial_population(&self) -> f64 {
-        self.def
-            .colonies
-            .as_ref()
-            .map_or(0.0, |c| c.population as f64)
+    /// Whether the country holds colonies, by the scenario or on the map.
+    pub fn has_colonies(&self) -> bool {
+        self.def.colonies.is_some() || !self.colonial_provinces.is_empty()
     }
 
-    /// Metropole and colonies.
+    pub fn is_subject(&self) -> bool {
+        matches!(self.def.status, Status::Subject { .. })
+    }
+}
+
+/// Where a table of figures comes from. The two count money in different units, never mixed.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Source {
+    /// The 1925 scenario: GDP in 2011 international dollars (Maddison Project).
+    Scenario,
+    /// The simulation, read once a month: GDP in dollars at the simulation's base prices, of the
+    /// year `gdp_year` (`None` while the first year runs on the 1925 calibration).
+    Live { gdp_year: Option<i32> },
+}
+
+/// One country's figures, metropole and colonies apart.
+#[derive(Clone, Debug, Default)]
+pub struct Figures {
+    pub population: f64,
+    pub colonial_population: f64,
+    /// In the unit of the table's [`Source`].
+    pub gdp: f64,
+    pub colonial_gdp: f64,
+    /// Metropole, 0–1.
+    pub literacy: Option<f64>,
+    pub urbanization: Option<f64>,
+    /// Years. Always the scenario's: the simulation does not model it yet.
+    pub life_expectancy: Option<f64>,
+    /// Present when literacy and life expectancy are known.
+    pub quality: Option<QualityOfLife>,
+    /// Metropole population.
+    pub rank_population: usize,
+    /// GDP with the colonies: weight in the world, not welfare.
+    pub rank_gdp: usize,
+    pub rank_quality: Option<usize>,
+}
+
+impl Figures {
+    fn new(
+        metropole: (f64, f64),
+        colonies: (f64, f64),
+        literacy: Option<f64>,
+        urbanization: Option<f64>,
+        life_expectancy: Option<f64>,
+    ) -> Self {
+        let mut f = Self {
+            population: metropole.0,
+            gdp: metropole.1,
+            colonial_population: colonies.0,
+            colonial_gdp: colonies.1,
+            literacy,
+            urbanization,
+            life_expectancy,
+            ..Self::default()
+        };
+        f.quality = match (life_expectancy, literacy) {
+            (Some(life), Some(lit)) => Some(quality_of_life(f.gdp_per_capita(), life, lit)),
+            _ => None,
+        };
+        f
+    }
+
+    /// Metropole.
+    pub fn gdp_per_capita(&self) -> f64 {
+        if self.population > 0.0 {
+            self.gdp / self.population
+        } else {
+            0.0
+        }
+    }
+
     pub fn total_population(&self) -> f64 {
-        self.def.population as f64 + self.colonial_population()
+        self.population + self.colonial_population
     }
 
     pub fn total_gdp(&self) -> f64 {
         self.gdp + self.colonial_gdp
     }
+}
 
-    pub fn is_subject(&self) -> bool {
-        matches!(self.def.status, Status::Subject { .. })
+/// Figures of every country (index as in [`World::countries`]) with the world totals.
+#[derive(Clone, Debug)]
+pub struct FigureTable {
+    pub source: Source,
+    pub countries: Vec<Figures>,
+    pub world_population: f64,
+    pub world_gdp: f64,
+}
+
+impl FigureTable {
+    fn new(source: Source, mut countries: Vec<Figures>) -> Self {
+        let n = countries.len();
+        let mut order: Vec<usize> = (0..n).collect();
+        order.sort_by(|&a, &b| countries[b].population.total_cmp(&countries[a].population));
+        for (rank, &i) in order.iter().enumerate() {
+            countries[i].rank_population = rank + 1;
+        }
+        order.sort_by(|&a, &b| {
+            countries[b]
+                .total_gdp()
+                .total_cmp(&countries[a].total_gdp())
+        });
+        for (rank, &i) in order.iter().enumerate() {
+            countries[i].rank_gdp = rank + 1;
+        }
+        let q = |f: &Figures| f.quality.map(|q| q.index);
+        let mut with_quality: Vec<usize> = (0..n).filter(|&i| q(&countries[i]).is_some()).collect();
+        with_quality.sort_by(|&a, &b| {
+            q(&countries[b])
+                .unwrap_or(0.0)
+                .total_cmp(&q(&countries[a]).unwrap_or(0.0))
+        });
+        for (rank, &i) in with_quality.iter().enumerate() {
+            countries[i].rank_quality = Some(rank + 1);
+        }
+        Self {
+            source,
+            world_population: countries.iter().map(Figures::total_population).sum(),
+            world_gdp: countries.iter().map(Figures::total_gdp).sum(),
+            countries,
+        }
+    }
+
+    /// The 1925 scenario.
+    pub fn scenario(defs: &[CountryDef]) -> Self {
+        let countries = defs
+            .iter()
+            .map(|def| {
+                let (cp, cg) = def.colonies.as_ref().map_or((0.0, 0.0), |c| {
+                    (
+                        c.population as f64,
+                        c.population as f64 * c.gdp_per_capita as f64,
+                    )
+                });
+                let pop = def.population as f64;
+                Figures::new(
+                    (pop, pop * def.gdp_per_capita as f64),
+                    (cp, cg),
+                    def.literacy.map(f64::from),
+                    def.urbanization.map(f64::from),
+                    def.life_expectancy.map(f64::from),
+                )
+            })
+            .collect();
+        Self::new(Source::Scenario, countries)
+    }
+
+    /// The simulation's figures, matched to the countries by tag. Life expectancy stays the
+    /// scenario's; a country the simulation does not know counts as empty.
+    pub fn live(countries: &[Country], live: &LiveFigures) -> Self {
+        let rows = countries
+            .iter()
+            .map(|c| {
+                let life = c.def.life_expectancy.map(f64::from);
+                match live.countries.iter().find(|l| l.tag == c.def.tag) {
+                    Some(l) => Figures::new(
+                        (l.metropole.population, l.metropole.gdp),
+                        (l.colonies.population, l.colonies.gdp),
+                        l.metropole.literacy,
+                        l.metropole.urbanization,
+                        life,
+                    ),
+                    None => Figures::new((0.0, 0.0), (0.0, 0.0), None, None, life),
+                }
+            })
+            .collect();
+        Self::new(
+            Source::Live {
+                gdp_year: live.gdp_year,
+            },
+            rows,
+        )
     }
 }
 
@@ -80,9 +234,11 @@ pub struct World {
     pub deposits: Vec<Vec<bf_sim::resources::Deposit>>,
     /// Land per state; `None` when the data is missing.
     pub land: Vec<Option<bf_sim::resources::StateLand>>,
-    /// World totals on the start date.
-    pub world_population: f64,
-    pub world_gdp: f64,
+    /// Figures on the start date.
+    pub scenario: FigureTable,
+    /// Figures from the simulation during a campaign, refreshed once a month; `None` outside
+    /// one, where the scenario's stand.
+    pub live: Option<FigureTable>,
     pub countries: Vec<Country>,
     pub provinces: Vec<Province>,
     /// Sorted by id: `states[i].def.id == i + 1`.
@@ -155,11 +311,6 @@ impl World {
             .countries
             .iter()
             .map(|def| Country {
-                gdp: def.population as f64 * def.gdp_per_capita as f64,
-                colonial_gdp: def
-                    .colonies
-                    .as_ref()
-                    .map_or(0.0, |c| c.population as f64 * c.gdp_per_capita as f64),
                 def: def.clone(),
                 provinces: Vec::new(),
                 colonial_provinces: Vec::new(),
@@ -167,17 +318,6 @@ impl World {
                 colonial_states: Vec::new(),
                 area_km2: 0.0,
                 colonial_area_km2: 0.0,
-                rank_population: 0,
-                rank_gdp: 0,
-                quality: match (def.life_expectancy, def.literacy) {
-                    (Some(life), Some(lit)) => Some(quality_of_life(
-                        def.gdp_per_capita as f64,
-                        life as f64,
-                        lit as f64,
-                    )),
-                    _ => None,
-                },
-                rank_quality: None,
                 overlord: None,
                 subjects: Vec::new(),
                 capital_province: None,
@@ -212,51 +352,32 @@ impl World {
                 countries[o].subjects.push(i);
             }
         }
-        let mut order: Vec<usize> = (0..countries.len()).collect();
-        order.sort_by(|&a, &b| {
-            countries[b]
-                .def
-                .population
-                .cmp(&countries[a].def.population)
-        });
-        for (rank, &i) in order.iter().enumerate() {
-            countries[i].rank_population = rank + 1;
-        }
-        // Economic rank counts the colonies: it measures weight in the world, not welfare.
-        order.sort_by(|&a, &b| {
-            countries[b]
-                .total_gdp()
-                .total_cmp(&countries[a].total_gdp())
-        });
-        for (rank, &i) in order.iter().enumerate() {
-            countries[i].rank_gdp = rank + 1;
-        }
-        let mut with_quality: Vec<usize> = (0..countries.len())
-            .filter(|&i| countries[i].quality.is_some())
-            .collect();
-        with_quality.sort_by(|&a, &b| {
-            let q = |i: usize| countries[i].quality.map_or(0.0, |q| q.index);
-            q(b).total_cmp(&q(a))
-        });
-        for (rank, &i) in with_quality.iter().enumerate() {
-            countries[i].rank_quality = Some(rank + 1);
-        }
-        let world_population = countries.iter().map(|c| c.total_population()).sum();
-        let world_gdp = countries.iter().map(|c| c.total_gdp()).sum();
+        let scenario = FigureTable::scenario(&file.countries);
         let deposits = vec![Vec::new(); states.len()];
         let land = vec![None; states.len()];
         Self {
             start,
             deposits,
             land,
-            world_population,
-            world_gdp,
+            scenario,
+            live: None,
             countries,
             provinces,
             states,
             map,
             live_local: std::sync::Arc::default(),
         }
+    }
+
+    /// The figures on screen: the simulation's in a campaign, the scenario's elsewhere.
+    pub fn figures(&self) -> &FigureTable {
+        self.live.as_ref().unwrap_or(&self.scenario)
+    }
+
+    /// Leaves the campaign's live figures behind (back to the menu or the country choice).
+    pub fn clear_live(&mut self) {
+        self.live = None;
+        self.live_local = std::sync::Arc::default();
     }
 
     /// Tooltip text for a province: the state name (the province name on maps without states)

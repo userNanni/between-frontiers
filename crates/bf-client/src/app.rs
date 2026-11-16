@@ -141,6 +141,10 @@ impl App {
             view.camera = None;
             view.selected_owner = None;
         }
+        // Outside a campaign the scenario's figures stand; a campaign reads its own again.
+        if let Some(world) = &mut shared.world {
+            world.clear_live();
+        }
         self.screen = match transition {
             Transition::Menu => {
                 shared.refresh_saves();

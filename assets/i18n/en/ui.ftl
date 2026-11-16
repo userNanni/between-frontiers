@@ -98,6 +98,7 @@ stat-population = Population
 stat-gdp = GDP
 stat-gdp-per-capita = GDP per capita
 stat-gdp-unit = 2011 international dollars
+stat-gdp-unit-live = Dollars at the simulation's base prices
 stat-area = Area
 stat-area-value = { $value } km²
 stat-states = States
@@ -142,7 +143,7 @@ bar-years = { $value } years
 bar-percent = { $value }%
 bar-of-hundred = { $value } of 100
 bar-rank = #{ $rank } in the world
-bar-gdp-tip = Value of everything the country produces in a year, in 2011 international dollars.
+bar-gdp-tip = Value of everything the country produces in a year.
 bar-gdp-per-capita = Per person: { $value }
 bar-population-tip = People living in the metropole. Colonies count apart.
 bar-density = Density: { $value } per km²
@@ -198,6 +199,17 @@ country-colonies-value = { $population } · { $states } states
 settings-map-relief = Terrain relief on the map
 saves-error-load = Could not open the campaign: { $error }
 hud-engine = Simulation day { $tick } · state { $hash }
+
+## Simulation figures
+
+unit-scenario = In 2011 international dollars (Maddison Project), those of the 1925 scenario.
+unit-live = In dollars at the simulation's base prices: fixed catalogue prices, no inflation. Not to be added to or compared directly with the scenario's 2011 dollars.
+source-live = Source: the simulation, read every month.
+source-live-gdp-year = GDP of { $year }, the last full year.
+source-live-gdp-calibration = No full year of play yet: the GDP calibrated in 1925 stands.
+hud-gdp-split = Metropole and colonies trade in the same market: its GDP is split between them by people's income, and in the first year as in the scenario.
+hud-life-scenario = 1925 figure: the simulation does not compute life expectancy yet.
+hud-quality-life-scenario = Health uses the 1925 life expectancy, which the simulation does not compute yet.
 
 ## Map modes
 

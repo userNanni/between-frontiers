@@ -14,8 +14,11 @@ use egui::{Align2, Color32, Pos2, Rect, Sense, Stroke, Ui, Vec2};
 
 use crate::flags::{Flags, paint_flag};
 use crate::sim::Snapshot;
-use crate::text::{country_name, date_long, difficulty_key, money_exact, status_line};
-use crate::world::{Country, World};
+use crate::text::{
+    country_name, date_long, difficulty_key, economy_source, money_exact, money_unit,
+    social_source, status_line,
+};
+use crate::world::{Source, World};
 
 const MARGIN: f32 = 12.0;
 const BANNER: Vec2 = Vec2::new(84.0, 60.0);
@@ -50,15 +53,7 @@ pub fn show(
     let mut out = BarResponse::default();
     time_panel(ui, screen, i18n, snap, &mut out);
     if let (Some(world), Some(p)) = (world, player) {
-        corner_panel(
-            ui,
-            screen,
-            i18n,
-            world,
-            flags,
-            &world.countries[p],
-            &mut out,
-        );
+        corner_panel(ui, screen, i18n, world, flags, p, &mut out);
     }
     out
 }
@@ -104,13 +99,25 @@ fn years(i18n: &I18n, v: f64) -> String {
     i18n.tr_args("bar-years", &[("value", Arg::String(i18n.decimal(v, 1)))])
 }
 
-fn items(i18n: &I18n, world: &World, c: &Country) -> (Vec<Item>, Vec<Item>, Vec<Item>) {
+/// Figures of the country `p`: the simulation's during a campaign, read once a month.
+fn items(i18n: &I18n, world: &World, p: usize) -> (Vec<Item>, Vec<Item>, Vec<Item>) {
+    let c = &world.countries[p];
+    let table = world.figures();
+    let f = &table.countries[p];
+    let live = matches!(table.source, Source::Live { .. });
     let unknown = i18n.tr("bar-unknown");
-    let social = i18n.tr("source-social");
-    let economy = i18n.tr("source-economy");
+    let social = social_source(i18n, table.source);
+    // Life expectancy is the scenario's even in a campaign: the simulation has none yet.
+    let life_source = if live {
+        vec![i18n.tr("hud-life-scenario"), i18n.tr("source-social")]
+    } else {
+        vec![i18n.tr("source-social")]
+    };
+    let economy = economy_source(i18n, table.source);
+    let unit = money_unit(i18n, table.source);
     let due = i18n.tr("hud-due-to");
-    let pop = c.def.population as f64;
-    let gdppc = c.def.gdp_per_capita as f64;
+    let pop = f.population;
+    let gdppc = f.gdp_per_capita();
     let tip = |title: &str,
                value: &str,
                summary: Vec<String>,
@@ -124,10 +131,10 @@ fn items(i18n: &I18n, world: &World, c: &Country) -> (Vec<Item>, Vec<Item>, Vec<
     };
 
     // Row 1: headline indicators with bars.
-    let quality_value = c
+    let quality_value = f
         .quality
         .map_or(unknown.clone(), |q| i18n.decimal(q.index, 1));
-    let quality_breakdown = match c.quality {
+    let quality_breakdown = match f.quality {
         Some(q) => vec![
             (
                 format!(
@@ -141,9 +148,8 @@ fn items(i18n: &I18n, world: &World, c: &Country) -> (Vec<Item>, Vec<Item>, Vec<
                 format!(
                     "{} ({})",
                     i18n.tr("bar-quality-health"),
-                    c.def
-                        .life_expectancy
-                        .map_or(unknown.clone(), |l| years(i18n, l as f64))
+                    f.life_expectancy
+                        .map_or(unknown.clone(), |l| years(i18n, l))
                 ),
                 i18n.decimal(q.health, 2),
             ),
@@ -151,9 +157,7 @@ fn items(i18n: &I18n, world: &World, c: &Country) -> (Vec<Item>, Vec<Item>, Vec<
                 format!(
                     "{} ({})",
                     i18n.tr("bar-quality-education"),
-                    c.def
-                        .literacy
-                        .map_or(unknown.clone(), |l| pct(i18n, l as f64))
+                    f.literacy.map_or(unknown.clone(), |l| pct(i18n, l))
                 ),
                 i18n.decimal(q.education, 2),
             ),
@@ -161,8 +165,10 @@ fn items(i18n: &I18n, world: &World, c: &Country) -> (Vec<Item>, Vec<Item>, Vec<
         None => vec![],
     };
     let mut quality_summary = vec![i18n.tr("bar-quality-tip")];
-    if c.quality.is_none() {
+    if f.quality.is_none() {
         quality_summary.push(i18n.tr("bar-quality-missing"));
+    } else if live {
+        quality_summary.push(i18n.tr("hud-quality-life-scenario"));
     }
     if !quality_breakdown.is_empty() {
         quality_summary.push(due.clone());
@@ -171,26 +177,23 @@ fn items(i18n: &I18n, world: &World, c: &Country) -> (Vec<Item>, Vec<Item>, Vec<
         Item {
             icon: Icon::Heart,
             value: quality_value.clone(),
-            bar: c.quality.map(|q| (q.index / 100.0) as f32),
+            bar: f.quality.map(|q| (q.index / 100.0) as f32),
             tip: tip(
                 "bar-quality",
                 &quality_value,
                 quality_summary,
                 quality_breakdown,
                 vec![
-                    c.rank_quality.map(|r| rank(i18n, r)).unwrap_or_default(),
+                    f.rank_quality.map(|r| rank(i18n, r)).unwrap_or_default(),
                     social.clone(),
                 ],
             ),
         },
         {
-            let v = c
-                .def
-                .literacy
-                .map_or(unknown.clone(), |l| pct(i18n, l as f64));
+            let v = f.literacy.map_or(unknown.clone(), |l| pct(i18n, l));
             Item {
                 icon: Icon::Book,
-                bar: c.def.literacy,
+                bar: f.literacy.map(|l| l as f32),
                 tip: tip(
                     "bar-literacy",
                     &v,
@@ -202,33 +205,29 @@ fn items(i18n: &I18n, world: &World, c: &Country) -> (Vec<Item>, Vec<Item>, Vec<
             }
         },
         {
-            let v = c
-                .def
+            let v = f
                 .life_expectancy
-                .map_or(unknown.clone(), |l| years(i18n, l as f64));
+                .map_or(unknown.clone(), |l| years(i18n, l));
             Item {
                 icon: Icon::Hourglass,
-                bar: c.def.life_expectancy.map(|l| {
-                    ((l as f64 - LIFE_FLOOR) / (LIFE_CEILING - LIFE_FLOOR)).clamp(0.0, 1.0) as f32
+                bar: f.life_expectancy.map(|l| {
+                    ((l - LIFE_FLOOR) / (LIFE_CEILING - LIFE_FLOOR)).clamp(0.0, 1.0) as f32
                 }),
                 tip: tip(
                     "bar-life",
                     &v,
                     vec![i18n.tr("bar-life-tip"), i18n.tr("hud-life-bar")],
                     vec![],
-                    vec![social.clone()],
+                    life_source,
                 ),
                 value: v,
             }
         },
         {
-            let v = c
-                .def
-                .urbanization
-                .map_or(unknown.clone(), |u| pct(i18n, u as f64));
+            let v = f.urbanization.map_or(unknown.clone(), |u| pct(i18n, u));
             Item {
                 icon: Icon::City,
-                bar: c.def.urbanization,
+                bar: f.urbanization.map(|u| u as f32),
                 tip: tip(
                     "bar-urban",
                     &v,
@@ -250,9 +249,9 @@ fn items(i18n: &I18n, world: &World, c: &Country) -> (Vec<Item>, Vec<Item>, Vec<
                 tip: tip(
                     "hud-per-capita",
                     &v,
-                    vec![i18n.tr("hud-per-capita-tip")],
+                    vec![i18n.tr("hud-per-capita-tip"), unit.clone()],
                     vec![],
-                    vec![economy.clone()],
+                    economy.clone(),
                 ),
                 value: v,
             }
@@ -260,9 +259,9 @@ fn items(i18n: &I18n, world: &World, c: &Country) -> (Vec<Item>, Vec<Item>, Vec<
     ];
 
     // Row 2: size of the country.
-    let gdp = money_short(i18n, c.gdp);
+    let gdp = money_short(i18n, f.gdp);
     let population = i18n.compact_short(pop);
-    let has_colonies = c.def.colonies.is_some() || !c.colonial_provinces.is_empty();
+    let has_colonies = c.has_colonies();
     let split = |metro: String, colonies: String, total: String| -> Vec<(String, String)> {
         if has_colonies {
             vec![
@@ -299,7 +298,16 @@ fn items(i18n: &I18n, world: &World, c: &Country) -> (Vec<Item>, Vec<Item>, Vec<
             tip: tip(
                 "bar-gdp",
                 &gdp,
-                vec![i18n.tr("bar-gdp-tip"), due.clone()],
+                [
+                    vec![i18n.tr("bar-gdp-tip"), unit.clone()],
+                    if live && has_colonies {
+                        vec![i18n.tr("hud-gdp-split")]
+                    } else {
+                        vec![]
+                    },
+                    vec![due.clone()],
+                ]
+                .concat(),
                 [
                     vec![
                         (i18n.tr("bar-population"), i18n.compact(pop)),
@@ -309,13 +317,13 @@ fn items(i18n: &I18n, world: &World, c: &Country) -> (Vec<Item>, Vec<Item>, Vec<
                         ),
                     ],
                     split(
-                        money_short(i18n, c.gdp),
-                        money_short(i18n, c.colonial_gdp),
-                        money_short(i18n, c.total_gdp()),
+                        money_short(i18n, f.gdp),
+                        money_short(i18n, f.colonial_gdp),
+                        money_short(i18n, f.total_gdp()),
                     ),
                 ]
                 .concat(),
-                vec![rank(i18n, c.rank_gdp), economy.clone()],
+                [vec![rank(i18n, f.rank_gdp)], economy.clone()].concat(),
             ),
             value: gdp,
         },
@@ -328,10 +336,10 @@ fn items(i18n: &I18n, world: &World, c: &Country) -> (Vec<Item>, Vec<Item>, Vec<
                 vec![i18n.tr("bar-population-tip"), i18n.int(pop as i64)],
                 split(
                     i18n.compact(pop),
-                    i18n.compact(c.colonial_population()),
-                    i18n.compact(c.total_population()),
+                    i18n.compact(f.colonial_population),
+                    i18n.compact(f.total_population()),
                 ),
-                vec![rank(i18n, c.rank_population), economy.clone()],
+                vec![rank(i18n, f.rank_population), economy[0].clone()],
             ),
             value: population,
         },
@@ -388,12 +396,12 @@ fn items(i18n: &I18n, world: &World, c: &Country) -> (Vec<Item>, Vec<Item>, Vec<
     ];
 
     // Row 3: place in the world.
-    let gdp_share = pct(i18n, c.total_gdp() / world.world_gdp.max(1.0));
-    let pop_share = pct(i18n, c.total_population() / world.world_population.max(1.0));
+    let gdp_share = pct(i18n, f.total_gdp() / table.world_gdp.max(1.0));
+    let pop_share = pct(i18n, f.total_population() / table.world_population.max(1.0));
     let rank_value =
         |r: usize| i18n.tr_args("hud-rank-value", &[("rank", Arg::String(r.to_string()))]);
-    let quality_rank = c.rank_quality.map_or(unknown.clone(), rank_value);
-    let population_rank = rank_value(c.rank_population);
+    let quality_rank = f.rank_quality.map_or(unknown.clone(), rank_value);
+    let population_rank = rank_value(f.rank_population);
     let subjects: Vec<(String, String)> = c
         .subjects
         .iter()
@@ -415,10 +423,14 @@ fn items(i18n: &I18n, world: &World, c: &Country) -> (Vec<Item>, Vec<Item>, Vec<
                     i18n.tr("hud-includes-colonies"),
                 ],
                 vec![],
-                vec![i18n.tr_args(
-                    "hud-world-total",
-                    &[("value", Arg::String(money_short(i18n, world.world_gdp)))],
-                )],
+                [
+                    vec![i18n.tr_args(
+                        "hud-world-total",
+                        &[("value", Arg::String(money_short(i18n, table.world_gdp)))],
+                    )],
+                    economy.clone(),
+                ]
+                .concat(),
             ),
             value: gdp_share,
         },
@@ -435,7 +447,7 @@ fn items(i18n: &I18n, world: &World, c: &Country) -> (Vec<Item>, Vec<Item>, Vec<
                 vec![],
                 vec![i18n.tr_args(
                     "hud-world-total",
-                    &[("value", Arg::String(i18n.compact(world.world_population)))],
+                    &[("value", Arg::String(i18n.compact(table.world_population)))],
                 )],
             ),
             value: pop_share,
@@ -490,10 +502,10 @@ fn corner_panel(
     i18n: &I18n,
     world: &World,
     flags: &Flags,
-    c: &Country,
+    p: usize,
     out: &mut BarResponse,
 ) {
-    let (row1, row2, row3) = items(i18n, world, c);
+    let (row1, row2, row3) = items(i18n, world, p);
     let banner = Rect::from_min_size(screen.min + Vec2::splat(MARGIN), BANNER);
     let panel = Rect::from_min_size(
         Pos2::new(banner.right() - 6.0, banner.top()),
@@ -539,7 +551,7 @@ fn corner_panel(
         }
     }
 
-    banner_ui(ui, banner, i18n, world, flags, c, out);
+    banner_ui(ui, banner, i18n, world, flags, p, out);
 }
 
 fn cell_ui(ui: &mut Ui, cell: Rect, item: &Item, headline: bool, salt: (&str, usize)) {
@@ -680,9 +692,11 @@ fn banner_ui(
     i18n: &I18n,
     world: &World,
     flags: &Flags,
-    c: &Country,
+    p: usize,
     out: &mut BarResponse,
 ) {
+    let c = &world.countries[p];
+    let rank_gdp = world.figures().countries[p].rank_gdp;
     let response = ui.interact(banner, ui.make_persistent_id("hud-banner"), Sense::click());
     ui.painter().add(
         egui::Shadow {
@@ -724,7 +738,7 @@ fn banner_ui(
     painter.text(
         center,
         Align2::CENTER_CENTER,
-        c.rank_gdp.to_string(),
+        rank_gdp.to_string(),
         serif(17.0),
         color::TEXT,
     );
@@ -732,7 +746,7 @@ fn banner_ui(
         "{}\n{}",
         i18n.tr_args(
             "hud-medal-tip",
-            &[("rank", Arg::String(c.rank_gdp.to_string()))]
+            &[("rank", Arg::String(rank_gdp.to_string()))]
         ),
         i18n.tr(difficulty_key(world, c))
     );
