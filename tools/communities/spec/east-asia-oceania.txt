@@ -1,0 +1,228 @@
+# Communities of 1925, region east-asia-oceania. One line per state: STATE | culture/religion share, ... | source | C/M/E.
+# Format and build: tools/communities/generate.py; method: docs/population.pt-BR.md. Licence: CC BY-SA 4.0.
+# Drafted from the censuses cited on each line and in the SOURCES block; `~` is the rest of the state.
+
+# Region EAS: East Asia, Southeast Asia (without Burma and the Philippines) and Oceania, 1925-01-01.
+# Modelling choices (apply to every line below):
+# - manchu: kept as its own key although most Manchus spoke Mandarin by 1925, because the Republic
+#   still classified them as one of the "five races" (five-colour flag in use until 1928) and the
+#   banner population was a distinct, recognised category; religion chinese_folk (shamanism and
+#   Tibetan Buddhism survived only at the margins).
+# - ryukyuan: Okinawans kept apart from japanese (Ryukyuan languages are not intelligible with
+#   Japanese; separate prefectural regime until 1920); religion folk (indigenous noro/utaki cult),
+#   not shinto.
+# - Hoklo and Hakka in Taiwan and everywhere else = han. Overseas Chinese = han/chinese_folk.
+# - mongol = all Mongolic peoples (Khalkha, Khorchin, Kharchin, Oirat, Buryat, Monguor/Tu); Daur,
+#   Evenki and Oroqen of the northeast folded into mongol (closest listed community).
+# - miao = Miao/Hmong umbrella (China census term); hmong of Indochina and Siam use the same key.
+# - montagnard = Austroasiatic and Austronesian highland peoples of French Indochina (French "Moï",
+#   Lao Theung/"Kha"): Bahnar, Jarai, Rhade, Sedang, Koho, Mnong, Khmu, Kuy etc.
+# - Europeans of the Netherlands Indies (Dutch and Indo-Europeans, legally European) = dutch,
+#   religion split 2/3 protestant 1/3 catholic as in the 1930 census.
+# - Hadhrami Arabs of the Indies = yemeni (shared key; Hadhramawt is in Yemen).
+# - Australian- and British-born whites of Australia = australian (English-speaking immigrants are
+#   not split by birthplace); Irish-Australian Catholics = australian/catholic, flagged below.
+# - Uninhabited dependencies get the owner's main community; the Spratlys get japanese because the
+#   only people there in 1925 were guano workers of the Rasa Island Phosphate Co. (Itu Aba, 1918-29).
+# - Christians in China folded unless >= 0.5 % of the province.
+
+# ---------------------------------------------------------------- China (no census: all E)
+CHN-ZHILI | han/chinese_folk ~, han/catholic 0.020, manchu/chinese_folk 0.025, hui/sunni 0.015, japanese/shinto 0.0002, english/protestant 0.0001 | estimate: 1953-census minority shares adjusted back, Catholic vicariate statistics 1925 (Hebei vicariates), banner population of Beijing | E
+CHN-SD | han/chinese_folk ~, han/catholic 0.008, hui/sunni 0.006, japanese/shinto 0.0005 | estimate: 1953-census minority shares, Catholic mission statistics 1925, Japanese consular count for Qingdao/Jinan | E
+CHN-SX | han/chinese_folk ~, han/catholic 0.008 | estimate: Catholic mission statistics 1925 over 1928 Ministry of Interior population | E
+CHN-SN | han/chinese_folk ~ | estimate: Hui (~0.3 %) and Christians folded after the 1860s-70s depopulation of Shaanxi Hui | E
+CHN-HA | han/chinese_folk ~, hui/sunni 0.012 | estimate: 1953-census Hui share of Henan applied to 1925 | E
+CHN-AH | han/chinese_folk ~, hui/sunni 0.006 | estimate: 1953-census Hui share applied to 1925 | E
+CHN-JS | han/chinese_folk ~, han/catholic 0.006, hui/sunni 0.006, japanese/shinto 0.0004, english/protestant 0.0002 | estimate: Jiangnan vicariate statistics 1925; Shanghai Municipal Council census 1925 for foreigners; 1953 Hui share | E
+CHN-ZJ | han/chinese_folk ~ | estimate: minorities (She) and Christians < 0.5 %, folded | E
+CHN-JX | han/chinese_folk ~ | estimate: minorities and Christians < 0.5 %, folded | E
+CHN-HB | han/chinese_folk ~ | estimate: Tujia not distinguished from Han before 1957; Hui and Catholics < 0.5 % | E
+CHN-HN | han/chinese_folk ~, miao/folk 0.025, dong/folk 0.010, mien/folk 0.010 | estimate: 1953-census minority shares of Hunan, Tujia counted as Han as in 1925 | E
+CHN-FJ | han/chinese_folk ~, han/protestant 0.006, han/catholic 0.005 | estimate: China Continuation Committee survey 1922 (Protestants) and Catholic mission statistics | E
+CHN-GD | han/chinese_folk ~, hlai/folk 0.007 | estimate: Li of Hainan from Japanese/Chinese 1930s surveys over 1928 population | E
+CHN-GX | han/chinese_folk ~, zhuang/folk 0.340, mien/folk 0.040, miao/folk 0.010, dong/folk 0.010 | estimate: 1953-census language shares of Guangxi applied to 1925 | E
+CHN-GZ | han/chinese_folk ~, miao/folk 0.170, zhuang/folk 0.090, dong/folk 0.070, yi/folk 0.030 | estimate: 1953-census shares (Buyei merged into zhuang, Shui into dong, Tujia/Gelao into han) | E
+CHN-YN | han/chinese_folk ~, yi/folk 0.120, hani/folk 0.070, bai/chinese_folk 0.040, dai/theravada 0.035, miao/folk 0.030, zhuang/folk 0.030, hui/sunni 0.020, tibetan/vajrayana 0.008 | estimate: 1953-census shares adjusted (hani includes Lahu, Lisu, Naxi, Jingpo, Wa; miao includes Yao) | E
+CHN-SC | han/chinese_folk ~, yi/folk 0.025, tibetan/vajrayana 0.020 | estimate: Liangshan Yi and Kham/Aba Tibetans (incl. Qiang, Jiarong) from 1953 census over 1928 estimate | E
+CHN-GS | han/chinese_folk ~, hui/sunni 0.170, tibetan/vajrayana 0.035, mongol/vajrayana 0.007 | estimate: Gansu plus Ningxia; Hui incl. Dongxiang, Salar, Bonan; 1930s mission and Chinese surveys | E
+CHN-QH | tibetan/vajrayana ~, han/chinese_folk 0.360, hui/sunni 0.160, mongol/vajrayana 0.060 | estimate: 1930s Qinghai provincial estimates (Han ~ Tibetan, Hui 15 %), Monguor/Tu in mongol, Salar in hui | E
+CHN-XJ | uyghur/sunni ~, kazakh/sunni 0.090, han/chinese_folk 0.060, hui/sunni 0.045, kyrgyz/sunni 0.025, mongol/vajrayana 0.025, manchu/chinese_folk 0.008, russian/orthodox 0.004 | estimate: Xinjiang provincial nationality count of 1940-41 shares applied to 1925 (Han reduced); manchu incl. Sibe and Solon of Ili; Tajik/Uzbek/Tatar folded into uyghur | E
+CHN-NM | han/chinese_folk ~, mongol/vajrayana 0.180, han/catholic 0.025, hui/sunni 0.015, manchu/chinese_folk 0.015, russian/orthodox 0.003 | estimate: 1947 Inner Mongolia shares projected back, Scheut mission statistics (Suiyuan/Chahar) | E
+CHN-LN | han/chinese_folk ~, manchu/chinese_folk 0.070, mongol/vajrayana 0.012, korean/folk 0.007, hui/sunni 0.006, japanese/shinto 0.006 | estimate: Japanese consular count of Japanese and Koreans in Manchuria 1925; banner population from 1953 census adjusted | E
+CHN-JL | han/chinese_folk ~, korean/folk 0.062, korean/protestant 0.005, manchu/chinese_folk 0.040, mongol/vajrayana 0.006, hui/sunni 0.006, japanese/shinto 0.002 | estimate: Japanese consular count of Koreans in Jiandao 1925 (~350 k) over Jilin estimate | E
+CHN-HL | han/chinese_folk ~, manchu/chinese_folk 0.030, russian/orthodox 0.025, korean/folk 0.010, mongol/vajrayana 0.006, hui/sunni 0.006, japanese/shinto 0.001 | estimate: Harbin municipal and CER zone counts of Russians mid-1920s; Daur/Evenki/Oroqen in mongol, Harbin Jews and Poles folded into russian | E
+CHN-XZ | tibetan/vajrayana ~ | estimate: Monpa, Lhoba, Kashmiri/Hui Muslims and Nepalese traders together < 1 %, folded | E
+CHN-KWANTUNG | han/chinese_folk ~, japanese/shinto 0.100 | estimate: Kwantung Government statistics 1925 (Japanese ~ 90 k, mostly Dairen) | M
+CHN-WEIHAIWEI | han/chinese_folk ~, english/protestant 0.002 | Weihaiwei census 1921 (Chinese ~154 k, Europeans ~ 300) | M
+CHN-GUANGZHOUWAN | han/chinese_folk ~, french/catholic 0.001 | estimate: Annuaire statistique de l'Indochine (territory ~ 200 k) | E
+HKG | han/chinese_folk ~, english/protestant 0.012, portuguese/catholic 0.004, japanese/shinto 0.0025 | Hong Kong census 1921 (race); Indians (0.4 %) folded | C
+MAC | han/chinese_folk ~, portuguese/catholic 0.045 | Macau census 1920 (nationality; Macanese in portuguese) | C
+
+# ---------------------------------------------------------------- Japan
+JPN-ECHIGO JPN-HOKURIKU JPN-KITA-KANTO JPN-MINAMI-KYUSHU JPN-OU JPN-SAIKAI JPN-SAITAMA-CHIBA JPN-SANIN JPN-SANYO JPN-SHIKOKU JPN-TOHOKU JPN-TOSAN | japanese/shinto ~, korean/folk 0.001 | Japanese census 1925 (Taishō 14, prefecture totals); Koreans from Home Ministry count 1925 spread by prefecture | M
+JPN-HOKKAIDO | japanese/shinto ~, ainu/folk 0.006, korean/folk 0.002 | Japanese census 1925; Ainu from Hokkaidō-chō count of "former natives" 1926 (~15 k) | M
+JPN-TOKYO | japanese/shinto ~, korean/folk 0.0022 | Japanese census 1925; Koreans of Tokyo and Kanagawa from Home Ministry count 1925 | M
+JPN-HANSHIN | japanese/shinto ~, korean/folk 0.008 | Japanese census 1925; Koreans of Osaka and Hyōgo from Home Ministry count 1925 (~43 k) | M
+JPN-KINKI | japanese/shinto ~, korean/folk 0.0026 | Japanese census 1925; Koreans of Kyoto from Home Ministry count 1925 | M
+JPN-TOKAI | japanese/shinto ~, korean/folk 0.0018 | Japanese census 1925; Koreans of Aichi from Home Ministry count 1925 | M
+JPN-KITA-KYUSHU | japanese/shinto ~, korean/folk 0.004 | Japanese census 1925; Koreans of Fukuoka (coal mines) from Home Ministry count 1925 | M
+JPN-OKINAWA | ryukyuan/folk ~, japanese/shinto 0.015 | Japanese census 1925 (Okinawa 557 k); mainland Japanese officials and merchants estimated | M
+RUS-KARAFUTO | japanese/shinto ~, korean/folk 0.016, ainu/folk 0.010 | Karafuto census 1925 (203 k); Nivkh and Uilta folded into ainu | M
+TWN | han/chinese_folk ~, japanese/shinto 0.046, taiwanese_aboriginal/folk 0.033, han/protestant 0.007 | Taiwan census 1925 (Government-General, race: Japanese 184 k of 3.99 M; aborigines incl. special areas) | M
+JAP-NANYO | micronesian/protestant ~, micronesian/catholic 0.200, micronesian/folk 0.250, chamorro/catholic 0.070, japanese/shinto 0.090, ryukyuan/folk 0.040 | estimate: South Seas Bureau count 1925 (islanders ~49 k, Japanese ~7 k, about half Okinawan); religion from mission statistics | E
+KOR-GYEONGGI | korean/folk ~, japanese/shinto 0.055, korean/protestant 0.018, korean/catholic 0.008 | Chōsen census 1925 (province totals); Japanese share scaled from 1936 census province × nationality; Christians from 1925 mission statistics | M
+KOR-CHUNGBUK | korean/folk ~, japanese/shinto 0.007, korean/protestant 0.008, korean/catholic 0.005 | Chōsen census 1925; Japanese scaled from 1936 census; mission statistics | M
+KOR-CHUNGNAM | korean/folk ~, japanese/shinto 0.014, korean/protestant 0.010, korean/catholic 0.008 | Chōsen census 1925; Japanese scaled from 1936 census; mission statistics | M
+KOR-JEONBUK | korean/folk ~, japanese/shinto 0.018, korean/protestant 0.015, korean/catholic 0.007 | Chōsen census 1925; Japanese scaled from 1936 census; mission statistics | M
+KOR-JEONNAM | korean/folk ~, japanese/shinto 0.014, korean/protestant 0.010, korean/mahayana 0.008 | Chōsen census 1925; Japanese scaled from 1936 census; mission and temple statistics | M
+KOR-GYEONGBUK | korean/folk ~, japanese/shinto 0.016, korean/protestant 0.012, korean/mahayana 0.010 | Chōsen census 1925; Japanese scaled from 1936 census; mission and temple statistics | M
+KOR-GYEONGNAM | korean/folk ~, japanese/shinto 0.037, korean/protestant 0.010, korean/mahayana 0.010 | Chōsen census 1925; Japanese scaled from 1936 census (Busan); mission and temple statistics | M
+KOR-GANGWON | korean/folk ~, japanese/shinto 0.007, korean/protestant 0.006 | Chōsen census 1925; Japanese scaled from 1936 census; mission statistics | M
+PRK-HWANGHAE | korean/folk ~, korean/protestant 0.030, korean/catholic 0.012, japanese/shinto 0.010 | Chōsen census 1925; Japanese scaled from 1936 census; mission statistics | M
+PRK-PYEONGNAM | korean/folk ~, korean/protestant 0.050, japanese/shinto 0.024, korean/catholic 0.006 | Chōsen census 1925; Japanese scaled from 1936 census; Presbyterian/Methodist statistics (Pyongyang) | M
+PRK-PYEONGBUK | korean/folk ~, korean/protestant 0.050, japanese/shinto 0.010, han/chinese_folk 0.010 | Chōsen census 1925; Japanese and Chinese scaled from 1936 census; mission statistics | M
+PRK-HAMNAM | korean/folk ~, japanese/shinto 0.020, korean/protestant 0.015 | Chōsen census 1925; Japanese scaled from 1936 census (pre-Hungnam); mission statistics | M
+PRK-HAMBUK | korean/folk ~, japanese/shinto 0.033, korean/protestant 0.012, han/chinese_folk 0.006 | Chōsen census 1925; Japanese and Chinese scaled from 1936 census; mission statistics | M
+
+# ---------------------------------------------------------------- Siam
+THA-CENTRAL-SIAM | thai/theravada ~, han/chinese_folk 0.150, lao/theravada 0.030, malay/sunni 0.008, mon/theravada 0.006 | estimate: Siam census 1919 (nationality) corrected for Chinese by Skinner's ethnic estimate; Lao Phuan/Song captive communities | E
+THA-EASTERN-SIAM | thai/theravada ~, han/chinese_folk 0.120, khmer/theravada 0.040, lao/theravada 0.030, vietnamese/catholic 0.006 | estimate: Siam census 1919 with Skinner's Chinese estimate; Khmer of Prachinburi/Trat, Vietnamese Catholics of Chanthaburi | E
+THA-ISAN | lao/theravada ~, khmer/theravada 0.090, thai/theravada 0.080, han/chinese_folk 0.015 | estimate: language shares (Northern Khmer and Kuy in khmer, Thai Korat in thai) applied to Siam census 1919 totals | E
+THA-NORTHERN-SIAM | thai/theravada ~, karen/folk 0.040, shan/theravada 0.030, han/chinese_folk 0.025 | estimate: Northern Thai (Yuan) merged into thai as the 1919 census did; hill peoples (Lua, Lahu, Lisu, Akha, Hmong) folded into karen/folk | E
+THA-WESTERN-SIAM | thai/theravada ~, han/chinese_folk 0.050, karen/folk 0.040, lao/theravada 0.040, mon/theravada 0.030, karen/theravada 0.015 | estimate: Siam census 1919 with Skinner's Chinese estimate; Lao Song/Wiang of Ratchaburi-Phetchaburi | E
+THA-SOUTHERN-SIAM | thai/theravada ~, malay/sunni 0.240, han/chinese_folk 0.070, thai/sunni 0.030 | Siam census 1919 (Malay nationality well counted in monthon Pattani) with Skinner's Chinese estimate | M
+
+# ---------------------------------------------------------------- French Indochina
+VNM-TONKIN | vietnamese/mahayana ~, vietnamese/catholic 0.090, han/chinese_folk 0.005, french/catholic 0.002 | estimate: Annuaire statistique de l'Indochine 1926 population with Catholic vicariate statistics (Hanoi, Bui Chu, Phat Diem, Hai Phong) | E
+VNM-HAUTE-REGION | vietnamese/mahayana ~, tay/folk 0.250, tai_dam/folk 0.100, muong/folk 0.090, miao/folk 0.060, mien/folk 0.060, han/chinese_folk 0.030, vietnamese/catholic 0.020, french/catholic 0.0005 | estimate: 1926 provincial estimates with ethnic shares of the French military territories; Nung in tay | E
+VNM-ANNAM | vietnamese/mahayana ~, vietnamese/catholic 0.060, montagnard/folk 0.060, muong/folk 0.015, tai_dam/folk 0.015, cham/hindu 0.006, french/catholic 0.001 | estimate: Annuaire statistique 1926 (Annam ~5.1 M) with Central Highlands and Thanh Hoa/Nghe An highland shares; Bani Cham folded into cham/hindu | E
+VNM | vietnamese/mahayana ~, khmer/theravada 0.070, han/chinese_folk 0.055, vietnamese/catholic 0.050, french/catholic 0.004 | estimate: Annuaire statistique 1926 (Cochinchina ~4.1 M; Chinese of Cholon, Khmer Krom) | E
+KHM | khmer/theravada ~, han/chinese_folk 0.070, vietnamese/mahayana 0.055, cham/sunni 0.030, vietnamese/catholic 0.015, montagnard/folk 0.015, french/catholic 0.0008 | estimate: Annuaire statistique 1926 (Cambodia, "Chams et Malais" in cham) | E
+LAO | lao/theravada ~, montagnard/folk 0.270, tai_dam/folk 0.060, miao/folk 0.050, vietnamese/mahayana 0.030, han/chinese_folk 0.010, french/catholic 0.0005 | estimate: Annuaire statistique 1926 (Laos); Lao Theung in montagnard, Lue and Phuan in lao | E
+
+# ---------------------------------------------------------------- Netherlands Indies (Volkstelling 1930 shares)
+IDN-BATAVIA | betawi/sunni ~, sundanese/sunni 0.220, han/chinese_folk 0.150, javanese/sunni 0.110, dutch/protestant 0.045, dutch/catholic 0.025, malay/sunni 0.020, ambonese/protestant 0.012, yemeni/sunni 0.010 | Volkstelling 1930 (Batavia and Meester Cornelis, landaard) applied to 1925; ambonese/protestant covers native Christians | M
+IDN-BANTAM | javanese/sunni ~, sundanese/sunni 0.420, betawi/sunni 0.070, han/chinese_folk 0.035, dutch/protestant 0.001 | Volkstelling 1930 (Bantam plus Tangerang regency) applied to 1925; Bantenese Javanese in javanese | M
+IDN-WEST-JAVA | sundanese/sunni ~, javanese/sunni 0.080, han/chinese_folk 0.020, betawi/sunni 0.010, dutch/protestant 0.003, dutch/catholic 0.0015 | Volkstelling 1930 (residencies Preanger, Buitenzorg, Cheribon, Krawang) applied to 1925 | M
+IDN-MIDDEN-JAVA | javanese/sunni ~, sundanese/sunni 0.020, han/chinese_folk 0.015, dutch/protestant 0.0015, dutch/catholic 0.0008 | Volkstelling 1930 (Midden-Java and Soerakarta) applied to 1925 | M
+IDN-DJOKJAKARTA | javanese/sunni ~, han/chinese_folk 0.010, dutch/protestant 0.0025, dutch/catholic 0.0015 | Volkstelling 1930 (Djokjakarta) applied to 1925 | M
+IDN-OOST-JAVA | javanese/sunni ~, madurese/sunni 0.270, han/chinese_folk 0.012, dutch/protestant 0.0025, dutch/catholic 0.0013 | Volkstelling 1930 (Oost-Java incl. Madura) applied to 1925; Tengger Hindus folded | M
+IDN-ATJEH | acehnese/sunni ~, gayo/sunni 0.080, javanese/sunni 0.050, malay/sunni 0.040, han/chinese_folk 0.020, dutch/protestant 0.002 | Volkstelling 1930 (Atjeh en Onderhoorigheden) applied to 1925; Alas in gayo, Aneuk Jamee and Singkil in malay | M
+IDN-OOSTKUST | javanese/sunni ~, batak/protestant 0.165, batak/folk 0.156, malay/sunni 0.140, batak/sunni 0.130, han/chinese_folk 0.074, nias/protestant 0.040, minangkabau/sunni 0.026, tamil/hindu 0.007, dutch/protestant 0.004 | Volkstelling 1930 (Oostkust van Sumatra plus Tapanoeli) applied to 1925; pagan Nias folded into batak/folk, Banjarese into malay | M
+IDN-MIDDEN-SUMATRA | minangkabau/sunni ~, malay/sunni 0.220, han/chinese_folk 0.050, javanese/sunni 0.030, batak/sunni 0.020, mentawai/folk 0.007, dutch/protestant 0.002 | Volkstelling 1930 (Sumatra's Westkust, Riouw, Djambi) applied to 1925 | M
+IDN-ZUID-SUMATRA | malay/sunni ~, lampung/sunni 0.110, han/chinese_folk 0.065, javanese/sunni 0.065, minangkabau/sunni 0.015, dutch/protestant 0.002 | Volkstelling 1930 (Palembang, Bangka, Billiton, Benkoelen, Lampongs) applied to 1925; Rejang and other South Sumatran Malayic peoples in malay | M
+IDN-WEST-BORNEO | dayak/folk ~, malay/sunni 0.384, han/chinese_folk 0.135, buginese/sunni 0.030, dayak/catholic 0.020, dutch/catholic 0.001 | Volkstelling 1930 (Westerafdeling van Borneo) applied to 1925 | M
+IDN-OOST-BORNEO | banjarese/sunni ~, dayak/folk 0.240, malay/sunni 0.070, buginese/sunni 0.050, javanese/sunni 0.030, han/chinese_folk 0.025, dayak/protestant 0.008, dutch/protestant 0.002 | Volkstelling 1930 (Zuider- en Oosterafdeling van Borneo) applied to 1925; Kutai in malay | M
+IDN-CELEBES | buginese/sunni ~, makassarese/sunni 0.210, butonese/sunni 0.130, toraja/folk 0.110, toraja/protestant 0.010, han/chinese_folk 0.012, dutch/protestant 0.002 | Volkstelling 1930 (Celebes en Onderhoorigheden) applied to 1925; Mandar in buginese, Muna and Tolaki in butonese | M
+IDN-MANADO | minahasan/protestant ~, gorontalese/sunni 0.240, kaili/sunni 0.200, sangirese/protestant 0.120, kaili/folk 0.100, minahasan/catholic 0.020, han/chinese_folk 0.015, dutch/protestant 0.005 | Volkstelling 1930 (Manado residency incl. Central Celebes) applied to 1925; Bolaang Mongondow in gorontalese, Pamona Christians in minahasan/protestant | M
+IDN-MOLUKKEN | ambonese/protestant ~, north_moluccan/sunni 0.240, ambonese/sunni 0.170, ambonese/folk 0.100, ambonese/catholic 0.050, north_moluccan/protestant 0.050, north_moluccan/folk 0.050, butonese/sunni 0.030, han/chinese_folk 0.012, dutch/protestant 0.006 | Volkstelling 1930 (Molukken) applied to 1925; Kei, Aru and Tanimbar in ambonese | M
+IDN-BALI-LOMBOK | balinese/hindu ~, sasak/sunni 0.300, sumbawan/sunni 0.145, han/chinese_folk 0.010, buginese/sunni 0.010, dutch/protestant 0.001 | Volkstelling 1930 (Bali en Lombok plus Soembawa from Timor residency) applied to 1925; Bimanese in sumbawan | M
+IDN-TIMOR | timorese/folk ~, florenese/folk 0.190, florenese/catholic 0.170, timorese/protestant 0.140, sumbanese/folk 0.120, florenese/sunni 0.080, han/chinese_folk 0.008, dutch/protestant 0.002 | Volkstelling 1930 (Timor en Onderhoorigheden minus Soembawa) applied to 1925; Rotenese, Savunese, Alorese in timorese | M
+IDN-NIEUW-GUINEA | papuan/folk ~, papuan/protestant 0.060, papuan/catholic 0.010, dutch/protestant 0.001 | estimate: Dutch administrative estimates late 1920s; Utrecht Mission (Biak, Geelvink Bay) and MSC (Merauke) statistics | E
+
+# ---------------------------------------------------------------- British Malaya and Borneo
+MYS-STRAITS | han/chinese_folk ~, malay/sunni 0.278, tamil/hindu 0.080, tamil/sunni 0.025, javanese/sunni 0.020, eurasian/catholic 0.014, english/protestant 0.007, malayali/hindu 0.006, tamil/catholic 0.005 | Census of British Malaya 1921 (Nathan 1922), Straits Settlements by race; religion by tradition | M
+MYS-FMS | malay/sunni ~, han/chinese_folk 0.365, tamil/hindu 0.145, javanese/sunni 0.040, telugu/hindu 0.030, malayali/hindu 0.012, tamil/sunni 0.010, tamil/catholic 0.008, punjabi/sikh 0.008, english/protestant 0.005 | Census of British Malaya 1921 (Nathan 1922), FMS by race (Malays 38.6 %, Chinese 37.3 %, Indians 23.0 %); religion by tradition | M
+MYS-UMS | malay/sunni ~, han/chinese_folk 0.160, tamil/hindu 0.045, javanese/sunni 0.040, thai/theravada 0.016, telugu/hindu 0.006, english/protestant 0.001 | Census of British Malaya 1921 (Nathan 1922), Johore, Kedah, Perlis, Kelantan, Trengganu by race | M
+MYS-SARAWAK | dayak/folk ~, malay/sunni 0.260, han/chinese_folk 0.200, dayak/protestant 0.020, dayak/catholic 0.010, english/protestant 0.001 | estimate: Sarawak Gazette estimates 1920s and 1939 estimate shares (Chinese lowered); Melanau split into malay/dayak by religion | E
+MYS-NORTH-BORNEO | dusun/folk ~, han/chinese_folk 0.152, bajau/sunni 0.130, malay/sunni 0.120, javanese/sunni 0.043, moro/sunni 0.030, english/protestant 0.002 | North Borneo census 1921 (race); Murut in dusun, Suluk in moro, Brunei/Kedayan in malay | M
+BRN | malay/sunni ~, dusun/folk 0.170, han/chinese_folk 0.055, english/protestant 0.002 | Brunei census 1921 (race); Dusun, Bisaya, Murut, Iban in dusun | M
+IOA | malay/sunni ~, han/chinese_folk 0.480, punjabi/sikh 0.020, english/protestant 0.020 | estimate: Straits Settlements census 1921 (Christmas Island Chinese labour, Cocos Malays) | E
+
+# ---------------------------------------------------------------- Timor
+TLS | timorese/folk ~, timorese/catholic 0.045, han/chinese_folk 0.008, portuguese/catholic 0.003 | estimate: Anuário colonial late 1920s (~450 k) with Catholic mission statistics | E
+
+# ---------------------------------------------------------------- Australia
+AUS-NSW | australian/protestant ~, australian/catholic 0.255, ashkenazi/jewish 0.005, aboriginal_australian/protestant 0.004 | Australian census 1921 (state × religion, no reply prorated); Aboriginal estimate of NSW Protection Board | M
+AUS-VIC | australian/protestant ~, australian/catholic 0.225, ashkenazi/jewish 0.006, aboriginal_australian/protestant 0.0005 | Australian census 1921 (state × religion) | M
+AUS-QLD | australian/protestant ~, australian/catholic 0.235, aboriginal_australian/folk 0.020 | Australian census 1921 (state × religion); Aboriginal estimate of Queensland Chief Protector | M
+AUS-SA | australian/protestant ~, australian/catholic 0.135, german/protestant 0.020, aboriginal_australian/folk 0.007 | Australian census 1921 (state × religion; Lutherans 5 %, German-speaking part estimated) | M
+AUS-WA | australian/protestant ~, australian/catholic 0.215, aboriginal_australian/folk 0.070 | Australian census 1921 (state × religion); full-blood Aboriginal estimate (~25 k) added | M
+AUS-TAS | australian/protestant ~, australian/catholic 0.165 | Australian census 1921 (state × religion) | M
+AUS-NT | aboriginal_australian/folk ~, australian/protestant 0.090, australian/catholic 0.050, han/chinese_folk 0.025 | Australian census 1921 (NT 3,867 non-Aboriginal) plus Administrator's Aboriginal estimate (~17 k) | M
+AUS-FCT | australian/protestant ~, australian/catholic 0.250 | Australian census 1921 (FCT 2,572) | M
+NFK | english/protestant ~, australian/protestant 0.400 | estimate: Norfolk Island census 1921 (Pitcairn descendants vs Australian/NZ settlers) | E
+CSI | australian/protestant ~ | uninhabited | E
+ATC | english/protestant ~ | uninhabited | E
+HMD | english/protestant ~ | uninhabited | E
+NRU | micronesian/protestant ~, han/chinese_folk 0.350, micronesian/catholic 0.120, australian/protestant 0.050 | estimate: Nauru census 1921 (Nauruans, Gilbertese and Chinese phosphate labour) | E
+PNG | papuan/folk ~, melanesian/folk 0.120, melanesian/catholic 0.050, papuan/protestant 0.040, melanesian/protestant 0.030, papuan/catholic 0.030, australian/protestant 0.003, han/chinese_folk 0.002 | estimate: Mandate annual report 1924-25 (enumerated natives) plus unenumerated highlands; Lutheran, SVD, MSC and Methodist statistics | E
+PNG-PAPUA | papuan/folk ~, papuan/protestant 0.150, melanesian/folk 0.120, melanesian/protestant 0.080, papuan/catholic 0.030, australian/protestant 0.005 | estimate: Papua annual report 1924-25 (native estimate ~275 k); LMS, Anglican, Methodist and MSC statistics | E
+
+# ---------------------------------------------------------------- New Zealand and Pacific
+NZL-NORTH-ISLAND | new_zealander/protestant ~, new_zealander/catholic 0.135, maori/protestant 0.055, maori/catholic 0.009, maori/latter_day_saints 0.006 | New Zealand census 1926 (island × race; religion) | C
+NZL-SOUTH-ISLAND | new_zealander/protestant ~, new_zealander/catholic 0.120, maori/protestant 0.005 | New Zealand census 1926 (island × race; religion) | C
+COK | polynesian/protestant ~, polynesian/catholic 0.030, new_zealander/protestant 0.020 | Cook Islands census 1926 | M
+NIU | polynesian/protestant ~, new_zealander/protestant 0.005 | Niue census 1926 | M
+WSM | samoan/protestant ~, samoan/catholic 0.170, english/protestant 0.040, samoan/latter_day_saints 0.035, han/chinese_folk 0.025 | Western Samoa census 1926 (race); Europeans and part-Europeans with European status in english; religion from mission statistics | M
+TON | tongan/protestant ~, tongan/catholic 0.130, tongan/latter_day_saints 0.020, english/protestant 0.010 | Tonga census 1921; religion from church statistics | M
+FJI | fijian/protestant ~, hindustani/hindu 0.240, fijian/catholic 0.065, tamil/hindu 0.060, hindustani/sunni 0.055, english/protestant 0.043, telugu/hindu 0.025, polynesian/protestant 0.014, han/chinese_folk 0.006 | Fiji census 1921 (race × religion: Fijians 53.7 %, Indians 38.6 %); part-Europeans in english, Rotumans in polynesian | M
+SLB | melanesian/folk ~, melanesian/protestant 0.350, melanesian/catholic 0.080, polynesian/folk 0.030, english/protestant 0.004 | estimate: BSIP annual reports 1920s and census 1931 shares; Polynesian outliers | E
+VUT | melanesian/folk ~, melanesian/protestant 0.420, melanesian/catholic 0.070, vietnamese/mahayana 0.020, french/catholic 0.012, english/protestant 0.005 | estimate: Condominium estimates 1920s (Tonkinese indentured labour in vietnamese) | E
+PCN | english/protestant ~ | estimate: Pitcairn islanders (~170, Pitkern-speaking, Seventh-day Adventist) counted with english | E
+NCL | french/catholic ~, melanesian/catholic 0.250, melanesian/protestant 0.220, melanesian/folk 0.100, javanese/sunni 0.040, japanese/shinto 0.030, vietnamese/mahayana 0.025 | Recensement de la Nouvelle-Calédonie 1921 (Kanaks 57 %, Europeans 35 %, Asian indentured) ; religion from mission statistics | M
+WLF | polynesian/catholic ~, french/catholic 0.003 | estimate: Wallis and Futuna residency counts 1920s | E
+PYF | polynesian/protestant ~, polynesian/catholic 0.250, french/catholic 0.080, han/chinese_folk 0.070, polynesian/latter_day_saints 0.050 | Recensement des Établissements français de l'Océanie 1926; religion from mission statistics (Sanito/RLDS in latter_day_saints) | M
+ATF | french/catholic ~ | uninhabited | E
+PGA | japanese/shinto ~ | estimate: only inhabitants were Japanese guano workers on Itu Aba (Rasa Island Phosphate Co.) | E
+
+# ---------------------------------------------------------------- Relevance
+# !TAG:C is used where the factor holds for the colonies of TAG only (by analogy with @TAG:C);
+# a plain !TAG would wrongly flag the metropolitan majority.
+!CHN | han/catholic | patron | French religious protectorate over Catholic missions; extraterritorial mission protection (treaty of 1858/1860)
+!CHN | japanese/shinto | elite, legal_status, patron | Extraterritoriality, SMR railway zone and concessions in Tianjin, Hankou; Japanese consular police (Japanese consular returns 1925)
+!CHN | english/protestant | elite, legal_status, patron | Extraterritoriality, Shanghai International Settlement and concessions (Shanghai Municipal Council census 1925)
+!CHN | russian/orthodox | patron | Soviet co-management of the Chinese Eastern Railway after the 1924 Sino-Soviet and Mukden agreements; Harbin émigré community
+!CHN | korean/folk | patron, organization | Japan claims consular jurisdiction over Koreans in Jiandao (1909 convention); Korean independence armies (Jeonguibu 1924) based in Manchuria
+!CHN | hui/sunni | elite, organization | Ma family warlords hold the military of Xining, Ningxia and Hezhou in 1925 (Ma Qi, Ma Hongbin, Ma Lin)
+!CHN | mongol/vajrayana | legal_status | League-banner system with hereditary princes under the Mongolian-Tibetan Affairs Commission
+!CHN | tibetan/vajrayana | legal_status, patron | Tusi native chieftaincies in Kham/Amdo; Lhasa government claims Kham (Sino-Tibetan war 1917-18)
+!SIA | han/chinese_folk | elite, organization | Chinese control rice milling and trade; secret societies and KMT branches (Skinner 1957)
+!JAP | korean/folk | legal_status | Koreans in Japan under separate koseki and police registration (Home Ministry 1925)
+!JAP | ainu/folk | legal_status | Hokkaidō Former Natives Protection Act 1899; Karafuto Ainu outside the koseki until 1933
+!JAP:C | taiwanese_aboriginal/folk | legal_status | Aborigines of the special administrative areas under police rule, outside ordinary law (Government-General of Taiwan)
+!JAP:C | japanese/shinto | elite, legal_status | Japanese settlers in Korea, Taiwan, Karafuto, Kwantung, Nan'yō: own law and schools, hold land, capital and administration
+!JAP:C | korean/protestant | organization | Presbyterian and Methodist churches central to the March First Movement of 1919; YMCA
+!FRA:C | french/catholic | elite, legal_status | French citizens versus indigénat subjects in Indochina, New Caledonia, Oceania
+!FRA:C | han/chinese_folk | elite, legal_status | Chinese congregations system and "Asiatiques étrangers" status; control of rice trade in Cochinchina
+!NLD:C | dutch/protestant | elite, legal_status | Europeans' legal class (Indische Staatsregeling art. 163) and colonial administration
+!NLD:C | dutch/catholic | elite, legal_status | Europeans' legal class (Indische Staatsregeling art. 163) and colonial administration
+!NLD:C | han/chinese_folk | elite, legal_status, patron | Foreign Orientals legal class, pass and quarter system; China claims overseas Chinese (1909 nationality law)
+!NLD:C | yemeni/sunni | legal_status | Foreign Orientals legal class (Indische Staatsregeling art. 163)
+!GBR:C | english/protestant | elite, legal_status | European officials and planters in Malaya, Hong Kong, Fiji, Pacific
+!GBR:C | han/chinese_folk | elite, organization | Chinese capital in tin and rubber; KMT branches and chambers of commerce in Malaya and Hong Kong
+!GBR:C | malay/sunni | legal_status | Malay Reservations Enactment 1913 and Malay-only entry to the Malay Administrative Service
+!GBR:C | tamil/hindu | patron | Government of India regulates emigration to Malaya (Indian Emigration Act 1922, Agent in Malaya)
+!GBR:C | hindustani/hindu | legal_status, patron | Fiji Indians without franchise until 1929; Government of India deputations on indenture
+!GBR:C | hindustani/sunni | legal_status, patron | Fiji Indians without franchise until 1929; Government of India deputations on indenture
+!GBR:C | french/catholic | elite, patron | French settlers of the New Hebrides condominium hold most planted land, backed by France
+!POR:C | portuguese/catholic | elite, legal_status | Portuguese citizens versus indígenas in Timor and Macau
+!AUS | australian/catholic | organization | Irish-Australian Catholic bloc: Catholic Church and Labor split over conscription (1916-17), Archbishop Mannix
+!AUS | aboriginal_australian/folk | legal_status | State Aborigines Protection Acts; full-bloods excluded from the census (Constitution s. 127)
+!AUS | aboriginal_australian/protestant | legal_status | State Aborigines Protection Acts (NSW 1909, Victoria 1915)
+!AUS:C | australian/protestant | elite, legal_status | Australian officials and planters in Papua, New Guinea and Nauru
+!NZL | maori/protestant | legal_status, organization | Four Maori seats, Native Land Court; Ratana movement and Young Maori Party MPs (Ngata, Pomare)
+!NZL:C | han/chinese_folk | legal_status | Indentured Chinese labour in Western Samoa under restriction ordinances
+
+# SOURCES
+# Census of British Malaya 1921 (J. E. Nathan, London: Waterlow, 1922) | race by state for SS, FMS, UMS (Johore 282,244: Malays 158,144, Chinese 96,888, Indians 24,278; Kedah 338,544) | official publication of 1922, public domain (crown copyright expired)
+# Government-General of Chōsen, census of 1925 and census of 1936 (province × nationality, via Wikipedia provincial articles as pointer) | 1925 province totals; 1936 Japanese/Korean/other per province used to scale Japanese shares | public domain (Japanese government work, pre-1953)
+# Japan, census of 1925 (Taishō 14 kokusei chōsa) and Home Ministry police counts of Koreans | prefecture totals; Koreans by prefecture (approximate) | public domain
+# Government-General of Taiwan, census of 1925 | race totals | public domain
+# Karafuto-chō, census of 1925; Kwantung Government statistics 1925; South Seas Bureau (Nan'yō-chō) population 1925 | colonial totals and Japanese settlers | public domain
+# Hokkaidō-chō, survey of "former natives" 1926 | Ainu population | public domain
+# Volkstelling 1930 (Departement van Economische Zaken, Batavia, 1933-36), vols. I-VIII | landaard (ethnic group) and religion by residency; total 60,727,233 | public domain (Dutch colonial government)
+# Hugo et al. 1987 via Springer chapter 10.1007/978-90-481-8891-8_13 | 1930 shares Javanese 47 %, Sundanese 14.5 %, Madurese 7.3 % of indigenous population (check) | facts only
+# Siam, census of 1919 (Statistical Year Book of the Kingdom of Siam) and G. W. Skinner, Chinese Society in Thailand (1957) | totals, Malay counts; Chinese ethnic estimate | facts only
+# V. Grabowsky, JSS 84 (1996) on Thai censuses | under-count of Chinese, Lao/Khmer/Mon recorded as Thai | facts only
+# Annuaire statistique de l'Indochine (Gouvernement général, 1926-27) | population estimates per pays | public domain (French administrative publication)
+# Hong Kong census 1921 (Sessional Papers); Macau census 1920; Weihaiwei census 1921 | race/nationality | public domain
+# Commonwealth Bureau of Census and Statistics, Census of Australia 1921 | state × religion | public domain (Commonwealth copyright expired)
+# Census of New Zealand 1926 | island × race, religion, Maori 63,670 | public domain (NZ crown copyright expired)
+# Fiji census 1921 (Legislative Council paper) | race × religion | public domain
+# Tonga census 1921; Western Samoa census 1926; Cook Islands and Niue census 1926 | islanders, Europeans, Chinese | public domain
+# Recensement de la Nouvelle-Calédonie 1921; Recensement des EFO 1926 | race | public domain
+# Statesman's Year-Book 1921 (Siam estimate 8,924,000; Chinese ~ 200 k in Bangkok) | cross-check | public domain
+# China: Ministry of Interior provincial estimates 1928; China Continuation Committee, The Christian Occupation of China (1922); 1953 PRC census minority shares | provincial totals, Christians, back-projected minority shares | facts only
+# Japanese consular returns 1925 (Japanese and Koreans in Manchuria and China proper); Shanghai Municipal Council census 1925 | foreign communities | public domain
+# Annual reports to the League of Nations: Territory of New Guinea 1924-25, Nauru 1924-25, Western Samoa 1925; Papua annual report 1924-25 | native estimates, Europeans, Asians | public domain

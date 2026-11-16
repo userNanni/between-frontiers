@@ -1,0 +1,246 @@
+# Communities of 1925, region europe-west. One line per state: STATE | culture/religion share, ... | source | C/M/E.
+# Format and build: tools/communities/generate.py; method: docs/population.pt-BR.md. Licence: CC BY-SA 4.0.
+# Drafted from the censuses cited on each line and in the SOURCES block; `~` is the rest of the state.
+
+# Western Europe (WEU), composition on 1925-01-01. Shares are fractions of the state population.
+# Conventions used in this file:
+# - British Isles: irish/scottish/welsh are national identities (birthplace), as the shared keys irish and scottish
+#   cannot be language-based. welsh = natives of Wales; the 1921 census counted 37.1% Welsh speakers (aged 3+) in Wales.
+#   Scottish Gaelic speakers (1921: 158,779 in Scotland, ~15-18% of the Highlands state) are folded into scottish.
+#   Northern Ireland and Free State Protestants are irish/protestant (English-speaking, Irish-born).
+# - Elsewhere language first: Alsatian and Lorraine Franconian dialects -> german; Occitan, Friulian, Sardinian, Low German,
+#   Asturian/Leonese and Italian dialects folded into the national language (no census of the time separated them).
+#   Silesian bilinguals (Wasserpolnisch) split half german, half polish.
+# - "No religion" / dissidents (Berlin, Saxony, Hamburg, Netherlands) folded into the religion of tradition (protestant).
+# - All Western European Jews -> ashkenazi (Italian and Alsatian Jews included); Gibraltar Jews -> sephardi.
+# - Roma (Burgenland ~2.5%, Spain) not listed for lack of a shared key; folded into the majority community.
+# - Colonial-ruler relevance (English in Malta, Gibraltar, Gilbert and Ellice) not flagged here: a !GBR line would hit the
+#   English majority of Britain; colonial rulers are flagged with `!GBR:C` (colonies only) in the other regions.
+
+# ---------------------------------------------------------------- Defaults
+FRA-AUVERGNE FRA-BERRY-TOURAINE FRA-LIMOUSIN FRA-ORLEANAIS FRA-PAYS-DE-LA-LOIRE | french/catholic ~ | estimate: no religion or language census in France; Catholic by tradition outside Protestant zones | E
+ESP-ANDALUCIA-OCCIDENTAL ESP-ANDALUCIA-ORIENTAL ESP-ASTURIAS ESP-CANARIAS ESP-CASTILLA-LA-NUEVA ESP-CASTILLA-LA-VIEJA ESP-EXTREMADURA ESP-LEON ESP-MURCIA | spanish/catholic ~ | estimate: Spanish 1920 census (population only); no language question | E
+PRT-ACORES PRT-ALENTEJO PRT-ALGARVE PRT-CENTRO PRT-LISBOA PRT-MADEIRA PRT-NORTE | portuguese/catholic ~ | Portuguese census 1920 (religion overwhelmingly Catholic; foreigners <0.5%) | M
+ITA-CAMPANIA ITA-EMILIA ITA-LIGURIA ITA-LOMBARDIA ITA-MARCHE ITA-PUGLIE ITA-SICILIA ITA-TOSCANA ITA-UMBRIA | italian/catholic ~ | Italian census 1921 (lingua d'uso, alloglots by compartimento) | C
+NOR-OSTLANDET NOR-SORLANDET NOR-VESTLANDET | norwegian/protestant ~ | Norwegian census 1920 (Lutheran state church ~97%; Sami/Kven by 1930 census) | M
+SWE-GOTALAND SWE-SVEALAND | swedish/protestant ~ | Swedish census 1920 (Church of Sweden ~99%) | M
+
+# ---------------------------------------------------------------- Microstates and small territories
+AND | catalan/catholic ~, spanish/catholic 0.06, french/catholic 0.04 | estimate: Andorran population ~5,000, Andorran Catalan, few Spanish/French residents | E
+LIE | german/catholic ~ | Liechtenstein census 1921 (Catholic ~97%, Alemannic German) | M
+MCO | french/catholic ~, italian/catholic 0.40, english/protestant 0.015 | Monaco census 1923 by nationality (French ~half, Italians ~35-40%; Monegasques ~7% folded into french) | M
+SMR | italian/catholic ~ | estimate: San Marino, Italian-speaking Catholic | E
+LUX | luxembourgish/catholic ~, german/catholic 0.05, italian/catholic 0.035, walloon/catholic 0.02, french/catholic 0.012, german/protestant 0.008, ashkenazi/jewish 0.005 | Luxembourg census 1922 (nationality; religion ~98% Catholic) with language by nationality | M
+MLT | maltese/catholic ~, english/protestant 0.04 | Malta census 1921 (civil population) plus British garrison and naval families estimate | M
+GIB | spanish/catholic ~, english/protestant 0.18, sephardi/jewish 0.05 | Gibraltar census 1921 (civil population ~17,700, Jews ~1,000) plus garrison estimate | M
+GGY | channel_islander/protestant ~, english/protestant 0.22, french/catholic 0.08 | UK census 1921 Guernsey (birthplace: islands, England, France) | M
+JEY | channel_islander/protestant ~, english/protestant 0.24, french/catholic 0.12 | UK census 1921 Jersey (birthplace: islands, England, France) | M
+IMN | manx/protestant ~, english/protestant 0.18, scottish/protestant 0.025, irish/catholic 0.025 | UK census 1921 Isle of Man (birthplace) | M
+FRO | faroese/protestant ~, danish/protestant 0.02 | Danish census 1921 Faroe Islands (birthplace) | M
+ISL | icelandic/protestant ~ | Icelandic census 1920 (Lutheran ~99%) | C
+ALD | swedish/protestant ~, finnish/protestant 0.03 | Finnish census 1920 (Åland: Swedish ~97%) | C
+GBR-BOUVET | english/protestant ~ | uninhabited | E
+GBR-GILBERT-ELLICE | micronesian/protestant ~, micronesian/catholic 0.33, polynesian/protestant 0.14, micronesian/folk 0.02, han/chinese_folk 0.02, english/protestant 0.005 | estimate: colony census 1921/1931 (Gilbertese ~80%, Ellice incl. Tokelau ~14%, Ocean Island Chinese labourers); LMS vs Sacred Heart mission shares | E
+
+# ---------------------------------------------------------------- United Kingdom
+GBR-LONDON | english/protestant ~, english/catholic 0.045, ashkenazi/jewish 0.026, irish/catholic 0.012, scottish/protestant 0.012, welsh/protestant 0.008 | estimate: UK census 1921 Greater London (birthplace) + Catholic Directory (Westminster, Southwark) + Jewish Year Book ~190,000 | E
+GBR-KENT-SUSSEX | english/protestant ~, english/catholic 0.03, scottish/protestant 0.008, irish/catholic 0.005 | estimate: UK census 1921 birthplace + Catholic Directory | E
+GBR-HOME-COUNTIES | english/protestant ~, english/catholic 0.025, scottish/protestant 0.006 | estimate: UK census 1921 birthplace + Catholic Directory | E
+GBR-EAST-ANGLIA | english/protestant ~, english/catholic 0.02 | estimate: Catholic Directory (Northampton diocese) | E
+GBR-THAMES-VALLEY-AND-HAMPSHIRE | english/protestant ~, english/catholic 0.03, scottish/protestant 0.008, irish/catholic 0.005 | estimate: UK census 1921 birthplace + Catholic Directory (Portsmouth) | E
+GBR-WESSEX | english/protestant ~, english/catholic 0.03, welsh/protestant 0.008 | estimate: UK census 1921 birthplace + Catholic Directory (Clifton, Plymouth) | E
+GBR-DEVON-CORNWALL | english/protestant ~, english/catholic 0.02 | estimate: Catholic Directory (Plymouth) | E
+GBR-WEST-MIDLANDS | english/protestant ~, english/catholic 0.045, welsh/protestant 0.01, irish/catholic 0.006 | estimate: UK census 1921 birthplace + Catholic Directory (Birmingham) | E
+GBR-EAST-MIDLANDS | english/protestant ~, english/catholic 0.03 | estimate: Catholic Directory (Nottingham) | E
+GBR-YORKSHIRE | english/protestant ~, english/catholic 0.055, ashkenazi/jewish 0.008, irish/catholic 0.006, scottish/protestant 0.005 | estimate: UK census 1921 birthplace + Catholic Directory (Leeds, Middlesbrough) + Leeds Jewry ~25,000 | E
+GBR-NORTH-EAST-ENGLAND | english/protestant ~, english/catholic 0.07, scottish/protestant 0.015, irish/catholic 0.01 | estimate: UK census 1921 birthplace + Catholic Directory (Hexham and Newcastle) | E
+GBR-LANCASHIRE | english/protestant ~, english/catholic 0.13, irish/catholic 0.018, ashkenazi/jewish 0.009, scottish/protestant 0.008, welsh/protestant 0.006 | estimate: UK census 1921 birthplace (Irish-born ~100,000) + Catholic Directory (Liverpool, Salford, Lancaster) + Manchester Jewry ~35,000 | E
+GBR-CHESHIRE | english/protestant ~, english/catholic 0.07, welsh/protestant 0.012, irish/catholic 0.008 | estimate: UK census 1921 birthplace + Catholic Directory (Shrewsbury) | E
+GBR-WALES | welsh/protestant ~, english/protestant 0.11, welsh/catholic 0.03, irish/catholic 0.006 | UK census 1921 Wales (birthplace; Welsh speakers 37.1%) + Catholic Directory (Cardiff, Menevia) | M
+GBR-WEST-OF-SCOTLAND | scottish/protestant ~, scottish/catholic 0.15, irish/catholic 0.04, english/protestant 0.015, irish/protestant 0.012, ashkenazi/jewish 0.006 | Scottish census 1921 (Irish-born ~120,000 in west) + Catholic Directory for Scotland (Glasgow, Galloway) | M
+GBR-EAST-OF-SCOTLAND | scottish/protestant ~, scottish/catholic 0.065, english/protestant 0.02, irish/catholic 0.015 | Scottish census 1921 (birthplace) + Catholic Directory for Scotland (St Andrews and Edinburgh, Dunkeld) | M
+GBR-SCOTTISH-HIGHLANDS | scottish/protestant ~, scottish/catholic 0.05, english/protestant 0.012 | Scottish census 1921 (Gaelic 1921 folded in scottish) + Catholic Directory (Argyll and the Isles, Aberdeen) | M
+GBR-NORTHERN-IRELAND | irish/protestant ~, irish/catholic 0.335 | Northern Ireland census 1926 (religion: Catholics 420,428 of 1,256,561) | C
+
+# ---------------------------------------------------------------- Ireland
+IRL-LEINSTER | irish/catholic ~, irish/protestant 0.105, ashkenazi/jewish 0.003 | Irish Free State census 1926 (religion by county, aggregated to province) | C
+IRL-MUNSTER | irish/catholic ~, irish/protestant 0.055 | Irish Free State census 1926 (religion by county, aggregated to province) | C
+IRL-CONNACHT | irish/catholic ~, irish/protestant 0.025 | Irish Free State census 1926 (religion by county, aggregated to province) | C
+IRL-ULSTER | irish/catholic ~, irish/protestant 0.18 | Irish Free State census 1926 (Donegal, Cavan, Monaghan: Catholics ~79-82%) | C
+
+# ---------------------------------------------------------------- France (no language/religion census; 1926 census foreigners by department)
+FRA-ILE-DE-FRANCE | french/catholic ~, ashkenazi/jewish 0.02, italian/catholic 0.016, french/protestant 0.015, russian/orthodox 0.008, walloon/catholic 0.006, spanish/catholic 0.005, polish/catholic 0.005, berber/sunni 0.005, armenian/oriental_orthodox 0.003 | French census 1926 (foreigners by nationality, Seine and Seine-et-Oise) + estimates for Jews (~120,000), Protestants and Algerian Kabyles | M
+FRA-NORD | french/catholic ~, flemish/catholic 0.095, polish/catholic 0.04, walloon/catholic 0.015 | French census 1926 (Belgians, Poles in Nord and Pas-de-Calais) + estimate of French Flemish speakers (Dunkerque, Hazebrouck ~150,000) | M
+FRA-PICARDIE | french/catholic ~, flemish/catholic 0.01, polish/catholic 0.01, italian/catholic 0.006 | French census 1926 (foreigners by department) | M
+FRA-CHAMPAGNE | french/catholic ~, walloon/catholic 0.012, italian/catholic 0.01, polish/catholic 0.01 | French census 1926 (foreigners by department) | M
+FRA-LORRAINE | french/catholic ~, german/catholic 0.16, italian/catholic 0.05, polish/catholic 0.015, german/protestant 0.012, french/protestant 0.008, ashkenazi/jewish 0.006 | estimate: German 1910 census language of Lothringen adjusted for 1919-21 expulsions + French census 1926 foreigners (Meurthe-et-Moselle, Moselle) | E
+FRA-ALSACE | german/catholic ~, german/protestant 0.20, french/catholic 0.10, french/protestant 0.02, ashkenazi/jewish 0.017, italian/catholic 0.01 | estimate: German 1910 census (religion, mother tongue) of Elsass adjusted for expulsion of Reich Germans 1919-21 | M
+FRA-FRANCHE-COMTE | french/catholic ~, french/protestant 0.06, italian/catholic 0.012 | estimate: Lutheran Montbéliard church counts + French census 1926 foreigners | E
+FRA-BOURGOGNE | french/catholic ~, polish/catholic 0.01, italian/catholic 0.008 | French census 1926 (foreigners: Saône-et-Loire mines) | M
+FRA-RHONE-ALPES | french/catholic ~, italian/catholic 0.032, french/protestant 0.024, spanish/catholic 0.005, armenian/oriental_orthodox 0.003 | French census 1926 (foreigners by department) + estimate of Protestants (Drôme, Ardèche, Lyon) | M
+FRA-SAVOIE | french/catholic ~, italian/catholic 0.06 | French census 1926 (foreigners, Savoie and Haute-Savoie) | M
+FRA-PROVENCE | french/catholic ~, italian/catholic 0.105, corsican/catholic 0.03, french/protestant 0.01, spanish/catholic 0.007, armenian/oriental_orthodox 0.007, berber/sunni 0.006, russian/orthodox 0.003 | French census 1926 (foreigners: Bouches-du-Rhône, Alpes-Maritimes, Var) + estimate of Corsican migrants in Marseille/Toulon | M
+FRA-CORSE | corsican/catholic ~, italian/catholic 0.09, french/catholic 0.05 | French census 1926 (foreigners) + estimate of continental officials and garrison | E
+FRA-LANGUEDOC | french/catholic ~, catalan/catholic 0.12, french/protestant 0.085, spanish/catholic 0.045, italian/catholic 0.012 | French census 1926 (Spaniards in Hérault, Aude, Pyrénées-Orientales) + estimate of Catalan speakers (Roussillon ~75%) and Gard/Cévennes Protestants | E
+FRA-MIDI-PYRENEES | french/catholic ~, italian/catholic 0.022, french/protestant 0.022, spanish/catholic 0.02 | French census 1926 (foreigners) + estimate of Protestants (Tarn, Ariège, Tarn-et-Garonne) | E
+FRA-GASCOGNE | french/catholic ~, basque/catholic 0.08, spanish/catholic 0.024, italian/catholic 0.01, french/protestant 0.006 | French census 1926 (foreigners) + estimate of Basque speakers in Basses-Pyrénées (~85,000) | E
+FRA-GUYENNE | french/catholic ~, italian/catholic 0.02, french/protestant 0.012, spanish/catholic 0.01 | French census 1926 (Italians in Lot-et-Garonne, Gironde) + estimate of Protestants | E
+FRA-POITOU-CHARENTES | french/catholic ~, french/protestant 0.035 | estimate: Reformed church counts (Deux-Sèvres, Charente-Maritime) | E
+FRA-BRETAGNE | french/catholic ~, breton/catholic 0.45 | estimate: Breton speakers ~1.1 million in Basse-Bretagne (Broudic-type parish surveys 1902/1928) over 1926 population | E
+FRA-NORMANDIE | french/catholic ~, french/protestant 0.006 | estimate: Reformed church counts (Le Havre, Rouen, Bolbec) | E
+
+# ---------------------------------------------------------------- Belgium (1920 census, language spoken most often; religion Catholic by tradition)
+BEL-BRABANT | walloon/catholic ~, flemish/catholic 0.48, ashkenazi/jewish 0.01, french/catholic 0.01 | Belgian census 1920 (language by province) + estimate of Brussels Jews (~15,000) and French nationals | M
+BEL-VAN | flemish/catholic ~, walloon/catholic 0.04, ashkenazi/jewish 0.025, dutch/protestant 0.01 | Belgian census 1920 (language) + estimate of Antwerp Jews (~25,000) and Dutch nationals | M
+BEL-VLI | flemish/catholic ~, dutch/catholic 0.02, walloon/catholic 0.01 | Belgian census 1920 (language, nationality) | M
+BEL-VOV | flemish/catholic ~, walloon/catholic 0.03 | Belgian census 1920 (language) | M
+BEL-VWV | flemish/catholic ~, walloon/catholic 0.085 | Belgian census 1920 (language; Mouscron and Comines French-speaking) | M
+BEL-WHT | walloon/catholic ~, flemish/catholic 0.04, french/catholic 0.02, walloon/protestant 0.008 | Belgian census 1920 (language, nationality) + Borinage Protestant church counts | M
+BEL-WLG | walloon/catholic ~, german/catholic 0.065, flemish/catholic 0.03, italian/catholic 0.006 | Belgian census 1920 (language) + German census 1910 of Eupen and Malmedy (annexed 1920) | M
+BEL-WLX | walloon/catholic ~, luxembourgish/catholic 0.11 | Belgian census 1920 (language; German/Luxembourgish in Arlon area) | M
+BEL-WNA | walloon/catholic ~, flemish/catholic 0.01 | Belgian census 1920 (language) | M
+
+# ---------------------------------------------------------------- Netherlands (1920 census, religion by province; "none" folded to protestant)
+NLD-GR | dutch/protestant ~, dutch/catholic 0.07, ashkenazi/jewish 0.012 | Dutch census 1920 (religion by province) | C
+NLD-FR | dutch/protestant ~, frisian/protestant 0.66, frisian/catholic 0.05, dutch/catholic 0.025 | Dutch census 1920 (religion) + estimate of Frisian speakers (~70% of Friesland) | M
+NLD-DR | dutch/protestant ~, dutch/catholic 0.045, ashkenazi/jewish 0.009 | Dutch census 1920 (religion by province) | C
+NLD-OV | dutch/protestant ~, dutch/catholic 0.33, ashkenazi/jewish 0.009 | Dutch census 1920 (religion by province) | C
+NLD-GE | dutch/protestant ~, dutch/catholic 0.36, ashkenazi/jewish 0.006 | Dutch census 1920 (religion by province) | C
+NLD-UT | dutch/protestant ~, dutch/catholic 0.31, ashkenazi/jewish 0.006 | Dutch census 1920 (religion by province) | C
+NLD-NH | dutch/protestant ~, dutch/catholic 0.26, ashkenazi/jewish 0.052 | Dutch census 1920 (religion by province; Amsterdam Jews ~68,000) | C
+NLD-ZH | dutch/protestant ~, dutch/catholic 0.25, ashkenazi/jewish 0.015 | Dutch census 1920 (religion by province) | C
+NLD-ZE | dutch/protestant ~, dutch/catholic 0.25 | Dutch census 1920 (religion by province) | C
+NLD-NB | dutch/catholic ~, dutch/protestant 0.11 | Dutch census 1920 (religion by province) | C
+NLD-LI | dutch/catholic ~, german/catholic 0.03, dutch/protestant 0.02 | Dutch census 1920 (religion, nationality: German miners) | M
+
+# ---------------------------------------------------------------- Switzerland (1920 census: language and religion by canton; cross-tab estimated)
+CHE-LEMANIQUE | french/protestant ~, french/catholic 0.26, german/catholic 0.10, german/protestant 0.073, italian/catholic 0.045, ashkenazi/jewish 0.006 | Swiss census 1920 (Geneva, Vaud, Valais: language and religion by canton) | M
+CHE-MITTELLAND | german/protestant ~, german/catholic 0.146, french/catholic 0.145, french/protestant 0.14, italian/catholic 0.015 | Swiss census 1920 (Bern incl. Jura, Fribourg, Solothurn, Neuchâtel) | M
+CHE-NORDWESTSCHWEIZ | german/protestant ~, german/catholic 0.365, italian/catholic 0.02, ashkenazi/jewish 0.0075, french/protestant 0.01 | Swiss census 1920 (Basel-Stadt, Basel-Land, Aargau) | M
+CHE-ZURICH | german/protestant ~, german/catholic 0.18, italian/catholic 0.04, french/protestant 0.012, ashkenazi/jewish 0.008 | Swiss census 1920 (Zürich) | M
+CHE-OSTSCHWEIZ | german/protestant ~, german/catholic 0.38, italian/catholic 0.035, romansh/protestant 0.03, romansh/catholic 0.026 | Swiss census 1920 (Glarus, Schaffhausen, Appenzell, St. Gallen, Graubünden, Thurgau) | M
+CHE-ZENTRALSCHWEIZ | german/catholic ~, german/protestant 0.11, italian/catholic 0.025 | Swiss census 1920 (Luzern, Uri, Schwyz, Obwalden, Nidwalden, Zug) | M
+CHE-TICINO | italian/catholic ~, german/catholic 0.04, german/protestant 0.04 | Swiss census 1920 (Ticino) | M
+
+# ---------------------------------------------------------------- Austria (1923 census: religion and Sprachzugehörigkeit by Land)
+AUT-9 | german/catholic ~, ashkenazi/jewish 0.108, german/protestant 0.045, czech/catholic 0.044, hungarian/catholic 0.005 | Austrian census 1923 (Wien: Jews 201,513; Czech/Slovak language ~80,000) | C
+AUT-1 | german/catholic ~, croat/catholic 0.147, german/protestant 0.12, hungarian/catholic 0.032, hungarian/protestant 0.02, ashkenazi/jewish 0.013 | Austrian census 1923 (Burgenland: language and religion; Oberwart Reformed Magyars) | M
+AUT-2 | german/catholic ~, slovene/catholic 0.10, german/protestant 0.06, ashkenazi/jewish 0.001 | Austrian census 1923 (Kärnten: Slovene ~37,000) | C
+AUT-3 | german/catholic ~, german/protestant 0.02, czech/catholic 0.01, ashkenazi/jewish 0.006 | Austrian census 1923 (Niederösterreich) | M
+AUT-4 | german/catholic ~, german/protestant 0.045, ashkenazi/jewish 0.001 | Austrian census 1923 (Oberösterreich) | M
+AUT-5 | german/catholic ~, german/protestant 0.02, ashkenazi/jewish 0.001 | Austrian census 1923 (Salzburg) | M
+AUT-6 | german/catholic ~, german/protestant 0.025, slovene/catholic 0.004, ashkenazi/jewish 0.002 | Austrian census 1923 (Steiermark) | M
+AUT-7 | german/catholic ~, german/protestant 0.01, ashkenazi/jewish 0.001 | Austrian census 1923 (Tirol) | M
+AUT-8 | german/catholic ~, italian/catholic 0.02, german/protestant 0.02, ashkenazi/jewish 0.001 | Austrian census 1923 (Vorarlberg; Trentino-born workers) | M
+
+# ---------------------------------------------------------------- Germany (1925 census: religion by Land/Prussian province/Regierungsbezirk; mother tongue)
+DEU-BE | german/protestant ~, german/catholic 0.106, ashkenazi/jewish 0.043, russian/orthodox 0.01, polish/catholic 0.006 | German census 1925 (Berlin: Jews 172,672 of 4,024,286) + estimate of Russian émigrés | C
+DEU-BB | german/protestant ~, german/catholic 0.045, sorbian/protestant 0.01, ashkenazi/jewish 0.003 | German census 1925 (Provinz Brandenburg: religion, mother tongue Wendish in Niederlausitz) | M
+DEU-MV | german/protestant ~, german/catholic 0.03, ashkenazi/jewish 0.002 | German census 1925 (Mecklenburg-Schwerin, Mecklenburg-Strelitz, Vorpommern) | C
+DEU-SH | german/protestant ~, german/catholic 0.025, frisian/protestant 0.012, danish/protestant 0.01, ashkenazi/jewish 0.003 | German census 1925 (Schleswig-Holstein, Lübeck) + estimate of Danish minority (~1924 Reichstag vote) and North Frisian speakers | M
+DEU-HH | german/protestant ~, german/catholic 0.055, ashkenazi/jewish 0.015 | German census 1925 (Hamburg; Altona, Wandsbek, Harburg-Wilhelmsburg) | C
+DEU-HB | german/protestant ~, german/catholic 0.06, ashkenazi/jewish 0.004 | German census 1925 (Bremen, Wesermünde) | C
+DEU-NI | german/protestant ~, german/catholic 0.14, ashkenazi/jewish 0.0045 | German census 1925 (Provinz Hannover, Oldenburg, Braunschweig, Schaumburg-Lippe) | C
+DEU-NW | german/catholic ~, german/protestant 0.39, polish/catholic 0.014, ashkenazi/jewish 0.007 | German census 1925 (Westfalen, Rheinprovinz RB Düsseldorf/Köln/Aachen, Lippe) + Ruhr Polish speakers | M
+DEU-HE | german/protestant ~, german/catholic 0.25, ashkenazi/jewish 0.018 | German census 1925 (Provinz Hessen-Nassau, Volksstaat Hessen Starkenburg/Oberhessen, Waldeck) | C
+DEU-RP | german/catholic ~, german/protestant 0.38, ashkenazi/jewish 0.0077 | German census 1925 (Pfalz, RB Koblenz, RB Trier excl. Saar, Rheinhessen, Birkenfeld) | C
+DEU-BW | german/protestant ~, german/catholic 0.447, ashkenazi/jewish 0.007 | German census 1925 (Baden, Württemberg, Hohenzollern) | C
+DEU-BY | german/catholic ~, german/protestant 0.253, ashkenazi/jewish 0.0066 | German census 1925 (Bayern right of the Rhine, excl. Pfalz) | C
+DEU-SN | german/protestant ~, german/catholic 0.035, ashkenazi/jewish 0.0045, sorbian/catholic 0.004, sorbian/protestant 0.004 | German census 1925 (Freistaat Sachsen, Silesian Oberlausitz; Wendish mother tongue) | M
+DEU-ST | german/protestant ~, german/catholic 0.06, ashkenazi/jewish 0.002 | German census 1925 (Provinz Sachsen RB Magdeburg/Merseburg, Anhalt) | C
+DEU-TH | german/protestant ~, german/catholic 0.09, ashkenazi/jewish 0.002 | German census 1925 (Thüringen, RB Erfurt incl. Eichsfeld) | C
+DEU-SL | german/catholic ~, german/protestant 0.26, french/catholic 0.01, ashkenazi/jewish 0.006 | Saar census 1927 (religion) adjusted to 1925 + French officials and mine staff | M
+GER-OSTPREUSSEN | german/protestant ~, german/catholic 0.135, polish/protestant 0.03, polish/catholic 0.012, ashkenazi/jewish 0.005 | German census 1925 (Ostpreußen: religion; Masurian and Polish mother tongue incl. part of bilinguals) | M
+GER-POMMERN | german/protestant ~, german/catholic 0.03, ashkenazi/jewish 0.004 | German census 1925 (Provinz Pommern, RB Stettin/Köslin) | C
+GER-NIEDERSCHLESIEN | german/protestant ~, german/catholic 0.31, ashkenazi/jewish 0.008 | German census 1925 (Provinz Niederschlesien: Breslau Jews ~23,000) | C
+GER-OBERSCHLESIEN | german/catholic ~, polish/catholic 0.30, german/protestant 0.10, czech/catholic 0.007, ashkenazi/jewish 0.006 | German census 1925 (Provinz Oberschlesien: mother tongue Polish ~12%, German+Polish bilingual ~38% split half; religion) | M
+
+# ---------------------------------------------------------------- Denmark, Norway, Sweden, Finland
+DNK-JYLLAND | danish/protestant ~, german/protestant 0.015 | Danish census 1925 + 1920 plebiscite (German minority in Sønderjylland ~30,000) | M
+DNK-SJAELLAND | danish/protestant ~ | Danish census 1925 (Lutheran ~98%; Jews ~0.4% folded) | C
+NOR-NORD-NORGE | norwegian/protestant ~, sami/protestant 0.055, finnish/protestant 0.022 | Norwegian census 1930 (Sami ~20,000, Kvens ~8,000) applied to 1925 | M
+NOR-TRONDELAG | norwegian/protestant ~, sami/protestant 0.003 | Norwegian census 1930 (southern Sami) applied to 1925 | M
+SWE-NORRLAND | swedish/protestant ~, finnish/protestant 0.028, sami/protestant 0.0065 | Swedish census 1920/1930 (Finnish speakers in Norrbotten, Lapp registers) | M
+FIN-UUSIMAA | finnish/protestant ~, swedish/protestant 0.36, russian/orthodox 0.01 | Finnish census 1920 (language by lääni) | C
+FIN-TURKU-PORI | finnish/protestant ~, swedish/protestant 0.11 | Finnish census 1920 (language by lääni) | C
+FIN-HAME | finnish/protestant ~, swedish/protestant 0.01 | Finnish census 1920 (language by lääni) | C
+FIN-VIIPURI | finnish/protestant ~, finnish/orthodox 0.06, russian/orthodox 0.015, swedish/protestant 0.012 | Finnish census 1920 (language, religion by lääni: Ladoga Karelian Orthodox) | C
+FIN-MIKKELI-KUOPIO | finnish/protestant ~, finnish/orthodox 0.025 | Finnish census 1920 (religion by lääni) | C
+FIN-VAASA | finnish/protestant ~, swedish/protestant 0.26 | Finnish census 1920 (language by lääni) | C
+FIN-OULU | finnish/protestant ~, swedish/protestant 0.006, sami/protestant 0.005 | Finnish census 1920 (language by lääni) | C
+
+# ---------------------------------------------------------------- Spain (no language census: estimates)
+ESP-CATALUNA | catalan/catholic ~, spanish/catholic 0.13 | estimate: Spanish census 1920 birthplace (non-Catalan-speaking migrants from Murcia, Aragon, Andalusia) | E
+ESP-VALENCIA | catalan/catholic ~, spanish/catholic 0.28 | estimate: Castilian-speaking comarcas of Alicante, Castellón and Valencia interior over 1920 census population | E
+ESP-BALEARES | catalan/catholic ~, spanish/catholic 0.03 | estimate: Spanish census 1920 birthplace | E
+ESP-VASCONGADAS | spanish/catholic ~, basque/catholic 0.33 | estimate: Basque speakers ~60% Guipúzcoa, ~30% Vizcaya, ~3% Álava over 1920 census population | E
+ESP-NAVARRA | spanish/catholic ~, basque/catholic 0.13 | estimate: Basque-speaking northern valleys over 1920 census population | E
+ESP-GALICIA | galician/catholic ~, spanish/catholic 0.07 | estimate: rural Galician-speaking majority, Castilian in urban elites and officials | E
+ESP-ARAGON | spanish/catholic ~, catalan/catholic 0.05 | estimate: Catalan-speaking Franja de Ponent over 1920 census population | E
+
+# ---------------------------------------------------------------- Italy (1921 census, lingua d'uso by compartimento; religion Catholic by tradition)
+ITA-VENEZIA-TRIDENTINA | italian/catholic ~, german/catholic 0.29, ladin/catholic 0.017 | Italian census 1921 (Venezia Tridentina: German and Ladin speakers; Ampezzo and Livinallongo moved to Belluno 1923) | C
+ITA-VENEZIA-GIULIA | italian/catholic ~, slovene/catholic 0.34, croat/catholic 0.13, german/catholic 0.01, ashkenazi/jewish 0.006 | Italian census 1921 (lingua d'uso, contested) checked against Austrian census 1910 (Küstenland) | M
+ITA-VENETO | italian/catholic ~, slovene/catholic 0.007, german/catholic 0.001 | Italian census 1921 (Veneto and Friuli: Slovenes of Udine province, German islands) | C
+ITA-PIEMONTE | italian/catholic ~, french/catholic 0.022, french/protestant 0.005 | Italian census 1921 (French speakers in Aosta and Alpine valleys; Waldensians) | M
+ITA-SARDEGNA | italian/catholic ~, catalan/catholic 0.013 | Italian census 1921 (Catalan of Alghero) | C
+ITA-CALABRIA | italian/catholic ~, albanian/eastern_catholic 0.013, albanian/catholic 0.01 | Italian census 1921 (Albanian speakers) + eparchy of Lungro (1919) Byzantine-rite faithful | M
+ITA-BASILICATA | italian/catholic ~, albanian/catholic 0.02 | Italian census 1921 (Albanian speakers) | C
+ITA-ABRUZZI-E-MOLISE | italian/catholic ~, albanian/catholic 0.006, croat/catholic 0.003 | Italian census 1921 (Albanian and Croat speakers of Molise) | C
+ITA-LAZIO | italian/catholic ~, ashkenazi/jewish 0.005 | Italian census 1921 (religion: Jews of Rome ~12,000) | M
+
+# ---------------------------------------------------------------- Relevance (situation on 1925-01-01)
+!GBR | irish/catholic | organization, patron | Northern Ireland Catholics: Nationalist Party (Devlin), IRA; Free State claims nationalist areas before the Boundary Commission (report Dec 1925); NI census 1926
+!IRL | irish/protestant | elite | Free State Protestants (7.4% in 1926) hold a large share of land, business, professions; Senate nominations 1922; Irish census 1926 occupations by religion
+!AUT | ashkenazi/jewish | elite | Vienna Jews 10.8% (1923) but a majority of the city's lawyers and doctors and large share of banking and press
+!AUT | slovene/catholic | patron, organization | Carinthian Slovenes after the 1920 plebiscite; Yugoslavia; Koroška slovenska stranka
+!AUT | czech/catholic | patron, organization | Vienna Czechs; Czechoslovak-Austrian Treaty of Brno 1920 (minority schools); Czech party in Vienna council
+!AUT | hungarian/catholic | patron | Burgenland Magyars; Hungary contests the 1921 transfer of Burgenland
+!AUT | hungarian/protestant | patron | Burgenland Magyars (Oberwart Reformed); Hungary contests the 1921 transfer
+!GER | ashkenazi/jewish | elite | German Jews 0.9% (1925) with a share of banking, department stores, press and free professions far above it
+!GER | polish/catholic | patron, organization | Związek Polaków w Niemczech (1922), Polish lists in Upper Silesia and Prussian Landtag; Poland protects them
+!GER | danish/protestant | patron, organization | Danish minority of South Schleswig, Schleswigscher Verein; Denmark
+!GER | sorbian/protestant | organization | Domowina (1912), Wendish People's Party (1919)
+!GER | sorbian/catholic | organization | Domowina (1912), Wendish People's Party (1919)
+!GER | russian/orthodox | legal_status | stateless Russian émigrés on Nansen passports (1922 arrangement)
+!SAA | french/catholic | elite | French state owns the Saar mines (Mines domaniales) and dominates the League Governing Commission
+!DEN | german/protestant | patron, organization | German minority of North Schleswig, Schleswigsche Partei (1 seat 1920-); Germany seeks border revision
+!DEN | faroese/protestant | organization | Sjálvstýrisflokkurin (Self-Government Party, 1906) for Faroese home rule and language
+!FIN | swedish/protestant | elite, organization | Finland Swedes (11% in 1920) over-represented among landowners, capital, officers, officials; Swedish People's Party; Åland autonomy under League guarantee (1921)
+!FIN | russian/orthodox | legal_status | stateless Russian émigrés (Nansen passports)
+!FRA | german/catholic | organization, legal_status | Alsace-Moselle local law (Concordat, confessional schools) kept; Union populaire républicaine; mass protests against Herriot's laïcité plan 1924-25
+!FRA | german/protestant | legal_status | Alsace-Moselle local law (recognised Lutheran and Reformed churches)
+!FRA | corsican/catholic | organization | Partitu Corsu d'Azione (1922-23), journal A Muvra
+!FRA | russian/orthodox | organization, legal_status | ROVS (Russian All-Military Union, 1924) émigré army in exile; stateless Nansen refugees
+!FRA | armenian/oriental_orthodox | legal_status | stateless Armenian refugees (Nansen arrangement 1924)
+!FRA | berber/sunni | legal_status | Algerian Muslim workers (mostly Kabyle): French subjects without citizenship
+!BEL | flemish/catholic | organization | Flemish movement, Frontpartij (Flemish nationalist party), Flemish university demand
+!BEL | german/catholic | patron, legal_status | Eupen-Malmedy under the transitional government of Gen. Baltia until mid-1925; Germany seeks its return
+!ESP | catalan/catholic | organization, legal_status | Lliga Regionalista, Acció Catalana, Estat Català; Primo de Rivera decree of 18 Sep 1923 against Catalan symbols and official use, Mancomunitat suppressed
+!ESP | basque/catholic | organization | Comunión Nacionalista Vasca / PNV (curtailed under the dictatorship)
+!ITA | german/catholic | patron, organization, legal_status | South Tyrol: Deutscher Verband (4 deputies 1921); Austria and Germany; Gentile school reform 1923 suppressing German schools, Italian place names (1923)
+!ITA | slovene/catholic | patron, organization, legal_status | Venezia Giulia Slovenes: Edinost; Yugoslavia; Slavic schools closed by the 1923 school reform
+!ITA | croat/catholic | patron, legal_status | Istrian Croats: Yugoslavia; Slavic schools closed by the 1923 school reform
+!NOR | sami/protestant | legal_status | Norwegianization: 1902 land act reserves land purchase in Finnmark to Norwegian speakers; Sami-language schooling banned
+!NOR | finnish/protestant | legal_status | Kvens under the same Norwegianization rules (1902 land act, school instruction)
+!SWE | sami/protestant | legal_status | Swedish Lapp administration and reindeer-grazing acts; separate nomad schools
+
+# SOURCES
+# Statistik des Deutschen Reichs Bd. 401 / Statistisches Jahrbuch für das Deutsche Reich 1927-28, Volkszählung 16.6.1925 (Religionszugehörigkeit nach Ländern und Landesteilen; Muttersprache) | religion by Land/province, Jews, Polish/Masurian/Wendish/Danish mother tongue | official statistics, facts public domain
+# Austria, Bundesamt für Statistik, Volkszählung 7.3.1923 | religion and Sprachzugehörigkeit by Land (Wien Jews 201,513) | official statistics, facts
+# Census of Northern Ireland 1926, General Report | religion (Catholics 420,428) | official statistics, facts
+# Saorstát Éireann, Census of Population 1926, vol. III Religions and Birthplaces | religion by county | official statistics, facts
+# Census of England and Wales 1921 / Census of Scotland 1921 | birthplace (Irish/Scottish/Welsh-born), Welsh (37.1%) and Gaelic speakers | official statistics, facts
+# The Catholic Directory 1925 (England and Wales; Scotland) and Jewish Year Book 1925 | Catholic and Jewish population by diocese/community (estimates) | facts
+# Recensement général de la population 1926 (France), étrangers par département | foreigners by nationality and department | official statistics, facts
+# Kaiserliches Statistisches Landesamt Elsass-Lothringen, Volkszählung 1910 | religion and mother tongue of Alsace-Lorraine (base for 1925 estimate) | official statistics, facts
+# Recensement général de la population au 31 décembre 1920 (Belgique) | language spoken by province | official statistics, facts
+# Volkstelling 1920 (Netherlands, CBS) | religion by province | official statistics, facts
+# Eidgenössische Volkszählung 1. Dezember 1920 | language and religion by canton | official statistics, facts
+# Censimento della popolazione del Regno d'Italia 1 dicembre 1921 (ISTAT), Venezia Tridentina and Venezia Giulia volumes | lingua d'uso, alloglots by compartimento | official statistics, facts
+# Österreichische Volkszählung 1910 (Küstenland: 978,385; Italian 43.1%, Slovene 33.4%, Croatian 15.6%) | check of contested 1921 Venezia Giulia figures | official statistics, facts
+# Suomen virallinen tilasto, Väestötilasto 1920 | language and religion by lääni | official statistics, facts
+# Folketellingen 1930 (Norway) | Sami and Kven counts (applied to 1925) | official statistics, facts
+# Folkräkningen 1920/1930 (Sweden); Folketælling 1925 (Denmark, Faroes); Manntal 1920 (Iceland) | religion, birthplace | official statistics, facts
+# Recensement 1922 (Luxembourg); Malta census 1921; Gibraltar census 1921; Monaco census 1923 | nationality/religion of small territories | official statistics, facts
+# Gilbert and Ellice Islands Colony census 1931 (via colonial reports) | ethnic and mission shares (estimate) | official statistics, facts

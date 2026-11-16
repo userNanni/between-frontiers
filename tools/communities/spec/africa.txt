@@ -1,0 +1,278 @@
+# Communities of 1925, region africa. One line per state: STATE | culture/religion share, ... | source | C/M/E.
+# Format and build: tools/communities/generate.py; method: docs/population.pt-BR.md. Licence: CC BY-SA 4.0.
+# Drafted from the censuses cited on each line and in the SOURCES block; `~` is the rest of the state.
+
+# Between Frontiers: population composition by state on 1925-01-01, region AFR (Africa except Egypt, Indian Ocean islands).
+# Conventions used throughout this file:
+# - Jews of the Maghreb and Libya = mizrahi/jewish; Jews of the Spanish zone of Morocco (Tetouan, Tangier; Haketia speakers) = sephardi/jewish.
+# - Europeans in colonies use the homeland key (french, spanish, italian, portuguese, english, german, afrikaner, walloon for French-speaking Belgians).
+#   Naturalized Europeans of Spanish/Italian origin in Algeria still speaking Spanish at home are counted as spanish; the rest as french.
+# - Creole peoples get their own keys: cape_verdean, santomean, mauritian_creole, seychellois, reunionese, krio, americo_liberian.
+# - Regional keys (a 1920s source gives no finer split that fits in 10 entries): tanganyika_bantu, middle_belt, kwango_kwilu,
+#   orientale_bantu, malagasy (= the "cotier" peoples other than Merina, Betsileo, Betsimisaraka), mandara (non-Muslim peoples of the
+#   Mandara mountains, Logone and Mayo-Kebbi: Mafa, Mofu, Massa, Toupouri, Moundang...; the 1920s French category was "Kirdi").
+# - Religion of African populations: Christian shares are mission-statistics estimates for c. 1925; the rest of a non-Muslim group is folk.
+# - Shares of ethnic groups for colonies with no 1920s ethnic census are flagged E; where a 1920s census gives the race/nationality split
+#   and the ethnic or religious split is inferred, M.
+
+# ---------------------------------------------------------------- Union of South Africa (1921 census: race by province; Europeans split by home language; Natives by group estimated)
+ZAF-CAPE | afrikaner/protestant 0.128, english/protestant 0.093, ashkenazi/jewish 0.007, cape_coloured/protestant 0.150, cape_coloured/catholic 0.010, cape_coloured/sunni 0.013, xhosa/folk ~, xhosa/protestant 0.220, sotho/protestant 0.025, tswana/protestant 0.020 | Union census 1921 (province x race: Europeans 650,609, Coloured c.483k, Asiatics c.7.7k of 2,782,719); European language split and Native groups estimated | M
+# Cape: Cape Malays = cape_coloured/sunni (Asiatics 0.3% folded there); white Catholics folded into english/protestant; Sotho of Herschel/Matatiele, Tswana of Kuruman/Griqualand West.
+ZAF-NATAL | zulu/folk ~, zulu/protestant 0.170, zulu/catholic 0.030, english/protestant 0.078, afrikaner/protestant 0.018, tamil/hindu 0.040, telugu/hindu 0.015, hindustani/hindu 0.025, gujarati/sunni 0.019, cape_coloured/protestant 0.007 | Union census 1921 (Natal: Europeans 136,838, Asiatics c.141.6k of 1,429,398); Indian language split and Native religion estimated | M
+# Natal: Indian Christians folded into tamil/hindu, Gujarati Hindus into hindustani/hindu, Urdu-speaking Muslims into gujarati/sunni (passenger Indians).
+ZAF-TRANSVAAL | afrikaner/protestant 0.130, english/protestant 0.111, ashkenazi/jewish 0.019, cape_coloured/protestant 0.017, gujarati/sunni 0.007, pedi/folk ~, pedi/protestant 0.110, tswana/folk 0.150, tsonga/folk 0.095, zulu/folk 0.140 | Union census 1921 (Transvaal: Europeans 543,485 of 2,087,636); Native groups estimated incl. Rand mine labour | M
+# Transvaal: pedi = Northern Sotho plus Southern Sotho migrants and Venda; zulu here = all Nguni (Zulu, Swazi, Transvaal Ndebele, Xhosa migrants);
+# tsonga incl. Mozambican Shangaan mine workers. Native Christians (~30%) appear only as pedi/protestant; Tswana Christians folded into tswana/folk (10-entry limit).
+ZAF-ORANGE | afrikaner/protestant 0.240, english/protestant 0.060, cape_coloured/protestant 0.028, sotho/folk ~, sotho/protestant 0.230, tswana/protestant 0.060, tswana/folk 0.040, xhosa/folk 0.050 | Union census 1921 (OFS: Europeans 188,556 of 628,827); Native groups estimated | M
+NAM | ovambo/folk ~, ovambo/protestant 0.080, herero/protestant 0.080, nama/protestant 0.150, kavango/folk 0.080, san/folk 0.040, cape_coloured/protestant 0.025, german/protestant 0.040, afrikaner/protestant 0.035, english/protestant 0.010 | SWA census 1921 (Europeans 19,432) plus administration estimates of Ovamboland/Kavango population | M
+# SWA: nama = Khoekhoe-speakers (Nama and Damara); cape_coloured incl. Rehoboth Basters; Herero Christians (Rhenish mission) dominant.
+
+# ---------------------------------------------------------------- British southern Africa
+BWA | tswana/folk ~, tswana/protestant 0.220, shona/folk 0.060, san/folk 0.035, herero/folk 0.020, english/protestant 0.006, afrikaner/protestant 0.005 | Bechuanaland census 1921 (total 152,983; Europeans 1,743); groups and LMS share estimated | M
+# BWA: Kalanga counted as shona; Kgalagadi, Yeyi, Mbukushu folded into tswana.
+LSO | sotho/folk ~, sotho/protestant 0.200, sotho/catholic 0.070, xhosa/folk 0.025 | Basutoland census 1921 (498,781; Europeans 1,603); Christian share estimated from PEMS/OMI mission returns | M
+SWZ | swazi/folk ~, swazi/protestant 0.080, english/protestant 0.010, afrikaner/protestant 0.010 | Swaziland census 1921 (112,951; Europeans 2,205) | M
+ZWE | shona/folk ~, shona/protestant 0.050, shona/catholic 0.025, ndebele/folk 0.140, ndebele/protestant 0.030, chewa/folk 0.050, english/protestant 0.034, afrikaner/protestant 0.007 | Southern Rhodesia census 1926 (Europeans 39,174; Natives est. c.922k) | M
+# ZWE: chewa = labour migrants from Nyasaland/N. Rhodesia/Mozambique; Kalanga folded into shona; Coloured and Asiatics (<0.5%) folded.
+ZMB | bemba/folk ~, bemba/catholic 0.020, tonga/folk 0.160, lozi/folk 0.120, chewa/folk 0.160, lunda/folk 0.070, kaonde/folk 0.040, chokwe/folk 0.030, tumbuka/folk 0.050, english/protestant 0.004 | estimate: N. Rhodesia census 1921 (Europeans 3,634) and district native counts, groups by 1930s ethnographic surveys | E
+# ZMB: bemba = Bemba-speaking cluster (Bemba, Bisa, Lala, Lamba, Aushi, Tabwa, Mambwe); tonga = Tonga-Ila; lozi incl. Nkoya, Mbunda and Luyana subject peoples; chewa incl. Nsenga, Ngoni; chokwe = Luvale/Chokwe.
+MWI | chewa/folk ~, chewa/protestant 0.080, chewa/catholic 0.030, makua/folk 0.130, yao/sunni 0.090, yao/folk 0.050, tumbuka/protestant 0.050, tumbuka/folk 0.060, ngoni/folk 0.080, sena/folk 0.030 | Nyasaland census 1926 (natives 1,280,885 by tribe; Europeans 1,656); religion estimated | M
+# MWI: makua = Lomwe ("Anguru") immigrants; tumbuka incl. Tonga and Ngonde.
+
+# ---------------------------------------------------------------- British East Africa
+KEN | kikuyu/folk ~, luo/folk 0.190, luhya/folk 0.170, kamba/folk 0.100, kalenjin/folk 0.080, gusii/folk 0.060, maasai/folk 0.030, turkana/folk 0.030, english/protestant 0.005, gujarati/hindu 0.007 | Kenya non-native census 1926 (Europeans 12,529; Indians 26,759) and native tax-roll estimates | M
+# KEN: kikuyu incl. Meru and Embu; kalenjin incl. Pokot; maasai incl. Samburu; Indians (Gujarati Hindu/Ismaili, Punjabi Sikh/Muslim) as one entry. African Christians (~2%) folded.
+KEN-COAST | mijikenda/folk ~, mijikenda/sunni 0.100, taita/folk 0.130, pokomo/folk 0.050, kamba/folk 0.040, swahili/sunni 0.120, peninsular_arab/sunni 0.040, gujarati/hindu 0.015, gujarati/shia 0.012, english/protestant 0.006 | Kenya non-native census 1926 (Mombasa Arabs, Indians, Europeans) and native estimates | M
+# KEN-COAST: mijikenda/sunni = Digo; swahili incl. Bajuni; peninsular_arab = Omani and Hadrami Arabs; gujarati/shia = Ismaili and Bohra.
+KEN-NFD | somali/sunni ~, oromo/sunni 0.100, oromo/folk 0.040 | estimate: Northern Frontier District administration reports, 1920s | E
+UGA-BUGANDA | ganda/catholic ~, ganda/protestant 0.280, ganda/sunni 0.090, ganda/folk 0.136, nyoro/folk 0.060, hutu/folk 0.040, soga/folk 0.040, gujarati/hindu 0.004, english/protestant 0.001 | Uganda census 1921 (province x tribe; non-natives: Europeans 1,269, Indians 5,604); religion split estimated from 1921 returns and mission statistics | M
+# UGA-BUGANDA: nyoro = Banyoro of the "lost counties"; hutu = Ruanda-Urundi labour migrants; Nubi folded into ganda/sunni.
+UGA-EASTERN-PROVINCE | soga/folk ~, soga/protestant 0.060, soga/catholic 0.050, soga/sunni 0.020, teso/folk 0.190, teso/catholic 0.030, gisu/folk 0.140, luhya/folk 0.100, luo/folk 0.070, kalenjin/folk 0.020 | Uganda census 1921 (district x tribe); religion estimated | M
+# UGA-EASTERN: soga incl. Gwere; luhya = Samia, Nyole; luo = Adhola and Kumam; kalenjin = Sebei.
+UGA-NORTHERN-PROVINCE | lango/folk ~, acholi/folk 0.230, acholi/catholic 0.020, lugbara/folk 0.180, karamojong/folk 0.140, alur/folk 0.070, madi/folk 0.050, bari/folk 0.030, sudanese_arab/sunni 0.010 | Uganda census 1921 (district x tribe); Karamoja estimated | M
+# UGA-NORTHERN: bari = Kakwa; sudanese_arab = Nubi (Kinubi-speaking ex-soldier communities).
+UGA-WESTERN-PROVINCE | kiga/folk ~, nkore/folk 0.250, nkore/protestant 0.040, nkore/catholic 0.030, nyoro/folk 0.190, nyoro/protestant 0.060, nyoro/catholic 0.070, nande/folk 0.080, hutu/folk 0.020 | Uganda census 1921 (district x tribe: Ankole, Kigezi, Toro, Bunyoro); religion estimated | M
+# UGA-WESTERN: nyoro = Nyoro and Toro (one language); nande = Konjo and Amba; nkore incl. the Hima pastoral aristocracy; hutu = Banyarwanda of Bufumbira.
+TZA | tanganyika_bantu/folk ~, tanganyika_bantu/sunni 0.200, tanganyika_bantu/catholic 0.040, tanganyika_bantu/protestant 0.025, sukuma/folk 0.130, nyamwezi/folk 0.065, ha/folk 0.060, haya/folk 0.045, chaga/folk 0.030, gujarati/hindu 0.004 | Tanganyika census 1921 (non-natives: Europeans 2,447, Indians 9,411, Arabs 4,041) and native census 1931 tribe shares applied to 1925 | M
+# TZA: tanganyika_bantu = all other peoples (Gogo, Hehe, Nyakyusa, Makonde, Yao, Zaramo, Zigua, Luguru, Bena, Sambaa..., also Maasai, Iraqw, Datooga folded);
+# Arabs (0.1%) folded into tanganyika_bantu/sunni; Europeans (0.05%) folded.
+TZA-ZANZIBAR | swahili/sunni ~, tanganyika_bantu/sunni 0.120, tanganyika_bantu/folk 0.040, peninsular_arab/ibadi 0.080, peninsular_arab/sunni 0.060, gujarati/shia 0.040, gujarati/hindu 0.020, english/protestant 0.002 | Zanzibar census 1924 (total 216,790) with 1931 race shares (Arabs 14%, Indians 6.5%) | M
+# ZANZIBAR: swahili = Shirazi (Hadimu, Tumbatu, Pemba) and Swahili; tanganyika_bantu = mainland Africans; peninsular_arab/ibadi = Omani aristocracy; Hadrami/Shihiri Arabs sunni; gujarati/shia = Ismaili, Ithnasheri, Bohra.
+
+# ---------------------------------------------------------------- Belgian Congo and Ruanda-Urundi
+BEL-RUANDA-URUNDI | hutu/folk ~, hutu/catholic 0.012, tutsi/folk 0.140, twa/folk 0.010 | estimate: Belgian administrative estimates of the 1920s (Hutu c.85%, Tutsi c.14%, Twa c.1%); Catholic share from White Fathers returns | E
+COD-CONGO-KASAI | luba/folk ~, luba/catholic 0.040, kongo/folk 0.120, kongo/catholic 0.050, kongo/protestant 0.050, kwango_kwilu/folk 0.240, kwango_kwilu/catholic 0.020, tetela/folk 0.050, kuba/folk 0.040, chokwe/folk 0.040 | estimate: Belgian Congo administrative population estimates 1925 and 1930s ethnographic maps; mission statistics for Christians | E
+# CONGO-KASAI: luba = Luba-Kasai, Lulua, Songye; kwango_kwilu = Yaka, Suku, Mbala, Pende, Yansi, Mbun, Teke of the Kwango-Kwilu; Europeans (0.2%) folded.
+COD-EQUATEUR | mongo/folk ~, mongo/catholic 0.030, mongo/protestant 0.020, ngombe/folk 0.140, ngbaka/folk 0.080, ngbandi/folk 0.060, bangala/folk 0.050 | estimate: Belgian Congo administrative estimates 1925 and ethnographic maps | E
+# EQUATEUR: ngombe incl. Budja; bangala = riverine peoples (Bobangi, Lusengo, Libinza).
+COD-ORIENTALE | orientale_bantu/folk ~, orientale_bantu/catholic 0.040, zande/folk 0.130, mangbetu/folk 0.070, nande/folk 0.080, shi/folk 0.070, lega/folk 0.060, lendu/folk 0.040, alur/folk 0.030, swahili/sunni 0.030 | estimate: Belgian Congo administrative estimates 1925 (Orientale incl. Kivu and Maniema) and ethnographic maps | E
+# ORIENTALE: orientale_bantu = Budu, Bali, Komo, Lokele, Topoke, Kumu, Bembe, Kusu, Hunde, Havu, Banyarwanda, plus Mbuti and Hema folded;
+# swahili/sunni = "Arabises" of Maniema and Stanleyville.
+COD-KATANGA | luba/folk ~, luba/catholic 0.020, luba/protestant 0.010, bemba/folk 0.200, lunda/folk 0.120, chokwe/folk 0.060, kaonde/folk 0.050, walloon/catholic 0.004 | estimate: Belgian Congo administrative estimates 1925; Europeans from Union Miniere/colonial returns (c.3-4,000) | E
+# KATANGA: luba incl. Hemba, Sanga, Songye and Kasai mine migrants; bemba = Aushi, Lamba, Lala, Bemba, Tabwa; walloon = Belgian and other European residents.
+
+# ---------------------------------------------------------------- Portuguese Africa
+AGO | ovimbundu/folk ~, ovimbundu/protestant 0.030, ovimbundu/catholic 0.030, mbundu/folk 0.160, mbundu/catholic 0.070, kongo/folk 0.100, kongo/catholic 0.030, chokwe/folk 0.150, ovambo/folk 0.080, portuguese/catholic 0.007 | estimate: 1940 census ethnic shares applied to 1925; whites c.15-20k from colonial yearbooks | E
+# AGO: chokwe incl. Lunda and Ngangela; ovambo incl. Kwanyama, Nyaneka-Humbe, Herero; mesticos folded into mbundu/catholic; Kongo Protestants (BMS) folded into kongo/catholic.
+MOZ | makua/folk ~, makua/sunni 0.070, makua/catholic 0.020, tsonga/folk 0.180, tsonga/protestant 0.020, chopi/folk 0.070, sena/folk 0.080, chewa/folk 0.050, portuguese/catholic 0.007 | estimate: Mozambique census 1928 (natives by district; c.17,800 whites) with 1940/1950 ethnic shares | E
+# MOZ: makua = Makua-Lomwe; chopi incl. Tonga of Inhambane; sena incl. Chuabo, Nyungwe; Indians (0.3%) folded.
+MOZ-NIASSA | makua/folk ~, makua/sunni 0.150, yao/sunni 0.130, makonde/folk 0.200, swahili/sunni 0.050, chewa/folk 0.050 | estimate: Mozambique census 1928 district totals with 1950 ethnic shares | E
+# NIASSA: swahili = Mwani coast; chewa = Nyanja of the lake shore.
+MOZ-COMPANHIA | shona/folk ~, sena/folk 0.240, sena/catholic 0.020, portuguese/catholic 0.008, english/protestant 0.002 | estimate: Mozambique census 1928 (Manica e Sofala) with 1950 ethnic shares | E
+# COMPANHIA: shona = Ndau, Manyika, Teve.
+STP | santomean/catholic ~, mbundu/catholic 0.140, ovimbundu/folk 0.140, makua/folk 0.080, cape_verdean/catholic 0.120, portuguese/catholic 0.030 | Sao Tome census 1921 (59,055) with serviçais by origin estimated | M
+# STP: santomean = Forros, Angolares, Principenses; Angolan, Mozambican and Cape Verdean contract labourers (serviçais).
+CPV | cape_verdean/catholic ~, portuguese/catholic 0.010 | Cape Verde census 1920 (159,672) | M
+GNB | balanta/folk ~, fula/sunni 0.230, mandinka/sunni 0.150, manjak/folk 0.220, bijago/folk 0.030, jola/folk 0.030, cape_verdean/catholic 0.010, portuguese/catholic 0.003 | estimate: 1950 census ethnic shares applied to 1925 | E
+# GNB: manjak incl. Papel and Mancanha; mandinka incl. Beafada.
+
+# ---------------------------------------------------------------- French West Africa (AOF census 1926 totals: Senegal 1,318,287 + Dakar 39,952; Mauritanie 287,619; Guinee 2,095,988; Cote d'Ivoire 1,724,545; Dahomey 1,083,642; Soudan 2,634,982; Haute-Volta 3,172,836; Niger 1,286,028)
+SEN | wolof/sunni ~, serer/sunni 0.090, serer/folk 0.060, serer/catholic 0.020, fula/sunni 0.200, jola/folk 0.050, jola/sunni 0.020, mandinka/sunni 0.060, soninke/sunni 0.020, french/catholic 0.006 | AOF census 1926 (Senegal + Dakar: Europeans 7,856, citoyens 48,773); ethnic shares estimated from French "races" counts | M
+# SEN: wolof incl. Lebu; fula incl. Toucouleur; Lebanese traders and metis folded. Citoyens of the Quatre Communes (Wolof/Lebu originaires) not split.
+MRT | hassaniya/sunni ~, fula/sunni 0.100, soninke/sunni 0.060, wolof/sunni 0.030 | AOF census 1926 (287,619); ethnic shares estimated | M
+# MRT: hassaniya = Hassaniya-speaking Moors (Bidan and Haratin).
+GIN | fula/sunni ~, mandinka/sunni 0.270, susu/sunni 0.130, kissi/folk 0.070, kpelle/folk 0.050, loma/folk 0.040, baga/folk 0.040 | AOF census 1926 (2,095,988); ethnic shares estimated | M
+# GIN: mandinka = Malinke; susu incl. Dyalonke; kpelle = Guerze, loma = Toma (Mano folded); baga incl. Nalu, Landuma, Coniagui.
+CIV | akan/folk ~, akan/protestant 0.040, akan/catholic 0.020, kru/folk 0.180, senufo/folk 0.130, mandinka/sunni 0.120, dan/folk 0.120, lobi/folk 0.040 | AOF census 1926 (1,724,545); ethnic shares estimated | M
+# CIV: akan = Baoule, Agni, Abron and lagoon peoples; akan/protestant = Harrist and Methodist converts; kru = Bete, Dida, Guere, Neyo; dan = Dan/Yacouba, Guro, Gagu; mandinka = Malinke and Dyula; lobi incl. Kulango.
+BFA | mossi/folk ~, mossi/sunni 0.060, fula/sunni 0.070, bobo/folk 0.080, lobi/folk 0.080, gurunsi/folk 0.060, gurma/folk 0.060, senufo/folk 0.030, mandinka/sunni 0.040, bissa/folk 0.070 | AOF census 1926 (3,172,836); ethnic shares estimated | M
+# BFA: bobo incl. Bwa and Bobo-Fing; lobi incl. Dagara, Birifor; bissa = Bissa and Samo; mandinka = Dyula and Marka.
+MLI | bambara/folk ~, bambara/sunni 0.100, fula/sunni 0.150, soninke/sunni 0.100, mandinka/sunni 0.080, songhai/sunni 0.070, dogon/folk 0.060, senufo/folk 0.080, tuareg/sunni 0.050, hassaniya/sunni 0.030 | AOF census 1926 (2,634,982); ethnic shares estimated | M
+# MLI: senufo incl. Minianka; tuareg incl. Bella; Bozo/Somono folded into bambara/sunni.
+NER | hausa/sunni ~, hausa/folk 0.120, songhai/sunni 0.200, tuareg/sunni 0.120, fula/sunni 0.100, kanuri/sunni 0.060, toubou/sunni 0.010 | AOF census 1926 (1,286,028); ethnic shares estimated | M
+# NER: hausa/folk = Azna/Maouri; songhai = Zarma-Songhai; kanuri incl. Manga; tuareg incl. Bella.
+BEN | fon/folk ~, fon/catholic 0.040, yoruba/folk 0.070, yoruba/sunni 0.060, bariba/folk 0.060, bariba/sunni 0.020, somba/folk 0.090, fula/sunni 0.040, songhai/sunni 0.020, afro_brazilian/catholic 0.005 | AOF census 1926 (1,083,642); ethnic shares estimated | M
+# BEN: fon = all Gbe (Fon, Gun, Adja, Aizo, Mahi, Mina); yoruba = Nago, Holli; somba = Ditammari and other Atakora Gur peoples; songhai = Dendi; afro_brazilian = Aguda of Ouidah and Porto-Novo.
+TGO | ewe/folk ~, ewe/catholic 0.070, ewe/protestant 0.040, kabye/folk 0.220, tem/sunni 0.060, gurma/folk 0.140, yoruba/folk 0.030 | estimate: French Togo mandate reports 1925-26 to the League of Nations (totals) with ethnic shares | E
+# TGO: ewe incl. Ouatchi, Mina and the Ghana-Togo Mountain peoples (Akposso, Akebu); kabye incl. Losso, Lamba; gurma incl. Moba, Bassar, Konkomba; yoruba = Ana.
+
+# ---------------------------------------------------------------- French Equatorial Africa and Cameroun
+GAB | fang/folk ~, fang/catholic 0.030, fang/protestant 0.020, myene/catholic 0.030, punu/folk 0.200, punu/catholic 0.020, nzebi/folk 0.180, teke/folk 0.100, kota/folk 0.080 | estimate: AEF administrative estimates 1926 with ethnic shares from 1930s surveys | E
+# GAB: punu = Eshira-Punu group incl. Lumbu; nzebi incl. Tsogo, Okande, Bakele; teke incl. Mbede/Obamba.
+COG | kongo/folk ~, kongo/catholic 0.080, kongo/protestant 0.040, teke/folk 0.200, mbochi/folk 0.150, kota/folk 0.070 | estimate: AEF administrative estimates 1926 with ethnic shares from 1930s surveys | E
+# COG: kongo = Lari, Sundi, Bembe, Vili, Yombe; mbochi incl. Kouyou, Makoua, Likouala riverine peoples; kota incl. Mbeti and Sangha forest peoples.
+CAF | gbaya/folk ~, banda/folk 0.300, sara/folk 0.100, ngbandi/folk 0.080, zande/folk 0.060, ngbaka/folk 0.060, maba/sunni 0.020 | estimate: AEF administrative estimates 1926 with ethnic shares from 1930s surveys | E
+# CAF: gbaya incl. Mandja; ngbandi = Yakoma, Sango; zande incl. Nzakara; maba = Runga, Kara of Vakaga.
+TCD | sara/folk ~, sara/sunni 0.030, shuwa_arab/sunni 0.220, kanuri/sunni 0.080, maba/sunni 0.130, mandara/folk 0.150, toubou/sunni 0.040, fula/sunni 0.020 | estimate: AEF administrative estimates 1926 with ethnic shares from 1930s surveys | E
+# TCD: sara/sunni = Bagirmi; kanuri = Kanembu, Buduma; maba = Ouaddai peoples (Maba, Masalit, Tama, Dadjo); mandara = Mayo-Kebbi peoples and Hadjerai.
+CMR | fang/folk ~, fang/catholic 0.060, fang/protestant 0.040, bamileke/folk 0.180, fula/sunni 0.120, mandara/folk 0.150, basaa/folk 0.060, duala/protestant 0.030, gbaya/folk 0.050, shuwa_arab/sunni 0.020 | estimate: French Cameroun mandate reports to the League of Nations 1925-26 with ethnic shares | E
+# CMR: fang = Beti-Bulu-Fang (Ewondo, Bulu) plus Maka and other southern forest peoples; bamileke incl. Bamum; duala = Sawa coastal peoples; Kanuri folded into shuwa_arab.
+CMR-BRITISH | tikar/folk ~, tikar/protestant 0.030, mandara/folk 0.180, fula/sunni 0.120, kanuri/sunni 0.080, shuwa_arab/sunni 0.080, duala/folk 0.080, duala/protestant 0.040, igbo/folk 0.030 | Nigeria census 1921 (Cameroons province and Dikwa/Adamawa divisions) and British mandate reports | M
+# CMR-BRITISH: tikar = Bamenda Grassfields peoples (Tikar, Nso, Kom, Bali); duala = Bakweri, Bakossi and other southern forest peoples (Basel mission); igbo = plantation labour.
+GNQ | fang/folk ~, fang/catholic 0.100, bubi/catholic 0.060, bubi/folk 0.020, ndowe/catholic 0.040, krio/protestant 0.020, kru/folk 0.030, igbo/folk 0.020, spanish/catholic 0.010, santomean/catholic 0.010 | estimate: Spanish Guinea administrative returns 1920s (Fernando Po c.20k) and Rio Muni estimates | E
+# GNQ: krio = Fernandinos; kru = Liberian contract labour; santomean = Annobonese (Fa d'Ambo creole).
+
+# ---------------------------------------------------------------- British West Africa
+GMB | mandinka/sunni ~, fula/sunni 0.180, wolof/sunni 0.150, jola/folk 0.100, soninke/sunni 0.090, krio/protestant 0.005 | Gambia census 1921 (colony + protectorate, by tribe) | M
+# GMB: krio = Aku of Bathurst; Bathurst Wolof Catholics folded.
+SLE | mende/folk ~, temne/folk 0.200, temne/sunni 0.100, limba/folk 0.080, kono/folk 0.080, sherbro/folk 0.040, fula/sunni 0.030, susu/sunni 0.030, mandinka/sunni 0.060, krio/protestant 0.020 | Sierra Leone census 1921 (1,541,311; protectorate by tribe); religion estimated | M
+# SLE: kono incl. Kissi; mende incl. Loko, Gola; mandinka incl. Koranko, Yalunka, Vai.
+LBR | kpelle/folk ~, kru/folk 0.200, bassa/folk 0.150, dan/folk 0.150, loma/folk 0.070, mandinka/sunni 0.060, gola/folk 0.050, kissi/folk 0.040, americo_liberian/protestant 0.015 | estimate: no census; 1920s population estimates (c.1-1.5M) with ethnic shares of the 1962 census | E
+# LBR: kru = Kru, Grebo, Krahn, Sapo; dan = Gio and Mano; loma incl. Gbandi; mandinka = Mandingo and Vai; americo_liberian incl. Congoes.
+GHA-COLONY | akan/folk ~, akan/protestant 0.150, akan/catholic 0.040, ga/folk 0.090, ga/protestant 0.060, ewe/folk 0.020, hausa/sunni 0.030 | Gold Coast census 1921 (Colony, by tribe); religion estimated from 1921/1931 returns | M
+# GHA-COLONY: akan incl. Fante, Akuapem, Akyem, Kwahu, Wassa, Nzema and Guan; ga = Ga-Adangbe incl. Krobo; hausa = zongo northerners; Europeans (0.2%) folded.
+GHA-ASHANTI | akan/folk ~, akan/protestant 0.060, akan/catholic 0.030, mole_dagbani/folk 0.040, hausa/sunni 0.030 | Gold Coast census 1921 (Ashanti, by tribe) | M
+GHA-NORTHERN | mole_dagbani/folk ~, mole_dagbani/sunni 0.070, gurunsi/folk 0.150, gurma/folk 0.080, gonja/sunni 0.050, lobi/folk 0.030 | Gold Coast census 1921 (Northern Territories, by tribe) | M
+# GHA-NORTHERN: mole_dagbani = Dagomba, Mamprusi, Nanumba, Frafra, Kusasi, Dagaaba, Wala; gurunsi = Kasena, Nankani, Sisaala, Builsa; gurma = Konkomba, Bimoba.
+GHA-TOGOLAND | ewe/folk ~, ewe/protestant 0.150, ewe/catholic 0.080, akan/folk 0.080, gurma/folk 0.030, hausa/sunni 0.020 | Gold Coast census 1921 (British Togoland and Keta district) | M
+# GHA-TOGOLAND (modern Volta region incl. Anlo of the old Colony): Ghana-Togo Mountain peoples folded into ewe; akan = Guan of Krachi, Nkonya.
+NGA-KANO-SOKOTO | hausa/sunni ~, hausa/folk 0.030, fula/sunni 0.220, middle_belt/folk 0.060, kanuri/sunni 0.010 | Nigeria census 1921 (Kano, Sokoto, Zaria provinces) with 1931 tribe tables | M
+# NGA: middle_belt = smaller non-Muslim peoples of Southern Zaria, Plateau, Benue and Gongola (Kaje, Kataf, Gwari, Berom, Angas, Idoma, Jukun, Mumuye, Chamba...). hausa/folk = Maguzawa.
+NGA-BORNU-ADAMAWA | kanuri/sunni ~, fula/sunni 0.200, hausa/sunni 0.100, shuwa_arab/sunni 0.050, mandara/folk 0.120, middle_belt/folk 0.200, middle_belt/sunni 0.040 | Nigeria census 1921 (Bornu, Bauchi, Adamawa, Muri provinces) with 1931 tribe tables | M
+NGA-BENUE-NIGER | middle_belt/folk ~, middle_belt/sunni 0.030, tiv/folk 0.200, nupe/sunni 0.100, yoruba/sunni 0.090, yoruba/folk 0.060, igala/folk 0.080, hausa/sunni 0.060, fula/sunni 0.040 | Nigeria census 1921 (Benue, Niger, Plateau, Kabba, Ilorin provinces) with 1931 tribe tables | M
+# NGA-BENUE-NIGER: yoruba/sunni = Ilorin; yoruba/folk incl. Kabba Christians; middle_belt/sunni = Igbira and Gwari Muslims.
+NGA-WESTERN | yoruba/folk ~, yoruba/sunni 0.250, yoruba/protestant 0.140, yoruba/catholic 0.020, edo/folk 0.150, edo/protestant 0.020, igbo/folk 0.050, ijaw/folk 0.030 | Nigeria census 1921 (Lagos, Abeokuta, Ijebu, Oyo, Ondo, Benin, Warri) with 1931 tribe and religion tables | M
+# NGA-WESTERN: edo incl. Urhobo, Isoko, Esan; Itsekiri folded into yoruba; igbo = Western Igbo; Lagos Europeans, Saro and Syrians folded.
+NGA-EASTERN | igbo/folk ~, igbo/protestant 0.070, igbo/catholic 0.060, ibibio/folk 0.150, ibibio/protestant 0.060, ijaw/folk 0.050, ogoni/folk 0.020 | Nigeria census 1921 (Onitsha, Owerri, Calabar, Ogoja provinces) with 1931 tribe and religion tables | M
+# NGA-EASTERN: ibibio incl. Annang, Efik and Cross River peoples (Ejagham, Yakurr).
+
+# ---------------------------------------------------------------- North Africa
+DZA-ALGER | maghrebi/sunni ~, berber/sunni 0.300, french/catholic 0.100, spanish/catholic 0.022, italian/catholic 0.008, mizrahi/jewish 0.012 | Algeria census 1926 (department: Europeans, Israelites, Muslims); Berber-speaking share from 1911 language census | M
+# DZA: Jews counted as mizrahi (Arabic-speaking Maghrebi Jews, French citizens since 1870). berber in Alger = Kabyles of Grande Kabylie.
+DZA-ORAN | maghrebi/sunni ~, berber/sunni 0.030, french/catholic 0.120, spanish/catholic 0.100, mizrahi/jewish 0.020 | Algeria census 1926 (department totals); Spanish-speaking share of naturalized and foreign Europeans estimated | M
+DZA-CONSTANTINE | maghrebi/sunni ~, berber/sunni 0.330, french/catholic 0.070, italian/catholic 0.010, maltese/catholic 0.005, mizrahi/jewish 0.013 | Algeria census 1926 (department totals); Berber-speaking share (Petite Kabylie, Aures Chaouia) from 1911 language census | M
+DZA-SUD | maghrebi/sunni ~, berber/sunni 0.080, berber/ibadi 0.045, tuareg/sunni 0.010, mizrahi/jewish 0.008, french/catholic 0.010 | Algeria census 1926 (Territoires du Sud); Mozabite (Ibadi) and Zenati shares estimated | M
+# DZA-SUD: berber/ibadi = Mozabites of the M'zab; berber/sunni = Zenati of Gourara, Touat, Oued Righ.
+TUN | maghrebi/sunni ~, berber/ibadi 0.010, berber/sunni 0.006, mizrahi/jewish 0.025, italian/catholic 0.041, french/catholic 0.033, maltese/catholic 0.004 | Tunisia census 1926 (2,159,708; c.89k Italians, c.71k French, 8,396 Maltese, c.54k Jews) | C
+# TUN: berber/ibadi = Djerba; berber/sunni = Matmata, Tataouine villages.
+MAR-RABAT | maghrebi/sunni ~, berber/sunni 0.080, mizrahi/jewish 0.033, french/catholic 0.035, spanish/catholic 0.010 | French Morocco census 1926 (Europeans, Jews, Muslims by region); Berber-speaking share estimated | M
+# MAR: Italians and other Europeans folded into french/catholic.
+MAR-FES | berber/sunni ~, maghrebi/sunni 0.460, mizrahi/jewish 0.030, french/catholic 0.020 | French Morocco census 1926; Berber-speaking share estimated (Middle Atlas, Rif of Taza-Al Hoceima) | M
+MAR-MARRAKECH | berber/sunni ~, maghrebi/sunni 0.300, mizrahi/jewish 0.025, french/catholic 0.007 | French Morocco census 1926; Berber-speaking share estimated (Chleuh of the High Atlas and Souss) | M
+MAR-OUJDA | maghrebi/sunni ~, berber/sunni 0.400, mizrahi/jewish 0.020, french/catholic 0.025, spanish/catholic 0.015 | French Morocco census 1926; Berber-speaking share estimated (Beni Snassen, eastern Rif) | M
+ESP-MARRUECOS | maghrebi/sunni ~, berber/sunni 0.080, spanish/catholic 0.060, sephardi/jewish 0.035, french/catholic 0.005 | estimate: Spanish protectorate returns 1920s (Tetouan, Larache, Tangier zone) | E
+# ESP-MARRUECOS covers only MA-01 (Jebala, Tetouan, Larache, Tangier): Arabic-speaking Jebala dominate; Ghomara/Senhaja Berbers. Spanish garrison excluded.
+ESP-SAHARA | hassaniya/sunni ~, spanish/catholic 0.005 | estimate: Spanish administrative estimates 1920s (nomadic population) | E
+LBY-TRIPOLITANIA | maghrebi/sunni ~, berber/ibadi 0.070, berber/sunni 0.010, tuareg/sunni 0.005, toubou/sunni 0.005, mizrahi/jewish 0.040, italian/catholic 0.035 | Italian census of Libya 1931 (Jews 24,534; Italians 44,600 Libya-wide) adjusted back to 1925 | M
+# TRIPOLITANIA (incl. Fezzan): berber/ibadi = Jebel Nafusa and Zuwara; tuareg = Ghat; toubou = southern Fezzan.
+LBY-CIRENAICA | maghrebi/sunni ~, italian/catholic 0.040, mizrahi/jewish 0.015 | Italian census of Libya 1931 adjusted back to 1925 | M
+
+# ---------------------------------------------------------------- Anglo-Egyptian Sudan (no census before 1955/56)
+SDN-KHARTOUM | sudanese_arab/sunni ~, nubian/sunni 0.080, hausa/sunni 0.030, dinka/folk 0.030, egyptian/sunni 0.030, egyptian/oriental_orthodox 0.015, greek/orthodox 0.008, english/protestant 0.005 | estimate: Sudan first population census 1955/56 shares applied to 1925, foreign communities from Sudan Government reports | E
+# KHARTOUM: hausa = West African "Fellata"; dinka = southerners (ex-soldiers, former slaves); egyptian/oriental_orthodox = Copts; Syrians folded.
+SDN-NORTHERN | sudanese_arab/sunni ~, nubian/sunni 0.380, beja/sunni 0.020 | estimate: Sudan census 1955/56 shares applied to 1925 | E
+SDN-KASSALA | beja/sunni ~, sudanese_arab/sunni 0.330, tigre/sunni 0.050, hausa/sunni 0.040, peninsular_arab/sunni 0.010 | estimate: Sudan census 1955/56 shares applied to 1925 | E
+# KASSALA: tigre = Beni Amer Tigre-speakers; peninsular_arab = Rashaida.
+SDN-BLUE-NILE | sudanese_arab/sunni ~, funj/sunni 0.030, funj/folk 0.040, hausa/sunni 0.060, fula/sunni 0.020, nubian/sunni 0.020 | estimate: Sudan census 1955/56 shares applied to 1925 | E
+# BLUE-NILE: funj = Funj and southern hill peoples (Ingessana, Berta, Uduk).
+SDN-KORDOFAN | sudanese_arab/sunni ~, nuba/folk 0.200, nuba/sunni 0.060, dinka/folk 0.030, hausa/sunni 0.020 | estimate: Sudan census 1955/56 shares applied to 1925 | E
+# KORDOFAN: dinka = Ngok of Abyei.
+SDN-DARFUR | fur/sunni ~, sudanese_arab/sunni 0.380, masalit/sunni 0.080, zaghawa/sunni 0.060, hausa/sunni 0.030, fula/sunni 0.020 | estimate: Sudan census 1955/56 shares applied to 1925 | E
+# DARFUR: fur incl. Berti, Bergid, Tunjur, Daju, Tama, Meidob (sedentary non-Arab peoples).
+SDS-UPPER-NILE | nuer/folk ~, dinka/folk 0.300, shilluk/folk 0.180, anuak/folk 0.050, murle/folk 0.030, sudanese_arab/sunni 0.040 | estimate: Sudan census 1955/56 shares applied to 1925 | E
+SDS-BAHR-EL-GHAZAL | dinka/folk ~, fertit/folk 0.120, luo/folk 0.050, zande/folk 0.030, dinka/catholic 0.010, sudanese_arab/sunni 0.010 | estimate: Sudan census 1955/56 shares applied to 1925 | E
+# BAHR-EL-GHAZAL: fertit = Kresh, Banda, Bongo, Ndogo, Belanda; luo = Jur (Luwo).
+SDS-EQUATORIA | zande/folk ~, bari/folk 0.220, toposa/folk 0.120, moru/folk 0.100, latuka/folk 0.080, madi/folk 0.060, acholi/folk 0.050 | estimate: Sudan census 1955/56 shares applied to 1925 | E
+# EQUATORIA: bari incl. Mundari, Kakwa, Pojulu, Kuku; toposa incl. Jie, Nyangatom, Didinga; moru incl. Avukaya, Baka, Mundu; latuka incl. Lopit, Lango. Mission Christians (~1%) folded.
+
+# ---------------------------------------------------------------- Horn of Africa
+ETH-TIGRAY | tigrinya/oriental_orthodox ~, tigrinya/sunni 0.040, afar/sunni 0.020, agaw/oriental_orthodox 0.020 | estimate: no census; 1920s travellers' and legation estimates, proportions of the 1984 census | E
+ETH-AMHARA | amhara/oriental_orthodox ~, amhara/sunni 0.120, agaw/oriental_orthodox 0.050, oromo/sunni 0.040, amhara/jewish 0.012 | estimate: no census; proportions of the 1984 census adjusted, Beta Israel c.50,000 (Faitlovitch) | E
+# AMHARA: amhara/sunni = Wollo Muslims; amhara/jewish = Beta Israel; Qemant folded into agaw.
+ETH-DANAKIL | afar/sunni ~, amhara/oriental_orthodox 0.030, oromo/sunni 0.020 | estimate: no census | E
+ETH-SHEWA | oromo/sunni ~, oromo/oriental_orthodox 0.170, oromo/folk 0.280, amhara/oriental_orthodox 0.170, somali/sunni 0.020 | estimate: no census; proportions of the 1984 census for Oromia and Addis Ababa, religion by tradition | E
+# SHEWA covers modern Oromia + Addis Ababa: oromo/sunni = Arsi, Bale, Hararghe, Jimma; oromo/oriental_orthodox = Shewa Oromo; oromo/folk = Borana, Guji, Macha/Wellega.
+# Foreign residents of Addis Ababa (Armenians, Greeks, Indians, Arabs) folded.
+ETH-HARAR | somali/sunni ~, oromo/sunni 0.100, amhara/oriental_orthodox 0.030, harari/sunni 0.012 | estimate: no census | E
+ETH-SIDAMO | sidama/folk ~, sidama/sunni 0.080, ometo/folk 0.200, ometo/oriental_orthodox 0.040, kaffa/folk 0.060, kaffa/oriental_orthodox 0.040, gurage/sunni 0.090, gurage/oriental_orthodox 0.060, amhara/oriental_orthodox 0.040, oromo/sunni 0.030 | estimate: no census; proportions of the 1984 census for SNNPR, religion by tradition | E
+# SIDAMO: sidama = Highland East Cushitic (Sidama, Hadiya, Kambata, Gedeo, Alaba); ometo = Wolaita, Gamo, Gofa, Dawro; kaffa = Kafficho, Shekacho, Bench; gurage incl. Silte; South Omo peoples folded into sidama/folk.
+ETH-WEST | berta/sunni ~, gumuz/folk 0.280, anuak/folk 0.120, nuer/folk 0.100, oromo/folk 0.100, kaffa/oriental_orthodox 0.050, amhara/oriental_orthodox 0.030 | estimate: no census | E
+# WEST: kaffa = Shinasha (Boro); anuak incl. Majang; gumuz incl. Komo, Uduk.
+ERI | tigrinya/oriental_orthodox ~, tigrinya/catholic 0.050, tigrinya/protestant 0.008, tigrinya/sunni 0.020, tigre/sunni 0.300, saho/sunni 0.040, afar/sunni 0.050, beja/sunni 0.040, kunama/folk 0.030, italian/catholic 0.008 | estimate: Italian colonial census 1931 (natives by group; Italians 4,188) adjusted to 1925 | M
+# ERI: Bilen folded into tigrinya/catholic and tigre/sunni; Nara folded into kunama; beja = Hedareb.
+SOM | somali/sunni ~, somali_bantu/sunni 0.060, yemeni/sunni 0.010, italian/catholic 0.002 | estimate: Italian colonial census 1931 adjusted to 1925 (Oltregiuba excluded) | M
+# SOM: somali_bantu = Gosha, Shabelle and Juba riverine farmers; Benadiri and Bajuni folded into somali.
+SOL | somali/sunni ~ | estimate: British Somaliland administration estimates 1920s | E
+DJI | afar/sunni ~, somali/sunni 0.400, yemeni/sunni 0.120, french/catholic 0.020 | estimate: French colonial estimates 1920s | E
+
+# ---------------------------------------------------------------- Indian Ocean and Atlantic islands
+MDG | malagasy/folk ~, malagasy/catholic 0.030, merina/protestant 0.130, merina/catholic 0.070, merina/folk 0.050, betsileo/catholic 0.030, betsileo/protestant 0.020, betsileo/folk 0.070, betsimisaraka/folk 0.150, french/catholic 0.006 | estimate: Madagascar administrative census 1925-26 by "race" with religion from mission statistics | M
+# MDG: malagasy = other Malagasy peoples (Tsimihety, Sakalava, Antandroy, Antaisaka, Bara, Antanosy, Sihanaka...); french incl. Reunionnais; Comorians, Indians and Chinese (each <0.5%) folded.
+FRA-COMORES | comorian/sunni ~, french/catholic 0.003 | estimate: French administrative estimates 1920s | E
+FRA-RE | reunionese/catholic ~, tamil/hindu 0.080, tamil/catholic 0.050, gujarati/sunni 0.010, han/chinese_folk 0.010 | estimate: Reunion census 1926 total with group shares from later studies | E
+# RE: reunionese = Reunion Creole-speaking French citizens (white and mixed, incl. descendants of Malagasy and African engages); tamil = Malbars; gujarati/sunni = Zarabes.
+MUS | hindustani/hindu ~, hindustani/sunni 0.115, tamil/hindu 0.100, telugu/hindu 0.045, marathi/hindu 0.020, mauritian_creole/catholic 0.235, french/catholic 0.035, han/chinese_folk 0.011 | Mauritius census 1921 (376,485: Indians 265,524, Chinese c.4,000, general population c.107,000); language and religion split of Indians estimated | M
+# MUS: hindustani = Bhojpuri/Hindi/Urdu speakers; Gujarati Memons folded into hindustani/sunni; Anglican Creoles and British folded.
+SYC | seychellois/catholic ~, seychellois/protestant 0.080, french/catholic 0.030, tamil/hindu 0.007 | Seychelles census 1921 (24,523); groups estimated | M
+IOT | mauritian_creole/catholic ~ | estimate: plantation labour (Ilois) of the Chagos, c.1,000 | E
+SHN | english/protestant ~ | St Helena census 1921 (3,747); Saints are English-speaking of mixed descent | C
+
+# ---------------------------------------------------------------- Relevance (1925)
+!SAF | afrikaner/protestant | elite, legal_status | Union of South Africa: Europeans hold the vote and land (Natives Land Act 1913); National Party government from 1924.
+!SAF | english/protestant | elite, legal_status | Union of South Africa: Europeans hold the vote and the mining/commercial capital.
+!SAF | cape_coloured/protestant | legal_status, organization | Coloured franchise in the Cape only; African Political Organization (Abdurahman).
+!SAF:C | cape_coloured/protestant | legal_status, organization | SWA: Rehoboth Basters (own council, 1925 rising) and Coloureds under separate status.
+!SAF | tamil/hindu | legal_status, organization, patron | Natal/Transvaal Asiatic restrictions (barred from OFS); Natal Indian Congress, SA Indian Congress 1923; Government of India intervenes (Cape Town Agreement 1927).
+!SAF | telugu/hindu | legal_status, organization, patron | same as tamil/hindu.
+!SAF | hindustani/hindu | legal_status, organization, patron | same as tamil/hindu.
+!SAF | gujarati/sunni | legal_status, organization, patron | same as tamil/hindu; Transvaal Indian traders.
+!SAF:C | german/protestant | patron, organization | SWA Germans: Deutscher Bund (1924), Weimar Germany protests, London Agreement 1923 on naturalisation.
+!GBR:C | english/protestant | elite, legal_status | settler/official minority (Kenya White Highlands, Southern Rhodesia responsible government 1923).
+!GBR:C | afrikaner/protestant | elite | colonial states of this region (Southern Rhodesia, Swaziland, Bechuanaland settlers).
+!GBR:C | gujarati/hindu | organization, legal_status, patron | ONLY East Africa (KEN, KEN-COAST, UGA, TZA, ZANZIBAR): East African Indian National Congress, Devonshire White Paper 1923 communal roll, barred from the Highlands; Government of India.
+!GBR:C | gujarati/shia | elite | Zanzibar and Mombasa Ismaili/Bohra merchant houses.
+!GBR:C | peninsular_arab/ibadi | elite | Zanzibar Omani landowning aristocracy and the Sultan's court.
+!GBR:C | krio/protestant | elite, organization | Sierra Leone Krio and Gambian Aku professional class; National Congress of British West Africa (1920).
+!GBR:C | kikuyu/folk | organization | Kikuyu Central Association founded 1924 (successor of Thuku's East African Association).
+!GBR:C | ganda/protestant | elite, legal_status | Uganda Agreement 1900: Buganda kingdom's treaty status and mailo land held mostly by Protestant chiefs.
+!GBR:C | yoruba/protestant | organization | Lagos elite: Nigerian National Democratic Party (Macaulay, 1923).
+!GBR:C | egyptian/sunni | patron | Sudan condominium: Egypt claims the Sudan (1924 crisis).
+!GBR:C | french/catholic | elite | ONLY MUS and SYC: Franco-Mauritian and Franco-Seychellois planters.
+!FRA:C | french/catholic | elite, legal_status | citizens vs indigenat subjects.
+!FRA:C | mizrahi/jewish | legal_status | ONLY Algeria: French citizens since the Cremieux decree (1870), unlike Muslim subjects.
+!FRA:C | italian/catholic | patron, legal_status | Tunisia: Italians outnumber the French, keep Italian nationality under the 1896 conventions; claimed by Fascist Italy.
+!FRA:C | maltese/catholic | patron | Tunisia/Algeria: British subjects under consular protection.
+!FRA:C | afro_brazilian/catholic | elite | Dahomey: Aguda merchant families of Ouidah and Porto-Novo.
+!FRA:C | merina/protestant | elite, organization | Madagascar: former ruling people of the Imerina kingdom, mission-educated elite; VVS (1915) and Ralaimongo's movement (1920s).
+!ITA:C | italian/catholic | elite, legal_status | colonial states of this region (Libya, Eritrea, Somalia).
+!ESP:C | spanish/catholic | elite, legal_status | colonial states of this region
+!ESP:C | krio/protestant | elite | Fernando Po: Fernandino cocoa planters.
+!ESP:C | berber/sunni | organization | Rif Republic of Abd el-Krim (1921-1926) at war in 1925; most of the Rif lies in the MAR-FES and MAR-OUJDA polygons.
+!POR:C | portuguese/catholic | elite, legal_status | colonial states: civilizado vs indigena status.
+!BEL:C | walloon/catholic | elite, legal_status | Belgian Congo European residents.
+!BEL:C | tutsi/folk | elite | Ruanda-Urundi: Tutsi monarchy and chiefs under Belgian indirect rule.
+!LBR | americo_liberian/protestant | elite, legal_status, organization | Liberia: settler descendants monopolize citizenship rights and the True Whig Party; hinterland peoples under separate regulations.
+!ETH | amhara/oriental_orthodox | elite | Ethiopia: the ruling group (crown, nobility, church, neftenya landlords) is a plurality, not a majority; elite mainly in the conquered south (ETH-SHEWA, ETH-SIDAMO, ETH-HARAR, ETH-WEST).
+
+# SOURCES
+# Union of South Africa, Third Census of the Population, 3 May 1921 (Census and Statistics Office, Pretoria), and 1936 census volumes reprinting 1921 province and race totals | province totals, race totals, Europeans by province | public domain (official statistics, facts)
+# Union of South Africa, Official Year Book of the Union (1920s) | 1921 race by province, Native religion | facts
+# South West Africa, Census 1921 and Report of the Administrator (League of Nations mandate reports 1921-1926) | Europeans, native estimates | facts
+# Census of the Bechuanaland Protectorate, Basutoland and Swaziland 1921 (Colonial Office) | totals and Europeans | public domain
+# Southern Rhodesia, Census 1926 (Report of the Director of Census) | Europeans, natives estimate | public domain
+# Northern Rhodesia and Nyasaland censuses 1921 and 1926 | Europeans, Asiatics, Natives by tribe (Nyasaland 1926) | public domain
+# Kenya Colony, Report on the Non-Native Census 1926; Uganda Protectorate, Census Returns 1921; Tanganyika Territory, Report on the Census of the Non-Native Population 1921 and native census 1931; Zanzibar Protectorate census 1924 and 1931 | non-native counts, tribe tables | public domain
+# Gouvernement general de l'AOF, tableaux des recensements 1906, 1911, 1921, 1926, 1931 (IREDA/CEPED inventory scan) | AOF colony totals 1926, Europeans and citoyens | facts
+# Annuaire statistique de l'Algerie; Kamel Kateb, Europeens, "indigenes" et juifs en Algerie 1830-1962 (INED 2001) | 1926 census groups, Jewish population | facts cited
+# Tunisia, Denombrement de la population 1926 (Direction generale de l'Interieur); Taieb, demographic evolution of the Jews of Tunisia (geneanum) | 1926 totals, Jews, Italians, French, Maltese | facts
+# Protectorat de la Republique francaise au Maroc, recensement 1926 and 1931 | Europeans, Jews, Muslims | facts
+# Istituto Centrale di Statistica, Censimento della popolazione 1931: Libia, Eritrea, Somalia | Italians, Jews, natives | facts
+# Mauritius, Census 1921 (Registrar-General) | total 376,485, Indians 265,524, Chinese c.4,000 | public domain
+# Seychelles census 1921; St Helena census 1921; Cape Verde census 1920; Sao Tome e Principe census 1921 | totals | public domain
+# Nigeria, Census of 1921 and Census of Nigeria 1931 (Talbot/Jeffreys tribe and religion tables) | province totals, tribe shares | public domain
+# Gold Coast, Census Report 1921 (Cardinall) and 1931 | tribe by province | public domain
+# Sierra Leone Census 1921; Gambia Census 1921 | tribe tables | public domain
+# Sudan, First Population Census 1955/56 | ethnic shares projected back (estimate) | facts
+# Belgian Congo, Rapport annuel sur l'administration de la colonie du Congo belge 1925; Ruanda-Urundi mandate reports to the League of Nations 1925-1927 | population estimates, Hutu/Tutsi/Twa shares | facts
+# League of Nations Permanent Mandates Commission, annual reports for Togo and Cameroun (French and British) 1924-1926 | totals, groups | public domain
+# Ethiopia: 1984 Population and Housing Census (CSA) proportions used only as a structure for 1925 estimates | regional ethnic proportions | facts

@@ -22,6 +22,8 @@ pub struct GameData {
     pub industry: Option<IndustryFile>,
     /// The technology tree, when `data/research/technologies.ron` exists.
     pub tree: Option<Arc<TechTree>>,
+    /// Who lives where, when `data/scenario/1925/communities.ron` exists. Not in the tick yet.
+    pub communities: Option<crate::communities::Communities>,
 }
 
 fn read<T: serde::de::DeserializeOwned>(path: &Path) -> Result<T, String> {
@@ -50,11 +52,14 @@ impl GameData {
             .map(|file| TechTree::build(&file, &catalogue).map(Arc::new))
             .transpose()
             .map_err(|e| format!("research/technologies.ron: {e}"))?;
+        let map: MapFile = read(&root.join("assets/map/provinces.ron"))?;
+        let communities = crate::communities::load(&data, &map)?;
         Ok(Self {
             tree,
             catalogue: Arc::new(catalogue),
             countries: read(&scenario.join("countries.ron"))?,
-            map: read(&root.join("assets/map/provinces.ron"))?,
+            map,
+            communities,
             deposits: optional(&scenario.join("deposits.ron"))?,
             land: optional(&scenario.join("land.ron"))?,
             population: optional(&scenario.join("population.ron"))?,

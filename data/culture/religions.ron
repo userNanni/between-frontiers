@@ -1,0 +1,37 @@
+// Religions of Between Frontiers. Contract: crates/bf-sim/src/communities.rs (ReligionsFile).
+// Names: assets/i18n/*/communities.ftl (`religion-<key>`, `religion-family-<family>`).
+// Reasoning: docs/population.pt-BR.md. Licence: CC BY-SA 4.0.
+(
+    religions: [
+        (key: "catholic", family: "christian"),
+        (key: "protestant", family: "christian"),
+        (key: "orthodox", family: "christian"),
+        // Greek Catholic (Ukrainian, Romanian, Ruthenian), Maronite, Melkite.
+        (key: "eastern_catholic", family: "christian"),
+        // Armenian Apostolic, Coptic, Ethiopian and Eritrean Tewahedo.
+        (key: "oriental_orthodox", family: "christian"),
+        // Church of the East, Chaldean, Syriac Orthodox.
+        (key: "syriac", family: "christian"),
+        (key: "latter_day_saints", family: "christian"),
+        (key: "sunni", family: "muslim"),
+        // Twelvers, Ismailis and Zaydis.
+        (key: "shia", family: "muslim"),
+        (key: "ibadi", family: "muslim"),
+        (key: "alawite", family: "muslim"),
+        (key: "druze", family: "muslim"),
+        (key: "yazidi", family: "iranian"),
+        (key: "zoroastrian", family: "iranian"),
+        (key: "jewish", family: "jewish"),
+        (key: "hindu", family: "dharmic"),
+        (key: "sikh", family: "dharmic"),
+        (key: "jain", family: "dharmic"),
+        (key: "theravada", family: "buddhist"),
+        (key: "mahayana", family: "buddhist"),
+        (key: "vajrayana", family: "buddhist"),
+        // Chinese traditional religion: Confucian, Taoist and Buddhist practice together.
+        (key: "chinese_folk", family: "east_asian"),
+        (key: "shinto", family: "east_asian"),
+        // Traditional and ethnic religions: African, tribal India, Siberia, Oceania, the Americas.
+        (key: "folk", family: "folk"),
+    ],
+)
