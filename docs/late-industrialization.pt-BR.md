@@ -2,7 +2,7 @@
 
 Estado: estudo e desenho, **fora da simulação**. O contrato puro está em
 `crates/bf-sim/src/foreign_capital.rs` (fora do tick e do save) e a série de referência em
-`data/history/fdi.csv`. As decisões no fim são **propostas, aguardando o dono**.
+`data/history/fdi.csv`. As cinco decisões do fim foram tomadas pelo dono em 2026-11-16.
 
 ## O pedido
 
@@ -280,6 +280,24 @@ estrangeiro sozinho não faria a escala. O jogo precisa das duas peças, e as du
   a mais de 40 % do produto, financiado em grande parte com poupança doméstica apesar das
   multinacionais [Krugman; Young].
 
+- **A via coreana não é subsídio.** O subsídio é gasto do orçamento hoje, pago com poupança de
+  dentro e sem devolução. A via coreana é dívida em moeda estrangeira da empresa, com aval do
+  Estado: traz capital de fora sem entregar a propriedade, tem de ser paga com exportação e deixa
+  no Estado um passivo contingente. O subsídio fica dentro dela, implícito, no juro abaixo do
+  mercado e no aval. Pela Lei de Indução de Capital Estrangeiro (1962), o governo coreano
+  restringia o empréstimo direto das empresas no exterior e só o liberava às escolhidas, com aval
+  do Banco de Desenvolvimento da Coreia, do Banco de Câmbio ou dos bancos comerciais que o Estado
+  controlava [CL21, pp. 2 e 6]. O aval tirava o risco de calote e de desvalorização, e as
+  empresas tomavam a juro real "negativo" [CL21, p. 6, nota 5]. O crédito externo saía a cerca de
+  10 %, contra cerca de 20 % pagos ao depositante no país, e "constituía um subsídio" [CL21, p. 7].
+  De 1973 a 1979, esse crédito às manufaturas somou cerca de US$ 16 bilhões de 2015, ou 11,4 % do
+  PIB coreano de 1972 [CL21, p. 7]. Amsden explica o juro real negativo pela inflação acima da
+  desvalorização, nos empréstimos externos de longo prazo de quase todos os anos 1960 e 1970. Os
+  credores exigiam o aval do governo, e o governo usava o aval para decidir quem podia tomar
+  [Amsden90]. No jogo, a via é empréstimo em moeda estrangeira (`debt_fx` da 3c) a empresa
+  nacional, com aval do Tesouro e juro do mundo; o calote da empresa vira dívida do Estado
+  (decisão 4).
+
 **A regra mundial.** Em todos os casos houve uma decisão sobre como o capital e a técnica
 entravam. Variaram a fonte do capital (estrangeiro, empréstimo, Estado) e o canal da técnica
 (planta estrangeira, licença, fábrica comprada). Onde nenhum canal abriu, a indústria parou: Índia
@@ -395,6 +413,81 @@ canal = piso (livros, engenheiros, visitas)
   hoje, em que todos convergem sem canal. Piso baixo trava os pobres fechados, que é o que o dono
   pede, mas também os pobres abertos sem capital. É a decisão 5.
 
+#### A imitação com canal, primeira versão (antes da fase 4)
+
+Proposta pelo orquestrador e aceita pelo dono: cortar a imitação de graça já, só com o que existe
+hoje, sem esperar o fluxo de capital. **Não está no tick:** é calibração do mundo inteiro e espera
+vaga de rodada de 100 anos. A função pura está pronta
+(`foreign_capital::imitation_channel`, com testes).
+
+**Hoje** (`research_system.rs`, `Research::compute`, laço "Imitation"), por país `c` e tecnologia
+`t` que ainda não é industrial em `c`:
+
+```text
+progresso por mês = (0,3 + alfabetização_c) × parcela do PIB mundial que faz t ÷ (5 anos × 12)
+```
+
+**Primeira versão:**
+
+```text
+progresso por mês = (0,3 + alfabetização_c) × parcela do PIB mundial que faz t × canal_c ÷ 60
+canal_c   = PISO + (1 − PISO) × comércio_c × capital_c
+comércio_c = 1 com tarifa ≤ 25 %; cai em linha reta até 0 com tarifa de 60 %
+capital_c  = PESO_COMÉRCIO + (1 − PESO_COMÉRCIO) × min(1, foreign_investment_c)
+PISO = 0,2      PESO_COMÉRCIO = 0,5
+```
+
+| Termo | De onde sai | Valor |
+|---|---|---|
+| Alfabetização | `facts(world).literacy`, como hoje | 0 a 1 |
+| Parcela que faz | `share_at(Stage::Industrial)`, como hoje | 0 a 1 |
+| Tarifa | efeito `tariff` das leis em vigor (`trade`: livre comércio 2 %, tarifa fiscal 10 %, protecionista 25 %, autarquia 60 %) | comércio 1, 1, 1, 0 |
+| Atração do capital | efeito `foreign_investment` combinado das leis em vigor (multiplicador: `open_capital` 1, `capitulations` 1,5, `screened_capital` 0,6, `closed_capital` 0,1; vezes `planned_economy` 0,1, `state_capitalism` 0,7, `autarky` 0,3) | capital 1, 1, 0,8, 0,55; plano e capital fechado juntos dão 0,505 |
+| Piso | constante: livros, revistas, engenheiros que viajam, catálogos; a imitação nunca para | 0,2 |
+| Peso do comércio | constante: metade do canal é máquina e bem comprado, metade é planta estrangeira e licença | 0,5 |
+
+Valores do canal: país com tarifa até 25 % e capital aberto, **1 (a regra de hoje, igual)**;
+capital triado, 0,84; capital fechado, 0,64; plano com capital fechado, 0,60; autarquia, 0,2 (o
+piso). Um estágio que hoje se copia em 5 anos leva 6 anos com o capital triado, 8 com o capital
+fechado e 25 em autarquia.
+
+- **Degrada para a regra de hoje.** Com tarifa até 25 % e `foreign_investment` ≥ 1, o canal é
+  exatamente 1 e o progresso é o mesmo número de hoje, sem arredondamento novo (a multiplicação
+  por `Fixed::ONE` é exata). As tarifas protecionistas de 1925 a 1950 (EUA, Europa, Brasil)
+  ficam em 25 % e não cortam: o protecionismo comprava máquina de fora, e só a autarquia cortava.
+  As datas das tecnologias nos países abertos não mudam por este canal. Mudam só se mudar o
+  mundo que as faz, o que a rodada mede.
+- **O que fica de fora da primeira versão:**
+  - **Vizinhança.** "De quem é vizinho de quem já tem" pede relação diplomática: a China de
+    1960–71 fazia fronteira com a URSS e não recebia nada dela. Entra com a relação, na fase 4.
+  - **Planta estrangeira e fábrica comprada** (`transfer_rate`). Entram com o fluxo.
+  - **Difusão.** A passagem de industrial para difundida dentro do país fica como hoje; o canal
+    corta a entrada da técnica, não o uso interno.
+  - **Uso sem fabricar** (vacina, antibiótico, pílula). Fica como hoje.
+- **Onde cai no código:**
+  - `polity/system.rs`, `law_effects`: dois campos novos em `econ::state::LawEffects` (`tariff`,
+    `foreign_investment`, neutros 0 e 1, com `serde(default)` e no hash). É o mesmo caminho dos
+    outros efeitos ligados (`politics.pt-BR.md`, "O que a lei faz na economia"). São +2 efeitos
+    ligados e −2 dos que esperam sistema.
+  - `research_system.rs`, `Research::compute`: o canal de cada país, uma vez por mês, antes do
+    laço dos países; no laço "Imitation", multiplicar por `canal[c]`.
+  - O diff fica em torno de 60 linhas, mais os testes. Toca `polity/` e `econ/state.rs`, que são
+    de outros threads, com um campo cada; será dito no PR.
+- **Os dois testes do placar** (rodada de 100 anos, com as leis forçadas por comando em 1925,
+  porque a China do cenário fica com `screened_capital` e tarifa protecionista até a política
+  mudar):
+  1. **China fechada** (`planned_economy`, `closed_capital`, `autarky`): sem a técnica americana
+     em 1985. A produtividade industrial da China (`tech_tfp` dos grupos industriais) fica abaixo
+     de 60 % da americana em 1985 (hoje passa dela: 3,47 contra 3,28). A agropecuária fica acima
+     de 70 % do emprego em 2025.
+  2. **Europa Ocidental e EUA sem atraso:** o atraso médio de protótipo e indústria das 133
+     tecnologias posteriores a 1925, contra `demonstrated` e `industrialized`, não piora mais de
+     0,5 ano contra a `main`, e nenhum desses países fica mais de 3 anos atrás da própria data da
+     `main` em média.
+
+  Mais um, de não regressão do mundo: o PIB por habitante de 2025 dos países com capital aberto
+  não cai mais de 5 % contra a `main`.
+
 ### 3. A "nacionalização futura"
 
 Três coisas diferentes, cada uma com efeito próprio no fluxo seguinte:
@@ -494,36 +587,37 @@ fábricas compradas de 1972–73.
 
 ## Decisões para o dono
 
-Propostas, aguardando o dono. Nada delas está decidido.
+Todas decididas pelo dono em 2026-11-16, como recomendadas.
 
-1. **O que o jogador comanda no investimento de fora.**
+1. **O que o jogador comanda no investimento de fora.** Decidido pelo dono em 2026-11-16.
    - **Recomendação:** a lei do próprio país e uma lista curta de países vetados (embargo); o
      dinheiro sai sozinho pela conta acima, e a tela mostra os termos.
    - **Alternativa:** comandar quanto e onde.
    - **Como se testa:** a rodada sem jogador dá o mesmo fluxo com e sem a tela.
    - **Custo de manter:** baixo. O comando de valores pediria IA para os outros países e uma tela
      de carteira.
-2. **Multinacional como entidade ou só o fundo do país.**
+2. **Multinacional como entidade ou só o fundo do país.** Decidido pelo dono em 2026-11-16.
    - **Recomendação:** só o fundo, e a planta guarda o dono e a parcela estrangeira.
    - **Como se testa:** o save cresce dois campos por planta.
    - **Custo de manter:** baixo. A entidade pediria milhares de empresas no save, com lucro,
      sede e decisão próprios, e não muda nenhum critério do placar.
-3. **Zonas especiais: por estado ou lei nacional.**
+3. **Zonas especiais: por estado ou lei nacional.** Decidido pelo dono em 2026-11-16.
    - **Recomendação:** uma lei nacional, `export_zones`, que abre o capital só nos estados
      escolhidos, até um teto. O jogador escolhe; a IA escolhe os com porto e mais ociosos.
    - **Como se testa:** a China de 1980 recebe o fluxo na costa e não no interior.
    - **Custo de manter:** médio. A política ainda não tem lei com escopo de estado; o escopo
      seria uma lista no estado do país, sem lei por estado.
-4. **A via do empréstimo (Coreia) junto ou depois.**
+4. **A via do empréstimo (Coreia) junto ou depois.** Decidido pelo dono em 2026-11-16.
    - **Recomendação:** primeiro a planta estrangeira e a fábrica comprada pelo Estado (fase 4). O
      empréstimo estrangeiro a empresas nacionais com aval do governo fica para depois, sobre a
      dívida da 3c e a confiança da fase 7.
    - **Como se testa:** a Coreia, de 1962 a 1978, fica fora do critério até lá.
    - **Custo de manter:** sem a via, a Coreia simulada se industrializa por investimento direto,
      com a forma errada e o resultado perto do certo.
-5. **Cortar a imitação de graça.**
-   - **Recomendação:** sim, imitação com canal e piso, calibrada pelo placar na fase 4. É a
-     mudança que impede a China fechada de ter a técnica americana em 1985.
+5. **Cortar a imitação de graça.** Decidido pelo dono em 2026-11-16.
+   - **Recomendação:** sim, imitação com canal e piso. É a mudança que impede a China fechada de
+     ter a técnica americana em 1985. Uma primeira versão, só com as leis que já existem, entra
+     antes do fluxo de capital (seção "A imitação com canal, primeira versão").
    - **Como se testa:** a rodada da China fechada e a de não regressão acima, mais a data
      histórica das tecnologias (`research.pt-BR.md`, "Calibração"), que não pode atrasar mais de
      três anos em média.
@@ -638,6 +732,12 @@ Abertas em 2026-11-16, salvo indicação.
   https://www.skoda-storyboard.com/en/skoda-world/skoda-and-volkswagen-three-decades-of-partnership/
 - [GL22] Gál, Z. e Lux, G. "FDI-based regional development in Central and Eastern Europe",
   *Tér és Társadalom* 36(3) (2022), resumo. https://m2.mtmt.hu/api/publication/33062008
+- [CL21] Choi, J. e Levchenko, A. "The Long-Term Effects of Industrial Policy", NBER WP 29263
+  (2021, rev. 2024), páginas do PDF rev0.
+  https://www.nber.org/system/files/working_papers/w29263/revisions/w29263.rev0.pdf
+- [Amsden90] Amsden, A. "Third World Industrialization: 'Global Fordism' or a New Model?", *New
+  Left Review* I/182 (1990), introdução.
+  https://newleftreview.org/issues/i182/articles/alice-h-amsden-third-world-industrialization-global-fordism-or-a-new-model
 - [Allen] Allen, R. C. "The rise and decline of the Soviet economy", *Canadian Journal of
   Economics* 34(4) (2001). https://content.csbs.utah.edu/~mli/economics%207004/allen-103.pdf
 - [CGGT] Cheremukhin, A., Golosov, M., Guriev, S. e Tsyvinski, A. "Was Stalin Necessary for
