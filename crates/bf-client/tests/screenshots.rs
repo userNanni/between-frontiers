@@ -278,9 +278,96 @@ fn walk_through_the_screens() {
     h.get_by_label("Político").click();
     h.run_steps(2);
 
+    // 6k. A campaign fifteen years in: the HUD and the country panel read the simulation, not the
+    // 1925 scenario. The engine runs here, off the interface, and the campaign opens from its
+    // save.
+    let mut later = saves::create(
+        &user.join("saves"),
+        "Quinze anos depois",
+        1925,
+        laplace_schelling::calendar::Date::new(1925, 1, 1),
+    )
+    .unwrap();
+    later.meta.player = Some("BRA".into());
+    {
+        let data = bf_sim::data::GameData::load(&root()).expect("game data");
+        let mut session = bf_sim::game::Session::new(
+            data.new_world(),
+            later.meta.seed,
+            later.meta.date,
+            0,
+            Some(data.rules()),
+        );
+        session.submit(bf_sim::game::GameCommand::ChoosePlayer { tag: "BRA".into() });
+        while session.clock().date < laplace_schelling::calendar::Date::new(1940, 3, 1) {
+            session.sim.step();
+        }
+        later.meta.date = session.clock().date;
+        std::fs::write(
+            later.dir.join(saves::WORLD_FILE),
+            session.save("test", &later.meta.name).unwrap(),
+        )
+        .unwrap();
+    }
+    saves::write(&later).unwrap();
+    let ctx = h.ctx.clone();
+    h.state_mut().apply(Transition::Game(later), &ctx);
+    h.run_steps(3);
+    {
+        let world = h.state().shared.world.as_ref().unwrap();
+        let bra = world
+            .countries
+            .iter()
+            .position(|c| c.tag() == "BRA")
+            .unwrap();
+        let live = world.live.as_ref().expect("live figures in a campaign");
+        assert_eq!(
+            live.source,
+            bf_client::world::Source::Live {
+                gdp_year: Some(1939)
+            }
+        );
+        let (now, then) = (&live.countries[bra], &world.scenario.countries[bra]);
+        assert_ne!(now.population, then.population);
+        assert_ne!(now.gdp, then.gdp);
+        println!(
+            "BRA population {:.0} -> {:.0}, GDP {:.0} -> {:.0}",
+            then.population, now.population, then.gdp, now.gdp
+        );
+    }
+    shot(&mut h, "06k-campanha-1940");
+    let gdp = h
+        .get_all(egui_kittest::kittest::by().label_contains("PIB:"))
+        .next()
+        .expect("GDP figure")
+        .rect();
+    h.hover_at(gdp.center());
+    h.run_steps(8);
+    shot(&mut h, "06l-pib-simulado");
+    let quality = h
+        .get_all(egui_kittest::kittest::by().label_contains("Qualidade de vida"))
+        .next()
+        .expect("quality figure")
+        .rect();
+    h.hover_at(quality.center());
+    h.run_steps(8);
+    shot(&mut h, "06m-qualidade-simulada");
+    // The banner opens the country panel, with the same figures.
+    let banner = egui::pos2(54.0, 42.0);
+    h.hover_at(banner);
+    h.run_steps(1);
+    h.drag_at(banner);
+    h.run_steps(1);
+    h.drop_at(banner);
+    h.hover_at(egui::pos2(800.0, 600.0));
+    h.run_steps(3);
+    shot(&mut h, "06n-painel-pais-simulado");
+
     // 7. Back to the main menu: "Continue" now offers the new campaign.
     let ctx = h.ctx.clone();
     h.state_mut().apply(Transition::Menu, &ctx);
+    // Outside a campaign the scenario's figures stand again.
+    assert!(h.state().shared.world.as_ref().unwrap().live.is_none());
     shot(&mut h, "07-menu-continuar");
 
     // 8. Same menu in English.

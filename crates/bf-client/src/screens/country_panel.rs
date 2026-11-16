@@ -5,13 +5,17 @@ use bf_ui_kit::{Tone, tokens::space};
 use egui::Ui;
 
 use crate::app::Shared;
-use crate::text::{country_name, difficulty_key, money, money_exact, status_line};
+use crate::text::{country_name, difficulty_key, economy_source, money, money_exact, status_line};
+use crate::world::Source;
 
 pub fn show(shared: &Shared, ui: &mut Ui, country: usize) {
     let (Some(world), i18n) = (&shared.world, &shared.i18n) else {
         return;
     };
     let c = &world.countries[country];
+    // The simulation's figures in a campaign, the 1925 scenario's when choosing a country.
+    let table = world.figures();
+    let f = &table.countries[country];
     let tag = c.tag();
     ui.spacing_mut().item_spacing.y = space::MD;
 
@@ -45,27 +49,30 @@ pub fn show(shared: &Shared, ui: &mut Ui, country: usize) {
             bf_ui_kit::stat_block(
                 ui,
                 &i18n.tr("stat-population"),
-                &i18n.compact(c.def.population as f64),
+                &i18n.compact(f.population),
                 Some(&i18n.tr_args(
                     "stat-rank-population",
-                    &[("rank", Arg::String(c.rank_population.to_string()))],
+                    &[("rank", Arg::String(f.rank_population.to_string()))],
                 )),
             );
             bf_ui_kit::stat_block(
                 ui,
                 &i18n.tr("stat-gdp"),
-                &money(i18n, c.gdp),
+                &money(i18n, f.gdp),
                 Some(&i18n.tr_args(
                     "stat-rank-gdp",
-                    &[("rank", Arg::String(c.rank_gdp.to_string()))],
+                    &[("rank", Arg::String(f.rank_gdp.to_string()))],
                 )),
             );
             ui.end_row();
             bf_ui_kit::stat_block(
                 ui,
                 &i18n.tr("stat-gdp-per-capita"),
-                &money_exact(i18n, c.def.gdp_per_capita as f64),
-                Some(&i18n.tr("stat-gdp-unit")),
+                &money_exact(i18n, f.gdp_per_capita()),
+                Some(&match table.source {
+                    Source::Scenario => i18n.tr("stat-gdp-unit"),
+                    Source::Live { .. } => i18n.tr("stat-gdp-unit-live"),
+                }),
             );
             bf_ui_kit::stat_block(
                 ui,
@@ -95,13 +102,13 @@ pub fn show(shared: &Shared, ui: &mut Ui, country: usize) {
         &i18n.tr("stat-states"),
         &i18n.int(c.states.len() as i64),
     );
-    if c.def.colonies.is_some() || !c.colonial_states.is_empty() {
+    if c.has_colonies() {
         let value = i18n.tr_args(
             "country-colonies-value",
             &[
                 (
                     "population",
-                    Arg::String(i18n.compact(c.colonial_population())),
+                    Arg::String(i18n.compact(f.colonial_population)),
                 ),
                 (
                     "states",
@@ -121,5 +128,7 @@ pub fn show(shared: &Shared, ui: &mut Ui, country: usize) {
         bf_ui_kit::small(ui, &names.join(" · "));
     }
     bf_ui_kit::gap(ui, space::XS);
-    bf_ui_kit::small(ui, &i18n.tr("source-economy"));
+    for line in economy_source(i18n, table.source) {
+        bf_ui_kit::small(ui, &line);
+    }
 }

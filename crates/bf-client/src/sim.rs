@@ -10,6 +10,8 @@ use bf_sim::game::{GameCommand, Session};
 use bf_sim::research::Stage;
 use laplace_schelling::calendar::Date;
 
+use crate::live::LiveFigures;
+
 /// Days per second at each speed, 1 to 5.
 const DAYS_PER_SECOND: [f64; 5] = [1.0, 3.0, 8.0, 20.0, 60.0];
 /// Most ticks run between two looks at the command queue, so the interface stays responsive.
@@ -31,6 +33,9 @@ pub struct Snapshot {
     /// Share of the demand for each local good (`Catalogue::local` order: electricity,
     /// transport) met in each map state (index = state id − 1), `-1` where no region runs.
     pub local: std::sync::Arc<Vec<[f32; 2]>>,
+    /// Country figures for the HUD, read on the first snapshot and then once a month; `None`
+    /// without an economy.
+    pub figures: Option<Arc<LiveFigures>>,
 }
 
 /// The player's research, copied out of the world for the interface.
@@ -86,7 +91,21 @@ fn short(hash: &laplace_schelling::StateHash) -> String {
     hash.to_string().chars().take(12).collect()
 }
 
-fn snapshot_of(session: &Session, paused: bool, speed: u8) -> Snapshot {
+/// The month's figures, read again only when the month changed since `last`.
+fn figures_of(session: &Session, last: &Option<Arc<LiveFigures>>) -> Option<Arc<LiveFigures>> {
+    let date = session.clock().date;
+    match last {
+        Some(f) if f.month == (date.year, date.month) => Some(Arc::clone(f)),
+        _ => crate::live::read(session.world(), date).map(Arc::new),
+    }
+}
+
+fn snapshot_of(
+    session: &Session,
+    paused: bool,
+    speed: u8,
+    figures: Option<Arc<LiveFigures>>,
+) -> Snapshot {
     Snapshot {
         date: session.clock().date,
         tick: session.clock().tick,
@@ -96,6 +115,7 @@ fn snapshot_of(session: &Session, paused: bool, speed: u8) -> Snapshot {
         player: session.world().player_tag().map(str::to_owned),
         research: research_view(session),
         local: Arc::new(local_view(session)),
+        figures,
     }
 }
 
@@ -127,7 +147,8 @@ fn local_view(session: &Session) -> Vec<[f32; 2]> {
 
 impl SimHandle {
     pub fn start(session: Session, repaint: impl Fn() + Send + 'static) -> Self {
-        let snapshot = Arc::new(Mutex::new(snapshot_of(&session, true, 2)));
+        let figures = figures_of(&session, &None);
+        let snapshot = Arc::new(Mutex::new(snapshot_of(&session, true, 2, figures)));
         let (tx, rx) = channel();
         let shared = Arc::clone(&snapshot);
         std::thread::Builder::new()
@@ -181,6 +202,11 @@ fn run(
 ) {
     let (mut paused, mut speed) = (true, 2u8);
     let mut hash = short(&session.state_hash());
+    let mut figures = shared
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .figures
+        .clone();
     let mut debt = 0.0f64;
     let mut last = Instant::now();
     loop {
@@ -230,7 +256,8 @@ fn run(
             if paused {
                 hash = short(&session.state_hash());
             }
-            let mut snap = snapshot_of(&session, paused, speed);
+            figures = figures_of(&session, &figures);
+            let mut snap = snapshot_of(&session, paused, speed, figures.clone());
             snap.hash = hash.clone();
             *shared.lock().unwrap_or_else(|e| e.into_inner()) = snap;
             repaint();
