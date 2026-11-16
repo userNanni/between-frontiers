@@ -129,8 +129,14 @@ impl System<GameWorld> for Yearly {
                     .effects
                     .get(r.market as usize)
                     .map_or(Fixed::ONE, |e| Fixed::ONE + e[2] * milli(300));
+                // Schooling beyond what the education law asks for does not count.
                 let schools =
-                    super::public::coverage(cat, r, school, super::public::PUPILS_PER_PERSON);
+                    super::public::coverage(cat, r, school, super::public::PUPILS_PER_PERSON).min(
+                        world.econ.markets[r.market as usize]
+                            .laws
+                            .of(r)
+                            .enrolment_target,
+                    );
                 let reach = if school.is_some() {
                     SCHOOL_BASE + schools * SCHOOL_GAIN
                 } else {

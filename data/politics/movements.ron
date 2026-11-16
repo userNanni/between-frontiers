@@ -161,6 +161,55 @@
             growth: 80,
             persistence: 8,
         ),
+        // Income tax: where duties and excises fall on everyone and the rich pay little, the
+        // townspeople who can read ask for a tax on incomes. Reform goes by steps, so it reaches
+        // proportional tax first.
+        (
+            key: "income_tax",
+            goal: Law("progressive_income_tax"),
+            professions: [
+                ("laborer", 700), ("skilled_worker", 1000), ("clerk", 1000), ("professional", 700),
+                ("civil_servant", 1000),
+            ],
+            cause: [
+                ("tax_cap_upper", AtMost(250)),
+                ("urbanization", AtLeast(250)),
+                ("literacy", AtLeast(400)),
+            ],
+            growth: 60,
+            persistence: 20,
+        ),
+        // Fiscal reform: a treasury that cannot pay its servants and soldiers, under duties and
+        // excises that cannot rise, turns the state's own people and the townspeople to a tax on
+        // incomes. By steps: proportional first.
+        (
+            key: "fiscal_reform",
+            goal: Law("progressive_income_tax"),
+            professions: [
+                ("civil_servant", 1000), ("soldier", 1000), ("clerk", 1000), ("skilled_worker", 500),
+                ("laborer", 300), ("peasant", 150),
+            ],
+            cause: [("fiscal_stress", AtLeast(100)), ("tax_cap_upper", AtMost(250))],
+            growth: 120,
+            persistence: 10,
+        ),
+        // Immigration reform: an economy that grows with no hands to spare, behind quotas or a
+        // closed door, turns employers and landowners to opening it (the United States in 1965).
+        (
+            key: "immigration_reform",
+            goal: Law("open_immigration"),
+            professions: [
+                ("capitalist", 1000), ("manager", 1000), ("landowner", 600), ("professional", 300),
+                ("engineer", 300),
+            ],
+            cause: [
+                ("immigration", AtMost(500)),
+                ("unemployment", AtMost(40)),
+                ("gdp_growth", AtLeast(30)),
+            ],
+            growth: 50,
+            persistence: 15,
+        ),
         (
             key: "protectionism",
             goal: Law("protective_tariffs"),
@@ -220,6 +269,34 @@
             ],
             growth: 60,
             persistence: 15,
+        ),
+        // Regime change: a government that does not answer the movements loses legitimacy, and
+        // with mass unemployment the middle classes, soldiers and part of the workers turn to a
+        // single party. Which party (nationalist or revolutionary) is not modelled: the regime
+        // is the same law, and the groups in power decide what follows.
+        (
+            key: "regime_change",
+            goal: Law("one_party_state"),
+            professions: [
+                ("clerk", 600), ("skilled_worker", 400), ("laborer", 400), ("peasant", 300),
+                ("soldier", 800), ("landowner", 300), ("capitalist", 200), ("professional", 300),
+            ],
+            cause: [("legitimacy", AtMost(500)), ("unemployment", AtLeast(150))],
+            growth: 100,
+            persistence: 15,
+        ),
+        // Revisionism: win back the land and the standing lost (in 1925, Versailles, Trianon,
+        // Neuilly). Measured, never won, until borders and war exist (phases 4 and 5).
+        (
+            key: "revisionism",
+            goal: Revision,
+            professions: [
+                ("clerk", 500), ("professional", 400), ("soldier", 1000), ("landowner", 600),
+                ("skilled_worker", 300), ("peasant", 200),
+            ],
+            cause: [("lost_territory", AtLeast(50)), ("unemployment", AtLeast(80))],
+            growth: 60,
+            persistence: 40,
         ),
     ],
 )

@@ -1,5 +1,5 @@
 //! Phase 3: national politics. Laws, interest groups and movements, as a contract and a
-//! catalogue; nothing here runs in the simulation yet.
+//! catalogue; what changes in the game, and the system that moves it, is in `crate::polity`.
 //!
 //! - A **law** belongs to exactly one **law group**, and every country holds exactly one law of
 //!   each group (the colonial groups only for countries with colonies). A law does nothing by
@@ -24,6 +24,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::economy::PROFESSIONS;
 use crate::scenario::CountryDef;
+
+/// The law group of the forms of government (`CountryDef::government` keys).
+pub const GOVERNMENT_GROUP: &str = "government";
 
 /// Categories of law groups, in display order.
 pub const CATEGORIES: [&str; 7] = [
@@ -309,7 +312,7 @@ const fn indicator(
     }
 }
 
-pub const INDICATORS: [IndicatorKind; 14] = [
+pub const INDICATORS: [IndicatorKind; 18] = [
     indicator(
         "literacy",
         1000,
@@ -383,8 +386,34 @@ pub const INDICATORS: [IndicatorKind; 14] = [
     indicator("inequality", 1000, System::Income, None),
     // Share of the people the media reaches.
     indicator("media_reach", 1000, System::Media, None),
-    // Share of the people born abroad.
+    // Share of the people of foreign origin (`polity::measure::immigrant_share`, zero until the
+    // demography keeps the stock of migrants by origin).
     indicator("immigrant_share", 1000, System::Communities, None),
+    // Consent to the laws in force (`polity`): 1000 less what unanswered movements mobilize.
+    indicator(
+        "legitimacy",
+        1000,
+        System::Politics,
+        Some("polity::PoliticsState::legitimacy"),
+    ),
+    // Share of the people of the country's 1914 lands now under another state (needs the
+    // borders of phase 4).
+    indicator("lost_territory", 1000, System::Borders, None),
+    // How far the treasury has to cut what it buys and pays (1000 less `econ::public::austerity`):
+    // cash it could not borrow, and interest eating the revenue.
+    indicator(
+        "fiscal_stress",
+        1000,
+        System::Budget,
+        Some("econ::public::austerity"),
+    ),
+    // Growth of GDP over the last full year, per mille (30 = 3 %); a fall reads as 0.
+    indicator(
+        "gdp_growth",
+        1000,
+        System::Income,
+        Some("econ::state::Economy::history"),
+    ),
 ];
 
 pub fn indicator_index(key: &str) -> Option<usize> {
@@ -456,6 +485,8 @@ pub enum Goal {
     Law(String),
     /// End colonial or subject rule over the people the movement draws from.
     Independence,
+    /// Win back territory and standing lost (needs borders and war; never won before them).
+    Revision,
 }
 
 /// Whom a movement draws from.
@@ -530,7 +561,7 @@ pub struct CountryLaws {
     pub source: String,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LawChange {
     pub tag: String,
     /// `YYYY-MM-DD`, after the start date.
@@ -591,6 +622,7 @@ impl Measure {
 pub enum GoalRef {
     Law(u16),
     Independence,
+    Revision,
 }
 
 #[derive(Clone, Debug)]
@@ -968,6 +1000,12 @@ impl Politics {
                     }
                     GoalRef::Independence
                 }
+                Goal::Revision => {
+                    if m.among == Among::Colonies {
+                        return Err(PoliticsError::WrongAmong(m.key.clone()));
+                    }
+                    GoalRef::Revision
+                }
                 Goal::Law(l) => {
                     let li = out.law(l).ok_or_else(|| PoliticsError::UnknownLaw {
                         owner: m.key.clone(),
@@ -1086,6 +1124,32 @@ impl Politics {
             .collect()
     }
 
+    /// Like [`Self::effects`], but `None` for an effect no law acting on `scope` declares: the
+    /// simulation then keeps the rule it runs without politics.
+    pub fn declared(&self, laws: &[Option<u16>], scope: Scope) -> Vec<Option<i32>> {
+        let active: Vec<usize> = laws
+            .iter()
+            .flatten()
+            .map(|&l| usize::from(l))
+            .filter(|&l| self.applies(l, scope))
+            .collect();
+        EFFECTS
+            .iter()
+            .enumerate()
+            .map(|(e, kind)| {
+                let mut values = active.iter().filter_map(|&l| {
+                    self.laws[l]
+                        .effects
+                        .iter()
+                        .find(|(x, _)| usize::from(*x) == e)
+                        .map(|(_, v)| *v)
+                });
+                let first = values.next()?;
+                Some(combine(kind, std::iter::once(first).chain(values)))
+            })
+            .collect()
+    }
+
     /// Each effect's share of `group`'s stance on `law`: weight × distance from neutral.
     pub fn terms(&self, group: usize, law: usize) -> Vec<(u8, i64)> {
         self.interest_groups[group]
@@ -1177,6 +1241,12 @@ impl Politics {
                 }
                 set[g] = Some(l as u16);
             }
+            // The form of government comes from countries.ron unless the laws name one.
+            if let Some(g) = self.group(GOVERNMENT_GROUP)
+                && set[g].is_none()
+            {
+                set[g] = Some(lookup(&c.tag, &d.government)? as u16);
+            }
             let has_colonies = d.colonies.is_some();
             for (g, group) in self.groups.iter().enumerate() {
                 match (set[g], group.colonial && !has_colonies) {
@@ -1238,7 +1308,11 @@ impl Politics {
                 return Err(PoliticsError::NoSource(format!("{} {}", h.tag, h.date)));
             }
         }
-        Ok(LawsInForce { laws, targets })
+        Ok(LawsInForce {
+            laws,
+            targets,
+            history: file.history.clone(),
+        })
     }
 }
 
@@ -1248,6 +1322,8 @@ pub struct LawsInForce {
     pub laws: Vec<Vec<Option<u16>>>,
     /// (law group, community ids) per country.
     pub targets: Vec<Vec<(u16, Vec<String>)>>,
+    /// Dated changes after the start, as reference: nothing fires them.
+    pub history: Vec<LawChange>,
 }
 
 #[cfg(test)]

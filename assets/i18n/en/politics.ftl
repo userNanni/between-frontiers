@@ -32,6 +32,7 @@ law-group-civil_service = Civil service
 law-group-conscription = Conscription
 law-group-colonial_rule = Colonial rule
 law-group-colonial_labour = Colonial labour
+law-group-government = Government
 
 ## Economy
 
@@ -212,6 +213,26 @@ law-selective_service = Selective service
 law-selective_service-desc = Some men are called up, by lot or by need.
 law-universal_service = Universal service
 law-universal_service-desc = Every fit man serves.
+law-parliamentary_monarchy = Parliamentary monarchy
+law-parliamentary_monarchy-desc = The crown reigns; a cabinet answerable to parliament governs.
+law-parliamentary_republic = Parliamentary republic
+law-parliamentary_republic-desc = An elected parliament chooses and dismisses the government.
+law-presidential_republic = Presidential republic
+law-presidential_republic-desc = An elected president heads the government apart from the legislature.
+law-free_city = Free city
+law-free_city-desc = A city-state governed by its own council.
+law-constitutional_monarchy = Constitutional monarchy
+law-constitutional_monarchy-desc = A written constitution, but the crown appoints the ministers and may rule by decree.
+law-absolute_monarchy = Absolute monarchy
+law-absolute_monarchy-desc = The ruler governs without a binding constitution, with the church at the throne.
+law-theocracy = Theocracy
+law-theocracy-desc = Clerics rule by religious law.
+law-colonial_administration = Colonial administration
+law-colonial_administration-desc = Officials appointed from abroad govern.
+law-military_dictatorship = Military dictatorship
+law-military_dictatorship-desc = The officers rule by decree under a state of siege.
+law-one_party_state = One-party state
+law-one_party_state-desc = A single party holds every office and owns the press and radio.
 
 ## Empire
 
@@ -288,6 +309,10 @@ indicator-price_change = Inflation
 indicator-inequality = Inequality
 indicator-media_reach = Media reach
 indicator-immigrant_share = Immigrant share
+indicator-fiscal_stress = Fiscal stress
+indicator-gdp_growth = GDP growth
+indicator-legitimacy = Legitimacy
+indicator-lost_territory = Lost territory
 
 ## Interest groups
 
@@ -338,6 +363,12 @@ movement-market_reform = Market reform
 movement-market_reform-desc = A stagnant state economy brings calls to free markets.
 movement-tax_revolt = Tax revolt
 movement-tax_revolt-desc = The well-off resist heavy, steep taxes.
+movement-income_tax = Income tax
+movement-income_tax-desc = Townspeople who pay duties on everything while the rich pay little demand a tax on incomes.
+movement-fiscal_reform = Fiscal reform
+movement-fiscal_reform-desc = A treasury that cannot pay its servants and soldiers turns them and the townspeople to a tax on incomes.
+movement-immigration_reform = Immigration reform
+movement-immigration_reform-desc = An economy that grows with no hands to spare, behind quotas or a closed door, turns employers to opening it.
 movement-protectionism = Protectionism
 movement-protectionism-desc = Imports and unemployment bring calls for tariffs.
 movement-anti_corruption = Anti-corruption
@@ -348,3 +379,7 @@ movement-clerical_reaction = Clerical reaction
 movement-clerical_reaction-desc = Believers under an anticlerical state rise to defend their church.
 movement-nativism = Nativism
 movement-nativism-desc = Many newcomers and few jobs bring calls to close the door.
+movement-regime_change = Regime change
+movement-regime_change-desc = A government that leaves movements unanswered amid mass unemployment loses the middle classes and the army to a single party.
+movement-revisionism = Revisionism
+movement-revisionism-desc = A country that lost land and standing demands them back.

@@ -33,7 +33,9 @@ O caixa é `Market::treasury`. Toda semana o Tesouro vende títulos para voltar 
 (ver "Moeda, banco central e dívida"); só fica negativo quando ninguém compra. `Budget::debt` é a
 dívida total; `Budget::interest`, o juro da semana.
 
-- **Receita:** imposto de renda por classe. Baixa: camponeses, trabalhadores rurais, operários,
+- **Receita:** imposto de renda por classe, mais o imposto sobre o consumo quando a lei de
+  tributação segura o imposto de renda (`Budget::indirect_rate`, `revenue_indirect`) e o lucro das
+  estatais ao Tesouro (`revenue_firms`). Baixa: camponeses, trabalhadores rurais, operários,
   clero e soldados. Média: qualificados, escriturários, engenheiros, profissionais liberais e
   servidores. Alta: gerentes, capitalistas e proprietários de terra.
 - **Regra histórica** (enquanto o jogador não fixa as alíquotas): 5 / 9 / 15 % em 1925, subindo em
@@ -41,18 +43,25 @@ dívida total; `Budget::interest`, o juro da semana.
   responde ao custo da dívida: sobe 5 % ao ano com juros acima de 12 % da receita, 10 % com juros
   acima de 1/4 da receita ou caixa negativo (o Tesouro não conseguiu vender títulos), cai 5 % com
   juros abaixo de 4 % da receita, dívida abaixo de 40 % do PIB e caixa acima de 1,5 reserva
-  (limites 0,6 e 2,2). Teto de 60 % por classe.
+  (limites 0,6 e 2,2). Teto de 60 % por classe, ou o da lei de tributação em vigor, se for menor
+  (`politics.pt-BR.md`).
 - **Despesa:**
   - **Funcionalismo:** servidores, clero e soldados recebem o salário médio do país vezes o peso da
-    profissão vezes 0,7. É obrigação: é paga mesmo com o tesouro no vermelho.
+    profissão vezes 0,7. Com o caixa abaixo de 8 semanas de receita, o Tesouro paga com atraso: um
+    quarto a menos por semana de receita que falta, até 10 % da folha (`public::pay_share`; o piso é
+    paliativo, ver `politics.pt-BR.md`, "Crise fiscal"). A
+    mesma parcela vale para a parte do Estado em escolas e hospitais; o resto o usuário paga. É o
+    que impede o caixa negativo de crescer sem fim quando a lei de tributação segura o imposto.
   - **Compras** (armas, papel, transporte, remédios): a regra de orçamento gasta a receita mais o
     déficit que a regra da dívida permite, menos folha, serviços públicos, obras e juros; no mínimo
     60 % da folha. Tudo isso é cortado quando o caixa fica negativo (na proporção do buraco) e
     quando os juros passam de 10 % da receita (ponto a ponto), até 1/4. Mais 10 % por semana do
     que o caixa tiver acima de duas vezes a reserva.
   - **Juros** da dívida em mãos privadas e no exterior (os do banco central voltam ao Tesouro).
-  - **Serviços públicos:** o Estado compra tudo o que escolas e hospitais produzem; o valor
-    adicionado deles vai inteiro para salário (não têm dono nem lucro, e não fecham por prejuízo).
+  - **Serviços públicos:** escolas e hospitais vendem tudo o que produzem; o Estado paga a parte
+    que as leis de saúde e educação dizem (`health_state_share`, `education_state_share`; sem lei,
+    tudo) e o usuário paga o resto da poupança. O valor adicionado deles vai inteiro para salário
+    (não têm dono nem lucro, e não fecham por prejuízo).
   - **Obra pública:** paga semana a semana, conforme os pontos chegam.
 - **Reserva:** 13 semanas de receita. O que passa da reserva (descontado o que falta pagar das
   obras públicas já na fila), mais o que a regra da dívida deixa tomar para obra (2 % do PIB ao

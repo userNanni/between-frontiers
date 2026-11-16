@@ -32,6 +32,7 @@ law-group-civil_service = Serviço público
 law-group-conscription = Serviço militar
 law-group-colonial_rule = Governo colonial
 law-group-colonial_labour = Trabalho colonial
+law-group-government = Forma de governo
 
 ## Economia
 
@@ -212,6 +213,26 @@ law-selective_service = Serviço seletivo
 law-selective_service-desc = Parte dos homens é convocada, por sorteio ou necessidade.
 law-universal_service = Serviço militar universal
 law-universal_service-desc = Todo homem apto serve.
+law-parliamentary_monarchy = Monarquia parlamentar
+law-parliamentary_monarchy-desc = A coroa reina; governa um gabinete que responde ao parlamento.
+law-parliamentary_republic = República parlamentar
+law-parliamentary_republic-desc = Um parlamento eleito escolhe e derruba o governo.
+law-presidential_republic = República presidencialista
+law-presidential_republic-desc = Um presidente eleito chefia o governo, separado do legislativo.
+law-free_city = Cidade livre
+law-free_city-desc = Uma cidade-Estado governada pelo próprio conselho.
+law-constitutional_monarchy = Monarquia constitucional
+law-constitutional_monarchy-desc = Há constituição escrita, mas a coroa nomeia os ministros e pode governar por decreto.
+law-absolute_monarchy = Monarquia absoluta
+law-absolute_monarchy-desc = O soberano governa sem constituição que o obrigue, com a Igreja ao lado do trono.
+law-theocracy = Teocracia
+law-theocracy-desc = O clero governa pela lei religiosa.
+law-colonial_administration = Administração colonial
+law-colonial_administration-desc = Governam funcionários nomeados de fora.
+law-military_dictatorship = Ditadura militar
+law-military_dictatorship-desc = Os oficiais governam por decreto, em estado de sítio.
+law-one_party_state = Estado de partido único
+law-one_party_state-desc = Um só partido ocupa todos os cargos e é dono da imprensa e do rádio.
 
 ## Império
 
@@ -288,6 +309,10 @@ indicator-price_change = Inflação
 indicator-inequality = Desigualdade
 indicator-media_reach = Alcance da mídia
 indicator-immigrant_share = Parcela de imigrantes
+indicator-fiscal_stress = Aperto fiscal
+indicator-gdp_growth = Crescimento do PIB
+indicator-legitimacy = Legitimidade
+indicator-lost_territory = Território perdido
 
 ## Grupos de interesse
 
@@ -338,6 +363,12 @@ movement-market_reform = Reforma de mercado
 movement-market_reform-desc = Uma economia estatal estagnada leva a pedir mercado livre.
 movement-tax_revolt = Revolta fiscal
 movement-tax_revolt-desc = Os mais ricos resistem a impostos altos e progressivos.
+movement-income_tax = Imposto de renda
+movement-income_tax-desc = Gente da cidade que paga taxa sobre tudo enquanto os ricos pagam pouco pede imposto sobre a renda.
+movement-fiscal_reform = Reforma fiscal
+movement-fiscal_reform-desc = Um tesouro que não consegue pagar servidores e soldados os leva, com a gente da cidade, a pedir imposto sobre a renda.
+movement-immigration_reform = Reforma da imigração
+movement-immigration_reform-desc = Uma economia que cresce sem braços sobrando, atrás de cotas ou de porta fechada, leva os empregadores a pedir abertura.
 movement-protectionism = Protecionismo
 movement-protectionism-desc = Importação e desemprego levam a pedir tarifas.
 movement-anti_corruption = Anticorrupção
@@ -348,3 +379,7 @@ movement-clerical_reaction = Reação clerical
 movement-clerical_reaction-desc = Fiéis sob um Estado anticlerical se levantam em defesa da sua Igreja.
 movement-nativism = Nativismo
 movement-nativism-desc = Muitos recém-chegados e pouco emprego levam a pedir que a porta se feche.
+movement-regime_change = Troca de regime
+movement-regime_change-desc = Um governo que deixa os movimentos sem resposta em meio ao desemprego em massa perde a classe média e o exército para um partido único.
+movement-revisionism = Revisionismo
+movement-revisionism-desc = Um país que perdeu terras e posição quer recuperá-las.

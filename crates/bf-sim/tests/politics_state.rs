@@ -147,3 +147,80 @@ fn laws_commands_reads_and_saves() {
     loaded.sim.run_until(Date::new(1925, 3, 2));
     assert_eq!(loaded.state_hash(), s.state_hash());
 }
+
+#[test]
+fn laws_reach_the_economy_and_regimes_change() {
+    let data = GameData::load(&root()).unwrap();
+    let p = data.politics.as_ref().unwrap();
+    let mut s = session(&data, 2);
+    let w = s.world();
+    let government = p.group("government").unwrap();
+    let taxation = p.group("taxation").unwrap();
+    let civil_service = p.group("civil_service").unwrap();
+
+    // The form of government in force is the scenario's.
+    for (c, def) in data.countries.countries.iter().enumerate() {
+        let l = w.politics.law_in_force(c, government).unwrap();
+        assert_eq!(p.laws[usize::from(l)].key, def.government, "{}", def.tag);
+    }
+
+    // A country under indirect taxation and patronage: its upper rate is held at 8 % and only
+    // 70 % of the assessed tax reaches the treasury, from the first day.
+    let law_key = |c: usize, g: usize| {
+        p.laws[usize::from(w.politics.law_in_force(c, g).unwrap())]
+            .key
+            .clone()
+    };
+    let c = (0..w.politics.laws.len())
+        .find(|&c| {
+            law_key(c, taxation) == "indirect_taxation" && law_key(c, civil_service) == "patronage"
+        })
+        .expect("a country with indirect taxation and patronage");
+    let free = (0..w.politics.laws.len())
+        .find(|&c| law_key(c, civil_service) == "merit_service")
+        .unwrap();
+    s.sim.run_until(Date::new(1925, 1, 2));
+    let w = s.world();
+    let m = &w.econ.markets[c];
+    let e = &m.laws.effects[0];
+    assert_eq!(e.tax_caps[2], bf_sim::econ::milli(80));
+    assert!(m.budget.tax_rates[2] <= bf_sim::econ::milli(80));
+    assert_eq!(e.tax_collection, bf_sim::econ::milli(700));
+    assert_eq!(
+        w.econ.markets[free].laws.effects[0].tax_collection,
+        laplace_schelling::Fixed::ONE
+    );
+
+    // After a month the groups see the tax a ceiling lets the state take, the consumption tax
+    // included: lifting the ceilings moves the tax off what the peasants buy and onto the top
+    // incomes, and those paid by the state gain from the revenue.
+    s.sim.run_until(Date::new(1925, 2, 2));
+    let w = s.world();
+    let progressive = p.law("progressive_income_tax").unwrap();
+    let st = |key: &str| {
+        stance(
+            p,
+            &w.politics,
+            c,
+            p.interest_group(key).unwrap(),
+            progressive,
+        )
+    };
+    assert!(st("peasantry").total > 0);
+    assert!(w.econ.markets[c].budget.indirect_rate > laplace_schelling::Fixed::ZERO);
+    assert!(st("business").total < 0);
+    assert!(st("officialdom").total > 0);
+
+    // A regime falls by command like any law.
+    let tag = w.countries.iter().nth(c).unwrap().1.tag.clone();
+    let one_party = p.law("one_party_state").unwrap() as u16;
+    s.submit(GameCommand::SetLaw {
+        tag,
+        law: one_party,
+    });
+    s.sim.run_until(Date::new(1925, 2, 4));
+    assert_eq!(
+        s.world().politics.law_in_force(c, government),
+        Some(one_party)
+    );
+}

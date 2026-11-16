@@ -140,6 +140,85 @@ pub struct Market {
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Laws {
     pub migration: super::migration::MigrationLaw,
+    /// What the laws in force do to the economy, for the metropole (0) and the colonial regions
+    /// (1); written by the politics system (`polity`), neutral without it.
+    #[serde(default)]
+    pub effects: [LawEffects; 2],
+}
+
+impl Laws {
+    /// The effects that reach `r`.
+    pub fn of(&self, r: &Region) -> &LawEffects {
+        &self.effects[usize::from(r.colony)]
+    }
+}
+
+/// The effects of the laws in force that the economy reads (`politics::EFFECTS` with a place
+/// to fall). Every default is the rule the economy ran before politics: no law, no change.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LawEffects {
+    /// Share of the open migration flows let through, within a state and between states.
+    pub migration_reach: [Fixed; 2],
+    /// Highest income tax rate of each class.
+    pub tax_caps: [Fixed; TAX_CLASSES],
+    /// Share of the assessed tax that reaches the treasury; the rest stays with the taxpayer.
+    pub tax_collection: Fixed,
+    /// (public good, share of it the treasury pays); the users pay the rest out of their
+    /// savings. A good not listed is paid in full by the treasury.
+    pub public_share: Vec<(u16, Fixed)>,
+    /// Highest share of the school-age children schooling counts for.
+    pub enrolment_target: Fixed,
+    /// Landowners' take of farm profit relative to free tenancy (1 = the owners' payout).
+    pub landowner_rent: Fixed,
+    /// Share of industry the state owns: of what industry pays its owners, this share goes to
+    /// the state instead of the capitalists.
+    #[serde(default)]
+    pub state_ownership: Fixed,
+    /// Share of the state's take that reaches the treasury as revenue; the rest is reinvested.
+    #[serde(default)]
+    pub state_profit_to_treasury: Fixed,
+}
+
+impl Default for LawEffects {
+    fn default() -> Self {
+        Self {
+            migration_reach: [Fixed::ONE; 2],
+            tax_caps: [Fixed::ONE; TAX_CLASSES],
+            tax_collection: Fixed::ONE,
+            public_share: Vec::new(),
+            enrolment_target: Fixed::ONE,
+            landowner_rent: Fixed::ONE,
+            state_ownership: Fixed::ZERO,
+            state_profit_to_treasury: Fixed::ZERO,
+        }
+    }
+}
+
+impl LawEffects {
+    pub fn is_neutral(&self) -> bool {
+        *self == Self::default()
+    }
+
+    /// Share of public good `g` the treasury pays.
+    pub fn public_share(&self, g: usize) -> Fixed {
+        self.public_share
+            .iter()
+            .find(|(x, _)| usize::from(*x) == g)
+            .map_or(Fixed::ONE, |(_, s)| *s)
+    }
+}
+
+impl HashState for LawEffects {
+    fn hash_state(&self, h: &mut StateHasher) {
+        self.migration_reach.hash_state(h);
+        self.tax_caps.hash_state(h);
+        self.tax_collection.hash_state(h);
+        self.public_share.hash_state(h);
+        self.enrolment_target.hash_state(h);
+        self.landowner_rent.hash_state(h);
+        self.state_ownership.hash_state(h);
+        self.state_profit_to_treasury.hash_state(h);
+    }
 }
 
 impl Market {
@@ -218,6 +297,16 @@ pub struct Budget {
     /// Money the central bank created last week beyond its rule (a rate fixed below it).
     #[serde(default)]
     pub beyond_rule: Fixed,
+    /// Tax on what the pops buy, 0–1: the income tax the taxation law's ceilings keep the
+    /// rule from charging, collected on consumption instead (`public::cap_taxes`).
+    #[serde(default)]
+    pub indirect_rate: Fixed,
+    /// Last week, inside `revenue`: the tax on consumption, and the profit of state firms
+    /// paid to the treasury. The rest of `revenue` is income tax.
+    #[serde(default)]
+    pub revenue_indirect: Fixed,
+    #[serde(default)]
+    pub revenue_firms: Fixed,
 }
 
 impl Default for Budget {
@@ -237,6 +326,9 @@ impl Default for Budget {
             debt: Fixed::ZERO,
             interest: Fixed::ZERO,
             beyond_rule: Fixed::ZERO,
+            indirect_rate: Fixed::ZERO,
+            revenue_indirect: Fixed::ZERO,
+            revenue_firms: Fixed::ZERO,
         }
     }
 }
@@ -275,6 +367,15 @@ impl HashState for Budget {
             self.beyond_rule,
         ] {
             v.hash_state(h);
+        }
+        // Budgets without politics keep their old hash.
+        if self.indirect_rate != Fixed::ZERO
+            || self.revenue_indirect != Fixed::ZERO
+            || self.revenue_firms != Fixed::ZERO
+        {
+            self.indirect_rate.hash_state(h);
+            self.revenue_indirect.hash_state(h);
+            self.revenue_firms.hash_state(h);
         }
     }
 }
@@ -383,6 +484,10 @@ impl HashState for Market {
         self.queue.hash_state(h);
         self.budget.hash_state(h);
         h.write_u8(self.laws.migration as u8);
+        // Markets without politics keep their old hash, and old saves load.
+        if self.laws.effects.iter().any(|e| !e.is_neutral()) {
+            self.laws.effects.hash_state(h);
+        }
         self.money.hash_state(h);
     }
 }
