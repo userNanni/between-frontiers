@@ -620,3 +620,263 @@ fn click_card(h: &mut Harness<'_, App>, name: &str) {
         .unwrap_or_else(|| panic!("card {name}"))
         .click();
 }
+
+/// Runs a new world for Brazil from 1925 to `until` on two threads and returns the session.
+fn advanced_session(until: laplace_schelling::calendar::Date) -> bf_sim::game::Session {
+    let data = bf_sim::data::GameData::load(&root()).expect("game data");
+    let mut session = bf_sim::game::Session::new(
+        data.new_world(),
+        1925,
+        laplace_schelling::calendar::Date::new(1925, 1, 1),
+        2,
+        Some(data.rules()),
+    );
+    session.submit(bf_sim::game::GameCommand::ChoosePlayer { tag: "BRA".into() });
+    while session.clock().date < until {
+        session.sim.step();
+    }
+    session
+}
+
+/// Writes `session` as a campaign of `tag` named `name`, with `pinned` journal entries.
+fn write_campaign(
+    user: &std::path::Path,
+    session: &bf_sim::game::Session,
+    name: &str,
+    tag: &str,
+    pinned: &[&str],
+) -> saves::Save {
+    let mut save = saves::create(
+        &user.join("saves"),
+        name,
+        1925,
+        laplace_schelling::calendar::Date::new(1925, 1, 1),
+    )
+    .unwrap();
+    save.meta.player = Some(tag.into());
+    save.meta.date = session.clock().date;
+    save.meta.pinned = pinned.iter().map(|p| (*p).to_owned()).collect();
+    std::fs::write(
+        save.dir.join(saves::WORLD_FILE),
+        session.save("test", &save.meta.name).unwrap(),
+    )
+    .unwrap();
+    saves::write(&save).unwrap();
+    save
+}
+
+fn harness_sized(user: PathBuf, locale: &str, size: egui::Vec2) -> Harness<'static, App> {
+    std::fs::create_dir_all(&user).unwrap();
+    std::fs::write(
+        user.join("settings.ron"),
+        format!("(locale: \"{locale}\", ui_scale: 100, map_labels: true, autosave: Off)"),
+    )
+    .unwrap();
+    let paths = Paths::new(&root(), user.clone(), user);
+    let mut h = Harness::builder()
+        .with_size(size)
+        .wgpu()
+        .build_eframe(move |cc| App::new(cc, paths));
+    h.set_render_cursor(false);
+    h
+}
+
+/// The side panel and the agendas window fifteen years in: Brazil's queue of works and
+/// research, the agendas with real entries, one pinned to the panel; a country with a fiscal
+/// alert or a political movement; and the same panel in English at 1280 × 720.
+#[test]
+#[ignore = "needs a GPU (or software Vulkan) and the generated map; run with --ignored"]
+fn outliner_and_journal() {
+    let user = std::env::temp_dir().join(format!("bf-shots-journal-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&user);
+    let mut session = advanced_session(laplace_schelling::calendar::Date::new(1940, 3, 1));
+    let bra = write_campaign(&user, &session, "Brasil 1940", "BRA", &[]);
+
+    // A country with a fiscal alert or an active movement, read with the journal's own reader.
+    let data = bf_sim::data::GameData::load(&root()).expect("game data");
+    let rules = data.rules();
+    let jr = bf_client::journal::Rules {
+        catalogue: &rules.catalogue,
+        tree: rules.tree.as_deref(),
+        politics: rules.politics.as_deref(),
+    };
+    let date = session.clock().date;
+    let world = session.world();
+    let mut alerts: Vec<(String, i64, Vec<String>)> = world
+        .countries
+        .iter()
+        .enumerate()
+        .filter_map(|(c, (_, def))| {
+            let j = bf_client::journal::read_country(world, c, date, jr)?;
+            let ids: Vec<String> = j
+                .entries
+                .iter()
+                .filter(|e| {
+                    matches!(
+                        e.kind,
+                        bf_client::journal::Kind::Fiscal(_) | bf_client::journal::Kind::Movement(_)
+                    )
+                })
+                .map(|e| e.id.clone())
+                .collect();
+            (!ids.is_empty()).then(|| (def.tag.clone(), def.population, ids))
+        })
+        .collect();
+    // The most alerts in a country of more than a million people, then the largest.
+    alerts.sort_by_key(|(tag, pop, ids)| {
+        (
+            *pop < 1_000_000,
+            std::cmp::Reverse(ids.len()),
+            std::cmp::Reverse(*pop),
+            tag.clone(),
+        )
+    });
+    let alerts: Vec<(String, Vec<String>)> =
+        alerts.into_iter().map(|(t, _, ids)| (t, ids)).collect();
+    println!("countries with alerts in {date:?}: {}", alerts.len());
+    for (tag, ids) in alerts.iter().take(12) {
+        println!("  {tag}: {ids:?}");
+    }
+    // The first alert of a country of more than a million people, and the country with the
+    // most alerts of all.
+    let mut picks: Vec<(String, Vec<String>)> = alerts.first().cloned().into_iter().collect();
+    if let Some(most) = alerts
+        .iter()
+        .max_by_key(|(t, ids)| (ids.len(), std::cmp::Reverse(t.clone())))
+        && picks.first().is_none_or(|p| p.0 != most.0)
+    {
+        picks.push(most.clone());
+    }
+
+    let mut h = harness_sized(user.clone(), "pt-BR", egui::vec2(1600.0, 900.0));
+    let ctx = h.ctx.clone();
+    h.state_mut().apply(Transition::Game(bra.clone()), &ctx);
+    h.run_steps(4);
+    let snap = match &h.state().screen {
+        Screen::Game(g) => g.snapshot(),
+        _ => panic!("not in a campaign"),
+    };
+    let journal = snap.journal.clone().expect("journal in a campaign");
+    println!(
+        "BRA journal: {} entries, {} public / {} private works, bottlenecks {}",
+        journal.entries.len(),
+        journal.works.public,
+        journal.works.private,
+        journal.works.bottlenecks.len()
+    );
+    for e in &journal.entries {
+        println!("  {}", e.id);
+    }
+    shot(&mut h, "20-painel-obras");
+
+    // The agendas window, then an entry picked and pinned.
+    h.key_press(egui::Key::J);
+    h.run_steps(3);
+    shot(&mut h, "21-agendas");
+    let pick = journal
+        .entries
+        .iter()
+        .find(|e| e.id == "works-large")
+        .or_else(|| journal.entries.first())
+        .unwrap();
+    let title = bf_client::screens::journal::text(
+        &h.state().shared.i18n,
+        h.state().shared.world.as_ref(),
+        &pick.title,
+    );
+    h.get_all(egui_kittest::kittest::by().label(title.as_str()))
+        .find(|n| n.accesskit_node().role() == egui::accesskit::Role::Button)
+        .unwrap_or_else(|| panic!("entry {title}"))
+        .click();
+    h.run_steps(3);
+    h.get_by_label("Fixar no painel").click();
+    h.run_steps(3);
+    shot(&mut h, "22-agenda-fixada");
+    h.key_press(egui::Key::Escape);
+    h.run_steps(3);
+    shot(&mut h, "23-painel-com-fixada");
+    let pinned = saves::list(&user.join("saves"))
+        .into_iter()
+        .find(|s| s.meta.name == "Brasil 1940")
+        .map(|s| s.meta.pinned)
+        .unwrap_or_default();
+    println!("pinned in the campaign file: {pinned:?}");
+    assert_eq!(
+        pinned,
+        vec![pick.id.clone()],
+        "the pin is kept with the campaign"
+    );
+
+    // A campaign with a fiscal alert or a movement, with them pinned.
+    for (tag, ids) in &picks {
+        session.submit(bf_sim::game::GameCommand::ChoosePlayer { tag: tag.clone() });
+        session.sim.step();
+        let ids: Vec<&str> = ids.iter().map(String::as_str).take(3).collect();
+        let save = write_campaign(&user, &session, &format!("Alerta {tag}"), tag, &ids);
+        let ctx = h.ctx.clone();
+        h.state_mut().apply(Transition::Game(save), &ctx);
+        h.run_steps(4);
+        shot(&mut h, &format!("24-painel-alerta-{tag}"));
+        h.key_press(egui::Key::J);
+        h.run_steps(3);
+        let first = ids[0];
+        let snap = match &h.state().screen {
+            Screen::Game(g) => g.snapshot(),
+            _ => panic!("not in a campaign"),
+        };
+        if let Some(e) = snap.journal.as_ref().and_then(|j| j.entry(first)) {
+            let title = bf_client::screens::journal::text(
+                &h.state().shared.i18n,
+                h.state().shared.world.as_ref(),
+                &e.title,
+            );
+            if let Some(n) = h
+                .get_all(egui_kittest::kittest::by().label(title.as_str()))
+                .find(|n| n.accesskit_node().role() == egui::accesskit::Role::Button)
+            {
+                n.click();
+            }
+            h.run_steps(3);
+        }
+        shot(&mut h, &format!("25-agendas-alerta-{tag}"));
+    }
+
+    // English, 1280 × 720: the panel with pinned entries, and the agendas.
+    let en_pins: Vec<&str> = journal
+        .entries
+        .iter()
+        .map(|e| e.id.as_str())
+        .filter(|id| *id != "works")
+        .take(2)
+        .collect();
+    let en_save = write_campaign(&user, &session_for(&bra), "Brazil 1940", "BRA", &en_pins);
+    let mut en = harness_sized(user.clone(), "en", egui::vec2(1280.0, 720.0));
+    let ctx = en.ctx.clone();
+    en.state_mut().apply(Transition::Game(en_save), &ctx);
+    en.run_steps(4);
+    shot(&mut en, "26-panel-en-1280");
+    en.key_press(egui::Key::J);
+    en.run_steps(3);
+    shot(&mut en, "27-agendas-en-1280");
+    en.key_press(egui::Key::Escape);
+    en.run_steps(2);
+    // The country panel on the right and the side panel on the left, side by side.
+    let banner = egui::pos2(54.0, 42.0);
+    en.hover_at(banner);
+    en.run_steps(1);
+    en.drag_at(banner);
+    en.run_steps(1);
+    en.drop_at(banner);
+    en.hover_at(egui::pos2(640.0, 500.0));
+    en.run_steps(3);
+    shot(&mut en, "28-panel-and-country-en-1280");
+
+    let _ = std::fs::remove_dir_all(&user);
+}
+
+/// The engine save of a campaign, loaded again.
+fn session_for(save: &saves::Save) -> bf_sim::game::Session {
+    let bytes = std::fs::read(save.dir.join(saves::WORLD_FILE)).unwrap();
+    let data = bf_sim::data::GameData::load(&root()).expect("game data");
+    bf_sim::game::Session::load(&bytes, 2, Some(data.rules())).unwrap()
+}

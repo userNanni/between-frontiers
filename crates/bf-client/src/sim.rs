@@ -10,6 +10,7 @@ use bf_sim::game::{GameCommand, Session};
 use bf_sim::research::Stage;
 use laplace_schelling::calendar::Date;
 
+use crate::journal::Journal;
 use crate::live::LiveFigures;
 
 /// Days per second at each speed, 1 to 5.
@@ -44,6 +45,9 @@ pub struct Snapshot {
     pub government: Option<Arc<crate::government::GovernmentView>>,
     /// The player's laws, interest groups and movements; `None` without the politics data.
     pub laws: Option<Arc<crate::laws_view::Live>>,
+    /// The player's journal, read on the first snapshot and then once a month; `None` without
+    /// a player, an economy or the rules.
+    pub journal: Option<Arc<crate::journal::Journal>>,
 }
 
 /// The player's research, copied out of the world for the interface.
@@ -90,6 +94,9 @@ pub enum Command {
     },
 }
 
+/// What the snapshot reads with the world: the rules the session runs.
+pub type Rules = Option<bf_sim::game::Rules>;
+
 pub struct SimHandle {
     commands: Sender<Command>,
     snapshot: Arc<Mutex<Snapshot>>,
@@ -108,12 +115,49 @@ fn figures_of(session: &Session, last: &Option<Arc<LiveFigures>>) -> Option<Arc<
     }
 }
 
+/// The month's journal, read again only when the month changed since `last`.
+fn journal_of(
+    session: &Session,
+    rules: &Rules,
+    last: &Option<Arc<Journal>>,
+) -> Option<Arc<Journal>> {
+    let date = session.clock().date;
+    match last {
+        Some(j) if j.month == (date.year, date.month) => Some(Arc::clone(j)),
+        _ => {
+            let r = rules.as_ref()?;
+            let rules = crate::journal::Rules {
+                catalogue: &r.catalogue,
+                tree: r.tree.as_deref(),
+                politics: r.politics.as_deref(),
+            };
+            crate::journal::read(session.world(), date, rules).map(Arc::new)
+        }
+    }
+}
+
+/// What a snapshot carries that is read once a month.
+#[derive(Clone, Default)]
+struct Monthly {
+    figures: Option<Arc<LiveFigures>>,
+    journal: Option<Arc<Journal>>,
+}
+
+impl Monthly {
+    fn read(session: &Session, rules: &Rules, last: &Monthly) -> Self {
+        Self {
+            figures: figures_of(session, &last.figures),
+            journal: journal_of(session, rules, &last.journal),
+        }
+    }
+}
+
 fn snapshot_of(
     session: &Session,
     paused: bool,
     speed: u8,
     hash: String,
-    figures: Option<Arc<LiveFigures>>,
+    monthly: Monthly,
 ) -> Snapshot {
     Snapshot {
         date: session.clock().date,
@@ -124,7 +168,8 @@ fn snapshot_of(
         player: session.world().player_tag().map(str::to_owned),
         research: research_view(session),
         local: Arc::new(local_view(session)),
-        figures,
+        figures: monthly.figures,
+        journal: monthly.journal,
         government: crate::government::read(session.world(), session.clock().date).map(Arc::new),
         laws: crate::laws_view::Live::read(session.world()).map(Arc::new),
     }
@@ -157,15 +202,21 @@ fn local_view(session: &Session) -> Vec<[f32; 2]> {
 }
 
 impl SimHandle {
-    pub fn start(session: Session, repaint: impl Fn() + Send + 'static) -> Self {
-        let figures = figures_of(&session, &None);
+    pub fn start(session: Session, rules: Rules, repaint: impl Fn() + Send + 'static) -> Self {
+        let monthly = Monthly::read(&session, &rules, &Monthly::default());
         let hash = short(&session.state_hash());
-        let snapshot = Arc::new(Mutex::new(snapshot_of(&session, true, 2, hash, figures)));
+        let snapshot = Arc::new(Mutex::new(snapshot_of(
+            &session,
+            true,
+            2,
+            hash,
+            monthly.clone(),
+        )));
         let (tx, rx) = channel();
         let shared = Arc::clone(&snapshot);
         std::thread::Builder::new()
             .name("simulation".into())
-            .spawn(move || run(session, rx, shared, repaint))
+            .spawn(move || run(session, rules, monthly, rx, shared, repaint))
             .expect("spawn simulation thread");
         Self {
             commands: tx,
@@ -252,6 +303,8 @@ fn drain(session: &mut Session, ctl: &mut Control, rx: &Receiver<Command>) -> bo
 
 fn run(
     mut session: Session,
+    rules: Rules,
+    mut monthly: Monthly,
     rx: Receiver<Command>,
     shared: Arc<Mutex<Snapshot>>,
     repaint: impl Fn(),
@@ -263,10 +316,11 @@ fn run(
     };
     // The hash shown, and the tick it belongs to: computed only when a snapshot shows a new
     // one (on pause, and on the first of the month).
-    let (mut hash, mut figures) = {
-        let s = shared.lock().unwrap_or_else(|e| e.into_inner());
-        (s.hash.clone(), s.figures.clone())
-    };
+    let mut hash = shared
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .hash
+        .clone();
     let mut hash_tick = session.clock().tick;
     let mut debt = 0.0f64;
     let mut last = Instant::now();
@@ -310,13 +364,13 @@ fn run(
                 hash = short(&session.state_hash());
                 hash_tick = tick;
             }
-            figures = figures_of(&session, &figures);
+            monthly = Monthly::read(&session, &rules, &monthly);
             let snap = snapshot_of(
                 &session,
                 ctl.paused,
                 ctl.speed,
                 hash.clone(),
-                figures.clone(),
+                monthly.clone(),
             );
             *shared.lock().unwrap_or_else(|e| e.into_inner()) = snap;
             repaint();

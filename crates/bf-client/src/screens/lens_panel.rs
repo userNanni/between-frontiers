@@ -31,23 +31,39 @@ fn family(lens: Lens) -> Family {
     }
 }
 
-/// Shows the panel and recolours the map when the lens changes.
-pub fn show(ui: &mut Ui, screen: Rect, i18n: &I18n, world: &World, view: &mut MapView, year: i32) {
-    let current = view.lens;
-    let fam = family(current);
-    let list: &[&str] = match fam {
+fn items(fam: Family) -> &'static [&'static str] {
+    match fam {
         Family::Resources => RESOURCES,
         Family::Farms => FARMS,
         Family::Infrastructure => &lens::LOCAL_GOODS,
         _ => &[],
-    };
-    let rows = list.len().div_ceil(2) as f32;
+    }
+}
+
+/// Height of the panel for a lens.
+fn height(lens: Lens) -> f32 {
+    let fam = family(lens);
+    let rows = items(fam).len().div_ceil(2) as f32;
     let legend_h = match fam {
         Family::Political => 0.0,
         Family::Climate => 7.0 * 20.0 + 8.0,
         _ => 44.0,
     };
-    let height = 34.0 + 40.0 + rows * 24.0 + legend_h + space::LG * 2.0;
+    34.0 + 40.0 + rows * 24.0 + legend_h + space::LG * 2.0
+}
+
+/// Top of the panel on the screen, for panels placed above it.
+pub fn top(screen: Rect, lens: Lens) -> f32 {
+    screen.bottom() - 12.0 - height(lens)
+}
+
+/// Shows the panel and recolours the map when the lens changes.
+pub fn show(ui: &mut Ui, screen: Rect, i18n: &I18n, world: &World, view: &mut MapView, year: i32) {
+    let current = view.lens;
+    let fam = family(current);
+    let list = items(fam);
+    let height = height(current);
+    let rows = list.len().div_ceil(2) as f32;
     let panel = Rect::from_min_size(
         Pos2::new(screen.left() + 12.0, screen.bottom() - 12.0 - height),
         Vec2::new(WIDTH, height),

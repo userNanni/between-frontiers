@@ -23,6 +23,10 @@ pub struct SaveMeta {
     /// Seconds since the Unix epoch.
     pub created: u64,
     pub last_played: u64,
+    /// Journal entries the player pinned to the side panel, by entry id. The interface's own
+    /// state: the simulation never reads it.
+    #[serde(default)]
+    pub pinned: Vec<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -124,6 +128,7 @@ pub fn create(saves_dir: &Path, name: &str, seed: u64, start: Date) -> std::io::
             date: start,
             created: now,
             last_played: now,
+            pinned: Vec::new(),
         },
     };
     write(&save)?;

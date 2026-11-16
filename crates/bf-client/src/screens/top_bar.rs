@@ -29,6 +29,8 @@ const ROW_H: f32 = 26.0;
 const PAD: f32 = 10.0;
 const TIME_H: f32 = 56.0;
 
+/// Rightmost screen x of the country figures on the left.
+const HUD_RIGHT: f32 = MARGIN + BANNER.x - 6.0 + COL_W * COLS as f32 + PAD * 2.0 + 6.0;
 /// Lowest screen y used by the HUD on the right, for panels placed under it.
 pub const RIGHT_BOTTOM: f32 = MARGIN + TIME_H + MARGIN;
 /// Lowest screen y used by the country figures on the left, for windows across the screen.
@@ -42,6 +44,7 @@ pub struct BarResponse {
     pub open_menu: bool,
     pub open_research: bool,
     pub open_government: bool,
+    pub open_journal: bool,
 }
 
 pub fn show(
@@ -775,8 +778,11 @@ fn banner_ui(
 fn time_panel(ui: &mut Ui, screen: Rect, i18n: &I18n, snap: &Snapshot, out: &mut BarResponse) {
     let button = 36.0;
     let small = 28.0;
-    let date_w = 210.0;
-    let inner_w = small + date_w + small + button * 4.0 + space::SM * 6.0;
+    // The date takes what the country figures on the left leave, up to its full width.
+    let fixed = small + small + button * 5.0 + space::SM * 7.0;
+    let room = screen.width() - HUD_RIGHT - MARGIN * 2.0 - PAD * 2.0 - fixed;
+    let date_w = room.clamp(130.0, 210.0);
+    let inner_w = fixed + date_w;
     let panel = Rect::from_min_size(
         Pos2::new(
             screen.right() - MARGIN - inner_w - PAD * 2.0,
@@ -803,6 +809,7 @@ fn time_panel(ui: &mut Ui, screen: Rect, i18n: &I18n, snap: &Snapshot, out: &mut
     let plus_rect = next(small, small);
     let pause_rect = next(button, button);
     let government_rect = next(button, button);
+    let journal_rect = next(button, button);
     let research_rect = next(button, button);
     let menu_rect = next(button, button);
 
@@ -835,6 +842,11 @@ fn time_panel(ui: &mut Ui, screen: Rect, i18n: &I18n, snap: &Snapshot, out: &mut
             out.open_government = true;
         }
     });
+    at(journal_rect, &mut |ui| {
+        if icon_button(ui, Icon::Book, button, &i18n.tr("bar-journal"), false).clicked() {
+            out.open_journal = true;
+        }
+    });
     at(research_rect, &mut |ui| {
         if icon_button(ui, Icon::Flask, button, &i18n.tr("bar-research"), false).clicked() {
             out.open_research = true;
@@ -859,11 +871,23 @@ fn time_panel(ui: &mut Ui, screen: Rect, i18n: &I18n, snap: &Snapshot, out: &mut
         Stroke::new(1.0, color::BORDER),
         egui::StrokeKind::Inside,
     );
+    // The full size when it fits; smaller on a narrow screen.
+    let date = date_long(i18n, snap.date);
+    let mut font = 19.0;
+    while font > 13.0
+        && painter
+            .layout_no_wrap(date.clone(), serif(font), color::TEXT)
+            .size()
+            .x
+            > date_w - 12.0
+    {
+        font -= 1.0;
+    }
     painter.text(
         Pos2::new(date_rect.center().x, date_rect.top() + 15.0),
         Align2::CENTER_CENTER,
-        date_long(i18n, snap.date),
-        serif(19.0),
+        date,
+        serif(font),
         if snap.paused {
             color::TEXT_MUTED
         } else {
