@@ -162,6 +162,8 @@ pub fn build(cat: &Catalogue, inp: &Inputs) -> Economy {
     // 1. Regions in map order, with their deposits and land in levels.
     let mut regions: Vec<Region> = Vec::new();
     let mut keys: Vec<(String, f64)> = Vec::new();
+    let mut region_of_state: std::collections::BTreeMap<u16, u32> =
+        std::collections::BTreeMap::new();
     for s in &inp.map.states {
         let Some(ci) = country_index(&s.owner) else {
             continue;
@@ -216,8 +218,26 @@ pub fn build(cat: &Catalogue, inp: &Inputs) -> Economy {
             subsistence: Fixed::ZERO,
             tfp: Fixed::ONE,
             tfp_start: Fixed::ONE,
+            state: s.id,
+            neighbours: Vec::new(),
+            local: Vec::new(),
         });
         keys.push((s.key.clone(), f64::from(s.area_km2)));
+        region_of_state.insert(s.id, regions.len() as u32 - 1);
+    }
+    // Land borders within one market: what a railway or a power line can cross.
+    for s in &inp.map.states {
+        let Some(&ri) = region_of_state.get(&s.id) else {
+            continue;
+        };
+        let market = regions[ri as usize].market;
+        let list: Vec<u32> = s
+            .neighbours
+            .iter()
+            .filter_map(|n| region_of_state.get(n).copied())
+            .filter(|&n| regions[n as usize].market == market)
+            .collect();
+        regions[ri as usize].neighbours = list;
     }
 
     // Staple food per 1,000 people per week, in tonnes.
@@ -694,19 +714,53 @@ pub fn build(cat: &Catalogue, inp: &Inputs) -> Economy {
             .zip(&b.urban)
             .map(|(s, u)| *s as f64 * u.max(0.02))
             .collect();
-        for (ki, n) in lv[bi].iter().enumerate() {
+        // Transport and power go last, where the plants and people placed before them need
+        // them: a railway is laid to the mine, not to the capital.
+        let order: Vec<usize> = (0..nb)
+            .filter(|&ki| super::local::local_output(cat, ki).is_none())
+            .chain((0..nb).filter(|&ki| super::local::local_output(cat, ki).is_some()))
+            .collect();
+        let people: i64 = b.sizes.iter().sum::<i64>().max(1);
+        for ki in order {
+            let n = &lv[bi][ki];
             let k = if is_raw(ki) { 1.0 } else { k_other };
             let levels = (n * k).round() as i64;
             if levels <= 0 {
                 continue;
             }
             let bd = &cat.buildings[ki];
+            let local_good = super::local::local_output(cat, ki).map(|li| cat.local[li] as usize);
             let w: Vec<f64> = b
                 .regions
                 .iter()
+                .zip(&b.sizes)
                 .zip(&urban_weight)
-                .map(|(&ri, w)| {
-                    if let Some(farm) = bd.farm {
+                .map(|((&ri, &size), w)| {
+                    if let Some(g) = local_good {
+                        // Demand here: the plants' inputs and a share of the people's and
+                        // the state's purchases by population.
+                        let plants: f64 = regions[ri]
+                            .plants
+                            .iter()
+                            .map(|p| {
+                                cat.buildings[p.kind as usize].methods[0]
+                                    .inputs
+                                    .iter()
+                                    .filter(|(gi, _)| *gi as usize == g)
+                                    .map(|(_, q)| q.to_f64_lossy())
+                                    .sum::<f64>()
+                                    * p.levels as f64
+                                    * b.tfp
+                            })
+                            .sum();
+                        let coast_ok =
+                            bd.key != "port" || land_of(&keys[ri].0).is_some_and(|l| l.coast);
+                        if coast_ok {
+                            plants + b.final_demand[g] * size as f64 / people as f64
+                        } else {
+                            0.0
+                        }
+                    } else if let Some(farm) = bd.farm {
                         regions[ri]
                             .land
                             .iter()

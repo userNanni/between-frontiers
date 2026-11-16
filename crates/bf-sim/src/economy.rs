@@ -66,6 +66,14 @@ pub struct GoodDef {
     pub available_from: i32,
     /// False for goods consumed where they are made (electricity, local services).
     pub tradable: bool,
+    /// Made and used in the state itself (transport, electricity before the national grid):
+    /// it clears region by region, a share of each surplus reaching the neighbouring states.
+    #[serde(default)]
+    pub local: bool,
+    /// Technology whose industrial stage in a country lets the good flow across all of it (the
+    /// national grid for electricity).
+    #[serde(default)]
+    pub national_with: Option<String>,
     /// What one unit is, for tooltips and calibration, e.g. "1 t of grain".
     pub unit: String,
 }

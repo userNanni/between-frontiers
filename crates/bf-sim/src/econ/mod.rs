@@ -5,6 +5,7 @@
 
 pub mod catalogue;
 pub mod construction;
+pub mod local;
 pub mod migration;
 pub mod monthly;
 pub mod public;

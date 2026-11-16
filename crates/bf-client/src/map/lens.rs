@@ -14,6 +14,26 @@ pub enum Lens {
     Climate,
     /// Index into `FARMS`.
     Farm(usize),
+    /// Goods made and used in the state, live from the simulation: index into [`LOCAL_GOODS`].
+    Local(usize),
+}
+
+/// Goods the infrastructure lens shows, in the simulation's `Catalogue::local` order (catalogue
+/// order; `crates/bf-sim/tests/economy_catalogue.rs` holds it).
+pub const LOCAL_GOODS: [&str; 2] = ["electricity", "transportation"];
+/// The lens opens on transport.
+pub const LOCAL_DEFAULT: usize = 1;
+
+/// Shortage to plenty: red, ochre, green.
+pub fn met_color(share: f32) -> [u8; 4] {
+    const SHORT: [u8; 3] = [190, 60, 50];
+    const HALF: [u8; 3] = [215, 170, 70];
+    const MET: [u8; 3] = [80, 150, 80];
+    if share < 0.5 {
+        mix(SHORT, HALF, share * 2.0)
+    } else {
+        mix(HALF, MET, (share - 0.5) * 2.0)
+    }
 }
 
 impl Lens {
@@ -111,6 +131,10 @@ pub fn state_color(world: &World, state: usize, lens: Lens, year: i32) -> Option
                 return None;
             }
             Some(mix(EMPTY, [40, 120, 50], s))
+        }
+        Lens::Local(i) => {
+            let v = world.live_local.get(state)?.get(i).copied()?;
+            (v >= 0.0).then(|| met_color(v))
         }
     }
 }

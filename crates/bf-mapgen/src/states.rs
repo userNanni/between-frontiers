@@ -543,6 +543,45 @@ pub fn centers(
         .collect()
 }
 
+/// Pixels of shared border below which two states only touch at a corner or a sliver.
+const MIN_BORDER_PIXELS: u32 = 3;
+
+/// For each state, the states it shares a land border with (state ids, ascending): pairs of
+/// 4-connected pixels of different states, across the date line too.
+pub fn neighbours(buf: &[u16], w: u32, h: u32, state_of_id: &[u32], count: usize) -> Vec<Vec<u16>> {
+    let (w, h) = (w as usize, h as usize);
+    let mut shared: BTreeMap<(u32, u32), u32> = BTreeMap::new();
+    let state = |i: usize| state_of_id.get(usize::from(buf[i])).copied().unwrap_or(0);
+    for y in 0..h {
+        for x in 0..w {
+            let i = y * w + x;
+            let a = state(i);
+            if a == 0 {
+                continue;
+            }
+            let right = if x + 1 < w { i + 1 } else { y * w };
+            let down = (y + 1 < h).then(|| i + w);
+            for j in [Some(right), down].into_iter().flatten() {
+                let b = state(j);
+                if b != 0 && b != a {
+                    *shared.entry((a.min(b), a.max(b))).or_default() += 1;
+                }
+            }
+        }
+    }
+    let mut out = vec![Vec::new(); count];
+    for ((a, b), n) in shared {
+        if n >= MIN_BORDER_PIXELS {
+            out[a as usize - 1].push(b as u16);
+            out[b as usize - 1].push(a as u16);
+        }
+    }
+    for list in &mut out {
+        list.sort_unstable();
+    }
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

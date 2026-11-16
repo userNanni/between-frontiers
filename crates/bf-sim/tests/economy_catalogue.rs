@@ -158,3 +158,57 @@ fn every_good_is_made_and_used() {
         }
     }
 }
+
+#[test]
+fn local_goods_clear_by_state_and_freight_joins_shipping_plants() {
+    let c = catalogue();
+    let cat = bf_sim::econ::Catalogue::build(&c.goods, &c.buildings, &c.needs).unwrap();
+    // The client's infrastructure lens (`map::lens::LOCAL_GOODS`) relies on this order.
+    let keys: Vec<&str> = cat
+        .local
+        .iter()
+        .map(|&g| cat.goods[g as usize].key.as_str())
+        .collect();
+    assert_eq!(keys, ["electricity", "transportation"]);
+    for &g in &cat.local {
+        assert!(
+            !cat.goods[g as usize].tradable,
+            "a local good is not traded abroad"
+        );
+    }
+    let freight = cat.freight.expect("transport exists");
+    // Every mine, farm and factory that ships goods pays freight; services and power do not.
+    for b in &cat.buildings {
+        let ships = bf_sim::econ::catalogue::FREIGHT
+            .iter()
+            .any(|(g, _)| *g == b.group);
+        for m in &b.methods {
+            let sells_goods = m
+                .outputs
+                .iter()
+                .any(|(g, _)| cat.goods[*g as usize].tradable);
+            if ships && sells_goods {
+                assert!(
+                    m.freight > laplace_schelling::Fixed::ZERO,
+                    "{}.{}",
+                    b.key,
+                    m.key
+                );
+                assert!(
+                    m.inputs.iter().any(|(g, _)| *g == freight),
+                    "{}.{}",
+                    b.key,
+                    m.key
+                );
+            } else {
+                assert_eq!(
+                    m.freight,
+                    laplace_schelling::Fixed::ZERO,
+                    "{}.{}",
+                    b.key,
+                    m.key
+                );
+            }
+        }
+    }
+}

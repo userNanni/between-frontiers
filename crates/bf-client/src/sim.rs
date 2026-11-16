@@ -28,6 +28,9 @@ pub struct Snapshot {
     pub player: Option<String>,
     /// Where the player's country stands in research; `None` without research data.
     pub research: Option<ResearchView>,
+    /// Share of the demand for each local good (`Catalogue::local` order: electricity,
+    /// transport) met in each map state (index = state id − 1), `-1` where no region runs.
+    pub local: std::sync::Arc<Vec<[f32; 2]>>,
 }
 
 /// The player's research, copied out of the world for the interface.
@@ -92,7 +95,34 @@ fn snapshot_of(session: &Session, paused: bool, speed: u8) -> Snapshot {
         hash: short(&session.state_hash()),
         player: session.world().player_tag().map(str::to_owned),
         research: research_view(session),
+        local: Arc::new(local_view(session)),
     }
+}
+
+fn local_view(session: &Session) -> Vec<[f32; 2]> {
+    let regions = &session.world().econ.regions;
+    let n = regions
+        .iter()
+        .map(|r| usize::from(r.state))
+        .max()
+        .unwrap_or(0);
+    let mut out = vec![[-1.0f32; 2]; n];
+    for r in regions {
+        let Some(slot) = usize::from(r.state)
+            .checked_sub(1)
+            .and_then(|i| out.get_mut(i))
+        else {
+            continue;
+        };
+        for (k, l) in r.local.iter().take(2).enumerate() {
+            slot[k] = if l.demand > laplace_schelling::Fixed::ZERO {
+                l.buy.to_f64_lossy() as f32
+            } else {
+                1.0
+            };
+        }
+    }
+    out
 }
 
 impl SimHandle {

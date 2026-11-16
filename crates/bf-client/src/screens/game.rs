@@ -21,6 +21,8 @@ pub struct State {
     rules: bf_sim::game::Rules,
     research_open: bool,
     research_camera: Option<super::research::TreeCamera>,
+    /// Month the live map lenses were last coloured for.
+    live_month: Option<(i32, u8)>,
     last_autosave: laplace_schelling::calendar::Date,
 }
 
@@ -58,6 +60,7 @@ impl State {
             rules: data.rules(),
             research_open: false,
             research_camera: None,
+            live_month: None,
         };
         if !path.is_file() {
             state.sim.save(path, state.save.meta.name.clone())?;
@@ -121,6 +124,19 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
             .and_then(|t| w.countries.iter().position(|c| c.tag() == t))
     });
 
+    // Live map lenses: the world takes the simulation's figures; the map recolours once a
+    // month, or at once when the lens opens.
+    if let Some(world) = &mut shared.world {
+        world.live_local = std::sync::Arc::clone(&snap.local);
+        let month = (snap.date.year, snap.date.month);
+        if let Some(view) = &mut shared.map_view
+            && matches!(view.lens, crate::map::lens::Lens::Local(_))
+            && state.live_month != Some(month)
+        {
+            view.set_palette(crate::map::lens::palette(world, view.lens, snap.date.year));
+        }
+        state.live_month = Some(month);
+    }
     let map_rect = rect;
     let i18n = &shared.i18n;
     if let (Some(map), Some(view), Some(world)) = (&shared.map, &mut shared.map_view, &shared.world)

@@ -517,6 +517,12 @@ impl System<GameWorld> for Investment {
         let econ = &world.econ;
         let year = ctx.date.year;
         let unlocks = Unlocks::new(cat, year, self.tree.as_deref(), &world.research);
+        let national = super::local::national(
+            cat,
+            self.tree.as_deref(),
+            &world.research,
+            econ.markets.len(),
+        );
         let wages = market_wages(econ);
         let mut closes = Vec::new();
         for (ri, r) in econ.regions.iter().enumerate() {
@@ -569,6 +575,7 @@ impl System<GameWorld> for Investment {
             .enumerate()
             .map(|(ri, r)| {
                 let m = &econ.markets[r.market as usize];
+                let view = super::local::View::last_week(cat, m, r, &national[r.market as usize]);
                 let idle: i64 =
                     workers(r.pops[prof::PEASANT].size) - r.pops[prof::PEASANT].employed;
                 let mut out = Vec::new();
@@ -582,7 +589,16 @@ impl System<GameWorld> for Investment {
                             .iter()
                             .find(|(k, _)| *k as usize == kind)
                             .map_or(0, |e| e.1);
-                    if !busy[r.market as usize][kind] {
+                    // A good that clears state by state is judged by the state: a railway is
+                    // built where trains are full, not where the country's are.
+                    let local = super::local::local_output(cat, kind)
+                        .filter(|&li| !national[r.market as usize][li]);
+                    let busy_here = match local {
+                        Some(_) => current
+                            .is_none_or(|p| p.levels <= 0 || p.utilization >= BUSY_UTILIZATION),
+                        None => busy[r.market as usize][kind],
+                    };
+                    if !busy_here {
                         continue;
                     }
                     let ceiling = if let Some(res) = b.resource {
@@ -608,8 +624,8 @@ impl System<GameWorld> for Investment {
                         kind,
                         &unlocks,
                         r.market as usize,
-                        &m.price,
-                        &m.buy_ratio,
+                        &view.price,
+                        &view.buy,
                         plant_tfp(r, m, b),
                         wages[r.market as usize],
                     ) else {

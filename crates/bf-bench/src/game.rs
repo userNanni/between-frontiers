@@ -228,6 +228,87 @@ fn run(data: &GameData, mut session: Session, until: Date, report: bool) -> Run 
                     snap.works_queued,
                     snap.construction_price
                 );
+                {
+                    // Local goods: share of the states' demand met, weighted by demand, and
+                    // how many states get less than 80 % of it.
+                    let w = session.world();
+                    let cat = &data.catalogue;
+                    let mut parts = Vec::new();
+                    for (li, &g) in cat.local.iter().enumerate() {
+                        let name = &cat.goods[g as usize].key;
+                        let world_s: f64 = w
+                            .econ
+                            .markets
+                            .iter()
+                            .map(|m| m.supply[g as usize].to_f64_lossy())
+                            .sum();
+                        let world_d: f64 = w
+                            .econ
+                            .markets
+                            .iter()
+                            .map(|m| m.demand[g as usize].to_f64_lossy())
+                            .sum();
+                        let (mut met, mut want, mut short) = (0.0f64, 0.0f64, 0usize);
+                        for r in &w.econ.regions {
+                            if let Some(l) = r.local.get(li) {
+                                let d = l.demand.to_f64_lossy();
+                                met += d * l.buy.to_f64_lossy();
+                                want += d;
+                                if d > 0.0 && l.buy.to_f64_lossy() < 0.8 {
+                                    short += 1;
+                                }
+                            }
+                        }
+                        if want > 0.0 {
+                            parts.push(format!(
+                                "{name} {:.0}% met, {short} states under 80% (supply/demand {:.2})",
+                                met / want * 100.0,
+                                world_s / world_d.max(1.0)
+                            ));
+                        }
+                    }
+                    if !parts.is_empty() {
+                        println!("      local: {}", parts.join("; "));
+                    }
+                    if std::env::var_os("BF_LOCAL").is_some() {
+                        let mut worst: Vec<(f64, usize)> = w
+                            .econ
+                            .regions
+                            .iter()
+                            .enumerate()
+                            .filter_map(|(ri, r)| {
+                                let li = std::env::var("BF_LOCAL")
+                                    .ok()?
+                                    .parse::<usize>()
+                                    .unwrap_or(0);
+                                let l = r.local.get(li)?;
+                                (l.demand.to_f64_lossy() > 0.0).then(|| (l.buy.to_f64_lossy(), ri))
+                            })
+                            .collect();
+                        worst.sort_by(|a, b| a.0.total_cmp(&b.0).then(a.1.cmp(&b.1)));
+                        for (buy, ri) in worst.iter().take(8) {
+                            let r = &w.econ.regions[*ri];
+                            let li = std::env::var("BF_LOCAL")
+                                .ok()
+                                .and_then(|v| v.parse::<usize>().ok())
+                                .unwrap_or(0);
+                            let l = &r.local[li];
+                            let tag = w
+                                .countries
+                                .iter()
+                                .nth(r.market as usize)
+                                .map_or("?".to_string(), |(_, c)| c.tag.clone());
+                            println!(
+                                "        {tag} region {ri}: met {:.0}%, demand {:.0}, price {:.0}, {} neighbours, pop {} k",
+                                buy * 100.0,
+                                l.demand.to_f64_lossy(),
+                                l.price.to_f64_lossy(),
+                                r.neighbours.len(),
+                                r.population() / 1000
+                            );
+                        }
+                    }
+                }
                 if std::env::var_os("BF_TECH").is_some() {
                     let w = session.world();
                     let mut e = [0.0f64; 5];
