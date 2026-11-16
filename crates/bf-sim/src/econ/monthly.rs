@@ -33,7 +33,7 @@ const PROMOTIONS: [(usize, usize, i64, bool); 12] = [
     (prof::LANDOWNER, prof::PEASANT, 10, false),
 ];
 /// Share of the population the state employs, by profession.
-const STATE_SHARE: [(usize, i64); 3] = [
+pub(crate) const STATE_SHARE: [(usize, i64); 3] = [
     (prof::CIVIL_SERVANT, 12),
     (prof::SOLDIER, 10),
     (prof::CLERGY, 5),
@@ -337,7 +337,7 @@ impl System<GameWorld> for Demography {
 // Investment
 
 /// A level costs two years of the value it adds at base prices.
-pub(crate) const CAPITAL_YEARS: i64 = 2;
+pub(crate) const CAPITAL_YEARS: i64 = 3;
 /// The least yearly return worth building for.
 const MIN_RETURN: Fixed = milli(50);
 /// Above the floor, a project must beat the real rate on the country's bonds by this, up to
@@ -381,6 +381,13 @@ pub(crate) fn base_value_added(cat: &Catalogue, kind: usize, method: usize) -> F
     cat.buildings[kind].methods[method]
         .value_added(|g| cat.goods[g].base_price)
         .max(Fixed::ZERO)
+}
+
+/// Capital a level of `method` costs: `CAPITAL_YEARS` of the value it adds at base prices and at
+/// the productivity `tfp` it will run with. A level that makes more needs more machines: the
+/// capital-output ratio, not the capital per level, is alike across countries.
+pub fn level_capital(cat: &Catalogue, kind: usize, method: usize, tfp: Fixed) -> Fixed {
+    base_value_added(cat, kind, method) * tfp * (52 * CAPITAL_YEARS)
 }
 
 /// Average weekly pay of a worker in each market: what a method that needs fewer hands saves.
@@ -446,6 +453,23 @@ pub fn best_method(
 }
 
 const BUSY_UTILIZATION: Fixed = milli(900);
+
+/// Money of the pool already promised: construction goods still to buy and the private works
+/// in the queue.
+pub fn committed(cat: &Catalogue, m: &super::Market) -> Fixed {
+    m.construction
+        .iter()
+        .zip(&m.price)
+        .map(|(q, p)| *q * *p)
+        .sum::<Fixed>()
+        + cat.construction.map_or(Fixed::ZERO, |cg| {
+            m.queue
+                .iter()
+                .filter(|p| !p.public)
+                .map(|p| p.left * m.price[cg as usize])
+                .sum()
+        })
+}
 
 impl System<GameWorld> for Investment {
     type Changes = InvestmentChanges;
@@ -580,7 +604,7 @@ impl System<GameWorld> for Investment {
                     if cat.buildings[kind].methods[method as usize].workers > idle {
                         continue;
                     }
-                    let cost = base_value_added(cat, kind, 0) * (52 * CAPITAL_YEARS);
+                    let cost = level_capital(cat, kind, 0, plant_tfp(r, m, b));
                     if cost <= Fixed::ZERO {
                         continue;
                     }
@@ -626,20 +650,7 @@ impl System<GameWorld> for Investment {
         let mut builds = Vec::new();
         for (mi, mut list) in by_market.into_iter().enumerate() {
             let m = &econ.markets[mi];
-            let committed: Fixed = m
-                .construction
-                .iter()
-                .zip(&m.price)
-                .map(|(q, p)| *q * *p)
-                .sum::<Fixed>()
-                + construction.map_or(Fixed::ZERO, |cg| {
-                    m.queue
-                        .iter()
-                        .filter(|p| !p.public)
-                        .map(|p| p.left * m.price[cg as usize])
-                        .sum()
-                });
-            let mut budget = m.pool - committed;
+            let mut budget = m.pool - committed(cat, m);
             // Highest return first; ties by region then kind, so the order never depends on threads.
             list.sort_by(|a, b| {
                 b.0.cmp(&a.0)

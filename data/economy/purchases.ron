@@ -14,12 +14,16 @@
         ("warships", 100),
         ("military_aircraft", 50),
     ],
-    // Upkeep and housing from the investment pool: mostly the work of the building trade, and
-    // some machines and tools.
+    // Upkeep and housing from the investment pool: the work of the building trade, and the
+    // equipment that wears out with it. Structures were about three fifths of gross fixed
+    // capital formation before the war and producer durables two fifths (docs/economy.pt-BR.md,
+    // "Investimento").
     upkeep: [
-        ("construction", 780),
-        ("machinery", 150),
-        ("tools", 70),
+        ("construction", 600),
+        ("machinery", 250),
+        ("electrical_equipment", 50),
+        ("rolling_stock", 50),
+        ("tools", 50),
     ],
     // Parts of a construction basket that are the building itself, made by the building trade
     // and delivered as construction points; the rest (machines, tools) is bought directly.

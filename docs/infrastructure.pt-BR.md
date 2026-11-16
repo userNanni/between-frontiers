@@ -109,26 +109,23 @@ Determinístico entre contagens de threads e depois de salvar e recarregar em 19
   fábricas, de graça, métodos com mais valor adicionado. A diferença cai a 5 % em 1934, some em
   1964 e vira 3 % a mais de 1994 em diante, com a eletrificação no ritmo das usinas.
 
-### O que fica: o nível de 1925
+### O nível de 1925 (resolvido)
 
-A economia de 1925 mede 60 % do PIB do cenário (68 % com a troca no primeiro tick). O PIB que
-o jogo mostra em 1925 (`gdp_last_year`) ainda é o do cenário, e cai para o medido em 1926; a
-pesquisa, os bancos centrais e a razão dívida/PIB também partem dele em 1925. As causas, medidas
-no primeiro ano (antes da fase 3c, que não mexe no setup nem na troca de método):
+A economia de 1925 media 60 % do PIB do cenário. As três causas abaixo foram medidas aqui e
+fechadas em `economy.pt-BR.md`, "1925: o tamanho e o fluxo do dinheiro": o setup agora dimensiona
+as plantas pelo gasto que as regras da simulação fazem, a produtividade de cada bloco lota as
+plantas sem corte, e pops, fundo e Tesouro começam nos fluxos dessas contas. O primeiro ano mede
+96 % do PIB do cenário.
 
-- **O setup dimensiona as fábricas para cerca de 84 % do PIB:** consumo 70 %, investimento 10 %,
-  compras do Estado 2,6 %, escola e hospital. A folha do Estado não entra no PIB medido. Valor
-  adicionado a preço-base com tudo rodando: 4,0 tri.
-- **Indústria e serviços são cortados** (até 40 % por bloco) para caber na mão de obra, porque
-  os métodos de 1925 fazem US$ 5,1 mil por trabalhador e a produtividade do bloco supõe US$ 6 mil;
-  fazendas e minas ficam dimensionadas para a demanda de antes do corte e sobram.
-- **As fábricas rodam a cerca de 80 %** desde a primeira semana, e assim seguem pelo século: o que
-  o setup supõe gastar não é o que as famílias, o fundo de investimento e o Estado gastam (a
-  renda das famílias é 55 % do PIB, contra 70 % de consumo no setup; as compras militares começam
-  em zero; os poços de petróleo de 1925 fazem quase 40 vezes o petróleo pedido).
+- O setup dimensionava as fábricas para cerca de 84 % do PIB (consumo 70 %, investimento 10 %,
+  compras do Estado 2,6 %), e a folha do Estado não entrava no PIB medido.
+- Indústria e serviços eram cortados (até 40 % por bloco) para caber na mão de obra, porque os
+  métodos de 1925 fazem US$ 5,1 mil por trabalhador e a produtividade do bloco supunha US$ 6 mil.
+- As fábricas rodavam a cerca de 80 % desde a primeira semana: a renda inicial dos pops era 54 %
+  do PIB e o fundo recebia o dobro do que gastava.
 
-Fechar isso é redimensionar o setup pelo gasto da simulação, o que mexe no século inteiro e no
-fluxo de dinheiro da fase 3c (moeda, banco central, dívida).
+As usinas de 1925 continuam postas por último, estado a estado, para a demanda das plantas e
+das pessoas já postas.
 
 ## Aberto
 

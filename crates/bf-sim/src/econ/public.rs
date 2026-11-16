@@ -156,11 +156,10 @@ pub fn coverage(cat: &Catalogue, r: &Region, kind: Option<usize>, per_person: Fi
     )
 }
 
-/// Construction points a level of `kind` costs: two years of the value it adds at base prices,
-/// in points at the base price of construction.
-pub fn level_points(cat: &Catalogue, kind: usize, construction: u16) -> Fixed {
-    let va = super::monthly::base_value_added(cat, kind, 0) * (52 * super::monthly::CAPITAL_YEARS);
-    va / cat.goods[construction as usize].base_price
+/// Construction points a level of `kind` costs (`monthly::level_capital`), in points at the
+/// base price of construction.
+pub fn level_points(cat: &Catalogue, kind: usize, construction: u16, tfp: Fixed) -> Fixed {
+    super::monthly::level_capital(cat, kind, 0, tfp) / cat.goods[construction as usize].base_price
 }
 
 /// Most public works a country starts in a month.
@@ -342,7 +341,9 @@ fn market_works(
             if score <= Fixed::ZERO {
                 break;
             }
-            let points = level_points(cat, kind, cg);
+            let r = &econ.regions[ri];
+            let tfp = super::plant_tfp(r, &econ.markets[r.market as usize], &cat.buildings[kind]);
+            let points = level_points(cat, kind, cg, tfp);
             let cost = points * price;
             if points <= Fixed::ZERO || cost > money {
                 break;

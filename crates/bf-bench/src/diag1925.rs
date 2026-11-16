@@ -1,0 +1,425 @@
+//! `--diag-1925`: the first year of the economy against the scenario, for calibration.
+//!
+//! Runs 1925 with the game's rules and prints, by country and for the world, the GDP the
+//! scenario asks for, the GDP the market measured, what the plants could make at base prices,
+//! the money that stayed in stocks (pool, treasury, savings), and the 1925 output of the goods
+//! `industry.ron` gives against what the plants made.
+
+use std::path::PathBuf;
+
+use bf_sim::data::GameData;
+use bf_sim::econ::{Economy, plant_tfp};
+use bf_sim::game::Session;
+use laplace_schelling::Date;
+
+const GOODS: &[(&str, &str, f64)] = &[
+    // (catalogue key, industry.ron key, catalogue units per industry unit)
+    ("steel", "steel", 1000.0),
+    ("cement", "cement", 1000.0),
+    ("electricity", "electricity", 1000.0),
+    ("fuel", "fuel", 1000.0),
+    ("paper", "paper", 1000.0),
+    ("chemicals", "chemicals", 1000.0),
+    ("fertilizer", "fertilizer", 1000.0),
+    ("aluminium", "aluminium", 1000.0),
+    ("copper", "copper", 1000.0),
+    ("textiles", "textiles", 1000.0),
+    ("automobiles", "automobiles", 1.0),
+    ("coal", "", 0.0),
+    ("crude_oil", "", 0.0),
+    ("natural_gas", "", 0.0),
+    ("iron_ore", "", 0.0),
+    ("grain", "", 0.0),
+];
+
+fn stocks(e: &Economy) -> (f64, f64, f64) {
+    let pool = e.markets.iter().map(|m| m.pool.to_f64_lossy()).sum();
+    let treasury = e.markets.iter().map(|m| m.treasury.to_f64_lossy()).sum();
+    let savings = e
+        .regions
+        .iter()
+        .flat_map(|r| r.pops.iter())
+        .map(|p| p.savings.to_f64_lossy())
+        .sum();
+    (pool, treasury, savings)
+}
+
+pub fn main() -> Result<(), String> {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let data = GameData::load(&root)?;
+    let cat = data.catalogue.clone();
+    let world = data.new_world();
+    let nm = world.econ.markets.len();
+    let target: Vec<f64> = world
+        .econ
+        .markets
+        .iter()
+        .map(|m| m.gdp_last_year.to_f64_lossy())
+        .collect();
+    let base = |g: usize| cat.goods[g].base_price.to_f64_lossy();
+    // Value added at base prices with every level staffed and running.
+    let potential = |e: &Economy, full: bool| -> Vec<f64> {
+        let mut out = vec![0.0; nm];
+        for r in &e.regions {
+            let m = &e.markets[r.market as usize];
+            for p in &r.plants {
+                let b = &cat.buildings[p.kind as usize];
+                let meth = &b.methods[p.method as usize];
+                let va: f64 = meth
+                    .outputs
+                    .iter()
+                    .map(|(g, q)| q.to_f64_lossy() * base(*g as usize))
+                    .sum::<f64>()
+                    - meth
+                        .inputs
+                        .iter()
+                        .map(|(g, q)| q.to_f64_lossy() * base(*g as usize))
+                        .sum::<f64>();
+                let mut scale = p.levels as f64 * plant_tfp(r, m, b).to_f64_lossy();
+                if !full {
+                    scale *= p.staffing.to_f64_lossy() * p.utilization.to_f64_lossy();
+                }
+                out[r.market as usize] += va * scale;
+            }
+        }
+        out
+    };
+    let pot0 = potential(&world.econ, true);
+    let s0 = stocks(&world.econ);
+    let idx: Vec<Option<usize>> = GOODS
+        .iter()
+        .map(|(k, _, _)| cat.good(k).map(usize::from))
+        .collect();
+    let mut s = Session::new(world, 1, Date::new(1925, 1, 1), 0, Some(data.rules()));
+    let mut made = vec![vec![0.0f64; GOODS.len()]; nm];
+    let mut run = vec![0.0f64; nm];
+    let mut util_sum = 0.0;
+    let mut lost = vec![0.0f64; cat.buildings.len()];
+    let mut vab = vec![0.0f64; cat.buildings.len()];
+    let mut parts = [0.0f64; 4]; // VA-weighted staffing, utilization, input ratio, weight
+    let mut weeks = 0;
+    let mut gdp_end = vec![0.0; nm];
+    // income, taxes, payroll, state goods, public services, works, subsistence
+    let mut flows = [0.0f64; 7];
+    let mut unsold = vec![0.0f64; cat.goods.len()];
+    let mut short = vec![0.0f64; cat.goods.len()];
+    let mut traded = vec![0.0f64; cat.goods.len()];
+    loop {
+        s.sim.step();
+        let date = s.clock().date;
+        if date.year > 1925 {
+            break;
+        }
+        if date == Date::new(1925, 12, 31) {
+            gdp_end = s
+                .world()
+                .econ
+                .markets
+                .iter()
+                .map(|m| m.gdp_running.to_f64_lossy())
+                .collect();
+        }
+        // The week ran on Monday; Tuesday holds its outcome.
+        if date.weekday() != laplace_schelling::Weekday::Tuesday {
+            continue;
+        }
+        weeks += 1;
+        let e = &s.world().econ;
+        let p = potential(e, false);
+        for (a, b) in run.iter_mut().zip(&p) {
+            *a += b;
+        }
+        let full = potential(e, true);
+        flows[0] += e
+            .regions
+            .iter()
+            .flat_map(|r| r.pops.iter())
+            .map(|p| p.income.to_f64_lossy())
+            .sum::<f64>();
+        for m in &e.markets {
+            flows[1] += m.budget.revenue.to_f64_lossy();
+            flows[2] += m.budget.payroll.to_f64_lossy();
+            flows[3] += m.budget.goods.to_f64_lossy();
+            flows[4] += m.budget.services.to_f64_lossy();
+            flows[5] += m.budget.works.to_f64_lossy();
+            for g in 0..cat.goods.len() {
+                let (sp, d) = (m.supply[g].to_f64_lossy(), m.demand[g].to_f64_lossy());
+                let t = sp.min(d);
+                unsold[g] += (sp - t) * base(g);
+                short[g] += (d - t) * base(g);
+                traded[g] += t * base(g);
+            }
+        }
+        if let Some(gr) = cat.good("grain") {
+            for r in &e.regions {
+                let m = &e.markets[r.market as usize];
+                flows[6] +=
+                    bf_sim::econ::week::subsistence_food(r, m).to_f64_lossy() * base(gr as usize);
+            }
+        }
+        util_sum += p.iter().sum::<f64>() / full.iter().sum::<f64>().max(1.0);
+        for r in &e.regions {
+            let m = &e.markets[r.market as usize];
+            for pl in &r.plants {
+                let bb = &cat.buildings[pl.kind as usize];
+                let mm = &bb.methods[pl.method as usize];
+                let va = mm
+                    .value_added(|g| cat.goods[g].base_price)
+                    .to_f64_lossy()
+                    .max(0.0)
+                    * pl.levels as f64;
+                parts[0] += va * pl.staffing.to_f64_lossy();
+                parts[1] += va * pl.utilization.to_f64_lossy();
+                parts[2] += va * pl.input_ratio.to_f64_lossy();
+                parts[3] += va;
+                lost[pl.kind as usize] += va
+                    * (1.0
+                        - pl.utilization.to_f64_lossy()
+                            * pl.staffing.to_f64_lossy()
+                            * pl.input_ratio.to_f64_lossy());
+                vab[pl.kind as usize] += va;
+                let b = &cat.buildings[pl.kind as usize];
+                let meth = &b.methods[pl.method as usize];
+                let scale = pl.levels as f64
+                    * pl.staffing.to_f64_lossy()
+                    * plant_tfp(r, m, b).to_f64_lossy()
+                    * pl.utilization.to_f64_lossy()
+                    * pl.input_ratio.to_f64_lossy();
+                for (gi, (g, _)) in meth.outputs.iter().enumerate() {
+                    let _ = gi;
+                    if let Some(k) = idx.iter().position(|x| *x == Some(*g as usize)) {
+                        made[r.market as usize][k] += meth.outputs[gi].1.to_f64_lossy() * scale;
+                    }
+                }
+            }
+        }
+    }
+    let e = &s.world().econ;
+    let s1 = stocks(e);
+    // Demand of a few goods by source in the last week: plant inputs by building, the rest.
+    for key in [
+        "cement",
+        "steel",
+        "automobiles",
+        "electricity",
+        "fuel",
+        "crude_oil",
+        "natural_gas",
+        "coal",
+        "consumer_electronics",
+        "appliances",
+        "machinery",
+        "transportation",
+    ] {
+        let Some(g) = cat.good(key) else { continue };
+        let g = g as usize;
+        let total: f64 = e
+            .markets
+            .iter()
+            .map(|m| m.demand[g].to_f64_lossy() + m.net_import[g].to_f64_lossy().min(0.0))
+            .sum();
+        let mut by = vec![0.0f64; cat.buildings.len()];
+        for r in &e.regions {
+            let m = &e.markets[r.market as usize];
+            for pl in &r.plants {
+                let b = &cat.buildings[pl.kind as usize];
+                let meth = &b.methods[pl.method as usize];
+                let scale = pl.levels as f64
+                    * pl.staffing.to_f64_lossy()
+                    * plant_tfp(r, m, b).to_f64_lossy()
+                    * pl.utilization.to_f64_lossy();
+                for (gi, q) in &meth.inputs {
+                    if *gi as usize == g {
+                        by[pl.kind as usize] += q.to_f64_lossy() * scale;
+                    }
+                }
+            }
+        }
+        let plants: f64 = by.iter().sum();
+        let upkeep: f64 = e
+            .markets
+            .iter()
+            .map(|m| {
+                let money = m.pool.to_f64_lossy().max(0.0) * 0.03;
+                cat.upkeep_basket
+                    .iter()
+                    .filter(|(gg, _)| *gg as usize == g)
+                    .map(|(_, pm)| money * *pm as f64 / 1000.0 / m.price[g].to_f64_lossy())
+                    .sum::<f64>()
+            })
+            .sum();
+        let constr: f64 = e
+            .markets
+            .iter()
+            .map(|m| m.construction[g].to_f64_lossy() / 8.0)
+            .sum();
+        let mut top: Vec<usize> = (0..by.len()).collect();
+        top.sort_by(|a, b| by[*b].total_cmp(&by[*a]));
+        let tops: Vec<String> = top
+            .iter()
+            .take(4)
+            .filter(|k| by[**k] > 0.0)
+            .map(|k| format!("{} {:.0}%", cat.buildings[*k].key, by[*k] / total * 100.0))
+            .collect();
+        println!(
+            "demand {key}: {:.3e}/yr; plants {:.0}% [{}], upkeep {:.0}%, construction {:.0}%, rest (households, state) {:.0}%",
+            total * 52.0,
+            plants / total * 100.0,
+            tops.join(", "),
+            upkeep / total * 100.0,
+            constr / total * 100.0,
+            (total - plants - upkeep - constr) / total * 100.0
+        );
+    }
+    let tags: Vec<String> = data
+        .countries
+        .countries
+        .iter()
+        .map(|c| c.tag.clone())
+        .collect();
+    let sum = |v: &[f64]| v.iter().sum::<f64>();
+    println!(
+        "world 1925: target GDP {:.2} tri, measured {:.2} tri ({:.0}%), plant VA full {:.2} tri, running {:.2} tri/yr, mean use {:.2}",
+        sum(&target) / 1e12,
+        sum(&gdp_end) / 1e12,
+        sum(&gdp_end) / sum(&target) * 100.0,
+        sum(&pot0) * 52.0 / 1e12,
+        sum(&run) / weeks as f64 * 52.0 / 1e12,
+        util_sum / weeks as f64
+    );
+    println!(
+        "VA-weighted staffing {:.3}, utilization {:.3}, input ratio {:.3}",
+        parts[0] / parts[3],
+        parts[1] / parts[3],
+        parts[2] / parts[3]
+    );
+    println!(
+        "stocks change over 1925 (bn): pool {:+.0}, treasury {:+.0}, savings {:+.0}",
+        (s1.0 - s0.0) / 1e9,
+        (s1.1 - s0.1) / 1e9,
+        (s1.2 - s0.2) / 1e9
+    );
+    let mut kb: Vec<usize> = (0..cat.buildings.len()).collect();
+    kb.sort_by(|a, b| lost[*b].total_cmp(&lost[*a]));
+    println!("VA lost by building (bn/yr at tfp 1): lost / full");
+    for &k in kb.iter().take(15) {
+        println!(
+            "  {:<24} {:>7.1} / {:>8.1}",
+            cat.buildings[k].key,
+            lost[k] * 52.0 / weeks as f64 / 1e9,
+            vab[k] * 52.0 / weeks as f64 / 1e9
+        );
+    }
+    let names = [
+        "household income",
+        "taxes",
+        "payroll",
+        "state goods",
+        "public services",
+        "works",
+        "subsistence",
+    ];
+    for (n, v) in names.iter().zip(flows) {
+        println!(
+            "  {n:<18} {:>8.0} bn/yr ({:.0}% of measured GDP)",
+            v / weeks as f64 * 52.0 / 1e9,
+            v / weeks as f64 * 52.0 / sum(&gdp_end) * 100.0
+        );
+    }
+    let mut rows: Vec<usize> = (0..cat.goods.len()).collect();
+    rows.sort_by(|a, b| unsold[*b].total_cmp(&unsold[*a]));
+    println!("goods by unsold value (bn/yr at base): unsold, short, traded");
+    for &g in rows.iter().take(25) {
+        let k = 52.0 / weeks as f64 / 1e9;
+        println!(
+            "  {:<22} {:>7.1} {:>7.1} {:>8.1}",
+            cat.goods[g].key,
+            unsold[g] * k,
+            short[g] * k,
+            traded[g] * k
+        );
+    }
+    let mut order: Vec<usize> = (0..nm).collect();
+    order.sort_by(|a, b| target[*b].total_cmp(&target[*a]));
+    println!(
+        "{:<5} {:>9} {:>9} {:>6} {:>9}",
+        "tag", "target bn", "measured", "ratio", "VA full"
+    );
+    for &mi in order.iter().take(25) {
+        println!(
+            "{:<5} {:>9.1} {:>9.1} {:>6.2} {:>9.1}",
+            tags[mi],
+            target[mi] / 1e9,
+            gdp_end[mi] / 1e9,
+            gdp_end[mi] / target[mi],
+            pot0[mi] * 52.0 / 1e9
+        );
+    }
+    println!("output in 1925, world (catalogue units): simulated / industry.ron");
+    for (k, (key, ind, per)) in GOODS.iter().enumerate() {
+        let sim: f64 = made.iter().map(|m| m[k]).sum();
+        let real: f64 = if ind.is_empty() {
+            f64::NAN
+        } else {
+            data.industry.as_ref().map_or(f64::NAN, |f| {
+                f.countries
+                    .iter()
+                    .filter_map(|c| c.output.iter().find(|(g, _)| g == ind))
+                    .map(|(_, v)| f64::from(*v) * per)
+                    .sum()
+            })
+        };
+        println!(
+            "  {key:<14} {:>16.0} {:>16.0} {:>6.2}",
+            sim,
+            real,
+            sim / real
+        );
+    }
+    // Growth after 1925: what grows, year by year.
+    let years: i32 = std::env::var("BF_DIAG_YEARS")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(0);
+    let levels_va = |e: &Economy| -> (f64, f64, f64) {
+        let (mut at1, mut at_tfp, mut wsum) = (0.0, 0.0, 0.0);
+        for r in &e.regions {
+            let m = &e.markets[r.market as usize];
+            for p in &r.plants {
+                let b = &cat.buildings[p.kind as usize];
+                let va = b.methods[p.method as usize]
+                    .value_added(|g| cat.goods[g].base_price)
+                    .to_f64_lossy()
+                    * p.levels as f64
+                    * 52.0;
+                at1 += va * r.tfp_start.to_f64_lossy();
+                at_tfp += va * plant_tfp(r, m, b).to_f64_lossy();
+                wsum += b.methods[p.method as usize].workers as f64 * p.levels as f64;
+            }
+        }
+        (at1, at_tfp, wsum)
+    };
+    for y in 1..=years {
+        s.sim.run_until(Date::new(1926 + y, 1, 2));
+        let e = &s.world().econ;
+        let gdp: f64 = e
+            .markets
+            .iter()
+            .map(|m| m.gdp_last_year.to_f64_lossy())
+            .sum();
+        let (a, b, w) = levels_va(e);
+        let pool: f64 = e.markets.iter().map(|m| m.pool.to_f64_lossy()).sum();
+        let queue: usize = e.markets.iter().map(|m| m.queue.len()).sum();
+        println!(
+            "{}: GDP {:.2} tri, VA of levels at 1925 tfp {:.2}, at today's tfp {:.2}, jobs {:.0} M, pool {:.0} bn, queue {}",
+            1925 + y,
+            gdp / 1e12,
+            a / 1e12,
+            b / 1e12,
+            w / 1e6,
+            pool / 1e9,
+            queue
+        );
+    }
+    Ok(())
+}

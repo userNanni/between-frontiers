@@ -7,6 +7,7 @@
 //! hash differs. The world is a synthetic toy until the game's systems exist.
 
 mod diag;
+mod diag1925;
 mod game;
 mod history;
 mod world;
@@ -82,7 +83,7 @@ fn parse_args() -> Result<Options, String> {
             }
             "--check-determinism" => options.check_determinism = true,
             "--game" => options.game = true,
-            "--diag" => {}
+            "--diag" | "--diag-1925" => {}
             "--budget-ms" => {
                 options.budget_ms = Some(
                     value("--budget-ms")?
@@ -379,6 +380,15 @@ fn main() -> ExitCode {
             return ExitCode::from(if message.is_empty() { 0 } else { 64 });
         }
     };
+    if std::env::args().any(|a| a == "--diag-1925") {
+        return match diag1925::main() {
+            Ok(()) => ExitCode::SUCCESS,
+            Err(e) => {
+                eprintln!("bf-bench --diag-1925: {e}");
+                ExitCode::FAILURE
+            }
+        };
+    }
     if std::env::args().any(|a| a == "--diag") {
         return match diag::main() {
             Ok(()) => ExitCode::SUCCESS,

@@ -218,6 +218,92 @@ quer dizer que o mecanismo foi visto no código, não que o tamanho do efeito fo
   2 % em quase todos os países em 2015–24. A referência varia muito mais (impostos de 12 % na Índia a
   44 % na França; dívida de 48 % no México a 133 % no Reino Unido).
 
+## Depois da correção de 1925 (`fix/economy-1925`)
+
+Mesma rodada (1925 → 2026-01-01, semente 1925, 2 threads), hash final `2206408a…`. O que mudou
+está em `economy.pt-BR.md` ("1925: o tamanho e o fluxo do dinheiro" e "Investimento e
+crescimento"). Antes = primeiro placar acima; depois = esta branch; real = referência.
+
+### Mundo por década
+
+| Ano | PIB (tri): antes / depois / real | PIB por hab.: antes / depois / real | Erro log. PIB pc: antes / depois | Ranking PIB pc: antes / depois |
+|---|---|---|---|---|
+| 1925 | 3,0 / 5,0 / 5,6 | 1 525 / 2 570 / 2 859 | 0,64 / 0,12 | 0,94 / 0,97 |
+| 1935 | 6,3 / 7,3 / 6,4 | 2 888 / 3 373 / 2 969 | 0,37 / 0,27 | 0,81 / 0,88 |
+| 1945 | 9,4 / 11,6 / 8,0 | 3 857 / 4 745 / 3 378 | 0,52 / 0,53 | 0,64 / 0,74 |
+| 1955 | 13,0 / 17,0 / 10,9 | 4 620 / 6 065 / 3 986 | 0,57 / 0,62 | 0,63 / 0,70 |
+| 1965 | 20,2 / 25,3 / 17,2 | 6 128 / 7 722 / 5 168 | 0,67 / 0,67 | 0,59 / 0,67 |
+| 1975 | 32,6 / 41,3 / 26,8 | 8 503 / 10 874 / 6 577 | 0,76 / 0,76 | 0,54 / 0,60 |
+| 1985 | 48,4 / 63,0 / 37,1 | 11 052 / 14 597 / 7 622 | 0,79 / 0,92 | 0,57 / 0,60 |
+| 1995 | 63,6 / 85,5 / 50,0 | 12 825 / 17 589 / 8 686 | 0,89 / 1,11 | 0,58 / 0,60 |
+| 2005 | 77,4 / 103,1 / 74,7 | 13 928 / 19 015 / 11 348 | 0,85 / 1,06 | 0,53 / 0,55 |
+| 2015 | 91,8 / 119,8 / 109,3 | 14 881 / 19 971 / 14 637 | 0,80 / 1,01 | 0,48 / 0,49 |
+| 2025 (PIB 2022) | 102,7 / 132,4 / 133,4 | 15 578 / 20 650 / 16 633 | 0,84 / 1,02 | 0,48 / 0,46 |
+
+Os 20 maiores começam entre 0,85 e 0,98 do PIB por habitante real (eram 0,46 a 0,68). O PIB
+mundial de 2025 bate; o PIB por habitante fica 24 % acima porque a população fica em 6,4 contra
+8,2 bilhões (calibração da demografia, outro trabalho). O erro típico por país piora depois de
+1985: os ricos crescem demais e os pobres de menos (abaixo).
+
+### Crescimento do PIB por habitante no mundo, % ao ano
+
+| | 1925–29 | 1929–33 | 1933–39 | 1939–45 | 1945–73 | 1973–91 | 1991–2008 | 2008–25 |
+|---|---|---|---|---|---|---|---|---|
+| Antes | +8,4 | +6,2 | +3,7 | +2,5 | +2,6 | +2,5 | +0,9 | +0,6 |
+| Depois | +2,3 | +2,6 | +3,6 | +3,5 | +2,6 | +3,0 | +0,8 | +0,5 |
+| Real | +2,4 | −3,6 | +3,6 | +0,1 | +2,4 | +1,2 | +2,6 | +2,0 |
+
+O salto de 1925–35 era a recuperação do começo pequeno e, por baixo dela, um crescimento de
+8 a 10 % ao ano que o modelo tinha sempre que as plantas rodavam cheias (capital barato nos
+países ricos, troca de método de graça, capital que não se gasta). A crise de 1929, a guerra e a
+estagnação depois de 1991 continuam fora do modelo.
+
+### Emprego por setor em 2025 (agro / indústria / serviços, %)
+
+| Unidade | Antes | Depois | Real |
+|---|---|---|---|
+| CHN | 71 / 5 / 25 | 82 / 2 / 17 | 22 / 32 / 46 |
+| RAJ | 65 / 6 / 29 | 76 / 2 / 21 | 42 / 25 / 34 |
+| SOV | 52 / 7 / 42 | 40 / 10 / 50 | 13 / 25 / 62 |
+| USA | 13 / 21 / 67 | 9 / 22 / 69 | 2 / 19 / 79 |
+| GER | 14 / 19 / 67 | 16 / 17 / 68 | 1 / 26 / 73 |
+| JAP | 19 / 15 / 66 | 23 / 13 / 64 | 3 / 23 / 74 |
+| GBR | 4 / 18 / 77 | 5 / 17 / 78 | 1 / 16 / 83 |
+| FRA | 6 / 19 / 76 | 5 / 16 / 79 | 2 / 19 / 78 |
+| ITA | 27 / 15 / 58 | 21 / 14 / 65 | 3 / 27 / 70 |
+| BRA | 42 / 9 / 49 | 45 / 8 / 47 | 8 / 20 / 72 |
+| POL | 29 / 14 / 57 | 26 / 12 / 62 | 6 / 30 / 64 |
+| ESP | 46 / 13 / 41 | 19 / 15 / 66 | 3 / 20 / 77 |
+| ROM | 54 / 7 / 39 | 58 / 5 / 37 | 17 / 30 / 54 |
+| MEX | 75 / 6 / 19 | 38 / 9 / 52 | 12 / 25 / 64 |
+| CZE | 21 / 17 / 62 | 25 / 14 / 61 | 3 / 35 / 62 |
+| EGY | 53 / 8 / 39 | 58 / 6 / 37 | 18 / 29 / 53 |
+
+A agropecuária não esvazia porque conta os camponeses sem emprego, e é para lá que voltam os
+trabalhadores que perdem o posto. Nos pobres a indústria encolhe ao longo do século (China: 8 %
+em 1925, 2 % em 2025): a produtividade industrial sobe com a pesquisa e a convergência, a
+demanda dos pobres é quase toda comida, e a planta que se gasta só é refeita onde o tipo roda
+acima de 90 %, o que não acontece quando a importação (o mercado mundial pega 85 % da sobra de
+cada país toda semana) cobre a demanda antes. A migração para a cidade é lenta demais para
+compensar: 3 por 10 mil camponeses ociosos por mês para as cidades do próprio estado e 1 por 10
+mil para as de fora (`econ/migration.rs`), contra 1 a 2 % da população rural por ano na história
+do pós-guerra; não foi mexida aqui.
+
+### Produção mundial (simulado antes / depois / real)
+
+| Ano | Carvão (TWh) | Petróleo (TWh) | Gás (TWh) | Eletricidade (TWh) | Aço (Mt) |
+|---|---|---|---|---|---|
+| 1925 | 6 440 / 8 447 / 8 436 | 246 / 448 / 1 644 | 219 / 219 / 402 | – | 79 / 91 / 90,5¹ |
+| 1955 | 17 275 / 10 508 / 10 237 | 5 448 / 8 239 / 8 128 | 1 270 / 1 788 / 3 202 | – | – |
+| 1975 | 18 258 / 10 062 / 14 395 | 20 584 / 26 086 / 26 063 | 4 045 / 5 464 / 9 059 | – | 1 327 / 918 / 442 |
+| 1995 | 36 203 / 17 889 / 25 968 | 43 430 / 61 893 / 38 220 | 7 880 / 10 829 / 20 908 | 11 035 / 14 244 / 12 986 | 3 028 / 1 750 / 751 |
+| 2025 | 58 858 / 23 310 / 49 401 | 67 409 / 91 330 / 53 992 | 12 932 / 15 874 / 41 274 | 17 271 / 21 648 / 29 606 | 3 980 / 2 761 / 1 593 |
+
+¹ `industry.ron`. As colunas de aço somam o mundo simulado inteiro; o real de 1975 em diante é a
+soma das unidades com série no placar do orquestrador. O carvão agora acerta até 1955 e fica
+baixo depois (o petróleo toma o lugar dele mais cedo); o gás fica em um terço a dois quintos o
+século todo.
+
 ## Fontes
 
 As fontes, licenças e atribuições estão em `data/history/SOURCES.md`. Em resumo: Maddison Project

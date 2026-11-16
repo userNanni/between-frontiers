@@ -3,8 +3,16 @@
 //! Plants are sized by a world input-output balance: each block (a country's metropole, or its
 //! colonies) has a final demand at its 1925 income (households, the state, investment);
 //! manufacturing and services meet their own block's demand, while farm and mine goods meet the
-//! world's demand, shared among blocks by their land and deposits. That is what makes Malaya
-//! grow rubber for Detroit and Australia shear wool for Yorkshire on day one.
+//! world's demand, shared among blocks by their land and deposits (farm goods feed their own
+//! block first). That is what makes Malaya grow rubber for Detroit and Australia shear wool for
+//! Yorkshire on day one.
+//!
+//! The spending is the simulation's own: a few rounds alternate between plants for a spending
+//! and the spending those plants pay for by the weekly rules (wages, owners' payout, taxes,
+//! savings, what households cannot spend), scaled so that the plants' value added, the state's
+//! payroll and the peasants' food make the scenario's GDP. The block's productivity is the one
+//! that staffs those plants with the workers it has. Pops, the pool and the treasury start at
+//! those flows, so the first week buys what the plants make (docs/economy.pt-BR.md, "1925").
 
 use laplace_schelling::Fixed;
 
@@ -54,13 +62,10 @@ fn land_per_level(farm: &str) -> f64 {
     }
 }
 
-/// Shares of GDP the start assumes for the state's purchases and for investment; the weekly
-/// market spends about the same from taxes and from the investment pool.
+/// The first guess of a block's spending, before its own accounts replace it (`ROUNDS`): shares
+/// of GDP for the state's purchases and for investment, and of household consumption by fifth.
 const STATE_GOODS_SHARE: f64 = 0.026;
 const INVESTMENT_SHARE: f64 = 0.10;
-/// Taxes as a share of GDP the start guesses for the treasury's first reserve.
-const EXPECTED_REVENUE: f64 = 0.06;
-/// Share of household consumption of each fifth of the population, poorest first.
 const CONSUMPTION_BY_FIFTH: [f64; 5] = [0.06, 0.10, 0.15, 0.22, 0.47];
 
 fn fx(v: f64) -> Fixed {
@@ -125,7 +130,218 @@ struct Block {
     /// Farm and mine capacity in levels, by building; mines also their 1925 levels.
     capacity: Vec<f64>,
     mines_1925: Vec<f64>,
+    /// Workers the 1925 plants may employ: outside subsistence farming and the state's
+    /// service, and within what the states' towns hold.
+    market_workers: f64,
+    /// Staples the jobless grow for themselves, tonnes a week.
+    in_kind: f64,
+    /// The scenario's GDP, a week.
+    target: f64,
+    grain_price: f64,
+    /// Household money the needs cannot absorb, a week, invested through the pool.
+    invested: f64,
 }
+
+impl Block {
+    /// Factor that takes the accounts of the solved plants to the scenario's GDP: plants' value
+    /// added, the state's payroll and the peasants' food (eaten and sold) make up the GDP the
+    /// market measures.
+    fn scale(&self, a: &Accounts) -> f64 {
+        let food = self.in_kind * (1.0 + PEASANT_SURPLUS) * self.grain_price;
+        let plants = a.va + a.payroll;
+        if plants > 0.0 {
+            ((self.target - food) / plants).max(0.0)
+        } else {
+            0.0
+        }
+    }
+}
+
+/// A block's weekly accounts at base prices, from its plants: value added, the jobs and the
+/// people of each profession, and where the money goes by the simulation's own rules (wages
+/// by `labor_share` and `WAGE_WEIGHT`, half the profit to owners and half to the pool, the
+/// state's pay, taxes by class, savings by profession).
+#[derive(Default)]
+struct Accounts {
+    va: f64,
+    workers: f64,
+    people: [f64; P],
+    /// Income after tax, and what is left to spend after saving, by profession.
+    disposable: [f64; P],
+    consumption: [f64; P],
+    pool: f64,
+    taxes: f64,
+    payroll: f64,
+}
+
+/// Grain smallholders sell, as a share of the staples they grow (`week::peasant_surplus`).
+const PEASANT_SURPLUS: f64 = 0.16;
+
+fn block_accounts(cat: &Catalogue, b: &Block, levels: &[f64]) -> Accounts {
+    let f = |x: Fixed| x.to_f64_lossy();
+    let mut a = Accounts::default();
+    let mut wages = [0.0f64; P];
+    let mut jobs = [0.0f64; P];
+    for (ki, &n) in levels.iter().enumerate() {
+        if n <= 0.0 {
+            continue;
+        }
+        let bd = &cat.buildings[ki];
+        let m = &bd.methods[0];
+        let va = f(m.value_added(|g| cat.goods[g].base_price)) * b.tfp * n;
+        a.va += va;
+        a.workers += m.workers as f64 * n;
+        let bill = if bd.public {
+            va.max(0.0)
+        } else {
+            va.max(0.0) * f(bd.labor_share)
+        };
+        let weight = f(m.job_weight);
+        for (pi, nj) in &m.jobs {
+            let pi = *pi as usize;
+            jobs[pi] += *nj as f64 * n;
+            if weight > 0.0 {
+                wages[pi] += bill * f(super::WAGE_WEIGHT[pi]) * *nj as f64 / weight;
+            }
+        }
+        let profit = va - bill;
+        if profit > 0.0 {
+            let owner = if bd.agriculture {
+                prof::LANDOWNER
+            } else {
+                prof::CAPITALIST
+            };
+            let payout = profit * f(super::PAYOUT);
+            wages[owner] += payout;
+            a.pool += profit - payout;
+        } else {
+            a.pool += profit;
+        }
+    }
+    wages[prof::PEASANT] += b.in_kind * PEASANT_SURPLUS * b.grain_price;
+    let pop = b.population as f64;
+    let share = f(WORKER_SHARE);
+    for pi in 0..P {
+        a.people[pi] = jobs[pi] / share;
+    }
+    for (pi, per_mille) in STATE_SHARE {
+        a.people[pi] += pop * per_mille as f64 / 1000.0;
+    }
+    let others: f64 = (1..P).map(|pi| a.people[pi]).sum();
+    a.people[prof::PEASANT] = (pop - others).max(a.people[prof::PEASANT]);
+    let rates = super::public::historical_rates(1925);
+    let rate = |pi: usize| f(rates[super::public::CLASS_OF[pi]]);
+    // The going wage the state pays its servants by (`monthly::market_wages`).
+    let private = |pi: usize| {
+        !matches!(
+            pi,
+            prof::CAPITALIST | prof::LANDOWNER | prof::CIVIL_SERVANT | prof::CLERGY | prof::SOLDIER
+        )
+    };
+    let (pay, hands) = (0..P)
+        .filter(|&pi| private(pi))
+        .fold((0.0, 0.0), |acc, pi| {
+            (acc.0 + wages[pi] * (1.0 - rate(pi)), acc.1 + jobs[pi])
+        });
+    let wage = if hands > 0.0 { pay / hands } else { 0.0 };
+    for (pi, _) in STATE_SHARE {
+        let p =
+            wage * f(super::WAGE_WEIGHT[pi]) * f(super::public::PUBLIC_PAY) * a.people[pi] * share;
+        wages[pi] += p;
+        a.payroll += p;
+    }
+    for pi in 0..P {
+        let tax = wages[pi] * rate(pi);
+        a.taxes += tax;
+        let disposable = wages[pi] - tax;
+        let saved = disposable * f(super::SAVE_RATE[pi]);
+        a.pool += saved;
+        a.disposable[pi] = disposable;
+        a.consumption[pi] = disposable - saved;
+    }
+    a
+}
+
+/// A block's weekly final demand when its accounts are scaled by `k`: households by
+/// profession, the pool's upkeep, the state's goods and its schools and hospitals.
+fn spending(
+    cat: &Catalogue,
+    base: &[Fixed],
+    base_f: &[f64],
+    b: &Block,
+    a: &Accounts,
+    k: f64,
+) -> (Vec<f64>, f64) {
+    let mut fd = vec![0.0f64; cat.goods.len()];
+    // What households cannot place on their needs goes to the pool (`week::PopPlan::unplaced`).
+    let mut invested = 0.0;
+    let pop = (b.population as f64).max(1.0);
+    for pi in 0..P {
+        if a.people[pi] < 1.0 || a.consumption[pi] <= 0.0 {
+            continue;
+        }
+        let plan = super::week::plan_pop_where(
+            cat,
+            base,
+            1925,
+            a.people[pi] as i64,
+            fx(a.consumption[pi] * k),
+            fx(b.in_kind * a.people[pi] / pop),
+            super::migration::is_urban(pi),
+        );
+        let mut placed = 0.0;
+        for (g, q) in plan {
+            fd[g as usize] += q.to_f64_lossy();
+            placed += q.to_f64_lossy() * base_f[g as usize];
+        }
+        invested += (a.consumption[pi] * k - placed).max(0.0);
+    }
+    if let Some(g) = cat.grain {
+        fd[g as usize] = (fd[g as usize] - b.in_kind * PEASANT_SURPLUS).max(0.0);
+    }
+    let services = public_services(cat, b, &mut fd);
+    let services_value: f64 = services;
+    for &(g, per_mille) in &cat.upkeep_basket {
+        fd[g as usize] +=
+            (a.pool * k + invested) * (per_mille as f64 / 1000.0) / base_f[g as usize];
+    }
+    let goods = (a.payroll * k * super::public::GOODS_PER_PAYROLL.to_f64_lossy())
+        .max((a.taxes - a.payroll) * k - services_value);
+    for &(g, per_mille) in &cat.state_basket {
+        if cat.goods[g as usize].available_from <= 1925 {
+            fd[g as usize] += goods * per_mille as f64 / 1000.0 / base_f[g as usize];
+        }
+    }
+    (fd, invested)
+}
+
+/// Schools and hospitals the state runs, added to `fd`: enrolment follows literacy, hospital
+/// care income. Returns their value at base prices.
+fn public_services(cat: &Catalogue, b: &Block, fd: &mut [f64]) -> f64 {
+    let mut value = 0.0;
+    for (key, per_person, cover) in [
+        (
+            "schooling",
+            super::public::PUPILS_PER_PERSON,
+            b.literacy.clamp(0.05, 0.95),
+        ),
+        (
+            "hospital_care",
+            super::public::CARE_PER_PERSON,
+            (b.gdp_per_capita / 15_000.0).clamp(0.02, 0.5),
+        ),
+    ] {
+        if let Some(g) = cat.good(key) {
+            let q = b.population as f64 * per_person.to_f64_lossy() * cover / 52.0;
+            fd[g as usize] += q;
+            value += q * cat.goods[g as usize].base_price.to_f64_lossy();
+        }
+    }
+    value
+}
+
+/// Share of the population the state employs, per mille (`monthly::STATE_SHARE`).
+use super::monthly::STATE_SHARE;
 
 /// (block, building, levels) a raw good is split into.
 type Allocation = Vec<(usize, usize, f64)>;
@@ -408,7 +624,20 @@ pub fn build(cat: &Catalogue, inp: &Inputs) -> Economy {
             let market_workers = WORKER_SHARE.to_f64_lossy() * (1.0 - agr * (1.0 - market_farming));
             let tfp = ((gdppc - subsistence).max(gdppc * 0.3) / (market_workers * 6_000.0))
                 .clamp(0.35, 8.0);
+            let total_workers = sizes.iter().map(|&s| workers(s)).sum::<i64>() as f64;
+            let jobless = agr * (1.0 - market_farming);
+            // The state's servants, soldiers and clergy are not on the plants' payrolls, and no
+            // state fills more than `TOWN_ROOM` of its people with plant workers.
+            let state_workers =
+                total_workers * STATE_SHARE.iter().map(|s| s.1 as f64).sum::<f64>() / 1000.0;
             blocks.push(Block {
+                market_workers: (total_workers * (1.0 - jobless) * WORKER_ROOM)
+                    .min(total_workers * TOWN_ROOM - state_workers),
+                // As `week::subsistence_food` grows it: nine tenths of a full ration.
+                in_kind: staple * population as f64 / 1000.0 * jobless * 0.9,
+                target: gdp_week,
+                grain_price,
+                invested: 0.0,
                 tfp,
                 market: ci,
                 regions: idx,
@@ -457,168 +686,30 @@ pub fn build(cat: &Catalogue, inp: &Inputs) -> Economy {
         })
         .collect();
 
-    // 4. World input-output balance by fixed-point iteration.
-    let nbk = blocks.len();
-    // Workers each block can put on commercial farms and in mines.
-    let farm_cap: Vec<f64> = blocks
-        .iter()
-        .map(|b| b.sizes.iter().map(|&s| workers(s)).sum::<i64>() as f64 * b.agr * b.market_farming)
-        .collect();
-    let mine_cap: Vec<f64> = blocks
-        .iter()
-        .map(|b| b.sizes.iter().map(|&s| workers(s)).sum::<i64>() as f64 * 0.05)
-        .collect();
-    let mut lv = vec![vec![0.0f64; nb]; nbk];
-    for _ in 0..16 {
-        let mut demand: Vec<Vec<f64>> = blocks.iter().map(|b| b.final_demand.clone()).collect();
-        for (bi, levels) in lv.iter().enumerate() {
-            for (ki, n) in levels.iter().enumerate() {
-                if *n > 0.0 {
-                    for (g, q) in &cat.buildings[ki].methods[0].inputs {
-                        demand[bi][*g as usize] += n * q.to_f64_lossy() * blocks[bi].tfp;
-                    }
-                }
-            }
+    // 4. World input-output balance, then the blocks' own accounts: what the simulation's
+    //    rules pay out of the plants' value added is what the block spends, and its
+    //    productivity is what makes its workers produce the scenario's GDP.
+    let mut lv = solve_levels(cat, &blocks, &raw_producers, &local_producer);
+    let mut accounts: Vec<Accounts> = Vec::new();
+    for round in 0..ROUNDS {
+        accounts = blocks
+            .iter()
+            .enumerate()
+            .map(|(bi, b)| block_accounts(cat, b, &lv[bi]))
+            .collect();
+        if round + 1 == ROUNDS {
+            break;
         }
-        let mut next = vec![vec![0.0f64; nb]; nbk];
-        let mut raw_alloc: Vec<(f64, Allocation)> = vec![(0.0, Vec::new()); ng];
-        let mut residual = vec![0.0f64; ng];
-        for g in 0..ng {
-            if let Some(ki) = local_producer[g] {
-                let per_level = yearly_output(cat, ki, g) / 52.0;
-                if per_level > 0.0 {
-                    for bi in 0..nbk {
-                        next[bi][ki] =
-                            f64::max(next[bi][ki], demand[bi][g] / (per_level * blocks[bi].tfp));
-                    }
-                }
-                continue;
+        for (b, a) in blocks.iter_mut().zip(&accounts) {
+            // Workers the plants need against the market workers the block has: the same
+            // value added from fewer or more hands is a higher or lower productivity.
+            let room = b.market_workers;
+            if a.workers > 0.0 && room > 0.0 {
+                b.tfp = (b.tfp * a.workers / room).clamp(0.2, 12.0);
             }
-            if raw_producers[g].is_empty() {
-                continue;
-            }
-            let world: f64 = demand.iter().map(|d| d[g]).sum();
-            // Shares by capacity, mines weighted toward what they already produced in 1925.
-            let mut weights = Vec::new();
-            for (bi, block) in blocks.iter().enumerate() {
-                for &ki in &raw_producers[g] {
-                    let cap = block.capacity[ki];
-                    if cap > 0.0 {
-                        let w = if cat.buildings[ki].resource.is_some() {
-                            block.mines_1925[ki] + 0.1 * cap
-                        } else {
-                            cap
-                        };
-                        weights.push((bi, ki, w));
-                    }
-                }
-            }
-            raw_alloc[g] = (world, weights);
+            (b.final_demand, b.invested) = spending(cat, &base, &base_f, b, a, b.scale(a));
         }
-        // Raw goods: shares by capacity; then each block's farms and mines are scaled to the
-        // people it has for them, all goods alike; what that leaves unmet goes to blocks with
-        // land and people to spare.
-        let place = |next: &mut Vec<Vec<f64>>,
-                     g: usize,
-                     amount: f64,
-                     weights: &[(usize, usize, f64)],
-                     limit: &dyn Fn(usize, usize) -> f64|
-         -> f64 {
-            let total: f64 = weights.iter().map(|w| w.2).sum();
-            if total <= 0.0 || amount <= 0.0 {
-                return 0.0;
-            }
-            let mut placed = 0.0;
-            for (bi, ki, w) in weights {
-                let per_level = yearly_output(cat, *ki, g) / 52.0 * blocks[*bi].tfp;
-                if per_level <= 0.0 {
-                    continue;
-                }
-                let want = (amount * w / total / per_level).min(limit(*bi, *ki));
-                if want > 0.0 {
-                    next[*bi][*ki] += want;
-                    placed += want * per_level;
-                }
-            }
-            placed
-        };
-        for g in 0..ng {
-            let (world, weights) = &raw_alloc[g];
-            let placed = place(&mut next, g, *world, weights, &|bi, ki| {
-                let floor = blocks[bi].mines_1925[ki] / blocks[bi].tfp;
-                (blocks[bi].capacity[ki] / blocks[bi].tfp).max(floor)
-            });
-            residual[g] = (world - placed).max(0.0);
-        }
-        let used = |next: &Vec<Vec<f64>>, bi: usize, farms: bool| -> f64 {
-            next[bi]
-                .iter()
-                .enumerate()
-                .filter(|(ki, _)| {
-                    if farms {
-                        cat.buildings[*ki].farm.is_some()
-                    } else {
-                        cat.buildings[*ki].resource.is_some()
-                    }
-                })
-                .map(|(ki, n)| n * cat.buildings[ki].methods[0].workers as f64)
-                .sum()
-        };
-        for bi in 0..nbk {
-            for farms in [true, false] {
-                let cap = if farms { farm_cap[bi] } else { mine_cap[bi] };
-                let u = used(&next, bi, farms);
-                if u > cap && u > 0.0 {
-                    let k = cap / u;
-                    for ki in 0..nb {
-                        let is = if farms {
-                            cat.buildings[ki].farm.is_some()
-                        } else {
-                            cat.buildings[ki].resource.is_some()
-                        };
-                        if !is {
-                            continue;
-                        }
-                        let floor = if farms {
-                            0.0
-                        } else {
-                            blocks[bi].mines_1925[ki] / blocks[bi].tfp
-                        };
-                        let before = next[bi][ki];
-                        let after = (before * k).max(floor.min(before));
-                        for (g, q) in &cat.buildings[ki].methods[0].outputs {
-                            residual[*g as usize] +=
-                                (before - after) * q.to_f64_lossy() * blocks[bi].tfp;
-                        }
-                        next[bi][ki] = after;
-                    }
-                }
-            }
-        }
-        for g in 0..ng {
-            if residual[g] <= 0.0 {
-                continue;
-            }
-            let (_, weights) = &raw_alloc[g];
-            let spare: Vec<(usize, usize, f64)> = weights
-                .iter()
-                .map(|(bi, ki, w)| {
-                    let farms = cat.buildings[*ki].farm.is_some();
-                    let cap = if farms { farm_cap[*bi] } else { mine_cap[*bi] };
-                    let room = (cap - used(&next, *bi, farms)).max(0.0);
-                    (*bi, *ki, w * room)
-                })
-                .collect();
-            let snapshot = next.clone();
-            place(&mut next, g, residual[g], &spare, &|bi, ki| {
-                let farms = cat.buildings[ki].farm.is_some();
-                let cap = if farms { farm_cap[bi] } else { mine_cap[bi] };
-                let room = (cap - used(&snapshot, bi, farms)).max(0.0)
-                    / cat.buildings[ki].methods[0].workers.max(1) as f64;
-                room.min((blocks[bi].capacity[ki] / blocks[bi].tfp - snapshot[bi][ki]).max(0.0))
-            });
-        }
-        lv = next;
+        lv = solve_levels(cat, &blocks, &raw_producers, &local_producer);
     }
 
     if std::env::var_os("BF_SETUP_DEBUG").is_some() {
@@ -708,12 +799,39 @@ pub fn build(cat: &Catalogue, inp: &Inputs) -> Economy {
             .collect();
         // Transport and power go last, where the plants and people placed before them need
         // them: a railway is laid to the mine, not to the capital.
+        // Farms and mines first, on their land; then the rest of the plants, in the towns but
+        // only as far as each state has people for them; transport and power last.
+        let local = |ki: usize| super::local::local_output(cat, ki).is_some();
         let order: Vec<usize> = (0..nb)
-            .filter(|&ki| super::local::local_output(cat, ki).is_none())
-            .chain((0..nb).filter(|&ki| super::local::local_output(cat, ki).is_some()))
+            .filter(|&ki| is_raw(ki) && !local(ki))
+            .chain((0..nb).filter(|&ki| !is_raw(ki) && !local(ki)))
+            .chain((0..nb).filter(|&ki| local(ki)))
             .collect();
         let people: i64 = b.sizes.iter().sum::<i64>().max(1);
+        let mut town: Option<Vec<f64>> = None;
         for ki in order {
+            if !is_raw(ki) && !local(ki) && town.is_none() {
+                let need: f64 = (0..nb)
+                    .filter(|&k| !is_raw(k) && !local(k))
+                    .map(|k| lv[bi][k] * k_other * cat.buildings[k].methods[0].workers as f64)
+                    .sum::<f64>()
+                    / WORKER_SHARE.to_f64_lossy();
+                let room: Vec<f64> = b
+                    .regions
+                    .iter()
+                    .zip(&b.sizes)
+                    .map(|(&ri, &size)| {
+                        let raw: i64 = regions[ri]
+                            .plants
+                            .iter()
+                            .map(|p| cat.buildings[p.kind as usize].methods[0].workers * p.levels)
+                            .sum();
+                        (size as f64 * TOWN_ROOM - raw as f64 / WORKER_SHARE.to_f64_lossy())
+                            .max(0.0)
+                    })
+                    .collect();
+                town = Some(fill_by_weight(need, &urban_weight, &room));
+            }
             let n = &lv[bi][ki];
             let k = if is_raw(ki) { 1.0 } else { k_other };
             let levels = (n * k).round() as i64;
@@ -727,7 +845,8 @@ pub fn build(cat: &Catalogue, inp: &Inputs) -> Economy {
                 .iter()
                 .zip(&b.sizes)
                 .zip(&urban_weight)
-                .map(|((&ri, &size), w)| {
+                .enumerate()
+                .map(|(pos, ((&ri, &size), w))| {
                     if let Some(g) = local_good {
                         // Demand here: the plants' inputs and a share of the people's and
                         // the state's purchases by population.
@@ -769,10 +888,39 @@ pub fn build(cat: &Catalogue, inp: &Inputs) -> Economy {
                     } else if bd.key == "port" && !land_of(&keys[ri].0).is_some_and(|l| l.coast) {
                         0.0
                     } else {
-                        *w
+                        town.as_ref().map_or(*w, |t| t[pos])
                     }
                 })
                 .collect();
+            // Farms and mines go to their land as far as the state has people to work them;
+            // the land of an empty state waits for settlers.
+            let w = if is_raw(ki) && !local(ki) {
+                let per_level = bd.methods[0].workers.max(1) as f64;
+                let room: Vec<f64> = b
+                    .regions
+                    .iter()
+                    .zip(&b.sizes)
+                    .zip(&w)
+                    .map(|((&ri, &size), land)| {
+                        let used: i64 = regions[ri]
+                            .plants
+                            .iter()
+                            .map(|p| cat.buildings[p.kind as usize].methods[0].workers * p.levels)
+                            .sum();
+                        let hands =
+                            size as f64 * TOWN_ROOM * WORKER_SHARE.to_f64_lossy() - used as f64;
+                        land.min((hands / per_level).max(0.0))
+                    })
+                    .collect();
+                let placed = fill_by_weight(n * k, &w, &room);
+                if placed.iter().sum::<f64>() > 0.0 {
+                    placed
+                } else {
+                    w
+                }
+            } else {
+                w
+            };
             // Transport and power are rounded up state by state: rounded for the whole block,
             // most states with a little demand got no power plant at all and waited for a
             // neighbour's surplus.
@@ -839,19 +987,25 @@ pub fn build(cat: &Catalogue, inp: &Inputs) -> Economy {
                     .map(|w| (Fixed::from_int(*w) / WORKER_SHARE).to_int_floor())
                     .collect();
             }
-            for (pi, share) in [
-                (prof::CIVIL_SERVANT, 12),
-                (prof::SOLDIER, 10),
-                (prof::CLERGY, 5),
-            ] {
+            for (pi, share) in STATE_SHARE {
                 people[pi] += size * share / 1000;
             }
             let used: i64 = people.iter().sum();
             people[prof::PEASANT] += (size - used).max(0);
+            let a = &accounts[bi];
+            let k = b.scale(a);
             for (pi, pop) in r.pops.iter_mut().enumerate() {
                 pop.size = people[pi];
                 pop.employed = workers(people[pi]).min(jobs[pi]);
                 pop.satisfaction = [milli(800); 4];
+                // What the block's accounts pay each person of the profession, after tax.
+                let income = if a.people[pi] >= 1.0 {
+                    a.disposable[pi] * k * pop.size as f64 / a.people[pi]
+                } else {
+                    0.0
+                };
+                pop.income = fx(income);
+                pop.savings = fx(income * 6.0);
             }
             // City housing for every town dweller (by profession), whatever the census said.
             if let Some(hk) = housing_kind {
@@ -876,25 +1030,18 @@ pub fn build(cat: &Catalogue, inp: &Inputs) -> Economy {
             .filter(|b| b.market == ci)
             .map(|b| b.population as f64 * b.gdp_per_capita)
             .sum();
-        let weekly = target_gdp / 52.0;
-        let pop_total: i64 = regions
-            .iter()
-            .filter(|r| r.market as usize == ci)
-            .map(|r| r.population())
-            .sum();
-        for r in regions.iter_mut().filter(|r| r.market as usize == ci) {
-            for (pi, pop) in r.pops.iter_mut().enumerate() {
-                if pop_total == 0 || pop.size == 0 {
-                    continue;
-                }
-                let share = pop.size as f64 / pop_total as f64;
-                let income = weekly * share * 0.6 * super::WAGE_WEIGHT[pi].to_f64_lossy();
-                pop.income = fx(income);
-                pop.savings = fx(income * 6.0);
-            }
+        // The pool starts where its upkeep spends what flows in, the treasury at its reserve:
+        // both at the block accounts' rates, so the first week spends what the plants pay.
+        let (mut inflow, mut taxes, mut payroll, mut services) = (0.0, 0.0, 0.0, 0.0);
+        let mut scratch = vec![0.0; ng];
+        for (b, a) in blocks.iter().zip(&accounts).filter(|(b, _)| b.market == ci) {
+            let k = b.scale(a);
+            inflow += a.pool * k + b.invested;
+            taxes += a.taxes * k;
+            payroll += a.payroll * k;
+            services += public_services(cat, b, &mut scratch);
         }
-        // The treasury starts at its reserve, at a revenue guessed from the 1925 tax rates.
-        let revenue = fx(target_gdp * EXPECTED_REVENUE / 52.0);
+        let revenue = fx(taxes);
         markets.push(Market {
             price: base.clone(),
             supply: vec![Fixed::ZERO; ng],
@@ -903,9 +1050,7 @@ pub fn build(cat: &Catalogue, inp: &Inputs) -> Economy {
             sell_ratio: vec![Fixed::ONE; ng],
             net_import: vec![Fixed::ZERO; ng],
             // A pool that spends its weekly upkeep share at the rate investment flows in.
-            pool: fx(target_gdp * INVESTMENT_SHARE
-                / 52.0
-                / super::week::UPKEEP_SHARE.to_f64_lossy()),
+            pool: fx(inflow.max(0.0) / super::week::UPKEEP_SHARE.to_f64_lossy()),
             treasury: revenue * super::public::RESERVE_WEEKS,
             tfp: Fixed::ONE,
             construction: vec![Fixed::ZERO; ng],
@@ -918,6 +1063,8 @@ pub fn build(cat: &Catalogue, inp: &Inputs) -> Economy {
             money: super::money::Money::start(fx(target_gdp)),
             budget: super::state::Budget {
                 revenue_avg: revenue,
+                payroll: fx(payroll),
+                services: fx(services),
                 ..Default::default()
             },
         });
@@ -928,4 +1075,247 @@ pub fn build(cat: &Catalogue, inp: &Inputs) -> Economy {
         world_price: base,
         history: Vec::new(),
     }
+}
+
+/// Share of a state's people the plants of 1925 may employ (with their families) before the
+/// rest of a block's industry and services goes to other states: the state also has its
+/// servants, soldiers and clergy, and the transport and power laid last.
+const TOWN_ROOM: f64 = 0.88;
+
+/// Splits `total` by `weight`, no part above its `room`; what a full part cannot take goes to
+/// the others by weight. With too little room in all, every part is full and the rest is lost.
+fn fill_by_weight(total: f64, weight: &[f64], room: &[f64]) -> Vec<f64> {
+    let mut out = vec![0.0; weight.len()];
+    let mut open: Vec<bool> = room.iter().map(|r| *r > 0.0).collect();
+    let mut left = total;
+    for _ in 0..weight.len() {
+        let w: f64 = (0..weight.len())
+            .filter(|&i| open[i])
+            .map(|i| weight[i])
+            .sum();
+        if left <= 0.0 || w <= 0.0 {
+            break;
+        }
+        let mut overflow = false;
+        for i in 0..weight.len() {
+            if open[i] && out[i] + left * weight[i] / w >= room[i] {
+                overflow = true;
+            }
+        }
+        if !overflow {
+            for i in 0..weight.len() {
+                if open[i] {
+                    out[i] += left * weight[i] / w;
+                }
+            }
+            break;
+        }
+        // Fill the parts that overflow, then share what is left among the rest.
+        let share = left;
+        for i in 0..weight.len() {
+            if open[i] && out[i] + share * weight[i] / w >= room[i] {
+                left -= room[i] - out[i];
+                out[i] = room[i];
+                open[i] = false;
+            }
+        }
+    }
+    out
+}
+
+/// Rounds of the setup's balance: plants for a spending, then the spending those plants pay for.
+const ROUNDS: usize = 6;
+/// Share of a block's market workers the 1925 plants employ; the rest look for work.
+const WORKER_ROOM: f64 = 0.95;
+
+fn solve_levels(
+    cat: &Catalogue,
+    blocks: &[Block],
+    raw_producers: &[Vec<usize>],
+    local_producer: &[Option<usize>],
+) -> Vec<Vec<f64>> {
+    let ng = cat.goods.len();
+    let nb = cat.buildings.len();
+    let nbk = blocks.len();
+    // Workers each block can put on commercial farms and in mines.
+    let farm_cap: Vec<f64> = blocks
+        .iter()
+        .map(|b| b.sizes.iter().map(|&s| workers(s)).sum::<i64>() as f64 * b.agr * b.market_farming)
+        .collect();
+    let mine_cap: Vec<f64> = blocks
+        .iter()
+        .map(|b| b.sizes.iter().map(|&s| workers(s)).sum::<i64>() as f64 * 0.05)
+        .collect();
+    let mut lv = vec![vec![0.0f64; nb]; nbk];
+    for _ in 0..16 {
+        let mut demand: Vec<Vec<f64>> = blocks.iter().map(|b| b.final_demand.clone()).collect();
+        for (bi, levels) in lv.iter().enumerate() {
+            for (ki, n) in levels.iter().enumerate() {
+                if *n > 0.0 {
+                    for (g, q) in &cat.buildings[ki].methods[0].inputs {
+                        demand[bi][*g as usize] += n * q.to_f64_lossy() * blocks[bi].tfp;
+                    }
+                }
+            }
+        }
+        let mut next = vec![vec![0.0f64; nb]; nbk];
+        let mut raw_alloc: Vec<(f64, Allocation)> = vec![(0.0, Vec::new()); ng];
+        let mut residual = vec![0.0f64; ng];
+        for g in 0..ng {
+            if let Some(ki) = local_producer[g] {
+                let per_level = yearly_output(cat, ki, g) / 52.0;
+                if per_level > 0.0 {
+                    for bi in 0..nbk {
+                        next[bi][ki] =
+                            f64::max(next[bi][ki], demand[bi][g] / (per_level * blocks[bi].tfp));
+                    }
+                }
+                continue;
+            }
+            if raw_producers[g].is_empty() {
+                continue;
+            }
+            let world: f64 = demand.iter().map(|d| d[g]).sum();
+            // Shares by capacity, mines weighted toward what they already produced in 1925.
+            let mut weights = Vec::new();
+            for (bi, block) in blocks.iter().enumerate() {
+                for &ki in &raw_producers[g] {
+                    let cap = block.capacity[ki];
+                    if cap > 0.0 {
+                        let w = if cat.buildings[ki].resource.is_some() {
+                            block.mines_1925[ki] + 0.1 * cap
+                        } else {
+                            cap
+                        };
+                        weights.push((bi, ki, w));
+                    }
+                }
+            }
+            raw_alloc[g] = (world, weights);
+        }
+        // Raw goods: shares by capacity; then each block's farms and mines are scaled to the
+        // people it has for them, all goods alike; what that leaves unmet goes to blocks with
+        // land and people to spare.
+        let place = |next: &mut Vec<Vec<f64>>,
+                     g: usize,
+                     amount: f64,
+                     weights: &[(usize, usize, f64)],
+                     limit: &dyn Fn(usize, usize) -> f64|
+         -> f64 {
+            let total: f64 = weights.iter().map(|w| w.2).sum();
+            if total <= 0.0 || amount <= 0.0 {
+                return 0.0;
+            }
+            let mut placed = 0.0;
+            for (bi, ki, w) in weights {
+                let per_level = yearly_output(cat, *ki, g) / 52.0 * blocks[*bi].tfp;
+                if per_level <= 0.0 {
+                    continue;
+                }
+                let want = (amount * w / total / per_level).min(limit(*bi, *ki));
+                if want > 0.0 {
+                    next[*bi][*ki] += want;
+                    placed += want * per_level;
+                }
+            }
+            placed
+        };
+        for g in 0..ng {
+            let (world, weights) = &raw_alloc[g];
+            let limit = |bi: usize, ki: usize| {
+                let floor = blocks[bi].mines_1925[ki] / blocks[bi].tfp;
+                (blocks[bi].capacity[ki] / blocks[bi].tfp).max(floor)
+            };
+            // Farm goods feed their own block first, as far as its land goes: most food was
+            // eaten in the country that grew it, and the weekly world market reaches only part
+            // of a surplus (`week::TRADE_REACH`). Mines keep the world shares of 1925.
+            let mut home = 0.0;
+            if raw_producers[g]
+                .iter()
+                .all(|&ki| cat.buildings[ki].farm.is_some())
+            {
+                for (bi, d) in demand.iter().enumerate() {
+                    let own: Vec<(usize, usize, f64)> =
+                        weights.iter().copied().filter(|w| w.0 == bi).collect();
+                    home += place(&mut next, g, d[g], &own, &limit);
+                }
+            }
+            let snapshot = next.clone();
+            let placed = place(&mut next, g, (world - home).max(0.0), weights, &|bi, ki| {
+                (limit(bi, ki) - snapshot[bi][ki]).max(0.0)
+            });
+            residual[g] = (world - home - placed).max(0.0);
+        }
+        let used = |next: &Vec<Vec<f64>>, bi: usize, farms: bool| -> f64 {
+            next[bi]
+                .iter()
+                .enumerate()
+                .filter(|(ki, _)| {
+                    if farms {
+                        cat.buildings[*ki].farm.is_some()
+                    } else {
+                        cat.buildings[*ki].resource.is_some()
+                    }
+                })
+                .map(|(ki, n)| n * cat.buildings[ki].methods[0].workers as f64)
+                .sum()
+        };
+        for bi in 0..nbk {
+            for farms in [true, false] {
+                let cap = if farms { farm_cap[bi] } else { mine_cap[bi] };
+                let u = used(&next, bi, farms);
+                if u > cap && u > 0.0 {
+                    let k = cap / u;
+                    for ki in 0..nb {
+                        let is = if farms {
+                            cat.buildings[ki].farm.is_some()
+                        } else {
+                            cat.buildings[ki].resource.is_some()
+                        };
+                        if !is {
+                            continue;
+                        }
+                        let floor = if farms {
+                            0.0
+                        } else {
+                            blocks[bi].mines_1925[ki] / blocks[bi].tfp
+                        };
+                        let before = next[bi][ki];
+                        let after = (before * k).max(floor.min(before));
+                        for (g, q) in &cat.buildings[ki].methods[0].outputs {
+                            residual[*g as usize] +=
+                                (before - after) * q.to_f64_lossy() * blocks[bi].tfp;
+                        }
+                        next[bi][ki] = after;
+                    }
+                }
+            }
+        }
+        for g in 0..ng {
+            if residual[g] <= 0.0 {
+                continue;
+            }
+            let (_, weights) = &raw_alloc[g];
+            let spare: Vec<(usize, usize, f64)> = weights
+                .iter()
+                .map(|(bi, ki, w)| {
+                    let farms = cat.buildings[*ki].farm.is_some();
+                    let cap = if farms { farm_cap[*bi] } else { mine_cap[*bi] };
+                    let room = (cap - used(&next, *bi, farms)).max(0.0);
+                    (*bi, *ki, w * room)
+                })
+                .collect();
+            let snapshot = next.clone();
+            place(&mut next, g, residual[g], &spare, &|bi, ki| {
+                let farms = cat.buildings[ki].farm.is_some();
+                let cap = if farms { farm_cap[bi] } else { mine_cap[bi] };
+                let room = (cap - used(&snapshot, bi, farms)).max(0.0)
+                    / cat.buildings[ki].methods[0].workers.max(1) as f64;
+                room.min((blocks[bi].capacity[ki] / blocks[bi].tfp - snapshot[bi][ki]).max(0.0))
+            });
+        }
+        lv = next;
+    }
+
+    lv
 }
