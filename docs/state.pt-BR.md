@@ -1,8 +1,9 @@
 # Estado: construção, orçamento e obra pública
 
 Estado: primeira fatia da fase 3. O código está em `crates/bf-sim/src/econ/construction.rs` (fila de
-obras) e `crates/bf-sim/src/econ/public.rs` (orçamento e obra pública); o estado salvo fica em
-`Market::queue` e `Market::budget` (`econ/state.rs`). Moeda, dívida e banco central ficam para a
+obras), `crates/bf-sim/src/econ/public.rs` (orçamento e obra pública) e
+`crates/bf-sim/src/econ/migration.rs` (migração interna); o estado salvo fica em `Market::queue`,
+`Market::budget` e `Market::laws` (`econ/state.rs`). Moeda, dívida e banco central ficam para a
 fatia seguinte.
 
 ## Setor de construção e fila de obras
@@ -81,42 +82,85 @@ por mês.
 - **1925:** as escolas começam com cobertura igual à alfabetização do país (5 % a 95 %); os
   hospitais, com renda per capita / US$ 15 mil (2 % a 50 %).
 
+## Migração interna e moradia urbana
+
+Urbano, como na fase 1, é quem tem profissão de cidade (todas menos camponês, trabalhador rural e
+proprietário de terra). A migração muda a profissão: o camponês ocioso vira operário, empregado ou
+não, e passa a morar na cidade.
+
+- **Moradia urbana** (`urban_housing`, grupo serviços): um nível abriga 5 mil pessoas a preço-base
+  (vezes a produtividade da região, como todo edifício) com 30 empregados. As profissões urbanas têm
+  a necessidade `urban_housing` (aluguel, 1 lugar por pessoa por ano, nível 1); as rurais ficam com
+  `shelter`, que antes valia para todos. O campo `urban` das necessidades diz quem as tem.
+- **Quem constrói:** o investidor privado, quando o aluguel dá retorno (é um edifício comum), e o
+  Estado, pela categoria moradia da obra pública, onde há mais gente na cidade do que lugares.
+- **Limite:** a cidade aceita até 1,25 pessoa por lugar (cortiço, favela). Passado isso, ninguém
+  chega e os operários sem emprego voltam para a terra (um décimo por mês).
+- **Quando se muda:** todo mês, comparando a renda por pessoa do operário da região (salário dividido
+  por todos os operários e dependentes, então o desemprego já desconta: regra de Harris–Todaro) com a
+  do camponês e do trabalhador rural, as duas somadas à comida que os sem emprego plantam, ao
+  preço-base. Abaixo de 1,5 vez nada acontece; o fluxo cresce até dobrar esse prêmio.
+- **Quanto:** 0,03 % por mês dos camponeses ociosos para as cidades do próprio estado, e 0,01 % para
+  as três cidades do país que pagam mais e têm lugar. O operário sem emprego fica na cidade enquanto
+  ela paga melhor que o campo e tem lugar; senão volta à terra, como na fase 1.
+- **Lei de migração** por país (`Market::laws.migration`): aberta (padrão) ou restrita
+  (passaporte interno: propiska soviética, hukou chinês, leis de passe). Restrita deixa passar 1/4
+  do fluxo dentro do estado e 1/10 entre estados.
+- O dinheiro acompanha quem se muda na proporção do tamanho do grupo (regra da fase 1 para troca de
+  profissão), o que cria ou destrói um pouco de poupança entre regiões.
+
 ## Comandos do jogador
 
 - `SetTaxRates { tag, rates }`: alíquotas das três classes em milésimos (teto 600); `None` devolve o
   país à regra histórica.
 - `SetPublicPriority { tag, weights }`: pesos de infraestrutura, educação, saúde e moradia, de 0 a
   10. Tudo zero suspende obra pública nova.
+- `SetMigrationLaw { tag, law }`: `Open` ou `Restricted`.
 
 Saves: os campos novos têm `#[serde(default)]` e entram no hash. Como nas fases anteriores, o
 snapshot é postcard, que não é autodescritivo: save de uma versão anterior não carrega.
 
 ## Calibração
 
-Benchmark de 100 anos (`cargo run --release -p bf-bench -- --game`), mesma semente:
+Benchmark de 100 anos (`cargo run --release -p bf-bench -- --game --check-determinism`), mesma
+semente. "Orçamento" é só a fila e o orçamento (sem migração); "fase 3" é esta fatia inteira.
 
 | | 1935 | 1965 | 1995 | 2025 |
 |---|---|---|---|---|
 | População (bilhões), main | 2,16 | 3,25 | 4,83 | 6,76 |
-| População, com esta fatia | 2,18 | 3,50 | 5,35 | 7,59 |
+| População, orçamento | 2,18 | 3,50 | 5,35 | 7,59 |
+| População, fase 3 | 2,18 | 3,48 | 5,12 | 6,78 |
 | PIB (US$ tri, preços de 1925), main | 6,0 | 14,8 | 32,9 | 49,7 |
-| PIB, com esta fatia | 6,3 | 19,9 | 58,2 | 85,2 |
+| PIB, orçamento | 6,3 | 19,9 | 58,2 | 85,2 |
+| PIB, fase 3 | 6,5 | 20,8 | 61,1 | 87,2 |
 | Urbanização, main | 0,44 | 0,42 | 0,35 | 0,29 |
-| Urbanização, com esta fatia | 0,43 | 0,44 | 0,38 | 0,32 |
-| Impostos (% do PIB) | 7,1 | 12,0 | 13,3 | 12,7 |
-| Despesa do Estado (% do PIB) | 15,6 | 24,1 | 30,7 | 31,8 |
-| Obras na fila (mundo) | 15 mil | 8 mil | 4 mil | 3 mil |
+| Urbanização, orçamento | 0,43 | 0,44 | 0,38 | 0,32 |
+| Urbanização, fase 3 | 0,45 | 0,52 | 0,56 | 0,60 |
+| Necessidades básicas, fase 3 (main) | 0,65 (0,63) | 0,68 (0,63) | 0,72 (0,65) | 0,75 (0,63) |
+| Impostos (% do PIB), fase 3 | 7,1 | 12,2 | 13,2 | 12,7 |
+| Despesa do Estado (% do PIB), fase 3 | 15,5 | 23,9 | 30,5 | 32,0 |
+| Obras na fila (mundo), fase 3 | 17 mil | 9 mil | 6 mil | 5 mil |
 
+Fase 3: determinístico entre contagens de threads e depois de salvar e recarregar em 1975; tick mais
+lento 35,9 ms (main 45,8 ms); 112 s de simulação (main 106 s).
+
+- A urbanização sobe sem parar de 0,45 (1935) a 0,60 (2025; o real é cerca de 0,57). Cidade baixa a
+  natalidade, por isso a população fica na da main (6,78 bilhões contra 8,1 reais), abaixo da
+  rodada só com o orçamento.
 - A despesa passa da receita em cerca de 19 pontos do PIB: é o dinheiro que o substituto do banco
   central emite no tesouro (já era assim na fase 1, sem aparecer como conta). Nenhum país fica no
   vermelho porque a emissão cobre a folha. A fatia de moeda e banco central tem de trocar isso por
   título público e juro.
 - A fila começa longa (a construção civil de 1925 foi dimensionada só para a manutenção) e o preço
-  da construção fica 25 % acima da base nos primeiros anos; cai para 3 a 5 % acima depois de 1945.
-- PIB e população maiores que na main vêm do gasto público (mais demanda) e dos hospitais.
+  da construção fica 25 % acima da base nos primeiros anos; cai para 4 a 5 % acima depois de 1945.
+- PIB maior que na main vem do gasto público (mais demanda), dos hospitais e de mais gente empregada
+  na cidade.
 
 ## Aberto
 
 - Moeda por país, banco central com juro, títulos e dívida (`Budget::debt`).
 - Estatal com lucro para o tesouro; indústria estatal como categoria de obra.
 - A IA de país escolhe alíquota e prioridade pela regra; o jogador só por comando, sem tela ainda.
+- Lei de migração histórica no cenário (propiska de 1932, hukou de 1958): hoje todos começam abertos.
+- Moradia quase nunca limita: o investidor privado constrói o que o aluguel paga. O freio real é a
+  renda (Harris–Todaro). Falta o custo de vida mais alto na cidade (comida comprada).

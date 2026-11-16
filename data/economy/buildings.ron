@@ -385,6 +385,11 @@
             (key: "hand_construction", available_from: 1925, inputs: [("timber", 6000), ("cement", 8000), ("steel", 800), ("tools", 80)], outputs: [("construction", 9000)], jobs: [("laborer", 750), ("skilled_worker", 150), ("engineer", 10), ("clerk", 50), ("manager", 25), ("capitalist", 5)]),
             (key: "mechanized_construction", available_from: 1925, inputs: [("timber", 5000), ("cement", 16000), ("steel", 2000), ("machinery", 50), ("fuel", 800), ("tools", 50)], outputs: [("construction", 16000)], jobs: [("laborer", 400), ("skilled_worker", 300), ("engineer", 30), ("clerk", 60), ("manager", 25), ("capitalist", 5)]),
         ]),
+        // City housing: rented by the urban professions (need `urban_housing`), built by private
+        // capital and by the state. Its capacity limits migration to the city.
+        (key: "urban_housing", group: "services", resource: None, farm: None, methods: [
+            (key: "tenements", available_from: 1925, inputs: [("timber", 300), ("cement", 400)], outputs: [("housing", 5000)], jobs: [("laborer", 20), ("skilled_worker", 5), ("clerk", 5)]),
+        ]),
         // Public services: the state builds them, buys all they make and pays all their value
         // added as wages. Schools speed literacy, hospitals lower mortality.
         (key: "school", group: "services", resource: None, farm: None, public: true, methods: [

@@ -56,6 +56,8 @@ pub struct Need {
     pub tier: u8,
     /// Units per million people per week (a person's weekly share is too small for `Fixed`).
     pub per_capita: Fixed,
+    /// Who has the need: urban professions, rural ones, or everyone (`None`).
+    pub urban: Option<bool>,
     pub goods: Vec<(GoodIx, Fixed)>,
 }
 
@@ -159,6 +161,7 @@ impl Catalogue {
                     key: n.key.clone(),
                     tier: n.tier,
                     per_capita: fx(n.per_capita).mul_ratio(1_000_000, WEEKS),
+                    urban: n.urban,
                     goods: n
                         .goods
                         .iter()

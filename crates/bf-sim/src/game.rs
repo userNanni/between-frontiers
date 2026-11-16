@@ -162,6 +162,11 @@ pub enum GameCommand {
         tag: String,
         weights: [u8; crate::econ::state::PUBLIC_CATEGORIES],
     },
+    /// Opens or restricts moving house inside the country (internal passports).
+    SetMigrationLaw {
+        tag: String,
+        law: crate::econ::migration::MigrationLaw,
+    },
 }
 
 impl Command<GameWorld> for GameCommand {
@@ -204,6 +209,14 @@ impl Command<GameWorld> for GameCommand {
                             *r = (v * b.adjust).min(crate::econ::public::MAX_TAX);
                         }
                     }
+                }
+            }
+            GameCommand::SetMigrationLaw { tag, law } => {
+                let Some(ci) = world.countries.iter().position(|(_, c)| c.tag == *tag) else {
+                    return;
+                };
+                if let Some(m) = world.econ.markets.get_mut(ci) {
+                    m.laws.migration = *law;
                 }
             }
             GameCommand::SetPublicPriority { tag, weights } => {
@@ -513,6 +526,10 @@ mod tests {
             tag: "ARG".into(),
             weights: [0, 9, 99, 1],
         });
+        s.submit(GameCommand::SetMigrationLaw {
+            tag: "ARG".into(),
+            law: crate::econ::migration::MigrationLaw::Restricted,
+        });
         s.submit(GameCommand::SetTaxRates {
             tag: "XXX".into(),
             rates: Some([1, 1, 1]),
@@ -527,6 +544,10 @@ mod tests {
         assert_eq!(
             s.world().econ.markets[1].budget.priority,
             [0, 9, public::MAX_PRIORITY, 1]
+        );
+        assert_eq!(
+            s.world().econ.markets[1].laws.migration,
+            crate::econ::migration::MigrationLaw::Restricted
         );
         s.submit(GameCommand::SetTaxRates {
             tag: "BRA".into(),

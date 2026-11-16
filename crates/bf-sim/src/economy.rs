@@ -118,6 +118,10 @@ pub struct NeedDef {
     pub tier: u8,
     /// Units per person per year at the reference income of the tier.
     pub per_capita: f32,
+    /// Only the urban professions have it (`Some(true)`), only the rural ones (`Some(false)`),
+    /// or everyone (`None`).
+    #[serde(default)]
+    pub urban: Option<bool>,
     /// Goods that satisfy the need and how well (1 = fully), so the population substitutes
     /// when prices move.
     pub goods: Vec<(String, f32)>,

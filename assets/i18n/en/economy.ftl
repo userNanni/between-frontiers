@@ -82,6 +82,7 @@ good-finance = Financial services
 good-telecommunications = Telecommunications
 good-construction = Construction
 good-schooling = Schooling
+good-housing = Urban housing
 good-hospital_care = Hospital care
 
 ## Mercados
@@ -183,6 +184,7 @@ building-telecom_exchange = Telecommunications exchange
 building-construction_sector = Building trade
 building-school = School
 building-hospital = Hospital
+building-urban_housing = Urban housing
 
 ## Grupos de construção
 building-group-agriculture = Agriculture
@@ -281,6 +283,7 @@ method-hand_construction = Hand construction
 method-mechanized_construction = Mechanized construction
 method-classroom = Classroom
 method-general_hospital = General hospital
+method-tenements = Tenements and blocks
 
 ## Profissões
 profession-peasant = Peasants
@@ -315,3 +318,4 @@ need-services = Services
 need-savings = Savings and credit
 need-automobile = Automobile
 need-luxury = Luxury
+need-urban_housing = Urban housing

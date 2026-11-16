@@ -59,7 +59,7 @@ fn move_people(pops: &mut [(i64, i64)], from: usize, to: usize, workers_moved: i
     pops[to].0 += people;
 }
 
-fn labour_region(cat: &Catalogue, r: &Region) -> LabourChange {
+fn labour_region(cat: &Catalogue, r: &Region, moves: &super::migration::Moves) -> LabourChange {
     let mut required = [0i64; P];
     for p in &r.plants {
         let m = &cat.buildings[p.kind as usize].methods[p.method as usize];
@@ -68,6 +68,8 @@ fn labour_region(cat: &Catalogue, r: &Region) -> LabourChange {
         }
     }
     let mut pops: Vec<(i64, i64)> = r.pops.iter().map(|p| (p.size, 0)).collect();
+    // Migration first: idle peasants who left for town, and newcomers from other states.
+    super::migration::apply(&mut pops, moves);
     let literacy = r.literacy;
     // The state hires toward its share of the population.
     let total: i64 = pops.iter().map(|p| p.0).sum();
@@ -99,7 +101,8 @@ fn labour_region(cat: &Catalogue, r: &Region) -> LabourChange {
         let available = workers(pops[from].0) - required[from].min(workers(pops[from].0));
         move_people(&mut pops, from, to, n.min(available).max(0));
     }
-    // Idle workers drift back: to labourers from skilled jobs, to the land from the rest.
+    // Idle workers drift back: to labourers from skilled jobs, to the land from the rest. Jobless
+    // labourers stay in town while it pays better than the land and has room for them.
     for pi in [
         prof::FARM_LABORER,
         prof::LABORER,
@@ -109,7 +112,11 @@ fn labour_region(cat: &Catalogue, r: &Region) -> LabourChange {
         prof::PROFESSIONAL,
         prof::MANAGER,
     ] {
-        let idle = workers(pops[pi].0) - required[pi];
+        let mut idle = workers(pops[pi].0) - required[pi];
+        // A town that pays and has room keeps its jobless.
+        if pi == prof::LABORER && !moves.push_back {
+            idle = 0;
+        }
         if idle > 0 {
             let back = if matches!(
                 pi,
@@ -165,11 +172,13 @@ impl System<GameWorld> for Labour {
         Access::new().read(ECON).write(ECON)
     }
     fn compute(&self, _ctx: &TickCtx, world: &GameWorld) -> Vec<LabourChange> {
+        let moves = super::migration::plan(&self.cat, &world.econ);
         world
             .econ
             .regions
             .par_iter()
-            .map(|r| labour_region(&self.cat, r))
+            .zip(moves.par_iter())
+            .map(|(r, m)| labour_region(&self.cat, r, m))
             .collect()
     }
     fn apply(&self, _ctx: &TickCtx, changes: Vec<LabourChange>, world: &mut GameWorld) {
