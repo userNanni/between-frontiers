@@ -495,33 +495,6 @@ pub fn best_method(
 
 const BUSY_UTILIZATION: Fixed = milli(900);
 
-/// Share of a good's demand bought abroad above which a plant making it is worth building at
-/// home even with the existing ones idle, under free trade.
-const SUBSTITUTION_SHARE: Fixed = milli(250);
-/// A tariff lowers that share by half its rate: behind protective tariffs (25 %) a country
-/// builds what it imports at an eighth of the demand; under autarky, at any import at all.
-const TARIFF_PULL: Fixed = milli(500);
-const MIN_SUBSTITUTION_SHARE: Fixed = milli(50);
-
-/// The import share that opens import substitution in market `m`, under the trade law in
-/// force (the metropole's).
-pub fn substitution_share(m: &super::Market) -> Fixed {
-    (SUBSTITUTION_SHARE - m.laws.effects[0].tariff * TARIFF_PULL).max(MIN_SUBSTITUTION_SHARE)
-}
-
-/// Share of the demand for the main output of building `kind` that market `m` imported last
-/// week.
-fn imported_share(cat: &Catalogue, m: &super::Market, kind: usize) -> Fixed {
-    let Some(&(g, _)) = cat.buildings[kind].methods[0].outputs.first() else {
-        return Fixed::ZERO;
-    };
-    let g = g as usize;
-    if m.demand[g] <= Fixed::ZERO || m.net_import[g] <= Fixed::ZERO {
-        return Fixed::ZERO;
-    }
-    fill(m.net_import[g], m.demand[g])
-}
-
 /// Money of the pool already promised: construction goods still to buy and the private works
 /// in the queue.
 pub fn committed(cat: &Catalogue, m: &super::Market) -> Fixed {
@@ -604,18 +577,7 @@ impl System<GameWorld> for Investment {
                     .collect()
             })
             .collect();
-        // Import substitution: a country that buys abroad a large share of what a kind makes
-        // builds it at home, at home wages, even with the existing levels idle. Only in the
-        // metropole: colonial rule kept the colonies' market for the metropole's industry.
-        let importing: Vec<Vec<bool>> = econ
-            .markets
-            .iter()
-            .map(|m| {
-                (0..nk)
-                    .map(|kind| imported_share(cat, m, kind) >= substitution_share(m))
-                    .collect()
-            })
-            .collect();
+
         // Candidates per market, ranked by yearly return.
         let mut by_market: Vec<Vec<(Fixed, Build)>> =
             (0..econ.markets.len()).map(|_| Vec::new()).collect();
@@ -655,10 +617,7 @@ impl System<GameWorld> for Investment {
                     let busy_here = match local {
                         Some(_) => current
                             .is_none_or(|p| p.levels <= 0 || p.utilization >= BUSY_UTILIZATION),
-                        None => {
-                            busy[r.market as usize][kind]
-                                || (!r.colony && importing[r.market as usize][kind])
-                        }
+                        None => busy[r.market as usize][kind],
                     };
                     if !busy_here {
                         continue;
