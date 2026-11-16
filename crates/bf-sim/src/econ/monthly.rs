@@ -430,18 +430,9 @@ pub struct InvestmentChanges {
 
 /// Value added per level per week at base prices of a method (used for capital cost).
 pub(crate) fn base_value_added(cat: &Catalogue, kind: usize, method: usize) -> Fixed {
-    let m = &cat.buildings[kind].methods[method];
-    let out: Fixed = m
-        .outputs
-        .iter()
-        .map(|(g, q)| *q * cat.goods[*g as usize].base_price)
-        .sum();
-    let inp: Fixed = m
-        .inputs
-        .iter()
-        .map(|(g, q)| *q * cat.goods[*g as usize].base_price)
-        .sum();
-    (out - inp).max(Fixed::ZERO)
+    cat.buildings[kind].methods[method]
+        .value_added(|g| cat.goods[g].base_price)
+        .max(Fixed::ZERO)
 }
 
 /// Average weekly pay of a worker in each market: what a method that needs fewer hands saves.
@@ -498,10 +489,7 @@ pub fn best_method(
         {
             continue;
         }
-        let out: Fixed = m.outputs.iter().map(|(g, q)| *q * price[*g as usize]).sum();
-        let inp: Fixed = m.inputs.iter().map(|(g, q)| *q * price[*g as usize]).sum();
-        let _ = b;
-        let profit = (out - inp) * tfp - wage * m.workers;
+        let profit = m.profit(price, tfp, wage);
         if best.is_none_or(|(_, p)| profit > p) {
             best = Some((mi as u8, profit));
         }

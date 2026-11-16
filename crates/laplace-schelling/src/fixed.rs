@@ -43,7 +43,27 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 pub struct Fixed(i64);
 
 /// Rounds `n / d` to nearest, ties away from zero. `d` must not be zero.
+#[inline]
 const fn div_round(n: i128, d: i128) -> i128 {
+    // Almost every product fits in 64 bits: divide there, in hardware, instead of in the
+    // 128-bit software routine. Same integers, same rounding, same result. `i64::MIN` is left
+    // out so that `MIN / -1` cannot overflow and `2 × |remainder|` fits in a `u64`.
+    const LO: i128 = -(i64::MAX as i128);
+    const HI: i128 = i64::MAX as i128;
+    if n >= LO && n <= HI && d >= LO && d <= HI {
+        let (n, d) = (n as i64, d as i64);
+        let quotient = n / d;
+        let remainder = n % d;
+        return if remainder.unsigned_abs() * 2 >= d.unsigned_abs() {
+            if (n < 0) != (d < 0) {
+                quotient as i128 - 1
+            } else {
+                quotient as i128 + 1
+            }
+        } else {
+            quotient as i128
+        };
+    }
     let quotient = n / d;
     let remainder = n % d;
     if remainder.unsigned_abs() * 2 >= d.unsigned_abs() {
@@ -706,5 +726,56 @@ mod tests {
         assert_eq!(Fixed::from_f64_lossy(-2.25), Fixed::from_raw(-2250));
         assert_eq!(Fixed::from_f64_lossy(f64::NAN), Fixed::ZERO);
         assert_eq!(Fixed::from_f64_lossy(1e300), Fixed::MAX);
+    }
+
+    /// The 64-bit shortcut in `div_round` must give exactly what 128-bit division gives.
+    #[test]
+    fn div_round_matches_wide_division() {
+        fn wide(n: i128, d: i128) -> i128 {
+            let (q, r) = (n / d, n % d);
+            if r.unsigned_abs() * 2 >= d.unsigned_abs() {
+                if (n < 0) != (d < 0) { q - 1 } else { q + 1 }
+            } else {
+                q
+            }
+        }
+        let edges = [
+            0,
+            1,
+            -1,
+            2,
+            -2,
+            999,
+            1000,
+            1001,
+            -1000,
+            500,
+            -500,
+            1500,
+            -1500,
+            MAX,
+            -MAX,
+            MAX - 1,
+            -MAX + 1,
+            MAX + 1,
+            -MAX - 1,
+            i64::MIN as i128,
+            MAX * 1000,
+            -MAX * 1000,
+        ];
+        for &n in &edges {
+            for &d in &edges {
+                if d != 0 {
+                    assert_eq!(div_round(n, d), wide(n, d), "{n} / {d}");
+                }
+            }
+        }
+        let mut rng = Rng::from_seed(7);
+        for _ in 0..100_000 {
+            let n = i128::from(rng.next_u64() as i64) >> (rng.next_u64() % 64);
+            let d = (i128::from(rng.next_u64() as i64) >> (rng.next_u64() % 64)).max(1);
+            assert_eq!(div_round(n, d), wide(n, d), "{n} / {d}");
+            assert_eq!(div_round(n, -d), wide(n, -d), "{n} / -{d}");
+        }
     }
 }

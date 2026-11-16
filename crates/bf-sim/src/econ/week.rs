@@ -6,19 +6,21 @@ use laplace_schelling::schedule::{Access, Cadence, ResourceId, System, TickCtx};
 use laplace_schelling::{Fixed, Weekday};
 use rayon::prelude::*;
 
-use super::catalogue::{Catalogue, GoodIx};
+use super::catalogue::{Building, Catalogue, GoodIx, Method};
+use super::local::View;
 use super::prof::{self, P};
 use super::public::{self, CLASS_OF, PUBLIC_PAY};
-use super::state::{Economy, Market, Region};
-use super::{SAVE_RATE, Unlocks, WAGE_WEIGHT, fill, labor_share, milli, plant_tfp, workers};
+use super::state::{Economy, Market, Plant, Region};
+use super::{PriceBand, SAVE_RATE, Unlocks, WAGE_WEIGHT, fill, milli, plant_tfp, workers};
 use crate::game::GameWorld;
 
 pub const ECON: ResourceId = ResourceId(10);
 
-/// Price moves toward base × (1 + 0.75 × (D − S) / min(D, S)), held within 25%–400% of base.
-const PRICE_SPEED: Fixed = milli(250);
-const PRICE_FLOOR: Fixed = milli(250);
-const PRICE_CEILING: Fixed = milli(4000);
+/// Market prices: tension (D − S) / min(D, S), held within 25%–400% of base.
+const PRICES: PriceBand = PriceBand {
+    floor: milli(250),
+    ceiling: milli(4000),
+};
 /// Share of a market's surplus offered abroad, and of its shortage sought abroad, each week:
 /// below 1 so that local prices still carry part of the signal (distance, ports, habits).
 const TRADE_REACH: Fixed = milli(850);
@@ -40,20 +42,34 @@ pub(crate) const UPKEEP_SHARE: Fixed = milli(30);
 pub(crate) const UPKEEP_BASKET: [(&str, i64); 3] =
     [("construction", 780), ("machinery", 150), ("tools", 70)];
 
-/// What the pool buys for upkeep this week, computed from the market before clearing.
-fn upkeep_orders(cat: &Catalogue, m: &Market) -> Vec<(GoodIx, Fixed)> {
-    let money = m.pool.max(Fixed::ZERO) * UPKEEP_SHARE;
-    UPKEEP_BASKET
-        .iter()
-        .filter_map(|(k, share)| {
-            let g = cat.good(k)?;
-            Some((g, money.mul_ratio(*share, 1000) / m.price[g as usize]))
-        })
+/// What `money` buys of each good of a basket, shared by its weights per mille.
+fn basket_orders<'a>(
+    basket: impl Iterator<Item = &'a (GoodIx, i64)>,
+    money: Fixed,
+    price: &[Fixed],
+) -> Vec<(GoodIx, Fixed)> {
+    basket
+        .map(|&(g, per_mille)| (g, money.mul_ratio(per_mille, 1000) / price[g as usize]))
         .collect()
 }
 
-/// Construction goods are bought over about two months.
-const CONSTRUCTION_WEEKS: i64 = 8;
+/// What the pool buys for upkeep this week.
+fn upkeep_orders(cat: &Catalogue, m: &Market) -> Vec<(GoodIx, Fixed)> {
+    let money = m.pool.max(Fixed::ZERO) * UPKEEP_SHARE;
+    basket_orders(cat.upkeep_basket.iter(), money, &m.price)
+}
+
+/// What the state buys this week with its goods budget.
+fn state_orders(cat: &Catalogue, m: &Market, exists: &[bool]) -> Vec<(GoodIx, Fixed)> {
+    let goods = cat.state_basket.iter().filter(|(g, _)| exists[*g as usize]);
+    basket_orders(goods, public::goods_budget(m), &m.price)
+}
+
+/// Construction goods are bought over about two months: an eighth of what is left each week,
+/// and at least one unit.
+fn construction_this_week(left: Fixed) -> Fixed {
+    left.mul_ratio(1, 8).max(left.min(Fixed::ONE))
+}
 
 pub struct Week {
     pub cat: Arc<Catalogue>,
@@ -136,10 +152,37 @@ fn need_mix(
     (mix, cost)
 }
 
+/// The goods each need is met with at a set of prices, and what a unit of the need costs. The
+/// same for every pop that sees those prices, so it is worked out once per state and week.
+pub(crate) struct NeedMixes {
+    mixes: Vec<(Vec<(GoodIx, Fixed)>, Fixed)>,
+}
+
+impl NeedMixes {
+    pub(crate) fn new(cat: &Catalogue, prices: &[Fixed], exists: &[bool]) -> Self {
+        Self {
+            mixes: (0..cat.needs.len())
+                .map(|i| need_mix(cat, i, prices, exists))
+                .collect(),
+        }
+    }
+}
+
+/// Spare money goes mostly to services and less to goods: the rich of 1925 hired servants,
+/// travelled and banked more than they bought steel.
+pub(crate) fn spare_weight(key: &str) -> Fixed {
+    match key {
+        "services" | "savings" => Fixed::ONE,
+        "mobility" => milli(800),
+        "communication" => milli(600),
+        "luxury" => milli(500),
+        _ => milli(300),
+    }
+}
+
 pub(crate) fn plan_pop(
     cat: &Catalogue,
-    prices: &[Fixed],
-    exists: &[bool],
+    mixes: &NeedMixes,
     size: i64,
     budget: Fixed,
     staple_in_kind: Fixed,
@@ -154,12 +197,12 @@ pub(crate) fn plan_pop(
             (Some(need), Some(pop)) if need != pop => Fixed::ZERO,
             _ => n.per_capita.mul_ratio(size, 1_000_000),
         };
-        if n.key == "staple_food" && qty > Fixed::ZERO {
+        if Some(i) == cat.staple_need && qty > Fixed::ZERO {
             in_kind = fill(staple_in_kind, qty);
             qty = (qty - staple_in_kind).max(Fixed::ZERO);
         }
-        let (mix, unit_cost) = need_mix(cat, i, prices, exists);
-        let cost = qty * unit_cost;
+        let (mix, unit_cost) = &mixes.mixes[i];
+        let cost = qty * *unit_cost;
         tier_cost[(n.tier - 1) as usize] += cost;
         need_cost.push((qty, mix, cost));
     }
@@ -181,22 +224,11 @@ pub(crate) fn plan_pop(
     } else {
         Fixed::ZERO
     };
-    // Spare money goes mostly to services and less to goods: the rich of 1925 hired servants,
-    // travelled and banked more than they bought steel.
-    let weight_of = |key: &str| -> Fixed {
-        match key {
-            "services" | "savings" => Fixed::ONE,
-            "mobility" => milli(800),
-            "communication" => milli(600),
-            "luxury" => milli(500),
-            _ => milli(300),
-        }
-    };
     let weighted_upper: Fixed = need_cost
         .iter()
         .enumerate()
         .filter(|(i, _)| cat.needs[*i].tier >= 3)
-        .map(|(i, (_, _, c))| *c * weight_of(&cat.needs[i].key))
+        .map(|(i, (_, _, c))| *c * cat.needs[i].spare_weight)
         .sum();
     let extra = if extra > Fixed::ZERO && weighted_upper > Fixed::ZERO {
         // Same money, redistributed by weight.
@@ -210,14 +242,14 @@ pub(crate) fn plan_pop(
         let t = (cat.needs[i].tier - 1) as usize;
         let mut share = tier_share[t];
         if t >= 2 {
-            share += extra * weight_of(&cat.needs[i].key);
+            share += extra * cat.needs[i].spare_weight;
         }
         tier_planned[t] += *cost * share;
         let q = *qty * share;
-        for (g, per_unit) in mix {
-            let units = q * *per_unit;
+        for &(g, per_unit) in mix.iter() {
+            let units = q * per_unit;
             if units > Fixed::ZERO {
-                orders.push((*g, units));
+                orders.push((g, units));
             }
         }
     }
@@ -229,9 +261,17 @@ pub(crate) fn plan_pop(
     }
 }
 
-/// Units a plant level produces this week from its method, staffing and inputs.
-fn plant_scale(levels: i64, staffing: Fixed) -> Fixed {
-    Fixed::from_int(levels) * staffing
+/// A plant's building and method, and the scale it runs at this week: levels × staffing ×
+/// productivity × utilization.
+fn plant_run<'c>(
+    cat: &'c Catalogue,
+    r: &Region,
+    m: &Market,
+    p: &Plant,
+) -> (&'c Building, &'c Method, Fixed) {
+    let b = &cat.buildings[p.kind as usize];
+    let scale = Fixed::from_int(p.levels) * p.staffing * plant_tfp(r, m, b) * p.utilization;
+    (b, &b.methods[p.method as usize], scale)
 }
 
 /// Grain smallholders bring to market: a sixth of what they eat, rising to half as farming
@@ -287,13 +327,11 @@ fn region_orders(
 ) -> RegionOrders {
     let g = cat.goods.len();
     let m = &econ.markets[r.market as usize];
-    let view = super::local::View::last_week(cat, m, r, national);
+    let view = View::last_week(cat, m, r, national);
     let mut demand = vec![Fixed::ZERO; g];
     let mut supply = vec![Fixed::ZERO; g];
     for p in &r.plants {
-        let b = &cat.buildings[p.kind as usize];
-        let method = &b.methods[p.method as usize];
-        let scale = plant_scale(p.levels, p.staffing) * plant_tfp(r, m, b) * p.utilization;
+        let (_, method, scale) = plant_run(cat, r, m, p);
         for (gi, q) in &method.inputs {
             demand[*gi as usize] += *q * scale;
         }
@@ -303,10 +341,11 @@ fn region_orders(
         }
     }
     let staple = subsistence_food(r, m);
-    if let Some(grain) = cat.good("grain") {
+    if let Some(grain) = cat.grain {
         supply[grain as usize] += peasant_surplus(r, staple);
     }
     let total = r.population().max(1);
+    let mixes = NeedMixes::new(cat, &view.price, exists);
     let pops = r
         .pops
         .iter()
@@ -323,8 +362,7 @@ fn region_orders(
             let own_food = staple.mul_ratio(pop.size, total);
             let plan = plan_pop(
                 cat,
-                &view.price,
-                exists,
+                &mixes,
                 pop.size,
                 budget.max(Fixed::ZERO),
                 own_food,
@@ -343,21 +381,6 @@ fn region_orders(
     }
 }
 
-/// What the state buys this week with its goods budget.
-fn state_orders(cat: &Catalogue, m: &Market, exists: &[bool]) -> Vec<(GoodIx, Fixed)> {
-    let budget = public::goods_budget(m);
-    STATE_BASKET
-        .iter()
-        .filter_map(|(key, per_mille)| {
-            let gi = cat.good(key).filter(|g| exists[*g as usize])?;
-            Some((
-                gi,
-                budget.mul_ratio(*per_mille, 1000) / m.price[gi as usize],
-            ))
-        })
-        .collect()
-}
-
 fn clear_market(
     cat: &Catalogue,
     mut m: Market,
@@ -374,19 +397,15 @@ fn clear_market(
         demand[*gi as usize] += *q;
     }
     // The state buys everything its schools and hospitals make.
-    for gi in 0..g {
-        if cat.goods[gi].category == "public" {
-            demand[gi] += supply[gi];
-        }
+    for &gi in &cat.public_goods {
+        demand[gi as usize] += supply[gi as usize];
     }
-    if let Some(cg) = cat.good("construction") {
+    if let Some(cg) = cat.construction {
         demand[cg as usize] += super::construction::queue_want(&m);
     }
-    for (gi, left) in m.construction.iter().enumerate() {
-        if *left > Fixed::ZERO {
-            demand[gi] += (*left)
-                .mul_ratio(1, CONSTRUCTION_WEEKS)
-                .max((*left).min(Fixed::ONE));
+    for (gi, &left) in m.construction.iter().enumerate() {
+        if left > Fixed::ZERO {
+            demand[gi] += construction_this_week(left);
         }
     }
     // Capital that found no project still turns over: maintenance, housing, roads.
@@ -394,7 +413,6 @@ fn clear_market(
         demand[gi as usize] += q;
     }
     for gi in 0..g {
-        let good = &cat.goods[gi];
         let mut s = supply[gi];
         let mut d = demand[gi];
         // Imports (positive) or exports (negative) from the world pool.
@@ -410,19 +428,9 @@ fn clear_market(
         let traded = s.min(d);
         m.buy_ratio[gi] = fill(traded, d);
         m.sell_ratio[gi] = fill(traded, s);
-        let base = good.base_price;
-        let target = if s <= Fixed::ZERO && d <= Fixed::ZERO {
-            base
-        } else if s <= Fixed::ZERO {
-            base * PRICE_CEILING
-        } else if d <= Fixed::ZERO {
-            base * PRICE_FLOOR
-        } else {
-            let tension = (d - s) / s.min(d).max(Fixed::EPSILON);
-            let factor = (Fixed::ONE + tension * milli(750)).clamp(PRICE_FLOOR, PRICE_CEILING);
-            base * factor
-        };
-        m.price[gi] = m.price[gi] + (target - m.price[gi]) * PRICE_SPEED;
+        m.price[gi] = PRICES.next(m.price[gi], cat.goods[gi].base_price, s, d, || {
+            (d - s) / s.min(d).max(Fixed::EPSILON)
+        });
     }
     (m, orders)
 }
@@ -433,7 +441,7 @@ fn settle_region(
     r: &Region,
     orders: &RegionOrders,
     wage: Fixed,
-    v: &super::local::View,
+    v: &View,
 ) -> RegionSettlement {
     let mut wages = [Fixed::ZERO; P];
     let mut owners_industry = Fixed::ZERO;
@@ -442,19 +450,13 @@ fn settle_region(
     let mut gdp = Fixed::ZERO;
     let mut plants = Vec::with_capacity(r.plants.len());
     for p in &r.plants {
-        let b = &cat.buildings[p.kind as usize];
-        let method = &b.methods[p.method as usize];
-        let scale = plant_scale(p.levels, p.staffing) * plant_tfp(r, m, b) * p.utilization;
+        let (b, method, scale) = plant_run(cat, r, m, p);
         let mut cost = Fixed::ZERO;
         let mut cost_base = Fixed::ZERO;
         // Missing inputs cut output by their share in the value of the output (a linear
         // Cobb–Douglas): a shortage of explosives in a mine costs it a tenth, a shortage of ore
         // in a steel mill stops it.
-        let output_value: Fixed = method
-            .outputs
-            .iter()
-            .map(|(gi, q)| *q * cat.goods[*gi as usize].base_price)
-            .sum();
+        let output_value = method.output_value;
         let mut loss = Fixed::ZERO;
         for (gi, q) in &method.inputs {
             let base = cat.goods[*gi as usize].base_price;
@@ -485,14 +487,10 @@ fn settle_region(
         let wage_bill = if b.public {
             value_added.max(Fixed::ZERO)
         } else {
-            value_added.max(Fixed::ZERO) * labor_share(&b.group)
+            value_added.max(Fixed::ZERO) * b.labor_share
         };
         let profit = value_added - wage_bill;
-        let weight_total: Fixed = method
-            .jobs
-            .iter()
-            .map(|(pi, n)| WAGE_WEIGHT[*pi as usize] * *n)
-            .sum();
+        let weight_total = method.job_weight;
         if weight_total > Fixed::ZERO {
             for (pi, n) in &method.jobs {
                 wages[*pi as usize] += wage_bill * (WAGE_WEIGHT[*pi as usize] * *n) / weight_total;
@@ -500,7 +498,7 @@ fn settle_region(
         }
         if profit > Fixed::ZERO {
             let to_owners = profit.mul_ratio(1, 2);
-            if b.group == "agriculture" {
+            if b.agriculture {
                 owners_land += to_owners;
             } else {
                 owners_industry += to_owners;
@@ -509,8 +507,6 @@ fn settle_region(
         } else {
             pool += profit;
         }
-        // Next week's run follows this week's sales of the main output, recovering slowly when
-        // everything sold.
         // Plants follow demand for their main output: they ramp up while everything sells and
         // ease off in step with what goes unsold.
         let sold_share = method
@@ -536,8 +532,9 @@ fn settle_region(
         pool += owners_land;
     }
     // Smallholders sell what they grow beyond their own table.
-    if let Some(grain) = cat.good("grain") {
-        let surplus = peasant_surplus(r, subsistence_food(r, m));
+    let staple = subsistence_food(r, m);
+    if let Some(grain) = cat.grain {
+        let surplus = peasant_surplus(r, staple);
         let sold = surplus * v.sell[grain as usize] * v.price[grain as usize];
         wages[prof::PEASANT] += sold;
         gdp += sold;
@@ -589,8 +586,8 @@ fn settle_region(
         pops.push((income, pop.savings - spent + income - saved, satisfaction));
     }
     // Food the jobless grow for themselves counts in GDP at the base price of grain.
-    if let Some(grain) = cat.good("grain") {
-        gdp += subsistence_food(r, m) * cat.goods[grain as usize].base_price;
+    if let Some(grain) = cat.grain {
+        gdp += staple * cat.goods[grain as usize].base_price;
     }
     RegionSettlement {
         pops,
@@ -716,18 +713,7 @@ impl System<GameWorld> for Week {
             .map(|((r, o), l)| {
                 let mi = r.market as usize;
                 let m = &markets[mi];
-                let mut v = super::local::View {
-                    price: m.price.clone(),
-                    buy: m.buy_ratio.clone(),
-                    sell: m.sell_ratio.clone(),
-                };
-                for (li, &lg) in cat.local.iter().enumerate() {
-                    let lg = lg as usize;
-                    v.price[lg] = l[li].price;
-                    v.buy[lg] = l[li].buy;
-                    v.sell[lg] = l[li].sell;
-                }
-                settle_region(cat, m, r, o, wages[mi], &v)
+                settle_region(cat, m, r, o, wages[mi], &View::new(cat, m, l, &[]))
             })
             .collect();
         // World price: average of the market prices weighted by volume.
@@ -764,7 +750,7 @@ impl System<GameWorld> for Week {
         // its balance, minus its share of the world total, so no money is created.
         let mut balance = vec![Fixed::ZERO; markets.len()];
         let mut volume = vec![Fixed::ZERO; markets.len()];
-        let construction_good = cat.good("construction");
+        let construction_good = cat.construction;
         let mut done = Vec::new();
         for (mi, m) in markets.iter().enumerate() {
             for gi in 0..cat.goods.len() {
@@ -792,8 +778,10 @@ impl System<GameWorld> for Week {
                 .iter()
                 .map(|(g, q)| *q * m.buy_ratio[*g as usize] * m.price[*g as usize])
                 .sum();
-            let services: Fixed = (0..cat.goods.len())
-                .filter(|&g| cat.goods[g].category == "public")
+            let services: Fixed = cat
+                .public_goods
+                .iter()
+                .map(|&g| g as usize)
                 .map(|g| m.supply[g] * m.sell_ratio[g] * m.price[g])
                 .sum();
             m.treasury -= goods + services;
@@ -814,10 +802,7 @@ impl System<GameWorld> for Week {
             for gi in 0..cat.goods.len() {
                 let left = m.construction[gi];
                 if left > Fixed::ZERO {
-                    let bought = left
-                        .mul_ratio(1, CONSTRUCTION_WEEKS)
-                        .max(left.min(Fixed::ONE))
-                        * m.buy_ratio[gi];
+                    let bought = construction_this_week(left) * m.buy_ratio[gi];
                     m.construction[gi] = (left - bought).max(Fixed::ZERO);
                     m.pool -= bought * m.price[gi];
                 }
@@ -885,8 +870,8 @@ pub fn plan_pop_public(
     budget: Fixed,
     in_kind: Fixed,
 ) -> Vec<(GoodIx, Fixed)> {
-    let exists = Unlocks::by_year(cat, year).goods;
-    plan_pop(cat, prices, &exists, size, budget, in_kind, None).orders
+    let mixes = NeedMixes::new(cat, prices, &Unlocks::by_year(cat, year).goods);
+    plan_pop(cat, &mixes, size, budget, in_kind, None).orders
 }
 
 /// The goods a pop of `size` living in town (`urban`) or in the countryside would order.
@@ -899,6 +884,6 @@ pub fn plan_pop_where(
     in_kind: Fixed,
     urban: bool,
 ) -> Vec<(GoodIx, Fixed)> {
-    let exists = Unlocks::by_year(cat, year).goods;
-    plan_pop(cat, prices, &exists, size, budget, in_kind, Some(urban)).orders
+    let mixes = NeedMixes::new(cat, prices, &Unlocks::by_year(cat, year).goods);
+    plan_pop(cat, &mixes, size, budget, in_kind, Some(urban)).orders
 }

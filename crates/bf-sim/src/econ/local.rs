@@ -8,7 +8,7 @@ use laplace_schelling::Fixed;
 
 use super::catalogue::{Catalogue, GoodIx};
 use super::state::{Economy, LocalGood, Market, Region};
-use super::{fill, milli};
+use super::{PriceBand, fill, milli};
 use crate::research::{ResearchState, Stage, TechTree};
 
 /// Share of a state's surplus offered to its neighbours each week.
@@ -16,9 +16,11 @@ pub const SPILL: Fixed = milli(500);
 /// A plant that ships goods loses at least this share of its output for the share of its
 /// freight it could not get: without a railway, the mine's ore stays at the mine.
 pub const ACCESS_WEIGHT: Fixed = milli(350);
-const PRICE_SPEED: Fixed = milli(250);
-const PRICE_FLOOR: Fixed = milli(300);
-const PRICE_CEILING: Fixed = milli(3000);
+/// Local prices swing less than the market's: 30%–300% of base.
+const PRICES: PriceBand = PriceBand {
+    floor: milli(300),
+    ceiling: milli(3000),
+};
 
 /// For each market and each local good (`Catalogue::local` order): whether it already flows
 /// across the whole country, like any other good.
@@ -63,25 +65,29 @@ pub struct View {
 }
 
 impl View {
-    /// What the state saw last week: the prices people plan with.
-    pub fn last_week(cat: &Catalogue, m: &Market, r: &Region, national: &[bool]) -> Self {
+    /// The market's figures with `local` (in `Catalogue::local` order) in place of the local
+    /// goods, except those `national` says flow across the whole country.
+    pub fn new(cat: &Catalogue, m: &Market, local: &[LocalGood], national: &[bool]) -> Self {
         let mut v = Self {
             price: m.price.clone(),
             buy: m.buy_ratio.clone(),
             sell: m.sell_ratio.clone(),
         };
-        for (li, &g) in cat.local.iter().enumerate() {
+        for (li, (&g, l)) in cat.local.iter().zip(local).enumerate() {
             if national.get(li).copied().unwrap_or(false) {
                 continue;
             }
-            if let Some(l) = r.local.get(li) {
-                let g = g as usize;
-                v.price[g] = l.price;
-                v.buy[g] = l.buy;
-                v.sell[g] = l.sell;
-            }
+            let g = g as usize;
+            v.price[g] = l.price;
+            v.buy[g] = l.buy;
+            v.sell[g] = l.sell;
         }
         v
+    }
+
+    /// What the state saw last week: the prices people plan with.
+    pub fn last_week(cat: &Catalogue, m: &Market, r: &Region, national: &[bool]) -> Self {
+        Self::new(cat, m, &r.local, national)
     }
 }
 
@@ -177,18 +183,12 @@ pub fn clear(
             leftover[ri][li] = left;
             sold_here[ri][li] = fill(own[ri] + given[ri], s);
             let old = r.local.get(li).map_or(base, |l| l.price);
-            let target = if d <= Fixed::ZERO && s <= Fixed::ZERO {
-                base
-            } else if s + received[ri] <= Fixed::ZERO {
-                base * PRICE_CEILING
-            } else if d <= Fixed::ZERO {
-                base * PRICE_FLOOR
-            } else {
-                let tension = (unmet - left) / d.min(s + received[ri]).max(Fixed::EPSILON);
-                base * (Fixed::ONE + tension * milli(750)).clamp(PRICE_FLOOR, PRICE_CEILING)
-            };
+            // What reaches the state: its own supply and its neighbours'.
+            let at_hand = s + received[ri];
             regions[ri][li] = LocalGood {
-                price: old + (target - old) * PRICE_SPEED,
+                price: PRICES.next(old, base, at_hand, d, || {
+                    (unmet - left) / d.min(at_hand).max(Fixed::EPSILON)
+                }),
                 buy: fill(own[ri] + received[ri], d),
                 sell: sold_here[ri][li],
                 demand: d,
@@ -285,10 +285,9 @@ mod tests {
                 local: true,
                 national_with: None,
             }],
-            buildings: Vec::new(),
-            needs: Vec::new(),
             local: vec![0],
             freight: Some(0),
+            ..Catalogue::default()
         }
     }
 

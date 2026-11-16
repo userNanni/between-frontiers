@@ -66,21 +66,9 @@ impl System<GameWorld> for Yearly {
                     .plants
                     .iter()
                     .map(|p| {
-                        let current = {
-                            let me = &cat.buildings[p.kind as usize].methods[p.method as usize];
-                            let out: Fixed = me
-                                .outputs
-                                .iter()
-                                .map(|(g, q)| *q * view.price[*g as usize])
-                                .sum();
-                            let inp: Fixed = me
-                                .inputs
-                                .iter()
-                                .map(|(g, q)| *q * view.price[*g as usize])
-                                .sum();
-                            (out - inp) * plant_tfp(r, m, &cat.buildings[p.kind as usize])
-                                - wages[r.market as usize] * me.workers
-                        };
+                        let b = &cat.buildings[p.kind as usize];
+                        let (tfp, wage) = (plant_tfp(r, m, b), wages[r.market as usize]);
+                        let current = b.methods[p.method as usize].profit(&view.price, tfp, wage);
                         match best_method(
                             cat,
                             p.kind as usize,
@@ -88,8 +76,8 @@ impl System<GameWorld> for Yearly {
                             r.market as usize,
                             &view.price,
                             &view.buy,
-                            plant_tfp(r, m, &cat.buildings[p.kind as usize]),
-                            wages[r.market as usize],
+                            tfp,
+                            wage,
                         ) {
                             Some((mi, profit))
                                 if mi != p.method
@@ -342,13 +330,10 @@ mod tests {
                 .collect()
         };
         Method {
-            key: String::new(),
             available_from: 1925,
             inputs: q(inputs),
             outputs: q(outputs),
-            jobs: Vec::new(),
-            workers: 0,
-            freight: Fixed::ZERO,
+            ..Method::default()
         }
     }
 
@@ -356,12 +341,8 @@ mod tests {
         Building {
             key: key.into(),
             group: "light_industry".into(),
-            group_ix: 0,
-            resource: None,
-            farm: None,
-            stagnant: false,
-            public: false,
             methods,
+            ..Building::default()
         }
     }
 
@@ -398,9 +379,8 @@ mod tests {
                 building("mill_a", mill()),
                 building("mill_b", mill()),
             ],
-            needs: Vec::new(),
             local: vec![0],
-            freight: None,
+            ..Catalogue::default()
         };
         let region = Region {
             market: 0,

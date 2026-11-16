@@ -329,11 +329,8 @@ pub fn build(cat: &Catalogue, inp: &Inputs) -> Economy {
                 }
             }
             // The state buys goods with 40% of its tax take; the rest pays its servants.
-            for (key, per_mille) in super::week::STATE_BASKET {
-                if let Some(g) = cat
-                    .good(key)
-                    .filter(|g| cat.goods[*g as usize].available_from <= 1925)
-                {
+            for &(g, per_mille) in &cat.state_basket {
+                if cat.goods[g as usize].available_from <= 1925 {
                     final_demand[g as usize] += gdp_week * STATE_GOODS_SHARE * per_mille as f64
                         / 1000.0
                         / base_f[g as usize];
@@ -357,14 +354,9 @@ pub fn build(cat: &Catalogue, inp: &Inputs) -> Economy {
                         population as f64 * per_person.to_f64_lossy() * cover / 52.0;
                 }
             }
-            for (key, share) in super::week::UPKEEP_BASKET
-                .iter()
-                .map(|(k, s)| (*k, *s as f64 / 1000.0))
-            {
-                if let Some(g) = cat.good(key) {
-                    final_demand[g as usize] +=
-                        gdp_week * INVESTMENT_SHARE * share / base_f[g as usize];
-                }
+            for &(g, per_mille) in &cat.upkeep_basket {
+                final_demand[g as usize] +=
+                    gdp_week * INVESTMENT_SHARE * (per_mille as f64 / 1000.0) / base_f[g as usize];
             }
             let mut capacity = vec![0.0f64; nb];
             let mut mines_1925 = vec![0.0f64; nb];
