@@ -407,9 +407,27 @@ Margens de donos diferentes (Øresund: Dinamarca e Suécia; Bab-el-Mandeb: Iême
 França e Itália): **basta um fechar**. Uma bateria, um campo minado ou uma frota de um lado só
 fecham a passagem, como na prática. Teste: a Suécia fecha o Øresund mas não os Belts, e o Báltico
 fica aberto; a Dinamarca fecha os dois, e sobra o canal de Kiel; Dinamarca e Alemanha juntas
-fecham o Báltico. Dois limites do mapa ficam ditos: a Zona do Canal do Panamá não é estado (a
-margem é PAN, e o controle americano de 1925 está só no campo de regime), e Suez sai egípcio (os
-"pontos reservados" britânicos de 1922 também estão só no regime).
+fecham o Báltico. **Detentor por tratado** (pedido do orquestrador): o controle por tratado ou ocupação vem antes
+do dono da margem. O campo opcional `holders` da passagem guarda país, início, fim de referência e
+fonte. O detentor em vigor na data de início é o estado inicial (`Holders::on`), e quem detém fecha
+e abre mesmo sem ser dono da margem. As datas de fim são história, não roteiro: quem tira o
+detentor é a diplomacia da fase 4 (denúncia do tratado, nacionalização, guerra). Em 1925 há dois:
+
+| Passagem | Detentor | Desde | Fim de referência | Fonte |
+|---|---|---|---|---|
+| Suez | GBR | 1922-02-28 | 1956-06 | ponto reservado (a) da declaração de independência egípcia de 1922; tratado anglo-egípcio de 1936; retirada concluída em junho de 1956 (Wikipedia) |
+| Panamá | USA | 1904-02-26 | 1999-12-31 | Tratado Hay–Bunau-Varilla, arts. III e XXIII (Avalon Project); Tratados Torrijos–Carter (Wikipedia) |
+
+Ficaram de fora, pela fonte:
+- **Estreitos turcos:** a comissão internacional de Lausanne (1923–1936) supervisiona, mas não
+  fecha. Pela convenção, a Turquia, dona das margens, só pode deter navios inimigos quando
+  beligerante, e isso está no `regime`.
+- **Gibraltar e Áden:** já são estados próprios do Reino Unido (`GIB` e `YEM-ADEN`), então entram
+  como margem.
+- **Kiel:** segue alemão. Versalhes só obriga a abrir o canal a quem está em paz com a Alemanha.
+
+Teste: em 1925 o Egito sozinho não fecha Suez e o Panamá não fecha o canal; sem os detentores,
+fecham.
 
 **Regime jurídico.** O campo `regime` cita o tratado que governa a passagem, com a fonte, para a
 fase 4 ligar "fechar é romper tratado":

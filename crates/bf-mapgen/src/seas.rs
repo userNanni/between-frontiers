@@ -13,7 +13,9 @@ use std::io::BufWriter;
 use std::path::Path;
 
 use bf_sim::scenario::MapFile;
-use bf_sim::sea::{EdgeDef, Ice, PassageKind, PortDef, SeaMeta, SeasFile, StraitDef, ZoneDef};
+use bf_sim::sea::{
+    EdgeDef, HolderDef, Ice, PassageKind, PortDef, SeaMeta, SeasFile, StraitDef, ZoneDef,
+};
 use geo::{BooleanOps, Coord, LineString, MultiPolygon, Polygon};
 use serde::Deserialize;
 
@@ -64,6 +66,9 @@ pub struct StraitRule {
     /// Treaty that governs passage (reference for phase 4; no behaviour yet).
     #[serde(default)]
     pub regime: Option<String>,
+    /// Countries that hold the passage by treaty or occupation, before the shores' owners.
+    #[serde(default)]
+    pub holders: Vec<HolderDef>,
     pub source: String,
 }
 
@@ -388,6 +393,17 @@ pub fn build(
         if shores.is_empty() {
             errors.push(format!("strait {}: no shore", s.key));
         }
+        for h in &s.holders {
+            if !crate::owners::is_tag(&h.tag)
+                || h.source.trim().is_empty()
+                || h.until.as_deref().is_some_and(|u| u <= h.from.as_str())
+            {
+                errors.push(format!(
+                    "strait {}: holder {} unknown, without a source or with bad dates",
+                    s.key, h.tag
+                ));
+            }
+        }
         straits.push(StraitDef {
             id: si as u16,
             key: s.key.clone(),
@@ -398,6 +414,7 @@ pub fn build(
             shores,
             opened: s.opened.clone(),
             regime: s.regime.clone(),
+            holders: s.holders.clone(),
             source: s.source.clone(),
         });
     }

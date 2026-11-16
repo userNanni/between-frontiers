@@ -99,7 +99,50 @@ pub struct StraitDef {
     pub opened: Option<String>,
     /// Treaty that governs passage, with its source (reference for phase 4).
     pub regime: Option<String>,
+    /// Countries that hold the passage by treaty or occupation, whoever owns the shores.
+    #[serde(default)]
+    pub holders: Vec<HolderDef>,
     pub source: String,
+}
+
+/// A country that holds a passage by treaty or occupation (the British in the Suez Canal zone,
+/// the United States in the Panama Canal Zone). Its dates are history: what is in force on the
+/// start date is the start state ([`Holders::on`]); later, the diplomacy of phase 4 removes or
+/// adds a holder (a treaty denounced, a nationalisation, a war), not the calendar.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct HolderDef {
+    pub tag: String,
+    /// ISO date (a year and month is enough when the source gives no day).
+    pub from: String,
+    #[serde(default)]
+    pub until: Option<String>,
+    pub source: String,
+}
+
+/// Who holds each passage now, apart from the owners of its shores: strait id → countries.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Holders(pub BTreeMap<u16, BTreeSet<String>>);
+
+impl Holders {
+    /// Nobody holds anything: control is the shores' alone.
+    pub fn none() -> Self {
+        Self::default()
+    }
+
+    /// The holders in force on `date` by the recorded history: the start state.
+    pub fn on(graph: &SeaGraph, date: &str) -> Self {
+        let mut held: BTreeMap<u16, BTreeSet<String>> = BTreeMap::new();
+        for s in &graph.file.straits {
+            for h in &s.holders {
+                let started = h.from.as_str() <= date;
+                let ended = h.until.as_deref().is_some_and(|u| u <= date);
+                if started && !ended {
+                    held.entry(s.id).or_default().insert(h.tag.clone());
+                }
+            }
+        }
+        Self(held)
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -206,34 +249,40 @@ impl SeaGraph {
         self.ports.get(&state).map_or(&[], Vec::as_slice)
     }
 
-    /// Who controls each strait: the owners of its shore states, given the owner of each state.
+    /// Who controls a strait: its holders by treaty, when it has any; otherwise the owners of
+    /// its shore states, given the owner of each state.
     pub fn controllers<'a>(
         &self,
         strait: u16,
         owner: impl Fn(u16) -> &'a str,
-    ) -> BTreeSet<&'a str> {
+        holders: &Holders,
+    ) -> BTreeSet<String> {
+        if let Some(held) = holders.0.get(&strait).filter(|h| !h.is_empty()) {
+            return held.clone();
+        }
         self.file.straits[strait as usize]
             .shores
             .iter()
-            .map(|s| owner(*s))
+            .map(|s| owner(*s).to_string())
             .collect()
     }
 
     /// Straits closed when the countries in `closers` close everything they control. Any one
-    /// owner of a shore can close a strait: a battery, a minefield or a fleet on one side is
-    /// enough (`docs/map-pipeline.pt-BR.md`, "Quem controla").
+    /// controller can close a strait: a battery, a minefield or a fleet on one side is enough
+    /// (`docs/map-pipeline.pt-BR.md`, "Quem controla").
     pub fn closed_by<'a>(
         &self,
         closers: &BTreeSet<&str>,
         owner: impl Fn(u16) -> &'a str + Copy,
+        holders: &Holders,
     ) -> BTreeSet<u16> {
         self.file
             .straits
             .iter()
             .filter(|s| {
-                self.controllers(s.id, owner)
+                self.controllers(s.id, owner, holders)
                     .iter()
-                    .any(|c| closers.contains(c))
+                    .any(|c| closers.contains(c.as_str()))
             })
             .map(|s| s.id)
             .collect()
@@ -368,6 +417,7 @@ mod tests {
                 shores: vec![10, 20],
                 opened: None,
                 regime: None,
+                holders: vec![],
                 source: String::new(),
             }],
         })
@@ -393,20 +443,55 @@ mod tests {
     fn either_shore_closes_the_strait() {
         let g = graph();
         let owner = |s: u16| if s == 10 || s == 11 { "AAA" } else { "BBB" };
-        assert_eq!(g.controllers(0, owner), BTreeSet::from(["AAA", "BBB"]));
+        let none = Holders::none();
+        let set = |v: &[&str]| v.iter().map(|t| t.to_string()).collect::<BTreeSet<_>>();
+        assert_eq!(g.controllers(0, owner, &none), set(&["AAA", "BBB"]));
         assert_eq!(
-            g.closed_by(&BTreeSet::from(["BBB"]), owner),
+            g.closed_by(&BTreeSet::from(["BBB"]), owner, &none),
             BTreeSet::from([0])
         );
         assert_eq!(
-            g.closed_by(&BTreeSet::from(["AAA"]), owner),
+            g.closed_by(&BTreeSet::from(["AAA"]), owner, &none),
             BTreeSet::from([0])
         );
-        assert!(g.closed_by(&BTreeSet::from(["CCC"]), owner).is_empty());
+        assert!(
+            g.closed_by(&BTreeSet::from(["CCC"]), owner, &none)
+                .is_empty()
+        );
         // When both shores change hands, control follows the owner.
         let taken = |_: u16| "CCC";
         assert_eq!(
-            g.closed_by(&BTreeSet::from(["CCC"]), taken),
+            g.closed_by(&BTreeSet::from(["CCC"]), taken, &none),
+            BTreeSet::from([0])
+        );
+    }
+
+    #[test]
+    fn a_holder_by_treaty_controls_instead_of_the_shores() {
+        let mut g = graph();
+        g.file.straits[0].holders = vec![HolderDef {
+            tag: "HHH".into(),
+            from: "1904-02".into(),
+            until: Some("1999-12-31".into()),
+            source: String::new(),
+        }];
+        let owner = |_: u16| "AAA";
+        let held = Holders::on(&g, "1925-01-01");
+        assert_eq!(held.0.get(&0).map(|h| h.len()), Some(1));
+        assert!(
+            g.closed_by(&BTreeSet::from(["AAA"]), owner, &held)
+                .is_empty()
+        );
+        assert_eq!(
+            g.closed_by(&BTreeSet::from(["HHH"]), owner, &held),
+            BTreeSet::from([0])
+        );
+        // Before and after the recorded dates, and once phase 4 removes the holder, the shores.
+        assert!(Holders::on(&g, "1900-01-01").0.is_empty());
+        assert!(Holders::on(&g, "2000-01-01").0.is_empty());
+        let removed = Holders::none();
+        assert_eq!(
+            g.closed_by(&BTreeSet::from(["AAA"]), owner, &removed),
             BTreeSet::from([0])
         );
     }

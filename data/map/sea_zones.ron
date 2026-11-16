@@ -16,7 +16,8 @@
 // changes a route or traps a fleet. Wide passages no shore can close (Greenland–Iceland–UK, the
 // Mozambique Channel, the Strait of Sicily, the Taiwan Strait, the Florida Straits, the Yucatán
 // Channel) stay ordinary contacts between zones. `shores` are state keys of assets/map/
-// provinces.ron; who controls a passage is the owner of those states at the time.
+// provinces.ron; who controls a passage is the owner of those states at the time, unless a
+// country holds it by treaty or occupation (`holders`, whose dates are history, not a script).
 #![enable(implicit_some)]
 (
     zones: [
@@ -149,6 +150,8 @@
             source: "shores from assets/map/provinces.ron"),
         (key: "suez_canal", name: "Suez Canal", kind: Canal, zones: ("eastern_mediterranean", "red_sea"),
             shores: ["EGY-EASTERN-DELTA"], opened: "1869-11-17", regime: "Convention of Constantinople (signed 1888-10-29, in force 1904-04-08): passage in war and peace, art. X lets Egypt act for its defence; British reserved points of 1922-02-28; Anglo-Egyptian Treaty of 1936; nationalised 1956-07-26. WP 'Convention of Constantinople'; WP 'Unilateral Declaration of Egyptian Independence'; WP 'Suez Canal'. Opening: WP 'Suez Canal' (Inauguration)",
+            holders: [(tag: "GBR", from: "1922-02-28", until: "1956-06",
+                source: "British troops guard the canal: reserved point (a) of the Unilateral Declaration of Egyptian Independence (1922-02-28), then the Anglo-Egyptian Treaty of 1936; withdrawal completed in June 1956. WP 'Unilateral Declaration of Egyptian Independence' (Text); WP 'Anglo-Egyptian treaty of 1936' (Treaty provisions; Aftermath)")],
             source: "Port Said, Ismailia and Suez are in EGY-EASTERN-DELTA (assets/map/provinces.ron)"),
         (key: "bab_el_mandeb", name: "Bab-el-Mandeb", kind: Strait, zones: ("red_sea", "gulf_of_aden"),
             shores: ["YEM", "YEM-ADEN", "DJI", "ERI"], regime: "No passage treaty; transit passage under UNCLOS Part III from 1994. WP 'Bab-el-Mandeb'",
@@ -185,6 +188,8 @@
             source: "Natural Earth 'Estrecho de Magellanes'; Magallanes in CHL-SUR; the way round Cape Horn stays an open contact"),
         (key: "panama_canal", name: "Panama Canal", kind: Canal, zones: ("caribbean_sea", "north_pacific_east"),
             shores: ["PAN"], opened: "1914-08-15", regime: "Hay–Pauncefote Treaty (1901-11-18) and Hay–Bunau-Varilla Treaty (signed 1903-11-18, in force 1904-02-26): Canal Zone under US control, neutral, US may protect it (art. XXIII); Torrijos–Carter Treaties (signed 1977-09-07, in force 1979-10-01), canal to Panama on 1999-12-31. WP 'Hay–Bunau-Varilla Treaty'; Avalon Project text; WP 'Torrijos–Carter Treaties'. Opening: WP 'Panama Canal' (SS Ancon, 1914-08-15)",
-            source: "the Canal Zone is not a state of the map: the shore is PAN (docs/map-pipeline.pt-BR.md, 'Quem controla')"),
+            holders: [(tag: "USA", from: "1904-02-26", until: "1999-12-31",
+                source: "Canal Zone under United States control, with the rights of a sovereign and the right to protect the canal (Hay–Bunau-Varilla Treaty, in force 1904-02-26, arts. III and XXIII), until the transfer to Panama at noon on 1999-12-31 (Torrijos–Carter Treaties). WP 'Hay–Bunau-Varilla Treaty'; Avalon Project text; WP 'Torrijos–Carter Treaties'")],
+            source: "the Canal Zone is not a state of the map: the shore is PAN and the United States hold it by treaty (docs/map-pipeline.pt-BR.md, 'Quem controla')"),
     ],
 )

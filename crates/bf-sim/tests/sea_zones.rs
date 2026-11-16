@@ -8,7 +8,7 @@ use std::path::PathBuf;
 use std::sync::OnceLock;
 
 use bf_sim::scenario::MapFile;
-use bf_sim::sea::{Ice, Route, RouteOptions, SeaGraph, SeasFile, Season};
+use bf_sim::sea::{Holders, Ice, Route, RouteOptions, SeaGraph, SeasFile, Season};
 
 fn repo_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
@@ -207,32 +207,70 @@ fn murmansk_stays_open_in_winter_and_arkhangelsk_does_not() {
     assert!(route("RUS-LENINGRAD", "GBR-KENT-SUSSEX", &winter).is_none());
 }
 
+fn tags(v: &[&str]) -> BTreeSet<String> {
+    v.iter().map(|t| t.to_string()).collect()
+}
+
 #[test]
 fn control_follows_the_shores_and_either_shore_closes() {
     let (g, map) = load();
     let owner = |s: u16| map.states[s as usize - 1].owner.as_str();
+    let held = Holders::on(g, "1925-01-01");
     let oresund = g.strait("oresund").unwrap();
     let belts = g.strait("great_belt").unwrap();
-    assert_eq!(
-        g.controllers(oresund, owner),
-        BTreeSet::from(["DEN", "SWE"])
-    );
+    assert_eq!(g.controllers(oresund, owner, &held), tags(&["DEN", "SWE"]));
     // Sweden alone closes the Øresund, not the Belts: the Baltic stays open.
     let mut o = open();
-    o.closed = g.closed_by(&BTreeSet::from(["SWE"]), owner);
+    o.closed = g.closed_by(&BTreeSet::from(["SWE"]), owner, &held);
     assert!(o.closed.contains(&oresund) && !o.closed.contains(&belts));
     assert!(route("RUS-LENINGRAD", "GBR-KENT-SUSSEX", &o).is_some());
     // Denmark closes both; the Baltic still has the Kiel Canal, which Germany holds.
-    o.closed = g.closed_by(&BTreeSet::from(["DEN"]), owner);
+    o.closed = g.closed_by(&BTreeSet::from(["DEN"]), owner, &held);
     let via_kiel = route("RUS-LENINGRAD", "GBR-KENT-SUSSEX", &o).unwrap();
     assert!(via_kiel.straits.contains(&g.strait("kiel_canal").unwrap()));
-    o.closed = g.closed_by(&BTreeSet::from(["DEN", "GER"]), owner);
+    o.closed = g.closed_by(&BTreeSet::from(["DEN", "GER"]), owner, &held);
     assert!(route("RUS-LENINGRAD", "GBR-KENT-SUSSEX", &o).is_none());
-    // Control of the Suez Canal in 1925: Egypt, owner of the shore states.
-    assert_eq!(
-        g.controllers(g.strait("suez_canal").unwrap(), owner),
-        BTreeSet::from(["EGY"])
+}
+
+#[test]
+fn a_holder_by_treaty_comes_before_the_shores() {
+    let (g, map) = load();
+    let owner = |s: u16| map.states[s as usize - 1].owner.as_str();
+    let suez = g.strait("suez_canal").unwrap();
+    let panama = g.strait("panama_canal").unwrap();
+    // In 1925 the British hold the Suez Canal zone and the United States the Panama Canal
+    // Zone: Egypt alone does not close Suez, nor Panama its canal.
+    let held = Holders::on(g, "1925-01-01");
+    assert_eq!(g.controllers(suez, owner, &held), tags(&["GBR"]));
+    assert_eq!(g.controllers(panama, owner, &held), tags(&["USA"]));
+    assert!(
+        !g.closed_by(&BTreeSet::from(["EGY"]), owner, &held)
+            .contains(&suez)
     );
+    assert!(
+        g.closed_by(&BTreeSet::from(["GBR"]), owner, &held)
+            .contains(&suez)
+    );
+    assert!(
+        !g.closed_by(&BTreeSet::from(["PAN"]), owner, &held)
+            .contains(&panama)
+    );
+    // Without the holders (phase 4 removed them), the owner of the shore closes.
+    let none = Holders::none();
+    assert!(
+        g.closed_by(&BTreeSet::from(["EGY"]), owner, &none)
+            .contains(&suez)
+    );
+    assert!(
+        g.closed_by(&BTreeSet::from(["PAN"]), owner, &none)
+            .contains(&panama)
+    );
+    // Only these two are held in 1925.
+    assert_eq!(held.0.keys().copied().collect::<Vec<_>>(), {
+        let mut v = vec![suez, panama];
+        v.sort();
+        v
+    });
 }
 
 #[test]
