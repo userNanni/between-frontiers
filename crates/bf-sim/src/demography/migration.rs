@@ -41,9 +41,12 @@ const LAND_MIN_RATIO: Fixed = milli(300);
 /// The diaspora pulls by itself (letters, tickets, a job waiting): at full chain it adds this
 /// to the gap, toward a destination at least `NETWORK_MIN_RATIO` of the origin's income.
 const NETWORK: Fixed = milli(500);
-const NETWORK_MIN_RATIO: Fixed = milli(250);
-/// A wave needs at least this pull toward its destination.
+const NETWORK_MIN_RATIO: Fixed = milli(200);
+/// A wave needs at least this pull toward its destination, and a road already open: pioneers
+/// there (`WAVE_MIN_CHAIN` of the full chain, 0.5 % of the origin's people) or a passage a law
+/// pays. Mass migrations follow the few who went first.
 const WAVE_MIN_PULL: Fixed = milli(250);
+const WAVE_MIN_CHAIN: Fixed = milli(100);
 
 /// Prepaid passage: a diaspora of `PREPAID_SHARE` per mille of the origin's people, on a
 /// road, pays the ticket for everyone who takes it (relatives and labour contractors sent
@@ -192,6 +195,19 @@ fn stock(diaspora: &[Diaspora], nt: usize) -> std::collections::BTreeMap<(u16, u
     out
 }
 
+/// How far the road from `i` to `j` is a chain, 0–1: the diaspora on it against
+/// `CHAIN_SHARE` of the origin's people (how many families there have someone on that road).
+fn chain_share(
+    lands: &[Land],
+    abroad: &std::collections::BTreeMap<(u16, u16), i64>,
+    i: usize,
+    j: usize,
+) -> Fixed {
+    let there = abroad.get(&(i as u16, j as u16)).copied().unwrap_or(0);
+    let origin = lands[i].people;
+    Fixed::from_ratio(there.min(origin), (origin * CHAIN_SHARE / 1000).max(1)).min(Fixed::ONE)
+}
+
 /// Share of a law's value above the open flow (1000 per mille) that pays the passage: an
 /// immigration law above 1000 is the destination paying tickets, an emigration law above 1000
 /// the origin paying them; 0 to 1.
@@ -325,6 +341,10 @@ pub(super) fn plan(
         (total, cause)
     };
     let open_door = |i: usize, j: usize| laws[j / 2].0 >= DOOR && laws[i / 2].1 >= DOOR;
+    let road_open = |i: usize, j: usize| {
+        let paid = subsidy(laws[j / 2].0) + subsidy(laws[i / 2].1);
+        paid > Fixed::ZERO || chain_share(&lands, &abroad, i, j) >= WAVE_MIN_CHAIN
+    };
     let mut wave_in = vec![0i64; nt];
     let mut wave_flows: Vec<(usize, i64)> = Vec::new(); // index into out.waves
     let mut has_wave = vec![false; nt];
@@ -371,7 +391,12 @@ pub(super) fn plan(
         };
         let dest = pulls_of[i]
             .iter()
-            .filter(|&&(j, p)| p >= WAVE_MIN_PULL && open_door(i, j) && lands[j].jobs >= WAVE_JOBS)
+            .filter(|&&(j, p)| {
+                p >= WAVE_MIN_PULL
+                    && open_door(i, j)
+                    && road_open(i, j)
+                    && lands[j].jobs >= WAVE_JOBS
+            })
             .max_by(|a, b| {
                 (a.1 * size(a.0))
                     .cmp(&(b.1 * size(b.0)))
@@ -592,11 +617,7 @@ fn pull(
     } else {
         Fixed::ZERO
     };
-    let there = abroad.get(&(i as u16, j as u16)).copied().unwrap_or(0);
-    // Measured against the origin: how many families there have someone on that road.
-    let chain_share =
-        Fixed::from_ratio(there.min(a.people), (a.people * CHAIN_SHARE / 1000).max(1))
-            .min(Fixed::ONE);
+    let chain_share = chain_share(lands, abroad, i, j);
     let network = if ratio >= NETWORK_MIN_RATIO {
         chain_share * NETWORK
     } else {
