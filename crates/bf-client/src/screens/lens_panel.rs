@@ -10,7 +10,7 @@ use crate::map::MapView;
 use crate::map::lens::{self, Lens};
 use crate::world::World;
 
-const WIDTH: f32 = 330.0;
+const WIDTH: f32 = 400.0;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Family {
@@ -18,6 +18,7 @@ enum Family {
     Resources,
     Climate,
     Farms,
+    Infrastructure,
 }
 
 fn family(lens: Lens) -> Family {
@@ -26,6 +27,7 @@ fn family(lens: Lens) -> Family {
         Lens::Resource(_) => Family::Resources,
         Lens::Climate => Family::Climate,
         Lens::Farm(_) => Family::Farms,
+        Lens::Local(_) => Family::Infrastructure,
     }
 }
 
@@ -36,6 +38,7 @@ pub fn show(ui: &mut Ui, screen: Rect, i18n: &I18n, world: &World, view: &mut Ma
     let list: &[&str] = match fam {
         Family::Resources => RESOURCES,
         Family::Farms => FARMS,
+        Family::Infrastructure => &lens::LOCAL_GOODS,
         _ => &[],
     };
     let rows = list.len().div_ceil(2) as f32;
@@ -68,6 +71,7 @@ pub fn show(ui: &mut Ui, screen: Rect, i18n: &I18n, world: &World, view: &mut Ma
         (Family::Resources, i18n.tr("lens-resources")),
         (Family::Climate, i18n.tr("lens-climate")),
         (Family::Farms, i18n.tr("lens-farms")),
+        (Family::Infrastructure, i18n.tr("lens-infrastructure")),
     ];
     if bf_ui_kit::segmented(ui, &mut f, &options) {
         next = match f {
@@ -77,12 +81,13 @@ pub fn show(ui: &mut Ui, screen: Rect, i18n: &I18n, world: &World, view: &mut Ma
             }
             Family::Climate => Lens::Climate,
             Family::Farms => Lens::Farm(0),
+            Family::Infrastructure => Lens::Local(lens::LOCAL_DEFAULT),
         };
     }
 
     if !list.is_empty() {
         let selected = match current {
-            Lens::Resource(i) | Lens::Farm(i) => i,
+            Lens::Resource(i) | Lens::Farm(i) | Lens::Local(i) => i,
             _ => usize::MAX,
         };
         let col_w = (inner.width() - space::SM) / 2.0;
@@ -99,6 +104,7 @@ pub fn show(ui: &mut Ui, screen: Rect, i18n: &I18n, world: &World, view: &mut Ma
             let resp = ui.interact(r, id, Sense::click());
             let label = match fam {
                 Family::Resources => i18n.tr(&format!("resource-{key}")),
+                Family::Infrastructure => i18n.tr(&format!("good-{key}")),
                 _ => i18n.tr(&format!("building-{key}")),
             };
             resp.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, label.clone()));
@@ -128,6 +134,7 @@ pub fn show(ui: &mut Ui, screen: Rect, i18n: &I18n, world: &World, view: &mut Ma
             {
                 next = match fam {
                     Family::Resources => Lens::Resource(i),
+                    Family::Infrastructure => Lens::Local(i),
                     _ => Lens::Farm(i),
                 };
             }
@@ -186,6 +193,21 @@ fn legend(ui: &mut Ui, i18n: &I18n, current: Lens, world: &World) {
     if current == Lens::Political {
         return;
     }
+    if let Lens::Local(_) = current {
+        if world.live_local.is_empty() {
+            bf_ui_kit::small(ui, &i18n.tr("lens-no-data"));
+            return;
+        }
+        bf_ui_kit::caption(ui, &i18n.tr("legend-local"));
+        ramp(
+            ui,
+            lens::met_color(0.0),
+            lens::met_color(1.0),
+            &i18n.tr("legend-unmet"),
+            &i18n.tr("legend-met"),
+        );
+        return;
+    }
     if !world.has_resources() {
         bf_ui_kit::small(ui, &i18n.tr("lens-no-data"));
         return;
@@ -234,7 +256,7 @@ fn legend(ui: &mut Ui, i18n: &I18n, current: Lens, world: &World) {
                 );
             }
         }
-        Lens::Political => {}
+        Lens::Political | Lens::Local(_) => {}
     }
 }
 
@@ -248,6 +270,25 @@ pub fn tooltip_line(
 ) -> Option<String> {
     match lens {
         Lens::Political => None,
+        Lens::Local(i) => {
+            let v = world.live_local.get(state)?.get(i).copied()?;
+            if v < 0.0 {
+                return None;
+            }
+            Some(i18n.tr_args(
+                "tip-local",
+                &[
+                    (
+                        "good",
+                        Arg::String(i18n.tr(&format!("good-{}", lens::LOCAL_GOODS[i]))),
+                    ),
+                    (
+                        "share",
+                        Arg::String(format!("{}%", i18n.decimal(f64::from(v) * 100.0, 0))),
+                    ),
+                ],
+            ))
+        }
         Lens::Resource(i) => {
             let key = RESOURCES[i];
             let d = world.deposits[state]

@@ -216,6 +216,11 @@ legend-high = High
 tip-deposit = { $resource }: deposit of size { $size } of 5
 tip-climate = { $climate } climate on { $share } of the land
 tip-farm = { $farm }: suitability { $value }
+lens-infrastructure = Infra
+legend-local = Demand met in the state
+legend-unmet = Short
+legend-met = Met
+tip-local = { $good }: { $share } of demand met
 
 ## Research
 bar-research = Research (R)

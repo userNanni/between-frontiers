@@ -44,6 +44,16 @@ para comparar sistemas e ordens de grandeza. Nada dele entra no projeto: dado, t
 | Perspectiva econômica | sistema "Economic Outlook" | preços e utilização por mercado, sem indicador agregado | plano: ciclo econômico com confiança e investimento |
 | Corrupção | sistema próprio | não há | fase 3 |
 
+## Fase 3b: infraestrutura
+
+| | Victoria 3 e CWE | Nós |
+|---|---|---|
+| Unidade | pontos de infraestrutura por estado, dados pelas ferrovias e portos; os edifícios gastam pontos e, sem eles, o acesso ao mercado cai | transporte e eletricidade como bens do estado, com preço próprio, frete pago pelas minas, fazendas e fábricas, e parte da sobra passando às vizinhas por terra |
+| Eletricidade | bem do mercado nacional | do estado até a rede nacional (tecnologia); depois, do país |
+| Quem constrói | o jogador e o investimento | o investimento, pelo preço do estado, e a obra pública, onde a demanda não é atendida |
+
+O CWE herda a infraestrutura do Victoria 3; não há o que ele faça a mais nisso.
+
 ## Fase 2: pesquisa
 
 | | CWE | Nós |

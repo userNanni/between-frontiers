@@ -228,6 +228,11 @@ legend-high = Alta
 tip-deposit = { $resource }: jazida de tamanho { $size } de 5
 tip-climate = Clima { $climate } em { $share } do território
 tip-farm = { $farm }: aptidão { $value }
+lens-infrastructure = Infra
+legend-local = Demanda atendida no estado
+legend-unmet = Falta
+legend-met = Atendida
+tip-local = { $good }: { $share } da demanda atendida
 
 ## Pesquisa
 bar-research = Pesquisa (R)

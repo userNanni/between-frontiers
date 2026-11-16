@@ -18,6 +18,10 @@ pub struct Good {
     pub base_price: Fixed,
     pub available_from: i32,
     pub tradable: bool,
+    /// Clears state by state (`GoodDef::local`).
+    pub local: bool,
+    /// Technology key that makes it flow across the country (`GoodDef::national_with`).
+    pub national_with: Option<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -30,6 +34,9 @@ pub struct Method {
     /// Workers per level, by profession index.
     pub jobs: Vec<(u8, i64)>,
     pub workers: i64,
+    /// Transport the output needs to reach its buyers, per level per week, already among the
+    /// inputs: a plant without it in its state reaches the market only in part.
+    pub freight: Fixed,
 }
 
 #[derive(Clone, Debug)]
@@ -66,7 +73,22 @@ pub struct Catalogue {
     pub goods: Vec<Good>,
     pub buildings: Vec<Building>,
     pub needs: Vec<Need>,
+    /// Goods that clear state by state, in catalogue order.
+    pub local: Vec<GoodIx>,
+    /// The good freight is paid in (transport).
+    pub freight: Option<GoodIx>,
 }
+
+/// Freight per building group: transport bought per unit of output value at base prices, per
+/// mille. Bulk (ore, grain, steel) costs more to move than its value suggests; services and
+/// power, nothing (power moves by wire, and the wire is the grid).
+pub const FREIGHT: [(&str, i64); 5] = [
+    ("agriculture", 40),
+    ("extraction", 60),
+    ("heavy_industry", 40),
+    ("light_industry", 25),
+    ("military_industry", 25),
+];
 
 #[derive(Debug)]
 pub struct CatalogueError(pub String);
@@ -128,6 +150,7 @@ impl Catalogue {
                         .collect::<Result<_, CatalogueError>>()?,
                     workers: jobs.iter().map(|(_, n)| n).sum(),
                     jobs,
+                    freight: Fixed::ZERO,
                 });
             }
             bs.push(Building {
@@ -170,20 +193,59 @@ impl Catalogue {
                 })
             })
             .collect::<Result<_, CatalogueError>>()?;
+        let goods: Vec<Good> = goods
+            .goods
+            .iter()
+            .map(|g| Good {
+                key: g.key.clone(),
+                category: g.category.clone(),
+                base_price: Fixed::from_int(i64::from(g.base_price)),
+                available_from: g.available_from,
+                tradable: g.tradable,
+                local: g.local,
+                national_with: g.national_with.clone(),
+            })
+            .collect();
+        let freight = goods
+            .iter()
+            .position(|g| g.key == "transportation")
+            .map(|i| i as GoodIx);
+        // Freight joins the inputs of the plants that ship goods.
+        if let Some(fg) = freight {
+            let fprice = goods[fg as usize].base_price;
+            for b in &mut bs {
+                let Some(&(_, per_mille)) = FREIGHT.iter().find(|(g, _)| *g == b.group) else {
+                    continue;
+                };
+                for m in &mut b.methods {
+                    let shipped: Fixed = m
+                        .outputs
+                        .iter()
+                        .filter(|(g, _)| goods[*g as usize].tradable)
+                        .map(|(g, q)| *q * goods[*g as usize].base_price)
+                        .sum();
+                    let q = shipped.mul_ratio(per_mille, 1000) / fprice;
+                    if q <= Fixed::ZERO {
+                        continue;
+                    }
+                    m.freight = q;
+                    match m.inputs.iter_mut().find(|(g, _)| *g == fg) {
+                        Some(e) => e.1 += q,
+                        None => m.inputs.push((fg, q)),
+                    }
+                }
+            }
+        }
+        let local = (0..goods.len())
+            .filter(|&g| goods[g].local)
+            .map(|g| g as GoodIx)
+            .collect();
         Ok(Self {
-            goods: goods
-                .goods
-                .iter()
-                .map(|g| Good {
-                    key: g.key.clone(),
-                    category: g.category.clone(),
-                    base_price: Fixed::from_int(i64::from(g.base_price)),
-                    available_from: g.available_from,
-                    tradable: g.tradable,
-                })
-                .collect(),
+            goods,
             buildings: bs,
             needs: ns,
+            local,
+            freight,
         })
     }
 

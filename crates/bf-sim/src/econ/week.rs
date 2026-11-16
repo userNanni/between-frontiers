@@ -98,6 +98,8 @@ pub struct WeekChanges {
     state_orders: Vec<Vec<(GoodIx, Fixed)>>,
     regions: Vec<RegionSettlement>,
     world_price: Vec<Fixed>,
+    /// Local goods of each region this week.
+    local: Vec<Vec<super::state::LocalGood>>,
 }
 
 /// Cost-weighted choice among the goods that meet a need: shares fall with the square of the
@@ -282,9 +284,16 @@ impl MulDivFloor for i64 {
     }
 }
 
-fn region_orders(cat: &Catalogue, econ: &Economy, r: &Region, exists: &[bool]) -> RegionOrders {
+fn region_orders(
+    cat: &Catalogue,
+    econ: &Economy,
+    r: &Region,
+    exists: &[bool],
+    national: &[bool],
+) -> RegionOrders {
     let g = cat.goods.len();
     let m = &econ.markets[r.market as usize];
+    let view = super::local::View::last_week(cat, m, r, national);
     let mut demand = vec![Fixed::ZERO; g];
     let mut supply = vec![Fixed::ZERO; g];
     for p in &r.plants {
@@ -320,7 +329,7 @@ fn region_orders(cat: &Catalogue, econ: &Economy, r: &Region, exists: &[bool]) -
             let own_food = staple.mul_ratio(pop.size, total);
             let plan = plan_pop(
                 cat,
-                &m.price,
+                &view.price,
                 exists,
                 pop.size,
                 budget.max(Fixed::ZERO),
@@ -430,6 +439,7 @@ fn settle_region(
     r: &Region,
     orders: &RegionOrders,
     wage: Fixed,
+    v: &super::local::View,
 ) -> RegionSettlement {
     let mut wages = [Fixed::ZERO; P];
     let mut owners_industry = Fixed::ZERO;
@@ -454,12 +464,16 @@ fn settle_region(
         let mut loss = Fixed::ZERO;
         for (gi, q) in &method.inputs {
             let base = cat.goods[*gi as usize].base_price;
-            let bought = *q * scale * m.buy_ratio[*gi as usize];
-            cost += bought * m.price[*gi as usize];
+            let bought = *q * scale * v.buy[*gi as usize];
+            cost += bought * v.price[*gi as usize];
             cost_base += bought * base;
             if output_value > Fixed::ZERO {
-                let share = fill(*q * base, output_value);
-                loss += share * (Fixed::ONE - m.buy_ratio[*gi as usize]);
+                let mut share = fill(*q * base, output_value);
+                // Freight: what the plant cannot ship it does not sell.
+                if Some(*gi) == cat.freight && method.freight > Fixed::ZERO {
+                    share = share.max(super::local::ACCESS_WEIGHT);
+                }
+                loss += share * (Fixed::ONE - v.buy[*gi as usize]);
             }
         }
         let input_ratio = (Fixed::ONE - loss).max(Fixed::ZERO);
@@ -467,8 +481,8 @@ fn settle_region(
         let mut revenue = Fixed::ZERO;
         let mut revenue_base = Fixed::ZERO;
         for (gi, q) in &method.outputs {
-            let sold = *q * out_scale * m.sell_ratio[*gi as usize];
-            revenue += sold * m.price[*gi as usize];
+            let sold = *q * out_scale * v.sell[*gi as usize];
+            revenue += sold * v.price[*gi as usize];
             revenue_base += sold * cat.goods[*gi as usize].base_price;
         }
         gdp += revenue_base - cost_base;
@@ -508,7 +522,7 @@ fn settle_region(
         let sold_share = method
             .outputs
             .first()
-            .map_or(Fixed::ONE, |(gi, _)| m.sell_ratio[*gi as usize]);
+            .map_or(Fixed::ONE, |(gi, _)| v.sell[*gi as usize]);
         let utilization = if sold_share >= milli(990) {
             (p.utilization + milli(50)).min(Fixed::ONE)
         } else {
@@ -530,7 +544,7 @@ fn settle_region(
     // Smallholders sell what they grow beyond their own table.
     if let Some(grain) = cat.good("grain") {
         let surplus = peasant_surplus(r, subsistence_food(r, m));
-        let sold = surplus * m.sell_ratio[grain as usize] * m.price[grain as usize];
+        let sold = surplus * v.sell[grain as usize] * v.price[grain as usize];
         wages[prof::PEASANT] += sold;
         gdp += sold;
     }
@@ -554,9 +568,9 @@ fn settle_region(
                 let mut fulfilled = Fixed::ZERO;
                 let mut wanted = Fixed::ZERO;
                 for (gi, q) in &plan.orders {
-                    let money = *q * m.price[*gi as usize];
+                    let money = *q * v.price[*gi as usize];
                     wanted += money;
-                    let got = money * m.buy_ratio[*gi as usize];
+                    let got = money * v.buy[*gi as usize];
                     spent += got;
                     fulfilled += got;
                 }
@@ -614,10 +628,16 @@ impl System<GameWorld> for Week {
         let econ = &world.econ;
         let unlocks = Unlocks::new(cat, ctx.date.year, self.tree.as_deref(), &world.research);
         let exists = &unlocks.goods;
+        let national = super::local::national(
+            cat,
+            self.tree.as_deref(),
+            &world.research,
+            econ.markets.len(),
+        );
         let orders: Vec<RegionOrders> = econ
             .regions
             .par_iter()
-            .map(|r| region_orders(cat, econ, r, exists))
+            .map(|r| region_orders(cat, econ, r, exists, &national[r.market as usize]))
             .collect();
         let g = cat.goods.len();
         let mut demand = vec![vec![Fixed::ZERO; g]; econ.markets.len()];
@@ -627,6 +647,21 @@ impl System<GameWorld> for Week {
             for gi in 0..g {
                 demand[mi][gi] += o.demand[gi];
                 supply[mi][gi] += o.supply[gi];
+            }
+        }
+        // Local goods clear state by state first; the country-wide buyers get what is left.
+        let region_demand: Vec<&[Fixed]> = orders.iter().map(|o| &o.demand[..]).collect();
+        let region_supply: Vec<&[Fixed]> = orders.iter().map(|o| &o.supply[..]).collect();
+        let mut cleared = super::local::clear(cat, econ, &region_demand, &region_supply, &national);
+        for (ri, (r, o)) in econ.regions.iter().zip(&orders).enumerate() {
+            let mi = r.market as usize;
+            for (li, &lg) in cat.local.iter().enumerate() {
+                if national[mi][li] {
+                    continue;
+                }
+                let lg = lg as usize;
+                demand[mi][lg] -= o.demand[lg];
+                supply[mi][lg] += cleared.leftover[ri][li] - o.supply[lg];
             }
         }
         // The world pool: each market offers part of its surplus and seeks part of its shortage;
@@ -660,7 +695,7 @@ impl System<GameWorld> for Week {
                 };
             }
         }
-        let (markets, state_orders): (Vec<Market>, Vec<_>) = econ
+        let (mut markets, state_orders): (Vec<Market>, Vec<_>) = econ
             .markets
             .iter()
             .enumerate()
@@ -668,14 +703,37 @@ impl System<GameWorld> for Week {
                 clear_market(cat, m.clone(), &demand[mi], &supply[mi], &trade[mi], exists)
             })
             .unzip();
+        super::local::finish(
+            cat,
+            econ,
+            &mut markets,
+            &mut cleared,
+            &region_demand,
+            &region_supply,
+            &national,
+        );
+        let local = cleared.regions;
         let wages = super::monthly::market_wages(econ);
         let regions: Vec<RegionSettlement> = econ
             .regions
             .par_iter()
             .zip(orders.par_iter())
-            .map(|(r, o)| {
+            .zip(local.par_iter())
+            .map(|((r, o), l)| {
                 let mi = r.market as usize;
-                settle_region(cat, &markets[mi], r, o, wages[mi])
+                let m = &markets[mi];
+                let mut v = super::local::View {
+                    price: m.price.clone(),
+                    buy: m.buy_ratio.clone(),
+                    sell: m.sell_ratio.clone(),
+                };
+                for (li, &lg) in cat.local.iter().enumerate() {
+                    let lg = lg as usize;
+                    v.price[lg] = l[li].price;
+                    v.buy[lg] = l[li].buy;
+                    v.sell[lg] = l[li].sell;
+                }
+                settle_region(cat, m, r, o, wages[mi], &v)
             })
             .collect();
         // World price: average of the market prices weighted by volume.
@@ -700,6 +758,7 @@ impl System<GameWorld> for Week {
             state_orders,
             regions,
             world_price,
+            local,
         }
     }
 
@@ -815,6 +874,9 @@ impl System<GameWorld> for Week {
                 .max(-m.treasury.max(Fixed::ZERO));
             m.treasury += change;
             m.budget.issued = change;
+        }
+        for (r, l) in econ.regions.iter_mut().zip(changes.local) {
+            r.local = l;
         }
         for (r, s) in econ.regions.iter_mut().zip(changes.regions) {
             let m = &mut markets[r.market as usize];

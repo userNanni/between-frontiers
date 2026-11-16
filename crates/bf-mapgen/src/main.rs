@@ -260,6 +260,14 @@ fn build_states(
         &state_of_id,
         grouping.states.len(),
     );
+    let mut neighbours = states::neighbours(
+        buf,
+        frame.width,
+        frame.height,
+        &state_of_id,
+        grouping.states.len(),
+    )
+    .into_iter();
     let tiny: BTreeSet<&str> = rules.tiny.iter().map(String::as_str).collect();
     let mut errors = Vec::new();
     let out: Vec<StateDef> = grouping
@@ -298,6 +306,7 @@ fn build_states(
                 center,
                 area_km2: round_to(area, 10.0) as f32,
                 provinces: g.members.iter().map(|&i| defs[i].id).collect(),
+                neighbours: neighbours.next().unwrap_or_default(),
             }
         })
         .collect();

@@ -66,9 +66,10 @@ por mês.
   número de alunos sem vaga.
 - **Saúde:** hospital (`hospital`), 300 médicos e enfermeiros e 650 outros funcionários. A
   necessidade é US$ 200 de atendimento por pessoa por ano; mesma regra de lacuna.
-- **Infraestrutura:** ferrovia, transporte rodoviário e usina elétrica, só quando o produto
-  (transporte, eletricidade) está mais de 10 % acima do preço-base; vai para as regiões com mais
-  gente por nível existente. Pronta, vira um nível comum (a estatal com lucro para o tesouro fica
+- **Infraestrutura:** ferrovia, transporte rodoviário e usina elétrica. Transporte e eletricidade
+  são bens do estado (`infrastructure.pt-BR.md`): a obra vai para os estados com mais demanda sem
+  atender. O que já corre pela rede nacional segue a regra antiga: só com o produto mais de 10 %
+  acima do preço-base, nas regiões com mais gente por nível existente. Pronta, vira um nível comum (a estatal com lucro para o tesouro fica
   para a fase de política).
 - **Escola e hospital não existiam no catálogo**: são os edifícios mínimos desta fatia, com a
   categoria de bem `public` (ensino, atendimento hospitalar).

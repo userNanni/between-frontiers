@@ -156,6 +156,13 @@ fn walk_through_the_screens() {
     h.run_steps(2);
     h.key_press(egui::Key::Escape);
     h.run_steps(2);
+    // Transport met in each state, live from the simulation.
+    h.get_by_label("Infra").click();
+    h.run_steps(3);
+    shot(&mut h, "06j-modo-transporte");
+    h.get_by_label("Político").click();
+    h.run_steps(2);
+    h.run_steps(2);
     h.get_by_label("Menu (Esc)").click();
     h.run_steps(2);
     h.get_by_label("Salvar").click();

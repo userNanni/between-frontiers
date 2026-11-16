@@ -88,6 +88,9 @@ pub struct World {
     /// Sorted by id: `states[i].def.id == i + 1`.
     pub states: Vec<State>,
     pub map: MapFile,
+    /// Live from the simulation: share of the demand for transport and power met in each state
+    /// (index into [`World::states`]), `-1` where unknown. Empty outside a game.
+    pub live_local: std::sync::Arc<Vec<[f32; 2]>>,
 }
 
 #[derive(Debug)]
@@ -252,6 +255,7 @@ impl World {
             provinces,
             states,
             map,
+            live_local: std::sync::Arc::default(),
         }
     }
 

@@ -82,6 +82,10 @@ pub struct StateDef {
     pub area_km2: f32,
     /// Province ids, ascending.
     pub provinces: Vec<u16>,
+    /// States sharing a land border with this one (ids, ascending): what a railway or a power
+    /// line can reach without the sea.
+    #[serde(default)]
+    pub neighbours: Vec<u16>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -198,6 +202,7 @@ mod tests {
                 center: (1.5, 2.5),
                 area_km2: 43_750.0,
                 provinces: vec![1],
+                neighbours: Vec::new(),
             }],
         }
     }

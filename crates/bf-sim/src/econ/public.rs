@@ -233,13 +233,21 @@ fn market_works(
             }
         }
     }
+    let national = unlocks.tech.map_or_else(
+        || vec![false; cat.local.len()],
+        |(tree, research)| {
+            super::local::national(cat, Some(tree), research, econ.markets.len()).swap_remove(mi)
+        },
+    );
     for &kind in &kinds.infrastructure {
         let b = &cat.buildings[kind];
         let Some((good, _)) = b.methods[0].outputs.first() else {
             continue;
         };
         let g = *good as usize;
-        if m.price[g] < cat.goods[g].base_price * SCARCE_PRICE {
+        // A good that clears state by state is built where the state lacks it.
+        let local = super::local::local_output(cat, kind).filter(|&li| !national[li]);
+        if local.is_none() && m.price[g] < cat.goods[g].base_price * SCARCE_PRICE {
             continue;
         }
         let Some(method) = (0..b.methods.len())
@@ -258,7 +266,17 @@ fn market_works(
                 .map(|p| p.levels)
                 .sum::<i64>()
                 + queued(ri, kind);
-            let score = Fixed::from_int(r.population() / 1000) / (levels + 1);
+            let score = match local {
+                Some(li) => {
+                    let Some(l) = r.local.get(li) else { continue };
+                    let unmet = l.demand * (Fixed::ONE - l.buy);
+                    if unmet <= Fixed::ZERO {
+                        continue;
+                    }
+                    unmet * cat.goods[g].base_price / (queued(ri, kind) + 1)
+                }
+                None => Fixed::from_int(r.population() / 1000) / (levels + 1),
+            };
             cands[INFRASTRUCTURE].push((score, ri, kind, method as u8, Fixed::ZERO));
         }
     }

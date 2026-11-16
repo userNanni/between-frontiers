@@ -61,6 +61,36 @@ pub struct Region {
     /// Productivity at the start; growth since then reaches services only in part.
     #[serde(default)]
     pub tfp_start: Fixed,
+    /// Id of the map state this region is (`StateDef::id`).
+    #[serde(default)]
+    pub state: u16,
+    /// Neighbouring regions of the same market (indices), from the map's land borders.
+    #[serde(default)]
+    pub neighbours: Vec<u32>,
+    /// Goods that clear here (`Catalogue::local` order). Empty until the first week.
+    #[serde(default)]
+    pub local: Vec<LocalGood>,
+}
+
+/// A good made and used in the state: transport, electricity before the national grid.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LocalGood {
+    pub price: Fixed,
+    /// Share of the state's demand met last week, from its own plants and its neighbours.
+    pub buy: Fixed,
+    /// Share of the state's supply sold last week.
+    pub sell: Fixed,
+    /// Demand last week.
+    pub demand: Fixed,
+}
+
+impl HashState for LocalGood {
+    fn hash_state(&self, h: &mut StateHasher) {
+        self.price.hash_state(h);
+        self.buy.hash_state(h);
+        self.sell.hash_state(h);
+        self.demand.hash_state(h);
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -300,6 +330,12 @@ impl HashState for Region {
         self.subsistence.hash_state(h);
         self.tfp.hash_state(h);
         self.tfp_start.hash_state(h);
+        h.write_u16(self.state);
+        h.write_len(self.neighbours.len());
+        for n in &self.neighbours {
+            h.write_i64(i64::from(*n));
+        }
+        self.local.hash_state(h);
     }
 }
 
