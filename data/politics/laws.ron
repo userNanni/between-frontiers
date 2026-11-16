@@ -40,6 +40,9 @@
         (key: "policing", category: "state"),
         (key: "civil_service", category: "state"),
         (key: "conscription", category: "state"),
+        // The form of government: who rules. In force on the start date from `government` in
+        // countries.ron unless the scenario's laws name one.
+        (key: "government", category: "state"),
         // ---- Empire ----
         (key: "colonial_rule", category: "empire", colonial: true),
         (key: "colonial_labour", category: "empire", colonial: true),
@@ -279,6 +282,30 @@
         (key: "volunteer_army", group: "conscription", effects: [("conscription", 20)]),
         (key: "selective_service", group: "conscription", effects: [("conscription", 300)]),
         (key: "universal_service", group: "conscription", effects: [("conscription", 800)]),
+
+        // ---- government: the regime adds to the repression, censorship and church privilege of
+        // the policing, press and religion laws. Parliaments and presidencies add nothing. ----
+        (key: "parliamentary_monarchy", group: "government", effects: []),
+        (key: "parliamentary_republic", group: "government", effects: []),
+        (key: "presidential_republic", group: "government", effects: []),
+        (key: "free_city", group: "government", effects: []),
+        (key: "constitutional_monarchy", group: "government", effects: [
+            // The crown appoints the ministers and can rule by decree.
+            ("repression", 50),
+        ]),
+        (key: "absolute_monarchy", group: "government", effects: [
+            ("repression", 150), ("church_privilege", 200),
+        ]),
+        (key: "theocracy", group: "government", effects: [
+            ("church_privilege", 500), ("censorship", 200),
+        ]),
+        (key: "colonial_administration", group: "government", effects: [("repression", 150)]),
+        (key: "military_dictatorship", group: "government", effects: [
+            ("repression", 300), ("censorship", 150), ("conscription", 100),
+        ]),
+        (key: "one_party_state", group: "government", effects: [
+            ("repression", 300), ("censorship", 300), ("state_media", 300),
+        ]),
 
         // ---- colonial_rule (colonial regions only) ----
         (key: "company_rule", group: "colonial_rule", effects: [

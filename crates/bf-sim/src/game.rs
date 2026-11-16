@@ -223,6 +223,7 @@ impl Command<GameWorld> for GameCommand {
                         for (r, v) in b.tax_rates.iter_mut().zip(rates) {
                             *r = Fixed::from_raw(i64::from(*v)).min(crate::econ::public::MAX_TAX);
                         }
+                        crate::econ::public::cap_taxes(m);
                     }
                     None => {
                         b.tax_auto = true;
@@ -230,6 +231,7 @@ impl Command<GameWorld> for GameCommand {
                         for (r, v) in b.tax_rates.iter_mut().zip(base) {
                             *r = (v * b.adjust).min(crate::econ::public::MAX_TAX);
                         }
+                        crate::econ::public::cap_taxes(m);
                     }
                 }
             }
@@ -353,7 +355,7 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
     }) = rules
     {
         if let Some(p) = politics {
-            s.add(crate::polity::PoliticsSystem::new(p));
+            s.add(crate::polity::PoliticsSystem::new(p, Arc::clone(&cat)));
         }
         s.add(crate::econ::week::Week {
             cat: Arc::clone(&cat),

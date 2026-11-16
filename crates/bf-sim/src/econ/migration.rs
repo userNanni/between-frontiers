@@ -161,10 +161,12 @@ pub fn plan(cat: &Catalogue, econ: &Economy) -> Vec<Moves> {
         by_market[r.market as usize].push(ri);
     }
     for (mi, regions) in by_market.iter().enumerate() {
-        let (local, distant) = econ.markets[mi].laws.migration.reach();
+        let laws = &econ.markets[mi].laws;
+        let (local, distant) = laws.migration.reach();
         // Within the state first.
         for &ri in regions {
             let (town, country) = pays[ri];
+            let local = local * laws.of(&econ.regions[ri]).migration_reach[0];
             let want = (Fixed::from_int(idle[ri]) * local * pull(town, country))
                 .mul_ratio(LOCAL_RATE, 10_000)
                 .to_int_floor();
@@ -188,6 +190,7 @@ pub fn plan(cat: &Catalogue, econ: &Economy) -> Vec<Moves> {
                 if di == ri || idle[ri] <= 0 || rooms[di] <= 0 {
                     continue;
                 }
+                let distant = distant * laws.of(&econ.regions[ri]).migration_reach[1];
                 let want = (Fixed::from_int(idle[ri]) * distant * pull(pays[di].0, pays[ri].1))
                     .mul_ratio(DISTANT_RATE, 10_000 * DESTINATIONS as i64)
                     .to_int_floor();

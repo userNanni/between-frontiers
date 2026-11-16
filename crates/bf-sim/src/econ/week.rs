@@ -89,6 +89,9 @@ pub struct RegionSettlement {
     pub pops: Vec<(Fixed, Fixed, [Fixed; 4])>,
     pub plants: Vec<(Fixed, Fixed, Fixed, Fixed)>,
     pub taxes: Fixed,
+    /// Inside `taxes`: the tax on consumption and the state firms' profit to the treasury.
+    pub indirect: Fixed,
+    pub firms: Fixed,
     /// Pay of the servants, soldiers and clergy here.
     pub payroll: Fixed,
     pub pool: Fixed,
@@ -440,9 +443,12 @@ fn settle_region(
     wage: Fixed,
     v: &View,
 ) -> RegionSettlement {
+    let laws = m.laws.of(r);
     let mut wages = [Fixed::ZERO; P];
     let mut owners_industry = Fixed::ZERO;
     let mut owners_land = Fixed::ZERO;
+    // Farm profit the land tenure law hands from the landowners to the tenants.
+    let mut tenants = Fixed::ZERO;
     let mut pool = Fixed::ZERO;
     let mut gdp = Fixed::ZERO;
     let mut plants = Vec::with_capacity(r.plants.len());
@@ -496,11 +502,16 @@ fn settle_region(
         if profit > Fixed::ZERO {
             let to_owners = profit * PAYOUT;
             if b.agriculture {
-                owners_land += to_owners;
+                // Free tenancy gives the landowners the owners' payout; harsher tenure takes more
+                // (out of what would be saved), reform hands the cut to the tenants.
+                let rent = (to_owners * laws.landowner_rent).min(profit);
+                owners_land += rent;
+                tenants += (to_owners - rent).max(Fixed::ZERO);
+                pool += profit - to_owners.max(rent);
             } else {
                 owners_industry += to_owners;
+                pool += profit - to_owners;
             }
-            pool += profit - to_owners;
         } else {
             pool += profit;
         }
@@ -518,6 +529,12 @@ fn settle_region(
         plants.push((input_ratio, profit, value_added, utilization));
     }
     // Owners absent from the state: their dividends go to the country's savings.
+    // State firms: the ownership law's share of the owners' payout goes to the state, which
+    // books part of it as revenue and reinvests the rest.
+    let state_take = owners_industry * laws.state_ownership;
+    let state_revenue = state_take * laws.state_profit_to_treasury;
+    owners_industry -= state_take;
+    pool += state_take - state_revenue;
     if r.pops[prof::CAPITALIST].size > 0 {
         wages[prof::CAPITALIST] += owners_industry;
     } else {
@@ -528,6 +545,11 @@ fn settle_region(
     } else {
         pool += owners_land;
     }
+    if r.pops[prof::PEASANT].size > 0 {
+        wages[prof::PEASANT] += tenants;
+    } else {
+        pool += tenants;
+    }
     // Smallholders sell what they grow beyond their own table.
     let staple = subsistence_food(cat, r, m);
     if let Some(grain) = cat.grain {
@@ -537,20 +559,23 @@ fn settle_region(
         gdp += sold;
     }
     // The state pays its servants from the treasury, at the country's going wage.
+    // A treasury that could not borrow pays in arrears (`public::pay_share`).
     let mut payroll = Fixed::ZERO;
+    let paid = super::public::pay_share(m);
     for pi in [prof::CIVIL_SERVANT, prof::CLERGY, prof::SOLDIER] {
-        let pay = wage * WAGE_WEIGHT[pi] * PUBLIC_PAY * workers(r.pops[pi].size);
+        let pay = wage * WAGE_WEIGHT[pi] * PUBLIC_PAY * workers(r.pops[pi].size) * paid;
         wages[pi] += pay;
         payroll += pay;
     }
     // The state's own output is counted at cost, as national accounts do: what it pays its
     // servants, soldiers and clergy.
     gdp += payroll;
-    let mut taxes = Fixed::ZERO;
+    let mut taxes = state_revenue;
+    let mut indirect = Fixed::ZERO;
     let mut pops = Vec::with_capacity(P);
     for (pi, pop) in r.pops.iter().enumerate() {
         let gross = wages[pi];
-        let tax = gross * m.budget.tax_rates[CLASS_OF[pi]];
+        let tax = gross * m.budget.tax_rates[CLASS_OF[pi]] * laws.tax_collection;
         taxes += tax;
         let income = gross - tax;
         let unplaced = orders.pops[pi].as_ref().map_or(Fixed::ZERO, |p| p.unplaced);
@@ -583,7 +608,11 @@ fn settle_region(
         // Savings go to the country's investment pool; the buffer keeps what was meant for
         // consumption but not spent.
         let saved = income * SAVE_RATE[pi];
-        let buffer = pop.savings - spent + income - saved;
+        // Tax on consumption, out of what is left after buying and saving.
+        let before_tax = pop.savings - spent + income - saved;
+        let consumption_tax = (spent * m.budget.indirect_rate).min(before_tax.max(Fixed::ZERO));
+        indirect += consumption_tax;
+        let buffer = before_tax - consumption_tax;
         let invested = unplaced.min(buffer).max(Fixed::ZERO);
         pool += saved + invested;
         pops.push((income, buffer - invested, satisfaction));
@@ -595,7 +624,9 @@ fn settle_region(
     RegionSettlement {
         pops,
         plants,
-        taxes,
+        taxes: taxes + indirect,
+        indirect,
+        firms: state_revenue,
         payroll,
         pool,
         gdp,
@@ -781,16 +812,27 @@ impl System<GameWorld> for Week {
                 .iter()
                 .map(|(g, q)| *q * m.buy_ratio[*g as usize] * m.price[*g as usize])
                 .sum();
-            let services: Fixed = cat
+            // The health and education laws say how much of it the treasury pays; the users pay
+            // the rest out of their savings.
+            let shares = &m.laws.effects[0];
+            let can = super::public::pay_share(m);
+            let (services, fees) = cat
                 .public_goods
                 .iter()
                 .map(|&g| g as usize)
-                .map(|g| m.supply[g] * m.sell_ratio[g] * m.price[g])
-                .sum();
+                .map(|g| {
+                    let cost = m.supply[g] * m.sell_ratio[g] * m.price[g];
+                    let paid = cost * shares.public_share(g) * can;
+                    (paid, cost - paid)
+                })
+                .fold((Fixed::ZERO, Fixed::ZERO), |(a, b), (p, f)| (a + p, b + f));
             m.treasury -= goods + services;
+            m.pool -= fees;
             m.budget.goods = goods;
             m.budget.services = services;
             m.budget.revenue = Fixed::ZERO;
+            m.budget.revenue_indirect = Fixed::ZERO;
+            m.budget.revenue_firms = Fixed::ZERO;
             m.budget.payroll = Fixed::ZERO;
             // The building trade delivers points to the queue of works.
             m.budget.works = Fixed::ZERO;
@@ -823,6 +865,8 @@ impl System<GameWorld> for Week {
             let m = &mut markets[r.market as usize];
             m.treasury += s.taxes - s.payroll;
             m.budget.revenue += s.taxes;
+            m.budget.revenue_indirect += s.indirect;
+            m.budget.revenue_firms += s.firms;
             m.budget.payroll += s.payroll;
             m.pool += s.pool;
             m.gdp_running += s.gdp;

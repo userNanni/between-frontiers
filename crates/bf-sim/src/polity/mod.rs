@@ -7,16 +7,11 @@
 //! group, by interest group and by movement kind in catalogue order. Rules in
 //! `docs/politics.pt-BR.md`.
 
-use std::sync::Arc;
-
 use laplace_schelling::Date;
 use laplace_schelling::hash::{HashState, StateHasher};
-use laplace_schelling::schedule::{Access, Cadence, ResourceId, System, TickCtx};
+use laplace_schelling::schedule::ResourceId;
 use serde::{Deserialize, Serialize};
 
-use crate::econ::prof::P;
-use crate::econ::week::ECON;
-use crate::game::GameWorld;
 use crate::politics::{EFFECTS, LawsInForce, Politics, Scope};
 
 /// The politics state of every country.
@@ -36,6 +31,10 @@ pub struct MovementState {
     /// Index in the kind's `cause` of the condition with the smallest margin, the one the
     /// interface names as holding the movement back.
     pub weakest: u8,
+    /// The character leading it (agitator, phase 7); none yet. A leader's push will add to the
+    /// pressure of a cause that holds, never create one (`system::leader_push`).
+    #[serde(default)]
+    pub leader: Option<u32>,
 }
 
 impl HashState for MovementState {
@@ -43,6 +42,9 @@ impl HashState for MovementState {
         h.write_u16(self.support);
         h.write_u16(self.pressure);
         h.write_u8(self.weakest);
+        if let Some(l) = self.leader {
+            h.write_u32(l);
+        }
     }
 }
 
@@ -101,6 +103,9 @@ pub struct PoliticsState {
     pub targets: Vec<Vec<(u16, Vec<String>)>>,
     /// Share of the political weight of each interest group, per mille, by country.
     pub clout: Vec<Vec<u16>>,
+    /// The character leading each interest group, by country (phase 7); empty until then.
+    #[serde(default)]
+    pub leaders: Vec<Vec<Option<u32>>>,
     /// Every movement kind, by country.
     pub movements: Vec<Vec<MovementState>>,
     /// Consent to the laws in force, per mille, by country.
@@ -110,6 +115,29 @@ pub struct PoliticsState {
     pub pending: Vec<(u16, u16)>,
     /// Every law change since the start, oldest first.
     pub changes: Vec<LawChangeRecord>,
+    /// What a tax ceiling means in each country: the rate each class would pay without it and
+    /// each class's share of income, measured monthly.
+    #[serde(default)]
+    pub taxes: Vec<TaxContext>,
+}
+
+/// Per mille, by tax class (lower, middle, upper): the income tax rate the budget rule (or the
+/// player) asks for before any ceiling, and the class's share of the country's income.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TaxContext {
+    pub wanted: [u16; 3],
+    pub income: [u16; 3],
+    /// The `fiscal_stress` indicator: in a fiscal crisis revenue weighs more.
+    #[serde(default)]
+    pub stress: u16,
+}
+
+impl HashState for TaxContext {
+    fn hash_state(&self, h: &mut StateHasher) {
+        self.wanted.hash_state(h);
+        self.income.hash_state(h);
+        h.write_u16(self.stress);
+    }
 }
 
 impl HashState for PoliticsState {
@@ -130,6 +158,12 @@ impl HashState for PoliticsState {
         for c in &self.clout {
             c.hash_state(h);
         }
+        if !self.leaders.is_empty() {
+            h.write_len(self.leaders.len());
+            for c in &self.leaders {
+                c.hash_state(h);
+            }
+        }
         h.write_len(self.movements.len());
         for c in &self.movements {
             c.hash_state(h);
@@ -137,6 +171,7 @@ impl HashState for PoliticsState {
         self.legitimacy.hash_state(h);
         self.pending.hash_state(h);
         self.changes.hash_state(h);
+        self.taxes.hash_state(h);
     }
 }
 
@@ -148,10 +183,12 @@ impl PoliticsState {
             laws: laws.laws.clone(),
             targets: laws.targets.clone(),
             clout: vec![vec![0; p.interest_groups.len()]; n],
+            leaders: Vec::new(),
             movements: vec![vec![MovementState::default(); p.movements.len()]; n],
             legitimacy: vec![MILLE; n],
             pending: Vec::new(),
             changes: Vec::new(),
+            taxes: Vec::new(),
         }
     }
 
@@ -260,6 +297,11 @@ pub struct Stance {
 /// The terms read the combined value of every effect under the whole set of laws, so a cap or
 /// a multiplier from another law group counts as the people would feel it. Enacting the law
 /// already in force gives an empty stance.
+///
+/// Tax ceilings count by the tax they let the state take, not by the ceiling: a class whose
+/// rule rate is under both ceilings pays the same either way. What the ceilings add to the
+/// revenue (each class's change of rate times its share of income) is a gain for the groups that
+/// weigh `tax_collection`, and shows in that term.
 pub fn stance(
     p: &Politics,
     state: &PoliticsState,
@@ -267,12 +309,42 @@ pub fn stance(
     ig: usize,
     law: usize,
 ) -> Stance {
-    let Some(current) = state.laws.get(country) else {
-        return Stance::default();
-    };
-    let Some(l) = p.laws.get(law) else {
-        return Stance::default();
-    };
+    match change(p, state, country, law) {
+        Some(delta) => stance_of(p, ig, &delta),
+        None => Stance::default(),
+    }
+}
+
+/// [`stance`] of every interest group, in catalogue order.
+pub fn stances(p: &Politics, state: &PoliticsState, country: usize, law: usize) -> Vec<Stance> {
+    let delta = change(p, state, country, law);
+    (0..p.interest_groups.len())
+        .map(|ig| {
+            delta
+                .as_ref()
+                .map_or_else(Stance::default, |d| stance_of(p, ig, d))
+        })
+        .collect()
+}
+
+fn stance_of(p: &Politics, ig: usize, delta: &[i64]) -> Stance {
+    let terms: Vec<(u8, i64)> = p.interest_groups[ig]
+        .interests
+        .iter()
+        .filter_map(|&(e, w)| {
+            let d = delta[usize::from(e)];
+            (d != 0).then_some((e, i64::from(w) * d))
+        })
+        .collect();
+    let total = terms.iter().map(|(_, v)| v).sum();
+    Stance { terms, total }
+}
+
+/// How every effect moves, as the people feel it, when `law` replaces the law in force of its
+/// group; `None` when it is already in force or the country does not hold the group.
+fn change(p: &Politics, state: &PoliticsState, country: usize, law: usize) -> Option<Vec<i64>> {
+    let current = state.laws.get(country)?;
+    let l = p.laws.get(law)?;
     let g = usize::from(l.group);
     if current
         .get(g)
@@ -280,24 +352,54 @@ pub fn stance(
         .flatten()
         .is_none_or(|c| usize::from(c) == law)
     {
-        return Stance::default();
+        return None;
     }
     let scope = scope_of(p, law);
     let before = p.effects(current, scope);
     let mut proposed = current.clone();
     proposed[g] = Some(law as u16);
     let after = p.effects(&proposed, scope);
-    let terms: Vec<(u8, i64)> = p.interest_groups[ig]
-        .interests
+    let mut delta: Vec<i64> = after
         .iter()
-        .filter_map(|&(e, w)| {
-            let d = after[usize::from(e)] - before[usize::from(e)];
-            (d != 0).then_some((e, i64::from(w) * i64::from(d)))
-        })
+        .zip(&before)
+        .map(|(a, b)| i64::from(a - b))
         .collect();
-    let total = terms.iter().map(|(_, v)| v).sum();
-    Stance { terms, total }
+    if let Some(t) = state.taxes.get(country) {
+        // What the ceilings cut is charged on consumption (`econ::public::cap_taxes`): every
+        // class pays the same indirect rate on top of its capped income tax.
+        let ceiling = i64::from(
+            (i128::from(crate::econ::public::INDIRECT_CEILING.raw()) * 1000
+                / i128::from(laplace_schelling::Fixed::ONE.raw())) as i32,
+        );
+        let indirect = |v: &[i32]| -> i64 {
+            let cut: i64 = TAX_CAPS
+                .iter()
+                .enumerate()
+                .map(|(k, &e)| {
+                    let wanted = i64::from(t.wanted[k]);
+                    wanted - wanted.min(i64::from(v[e]))
+                })
+                .sum();
+            (cut / 3).min(ceiling)
+        };
+        let (ind_before, ind_after) = (indirect(&before), indirect(&after));
+        let mut revenue = 0i64;
+        for (k, &e) in TAX_CAPS.iter().enumerate() {
+            let wanted = i32::from(t.wanted[k]);
+            let paid = |v: &[i32], ind: i64| i64::from(v[e].min(wanted)) + ind;
+            delta[e] = paid(&after, ind_after) - paid(&before, ind_before);
+            revenue += delta[e] * i64::from(t.income[k]) / 1000;
+        }
+        // A treasury in crisis makes every point of revenue count for more: up to three times.
+        delta[TAX_COLLECTION] += revenue * (1000 + 2 * i64::from(t.stress)) / 1000;
+    }
+    Some(delta)
 }
+
+/// The ceilings of the lower, middle and upper class, and the collection rate, in [`EFFECTS`]
+/// (checked by a test).
+const TAX_CAPS: [usize; 3] = [2, 3, 4];
+const TAX_COLLECTION: usize = 5;
 
 /// The value of every effect for the people of `scope` in `country`, indexed like [`EFFECTS`].
 pub fn effects_in_force(
@@ -312,151 +414,24 @@ pub fn effects_in_force(
     }
 }
 
-// ---------------------------------------------------------------------------------------------
-// System
+mod measure;
+mod system;
 
-/// Keeps the politics of every country: enacts the laws asked for and measures the clout of
-/// the interest groups.
-pub struct PoliticsSystem {
-    pub politics: Arc<Politics>,
-    /// Per mille of each profession in each interest group, resolved at load.
-    shares: Vec<[u16; P]>,
-}
-
-impl PoliticsSystem {
-    pub fn new(politics: Arc<Politics>) -> Self {
-        let shares = politics
-            .interest_groups
-            .iter()
-            .map(|g| {
-                let mut row = [0u16; P];
-                // Groups of one community recruit nobody until communities live in the pops.
-                if g.community.is_none() {
-                    for &(pi, s) in &g.professions {
-                        row[usize::from(pi)] = s;
-                    }
-                }
-                row
-            })
-            .collect();
-        Self { politics, shares }
-    }
-
-    /// Clout of each interest group in `country`, per mille: half from its share of the
-    /// metropole's people, half from its share of their income.
-    fn clout(&self, world: &GameWorld, country: usize) -> Vec<u16> {
-        let mut size = [0i128; P];
-        let mut income = [0i128; P];
-        for r in world
-            .econ
-            .regions
-            .iter()
-            .filter(|r| usize::from(r.market) == country && !r.colony)
-        {
-            for (p, pop) in r.pops.iter().enumerate().take(P) {
-                size[p] += i128::from(pop.size.max(0));
-                income[p] += i128::from(pop.income.raw().max(0));
-            }
-        }
-        let (ts, ti) = (size.iter().sum::<i128>(), income.iter().sum::<i128>());
-        self.shares
-            .iter()
-            .map(|row| {
-                let part = |v: &[i128; P], total: i128| -> i128 {
-                    if total <= 0 {
-                        return 0;
-                    }
-                    row.iter()
-                        .zip(v)
-                        .map(|(&s, &x)| i128::from(s) * x)
-                        .sum::<i128>()
-                        / total
-                };
-                ((part(&size, ts) + part(&income, ti)) / 2).clamp(0, 1000) as u16
-            })
-            .collect()
-    }
-}
-
-#[derive(Default)]
-pub struct PoliticsChanges {
-    /// (country, law) to enact, in request order.
-    enact: Vec<(u16, u16)>,
-    clout: Option<Vec<Vec<u16>>>,
-}
-
-impl System<GameWorld> for PoliticsSystem {
-    type Changes = PoliticsChanges;
-
-    fn name(&self) -> &'static str {
-        "politics"
-    }
-
-    fn cadence(&self) -> Cadence {
-        Cadence::Daily
-    }
-
-    fn access(&self) -> Access {
-        Access::new().read(ECON).read(POLITY).write(POLITY)
-    }
-
-    fn compute(&self, ctx: &TickCtx, world: &GameWorld) -> PoliticsChanges {
-        let s = &world.politics;
-        let p = &*self.politics;
-        let group = |l: u16| p.laws.get(usize::from(l)).map(|law| usize::from(law.group));
-        let enact = s
-            .pending
-            .iter()
-            .enumerate()
-            .filter(|&(i, &(c, l))| {
-                let Some(g) = group(l) else {
-                    return false;
-                };
-                let superseded = s.pending[i + 1..]
-                    .iter()
-                    .any(|&(c2, l2)| c2 == c && group(l2) == Some(g));
-                !superseded
-                    && s.law_in_force(usize::from(c), g)
-                        .is_some_and(|cur| cur != l)
-            })
-            .map(|(_, &x)| x)
-            .collect();
-        let clout = (ctx.date.day == 1 && !world.econ.regions.is_empty())
-            .then(|| (0..s.laws.len()).map(|c| self.clout(world, c)).collect());
-        PoliticsChanges { enact, clout }
-    }
-
-    fn apply(&self, ctx: &TickCtx, changes: PoliticsChanges, world: &mut GameWorld) {
-        let s = &mut world.politics;
-        let p = &*self.politics;
-        for (c, l) in changes.enact {
-            let g = usize::from(p.laws[usize::from(l)].group);
-            let Some(slot) = s.laws.get_mut(usize::from(c)).and_then(|v| v.get_mut(g)) else {
-                continue;
-            };
-            let Some(from) = slot.replace(l) else {
-                continue;
-            };
-            if from != l {
-                s.changes.push(LawChangeRecord {
-                    date: ctx.date,
-                    country: c,
-                    from,
-                    to: l,
-                    by: Enactor::Command,
-                });
-            }
-        }
-        s.pending.clear();
-        if let Some(clout) = changes.clout {
-            s.clout = clout;
-        }
-    }
-}
+pub use system::{PoliticsSystem, ScoreRow, Scoreboard, score_against_history};
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn tax_effect_indices_match_the_catalogue() {
+        use crate::politics::effect_index;
+        assert_eq!(
+            TAX_CAPS.map(Some),
+            ["tax_cap_lower", "tax_cap_middle", "tax_cap_upper"].map(effect_index)
+        );
+        assert_eq!(Some(TAX_COLLECTION), effect_index("tax_collection"));
+    }
 
     #[test]
     fn a_newer_request_replaces_the_same_law_once() {

@@ -4,8 +4,9 @@ Estado: contrato e catálogo da fase 3. O código está em `crates/bf-sim/src/po
 em `data/politics/` (catálogo) e `data/scenario/1925/laws.ron` (leis vigentes em 1925, método e
 fontes em `data/scenario/1925/LAWS.md`); os nomes, em `assets/i18n/*/politics.ftl`. O estado que
 muda no jogo (leis em vigor, peso dos grupos, movimentos, legitimidade, registro das mudanças) está
-em `crates/bf-sim/src/polity.rs`, salvo e no hash; a dinâmica (efeitos, movimentos, mudança de lei
-sem jogador) ainda não roda.
+em `crates/bf-sim/src/polity/`, salvo e no hash, e roda: os efeitos com onde cair chegam à
+economia, os movimentos crescem e decaem pela causa medida e os países sem jogador mudam de lei e de
+forma de governo sozinhos (seção "Dinâmica").
 
 ## O desenho
 
@@ -68,12 +69,12 @@ Tudo: dados inteiros em milésimos, sem ponto flutuante, sem sorteio. Os tipos d
 | | Quantidade |
 |---|---|
 | Categorias | 7 (economia, trabalho, bem-estar, direitos, informação, Estado, império) |
-| Grupos de leis | 23 (2 coloniais) |
-| Leis | 89 (8 dirigidas a comunidades) |
-| Efeitos | 37 (10 sobre o que já existe na simulação) |
-| Indicadores | 14 (10 já calculados pela simulação) |
+| Grupos de leis | 24 (2 coloniais; `government` é a forma de governo) |
+| Leis | 99 (8 dirigidas a comunidades, 10 formas de governo) |
+| Efeitos | 37 (10 ligados à economia) |
+| Indicadores | 17 (12 medidos: 11 da economia e a legitimidade) |
 | Grupos de interesse | 8 |
-| Tipos de movimento | 19 |
+| Tipos de movimento | 23 (`income_tax`, `fiscal_reform`, `regime_change` e `revisionism` entraram na fase 3d) |
 
 O que a fase 3 pediu e onde ficou:
 
@@ -91,8 +92,11 @@ O que a fase 3 pediu e onde ficou:
 - **Leis que já existem:** `internal_passports` dá os mesmos 250/100 de
   `MigrationLaw::Restricted` (o teste confere); os tetos de `taxation` limitam as alíquotas por
   classe do orçamento.
-- **Forma de governo** fica em `countries.ron` (`government`), não vira lei: o voto está em
-  `franchise`.
+- **Forma de governo** é o grupo de leis `government` (10 leis, as chaves de `government` em
+  `countries.ron`). A lei de 1925 vem de `countries.ron` quando `laws.ron` não a nomeia, e muda
+  pelo mesmo mecanismo das outras: comando, movimento (`regime_change`) ou grupos. O regime soma
+  repressão, censura e privilégio da Igreja aos das leis de polícia, imprensa e religião; o voto
+  continua em `franchise`.
 
 ## 1925
 
@@ -133,17 +137,214 @@ vigente.
   parcela da renda, pelas profissões de cada grupo. Grupos de uma comunidade ficam com zero até as
   comunidades entrarem nos pops.
 
+## Dinâmica
+
+O sistema `politics` (`polity/system.rs`) roda todo dia, mas só faz conta no dia 1 de cada mês e,
+para movimentos e mudança de lei, em 1º de janeiro.
+
+### O que a lei faz na economia
+
+O sistema escreve em `Market::laws.effects` (metrópole e colônias) o que as leis em vigor dizem; a
+economia lê ali. Efeito que nenhuma lei em vigor declara fica com a regra de antes (sem lei, sem
+mudança). Os 12 efeitos ligados e onde caem:
+
+| Efeito | Onde cai | Arquivo |
+|---|---|---|
+| `migration_within_state`, `migration_between_states` | multiplicam o alcance da migração (junto com `SetMigrationLaw`) | `econ/migration.rs` |
+| `tax_cap_lower`, `_middle`, `_upper` | teto das alíquotas de renda por classe, na regra anual, no comando e na troca de lei; o que o teto corta (média das três classes, até 12 %) vira imposto sobre o consumo | `econ/public.rs` (`cap_taxes`), `econ/week.rs` |
+| `tax_collection` | parte do imposto lançado que chega ao tesouro; o resto fica com o contribuinte | `econ/week.rs` |
+| `health_state_share`, `education_state_share` | parte do hospital e da escola que o tesouro paga; o usuário paga o resto da poupança | `econ/week.rs` |
+| `school_enrolment_target` | teto da cobertura escolar que conta para a alfabetização | `econ/yearly.rs` |
+| `landowner_rent` | parte do lucro da terra que vai ao proprietário (1 = o pagamento aos donos, como antes); abaixo de 1, a diferença vai ao camponês | `econ/week.rs` |
+| `state_ownership`, `state_profit_to_treasury` | parte do pagamento aos donos da indústria que vai ao Estado em vez dos capitalistas; dessa parte, a que entra como receita do Tesouro (o resto é reinvestido) | `econ/week.rs` |
+
+Os outros 25 efeitos esperam sistema (sindicato, previdência, investimento estatal, comunidades,
+mídia, colônias, fronteiras, exército) e não fazem nada ainda.
+
+### Imposto sobre o consumo
+
+O modelo só tinha imposto de renda, e os Estados de 1925 presos à tributação indireta viviam de
+tarifa e imposto de consumo. Sem isso, o teto de lei cortava a receita inteira: na primeira
+versão, o mundo de 2025 ficava com urbanização de 0,475 contra 0,585 sem tetos, porque menos
+receita é menos obra pública (moradia urbana, infraestrutura, escola).
+
+- **Regra:** o que os tetos cortam das alíquotas que a regra pede (média das três classes) é
+  cobrado sobre o que os pops compram na semana (`Budget::indirect_rate`), tirado do que sobra
+  depois de comprar e poupar. Quem poupa mais paga menos: é regressivo, como foi.
+- **Teto do imposto sobre consumo:** 12 % (`public::INDIRECT_CEILING`), derivado do cenário: a
+  maior alíquota que a regra histórica pede da classe baixa (1975), que paga sobretudo pelo que
+  compra. Sem fonte de receita indireta por país em 1925 no repositório; a tarifa sobre comércio
+  de verdade vem com as fronteiras (fase 4).
+- **Na tela:** `Budget::revenue_indirect` (imposto sobre consumo da semana) e
+  `Budget::revenue_firms` (lucro de estatais ao Tesouro) estão dentro de `Budget::revenue`; o
+  imposto de renda é o resto.
+- **Na postura:** a classe paga o imposto de renda até o teto mais o indireto. Trocar a tributação
+  indireta pela progressiva tira imposto do consumo do camponês e do operário e põe na renda do
+  alto; eles passam a apoiar o imposto de renda.
+
+### Postura: a regra geral
+
+- **Efeito combinado.** A postura compara o conjunto de leis em vigor com o mesmo conjunto trocando
+  uma lei; o termo é peso × variação do efeito combinado.
+- **Teto não é alíquota.** Um teto conta pelo que ele deixa o Estado cobrar: a variação de
+  `min(teto, alíquota que a regra pede)` de cada classe (`PoliticsState::taxes`, medido todo mês).
+  Subir o teto da classe baixa de 15 para 20 % não custa nada a quem paga 5 %. Vale para todo efeito
+  do tipo teto que vier a ter regra por trás.
+- **Quem recebe do Estado ganha com a arrecadação.** O que os tetos acrescentam à receita (variação
+  de alíquota de cada classe × parcela da classe na renda) entra no termo `tax_collection`, que o
+  funcionalismo e os militares pesam a favor.
+- No Brasil de 1925, trocar tributação indireta por imposto progressivo deixa camponeses e
+  trabalhadores neutros (a regra pede 5 % e 9 %, abaixo dos dois tetos), proprietários e
+  empresariado contra (o teto da classe alta passa de 8 % para 15 % efetivos) e o funcionalismo a
+  favor.
+- **Crise fiscal pesa mais.** O termo de arrecadação é multiplicado por 1 + 2 × `fiscal_stress`
+  (até 3 vezes): com o Tesouro sem dinheiro, quem vive do Estado quer mais receita.
+- **Falta o custo do gasto.** Lei de bem-estar (saúde, escola, previdência) aparece só pelo
+  benefício: ninguém vê o imposto que ela vai exigir. É o próximo ajuste da postura.
+
+### Peso dos grupos
+
+Mensal. Da força política, a parcela com voto (`franchise`, em milésimos) vai por cabeça e o resto
+por renda: sem voto só o dinheiro fala; com sufrágio universal, cabeça e dinheiro pesam metade cada.
+
+### Movimentos
+
+- **Pressão:** a margem da condição mais fraca (`margin`), medida em quem o movimento recruta
+  (alfabetização, desemprego e necessidades pela profissão; os outros indicadores pelo país;
+  efeitos pelas leis em vigor). Indicador que a simulação ainda não mede (preço, desigualdade,
+  alcance da mídia, imigrantes, território perdido) dá margem zero: o movimento não cresce.
+- **Apoio** (milésimos de quem ele recruta): sobe `growth × pressão` por ano (pelo menos 1), cai pela
+  meia-vida `persistence` sem causa ou com a meta em vigor.
+- **Mobilização:** apoio × recrutas ÷ população. **Legitimidade** = 1000 − 3 × a soma da
+  mobilização dos movimentos sem resposta.
+- Movimentos de comunidade (`Targeted`) ficam parados até as comunidades entrarem nos pops;
+  `independence` e `revisionism` crescem mas nunca vencem (pedem fronteira e guerra).
+
+### Crise fiscal
+
+A lei de tributação limita o que o Estado arrecada. Duas pontas, cada uma com causa visível:
+
+- **O gasto se ajusta à receita possível.** Com o caixa abaixo de 8 semanas de receita, a folha e a
+  parte do Estado em escolas e hospitais caem um quarto por semana de receita que falta, até 10 %
+  (`econ::public::pay_share`, `state.pt-BR.md`). As compras e as obras já caíam; a folha, que era
+  obrigação, foi o que deixou 18 países com caixa negativo em 2025 na primeira versão.
+- **A crise vira pressão política.** O indicador `fiscal_stress` (1 menos `austerity`: caixa que
+  não se financia e juros que comem a receita) alimenta o movimento `fiscal_reform` (servidores,
+  soldados, escriturários e parte dos trabalhadores, quer imposto de renda por degraus) e aumenta o
+  peso da arrecadação na postura.
+- **Paliativo: piso da folha em 10 %** (`econ::public::PAY_FLOOR`). Um Estado cuja folha (servidores
+  e soldados) custa mais do que qualquer imposto que a lei deixa cobrar, como a China de 1925
+  (folha perto de 30 % do PIB, receita abaixo de 7 %), só fecha o caixa pagando um décimo. Na
+  história, o partido único vivia do lucro das próprias empresas e da compra forçada da safra. A
+  empresa estatal já paga o Tesouro (`state_ownership`), mas nada ainda faz um regime
+  revolucionário estatizar. **Condição de saída:** quando a agenda de regime (fase 7) levar a
+  China à economia planificada, o piso volta a 1/4 e a China tem que fechar pelas estatais.
+
+### Quando a lei muda sem jogador
+
+Em 1º de janeiro, para cada país sem jogador e cada grupo de leis que não mudou nos últimos 5 anos:
+
+- **Por movimento:** um movimento empurra o **próximo degrau** do grupo na direção da sua meta
+  (reforma por degraus: seguro-saúde antes do serviço nacional de saúde); forma de governo cai de
+  uma vez. Força do empurrão = mobilização × (1 − repressão). Muda se a mobilização passa de 4 %
+  e `4 × empurrão + apoio dos grupos ≥ 300 × legitimidade`.
+- **Apoio dos grupos** = soma, sobre os grupos de interesse, de peso × postura (postura de 500 ou
+  mais conta inteira, a favor ou contra).
+- **Por grupos, sem movimento:** só nos 5 anos depois de uma troca de forma de governo (o regime
+  novo reescreve leis), um degrau por vez, com apoio de 70 % do peso.
+- Constantes em `polity/system.rs` (`MIN_MOBILIZED`, `PUSH_WEIGHT`, `THRESHOLD`,
+  `GROUPS_THRESHOLD`, `COOLDOWN_YEARS`, `REGIME_YEARS`), calibradas pelo placar abaixo.
+- Nenhum evento datado nem pressão histórica: as 132 mudanças de `laws.ron` só medem.
+- **Portas abertas para a fase 7.** `MovementState::leader` e `PoliticsState::leaders` (por grupo
+  de interesse) guardam o personagem que lidera, e `system::leader_push` é o ponto onde o empurrão
+  dele se soma à margem de uma causa que já vale (hoje zero; nunca cria causa). O `revisionism` é o
+  movimento que a pressão histórica e o casus belli vão alimentar quando houver fronteira e guerra.
+
+### Placar contra a história
+
+`bf-bench --game` grava em `politics.events`, para cada mudança datada de `laws.ron`, uma pergunta
+fechada: `id` (`law:<TAG>:<lei>`), `question`, `reference`, `window` (± 5 anos), `happened`,
+`simulated`, `delay` (anos) e `verdict` (`on_time`, `early`, `late`, `never`). O placar histórico
+(`tools/history/`) pode ler essa lista. `politics.extra` lista as mudanças simuladas fora da
+referência e `politics.changes`, todas as mudanças.
+
+Rodada de 100 anos sem jogador (seed 1, 2 threads, sobre a `main` em 971bdf1), data simulada contra a de referência:
+
+| | Mudanças |
+|---|---|
+| no prazo (± 5 anos) | 4 |
+| adiantadas | 7 |
+| atrasadas | 28 |
+| nunca acontecem | 93 |
+| fora da referência | 589 |
+
+Os 12 maiores (referência → simulado; – = nunca):
+
+| País | Mudanças de referência | Outras mudanças simuladas |
+|---|---|---|
+| CHN | protective_tariffs 1929 → –; factory_acts 1929 → –; open_capital 1943 → –; land_reform 1950 → 1991; planned_economy 1953 → –; internal_passports 1958 → – | one_party_state 1975; compulsory_primary 1977; restricted_suffrage 1985; freehold_farming 1986; male_suffrage 1990; universal_suffrage 1995 |
+| RAJ | collective_bargaining 1926 → – | compulsory_primary 1953; workers_insurance 1967; health_insurance 1970; social_security 1972; national_health_service 1975; regulated_market 1976; one_party_state 1979; male_suffrage 1984; universal_suffrage 1989; mixed_economy 1990; freehold_farming 2000 |
+| SOV | planned_economy 1928 → –; collective_farming 1930 → –; internal_passports 1932 → –; police_state 1934 → – | restricted_suffrage 1947; male_suffrage 1952; universal_suffrage 1957 |
+| USA | regulated_market 1933 → 1970; collective_bargaining 1935 → 1951; social_security 1935 → 1964; labour_code 1938 → –; selective_service 1940 → –; equal_citizenship 1964 → –; health_insurance 1965 → –; volunteer_army 1973 → – | workers_insurance 1959; mixed_economy 1975 |
+| GBR | universal_suffrage 1928 → 1956; protective_tariffs 1932 → –; selective_service 1939 → –; universal_secondary 1945 → –; mixed_economy 1947 → –; national_health_service 1948 → –; social_security 1948 → – | separation 1964; free_labour 1967 |
+| FRA | health_insurance 1930 → 1951; universal_suffrage 1944 → 1956; social_security 1945 → 2009; mixed_economy 1945 → –; free_labour 1946 → 1943 | labour_taxation 1938; national_health_service 1956 |
+| GER | social_security 1927 → 1970; political_police 1933 → –; state_unions 1933 → –; no_free_elections 1933 → –; universal_service 1935 → –; legal_exclusion 1935 → – | mixed_economy 1966 |
+| JAP | political_police 1925 → –; male_suffrage 1925 → 1930; health_insurance 1927 → 1935; forced_labour 1939 → –; universal_suffrage 1945 → 1935; collective_bargaining 1945 → 1956; land_reform 1946 → –; labour_code 1947 → –; separation 1947 → 1992 | public_hospitals 1930; national_health_service 1940; workers_insurance 1973; social_security 1978; free_labour 1984; mixed_economy 2003; one_party_state 2007; free_press 2016 |
+| ITA | state_unions 1925 → –; prior_censorship 1926 → –; political_police 1926 → –; no_free_elections 1928 → –; legal_exclusion 1938 → –; universal_suffrage 1945 → 1966; national_health_service 1978 → 1942 | health_insurance 1937; labour_taxation 1942; free_labour 1947; social_security 1984; mixed_economy 1985; one_party_state 1988; free_press 1999 |
+| BRA | state_unions 1931 → –; no_free_elections 1937 → –; labour_code 1943 → –; universal_suffrage 1985 → 1959 | compulsory_primary 1945; public_hospitals 1946; proportional_income_tax 1947; health_insurance 1951; progressive_income_tax 1952; male_suffrage 1954; national_health_service 1956; press_licensing 1961; free_press 1966; one_party_state 1975; mixed_service 1995; workers_insurance 1996; social_security 2001; collective_bargaining 2003; regulated_market 2019; mixed_economy 2024; freehold_farming 2024 |
+| ESP | press_licensing 1931 → 1940; universal_suffrage 1931 → 1942; anticlerical_state 1931 → –; land_reform 1932 → –; state_unions 1938 → –; prior_censorship 1938 → –; press_licensing 1966 → 1940 | restricted_suffrage 1932; male_suffrage 1937; health_insurance 1940; labour_taxation 1943; national_health_service 1945; free_press 1945; free_labour 1948; mixed_service 1963; merit_service 1988; one_party_state 2000; social_security 2019 |
+| MEX | mixed_economy 1938 → 2020; workers_insurance 1943 → 1995; universal_suffrage 1953 → 1977 | health_insurance 1940; national_health_service 1945; separation 1954; mixed_service 1968; merit_service 1973; social_security 2000; progressive_income_tax 2004 |
+
+**Ruído ou plausível?** Das 627 mudanças, nenhuma volta à lei anterior; cada país troca de regime
+no máximo uma vez (27 trocas no todo); os que mais mudam (Transjordânia e Brasil) fazem 18 mudanças
+em 100 anos. O que está fora da referência são, quase todos, os degraus intermediários
+(`health_insurance`, `public_hospitals`, `workers_insurance`, `male_suffrage`) e países pequenos
+que a referência não cobre. O descanso de 5 anos basta.
+
+**Imigração:** nenhum país muda a lei de imigração em 100 anos. O único movimento do grupo
+(`nativism`) quer fechar e mede `immigrant_share`, que ainda não existe; nenhum quer abrir. Os
+Estados Unidos ficam nas cotas de 1924 até 2025 (a referência, Hart-Celler, é de 1965). Falta um
+movimento de abertura com causa medida (falta de mão de obra, ou a comunidade imigrante, quando as
+comunidades estiverem nos pops).
+
+Por que tão pouco no prazo, e qual peça falta:
+
+- **Nenhum movimento pede** 43 das 97 que nunca acontecem: o pacote autoritário (`no_free_elections`
+  13, `state_unions` 5, `prior_censorship` 5, `political_police` 4, `police_state`) e
+  `public_broadcaster` 8. Só saem quando um regime novo reescreve as leis, e `regime_change` precisa
+  de desemprego de 15 % com legitimidade baixa: sem a Depressão (ciclo de confiança, fase 7) isso
+  não acontece nos anos 1930, e sim nos anos 1970 a 2010, nos países errados.
+- **Guerra e ocupação** (fase 5): serviço militar de 1935 a 1940, trabalho forçado de 1939 e as
+  reformas japonesas, alemãs e italianas de 1945 a 1947 (reforma agrária, sindicatos, separação).
+- **Comunidades nos pops**: `legal_exclusion` 5 e `equal_citizenship` 3 têm movimento, mas ele é de
+  comunidade e fica parado.
+- **Agenda do regime revolucionário** (fase 7): plano quinquenal, coletivização, propiska e hukou
+  (SOV, CHN) não nascem de causa medida em quem vive sob a lei.
+- **Desemprego de massa** para o New Deal e o Estado de bem-estar de 1935 a 1948 (USA, GBR):
+  `social_protection` mede desemprego de 8 % e a economia simulada não o produz nesses anos.
+- **Atrasos**: o sufrágio cresce pela margem pequena da alfabetização acima de 50 % e chega 10 a 30
+  anos tarde na Europa ocidental; adiantado onde o voto foi barrado por causa que o modelo não vê
+  (alfabetização exigida no Brasil até 1985, raça na África do Sul).
+
 ## O que fica para ligar na simulação
 
-1. ~~Estado salvo por país e o comando `SetLaw`.~~ Feito (acima). `Market::laws` passa a ser
-   derivado das leis no passo 2.
-2. Ler os efeitos que já têm onde cair: migração, tetos de imposto e arrecadação, parcela do Estado
-   em escola e hospital, meta de matrícula, renda da terra.
-3. Medir os indicadores por linha populacional (mensal) e mover os movimentos (anual).
-4. Peso político de cada grupo (tamanho × riqueza × direito de voto) e a regra de quando uma lei
-   muda: pressão dos movimentos contra a postura ponderada dos grupos, com o governo
-   (`countries.ron`) decidindo como o peso conta. Sem isso, as leis ficam paradas no 1925.
-5. Os sistemas que os efeitos planejados esperam: sindicato e salário mínimo, previdência, estatal,
+1. ~~Estado salvo, `SetLaw`, efeitos ligados, movimentos, peso e mudança de lei sem jogador.~~
+   Feito (acima).
+2. Custo do gasto na postura (lei de bem-estar vista também pelo imposto que pede).
+3. Movimento que devolve a democracia (hoje `regime_change` só vai para o partido único) e a
+   reescrita de leis pelo regime novo (voto, imprensa, polícia), que hoje só sai pelo caminho dos
+   grupos.
+4. Indicadores que faltam: inflação, desigualdade, alcance da mídia, imigrantes, território
+   perdido (pede as fronteiras de 1914, fase 4).
+5. Agenda de regime (fase 7): o regime revolucionário que estatiza (China 1953, URSS 1928) e a
+   compra forçada da safra; sem ela, a China fica no "nunca" do placar e no paliativo da folha.
+6. Movimento de abertura da imigração já está no catálogo (`immigration_reform`); o `nativism`
+   espera `immigrant_share`, que a demografia (#54) vai dar
+   (`world.demography.immigrant_share(&world.econ, country)`), ligado em um ponto só
+   (`polity::measure::immigrant_share`).
+7. Tarifa sobre comércio (fase 4): o imposto sobre consumo faz as vezes dela por enquanto.
+8. Os sistemas que os efeitos planejados esperam: sindicato e salário mínimo, previdência,
+   investimento estatal,
    comunidades (discriminação, segregação, assimilação), mídia, colônias, e depois tarifas e
    fronteiras (fase 4) e exército (fase 5).
-6. Radicalização: movimento forte e sem resposta vira greve, motim e insurgência (fases 3 e 5).
+9. Radicalização: movimento forte e sem resposta vira greve, motim e insurgência (fases 3 e 5).

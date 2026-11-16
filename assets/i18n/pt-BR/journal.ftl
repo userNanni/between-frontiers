@@ -111,6 +111,7 @@ journal-movement-progress = { $support } de apoio
 journal-movement-exit = Sem a causa, o apoio cai à metade a cada { $years } anos
 journal-goal-law = Aprovar { $law }
 journal-goal-independence = Independência
+journal-goal-revision = Recuperar território e posição perdidos
 journal-force-pressure = Pressão da causa
 journal-force-growth = Crescimento por ano com pressão máxima
 journal-force-weakest = Condição mais fraca: { $measure }

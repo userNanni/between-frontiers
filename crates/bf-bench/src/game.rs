@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use std::time::Instant;
 
 use bf_sim::data::GameData;
-use bf_sim::game::{GameCommand, Session};
+use bf_sim::game::Session;
 use bf_sim::research::Stage;
 use laplace_schelling::{Date, Fixed, StateHash};
 use serde::Serialize;
@@ -195,6 +195,119 @@ pub struct GameReport {
     /// Cost of each system in the main run.
     pub systems: Vec<crate::SystemReport>,
     pub technologies: Vec<TechTiming>,
+    /// Law changes of the campaign against the dated reference changes of 1925–1994.
+    #[serde(default)]
+    pub politics: Option<PoliticsReport>,
+}
+
+/// One dated law change of the reference as a closed question for the history scorecard
+/// (`tools/history/`): did it happen, and when?
+#[derive(Serialize, Clone)]
+pub struct LawEvent {
+    /// `law:<TAG>:<law>`.
+    pub id: String,
+    pub question: String,
+    pub tag: String,
+    pub law: String,
+    /// Reference date, `YYYY-MM-DD`, and the window counted as on time (years, inclusive).
+    pub reference: String,
+    pub window: (i32, i32),
+    pub happened: bool,
+    /// `YYYY-MM-DD` of the first simulated enactment, if any.
+    pub simulated: Option<String>,
+    /// Simulated year minus reference year.
+    pub delay: Option<i32>,
+    /// `on_time`, `early`, `late` or `never`.
+    pub verdict: &'static str,
+}
+
+#[derive(Serialize, Clone)]
+pub struct PoliticsReport {
+    pub reference: usize,
+    /// Within [`WINDOW`] years of the reference, earlier by more, later by more, never.
+    pub on_time: usize,
+    pub early: usize,
+    pub late: usize,
+    pub never: usize,
+    pub events: Vec<LawEvent>,
+    /// (tag, law, date) of simulated changes the reference does not list.
+    pub extra: Vec<(String, String, String)>,
+    /// Every change: (date, tag, from, to, by).
+    pub changes: Vec<(String, String, String, String, String)>,
+}
+
+/// Years either side of the reference date that count as on time.
+const WINDOW: i32 = 5;
+
+fn iso(d: Date) -> String {
+    format!("{:04}-{:02}-{:02}", d.year, d.month, d.day)
+}
+
+fn politics_report(data: &GameData, s: &Session) -> Option<PoliticsReport> {
+    let p = data.politics.as_ref()?;
+    let laws = data.laws_1925.as_ref()?;
+    let w = s.world();
+    let tags: Vec<&str> = w.countries.iter().map(|(_, c)| c.tag.as_str()).collect();
+    let board = bf_sim::polity::score_against_history(p, &laws.history, &tags, &w.politics);
+    let events: Vec<LawEvent> = board
+        .rows
+        .iter()
+        .map(|r| {
+            let year: i32 = r.reference[..4].parse().unwrap_or(0);
+            let delay = r.delay();
+            LawEvent {
+                id: format!("law:{}:{}", r.tag, r.law),
+                question: format!("Did {} enact {} near {}?", r.tag, r.law, r.reference),
+                tag: r.tag.clone(),
+                law: r.law.clone(),
+                reference: r.reference.clone(),
+                window: (year - WINDOW, year + WINDOW),
+                happened: r.simulated.is_some(),
+                simulated: r.simulated.map(iso),
+                delay,
+                verdict: match delay {
+                    None => "never",
+                    Some(d) if d < -WINDOW => "early",
+                    Some(d) if d > WINDOW => "late",
+                    Some(_) => "on_time",
+                },
+            }
+        })
+        .collect();
+    let count = |v: &str| events.iter().filter(|e| e.verdict == v).count();
+    Some(PoliticsReport {
+        reference: events.len(),
+        on_time: count("on_time"),
+        early: count("early"),
+        late: count("late"),
+        never: count("never"),
+        extra: board
+            .extra
+            .iter()
+            .map(|(t, l, d)| (t.clone(), l.clone(), iso(*d)))
+            .collect(),
+        changes: w
+            .politics
+            .changes
+            .iter()
+            .map(|r| {
+                (
+                    iso(r.date),
+                    tags[usize::from(r.country)].to_owned(),
+                    p.laws[usize::from(r.from)].key.clone(),
+                    p.laws[usize::from(r.to)].key.clone(),
+                    match r.by {
+                        bf_sim::polity::Enactor::Command => "command".to_owned(),
+                        bf_sim::polity::Enactor::Groups => "groups".to_owned(),
+                        bf_sim::polity::Enactor::Movement(k) => {
+                            p.movements[usize::from(k)].key.clone()
+                        }
+                    },
+                )
+            })
+            .collect(),
+        events,
+    })
 }
 
 fn root() -> PathBuf {
@@ -202,15 +315,15 @@ fn root() -> PathBuf {
 }
 
 fn new_session(data: &GameData, seed: u64, threads: usize) -> Session {
-    let mut s = Session::new(
+    // No player: every country runs its own politics, so the law changes can be scored
+    // against history everywhere.
+    Session::new(
         data.new_world(),
         seed,
         Date::new(1925, 1, 1),
         threads,
         Some(data.rules()),
-    );
-    s.submit(GameCommand::ChoosePlayer { tag: "BRA".into() });
-    s
+    )
 }
 
 fn snapshot(data: &GameData, s: &Session, ms: f64, log: &mut InflationLog) -> Decade {
@@ -684,7 +797,19 @@ pub fn main(
         determinism_ok: determinism,
         systems: crate::system_reports(main.session.sim.schedule().stats()),
         technologies: timings(&data, &main.session),
+        politics: politics_report(&data, &main.session),
     };
+    if let Some(pr) = &report.politics {
+        println!(
+            "politics: {} reference changes: {} within {WINDOW} years, {} early, {} late, {} never; {} changes not in the reference",
+            pr.reference,
+            pr.on_time,
+            pr.early,
+            pr.late,
+            pr.never,
+            pr.extra.len()
+        );
+    }
     print_timings(&report.technologies);
     crate::print_systems(&report.systems);
     println!(

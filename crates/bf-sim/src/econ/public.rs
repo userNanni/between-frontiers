@@ -86,6 +86,31 @@ pub fn austerity(m: &Market) -> Fixed {
     (Fixed::ONE - depth - burden).max(AUSTERITY_FLOOR)
 }
 
+/// Share of its pay and of its part of schools and hospitals the state can meet this week.
+/// When cash falls below [`PAY_RESERVE_WEEKS`] of revenue it pays less, a quarter less for each
+/// week of revenue short, down to [`PAY_FLOOR`]: servants paid in arrears, fees for what
+/// the treasury no longer covers. Steep enough that the cash settles above zero, interest
+/// included.
+pub fn pay_share(m: &Market) -> Fixed {
+    let reserve = m.budget.revenue_avg * PAY_RESERVE_WEEKS;
+    if m.treasury >= reserve || m.budget.revenue_avg <= Fixed::ZERO {
+        return Fixed::ONE;
+    }
+    let depth = (reserve - m.treasury) / (m.budget.revenue_avg * 4);
+    (Fixed::ONE - depth).max(PAY_FLOOR)
+}
+
+/// Least share of its pay a treasury out of cash still meets.
+///
+/// Stopgap: 10 % lets a state whose servants and soldiers cost more than any tax its law allows
+/// (China in 1925: payroll 30 % of GDP, revenue under 7 %) keep its cash above zero. The cause in
+/// history was different: a party state lived off its own firms and forced grain purchases.
+/// State firms now pay the treasury (`LawEffects::state_ownership`), but nothing yet makes a
+/// revolutionary regime nationalize (phase 7, regime agendas); until then this floor holds.
+pub const PAY_FLOOR: Fixed = milli(100);
+/// Weeks of revenue under which the treasury starts paying in arrears.
+pub const PAY_RESERVE_WEEKS: i64 = 8;
+
 /// Money the state means to spend on goods this week. The budget rule: revenue plus the
 /// deficit the debt rule allows (`money::deficit_room`), minus payroll, public services,
 /// public works and interest; at least a share of its payroll, cut when the treasury could
@@ -406,7 +431,30 @@ pub fn yearly_taxes(m: &mut Market, year: i32) {
             b.tax_rates[c] = (base[c] * b.adjust).min(MAX_TAX);
         }
     }
+    cap_taxes(m);
 }
+
+/// Holds the class rates under the ceilings the taxation law sets.
+///
+/// What the ceilings cut is not lost: states held to low income taxes lived off duties and
+/// excises. The mean cut across the three classes becomes a tax on consumption
+/// (`Budget::indirect_rate`), at most [`INDIRECT_CEILING`]; it falls on what the pops buy, so
+/// those who save pay less.
+pub fn cap_taxes(m: &mut Market) {
+    let caps = m.laws.effects[0].tax_caps;
+    let mut cut = Fixed::ZERO;
+    for (r, cap) in m.budget.tax_rates.iter_mut().zip(caps) {
+        let capped = (*r).min(cap);
+        cut += *r - capped;
+        *r = capped;
+    }
+    m.budget.indirect_rate = (cut / TAX_CLASSES as i64).min(INDIRECT_CEILING);
+}
+
+/// Highest tax on consumption: the highest rate the historical rule ever asks of the lower
+/// class (1975), which pays mostly through what it buys. Derived from the scenario; tariffs on
+/// trade come with borders (phase 4).
+pub const INDIRECT_CEILING: Fixed = milli(RATES_1975[0]);
 
 #[cfg(test)]
 mod tests {
@@ -464,5 +512,18 @@ mod tests {
         m.treasury = Fixed::ZERO;
         m.budget.interest = Fixed::from_int(30);
         assert_eq!(goods_budget(&m), Fixed::from_int(48));
+    }
+
+    #[test]
+    fn pay_falls_below_the_reserve_and_stops_at_the_floor() {
+        let mut m = Market::empty(0);
+        m.budget.revenue_avg = Fixed::from_int(100);
+        m.treasury = Fixed::from_int(800);
+        assert_eq!(pay_share(&m), Fixed::ONE);
+        // Two weeks of revenue short of the reserve: half pay.
+        m.treasury = Fixed::from_int(600);
+        assert_eq!(pay_share(&m), milli(500));
+        m.treasury = Fixed::from_int(-10_000);
+        assert_eq!(pay_share(&m), PAY_FLOOR);
     }
 }
