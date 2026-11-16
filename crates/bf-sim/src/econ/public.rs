@@ -223,6 +223,16 @@ fn market_works(
             }
         }
     }
+    if let Some(kind) = kinds.housing {
+        for &ri in regions {
+            let r = &econ.regions[ri];
+            let per_level = super::migration::housing_per_level(cat, r, kind);
+            let gap = super::migration::housing_gap(cat, r, kind) - per_level * queued(ri, kind);
+            if gap > Fixed::ZERO && per_level > Fixed::ZERO {
+                cands[HOUSING].push((gap, ri, kind, 0, per_level));
+            }
+        }
+    }
     for &kind in &kinds.infrastructure {
         let b = &cat.buildings[kind];
         let Some((good, _)) = b.methods[0].outputs.first() else {

@@ -289,18 +289,23 @@ pub fn build(cat: &Catalogue, inp: &Inputs) -> Economy {
             let gdp_week = population as f64 * gdppc / 52.0;
             let mut final_demand = vec![0.0f64; ng];
             let in_kind = staple * population as f64 / 1000.0 * agr * (1.0 - market_farming);
-            // Households in five income fifths: the poor buy staples, the rich the rest.
+            // Households in five income fifths: the poor buy staples, the rich the rest. Each
+            // fifth splits into town and country by the census share, for rent and shelter.
+            let town = f64::from(urb).clamp(0.0, 1.0);
             for share in CONSUMPTION_BY_FIFTH {
-                let plan = super::week::plan_pop_public(
-                    cat,
-                    &base,
-                    1925,
-                    population as i64 / 5,
-                    fx(gdp_week * 0.70 * share),
-                    fx(in_kind / 5.0),
-                );
-                for (g, q) in plan {
-                    final_demand[g as usize] += q.to_f64_lossy();
+                for (urban, part) in [(true, town), (false, 1.0 - town)] {
+                    let plan = super::week::plan_pop_where(
+                        cat,
+                        &base,
+                        1925,
+                        (population as f64 / 5.0 * part) as i64,
+                        fx(gdp_week * 0.70 * share * part),
+                        fx(in_kind / 5.0 * part),
+                        urban,
+                    );
+                    for (g, q) in plan {
+                        final_demand[g as usize] += q.to_f64_lossy();
+                    }
                 }
             }
             // The state buys goods with 40% of its tax take; the rest pays its servants.
@@ -644,6 +649,7 @@ pub fn build(cat: &Catalogue, inp: &Inputs) -> Economy {
     }
 
     // 5. Fit each block into its workforce and lay the plants and people on its regions.
+    let housing_kind = cat.building("urban_housing");
     for (bi, b) in blocks.iter().enumerate() {
         let total_workers: i64 = b.sizes.iter().map(|&s| workers(s)).sum();
         let reserved = (total_workers as f64 * b.agr * (1.0 - b.market_farming)) as i64;
@@ -784,6 +790,15 @@ pub fn build(cat: &Catalogue, inp: &Inputs) -> Economy {
                 pop.employed = workers(people[pi]).min(jobs[pi]);
                 pop.satisfaction = [milli(800); 4];
             }
+            // City housing for every town dweller (by profession), whatever the census said.
+            if let Some(hk) = housing_kind {
+                let per = super::migration::housing_per_level(cat, r, hk);
+                if per > Fixed::ZERO {
+                    let urban = Fixed::from_int(super::migration::urban_population(r));
+                    let levels = (urban / per).to_int_floor() + 1;
+                    r.plant_mut(hk as u16).levels = levels;
+                }
+            }
             for p in &mut r.plants {
                 p.staffing = Fixed::ONE;
             }
@@ -836,6 +851,7 @@ pub fn build(cat: &Catalogue, inp: &Inputs) -> Economy {
             tech_tfp: Vec::new(),
             gov_workers: 0,
             queue: Vec::new(),
+            laws: Default::default(),
             budget: super::state::Budget {
                 revenue_avg: revenue,
                 ..Default::default()

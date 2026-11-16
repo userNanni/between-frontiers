@@ -147,12 +147,17 @@ pub(crate) fn plan_pop(
     size: i64,
     budget: Fixed,
     staple_in_kind: Fixed,
+    urban: Option<bool>,
 ) -> PopPlan {
     let mut tier_cost = [Fixed::ZERO; 4];
     let mut need_cost = Vec::with_capacity(cat.needs.len());
     let mut in_kind = Fixed::ZERO;
     for (i, n) in cat.needs.iter().enumerate() {
-        let mut qty = n.per_capita.mul_ratio(size, 1_000_000);
+        // City rent is for townspeople; the countryside builds its own shelter.
+        let mut qty = match (n.urban, urban) {
+            (Some(need), Some(pop)) if need != pop => Fixed::ZERO,
+            _ => n.per_capita.mul_ratio(size, 1_000_000),
+        };
         if n.key == "staple_food" && qty > Fixed::ZERO {
             in_kind = fill(staple_in_kind, qty);
             qty = (qty - staple_in_kind).max(Fixed::ZERO);
@@ -246,7 +251,7 @@ fn peasant_surplus(r: &Region, staple: Fixed) -> Fixed {
 
 /// Staples the jobless grow for themselves. Smallholders get half the gain of farm technology
 /// (better seed, fertilizer): the Green Revolution reached them too.
-fn subsistence_food(r: &Region, m: &Market) -> Fixed {
+pub(crate) fn subsistence_food(r: &Region, m: &Market) -> Fixed {
     let agri = m.tech_tfp.first().copied().unwrap_or(Fixed::ONE);
     let gain = Fixed::ONE + (agri - Fixed::ONE).max(Fixed::ZERO) * milli(500);
     r.subsistence.mul_ratio(unemployed_people(r), 1000) * gain
@@ -320,6 +325,7 @@ fn region_orders(cat: &Catalogue, econ: &Economy, r: &Region, exists: &[bool]) -
                 pop.size,
                 budget.max(Fixed::ZERO),
                 own_food,
+                Some(super::migration::is_urban(pi)),
             );
             for (gi, q) in &plan.orders {
                 demand[*gi as usize] += *q;
@@ -863,5 +869,19 @@ pub fn plan_pop_public(
     in_kind: Fixed,
 ) -> Vec<(GoodIx, Fixed)> {
     let exists = Unlocks::by_year(cat, year).goods;
-    plan_pop(cat, prices, &exists, size, budget, in_kind).orders
+    plan_pop(cat, prices, &exists, size, budget, in_kind, None).orders
+}
+
+/// The goods a pop of `size` living in town (`urban`) or in the countryside would order.
+pub fn plan_pop_where(
+    cat: &Catalogue,
+    prices: &[Fixed],
+    year: i32,
+    size: i64,
+    budget: Fixed,
+    in_kind: Fixed,
+    urban: bool,
+) -> Vec<(GoodIx, Fixed)> {
+    let exists = Unlocks::by_year(cat, year).goods;
+    plan_pop(cat, prices, &exists, size, budget, in_kind, Some(urban)).orders
 }

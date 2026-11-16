@@ -95,6 +95,14 @@ pub struct Market {
     /// Taxes, spending and public investment of the country.
     #[serde(default)]
     pub budget: Budget,
+    #[serde(default)]
+    pub laws: Laws,
+}
+
+/// The country's laws that the economy reads.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Laws {
+    pub migration: super::migration::MigrationLaw,
 }
 
 impl Market {
@@ -118,6 +126,7 @@ impl Market {
             gov_workers: 0,
             queue: Vec::new(),
             budget: Budget::default(),
+            laws: Laws::default(),
         }
     }
 }
@@ -320,6 +329,7 @@ impl HashState for Market {
         self.tech_tfp.hash_state(h);
         self.queue.hash_state(h);
         self.budget.hash_state(h);
+        h.write_u8(self.laws.migration as u8);
     }
 }
 

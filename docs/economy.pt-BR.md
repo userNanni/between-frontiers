@@ -11,7 +11,7 @@ bem que ninguém produz e bem civil que ninguém consome.
 
 ## Bens por mercado
 
-São 84 bens. Os preços-base estão em dólares de 2011 e ainda serão calibrados.
+São 85 bens. Os preços-base estão em dólares de 2011 e ainda serão calibrados.
 
 - **Alimentos básicos:** Cereais, Milho, Arroz.
 - **Alimentos:** Carne, Laticínios, Pescado, Frutas e hortaliças, Açúcar, Café, Chá, Cacau, Tabaco, Bebidas, Alimentos industrializados.
@@ -23,7 +23,7 @@ São 84 bens. Os preços-base estão em dólares de 2011 e ainda serão calibrad
 - **Bens de capital:** Ferramentas, Máquinas, Motores, Equipamento elétrico, Material ferroviário, Navios, Aviões, Computadores (a partir de 1951).
 - **Material militar:** Armas leves, Munição, Artilharia, Blindados, Navios de guerra, Aviões militares.
 - **Serviços:** Transporte, Comércio e serviços, Serviços financeiros, Telecomunicações.
-- **Construção e serviços públicos (fase 3):** Construção (pontos da fila de obras), Ensino, Atendimento hospitalar.
+- **Construção e serviços públicos (fase 3):** Construção (pontos da fila de obras), Moradia urbana, Ensino, Atendimento hospitalar.
 
 ## Recursos minerais
 
@@ -60,7 +60,7 @@ e a aptidão de 0 a 1 para cada tipo de fazenda (`data/scenario/1925/land.ron`; 
 
 ## Construções
 
-São 85 tipos, cada um com métodos de produção que entram ao longo do século (o ano é um piso; a pesquisa da
+São 86 tipos, cada um com métodos de produção que entram ao longo do século (o ano é um piso; a pesquisa da
 fase 2 vai liberá-los por tecnologia).
 
 - **Agropecuária:** Lavoura de cereais, Lavoura de milho, Arrozal, Plantação de algodão, Canavial, Lavoura de beterraba, Cafezal, Chazal, Cacaual, Seringal, Plantação de tabaco, Pomar e horta, Plantação de fibras, Vinhedo, Pecuária extensiva, Leiteria, Exploração florestal, Pesca.
@@ -69,14 +69,15 @@ fase 2 vai liberá-los por tecnologia).
 - **Indústria leve:** Vidraria, Fábrica de papel, Fábrica de tecidos, Confecção, Indústria de alimentos, Fábrica de móveis, Fábrica de utensílios, Fábrica de ferramentas, Indústria farmacêutica, Ateliê de luxo, Fábrica de eletrodomésticos.
 - **Energia:** Usina elétrica.
 - **Infraestrutura:** Ferrovia, Transporte rodoviário, Porto, Construção civil.
-- **Serviços:** Comércio, Banco, Central de telecomunicações, Escola e Hospital (públicos; ver `state.pt-BR.md`).
+- **Serviços:** Comércio, Banco, Central de telecomunicações, Moradia urbana, Escola e Hospital (públicos; ver `state.pt-BR.md`).
 - **Indústria bélica:** Fábrica de armas, Fábrica de munição, Fundição de artilharia, Fábrica de blindados, Arsenal naval, Fábrica de aviões militares.
 
 ## Profissões e necessidades
 
 Treze profissões formam a chave da tabela de população (estado × comunidade × profissão). As necessidades têm quatro
 níveis, do básico ao afluente; dentro de cada uma, a população troca de bem quando o preço muda (cereais por arroz
-ou milho; carvão por lenha, querosene ou gás). Os números por habitante são de partida.
+ou milho; carvão por lenha, querosene ou gás). Os números por habitante são de partida. Desde a fase 3,
+uma necessidade pode ser só das profissões urbanas (aluguel de moradia urbana) ou só das rurais (abrigo).
 
 ## Ordem de trabalho do mercado
 

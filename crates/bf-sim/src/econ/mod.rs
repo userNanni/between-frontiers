@@ -5,6 +5,7 @@
 
 pub mod catalogue;
 pub mod construction;
+pub mod migration;
 pub mod monthly;
 pub mod public;
 pub mod setup;
@@ -15,7 +16,7 @@ pub mod yearly;
 use laplace_schelling::Fixed;
 
 pub use catalogue::{Building, Catalogue};
-pub use state::{Budget, Economy, Market, Plant, Pop, Project, Region, YearRecord};
+pub use state::{Budget, Economy, Laws, Market, Plant, Pop, Project, Region, YearRecord};
 
 /// Profession indices, in the order of `economy::PROFESSIONS`.
 pub mod prof {
