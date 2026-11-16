@@ -44,7 +44,8 @@ pub struct Territory {
     /// `metropole` or `colonies`.
     pub part: &'static str,
     pub population: Vec<i64>,
-    /// GDP at 1925 base prices (2011 dollars). The country's GDP is the simulation's; the split
+    /// GDP at 1925 base prices (2011 dollars), summed over the calendar year. The country's GDP
+    /// is the simulation's; the split
     /// between metropole and colonies follows the value added estimated here week by week.
     pub gdp: Vec<f64>,
     pub gdp_per_capita: Vec<f64>,
@@ -268,6 +269,8 @@ impl History {
         let now = prices(w);
         let rep = &mut self.report;
         rep.years.push(self.year);
+        // GDP of the year just ended: `gdp_running`, read before the yearly system of 1 January
+        // moves it to `gdp_last_year` (which at this point still holds the year before).
         // The country's GDP is shared among its states by the value added estimated here, or by
         // population where none was positive.
         let regions = &w.econ.regions;
@@ -285,7 +288,7 @@ impl History {
         let mut territory_gdp = vec![0.0f64; nm * 2];
         for (ri, r) in regions.iter().enumerate() {
             let mi = r.market as usize;
-            let gdp = w.econ.markets[mi].gdp_last_year.to_f64_lossy();
+            let gdp = w.econ.markets[mi].gdp_running.to_f64_lossy();
             let share = if va_sum[mi] > 0.0 {
                 self.value_added[ri].max(0.0) / va_sum[mi]
             } else if pop_sum[mi] > 0.0 {
@@ -299,7 +302,7 @@ impl History {
             st.gdp.push(gdp * share);
         }
         for (mi, m) in w.econ.markets.iter().enumerate() {
-            let gdp = m.gdp_last_year.to_f64_lossy();
+            let gdp = m.gdp_running.to_f64_lossy();
             for part in 0..2 {
                 let t = mi * 2 + part;
                 let (a, b) = (&self.jan[t], &dec[t]);

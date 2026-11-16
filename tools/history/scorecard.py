@@ -36,7 +36,7 @@ PERIODS = [
 # Below this share of the unit's population covered by a series, the unit has no reference.
 MIN_COVERAGE = 0.8
 # Longest gap (years) bridged by interpolation between two observations.
-MAX_GAP = {"gdppc": 25, "urban": 20, "literacy": 30}
+MAX_GAP = {"gdppc": 25, "urban": 20, "literacy": 60}
 # Maddison's former states and the modern countries they cover.
 AGGREGATES = {
     "SUN": "RUS UKR BLR KAZ UZB TKM KGZ TJK GEO ARM AZE EST LVA LTU MDA".split(),
@@ -601,20 +601,25 @@ def find_deviations(table, largest, world, region_rows, regions, period_rows, la
     w = world
     add("world", "World", "population", w[last_pop]["sim"]["population"], w[last_pop]["ref"]["population"], 1.0, str(last_pop))
     add("world", "World", "gdp_per_capita", w[end]["sim"]["gdp_per_capita"], w[end]["ref"]["gdp_per_capita"], 1.0, str(end))
+    first = min(w)
+    add("world", "World", "gdp first year", w[first]["sim"]["gdp"], w[first]["ref"]["gdp"], 1.0,
+        f"{first}: the first simulated year against Maddison")
     add("world", "World", "urban", w[last_pop]["sim"]["urban"], w[last_pop]["ref"]["urban"], 1.0, f"{last_pop} (simulation: share outside farming)")
     for key in largest:
         t = table[key]
         s0, r0 = t[1925]["sim"], t[1925]["ref"]
         s1, r1 = t[end]["sim"], t[end]["ref"]
         name = f"{key[0]}/{key[1]}"
-        # Drift since 1925, so that a border mismatch present from the start does not count.
-        if s0 and r0["gdp_per_capita"] and s1 and r1["gdp_per_capita"]:
+        # GDP per head is compared as a level at the end: per head, the border mismatch of
+        # 1925 matters little, and the first simulated year starts far below its calibration.
+        if s1 and r1["gdp_per_capita"]:
             add(
-                "unit", name, "gdp_per_capita growth 1925-" + str(end),
-                s1["gdp_per_capita"] / s0["gdp_per_capita"],
-                r1["gdp_per_capita"] / r0["gdp_per_capita"],
-                (r1["gdp"] or 0) / wgdp, f"x{s1['gdp_per_capita'] / s0['gdp_per_capita']:.1f} vs x{r1['gdp_per_capita'] / r0['gdp_per_capita']:.1f}",
+                "unit", name, f"gdp_per_capita {end}",
+                s1["gdp_per_capita"], r1["gdp_per_capita"],
+                (r1["gdp"] or 0) / wgdp,
+                f"{s1['gdp_per_capita']:,.0f} vs {r1['gdp_per_capita']:,.0f} $".replace(",", " "),
             )
+        # Population since 1925, so that a border mismatch present from the start does not count.
         p1s, p1r = t[last_pop]["sim"], t[last_pop]["ref"]
         if s0 and r0["population"] and p1s and p1r["population"]:
             add(
@@ -803,8 +808,14 @@ def charts(card, out):
     def line(ax, series, metric, scale=1.0, title=""):
         xs = [y for y in years if series[y]["sim"] and series[y]["sim"].get(metric) is not None]
         ax.plot(xs, [series[y]["sim"][metric] * scale for y in xs], color=sim_c, lw=1.6, label="simulado")
-        xr = [y for y in years if series[y]["ref"] and series[y]["ref"].get(metric) is not None]
-        ax.plot(xr, [series[y]["ref"][metric] * scale for y in xr], color=ref_c, lw=1.6, ls="--", label="real")
+        # Gaps in the reference stay gaps (NaN) instead of straight lines across them.
+        yr = [
+            series[y]["ref"][metric] * scale
+            if series[y]["ref"] and series[y]["ref"].get(metric) is not None
+            else float("nan")
+            for y in years
+        ]
+        ax.plot(years, yr, color=ref_c, lw=1.6, ls="--", label="real")
         ax.set_title(title, fontsize=9)
         ax.grid(alpha=0.25)
         ax.tick_params(labelsize=7)
