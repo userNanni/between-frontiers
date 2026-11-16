@@ -5,6 +5,7 @@ pub mod data;
 pub mod diplomacy;
 pub mod econ;
 pub mod economy;
+pub mod foreign_capital;
 pub mod game;
 pub mod indicators;
 pub mod initial;
