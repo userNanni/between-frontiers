@@ -34,8 +34,9 @@ gov-tip-payroll =
     { $workers } servidores, clérigos e soldados, pagos a { $pay } do salário médio do país vezes o peso da profissão.
     É obrigação: paga mesmo com o caixa no vermelho.
 gov-tip-goods =
-    Armas, papel, transporte e remédios: a receita mais o déficit que a regra da dívida permite, menos as outras despesas; no mínimo 60 % da folha.
-    Cortadas quando o caixa fica negativo ou os juros passam de 10 % da receita.
+    O que o Estado compra, a preço-base: serviços 30 %; transporte 10 %; papel 10 %; remédios 10 %; armas leves 10 %; munição 10 %; navios de guerra 10 %; artilharia 5 %; aviões militares 5 %.
+    Regra da semana, por ano: receita média { $revenue } + déficit que a regra da dívida permite { $room } − folha, escolas e hospitais, obras e juros { $committed } = { $planned }.
+    No mínimo 60 % da folha: { $floor }. Fica { $kept } do plano (corte com caixa negativo ou juros acima de 10 % da receita) = { $total }.
 gov-tip-services = O Estado compra tudo o que escolas e hospitais produzem; vira salário de professores, médicos e funcionários.
 gov-tip-works = Pontos de construção pagos às obras públicas da fila, conforme chegam.
 gov-tip-interest =
@@ -43,8 +44,8 @@ gov-tip-interest =
     Os juros do banco central voltam ao Tesouro e não entram aqui.
 gov-tip-yearly = Última semana: { $week }; × 52 = { $year } ({ $gdp } do PIB).
 gov-tip-spending = { $gdp } do PIB.
-gov-deficit = Déficit
-gov-surplus = Superávit
+gov-balance = Saldo
+gov-amount-gdp = { $amount } · { $gdp } do PIB
 gov-tip-deficit =
     Receita { $revenue } − despesa { $spending } = déficit de { $balance } ({ $gdp } do PIB).
     O Tesouro vende títulos para cobrir a diferença; o banco central comprou { $bank } deles.
@@ -121,9 +122,13 @@ gov-tip-regime-historical-since = Regra histórica: autônomo desde { $year }.
 gov-tip-regime-autonomous = Escolhido pelo governo: segue a sua regra e não compra título novo do Tesouro.
 gov-tip-regime-subordinate = Escolhido pelo governo: compra os títulos que ninguém mais compra.
 gov-credit = Crédito aos bancos
-gov-tip-credit = Moeda que o banco central criou e emprestou aos bancos (o fundo de investimento): { $gdp } do PIB.
+gov-tip-credit =
+    Dinheiro que o banco central criou e emprestou aos bancos, que o põem no fundo de investimento das empresas: { $gdp } do PIB.
+    Importa porque financia fábricas e obras privadas sem tirar da poupança das famílias; retirado, o investimento cai.
 gov-monetized = Moeda fora da regra
-gov-tip-monetized = Moeda criada além da regra (títulos comprados à força, taxa fixada abaixo da regra), média do ano. Empurra a inflação para cima.
+gov-tip-monetized =
+    Moeda que o banco central criou além da sua regra: títulos do Tesouro que comprou porque ninguém mais comprou, ou a taxa fixada abaixo da regra. Média do último ano, em % do PIB.
+    Importa porque cada ponto soma 1,5 ponto à inflação; a compra de títulos dentro da regra não conta aqui.
 gov-bank-controls = Política monetária
 gov-bank-historical = Histórico
 gov-bank-autonomous = Autônomo

@@ -94,6 +94,8 @@ pub struct GovernmentResponse {
     pub commands: Vec<GameCommand>,
 }
 
+/// Space kept clear of the scroll bar on the right of the window's body.
+const SCROLL_GUTTER: f32 = 16.0;
 /// Window size: wide enough for two columns of figures, short enough for 1600 × 900.
 const WINDOW: Vec2 = Vec2::new(1040.0, 700.0);
 
@@ -174,10 +176,15 @@ pub fn show(
         };
         egui::ScrollArea::vertical()
             .auto_shrink([false, false])
-            .show(ui, |ui| match *tab {
-                Tab::Budget => super::budget::show(ui, &mut cx),
-                Tab::Money => super::money::show(ui, &mut cx),
-                Tab::Laws => super::laws::show(ui, &mut cx),
+            .show(ui, |ui| {
+                // Room on the right for the scroll bar.
+                let width = ui.available_width() - SCROLL_GUTTER;
+                ui.set_max_width(width);
+                match *tab {
+                    Tab::Budget => super::budget::show(ui, &mut cx),
+                    Tab::Money => super::money::show(ui, &mut cx),
+                    Tab::Laws => super::laws::show(ui, &mut cx),
+                }
             });
     });
     out

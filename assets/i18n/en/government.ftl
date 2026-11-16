@@ -34,8 +34,9 @@ gov-tip-payroll =
     { $workers } civil servants, clergy and soldiers, paid { $pay } of the country's average wage times their profession's weight.
     An obligation: paid even with the treasury in the red.
 gov-tip-goods =
-    Arms, paper, transport and medicine: revenue plus the deficit the debt rule allows, minus the other spending; at least 60% of the payroll.
-    Cut when the treasury runs negative or interest passes 10% of revenue.
+    What the state buys, at base prices: services 30%; transport 10%; paper 10%; medicine 10%; small arms 10%; ammunition 10%; warships 10%; artillery 5%; military aircraft 5%.
+    This week's rule, per year: average revenue { $revenue } + the deficit the debt rule allows { $room } − payroll, schools and hospitals, works and interest { $committed } = { $planned }.
+    At least 60% of the payroll: { $floor }. { $kept } of the plan is kept (cut with negative cash or interest above 10% of revenue) = { $total }.
 gov-tip-services = The state buys everything schools and hospitals produce; it becomes the pay of teachers, doctors and staff.
 gov-tip-works = Construction points paid to the public works in the queue as they arrive.
 gov-tip-interest =
@@ -43,8 +44,8 @@ gov-tip-interest =
     The central bank's interest goes back to the treasury and is left out.
 gov-tip-yearly = Last week: { $week }; × 52 = { $year } ({ $gdp } of GDP).
 gov-tip-spending = { $gdp } of GDP.
-gov-deficit = Deficit
-gov-surplus = Surplus
+gov-balance = Balance
+gov-amount-gdp = { $amount } · { $gdp } of GDP
 gov-tip-deficit =
     Revenue { $revenue } − spending { $spending } = deficit of { $balance } ({ $gdp } of GDP).
     The treasury sells bonds to cover it; the central bank bought { $bank } of them.
@@ -121,9 +122,13 @@ gov-tip-regime-historical-since = Historical rule: autonomous since { $year }.
 gov-tip-regime-autonomous = Chosen by the government: follows its rule and buys no new treasury bonds.
 gov-tip-regime-subordinate = Chosen by the government: buys the bonds nobody else does.
 gov-credit = Credit to banks
-gov-tip-credit = Money the central bank created and lent to banks (the investment pool): { $gdp } of GDP.
+gov-tip-credit =
+    Money the central bank created and lent to banks, which put it in the firms' investment pool: { $gdp } of GDP.
+    It matters because it pays for plants and private works without drawing on household savings; withdrawn, investment falls.
 gov-monetized = Money beyond the rule
-gov-tip-monetized = Money created beyond the rule (bonds bought by force, a rate set below the rule), averaged over the year. It pushes inflation up.
+gov-tip-monetized =
+    Money the central bank created beyond its rule: treasury bonds it bought because nobody else would, or a rate set below the rule. Last year's average, in % of GDP.
+    It matters because each point adds 1.5 points of inflation; bonds bought within the rule do not count here.
 gov-bank-controls = Monetary policy
 gov-bank-historical = Historical
 gov-bank-autonomous = Autonomous

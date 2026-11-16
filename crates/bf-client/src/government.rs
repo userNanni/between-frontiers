@@ -43,6 +43,26 @@ pub struct GovernmentView {
     pub subordinate: bool,
     /// The construction queue, oldest first.
     pub works: Vec<Work>,
+    /// The terms of this week's purchases rule.
+    pub goods_rule: GoodsRule,
+}
+
+/// The budget rule that sets the state's purchases (`econ::public::goods_budget`), term by
+/// term, weekly.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct GoodsRule {
+    /// Average weekly revenue and the deficit the debt rule allows.
+    pub revenue: f64,
+    pub deficit_room: f64,
+    /// What comes off: payroll, public services, public works, interest.
+    pub committed: f64,
+    /// The floor: a share of the payroll.
+    pub floor: f64,
+    /// Share of the plan kept (cash the treasury could not borrow, interest above a tenth of
+    /// revenue), 0.25–1.
+    pub austerity: f64,
+    /// The rule's total, with a tenth of the cash beyond twice the reserve on top.
+    pub total: f64,
 }
 
 fn f(x: Fixed) -> f64 {
@@ -138,5 +158,17 @@ pub fn read(world: &GameWorld, date: Date) -> Option<GovernmentView> {
         class_people,
         subordinate: m.money.subordinate(date.year),
         works,
+        goods_rule: {
+            use bf_sim::econ::public::{GOODS_PER_PAYROLL, austerity, goods_budget};
+            let b = &m.budget;
+            GoodsRule {
+                revenue: f(b.revenue_avg),
+                deficit_room: f(bf_sim::econ::money::deficit_room(m)),
+                committed: f(b.payroll + b.services + b.works + b.interest),
+                floor: f(b.payroll * GOODS_PER_PAYROLL),
+                austerity: f(austerity(m)),
+                total: f(goods_budget(m)),
+            }
+        },
     })
 }

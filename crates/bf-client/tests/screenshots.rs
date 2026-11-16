@@ -381,17 +381,10 @@ fn walk_through_the_screens() {
     };
     hover(&mut h, "Classe média");
     shot(&mut h, "06p-governo-imposto-tooltip");
-    let balance = if h
-        .get_all(egui_kittest::kittest::by().label("Déficit"))
-        .next()
-        .is_some()
-    {
-        "Déficit"
-    } else {
-        "Superávit"
-    };
-    hover(&mut h, balance);
+    hover(&mut h, "Saldo");
     shot(&mut h, "06q-governo-saldo-tooltip");
+    hover(&mut h, "Compras");
+    shot(&mut h, "06r2-governo-compras-tooltip");
     h.hover_at(egui::pos2(800.0, 880.0));
     h.get_by_label("Moeda e dívida").click();
     h.run_steps(4);
@@ -400,6 +393,8 @@ fn walk_through_the_screens() {
     shot(&mut h, "06w-governo-taxa-tooltip");
     hover(&mut h, "Exterior, em dólar");
     shot(&mut h, "06x-governo-divida-tooltip");
+    hover(&mut h, "Moeda fora da regra");
+    shot(&mut h, "06x2-governo-moeda-fora-da-regra");
     h.hover_at(egui::pos2(800.0, 880.0));
     // The laws tab, still empty: the laws screen fills it.
     // A tax raised while paused shows at once, says it waits for the clock, and the next tick

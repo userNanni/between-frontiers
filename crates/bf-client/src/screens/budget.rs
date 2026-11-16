@@ -48,6 +48,40 @@ pub fn signed_money(i18n: &I18n, value: f64) -> String {
     }
 }
 
+/// "US$ 9,3 bilhões · 12,7 % do PIB"; the amount alone without a GDP.
+pub fn with_gdp(i18n: &I18n, amount: String, yearly: f64, gdp: f64) -> String {
+    if gdp > 0.0 {
+        i18n.tr_args(
+            "gov-amount-gdp",
+            &[
+                ("amount", arg(amount)),
+                ("gdp", arg(pct(i18n, yearly / gdp * 100.0, 1))),
+            ],
+        )
+    } else {
+        amount
+    }
+}
+
+/// The purchases: what the state buys, and the rule that sets how much, term by term.
+fn goods_tip(i18n: &I18n, v: &GovernmentView) -> String {
+    let r = &v.goods_rule;
+    let y = |x: f64| money(i18n, x * WEEKS);
+    let planned = r.revenue + r.deficit_room - r.committed;
+    i18n.tr_args(
+        "gov-tip-goods",
+        &[
+            ("revenue", arg(y(r.revenue))),
+            ("room", arg(y(r.deficit_room))),
+            ("committed", arg(y(r.committed))),
+            ("planned", arg(signed_money(i18n, planned * WEEKS))),
+            ("floor", arg(y(r.floor))),
+            ("kept", arg(pct(i18n, r.austerity * 100.0, 0))),
+            ("total", arg(y(r.total))),
+        ],
+    )
+}
+
 /// Share of the GDP of a yearly amount, as text ("—" without a GDP).
 pub fn of_gdp(i18n: &I18n, yearly: f64, gdp: f64) -> String {
     if gdp > 0.0 {
@@ -119,7 +153,7 @@ fn accounts(ui: &mut Ui, i18n: &I18n, v: &GovernmentView) {
             ("avg", arg(money(i18n, fx(b.revenue_avg) * WEEKS))),
         ],
     );
-    let value = money(i18n, revenue * WEEKS);
+    let value = with_gdp(i18n, money(i18n, revenue * WEEKS), revenue * WEEKS, gdp);
     Account::new(&i18n.tr("gov-revenue-total"), &value, &tip)
         .strong()
         .show(ui);
@@ -142,7 +176,7 @@ fn accounts(ui: &mut Ui, i18n: &I18n, v: &GovernmentView) {
                 ("pay", arg(wage_pct.clone())),
             ],
         ),
-        i18n.tr("gov-tip-goods"),
+        goods_tip(i18n, v),
         i18n.tr("gov-tip-services"),
         i18n.tr("gov-tip-works"),
         i18n.tr_args(
@@ -171,7 +205,7 @@ fn accounts(ui: &mut Ui, i18n: &I18n, v: &GovernmentView) {
             .bar(if k == 4 { color::DANGER } else { color::ACCENT })
             .show(ui);
     }
-    let value = money(i18n, total * WEEKS);
+    let value = with_gdp(i18n, money(i18n, total * WEEKS), total * WEEKS, gdp);
     let tip = i18n.tr_args(
         "gov-tip-spending",
         &[("gdp", arg(of_gdp(i18n, total * WEEKS, gdp)))],
@@ -197,23 +231,20 @@ fn accounts(ui: &mut Ui, i18n: &I18n, v: &GovernmentView) {
             ("bank", arg(money(i18n, fx(b.issued) * WEEKS))),
         ],
     );
-    let value = signed_money(i18n, balance * WEEKS);
-    Account::new(
-        &i18n.tr(if balance < 0.0 {
-            "gov-deficit"
+    let value = with_gdp(
+        i18n,
+        signed_money(i18n, balance * WEEKS),
+        balance * WEEKS,
+        gdp,
+    );
+    Account::new(&i18n.tr("gov-balance"), &value, &tip)
+        .strong()
+        .tone(if balance < 0.0 {
+            color::DANGER
         } else {
-            "gov-surplus"
-        }),
-        &value,
-        &tip,
-    )
-    .strong()
-    .tone(if balance < 0.0 {
-        color::DANGER
-    } else {
-        color::POSITIVE
-    })
-    .show(ui);
+            color::POSITIVE
+        })
+        .show(ui);
     let reserve = v.reserve();
     let tip = i18n.tr_args(
         "gov-tip-treasury",
@@ -234,7 +265,7 @@ fn accounts(ui: &mut Ui, i18n: &I18n, v: &GovernmentView) {
         .tone(if v.treasury < 0.0 {
             color::DANGER
         } else {
-            color::ACCENT
+            color::TEXT
         })
         .show(ui);
     let value = money(i18n, fx(b.issued) * WEEKS);
