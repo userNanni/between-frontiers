@@ -11,7 +11,7 @@ use bf_client::paths::Paths;
 use bf_client::screens::Screen;
 use bf_client::{App, saves};
 use egui_kittest::Harness;
-use egui_kittest::kittest::Queryable;
+use egui_kittest::kittest::{NodeT, Queryable};
 
 fn root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
@@ -487,4 +487,136 @@ fn walk_through_the_screens() {
     shot(&mut en, "11-government-money-en");
 
     let _ = std::fs::remove_dir_all(&user);
+}
+
+/// Opens a campaign for `tag` straight from a new save.
+fn open_campaign(h: &mut Harness<'_, App>, user: &std::path::Path, name: &str, tag: &str) {
+    let mut save = saves::create(
+        &user.join("saves"),
+        name,
+        1925,
+        laplace_schelling::calendar::Date::new(1925, 1, 1),
+    )
+    .unwrap();
+    save.meta.player = Some(tag.into());
+    saves::write(&save).unwrap();
+    let ctx = h.ctx.clone();
+    h.state_mut().apply(Transition::Game(save), &ctx);
+    h.run_steps(3);
+}
+
+/// Runs the simulation until `done` holds or `secs` pass, then pauses it.
+fn run_until(
+    h: &mut Harness<'_, App>,
+    secs: u64,
+    done: impl Fn(&bf_client::sim::Snapshot) -> bool,
+) {
+    let snap = |h: &Harness<'_, App>| match &h.state().screen {
+        Screen::Game(g) => g.snapshot(),
+        _ => panic!("not in a campaign"),
+    };
+    h.key_press(egui::Key::Space);
+    let started = std::time::Instant::now();
+    while !done(&snap(h)) && started.elapsed().as_secs() < secs {
+        std::thread::sleep(std::time::Duration::from_millis(50));
+        h.run_steps(1);
+    }
+    h.key_press(egui::Key::Space);
+    let paused_at = std::time::Instant::now();
+    while !snap(h).paused && paused_at.elapsed().as_secs() < 10 {
+        std::thread::sleep(std::time::Duration::from_millis(50));
+        h.run_steps(1);
+    }
+    h.run_steps(3);
+}
+
+/// Laws tab of the government window: Brazil, a law compared with the one in force and
+/// proposed, the law in force after the simulation enacts it; then France, with colonies.
+#[test]
+#[ignore = "needs a GPU (or software Vulkan) and the generated map; run with --ignored"]
+fn laws_screen() {
+    let user = std::env::temp_dir().join(format!("bf-shots-laws-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&user);
+    let mut h = harness(user.clone(), "pt-BR");
+    open_campaign(&mut h, &user, "Leis do Brasil", "BRA");
+    // A few days in, so the interest groups' clout is measured.
+    run_until(&mut h, 20, |s| s.tick >= 3);
+
+    h.key_press(egui::Key::G);
+    h.run_steps(2);
+    h.get_by_label("Leis").click();
+    h.run_steps(3);
+    shot(&mut h, "10a-leis-brasil");
+
+    // Taxation, and a law not in force: what changes and who backs it.
+    h.get_all(egui_kittest::kittest::by().label_contains("Tributação:"))
+        .next()
+        .expect("taxation row")
+        .click();
+    h.run_steps(2);
+    click_card(&mut h, "Imposto de renda progressivo");
+    h.run_steps(3);
+    shot(&mut h, "10b-leis-brasil-comparacao");
+
+    // Propose it; the simulation enacts it within a day.
+    h.get_by_label("Propor lei").click();
+    h.run_steps(3);
+    shot(&mut h, "10c-leis-brasil-proposta");
+    let enacted = |s: &bf_client::sim::Snapshot| {
+        s.laws
+            .as_ref()
+            .is_some_and(|l| l.pending.is_empty() && !l.changes.is_empty())
+    };
+    run_until(&mut h, 20, enacted);
+    let snap = match &h.state().screen {
+        Screen::Game(g) => g.snapshot(),
+        _ => unreachable!(),
+    };
+    assert!(enacted(&snap), "the law was not enacted: {:?}", snap.laws);
+    shot(&mut h, "10d-leis-brasil-em-vigor");
+
+    // France: the colonial groups hold.
+    h.key_press(egui::Key::Escape);
+    h.run_steps(2);
+    open_campaign(&mut h, &user, "Leis da França", "FRA");
+    run_until(&mut h, 20, |s| s.tick >= 3);
+    h.key_press(egui::Key::G);
+    h.run_steps(2);
+    h.get_by_label("Leis").click();
+    h.run_steps(2);
+    h.get_all(egui_kittest::kittest::by().label_contains("Trabalho colonial:"))
+        .next()
+        .expect("colonial labour row")
+        .scroll_to_me();
+    h.run_steps(3);
+    h.get_all(egui_kittest::kittest::by().label_contains("Trabalho colonial:"))
+        .next()
+        .expect("colonial labour row")
+        .click();
+    h.run_steps(2);
+    shot(&mut h, "10e-leis-franca-colonias-grupo");
+    click_card(&mut h, "Trabalho livre");
+    h.run_steps(3);
+    shot(&mut h, "10f-leis-franca-trabalho-livre");
+
+    let _ = std::fs::remove_dir_all(&user);
+}
+
+/// Clicks the law card named `name` (the card, not the name printed on it).
+fn click_card(h: &mut Harness<'_, App>, name: &str) {
+    let find = |h: &Harness<'_, App>| {
+        h.get_all(egui_kittest::kittest::by().label(name))
+            .find(|n| n.accesskit_node().role() == egui::accesskit::Role::Button)
+            .is_some()
+    };
+    assert!(find(h), "card {name}");
+    h.get_all(egui_kittest::kittest::by().label(name))
+        .find(|n| n.accesskit_node().role() == egui::accesskit::Role::Button)
+        .unwrap()
+        .scroll_to_me();
+    h.run_steps(3);
+    h.get_all(egui_kittest::kittest::by().label(name))
+        .find(|n| n.accesskit_node().role() == egui::accesskit::Role::Button)
+        .unwrap_or_else(|| panic!("card {name}"))
+        .click();
 }
