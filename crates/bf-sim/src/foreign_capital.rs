@@ -17,6 +17,8 @@
 //! - [`transfer_rate`]: how much faster a technology spreads in a country where foreign or mixed
 //!   plants use it.
 //! - [`remittance`]: the part of a plant's profit that leaves for the owner's country.
+//! - [`imitation_channel`]: the first, law-only version of the channel that will multiply
+//!   imitation in `research_system` (open trade and capital give exactly 1, today's rule).
 //!
 //! The constants are design values, to be calibrated against the scorecard once the flow runs
 //! (the inflow series is `data/history/fdi.csv`).
@@ -319,6 +321,35 @@ pub fn remittance(profit: Fixed, foreign_share: Fixed, reinvested: Fixed) -> Fix
         * (Fixed::ONE - reinvested.clamp(Fixed::ZERO, Fixed::ONE))
 }
 
+/// Share of the imitation channel no law can close: books, journals, travelling engineers,
+/// catalogues.
+pub const IMITATION_FLOOR: Fixed = milli(200);
+/// Share of the open channel that comes with trade (machines and goods bought); the rest comes
+/// with foreign plants and licences.
+pub const TRADE_WEIGHT: Fixed = milli(500);
+/// Tariffs up to this leave trade open: protection still bought machines abroad.
+pub const OPEN_TARIFF: Fixed = milli(250);
+/// Tariff at which trade carries no technique (`autarky`).
+pub const CLOSED_TARIFF: Fixed = milli(600);
+
+/// How much of today's imitation rate a country keeps, from the laws in force: the `tariff`
+/// effect and the combined `foreign_investment` effect. Open trade (tariff up to
+/// [`OPEN_TARIFF`]) and open capital (pull 1 or more) give exactly 1; autarky gives
+/// [`IMITATION_FLOOR`].
+///
+/// `channel = floor + (1 − floor) × trade × (TRADE_WEIGHT + (1 − TRADE_WEIGHT) × min(1, pull))`
+pub fn imitation_channel(tariff: Fixed, pull: Fixed) -> Fixed {
+    let trade = if tariff <= OPEN_TARIFF {
+        Fixed::ONE
+    } else if tariff >= CLOSED_TARIFF {
+        Fixed::ZERO
+    } else {
+        Fixed::ONE - (tariff - OPEN_TARIFF).mul_div(Fixed::ONE, CLOSED_TARIFF - OPEN_TARIFF)
+    };
+    let capital = TRADE_WEIGHT + (Fixed::ONE - TRADE_WEIGHT) * pull.clamp(Fixed::ZERO, Fixed::ONE);
+    IMITATION_FLOOR + (Fixed::ONE - IMITATION_FLOOR) * trade * capital
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -492,5 +523,26 @@ mod tests {
             remittance(-Fixed::ONE, Fixed::ONE, Fixed::ZERO),
             Fixed::ZERO
         );
+    }
+    #[test]
+    fn open_trade_and_capital_keep_todays_imitation() {
+        for tariff in [20, 100, 250] {
+            assert_eq!(imitation_channel(milli(tariff), Fixed::ONE), Fixed::ONE);
+        }
+        assert_eq!(imitation_channel(milli(250), milli(1500)), Fixed::ONE);
+    }
+
+    #[test]
+    fn closing_slows_imitation_down_to_the_floor() {
+        let screened = imitation_channel(milli(250), milli(600));
+        let closed = imitation_channel(milli(250), milli(100));
+        let planned = imitation_channel(milli(250), milli(10));
+        let autarky = imitation_channel(milli(600), milli(30));
+        assert_eq!(screened, milli(840));
+        assert_eq!(closed, milli(640));
+        assert_eq!(planned, milli(604));
+        assert_eq!(autarky, IMITATION_FLOOR);
+        let between = imitation_channel(milli(425), Fixed::ONE);
+        assert!(between > IMITATION_FLOOR && between < Fixed::ONE);
     }
 }
