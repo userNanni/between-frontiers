@@ -22,7 +22,8 @@ as forças que impelem, e isso custa esforço. O resto deste documento é esse d
 - **Casus belli** como forma do empurrão na guerra.
 - **Agendas** dos países principais primeiro, os demais aos poucos.
 
-Fica uma decisão aberta: as regras de partida (seção própria, mais abaixo).
+Também decidido em 2026-11-16: **um modo só, o histórico, com uma chave** (seção "Regras de
+partida"). Não há decisão do dono em aberto neste documento.
 
 ## Entradas históricas: o roteiro com pontos
 
@@ -158,46 +159,52 @@ entradas entrarem na fase 7 sem refazer nada, o que convém deixar pronto lá:
    fora (já previsto com as comunidades nos pops).
 6. **Placar:** as entradas gravam no mesmo `events.json` que o PR #53 já produz; manter o formato.
 
-## Regras de partida (decisão aberta)
+## Regras de partida
 
-O dono duvidou dos três modos propostos antes (histórico, plausível, livre): "manutenibilidade e
-testar são pontos reais". Ele tem razão: três modos calibrados são três jogos para manter. A
-proposta enxuta:
+Decidido em 2026-11-16. Nas palavras do dono: "apenas um modo, mas com chave, mas não nos
+responsabilizamos pelo resultado de chavear."
 
-- **Um jogo só, um caminho de código.** Nada de modo: a pressão histórica, as agendas e os
-  personagens históricos são sempre o mesmo código.
-- **No máximo duas regras de partida em dados**, cada uma um escalar que o código multiplica, sem
-  `if` em sistema nenhum:
-  - `historical_pressure` (padrão 1, desligada 0): o peso das entradas;
-  - `historical_characters` (padrão ligado; desligado, só genéricos).
-- **Só a configuração padrão é calibrada e coberta pelo placar.** As outras não prometem
-  história: têm só teste de fumaça e de determinismo.
+1. **Um jogo só, um caminho de código. O modo histórico é o jogo.** Entradas, pressão histórica,
+   agendas e personagens são sempre o mesmo código.
+2. **Uma regra de partida em dados:** pressão histórica ligada (padrão) ou desligada. É um
+   escalar que multiplica o peso das entradas (1 ou 0), sem `if` em sistema nenhum. Desligada,
+   sobram as condições medidas, as agendas e os personagens; os marcos só vêm se a causa chegar
+   sozinha, e o casus belli das entradas não é aberto.
+3. **Só a configuração padrão é calibrada** e coberta pelo placar de números e pelo placar de
+   eventos (`tools/history/`).
+4. **Com a chave desligada, o projeto não promete resultado histórico.** O CI roda só fumaça (100
+   anos sem quebrar: nenhum país com dívida infinita, nenhum preço preso no limite, população na
+   faixa) e determinismo (mesmo hash com 1 e com várias threads, e depois de salvar e recarregar).
+   A tela da regra diz isso ao jogador com todas as letras, por exemplo: "Desligada, a história
+   segue só as causas simuladas. Este modo não é calibrado: o resultado pode não se parecer com o
+   século XX."
+5. **O desvio se testa dentro do modo histórico**, com a chave ligada: os testes de desvio (seção
+   "O teste do desvio") mudam uma condição e conferem a direção da mudança e o termo que a
+   explica. A chave desligada não é o teste do desvio.
+6. **Outras regras de partida ficam para depois, uma por vez**, cada uma só com fumaça e
+   determinismo, sem placar e sem promessa:
 
-| | O que o CI roda | Custo de manter |
-|---|---|---|
-| Padrão | toda noite: os 100 anos do bench e o placar histórico (números e eventos), uma semente; por semana, cinco sementes | é o jogo; toda calibração mira aqui |
-| `historical_pressure = 0` | em cada PR que toca `history/`: 10 anos, duas contagens de threads, mesmo hash, nenhum país quebrado; toda noite: 100 anos de fumaça (sem placar) | uma rodada a mais por noite (cerca de 2 a 4 min de parede na máquina atual); nenhuma regra de jogo própria; o risco é alguém calibrar um parâmetro que só funciona com a pressão ligada, e o placar não pega |
-| `historical_characters = off` | o mesmo, 10 anos por PR e 100 anos de fumaça por noite | idem; mais a garantia de que os genéricos sozinhos não travam um movimento |
+| Regra possível | Custo de manter |
+|---|---|
+| Pressão histórica desligada (a única agora) | uma rodada de 100 anos de fumaça por noite (cerca de 2 a 4 min de parede na máquina atual) e 10 anos de determinismo nos PRs que tocam `history/`; o risco é um parâmetro que só funciona com a pressão ligada, que a fumaça não pega |
+| Agendas históricas desligadas | o mesmo custo de CI; mais o cuidado de toda entrada e toda decisão da IA terem caminho sem agenda (o país "sem agenda" das ondas 2 a 4 já é esse caminho, então o custo de código é baixo) |
+| Agressividade da IA (escalar no peso da guerra na pontuação) | o mesmo custo de CI; risco maior: muda o número de guerras, e a fumaça precisa conferir que nenhum país some nem que a dívida explode em guerra sem fim |
 
-Cada regra a mais dobra as combinações possíveis; com duas, o CI testa cada uma sozinha contra o
-padrão, não as quatro combinações. Uma terceira regra só entraria com o mesmo critério: escalar em
-dados, sem caminho de código próprio, sem promessa histórica.
+Cada regra a mais é uma rodada de fumaça a mais por noite. O CI testa cada regra sozinha contra o
+padrão, nunca as combinações; quem combinar regras está fora do que o projeto testa, e a tela diz
+isso também.
 
 **Comparação com o que existe:**
 
 - **Victoria 3:** não tem modo histórico. Tem regras de partida (por exemplo, ligar ou desligar o
-  investimento autônomo), três estratégias de IA por país sorteadas com peso e trocadas por
-  acúmulo de mudanças (diário de desenvolvimento 59), *journal entries* com condição de entrada,
-  de conclusão e de falha, e agitadores históricos que surgem sob condição e não são garantidos
-  (diários 82 e 83). A história entra por pesos no cenário, não por uma chave.
-- **Hearts of Iron IV:** tem a chave, por país: o comportamento da IA pode ser o padrão, o histórico
-  (segue a árvore de foco real), um alternativo ou sorteado (wiki, *Game rules*). É o modelo de
-  "modo histórico" que o dono questionou, e o custo aparece lá: cada caminho de foco é conteúdo a
-  manter.
-
-**Recomendação:** um jogo, padrão calibrado, as duas regras escalares acima numa tela de opções
-sem promessa histórica. Alternativa mais barata: nenhuma regra (só o padrão), e a pressão
-desligada fica só como parâmetro de teste do CI para medir quanto da história vem da causa.
+  investimento autônomo, diário de desenvolvimento 71), três estratégias de IA por país sorteadas
+  com peso e trocadas por acúmulo de mudanças (diário 59), *journal entries* com condição de
+  entrada, de conclusão e de falha, e agitadores históricos que surgem sob condição e não são
+  garantidos (diários 82 e 83). A história entra por pesos no cenário, não por uma chave.
+- **Hearts of Iron IV:** tem a chave por país: o comportamento da IA pode ser o padrão, o histórico
+  (segue a árvore de foco real), um alternativo ou sorteado (wiki, *Game rules*). Cada caminho de
+  foco é conteúdo a manter; por isso aqui a chave é uma só e global, e o lado desligado não ganha
+  conteúdo próprio.
 
 ## Interesses: o que cada país quer
 
@@ -638,8 +645,8 @@ cadeia mudou, e os termos explicam por quê?
 | Sem ajuda americana em 1948 | Europa Ocidental cresce menos, movimentos comunistas maiores | termos na política dos países europeus |
 
 Cada teste fica no CI como regra (não como número): a direção da mudança e o termo que a explica.
-Um teste a mais mede a pressão: a mesma rodada com `historical_pressure = 0` mostra quanto de
-cada marco vem da causa medida; um marco que só vem com a pressão é candidato a causa nova.
+A chave desligada serve ainda de diagnóstico, sem promessa: a rodada noturna de fumaça grava os
+marcos que vieram, e um marco que só vem com a pressão ligada é candidato a causa nova.
 
 ## Comparação de abordagem com o Victoria 3 e o Cold War Era
 
@@ -689,7 +696,8 @@ Datas e números conferidos; Wikipedia em inglês usada só para fatos, como em 
 - Bretton Woods: fim da conversibilidade do dólar em 15 de agosto de 1971 ("Nixon shock").
 - Victoria 3: wiki do jogo (páginas *Journal*, *Diplomatic play*, *Interest*); diários de
   desenvolvimento 59 (IA), 71 (regra de investimento autônomo), 82 e 83 (agitadores; a resposta
-  dos desenvolvedores de que os históricos surgem sob condição e não são garantidos); Hearts of Iron IV: wiki, página *Game rules*; Victoria 2: wiki, páginas
+  dos desenvolvedores de que os históricos surgem sob condição e não são garantidos); Hearts of
+  Iron IV: wiki, página *Game rules*; Victoria 2: wiki, páginas
   *Event modding* e *Decisions*. CWE: nomes dos arquivos em `common/journal_entries` do
   repositório, para dizer quais sistemas existem; nenhum conteúdo lido para uso.
 
@@ -705,11 +713,7 @@ Decididas em 2026-11-16:
    belli; nunca no resultado.
 5. ~~Movimentos `revisionism` e `regime_change`~~: no catálogo (já no PR #53 da política).
 6. ~~Agendas~~: por ondas, os principais primeiro (tabela "Ordem de entrada das agendas").
+7. ~~Regras de partida~~: um modo só, o histórico, com a chave da pressão histórica; só o padrão é
+   calibrado; desligada, só fumaça e determinismo e nenhuma promessa histórica, dita na tela.
 
-Aberta:
-
-7. **Regras de partida.** Proposta: um jogo, um caminho de código, o padrão calibrado e coberto
-   pelo placar; no máximo duas regras escalares em dados (`historical_pressure`,
-   `historical_characters`) com só fumaça e determinismo no CI, sem promessa histórica.
-   Alternativa: nenhuma regra, a pressão desligada só como parâmetro de teste. Recomendação: as
-   duas regras escalares, se o dono quiser a tela de opções; senão, nenhuma.
+Nenhuma decisão aberta.

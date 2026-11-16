@@ -305,7 +305,8 @@ o jogador mexe. Fica por último, como ele pediu. Desenho em `confidence.pt-BR.m
 Decidido pelo dono em 2026-11-16: a mistura "como o Victoria 3", com entradas históricas que têm
 condição de entrada e de saída, marcos e esforço para desviar; personagens com janela de datas;
 casus belli com pressão popular como único empurrão na guerra; agendas por ondas; dívida privada e
-três confianças por país. Aberta: as regras de partida.
+três confianças por país; um modo só, o histórico, com a chave da pressão histórica, sem promessa
+histórica com ela desligada.
 
 | O quê | Depende de | Fase |
 |---|---|---|
@@ -322,6 +323,7 @@ três confianças por país. Aberta: as regras de partida.
 | Personagens: agitador, líder de grupo, chefe de governo, com janela, condição e sorteio pela semente (`data/history/characters.ron`, Wikidata) | 3d (lugares e termos), 7 | 7 |
 | Agendas por ondas: GER, ITA, JAP, SOV, USA, GBR, FRA, CHN primeiro | 6 | 7, depois contínuo |
 | Marcos das entradas no `events.json` do placar; testes de desvio no CI | `tools/history/` | 7 |
+| Regra de partida "pressão histórica" (ligada por padrão): com ela desligada, só fumaça de 100 anos por noite e determinismo nos PRs, e a tela avisa que não há promessa histórica | 7 | 7 |
 
 Nada disto muda a ordem das fases em curso. Três coisas pedem cuidado agora, para não refazer
 depois:
@@ -414,7 +416,7 @@ As correções podem voltar para o OpenHistoricalMap.
 3. Regra de assimilação: taxa base e peso de lei, discriminação e concentração. Proposta, sem
    código, para o dono decidir: 1,5 % ao ano para a cultura e 0,2 % para a religião, vezes lei,
    (1 − discriminação), (1 − concentração)² e família linguística (`docs/population.pt-BR.md`).
-4. Regras de partida do último bloco: um jogo só com o padrão calibrado, e no máximo duas regras
-   escalares em dados (`historical_pressure`, `historical_characters`) só com fumaça e
-   determinismo no CI, ou nenhuma. O resto do trilho histórico e da confiança foi decidido em
-   2026-11-16 (`history-rails.pt-BR.md`, `confidence.pt-BR.md`).
+4. ~~Trilho histórico e confiança (último bloco)~~: decididos em 2026-11-16. Um modo só, o
+   histórico, com a chave "pressão histórica: ligada (padrão) ou desligada"; só o padrão é
+   calibrado e coberto pelo placar, e desligada o projeto não promete resultado histórico
+   (`history-rails.pt-BR.md`, `confidence.pt-BR.md`).
