@@ -1,0 +1,28 @@
+// Technologies of 1925–2025. Contract and rules in crates/bf-sim/src/research.rs and
+// docs/research.pt-BR.md. Names in assets/i18n/*/research.ftl.
+(
+    technologies: [
+        (
+            key: "electrification",
+            field: "electrical",
+            era: 0,
+            demonstrated: 1882,
+            industrialized: 1890,
+            cost: 40,
+            methods: [],
+            productivity: [("light_industry", 20), ("heavy_industry", 20)],
+            start: Some((default: Science, countries: [("USA", Diffused), ("GER", Industrial), ("GBR", Industrial)])),
+        ),
+        (
+            key: "transistor",
+            field: "electronics",
+            era: 2,
+            requires: ["electrification"],
+            demonstrated: 1947,
+            industrialized: 1954,
+            cost: 300,
+            methods: ["electronics_plant.transistors"],
+            productivity: [("light_industry", 15)],
+        ),
+    ],
+)

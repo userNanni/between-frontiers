@@ -8,6 +8,7 @@ use crate::econ::{Catalogue, setup};
 use crate::economy::{BuildingsFile, GoodsFile, NeedsFile};
 use crate::game::GameWorld;
 use crate::initial::{IndustryFile, PopulationFile};
+use crate::research::{ResearchState, TechTree, TechnologiesFile};
 use crate::resources::{DepositsFile, LandFile};
 use crate::scenario::{CountriesFile, MapFile};
 
@@ -19,6 +20,8 @@ pub struct GameData {
     pub land: Option<LandFile>,
     pub population: Option<PopulationFile>,
     pub industry: Option<IndustryFile>,
+    /// The technology tree, when `data/research/technologies.ron` exists.
+    pub tree: Option<Arc<TechTree>>,
 }
 
 fn read<T: serde::de::DeserializeOwned>(path: &Path) -> Result<T, String> {
@@ -43,7 +46,12 @@ impl GameData {
         let buildings: BuildingsFile = read(&data.join("economy/buildings.ron"))?;
         let needs: NeedsFile = read(&data.join("economy/needs.ron"))?;
         let catalogue = Catalogue::build(&goods, &buildings, &needs).map_err(|e| e.to_string())?;
+        let tree = optional::<TechnologiesFile>(&data.join("research/technologies.ron"))?
+            .map(|file| TechTree::build(&file, &catalogue).map(Arc::new))
+            .transpose()
+            .map_err(|e| format!("research/technologies.ron: {e}"))?;
         Ok(Self {
+            tree,
             catalogue: Arc::new(catalogue),
             countries: read(&scenario.join("countries.ron"))?,
             map: read(&root.join("assets/map/provinces.ron"))?,
@@ -68,6 +76,12 @@ impl GameData {
                 industry: self.industry.as_ref(),
             },
         );
+        if let Some(tree) = &self.tree {
+            world.research = ResearchState::initial(
+                tree,
+                self.countries.countries.iter().map(|c| c.tag.as_str()),
+            );
+        }
         world
     }
 }
