@@ -521,25 +521,53 @@ com fonte na seção "Fontes dos fios".
 
 ### 9. As reformas chinesas de 1978
 
-- **Pré-condições:** economia planejada estagnada, distância de renda para os vizinhos (Japão,
-  Taiwan, Hong Kong, Coreia do Sul), fim da geração revolucionária no poder.
-- **Move:** o movimento `market_reform`, já no catálogo, medindo a distância de renda para os
-  vizinhos e as necessidades não atendidas; a mudança da lei econômica quando ele passa do peso dos
-  grupos que sustentam o planejamento.
-- **O jogador muda:** como China, reformar antes ou nunca; como Estados Unidos, abrir ou fechar
-  mercado e tecnologia (licença, embargo, `research.pt-BR.md`). **Resto da cadeia:** a China que
-  reforma cedo vira o motor da industrialização mundial antes; a que não reforma fica como a URSS.
-- **Exige:** política 3d, licença e embargo de tecnologia (fase 2 já tem), zona econômica especial
-  (lei regional; não existe ainda).
-- **Entrada e saída:** entra com economia planejada e distância de renda para os vizinhos acima de
-  um limite (janela 1970–1990); marcos: lei agrária de mercado, zona econômica especial, capital
-  estrangeiro; sai se a distância fechar sem reforma ou se o regime cair.
-- **Forças e esforço:** distância de renda, necessidades não atendidas, o chefe de governo (a morte
-  do fundador abre espaço; Deng, se surgir, empurra `market_reform`), pressão histórica fraca.
-  Esforço **médio** como China (manter o plano custa legitimidade), **baixo** para os Estados
-  Unidos fecharem mercado e tecnologia.
+Estudo e mecanismo em `late-industrialization.pt-BR.md`. Nenhuma fase da industrialização
+chinesa foi espontânea: a técnica entrou, em cada uma, por um canal aberto por decisão (fábrica
+soviética, fábrica comprada do Ocidente, empresa mista, zona). O fio mede a abertura do canal e
+o capital que passa por ele, não a mudança de lei sozinha.
+
+- **Pré-condições:** economia planejada com indústria pesada e pouco emprego fora do campo (a
+  China de 1978 tinha 70,5 % do emprego no primário e a indústria em 47,6 % do PIB); distância
+  de renda para os vizinhos (Japão, Taiwan, Hong Kong, Coreia do Sul); relação com os Estados
+  Unidos e o Japão já não hostil; vizinhos com salário subindo e capital procurando onde montar;
+  diáspora rica nesses vizinhos; trabalhador alfabetizado e preso ao campo (`internal_passports`).
+- **Move:** o movimento `market_reform`, medindo a distância de renda e as necessidades não
+  atendidas; a mudança das leis `land_tenure` (da `collective_farming` à terra de família),
+  `foreign_capital` (de `closed_capital` a `joint_ventures`, e `export_zones`) e `trade`; e o
+  fluxo de capital da fase 4, que só vem se o retorno lá passa o de casa (salário × técnica,
+  lei, relação, diáspora, memória de expropriação).
+- **O jogador muda:** como China, abrir antes, abrir sem zonas, abrir e estatizar (o prêmio de
+  expropriação corta o fluxo por uma geração) ou nunca abrir (a via do plano, lenta e de pouco
+  emprego); como Estados Unidos ou Japão, recusar a reaproximação, vetar o investimento ou
+  embargar a técnica (`research.pt-BR.md`); como Hong Kong ou Taiwan, não investir. **Resto da
+  cadeia:** a China que abre cedo vira a fábrica do mundo antes e tira a indústria de exportação
+  do Sudeste Asiático; a que nunca abre fica com a indústria do plano e o campo cheio.
+- **Exige:** política 3 (leis novas `joint_ventures` e `export_zones`, efeitos de teto
+  estrangeiro, prazo e entrega de técnica, `state_investment_share` ligado); fase 4 (fluxo de
+  capital, dono da planta, remessa, relação diplomática, fábrica comprada, imitação com canal).
+- **Entrada e saída:** entra com `planned_economy`, capital fechado e distância de renda para os
+  vizinhos acima de um limite (janela 1970–1995). Marcos, cada um com data de referência:
+  1. reaproximação com os Estados Unidos e o Japão (1972, viagem de Nixon e comunicado
+     sino-japonês);
+  2. fábricas inteiras compradas de fora (2 de janeiro de 1973, o "Plano 43", US$ 4,3 bilhões);
+  3. `joint_ventures` (8 de julho de 1979, lei das empresas mistas);
+  4. `export_zones` (26 de agosto de 1980, zonas de Guangdong);
+  5. terra de família (responsabilidade familiar em 98 % das equipes no fim de 1983);
+  6. investimento estrangeiro recebido acima de 1 % do PIB (1991; 6,2 % em 1993,
+     `data/history/fdi.csv`);
+  7. emprego secundário acima de 25 % (2009: 27,8 %, anuário chinês de 2010).
+
+  Sai por sucesso no último marco. Sai por falha se o regime cai, se o capital é estatizado sem
+  pagamento antes do sexto marco, ou se a distância de renda fecha sem abertura.
+- **Forças e esforço:** distância de renda, necessidades não atendidas, o retorno medido do
+  capital dos vizinhos na costa chinesa, a diáspora, o chefe de governo (a morte do fundador abre
+  espaço; Deng, se surgir, empurra `market_reform` e as leis de capital), pressão histórica fraca.
+  Esforço **médio** como China (manter o plano custa legitimidade e deixa a distância crescer);
+  **baixo** para os Estados Unidos e o Japão (não reaproximar, vetar); **alto** para manter a
+  China aberta sem capital, porque o capital decide sozinho.
 - **Veredito: causa + personagem.** A causa medida existe; os personagens dão o momento dentro da
-  janela.
+  janela. O marco do pleno de dezembro de 1978 não entra: o pleno não trouxe política econômica
+  nova (a virada foi anunciada em 10 de novembro); os marcos são as leis e o fluxo.
 
 ### 10. O colapso soviético
 
@@ -594,7 +622,7 @@ com fonte na seção "Fontes dos fios".
 | Descolonização | causa | alto para manter | 3, 4, 5 | movimentos ligados, país novo |
 | Guerra Fria | causa + agenda | médio a alto | 4, 5, 6 | blocos, arma nuclear, guerra por procuração |
 | Choques do petróleo | agenda + pressão | médio | 4, 5 | cartel, reservas, guerra regional |
-| Reformas chinesas | causa + personagem | médio | 3 | `market_reform` ligado, zona econômica |
+| Reformas chinesas | causa + personagem | médio | 3, 4 | `market_reform` ligado, leis de empresa mista e zona, fluxo de capital entre países, imitação com canal |
 | Colapso soviético | causa | alto | 3, 4, 5 | separação pacífica, nacionalidades |
 | Integração europeia | causa + agenda | baixo a alto | 4, 5 | união aduaneira e moeda comum ligadas |
 
@@ -692,7 +720,9 @@ Datas e números conferidos; Wikipedia em inglês usada só para fatos, como em 
   de 1979 a um pico de US$ 39,50; queda de cerca de US$ 27 para menos de US$ 10 em 1986 ("1973 oil
   crisis", "1979 oil crisis", "1980s oil glut").
 - China: terceiro pleno do 11º Comitê Central de 18 a 22 de dezembro de 1978; zona econômica
-  especial de Shenzhen em agosto de 1980.
+  especial de Shenzhen em agosto de 1980. Os marcos do fio 9 e as fontes de cada um estão em
+  `late-industrialization.pt-BR.md` (Plano 43, lei de 1979, regulamento das zonas de 1980,
+  responsabilidade familiar, série de investimento direto e emprego por setor).
 - Bretton Woods: fim da conversibilidade do dólar em 15 de agosto de 1971 ("Nixon shock").
 - Victoria 3: wiki do jogo (páginas *Journal*, *Diplomatic play*, *Interest*); diários de
   desenvolvimento 59 (IA), 71 (regra de investimento autônomo), 82 e 83 (agitadores; a resposta
