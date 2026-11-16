@@ -16,6 +16,10 @@ para comparar sistemas e ordens de grandeza. Nada dele entra no projeto: dado, t
 - **Para medir:** os números do CWE saem da contagem das definições em `common/` do repositório
   dele (tecnologias, bens, edifícios, leis), conferida no commit lido. Recontar quando o mod
   avançar.
+- **Desempenho:** o CI compara cada PR com a base (mesma máquina, 5 anos, 1 thread), põe o custo
+  de cada sistema no resumo do job e avisa quando a simulação fica mais de 15 % mais cara. A
+  rodada noturna de 100 anos publica a mesma tabela. Ao fechar uma fase, atualize a linha
+  "Desempenho" abaixo com uma rodada de 100 anos sob `flock /tmp/bf-bench.lock`.
 - **Não é meta copiar.** Um sistema deles que contraria um princípio nosso (pouco sorteio, causa
   visível, determinismo) fica de fora, com o motivo escrito aqui.
 
@@ -34,7 +38,7 @@ para comparar sistemas e ordens de grandeza. Nada dele entra no projeto: dado, t
 | Grupos de interesse / ideologias | 8 / 89 | do Victoria 3 | 8 / nenhuma (postura pelos efeitos) |
 | Movimentos políticos | 27 | do Victoria 3 | 19 tipos (catálogo da fase 3) |
 | Eventos (journal entries) / decisões | 135 / 74 | — | fora do escopo por ora (pouco sorteio) |
-| Desempenho | autor relata 5 min 26 s numa amostra de 1951 e 4 min no save de referência de 1900 do jogo base, sem dizer o que foi medido | — | 100 anos em 105 s, tick mais lento 46 ms |
+| Desempenho | autor relata 5 min 26 s numa amostra de 1951 e 4 min no save de referência de 1900 do jogo base, sem dizer o que foi medido | — | 100 anos em 134 s com 12 threads, tick mais lento 98 ms (`main` 662bb7a, 2026-11-16; na fase 2 eram 105 s e 46 ms) |
 
 ## Fase 1: economia
 

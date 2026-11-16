@@ -15,7 +15,7 @@ use std::time::{Duration, Instant};
 
 use laplace_schelling::command::Command;
 use laplace_schelling::hash::{HashState, StateHash, StateHasher, hash_of};
-use laplace_schelling::schedule::{Cadence, TickCtx};
+use laplace_schelling::schedule::{Cadence, SystemStats, TickCtx};
 use laplace_schelling::{Date, Simulation};
 use serde::Serialize;
 
@@ -114,8 +114,9 @@ impl Command<World> for NoCommand {
     }
 }
 
+/// Cost of one system over a run.
 #[derive(Serialize)]
-struct SystemReport {
+pub(crate) struct SystemReport {
     name: &'static str,
     cadence: String,
     runs: u64,
@@ -209,6 +210,40 @@ fn cadence_label(cadence: Cadence) -> String {
     }
 }
 
+/// The cost of each system, in declared order.
+pub(crate) fn system_reports(stats: Vec<SystemStats>) -> Vec<SystemReport> {
+    stats
+        .into_iter()
+        .map(|s| SystemReport {
+            name: s.name,
+            cadence: cadence_label(s.cadence),
+            runs: s.runs,
+            compute_ms: ms(s.compute),
+            apply_ms: ms(s.apply),
+            total_ms: ms(s.compute + s.apply),
+            mean_us: if s.runs == 0 {
+                0.0
+            } else {
+                (s.compute + s.apply).as_secs_f64() * 1e6 / s.runs as f64
+            },
+            slowest_ms: ms(s.slowest),
+        })
+        .collect()
+}
+
+pub(crate) fn print_systems(systems: &[SystemReport]) {
+    println!(
+        "{:<20} {:<20} {:>6} {:>11} {:>9} {:>9} {:>11}",
+        "system", "cadence", "runs", "compute ms", "apply ms", "mean µs", "slowest ms"
+    );
+    for s in systems {
+        println!(
+            "{:<20} {:<20} {:>6} {:>11.1} {:>9.1} {:>9.1} {:>11.3}",
+            s.name, s.cadence, s.runs, s.compute_ms, s.apply_ms, s.mean_us, s.slowest_ms
+        );
+    }
+}
+
 fn run(seed: u64, threads: usize, end: Date) -> RunReport {
     let world = World::generate(seed);
     let schedule = world::schedule(threads);
@@ -263,25 +298,7 @@ fn run(seed: u64, threads: usize, end: Date) -> RunReport {
         hashing += hashed.elapsed();
     }
 
-    let systems = sim
-        .schedule()
-        .stats()
-        .into_iter()
-        .map(|s| SystemReport {
-            name: s.name,
-            cadence: cadence_label(s.cadence),
-            runs: s.runs,
-            compute_ms: ms(s.compute),
-            apply_ms: ms(s.apply),
-            total_ms: ms(s.compute + s.apply),
-            mean_us: if s.runs == 0 {
-                0.0
-            } else {
-                (s.compute + s.apply).as_secs_f64() * 1e6 / s.runs as f64
-            },
-            slowest_ms: ms(s.slowest),
-        })
-        .collect();
+    let systems = system_reports(sim.schedule().stats());
     let ticks = sim.clock().tick;
     RunReport {
         threads,
@@ -319,16 +336,7 @@ fn print_summary(report: &Report) {
         run.slowest_tick.tick,
         run.hash_ms
     );
-    println!(
-        "{:<12} {:<20} {:>6} {:>11} {:>9} {:>9} {:>11}",
-        "system", "cadence", "runs", "compute ms", "apply ms", "mean µs", "slowest ms"
-    );
-    for s in &run.systems {
-        println!(
-            "{:<12} {:<20} {:>6} {:>11.1} {:>9.1} {:>9.1} {:>11.3}",
-            s.name, s.cadence, s.runs, s.compute_ms, s.apply_ms, s.mean_us, s.slowest_ms
-        );
-    }
+    print_systems(&run.systems);
     println!(
         "world: population {:.2} billion, {} markets at a price limit",
         run.final_population as f64 / 1e9,

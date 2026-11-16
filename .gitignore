@@ -9,3 +9,4 @@ dist/
 /crates/*/tests/snapshots/*.new.png
 /bf-bench-report.json
 /target-preview/
+__pycache__/

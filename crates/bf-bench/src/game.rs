@@ -192,6 +192,8 @@ pub struct GameReport {
     pub save_bytes: usize,
     pub save_load_mid_run_ok: bool,
     pub determinism_ok: Option<bool>,
+    /// Cost of each system in the main run.
+    pub systems: Vec<crate::SystemReport>,
     pub technologies: Vec<TechTiming>,
 }
 
@@ -645,21 +647,11 @@ pub fn main(years: u32, seed: u64, threads: usize, check: bool, out: &str) -> Re
         save_bytes: bytes.len(),
         save_load_mid_run_ok: save_load_ok,
         determinism_ok: determinism,
+        systems: crate::system_reports(main.session.sim.schedule().stats()),
         technologies: timings(&data, &main.session),
     };
     print_timings(&report.technologies);
-    if std::env::var_os("BF_SYSTEMS").is_some() {
-        for st in main.session.sim.schedule().stats() {
-            println!(
-                "  system {:<22} runs {:>6} compute {:>8.1} ms apply {:>7.1} ms slowest {:>6.1} ms",
-                st.name,
-                st.runs,
-                st.compute.as_secs_f64() * 1000.0,
-                st.apply.as_secs_f64() * 1000.0,
-                st.slowest.as_secs_f64() * 1000.0
-            );
-        }
-    }
+    crate::print_systems(&report.systems);
     println!(
         "simulation {:.1} s, slowest tick {:.1} ms, save {:.1} MB at {}, reload → {}",
         report.total_ms / 1000.0,
