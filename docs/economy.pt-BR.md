@@ -4,10 +4,14 @@ Estado: fase 1 concluída (#29). Mercados nacionais fecham toda semana, com com�
 investimento privado, o trabalho e a demografia rodam todo mês. O que ficou simplificado está no plano de
 melhoria em `architecture.pt-BR.md`, distribuído pelas fases 2 a 4.
 
-Os dados ficam em `data/economy/` (`goods.ron`, `buildings.ron`, `needs.ron`), com o contrato em
-`crates/bf-sim/src/economy.rs` e os nomes em `assets/i18n/*/economy.ftl`. O teste
+Os dados ficam em `data/economy/` (`goods.ron`, `buildings.ron`, `needs.ron` e `purchases.ron`),
+com o contrato em `crates/bf-sim/src/economy.rs` e os nomes em `assets/i18n/*/economy.ftl`.
+`purchases.ron` traz as cestas de compra do Estado, da manutenção e da construção de cada grupo
+de edifício, e o frete de cada grupo; `needs.ron` traz o peso de cada necessidade no gasto além
+das faixas (`spare`). O catálogo resolve tudo na carga e recusa chave desconhecida. O teste
 `crates/bf-sim/tests/economy_catalogue.rs` recusa referência quebrada, método que usa um bem antes de ele existir,
-bem que ninguém produz e bem civil que ninguém consome.
+bem que ninguém produz, bem civil que ninguém consome, grupo de edifício sem compras e cesta que não
+soma 1000 por mil.
 
 ## Bens por mercado
 

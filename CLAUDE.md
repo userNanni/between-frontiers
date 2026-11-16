@@ -22,6 +22,9 @@ Brasil.
   valor vira campo do `Catalogue` (ver `grain`, `construction`, `staple_need`, `public_goods`,
   `Method::output_value`, `Building::labor_share`). Uma chave errada falha na carga, em vez de
   desligar a regra em silêncio.
+- **Tabela de regra é dado.** Cesta, frete, peso e parâmetro por bem, grupo ou necessidade vão
+  num `.ron` de `data/economy/` (`purchases.ron`, `needs.ron`), não num `match` ou `const` em
+  Rust.
 - **O que não depende do pop sai do laço dos pops**; o que não depende da semana sai da semana
   (exemplo: `NeedMixes`, uma vez por estado e semana).
 - **Sem alocação por pop ou por planta** em laço quente quando um buffer por estado basta.

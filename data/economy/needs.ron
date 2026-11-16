@@ -1,4 +1,7 @@
-// Economy catalogue: population needs. Format: bf_sim::economy::NeedsFile.
+// Economy catalogue: population needs. Format: bf_sim::economy::NeedsFile. `spare` (tiers 3 and
+// 4): weight of the need in the money left after every tier is met. Spare money goes mostly to
+// services and less to goods: the rich of 1925 hired servants, travelled and banked more than
+// they bought steel.
 (
     needs: [
         (key: "staple_food", tier: 1, per_capita: 0.3, goods: [("grain", 1), ("rice", 1), ("maize", 0.9)]),
@@ -12,12 +15,12 @@
         (key: "clothing", tier: 2, per_capita: 0.08, goods: [("clothes", 1)]),
         (key: "stimulants", tier: 2, per_capita: 0.006, goods: [("coffee", 1), ("tea", 1), ("tobacco", 0.8), ("cocoa", 0.9), ("beverages", 0.25), ("sugar", 0.15)]),
         (key: "healthcare", tier: 2, per_capita: 0.03, goods: [("medicines", 1)]),
-        (key: "mobility", tier: 3, per_capita: 0.12, goods: [("transportation", 1), ("automobiles", 0.5)]),
-        (key: "communication", tier: 3, per_capita: 0.05, goods: [("telecommunications", 1), ("paper", 0.05), ("consumer_electronics", 0.6)]),
-        (key: "comfort", tier: 3, per_capita: 0.06, goods: [("appliances", 1), ("consumer_electronics", 0.8), ("electricity", 0.0005)]),
-        (key: "services", tier: 3, per_capita: 0.25, goods: [("services", 1)]),
-        (key: "savings", tier: 4, per_capita: 0.1, goods: [("finance", 1)]),
-        (key: "automobile", tier: 4, per_capita: 0.05, goods: [("automobiles", 1)]),
-        (key: "luxury", tier: 4, per_capita: 0.05, goods: [("luxury_goods", 1), ("beverages", 0.1), ("tobacco", 0.05)]),
+        (key: "mobility", tier: 3, per_capita: 0.12, spare: 0.8, goods: [("transportation", 1), ("automobiles", 0.5)]),
+        (key: "communication", tier: 3, per_capita: 0.05, spare: 0.6, goods: [("telecommunications", 1), ("paper", 0.05), ("consumer_electronics", 0.6)]),
+        (key: "comfort", tier: 3, per_capita: 0.06, spare: 0.3, goods: [("appliances", 1), ("consumer_electronics", 0.8), ("electricity", 0.0005)]),
+        (key: "services", tier: 3, per_capita: 0.25, spare: 1, goods: [("services", 1)]),
+        (key: "savings", tier: 4, per_capita: 0.1, spare: 1, goods: [("finance", 1)]),
+        (key: "automobile", tier: 4, per_capita: 0.05, spare: 0.3, goods: [("automobiles", 1)]),
+        (key: "luxury", tier: 4, per_capita: 0.05, spare: 0.5, goods: [("luxury_goods", 1), ("beverages", 0.1), ("tobacco", 0.05)]),
     ],
 )

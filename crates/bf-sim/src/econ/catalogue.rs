@@ -3,7 +3,7 @@
 
 use laplace_schelling::Fixed;
 
-use crate::economy::{BuildingsFile, GoodsFile, NeedsFile, PROFESSIONS};
+use crate::economy::{BuildingsFile, GoodsFile, NeedsFile, PROFESSIONS, PurchasesFile};
 use crate::resources::{FARMS, RESOURCES};
 
 /// Weeks in the year the catalogue's annual quantities are divided by.
@@ -73,6 +73,9 @@ pub struct Building {
     pub stagnant: bool,
     /// Built and paid for by the state (`BuildingDef::public`).
     pub public: bool,
+    /// Goods of one new level, per mille of its cost, and whether each is the building itself
+    /// (bought from the building trade as construction points) ([`PurchasesFile`]).
+    pub construction: Vec<(GoodIx, i64, bool)>,
     /// Its profits go to landowners rather than capitalists.
     pub agriculture: bool,
     /// Share of value added paid as wages ([`super::labor_share`]).
@@ -89,7 +92,7 @@ pub struct Need {
     /// Who has the need: urban professions, rural ones, or everyone (`None`).
     pub urban: Option<bool>,
     pub goods: Vec<(GoodIx, Fixed)>,
-    /// Weight of the need in spending beyond the tiers ([`super::week::spare_weight`]).
+    /// Weight of the need in the money left once every tier is met (`NeedDef::spare`).
     pub spare_weight: Fixed,
 }
 
@@ -108,21 +111,10 @@ pub struct Catalogue {
     pub staple_need: Option<usize>,
     /// Goods the state buys whole (category `public`: schools, hospitals).
     pub public_goods: Vec<GoodIx>,
-    /// [`super::week::STATE_BASKET`] and [`super::week::UPKEEP_BASKET`] by good index.
+    /// What the state and the investment pool buy, per mille ([`PurchasesFile`]).
     pub state_basket: Vec<(GoodIx, i64)>,
     pub upkeep_basket: Vec<(GoodIx, i64)>,
 }
-
-/// Freight per building group: transport bought per unit of output value at base prices, per
-/// mille. Bulk (ore, grain, steel) costs more to move than its value suggests; services and
-/// power, nothing (power moves by wire, and the wire is the grid).
-pub const FREIGHT: [(&str, i64); 5] = [
-    ("agriculture", 40),
-    ("extraction", 60),
-    ("heavy_industry", 40),
-    ("light_industry", 25),
-    ("military_industry", 25),
-];
 
 #[derive(Debug)]
 pub struct CatalogueError(pub String);
@@ -144,6 +136,7 @@ impl Catalogue {
         goods: &GoodsFile,
         buildings: &BuildingsFile,
         needs: &NeedsFile,
+        purchases: &PurchasesFile,
     ) -> Result<Self, CatalogueError> {
         let gx = |k: &str| -> Result<GoodIx, CatalogueError> {
             goods
@@ -154,6 +147,19 @@ impl Catalogue {
                 .ok_or_else(|| CatalogueError(format!("unknown good {k}")))
         };
         let per_week = |q: f32| fx(q).mul_ratio(1, WEEKS);
+        let basket = |items: &[(String, i64)]| -> Result<Vec<(GoodIx, i64)>, CatalogueError> {
+            items
+                .iter()
+                .map(|(k, share)| Ok((gx(k)?, *share)))
+                .collect()
+        };
+        let group_of = |key: &str| {
+            purchases
+                .groups
+                .iter()
+                .find(|g| g.group == key)
+                .ok_or_else(|| CatalogueError(format!("no purchases for building group {key}")))
+        };
         let mut bs = Vec::new();
         for b in &buildings.buildings {
             let mut methods = Vec::new();
@@ -204,6 +210,11 @@ impl Catalogue {
                 public: b.public,
                 agriculture: b.group == "agriculture",
                 labor_share: super::labor_share(&b.group),
+                construction: group_of(&b.group)?
+                    .construction
+                    .iter()
+                    .map(|(k, share)| Ok((gx(k)?, *share, purchases.building_work.contains(k))))
+                    .collect::<Result<_, CatalogueError>>()?,
                 resource: b
                     .resource
                     .as_ref()
@@ -221,12 +232,18 @@ impl Catalogue {
             .needs
             .iter()
             .map(|n| {
+                if n.tier >= 3 && n.spare <= 0.0 {
+                    return Err(CatalogueError(format!(
+                        "need {} has no spare weight",
+                        n.key
+                    )));
+                }
                 Ok(Need {
                     key: n.key.clone(),
                     tier: n.tier,
                     per_capita: fx(n.per_capita).mul_ratio(1_000_000, WEEKS),
                     urban: n.urban,
-                    spare_weight: super::week::spare_weight(&n.key),
+                    spare_weight: fx(n.spare),
                     goods: n
                         .goods
                         .iter()
@@ -253,9 +270,7 @@ impl Catalogue {
         if let Some(fg) = freight {
             let fprice = goods[fg as usize].base_price;
             for b in &mut bs {
-                let Some(&(_, per_mille)) = FREIGHT.iter().find(|(g, _)| *g == b.group) else {
-                    continue;
-                };
+                let per_mille = group_of(&b.group)?.freight;
                 for m in &mut b.methods {
                     let shipped: Fixed = m
                         .outputs
@@ -288,20 +303,14 @@ impl Catalogue {
                 .map(|g| g as GoodIx)
                 .collect()
         };
-        let basket = |items: &[(&str, i64)]| -> Result<Vec<(GoodIx, i64)>, CatalogueError> {
-            items
-                .iter()
-                .map(|(k, share)| Ok((gx(k)?, *share)))
-                .collect()
-        };
         Ok(Self {
             grain: gx("grain").ok(),
             construction: gx("construction").ok(),
             staple_need: ns.iter().position(|n| n.key == "staple_food"),
             local: goods_where(&|g| g.local),
             public_goods: goods_where(&|g| g.category == "public"),
-            state_basket: basket(&super::week::STATE_BASKET)?,
-            upkeep_basket: basket(&super::week::UPKEEP_BASKET)?,
+            state_basket: basket(&purchases.state)?,
+            upkeep_basket: basket(&purchases.upkeep)?,
             goods,
             buildings: bs,
             needs: ns,

@@ -336,60 +336,8 @@ impl System<GameWorld> for Demography {
 // ---------------------------------------------------------------------------------------------
 // Investment
 
-/// Construction goods for one level, as shares of its money cost, by building group.
-/// Half of a new level is the work of building it (bought as services), the rest materials
-/// and machines by group.
-fn construction_basket(group: &str) -> &'static [(&'static str, i64)] {
-    match group {
-        "agriculture" => &[
-            ("services", 500),
-            ("tools", 200),
-            ("timber", 250),
-            ("cement", 50),
-        ],
-        "extraction" => &[
-            ("services", 450),
-            ("machinery", 250),
-            ("steel", 150),
-            ("cement", 50),
-            ("explosives", 100),
-        ],
-        "energy" => &[
-            ("services", 450),
-            ("steel", 150),
-            ("cement", 100),
-            ("machinery", 150),
-            ("electrical_equipment", 150),
-        ],
-        "infrastructure" => &[
-            ("services", 500),
-            ("steel", 200),
-            ("cement", 80),
-            ("timber", 120),
-            ("rolling_stock", 100),
-        ],
-        "services" => &[
-            ("services", 600),
-            ("cement", 80),
-            ("timber", 150),
-            ("furniture", 120),
-            ("paper", 50),
-        ],
-        _ => &[
-            ("services", 450),
-            ("steel", 150),
-            ("cement", 70),
-            ("machinery", 250),
-            ("tools", 80),
-        ],
-    }
-}
-
 /// A level costs two years of the value it adds at base prices.
 pub(crate) const CAPITAL_YEARS: i64 = 2;
-/// Parts of the construction basket that are the building itself, made by the building trade
-/// and delivered as construction points; the rest (machines, tools) is bought directly.
-const BUILDING_WORK: [&str; 4] = ["services", "cement", "timber", "steel"];
 /// The least yearly return worth building for.
 const MIN_RETURN: Fixed = milli(50);
 /// Above the floor, a project must beat the real rate on the country's bonds by this, up to
@@ -643,18 +591,18 @@ impl System<GameWorld> for Investment {
                     // The building itself becomes points at the base price of construction;
                     // without a building trade in the catalogue it is bought as goods.
                     let mut points = Fixed::ZERO;
-                    let goods = construction_basket(&b.group)
+                    let goods = b
+                        .construction
                         .iter()
-                        .filter_map(|(k, share)| {
+                        .filter_map(|&(g, share, work)| {
                             if let Some(cg) = construction
-                                && BUILDING_WORK.contains(k)
+                                && work
                             {
-                                points += cost.mul_ratio(*share, 1000)
-                                    / cat.goods[cg as usize].base_price;
+                                points +=
+                                    cost.mul_ratio(share, 1000) / cat.goods[cg as usize].base_price;
                                 return None;
                             }
-                            let g = cat.good(k)?;
-                            Some((g, cost.mul_ratio(*share, 1000) / m.price[g as usize]))
+                            Some((g, cost.mul_ratio(share, 1000) / m.price[g as usize]))
                         })
                         .collect();
                     out.push((

@@ -24,23 +24,8 @@ const PRICES: PriceBand = PriceBand {
 /// Share of a market's surplus offered abroad, and of its shortage sought abroad, each week:
 /// below 1 so that local prices still carry part of the signal (distance, ports, habits).
 const TRADE_REACH: Fixed = milli(850);
-/// What the state buys with its goods budget.
-pub(crate) const STATE_BASKET: [(&str, i64); 9] = [
-    ("services", 300),
-    ("transportation", 100),
-    ("paper", 100),
-    ("medicines", 100),
-    ("small_arms", 100),
-    ("ammunition", 100),
-    ("artillery", 50),
-    ("warships", 100),
-    ("military_aircraft", 50),
-];
-/// Share of the investment pool spent each week on upkeep and housing.
+/// Share of the investment pool spent each week on upkeep and housing (`Catalogue::upkeep_basket`).
 pub(crate) const UPKEEP_SHARE: Fixed = milli(30);
-/// Upkeep buys mostly the work of the building trade, and some machines and tools.
-pub(crate) const UPKEEP_BASKET: [(&str, i64); 3] =
-    [("construction", 780), ("machinery", 150), ("tools", 70)];
 
 /// What `money` buys of each good of a basket, shared by its weights per mille.
 fn basket_orders<'a>(
@@ -165,18 +150,6 @@ impl NeedMixes {
                 .map(|i| need_mix(cat, i, prices, exists))
                 .collect(),
         }
-    }
-}
-
-/// Spare money goes mostly to services and less to goods: the rich of 1925 hired servants,
-/// travelled and banked more than they bought steel.
-pub(crate) fn spare_weight(key: &str) -> Fixed {
-    match key {
-        "services" | "savings" => Fixed::ONE,
-        "mobility" => milli(800),
-        "communication" => milli(600),
-        "luxury" => milli(500),
-        _ => milli(300),
     }
 }
 
