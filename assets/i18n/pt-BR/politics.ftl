@@ -1,0 +1,350 @@
+## Política: categorias, grupos de leis e leis, efeitos, indicadores, grupos de interesse e movimentos.
+## Leis: law-<chave> e law-<chave>-desc. Grupos de interesse: ig-<chave>. Movimentos: movement-<chave>.
+
+law-category-economy = Economia
+law-category-labour = Trabalho
+law-category-welfare = Bem-estar
+law-category-rights = Direitos
+law-category-information = Informação
+law-category-state = Estado
+law-category-empire = Império
+
+law-group-taxation = Tributação
+law-group-ownership = Propriedade
+law-group-land_tenure = Posse da terra
+law-group-trade = Comércio
+law-group-foreign_capital = Capital estrangeiro
+law-group-unions = Sindicatos
+law-group-working_conditions = Condições de trabalho
+law-group-social_insurance = Previdência
+law-group-health = Saúde
+law-group-education = Educação
+law-group-franchise = Direito de voto
+law-group-citizenship = Cidadania
+law-group-religion = Religião
+law-group-internal_movement = Circulação interna
+law-group-immigration = Imigração
+law-group-emigration = Emigração
+law-group-press = Imprensa
+law-group-broadcasting = Radiodifusão
+law-group-policing = Polícia
+law-group-civil_service = Serviço público
+law-group-conscription = Serviço militar
+law-group-colonial_rule = Governo colonial
+law-group-colonial_labour = Trabalho colonial
+
+## Economia
+
+law-indirect_taxation = Tributação indireta
+law-indirect_taxation-desc = Alfândega, impostos de consumo e imposto sobre a terra; nenhum imposto sobre a renda. O Estado arrecada pouco, e o pobre paga tanto quanto o rico.
+law-proportional_income_tax = Imposto de renda proporcional
+law-proportional_income_tax-desc = Toda renda paga a mesma alíquota.
+law-progressive_income_tax = Imposto de renda progressivo
+law-progressive_income_tax-desc = Rendas maiores pagam alíquotas maiores.
+law-steep_progressive_tax = Imposto fortemente progressivo
+law-steep_progressive_tax-desc = As rendas mais altas podem perder a maior parte em imposto.
+law-laissez_faire = Laissez-faire
+law-laissez_faire-desc = O Estado não é dono de indústria nem a constrói.
+law-regulated_market = Mercado regulado
+law-regulated_market-desc = Ferrovias, correios e alguns serviços públicos são do Estado; o resto é privado.
+law-mixed_economy = Economia mista
+law-mixed_economy-desc = O Estado é dono de indústrias-chave e investe ao lado do capital privado; parte do lucro vai para o tesouro.
+law-state_capitalism = Capitalismo de Estado
+law-state_capitalism-desc = O Estado controla os setores estratégicos e lidera o investimento; o mercado cuida do resto.
+law-planned_economy = Economia planificada
+law-planned_economy-desc = O Estado é dono de quase toda a indústria e planeja todo o investimento.
+law-bonded_tenure = Servidão
+law-bonded_tenure-desc = Servos, escravos ou arrendatários endividados devem trabalho ao senhor e não podem sair.
+law-great_estates = Latifúndio
+law-great_estates-desc = Grandes propriedades trabalhadas por arrendatários e meeiros.
+law-freehold_farming = Propriedade livre da terra
+law-freehold_farming-desc = A terra é comprada e vendida livremente; predomina a fazenda familiar.
+law-land_reform = Reforma agrária
+law-land_reform-desc = As propriedades acima de um teto são divididas entre quem as cultiva.
+law-collective_farming = Coletivização
+law-collective_farming-desc = Terra e rebanhos reunidos em fazendas coletivas e estatais.
+law-free_trade = Livre comércio
+law-free_trade-desc = Quase nenhuma tarifa sobre importações.
+law-revenue_tariffs = Tarifas fiscais
+law-revenue_tariffs-desc = Tarifas moderadas, sobretudo para financiar o Estado.
+law-protective_tariffs = Tarifas protecionistas
+law-protective_tariffs-desc = Tarifas altas protegem a indústria e a agricultura nacionais.
+law-autarky = Autarquia
+law-autarky-desc = O comércio exterior é monopólio do Estado ou quase fechado.
+law-capitulations = Capitulações
+law-capitulations-desc = Estrangeiros são julgados pelos próprios cônsules e tributados por tratado.
+law-open_capital = Aberto ao capital estrangeiro
+law-open_capital-desc = Empresas estrangeiras investem nas mesmas condições que as nacionais.
+law-screened_capital = Capital estrangeiro controlado
+law-screened_capital-desc = O investimento estrangeiro precisa de aprovação; minas e petróleo ficam reservados à nação.
+law-closed_capital = Fechado ao capital estrangeiro
+law-closed_capital-desc = A propriedade estrangeira é proibida.
+
+## Trabalho
+
+law-unions_banned = Sindicatos proibidos
+law-unions_banned-desc = Sindicatos e greves são ilegais.
+law-unions_tolerated = Sindicatos tolerados
+law-unions_tolerated-desc = Sindicatos podem existir, mas o patrão não é obrigado a negociar.
+law-collective_bargaining = Negociação coletiva
+law-collective_bargaining-desc = Sindicatos negociam por categoria; o acordo obriga os patrões.
+law-state_unions = Sindicato oficial
+law-state_unions-desc = Um sindicato por categoria, dirigido pelo partido ou pelo Estado corporativo.
+law-unregulated_labour = Trabalho sem regulação
+law-unregulated_labour-desc = Nenhum limite de jornada nem para o trabalho infantil.
+law-factory_acts = Leis fabris
+law-factory_acts-desc = Limites para crianças e mulheres em fábricas e minas.
+law-eight_hour_day = Jornada de oito horas
+law-eight_hour_day-desc = Semana de 48 horas para todos os assalariados.
+law-labour_code = Código do trabalho
+law-labour_code-desc = Oito horas, férias pagas e salário mínimo legal.
+law-family_and_charity = Família e caridade
+law-family_and_charity-desc = Velhos e desempregados dependem da família, da igreja e da esmola.
+law-poor_relief = Assistência aos pobres
+law-poor_relief-desc = Auxílio local para os indigentes, e só.
+law-workers_insurance = Seguro operário
+law-workers_insurance-desc = Seguro contributivo contra acidente, doença e velhice para os assalariados.
+law-social_security = Seguridade social
+law-social_security-desc = Aposentadoria e seguro-desemprego para toda a população.
+
+## Bem-estar
+
+law-private_medicine = Medicina privada
+law-private_medicine-desc = O paciente paga médico e hospital; o Estado só cuida da higiene pública.
+law-public_hospitals = Hospitais públicos
+law-public_hospitals-desc = Hospitais municipais e estaduais atendem os pobres.
+law-health_insurance = Seguro-saúde
+law-health_insurance-desc = Caixas obrigatórias pagam o atendimento e os remédios.
+law-national_health_service = Serviço nacional de saúde
+law-national_health_service-desc = O Estado paga quase todo o atendimento e a maior parte dos remédios.
+law-traditional_schooling = Ensino tradicional
+law-traditional_schooling-desc = Só escolas religiosas ensinam.
+law-private_schooling = Ensino privado
+law-private_schooling-desc = Escolas privadas ou locais; frequentar não é obrigatório.
+law-compulsory_primary = Primário obrigatório
+law-compulsory_primary-desc = Toda criança tem de frequentar uma escola primária gratuita.
+law-universal_secondary = Secundário universal
+law-universal_secondary-desc = A escola é gratuita e obrigatória até a adolescência.
+
+## Direitos
+
+law-no_free_elections = Sem eleições livres
+law-no_free_elections-desc = Nenhum voto muda o governo.
+law-restricted_suffrage = Voto restrito
+law-restricted_suffrage-desc = Só votam os homens que passam por renda, imposto ou alfabetização.
+law-male_suffrage = Sufrágio masculino
+law-male_suffrage-desc = Todos os homens adultos votam.
+law-universal_suffrage = Sufrágio universal
+law-universal_suffrage-desc = Todos os adultos votam.
+law-equal_citizenship = Cidadania igual
+law-equal_citizenship-desc = A lei não distingue comunidades.
+law-official_nationality = Nacionalidade oficial
+law-official_nationality-desc = Uma só língua nacional na escola e na repartição; as minorias são empurradas a assimilar.
+law-legal_segregation = Segregação legal
+law-legal_segregation-desc = Barreira de cor, instalações separadas, empregos e terras reservados e nenhum voto para as comunidades visadas.
+law-legal_exclusion = Exclusão legal
+law-legal_exclusion-desc = As comunidades visadas perdem cidadania, propriedade e profissão.
+law-theocratic_law = Lei religiosa
+law-theocratic_law-desc = A lei religiosa é a lei do Estado; outras fés sofrem restrições.
+law-state_church = Igreja oficial
+law-state_church-desc = Uma igreja oficial com dinheiro público; as outras fés têm culto livre.
+law-separation = Separação entre Igreja e Estado
+law-separation-desc = Nenhuma religião oficial e culto livre.
+law-anticlerical_state = Estado anticlerical
+law-anticlerical_state-desc = Bens, escolas e culto público da Igreja sofrem restrições.
+law-state_atheism = Ateísmo de Estado
+law-state_atheism-desc = O Estado combate a religião; os fiéis são perseguidos.
+law-free_movement = Livre circulação
+law-free_movement-desc = Qualquer um pode se mudar para qualquer lugar do país.
+law-internal_passports = Passaporte interno
+law-internal_passports-desc = Mudar exige licença e registro de residência.
+law-pass_laws = Leis de passe
+law-pass_laws-desc = As comunidades visadas precisam de passe para morar ou trabalhar fora das reservas.
+law-open_immigration = Imigração aberta
+law-open_immigration-desc = Imigrantes entram livremente.
+law-quota_immigration = Cotas de imigração
+law-quota_immigration-desc = Imigrantes entram dentro de cotas anuais e exames.
+law-racial_exclusion = Exclusão racial
+law-racial_exclusion-desc = A entrada é proibida às comunidades visadas e aberta às demais.
+law-closed_immigration = Fronteiras fechadas
+law-closed_immigration-desc = Estrangeiros não podem se fixar.
+law-free_emigration = Emigração livre
+law-free_emigration-desc = Os cidadãos podem sair.
+law-exit_permits = Visto de saída
+law-exit_permits-desc = Sair do país exige uma licença raramente concedida.
+
+## Informação
+
+law-free_press = Imprensa livre
+law-free_press-desc = Qualquer um pode publicar; só a Justiça pode punir.
+law-press_licensing = Imprensa sob licença
+law-press_licensing-desc = Licenças, leis de sedição e apreensão depois de publicado.
+law-prior_censorship = Censura prévia
+law-prior_censorship-desc = O censor lê tudo antes de ir para a gráfica.
+law-state_press_monopoly = Monopólio estatal da imprensa
+law-state_press_monopoly-desc = Só o Estado e o partido publicam.
+law-private_broadcasting = Radiodifusão privada
+law-private_broadcasting-desc = Emissoras privadas licenciadas vivem de publicidade.
+law-public_broadcaster = Emissora pública
+law-public_broadcaster-desc = Um monopólio financiado por taxa, independente do governo.
+law-state_broadcasting = Radiodifusão estatal
+law-state_broadcasting-desc = O governo dirige o rádio e a televisão.
+
+## Estado
+
+law-civil_liberties = Liberdades civis
+law-civil_liberties-desc = Habeas corpus e livre reunião.
+law-emergency_powers = Poderes de exceção
+law-emergency_powers-desc = Estado de sítio, leis de sedição, desterro por decreto.
+law-political_police = Polícia política
+law-political_police-desc = Uma polícia secreta prende opositores sem julgamento.
+law-police_state = Estado policial
+law-police_state-desc = Prisões em massa, campos e trabalho forçado para os inimigos do regime.
+law-patronage = Clientelismo
+law-patronage-desc = Os cargos vão para os amigos de quem manda.
+law-mixed_service = Serviço público misto
+law-mixed_service-desc = Parte do serviço é contratada por mérito.
+law-merit_service = Serviço público por mérito
+law-merit_service-desc = Servidores entram por concurso e não podem ser demitidos por política.
+law-volunteer_army = Exército voluntário
+law-volunteer_army-desc = Os soldados se alistam.
+law-selective_service = Serviço seletivo
+law-selective_service-desc = Parte dos homens é convocada, por sorteio ou necessidade.
+law-universal_service = Serviço militar universal
+law-universal_service-desc = Todo homem apto serve.
+
+## Império
+
+law-company_rule = Governo de companhia
+law-company_rule-desc = Companhias majestáticas governam e tributam a colônia.
+law-direct_rule = Governo direto
+law-direct_rule-desc = Governadores e funcionários da metrópole, com um código à parte para os nativos.
+law-indirect_rule = Governo indireto
+law-indirect_rule-desc = Governantes nativos governam sob residentes coloniais.
+law-settler_rule = Governo dos colonos
+law-settler_rule-desc = Uma minoria de colonos governa a colônia.
+law-trusteeship = Tutela
+law-trusteeship-desc = Conselhos eleitos e um caminho declarado para o autogoverno.
+law-forced_labour = Trabalho forçado
+law-forced_labour-desc = Corveia, cultivo obrigatório e trabalho devido em lugar de imposto.
+law-labour_taxation = Imposto que obriga ao trabalho
+law-labour_taxation-desc = Impostos por palhota e por cabeça, em dinheiro, empurram os homens para o trabalho assalariado.
+law-free_labour = Trabalho livre
+law-free_labour-desc = Ninguém deve trabalho ao Estado colonial.
+
+## Efeitos
+
+law-effect-migration_within_state = Migração dentro do estado
+law-effect-migration_between_states = Migração entre estados
+law-effect-tax_cap_lower = Teto do imposto, classe baixa
+law-effect-tax_cap_middle = Teto do imposto, classe média
+law-effect-tax_cap_upper = Teto do imposto, classe alta
+law-effect-tax_collection = Arrecadação
+law-effect-health_state_share = Parcela do Estado no atendimento hospitalar
+law-effect-education_state_share = Parcela do Estado no ensino
+law-effect-school_enrolment_target = Meta de matrícula escolar
+law-effect-landowner_rent = Renda dos proprietários de terra
+law-effect-medicine_subsidy = Subsídio a remédios
+law-effect-pension = Aposentadoria
+law-effect-unemployment_benefit = Seguro-desemprego
+law-effect-wage_floor = Salário mínimo
+law-effect-union_bargaining = Poder de negociação sindical
+law-effect-working_hours = Jornada de trabalho
+law-effect-child_labour = Trabalho infantil
+law-effect-unfree_labour = Trabalho não livre
+law-effect-state_ownership = Propriedade estatal
+law-effect-state_investment_share = Parcela do Estado no investimento
+law-effect-state_profit_to_treasury = Lucro das estatais para o tesouro
+law-effect-tariff = Tarifa
+law-effect-foreign_investment = Investimento estrangeiro
+law-effect-immigration = Imigração
+law-effect-emigration = Emigração
+law-effect-discrimination = Discriminação
+law-effect-segregation = Segregação
+law-effect-assimilation = Assimilação
+law-effect-franchise = Direito de voto
+law-effect-repression = Repressão
+law-effect-church_privilege = Privilégio da Igreja
+law-effect-corruption = Corrupção
+law-effect-censorship = Censura
+law-effect-state_media = Mídia estatal
+law-effect-conscription = Convocação militar
+law-effect-colonial_tribute = Tributo colonial
+law-effect-colonial_self_rule = Autogoverno colonial
+
+## Indicadores
+
+indicator-literacy = Alfabetização
+indicator-urbanization = Urbanização
+indicator-unemployment = Desemprego
+indicator-needs_met = Necessidades básicas atendidas
+indicator-school_coverage = Cobertura escolar
+indicator-hospital_coverage = Cobertura hospitalar
+indicator-rural_wage_gap = Salário da cidade sobre o do campo
+indicator-tax_burden = Carga tributária
+indicator-import_share = Parcela importada
+indicator-landowner_income_share = Parcela dos proprietários na renda agrícola
+indicator-price_change = Inflação
+indicator-inequality = Desigualdade
+indicator-media_reach = Alcance da mídia
+indicator-immigrant_share = Parcela de imigrantes
+
+## Grupos de interesse
+
+ig-landed_estates = Grandes proprietários
+ig-landed_estates-desc = Donos da terra, que vivem de renda e temem a reforma agrária.
+ig-peasantry = Campesinato
+ig-peasantry-desc = Pequenos lavradores e trabalhadores rurais, que querem terra, imposto baixo e nenhuma convocação.
+ig-workers = Trabalhadores
+ig-workers-desc = Assalariados da cidade e do campo, que querem sindicato, jornada menor e seguro.
+ig-business = Empresariado
+ig-business-desc = Donos e gerentes de empresas, que querem imposto baixo e sindicato fraco.
+ig-professional_classes = Profissionais liberais
+ig-professional_classes-desc = Médicos, advogados, engenheiros e escriturários, que querem imprensa livre, escola e governo honesto.
+ig-officialdom = Funcionalismo
+ig-officialdom-desc = Servidores públicos, que vivem de um Estado maior e com mais dinheiro.
+ig-churches = Igrejas
+ig-churches-desc = O clero, que defende os privilégios e as escolas da sua fé.
+ig-military = Militares
+ig-military-desc = Soldados e oficiais, que querem serviço militar, armas e ordem.
+
+## Movimentos
+
+movement-agrarian_reform = Reforma agrária
+movement-agrarian_reform-desc = Camponeses com fome no latifúndio exigem a terra que cultivam.
+movement-labour_rights = Direitos trabalhistas
+movement-labour_rights-desc = Operários mal pagos e sem sindicato se organizam para negociar.
+movement-social_protection = Proteção social
+movement-social_protection-desc = Onde o desempregado fica sem nada, os trabalhadores exigem aposentadoria e seguro-desemprego.
+movement-suffrage = Sufrágio
+movement-suffrage-desc = Onde a maioria lê e poucos votam, exige-se o voto.
+movement-press_freedom = Liberdade de imprensa
+movement-press_freedom-desc = Um público leitor sob censura exige imprensa livre.
+movement-independence = Independência
+movement-independence-desc = Um povo colonizado com uma elite letrada, fora dos cargos e discriminado, exige seu próprio Estado.
+movement-colonial_labour_reform = Fim do trabalho forçado colonial
+movement-colonial_labour_reform-desc = Colonizados obrigados a trabalhar exigem o fim da obrigação.
+movement-civil_rights = Direitos civis
+movement-civil_rights-desc = Uma comunidade discriminada e capaz de se organizar exige cidadania igual.
+movement-freedom_of_movement = Liberdade de circulação
+movement-freedom_of_movement-desc = Camponeses presos à terra enquanto a cidade paga mais exigem o direito de se mudar.
+movement-public_health = Saúde pública
+movement-public_health-desc = Moradores da cidade sem hospital exigem atendimento pago pelo Estado.
+movement-public_schooling = Escola pública
+movement-public_schooling-desc = Moradores da cidade cujos filhos não têm escola exigem ensino obrigatório.
+movement-nationalization = Estatização
+movement-nationalization-desc = Desemprego em massa sob propriedade privada leva a pedir indústria estatal.
+movement-market_reform = Reforma de mercado
+movement-market_reform-desc = Uma economia estatal estagnada leva a pedir mercado livre.
+movement-tax_revolt = Revolta fiscal
+movement-tax_revolt-desc = Os mais ricos resistem a impostos altos e progressivos.
+movement-protectionism = Protecionismo
+movement-protectionism-desc = Importação e desemprego levam a pedir tarifas.
+movement-anti_corruption = Anticorrupção
+movement-anti_corruption-desc = Um público letrado cansado de propina exige concurso no serviço público.
+movement-secularism = Laicismo
+movement-secularism-desc = Um público urbano e letrado exige o fim dos privilégios da Igreja.
+movement-clerical_reaction = Reação clerical
+movement-clerical_reaction-desc = Fiéis sob um Estado anticlerical se levantam em defesa da sua Igreja.
+movement-nativism = Nativismo
+movement-nativism-desc = Muitos recém-chegados e pouco emprego levam a pedir que a porta se feche.

@@ -1,0 +1,92 @@
+// Interest groups. Contract in crates/bf-sim/src/politics.rs, rules in docs/politics.pt-BR.md.
+// Names in assets/i18n/*/politics.ftl (ig-<key>, ig-<key>-desc). Licence: CC BY-SA 4.0.
+//
+// A group is a bloc of people with a shared material interest, drawn from the 13 professions
+// of economy::PROFESSIONS. Among the groups without a `community`, each profession's shares add
+// up to 1000: everyone belongs to one bloc and no one to two. A group may name one community
+// (culture + religion, by id) and then draws only from it.
+//
+// `interests`: (effect, weight -3..3). The group's stance on a law is the sum of weight times
+// the law's distance from neutral on that effect, so every stance can be read effect by effect.
+// There is no ideology: who joins changes as the professions change, and the stance follows.
+(
+    groups: [
+        (
+            key: "landed_estates",
+            professions: [("landowner", 1000)],
+            interests: [
+                ("landowner_rent", 3), ("unfree_labour", 1), ("tax_cap_upper", -2),
+                ("state_ownership", -2), ("franchise", -1), ("union_bargaining", -1),
+                ("wage_floor", -1), ("tariff", 1), ("repression", 1), ("church_privilege", 1),
+            ],
+        ),
+        (
+            key: "peasantry",
+            professions: [("peasant", 1000), ("farm_laborer", 600)],
+            interests: [
+                ("landowner_rent", -3), ("unfree_labour", -3), ("tax_cap_lower", -2),
+                ("conscription", -2), ("repression", -1), ("migration_within_state", 1),
+                ("franchise", 1), ("church_privilege", 1), ("school_enrolment_target", 1),
+                ("health_state_share", 1),
+            ],
+        ),
+        (
+            key: "workers",
+            professions: [("laborer", 1000), ("skilled_worker", 700), ("farm_laborer", 400)],
+            interests: [
+                ("wage_floor", 3), ("union_bargaining", 3), ("unemployment_benefit", 3),
+                ("pension", 2), ("health_state_share", 2), ("franchise", 2),
+                ("working_hours", -2), ("repression", -2), ("tax_cap_lower", -2),
+                ("child_labour", -1), ("immigration", -1), ("state_ownership", 1),
+                ("medicine_subsidy", 1),
+            ],
+        ),
+        (
+            key: "business",
+            professions: [("capitalist", 1000), ("manager", 700)],
+            interests: [
+                ("union_bargaining", -3), ("state_ownership", -3), ("wage_floor", -2),
+                ("tax_cap_upper", -2), ("tax_cap_middle", -1), ("state_investment_share", -1),
+                ("corruption", -1), ("working_hours", 1), ("immigration", 1),
+                ("foreign_investment", 1), ("tariff", 1),
+            ],
+        ),
+        (
+            key: "professional_classes",
+            professions: [
+                ("professional", 1000), ("engineer", 1000), ("clerk", 700),
+                ("skilled_worker", 300), ("manager", 300),
+            ],
+            interests: [
+                ("censorship", -3), ("corruption", -2), ("repression", -2), ("tax_cap_middle", -2),
+                ("franchise", 2), ("school_enrolment_target", 2), ("education_state_share", 1),
+                ("health_state_share", 1), ("state_media", -1),
+            ],
+        ),
+        (
+            key: "officialdom",
+            professions: [("civil_servant", 1000), ("clerk", 300)],
+            interests: [
+                ("tax_collection", 2), ("state_ownership", 2), ("state_investment_share", 1),
+                ("education_state_share", 1), ("health_state_share", 1), ("corruption", 1),
+                ("repression", 1), ("tax_cap_middle", -1),
+            ],
+        ),
+        (
+            key: "churches",
+            professions: [("clergy", 1000)],
+            interests: [
+                ("church_privilege", 3), ("censorship", 1), ("education_state_share", -1),
+                ("health_state_share", -1),
+            ],
+        ),
+        (
+            key: "military",
+            professions: [("soldier", 1000)],
+            interests: [
+                ("conscription", 2), ("repression", 1), ("state_investment_share", 1),
+                ("colonial_tribute", 1), ("tax_collection", 1), ("franchise", -1),
+            ],
+        ),
+    ],
+)

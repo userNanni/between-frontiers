@@ -1,0 +1,321 @@
+// Law groups and laws of 1925–2025. Contract in crates/bf-sim/src/politics.rs, rules in
+// docs/politics.pt-BR.md. Names in assets/i18n/*/politics.ftl (law-group-<key>, law-<key>,
+// law-<key>-desc). Licence: CC BY-SA 4.0.
+//
+// Every country holds one law of every group (the colonial groups only with colonies). Effects
+// are per mille, keyed by politics::EFFECTS: Multiply effects are 1000 when neutral and
+// multiply; Add effects start at 0 and add; Cap effects are ceilings (1000 = none) and the lowest
+// wins. A law lists only what it changes. `targeted: true` laws fall only on the communities the
+// scenario names for that group; colonial groups act only in the colonial regions, together with
+// the metropole's economy laws.
+//
+// The numbers are orders of magnitude to calibrate when each system is wired, not measurements:
+// what matters now is the order of the laws in each group and which effects each one moves.
+(
+    groups: [
+        // ---- Economy ----
+        (key: "taxation", category: "economy"),
+        (key: "ownership", category: "economy"),
+        (key: "land_tenure", category: "economy"),
+        (key: "trade", category: "economy"),
+        (key: "foreign_capital", category: "economy"),
+        // ---- Labour ----
+        (key: "unions", category: "labour"),
+        (key: "working_conditions", category: "labour"),
+        (key: "social_insurance", category: "labour"),
+        // ---- Welfare ----
+        (key: "health", category: "welfare"),
+        (key: "education", category: "welfare"),
+        // ---- Rights ----
+        (key: "franchise", category: "rights"),
+        (key: "citizenship", category: "rights"),
+        (key: "religion", category: "rights"),
+        (key: "internal_movement", category: "rights"),
+        (key: "immigration", category: "rights"),
+        (key: "emigration", category: "rights"),
+        // ---- Information ----
+        (key: "press", category: "information"),
+        (key: "broadcasting", category: "information"),
+        // ---- State ----
+        (key: "policing", category: "state"),
+        (key: "civil_service", category: "state"),
+        (key: "conscription", category: "state"),
+        // ---- Empire ----
+        (key: "colonial_rule", category: "empire", colonial: true),
+        (key: "colonial_labour", category: "empire", colonial: true),
+    ],
+    laws: [
+        // ---- taxation: who can be taxed how much. The caps bound the budget's class rates
+        // (econ::public, 5 / 9 / 15 % in 1925 by the historical rule, 60 % at most). ----
+        (key: "indirect_taxation", group: "taxation", effects: [
+            // Duties and excises fall on everyone alike, and the state cannot raise much.
+            ("tax_cap_lower", 150), ("tax_cap_middle", 100), ("tax_cap_upper", 80),
+        ]),
+        (key: "proportional_income_tax", group: "taxation", effects: [
+            ("tax_cap_lower", 250), ("tax_cap_middle", 250), ("tax_cap_upper", 250),
+        ]),
+        (key: "progressive_income_tax", group: "taxation", effects: [
+            ("tax_cap_lower", 200), ("tax_cap_middle", 350), ("tax_cap_upper", 500),
+        ]),
+        (key: "steep_progressive_tax", group: "taxation", effects: [
+            ("tax_cap_lower", 200), ("tax_cap_middle", 450), ("tax_cap_upper", 600),
+        ]),
+
+        // ---- ownership: how much of industry the state owns and builds, and where the profit
+        // of state firms goes. ----
+        (key: "laissez_faire", group: "ownership", effects: []),
+        (key: "regulated_market", group: "ownership", effects: [
+            // State railways, posts and some utilities.
+            ("state_ownership", 50), ("state_investment_share", 100), ("state_profit_to_treasury", 300),
+        ]),
+        (key: "mixed_economy", group: "ownership", effects: [
+            ("state_ownership", 250), ("state_investment_share", 300), ("state_profit_to_treasury", 500),
+        ]),
+        (key: "state_capitalism", group: "ownership", effects: [
+            ("state_ownership", 500), ("state_investment_share", 600), ("state_profit_to_treasury", 700),
+            ("foreign_investment", 700),
+        ]),
+        (key: "planned_economy", group: "ownership", effects: [
+            ("state_ownership", 950), ("state_investment_share", 1000), ("state_profit_to_treasury", 1000),
+            ("foreign_investment", 100),
+        ]),
+
+        // ---- land_tenure ----
+        (key: "bonded_tenure", group: "land_tenure", effects: [
+            // Serfdom, slavery and labour owed to the lord.
+            ("landowner_rent", 1600), ("unfree_labour", 300),
+            ("migration_within_state", 500), ("migration_between_states", 500),
+        ]),
+        (key: "great_estates", group: "land_tenure", effects: [
+            // Latifundia, zamindari, sharecropping.
+            ("landowner_rent", 1300),
+        ]),
+        (key: "freehold_farming", group: "land_tenure", effects: []),
+        (key: "land_reform", group: "land_tenure", effects: [
+            // Estates above a ceiling split among those who till them.
+            ("landowner_rent", 600),
+        ]),
+        (key: "collective_farming", group: "land_tenure", effects: [
+            ("landowner_rent", 100), ("state_ownership", 100),
+            ("migration_within_state", 700), ("migration_between_states", 700),
+        ]),
+
+        // ---- trade ----
+        (key: "free_trade", group: "trade", effects: [("tariff", 20)]),
+        (key: "revenue_tariffs", group: "trade", effects: [("tariff", 100)]),
+        (key: "protective_tariffs", group: "trade", effects: [("tariff", 250)]),
+        (key: "autarky", group: "trade", effects: [("tariff", 600), ("foreign_investment", 300)]),
+
+        // ---- foreign_capital ----
+        (key: "capitulations", group: "foreign_capital", effects: [
+            // Foreigners judged by their own consuls and taxed by treaty.
+            ("foreign_investment", 1500), ("tax_collection", 900),
+        ]),
+        (key: "open_capital", group: "foreign_capital", effects: []),
+        (key: "screened_capital", group: "foreign_capital", effects: [("foreign_investment", 600)]),
+        (key: "closed_capital", group: "foreign_capital", effects: [("foreign_investment", 100)]),
+
+        // ---- unions ----
+        (key: "unions_banned", group: "unions", effects: [("repression", 100)]),
+        (key: "unions_tolerated", group: "unions", effects: [("union_bargaining", 200)]),
+        (key: "collective_bargaining", group: "unions", effects: [("union_bargaining", 600)]),
+        (key: "state_unions", group: "unions", effects: [
+            // One union per trade, run by the party or the corporate state.
+            ("union_bargaining", 300), ("wage_floor", 100), ("repression", 100),
+        ]),
+
+        // ---- working_conditions ----
+        (key: "unregulated_labour", group: "working_conditions", effects: [
+            ("working_hours", 1150), ("child_labour", 300),
+        ]),
+        (key: "factory_acts", group: "working_conditions", effects: [
+            // Limits for children and women in factories and mines.
+            ("working_hours", 1050), ("child_labour", 120),
+        ]),
+        (key: "eight_hour_day", group: "working_conditions", effects: [
+            ("working_hours", 950), ("child_labour", 50),
+        ]),
+        (key: "labour_code", group: "working_conditions", effects: [
+            // Eight hours, holidays and a legal minimum wage.
+            ("working_hours", 900), ("child_labour", 20), ("wage_floor", 400),
+        ]),
+
+        // ---- social_insurance ----
+        (key: "family_and_charity", group: "social_insurance", effects: []),
+        (key: "poor_relief", group: "social_insurance", effects: [
+            ("pension", 30), ("unemployment_benefit", 30),
+        ]),
+        (key: "workers_insurance", group: "social_insurance", effects: [
+            // Contributory accident, sickness and old-age insurance for wage earners.
+            ("pension", 300), ("unemployment_benefit", 100),
+        ]),
+        (key: "social_security", group: "social_insurance", effects: [
+            ("pension", 500), ("unemployment_benefit", 400),
+        ]),
+
+        // ---- health: hospitals (state share of the care bought) and medicines ----
+        (key: "private_medicine", group: "health", effects: [
+            ("health_state_share", 50),
+        ]),
+        (key: "public_hospitals", group: "health", effects: [
+            // Municipal and state hospitals for the poor.
+            ("health_state_share", 300), ("medicine_subsidy", 50),
+        ]),
+        (key: "health_insurance", group: "health", effects: [
+            ("health_state_share", 500), ("medicine_subsidy", 300),
+        ]),
+        (key: "national_health_service", group: "health", effects: [
+            ("health_state_share", 900), ("medicine_subsidy", 700),
+        ]),
+
+        // ---- education ----
+        (key: "traditional_schooling", group: "education", effects: [
+            // Religious schools only.
+            ("school_enrolment_target", 50), ("church_privilege", 300),
+        ]),
+        (key: "private_schooling", group: "education", effects: [
+            ("education_state_share", 200), ("school_enrolment_target", 250), ("church_privilege", 150),
+        ]),
+        (key: "compulsory_primary", group: "education", effects: [
+            ("education_state_share", 700), ("school_enrolment_target", 800),
+        ]),
+        (key: "universal_secondary", group: "education", effects: [
+            ("education_state_share", 900), ("school_enrolment_target", 1000),
+        ]),
+
+        // ---- franchise: the share of adults whose vote can change the government ----
+        (key: "no_free_elections", group: "franchise", effects: []),
+        (key: "restricted_suffrage", group: "franchise", effects: [
+            // Property, tax or literacy tests.
+            ("franchise", 150),
+        ]),
+        (key: "male_suffrage", group: "franchise", effects: [("franchise", 450)]),
+        (key: "universal_suffrage", group: "franchise", effects: [("franchise", 950)]),
+
+        // ---- citizenship: the targeted laws name their communities in the scenario ----
+        (key: "equal_citizenship", group: "citizenship", effects: []),
+        (key: "official_nationality", group: "citizenship", targeted: true, effects: [
+            // One national language in school and office; minorities pushed to assimilate.
+            ("discrimination", 100), ("assimilation", 1500),
+        ]),
+        (key: "legal_segregation", group: "citizenship", targeted: true, effects: [
+            // Colour bars, separate facilities, reserved jobs and land.
+            ("discrimination", 400), ("segregation", 600), ("assimilation", 300), ("franchise", -500),
+        ]),
+        (key: "legal_exclusion", group: "citizenship", targeted: true, effects: [
+            // Citizenship stripped; property and professions closed.
+            ("discrimination", 700), ("segregation", 900), ("assimilation", 100), ("franchise", -1000),
+        ]),
+
+        // ---- religion ----
+        (key: "theocratic_law", group: "religion", targeted: true, effects: [
+            // Religious law is state law; other faiths are restricted.
+            ("church_privilege", 900), ("discrimination", 300), ("censorship", 100),
+        ]),
+        (key: "state_church", group: "religion", effects: [("church_privilege", 500)]),
+        (key: "separation", group: "religion", effects: [("church_privilege", 100)]),
+        (key: "anticlerical_state", group: "religion", effects: [("church_privilege", -300)]),
+        (key: "state_atheism", group: "religion", targeted: true, effects: [
+            ("church_privilege", -800), ("discrimination", 300), ("repression", 100),
+        ]),
+
+        // ---- internal_movement: the reach of econ::migration::MigrationLaw ----
+        (key: "free_movement", group: "internal_movement", effects: []),
+        (key: "internal_passports", group: "internal_movement", effects: [
+            // Same as MigrationLaw::Restricted.
+            ("migration_within_state", 250), ("migration_between_states", 100),
+        ]),
+        (key: "pass_laws", group: "internal_movement", targeted: true, effects: [
+            ("migration_within_state", 250), ("migration_between_states", 100), ("segregation", 200),
+        ]),
+
+        // ---- immigration ----
+        (key: "open_immigration", group: "immigration", effects: []),
+        (key: "quota_immigration", group: "immigration", effects: [("immigration", 300)]),
+        (key: "racial_exclusion", group: "immigration", targeted: true, effects: [
+            // Entry barred to the named communities, open to the rest.
+            ("immigration", 50),
+        ]),
+        (key: "closed_immigration", group: "immigration", effects: [("immigration", 50)]),
+
+        // ---- emigration ----
+        (key: "free_emigration", group: "emigration", effects: []),
+        (key: "exit_permits", group: "emigration", effects: [("emigration", 100)]),
+
+        // ---- press ----
+        (key: "free_press", group: "press", effects: []),
+        (key: "press_licensing", group: "press", effects: [
+            // Licences, sedition laws, seizure after the fact.
+            ("censorship", 300),
+        ]),
+        (key: "prior_censorship", group: "press", effects: [("censorship", 700)]),
+        (key: "state_press_monopoly", group: "press", effects: [("censorship", 950), ("state_media", 900)]),
+
+        // ---- broadcasting ----
+        (key: "private_broadcasting", group: "broadcasting", effects: []),
+        (key: "public_broadcaster", group: "broadcasting", effects: [
+            // A licence-fee monopoly at arm's length from the government.
+            ("state_media", 400),
+        ]),
+        (key: "state_broadcasting", group: "broadcasting", effects: [("state_media", 900), ("censorship", 100)]),
+
+        // ---- policing ----
+        (key: "civil_liberties", group: "policing", effects: [("repression", 50)]),
+        (key: "emergency_powers", group: "policing", effects: [
+            // States of siege, sedition laws, exile by decree.
+            ("repression", 300),
+        ]),
+        (key: "political_police", group: "policing", effects: [("repression", 600), ("censorship", 100)]),
+        (key: "police_state", group: "policing", effects: [
+            ("repression", 900), ("censorship", 200), ("unfree_labour", 50),
+        ]),
+
+        // ---- civil_service ----
+        (key: "patronage", group: "civil_service", effects: [("corruption", 250), ("tax_collection", 700)]),
+        (key: "mixed_service", group: "civil_service", effects: [("corruption", 120), ("tax_collection", 900)]),
+        (key: "merit_service", group: "civil_service", effects: [("corruption", 40)]),
+
+        // ---- conscription ----
+        (key: "volunteer_army", group: "conscription", effects: [("conscription", 20)]),
+        (key: "selective_service", group: "conscription", effects: [("conscription", 300)]),
+        (key: "universal_service", group: "conscription", effects: [("conscription", 800)]),
+
+        // ---- colonial_rule (colonial regions only) ----
+        (key: "company_rule", group: "colonial_rule", effects: [
+            // Chartered companies govern and tax.
+            ("colonial_tribute", 400), ("discrimination", 500),
+            ("repression", 500), ("censorship", 500),
+        ]),
+        (key: "direct_rule", group: "colonial_rule", effects: [
+            // Metropolitan governors and officials; a native code apart.
+            ("colonial_tribute", 300), ("colonial_self_rule", 50), ("discrimination", 400),
+            ("repression", 400), ("censorship", 400),
+        ]),
+        (key: "indirect_rule", group: "colonial_rule", effects: [
+            // Through native rulers under residents.
+            ("colonial_tribute", 200), ("colonial_self_rule", 200), ("discrimination", 300),
+            ("repression", 300), ("censorship", 300),
+        ]),
+        (key: "settler_rule", group: "colonial_rule", effects: [
+            // A settler minority governs.
+            ("colonial_tribute", 150), ("colonial_self_rule", 100), ("discrimination", 600),
+            ("segregation", 500), ("franchise", 50), ("repression", 400), ("censorship", 300),
+        ]),
+        (key: "trusteeship", group: "colonial_rule", effects: [
+            // Elected councils and a stated path to self-government.
+            ("colonial_tribute", 100), ("colonial_self_rule", 500), ("discrimination", 150),
+            ("franchise", 300), ("repression", 150), ("censorship", 150),
+        ]),
+
+        // ---- colonial_labour (colonial regions only) ----
+        (key: "forced_labour", group: "colonial_labour", effects: [
+            // Corvée, compulsory crops, labour owed in place of tax.
+            ("unfree_labour", 500),
+        ]),
+        (key: "labour_taxation", group: "colonial_labour", effects: [
+            // Hut and poll taxes in money push men into wage work.
+            ("unfree_labour", 150),
+        ]),
+        (key: "free_labour", group: "colonial_labour", effects: []),
+    ],
+)

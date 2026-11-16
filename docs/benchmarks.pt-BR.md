@@ -30,8 +30,9 @@ para comparar sistemas e ordens de grandeza. Nada dele entra no projeto: dado, t
 | Edifícios | 133 (1213 métodos de produção) | Victoria 3 + 30 | 82 (213 métodos) |
 | Tipos de população | 15 | do Victoria 3 | 13 profissões |
 | Tecnologias | 270 | 200+ | 168 |
-| Leis | 211 em 60 grupos | do Victoria 3 + algumas | fase 3 |
-| Grupos de interesse / ideologias | 8 / 89 | do Victoria 3 | fase 3 |
+| Leis | 211 em 60 grupos | do Victoria 3 + algumas | 89 em 23 grupos (catálogo da fase 3) |
+| Grupos de interesse / ideologias | 8 / 89 | do Victoria 3 | 8 / nenhuma (postura pelos efeitos) |
+| Movimentos políticos | 27 | do Victoria 3 | 19 tipos (catálogo da fase 3) |
 | Eventos (journal entries) / decisões | 135 / 74 | — | fora do escopo por ora (pouco sorteio) |
 | Desempenho | autor relata 5 min 26 s numa amostra de 1951 e 4 min no save de referência de 1900 do jogo base, sem dizer o que foi medido | — | 100 anos em 105 s, tick mais lento 46 ms |
 
@@ -80,13 +81,37 @@ oposta: as áreas se alimentam umas das outras, e a tela de grafo (filtro por á
 
 O CWE só serviu de comparação: nada dele entrou.
 
+## Fase 3: política nacional (contrato e catálogo)
+
+Contagem nas definições de `common/` do CWE no commit `4d301a8` (2026-11-15): 211 leis em 60
+grupos, 8 grupos de interesse, 89 ideologias, 27 movimentos políticos. Desenho nosso em
+`politics.pt-BR.md`; nada roda ainda.
+
+| | CWE (Victoria 3) | Nós |
+|---|---|---|
+| Leis | 211 em 60 grupos; muitos grupos são instituições do Estado (chefe de governo, legislativo, judiciário, partidos, centralização) | 89 em 23 grupos; a forma de governo fica no cenário (`government`), e o voto num grupo só |
+| O que a lei faz | modificadores de script e gatilhos por lei | efeitos declarados em 37 números sobre sistemas nomeados; 10 já caem em código que existe (migração, impostos, escola, hospital, renda da terra) |
+| Postura dos grupos | ideologias atribuídas aos grupos (89), trocadas com o líder | soma dos interesses materiais do grupo sobre os efeitos da lei, lida termo a termo; sem ideologia |
+| Base dos grupos | tipos de população com atração por grupo | 13 profissões repartidas sem sobra nem dupla contagem; comunidade opcional por id |
+| Movimentos | 27, criados por gatilho e com peso de criação; apoio de personagens por ideologia | 19 tipos; nascem só da causa medida (indicador ou efeito de lei), crescem pela margem da condição mais fraca, decaem com meia-vida |
+| Corrupção | grupo de leis próprio e movimentos a favor e contra | grupo `civil_service`, efeito `corruption` no orçamento, movimento anticorrupção |
+| Descolonização | política colonial como grupo de leis e eventos | governo e trabalho coloniais como leis; independência como movimento que mede a discriminação e o autogoverno |
+| Mídia | — | imprensa e radiodifusão como leis, com censura e mídia estatal; alcance da mídia como indicador |
+| 1925 | começa em 1950 | 83 países com lei por grupo e fonte legal, 132 mudanças datadas de referência |
+
+Ficamos atrás em instituições do Estado (judiciário, legislativo, partidos, centralização,
+política externa e armas de destruição em massa), que o CWE trata como leis. Partidos e forma de
+governo entram quando a fase 3 ligar o peso político; política externa e armas, nas fases 4 e 5.
+Não entram de propósito: ideologia sorteada com o líder e movimento com peso de criação, que
+contrariam causa visível e pouco sorteio.
+
 ## Fases seguintes: o que o CWE tem e nós ainda não
 
 | Sistema do CWE | Nossa fase | Nota |
 |---|---|---|
-| Leis e formas de governo refeitas, grupos de interesse e ideologias por posição em temas (estilo Victoria 2) | 3 | nossa meta: movimentos persistentes, causa visível |
-| Corrupção | 3 | |
-| Descolonização | 3 | movimento político, não cadeia de eventos |
+| Leis e formas de governo refeitas, grupos de interesse e ideologias por posição em temas (estilo Victoria 2) | 3 | contrato e catálogo feitos (acima); falta ligar |
+| Corrupção | 3 | lei e efeito no catálogo; falta ligar ao orçamento |
+| Descolonização | 3 | movimento político, não cadeia de eventos; no catálogo |
 | ONU funcional (FMI, missões de paz, sanções, adesão) | 4 | o FMI casa com Bretton Woods e a dívida |
 | Estados clientes como esfera de influência | 4 | |
 | Superestados (formação de uniões) | 4 | |

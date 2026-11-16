@@ -254,7 +254,7 @@ Existe a partir do primeiro PR com código e roda toda noite em Linux e Windows.
 | 0. Fundação | Engine com tick, hash e save; mapa navegável; i18n; benchmark | — |
 | 1. Economia | Mercado nacional, necessidades, propriedade e investimento autônomos, mercado mundial | Demanda sensível a preço, estoques, serviços comercializáveis; depois moeda, câmbio, inflação e banco central |
 | 2. Pesquisa | Árvore do século XIX como base, mais as eras de 1925 a 2025 | Maturidade por país: ciência, protótipo, industrialização, difusão |
-| 3. Política nacional | Grupos de interesse, leis, movimentos persistentes | Causa visível, pouco sorteio, sem funil ideológico |
+| 3. Política nacional | Grupos de interesse, leis, movimentos persistentes (`politics.pt-BR.md`) | Causa visível, pouco sorteio, sem funil ideológico |
 | 4. Diplomacia | Blocos, tratados, influência com retorno | Objetivo próprio para país pequeno; arma nuclear com consequência |
 | 5. Guerra | Frentes sobre a logística definida na fase 1 | Guerra mundial e paz negociada como sistema próprio |
 | 6. IA estratégica | Países que interpretam seu papel | — |

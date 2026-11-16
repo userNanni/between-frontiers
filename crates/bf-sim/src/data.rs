@@ -8,6 +8,9 @@ use crate::econ::{Catalogue, setup};
 use crate::economy::{BuildingsFile, GoodsFile, NeedsFile};
 use crate::game::GameWorld;
 use crate::initial::{IndustryFile, PopulationFile};
+use crate::politics::{
+    InterestGroupsFile, LawsFile, LawsInForce, MovementsFile, Politics, ScenarioLawsFile,
+};
 use crate::research::{ResearchState, TechTree, TechnologiesFile};
 use crate::resources::{DepositsFile, LandFile};
 use crate::scenario::{CountriesFile, MapFile};
@@ -24,6 +27,11 @@ pub struct GameData {
     pub tree: Option<Arc<TechTree>>,
     /// Who lives where, when `data/scenario/1925/communities.ron` exists. Not in the tick yet.
     pub communities: Option<crate::communities::Communities>,
+    /// Laws, interest groups and movements, when `data/politics/laws.ron` exists; not yet read
+    /// by the simulation.
+    pub politics: Option<Arc<Politics>>,
+    /// Laws in force on the start date, when `data/scenario/1925/laws.ron` exists too.
+    pub laws_1925: Option<LawsInForce>,
 }
 
 fn read<T: serde::de::DeserializeOwned>(path: &Path) -> Result<T, String> {
@@ -54,10 +62,35 @@ impl GameData {
             .map_err(|e| format!("research/technologies.ron: {e}"))?;
         let map: MapFile = read(&root.join("assets/map/provinces.ron"))?;
         let communities = crate::communities::load(&data, &map)?;
+        let countries: CountriesFile = read(&scenario.join("countries.ron"))?;
+        let politics = if data.join("politics/laws.ron").is_file() {
+            Some(
+                Politics::build(
+                    &read::<LawsFile>(&data.join("politics/laws.ron"))?,
+                    &read::<InterestGroupsFile>(&data.join("politics/interest_groups.ron"))?,
+                    &read::<MovementsFile>(&data.join("politics/movements.ron"))?,
+                )
+                .map_err(|e| format!("data/politics: {e}"))?,
+            )
+        } else {
+            None
+        };
+        let laws_1925 = match (
+            &politics,
+            optional::<ScenarioLawsFile>(&scenario.join("laws.ron"))?,
+        ) {
+            (Some(p), Some(file)) => Some(
+                p.resolve(&file, &countries.countries)
+                    .map_err(|e| format!("scenario/1925/laws.ron: {e}"))?,
+            ),
+            _ => None,
+        };
         Ok(Self {
             tree,
+            politics: politics.map(Arc::new),
+            laws_1925,
             catalogue: Arc::new(catalogue),
-            countries: read(&scenario.join("countries.ron"))?,
+            countries,
             map,
             communities,
             deposits: optional(&scenario.join("deposits.ron"))?,

@@ -1,0 +1,225 @@
+// Movement kinds. Contract in crates/bf-sim/src/politics.rs, rules in docs/politics.pt-BR.md.
+// Names in assets/i18n/*/politics.ftl (movement-<key>, movement-<key>-desc). Licence: CC BY-SA 4.0.
+//
+// A movement wants one law (or independence) and grows only while its whole `cause` holds:
+// conditions on indicators of the simulation (politics::INDICATORS) or on the effects of the
+// laws in force (politics::EFFECTS), measured among the people it draws from. Nothing is drawn by
+// lot. The weakest condition sets the pace (MovementKind::pressure): `growth` per mille of those
+// people join per year at the widest margin. When the cause stops holding, support halves every
+// `persistence` years: a movement outlives its cause, and comes back stronger if the cause does.
+//
+// `among`: Everyone (the metropole, by profession), Colonies (colonial regions, and every region
+// of a subject country, measured on the overlord's colonial laws) or Targeted (the communities a
+// law in force targets). `professions`: who can join, per mille; empty means everyone.
+(
+    movements: [
+        (
+            key: "agrarian_reform",
+            goal: Law("land_reform"),
+            professions: [("peasant", 1000), ("farm_laborer", 1000)],
+            cause: [
+                ("landowner_rent", AtLeast(1100)),
+                ("landowner_income_share", AtLeast(350)),
+                ("needs_met", AtMost(650)),
+            ],
+            growth: 60,
+            persistence: 30,
+        ),
+        (
+            key: "labour_rights",
+            goal: Law("collective_bargaining"),
+            professions: [("laborer", 1000), ("skilled_worker", 1000), ("farm_laborer", 300)],
+            cause: [
+                ("union_bargaining", AtMost(300)),
+                ("urbanization", AtLeast(150)),
+                ("needs_met", AtMost(800)),
+            ],
+            growth: 80,
+            persistence: 25,
+        ),
+        (
+            key: "social_protection",
+            goal: Law("social_security"),
+            professions: [("laborer", 1000), ("skilled_worker", 1000), ("clerk", 500)],
+            cause: [
+                ("unemployment", AtLeast(80)),
+                ("unemployment_benefit", AtMost(150)),
+                ("urbanization", AtLeast(300)),
+            ],
+            growth: 60,
+            persistence: 20,
+        ),
+        (
+            key: "suffrage",
+            goal: Law("universal_suffrage"),
+            professions: [
+                ("clerk", 1000), ("professional", 1000), ("engineer", 1000),
+                ("skilled_worker", 700), ("laborer", 500), ("peasant", 200),
+            ],
+            cause: [("franchise", AtMost(500)), ("literacy", AtLeast(500))],
+            growth: 70,
+            persistence: 40,
+        ),
+        (
+            key: "press_freedom",
+            goal: Law("free_press"),
+            professions: [("professional", 1000), ("engineer", 1000), ("clerk", 800)],
+            cause: [("censorship", AtLeast(300)), ("literacy", AtLeast(400))],
+            growth: 50,
+            persistence: 20,
+        ),
+        (
+            key: "independence",
+            goal: Independence,
+            among: Colonies,
+            cause: [
+                // An educated few, shut out of office and discriminated against.
+                ("literacy", AtLeast(100)),
+                ("colonial_self_rule", AtMost(400)),
+                ("discrimination", AtLeast(150)),
+            ],
+            growth: 40,
+            persistence: 60,
+        ),
+        (
+            key: "colonial_labour_reform",
+            goal: Law("free_labour"),
+            among: Colonies,
+            cause: [("unfree_labour", AtLeast(150)), ("literacy", AtLeast(50))],
+            growth: 40,
+            persistence: 30,
+        ),
+        (
+            key: "civil_rights",
+            goal: Law("equal_citizenship"),
+            among: Targeted,
+            cause: [("discrimination", AtLeast(300)), ("literacy", AtLeast(300))],
+            growth: 60,
+            persistence: 40,
+        ),
+        (
+            key: "freedom_of_movement",
+            goal: Law("free_movement"),
+            professions: [("peasant", 1000), ("farm_laborer", 1000), ("laborer", 1000)],
+            cause: [("migration_within_state", AtMost(500)), ("rural_wage_gap", AtLeast(1500))],
+            growth: 40,
+            persistence: 15,
+        ),
+        (
+            key: "public_health",
+            goal: Law("national_health_service"),
+            professions: [
+                ("laborer", 1000), ("skilled_worker", 1000), ("clerk", 1000), ("professional", 500),
+            ],
+            cause: [
+                ("hospital_coverage", AtMost(400)),
+                ("health_state_share", AtMost(500)),
+                ("urbanization", AtLeast(350)),
+            ],
+            growth: 50,
+            persistence: 20,
+        ),
+        (
+            key: "public_schooling",
+            goal: Law("compulsory_primary"),
+            professions: [
+                ("clerk", 1000), ("professional", 1000), ("skilled_worker", 1000), ("laborer", 500),
+            ],
+            cause: [
+                ("school_coverage", AtMost(500)),
+                ("school_enrolment_target", AtMost(500)),
+                ("urbanization", AtLeast(200)),
+            ],
+            growth: 50,
+            persistence: 20,
+        ),
+        (
+            key: "nationalization",
+            goal: Law("mixed_economy"),
+            professions: [("laborer", 1000), ("skilled_worker", 1000), ("civil_servant", 700)],
+            cause: [("unemployment", AtLeast(150)), ("state_ownership", AtMost(100))],
+            growth: 70,
+            persistence: 15,
+        ),
+        (
+            key: "market_reform",
+            goal: Law("regulated_market"),
+            professions: [
+                ("capitalist", 1000), ("manager", 1000), ("professional", 500), ("engineer", 500),
+            ],
+            cause: [("state_ownership", AtLeast(400)), ("needs_met", AtMost(700))],
+            growth: 50,
+            persistence: 15,
+        ),
+        (
+            key: "tax_revolt",
+            goal: Law("proportional_income_tax"),
+            professions: [
+                ("capitalist", 1000), ("landowner", 1000), ("manager", 1000), ("professional", 500),
+            ],
+            cause: [("tax_burden", AtLeast(250)), ("tax_cap_upper", AtLeast(400))],
+            growth: 80,
+            persistence: 8,
+        ),
+        (
+            key: "protectionism",
+            goal: Law("protective_tariffs"),
+            professions: [
+                ("laborer", 700), ("skilled_worker", 700), ("capitalist", 500), ("peasant", 300),
+            ],
+            cause: [
+                ("import_share", AtLeast(300)),
+                ("unemployment", AtLeast(100)),
+                ("tariff", AtMost(150)),
+            ],
+            growth: 60,
+            persistence: 10,
+        ),
+        (
+            key: "anti_corruption",
+            goal: Law("merit_service"),
+            professions: [
+                ("professional", 1000), ("engineer", 1000), ("clerk", 700), ("manager", 500),
+            ],
+            cause: [("corruption", AtLeast(100)), ("literacy", AtLeast(500))],
+            growth: 50,
+            persistence: 20,
+        ),
+        (
+            key: "secularism",
+            goal: Law("separation"),
+            professions: [
+                ("professional", 1000), ("engineer", 1000), ("clerk", 500), ("skilled_worker", 300),
+            ],
+            cause: [
+                ("church_privilege", AtLeast(400)),
+                ("urbanization", AtLeast(400)),
+                ("literacy", AtLeast(700)),
+            ],
+            growth: 30,
+            persistence: 30,
+        ),
+        (
+            key: "clerical_reaction",
+            goal: Law("state_church"),
+            professions: [("clergy", 1000), ("landowner", 500), ("peasant", 400)],
+            cause: [("church_privilege", AtMost(-200))],
+            growth: 80,
+            persistence: 30,
+        ),
+        (
+            key: "nativism",
+            goal: Law("quota_immigration"),
+            professions: [
+                ("laborer", 600), ("skilled_worker", 600), ("peasant", 300), ("clerk", 300),
+            ],
+            cause: [
+                ("immigrant_share", AtLeast(100)),
+                ("unemployment", AtLeast(80)),
+                ("immigration", AtLeast(600)),
+            ],
+            growth: 60,
+            persistence: 15,
+        ),
+    ],
+)
