@@ -109,6 +109,9 @@ pub struct Catalogue {
     pub grain: Option<GoodIx>,
     pub construction: Option<GoodIx>,
     pub staple_need: Option<usize>,
+    /// Farms that grow a staple, as (farm index, building, staples a level of its first method
+    /// grows in a week): the land smallholders can till when the farms leave it free.
+    pub staple_farms: Vec<(u8, u16, Fixed)>,
     /// Goods the state buys whole (category `public`: schools, hospitals).
     pub public_goods: Vec<GoodIx>,
     /// What the state and the investment pool buy, per mille ([`PurchasesFile`]).
@@ -303,10 +306,31 @@ impl Catalogue {
                 .map(|g| g as GoodIx)
                 .collect()
         };
+        let staple_need = ns.iter().position(|n| n.key == "staple_food");
+        let staples: Vec<GoodIx> = staple_need
+            .map(|i| ns[i].goods.iter().map(|(g, _)| *g).collect())
+            .unwrap_or_default();
+        let staple_farms = bs
+            .iter()
+            .enumerate()
+            .filter_map(|(k, b)| {
+                let farm = b.farm?;
+                let q: Fixed = b
+                    .methods
+                    .first()?
+                    .outputs
+                    .iter()
+                    .filter(|(g, _)| staples.contains(g))
+                    .map(|(_, q)| *q)
+                    .sum();
+                (q > Fixed::ZERO).then_some((farm, k as u16, q))
+            })
+            .collect();
         Ok(Self {
+            staple_farms,
             grain: gx("grain").ok(),
             construction: gx("construction").ok(),
-            staple_need: ns.iter().position(|n| n.key == "staple_food"),
+            staple_need,
             local: goods_where(&|g| g.local),
             public_goods: goods_where(&|g| g.category == "public"),
             state_basket: basket(&purchases.state)?,

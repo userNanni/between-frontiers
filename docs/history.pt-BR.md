@@ -304,6 +304,65 @@ soma das unidades com série no placar do orquestrador. O carvão agora acerta a
 baixo depois (o petróleo toma o lugar dele mais cedo); o gás fica em um terço a dois quintos o
 século todo.
 
+## Convergência e campo (`fix/growth-structure`)
+
+Mesma rodada de 100 anos (2 threads), hash `74771363…`. Antes = `main` com o #55.
+
+| | Antes | Depois | Real |
+|---|---|---|---|
+| PIB por hab. mundial, 1985 | 14 597 | 11 475 | 7 622 |
+| PIB mundial 2025 (PIB 2022), tri | 132,4 | 101,1 | 133,4 |
+| Ranking do PIB pc, 1985 / 2022 | 0,60 / 0,46 | 0,65 / 0,45 | — |
+| Erro log. PIB pc, 1985 / 2022 | 0,92 / 1,02 | 0,91 / 1,14 | — |
+| Crescimento pc 1945–73 / 1973–91 / 1991–2008 / 2008–25 (% a.a.) | +2,6 / +3,0 / +0,8 / +0,5 | +2,2 / +2,8 / +0,6 / +0,5 | +2,4 / +1,2 / +2,6 / +2,0 |
+| Emprego agro / indústria 2025: CHN | 82 / 2 | 85 / 2 | 22 / 32 |
+| RAJ | 76 / 2 | 76 / 3 | 42 / 25 |
+| MEX | 38 / 9 | 38 / 8 | 12 / 25 |
+| BRA | 45 / 8 | 39 / 10 | 8 / 20 |
+| ESP | 19 / 15 | 26 / 12 | 3 / 20 |
+
+O que mudou (`economy.pt-BR.md`, "Convergência"): a convergência da produtividade de base é
+condicional, e o camponês sem emprego só planta na terra que as fazendas deixam livre e só vende
+mais à medida que a técnica agrícola melhora.
+
+### Por que todos convergem cedo e depois param
+
+Medido com `bf-bench --diag-1925` (`BF_DIAG_TFP=1` e `BF_DIAG_COUNTRY=<tag>`):
+
+- **A produtividade por trabalhador converge mecanicamente e cedo.** Pela tecnologia, a imitação
+  copia em poucos anos o que é industrial lá fora: a China tem em 1985 a produtividade industrial
+  dos EUA (3,47 contra 3,28) e em 2025 mais. Pela base, o `catch_up` fechava a distância até o
+  estado líder sem limite; China 1,35 → 4,98, México 2,78 → 5,40, EUA parados em 5,89 (o líder
+  não cresce por esse canal). Agora a base só fecha uma parte da distância de 1925, maior com a
+  escola (`CLOSE_WITH_SCHOOLING`).
+- **A árvore de pesquisa concentra os ganhos entre 1930 e 1979.** Ganho de produtividade por
+  década, em log, da indústria pesada: +20, +11, +25, +28, +42 % de 1930 a 1979; +6 % em 1980,
+  +8 % em 1990, 0 em 2000. Serviços ficam abaixo de 10 % por década o século todo. Quando os
+  seguidores alcançam a fronteira, o mundo cresce o que a fronteira cresce, e depois de 1980 ela
+  quase não cresce.
+- **O que fez o mundo crescer depois de 1991 não acontece:** a saída do campo na Ásia. O PIB por
+  habitante passa a depender de quanta gente está em emprego de mercado, e na China ela diminui:
+  fazendas comerciais a 37–54 % de uso e 21 → 7 milhões de empregos de 1930 a 1980; camponeses
+  ociosos de 121 para 270 milhões; indústria a 46–80 % de uso, abaixo dos 90 % que destravam o
+  investimento. É uma armadilha de demanda: quem perde o emprego vive da própria terra, sem renda
+  em dinheiro, e não compra o que a indústria faria; sem planta cheia não há investimento, e sem
+  investimento não há emprego. O ranking cai por isso (China 0,16 do real em 2025), e pelo outro
+  lado colônias pequenas com minas sobem demais (Congo Belga 11×, Haiti 6×, Afeganistão 7×), com a
+  produtividade alta que o setup de 1925 lhes dá para lotar as minas com poucos trabalhadores.
+
+### Aço, gás, eletricidade e petróleo
+
+- **Aço (2 761 contra 1 593 Mt em 2025):** o fundo de investimento recebe cerca de 21 % do PIB e a
+  construção fica em 13 % do PIB; a obra e as máquinas puxam o aço.
+- **Gás (um terço):** a demanda é quase só doméstica (aquecimento) e das usinas a gás depois de
+  1950; não há gás na indústria nem na química. Não medido além disso.
+- **Eletricidade de 1925 (0,48):** as plantas de 1925 nascem no primeiro método de cada edifício,
+  sem eletricidade.
+- **Petróleo de 1925 (0,3):** navios, ferrovias e indústria só queimam carvão e não há querosene;
+  o petróleo é a gasolina dos carros e pouco mais.
+
+Nenhum dos quatro foi corrigido aqui.
+
 ## Fontes
 
 As fontes, licenças e atribuições estão em `data/history/SOURCES.md`. Em resumo: Maddison Project

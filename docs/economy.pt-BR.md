@@ -159,6 +159,17 @@ investimento por acaso). Três regras faltavam para o crescimento não disparar:
   Estado. A manutenção que o fundo compra (`purchases.ron`, `upkeep`) agora é três quintos obra
   e dois quintos equipamento, como a formação bruta de capital de antes da guerra.
 
+## Convergência
+
+- **Condicional.** A produtividade de base de cada estado converge para uma parte da do líder:
+  a posição de 1925 (instituições) mais `CLOSE_WITH_SCHOOLING` (metade) do resto da distância,
+  vezes a alfabetização ao quadrado (`yearly.rs`). Antes convergia para o líder inteiro.
+- **Terra do camponês.** Quem vive da própria terra só planta a lavoura que as fazendas
+  comerciais deixam livre (`week::subsistence_food`, `Catalogue::staple_farms`), e a parte que
+  vende cresce com a técnica agrícola do país, não com a convergência de base
+  (`week::peasant_surplus`). Antes, os ociosos plantavam sem limite de terra e vendiam até metade
+  do que comiam, tirando o mercado das fazendas.
+
 ## Ordem de trabalho do mercado
 
 1. Preço por estado e por mercado nacional: oferta e demanda fecham semanalmente, com preço sensível à escassez.
