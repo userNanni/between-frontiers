@@ -1,0 +1,350 @@
+## Politics: law categories, groups and laws, effects, indicators, interest groups and movements.
+## Laws: law-<key> and law-<key>-desc. Interest groups: ig-<key>. Movements: movement-<key>.
+
+law-category-economy = Economy
+law-category-labour = Labour
+law-category-welfare = Welfare
+law-category-rights = Rights
+law-category-information = Information
+law-category-state = State
+law-category-empire = Empire
+
+law-group-taxation = Taxation
+law-group-ownership = Ownership
+law-group-land_tenure = Land tenure
+law-group-trade = Trade
+law-group-foreign_capital = Foreign capital
+law-group-unions = Unions
+law-group-working_conditions = Working conditions
+law-group-social_insurance = Social insurance
+law-group-health = Health
+law-group-education = Education
+law-group-franchise = Franchise
+law-group-citizenship = Citizenship
+law-group-religion = Religion
+law-group-internal_movement = Internal movement
+law-group-immigration = Immigration
+law-group-emigration = Emigration
+law-group-press = Press
+law-group-broadcasting = Broadcasting
+law-group-policing = Policing
+law-group-civil_service = Civil service
+law-group-conscription = Conscription
+law-group-colonial_rule = Colonial rule
+law-group-colonial_labour = Colonial labour
+
+## Economy
+
+law-indirect_taxation = Indirect taxation
+law-indirect_taxation-desc = Customs, excises and land tax; no tax on income. The state cannot raise much, and the poor pay as much as the rich.
+law-proportional_income_tax = Proportional income tax
+law-proportional_income_tax-desc = Every income pays the same rate.
+law-progressive_income_tax = Progressive income tax
+law-progressive_income_tax-desc = Higher incomes pay higher rates.
+law-steep_progressive_tax = Steeply progressive tax
+law-steep_progressive_tax-desc = Top incomes can be taxed at most of their value.
+law-laissez_faire = Laissez-faire
+law-laissez_faire-desc = The state owns and builds no industry.
+law-regulated_market = Regulated market
+law-regulated_market-desc = Railways, posts and some utilities belong to the state; the rest is private.
+law-mixed_economy = Mixed economy
+law-mixed_economy-desc = The state owns key industries and invests beside private capital; part of the profit goes to the treasury.
+law-state_capitalism = State capitalism
+law-state_capitalism-desc = The state holds the commanding heights and leads investment; markets run the rest.
+law-planned_economy = Planned economy
+law-planned_economy-desc = The state owns almost all industry and plans all investment.
+law-bonded_tenure = Bonded tenure
+law-bonded_tenure-desc = Serfs, slaves or bonded tenants owe labour to the lord and may not leave.
+law-great_estates = Great estates
+law-great_estates-desc = Large estates worked by tenants and sharecroppers.
+law-freehold_farming = Freehold farming
+law-freehold_farming-desc = Land is bought and sold freely; family farms dominate.
+law-land_reform = Land reform
+law-land_reform-desc = Estates above a ceiling are split among those who till them.
+law-collective_farming = Collective farming
+law-collective_farming-desc = Land and herds are pooled in collective and state farms.
+law-free_trade = Free trade
+law-free_trade-desc = Almost no duties on imports.
+law-revenue_tariffs = Revenue tariffs
+law-revenue_tariffs-desc = Moderate duties, mainly to fund the state.
+law-protective_tariffs = Protective tariffs
+law-protective_tariffs-desc = High duties shield national industry and farming.
+law-autarky = Autarky
+law-autarky-desc = Trade is a state monopoly or nearly shut.
+law-capitulations = Capitulations
+law-capitulations-desc = Foreigners are judged by their own consuls and taxed by treaty.
+law-open_capital = Open to foreign capital
+law-open_capital-desc = Foreign firms invest on the same terms as nationals.
+law-screened_capital = Screened foreign capital
+law-screened_capital-desc = Foreign investment needs approval; mines and oil are reserved for the nation.
+law-closed_capital = Closed to foreign capital
+law-closed_capital-desc = Foreign ownership is barred.
+
+## Labour
+
+law-unions_banned = Unions banned
+law-unions_banned-desc = Unions and strikes are illegal.
+law-unions_tolerated = Unions tolerated
+law-unions_tolerated-desc = Unions may exist, but employers need not bargain with them.
+law-collective_bargaining = Collective bargaining
+law-collective_bargaining-desc = Unions bargain for whole trades; agreements bind employers.
+law-state_unions = State unions
+law-state_unions-desc = One union per trade, run by the party or the corporate state.
+law-unregulated_labour = Unregulated labour
+law-unregulated_labour-desc = No limit on hours or on the work of children.
+law-factory_acts = Factory acts
+law-factory_acts-desc = Limits for children and women in factories and mines.
+law-eight_hour_day = Eight-hour day
+law-eight_hour_day-desc = A 48-hour week for all wage earners.
+law-labour_code = Labour code
+law-labour_code-desc = Eight hours, paid holidays and a legal minimum wage.
+law-family_and_charity = Family and charity
+law-family_and_charity-desc = The old and the jobless rely on kin, church and alms.
+law-poor_relief = Poor relief
+law-poor_relief-desc = Local relief for the destitute, nothing more.
+law-workers_insurance = Workers' insurance
+law-workers_insurance-desc = Contributory insurance against accident, sickness and old age for wage earners.
+law-social_security = Social security
+law-social_security-desc = Pensions and unemployment pay for the whole population.
+
+## Welfare
+
+law-private_medicine = Private medicine
+law-private_medicine-desc = Patients pay doctors and hospitals; the state only guards public hygiene.
+law-public_hospitals = Public hospitals
+law-public_hospitals-desc = Municipal and state hospitals treat the poor.
+law-health_insurance = Health insurance
+law-health_insurance-desc = Compulsory sickness funds pay for care and medicines.
+law-national_health_service = National health service
+law-national_health_service-desc = The state pays for nearly all care and most medicines.
+law-traditional_schooling = Traditional schooling
+law-traditional_schooling-desc = Only religious schools teach.
+law-private_schooling = Private schooling
+law-private_schooling-desc = Schools are private or local; attendance is not required.
+law-compulsory_primary = Compulsory primary schooling
+law-compulsory_primary-desc = Every child must attend a free primary school.
+law-universal_secondary = Universal secondary schooling
+law-universal_secondary-desc = School is free and required into the teens.
+
+## Rights
+
+law-no_free_elections = No free elections
+law-no_free_elections-desc = No vote can change the government.
+law-restricted_suffrage = Restricted suffrage
+law-restricted_suffrage-desc = Only men who pass property, tax or literacy tests vote.
+law-male_suffrage = Male suffrage
+law-male_suffrage-desc = All adult men vote.
+law-universal_suffrage = Universal suffrage
+law-universal_suffrage-desc = All adults vote.
+law-equal_citizenship = Equal citizenship
+law-equal_citizenship-desc = The law makes no distinction between communities.
+law-official_nationality = Official nationality
+law-official_nationality-desc = One national language in school and office; minorities are pushed to assimilate.
+law-legal_segregation = Legal segregation
+law-legal_segregation-desc = Colour bars, separate facilities, reserved jobs and land, and no vote for the targeted communities.
+law-legal_exclusion = Legal exclusion
+law-legal_exclusion-desc = The targeted communities lose citizenship, property and professions.
+law-theocratic_law = Theocratic law
+law-theocratic_law-desc = Religious law is state law; other faiths are restricted.
+law-state_church = State church
+law-state_church-desc = An established church with public money; other faiths worship freely.
+law-separation = Separation of church and state
+law-separation-desc = No established religion and free worship.
+law-anticlerical_state = Anticlerical state
+law-anticlerical_state-desc = Church property, schools and public worship are restricted.
+law-state_atheism = State atheism
+law-state_atheism-desc = The state fights religion; believers are persecuted.
+law-free_movement = Free movement
+law-free_movement-desc = Anyone may move house anywhere in the country.
+law-internal_passports = Internal passports
+law-internal_passports-desc = Moving needs a permit and a residence registration.
+law-pass_laws = Pass laws
+law-pass_laws-desc = The targeted communities need a pass to live or work outside their reserves.
+law-open_immigration = Open immigration
+law-open_immigration-desc = Immigrants enter freely.
+law-quota_immigration = Quota immigration
+law-quota_immigration-desc = Immigrants enter within yearly quotas and tests.
+law-racial_exclusion = Racial exclusion
+law-racial_exclusion-desc = Entry is barred to the targeted communities and open to the rest.
+law-closed_immigration = Closed borders
+law-closed_immigration-desc = Foreigners may not settle.
+law-free_emigration = Free emigration
+law-free_emigration-desc = Citizens may leave.
+law-exit_permits = Exit permits
+law-exit_permits-desc = Leaving the country needs a permit that is rarely granted.
+
+## Information
+
+law-free_press = Free press
+law-free_press-desc = Anyone may publish; only the courts can punish.
+law-press_licensing = Press licensing
+law-press_licensing-desc = Licences, sedition laws and seizure after the fact.
+law-prior_censorship = Prior censorship
+law-prior_censorship-desc = Censors read everything before it is printed.
+law-state_press_monopoly = State press monopoly
+law-state_press_monopoly-desc = Only the state and the party publish.
+law-private_broadcasting = Private broadcasting
+law-private_broadcasting-desc = Licensed private stations live on advertising.
+law-public_broadcaster = Public broadcaster
+law-public_broadcaster-desc = A licence-fee monopoly at arm's length from the government.
+law-state_broadcasting = State broadcasting
+law-state_broadcasting-desc = The government runs radio and television.
+
+## State
+
+law-civil_liberties = Civil liberties
+law-civil_liberties-desc = Habeas corpus and free assembly.
+law-emergency_powers = Emergency powers
+law-emergency_powers-desc = States of siege, sedition laws, exile by decree.
+law-political_police = Political police
+law-political_police-desc = A secret police detains opponents without trial.
+law-police_state = Police state
+law-police_state-desc = Mass arrests, camps and forced labour for the regime's enemies.
+law-patronage = Patronage
+law-patronage-desc = Offices go to friends of those in power.
+law-mixed_service = Mixed civil service
+law-mixed_service-desc = Part of the service is hired on merit.
+law-merit_service = Merit civil service
+law-merit_service-desc = Officials are recruited by examination and cannot be fired for politics.
+law-volunteer_army = Volunteer army
+law-volunteer_army-desc = Soldiers enlist.
+law-selective_service = Selective service
+law-selective_service-desc = Some men are called up, by lot or by need.
+law-universal_service = Universal service
+law-universal_service-desc = Every fit man serves.
+
+## Empire
+
+law-company_rule = Company rule
+law-company_rule-desc = Chartered companies govern and tax the colony.
+law-direct_rule = Direct rule
+law-direct_rule-desc = Metropolitan governors and officials, with a native code apart.
+law-indirect_rule = Indirect rule
+law-indirect_rule-desc = Native rulers govern under colonial residents.
+law-settler_rule = Settler rule
+law-settler_rule-desc = A settler minority governs the colony.
+law-trusteeship = Trusteeship
+law-trusteeship-desc = Elected councils and a stated path to self-government.
+law-forced_labour = Forced labour
+law-forced_labour-desc = Corvée, compulsory crops and labour owed in place of tax.
+law-labour_taxation = Labour taxation
+law-labour_taxation-desc = Hut and poll taxes in money push men into wage work.
+law-free_labour = Free labour
+law-free_labour-desc = No labour is owed to the colonial state.
+
+## Effects
+
+law-effect-migration_within_state = Migration within the state
+law-effect-migration_between_states = Migration between states
+law-effect-tax_cap_lower = Tax ceiling, lower class
+law-effect-tax_cap_middle = Tax ceiling, middle class
+law-effect-tax_cap_upper = Tax ceiling, upper class
+law-effect-tax_collection = Tax collection
+law-effect-health_state_share = State share of hospital care
+law-effect-education_state_share = State share of schooling
+law-effect-school_enrolment_target = School enrolment target
+law-effect-landowner_rent = Landowners' rent
+law-effect-medicine_subsidy = Medicine subsidy
+law-effect-pension = Old-age pension
+law-effect-unemployment_benefit = Unemployment pay
+law-effect-wage_floor = Minimum wage
+law-effect-union_bargaining = Union bargaining power
+law-effect-working_hours = Working hours
+law-effect-child_labour = Child labour
+law-effect-unfree_labour = Unfree labour
+law-effect-state_ownership = State ownership
+law-effect-state_investment_share = State share of investment
+law-effect-state_profit_to_treasury = State firms' profit to the treasury
+law-effect-tariff = Tariff
+law-effect-foreign_investment = Foreign investment
+law-effect-immigration = Immigration
+law-effect-emigration = Emigration
+law-effect-discrimination = Discrimination
+law-effect-segregation = Segregation
+law-effect-assimilation = Assimilation
+law-effect-franchise = Franchise
+law-effect-repression = Repression
+law-effect-church_privilege = Church privilege
+law-effect-corruption = Corruption
+law-effect-censorship = Censorship
+law-effect-state_media = State media
+law-effect-conscription = Conscription
+law-effect-colonial_tribute = Colonial tribute
+law-effect-colonial_self_rule = Colonial self-rule
+
+## Indicators
+
+indicator-literacy = Literacy
+indicator-urbanization = Urbanization
+indicator-unemployment = Unemployment
+indicator-needs_met = Basic needs met
+indicator-school_coverage = School coverage
+indicator-hospital_coverage = Hospital coverage
+indicator-rural_wage_gap = Town over country pay
+indicator-tax_burden = Tax burden
+indicator-import_share = Import share
+indicator-landowner_income_share = Landowners' share of farm income
+indicator-price_change = Inflation
+indicator-inequality = Inequality
+indicator-media_reach = Media reach
+indicator-immigrant_share = Immigrant share
+
+## Interest groups
+
+ig-landed_estates = Landed estates
+ig-landed_estates-desc = Owners of the land, who live from rents and fear land reform.
+ig-peasantry = Peasantry
+ig-peasantry-desc = Smallholders and farmhands, who want land, low taxes and no call-up.
+ig-workers = Workers
+ig-workers-desc = Wage earners of town and field, who want unions, shorter hours and insurance.
+ig-business = Business
+ig-business-desc = Owners and managers of firms, who want low taxes and weak unions.
+ig-professional_classes = Professional classes
+ig-professional_classes-desc = Doctors, lawyers, engineers and clerks, who want a free press, schools and honest government.
+ig-officialdom = Officialdom
+ig-officialdom-desc = Civil servants, who live from a larger and better-funded state.
+ig-churches = Churches
+ig-churches-desc = The clergy, who defend the privileges and schools of their faith.
+ig-military = Military
+ig-military-desc = Soldiers and officers, who want conscription, arms and order.
+
+## Movements
+
+movement-agrarian_reform = Agrarian reform
+movement-agrarian_reform-desc = Hungry peasants on great estates demand the land they till.
+movement-labour_rights = Labour rights
+movement-labour_rights-desc = Poorly paid workers without unions organize to bargain.
+movement-social_protection = Social protection
+movement-social_protection-desc = Where the jobless go unpaid, workers demand pensions and unemployment pay.
+movement-suffrage = Suffrage
+movement-suffrage-desc = Where most people read but few vote, they demand the vote.
+movement-press_freedom = Press freedom
+movement-press_freedom-desc = A reading public under censorship demands a free press.
+movement-independence = Independence
+movement-independence-desc = An educated colonial people, shut out of office and discriminated against, demands its own state.
+movement-colonial_labour_reform = Colonial labour reform
+movement-colonial_labour_reform-desc = Colonized people forced to work demand an end to it.
+movement-civil_rights = Civil rights
+movement-civil_rights-desc = A discriminated community that can organize demands equal citizenship.
+movement-freedom_of_movement = Freedom of movement
+movement-freedom_of_movement-desc = Peasants held on the land while the cities pay more demand the right to move.
+movement-public_health = Public health
+movement-public_health-desc = Townspeople without hospitals demand care paid by the state.
+movement-public_schooling = Public schooling
+movement-public_schooling-desc = Townspeople whose children have no school demand compulsory schooling.
+movement-nationalization = Nationalization
+movement-nationalization-desc = Mass unemployment under private ownership brings calls for state industry.
+movement-market_reform = Market reform
+movement-market_reform-desc = A stagnant state economy brings calls to free markets.
+movement-tax_revolt = Tax revolt
+movement-tax_revolt-desc = The well-off resist heavy, steep taxes.
+movement-protectionism = Protectionism
+movement-protectionism-desc = Imports and unemployment bring calls for tariffs.
+movement-anti_corruption = Anti-corruption
+movement-anti_corruption-desc = An educated public tired of graft demands a merit civil service.
+movement-secularism = Secularism
+movement-secularism-desc = An urban, literate public demands an end to the church's privileges.
+movement-clerical_reaction = Clerical reaction
+movement-clerical_reaction-desc = Believers under an anticlerical state rise to defend their church.
+movement-nativism = Nativism
+movement-nativism-desc = Many newcomers and few jobs bring calls to close the door.

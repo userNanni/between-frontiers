@@ -1,0 +1,863 @@
+// Between Frontiers: laws in force on 1925-01-01. Contract: crates/bf-sim/src/politics.rs
+// (ScenarioLawsFile); catalogue in data/politics/laws.ron. Method, sources and confidence:
+// data/scenario/1925/LAWS.md. Licence: CC BY-SA 4.0.
+//
+// Every country takes a template and overrides it group by group; `source` names the acts and
+// constitutions behind each choice (facts of law, not text from any database). The law is what
+// the statute book said, not how it was enforced: where the two differ a lot, the source says so.
+// Countries with colonies (countries.ron `colonies: Some`) also hold the two colonial groups.
+//
+// Targeted laws (official_nationality, legal_segregation, theocratic_law, state_atheism,
+// pass_laws, racial_exclusion) leave `targets` empty until the community catalogue exists; the
+// source says in words whom they target.
+//
+// `history` lists dated changes after the start, as reference for calibration and for the AI.
+// Nothing fires them.
+(
+    templates: [
+        (
+            // Parliamentary democracies of Western, Northern and Central Europe.
+            key: "parliamentary_europe",
+            laws: [
+                "progressive_income_tax", "regulated_market", "freehold_farming", "protective_tariffs",
+                "open_capital", "collective_bargaining", "eight_hour_day", "workers_insurance",
+                "health_insurance", "compulsory_primary", "universal_suffrage", "equal_citizenship",
+                "state_church", "free_movement", "open_immigration", "free_emigration", "free_press",
+                "public_broadcaster", "civil_liberties", "merit_service", "universal_service",
+            ],
+        ),
+        (
+            // Self-governing dominions of the British Empire.
+            key: "dominion",
+            laws: [
+                "progressive_income_tax", "regulated_market", "freehold_farming", "protective_tariffs",
+                "open_capital", "collective_bargaining", "factory_acts", "workers_insurance",
+                "public_hospitals", "compulsory_primary", "universal_suffrage", "equal_citizenship",
+                "separation", "free_movement", "racial_exclusion", "free_emigration", "free_press",
+                "private_broadcasting", "civil_liberties", "merit_service", "volunteer_army",
+            ],
+        ),
+        (
+            // Kingdoms and republics of East-Central and South-Eastern Europe after the land
+            // reforms of 1918–1923.
+            key: "eastern_europe",
+            laws: [
+                "proportional_income_tax", "regulated_market", "land_reform", "protective_tariffs",
+                "screened_capital", "unions_tolerated", "factory_acts", "workers_insurance",
+                "public_hospitals", "compulsory_primary", "male_suffrage", "equal_citizenship",
+                "state_church", "free_movement", "open_immigration", "free_emigration",
+                "press_licensing", "state_broadcasting", "emergency_powers", "patronage",
+                "universal_service",
+            ],
+        ),
+        (
+            // Oligarchic republics of Latin America (and Liberia).
+            key: "latin_republic",
+            laws: [
+                "indirect_taxation", "laissez_faire", "great_estates", "revenue_tariffs", "open_capital",
+                "unions_tolerated", "unregulated_labour", "poor_relief", "private_medicine",
+                "compulsory_primary", "restricted_suffrage", "equal_citizenship", "state_church",
+                "free_movement", "open_immigration", "free_emigration", "free_press",
+                "private_broadcasting", "civil_liberties", "patronage", "selective_service",
+            ],
+        ),
+        (
+            // Absolute and religious monarchies of Asia and Africa.
+            key: "traditional_monarchy",
+            laws: [
+                "indirect_taxation", "laissez_faire", "great_estates", "revenue_tariffs", "open_capital",
+                "unions_banned", "unregulated_labour", "family_and_charity", "private_medicine",
+                "traditional_schooling", "no_free_elections", "equal_citizenship", "theocratic_law",
+                "free_movement", "open_immigration", "free_emigration", "prior_censorship",
+                "state_broadcasting", "emergency_powers", "patronage", "volunteer_army",
+            ],
+        ),
+        (
+            // The Soviet Union under the New Economic Policy, and its satellites.
+            key: "soviet",
+            laws: [
+                "progressive_income_tax", "state_capitalism", "land_reform", "autarky",
+                "screened_capital", "state_unions", "labour_code", "workers_insurance",
+                "national_health_service", "compulsory_primary", "no_free_elections",
+                "equal_citizenship", "state_atheism", "free_movement", "closed_immigration",
+                "exit_permits", "state_press_monopoly", "state_broadcasting", "political_police",
+                "mixed_service", "universal_service",
+            ],
+        ),
+        (
+            // European microstates.
+            key: "microstate",
+            laws: [
+                "indirect_taxation", "laissez_faire", "freehold_farming", "revenue_tariffs",
+                "open_capital", "unions_tolerated", "factory_acts", "poor_relief", "private_medicine",
+                "compulsory_primary", "restricted_suffrage", "equal_citizenship", "state_church",
+                "free_movement", "quota_immigration", "free_emigration", "free_press",
+                "private_broadcasting", "civil_liberties", "mixed_service", "volunteer_army",
+            ],
+        ),
+    ],
+    countries: [
+        // ---- Europe ----
+        (
+            tag: "GBR",
+            template: Some("parliamentary_europe"),
+            laws: [
+                "free_trade", "factory_acts", "male_suffrage", "quota_immigration", "volunteer_army",
+                "indirect_rule", "labour_taxation",
+            ],
+            source: "Finance Act 1920 (income tax and super-tax); Trade Disputes Act 1906; Factory and Workshop Act 1901 (no general eight-hour law); Old Age Pensions Act 1908, National Insurance Act 1911 (health and unemployment), Unemployment Insurance Act 1920; Education Act 1918 (school to 14); Representation of the People Act 1918 (all men at 21, women at 30 with property); Church of England established (Welsh Church Act 1914, in force 1920); Aliens Restriction (Amendment) Act 1919 and Aliens Order 1920; British Broadcasting Company licence and receiving fee 1922; Military Service Acts lapsed 1920; free trade kept apart from the McKenna and Safeguarding duties; colonies: indirect rule (Lugard, Nigeria 1914) and hut and poll taxes",
+        ),
+        (
+            tag: "IRL",
+            template: Some("parliamentary_europe"),
+            laws: [
+                "land_reform", "factory_acts", "separation", "state_broadcasting", "volunteer_army",
+            ],
+            source: "Constitution of the Irish Free State 1922 (art. 8 no endowment of religion, art. 14 suffrage of all citizens at 21); Land Act 1923 (compulsory purchase of tenanted land); Finance Act 1924 (first protective duties); UK Factory Acts and National Insurance Act 1911 carried over; Civil Service Regulation Act 1924; Defence Forces (Temporary Provisions) Act 1923 (volunteer army); Dáil committee on broadcasting 1924 chose a service run by the Post Office (2RN opened 1926)",
+        ),
+        (
+            tag: "FRA",
+            template: Some("parliamentary_europe"),
+            laws: [
+                "public_hospitals", "male_suffrage", "separation", "private_broadcasting", "direct_rule",
+                "forced_labour",
+            ],
+            source: "Income tax laws of 1914 and 1917; Méline tariff 1892; Waldeck-Rousseau law 1884 and collective agreements law of 25 March 1919; eight-hour law of 23 April 1919; Retraites ouvrières et paysannes 1910; Assistance médicale gratuite 1893 (social insurance only from 1930); Ferry laws 1881–1882; women without the vote until 1944; Separation of Churches and State law 1905; press law of 29 July 1881; private and Post Office stations side by side; recruitment law of 1923; colonies: governors-general and the code de l'indigénat (1887), prestations (labour owed in place of tax)",
+        ),
+        (
+            tag: "BEL",
+            template: Some("parliamentary_europe"),
+            laws: [
+                "public_hospitals", "male_suffrage", "private_broadcasting", "direct_rule", "forced_labour",
+            ],
+            source: "Income tax reform of 29 October 1919; repeal of penal code art. 310 and freedom of association law of 24 May 1921; eight-hour law of 14 June 1921; compulsory old-age insurance law of 10 December 1924; subsidised mutual sickness funds (compulsory only from 1944); compulsory schooling law of 19 May 1914; universal male suffrage 1919 (women in national elections from 1948); Constitution art. 117 (the state pays the clergy); Radio-Belgique private (INR/NIR from 1930); Colonial Charter 1908; Congo compulsory cultivation decrees 1917",
+        ),
+        (
+            tag: "NLD",
+            template: Some("parliamentary_europe"),
+            laws: [
+                "free_trade", "public_hospitals", "separation", "private_broadcasting", "selective_service",
+                "indirect_rule", "labour_taxation",
+            ],
+            source: "Income Tax Act 1914; free-trade tariff of 1862 kept; Arbeidswet 1919 (eight-hour day); Invaliditeitswet 1913 (in force 1919); sickness funds voluntary until the Ziekenfondsbesluit 1941; Leerplichtwet 1900 and the 1917 pacification (public funding of religious schools); universal suffrage 1919 (Constitution 1917 and 1922); no established church since 1795, equal funding of denominations; broadcasting by private associations; Dienstplichtwet 1922 (conscription by lot); Dutch East Indies: regents under residents, Volksraad 1918, corvée commuted to money taxes",
+        ),
+        (
+            tag: "LUX",
+            template: Some("parliamentary_europe"),
+            laws: ["laissez_faire", "private_broadcasting", "volunteer_army"],
+            source: "Constitution revised 1919 (universal suffrage, women included); Belgium–Luxembourg Economic Union 1921 (Belgian tariff); sickness insurance law of 1901, old-age and invalidity insurance 1911; eight-hour day 1918; Catholic clergy paid by the state; no army, only the volunteer Corps des Gendarmes et Volontaires; no radio until Radio Luxembourg 1933",
+        ),
+        (
+            tag: "CHE",
+            template: Some("parliamentary_europe"),
+            laws: [
+                "poor_relief", "male_suffrage", "quota_immigration", "private_broadcasting",
+            ],
+            source: "Cantonal progressive income taxes and federal war tax 1915; Swiss Federal Railways 1902; customs tariff of 1921; Factory Act amended 1919 (48-hour week); old-age insurance only from 1948 (AHV), cantonal poor relief; KUVG 1911 (subsidised sickness funds); compulsory primary schooling (Federal Constitution 1874 art. 27); women without the federal vote until 1971; cantonal established churches; federal aliens police 1917; local radio co-operatives (SRG from 1931); militia army of all men (Federal Constitution art. 18)",
+        ),
+        (
+            tag: "ESP",
+            template: Some("parliamentary_europe"),
+            laws: [
+                "proportional_income_tax", "great_estates", "unions_tolerated", "public_hospitals",
+                "no_free_elections", "private_broadcasting", "prior_censorship", "emergency_powers",
+                "patronage", "direct_rule", "forced_labour",
+            ],
+            source: "Contribución de utilidades 1900 (no general income tax until 1932); latifundia of the south (agrarian reform only in 1932); Cambó tariff 1922; CNT dissolved 1924, UGT tolerated; eight-hour decree of 3 April 1919; Retiro Obrero Obligatorio 1919; Beneficencia hospitals; Ley Moyano 1857 (compulsory primary); Primo de Rivera dictatorship of 13 September 1923 (Cortes dissolved, martial law and press censorship); Constitution of 1876 art. 11 (Catholic state religion); Unión Radio and Radio Barcelona private; recruitment law of 1912; Morocco protectorate and Spanish Guinea under military and colonial governors, prestación personal",
+        ),
+        (
+            tag: "POR",
+            template: Some("parliamentary_europe"),
+            laws: [
+                "proportional_income_tax", "laissez_faire", "great_estates", "unions_tolerated",
+                "public_hospitals", "restricted_suffrage", "anticlerical_state", "private_broadcasting",
+                "patronage", "direct_rule", "forced_labour",
+            ],
+            source: "First Republic: tax reform of 1922; Alentejo latifundia; 1892 tariff; decree 5516 of 1919 (eight-hour day) and the social insurance decrees of 1919 (barely applied); Constitution of 1911 and electoral law of 1913 (literate men); Law of Separation of Church and State of 20 April 1911 (church property seized, religious orders expelled); press law of 1910; militia law of 1911; colonies: governors-general, the Mozambique and Niassa chartered companies, the 1899 and 1914 native labour regulations",
+        ),
+        (
+            tag: "ITA",
+            template: Some("parliamentary_europe"),
+            laws: [
+                "great_estates", "unions_tolerated", "public_hospitals", "male_suffrage",
+                "official_nationality", "press_licensing", "emergency_powers", "mixed_service",
+                "direct_rule", "forced_labour",
+            ],
+            source: "Imposta complementare 1923 (progressive surtax); Ferrovie dello Stato 1905; latifondi of the south; tariff of 1921; fascist violence against unions, Palazzo Chigi pact 1923; eight-hour decree RDL 15 March 1923 n. 692; compulsory old-age and invalidity insurance 1919; Gentile school reform 1923 (school to 14, Italian only in the new provinces: targets Germans of South Tyrol and Slovenes and Croats of Venezia Giulia); universal male suffrage 1919 and Acerbo law 1923; Statuto Albertino art. 1 (Catholic state religion); press decrees of 15 July 1923 and 10 July 1924 (seizure by the prefects); URI broadcasting concession 1924; colonies: governors of Libya, Eritrea and Somalia, forced labour on the Somali plantations",
+        ),
+        (
+            tag: "SMR",
+            template: Some("microstate"),
+            laws: [],
+            source: "Arengo of 1906 (heads of family vote; women from 1960); Catholic state religion; customs union with Italy (treaty of 1862, renewed 1897 and 1914); volunteer militia",
+        ),
+        (
+            tag: "GER",
+            template: Some("parliamentary_europe"),
+            laws: ["great_estates", "separation", "volunteer_army"],
+            source: "Weimar Constitution 1919 (art. 118 press, art. 137 no state church, art. 145 compulsory schooling, art. 165 works councils); Erzberger reform 1920 (Reich income tax); Reichsbahn 1924; East-Elbian estates (Reichssiedlungsgesetz 1919 modest); Bülow tariff, tariff autonomy restored January 1925; Tarifvertragsverordnung of 23 December 1918; eight-hour demobilization decrees 1918 (loosened by the Arbeitszeitverordnung of 21 December 1923); Reichsversicherungsordnung 1911 (sickness, accident, old age); Reich Electoral Law of 30 November 1918 (women included); Funk-Stunde 1923 and RRG 1925 under the Reich Post; Versailles art. 173 and Wehrgesetz 1921 (no conscription)",
+        ),
+        (
+            tag: "SAA",
+            template: Some("parliamentary_europe"),
+            laws: [
+                "mixed_economy", "restricted_suffrage", "separation", "press_licensing",
+                "private_broadcasting", "volunteer_army",
+            ],
+            source: "Treaty of Versailles, Saar annex (Governing Commission of the League, 1920–1935; coal mines owned by the French state; French customs from 10 January 1925); German social insurance and school law kept; Landesrat elected by universal suffrage but only advisory (1922); Governing Commission press decrees; demilitarized, no conscription",
+        ),
+        (
+            tag: "DNZ",
+            template: Some("parliamentary_europe"),
+            laws: ["separation", "private_broadcasting", "volunteer_army"],
+            source: "Constitution of the Free City of Danzig 1920 (Volkstag elected by universal suffrage); Danzig–Poland customs convention 1921 (Polish tariff); German social insurance kept; demilitarized under the League (Treaty of Versailles art. 100–108)",
+        ),
+        (
+            tag: "AUT",
+            template: Some("parliamentary_europe"),
+            laws: ["volunteer_army"],
+            source: "Federal Constitution 1920 (universal suffrage); Achtstundentagsgesetz of 17 December 1919; Kollektivvertragsgesetz 1919 (Einigungsämter); sickness and accident insurance (1887–1888), unemployment insurance law of 24 March 1920; Reichsvolksschulgesetz 1869; Catholic Church privileged (law of 1874); press law of 1922; RAVAG 1924; Treaty of Saint-Germain art. 119 (no conscription)",
+        ),
+        (
+            tag: "HUN",
+            template: Some("eastern_europe"),
+            laws: [
+                "great_estates", "health_insurance", "restricted_suffrage", "official_nationality",
+                "mixed_service", "volunteer_army",
+            ],
+            source: "Nagyatádi land law of 1920 (minimal redistribution); Act XIX of 1907 (sickness and accident insurance); electoral decree of 1922 (open ballot in the countryside, property and schooling tests); Act XXV of 1920 (numerus clausus at universities: targets Jews); recognized churches, Catholic first; press law and state of exception after 1919–1920; Magyar Rádió under state control (1925); Treaty of Trianon art. 103 (no conscription)",
+        ),
+        (
+            tag: "CZE",
+            template: Some("parliamentary_europe"),
+            laws: ["land_reform", "separation"],
+            source: "Constitution of 29 February 1920 (universal suffrage, no state church); Land Control Act of 16 April 1919 (estates above 150 ha of farmland expropriated); Act 91 of 1918 (eight-hour day); Act 221 of 1924 (workers' sickness, invalidity and old-age insurance); language law of 1920 with minority rights where a minority is a fifth of a district; Law for the Protection of the Republic 1923; Radiojournal 1923 (state stake 1925); Defence Act 1920",
+        ),
+        (
+            tag: "POL",
+            template: Some("parliamentary_europe"),
+            laws: ["land_reform", "mixed_service"],
+            source: "March Constitution 1921 (universal suffrage, art. 114 Catholic leading position, minority guarantees of the 1919 Minority Treaty); land reform act of 15 July 1920; income tax act of 1920; eight-hour decree of 18 December 1919; sickness insurance act of 19 May 1920 and unemployment insurance act of 18 July 1924; Concordat signed 10 February 1925; universal conscription 1918–1924; Polskie Radio founded 1925",
+        ),
+        (
+            tag: "LTU",
+            template: Some("parliamentary_europe"),
+            laws: [
+                "land_reform", "factory_acts", "poor_relief", "public_hospitals", "state_broadcasting",
+                "mixed_service",
+            ],
+            source: "Constitution of 1922 (universal suffrage; Catholic Church predominant); Land Reform Act of 15 February 1922; factory inspection only, no general social insurance; state radio in Kaunas (1926); universal conscription",
+        ),
+        (
+            tag: "LAT",
+            template: Some("parliamentary_europe"),
+            laws: ["land_reform", "separation", "state_broadcasting", "mixed_service"],
+            source: "Satversme 1922 (universal suffrage, no state church); Agrarian Reform Law of 16 September 1920; eight-hour law 1922; sickness funds law 1922; state Latvian Radio (1925); universal conscription",
+        ),
+        (
+            tag: "EST",
+            template: Some("parliamentary_europe"),
+            laws: [
+                "land_reform", "poor_relief", "public_hospitals", "separation", "private_broadcasting",
+                "mixed_service",
+            ],
+            source: "Constitution of 1920 (universal suffrage, no state church); Land Act of 10 October 1919 (Baltic German manors expropriated); eight-hour law 1918; no general social insurance; private broadcasting company (1926); universal conscription",
+        ),
+        (
+            tag: "FIN",
+            template: Some("parliamentary_europe"),
+            laws: ["land_reform", "poor_relief", "public_hospitals", "private_broadcasting"],
+            source: "Parliament Act 1906 (universal suffrage, women included); Lex Kallio 1922 (land for tenant and landless farmers); eight-hour law 1917; Lutheran and Orthodox national churches, Freedom of Religion Act 1923; poor law of 1922 (old-age pensions only from 1937); local radio associations (Yleisradio from 1926); Conscription Act 1922",
+        ),
+        (
+            tag: "SWE",
+            template: Some("parliamentary_europe"),
+            laws: ["public_hospitals"],
+            source: "Universal suffrage 1919 (first used 1921); December Compromise 1906; eight-hour law 1919; Folkpensionering 1913 (universal contributory pension); county hospitals and subsidised voluntary sick funds (compulsory only from 1955); folkskola 1842; Church of Sweden established; AB Radiotjänst licensed monopoly from 1 January 1925; conscription law of 1901",
+        ),
+        (
+            tag: "NOR",
+            template: Some("parliamentary_europe"),
+            laws: ["private_broadcasting"],
+            source: "Universal suffrage 1913; Labour Disputes Act 1915; Arbeidervernloven 1919 (eight hours); Syketrygdloven 1909 (compulsory sickness insurance); Church of Norway established; Kringkastingselskapet A/S private licensed company (1925; NRK from 1933); universal conscription",
+        ),
+        (
+            tag: "DEN",
+            template: Some("parliamentary_europe"),
+            laws: ["revenue_tariffs", "factory_acts", "private_broadcasting", "direct_rule", "free_labour"],
+            source: "Constitution of 1915 (universal suffrage, Folkekirke established); September Compromise 1899; eight-hour day by collective agreement 1919, not by statute; old-age relief 1891, state-recognized sickness funds 1892 and unemployment funds 1907; liberal tariff of 1908; Radioordningen trial service (Statsradiofonien from 1 April 1925); Army Act 1922; Greenland: closed administration and Royal Greenland Trade monopoly, no forced labour",
+        ),
+        (
+            tag: "ISL",
+            template: Some("parliamentary_europe"),
+            laws: [
+                "revenue_tariffs", "factory_acts", "poor_relief", "public_hospitals",
+                "private_broadcasting", "mixed_service", "volunteer_army",
+            ],
+            source: "Constitution of 1920 (universal suffrage, Lutheran national church); income tax act 1921; school law 1907; no army; broadcasting by a private company (1926; RÚV state service from 1930)",
+        ),
+        (
+            tag: "SOV",
+            template: Some("soviet"),
+            laws: [],
+            source: "Constitution of the USSR 1924; NEP from March 1921 ('state capitalism' in Lenin's own words: commanding heights state-owned, trade and farming private); Land Code 1922 (land nationalized, peasant use); decree of 22 April 1918 (state monopoly of foreign trade); NEP concessions to foreign firms; Labour Code 1922 (eight hours, minimum wage); social insurance decree 1922; People's Commissariat of Health 1918 (free medical care); decree of 23 January 1918 on separation of church and state, Union of the Godless 1925; internal passports abolished, no propiska until 1932; exit visas (1922 rules); Glavlit 1922; OGPU 1923; universal military service (law of 18 September 1925 restating the 1918 duty)",
+        ),
+        (
+            tag: "ROM",
+            template: Some("eastern_europe"),
+            laws: ["health_insurance"],
+            source: "Constitution of 1923 (universal male suffrage, Orthodox Church dominant, citizenship for Jews); agrarian laws of 1921; Law on Workers' Insurance 1912 (sickness, accident, old age); Mining Law of 1924 (Romanian control of subsoil); Siguranța and martial law in Bessarabia; state radio only from 1928",
+        ),
+        (
+            tag: "YUG",
+            template: Some("eastern_europe"),
+            laws: [
+                "eight_hour_day", "health_insurance", "official_nationality", "private_broadcasting",
+            ],
+            source: "Vidovdan Constitution 1921 (universal male suffrage, recognized confessions, one 'Serbo-Croat-Slovene' nation: targets Macedonians, Albanians and other unrecognized nationalities); Interim Decree on agrarian reform 1919; Labour Protection Act 1922 (eight hours); Law on Workers' Insurance of 14 May 1922; Obznana 1920 and Law for the Protection of the State of 2 August 1921 (communist unions banned); Radio Zagreb private (1926)",
+        ),
+        (
+            tag: "BUL",
+            template: Some("eastern_europe"),
+            laws: ["eight_hour_day", "health_insurance", "volunteer_army"],
+            source: "Tarnovo Constitution 1879 (universal male suffrage, Orthodox Church established); Labour Land Property Law 1920 (Stamboliyski); eight-hour law 1919; Social Insurance Law 1924; Law for the Defence of the State of 25 January 1924 after the 1923 coup; Treaty of Neuilly art. 65 (no conscription); state radio only from 1935",
+        ),
+        (
+            tag: "ALB",
+            template: Some("eastern_europe"),
+            laws: [
+                "indirect_taxation", "laissez_faire", "great_estates", "revenue_tariffs", "open_capital",
+                "unions_banned", "unregulated_labour", "family_and_charity", "private_medicine",
+                "private_schooling", "no_free_elections", "separation", "prior_censorship",
+                "selective_service",
+            ],
+            source: "Zogu returned by force on 24 December 1924 (republic proclaimed January 1925); Congress of Lushnjë 1920 and Statute of 1922 (no state religion); beys' estates untouched; tithe and customs as revenue; no labour or social legislation",
+        ),
+        (
+            tag: "GRE",
+            template: Some("eastern_europe"),
+            laws: [
+                "poor_relief", "free_press", "civil_liberties",
+            ],
+            source: "Second Hellenic Republic proclaimed 25 March 1924 (universal male suffrage, Orthodox Church established); expropriation of chiftliks for the refugees (1917 and 1922–1924); poor relief only (IKA social insurance from 1937); income tax of 1919",
+        ),
+        (
+            tag: "TUR",
+            template: Some("eastern_europe"),
+            laws: [
+                "indirect_taxation", "great_estates", "revenue_tariffs", "open_capital",
+                "unregulated_labour", "family_and_charity", "official_nationality", "mixed_service",
+            ],
+            source: "Constitution of 20 April 1924 (art. 2 Islam state religion, art. 10 men vote at 18, art. 87 compulsory primary schooling, art. 88 everyone a 'Turk': targets Kurds and other non-Turkish Muslims; Kurdish barred in schools and courts); Treaty of Lausanne 1923 (capitulations abolished, tariffs fixed until 1929); Ottoman temettü and tithe (tithe abolished February 1925); no labour law until 1936; press law of 1909; conscription law of 1914 restated",
+        ),
+        (
+            tag: "LIE",
+            template: Some("microstate"),
+            laws: ["male_suffrage"],
+            source: "Constitution of 1921 (men vote; women from 1984; Catholic state church); customs treaty with Switzerland in force 1 January 1924; army abolished 1868",
+        ),
+        (
+            tag: "MCO",
+            template: Some("microstate"),
+            laws: [],
+            source: "Constitution of 1911 (National Council elected by Monegasque men; Catholic state religion); no income tax; customs union with France (1865); Compagnie des Carabiniers du Prince only",
+        ),
+        (
+            tag: "AND",
+            template: Some("microstate"),
+            laws: [],
+            source: "Pareatges of 1278 and 1288 (co-princes); General Council elected by heads of family; Catholic state religion; no taxes on income; no army",
+        ),
+        // ---- Americas ----
+        (
+            tag: "USA",
+            laws: [
+                "progressive_income_tax", "laissez_faire", "freehold_farming", "protective_tariffs",
+                "open_capital", "unions_tolerated", "factory_acts", "poor_relief", "private_medicine",
+                "compulsory_primary", "universal_suffrage", "legal_segregation", "separation",
+                "free_movement", "quota_immigration", "free_emigration", "free_press",
+                "private_broadcasting", "civil_liberties", "mixed_service", "volunteer_army",
+                "trusteeship", "free_labour",
+            ],
+            source: "Sixteenth Amendment 1913 and Revenue Act 1924; Fordney–McCumber Tariff 1922; Clayton Act 1914 (unions not trusts, but no duty to bargain); state factory and child labour laws (federal child labour laws struck down 1918 and 1922); no federal pensions or health insurance; compulsory schooling in every state by 1918; Nineteenth Amendment 1920; Plessy v. Ferguson 1896 and the Jim Crow statutes of the South (segregation, poll taxes and literacy tests: targets Black Americans); First Amendment; Immigration Act of 26 May 1924 (national-origin quotas, Asian exclusion); Radio Act 1912; Pendleton Act 1883 (merit system for part of the service); National Defense Act 1920; Philippine Autonomy Act 1916 and Jones Act 1917 (Puerto Rico): elected legislatures under American governors",
+        ),
+        (
+            tag: "CAN",
+            template: Some("dominion"),
+            laws: ["unions_tolerated", "poor_relief", "private_medicine", "legal_segregation"],
+            source: "Income War Tax Act 1917; National Policy tariff and imperial preference; Canadian National Railways 1919–1923; Industrial Disputes Investigation Act 1907 (conciliation, no duty to bargain); no federal pension until 1927; provincial hospitals only; Dominion Elections Act 1920 (women included); Indian Act 1876 as amended (status Indians as wards, reserves, enfranchisement only by giving up status: targets First Nations); Chinese Immigration Act 1923 and continuous journey regulation 1908; Civil Service Act 1918; private radio stations licensed by the Department of Marine",
+        ),
+        (
+            tag: "NFL",
+            template: Some("dominion"),
+            laws: [
+                "unions_tolerated", "poor_relief", "private_medicine", "male_suffrage", "patronage",
+            ],
+            source: "Newfoundland Railway taken over by the government 1923; denominational school system; men vote (women from 1925); Chinese Immigration Act 1906 (head tax); no army",
+        ),
+        (
+            tag: "MEX",
+            template: Some("latin_republic"),
+            laws: [
+                "proportional_income_tax", "regulated_market", "land_reform", "screened_capital",
+                "collective_bargaining", "labour_code", "public_hospitals", "male_suffrage",
+                "anticlerical_state", "volunteer_army",
+            ],
+            source: "Constitution of 1917: art. 27 (subsoil to the nation, ejidos, estates broken up; Agrarian Law of 6 January 1915), art. 123 (eight hours, minimum wage, unions and strikes), art. 3, 5, 24 and 130 (secular schools, religious orders and public worship restricted, clergy without vote); income tax law of 1924; universal male suffrage; Beneficencia Pública hospitals; no conscription (Servicio Militar Nacional from 1940)",
+        ),
+        (
+            tag: "GUA",
+            template: Some("latin_republic"),
+            laws: ["separation"],
+            source: "Constitution of 1879 as reformed in 1921 (literate or propertied men vote; church and state separated by the 1871 Liberal reform); compulsory primary schooling; Ley de Vialidad and vagrancy laws (labour on roads owed by the poor)",
+        ),
+        (
+            tag: "HON",
+            template: Some("latin_republic"),
+            laws: ["male_suffrage", "separation"],
+            source: "Constitution of 1924 (all men vote; church separated since 1880); compulsory primary schooling; banana concessions to United Fruit and Standard Fruit",
+        ),
+        (
+            tag: "SAL",
+            template: Some("latin_republic"),
+            laws: ["male_suffrage", "separation"],
+            source: "Constitution of 1886 (all men vote, church separated, compulsory primary schooling); coffee estates of the oligarchy",
+        ),
+        (
+            tag: "NIC",
+            template: Some("latin_republic"),
+            laws: ["male_suffrage", "volunteer_army"],
+            source: "Constitution of 1911 (men vote; Catholic Church recognized); United States Marines in the country until August 1925; constabulary instead of a conscript army",
+        ),
+        (
+            tag: "CRI",
+            template: Some("latin_republic"),
+            laws: ["male_suffrage", "mixed_service", "volunteer_army"],
+            source: "Constitution of 1871 (Catholic state religion); direct election 1913 (all men vote); compulsory and free primary schooling (1869); small volunteer army",
+        ),
+        (
+            tag: "PAN",
+            template: Some("latin_republic"),
+            laws: ["male_suffrage", "separation", "volunteer_army"],
+            source: "Constitution of 1904 (all men vote, freedom of worship); army disbanded 1904, national police only; Canal Zone treaty 1903",
+        ),
+        (
+            tag: "CUB",
+            template: Some("latin_republic"),
+            laws: ["male_suffrage", "separation", "volunteer_army"],
+            source: "Constitution of 1901 (all men vote, church separated, compulsory primary schooling); Platt Amendment; volunteer army",
+        ),
+        (
+            tag: "HAI",
+            template: Some("latin_republic"),
+            laws: ["no_free_elections", "press_licensing", "emergency_powers", "volunteer_army"],
+            source: "United States occupation 1915–1934: legislature dissolved 1917, Council of State appointed; Constitution of 1918 (foreigners may own land); Concordat of 1860 (Catholic Church established); martial law and press prosecutions; Gendarmerie instead of a conscript army",
+        ),
+        (
+            tag: "DOM",
+            template: Some("latin_republic"),
+            laws: ["male_suffrage", "volunteer_army"],
+            source: "Constitution of 1924 after the end of the United States occupation (July 1924): all men vote, Catholic Church favoured; Guardia Nacional, no conscription",
+        ),
+        (
+            tag: "COL",
+            template: Some("latin_republic"),
+            laws: [],
+            source: "Constitution of 1886 as reformed in 1910 (presidential vote for literate or propertied men); Concordat of 1887 (Catholic Church established, church schooling); compulsory military service law of 1896",
+        ),
+        (
+            tag: "VEN",
+            template: Some("latin_republic"),
+            laws: ["no_free_elections", "prior_censorship", "political_police"],
+            source: "Dictatorship of Juan Vicente Gómez (1908–1935): congress chosen by the government, political prisoners in La Rotunda, press censorship; Ley de Patronato Eclesiástico 1824 (state controls the Catholic Church); Hydrocarbons Law 1922 (open to foreign oil companies)",
+        ),
+        (
+            tag: "ECU",
+            template: Some("latin_republic"),
+            laws: ["separation"],
+            source: "Constitution of 1906 (Liberal: church separated, secular schools; literate men vote); compulsory military service",
+        ),
+        (
+            tag: "PER",
+            template: Some("latin_republic"),
+            laws: ["press_licensing", "emergency_powers"],
+            source: "Constitution of 1920 (literate men vote, art. 5 the state protects the Catholic Church, indigenous communities recognized); Leguía's Oncenio: opponents deported, press closed; haciendas; compulsory military service law of 1898",
+        ),
+        (
+            tag: "BOL",
+            template: Some("latin_republic"),
+            laws: ["bonded_tenure"],
+            source: "Constitution of 1880 (literate, propertied men vote; Catholic state religion); haciendas worked by colonos owing pongueaje (unpaid personal service) until 1945–1953; compulsory military service",
+        ),
+        (
+            tag: "CHL",
+            template: Some("latin_republic"),
+            laws: [
+                "proportional_income_tax", "protective_tariffs", "collective_bargaining", "eight_hour_day",
+                "workers_insurance", "health_insurance", "no_free_elections", "press_licensing",
+                "emergency_powers", "mixed_service", "universal_service",
+            ],
+            source: "Military junta after the coup of 5 September 1924 (congress dissolved); labour laws of 8 September 1924: Ley 4053 (labour contract, eight hours), Ley 4054 (compulsory workers' insurance for sickness, invalidity and old age), Ley 4057 (legal industrial unions); income tax Ley 3996 of 1924; Constitution of 1833 (Catholic state religion; separation only in 1925); Ley 3654 of 1920 (compulsory primary schooling); compulsory military service law of 1900",
+        ),
+        (
+            tag: "ARG",
+            template: Some("latin_republic"),
+            laws: ["male_suffrage", "universal_service"],
+            source: "Constitution of 1853 (art. 2 the state supports the Catholic Church); Ley Sáenz Peña 8871 of 1912 (secret and compulsory vote for all men); Ley 1420 of 1884 (compulsory, free, secular primary schooling); Ley Avellaneda 1876 (immigration); estancias of the pampas; customs as main revenue; Ley 4031 Ricchieri of 1901 (compulsory service)",
+        ),
+        (
+            tag: "URY",
+            template: Some("latin_republic"),
+            laws: [
+                "mixed_economy", "collective_bargaining", "eight_hour_day", "workers_insurance",
+                "public_hospitals", "male_suffrage", "separation", "mixed_service", "volunteer_army",
+            ],
+            source: "Batllismo: state bank (BROU 1911), state insurance (BSE 1911), state electricity (UTE 1912); eight-hour law of 17 November 1915; old-age pensions law of 1919; Asistencia Pública Nacional 1910; Varela's school law 1877; Constitution of 1918 (secret vote for all men, church separated from 1919); no conscription",
+        ),
+        (
+            tag: "PRY",
+            template: Some("latin_republic"),
+            laws: ["male_suffrage"],
+            source: "Constitution of 1870 (all men vote, Catholic state religion); Mennonite settlement law of 1921; compulsory military service",
+        ),
+        (
+            tag: "BRA",
+            template: Some("latin_republic"),
+            laws: [
+                "protective_tariffs", "private_schooling", "separation", "prior_censorship",
+                "emergency_powers",
+            ],
+            source: "Constitution of 1891 (art. 70 literate men vote, open ballot; church separated by decree 119-A of 1890; primary schooling left to the states, not compulsory nationwide); state of siege and press censorship under Bernardes (1922–1926); Lei Eloy Chaves 1923 (railway workers' pension funds only); Lei do Sorteio of 1908 (conscription by lot, applied from 1916)",
+        ),
+        // ---- Asia ----
+        (
+            tag: "CHN",
+            template: Some("latin_republic"),
+            laws: [
+                "capitulations", "family_and_charity", "private_schooling", "no_free_elections",
+                "separation", "press_licensing", "emergency_powers", "volunteer_army",
+            ],
+            source: "Beiyang government under the warlords: parliament dissolved, Provisional Constitution not applied; likin and salt gabelle; treaty tariff of 5 % (autonomy only from 1929); extraterritoriality and foreign concessions in the treaty ports (until 1943); landlord tenancy; Publication Law 1914; mercenary warlord armies; no hukou (household registration with movement control only from 1958)",
+        ),
+        (
+            tag: "JAP",
+            template: Some("parliamentary_europe"),
+            laws: [
+                "great_estates", "screened_capital", "unions_tolerated", "factory_acts", "poor_relief",
+                "private_medicine", "restricted_suffrage", "official_nationality", "quota_immigration",
+                "press_licensing", "emergency_powers", "direct_rule", "labour_taxation",
+            ],
+            source: "Meiji Constitution 1889 and Election Law (tax qualification; manhood suffrage only from May 1925); Income Tax Act 1887 as revised 1920; railway nationalization 1906, Yawata state steel works; tenancy on about 46 % of farmland; tariff autonomy 1911; Public Peace Police Law 1900 art. 17 (strikes restricted); Factory Act 1911 (in force 1916, revised 1923); Health Insurance Act 1922 (in force only from 1927); compulsory schooling of six years (1907); Hokkaido Former Aborigines Protection Act 1899 (targets the Ainu); State Shinto; Imperial Ordinance 352 of 1899 (foreign labourers); Newspaper Law 1909; Tokkō special police since 1911; Tokyo Broadcasting Station 1925 (NHK 1926); Conscription Ordinance 1873; Government-General of Korea and of Taiwan",
+        ),
+        (
+            tag: "MGL",
+            template: Some("soviet"),
+            laws: [
+                "mixed_economy", "great_estates", "revenue_tariffs", "unregulated_labour",
+                "family_and_charity", "private_medicine", "traditional_schooling", "separation",
+                "patronage",
+            ],
+            source: "Constitution of the Mongolian People's Republic, November 1924 (separation of church and state, no vote for lamas and nobles); feudal estates and monastery herds intact until 1929; schooling in the monasteries; Internal Security Office 1922; conscription 1924",
+        ),
+        (
+            tag: "TUV",
+            template: Some("soviet"),
+            laws: [
+                "laissez_faire", "great_estates", "revenue_tariffs", "unregulated_labour",
+                "family_and_charity", "private_medicine", "traditional_schooling", "state_church",
+                "emergency_powers", "patronage", "volunteer_army",
+            ],
+            source: "Tuvan People's Republic (1921) under the Khural and the Tuvan People's Revolutionary Party; Buddhism the religion of the state (made explicit in the 1926 Constitution); pastoral clans; no Soviet-style state economy until 1929",
+        ),
+        (
+            tag: "TIB",
+            template: Some("traditional_monarchy"),
+            laws: ["bonded_tenure", "closed_immigration"],
+            source: "Ganden Phodrang government of the 13th Dalai Lama: monasteries and nobles hold estates worked by hereditary serfs (miser); foreigners barred; army reorganized in 1913 by volunteers and levies",
+        ),
+        (
+            tag: "SIA",
+            template: Some("traditional_monarchy"),
+            laws: [
+                "freehold_farming", "capitulations", "compulsory_primary", "official_nationality",
+                "state_church", "press_licensing", "mixed_service", "universal_service",
+            ],
+            source: "Absolute monarchy of Rama VI; slavery and corvée abolished 1905; extraterritoriality of the 1855–1909 treaties (revised 1925–1927, ended 1938) and treaty tariffs; Primary Education Act 1921; Nationality Act 1913 and assimilation of the Chinese; Buddhism under royal patronage; Press Act 1922; Conscription Act 1905",
+        ),
+        (
+            tag: "AFG",
+            template: Some("traditional_monarchy"),
+            laws: ["private_schooling", "selective_service"],
+            source: "Nizamnama (Constitution) of 1923 of Amanullah Khan: Islam the state religion, Hindus and Jews tolerated under conditions; state schools in Kabul; conscription by lot (one man in eight) from 1923",
+        ),
+        (
+            tag: "PRS",
+            template: Some("traditional_monarchy"),
+            laws: [
+                "capitulations", "private_schooling", "restricted_suffrage", "press_licensing",
+            ],
+            source: "Constitution of 1906 and Supplementary Law of 1907 (art. 1 Twelver Shia Islam the state religion, Bahá'ís unrecognized; Majlis elected by men with property or trade); capitulations (abolished 10 May 1928) and treaty tariffs; Reza Khan prime minister and army chief; conscription only from 1925",
+        ),
+        (
+            tag: "NEP",
+            template: Some("traditional_monarchy"),
+            laws: ["bonded_tenure", "closed_immigration"],
+            source: "Rana regime; Muluki Ain of 1854 (Hindu law, conversion forbidden); slavery abolished by Chandra Shumsher's proclamation of 28 November 1924, emancipation completed 1926; foreigners barred",
+        ),
+        (
+            tag: "BHU",
+            template: Some("traditional_monarchy"),
+            laws: ["bonded_tenure", "closed_immigration"],
+            source: "Wangchuck monarchy (1907) under the Treaty of Punakha 1910; Drukpa Kagyu Buddhism; serfdom until 1958; foreigners barred",
+        ),
+        (
+            tag: "RAJ",
+            laws: [
+                "progressive_income_tax", "laissez_faire", "great_estates", "protective_tariffs",
+                "open_capital", "unions_tolerated", "factory_acts", "poor_relief", "public_hospitals",
+                "private_schooling", "restricted_suffrage", "equal_citizenship", "separation",
+                "free_movement", "open_immigration", "free_emigration", "press_licensing",
+                "state_broadcasting", "emergency_powers", "merit_service", "volunteer_army",
+            ],
+            source: "Government of India Act 1919 (dyarchy; about 3 % of adults vote, communal electorates); Income Tax Act 1922 and super-tax 1917; zamindari and permanent settlement; discriminating protection 1923 and Steel Industry (Protection) Act 1924; Indian Factories Act 1922 (60-hour week, children over 12); Workmen's Compensation Act 1923; government hospitals; provincial optional compulsory education acts; religious neutrality of the Crown; Indian Press Act 1910 repealed 1922, sedition law (Penal Code s. 124A) and Bengal Criminal Law Amendment Ordinance 1924; Indian Civil Service by examination; volunteer Indian Army; caste discrimination customary, not statutory",
+        ),
+        (
+            tag: "IRQ",
+            template: Some("traditional_monarchy"),
+            laws: [
+                "private_schooling", "restricted_suffrage", "state_church", "press_licensing",
+            ],
+            source: "British mandate; Organic Law of 21 March 1925 (Islam the state religion, freedom of worship) and electoral law of 1924 (indirect male suffrage); tribal sheikhs' lands (Tribal Disputes Regulation); oil concession to the Turkish Petroleum Company (14 March 1925)",
+        ),
+        (
+            tag: "TRJ",
+            template: Some("traditional_monarchy"),
+            laws: ["state_church"],
+            source: "Emirate of Transjordan under the British mandate (1921); Islam the religion of the state, Christians free to worship (Organic Law only in 1928); Arab Legion of volunteers",
+        ),
+        (
+            tag: "HEJ",
+            template: Some("traditional_monarchy"),
+            laws: ["bonded_tenure"],
+            source: "Hashemite Kingdom of the Hejaz (King Ali after Hussein's abdication in October 1924); Islamic law; slavery legal; pilgrimage open to Muslims",
+        ),
+        (
+            tag: "NEJ",
+            template: Some("traditional_monarchy"),
+            laws: ["bonded_tenure", "closed_immigration"],
+            source: "Sultanate of Nejd under Ibn Saud: Wahhabi Islamic law, Ikhwan settlements; slavery legal (abolished only in 1962); foreigners barred",
+        ),
+        (
+            tag: "YEM",
+            template: Some("traditional_monarchy"),
+            laws: ["bonded_tenure", "closed_immigration"],
+            source: "Zaydi imamate of Yahya Muhammad Hamid ed-Din: Islamic law, slavery legal, country closed to foreigners",
+        ),
+        (
+            tag: "OMA",
+            template: Some("traditional_monarchy"),
+            laws: ["bonded_tenure"],
+            source: "Sultanate of Muscat under British protection; Treaty of Seeb 1920 with the Imamate of the interior; Islamic law; slavery legal (abolished 1970)",
+        ),
+        (
+            tag: "KUW",
+            template: Some("traditional_monarchy"),
+            laws: ["bonded_tenure"],
+            source: "Sheikhdom under the Anglo-Kuwaiti Agreement of 1899; Islamic law; slavery legal (until 1949) and debt bondage of pearl divers",
+        ),
+        // ---- Africa ----
+        (
+            tag: "EGY",
+            template: Some("latin_republic"),
+            laws: [
+                "capitulations", "factory_acts", "family_and_charity", "public_hospitals",
+                "male_suffrage", "press_licensing", "state_broadcasting", "emergency_powers",
+                "mixed_service",
+            ],
+            source: "Constitution of 19 April 1923 (art. 19 compulsory primary schooling, art. 149 Islam the state religion; all men vote); no income tax until 1939; land concentrated in large estates; capitulations and Mixed Courts (until the Montreux Convention 1937); child labour law of 1909; press law of 1881 revived; conscription with exemption by payment (badal)",
+        ),
+        (
+            tag: "ETH",
+            template: Some("traditional_monarchy"),
+            laws: ["bonded_tenure", "capitulations", "state_church"],
+            source: "Empire under Empress Zewditu and the regent Ras Tafari; gebbar tenure (peasants owe labour and tribute to the lords) and slavery (gradual emancipation decree of 1924, abolition proclamation of 1942); Klobukowski Treaty 1908 (extraterritoriality); Ethiopian Orthodox Church established",
+        ),
+        (
+            tag: "LBR",
+            template: Some("latin_republic"),
+            laws: ["legal_segregation", "separation", "racial_exclusion", "volunteer_army"],
+            source: "Constitution of 1847 (citizenship only for people of African descent; Americo-Liberian men with real estate vote); Hinterland regulations of 1904 (indigenous peoples ruled by district commissioners, without citizen rights: targets them); freedom of worship; Liberian Frontier Force",
+        ),
+        (
+            tag: "SAF",
+            template: Some("dominion"),
+            laws: [
+                "poor_relief", "private_medicine", "restricted_suffrage", "legal_segregation",
+                "pass_laws", "selective_service", "settler_rule", "labour_taxation",
+            ],
+            source: "Income Tax Act 1914; South African Railways and Harbours, ESCOM 1923; Industrial Conciliation Act 1924 (excludes pass-bearing Africans); Mines and Works Act 1911 (colour bar); old-age pensions only from 1928; franchise of white men, with the Cape qualified non-racial franchise; Natives Land Act 1913 and Natives (Urban Areas) Act 1923 (reserves, urban segregation, passes: target Africans, Coloured and Indians); Immigrants Regulation Act 1913; Public Service Act 1923; Defence Act 1912 (citizen force by ballot); South West Africa mandate under settler administration, contract labour",
+        ),
+        // ---- Oceania ----
+        (
+            tag: "AUS",
+            template: Some("dominion"),
+            laws: [
+                "labour_code", "legal_segregation", "pass_laws", "selective_service", "direct_rule",
+                "labour_taxation",
+            ],
+            source: "Conciliation and Arbitration Act 1904 and the Harvester basic wage 1907 (legal minimum wage, eight hours by award); Invalid and Old-Age Pensions Act 1908; Commonwealth Franchise Act 1902 and compulsory voting 1924; Aboriginal protection acts of the states (wards, reserves, movement by permit: target Aboriginal people); Immigration Restriction Act 1901 (White Australia); Greene tariff 1921; Public Service Act 1922; compulsory military training 1911–1929; A- and B-class broadcasting licences 1924; Papua Act 1905 and the New Guinea mandate, indentured labour and head tax",
+        ),
+        (
+            tag: "NZL",
+            template: Some("dominion"),
+            laws: [
+                "eight_hour_day", "selective_service", "direct_rule", "labour_taxation",
+            ],
+            source: "Industrial Conciliation and Arbitration Act 1894; Old-age Pensions Act 1898; Electoral Act 1893 (women included; Māori seats since 1867); Hospitals and Charitable Institutions Act 1909; Immigration Restriction Amendment Act 1920; compulsory military training until 1930; Samoa Act 1921 (Western Samoa mandate), indentured Chinese labour on the plantations",
+        ),
+    ],
+    history: [
+        // Britain
+        (tag: "GBR", date: "1928-07-02", law: "universal_suffrage", source: "Representation of the People (Equal Franchise) Act 1928"),
+        (tag: "GBR", date: "1932-03-01", law: "protective_tariffs", source: "Import Duties Act 1932"),
+        (tag: "GBR", date: "1939-05-26", law: "selective_service", source: "Military Training Act 1939"),
+        (tag: "GBR", date: "1945-04-01", law: "universal_secondary", source: "Education Act 1944 (in force April 1945)"),
+        (tag: "GBR", date: "1947-01-01", law: "mixed_economy", source: "Coal Industry Nationalisation Act 1946 (vesting day)"),
+        (tag: "GBR", date: "1948-07-05", law: "national_health_service", source: "National Health Service Act 1946 (appointed day)"),
+        (tag: "GBR", date: "1948-07-05", law: "social_security", source: "National Insurance Act 1946 (appointed day)"),
+        // France
+        (tag: "FRA", date: "1930-07-01", law: "health_insurance", source: "Social insurance laws of 5 April 1928 and 30 April 1930"),
+        (tag: "FRA", date: "1944-04-21", law: "universal_suffrage", source: "Ordinance of 21 April 1944 (women's vote)"),
+        (tag: "FRA", date: "1945-10-04", law: "social_security", source: "Ordinance of 4 October 1945 (Sécurité sociale)"),
+        (tag: "FRA", date: "1945-12-02", law: "mixed_economy", source: "Law of 2 December 1945 (Banque de France and big banks nationalized)"),
+        (tag: "FRA", date: "1946-04-11", law: "free_labour", source: "Loi Houphouët-Boigny of 11 April 1946 (forced labour abolished in the colonies)"),
+        // Belgium, Switzerland, Netherlands, Nordics
+        (tag: "BEL", date: "1930-06-18", law: "public_broadcaster", source: "Law of 18 June 1930 creating the INR/NIR"),
+        (tag: "BEL", date: "1944-12-28", law: "social_security", source: "Decree-law of 28 December 1944 on social security"),
+        (tag: "BEL", date: "1948-03-27", law: "universal_suffrage", source: "Law of 27 March 1948 (women in national elections)"),
+        (tag: "NLD", date: "1941-11-01", law: "health_insurance", source: "Ziekenfondsbesluit 1941"),
+        (tag: "CHE", date: "1931-02-24", law: "public_broadcaster", source: "Founding of the SRG (Schweizerische Rundspruchgesellschaft)"),
+        (tag: "CHE", date: "1948-01-01", law: "social_security", source: "Federal old-age and survivors' insurance (AHV)"),
+        (tag: "CHE", date: "1971-02-07", law: "universal_suffrage", source: "Federal vote of 7 February 1971 (women's suffrage)"),
+        (tag: "DEN", date: "1925-04-01", law: "public_broadcaster", source: "Statsradiofonien begins regular service"),
+        (tag: "NOR", date: "1933-07-01", law: "public_broadcaster", source: "Norsk rikskringkasting (NRK) takes over broadcasting"),
+        (tag: "FIN", date: "1926-05-29", law: "public_broadcaster", source: "Founding of Oy Suomen Yleisradio"),
+        (tag: "ISL", date: "1930-12-20", law: "state_broadcasting", source: "Ríkisútvarpið (RÚV) begins broadcasting"),
+        // Southern Europe
+        (tag: "ESP", date: "1931-10-21", law: "press_licensing", source: "Ley de Defensa de la República of 21 October 1931 (censorship lifted, suspensions by the minister)"),
+        (tag: "ESP", date: "1931-12-09", law: "universal_suffrage", source: "Constitution of the Second Republic (art. 36, women's vote)"),
+        (tag: "ESP", date: "1931-12-09", law: "anticlerical_state", source: "Constitution of the Second Republic (art. 3 and 26)"),
+        (tag: "ESP", date: "1932-09-15", law: "land_reform", source: "Agrarian Reform Law of 15 September 1932"),
+        (tag: "ESP", date: "1938-03-09", law: "state_unions", source: "Fuero del Trabajo of 9 March 1938"),
+        (tag: "ESP", date: "1938-04-22", law: "prior_censorship", source: "Press Law of 22 April 1938"),
+        (tag: "ESP", date: "1966-03-18", law: "press_licensing", source: "Press and Printing Law of 18 March 1966 (Fraga)"),
+        (tag: "POR", date: "1926-05-28", law: "no_free_elections", source: "Military coup of 28 May 1926"),
+        (tag: "POR", date: "1933-04-11", law: "prior_censorship", source: "Decree-law 22469 of 11 April 1933 (prior censorship)"),
+        (tag: "POR", date: "1933-09-23", law: "state_unions", source: "Estatuto do Trabalho Nacional, decree-law 23048 of 23 September 1933"),
+        (tag: "POR", date: "1961-09-06", law: "free_labour", source: "Decree-law 43893 of 6 September 1961 (Estatuto dos Indígenas repealed)"),
+        (tag: "ITA", date: "1925-10-02", law: "state_unions", source: "Palazzo Vidoni pact (fascist unions only), made law by the Rocco law of 3 April 1926"),
+        (tag: "ITA", date: "1926-11-06", law: "prior_censorship", source: "Testo unico di pubblica sicurezza of 6 November 1926 (opposition press suppressed)"),
+        (tag: "ITA", date: "1926-11-25", law: "political_police", source: "Law 2008 of 25 November 1926 for the defence of the state (Special Tribunal; OVRA)"),
+        (tag: "ITA", date: "1928-05-17", law: "no_free_elections", source: "Electoral law of 17 May 1928 (single national list)"),
+        (tag: "ITA", date: "1938-11-17", law: "legal_exclusion", source: "Royal decree-law 1728 of 17 November 1938 (racial laws: targets Jews)"),
+        (tag: "ITA", date: "1945-02-01", law: "universal_suffrage", source: "Legislative decree 23 of 1 February 1945 (women's vote)"),
+        (tag: "ITA", date: "1978-12-23", law: "national_health_service", source: "Law 833 of 23 December 1978 (Servizio sanitario nazionale)"),
+        (tag: "GRE", date: "1925-06-25", law: "prior_censorship", source: "Pangalos coup of 25 June 1925"),
+        (tag: "GRE", date: "1936-08-04", law: "no_free_elections", source: "Metaxas regime of 4 August 1936"),
+        (tag: "GRE", date: "1937-01-01", law: "workers_insurance", source: "Social insurance law 6298 of 1934 (IKA operating from 1937)"),
+        (tag: "ALB", date: "1976-12-28", law: "state_atheism", source: "Constitution of 28 December 1976 (art. 37: the state recognizes no religion)"),
+        // Central and Eastern Europe
+        (tag: "GER", date: "1927-10-01", law: "social_security", source: "Gesetz über Arbeitsvermittlung und Arbeitslosenversicherung of 16 July 1927"),
+        (tag: "GER", date: "1933-02-28", law: "political_police", source: "Reichstag Fire Decree of 28 February 1933"),
+        (tag: "GER", date: "1933-05-10", law: "state_unions", source: "Unions dissolved on 2 May 1933; German Labour Front founded 10 May 1933"),
+        (tag: "GER", date: "1933-07-14", law: "no_free_elections", source: "Law against the Formation of New Parties of 14 July 1933"),
+        (tag: "GER", date: "1935-03-16", law: "universal_service", source: "Law for the Build-up of the Wehrmacht of 16 March 1935"),
+        (tag: "GER", date: "1935-09-15", law: "legal_exclusion", source: "Reich Citizenship Law of 15 September 1935 (Nuremberg Laws: targets Jews)"),
+        (tag: "AUT", date: "1934-05-01", law: "no_free_elections", source: "May Constitution of 1934 (corporate state)"),
+        (tag: "HUN", date: "1939-05-05", law: "legal_exclusion", source: "Act IV of 1939 (Second Jewish Law)"),
+        (tag: "HUN", date: "1945-03-15", law: "land_reform", source: "Decree 600 of 1945 on land reform"),
+        (tag: "LTU", date: "1926-12-17", law: "no_free_elections", source: "Coup of 17 December 1926"),
+        (tag: "LAT", date: "1934-05-15", law: "no_free_elections", source: "Ulmanis coup of 15 May 1934"),
+        (tag: "EST", date: "1934-03-12", law: "no_free_elections", source: "Päts self-coup of 12 March 1934"),
+        (tag: "ROM", date: "1938-01-22", law: "legal_exclusion", source: "Decree of 22 January 1938 revising citizenship (Goga–Cuza government: targets Jews)"),
+        (tag: "ROM", date: "1938-02-27", law: "no_free_elections", source: "Constitution of 27 February 1938 (Carol II)"),
+        (tag: "YUG", date: "1929-01-06", law: "no_free_elections", source: "Dictatorship of 6 January 1929"),
+        (tag: "BUL", date: "1934-05-19", law: "no_free_elections", source: "Zveno coup of 19 May 1934"),
+        (tag: "TUR", date: "1925-03-04", law: "prior_censorship", source: "Law on the Maintenance of Order (Takrir-i Sükûn) of 4 March 1925"),
+        (tag: "TUR", date: "1925-03-04", law: "political_police", source: "Law on the Maintenance of Order (Takrir-i Sükûn) of 4 March 1925 and the Independence Tribunals"),
+        (tag: "TUR", date: "1928-04-10", law: "separation", source: "Constitutional amendment of 10 April 1928 (Islam no longer the state religion)"),
+        (tag: "TUR", date: "1929-10-01", law: "protective_tariffs", source: "Customs tariff of 1929 after the Lausanne limits expired"),
+        (tag: "TUR", date: "1933-07-11", law: "state_capitalism", source: "Founding of Sümerbank (étatisme)"),
+        (tag: "TUR", date: "1934-12-05", law: "universal_suffrage", source: "Constitutional amendment of 5 December 1934 (women's vote)"),
+        (tag: "TUR", date: "1936-06-08", law: "factory_acts", source: "Labour Law 3008 of 8 June 1936"),
+        // Soviet Union
+        (tag: "SOV", date: "1928-10-01", law: "planned_economy", source: "First Five-Year Plan"),
+        (tag: "SOV", date: "1930-01-05", law: "collective_farming", source: "Central Committee resolution of 5 January 1930 on the pace of collectivization"),
+        (tag: "SOV", date: "1932-12-27", law: "internal_passports", source: "Decree of 27 December 1932 on the unified passport system and propiska"),
+        (tag: "SOV", date: "1934-07-10", law: "police_state", source: "NKVD of the USSR created on 10 July 1934, absorbing the OGPU and the camps"),
+        // Americas
+        (tag: "USA", date: "1933-05-18", law: "regulated_market", source: "Tennessee Valley Authority Act of 18 May 1933"),
+        (tag: "USA", date: "1935-07-05", law: "collective_bargaining", source: "National Labor Relations Act (Wagner Act) of 5 July 1935"),
+        (tag: "USA", date: "1935-08-14", law: "social_security", source: "Social Security Act of 14 August 1935"),
+        (tag: "USA", date: "1938-06-25", law: "labour_code", source: "Fair Labor Standards Act of 25 June 1938"),
+        (tag: "USA", date: "1940-09-16", law: "selective_service", source: "Selective Training and Service Act of 16 September 1940"),
+        (tag: "USA", date: "1964-07-02", law: "equal_citizenship", source: "Civil Rights Act of 2 July 1964"),
+        (tag: "USA", date: "1965-07-30", law: "health_insurance", source: "Social Security Amendments of 30 July 1965 (Medicare and Medicaid)"),
+        (tag: "USA", date: "1973-07-01", law: "volunteer_army", source: "End of the draft, 1 July 1973"),
+        (tag: "CAN", date: "1927-03-31", law: "workers_insurance", source: "Old Age Pensions Act 1927"),
+        (tag: "CAN", date: "1932-05-26", law: "public_broadcaster", source: "Canadian Radio Broadcasting Act 1932"),
+        (tag: "CAN", date: "1940-08-07", law: "social_security", source: "Unemployment Insurance Act 1940"),
+        (tag: "CAN", date: "1944-02-17", law: "collective_bargaining", source: "Order in Council P.C. 1003 of 17 February 1944"),
+        (tag: "CAN", date: "1968-07-01", law: "national_health_service", source: "Medical Care Act 1966 (in force 1 July 1968)"),
+        (tag: "NFL", date: "1925-04-03", law: "universal_suffrage", source: "Election Act amendment in force 3 April 1925 (women vote at 25)"),
+        (tag: "MEX", date: "1938-03-18", law: "mixed_economy", source: "Oil expropriation of 18 March 1938"),
+        (tag: "MEX", date: "1943-01-19", law: "workers_insurance", source: "Ley del Seguro Social of 19 January 1943 (IMSS)"),
+        (tag: "MEX", date: "1953-10-17", law: "universal_suffrage", source: "Constitutional reform of 17 October 1953 (women's vote)"),
+        (tag: "COL", date: "1936-08-05", law: "male_suffrage", source: "Acto Legislativo 1 of 5 August 1936 (universal male suffrage)"),
+        (tag: "BOL", date: "1952-07-21", law: "universal_suffrage", source: "Decree of 21 July 1952 (universal suffrage)"),
+        (tag: "BOL", date: "1953-08-02", law: "land_reform", source: "Agrarian Reform Decree of 2 August 1953"),
+        (tag: "CHL", date: "1925-09-18", law: "separation", source: "Constitution of 18 September 1925"),
+        (tag: "ARG", date: "1930-09-06", law: "no_free_elections", source: "Coup of 6 September 1930"),
+        (tag: "ARG", date: "1947-09-23", law: "universal_suffrage", source: "Ley 13010 of 23 September 1947 (women's vote)"),
+        (tag: "URY", date: "1932-12-16", law: "universal_suffrage", source: "Ley 8927 of 16 December 1932 (women's vote)"),
+        (tag: "BRA", date: "1931-03-19", law: "state_unions", source: "Decree 19770 of 19 March 1931 (union law under the Ministry of Labour)"),
+        (tag: "BRA", date: "1937-11-10", law: "no_free_elections", source: "Estado Novo, Constitution of 10 November 1937"),
+        (tag: "BRA", date: "1943-05-01", law: "labour_code", source: "Consolidação das Leis do Trabalho, decree-law 5452 of 1 May 1943"),
+        (tag: "BRA", date: "1985-05-15", law: "universal_suffrage", source: "Constitutional Amendment 25 of 15 May 1985 (illiterates vote)"),
+        // Asia
+        (tag: "CHN", date: "1929-02-01", law: "protective_tariffs", source: "National tariff of 1929 after tariff autonomy"),
+        (tag: "CHN", date: "1929-12-30", law: "factory_acts", source: "Factory Law of 30 December 1929"),
+        (tag: "CHN", date: "1943-01-11", law: "open_capital", source: "Treaties of 11 January 1943 ending extraterritoriality"),
+        (tag: "CHN", date: "1950-06-30", law: "land_reform", source: "Agrarian Reform Law of the People's Republic, 30 June 1950"),
+        (tag: "CHN", date: "1953-01-01", law: "planned_economy", source: "First Five-Year Plan"),
+        (tag: "CHN", date: "1958-01-09", law: "internal_passports", source: "Household Registration Regulations of 9 January 1958 (hukou)"),
+        (tag: "JAP", date: "1925-04-22", law: "political_police", source: "Peace Preservation Law of 22 April 1925"),
+        (tag: "JAP", date: "1925-05-05", law: "male_suffrage", source: "General Election Law of 5 May 1925"),
+        (tag: "JAP", date: "1927-01-01", law: "health_insurance", source: "Health Insurance Act 1922 in force"),
+        (tag: "JAP", date: "1939-07-08", law: "forced_labour", source: "National Requisition Ordinance of 8 July 1939 (labour mobilization in the colonies)"),
+        (tag: "JAP", date: "1945-12-17", law: "universal_suffrage", source: "Revised election law of 17 December 1945"),
+        (tag: "JAP", date: "1945-12-22", law: "collective_bargaining", source: "Trade Union Law of 22 December 1945"),
+        (tag: "JAP", date: "1946-10-21", law: "land_reform", source: "Owner-Farmer Establishment Special Measures Law of 21 October 1946"),
+        (tag: "JAP", date: "1947-04-07", law: "labour_code", source: "Labor Standards Act of 7 April 1947"),
+        (tag: "JAP", date: "1947-05-03", law: "separation", source: "Constitution of 3 May 1947 (art. 20)"),
+        (tag: "SIA", date: "1932-12-10", law: "universal_suffrage", source: "Constitution of 10 December 1932"),
+        (tag: "PRS", date: "1925-06-06", law: "universal_service", source: "Universal military service law of 6 June 1925"),
+        (tag: "PRS", date: "1928-05-10", law: "open_capital", source: "Abolition of the capitulations, 10 May 1928"),
+        (tag: "RAJ", date: "1926-03-25", law: "collective_bargaining", source: "Indian Trade Unions Act 1926 (registration and immunity)"),
+        (tag: "NEJ", date: "1962-11-06", law: "great_estates", source: "Abolition of slavery by Faisal's ten-point programme of 6 November 1962"),
+        // Africa
+        (tag: "EGY", date: "1937-05-08", law: "open_capital", source: "Montreux Convention of 8 May 1937 (capitulations abolished)"),
+        (tag: "EGY", date: "1952-09-09", law: "land_reform", source: "Agrarian Reform Law 178 of 9 September 1952"),
+        (tag: "ETH", date: "1942-08-27", law: "great_estates", source: "Proclamation 22 of 27 August 1942 (slavery abolished)"),
+        (tag: "SAF", date: "1936-08-01", law: "public_broadcaster", source: "Broadcasting Act 1936 (SABC)"),
+        (tag: "SAF", date: "1970-03-26", law: "legal_exclusion", source: "Bantu Homelands Citizenship Act 1970 (citizenship moved to the homelands)"),
+        (tag: "SAF", date: "1986-07-01", law: "free_movement", source: "Abolition of Influx Control Act 1986"),
+        (tag: "SAF", date: "1994-04-27", law: "universal_suffrage", source: "Interim Constitution, election of 27 April 1994"),
+        (tag: "SAF", date: "1994-04-27", law: "equal_citizenship", source: "Interim Constitution of 1993, in force 27 April 1994"),
+        // Oceania
+        (tag: "AUS", date: "1929-11-01", law: "volunteer_army", source: "Compulsory military training suspended, November 1929"),
+        (tag: "AUS", date: "1932-07-01", law: "public_broadcaster", source: "Australian Broadcasting Commission Act 1932"),
+        (tag: "AUS", date: "1967-05-27", law: "equal_citizenship", source: "Constitutional referendum of 27 May 1967"),
+        (tag: "NZL", date: "1939-04-01", law: "social_security", source: "Social Security Act 1938 (benefits from 1 April 1939)"),
+    ],
+)

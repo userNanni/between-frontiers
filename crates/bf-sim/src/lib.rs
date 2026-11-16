@@ -7,6 +7,7 @@ pub mod economy;
 pub mod game;
 pub mod indicators;
 pub mod initial;
+pub mod politics;
 pub mod research;
 pub mod research_system;
 pub mod resources;
