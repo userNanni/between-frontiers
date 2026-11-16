@@ -34,6 +34,8 @@ pub struct GameData {
     pub politics: Option<Arc<Politics>>,
     /// Laws in force on the start date, when `data/scenario/1925/laws.ron` exists too.
     pub laws_1925: Option<LawsInForce>,
+    /// Units, combat rules and the 1925 forces (phase 5; not simulated yet).
+    pub war: Option<crate::war::War>,
 }
 
 fn read<T: serde::de::DeserializeOwned>(path: &Path) -> Result<T, String> {
@@ -89,7 +91,9 @@ impl GameData {
             ),
             _ => None,
         };
+        let war = crate::war::load(&data, &catalogue, tree.as_deref(), &countries)?;
         Ok(Self {
+            war,
             tree,
             politics: politics.map(Arc::new),
             laws_1925,
