@@ -259,7 +259,8 @@ Existe a partir do primeiro PR com código e roda toda noite em Linux e Windows.
 | 3. Política nacional | Grupos de interesse, leis, movimentos persistentes (`politics.pt-BR.md`) | Causa visível, pouco sorteio, sem funil ideológico |
 | 4. Diplomacia | Blocos, tratados, influência com retorno | Objetivo próprio para país pequeno; arma nuclear com consequência |
 | 5. Guerra | Frentes sobre a logística definida na fase 1 | Guerra mundial e paz negociada como sistema próprio |
-| 6. IA estratégica | Países que interpretam seu papel | — |
+| 6. IA estratégica | Países que interpretam seu papel: interesses medidos, hostilidade e escada de crise (`history-rails.pt-BR.md`) | Interesse com a conta aberta, sem estratégia sorteada |
+| 7. Confiança e história (último bloco) | Ciclo de confiança e medo do mercado (`confidence.pt-BR.md`); entradas históricas com marcos, personagens, agendas e casus belli, medidas pelo placar (`history-rails.pt-BR.md`) | Crise que nasce da euforia (Minsky), não de evento; a história real acontece por roteiro com pontos e condições, não por data, e desvia com o esforço do jogador |
 
 Toda fase fecha comparada com o mod Cold War Era do Victoria 3 (e com o Tech & Res): o que eles
 têm, o que temos, o que fazer com a diferença. Ver `benchmarks.pt-BR.md`.
@@ -293,6 +294,46 @@ O teste de 100 anos da fase 1 fecha determinístico: população 2,1 → 7,6 bil
 | Componentes eletrônicos são um bem só | Semicondutores separados dos componentes, com fábrica cara e poucos países capazes; baterias e cabos como bens próprios (veículo elétrico, rede) | 4 |
 | Informática só acelera a pesquisa | Serviços digitais (datacenter, software) como insumo das empresas, com ganho de produtividade para quem usa | 4 |
 | Água não é recurso | Água por região para irrigação, hidrelétrica e cidades, com escassez | 4 |
+
+### Plano do último bloco: confiança, interesses e trilho histórico
+
+Pedido do dono: depois da simulação simples, a crise de 1929 pelo medo do mercado, as hostilidades
+e guerras com os interesses de cada país, e a história real acontecendo sozinha e desviando quando
+o jogador mexe. Fica por último, como ele pediu. Desenho em `confidence.pt-BR.md` e
+`history-rails.pt-BR.md`.
+
+Decidido pelo dono em 2026-11-16: a mistura "como o Victoria 3", com entradas históricas que têm
+condição de entrada e de saída, marcos e esforço para desviar; personagens com janela de datas;
+casus belli com pressão popular como único empurrão na guerra; agendas por ondas; dívida privada e
+três confianças por país; um modo só, o histórico, com a chave da pressão histórica, sem promessa
+histórica com ela desligada.
+
+| O quê | Depende de | Fase |
+|---|---|---|
+| Guardar as séries que a confiança vai ler (lucro do fundo, fechamentos por prejuízo, crédito bancário, juro do título, utilização, índice de preços, desemprego por país) no `YearRecord` | nada; campos de leitura | **adiantável já** |
+| Movimentos `revisionism` e `regime_change` no catálogo | catálogo da fase 3 | em andamento (PR #53) |
+| Fronteiras de 1914 por país, para o indicador `lost_territory` | dados do cenário | **adiantável já** (dados) |
+| Na política: margem do movimento e postura do grupo como lista de termos nomeados; variantes "personagem" e "entrada" no registro de mudanças; lugares vazios de chefe de governo e de líder de grupo e de movimento no estado | 3d | **adiantável já** (3, ver `history-rails.pt-BR.md`, "O que os personagens e as entradas pedem da política agora") |
+| Reparações e dívidas de guerra como dívida em moeda estrangeira; padrão-ouro com reservas e saída por perda de reservas | contrato da diplomacia | 4 |
+| Ajuda e empréstimo entre governos, blocos, cartel com cota, união aduaneira e moeda comum | diplomacia | 4 |
+| Guerra que começa por crise (exigência com casus belli, terceiros, recuo), não por declaração seca; insurgência com território; memória de guerra | guerra | 5 |
+| Interesses medidos, papel (hegemon, potência em ascensão, pequena), hostilidade por par | 3, 4, 5 | 6 |
+| Dívida privada, três confianças por país, corrida bancária, contágio, alavancas do jogador (emprestador de última instância, seguro de depósito) | 3c, 4 | 7 |
+| Entradas históricas com marcos e pressão histórica (`data/history/entries.ron`); casus belli e pressão popular | 5, 6 | 7 |
+| Personagens: agitador, líder de grupo, chefe de governo, com janela, condição e sorteio pela semente (`data/history/characters.ron`, Wikidata) | 3d (lugares e termos), 7 | 7 |
+| Agendas por ondas: GER, ITA, JAP, SOV, USA, GBR, FRA, CHN primeiro | 6 | 7, depois contínuo |
+| Marcos das entradas no `events.json` do placar; testes de desvio no CI | `tools/history/` | 7 |
+| Regra de partida "pressão histórica" (ligada por padrão): com ela desligada, só fumaça de 100 anos por noite e determinismo nos PRs, e a tela avisa que não há promessa histórica | 7 | 7 |
+
+Nada disto muda a ordem das fases em curso. Três coisas pedem cuidado agora, para não refazer
+depois:
+
+- **Política (PR #53):** termos abertos na margem e na postura, lugares de personagem no estado e
+  as variantes novas no registro de mudanças, todos vazios até a fase 7.
+- **Guerra (fase 5):** nascer da escada de crise com casus belli, que é por onde a pressão
+  histórica e a IA de interesses vão entrar.
+- **Diplomacia (fase 4):** reparações como dívida em moeda estrangeira e o padrão-ouro com
+  reservas, pré-requisitos da confiança e do fio alemão.
 
 ### Pesquisa e maturidade tecnológica
 
@@ -375,3 +416,7 @@ As correções podem voltar para o OpenHistoricalMap.
 3. Regra de assimilação: taxa base e peso de lei, discriminação e concentração. Proposta, sem
    código, para o dono decidir: 1,5 % ao ano para a cultura e 0,2 % para a religião, vezes lei,
    (1 − discriminação), (1 − concentração)² e família linguística (`docs/population.pt-BR.md`).
+4. ~~Trilho histórico e confiança (último bloco)~~: decididos em 2026-11-16. Um modo só, o
+   histórico, com a chave "pressão histórica: ligada (padrão) ou desligada"; só o padrão é
+   calibrado e coberto pelo placar, e desligada o projeto não promete resultado histórico
+   (`history-rails.pt-BR.md`, `confidence.pt-BR.md`).

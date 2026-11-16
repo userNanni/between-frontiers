@@ -37,7 +37,7 @@ para comparar sistemas e ordens de grandeza. Nada dele entra no projeto: dado, t
 | Leis | 211 em 60 grupos | do Victoria 3 + algumas | 89 em 23 grupos (catálogo da fase 3) |
 | Grupos de interesse / ideologias | 8 / 89 | do Victoria 3 | 8 / nenhuma (postura pelos efeitos) |
 | Movimentos políticos | 27 | do Victoria 3 | 19 tipos (catálogo da fase 3) |
-| Eventos (journal entries) / decisões | 135 / 74 | — | fora do escopo por ora (pouco sorteio) |
+| Eventos (journal entries) / decisões | 135 / 74 | — | na fase 7, entradas históricas com condição de entrada e de saída e agenda da IA (`history-rails.pt-BR.md`) |
 | Desempenho | autor relata 5 min 26 s numa amostra de 1951 e 4 min no save de referência de 1900 do jogo base, sem dizer o que foi medido | — | 100 anos em 134 s com 12 threads, tick mais lento 98 ms (`main` 662bb7a, 2026-11-16; na fase 2 eram 105 s e 46 ms) |
 
 ## Fase 1: economia
