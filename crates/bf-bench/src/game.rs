@@ -256,7 +256,11 @@ pub fn main(years: u32, seed: u64, threads: usize, check: bool, out: &str) -> Re
     if determinism == Some(false) {
         failures.push("hash differs across thread counts".to_owned());
     }
-    if report.decades.last().is_some_and(|last| last.population <= 0) {
+    if report
+        .decades
+        .last()
+        .is_some_and(|last| last.population <= 0)
+    {
         failures.push("the world is empty".to_owned());
     }
     if failures.is_empty() {
