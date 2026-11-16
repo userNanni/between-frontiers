@@ -5,6 +5,7 @@ pub mod country_panel;
 pub mod game;
 pub mod gov_ui;
 pub mod government;
+pub mod hud_edit;
 pub mod journal;
 pub mod laws;
 pub mod lens_panel;
@@ -103,4 +104,77 @@ pub fn centered(outer: Rect, size: egui::Vec2) -> Rect {
         outer.center(),
         size.min(outer.size() - egui::vec2(32.0, 32.0)),
     )
+}
+
+/// Height of a window's title strip, the part it is moved by.
+const WINDOW_TITLE_H: f32 = 64.0;
+const WINDOW_GRIP: f32 = 18.0;
+
+/// A window the player moves by its title strip: paints its background, blocks the map under
+/// it and returns its rectangle. Call [`window_grip`] after the window's content.
+pub fn window_frame(
+    ui: &mut Ui,
+    key: &str,
+    default: Rect,
+    screen: Rect,
+    place: &mut crate::hud::WindowPlace,
+    min: egui::Vec2,
+) -> (Rect, bool) {
+    let rect = place.rect(default, screen, min);
+    bf_ui_kit::paint_overlay(ui, rect);
+    ui.interact(
+        rect,
+        ui.make_persistent_id((key, "block")),
+        egui::Sense::click_and_drag(),
+    );
+    let title = Rect::from_min_size(rect.min, egui::vec2(rect.width(), WINDOW_TITLE_H));
+    let moved = ui
+        .interact(
+            title,
+            ui.make_persistent_id((key, "move")),
+            egui::Sense::drag(),
+        )
+        .on_hover_cursor(egui::CursorIcon::Grab);
+    if moved.dragged() {
+        let d = moved.drag_delta();
+        place.offset = [place.offset[0] + d.x, place.offset[1] + d.y];
+    }
+    (rect, moved.drag_stopped())
+}
+
+/// The corner a window is resized from; true when a resize just ended.
+pub fn window_grip(
+    ui: &mut Ui,
+    key: &str,
+    rect: Rect,
+    place: &mut crate::hud::WindowPlace,
+    min: egui::Vec2,
+) -> bool {
+    let grip = Rect::from_min_max(rect.max - egui::Vec2::splat(WINDOW_GRIP), rect.max);
+    let r = ui
+        .interact(
+            grip,
+            ui.make_persistent_id((key, "resize")),
+            egui::Sense::drag(),
+        )
+        .on_hover_cursor(egui::CursorIcon::ResizeNwSe);
+    let tint = if r.hovered() || r.dragged() {
+        bf_ui_kit::tokens::color::ACCENT
+    } else {
+        bf_ui_kit::tokens::color::BORDER_STRONG
+    };
+    for k in [5.0, 10.0] {
+        ui.painter().line_segment(
+            [
+                egui::pos2(rect.right() - 4.0 - k, rect.bottom() - 4.0),
+                egui::pos2(rect.right() - 4.0, rect.bottom() - 4.0 - k),
+            ],
+            egui::Stroke::new(1.2, tint),
+        );
+    }
+    if r.dragged() {
+        let size = (rect.size() + r.drag_delta()).max(min);
+        place.size = Some([size.x, size.y]);
+    }
+    r.drag_stopped()
 }

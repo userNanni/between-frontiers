@@ -47,9 +47,38 @@ pub struct BarResponse {
     pub open_journal: bool,
 }
 
+/// Where the two panels go: the HUD layout's rectangles; `None` hides a panel.
+#[derive(Clone, Copy)]
+pub struct Places {
+    pub corner: Option<Rect>,
+    pub time: Option<Rect>,
+}
+
+/// Size of the country figures with the banner.
+pub fn corner_size() -> Vec2 {
+    Vec2::new(HUD_RIGHT - MARGIN, LEFT_BOTTOM - MARGIN * 2.0)
+}
+
+/// Width of the date: what the country figures leave on the top row, up to its full width.
+fn date_width(screen: Rect) -> f32 {
+    let room = screen.width() - HUD_RIGHT - MARGIN * 2.0 - PAD * 2.0 - TIME_FIXED;
+    room.clamp(130.0, 210.0)
+}
+
+const TIME_BUTTON: f32 = 36.0;
+const TIME_SMALL: f32 = 28.0;
+const TIME_FIXED: f32 = TIME_SMALL * 2.0 + TIME_BUTTON * 5.0 + space::SM * 7.0;
+
+/// Size of the date and speed panel on `screen`.
+pub fn time_size(screen: Rect) -> Vec2 {
+    Vec2::new(TIME_FIXED + date_width(screen) + PAD * 2.0, TIME_H)
+}
+
+#[allow(clippy::too_many_arguments)]
 pub fn show(
     ui: &mut Ui,
     screen: Rect,
+    places: Places,
     i18n: &I18n,
     world: Option<&World>,
     flags: &Flags,
@@ -57,9 +86,11 @@ pub fn show(
     snap: &Snapshot,
 ) -> BarResponse {
     let mut out = BarResponse::default();
-    time_panel(ui, screen, i18n, snap, &mut out);
-    if let (Some(world), Some(p)) = (world, player) {
-        corner_panel(ui, screen, i18n, world, flags, p, &mut out);
+    if let Some(r) = places.time {
+        time_panel(ui, screen, r.min, i18n, snap, &mut out);
+    }
+    if let (Some(world), Some(p), Some(r)) = (world, player, places.corner) {
+        corner_panel(ui, r.min, i18n, world, flags, p, &mut out);
     }
     out
 }
@@ -504,7 +535,7 @@ fn items(i18n: &I18n, world: &World, p: usize) -> (Vec<Item>, Vec<Item>, Vec<Ite
 
 fn corner_panel(
     ui: &mut Ui,
-    screen: Rect,
+    origin: Pos2,
     i18n: &I18n,
     world: &World,
     flags: &Flags,
@@ -512,7 +543,7 @@ fn corner_panel(
     out: &mut BarResponse,
 ) {
     let (row1, row2, row3) = items(i18n, world, p);
-    let banner = Rect::from_min_size(screen.min + Vec2::splat(MARGIN), BANNER);
+    let banner = Rect::from_min_size(origin, BANNER);
     let panel = Rect::from_min_size(
         Pos2::new(banner.right() - 6.0, banner.top()),
         Vec2::new(
@@ -775,21 +806,18 @@ fn banner_ui(
 }
 
 /// Date and speed, in a panel at the top right.
-fn time_panel(ui: &mut Ui, screen: Rect, i18n: &I18n, snap: &Snapshot, out: &mut BarResponse) {
-    let button = 36.0;
-    let small = 28.0;
-    // The date takes what the country figures on the left leave, up to its full width.
-    let fixed = small + small + button * 5.0 + space::SM * 7.0;
-    let room = screen.width() - HUD_RIGHT - MARGIN * 2.0 - PAD * 2.0 - fixed;
-    let date_w = room.clamp(130.0, 210.0);
-    let inner_w = fixed + date_w;
-    let panel = Rect::from_min_size(
-        Pos2::new(
-            screen.right() - MARGIN - inner_w - PAD * 2.0,
-            screen.top() + MARGIN,
-        ),
-        Vec2::new(inner_w + PAD * 2.0, TIME_H),
-    );
+fn time_panel(
+    ui: &mut Ui,
+    screen: Rect,
+    origin: Pos2,
+    i18n: &I18n,
+    snap: &Snapshot,
+    out: &mut BarResponse,
+) {
+    let button = TIME_BUTTON;
+    let small = TIME_SMALL;
+    let date_w = date_width(screen);
+    let panel = Rect::from_min_size(origin, time_size(screen));
     bf_ui_kit::paint_overlay(ui, panel);
     ui.interact(
         panel,

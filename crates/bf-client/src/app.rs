@@ -22,6 +22,8 @@ pub struct Shared {
     /// Why the map or the scenario could not load; screens that need them show it.
     pub load_error: Option<String>,
     pub saves: Vec<Save>,
+    /// The player's HUD layout, from the config folder.
+    pub hud: crate::hud::Hud,
     toast: Option<(String, f64)>,
 }
 
@@ -48,6 +50,13 @@ impl Shared {
     pub fn persist_settings(&self) {
         if let Err(e) = self.settings.save(&self.paths.settings_file()) {
             log(&format!("settings: {e}"));
+        }
+    }
+
+    /// Writes the HUD layout to the config folder.
+    pub fn persist_hud(&self) {
+        if let Err(e) = self.hud.layout.save(&crate::hud::file(&self.paths.config)) {
+            log(&format!("hud layout: {e}"));
         }
     }
 
@@ -93,6 +102,7 @@ impl App {
         cc.egui_ctx
             .set_zoom_factor(settings.ui_scale as f32 / 100.0);
 
+        let paths_config = paths.config.clone();
         let mut shared = Shared {
             paths,
             settings,
@@ -103,6 +113,7 @@ impl App {
             flags: Default::default(),
             load_error: None,
             saves: Vec::new(),
+            hud: crate::hud::Hud::new(crate::hud::Layout::load(&crate::hud::file(&paths_config))),
             toast: None,
         };
         shared.refresh_saves();

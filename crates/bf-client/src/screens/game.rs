@@ -5,6 +5,7 @@ use egui::{Color32, Rect, Sense, Ui};
 
 use super::{country_panel, pick::paint_tip, region, top_bar};
 use crate::app::{Shared, Transition};
+use crate::hud::PanelId;
 use crate::map::MapMode;
 use crate::saves::{self, Save};
 use crate::settings::Autosave;
@@ -26,6 +27,8 @@ pub struct State {
     journal: Option<super::journal::Window>,
     /// What the side panel shows folded.
     fold: super::outliner::Fold,
+    /// Arranging the HUD.
+    edit: super::hud_edit::Edit,
     research_camera: Option<super::research::TreeCamera>,
     /// Month the live map lenses were last coloured for.
     live_month: Option<(i32, u8)>,
@@ -84,6 +87,7 @@ impl State {
             government: None,
             journal: None,
             fold: super::outliner::Fold::default(),
+            edit: super::hud_edit::Edit::default(),
             research_camera: None,
             live_month: None,
             live_figures: None,
@@ -226,6 +230,12 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
         }
         state.live_month = Some(month);
     }
+    // Where the HUD's panels go: the player's layout resolved for this screen and the sizes the
+    // panels ask for; worked out again only when one of them changes.
+    let sizes = hud_sizes(state, shared, ui.ctx(), rect, player);
+    let places = shared.hud.resolved(rect, &sizes).clone();
+    let place = |p: PanelId| places.rect(p);
+
     let map_rect = rect;
     let i18n = &shared.i18n;
     if let (Some(map), Some(view), Some(world)) = (&shared.map, &mut shared.map_view, &shared.world)
@@ -255,25 +265,17 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
         }
         // The government and journal windows cover the map; the mode picker would show
         // through.
-        if state.government.is_none() && state.journal.is_none() {
-            super::lens_panel::show(ui, rect, i18n, world, view, snap.date.year);
+        if let Some(r) = place(PanelId::MapModes) {
+            super::lens_panel::show(ui, r.min, i18n, world, view, snap.date.year);
         }
     }
 
     // Side panel under the country figures, above the map mode picker, while no window covers
     // the map.
-    if state.government.is_none() && state.journal.is_none() && !state.research_open {
-        let top = rect.top() + top_bar::LEFT_BOTTOM;
-        let bottom = shared
-            .map_view
-            .as_ref()
-            .map_or(rect.bottom(), |v| super::lens_panel::top(rect, v.lens))
-            - space::MD;
+    if let Some(r) = place(PanelId::Outliner) {
         let res = super::outliner::show(
             ui,
-            rect,
-            top,
-            bottom,
+            r,
             super::outliner::Sources {
                 i18n: &shared.i18n,
                 world: shared.world.as_ref(),
@@ -302,6 +304,10 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
     let bar_out = top_bar::show(
         ui,
         rect,
+        top_bar::Places {
+            corner: place(PanelId::Country),
+            time: place(PanelId::Time),
+        },
         &shared.i18n,
         shared.world.as_ref(),
         &shared.flags,
@@ -334,14 +340,10 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
     }
 
     // Country panel for the clicked country.
-    if let Some(country) = state.selected {
-        let side = Rect::from_min_max(
-            egui::pos2(
-                rect.right() - 380.0 - space::LG,
-                rect.top() + top_bar::RIGHT_BOTTOM,
-            ),
-            egui::pos2(rect.right() - space::LG, rect.bottom() - space::LG),
-        );
+    if let (Some(country), Some(side)) = (
+        state.selected.or(player.filter(|_| state.edit.on)),
+        place(PanelId::CountryPanel),
+    ) {
         bf_ui_kit::paint_overlay(ui, side);
         ui.interact(
             side,
@@ -383,6 +385,7 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
     }
 
     // Government window.
+    let mut gov_place = shared.hud.layout.window("government");
     if let Some(window) = &mut state.government
         && !state.research_open
     {
@@ -397,7 +400,9 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
                 tag: state.save.meta.player.as_deref(),
             },
             window,
+            &mut gov_place,
         );
+        keep_window_place(shared, "government", gov_place, res.place_done);
         for c in res.commands {
             state.sim.send(Command::Issue(c));
         }
@@ -409,6 +414,7 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
     // Journal window.
     if state.journal.is_some() && !state.research_open && state.government.is_none() {
         let pinned = state.save.meta.pinned.clone();
+        let mut journal_place = shared.hud.layout.window("journal");
         let res = super::journal::show(
             ui,
             rect,
@@ -417,7 +423,9 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
             snap.journal.as_deref(),
             &pinned,
             state.journal.as_mut().expect("journal open"),
+            &mut journal_place,
         );
+        keep_window_place(shared, "journal", journal_place, res.place_done);
         for id in res.toggle_pin {
             state.toggle_pin(shared, &id, now);
         }
@@ -443,6 +451,32 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
         if res.close {
             state.journal = None;
         }
+    }
+
+    // Arranging the HUD: over everything but the in-game menu; the other keys wait.
+    if ui.input(|i| i.key_pressed(egui::Key::F8)) && !state.menu_open {
+        toggle_hud_edit(state);
+    }
+    if state.edit.on && !state.menu_open {
+        let res = super::hud_edit::show(
+            ui,
+            rect,
+            &shared.i18n,
+            &shared.paths.config.clone(),
+            &mut shared.hud,
+            &sizes,
+            &mut state.edit,
+        );
+        if res.save {
+            shared.persist_hud();
+        }
+        if let Some(m) = res.message {
+            shared.toast(m, now);
+        }
+        if ui.input(|i| i.key_pressed(egui::Key::Escape)) {
+            super::hud_edit::toggle(&mut state.edit);
+        }
+        return out;
     }
 
     // Keyboard
@@ -509,7 +543,7 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
     if state.menu_open {
         ui.painter()
             .rect_filled(rect, 0, Color32::from_black_alpha(140));
-        let panel = Rect::from_center_size(rect.center(), egui::vec2(360.0, 300.0));
+        let panel = Rect::from_center_size(rect.center(), egui::vec2(360.0, 352.0));
         bf_ui_kit::paint_overlay(ui, panel);
         ui.interact(
             rect,
@@ -533,6 +567,14 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
                 .clicked()
             {
                 state.write(shared, now, true);
+            }
+            if Button::secondary(&shared.tr("game-menu-hud"))
+                .width(f32::INFINITY)
+                .show(ui)
+                .clicked()
+            {
+                state.menu_open = false;
+                toggle_hud_edit(state);
             }
             if Button::secondary(&shared.tr("menu-settings"))
                 .width(f32::INFINITY)
@@ -573,4 +615,61 @@ fn toggle_journal(state: &mut State) {
     };
     state.research_open = false;
     state.government = None;
+}
+
+/// Turns the HUD edit mode on or off; the windows close so every panel shows (a command calls
+/// this).
+pub fn toggle_hud_edit(state: &mut State) {
+    super::hud_edit::toggle(&mut state.edit);
+    if state.edit.on {
+        state.government = None;
+        state.journal = None;
+        state.research_open = false;
+    }
+}
+
+/// The size each panel of the HUD asks for now; a panel not on screen asks for none.
+fn hud_sizes(
+    state: &State,
+    shared: &Shared,
+    ctx: &egui::Context,
+    screen: Rect,
+    player: Option<usize>,
+) -> std::collections::BTreeMap<PanelId, egui::Vec2> {
+    let mut out = std::collections::BTreeMap::new();
+    let editing = state.edit.on;
+    let window = state.government.is_some() || state.journal.is_some();
+    if player.is_some() {
+        out.insert(PanelId::Country, top_bar::corner_size());
+    }
+    out.insert(PanelId::Time, top_bar::time_size(screen));
+    // The windows cover the map; the mode picker and the overview would show through.
+    if let Some(view) = &shared.map_view
+        && (editing || !window)
+    {
+        out.insert(PanelId::MapModes, super::lens_panel::size(view.lens));
+    }
+    if editing || !(window || state.research_open) {
+        out.insert(PanelId::Outliner, super::outliner::size(ctx, &state.fold));
+    }
+    if state.selected.is_some() || (editing && player.is_some()) {
+        out.insert(
+            PanelId::CountryPanel,
+            egui::vec2(
+                380.0,
+                (screen.height() - top_bar::RIGHT_BOTTOM - space::LG).max(240.0),
+            ),
+        );
+    }
+    out
+}
+
+/// Keeps where the player left a window, and writes the layout once the move ends.
+fn keep_window_place(shared: &mut Shared, key: &str, place: crate::hud::WindowPlace, done: bool) {
+    if shared.hud.layout.window(key) != place {
+        shared.hud.layout.windows.insert(key.to_owned(), place);
+    }
+    if done {
+        shared.persist_hud();
+    }
 }

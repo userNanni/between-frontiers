@@ -7,7 +7,7 @@ use bf_i18n::I18n;
 use bf_sim::game::GameCommand;
 use bf_ui_kit::tokens::space;
 use bf_ui_kit::{Button, ButtonSize};
-use egui::{Rect, Sense, Ui, Vec2};
+use egui::{Rect, Ui, Vec2};
 
 use super::region;
 use crate::government::GovernmentView;
@@ -91,6 +91,8 @@ pub struct TabContext<'a> {
 #[derive(Default)]
 pub struct GovernmentResponse {
     pub close: bool,
+    /// The player finished moving or resizing the window.
+    pub place_done: bool,
     pub commands: Vec<GameCommand>,
 }
 
@@ -98,6 +100,9 @@ pub struct GovernmentResponse {
 const SCROLL_GUTTER: f32 = 16.0;
 /// Window size: wide enough for two columns of figures, short enough for 1600 × 900.
 const WINDOW: Vec2 = Vec2::new(1040.0, 700.0);
+
+/// The smallest the player may make the window.
+const MIN_WINDOW: Vec2 = Vec2::new(720.0, 420.0);
 
 /// What the window reads from the campaign.
 pub struct Sources<'a> {
@@ -114,6 +119,7 @@ pub fn show(
     screen: Rect,
     src: Sources<'_>,
     window: &mut Window,
+    place: &mut crate::hud::WindowPlace,
 ) -> GovernmentResponse {
     let Sources {
         i18n,
@@ -128,13 +134,9 @@ pub fn show(
         screen.width() - 32.0,
         screen.bottom() - top - space::LG,
     ));
-    let rect = Rect::from_min_size(egui::pos2(screen.center().x - size.x / 2.0, top), size);
-    bf_ui_kit::paint_overlay(ui, rect);
-    ui.interact(
-        rect,
-        ui.make_persistent_id("government"),
-        Sense::click_and_drag(),
-    );
+    let default = Rect::from_min_size(egui::pos2(screen.center().x - size.x / 2.0, top), size);
+    let (rect, moved) = super::window_frame(ui, "government", default, screen, place, MIN_WINDOW);
+    out.place_done |= moved;
     // A later tick carries what the player changed.
     if snap.tick > window.drafts.tick {
         window.drafts = Drafts::default();
@@ -187,6 +189,7 @@ pub fn show(
                 }
             });
     });
+    out.place_done |= super::window_grip(ui, "government", rect, place, MIN_WINDOW);
     out
 }
 

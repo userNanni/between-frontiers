@@ -1,0 +1,31 @@
+## Arranging the HUD (F8, or from the in-game menu).
+
+game-menu-hud = Arrange the HUD
+hud-edit-title = Arrange the HUD
+hud-edit-hint = Drag a panel by any part of it; it snaps to the screen edges and to the other panels. The layout is yours, kept apart from every campaign.
+hud-done = Done
+hud-hide = Hide
+hud-presets = PRESET
+hud-preset-standard = Standard
+hud-preset-compact = Compact
+hud-preset-streaming = Streaming
+hud-preset-custom = Arranged by hand.
+hud-panels = PANELS
+hud-tip-shown = Shown: click to hide.
+hud-tip-hidden = Hidden: click to show.
+hud-free = FREE AREA
+hud-free-mark = Mark the free area
+hud-free-marking = Drag over the map…
+hud-free-clear = Clear it
+hud-free-label = Free area
+hud-export = Export
+hud-import = Import
+hud-reset = Back to standard
+hud-exported = Layout written to { $path }
+hud-imported = Layout read from { $path }
+hud-io-error = The layout file failed: { $error }
+hud-panel-country = Country figures
+hud-panel-time = Date and buttons
+hud-panel-overview = Overview
+hud-panel-map-modes = Map modes
+hud-panel-country-panel = Country panel

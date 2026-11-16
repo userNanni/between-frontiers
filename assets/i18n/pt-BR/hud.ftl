@@ -1,0 +1,31 @@
+## Arrumar o HUD (F8, ou pelo menu do jogo).
+
+game-menu-hud = Arrumar o HUD
+hud-edit-title = Arrumar o HUD
+hud-edit-hint = Arraste um painel por qualquer parte dele; ele encaixa nas bordas da tela e nos outros painéis. O layout é seu, guardado fora das campanhas.
+hud-done = Concluir
+hud-hide = Esconder
+hud-presets = PREDEFINIÇÃO
+hud-preset-standard = Padrão
+hud-preset-compact = Compacta
+hud-preset-streaming = Transmissão
+hud-preset-custom = Arrumado à mão.
+hud-panels = PAINÉIS
+hud-tip-shown = À mostra: clique para esconder.
+hud-tip-hidden = Escondido: clique para mostrar.
+hud-free = ÁREA LIVRE
+hud-free-mark = Marcar a área livre
+hud-free-marking = Arraste sobre o mapa…
+hud-free-clear = Limpar
+hud-free-label = Área livre
+hud-export = Exportar
+hud-import = Importar
+hud-reset = Voltar ao padrão
+hud-exported = Layout gravado em { $path }
+hud-imported = Layout lido de { $path }
+hud-io-error = O arquivo de layout falhou: { $error }
+hud-panel-country = Números do país
+hud-panel-time = Data e botões
+hud-panel-overview = Acompanhamento
+hud-panel-map-modes = Modos do mapa
+hud-panel-country-panel = Painel do país

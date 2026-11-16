@@ -16,6 +16,8 @@ use crate::world::World;
 /// Window size: two columns, short enough for 1280 × 720 under the HUD.
 const WINDOW: Vec2 = Vec2::new(1000.0, 680.0);
 const LIST_W: f32 = 330.0;
+/// The smallest the player may make the window.
+const MIN_WINDOW: Vec2 = Vec2::new(720.0, 420.0);
 const SCROLL_GUTTER: f32 = 16.0;
 
 /// The open window: the entry picked.
@@ -27,6 +29,8 @@ pub struct Window {
 #[derive(Default)]
 pub struct Response {
     pub close: bool,
+    /// The player finished moving or resizing the window.
+    pub place_done: bool,
     /// Entry ids whose pin was toggled.
     pub toggle_pin: Vec<String>,
     pub open: Option<crate::journal::Screen>,
@@ -200,6 +204,7 @@ pub fn bar(ui: &mut Ui, share: f32, fill: Color32, width: f32) {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn show(
     ui: &mut Ui,
     screen: Rect,
@@ -208,6 +213,7 @@ pub fn show(
     journal: Option<&Journal>,
     pinned: &[String],
     window: &mut Window,
+    place: &mut crate::hud::WindowPlace,
 ) -> Response {
     let mut out = Response::default();
     let top = screen.top() + super::top_bar::LEFT_BOTTOM;
@@ -215,13 +221,9 @@ pub fn show(
         screen.width() - 32.0,
         screen.bottom() - top - space::LG,
     ));
-    let rect = Rect::from_min_size(egui::pos2(screen.center().x - size.x / 2.0, top), size);
-    bf_ui_kit::paint_overlay(ui, rect);
-    ui.interact(
-        rect,
-        ui.make_persistent_id("journal"),
-        Sense::click_and_drag(),
-    );
+    let default = Rect::from_min_size(egui::pos2(screen.center().x - size.x / 2.0, top), size);
+    let (rect, moved) = super::window_frame(ui, "journal", default, screen, place, MIN_WINDOW);
+    out.place_done |= moved;
     region(ui, rect.shrink(space::XL), |ui| {
         ui.horizontal(|ui| {
             bf_ui_kit::title(ui, &i18n.tr("journal-title"));
@@ -307,6 +309,7 @@ pub fn show(
                 });
         });
     });
+    out.place_done |= super::window_grip(ui, "journal", rect, place, MIN_WINDOW);
     out
 }
 
