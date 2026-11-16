@@ -196,6 +196,10 @@ pub struct LawEffects {
     /// Share of the pioneers' clearing the land law allows (`frontier_access`); 1 without one.
     #[serde(default = "one")]
     pub frontier_access: Fixed,
+    /// Pull of foreign capital (`foreign_investment`, combined over the laws: 1 is open, 0.1
+    /// closed); one without politics.
+    #[serde(default = "one")]
+    pub foreign_investment: Fixed,
 }
 
 impl Default for LawEffects {
@@ -211,6 +215,7 @@ impl Default for LawEffects {
             state_profit_to_treasury: Fixed::ZERO,
             tariff: Fixed::ZERO,
             frontier_access: Fixed::ONE,
+            foreign_investment: Fixed::ONE,
         }
     }
 }
@@ -241,6 +246,7 @@ impl HashState for LawEffects {
         self.state_profit_to_treasury.hash_state(h);
         self.tariff.hash_state(h);
         self.frontier_access.hash_state(h);
+        self.foreign_investment.hash_state(h);
     }
 }
 

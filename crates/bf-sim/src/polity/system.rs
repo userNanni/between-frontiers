@@ -55,6 +55,7 @@ struct Wired {
     profit_to_treasury: usize,
     tariff: usize,
     frontier: usize,
+    foreign_investment: usize,
     franchise: usize,
     repression: usize,
 }
@@ -75,6 +76,7 @@ impl Wired {
             profit_to_treasury: e("state_profit_to_treasury"),
             tariff: e("tariff"),
             frontier: e("frontier_access"),
+            foreign_investment: e("foreign_investment"),
             franchise: e("franchise"),
             repression: e("repression"),
         }
@@ -214,6 +216,9 @@ impl PoliticsSystem {
             }
             if let Some(v) = share(w.frontier) {
                 e.frontier_access = v;
+            }
+            if let Some(v) = fx(w.foreign_investment) {
+                e.foreign_investment = v.max(Fixed::ZERO);
             }
             e
         })

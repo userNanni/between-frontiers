@@ -42,6 +42,16 @@ pub struct ResearchChanges {
     tech_tfp: Vec<Vec<Fixed>>,
 }
 
+/// Share of today's imitation rate a country keeps through its trade and foreign capital laws
+/// (`foreign_capital::imitation_channel`, `docs/late-industrialization.pt-BR.md`). A market
+/// without politics keeps all of it.
+fn imitation_channel(m: Option<&crate::econ::Market>) -> Fixed {
+    m.map_or(Fixed::ONE, |m| {
+        let laws = &m.laws.effects[0];
+        crate::foreign_capital::imitation_channel(laws.tariff, laws.foreign_investment)
+    })
+}
+
 /// Weight of a stage in productivity and effects.
 fn weight(stage: Stage) -> Fixed {
     match stage {
@@ -260,11 +270,13 @@ impl System<GameWorld> for Research {
             }
 
             // Imitation: what is made at scale abroad is copied, a stage at a time, faster where
-            // people read; no own research needed.
+            // people read; no own research needed. It comes through a channel the laws open
+            // (trade and foreign capital); fully open, the channel is exactly one.
+            let channel = imitation_channel(world.econ.markets.get(c));
             for t in 0..nt {
                 if stages[t] < Stage::Industrial && industrial[t] > Fixed::ZERO {
-                    state.progress[c][t] +=
-                        (milli(300) + f.literacy) * industrial[t] / (IMITATION_YEARS * 12);
+                    state.progress[c][t] += (milli(300) + f.literacy) * industrial[t] * channel
+                        / (IMITATION_YEARS * 12);
                 }
             }
 
