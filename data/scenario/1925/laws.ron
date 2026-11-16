@@ -181,9 +181,9 @@
             laws: [
                 "great_estates", "unions_tolerated", "public_hospitals", "male_suffrage",
                 "official_nationality", "press_licensing", "emergency_powers", "mixed_service",
-                "direct_rule", "forced_labour",
+                "direct_rule", "forced_labour", "regulated_emigration",
             ],
-            source: "Imposta complementare 1923 (progressive surtax); Ferrovie dello Stato 1905; latifondi of the south; tariff of 1921; fascist violence against unions, Palazzo Chigi pact 1923; eight-hour decree RDL 15 March 1923 n. 692; compulsory old-age and invalidity insurance 1919; Gentile school reform 1923 (school to 14, Italian only in the new provinces: targets Germans of South Tyrol and Slovenes and Croats of Venezia Giulia); universal male suffrage 1919 and Acerbo law 1923; Statuto Albertino art. 1 (Catholic state religion); press decrees of 15 July 1923 and 10 July 1924 (seizure by the prefects); URI broadcasting concession 1924; colonies: governors of Libya, Eritrea and Somalia, forced labour on the Somali plantations",
+            source: "Imposta complementare 1923 (progressive surtax); Ferrovie dello Stato 1905; latifondi of the south; tariff of 1921; fascist violence against unions, Palazzo Chigi pact 1923; eight-hour decree RDL 15 March 1923 n. 692; compulsory old-age and invalidity insurance 1919; Gentile school reform 1923 (school to 14, Italian only in the new provinces: targets Germans of South Tyrol and Slovenes and Croats of Venezia Giulia); universal male suffrage 1919 and Acerbo law 1923; Statuto Albertino art. 1 (Catholic state religion); press decrees of 15 July 1923 and 10 July 1924 (seizure by the prefects); URI broadcasting concession 1924; colonies: governors of Libya, Eritrea and Somalia, forced labour on the Somali plantations; state control of emigration, subsidized passages to Brazil forbidden by royal decree (“passagens subsidiadas fora proibida pelo rei Vitório Emanuel III”: IBGE, Brasil: 500 anos de povoamento, 2007)",
         ),
         (
             tag: "SMR",

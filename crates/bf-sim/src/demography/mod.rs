@@ -92,6 +92,9 @@ const MEDICINE_FULL: Fixed = milli(800);
 const TFR_HIGH: Fixed = milli(6500);
 const TFR_LOW: Fixed = milli(1750);
 const TFR_WITHOUT_PILL: Fixed = milli(500);
+/// Share of fertility lost when the land per farmer has fallen to nothing from the state's own
+/// of 1925; in proportion before that.
+const LAND_BRAKE: Fixed = milli(500);
 /// Weights of the transition score and where the transition starts and ends.
 const F_SURVIVAL: Fixed = milli(250);
 const F_SCHOOLING: Fixed = milli(550);
@@ -121,6 +124,9 @@ pub struct DemographyState {
     pub ages: Vec<[i64; AGE_GROUPS]>,
     /// Literacy of the mothers: the region's literacy followed with a lag of a generation.
     pub schooling: Vec<Fixed>,
+    /// Land per farmer of each region in its first month, the measure of land hunger.
+    #[serde(default)]
+    pub land_1925: Vec<Fixed>,
     /// Last month's rates by region.
     pub vital: Vec<Vital>,
     /// Territories (`market * 2 + colony`): centre of population and language family.
@@ -208,6 +214,7 @@ impl HashState for DemographyState {
             a.as_slice().hash_state(h);
         }
         self.schooling.hash_state(h);
+        self.land_1925.hash_state(h);
         self.vital.hash_state(h);
         self.territories.hash_state(h);
         self.diaspora.hash_state(h);
@@ -628,6 +635,7 @@ pub(crate) struct RegionMonth {
     life: Fixed,
     tfr: Fixed,
     fertility_terms: [Fixed; 5],
+    land_then: Fixed,
     people: i64,
     income: Fixed,
     literacy_people: Fixed,
@@ -731,6 +739,25 @@ impl System<GameWorld> for Demography {
                     (h, rates, tfr)
                 };
                 let (h, rates, tfr) = rates_at(Fixed::ONE);
+                // Land hunger: as the land per farmer falls below the state's own of 1925, sons
+                // wait for land to marry and families stop earlier (the preventive check).
+                let land_total: i64 = r.land.iter().map(|l| l.1).sum();
+                let farmers = r.pops[prof::PEASANT].size + r.pops[prof::FARM_LABORER].size;
+                let land_now = if farmers > 0 {
+                    Fixed::from_ratio(land_total * 1000, farmers)
+                } else {
+                    Fixed::ZERO
+                };
+                let land_then = match state.land_1925.get(ri) {
+                    Some(&l) if !first => l,
+                    _ => land_now,
+                };
+                let lost = if land_then > Fixed::ZERO {
+                    (Fixed::ONE - land_now / land_then).clamp(Fixed::ZERO, Fixed::ONE)
+                } else {
+                    Fixed::ZERO
+                };
+                let tfr = (tfr * (Fixed::ONE - lost * LAND_BRAKE)).max(TFR_LOW.min(tfr));
                 let fertility_terms = fertility_values(&FertilityInputs {
                     child_deaths: rates[0],
                     schooling,
@@ -765,6 +792,7 @@ impl System<GameWorld> for Demography {
                     life: life_expectancy(h),
                     tfr,
                     fertility_terms,
+                    land_then,
                     people,
                     income: r.pops.iter().map(|p| p.income).sum(),
                     literacy_people: r.literacy * people,
@@ -792,6 +820,7 @@ impl System<GameWorld> for Demography {
         let n = world.econ.regions.len();
         state.ages.resize(n, [0; AGE_GROUPS]);
         state.schooling.resize(n, Fixed::ZERO);
+        state.land_1925.resize(n, Fixed::ZERO);
         state.vital.resize(n, Vital::default());
         state.diaspora = std::mem::take(&mut changes.plan.diaspora);
         state.waves = std::mem::take(&mut changes.plan.waves);
@@ -811,6 +840,7 @@ impl System<GameWorld> for Demography {
             // The pyramid and the pops agree on the total.
             state.ages[ri] = rescale(&ages, r.population());
             state.schooling[ri] = m.schooling;
+            state.land_1925[ri] = m.land_then;
             let per_year = |n: i64| {
                 if m.people > 0 {
                     Fixed::from_ratio(n * 12_000, m.people)

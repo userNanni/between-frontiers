@@ -175,6 +175,8 @@ law-sponsored_emigration = Emigração patrocinada
 law-sponsored_emigration-desc = O Estado paga a passagem dos emigrantes e apoia companhias de colonização no exterior.
 law-free_emigration = Emigração livre
 law-free_emigration-desc = Os cidadãos podem sair.
+law-regulated_emigration = Emigração regulada
+law-regulated_emigration-desc = Só agentes licenciados; o recrutamento com passagem paga é proibido.
 law-exit_permits = Visto de saída
 law-exit_permits-desc = Sair do país exige uma licença raramente concedida.
 

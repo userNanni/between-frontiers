@@ -215,6 +215,19 @@ fn subsidy(law: i64) -> Fixed {
     Fixed::from_ratio((law - 1000).clamp(0, 1000), 1000)
 }
 
+/// Share of the passage from `i` to `j` a law pays, 0–1: the origin's sponsored emigration, and
+/// the destination's subsidized immigration where the origin lets recruiters work (its
+/// emigration law at least open: Italy forbade subsidized emigration to Brazil in 1902).
+fn paid(laws: &[(i64, i64)], i: usize, j: usize) -> Fixed {
+    let (_, emi) = laws[i / 2];
+    let from_destination = if emi >= 1000 {
+        subsidy(laws[j / 2].0)
+    } else {
+        Fixed::ZERO
+    };
+    (from_destination + subsidy(emi)).min(Fixed::ONE)
+}
+
 /// Who can pay the passage from `i` to `j`: the literate, those whose ticket the diaspora on
 /// that road prepays, and those whose ticket a law pays.
 fn afford(
@@ -232,7 +245,7 @@ fn afford(
         (lands[i].people * PREPAID_SHARE / 1000).max(1),
     )
     .min(Fixed::ONE);
-    let paid = (subsidy(laws[j / 2].0) + subsidy(laws[i / 2].1)).min(Fixed::ONE);
+    let paid = paid(laws, i, j);
     Fixed::ONE - (Fixed::ONE - own) * (Fixed::ONE - prepaid) * (Fixed::ONE - paid)
 }
 
@@ -342,8 +355,7 @@ pub(super) fn plan(
     };
     let open_door = |i: usize, j: usize| laws[j / 2].0 >= DOOR && laws[i / 2].1 >= DOOR;
     let road_open = |i: usize, j: usize| {
-        let paid = subsidy(laws[j / 2].0) + subsidy(laws[i / 2].1);
-        paid > Fixed::ZERO || chain_share(&lands, &abroad, i, j) >= WAVE_MIN_CHAIN
+        paid(laws, i, j) > Fixed::ZERO || chain_share(&lands, &abroad, i, j) >= WAVE_MIN_CHAIN
     };
     let mut wave_in = vec![0i64; nt];
     let mut wave_flows: Vec<(usize, i64)> = Vec::new(); // index into out.waves
@@ -617,7 +629,12 @@ fn pull(
     } else {
         Fixed::ZERO
     };
-    let chain_share = chain_share(lands, abroad, i, j);
+    // Emigration a programme of the origin organizes works as a chain: the recruiter is the
+    // network. A destination's subsidy pays the ticket (`afford`, the distance) but recruits
+    // no one by itself.
+    let sponsored = subsidy(laws[i / 2].1);
+    let paid = paid(laws, i, j);
+    let chain_share = chain_share(lands, abroad, i, j).max(sponsored);
     let network = if ratio >= NETWORK_MIN_RATIO {
         chain_share * NETWORK
     } else {
@@ -629,7 +646,6 @@ fn pull(
     }
     let (ti, tj) = (&territories[i], &territories[j]);
     // A paid passage makes the distance cheaper in proportion.
-    let paid = (subsidy(laws[j / 2].0) + subsidy(laws[i / 2].1)).min(Fixed::ONE);
     let dlat = (ti.lat - tj.lat) * milli(111_200); // km
     let mut dlon = (ti.lon - tj.lon).abs();
     if dlon > Fixed::from_int(180) {

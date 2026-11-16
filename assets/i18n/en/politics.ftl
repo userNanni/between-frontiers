@@ -175,6 +175,8 @@ law-sponsored_emigration = Sponsored emigration
 law-sponsored_emigration-desc = The state pays the passage of emigrants and backs settlement companies abroad.
 law-free_emigration = Free emigration
 law-free_emigration-desc = Citizens may leave.
+law-regulated_emigration = Regulated emigration
+law-regulated_emigration-desc = Licensed agents only; recruitment with paid passages is forbidden.
 law-exit_permits = Exit permits
 law-exit_permits-desc = Leaving the country needs a permit that is rarely granted.
 
