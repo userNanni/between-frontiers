@@ -16,7 +16,8 @@ fn diaspora_of_1925() {
     let data = GameData::load(&root()).unwrap();
     let world = data.new_world();
     let c = data.communities.as_ref().expect("communities");
-    let (diaspora, ambiguous) = initial_diaspora(&world.econ, &data.map, c);
+    let start = initial_diaspora(&world.econ, &data.map, c);
+    let (diaspora, ambiguous) = (start.diaspora, start.ambiguous);
     let tags: Vec<String> = world.countries.iter().map(|(_, c)| c.tag.clone()).collect();
     let name = |t: u16| {
         let part = if t % 2 == 1 { "/colonies" } else { "" };
@@ -47,6 +48,15 @@ fn diaspora_of_1925() {
             d.people as f64 / 1e3,
             name(d.origin),
             c.cultures[usize::from(d.culture)].key
+        );
+    }
+    println!("minorities with a road of their own (people in the origin, 1925):");
+    for h in &start.homes {
+        println!(
+            "  {} {} {:.0} k",
+            name(h.origin),
+            c.cultures[usize::from(h.culture)].key,
+            h.people_1925 as f64 / 1e3
         );
     }
     println!("ambiguous homeland (largest territory's share of the culture):");

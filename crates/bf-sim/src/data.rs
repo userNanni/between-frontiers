@@ -149,11 +149,13 @@ impl GameData {
                 &self.map,
                 self.communities.as_ref(),
             ),
-            diaspora: self.communities.as_ref().map_or_else(Vec::new, |c| {
-                crate::demography::migration::initial_diaspora(&world.econ, &self.map, c).0
-            }),
             ..Default::default()
         };
+        if let Some(c) = &self.communities {
+            let start = crate::demography::migration::initial_diaspora(&world.econ, &self.map, c);
+            world.demography.diaspora = start.diaspora;
+            world.demography.homes = start.homes;
+        }
         if let Some(tree) = &self.tree {
             world.research = ResearchState::initial(
                 tree,

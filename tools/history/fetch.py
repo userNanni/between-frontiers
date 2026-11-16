@@ -30,6 +30,9 @@ DOWNLOADS = {
     # IBGE / Ministério do Trabalho, "Movimento da População: Estatística Migratória de 1952"
     # (1955): table 8, immigrants into Brazil by nationality, 1884-1952.
     "brazil_immigration": ("https://biblioteca.ibge.gov.br/visualizacao/livros/liv84438.pdf", "ibge_liv84438.pdf"),
+    # IBGE, Recenseamento Geral do Brasil de 1940, Sinopse (special edition of 1947): foreign
+    # nationals by nationality, note 7 of the table for the whole country.
+    "brazil_census_1940": ("https://biblioteca.ibge.gov.br/visualizacao/periodicos/314/cd_1940_dadosgerais_edespecial_1947.pdf", "ibge_census1940_sinopse1947.pdf"),
     # US DHS, Yearbook of Immigration Statistics 2023, table 1 (lawful permanent residents).
     "usa_immigration": ("https://ohss.dhs.gov/topics/immigration/yearbook/2023/table1", "dhs_yearbook2023_table1.html"),
 }
@@ -244,6 +247,36 @@ def brazil_rows(text, first=1925, last=1952):
     return rows
 
 
+# Nationalities of note 7 of the 1940 census and the modern country of each.
+BRAZIL_1940 = {"portuguesa": "PRT", "italiana": "ITA", "espanhola": "ESP", "japonesa": "JPN",
+               "alema": "DEU", "siria": "SYR"}
+
+
+def brazil_1940(text):
+    """Foreign nationals in Brazil in 1940 from the national note 7 ("Nacionalidades
+    predominantes"), the first in the volume. The scan's OCR splits words and numbers with
+    spaces; a nationality is kept only when it is one of BRAZIL_1940 and both its counts read
+    as numbers."""
+    import re
+    import unicodedata
+
+    start = text.find("Nacionalidades predominantes")
+    if start < 0:
+        return {}
+    chunk = text[start:start + 600]
+    end = chunk.find("Discrimina")
+    chunk = chunk[:end if end > 0 else None].replace("\n", " ")
+    out = {}
+    for m in re.finditer(r"([A-Za-zÀ-ÿ ]+?)\s*,\s*([\d ]+?)\s+homens\s+[ce]\s+([\d ]+?)\s+mulh", chunk):
+        name = unicodedata.normalize("NFKD", m.group(1).replace(" ", "").lower())
+        name = "".join(c for c in name if not unicodedata.combining(c)).split(":")[-1]
+        name = name.replace("predominantes", "")
+        if name in BRAZIL_1940:
+            men, women = (int(x.replace(" ", "")) for x in (m.group(2), m.group(3)))
+            out[BRAZIL_1940[name]] = men + women
+    return out
+
+
 def build_immigration():
     import html
     import re
@@ -256,6 +289,12 @@ def build_immigration():
         for year, vals in sorted(brazil_rows(text).items()):
             for (iso, _), v in zip(BRAZIL_ORIGINS, vals[1:]):
                 out.append(("BRA", year, iso, v))
+    census = os.path.join(RAW, "ibge_census1940_sinopse1947.pdf")
+    if os.path.exists(census):
+        text = subprocess.run(["pdftotext", "-layout", census, "-"], capture_output=True, text=True, check=True).stdout
+        for iso, n in sorted(brazil_1940(text).items()):
+            # A stock, not arrivals: `year` 1940 and origin prefixed with "stock:".
+            out.append(("BRA", 1940, "stock:" + iso, n))
     page = os.path.join(RAW, "dhs_yearbook2023_table1.html")
     if os.path.exists(page):
         with open(page, encoding="utf-8") as f:

@@ -95,7 +95,7 @@ pub struct HistoryReport {
     /// Population and GDP of every state of the map, for aggregating by modern country.
     pub states: Vec<StateSeries>,
     /// Arrivals by year, origin and destination (`TAG/metropole`, `TAG/colonies`), for every
-    /// road that carried 10,000 people or more over the run.
+    /// road that carried 1,000 people or more over the run.
     pub migration_pairs: Vec<PairSeries>,
     /// Mass migrations: ended and still open at the last year.
     pub waves: Vec<WaveSeries>,
@@ -455,7 +455,7 @@ impl History {
         self.report.migration_pairs = self
             .pairs
             .iter()
-            .filter(|(_, v)| v.iter().sum::<i64>() >= 10_000)
+            .filter(|(_, v)| v.iter().sum::<i64>() >= 1_000)
             .map(|(&(o, d), v)| PairSeries {
                 origin: name(o),
                 dest: name(d),

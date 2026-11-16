@@ -723,6 +723,8 @@ def arrivals_table(sim_path, sim):
     path = os.path.join(DATA, "immigration.csv")
     if os.path.exists(path):
         for r in read_csv(path):
+            if r["origin"].startswith("stock:"):
+                continue  # stocks of the 1940 census, not arrivals
             records[(r["destination"], r["origin"])][int(r["year"])] = float(r["arrivals"])
             records[(r["destination"], None)][int(r["year"])] += float(r["arrivals"])
     out = []

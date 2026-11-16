@@ -27,7 +27,7 @@ use crate::polity::{POLITY, effects_in_force};
 use crate::research_system::RESEARCH;
 
 pub mod migration;
-pub use migration::{Diaspora, Push, Wave, WaveEnd, WaveRecord};
+pub use migration::{Diaspora, Home, Push, Wave, WaveEnd, WaveRecord};
 
 pub const DEMOGRAPHY: ResourceId = ResourceId(13);
 
@@ -134,6 +134,9 @@ pub struct DemographyState {
     /// People abroad by origin, destination and culture, sorted by them.
     #[serde(default)]
     pub diaspora: Vec<Diaspora>,
+    /// Minorities with a road of their own abroad, sorted by origin and culture.
+    #[serde(default)]
+    pub homes: Vec<Home>,
     /// Mass migrations under way, and those that ended.
     #[serde(default)]
     pub waves: Vec<Wave>,
@@ -218,6 +221,7 @@ impl HashState for DemographyState {
         self.vital.hash_state(h);
         self.territories.hash_state(h);
         self.diaspora.hash_state(h);
+        self.homes.hash_state(h);
         self.waves.hash_state(h);
         self.waves_ended.hash_state(h);
     }
