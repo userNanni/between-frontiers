@@ -145,6 +145,69 @@ fn accounts(ui: &mut Ui, i18n: &I18n, v: &GovernmentView) {
             .share(if revenue > 0.0 { tax[c] / revenue } else { 0.0 })
             .show(ui);
     }
+    // The other sources, each with its cause; a source that gave nothing is not listed.
+    let [income, indirect, firms] = v.revenue_sources();
+    let effects = &v.laws.effects[0];
+    if indirect > 0.0 || firms > 0.0 {
+        let tip = i18n.tr("gov-tip-income-tax");
+        let value = money(i18n, income * WEEKS);
+        Account::new(&i18n.tr("gov-income-tax"), &value, &tip)
+            .share(if revenue > 0.0 { income / revenue } else { 0.0 })
+            .show(ui);
+    }
+    if indirect > 0.0 {
+        let caps: Vec<String> = (0..TAX_CLASSES)
+            .map(|c| {
+                i18n.tr_args(
+                    "gov-cap-class",
+                    &[
+                        ("class", arg(i18n.tr(&format!("gov-class-{c}")))),
+                        ("cap", arg(pct(i18n, fx(effects.tax_caps[c]) * 100.0, 0))),
+                    ],
+                )
+            })
+            .collect();
+        let tip = i18n.tr_args(
+            "gov-tip-indirect",
+            &[
+                ("caps", arg(caps.join(", "))),
+                (
+                    "ceiling",
+                    arg(pct(
+                        i18n,
+                        fx(bf_sim::econ::public::INDIRECT_CEILING) * 100.0,
+                        0,
+                    )),
+                ),
+                ("rate", arg(pct(i18n, fx(b.indirect_rate) * 100.0, 1))),
+                ("week", arg(money(i18n, indirect))),
+            ],
+        );
+        let value = money(i18n, indirect * WEEKS);
+        Account::new(&i18n.tr("gov-indirect-tax"), &value, &tip)
+            .share(indirect / revenue.max(1e-9))
+            .show(ui);
+    }
+    if firms > 0.0 {
+        let tip = i18n.tr_args(
+            "gov-tip-state-firms",
+            &[
+                (
+                    "ownership",
+                    arg(pct(i18n, fx(effects.state_ownership) * 100.0, 0)),
+                ),
+                (
+                    "paid",
+                    arg(pct(i18n, fx(effects.state_profit_to_treasury) * 100.0, 0)),
+                ),
+                ("week", arg(money(i18n, firms))),
+            ],
+        );
+        let value = money(i18n, firms * WEEKS);
+        Account::new(&i18n.tr("gov-state-firms"), &value, &tip)
+            .share(firms / revenue.max(1e-9))
+            .show(ui);
+    }
     let tip = i18n.tr_args(
         "gov-tip-revenue",
         &[

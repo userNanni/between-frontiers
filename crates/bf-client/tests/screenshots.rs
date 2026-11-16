@@ -1604,3 +1604,75 @@ fn interface_scale() {
     }
     let _ = std::fs::remove_dir_all(&user);
 }
+
+/// The budget's revenue by source: income tax by class, tax on consumption and profit of state
+/// firms, with the causes in their tooltips; Turkey, which has all three from the start.
+#[test]
+#[ignore = "needs a GPU (or software Vulkan) and the generated map; run with --ignored"]
+fn budget_revenue_sources() {
+    let user = std::env::temp_dir().join(format!("bf-shots-revenue-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&user);
+    let data = bf_sim::data::GameData::load(&root()).expect("game data");
+    let mut session = bf_sim::game::Session::new(
+        data.new_world(),
+        7,
+        laplace_schelling::calendar::Date::new(1925, 1, 1),
+        2,
+        Some(data.rules()),
+    );
+    session.submit(bf_sim::game::GameCommand::ChoosePlayer { tag: "TUR".into() });
+    while session.clock().date < laplace_schelling::calendar::Date::new(1925, 3, 1) {
+        session.sim.step();
+    }
+    let tur = write_campaign(&user, &session, "Turquia 1925", "TUR", &[]);
+    for (locale, size, revenue, indirect, firms, name) in [
+        (
+            "pt-BR",
+            egui::vec2(1600.0, 900.0),
+            "Orçamento",
+            "Imposto sobre consumo",
+            "Lucro de estatais",
+            "70-orcamento-receitas",
+        ),
+        (
+            "en",
+            egui::vec2(1280.0, 720.0),
+            "Budget",
+            "Tax on consumption",
+            "Profit of state firms",
+            "72-budget-revenues-en-1280",
+        ),
+    ] {
+        let mut h = harness_sized(user.join(locale), locale, size);
+        let ctx = h.ctx.clone();
+        h.state_mut().apply(Transition::Game(tur.clone()), &ctx);
+        h.run_steps(4);
+        h.key_press(egui::Key::G);
+        h.run_steps(4);
+        h.get_by_label(revenue).click();
+        h.run_steps(4);
+        // The sources add up to the total the window shows.
+        let view = match &h.state().screen {
+            Screen::Game(g) => g.snapshot().government.expect("budget"),
+            _ => panic!("not in a campaign"),
+        };
+        let [income, consumption, state] = view.revenue_sources();
+        println!("{locale}: income {income:.0} consumption {consumption:.0} firms {state:.0}");
+        assert!(consumption > 0.0 && state > 0.0, "Turkey has both sources");
+        assert!((income + consumption + state - view.budget.revenue.to_f64_lossy()).abs() < 1.0);
+        let hover = |h: &mut Harness<'_, App>, label: &str| {
+            let r = h
+                .get_all(egui_kittest::kittest::by().label(label))
+                .next()
+                .unwrap_or_else(|| panic!("{label} in the budget"))
+                .rect();
+            h.hover_at(r.center());
+            h.run_steps(8);
+        };
+        hover(&mut h, indirect);
+        shot(&mut h, name);
+        hover(&mut h, firms);
+        shot(&mut h, &format!("{name}-estatais"));
+    }
+    let _ = std::fs::remove_dir_all(&user);
+}

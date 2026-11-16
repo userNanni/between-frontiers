@@ -9,6 +9,18 @@ gov-money-basis = Taxas e inflação em % ao ano; índices com 1925 = 100. Passe
 
 ## Orçamento
 gov-revenue = Receita por ano
+gov-income-tax = Imposto de renda
+gov-tip-income-tax = O imposto de renda das três classes, as linhas acima.
+gov-indirect-tax = Imposto sobre consumo
+gov-cap-class = { $class } { $cap }
+gov-tip-indirect =
+    A lei de tributação em vigor põe teto no imposto de renda: { $caps }.
+    O que os tetos impedem a regra de cobrar (a média do corte das três classes) é cobrado no consumo, até { $ceiling }.
+    Alíquota sobre consumo: { $rate }. Última semana: { $week }.
+gov-state-firms = Lucro de estatais
+gov-tip-state-firms =
+    O Estado é dono de { $ownership } da indústria; { $paid } do que essa parte rende vai ao Tesouro, pela lei de propriedade em vigor.
+    Última semana: { $week }.
 gov-revenue-total = Receita total
 gov-class-0 = Classe baixa
 gov-class-1 = Classe média
@@ -21,7 +33,7 @@ gov-tip-class-tax =
     Renda depois do imposto: { $income } por ano.
     Alíquota: { $rate }. Imposto = renda × alíquota ÷ (1 − alíquota) = { $tax }.
 gov-tip-revenue =
-    Imposto de renda da última semana: { $week } × 52 = { $year } ({ $gdp } do PIB).
+    Receita da última semana, todas as fontes: { $week } × 52 = { $year } ({ $gdp } do PIB).
     Média do trimestre: { $avg } por ano.
 gov-spending = Despesa por ano
 gov-spending-total = Despesa total

@@ -80,13 +80,27 @@ impl GovernmentView {
             *o = self.class_income[c] * rate / (1.0 - rate);
         }
         let sum: f64 = out.iter().sum();
-        let total = f(self.budget.revenue);
+        let total = self.income_tax();
         if sum > 0.0 {
             for o in &mut out {
                 *o *= total / sum;
             }
         }
         out
+    }
+
+    /// Last week's income tax: the revenue less the tax on consumption and the profit of state
+    /// firms, which `Budget::revenue` holds too.
+    pub fn income_tax(&self) -> f64 {
+        let b = &self.budget;
+        (f(b.revenue) - f(b.revenue_indirect) - f(b.revenue_firms)).max(0.0)
+    }
+
+    /// Last week's revenue by source: income tax, tax on consumption, profit of state firms.
+    /// They add up to `Budget::revenue`.
+    pub fn revenue_sources(&self) -> [f64; 3] {
+        let b = &self.budget;
+        [self.income_tax(), f(b.revenue_indirect), f(b.revenue_firms)]
     }
 
     /// Last week's spending: payroll, goods, public services, public works, interest.
@@ -171,4 +185,45 @@ pub fn read(world: &GameWorld, date: Date) -> Option<GovernmentView> {
             }
         },
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn view(revenue: i64, indirect: i64, firms: i64) -> GovernmentView {
+        let budget = Budget {
+            revenue: Fixed::from_int(revenue),
+            revenue_indirect: Fixed::from_int(indirect),
+            revenue_firms: Fixed::from_int(firms),
+            ..Budget::default()
+        };
+        GovernmentView {
+            date: Date::new(1940, 1, 1),
+            budget,
+            money: Money::default(),
+            laws: Laws::default(),
+            treasury: 0.0,
+            gdp_last_year: 0.0,
+            gov_workers: 0,
+            class_income: [100.0, 50.0, 20.0],
+            class_people: [10, 5, 1],
+            subordinate: false,
+            works: Vec::new(),
+            goods_rule: GoodsRule::default(),
+        }
+    }
+
+    #[test]
+    fn the_sources_add_up_to_the_revenue_and_the_classes_to_the_income_tax() {
+        let v = view(100, 15, 5);
+        let [income, indirect, firms] = v.revenue_sources();
+        assert_eq!((income, indirect, firms), (80.0, 15.0, 5.0));
+        assert!((income + indirect + firms - 100.0).abs() < 1e-9);
+        let classes: f64 = v.tax_by_class().iter().sum();
+        assert!((classes - income).abs() < 1e-6, "{classes}");
+        // Without the new sources, the classes take the whole revenue, as before.
+        let v = view(100, 0, 0);
+        assert!((v.tax_by_class().iter().sum::<f64>() - 100.0).abs() < 1e-6);
+    }
 }
