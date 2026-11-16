@@ -91,19 +91,22 @@ const MEDICINE_FULL: Fixed = milli(800);
 /// transition stops this much higher (withdrawal, late marriage).
 const TFR_HIGH: Fixed = milli(6500);
 const TFR_LOW: Fixed = milli(1750);
-const TFR_WITHOUT_PILL: Fixed = milli(350);
+const TFR_WITHOUT_PILL: Fixed = milli(500);
 /// Weights of the transition score and where the transition starts and ends.
 const F_SURVIVAL: Fixed = milli(250);
 const F_SCHOOLING: Fixed = milli(550);
 const F_OFF_FARM: Fixed = milli(100);
 const F_COMFORT: Fixed = milli(100);
-const F_CONTRACEPTION: Fixed = milli(100);
+const F_CONTRACEPTION: Fixed = milli(170);
 const F_START: Fixed = milli(450);
-const F_END: Fixed = milli(850);
+const F_END: Fixed = milli(900);
 /// Child deaths before 5 (per mille) at which survival counts as 0 and as 1 in the score.
 const Q5_HIGH: i64 = 500;
 const Q5_LOW: i64 = 20;
 
+/// Share of the contraception a country uses that reaches mothers who never went to school:
+/// family planning programmes (clinics, campaigns) brought it to illiterate villages.
+const CONTRACEPTION_REACH: Fixed = milli(250);
 /// Months for the mothers' schooling to close the gap with today's literacy: girls at school
 /// now are mothers in 15 to 20 years.
 const SCHOOLING_MONTHS: i64 = 240;
@@ -455,7 +458,7 @@ fn month(
 /// Years of the past a pyramid is grown over, and the share of today's development (comfort,
 /// schooling, work off the farm) the region had at their start.
 const PAST_YEARS: i64 = 60;
-const PAST_DEVELOPMENT: Fixed = milli(750);
+const PAST_DEVELOPMENT: Fixed = milli(650);
 
 /// The age structure of the start: a population stable at the rates of `PAST_YEARS` ago, when
 /// it had `PAST_DEVELOPMENT` of today's development, then grown through those years as the
@@ -613,7 +616,11 @@ impl System<GameWorld> for Demography {
                 };
                 let (medicine, contraception) =
                     match world.research.effects.get(usize::from(r.market)) {
-                        Some(e) => (e[0], e[1] * schooling),
+                        Some(e) => (
+                            e[0],
+                            e[1] * (CONTRACEPTION_REACH
+                                + (Fixed::ONE - CONTRACEPTION_REACH) * schooling),
+                        ),
                         // Without research data, medicine spreads from 1935 to 1970.
                         None => (
                             Fixed::from_ratio(i64::from((year - 1935).clamp(0, 35)), 35),

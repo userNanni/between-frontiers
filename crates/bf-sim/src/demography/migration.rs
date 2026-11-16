@@ -19,7 +19,7 @@ const GAP_FULL: Fixed = milli(3000);
 /// Most of a territory's people who emigrate in a year in the steady flow, at the full pull.
 const EMIGRATION_RATE: i64 = 3; // per mille a year
 /// Most immigrants a territory takes in a year from the steady flow, per mille of its people.
-const IMMIGRATION_CAP: i64 = 5;
+const IMMIGRATION_CAP: i64 = 4;
 /// Distance at which the pull halves, in km.
 const DISTANCE_KM: i64 = 8000;
 /// Pull multiplier within a language family and within an empire. The empire gets none: at 2,
