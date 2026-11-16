@@ -7,6 +7,8 @@ Brasil.
 
 - O checkout principal fica na `main`: não edite nele. Cada tarefa tem a sua worktree, ao lado
   dele: `git worktree add -b <tipo>/<tema> ../bf-wt-<tema> main`.
+- Worktree de branch já integrada à `main` é removida (`git worktree remove ../bf-wt-<tema>`),
+  com o `target/` dela.
 - Antes de mexer num arquivo quente (`econ/week.rs`, `econ/monthly.rs`, `bf-bench/src/game.rs`,
   `bf-client/src/sim.rs`), veja se outra branch aberta já mexe nele:
   `git diff --stat main...<branch>`. Se sim, mantenha a sua mudança pequena e diga no PR.
@@ -28,14 +30,25 @@ Brasil.
   - escala de uma planta na semana: `week::plant_run`;
   - preços e parcelas que um estado vê: `local::View::new`;
   - compra por cesta de pesos por mil: `week::basket_orders`;
+  - valor adicionado e lucro de um método: `Method::value_added`, `Method::profit`;
   - razão limitada a 1: `econ::fill`.
   Se a regra nova é variação de uma dessas, estenda a existente.
 - Toda conta de estado em `Fixed`; reduções em ordem de id, nunca `rayon::reduce`.
 
+## Dados
+
+- Todo dado público pode ser usado, inclusive de licença não comercial. A licença vai anotada
+  junto do dado: no `.md` de fontes da pasta e no bloco de fontes do arquivo. Dado sob licença NC
+  ou GPL mantém a licença dele e não passa a valer como CC BY-SA.
+- Nada copiado de mod ou jogo sem licença (o CWE, o Tech & Res): deles, só se comparam sistemas e
+  ordens de grandeza.
+
 ## Desempenho
 
-- PR que toca `bf-sim` ou `laplace-schelling` mede contra a `main`, os dois binários na mesma hora:
-  `BF_SYSTEMS=1 /usr/bin/time -f '%U s' target/release/bf-bench --game --years 2 --threads 1`.
+- Bench do `--game` roda um por vez na máquina, sob trava (`flock /tmp/bf-bench.lock ...`).
+  Vale sobretudo para os 100 anos.
+- PR que toca `bf-sim` ou `laplace-schelling` mede contra a `main`, os dois binários em seguida:
+  `flock /tmp/bf-bench.lock env BF_SYSTEMS=1 /usr/bin/time -f '%U s' target/release/bf-bench --game --years 10 --threads 1`.
   Compare o tempo de CPU (`%U`) e a tabela por sistema, não o tempo de parede: a máquina é
   dividida com outras sessões e o tempo de parede varia o dobro.
 - **Refatoração e otimização não mudam o hash.** O `final hash` tem de ser igual ao da `main`; se
