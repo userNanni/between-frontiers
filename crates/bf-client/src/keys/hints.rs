@@ -152,17 +152,30 @@ pub fn place_labels(items: &[(Rect, egui::Vec2, Side)], screen: Rect) -> Vec<Rec
             Side::Right => Some(right),
             Side::Auto => None,
         };
-        let usual = if e.width() >= 180.0 {
-            [left, above_left, below_left, above_right, below_right]
+        // A wide row against the screen's edge has no room on its left: the label then goes
+        // after the row, not over its first letters.
+        let usual: Vec<Rect> = if e.width() >= 180.0 {
+            vec![
+                left,
+                right,
+                above_left,
+                below_left,
+                above_right,
+                below_right,
+            ]
         } else {
-            [above_right, above_left, below_right, below_left, left]
+            vec![above_right, above_left, below_right, below_left, left]
         };
         let candidates: Vec<Rect> = first.into_iter().chain(usual).collect();
         let fit = |r: Rect| keep_on(r, screen);
         // Clear of the labels already placed, and of every other element: a label never
         // covers something the player could act on.
+        // Clear of its own element too: a label pushed back on screen must not land on the
+        // text it names.
         let free = |r: &Rect| {
-            placed.iter().all(|p| !p.shrink(0.5).intersects(*r))
+            // (the corners above and below touch only its padding).
+            !e.shrink2(egui::vec2(0.5, 3.0)).intersects(*r)
+                && placed.iter().all(|p| !p.shrink(0.5).intersects(*r))
                 && items
                     .iter()
                     .enumerate()
@@ -355,6 +368,30 @@ mod tests {
             // The label never covers the middle of its element, where the text is.
             let e = items[i].0;
             assert!(!a.contains(e.center()), "{a:?} on the text of {e:?}");
+        }
+    }
+
+    #[test]
+    fn a_row_against_the_screen_edge_keeps_its_text_clear() {
+        let screen = Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(1280.0, 720.0));
+        // Rows of a panel 12 px from the left edge, stacked tight.
+        let rows: Vec<(Rect, egui::Vec2, Side)> = (0..3)
+            .map(|i| {
+                (
+                    Rect::from_min_size(
+                        egui::pos2(24.0, 280.0 + 28.0 * i as f32),
+                        egui::vec2(266.0, 24.0),
+                    ),
+                    egui::vec2(24.0, 16.0),
+                    Side::Auto,
+                )
+            })
+            .collect();
+        for (label, (row, _, _)) in place_labels(&rows, screen).iter().zip(&rows) {
+            assert!(
+                !row.shrink(1.0).intersects(*label),
+                "{label:?} over {row:?}"
+            );
         }
     }
 }

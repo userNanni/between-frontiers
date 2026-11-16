@@ -1376,3 +1376,114 @@ fn list_button<'a>(h: &'a Harness<'_, App>, label: &'a str) -> egui_kittest::Nod
         .find(|n| n.accesskit_node().role() == egui::accesskit::Role::Button)
         .unwrap_or_else(|| panic!("{label} in the list"))
 }
+
+/// Fails when a part of the open map mode picker leaves its frame: the families, the pin and
+/// every item of the list in view.
+fn assert_picker_fits(h: &Harness<'_, App>, title: &str, families: &[String], case: &str) {
+    let pane = h
+        .query_all(egui_kittest::kittest::by().label(title))
+        .find(|n| n.accesskit_node().role() == egui::accesskit::Role::Pane)
+        .unwrap_or_else(|| panic!("{case}: no open picker"))
+        .rect();
+    for f in families {
+        let r = h
+            .query_all(egui_kittest::kittest::by().label(f.as_str()))
+            .map(|n| n.rect())
+            .find(|r| pane.intersects(*r))
+            .unwrap_or_else(|| panic!("{case}: family {f} not in the picker"));
+        assert!(
+            pane.contains_rect(r),
+            "{case}: family {f} {r:?} out of {pane:?}"
+        );
+    }
+    // Items of the list: those in view sit inside the frame across.
+    for n in h.query_all(egui_kittest::kittest::by().role(egui::accesskit::Role::Button)) {
+        let r = n.rect();
+        if pane.contains(r.center()) {
+            assert!(
+                r.left() >= pane.left() && r.right() <= pane.right(),
+                "{case}: {:?} {r:?} out of {pane:?}",
+                n.accesskit_node().label()
+            );
+        }
+    }
+}
+
+/// The open map mode picker, every family, from the four corners, at 1600 × 900 and
+/// 1280 × 720, in Portuguese and English: nothing of it leaves its frame or the screen.
+#[test]
+#[ignore = "needs a GPU (or software Vulkan) and the generated map; run with --ignored"]
+fn lens_picker_fits_everywhere() {
+    let user = std::env::temp_dir().join(format!("bf-shots-lensfit-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&user);
+    let session = advanced_session(laplace_schelling::calendar::Date::new(1925, 3, 1));
+    let bra = write_campaign(&user, &session, "Brasil", "BRA", &[]);
+    use bf_client::hud::{Anchor, Layout, PanelId, Placement};
+    let corners = [
+        ("bl", Anchor::BottomLeft, [12.0, -12.0]),
+        ("br", Anchor::BottomRight, [-12.0, -12.0]),
+        ("tr", Anchor::TopRight, [-12.0, 80.0]),
+        ("tl", Anchor::TopLeft, [12.0, 150.0]),
+    ];
+    for (locale, button, title) in [
+        ("pt-BR", "Modo do mapa:", "Modo do mapa"),
+        ("en", "Map mode:", "Map mode"),
+    ] {
+        for (w, h_) in [(1600.0, 900.0), (1280.0, 720.0)] {
+            for (corner, anchor, offset) in corners {
+                let dir = user.join(format!("{locale}-{w}-{corner}"));
+                std::fs::create_dir_all(&dir).unwrap();
+                let mut layout = Layout::default();
+                layout.set_place(
+                    PanelId::MapModes,
+                    Placement {
+                        anchor,
+                        offset,
+                        visible: true,
+                    },
+                );
+                layout.save(&bf_client::hud::file(&dir)).unwrap();
+                let mut h = harness_sized(dir, locale, egui::vec2(w, h_));
+                let ctx = h.ctx.clone();
+                h.state_mut().apply(Transition::Game(bra.clone()), &ctx);
+                h.run_steps(4);
+                let families =
+                    bf_client::screens::lens_panel::family_labels(&h.state().shared.i18n);
+                for (k, family) in families.clone().iter().enumerate() {
+                    if h.query_all(egui_kittest::kittest::by().label(title))
+                        .all(|n| n.accesskit_node().role() != egui::accesskit::Role::Pane)
+                    {
+                        h.get_all(egui_kittest::kittest::by().label_contains(button))
+                            .next()
+                            .expect("map mode button")
+                            .click();
+                        h.run_steps(3);
+                    }
+                    h.get_by_label(family).click();
+                    h.run_steps(4);
+                    // A family without a list folds the picker: open it again to look.
+                    if h.query_all(egui_kittest::kittest::by().label(title))
+                        .all(|n| n.accesskit_node().role() != egui::accesskit::Role::Pane)
+                    {
+                        h.get_all(egui_kittest::kittest::by().label_contains(button))
+                            .next()
+                            .unwrap()
+                            .click();
+                        h.run_steps(4);
+                    }
+                    let case = format!("{locale} {w}×{h_} {corner} {family}");
+                    assert_picker_fits(&h, title, &families, &case);
+                    if corner == "br" || (w < 1300.0 && k == 1) {
+                        shot(
+                            &mut h,
+                            &format!("56-lens-{locale}-{}-{corner}-{k}", w as i32),
+                        );
+                    }
+                    h.key_press(egui::Key::Escape);
+                    h.run_steps(2);
+                }
+            }
+        }
+    }
+    let _ = std::fs::remove_dir_all(&user);
+}
