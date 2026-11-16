@@ -198,48 +198,52 @@ snapshot é postcard, que não é autodescritivo: save de uma versão anterior n
 ## Calibração
 
 Benchmark de 100 anos (`cargo run --release -p bf-bench -- --game --years 100 --check-determinism`),
-mesma semente. "Fase 3b" é a main antes da moeda (fila, orçamento e migração, emissão no Tesouro);
-"3c" é com moeda, banco central e dívida. Os números da 3b foram medidos de novo nesta máquina.
+mesma semente. "Main" é a main com transporte e eletricidade regionais (#36), ainda com emissão no
+Tesouro; "3c" é com moeda, banco central e dívida.
 
 | | 1935 | 1965 | 1995 | 2025 |
 |---|---|---|---|---|
-| População (bilhões), 3b | 2,18 | 3,48 | 5,12 | 6,78 |
-| População, 3c | 2,16 | 3,30 | 4,96 | 6,73 |
-| PIB (US$ tri, preços de 1925), 3b | 6,5 | 20,9 | 60,9 | 87,0 |
-| PIB, 3c | 5,9 | 18,1 | 56,2 | 95,7 |
-| Urbanização, 3b | 0,45 | 0,52 | 0,56 | 0,60 |
-| Urbanização, 3c | 0,44 | 0,51 | 0,55 | 0,60 |
-| Necessidades básicas, 3b | 0,65 | 0,67 | 0,72 | 0,75 |
-| Necessidades básicas, 3c | 0,66 | 0,70 | 0,75 | 0,77 |
-| Impostos (% do PIB), 3b | 7,1 | 11,9 | 13,2 | 12,7 |
-| Impostos, 3c | 11,7 | 20,8 | 23,2 | 22,4 |
-| Despesa do Estado com juros (% do PIB), 3b | 15,6 | 24,3 | 30,4 | 31,8 |
-| Despesa, 3c | 14,3 | 22,8 | 25,2 | 24,4 |
-| Emissão no Tesouro (% do PIB ao ano), 3b | 8,6 | 12,6 | 17,3 | 19,3 |
-| Inflação média da década (média e mediana pelo PIB), 3c | 0,4 | 1,0 | 1,8 | 2,2 |
-| Dívida pública (% do PIB), 3c | 46 | 49 | 48 | 52 |
-| Parcela do banco central na dívida, 3c | 22 % | 23 % | 16 % | 5 % |
-| Juros (% do PIB), 3c | 0,9 | 1,0 | 1,4 | 2,1 |
-| Crédito dos bancos centrais aos bancos (% do PIB), 3c | 18 | 32 | 31 | 34 |
+| População (bilhões), main | 2,17 | 3,46 | 5,09 | 6,74 |
+| População, 3c | 2,16 | 3,29 | 4,94 | 6,71 |
+| PIB (US$ tri, preços de 1925), main | 6,5 | 21,2 | 64,0 | 92,8 |
+| PIB, 3c | 5,9 | 18,4 | 57,0 | 97,6 |
+| Urbanização, main | 0,45 | 0,52 | 0,57 | 0,61 |
+| Urbanização, 3c | 0,45 | 0,52 | 0,56 | 0,60 |
+| Necessidades básicas, main | 0,65 | 0,67 | 0,71 | 0,75 |
+| Necessidades básicas, 3c | 0,66 | 0,71 | 0,75 | 0,77 |
+| Impostos (% do PIB), main | 6,9 | 11,9 | 12,9 | 12,2 |
+| Impostos, 3c | 11,9 | 20,5 | 22,7 | 21,9 |
+| Despesa do Estado (% do PIB; na 3c com juros), main | 16,0 | 24,4 | 30,3 | 31,0 |
+| Despesa, 3c | 14,3 | 22,9 | 24,7 | 23,8 |
+| Inflação média da década (média pelo PIB, igual à mediana), 3c | 0,1 | 1,0 | 1,8 | 2,2 |
+| Dívida pública (% do PIB), 3c | 47 | 48 | 48 | 52 |
+| Parcela do banco central na dívida, 3c | 23 % | 23 % | 16 % | 4 % |
+| Juros (% do PIB), 3c | 0,9 | 0,9 | 1,5 | 2,1 |
+| Crédito dos bancos centrais aos bancos (% do PIB), 3c | 20 | 31 | 31 | 34 |
+
+Na main a diferença entre despesa e receita (9 a 19 % do PIB ao ano) é dinheiro emitido no Tesouro,
+que não aparece como dívida.
 
 Por país, 3c (inflação média da década; dívida/PIB; parte do banco central; parte em dólar):
 
 | | 1935 | 1965 | 1995 | 2025 |
 |---|---|---|---|---|
-| USA | 0,6 %; 45 %; 10 %; 0 | 0,9 %; 48 %; 2 %; 0 | 1,9 %; 57 %; 0; 0 | 2,2 %; 60 %; 0; 0 |
-| GBR | 0,8 %; 44 %; 12 %; 0 | 1,3 %; 48 %; 2 %; 0 | 1,6 %; 49 %; 0; 0 | 2,2 %; 51 %; 0; 0 |
-| JAP | −0,2 %; 47 %; 23 %; 0 | 0,9 %; 56 %; 5 %; 0 | 1,6 %; 54 %; 1 %; 0 | 2,2 %; 57 %; 0; 0 |
-| BRA | 1,0 %; 39 %; 39 %; 8 % | 0,7 %; 47 %; 63 %; 2 % | 1,6 %; 45 %; 34 %; 5 % | 2,1 %; 56 %; 9 %; 2 % |
-| ARG | 0,0 %; 45 %; 10 %; 0 | 1,3 %; 56 %; 2 %; 0 | 1,4 %; 49 %; 0; 0 | 2,1 %; 59 %; 0; 0 |
-| GER | 0,3 %; 49 %; 10 %; 0 | 0,9 %; 52 %; 2 %; 0 | 1,4 %; 57 %; 0; 0 | 2,2 %; 58 %; 0; 0 |
+| USA | 0,4 %; 45 %; 10 %; 0 | 0,7 %; 50 %; 2 %; 0 | 1,9 %; 59 %; 0; 0 | 2,1 %; 60 %; 0; 0 |
+| GBR | 0,4 %; 46 %; 12 %; 0 | 1,4 %; 44 %; 3 %; 0 | 1,7 %; 50 %; 1 %; 0 | 2,2 %; 53 %; 0; 0 |
+| JAP | −0,3 %; 47 %; 23 %; 0 | 0,9 %; 55 %; 5 %; 0 | 1,6 %; 54 %; 1 %; 0 | 2,2 %; 56 %; 0; 0 |
+| BRA | 0,6 %; 41 %; 42 %; 6 % | 0,7 %; 47 %; 64 %; 1 % | 1,6 %; 45 %; 34 %; 5 % | 2,1 %; 56 %; 8 %; 2 % |
+| ARG | −0,2 %; 58 %; 12 %; 0 | 1,3 %; 54 %; 4 %; 0 | 1,8 %; 36 %; 2 %; 0 | 2,0 %; 42 %; 1 %; 0 |
+| GER | 0,1 %; 50 %; 10 %; 0 | 0,9 %; 50 %; 2 %; 0 | 1,6 %; 57 %; 0; 0 | 2,2 %; 59 %; 0; 0 |
 
-3c: determinístico entre contagens de threads e depois de salvar e recarregar em 1975; tick mais
-lento 34,1 ms (3b 30,1 ms na mesma máquina); 112 s de simulação (3b 122 s).
+3c: determinístico entre contagens de threads e depois de salvar e recarregar em 1975. Tick mais
+lento 34,1 ms medido com a máquina livre, antes do rebase sobre o #36 (main 30,1 ms na mesma
+máquina); a rodada sobre o #36 foi medida com a máquina carregada por outros processos (carga 17 a
+89) e o tempo dela não vale.
 
 - **O buraco virou dívida.** Sem emissão no Tesouro, a correção fiscal sobe a regra de impostos (de
   12 % para 22 % do PIB) e o Estado gasta a receita mais o déficit da regra; a dívida fica em torno
-  de metade do PIB, com juros de 1 a 2 % do PIB. A despesa cai de 32 % para 24 % do PIB.
-- **PIB:** abaixo da 3b até os anos 1990 (menos gasto público) e 10 % acima em 2025 (o crédito dos
+  de metade do PIB, com juros de 1 a 2 % do PIB. A despesa cai de 31 % para 24 % do PIB.
+- **PIB:** abaixo da main até os anos 1990 (menos gasto público) e 5 % acima em 2025 (o crédito dos
   bancos centrais e a poupança emprestada ao investimento). Nenhum colapso.
 - **Inflação** de 1,5 % em média no século, um dígito o tempo todo; nenhum país passou de 25 % ao
   ano. Os episódios altos existem nas regras (banco subordinado sem comprador, taxa fixada abaixo
@@ -247,7 +251,8 @@ lento 34,1 ms (3b 30,1 ms na mesma máquina); 112 s de simulação (3b 122 s).
   (guerra, petróleo) e o populismo fiscal das fases seguintes.
 - **Calotes:** nenhum entre os países grandes. Os microestados (San Marino, Andorra, Liechtenstein,
   Mônaco; PIB abaixo de US$ 1 bilhão e fábricas quase paradas) reestruturam quase todo ano; o bench
-  conta à parte (124 até 2025).
+  conta à parte (112 até 2025). Os 5 que aparecem fora deles em 2025 são de um país pequeno que
+  passou de US$ 1 bilhão de PIB e saiu da conta dos microestados.
 - **Brasil** se financia no banco central antes de 1990 (mercado raso) e no exterior em parte em
   dólar; o Japão e os ricos, em casa. O caso japonês extremo e o calote em dólar aparecem nas
   regras (teste), não na rodada.
