@@ -29,6 +29,8 @@ pub struct State {
     fold: super::outliner::Fold,
     /// Arranging the HUD.
     edit: super::hud_edit::Edit,
+    /// The folded map mode picker is open.
+    lens_open: bool,
     research_camera: Option<super::research::TreeCamera>,
     /// Month the live map lenses were last coloured for.
     live_month: Option<(i32, u8)>,
@@ -88,6 +90,7 @@ impl State {
             journal: None,
             fold: super::outliner::Fold::default(),
             edit: super::hud_edit::Edit::default(),
+            lens_open: false,
             research_camera: None,
             live_month: None,
             live_figures: None,
@@ -237,6 +240,7 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
     let place = |p: PanelId| places.rect(p);
 
     let map_rect = rect;
+    let mut fold_lens = false;
     let i18n = &shared.i18n;
     if let (Some(map), Some(view), Some(world)) = (&shared.map, &mut shared.map_view, &shared.world)
     {
@@ -266,13 +270,39 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
         // The government and journal windows cover the map; the mode picker would show
         // through.
         if let Some(r) = place(PanelId::MapModes) {
-            super::lens_panel::show(ui, r.min, i18n, world, view, snap.date.year);
+            if shared.hud.layout.map_modes_open {
+                // Kept open: the panel as it always was, with a link to fold it.
+                fold_lens |= super::lens_panel::show(
+                    ui,
+                    r.min,
+                    i18n,
+                    world,
+                    view,
+                    snap.date.year,
+                    Some(true),
+                )
+                .toggle_pin;
+            } else {
+                // Folded into a button; open, it shows the panel over the rest of the HUD,
+                // further down.
+                if super::lens_panel::button(ui, r, i18n, view.lens, state.lens_open)
+                    && !state.edit.on
+                {
+                    toggle_lens_picker(state);
+                }
+            }
         }
+    }
+    if fold_lens {
+        shared.hud.layout.map_modes_open = false;
+        shared.hud.changed();
+        shared.persist_hud();
     }
 
     // Side panel under the country figures, above the map mode picker, while no window covers
     // the map.
     if let Some(r) = place(PanelId::Outliner) {
+        let sections = shared.hud.layout.overview();
         let res = super::outliner::show(
             ui,
             r,
@@ -283,6 +313,7 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
                 tree: state.rules.tree.as_deref(),
                 snap: &snap,
                 pinned: &state.save.meta.pinned,
+                sections: &sections,
             },
             &mut state.fold,
         );
@@ -301,6 +332,7 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
     }
 
     // Top bar
+    let tiles = shared.hud.layout.tiles();
     let bar_out = top_bar::show(
         ui,
         rect,
@@ -312,7 +344,11 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
         shared.world.as_ref(),
         &shared.flags,
         player,
-        &snap,
+        top_bar::Extra {
+            snap: &snap,
+            tree: state.rules.tree.as_deref(),
+            tiles: &tiles,
+        },
     );
     if bar_out.open_country {
         state.selected = player;
@@ -333,6 +369,9 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
     }
     if bar_out.open_journal {
         toggle_journal(state);
+    }
+    if let Some(screen) = bar_out.open {
+        open_from_tile(state, screen);
     }
     if bar_out.open_menu {
         state.menu_open = true;
@@ -355,6 +394,34 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
                 .auto_shrink([false, false])
                 .show(ui, |ui| country_panel::show(shared, ui, country));
         });
+    }
+
+    // The open map mode picker, over every panel of the HUD: a click anywhere else folds it.
+    if state.lens_open
+        && !shared.hud.layout.map_modes_open
+        && let Some(r) = place(PanelId::MapModes)
+        && let (Some(view), Some(world)) = (&mut shared.map_view, &shared.world)
+    {
+        let catcher = ui.interact(rect, ui.make_persistent_id("lens-outside"), Sense::click());
+        let popup = lens_popup(r, super::lens_panel::size(view.lens), rect);
+        let res = super::lens_panel::show(
+            ui,
+            popup.min,
+            &shared.i18n,
+            world,
+            view,
+            snap.date.year,
+            Some(false),
+        );
+        if res.chosen || catcher.clicked() {
+            state.lens_open = false;
+        }
+        if res.toggle_pin {
+            state.lens_open = false;
+            shared.hud.layout.map_modes_open = true;
+            shared.hud.changed();
+            shared.persist_hud();
+        }
     }
 
     // Research screen.
@@ -522,7 +589,9 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
             state.sim.send(Command::SetSpeed(s as u8 + 1));
         }
         if esc {
-            if state.research_open {
+            if state.lens_open {
+                state.lens_open = false;
+            } else if state.research_open {
                 state.research_open = false;
             } else if state.government.is_some() {
                 state.government = None;
@@ -621,6 +690,7 @@ fn toggle_journal(state: &mut State) {
 /// this).
 pub fn toggle_hud_edit(state: &mut State) {
     super::hud_edit::toggle(&mut state.edit);
+    state.lens_open = false;
     if state.edit.on {
         state.government = None;
         state.journal = None;
@@ -640,14 +710,24 @@ fn hud_sizes(
     let editing = state.edit.on;
     let window = state.government.is_some() || state.journal.is_some();
     if player.is_some() {
-        out.insert(PanelId::Country, top_bar::corner_size());
+        out.insert(
+            PanelId::Country,
+            top_bar::corner_size(shared.hud.layout.tiles().len()),
+        );
     }
     out.insert(PanelId::Time, top_bar::time_size(screen));
     // The windows cover the map; the mode picker and the overview would show through.
     if let Some(view) = &shared.map_view
         && (editing || !window)
     {
-        out.insert(PanelId::MapModes, super::lens_panel::size(view.lens));
+        out.insert(
+            PanelId::MapModes,
+            if shared.hud.layout.map_modes_open {
+                super::lens_panel::size(view.lens)
+            } else {
+                super::lens_panel::BUTTON
+            },
+        );
     }
     if editing || !(window || state.research_open) {
         out.insert(PanelId::Outliner, super::outliner::size(ctx, &state.fold));
@@ -672,4 +752,54 @@ fn keep_window_place(shared: &mut Shared, key: &str, place: crate::hud::WindowPl
     if done {
         shared.persist_hud();
     }
+}
+
+/// Opens the screen a block of the country figures reads from.
+fn open_from_tile(state: &mut State, open: super::tiles::Open) {
+    use super::government::{Tab, Window};
+    use super::tiles::Open;
+    let tab = match open {
+        Open::Budget => Tab::Budget,
+        Open::Money => Tab::Money,
+        Open::Laws => Tab::Laws,
+        Open::Research => {
+            state.research_open = true;
+            state.government = None;
+            state.journal = None;
+            return;
+        }
+        Open::Journal => {
+            state.journal = Some(super::journal::Window::default());
+            state.government = None;
+            state.research_open = false;
+            return;
+        }
+    };
+    state.government = Some(Window {
+        tab,
+        ..Window::default()
+    });
+    state.journal = None;
+    state.research_open = false;
+}
+
+/// Opens or closes the folded map mode picker (a command calls this).
+pub fn toggle_lens_picker(state: &mut State) {
+    state.lens_open = !state.lens_open;
+}
+
+/// Where the open picker goes: beside its button, toward the middle of the screen (up from a
+/// button in the lower half, left from one in the right half), kept on screen.
+pub fn lens_popup(button: Rect, size: egui::Vec2, screen: Rect) -> Rect {
+    let x = if button.center().x > screen.center().x {
+        button.right() - size.x
+    } else {
+        button.left()
+    };
+    let y = if button.center().y > screen.center().y {
+        button.top() - space::SM - size.y
+    } else {
+        button.bottom() + space::SM
+    };
+    crate::hud::clamp_into(Rect::from_min_size(egui::pos2(x, y), size), screen)
 }

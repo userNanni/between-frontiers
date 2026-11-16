@@ -23,6 +23,36 @@ pub struct Edit {
     mark_from: Option<Pos2>,
     /// Where the toolbar was dragged from the centre.
     toolbar: Vec2,
+    /// The block editor open, for the country figures or the overview's sections.
+    pub blocks: Option<Blocks>,
+    /// The block being dragged: its key, whether it came from the blocks in use, and where
+    /// the pointer holds it.
+    block_drag: Option<(String, bool, Vec2)>,
+}
+
+/// Which panel's blocks the editor arranges.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Blocks {
+    Country,
+    Overview,
+}
+
+/// Opens the block editor of a panel (a command calls this).
+pub fn edit_blocks(edit: &mut Edit, which: Blocks) {
+    if !edit.on {
+        toggle(edit);
+    }
+    edit.blocks = Some(which);
+    edit.block_drag = None;
+}
+
+/// Back to the standard blocks of a panel (a command calls this).
+pub fn reset_blocks(hud_state: &mut Hud, which: Blocks) {
+    match which {
+        Blocks::Country => hud_state.layout.tiles = None,
+        Blocks::Overview => hud_state.layout.overview = None,
+    }
+    hud_state.changed();
 }
 
 /// Turns the edit mode on or off (a command calls this).
@@ -189,6 +219,17 @@ pub fn show(
 ) -> Response {
     let mut out = Response::default();
     let resolved = hud_state.resolved(screen, sizes).clone();
+    // Editing blocks, the panels show as they will be, with no veil nor handles over them;
+    // only the map is kept from clicks.
+    if let Some(which) = edit.blocks {
+        ui.interact(
+            screen,
+            ui.make_persistent_id("hud-edit-veil"),
+            Sense::click_and_drag(),
+        );
+        block_editor(ui, screen, i18n, hud_state, edit, which, &mut out);
+        return out;
+    }
     // A veil over the map; it takes every click the panels and the toolbar do not.
     ui.painter()
         .rect_filled(screen, 0, Color32::from_black_alpha(110));
@@ -201,7 +242,7 @@ pub fn show(
     // The free area, and marking a new one by dragging over the map.
     if edit.marking {
         if veil.drag_started() {
-            edit.mark_from = veil.interact_pointer_pos();
+            edit.mark_from = ui.input(|i| i.pointer.press_origin());
         }
         if let (Some(a), Some(b)) = (edit.mark_from, ui.input(|i| i.pointer.interact_pos())) {
             let r = Rect::from_two_pos(a, b);
@@ -238,7 +279,7 @@ pub fn show(
     for (&p, &r) in &resolved.rects {
         let id = ui.make_persistent_id(("hud-edit-panel", p.key()));
         let handle = handles[&p];
-        let resp = ui.interact(r.union(handle), id, Sense::drag());
+        let resp = ui.interact(r.union(handle), id, Sense::click_and_drag());
         let dragging = edit.drag.is_some_and(|(d, _)| d == p);
         let outline = if dragging || resp.hovered() {
             color::ACCENT_HOVER
@@ -301,8 +342,16 @@ pub fn show(
             out.save = true;
         }
         let resp = resp.on_hover_cursor(egui::CursorIcon::Grab);
+        // A click opens the block editor of the panels that have blocks.
+        if resp.clicked() {
+            match p {
+                PanelId::Country => edit_blocks(edit, Blocks::Country),
+                PanelId::Outliner => edit_blocks(edit, Blocks::Overview),
+                _ => {}
+            }
+        }
         if resp.drag_started()
-            && let Some(at) = resp.interact_pointer_pos()
+            && let Some(at) = ui.input(|i| i.pointer.press_origin())
         {
             edit.drag = Some((p, at - r.min));
         }
@@ -417,6 +466,21 @@ fn toolbar(
         }
     });
 
+    ui.horizontal_wrapped(|ui| {
+        for (which, key) in [
+            (Blocks::Country, "hud-edit-tiles"),
+            (Blocks::Overview, "hud-edit-sections"),
+        ] {
+            if Button::secondary(&i18n.tr(key))
+                .size(ButtonSize::Small)
+                .show(ui)
+                .clicked()
+            {
+                edit_blocks(edit, which);
+            }
+        }
+    });
+
     bf_ui_kit::caption(ui, &i18n.tr("hud-free"));
     ui.horizontal_wrapped(|ui| {
         let mark = i18n.tr(if edit.marking {
@@ -484,4 +548,339 @@ fn toolbar(
     });
     let used = ui.min_rect().bottom() - top + space::LG * 2.0;
     ui.ctx().data_mut(|d| d.insert_temp(id, used));
+}
+
+// ---------------------------------------------------------------------------------------------
+// The block editor: the blocks in use above, in order, the ones left below. A block is dragged
+// to add it, take it out or move it; a click on one left adds it at the end.
+
+const CHIP: Vec2 = vec2(160.0, 34.0);
+const CHIP_GAP: f32 = 8.0;
+
+/// One block as the editor shows it.
+struct Chip {
+    key: &'static str,
+    icon: bf_ui_kit::Icon,
+    label: String,
+}
+
+fn chips(i18n: &I18n, which: Blocks) -> Vec<Chip> {
+    match which {
+        Blocks::Country => super::tiles::TILES
+            .iter()
+            .map(|t| Chip {
+                key: t.key,
+                icon: t.icon,
+                // The short name, whole in a block; the panel's tooltip keeps the long one.
+                label: i18n.tr(&format!("tile-short-{}", t.key)),
+            })
+            .collect(),
+        Blocks::Overview => super::tiles::SECTIONS
+            .iter()
+            .map(|(key, icon, name)| Chip {
+                key,
+                icon: *icon,
+                label: i18n.tr(name),
+            })
+            .collect(),
+    }
+}
+
+/// Columns, the most and fewest blocks, and how many lead in the large row.
+fn shape(which: Blocks) -> (usize, usize, usize, usize) {
+    use super::tiles::{COLS, MAX, MIN};
+    match which {
+        Blocks::Country => (COLS, MAX, MIN, COLS),
+        Blocks::Overview => (3, 3, 1, 0),
+    }
+}
+
+/// The rectangle of slot `i` of a grid starting at `origin`; rows after the first sit `split`
+/// lower (room for the label between the large row and the others).
+fn slot(origin: Pos2, cols: usize, i: usize, split: f32) -> Rect {
+    let (row, col) = (i / cols, i % cols);
+    let y = row as f32 * (CHIP.y + CHIP_GAP) + if row >= 1 { split } else { 0.0 };
+    Rect::from_min_size(origin + vec2(col as f32 * (CHIP.x + CHIP_GAP), y), CHIP)
+}
+
+/// The grid of `n` slots (at least one row).
+fn grid(origin: Pos2, cols: usize, n: usize, split: f32) -> Rect {
+    let rows = n.max(1).div_ceil(cols);
+    Rect::from_min_size(
+        origin,
+        vec2(
+            cols as f32 * (CHIP.x + CHIP_GAP) - CHIP_GAP,
+            rows as f32 * (CHIP.y + CHIP_GAP) - CHIP_GAP + if rows > 1 { split } else { 0.0 },
+        ),
+    )
+}
+
+fn paint_chip(ui: &Ui, r: Rect, chip: &Chip, lead: bool, faded: bool) {
+    let p = ui.painter();
+    let (fill, stroke) = if lead {
+        (color::ACCENT_SOFT, color::ACCENT)
+    } else {
+        (color::SURFACE_RAISED, color::BORDER_STRONG)
+    };
+    let alpha = if faded { 0.35 } else { 1.0 };
+    p.rect(
+        r,
+        radius::MD,
+        fill.gamma_multiply(alpha),
+        Stroke::new(1.0, stroke.gamma_multiply(alpha)),
+        egui::StrokeKind::Inside,
+    );
+    let icon = Rect::from_min_size(r.left_center() + vec2(8.0, -8.0), Vec2::splat(16.0));
+    bf_ui_kit::paint_icon(
+        ui,
+        chip.icon,
+        icon,
+        if lead {
+            color::ACCENT
+        } else {
+            color::TEXT_MUTED
+        }
+        .gamma_multiply(alpha),
+    );
+    let (g, _) = super::journal::one_line(
+        p,
+        &chip.label,
+        bf_ui_kit::theme::sans(size::SMALL),
+        color::TEXT.gamma_multiply(alpha),
+        r.right() - icon.right() - 14.0,
+    );
+    p.galley(
+        pos2(icon.right() + 6.0, r.center().y - g.size().y / 2.0),
+        g,
+        color::TEXT,
+    );
+}
+
+#[allow(clippy::too_many_arguments)]
+fn block_editor(
+    ui: &mut Ui,
+    screen: Rect,
+    i18n: &I18n,
+    hud_state: &mut Hud,
+    edit: &mut Edit,
+    which: Blocks,
+    out: &mut Response,
+) {
+    let (cols, max, min, lead) = shape(which);
+    let all = chips(i18n, which);
+    let used: Vec<&'static str> = match which {
+        Blocks::Country => hud_state.layout.tiles(),
+        Blocks::Overview => hud_state.layout.overview(),
+    };
+    let left: Vec<&Chip> = all.iter().filter(|c| !used.contains(&c.key)).collect();
+    let chip = |key: &str| all.iter().find(|c| c.key == key);
+
+    // The card: title and buttons, the blocks in use, the tray.
+    let pad = space::LG;
+    let inner_w = cols as f32 * (CHIP.x + CHIP_GAP) - CHIP_GAP;
+    let used_slots = (used.len() + 1).min(max);
+    let head_h = 64.0;
+    let caption_h = 22.0;
+    // The large row is labelled apart from the others.
+    let split = if lead > 0 { caption_h } else { 0.0 };
+    let used_grid_h = grid(Pos2::ZERO, cols, used_slots, split).height();
+    let tray_h = grid(Pos2::ZERO, cols, left.len(), 0.0).height();
+    let height = pad * 2.0 + head_h + caption_h * 2.0 + used_grid_h + space::LG + tray_h + 8.0;
+    let card = hud::clamp_into(
+        Rect::from_center_size(screen.center(), vec2(inner_w + pad * 2.0, height)),
+        screen,
+    );
+    bf_ui_kit::paint_overlay(ui, card);
+    ui.interact(
+        card,
+        ui.make_persistent_id(("hud-blocks", which as u8)),
+        Sense::click_and_drag(),
+    );
+    let body = card.shrink(pad);
+    {
+        let mut child = ui.new_child(egui::UiBuilder::new().max_rect(body));
+        let ui = &mut child;
+        ui.horizontal(|ui| {
+            bf_ui_kit::heading(
+                ui,
+                &i18n.tr(match which {
+                    Blocks::Country => "hud-blocks-country",
+                    Blocks::Overview => "hud-blocks-overview",
+                }),
+            );
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                if Button::primary(&i18n.tr("hud-done"))
+                    .size(ButtonSize::Small)
+                    .show(ui)
+                    .clicked()
+                {
+                    edit.blocks = None;
+                }
+                if Button::ghost(&i18n.tr("hud-blocks-reset"))
+                    .size(ButtonSize::Small)
+                    .show(ui)
+                    .clicked()
+                {
+                    reset_blocks(hud_state, which);
+                    out.save = true;
+                }
+            });
+        });
+        bf_ui_kit::small(
+            ui,
+            &i18n.tr(match which {
+                Blocks::Country => "hud-blocks-country-hint",
+                Blocks::Overview => "hud-blocks-overview-hint",
+            }),
+        );
+    }
+    let used_top = body.top() + head_h;
+    ui.painter().text(
+        pos2(body.left(), used_top),
+        Align2::LEFT_TOP,
+        i18n.tr(if lead > 0 {
+            "hud-blocks-lead"
+        } else {
+            "hud-blocks-used"
+        })
+        .to_uppercase(),
+        sans_semibold(size::CAPTION),
+        color::TEXT_MUTED,
+    );
+    let used_origin = pos2(body.left(), used_top + caption_h);
+    let used_zone = grid(used_origin, cols, used_slots, split).expand(CHIP_GAP);
+    if lead > 0 && used_slots > cols {
+        ui.painter().text(
+            pos2(body.left(), used_origin.y + CHIP.y + CHIP_GAP + 2.0),
+            Align2::LEFT_TOP,
+            i18n.tr("hud-blocks-rest").to_uppercase(),
+            sans_semibold(size::CAPTION),
+            color::TEXT_MUTED,
+        );
+    }
+    let tray_top = used_zone.bottom() + space::SM;
+    ui.painter().text(
+        pos2(body.left(), tray_top),
+        Align2::LEFT_TOP,
+        i18n.tr("hud-blocks-left").to_uppercase(),
+        sans_semibold(size::CAPTION),
+        color::TEXT_MUTED,
+    );
+    let tray_origin = pos2(body.left(), tray_top + caption_h);
+    let tray_zone = grid(tray_origin, cols, left.len(), 0.0).expand(CHIP_GAP);
+    if left.is_empty() {
+        ui.painter().text(
+            tray_origin,
+            Align2::LEFT_TOP,
+            i18n.tr("hud-blocks-left-none"),
+            bf_ui_kit::theme::sans(size::SMALL),
+            color::TEXT_FAINT,
+        );
+    }
+
+    let pointer = ui.input(|i| i.pointer.interact_pos());
+    let dragging = edit.block_drag.as_ref().map(|(k, _, _)| k.clone());
+    let mut new_list: Option<Vec<String>> = None;
+    let start_drag =
+        |edit: &mut Edit, resp: &egui::Response, key: &str, from_used: bool, r: Rect| {
+            if resp.drag_started()
+                && let Some(at) = ui.input(|i| i.pointer.press_origin())
+            {
+                edit.block_drag = Some((key.to_owned(), from_used, at - r.min));
+            }
+        };
+    // The blocks in use, the first ones in the large row.
+    for (i, key) in used.iter().enumerate() {
+        let Some(c) = chip(key) else { continue };
+        let r = slot(used_origin, cols, i, split);
+        let resp = ui
+            .interact(
+                r,
+                ui.make_persistent_id(("hud-block", *key)),
+                Sense::click_and_drag(),
+            )
+            .on_hover_cursor(egui::CursorIcon::Grab);
+        let name = c.label.clone();
+        resp.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, name.clone()));
+        paint_chip(ui, r, c, i < lead, dragging.as_deref() == Some(*key));
+        start_drag(edit, &resp, key, true, r);
+    }
+    // The tray.
+    for (i, c) in left.iter().enumerate() {
+        let r = slot(tray_origin, cols, i, 0.0);
+        let resp = ui
+            .interact(
+                r,
+                ui.make_persistent_id(("hud-block", c.key)),
+                Sense::click_and_drag(),
+            )
+            .on_hover_cursor(egui::CursorIcon::Grab);
+        let name = c.label.clone();
+        resp.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, name.clone()));
+        paint_chip(ui, r, c, false, dragging.as_deref() == Some(c.key));
+        start_drag(edit, &resp, c.key, false, r);
+        if resp.clicked() && used.len() < max {
+            let mut list: Vec<String> = used.iter().map(|k| (*k).to_owned()).collect();
+            list.push(c.key.to_owned());
+            new_list = Some(list);
+        }
+    }
+
+    // A block being dragged: where it would land, and the drop.
+    if let Some((key, from_used, grab)) = edit.block_drag.clone()
+        && let Some(at) = pointer
+    {
+        let mut list: Vec<String> = used
+            .iter()
+            .filter(|k| **k != key)
+            .map(|k| (*k).to_owned())
+            .collect();
+        let over_used = used_zone.contains(at);
+        let index = {
+            let col = ((at.x - used_origin.x) / (CHIP.x + CHIP_GAP))
+                .round()
+                .max(0.0) as usize;
+            // Below the large row the label's room does not count.
+            let mut y = at.y - used_origin.y;
+            if y >= CHIP.y + CHIP_GAP {
+                y = (y - split).max(CHIP.y + CHIP_GAP);
+            }
+            let row = (y / (CHIP.y + CHIP_GAP)).floor().max(0.0) as usize;
+            (row * cols + col.min(cols)).min(list.len())
+        };
+        if over_used && (from_used || used.len() < max) {
+            // The insertion mark before slot `index`.
+            let r = slot(used_origin, cols, index, split);
+            ui.painter().vline(
+                r.left() - CHIP_GAP / 2.0,
+                r.y_range(),
+                Stroke::new(3.0, color::ACCENT_HOVER),
+            );
+        }
+        if let Some(c) = chip(&key) {
+            paint_chip(ui, Rect::from_min_size(at - grab, CHIP), c, false, false);
+        }
+        if !ui.input(|i| i.pointer.any_down()) {
+            if over_used && (from_used || used.len() < max) {
+                list.insert(index, key.clone());
+                new_list = Some(list);
+            } else if from_used
+                && tray_zone
+                    .union(Rect::from_min_size(tray_origin, CHIP))
+                    .contains(at)
+                && used.len() > min
+            {
+                new_list = Some(list);
+            }
+            edit.block_drag = None;
+        }
+    }
+    if let Some(list) = new_list {
+        match which {
+            Blocks::Country => hud_state.layout.set_tiles(list),
+            Blocks::Overview => hud_state.layout.set_overview(list),
+        }
+        hud_state.changed();
+        out.save = true;
+    }
 }

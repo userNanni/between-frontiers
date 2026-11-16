@@ -10,6 +10,7 @@ use bf_client::screens::hud_edit::{self, Edit};
 use bf_i18n::{I18n, Locale};
 use egui::{Pos2, Rect, Vec2, vec2};
 use egui_kittest::Harness;
+use egui_kittest::kittest::{NodeT, Queryable};
 
 fn root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
@@ -19,7 +20,10 @@ fn root() -> PathBuf {
 fn sizes(w: f32, h: f32) -> BTreeMap<PanelId, Vec2> {
     let screen = Rect::from_min_size(Pos2::ZERO, vec2(w, h));
     [
-        (PanelId::Country, bf_client::screens::top_bar::corner_size()),
+        (
+            PanelId::Country,
+            bf_client::screens::top_bar::corner_size(15),
+        ),
         (
             PanelId::Time,
             bf_client::screens::top_bar::time_size(screen),
@@ -197,4 +201,133 @@ fn every_preset_fits_both_screens() {
             }
         }
     }
+}
+
+/// A harness with the edit mode on and the country figures' block editor open.
+fn block_harness() -> Harness<'static, State> {
+    let i18n = I18n::load(&root().join("assets/i18n"), Locale::PtBr).expect("i18n");
+    let mut edit = Edit::default();
+    hud_edit::edit_blocks(&mut edit, hud_edit::Blocks::Country);
+    let state = State {
+        i18n,
+        hud: Hud::default(),
+        edit,
+        saved: false,
+        screen: Rect::NOTHING,
+        themed: false,
+    };
+    let config = std::env::temp_dir().join(format!("bf-hud-blocks-{}", std::process::id()));
+    let mut h = Harness::builder()
+        .with_size(vec2(1600.0, 900.0))
+        .build_ui_state(
+            move |ui, s: &mut State| {
+                if !s.themed {
+                    bf_ui_kit::theme::install(ui.ctx());
+                    s.themed = true;
+                }
+                let screen = ui.ctx().content_rect();
+                s.screen = screen;
+                let sizes = sizes(screen.width(), screen.height());
+                let r = hud_edit::show(
+                    ui,
+                    screen,
+                    &s.i18n,
+                    &config,
+                    &mut s.hud,
+                    &sizes,
+                    &mut s.edit,
+                );
+                s.saved |= r.save;
+            },
+            state,
+        );
+    h.run_steps(2);
+    h
+}
+
+fn pointer_drag(h: &mut Harness<'_, State>, from: Pos2, to: Pos2) {
+    h.hover_at(from);
+    h.run_steps(1);
+    h.drag_at(from);
+    h.run_steps(1);
+    for k in 1..=8 {
+        h.hover_at(from + (to - from) * (k as f32 / 8.0));
+        h.run_steps(1);
+    }
+    h.drop_at(to);
+    h.run_steps(2);
+}
+
+fn button_rect(h: &Harness<'_, State>, label: &str) -> Rect {
+    h.get_all(egui_kittest::kittest::by().label(label))
+        .find(|n| n.accesskit_node().role() == egui::accesskit::Role::Button)
+        .unwrap_or_else(|| panic!("block {label}"))
+        .rect()
+}
+
+#[test]
+fn blocks_are_put_in_moved_and_taken_out_by_dragging() {
+    let mut h = block_harness();
+    assert_eq!(
+        h.state().hud.layout.tiles.as_ref(),
+        None,
+        "the standard set"
+    );
+    // The public debt from the tray to the head of the large row.
+    let debt = button_rect(&h, "Dívida pública");
+    let first = button_rect(&h, "Qualidade de vida");
+    pointer_drag(&mut h, debt.center(), first.left_center() + vec2(4.0, 0.0));
+    let tiles = h.state().hud.layout.tiles();
+    assert_eq!(tiles[0], "debt", "{tiles:?}");
+    assert_eq!(tiles.len(), 16);
+    assert!(h.state().saved);
+    // Inflation clicked in from the tray: it goes at the end.
+    let inflation = button_rect(&h, "Inflação");
+    h.hover_at(inflation.center());
+    h.run_steps(1);
+    h.get_all(egui_kittest::kittest::by().label("Inflação"))
+        .find(|n| n.accesskit_node().role() == egui::accesskit::Role::Button)
+        .unwrap()
+        .click();
+    h.run_steps(2);
+    assert_eq!(h.state().hud.layout.tiles().last(), Some(&"inflation"));
+    // The subjects out to the tray.
+    let subjects = button_rect(&h, "Súditos");
+    let tray = button_rect(&h, "Caixa do Tesouro");
+    pointer_drag(&mut h, subjects.center(), tray.center());
+    let tiles = h.state().hud.layout.tiles();
+    assert!(!tiles.contains(&"subjects"), "{tiles:?}");
+    assert_eq!(tiles.len(), 16);
+    // The panel takes a row more for the 16th and 17th blocks; back to standard undoes all.
+    assert!(
+        bf_client::screens::top_bar::corner_size(16).y
+            > bf_client::screens::top_bar::corner_size(15).y
+    );
+    hud_edit::reset_blocks(&mut h.state_mut().hud, hud_edit::Blocks::Country);
+    assert_eq!(h.state().hud.layout.tiles, None);
+    // Written and read back with the file.
+    let mut l = Layout::default();
+    l.set_tiles(vec!["debt".into(), "inflation".into(), "gone".into()]);
+    let back = Layout::parse(&ron::to_string(&l).unwrap()).unwrap();
+    assert_eq!(back.tiles(), vec!["debt", "inflation"]);
+}
+
+#[test]
+fn the_lens_picker_opens_toward_the_free_side() {
+    use bf_client::screens::game::lens_popup;
+    let screen = Rect::from_min_size(Pos2::ZERO, vec2(1600.0, 900.0));
+    let size = vec2(440.0, 300.0);
+    // Bottom left: up, aligned on the left.
+    let b = Rect::from_min_size(egui::pos2(12.0, 848.0), vec2(200.0, 40.0));
+    let p = lens_popup(b, size, screen);
+    assert!(p.bottom() <= b.top() && p.left() == b.left(), "{p:?}");
+    // Bottom right: up and to the left.
+    let b = Rect::from_min_size(egui::pos2(1388.0, 848.0), vec2(200.0, 40.0));
+    let p = lens_popup(b, size, screen);
+    assert!(p.bottom() <= b.top() && p.right() == b.right(), "{p:?}");
+    // Top right: down and to the left.
+    let b = Rect::from_min_size(egui::pos2(1388.0, 80.0), vec2(200.0, 40.0));
+    let p = lens_popup(b, size, screen);
+    assert!(p.top() >= b.bottom() && p.right() == b.right(), "{p:?}");
+    assert!(screen.contains_rect(p));
 }

@@ -276,6 +276,15 @@ pub struct Layout {
     /// By window key.
     #[serde(default)]
     pub windows: BTreeMap<String, WindowPlace>,
+    /// The blocks of the country figures, in order; `None` is the standard set.
+    #[serde(default)]
+    pub tiles: Option<Vec<String>>,
+    /// The sections of the overview, in order; `None` is all of them.
+    #[serde(default)]
+    pub overview: Option<Vec<String>>,
+    /// The map mode picker kept open as a panel; folded into a button otherwise.
+    #[serde(default)]
+    pub map_modes_open: bool,
 }
 
 impl Default for Layout {
@@ -320,13 +329,66 @@ impl Layout {
                 );
             }
         }
+        // The compact preset keeps the two first rows of figures.
+        let tiles = (preset == Preset::Compact).then(|| {
+            crate::screens::tiles::DEFAULT[..crate::screens::tiles::COLS * 2]
+                .iter()
+                .map(|k| (*k).to_owned())
+                .collect()
+        });
         Self {
             version: VERSION,
             preset,
             panels,
             free,
             windows: BTreeMap::new(),
+            tiles,
+            overview: None,
+            map_modes_open: false,
         }
+    }
+
+    /// The blocks of the country figures, in order.
+    pub fn tiles(&self) -> Vec<&'static str> {
+        use crate::screens::tiles;
+        match &self.tiles {
+            Some(list) => list
+                .iter()
+                .filter_map(|k| tiles::def(k).map(|d| d.key))
+                .take(tiles::MAX)
+                .collect(),
+            None => tiles::DEFAULT.to_vec(),
+        }
+    }
+
+    pub fn set_tiles(&mut self, keys: Vec<String>) {
+        self.tiles = (keys
+            .iter()
+            .map(String::as_str)
+            .ne(crate::screens::tiles::DEFAULT))
+        .then_some(keys);
+        self.preset = Preset::Custom;
+    }
+
+    /// The sections of the overview, in order.
+    pub fn overview(&self) -> Vec<&'static str> {
+        use crate::screens::tiles::SECTIONS;
+        match &self.overview {
+            Some(list) => list
+                .iter()
+                .filter_map(|k| SECTIONS.iter().find(|s| s.0 == k).map(|s| s.0))
+                .collect(),
+            None => SECTIONS.iter().map(|s| s.0).collect(),
+        }
+    }
+
+    pub fn set_overview(&mut self, keys: Vec<String>) {
+        let all: Vec<&str> = crate::screens::tiles::SECTIONS
+            .iter()
+            .map(|s| s.0)
+            .collect();
+        self.overview = (keys.iter().map(String::as_str).ne(all)).then_some(keys);
+        self.preset = Preset::Custom;
     }
 
     pub fn place(&self, p: PanelId) -> Placement {
@@ -352,6 +414,19 @@ impl Layout {
     /// Fills what an older file lacks; drops panels this version does not know.
     pub fn migrate(mut self) -> Self {
         self.panels.retain(|k, _| PanelId::from_key(k).is_some());
+        // Blocks this version does not know drop out; an empty list is the standard set.
+        if let Some(list) = &mut self.tiles {
+            list.retain(|k| crate::screens::tiles::def(k).is_some());
+            if list.is_empty() {
+                self.tiles = None;
+            }
+        }
+        if let Some(list) = &mut self.overview {
+            list.retain(|k| crate::screens::tiles::SECTIONS.iter().any(|s| s.0 == k));
+            if list.is_empty() {
+                self.overview = None;
+            }
+        }
         for p in PanelId::ALL {
             self.panels
                 .entry(p.key().to_owned())

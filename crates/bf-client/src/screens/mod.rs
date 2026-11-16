@@ -16,6 +16,7 @@ pub mod pick;
 pub mod research;
 pub mod saves;
 pub mod settings;
+pub mod tiles;
 pub mod top_bar;
 
 use egui::{Rect, Ui, UiBuilder};

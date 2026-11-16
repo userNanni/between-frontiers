@@ -157,10 +157,10 @@ fn walk_through_the_screens() {
     h.key_press(egui::Key::Escape);
     h.run_steps(2);
     // Transport met in each state, live from the simulation.
-    h.get_by_label("Infra").click();
+    lens(&mut h, "Infra");
     h.run_steps(3);
     shot(&mut h, "06j-modo-transporte");
-    h.get_by_label("Político").click();
+    lens(&mut h, "Político");
     h.run_steps(2);
     h.run_steps(2);
     h.get_by_label("Menu (Esc)").click();
@@ -259,23 +259,23 @@ fn walk_through_the_screens() {
         view.camera = None;
     }
     h.run_steps(2);
-    h.get_by_label("Recursos").click();
+    lens(&mut h, "Recursos");
     h.run_steps(2);
-    h.get_by_label("Cobre").click();
+    lens(&mut h, "Cobre");
     h.run_steps(3);
     shot(&mut h, "06f-modo-cobre");
-    h.get_by_label("Bauxita").click();
+    lens(&mut h, "Bauxita");
     h.run_steps(3);
     shot(&mut h, "06g-modo-bauxita");
-    h.get_by_label("Clima").click();
+    lens(&mut h, "Clima");
     h.run_steps(3);
     shot(&mut h, "06h-modo-clima");
-    h.get_by_label("Agro").click();
+    lens(&mut h, "Agro");
     h.run_steps(2);
-    h.get_by_label("Cafezal").click();
+    lens(&mut h, "Cafezal");
     h.run_steps(3);
     shot(&mut h, "06i-modo-cafe");
-    h.get_by_label("Político").click();
+    lens(&mut h, "Político");
     h.run_steps(2);
 
     // 6k. A campaign fifteen years in: the HUD and the country panel read the simulation, not the
@@ -929,7 +929,7 @@ fn modular_hud() {
 
     // The overview to the right edge, the map modes to the bottom middle.
     drag(&mut h, egui::pos2(60.0, 154.0), egui::pos2(1350.0, 300.0));
-    drag(&mut h, egui::pos2(200.0, 860.0), egui::pos2(840.0, 860.0));
+    drag(&mut h, egui::pos2(100.0, 868.0), egui::pos2(740.0, 868.0));
     shot(&mut h, "32-hud-edicao-arrastado");
     h.get_by_label("Concluir").click();
     h.run_steps(3);
@@ -990,6 +990,205 @@ fn modular_hud() {
         en.run_steps(3);
         shot(&mut en, &format!("37-hud-{name}-edit-en-1280"));
     }
+
+    let _ = std::fs::remove_dir_all(&user);
+}
+
+/// The rect of the button labelled `label`.
+fn button_at(h: &Harness<'_, App>, label: &str) -> egui::Rect {
+    h.get_all(egui_kittest::kittest::by().label(label))
+        .find(|n| n.accesskit_node().role() == egui::accesskit::Role::Button)
+        .unwrap_or_else(|| panic!("button {label}"))
+        .rect()
+}
+
+/// The country figures arranged by blocks: the standard panel, the block editor with its tray,
+/// fiscal figures dragged to the large row, a click on a block, the overview's sections, and the
+/// same in English at 1280 × 720.
+#[test]
+#[ignore = "needs a GPU (or software Vulkan) and the generated map; run with --ignored"]
+fn country_figure_blocks() {
+    let user = std::env::temp_dir().join(format!("bf-shots-tiles-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&user);
+    let session = advanced_session(laplace_schelling::calendar::Date::new(1940, 3, 1));
+    let bra = write_campaign(&user, &session, "Brasil 1940", "BRA", &["works-large"]);
+    let open = |h: &mut Harness<'_, App>| {
+        let ctx = h.ctx.clone();
+        h.state_mut().apply(Transition::Game(bra.clone()), &ctx);
+        h.run_steps(4);
+    };
+    let pt = user.join("pt");
+    let mut h = harness_sized(pt.clone(), "pt-BR", egui::vec2(1600.0, 900.0));
+    open(&mut h);
+    shot(&mut h, "40-numeros-padrao");
+
+    // The editor, from the edit mode's toolbar.
+    h.key_press(egui::Key::F8);
+    h.run_steps(2);
+    h.get_by_label("Editar os números do país").click();
+    h.run_steps(3);
+    shot(&mut h, "41-editor-de-blocos");
+
+    // Debt, inflation and balance to the head of the large row, in that order.
+    for (k, name) in ["Dívida pública", "Inflação", "Saldo anual"]
+        .into_iter()
+        .enumerate()
+    {
+        let from = button_at(&h, name).center();
+        let used: Vec<egui::Rect> = {
+            let layout = bf_client::hud::Layout::load(&bf_client::hud::file(&pt));
+            let first = layout.tiles()[k];
+            let label = h.state().shared.i18n.tr(&format!("tile-short-{first}"));
+            vec![button_at(&h, &label)]
+        };
+        drag(&mut h, from, used[0].left_center() + egui::vec2(4.0, 0.0));
+    }
+    shot(&mut h, "42-editor-fiscal");
+    let layout = bf_client::hud::Layout::load(&bf_client::hud::file(&pt));
+    assert_eq!(&layout.tiles()[..3], &["debt", "inflation", "balance"]);
+    h.get_by_label("Concluir").click();
+    h.run_steps(2);
+
+    // The overview's sections: pinned agendas first.
+    h.get_by_label("Editar as seções do acompanhamento").click();
+    h.run_steps(3);
+    let pinned = button_at(&h, "Agendas fixadas").center();
+    let works = button_at(&h, "Obras").left_center() + egui::vec2(4.0, 0.0);
+    drag(&mut h, pinned, works);
+    shot(&mut h, "43-editor-secoes");
+    h.get_by_label("Concluir").click();
+    h.run_steps(2);
+    h.get_by_label("Concluir").click();
+    h.run_steps(3);
+    shot(&mut h, "44-numeros-fiscais");
+
+    // A click on the debt opens money and debt.
+    h.get_all(egui_kittest::kittest::by().label_contains("Dívida pública:"))
+        .next()
+        .expect("debt block")
+        .click();
+    h.run_steps(4);
+    shot(&mut h, "45-clique-divida");
+    h.key_press(egui::Key::Escape);
+    h.run_steps(2);
+    let arranged = std::fs::read_to_string(bf_client::hud::file(&pt)).unwrap();
+
+    // English, 1280 × 720.
+    let dir = user.join("en");
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(bf_client::hud::file(&dir), &arranged).unwrap();
+    let mut en = harness_sized(dir, "en", egui::vec2(1280.0, 720.0));
+    open(&mut en);
+    shot(&mut en, "46-figures-fiscal-en-1280");
+    en.key_press(egui::Key::F8);
+    en.run_steps(2);
+    en.get_by_label("Edit the country figures").click();
+    en.run_steps(3);
+    shot(&mut en, "47-blocks-editor-en-1280");
+
+    let _ = std::fs::remove_dir_all(&user);
+}
+
+/// Clicks the lens `label`, opening the folded map mode picker first when it is closed.
+fn lens(h: &mut Harness<'_, App>, label: &str) {
+    if h.query_all(egui_kittest::kittest::by().label(label))
+        .next()
+        .is_none()
+    {
+        h.get_all(egui_kittest::kittest::by().label_contains("Modo do mapa:"))
+            .next()
+            .expect("map mode button")
+            .click();
+        h.run_steps(2);
+    }
+    h.get_by_label(label).click();
+}
+
+/// The map mode picker folded into a button: the lens in use on it, open, open from another
+/// corner, kept open, and in English at 1280 × 720.
+#[test]
+#[ignore = "needs a GPU (or software Vulkan) and the generated map; run with --ignored"]
+fn lens_picker() {
+    let user = std::env::temp_dir().join(format!("bf-shots-lens-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&user);
+    let session = advanced_session(laplace_schelling::calendar::Date::new(1940, 3, 1));
+    let bra = write_campaign(&user, &session, "Brasil 1940", "BRA", &["works-large"]);
+    let open = |h: &mut Harness<'_, App>| {
+        let ctx = h.ctx.clone();
+        h.state_mut().apply(Transition::Game(bra.clone()), &ctx);
+        h.run_steps(4);
+    };
+    let pt = user.join("pt");
+    let mut h = harness_sized(pt.clone(), "pt-BR", egui::vec2(1600.0, 900.0));
+    open(&mut h);
+    // Copper chosen: the button names it, and folds back.
+    lens(&mut h, "Recursos");
+    h.run_steps(2);
+    shot(&mut h, "50-lente-aberta");
+    lens(&mut h, "Cobre");
+    h.run_steps(3);
+    shot(&mut h, "51-lente-botao-cobre");
+    assert!(
+        h.query_all(egui_kittest::kittest::by().label("Cobre"))
+            .next()
+            .is_none(),
+        "the picker folded after the choice"
+    );
+    // Esc folds it without a change.
+    lens(&mut h, "Clima");
+    h.run_steps(2);
+    lens(&mut h, "Político");
+    h.run_steps(2);
+
+    // The button in the lower right corner opens up and to the left.
+    let mut layout = bf_client::hud::Layout::default();
+    layout.set_place(
+        bf_client::hud::PanelId::MapModes,
+        bf_client::hud::Placement {
+            anchor: bf_client::hud::Anchor::BottomRight,
+            offset: [-12.0, -12.0],
+            visible: true,
+        },
+    );
+    let corner = user.join("corner");
+    std::fs::create_dir_all(&corner).unwrap();
+    layout.save(&bf_client::hud::file(&corner)).unwrap();
+    let mut c = harness_sized(corner, "pt-BR", egui::vec2(1600.0, 900.0));
+    open(&mut c);
+    c.get_all(egui_kittest::kittest::by().label_contains("Modo do mapa:"))
+        .next()
+        .unwrap()
+        .click();
+    c.run_steps(3);
+    shot(&mut c, "52-lente-canto-direito");
+    c.key_press(egui::Key::Escape);
+    c.run_steps(2);
+    assert!(
+        c.query_all(egui_kittest::kittest::by().label("Recursos"))
+            .next()
+            .is_none(),
+        "Esc folds the picker"
+    );
+    // Kept open, as the panel always was.
+    c.get_all(egui_kittest::kittest::by().label_contains("Modo do mapa:"))
+        .next()
+        .unwrap()
+        .click();
+    c.run_steps(2);
+    c.get_by_label("Manter aberto").click();
+    c.run_steps(3);
+    shot(&mut c, "53-lente-mantida-aberta");
+
+    // English, 1280 × 720.
+    let mut en = harness_sized(user.join("en"), "en", egui::vec2(1280.0, 720.0));
+    open(&mut en);
+    shot(&mut en, "54-lens-button-en-1280");
+    en.get_all(egui_kittest::kittest::by().label_contains("Map mode:"))
+        .next()
+        .unwrap()
+        .click();
+    en.run_steps(3);
+    shot(&mut en, "55-lens-open-en-1280");
 
     let _ = std::fs::remove_dir_all(&user);
 }
