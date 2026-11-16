@@ -906,6 +906,7 @@ pub fn build(cat: &Catalogue, inp: &Inputs) -> Economy {
             gov_workers: 0,
             queue: Vec::new(),
             laws: Default::default(),
+            money: super::money::Money::start(fx(target_gdp)),
             budget: super::state::Budget {
                 revenue_avg: revenue,
                 ..Default::default()

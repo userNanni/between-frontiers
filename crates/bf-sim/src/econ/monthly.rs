@@ -392,6 +392,16 @@ pub(crate) const CAPITAL_YEARS: i64 = 2;
 const BUILDING_WORK: [&str; 4] = ["services", "cement", "timber", "steel"];
 /// The least yearly return worth building for.
 const MIN_RETURN: Fixed = milli(50);
+/// Above the floor, a project must beat the real rate on the country's bonds by this, up to
+/// the ceiling.
+const RETURN_SPREAD: Fixed = milli(20);
+const MAX_HURDLE: Fixed = milli(250);
+
+/// The least return a project needs in market `m`: tight money and risky debt stop building.
+pub fn hurdle(m: &super::Market) -> Fixed {
+    let real = super::money::real_rate(m) / 100;
+    (real + RETURN_SPREAD).clamp(MIN_RETURN, MAX_HURDLE)
+}
 /// Most new levels a market starts in a month.
 const MAX_BUILDS: usize = 400;
 /// A quarter of losses closes a level.
@@ -639,7 +649,7 @@ impl System<GameWorld> for Investment {
                         continue;
                     }
                     let ret = profit * 52 / cost;
-                    if ret < MIN_RETURN {
+                    if ret < hurdle(m) {
                         continue;
                     }
                     // The building itself becomes points at the base price of construction;

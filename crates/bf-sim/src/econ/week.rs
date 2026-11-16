@@ -34,12 +34,6 @@ pub(crate) const STATE_BASKET: [(&str, i64); 9] = [
     ("warships", 100),
     ("military_aircraft", 50),
 ];
-/// The money autopilot aims at plants running at 95% and prices within 10% of base.
-const MONEY_TARGET_UTILIZATION: Fixed = milli(950);
-const MONEY_PRICE_CEILING: Fixed = milli(1100);
-const MONEY_EASING: Fixed = milli(500);
-const MONEY_TIGHTENING: Fixed = milli(300);
-
 /// Share of the investment pool spent each week on upkeep and housing.
 pub(crate) const UPKEEP_SHARE: Fixed = milli(30);
 /// Upkeep buys mostly the work of the building trade, and some machines and tools.
@@ -762,7 +756,7 @@ impl System<GameWorld> for Week {
         }
     }
 
-    fn apply(&self, _ctx: &TickCtx, changes: WeekChanges, world: &mut GameWorld) {
+    fn apply(&self, ctx: &TickCtx, changes: WeekChanges, world: &mut GameWorld) {
         let cat = &*self.cat;
         let econ = &mut world.econ;
         let mut markets = changes.markets;
@@ -832,49 +826,8 @@ impl System<GameWorld> for Week {
                 m.pool -= q * m.buy_ratio[gi as usize] * m.price[gi as usize];
             }
         }
-        // Stand-in for a central bank until currencies exist: money is created when plants
-        // stand idle and withdrawn when prices run hot, so nominal demand follows capacity.
-        let nm = markets.len();
-        let mut capacity_value = vec![Fixed::ZERO; nm];
-        let mut used_value = vec![Fixed::ZERO; nm];
-        for r in econ.regions.iter() {
-            let mi = r.market as usize;
-            for p in &r.plants {
-                let method = &cat.buildings[p.kind as usize].methods[p.method as usize];
-                let v: Fixed = method
-                    .outputs
-                    .iter()
-                    .map(|(g, q)| *q * cat.goods[*g as usize].base_price)
-                    .sum::<Fixed>()
-                    * r.tfp_for(&cat.buildings[p.kind as usize])
-                    * p.levels;
-                capacity_value[mi] += v;
-                used_value[mi] += v * p.utilization;
-            }
-        }
-        for (mi, m) in markets.iter_mut().enumerate() {
-            let utilization = fill(used_value[mi], capacity_value[mi]);
-            let mut traded_base = Fixed::ZERO;
-            let mut traded_now = Fixed::ZERO;
-            for gi in 0..cat.goods.len() {
-                let q = m.supply[gi].min(m.demand[gi]);
-                traded_base += q * cat.goods[gi].base_price;
-                traded_now += q * m.price[gi];
-            }
-            let index = if traded_base > Fixed::ZERO {
-                traded_now / traded_base
-            } else {
-                Fixed::ONE
-            };
-            let gdp_week = m.gdp_last_year.mul_ratio(1, 52);
-            let slack = (MONEY_TARGET_UTILIZATION - utilization).max(Fixed::ZERO);
-            let heat = (index - MONEY_PRICE_CEILING).max(Fixed::ZERO);
-            // Money is withdrawn only from a treasury in surplus.
-            let change = (gdp_week * (slack * MONEY_EASING - heat * MONEY_TIGHTENING))
-                .max(-m.treasury.max(Fixed::ZERO));
-            m.treasury += change;
-            m.budget.issued = change;
-        }
+        // How busy each market was, for its central bank (`money::week`).
+        let activity = super::money::activity(cat, &econ.regions, &markets);
         for (r, l) in econ.regions.iter_mut().zip(changes.local) {
             r.local = l;
         }
@@ -909,6 +862,8 @@ impl System<GameWorld> for Week {
         }
         econ.markets = markets;
         econ.world_price = changes.world_price;
+        // Prices, central banks and bonds: the treasury's gap becomes debt.
+        super::money::week(econ, &activity, ctx.date.year);
         // Finished works start running.
         for p in done {
             let r = &mut econ.regions[p.region as usize];

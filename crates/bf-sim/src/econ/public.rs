@@ -68,21 +68,38 @@ const AUSTERITY_FLOOR: Fixed = milli(250);
 pub const PUPILS_PER_PERSON: Fixed = milli(200);
 pub const CARE_PER_PERSON: Fixed = milli(200);
 
-/// Share of the planned purchases the state makes, given its balance.
+/// Interest takes this share of revenue before purchases are cut, point for point.
+const INTEREST_COMFORT: Fixed = milli(100);
+
+/// Share of the planned purchases the state makes, given its balance (cash it could not
+/// borrow) and the share of revenue its interest takes.
 pub fn austerity(m: &Market) -> Fixed {
-    if m.treasury >= Fixed::ZERO || m.budget.revenue_avg <= Fixed::ZERO {
+    if m.budget.revenue_avg <= Fixed::ZERO {
         return Fixed::ONE;
     }
-    let depth = -m.treasury / (m.budget.revenue_avg * 26);
-    (Fixed::ONE - depth).max(AUSTERITY_FLOOR)
+    let depth = if m.treasury < Fixed::ZERO {
+        -m.treasury / (m.budget.revenue_avg * 26)
+    } else {
+        Fixed::ZERO
+    };
+    let burden = (super::money::interest_share(m) - INTEREST_COMFORT).max(Fixed::ZERO);
+    (Fixed::ONE - depth - burden).max(AUSTERITY_FLOOR)
 }
 
-/// Money the state means to spend on goods this week: a share of its payroll, plus a tenth of
-/// whatever the treasury holds beyond twice its reserve (money the stand-in for a central bank
-/// issued and public works did not use).
+/// Money the state means to spend on goods this week. The budget rule: revenue plus the
+/// deficit the debt rule allows (`money::deficit_room`), minus payroll, public services,
+/// public works and interest; at least a share of its payroll, cut when the treasury could
+/// not borrow or interest weighs. On top, a tenth of whatever the treasury holds beyond twice
+/// its reserve.
 pub fn goods_budget(m: &Market) -> Fixed {
-    let surplus = (m.treasury - m.budget.revenue_avg * (2 * RESERVE_WEEKS)).max(Fixed::ZERO);
-    m.budget.payroll * GOODS_PER_PAYROLL * austerity(m) + surplus * SURPLUS_SPENDING
+    let b = &m.budget;
+    let surplus = (m.treasury - b.revenue_avg * (2 * RESERVE_WEEKS)).max(Fixed::ZERO);
+    let planned = b.revenue_avg + super::money::deficit_room(m)
+        - b.payroll
+        - b.services
+        - b.works
+        - b.interest;
+    (b.payroll * GOODS_PER_PAYROLL).max(planned) * austerity(m) + surplus * SURPLUS_SPENDING
 }
 
 /// Building indices the state works with.
@@ -192,7 +209,9 @@ fn market_works(
         .map(|p| p.left * price)
         .sum();
     let reserve = m.budget.revenue_avg * RESERVE_WEEKS;
-    let budget = m.treasury - reserve - committed;
+    // Cash above the reserve, plus what the state may borrow for works while debt and rates
+    // are low.
+    let budget = m.treasury - reserve - committed + super::money::borrowing_room(m);
     if budget <= Fixed::ZERO || regions.is_empty() {
         return Vec::new();
     }
@@ -348,17 +367,37 @@ fn market_works(
     out
 }
 
-/// The tax rule for the coming year: the historical rates times the fiscal correction, which
-/// rises a step after a year deep in deficit and falls a step after a large surplus.
+/// Bounds of the fiscal correction.
+const ADJUST_FLOOR: Fixed = milli(600);
+pub const ADJUST_CEILING: Fixed = milli(2200);
+
+/// The tax rule for the coming year: the historical rates times the fiscal correction. It
+/// answers to the cost of the debt: a step up when interest takes more than 12 % of revenue,
+/// two when it takes more than a quarter or the treasury could not borrow (cash below zero),
+/// and a step down with little debt, cheap interest and cash half again above the reserve.
 pub fn yearly_taxes(m: &mut Market, year: i32) {
+    let interest = super::money::interest_share(m);
+    let debt_ratio = if m.gdp_last_year > Fixed::ZERO {
+        m.budget.debt / m.gdp_last_year
+    } else {
+        Fixed::ZERO
+    };
     let b = &mut m.budget;
     let yearly = b.revenue_avg * 52;
     if yearly > Fixed::ZERO {
-        if m.treasury < -yearly.mul_ratio(1, 4) {
-            b.adjust = (b.adjust + milli(50)).min(milli(1600));
-        } else if m.treasury > yearly.mul_ratio(1, 2) {
-            b.adjust = (b.adjust - milli(50)).max(milli(600));
-        }
+        let step = if interest > milli(250) || m.treasury < Fixed::ZERO {
+            milli(100)
+        } else if interest > milli(120) {
+            milli(50)
+        } else if interest < milli(40)
+            && debt_ratio < milli(400)
+            && m.treasury > yearly.mul_ratio(3, 8)
+        {
+            -milli(50)
+        } else {
+            Fixed::ZERO
+        };
+        b.adjust = (b.adjust + step).clamp(ADJUST_FLOOR, ADJUST_CEILING);
     }
     if b.tax_auto {
         let base = historical_rates(year);
@@ -386,17 +425,23 @@ mod tests {
     }
 
     #[test]
-    fn a_deficit_raises_the_rule_and_a_surplus_lowers_it() {
+    fn the_cost_of_debt_raises_the_rule_and_a_surplus_lowers_it() {
         let mut m = Market::empty(0);
         m.budget.revenue_avg = Fixed::from_int(100);
-        m.treasury = Fixed::from_int(-2000);
+        m.budget.interest = Fixed::from_int(15);
         yearly_taxes(&mut m, 1950);
         assert_eq!(m.budget.adjust, milli(1050));
         assert!(m.budget.tax_rates[0] > historical_rates(1950)[0]);
+        // Cash it could not borrow counts twice.
+        m.budget.interest = Fixed::ZERO;
+        m.treasury = Fixed::from_int(-10);
+        yearly_taxes(&mut m, 1950);
+        assert_eq!(m.budget.adjust, milli(1150));
         m.treasury = Fixed::from_int(5000);
         yearly_taxes(&mut m, 1950);
         yearly_taxes(&mut m, 1950);
-        assert_eq!(m.budget.adjust, milli(950));
+        yearly_taxes(&mut m, 1950);
+        assert_eq!(m.budget.adjust, milli(1000));
         // Rates the player set are kept.
         m.budget.tax_auto = false;
         m.budget.tax_rates = [milli(10); TAX_CLASSES];
@@ -414,5 +459,9 @@ mod tests {
         assert_eq!(goods_budget(&m), Fixed::from_int(30));
         m.treasury = Fixed::from_int(-100_000);
         assert_eq!(goods_budget(&m), Fixed::from_int(15));
+        // Interest above a tenth of revenue cuts purchases too.
+        m.treasury = Fixed::ZERO;
+        m.budget.interest = Fixed::from_int(30);
+        assert_eq!(goods_budget(&m), Fixed::from_int(48));
     }
 }
