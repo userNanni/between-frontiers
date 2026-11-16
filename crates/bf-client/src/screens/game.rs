@@ -20,7 +20,7 @@ pub struct State {
     menu_open: bool,
     rules: bf_sim::game::Rules,
     research_open: bool,
-    research_era: Option<u8>,
+    research_camera: Option<super::research::TreeCamera>,
     last_autosave: laplace_schelling::calendar::Date,
 }
 
@@ -57,7 +57,7 @@ impl State {
             menu_open: false,
             rules: data.rules(),
             research_open: false,
-            research_era: None,
+            research_camera: None,
         };
         if !path.is_file() {
             state.sim.save(path, state.save.meta.name.clone())?;
@@ -134,10 +134,13 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
         if response.clicked_sea {
             state.selected = None;
         }
-        if let (Some(id), Some(pos)) = (
-            response.hovered_province,
-            ui.input(|i| i.pointer.hover_pos()),
-        ) && let Some((state_name, owner)) = world.place_name(id)
+        // Nothing of the map shows through the research screen.
+        if !state.research_open
+            && let (Some(id), Some(pos)) = (
+                response.hovered_province,
+                ui.input(|i| i.pointer.hover_pos()),
+            )
+            && let Some((state_name, owner)) = world.place_name(id)
         {
             let owner = owner.map(names).unwrap_or_else(|| i18n.tr("map-unowned"));
             let extra = world.provinces[id as usize - 1].state.and_then(|s| {
@@ -201,9 +204,9 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
     if state.research_open
         && let (Some(tree), Some(view)) = (&state.rules.tree, &snap.research)
     {
-        let era = state
-            .research_era
-            .get_or_insert_with(|| super::research::current_era(snap.date.year));
+        let camera = state.research_camera.get_or_insert_with(|| {
+            super::research::TreeCamera::new(super::research::current_era(snap.date.year))
+        });
         let res = super::research::show(
             ui,
             rect,
@@ -211,7 +214,7 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
             tree,
             &state.rules.catalogue,
             view,
-            era,
+            camera,
         );
         if res.close {
             state.research_open = false;

@@ -259,6 +259,9 @@ Existe a partir do primeiro PR com código e roda toda noite em Linux e Windows.
 | 5. Guerra | Frentes sobre a logística definida na fase 1 | Guerra mundial e paz negociada como sistema próprio |
 | 6. IA estratégica | Países que interpretam seu papel | — |
 
+Toda fase fecha comparada com o mod Cold War Era do Victoria 3 (e com o Tech & Res): o que eles
+têm, o que temos, o que fazer com a diferença. Ver `benchmarks.pt-BR.md`.
+
 Dentro da economia, a ordem é: primeiro o tick que fecha preço e zera, depois estoque, depois
 moeda. Um de cada vez, cada um com o benchmark verde.
 
@@ -281,6 +284,13 @@ O teste de 100 anos da fase 1 fecha determinístico: população 2,1 → 7,6 bil
 | Sem regime monetário internacional | Padrão-ouro em 1925 (o Reino Unido volta ao ouro em 1925), saída em 1931–33, Bretton Woods de 1944 a 1971 (dólar a US$ 35 a onça, FMI e Banco Mundial), choque Nixon e câmbio flutuante a partir de 1973, euro em 1999; moeda de reserva barateia a dívida de quem a emite | 4 |
 | Sem estoques: falta e excesso se resolvem no mesmo tick | Estoques por mercado e reservas estratégicas (petróleo, grãos) | 4 |
 | HUD mostra dados de 1925, não da simulação | Barra superior e telas de economia lendo o estado do mercado | 2 |
+| Transporte e eletricidade valem no país inteiro: uma ferrovia em São Paulo atende uma mina no Amazonas | Bem com alcance (região, mercado, mundo). Transporte (ferrovia, estrada, porto) e, até a rede nacional, eletricidade são da região, com parte da sobra passando a vizinhas ligadas. Sem transporte local a indústria produz menos e paga para chegar ao mercado (vende abaixo, compra acima do preço nacional). A fila de obras leva ferrovia e estrada aonde falta; lente de transporte no mapa | 3 |
+| Sem mídia | Imprensa, rádio, TV e internet como edifícios e serviço consumido; a mídia pesa na opinião, na propaganda e na censura | 3 |
+| Saúde só pela tecnologia; colônias paradas | Remédios e hospitais ligados às leis de saúde; descolonização como movimento político persistente | 3 |
+| Petróleo refinado vira um combustível só | Refino em frações: óleo pesado (navios, usinas), leves (gasolina, diesel, querosene), nafta para a petroquímica e lubrificantes; craqueamento térmico e catalítico mudam a proporção | 4 |
+| Componentes eletrônicos são um bem só | Semicondutores separados dos componentes, com fábrica cara e poucos países capazes; baterias e cabos como bens próprios (veículo elétrico, rede) | 4 |
+| Informática só acelera a pesquisa | Serviços digitais (datacenter, software) como insumo das empresas, com ganho de produtividade para quem usa | 4 |
+| Água não é recurso | Água por região para irrigação, hidrelétrica e cidades, com escassez | 4 |
 
 ### Pesquisa e maturidade tecnológica
 
