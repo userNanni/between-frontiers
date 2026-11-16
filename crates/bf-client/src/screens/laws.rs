@@ -568,13 +568,17 @@ fn stance(ui: &mut Ui, i18n: &I18n, view: &LawsView, s: &Stance) {
                 "law-effect-{}",
                 bf_sim::politics::effect_kind(t.effect).key
             ));
-            // weight × how far the effect moves = term.
-            let sum = format!(
-                "{} × {} = {}",
-                signed_int(t.weight.into()),
-                points(i18n, t.delta.into()),
+            // weight × how far the effect moves = term, or the term alone.
+            let sum = if t.weight == 0 {
                 points(i18n, t.value)
-            );
+            } else {
+                format!(
+                    "{} × {} = {}",
+                    signed_int(t.weight.into()),
+                    points(i18n, t.delta.into()),
+                    points(i18n, t.value)
+                )
+            };
             term_line(ui, &effect, &sum);
         }
     });

@@ -77,7 +77,7 @@ pub struct EffectChange {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Term {
     pub effect: usize,
-    /// −3 to 3.
+    /// −3 to 3; 0 when the term is not a weight times a change.
     pub weight: i8,
     /// Per mille: the change of the combined effect for a law not in force, the law's distance
     /// from neutral for the law in force.
@@ -407,10 +407,12 @@ impl LawsView {
                             .iter()
                             .find(|(x, _)| *x == e)
                             .map_or(0, |(_, w)| *w);
-                        let delta = if weight == 0 {
-                            0
+                        // A term the simulation does not build as weight × change (none
+                        // today) keeps only its value: weight 0 says so.
+                        let (weight, delta) = if weight != 0 && value % i64::from(weight) == 0 {
+                            (weight, (value / i64::from(weight)) as i32)
                         } else {
-                            (value / i64::from(weight)) as i32
+                            (0, 0)
                         };
                         Term {
                             effect: usize::from(e),
@@ -531,7 +533,7 @@ mod tests {
         for s in bra.stances(other) {
             assert!(!s.in_force);
             assert_eq!(s.total, polity::stance(p, &state, 0, s.group, other).total);
-            for t in &s.terms {
+            for t in s.terms.iter().filter(|t| t.weight != 0) {
                 assert_eq!(t.value, i64::from(t.weight) * i64::from(t.delta));
             }
         }
