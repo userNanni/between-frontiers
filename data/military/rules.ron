@@ -157,6 +157,40 @@
         occupation: 400,
         duration_per_year: 40,
         industry: 200,
+        // A year of output spent on the war is 300 points; a doubling of prices, 200: a long
+        // war exhausts the side that is winning it too.
+        spending: 300,
+        prices: 200,
     ),
     invalid_share: 150,
+
+    // Generations of war (docs/war.pt-BR.md, "Doutrina"). Readiness points at a full share of
+    // each cause; an army moves to the third generation at 650 and falls back below 450.
+    doctrine: (
+        officer_education: 300,
+        training: 200,
+        radio: 200,
+        motorization: 200,
+        experience: 100,
+        central_control: 400,
+        up: 650,
+        down: 450,
+        // Below half its radio or half its fuel, a third-generation force fights as a second.
+        radio_min: 500,
+        fuel_min: 500,
+        // Six tenths of the free elements on the focus segment.
+        focus_share: 600,
+        // Three times the defender's power, its reserve included, breaks the segment.
+        breakthrough_ratio: 3,
+        exploitation_speed: 2,
+    ),
+
+    // Nuclear deterrence (docs/war.pt-BR.md, "Arma nuclear").
+    nuclear: (
+        silo_kill: 500,
+        soft_kill: 900,
+        bomber_penetration: 600,
+        // Half a percent a week of direct war between two secure nuclear powers.
+        escalation_risk_per_week: 5,
+    ),
 )

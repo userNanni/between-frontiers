@@ -416,6 +416,8 @@ pub struct SegmentShare {
     /// The `min_share` floor every segment gets first.
     pub floor: u64,
     pub elements: u64,
+    /// The focus segment of a third-generation front ([`crate::war::allocate_front`]).
+    pub focus: bool,
 }
 
 /// Spreads a front's land elements over its segments, in the order given (the caller keeps
@@ -453,6 +455,7 @@ pub fn allocate(rules: &Rules, elements: u64, segments: &[Segment]) -> Vec<Segme
             weight: *w,
             floor,
             elements: floor + r,
+            focus: false,
         })
         .collect()
 }
@@ -596,16 +599,17 @@ fn advance(rules: &Rules, field: &LandField, a: &LandSide, pa: Fixed, pd: Fixed)
     if pa <= pd || !pa.is_positive() {
         return Fixed::ZERO;
     }
-    let speed = rules.base_speed(a.mobility)
-        * field
-            .terrain
-            .weighted(|t| rules.speed_factor(t, a.mobility))
+    rules.base_speed(a.mobility) * terrain_speed(rules, field, a.mobility) * (Fixed::ONE - pd / pa)
+}
+
+/// Speed factor of a mobility on the segment: terrain and winter.
+pub(crate) fn terrain_speed(rules: &Rules, field: &LandField, mobility: Mobility) -> Fixed {
+    field.terrain.weighted(|t| rules.speed_factor(t, mobility))
         * if field.winter {
             rules.winter_speed
         } else {
             Fixed::ONE
-        };
-    speed * (Fixed::ONE - pd / pa)
+        }
 }
 
 /// One week of combat on a segment. Nothing happens unless one side attacks.
@@ -919,6 +923,10 @@ pub struct ExhaustionInputs {
     pub weeks: u32,
     /// Share of industry destroyed, 0 to 1.
     pub industry_lost: Fixed,
+    /// War spending since the war began over a year of output ([`WarLedger::spending`]).
+    pub spending_share: Fixed,
+    /// Rise of the price index since the war began, 0 at no rise, 1 at a doubling.
+    pub price_rise: Fixed,
 }
 
 /// Points of exhaustion per term, per mille; `total` is their sum, at most 1,000.
@@ -930,6 +938,8 @@ pub struct Exhaustion {
     pub occupation: u32,
     pub duration: u32,
     pub industry: u32,
+    pub spending: u32,
+    pub prices: u32,
     pub total: u32,
 }
 
@@ -954,23 +964,32 @@ pub fn exhaustion(rules: &Rules, i: &ExhaustionInputs) -> Exhaustion {
         occupation: points(w.occupation, i.occupied),
         duration: (w.duration_per_year as u64 * i.weeks as u64 / 52) as u32,
         industry: points(w.industry, i.industry_lost),
+        spending: points(w.spending, i.spending_share),
+        prices: points(w.prices, i.price_rise),
         total: 0,
     };
-    e.total = (e.casualties + e.mobilization + e.shortage + e.occupation + e.duration + e.industry)
+    e.total = (e.casualties
+        + e.mobilization
+        + e.shortage
+        + e.occupation
+        + e.duration
+        + e.industry
+        + e.spending
+        + e.prices)
         .min(1000);
     e
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
-    use crate::war::catalogue::ExhaustionWeights;
+    use crate::war::catalogue::{DoctrineRule, ExhaustionWeights, NuclearRule};
 
     fn pm(n: i64) -> Fixed {
         Fixed::from_ratio(n, 1000)
     }
 
-    fn rules() -> Rules {
+    pub(crate) fn rules() -> Rules {
         let mut attack = [[Fixed::ONE; 6]; 8];
         attack[Terrain::Forest as usize][Mobility::Tracked as usize] = pm(700);
         Rules {
@@ -1030,8 +1049,31 @@ mod tests {
                 occupation: 400,
                 duration_per_year: 50,
                 industry: 200,
+                spending: 300,
+                prices: 200,
             },
             invalid_share: pm(150),
+            doctrine: DoctrineRule {
+                officer_education: 300,
+                training: 200,
+                radio: 200,
+                motorization: 200,
+                experience: 100,
+                central_control: 400,
+                up: 650,
+                down: 450,
+                radio_min: 500,
+                fuel_min: 500,
+                focus_share: 600,
+                breakthrough_ratio: Fixed::from_int(3),
+                exploitation_speed: Fixed::from_int(2),
+            },
+            nuclear: NuclearRule {
+                silo_kill: 500,
+                soft_kill: 900,
+                bomber_penetration: 600,
+                escalation_risk_per_week: 5,
+            },
         }
     }
 
@@ -1399,6 +1441,8 @@ mod tests {
                 occupied: pm(100),
                 weeks: 104,
                 industry_lost: Fixed::ZERO,
+                spending_share: Fixed::ZERO,
+                price_rise: Fixed::ZERO,
             },
         );
         assert_eq!(
@@ -1410,6 +1454,8 @@ mod tests {
                 occupation: 40,
                 duration: 100,
                 industry: 0,
+                spending: 0,
+                prices: 0,
                 total: 340
             }
         );
@@ -1423,6 +1469,8 @@ mod tests {
                 occupied: Fixed::ONE,
                 weeks: 520,
                 industry_lost: Fixed::ONE,
+                spending_share: Fixed::ONE,
+                price_rise: Fixed::ONE,
             },
         );
         assert_eq!(worst.total, 1000);

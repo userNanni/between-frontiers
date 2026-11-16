@@ -8,16 +8,27 @@
 //! - [`calc`]: costs, mobilization, supply, front allocation, the land, sea and air combat steps
 //!   and war exhaustion. Every function is deterministic, in fixed point, with no clock and no
 //!   random draw, and returns its result term by term.
+//! - [`doctrine`]: the generation of an army (second or third), its causes, and how it changes
+//!   the way a front concentrates and breaks through.
+//! - [`nuclear`]: second strike hurdle by hurdle, deterrence and the rungs of the crisis ladder
+//!   it leaves open.
+//! - [`ledger`]: the war's cost, week by week and in total.
 
 pub mod calc;
 pub mod catalogue;
+pub mod doctrine;
 pub mod forces;
+pub mod ledger;
+pub mod nuclear;
 
 use std::path::Path;
 
 pub use calc::*;
 pub use catalogue::*;
+pub use doctrine::*;
 pub use forces::*;
+pub use ledger::*;
+pub use nuclear::*;
 
 use crate::econ::Catalogue;
 use crate::research::TechTree;

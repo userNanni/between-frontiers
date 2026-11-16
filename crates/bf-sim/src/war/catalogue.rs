@@ -317,6 +317,8 @@ pub struct RulesFile {
     pub exhaustion: ExhaustionWeights,
     /// Share of the wounded who cannot go back to work, per mille.
     pub invalid_share: u32,
+    pub doctrine: DoctrineRule,
+    pub nuclear: NuclearRule,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -363,6 +365,54 @@ pub struct ExhaustionWeights {
     pub duration_per_year: u32,
     /// Share of industry destroyed.
     pub industry: u32,
+    /// War spending since the war began over a year of output: what the war cost in money,
+    /// whoever is winning.
+    pub spending: u32,
+    /// Rise of the price index since the war began (full at a doubling).
+    pub prices: u32,
+}
+
+/// Generations of war (`docs/war.pt-BR.md`, "Doutrina"): readiness weights and thresholds, and
+/// how a third-generation front concentrates and breaks through. Per mille unless said.
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+pub struct DoctrineRule {
+    /// Points of readiness at a full share of each cause.
+    pub officer_education: u32,
+    pub training: u32,
+    pub radio: u32,
+    pub motorization: u32,
+    pub experience: u32,
+    /// Points taken away at full central control of the officer corps.
+    pub central_control: u32,
+    /// An army moves to the third generation at `up` and falls back below `down`.
+    pub up: u32,
+    pub down: u32,
+    /// Below these fills of radio and fuel a third-generation force fights as a second.
+    pub radio_min: u32,
+    pub fuel_min: u32,
+    /// Share of the front's free elements a third-generation front puts on its focus segment.
+    pub focus_share: u32,
+    /// Power ratio (attacker over defender, defender's reserve included) that breaks a segment.
+    pub breakthrough_ratio: Fixed,
+    /// Speed of the exploitation after a breakthrough, over the base speed.
+    pub exploitation_speed: Fixed,
+}
+
+/// Nuclear deterrence (`docs/war.pt-BR.md`, "Arma nuclear"). Per mille unless said. Design
+/// parameters, to be calibrated against the sources the doc cites.
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+pub struct NuclearRule {
+    /// Share of the warheads aimed at a hardened silo that destroy it.
+    pub silo_kill: u32,
+    /// Share of the warheads aimed at a soft target (bomber base, submarine in port, mobile
+    /// launcher in garrison) that destroy it.
+    pub soft_kill: u32,
+    /// Share of bombers that get through air defences, before missile defence.
+    pub bomber_penetration: u32,
+    /// Escalation risk per week of direct war between two powers that both hold a secure second
+    /// strike: not a draw, a cost the decision weighs (the threat that leaves something to
+    /// chance).
+    pub escalation_risk_per_week: u32,
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -445,6 +495,8 @@ pub struct Rules {
     pub objective_pull: Fixed,
     pub exhaustion: ExhaustionWeights,
     pub invalid_share: Fixed,
+    pub doctrine: DoctrineRule,
+    pub nuclear: NuclearRule,
 }
 
 /// The catalogue and the rules, resolved.
@@ -739,10 +791,21 @@ fn resolve_rules(file: &RulesFile, cat: &Catalogue, errors: &mut Vec<String>) ->
         ("protection_max", file.protection_max),
         ("invalid_share", file.invalid_share),
         ("allocation.min_share", file.allocation.min_share),
+        ("doctrine.up", file.doctrine.up),
+        ("doctrine.focus_share", file.doctrine.focus_share),
+        ("nuclear.silo_kill", file.nuclear.silo_kill),
+        ("nuclear.soft_kill", file.nuclear.soft_kill),
+        (
+            "nuclear.bomber_penetration",
+            file.nuclear.bomber_penetration,
+        ),
     ] {
         if v > 1000 {
             errors.push(format!("rules: {what} {v} is more than 1,000 per mille"));
         }
+    }
+    if file.doctrine.down > file.doctrine.up {
+        errors.push("rules: doctrine.down above doctrine.up".into());
     }
     if !file.reference_fire.is_positive() {
         errors.push("rules: reference_fire must be positive".into());
@@ -792,6 +855,8 @@ fn resolve_rules(file: &RulesFile, cat: &Catalogue, errors: &mut Vec<String>) ->
         objective_pull: per_mille(file.allocation.objective_pull),
         exhaustion: file.exhaustion,
         invalid_share: per_mille(file.invalid_share),
+        doctrine: file.doctrine,
+        nuclear: file.nuclear,
     })
 }
 
