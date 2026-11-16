@@ -2,7 +2,7 @@
 
 Estado: estudo e desenho, **fora da simulação**. O contrato puro está em
 `crates/bf-sim/src/foreign_capital.rs` (fora do tick e do save) e a série de referência em
-`data/history/fdi.csv`. As decisões para o dono estão no fim.
+`data/history/fdi.csv`. As decisões no fim são **propostas, aguardando o dono**.
 
 ## O pedido
 
@@ -493,6 +493,8 @@ fábricas compradas de 1972–73.
 ---
 
 ## Decisões para o dono
+
+Propostas, aguardando o dono. Nada delas está decidido.
 
 1. **O que o jogador comanda no investimento de fora.**
    - **Recomendação:** a lei do próprio país e uma lista curta de países vetados (embargo); o
