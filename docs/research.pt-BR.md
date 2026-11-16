@@ -47,3 +47,21 @@ país), até a IA da fase 6.
 O benchmark de 100 anos compara o ano em que cada tecnologia chega ao protótipo e à indústria com os
 anos históricos (`demonstrated`, `industrialized`) e acusa desvio grande. A produtividade da
 fronteira deve crescer perto de 1,5 a 2 % ao ano.
+
+## A árvore de 1925 a 2025
+
+168 tecnologias em 12 campos e 6 eras (`data/research/technologies.ron`). Regras que os testes de
+`crates/bf-sim/tests/research_tree.rs` cobram:
+
+- Todo método e todo bem com `available_from` depois de 1925 tem exatamente uma tecnologia. Métodos de
+  ponta em 1925 (linha de montagem, Haber-Bosch, hidrelétrica, ferrovia elétrica, aço elétrico,
+  trator, perfuração rotativa, central automática) ficam com uma tecnologia da era 0 que já começa
+  industrial ou difundida nos países que os usavam. O primeiro método de cada edifício de 1925 nunca
+  tem tecnologia: é como o edifício funciona em 1925 (por isso o alumínio Hall-Héroult, único método
+  da fundição, fica livre).
+- Datas históricas dentro da era, com folga de 5 anos; custo cresce cerca de 2,5× por era.
+- Produtividade: nas eras 1–5, Σ ln(1 + g) por grupo fica perto de 1,55 (≈ 4,7× em cem anos) nos
+  grupos industriais e na agropecuária, e perto de 0,5 nos serviços. O cabeçalho do arquivo explica
+  como os pesos foram escalados.
+- Tecnologia de era 1 em diante começa desconhecida, ou no estágio de ciência onde a ideia já existia
+  em 1925 (televisão, foguete a combustível líquido, radar, milho híbrido).
