@@ -451,6 +451,8 @@ impl System<GameWorld> for PoliticsSystem {
             .write(ECON)
             .read(POLITY)
             .write(POLITY)
+            // The immigrant share (`measure::immigrant_share`).
+            .read(crate::demography::DEMOGRAPHY)
     }
 
     fn compute(&self, ctx: &TickCtx, world: &GameWorld) -> Changes {

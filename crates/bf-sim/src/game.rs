@@ -364,7 +364,10 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
     }) = rules
     {
         if let Some(p) = &politics {
-            s.add(crate::polity::PoliticsSystem::new(Arc::clone(p), Arc::clone(&cat)));
+            s.add(crate::polity::PoliticsSystem::new(
+                Arc::clone(p),
+                Arc::clone(&cat),
+            ));
         }
         s.add(crate::econ::week::Week {
             cat: Arc::clone(&cat),

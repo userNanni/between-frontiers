@@ -233,6 +233,9 @@
         ]),
 
         // ---- immigration ----
+        // Above 1000, the effect is the share of the passage the state pays
+        // (`demography::migration::subsidy`).
+        (key: "subsidized_immigration", group: "immigration", effects: [("immigration", 2000)]),
         (key: "open_immigration", group: "immigration", effects: []),
         (key: "quota_immigration", group: "immigration", effects: [("immigration", 300)]),
         (key: "racial_exclusion", group: "immigration", targeted: true, effects: [
@@ -242,6 +245,7 @@
         (key: "closed_immigration", group: "immigration", effects: [("immigration", 50)]),
 
         // ---- emigration ----
+        (key: "sponsored_emigration", group: "emigration", effects: [("emigration", 2000)]),
         (key: "free_emigration", group: "emigration", effects: []),
         (key: "exit_permits", group: "emigration", effects: [("emigration", 100)]),
 
