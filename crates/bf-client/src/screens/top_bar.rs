@@ -31,6 +31,8 @@ const TIME_H: f32 = 56.0;
 
 /// Lowest screen y used by the HUD on the right, for panels placed under it.
 pub const RIGHT_BOTTOM: f32 = MARGIN + TIME_H + MARGIN;
+/// Lowest screen y used by the country figures on the left, for windows across the screen.
+pub const LEFT_BOTTOM: f32 = MARGIN + ROW1_H + ROW_H * 2.0 + PAD * 2.0 + MARGIN;
 
 #[derive(Default)]
 pub struct BarResponse {

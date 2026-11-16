@@ -20,8 +20,8 @@ pub struct State {
     menu_open: bool,
     rules: bf_sim::game::Rules,
     research_open: bool,
-    /// Tab of the government window while it is open.
-    government: Option<super::government::Tab>,
+    /// The government window while it is open.
+    government: Option<super::government::Window>,
     research_camera: Option<super::research::TreeCamera>,
     /// Month the live map lenses were last coloured for.
     live_month: Option<(i32, u8)>,
@@ -267,10 +267,21 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
     }
 
     // Government window.
-    if let Some(tab) = &mut state.government
+    if let Some(window) = &mut state.government
         && !state.research_open
     {
-        let res = super::government::show(ui, rect, &shared.i18n, &snap, tab);
+        let res = super::government::show(
+            ui,
+            rect,
+            super::government::Sources {
+                i18n: &shared.i18n,
+                catalogue: &state.rules.catalogue,
+                world: shared.world.as_ref(),
+                snap: &snap,
+                tag: state.save.meta.player.as_deref(),
+            },
+            window,
+        );
         for c in res.commands {
             state.sim.send(Command::Issue(c));
         }
@@ -382,7 +393,7 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
 fn toggle_government(state: &mut State) {
     state.government = match state.government {
         Some(_) => None,
-        None => Some(super::government::Tab::default()),
+        None => Some(super::government::Window::default()),
     };
     state.research_open = false;
 }

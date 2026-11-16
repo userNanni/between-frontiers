@@ -363,6 +363,51 @@ fn walk_through_the_screens() {
     h.run_steps(3);
     shot(&mut h, "06n-painel-pais-simulado");
 
+    // 6o. Government window (G): the budget fifteen years in, then a tooltip with the sum behind
+    // a figure, then money and debt.
+    h.key_press(egui::Key::Escape);
+    h.run_steps(2);
+    h.key_press(egui::Key::G);
+    h.run_steps(4);
+    shot(&mut h, "06o-governo-orcamento");
+    let hover = |h: &mut Harness<'_, App>, label: &str| {
+        let r = h
+            .get_all(egui_kittest::kittest::by().label(label))
+            .next()
+            .unwrap_or_else(|| panic!("{label} in the government window"))
+            .rect();
+        h.hover_at(r.center());
+        h.run_steps(8);
+    };
+    hover(&mut h, "Classe média");
+    shot(&mut h, "06p-governo-imposto-tooltip");
+    let balance = if h
+        .get_all(egui_kittest::kittest::by().label("Déficit"))
+        .next()
+        .is_some()
+    {
+        "Déficit"
+    } else {
+        "Superávit"
+    };
+    hover(&mut h, balance);
+    shot(&mut h, "06q-governo-saldo-tooltip");
+    h.hover_at(egui::pos2(800.0, 880.0));
+    h.get_by_label("Moeda e dívida").click();
+    h.run_steps(4);
+    shot(&mut h, "06v-governo-moeda");
+    hover(&mut h, "Taxa básica");
+    shot(&mut h, "06w-governo-taxa-tooltip");
+    hover(&mut h, "Exterior, em dólar");
+    shot(&mut h, "06x-governo-divida-tooltip");
+    h.hover_at(egui::pos2(800.0, 880.0));
+    // The laws tab, still empty: the laws screen fills it.
+    h.get_by_label("Leis").click();
+    h.run_steps(3);
+    shot(&mut h, "06y-governo-leis");
+    h.key_press(egui::Key::Escape);
+    h.run_steps(2);
+
     // 7. Back to the main menu: "Continue" now offers the new campaign.
     let ctx = h.ctx.clone();
     h.state_mut().apply(Transition::Menu, &ctx);
@@ -387,6 +432,29 @@ fn walk_through_the_screens() {
     let ctx = en.ctx.clone();
     en.state_mut().apply(Transition::Game(yug), &ctx);
     shot(&mut en, "09-campaign-en-long-name");
+    // Two weeks of play, so the government window has a week of accounts to show.
+    let en_snapshot = |h: &Harness<'_, App>| match &h.state().screen {
+        Screen::Game(g) => g.snapshot(),
+        _ => panic!("not in a campaign"),
+    };
+    en.key_press(egui::Key::Space);
+    let started = std::time::Instant::now();
+    while en_snapshot(&en).tick < 15 && started.elapsed().as_secs() < 60 {
+        std::thread::sleep(std::time::Duration::from_millis(50));
+        en.run_steps(1);
+    }
+    en.key_press(egui::Key::Space);
+    let paused_at = std::time::Instant::now();
+    while !en_snapshot(&en).paused && paused_at.elapsed().as_secs() < 10 {
+        std::thread::sleep(std::time::Duration::from_millis(50));
+        en.run_steps(1);
+    }
+    en.key_press(egui::Key::G);
+    en.run_steps(4);
+    shot(&mut en, "10-government-budget-en");
+    en.get_by_label("Money and debt").click();
+    en.run_steps(4);
+    shot(&mut en, "11-government-money-en");
 
     let _ = std::fs::remove_dir_all(&user);
 }

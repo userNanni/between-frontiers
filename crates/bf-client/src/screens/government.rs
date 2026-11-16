@@ -10,7 +10,13 @@ use bf_ui_kit::{Button, ButtonSize};
 use egui::{Rect, Sense, Ui, Vec2};
 
 use super::region;
+use crate::government::GovernmentView;
 use crate::sim::Snapshot;
+use crate::world::World;
+use bf_sim::econ::Catalogue;
+use bf_sim::econ::migration::MigrationLaw;
+use bf_sim::econ::money::CentralBank;
+use bf_sim::econ::state::{PUBLIC_CATEGORIES, TAX_CLASSES};
 
 /// The window's tabs, in the order they show.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -33,10 +39,49 @@ impl Tab {
     }
 }
 
+/// What the player changed and the simulation has not applied yet: commands apply at the start
+/// of the next tick, so a paused game would otherwise show the old value. Cleared once a later
+/// tick is published.
+#[derive(Clone, Debug, Default)]
+pub struct Drafts {
+    /// Tick the drafts were made on.
+    pub tick: u64,
+    pub tax: Option<Option<[u16; TAX_CLASSES]>>,
+    pub priority: Option<[u8; PUBLIC_CATEGORIES]>,
+    pub migration: Option<MigrationLaw>,
+    pub rate: Option<Option<u16>>,
+    pub bank: Option<CentralBank>,
+}
+
+impl Drafts {
+    /// Records a draft made on `tick`.
+    pub fn touch(&mut self, tick: u64) {
+        if self.tick != tick {
+            *self = Self {
+                tick,
+                ..Self::default()
+            };
+        }
+    }
+}
+
+/// The open window: its tab and the player's pending changes.
+#[derive(Clone, Debug, Default)]
+pub struct Window {
+    pub tab: Tab,
+    pub drafts: Drafts,
+}
+
 /// What a tab gets to draw with.
 pub struct TabContext<'a> {
     pub i18n: &'a I18n,
     pub snap: &'a Snapshot,
+    /// The player's treasury, currency and debt; `None` without an economy.
+    pub view: Option<&'a GovernmentView>,
+    pub catalogue: &'a Catalogue,
+    /// Map states and countries, for names; `None` before the map loads.
+    pub world: Option<&'a World>,
+    pub drafts: &'a mut Drafts,
     /// Tag of the player's country.
     pub tag: &'a str,
     /// Commands for the simulation; they apply at the start of the next tick.
@@ -52,15 +97,31 @@ pub struct GovernmentResponse {
 /// Window size: wide enough for two columns of figures, short enough for 1600 × 900.
 const WINDOW: Vec2 = Vec2::new(1040.0, 700.0);
 
+/// What the window reads from the campaign.
+pub struct Sources<'a> {
+    pub i18n: &'a I18n,
+    pub catalogue: &'a Catalogue,
+    pub world: Option<&'a World>,
+    pub snap: &'a Snapshot,
+    /// Tag of the player's country, from the campaign.
+    pub tag: Option<&'a str>,
+}
+
 pub fn show(
     ui: &mut Ui,
     screen: Rect,
-    i18n: &I18n,
-    snap: &Snapshot,
-    tab: &mut Tab,
+    src: Sources<'_>,
+    window: &mut Window,
 ) -> GovernmentResponse {
+    let Sources {
+        i18n,
+        catalogue,
+        world,
+        snap,
+        tag,
+    } = src;
     let mut out = GovernmentResponse::default();
-    let top = screen.top() + super::top_bar::RIGHT_BOTTOM + space::SM;
+    let top = screen.top() + super::top_bar::LEFT_BOTTOM;
     let size = WINDOW.min(Vec2::new(
         screen.width() - 32.0,
         screen.bottom() - top - space::LG,
@@ -72,9 +133,11 @@ pub fn show(
         ui.make_persistent_id("government"),
         Sense::click_and_drag(),
     );
-    let Some(tag) = snap.player.as_deref() else {
-        return out;
-    };
+    // A later tick carries what the player changed.
+    if snap.tick > window.drafts.tick {
+        window.drafts = Drafts::default();
+    }
+    let Window { tab, drafts } = window;
     region(ui, rect.shrink(space::XL), |ui| {
         ui.horizontal(|ui| {
             bf_ui_kit::title(ui, &i18n.tr("gov-title"));
@@ -95,9 +158,17 @@ pub fn show(
             });
         });
         bf_ui_kit::divider(ui);
+        let Some(tag) = tag else {
+            bf_ui_kit::muted(ui, &i18n.tr("gov-no-player"));
+            return;
+        };
         let mut cx = TabContext {
             i18n,
             snap,
+            view: snap.government.as_deref(),
+            catalogue,
+            world,
+            drafts,
             tag,
             commands: &mut out.commands,
         };
@@ -110,4 +181,14 @@ pub fn show(
             });
     });
     out
+}
+
+/// What a tab says when the simulation has no figures for the player yet: before the first
+/// day of a new campaign the player is not in the world yet.
+pub fn waiting_key(snap: &Snapshot) -> &'static str {
+    if snap.player.is_none() {
+        "gov-waiting"
+    } else {
+        "gov-no-economy"
+    }
 }

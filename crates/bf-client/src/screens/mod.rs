@@ -3,6 +3,7 @@
 pub mod budget;
 pub mod country_panel;
 pub mod game;
+pub mod gov_ui;
 pub mod government;
 pub mod laws;
 pub mod lens_panel;
