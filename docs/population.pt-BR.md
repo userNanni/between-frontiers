@@ -285,26 +285,85 @@ Filhos por mulher (TFR), distribuídos pelas idades de 15 a 49 num perfil fixo (
 
 ### Migração entre países
 
-Unidade: território (metrópole ou colônias de um país). Por mês:
+Código: `crates/bf-sim/src/demography/migration.rs`. Unidade: território (metrópole ou colônias de
+um país). Tudo roda no mês da demografia, em três camadas: o fluxo contínuo, a corrente da
+diáspora e as ondas.
+
+**Atração** de um destino `j` sobre a gente de `i`:
+
+    atração = brecha × distância × vagas × corrente × família × lei de imigração de j
+    brecha  = min(1, max(renda, terra) + rede)
 
 - **Renda:** PIB por habitante do país a preços-base, repartido entre metrópole e colônias pela
-  renda monetária por habitante. Ninguém se move por menos de 1,8 vez a renda; a atração é cheia
-  em 4,8 vezes.
-- **Atração** de cada destino = (diferença de renda) × distância × vínculo × vagas × lei de
-  imigração. Distância: 1 / (1 + (d / 5 000 km)²) entre os centros de população. Vínculo: × 2 na
-  mesma família linguística (a maior do território, das comunidades de 1925). Metrópole e colônias
-  não têm bônus: com ele (× 2), Bélgica, Holanda e Portugal ficavam no teto de imigração por 60
-  anos, e o fluxo colonial real foi pequeno até 1960. A constante `SAME_EMPIRE` fica em 1. Vagas: a parcela empregada dos operários do destino, à quarta potência.
-- **Saída:** 3 por mil ao ano no máximo, vezes a melhor atração, a lei de emigração, quem pode
-  pagar a passagem (0,1 + 0,9 × alfabetização²) e o empurrão do desemprego no campo
-  (1 + parcela ociosa). Os emigrantes se repartem pelos destinos pela atração vezes a população.
-- **Teto:** nenhum território recebe mais de 8 por mil ao ano; acima disso o fluxo é cortado.
-- **Quem se move:** sai dos camponeses, assalariados rurais e operários; chega como operário, nas
-  cidades (na proporção da população urbana dos estados). Na pirâmide, idades de 20 a 34.
-- **Lei:** os efeitos `immigration` e `emigration` das leis em vigor (`world.politics`), lidos
-  num ponto só (`Demography::migration_laws`). Em 1925 os EUA têm cotas (300 ‰ do fluxo aberto)
-  e a URSS permissão de saída (100 ‰). A exclusão racial (domínios britânicos) é lei dirigida e
-  ainda não pesa, porque o migrante não carrega comunidade.
+  renda monetária por habitante. Começa a puxar a 1,5 vez a renda da origem; cheia a 4,5 vezes.
+- **Terra:** teto de terra do território (níveis de fazenda) por mil lavradores (camponeses e
+  assalariados rurais). Puxa a partir de 2 vezes a terra por lavrador da origem, cheia a 6 vezes,
+  se o destino não for mais pobre que 0,3 da renda da origem: as fronteiras da Argentina, dos EUA,
+  do Canadá, da Austrália.
+- **Rede:** a diáspora puxa sozinha (cartas, passagem paga, emprego esperando): até 0,5 de
+  brecha, para destino com pelo menos 0,25 da renda da origem. É o que leva italiano a um Brasil
+  mais pobre que a Itália.
+- **Distância:** 1 / (1 + (d / 8 000 km)²) entre os centros de população.
+- **Vagas:** parcela dos operários do destino com emprego, à quarta potência.
+- **Corrente:** 0,2 numa estrada sem ninguém do outro lado; sobe até ×4 quando a diáspora da
+  origem chega a 5 % da população do destino. Sem rede, pouca gente vai (teoria das redes de
+  migração); com ela, a estrada se mantém.
+- **Família:** × 2 na mesma família linguística (a maior do território). Metrópole e colônias
+  não têm bônus próprio (`SAME_EMPIRE` = 1): com ele, Bélgica, Holanda e Portugal ficavam no teto
+  de imigração por 60 anos.
+
+**Fluxo contínuo.** Sai por ano até 3 por mil da população, vezes a melhor atração (até 1), a lei
+de emigração, quem pode pagar a passagem (0,05 + 0,95 × alfabetização²) e o empurrão do
+desemprego no campo (1 + parcela ociosa). Os emigrantes se repartem pelos destinos pela atração
+vezes a população; nenhum destino recebe mais de 4 por mil ao ano.
+
+**Ondas.** A pressão de saída de uma origem soma a parcela ociosa do campo, a fome (1 − necessidades
+básicas atendidas) e metade da melhor atração. Quando passa de 0,6 e a origem não tem onda, abre
+uma para o destino de maior atração × tamanho (relativo à origem), entre os que têm atração de
+0,25 ou mais, porta aberta e vagas (operários empregados ≥ 0,5). Por mês a onda leva até 3 por mil
+ao ano da origem, vezes a força da pressão, quem pode pagar e a atração; o destino recebe de ondas
+no máximo 8 por mil ao ano. A onda fecha, com motivo registrado, quando:
+
+| Motivo (`WaveEnd`) | Condição |
+|---|---|
+| `DoorClosed` | a lei de imigração do destino ou a de emigração da origem cai abaixo de 500 ‰ |
+| `PressureEased` | a pressão cai abaixo de 0,35 |
+| `Full` | as vagas do destino caem abaixo de 0,5 |
+| `NoPull` | a atração cai abaixo de 0,125 |
+
+O motivo da abertura (`Push`) é o maior termo da pressão: terra (`Land`), fome (`Hunger`) ou
+renda lá fora (`Poverty`). `DemographyState::waves` guarda as abertas e `waves_ended` as
+fechadas; o placar lista as maiores ("Ondas de migração").
+
+**Porta.** Cotas (300 ‰) fecham a porta para ondas, não para o fluxo contínuo, que passa reduzido.
+Quando a porta de um destino fecha, a onda termina com `DoorClosed` e a próxima abre para o melhor
+destino aberto: é o desvio de destino (EUA fecham → Brasil e Argentina). As leis vêm do estado
+político (`Demography::migration_laws`, efeitos `immigration` e `emigration`); quando a política
+mudar as leis no meio da partida, as ondas reagem no mês seguinte.
+
+**Diáspora.** `DemographyState::diaspora`: pessoas por origem, destino e cultura (`Diaspora`), com
+`people` (chegados e descendentes, crescendo com nascimentos e mortes do destino) e `arrived`
+(chegadas desde 1925, sem filhos). Quem chega por uma estrada leva as culturas que já estão nela,
+na proporção; numa estrada nova, a cultura principal da origem. Quando os pops carregarem cultura,
+cada entrada vira a comunidade `culture` no destino. `immigrant_share(econ, país)` e
+`immigrants_by_origin(país)` dão a parcela de origem estrangeira para a política.
+
+**1925.** O estoque inicial sai das comunidades de 1925 (`initial_diaspora`): uma cultura fora da
+pátria (o território com mais gente dela), onde não é nativa (a maior em algum estado) e em estado
+que não encosta na pátria por terra, conta como gente da pátria naquele território. Resultado
+(`cargo test -p bf-sim --test demography_1925 -- --nocapture`): 270 estradas, 28 milhões de
+pessoas. No Brasil: italianos 896 mil, alemães 519 mil, portugueses 415 mil, espanhóis 249 mil,
+poloneses 89 mil, sírio-libaneses 41 mil (vindos das colônias francesas, onde ficava o mandato
+da Síria e do Líbano), japoneses 27 mil, ucranianos 24 mil. Ficam de fora:
+
+- culturas sem pátria clara (a maior parte em nenhum território): asquenazes (32 % no maior),
+  sefarditas, curdos, melanésios, amazônicos, inuítes;
+- minorias de fronteira (alemães da Boêmia, húngaros da Transilvânia, quíchuas da Bolívia), que
+  não migraram;
+- o que os dados de 1925 já fundiram na cultura do país (o "brasileiro" de origem italiana).
+
+**Quem se move:** sai dos camponeses, assalariados rurais e operários; chega como operário, nas
+cidades (na proporção da população urbana dos estados). Na pirâmide, idades de 20 a 34.
 
 ### O que falta
 
@@ -312,7 +371,11 @@ Unidade: território (metrópole ou colônias de um país). Por mês:
   (China 1928–30 e 1959–61, URSS 1932–33, Bengala 1943), nem política de natalidade (filho único,
   proibição do aborto na Romênia em 1966), nem a alfabetização forçada e a saúde pública dos
   regimes socialistas, que adiantaram a transição no Leste Europeu e na URSS.
-- **Migração por comunidade** (quem chega leva a cultura e a religião), exclusão racial e
-  refugiados.
+- **Comunidade nos pops.** O imigrante chega como gente, não como comunidade: o `Pop` é estado ×
+  profissão. A diáspora guarda origem e cultura até as comunidades entrarem nos pops.
+- **Exclusão racial e refugiados.** A exclusão racial é lei dirigida e não pesa enquanto o
+  migrante não carrega comunidade; não há refugiado (sem guerra).
+- **Subsídio à imigração** (passagens pagas por São Paulo, emigração japonesa incentivada pelo
+  governo): não é lei do catálogo.
 - **Pirâmide por comunidade e profissão**; idade de trabalho fixa em 40 % de cada pop.
 - **Baby boom.** Nada no modelo faz a fecundidade dos ricos subir de 1946 a 1964.

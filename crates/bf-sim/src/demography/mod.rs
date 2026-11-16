@@ -863,7 +863,10 @@ mod tests {
             contraception: milli(900),
         });
         assert_eq!(high, TFR_HIGH);
-        assert!(low < milli(1800), "{low:?}");
+        // Past the transition, fertility sits on the floor that contraception allows.
+        let floor = TFR_LOW + TFR_WITHOUT_PILL * (Fixed::ONE - milli(900));
+        assert_eq!(low, floor);
+        assert!(low < TFR_LOW + TFR_WITHOUT_PILL);
     }
 
     #[test]
