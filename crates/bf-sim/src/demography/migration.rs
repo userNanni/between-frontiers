@@ -261,7 +261,7 @@ fn subsidy(law: i64) -> Fixed {
 /// pay for the metropole only: a colony's subjects were not the programmes' people.
 fn paid(laws: &[(i64, i64)], i: usize, j: usize) -> Fixed {
     let (_, emi) = laws[i / 2];
-    let destination = if j % 2 == 0 {
+    let destination = if j.is_multiple_of(2) {
         subsidy(laws[j / 2].0)
     } else {
         Fixed::ZERO
@@ -283,7 +283,7 @@ fn paid(laws: &[(i64, i64)], i: usize, j: usize) -> Fixed {
 /// Share of the passage the origin's sponsored emigration pays: a programme for the
 /// metropole's own people, not for colonial subjects.
 fn sponsored(laws: &[(i64, i64)], i: usize) -> Fixed {
-    if i % 2 == 0 {
+    if i.is_multiple_of(2) {
         subsidy(laws[i / 2].1)
     } else {
         Fixed::ZERO
@@ -763,7 +763,7 @@ fn pull(
     // destination's subsidy alone pays the ticket (`afford`, the distance) but recruits no one.
     // A colonization programme needs both governments: the origin sponsoring and the
     // destination subsidizing (Japan and Brazil from 1925). Sponsorship alone pays the ticket.
-    let sponsored = if j % 2 == 0 && laws[j / 2].0 > 1000 {
+    let sponsored = if j.is_multiple_of(2) && laws[j / 2].0 > 1000 {
         sponsored(laws, i) * PROGRAMME_CHAIN
     } else {
         Fixed::ZERO
