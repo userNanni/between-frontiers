@@ -11,7 +11,7 @@ bem que ninguém produz e bem civil que ninguém consome.
 
 ## Bens por mercado
 
-São 81 bens. Os preços-base estão em dólares de 2011 e ainda serão calibrados.
+São 84 bens. Os preços-base estão em dólares de 2011 e ainda serão calibrados.
 
 - **Alimentos básicos:** Cereais, Milho, Arroz.
 - **Alimentos:** Carne, Laticínios, Pescado, Frutas e hortaliças, Açúcar, Café, Chá, Cacau, Tabaco, Bebidas, Alimentos industrializados.
@@ -23,6 +23,7 @@ São 81 bens. Os preços-base estão em dólares de 2011 e ainda serão calibrad
 - **Bens de capital:** Ferramentas, Máquinas, Motores, Equipamento elétrico, Material ferroviário, Navios, Aviões, Computadores (a partir de 1951).
 - **Material militar:** Armas leves, Munição, Artilharia, Blindados, Navios de guerra, Aviões militares.
 - **Serviços:** Transporte, Comércio e serviços, Serviços financeiros, Telecomunicações.
+- **Construção e serviços públicos (fase 3):** Construção (pontos da fila de obras), Ensino, Atendimento hospitalar.
 
 ## Recursos minerais
 
@@ -59,7 +60,7 @@ e a aptidão de 0 a 1 para cada tipo de fazenda (`data/scenario/1925/land.ron`; 
 
 ## Construções
 
-São 82 tipos, cada um com métodos de produção que entram ao longo do século (o ano é um piso; a pesquisa da
+São 85 tipos, cada um com métodos de produção que entram ao longo do século (o ano é um piso; a pesquisa da
 fase 2 vai liberá-los por tecnologia).
 
 - **Agropecuária:** Lavoura de cereais, Lavoura de milho, Arrozal, Plantação de algodão, Canavial, Lavoura de beterraba, Cafezal, Chazal, Cacaual, Seringal, Plantação de tabaco, Pomar e horta, Plantação de fibras, Vinhedo, Pecuária extensiva, Leiteria, Exploração florestal, Pesca.
@@ -67,8 +68,8 @@ fase 2 vai liberá-los por tecnologia).
 - **Indústria pesada:** Siderúrgica, Usina de alumínio, Fundição de cobre, Fundição de metais, Usina de ferroligas, Refinaria, Indústria química, Fábrica de fertilizantes, Fábrica de explosivos, Cimenteira, Refinaria de terras raras, Usina de combustível nuclear, Fábrica de borracha sintética, Fábrica de plásticos, Fábrica de máquinas, Fábrica de motores, Indústria elétrica, Fábrica de automóveis, Fábrica de material ferroviário, Estaleiro, Fábrica de aviões, Indústria eletrônica.
 - **Indústria leve:** Vidraria, Fábrica de papel, Fábrica de tecidos, Confecção, Indústria de alimentos, Fábrica de móveis, Fábrica de utensílios, Fábrica de ferramentas, Indústria farmacêutica, Ateliê de luxo, Fábrica de eletrodomésticos.
 - **Energia:** Usina elétrica.
-- **Infraestrutura:** Ferrovia, Transporte rodoviário, Porto.
-- **Serviços:** Comércio, Banco, Central de telecomunicações.
+- **Infraestrutura:** Ferrovia, Transporte rodoviário, Porto, Construção civil.
+- **Serviços:** Comércio, Banco, Central de telecomunicações, Escola e Hospital (públicos; ver `state.pt-BR.md`).
 - **Indústria bélica:** Fábrica de armas, Fábrica de munição, Fundição de artilharia, Fábrica de blindados, Arsenal naval, Fábrica de aviões militares.
 
 ## Profissões e necessidades

@@ -379,5 +379,19 @@
             (key: "automatic_exchange", available_from: 1925, inputs: [("copper", 40), ("electrical_equipment", 40), ("electricity", 1500)], outputs: [("telecommunications", 6000)], jobs: [("clerk", 300), ("skilled_worker", 300), ("engineer", 60), ("manager", 20), ("capitalist", 5)]),
             (key: "digital_network", available_from: 1975, inputs: [("electronic_components", 60), ("computers", 20), ("electricity", 3000)], outputs: [("telecommunications", 20000)], jobs: [("clerk", 200), ("skilled_worker", 250), ("engineer", 200), ("manager", 25), ("capitalist", 5)]),
         ]),
+        // The building trade: turns materials and labour into construction points for the queue
+        // of works (docs/state.pt-BR.md). Every new level waits for its points.
+        (key: "construction_sector", group: "infrastructure", resource: None, farm: None, methods: [
+            (key: "hand_construction", available_from: 1925, inputs: [("timber", 6000), ("cement", 8000), ("steel", 800), ("tools", 80)], outputs: [("construction", 9000)], jobs: [("laborer", 750), ("skilled_worker", 150), ("engineer", 10), ("clerk", 50), ("manager", 25), ("capitalist", 5)]),
+            (key: "mechanized_construction", available_from: 1925, inputs: [("timber", 5000), ("cement", 16000), ("steel", 2000), ("machinery", 50), ("fuel", 800), ("tools", 50)], outputs: [("construction", 16000)], jobs: [("laborer", 400), ("skilled_worker", 300), ("engineer", 30), ("clerk", 60), ("manager", 25), ("capitalist", 5)]),
+        ]),
+        // Public services: the state builds them, buys all they make and pays all their value
+        // added as wages. Schools speed literacy, hospitals lower mortality.
+        (key: "school", group: "services", resource: None, farm: None, public: true, methods: [
+            (key: "classroom", available_from: 1925, inputs: [("paper", 20), ("furniture", 20), ("services", 50)], outputs: [("schooling", 24000)], jobs: [("professional", 800), ("clerk", 100), ("laborer", 100)]),
+        ]),
+        (key: "hospital", group: "services", resource: None, farm: None, public: true, methods: [
+            (key: "general_hospital", available_from: 1925, inputs: [("medicines", 1500), ("services", 300)], outputs: [("hospital_care", 8000)], jobs: [("professional", 300), ("clerk", 150), ("skilled_worker", 100), ("laborer", 400)]),
+        ]),
     ],
 )

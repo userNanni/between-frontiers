@@ -4,7 +4,9 @@
 //! See `docs/economy.pt-BR.md` ("Modelo") for the rules and their calibration.
 
 pub mod catalogue;
+pub mod construction;
 pub mod monthly;
+pub mod public;
 pub mod setup;
 pub mod state;
 pub mod week;
@@ -13,7 +15,7 @@ pub mod yearly;
 use laplace_schelling::Fixed;
 
 pub use catalogue::{Building, Catalogue};
-pub use state::{Economy, Market, Plant, Pop, Region, YearRecord};
+pub use state::{Budget, Economy, Market, Plant, Pop, Project, Region, YearRecord};
 
 /// Profession indices, in the order of `economy::PROFESSIONS`.
 pub mod prof {
@@ -72,8 +74,6 @@ pub const SAVE_RATE: [Fixed; prof::P] = [
     milli(40),
     milli(40),
 ];
-/// Income tax that funds the state's servants and purchases.
-pub const TAX_RATE: Fixed = milli(100);
 /// Share of value added paid as wages, by building group.
 pub fn labor_share(group: &str) -> Fixed {
     match group {

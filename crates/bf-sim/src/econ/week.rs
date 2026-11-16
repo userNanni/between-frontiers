@@ -8,10 +8,9 @@ use rayon::prelude::*;
 
 use super::catalogue::{Catalogue, GoodIx};
 use super::prof::{self, P};
+use super::public::{self, CLASS_OF, PUBLIC_PAY};
 use super::state::{Economy, Market, Region};
-use super::{
-    SAVE_RATE, TAX_RATE, Unlocks, WAGE_WEIGHT, fill, labor_share, milli, plant_tfp, workers,
-};
+use super::{SAVE_RATE, Unlocks, WAGE_WEIGHT, fill, labor_share, milli, plant_tfp, workers};
 use crate::game::GameWorld;
 
 pub const ECON: ResourceId = ResourceId(10);
@@ -23,8 +22,6 @@ const PRICE_CEILING: Fixed = milli(4000);
 /// Share of a market's surplus offered abroad, and of its shortage sought abroad, each week:
 /// below 1 so that local prices still carry part of the signal (distance, ports, habits).
 const TRADE_REACH: Fixed = milli(850);
-/// The state spends this share of its treasury each week: 60% on servants, 40% on goods.
-pub(crate) const STATE_SPENDING: Fixed = milli(100);
 /// What the state buys with its goods budget.
 pub(crate) const STATE_BASKET: [(&str, i64); 9] = [
     ("services", 300),
@@ -45,15 +42,9 @@ const MONEY_TIGHTENING: Fixed = milli(300);
 
 /// Share of the investment pool spent each week on upkeep and housing.
 pub(crate) const UPKEEP_SHARE: Fixed = milli(30);
-/// Investment buys mostly the work of building (services) and some materials and machines.
-pub(crate) const UPKEEP_BASKET: [(&str, i64); 6] = [
-    ("services", 600),
-    ("timber", 120),
-    ("cement", 30),
-    ("steel", 30),
-    ("machinery", 150),
-    ("tools", 70),
-];
+/// Upkeep buys mostly the work of the building trade, and some machines and tools.
+pub(crate) const UPKEEP_BASKET: [(&str, i64); 3] =
+    [("construction", 780), ("machinery", 150), ("tools", 70)];
 
 /// What the pool buys for upkeep this week, computed from the market before clearing.
 fn upkeep_orders(cat: &Catalogue, m: &Market) -> Vec<(GoodIx, Fixed)> {
@@ -95,12 +86,16 @@ pub struct RegionSettlement {
     pub pops: Vec<(Fixed, Fixed, [Fixed; 4])>,
     pub plants: Vec<(Fixed, Fixed, Fixed, Fixed)>,
     pub taxes: Fixed,
+    /// Pay of the servants, soldiers and clergy here.
+    pub payroll: Fixed,
     pub pool: Fixed,
     pub gdp: Fixed,
 }
 
 pub struct WeekChanges {
     markets: Vec<Market>,
+    /// What each state ordered with its goods budget.
+    state_orders: Vec<Vec<(GoodIx, Fixed)>>,
     regions: Vec<RegionSettlement>,
     world_price: Vec<Fixed>,
 }
@@ -339,6 +334,21 @@ fn region_orders(cat: &Catalogue, econ: &Economy, r: &Region, exists: &[bool]) -
     }
 }
 
+/// What the state buys this week with its goods budget.
+fn state_orders(cat: &Catalogue, m: &Market, exists: &[bool]) -> Vec<(GoodIx, Fixed)> {
+    let budget = public::goods_budget(m);
+    STATE_BASKET
+        .iter()
+        .filter_map(|(key, per_mille)| {
+            let gi = cat.good(key).filter(|g| exists[*g as usize])?;
+            Some((
+                gi,
+                budget.mul_ratio(*per_mille, 1000) / m.price[gi as usize],
+            ))
+        })
+        .collect()
+}
+
 fn clear_market(
     cat: &Catalogue,
     mut m: Market,
@@ -346,17 +356,22 @@ fn clear_market(
     supply: &[Fixed],
     trade: &[Fixed],
     exists: &[bool],
-) -> Market {
+) -> (Market, Vec<(GoodIx, Fixed)>) {
     let g = cat.goods.len();
     // The state's own purchases and construction join the demand.
     let mut demand = demand.to_vec();
-    let budget = m.treasury.max(Fixed::ZERO) * STATE_SPENDING * milli(400);
-    for (key, per_mille) in STATE_BASKET {
-        if let Some(gi) = cat.good(key)
-            && exists[gi as usize]
-        {
-            demand[gi as usize] += budget.mul_ratio(per_mille, 1000) / m.price[gi as usize];
+    let orders = state_orders(cat, &m, exists);
+    for (gi, q) in &orders {
+        demand[*gi as usize] += *q;
+    }
+    // The state buys everything its schools and hospitals make.
+    for gi in 0..g {
+        if cat.goods[gi].category == "public" {
+            demand[gi] += supply[gi];
         }
+    }
+    if let Some(cg) = cat.good("construction") {
+        demand[cg as usize] += super::construction::queue_want(&m);
     }
     for (gi, left) in m.construction.iter().enumerate() {
         if *left > Fixed::ZERO {
@@ -400,7 +415,7 @@ fn clear_market(
         };
         m.price[gi] = m.price[gi] + (target - m.price[gi]) * PRICE_SPEED;
     }
-    m
+    (m, orders)
 }
 
 fn settle_region(
@@ -408,6 +423,7 @@ fn settle_region(
     m: &Market,
     r: &Region,
     orders: &RegionOrders,
+    wage: Fixed,
 ) -> RegionSettlement {
     let mut wages = [Fixed::ZERO; P];
     let mut owners_industry = Fixed::ZERO;
@@ -451,7 +467,12 @@ fn settle_region(
         }
         gdp += revenue_base - cost_base;
         let value_added = revenue - cost;
-        let wage_bill = value_added.max(Fixed::ZERO) * labor_share(&b.group);
+        // Public services have no owners: all their value added is pay.
+        let wage_bill = if b.public {
+            value_added.max(Fixed::ZERO)
+        } else {
+            value_added.max(Fixed::ZERO) * labor_share(&b.group)
+        };
         let profit = value_added - wage_bill;
         let weight_total: Fixed = method
             .jobs
@@ -507,20 +528,18 @@ fn settle_region(
         wages[prof::PEASANT] += sold;
         gdp += sold;
     }
-    // The state pays its servants from the treasury.
-    let gov_workers = m.gov_workers_cache();
-    let payroll = m.treasury.max(Fixed::ZERO) * STATE_SPENDING * milli(600);
+    // The state pays its servants from the treasury, at the country's going wage.
+    let mut payroll = Fixed::ZERO;
     for pi in [prof::CIVIL_SERVANT, prof::CLERGY, prof::SOLDIER] {
-        let w = workers(r.pops[pi].size);
-        if gov_workers > 0 && w > 0 {
-            wages[pi] += payroll.mul_ratio(w, gov_workers);
-        }
+        let pay = wage * WAGE_WEIGHT[pi] * PUBLIC_PAY * workers(r.pops[pi].size);
+        wages[pi] += pay;
+        payroll += pay;
     }
     let mut taxes = Fixed::ZERO;
     let mut pops = Vec::with_capacity(P);
     for (pi, pop) in r.pops.iter().enumerate() {
         let gross = wages[pi];
-        let tax = gross * TAX_RATE;
+        let tax = gross * m.budget.tax_rates[CLASS_OF[pi]];
         taxes += tax;
         let income = gross - tax;
         let (spent, satisfaction) = match &orders.pops[pi] {
@@ -563,15 +582,9 @@ fn settle_region(
         pops,
         plants,
         taxes,
+        payroll,
         pool,
         gdp,
-    }
-}
-
-impl Market {
-    /// Workers on the state payroll, cached weekly by the labour system.
-    pub fn gov_workers_cache(&self) -> i64 {
-        self.gov_workers
     }
 }
 
@@ -641,19 +654,23 @@ impl System<GameWorld> for Week {
                 };
             }
         }
-        let markets: Vec<Market> = econ
+        let (markets, state_orders): (Vec<Market>, Vec<_>) = econ
             .markets
             .iter()
             .enumerate()
             .map(|(mi, m)| {
                 clear_market(cat, m.clone(), &demand[mi], &supply[mi], &trade[mi], exists)
             })
-            .collect();
+            .unzip();
+        let wages = super::monthly::market_wages(econ);
         let regions: Vec<RegionSettlement> = econ
             .regions
             .par_iter()
             .zip(orders.par_iter())
-            .map(|(r, o)| settle_region(cat, &markets[r.market as usize], r, o))
+            .map(|(r, o)| {
+                let mi = r.market as usize;
+                settle_region(cat, &markets[mi], r, o, wages[mi])
+            })
             .collect();
         // World price: average of the market prices weighted by volume.
         let world_price = (0..g)
@@ -674,6 +691,7 @@ impl System<GameWorld> for Week {
             .collect();
         WeekChanges {
             markets,
+            state_orders,
             regions,
             world_price,
         }
@@ -687,6 +705,8 @@ impl System<GameWorld> for Week {
         // its balance, minus its share of the world total, so no money is created.
         let mut balance = vec![Fixed::ZERO; markets.len()];
         let mut volume = vec![Fixed::ZERO; markets.len()];
+        let construction_good = cat.good("construction");
+        let mut done = Vec::new();
         for (mi, m) in markets.iter().enumerate() {
             for gi in 0..cat.goods.len() {
                 let n = m.net_import[gi];
@@ -708,9 +728,30 @@ impl System<GameWorld> for Week {
                 Fixed::ZERO
             };
             m.pool += balance[mi] - share;
-            // State spending and construction purchases leave the treasury and the pool.
-            let gov_spent = m.treasury.max(Fixed::ZERO) * STATE_SPENDING;
-            m.treasury -= gov_spent;
+            // The state pays for the goods it got and for what its schools and hospitals made.
+            let goods: Fixed = changes.state_orders[mi]
+                .iter()
+                .map(|(g, q)| *q * m.buy_ratio[*g as usize] * m.price[*g as usize])
+                .sum();
+            let services: Fixed = (0..cat.goods.len())
+                .filter(|&g| cat.goods[g].category == "public")
+                .map(|g| m.supply[g] * m.sell_ratio[g] * m.price[g])
+                .sum();
+            m.treasury -= goods + services;
+            m.budget.goods = goods;
+            m.budget.services = services;
+            m.budget.revenue = Fixed::ZERO;
+            m.budget.payroll = Fixed::ZERO;
+            // The building trade delivers points to the queue of works.
+            m.budget.works = Fixed::ZERO;
+            if let Some(cg) = construction_good {
+                let cg = cg as usize;
+                let d = super::construction::deliver(m, m.buy_ratio[cg], m.price[cg]);
+                m.pool -= d.private_cost;
+                m.treasury -= d.public_cost;
+                m.budget.works = d.public_cost;
+                done.extend(d.done);
+            }
             for gi in 0..cat.goods.len() {
                 let left = m.construction[gi];
                 if left > Fixed::ZERO {
@@ -763,12 +804,17 @@ impl System<GameWorld> for Week {
             let gdp_week = m.gdp_last_year.mul_ratio(1, 52);
             let slack = (MONEY_TARGET_UTILIZATION - utilization).max(Fixed::ZERO);
             let heat = (index - MONEY_PRICE_CEILING).max(Fixed::ZERO);
-            let change = gdp_week * (slack * MONEY_EASING - heat * MONEY_TIGHTENING);
-            m.treasury = (m.treasury + change).max(Fixed::ZERO);
+            // Money is withdrawn only from a treasury in surplus.
+            let change = (gdp_week * (slack * MONEY_EASING - heat * MONEY_TIGHTENING))
+                .max(-m.treasury.max(Fixed::ZERO));
+            m.treasury += change;
+            m.budget.issued = change;
         }
         for (r, s) in econ.regions.iter_mut().zip(changes.regions) {
             let m = &mut markets[r.market as usize];
-            m.treasury += s.taxes;
+            m.treasury += s.taxes - s.payroll;
+            m.budget.revenue += s.taxes;
+            m.budget.payroll += s.payroll;
             m.pool += s.pool;
             m.gdp_running += s.gdp;
             for (pop, (income, savings, sat)) in r.pops.iter_mut().zip(s.pops) {
@@ -789,8 +835,21 @@ impl System<GameWorld> for Week {
                 };
             }
         }
+        for m in &mut markets {
+            let b = &mut m.budget;
+            b.revenue_avg += (b.revenue - b.revenue_avg).mul_ratio(1, public::REVENUE_SMOOTHING);
+        }
         econ.markets = markets;
         econ.world_price = changes.world_price;
+        // Finished works start running.
+        for p in done {
+            let r = &mut econ.regions[p.region as usize];
+            let plant = r.plant_mut(p.kind);
+            if plant.levels == 0 {
+                plant.method = p.method;
+            }
+            plant.levels += 1;
+        }
     }
 }
 

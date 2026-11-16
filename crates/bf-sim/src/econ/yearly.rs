@@ -15,6 +15,10 @@ use crate::game::GameWorld;
 
 /// A plant switches when another method earns this much more.
 const SWITCH_MARGIN: Fixed = milli(1100);
+/// Literacy speed with no schools, and the gain at full enrolment: half the children in
+/// school leaves the phase 1 speed unchanged.
+const SCHOOL_BASE: Fixed = milli(600);
+const SCHOOL_GAIN: Fixed = milli(800);
 
 pub struct Yearly {
     pub cat: Arc<Catalogue>,
@@ -90,7 +94,9 @@ impl System<GameWorld> for Yearly {
                     .collect()
             })
             .collect();
-        // Schooling: literacy closes part of its gap each year, faster where people are richer.
+        // Schooling: literacy closes part of its gap each year, faster where people are richer
+        // and where schools reach more of the children.
+        let school = cat.building("school");
         let literacy = econ
             .regions
             .iter()
@@ -108,7 +114,14 @@ impl System<GameWorld> for Yearly {
                     .effects
                     .get(r.market as usize)
                     .map_or(Fixed::ONE, |e| Fixed::ONE + e[2] * milli(300));
-                let speed = (milli(8) + comfort * milli(25)) * boost;
+                let schools =
+                    super::public::coverage(cat, r, school, super::public::PUPILS_PER_PERSON);
+                let reach = if school.is_some() {
+                    SCHOOL_BASE + schools * SCHOOL_GAIN
+                } else {
+                    Fixed::ONE
+                };
+                let speed = (milli(8) + comfort * milli(25)) * boost * reach;
                 r.literacy + (Fixed::ONE - r.literacy) * speed
             })
             .collect();
@@ -197,6 +210,10 @@ impl System<GameWorld> for Yearly {
             if ctx.tick > 0 {
                 r.tfp = tfp;
             }
+        }
+        // Taxes for the year ahead.
+        for m in &mut econ.markets {
+            super::public::yearly_taxes(m, ctx.date.year);
         }
         // The first January of the run has no full year behind it: keep the 1925 figures.
         if ctx.tick > 0 {

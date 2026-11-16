@@ -89,6 +89,139 @@ pub struct Market {
     pub tech_tfp: Vec<Fixed>,
     /// Workers on the state payroll (civil servants, clergy, soldiers), counted monthly.
     pub gov_workers: i64,
+    /// Works waiting for construction points, oldest first.
+    #[serde(default)]
+    pub queue: Vec<Project>,
+    /// Taxes, spending and public investment of the country.
+    #[serde(default)]
+    pub budget: Budget,
+}
+
+impl Market {
+    /// A market for `goods` goods at zero prices, with no money: for tests and tools.
+    pub fn empty(goods: usize) -> Self {
+        let zeros = vec![Fixed::ZERO; goods];
+        Self {
+            price: zeros.clone(),
+            supply: zeros.clone(),
+            demand: zeros.clone(),
+            buy_ratio: zeros.clone(),
+            sell_ratio: zeros.clone(),
+            net_import: zeros.clone(),
+            pool: Fixed::ZERO,
+            treasury: Fixed::ZERO,
+            tfp: Fixed::ONE,
+            construction: zeros,
+            gdp_running: Fixed::ZERO,
+            gdp_last_year: Fixed::ZERO,
+            tech_tfp: Vec::new(),
+            gov_workers: 0,
+            queue: Vec::new(),
+            budget: Budget::default(),
+        }
+    }
+}
+
+/// A level under construction: it runs only when its points are all delivered.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Project {
+    pub region: u32,
+    pub kind: u16,
+    pub method: u8,
+    /// Paid by the treasury (true) or by the investment pool.
+    pub public: bool,
+    /// Construction points the work costs, and those still missing.
+    pub points: Fixed,
+    pub left: Fixed,
+}
+
+/// Tax classes: lower (peasants, workers, soldiers, clergy), middle (skilled, clerks,
+/// engineers, professionals, servants), upper (managers, capitalists, landowners).
+pub const TAX_CLASSES: usize = 3;
+/// Public investment categories: infrastructure, education, health, urban housing.
+pub const PUBLIC_CATEGORIES: usize = 4;
+
+/// The country's treasury rules and last week's accounts. The balance itself is
+/// `Market::treasury`, which may go negative: a deficit accumulates there.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Budget {
+    /// Income tax by class (`TAX_CLASSES`), 0–1.
+    pub tax_rates: [Fixed; TAX_CLASSES],
+    /// Rates follow the historical rule until the player sets them.
+    pub tax_auto: bool,
+    /// Fiscal correction of the rule: rises after deficits, falls after surpluses.
+    pub adjust: Fixed,
+    /// Weight of each public investment category (`PUBLIC_CATEGORIES`).
+    pub priority: [u8; PUBLIC_CATEGORIES],
+    /// Last week: taxes, money issued by the monetary stand-in (negative when withdrawn),
+    /// payroll, goods, public services and public works paid.
+    pub revenue: Fixed,
+    pub issued: Fixed,
+    pub payroll: Fixed,
+    pub goods: Fixed,
+    pub services: Fixed,
+    pub works: Fixed,
+    /// Weekly revenue smoothed over about a quarter.
+    pub revenue_avg: Fixed,
+    /// Public debt. Always zero in this slice: a deficit only takes the treasury below zero.
+    /// The next slice (currencies, central bank, bonds) turns the negative balance into bonds
+    /// with interest.
+    pub debt: Fixed,
+}
+
+impl Default for Budget {
+    fn default() -> Self {
+        Self {
+            tax_rates: super::public::historical_rates(1925),
+            tax_auto: true,
+            adjust: Fixed::ONE,
+            priority: super::public::DEFAULT_PRIORITY,
+            revenue: Fixed::ZERO,
+            issued: Fixed::ZERO,
+            payroll: Fixed::ZERO,
+            goods: Fixed::ZERO,
+            services: Fixed::ZERO,
+            works: Fixed::ZERO,
+            revenue_avg: Fixed::ZERO,
+            debt: Fixed::ZERO,
+        }
+    }
+}
+
+impl HashState for Project {
+    fn hash_state(&self, h: &mut StateHasher) {
+        h.write_i64(i64::from(self.region));
+        h.write_u16(self.kind);
+        h.write_u8(self.method);
+        self.public.hash_state(h);
+        self.points.hash_state(h);
+        self.left.hash_state(h);
+    }
+}
+
+impl HashState for Budget {
+    fn hash_state(&self, h: &mut StateHasher) {
+        for r in &self.tax_rates {
+            r.hash_state(h);
+        }
+        self.tax_auto.hash_state(h);
+        self.adjust.hash_state(h);
+        for p in &self.priority {
+            h.write_u8(*p);
+        }
+        for v in [
+            self.revenue,
+            self.issued,
+            self.payroll,
+            self.goods,
+            self.services,
+            self.works,
+            self.revenue_avg,
+            self.debt,
+        ] {
+            v.hash_state(h);
+        }
+    }
 }
 
 /// One row of the yearly statistics of a market.
@@ -185,6 +318,8 @@ impl HashState for Market {
         }
         h.write_i64(self.gov_workers);
         self.tech_tfp.hash_state(h);
+        self.queue.hash_state(h);
+        self.budget.hash_state(h);
     }
 }
 

@@ -45,6 +45,8 @@ pub struct Building {
     /// Services gain productivity slowly (a barber cuts as much hair in 2025 as in 1925), so
     /// labour moves to them as the rest of the economy grows.
     pub stagnant: bool,
+    /// Built and paid for by the state (`BuildingDef::public`).
+    pub public: bool,
     pub methods: Vec<Method>,
 }
 
@@ -135,6 +137,7 @@ impl Catalogue {
                     .ok_or_else(|| CatalogueError(format!("unknown group {}", b.group)))?
                     as u8,
                 stagnant: b.group == "services",
+                public: b.public,
                 resource: b
                     .resource
                     .as_ref()
