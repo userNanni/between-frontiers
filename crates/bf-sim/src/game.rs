@@ -11,6 +11,9 @@ use laplace_schelling::schedule::{Access, Cadence, Clock, ResourceId, Schedule, 
 use laplace_schelling::{Command, Date, Id, Simulation, Table};
 use serde::{Deserialize, Serialize};
 
+use std::sync::Arc;
+
+use crate::econ::Catalogue;
 use crate::scenario::CountryDef;
 
 /// Identifier written in every save; a save of another game is refused.
@@ -85,6 +88,9 @@ pub struct GameWorld {
     pub player: Option<Id<Country>>,
     pub countries: Table<Country, CountryState>,
     pub census: Vec<CensusRecord>,
+    /// Markets, regions, pops and plants; empty when the game runs without an economy.
+    #[serde(default)]
+    pub econ: crate::econ::Economy,
 }
 
 impl HashState for GameWorld {
@@ -97,6 +103,8 @@ impl HashState for GameWorld {
         self.countries.hash_state(h);
         h.section("census");
         self.census.hash_state(h);
+        h.section("economy");
+        self.econ.hash_state(h);
     }
 }
 
@@ -110,6 +118,7 @@ impl GameWorld {
             player: None,
             countries: Table::from_vec(countries.into_iter().map(CountryState::from_def).collect()),
             census: Vec::new(),
+            econ: crate::econ::Economy::default(),
         }
     }
 
@@ -164,13 +173,28 @@ impl System<GameWorld> for Census {
     }
 
     fn access(&self) -> Access {
-        Access::new().read(COUNTRIES).write(CENSUS)
+        Access::new()
+            .read(COUNTRIES)
+            .read(crate::econ::week::ECON)
+            .write(CENSUS)
     }
 
     fn compute(&self, ctx: &TickCtx, world: &GameWorld) -> CensusRecord {
-        let (population, gdp) = world.countries.iter().fold((0i64, 0i64), |(p, g), (_, c)| {
-            (p + c.population + c.colonial_population, g + c.total_gdp())
-        });
+        let (population, gdp) = if world.econ.regions.is_empty() {
+            world.countries.iter().fold((0i64, 0i64), |(p, g), (_, c)| {
+                (p + c.population + c.colonial_population, g + c.total_gdp())
+            })
+        } else {
+            (
+                world.econ.regions.iter().map(|r| r.population()).sum(),
+                world
+                    .econ
+                    .markets
+                    .iter()
+                    .map(|m| m.gdp_last_year.to_int_round())
+                    .sum(),
+            )
+        };
         CensusRecord {
             date: ctx.date,
             population,
@@ -183,9 +207,23 @@ impl System<GameWorld> for Census {
     }
 }
 
-pub fn schedule(threads: usize) -> Schedule<GameWorld> {
+/// The systems of the game. Without a catalogue only the census runs (tools and old tests).
+pub fn schedule(threads: usize, cat: Option<Arc<Catalogue>>) -> Schedule<GameWorld> {
     let mut s = Schedule::new(threads);
     s.add(Census);
+    if let Some(cat) = cat {
+        s.add(crate::econ::week::Week {
+            cat: Arc::clone(&cat),
+        });
+        s.add(crate::econ::monthly::Labour {
+            cat: Arc::clone(&cat),
+        });
+        s.add(crate::econ::monthly::Demography);
+        s.add(crate::econ::monthly::Investment {
+            cat: Arc::clone(&cat),
+        });
+        s.add(crate::econ::yearly::Yearly { cat });
+    }
     s
 }
 
@@ -224,9 +262,15 @@ impl std::fmt::Display for LoadError {
 impl std::error::Error for LoadError {}
 
 impl Session {
-    pub fn new(world: GameWorld, seed: u64, start: Date, threads: usize) -> Self {
+    pub fn new(
+        world: GameWorld,
+        seed: u64,
+        start: Date,
+        threads: usize,
+        cat: Option<Arc<Catalogue>>,
+    ) -> Self {
         Self {
-            sim: Simulation::new(world, seed, start, schedule(threads)),
+            sim: Simulation::new(world, seed, start, schedule(threads, cat)),
             earlier: Vec::new(),
         }
     }
@@ -275,7 +319,11 @@ impl Session {
     }
 
     /// Restores a campaign and checks the snapshot against its recorded hash.
-    pub fn load(bytes: &[u8], threads: usize) -> Result<Self, LoadError> {
+    pub fn load(
+        bytes: &[u8],
+        threads: usize,
+        cat: Option<Arc<Catalogue>>,
+    ) -> Result<Self, LoadError> {
         let file: SaveFile<GameCommand> =
             SaveFile::decode(bytes, GAME_ID).map_err(LoadError::Save)?;
         let world: GameWorld = decode_snapshot(&file.snapshot).map_err(LoadError::Save)?;
@@ -290,7 +338,7 @@ impl Session {
             world,
             file.header.seed,
             file.header.clock,
-            schedule(threads),
+            schedule(threads, cat),
         );
         // Commands stamped for ticks not yet run go back into the queue.
         sim.replay(&file.log);
@@ -336,6 +384,7 @@ mod tests {
             42,
             Date::new(1925, 1, 1),
             threads,
+            None,
         );
         s.submit(GameCommand::ChoosePlayer { tag: "BRA".into() });
         s
@@ -356,7 +405,7 @@ mod tests {
         let mut s = session(2);
         s.sim.run_until(Date::new(1926, 6, 1));
         let bytes = s.save("test", "BRA").unwrap();
-        let mut loaded = Session::load(&bytes, 1).unwrap();
+        let mut loaded = Session::load(&bytes, 1, None).unwrap();
         assert_eq!(loaded.state_hash(), s.state_hash());
         assert_eq!(loaded.clock(), s.clock());
         assert_eq!(loaded.history().len(), 1);
@@ -372,6 +421,6 @@ mod tests {
         let mut bytes = s.save("test", "").unwrap();
         let n = bytes.len();
         bytes[n / 2] ^= 0xFF;
-        assert!(Session::load(&bytes, 1).is_err());
+        assert!(Session::load(&bytes, 1, None).is_err());
     }
 }

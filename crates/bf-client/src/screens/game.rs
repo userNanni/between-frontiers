@@ -10,7 +10,8 @@ use crate::saves::{self, Save};
 use crate::settings::Autosave;
 use crate::sim::{Command, SimHandle};
 use crate::text::country_name;
-use bf_sim::game::{GameCommand, GameWorld, Session};
+use bf_sim::data::GameData;
+use bf_sim::game::{GameCommand, Session};
 
 pub struct State {
     save: Save,
@@ -25,16 +26,24 @@ impl State {
     /// yet (a country was just chosen).
     pub fn new(shared: &Shared, save: Save, ctx: &egui::Context) -> Result<Self, String> {
         let path = save.dir.join(saves::WORLD_FILE);
+        let root = shared
+            .paths
+            .data
+            .parent()
+            .ok_or("data folder has no parent")?;
+        let data = GameData::load(root)?;
+        let catalogue = Some(data.catalogue.clone());
         let session = if path.is_file() {
             let bytes = std::fs::read(&path).map_err(|e| e.to_string())?;
-            Session::load(&bytes, 0).map_err(|e| e.to_string())?
+            Session::load(&bytes, 0, catalogue).map_err(|e| e.to_string())?
         } else {
-            let world = shared.world.as_ref().ok_or("scenario not loaded")?;
-            let game = GameWorld::from_scenario(
-                &save.meta.scenario,
-                world.countries.iter().map(|c| &c.def),
+            let mut session = Session::new(
+                data.new_world(),
+                save.meta.seed,
+                save.meta.date,
+                0,
+                catalogue,
             );
-            let mut session = Session::new(game, save.meta.seed, save.meta.date, 0);
             if let Some(tag) = &save.meta.player {
                 session.submit(GameCommand::ChoosePlayer { tag: tag.clone() });
             }

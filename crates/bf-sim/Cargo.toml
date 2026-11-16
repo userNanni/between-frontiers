@@ -11,3 +11,4 @@ repository.workspace = true
 laplace-schelling.workspace = true
 serde.workspace = true
 ron.workspace = true
+rayon.workspace = true

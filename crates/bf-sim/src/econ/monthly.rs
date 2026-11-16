@@ -1,0 +1,583 @@
+//! Monthly systems: labour (jobs and changes of profession), demography, investment.
+
+use std::sync::Arc;
+
+use laplace_schelling::Fixed;
+use laplace_schelling::schedule::{Access, Cadence, System, TickCtx};
+use rayon::prelude::*;
+
+use super::catalogue::Catalogue;
+use super::prof::{self, P};
+use super::state::Region;
+use super::week::ECON;
+use super::{WORKER_SHARE, fill, labor_share, milli, workers};
+use crate::game::GameWorld;
+
+// ---------------------------------------------------------------------------------------------
+// Labour
+
+/// People move between professions toward open jobs. Each line: target, source, monthly share
+/// of the shortage that can move, and whether literacy limits it.
+const PROMOTIONS: [(usize, usize, i64, bool); 12] = [
+    (prof::FARM_LABORER, prof::PEASANT, 250, false),
+    (prof::LABORER, prof::PEASANT, 200, false),
+    (prof::SKILLED, prof::LABORER, 120, true),
+    (prof::SKILLED, prof::FARM_LABORER, 60, true),
+    (prof::CLERK, prof::LABORER, 100, true),
+    (prof::ENGINEER, prof::SKILLED, 60, true),
+    (prof::ENGINEER, prof::CLERK, 40, true),
+    (prof::PROFESSIONAL, prof::CLERK, 50, true),
+    (prof::MANAGER, prof::CLERK, 60, true),
+    (prof::MANAGER, prof::SKILLED, 40, true),
+    (prof::CAPITALIST, prof::MANAGER, 20, false),
+    (prof::LANDOWNER, prof::PEASANT, 10, false),
+];
+/// Share of the population the state employs, by profession.
+const STATE_SHARE: [(usize, i64); 3] = [
+    (prof::CIVIL_SERVANT, 12),
+    (prof::SOLDIER, 10),
+    (prof::CLERGY, 5),
+];
+
+pub struct Labour {
+    pub cat: Arc<Catalogue>,
+}
+
+pub struct LabourChange {
+    pops: Vec<(i64, i64)>,
+    staffing: Vec<Fixed>,
+}
+
+fn move_people(pops: &mut [(i64, i64)], from: usize, to: usize, workers_moved: i64) {
+    if workers_moved <= 0 {
+        return;
+    }
+    let people = (Fixed::from_int(workers_moved) / WORKER_SHARE)
+        .to_int_floor()
+        .min(pops[from].0);
+    pops[from].0 -= people;
+    pops[to].0 += people;
+}
+
+fn labour_region(cat: &Catalogue, r: &Region) -> LabourChange {
+    let mut required = [0i64; P];
+    for p in &r.plants {
+        let m = &cat.buildings[p.kind as usize].methods[p.method as usize];
+        for (pi, n) in &m.jobs {
+            required[*pi as usize] += *n * p.levels;
+        }
+    }
+    let mut pops: Vec<(i64, i64)> = r.pops.iter().map(|p| (p.size, 0)).collect();
+    let literacy = r.literacy;
+    // The state hires toward its share of the population.
+    let total: i64 = pops.iter().map(|p| p.0).sum();
+    for (pi, per_mille) in STATE_SHARE {
+        let target = total * per_mille / 1000;
+        let gap = target - pops[pi].0;
+        if gap > 0 {
+            let src = if pops[prof::PEASANT].0 > gap {
+                prof::PEASANT
+            } else {
+                prof::LABORER
+            };
+            let n = (gap / 10).max(1).min(pops[src].0);
+            pops[src].0 -= n;
+            pops[pi].0 += n;
+        }
+    }
+    // Promotions toward open jobs.
+    for (to, from, per_mille, needs_letters) in PROMOTIONS {
+        let have = workers(pops[to].0);
+        let gap = required[to] - have;
+        if gap <= 0 {
+            continue;
+        }
+        let mut n = gap * per_mille / 1000;
+        if needs_letters {
+            n = (Fixed::from_int(n) * literacy).to_int_floor();
+        }
+        let available = workers(pops[from].0) - required[from].min(workers(pops[from].0));
+        move_people(&mut pops, from, to, n.min(available).max(0));
+    }
+    // Idle workers drift back: to labourers from skilled jobs, to the land from the rest.
+    for pi in [
+        prof::FARM_LABORER,
+        prof::LABORER,
+        prof::SKILLED,
+        prof::CLERK,
+        prof::ENGINEER,
+        prof::PROFESSIONAL,
+        prof::MANAGER,
+    ] {
+        let idle = workers(pops[pi].0) - required[pi];
+        if idle > 0 {
+            let back = if matches!(
+                pi,
+                prof::SKILLED | prof::CLERK | prof::ENGINEER | prof::PROFESSIONAL | prof::MANAGER
+            ) {
+                prof::LABORER
+            } else {
+                prof::PEASANT
+            };
+            move_people(&mut pops, pi, back, idle / 10);
+        }
+    }
+    // Employment and staffing.
+    let mut fill_rate = [Fixed::ONE; P];
+    for pi in 0..P {
+        let w = workers(pops[pi].0);
+        let employed = if matches!(pi, prof::CIVIL_SERVANT | prof::SOLDIER | prof::CLERGY) {
+            w
+        } else {
+            w.min(required[pi])
+        };
+        pops[pi].1 = employed;
+        fill_rate[pi] = fill(Fixed::from_int(employed), Fixed::from_int(required[pi]));
+    }
+    let staffing = r
+        .plants
+        .iter()
+        .map(|p| {
+            let m = &cat.buildings[p.kind as usize].methods[p.method as usize];
+            if m.workers == 0 || p.levels == 0 {
+                return Fixed::ZERO;
+            }
+            let filled: Fixed = m
+                .jobs
+                .iter()
+                .map(|(pi, n)| fill_rate[*pi as usize] * *n)
+                .sum();
+            filled / m.workers
+        })
+        .collect();
+    LabourChange { pops, staffing }
+}
+
+impl System<GameWorld> for Labour {
+    type Changes = Vec<LabourChange>;
+    fn name(&self) -> &'static str {
+        "economy-labour"
+    }
+    fn cadence(&self) -> Cadence {
+        Cadence::Monthly { day: 1 }
+    }
+    fn access(&self) -> Access {
+        Access::new().read(ECON).write(ECON)
+    }
+    fn compute(&self, _ctx: &TickCtx, world: &GameWorld) -> Vec<LabourChange> {
+        world
+            .econ
+            .regions
+            .par_iter()
+            .map(|r| labour_region(&self.cat, r))
+            .collect()
+    }
+    fn apply(&self, _ctx: &TickCtx, changes: Vec<LabourChange>, world: &mut GameWorld) {
+        let econ = &mut world.econ;
+        for m in &mut econ.markets {
+            m.gov_workers = 0;
+        }
+        for (r, c) in econ.regions.iter_mut().zip(changes) {
+            for (pop, (size, employed)) in r.pops.iter_mut().zip(c.pops) {
+                // Money follows the people who moved, pro rata.
+                if pop.size > 0 && size != pop.size {
+                    pop.savings = pop.savings.mul_ratio(size.max(0), pop.size);
+                }
+                pop.size = size;
+                pop.employed = employed;
+            }
+            for (plant, s) in r.plants.iter_mut().zip(c.staffing) {
+                plant.staffing = s;
+            }
+            let gov: i64 = [prof::CIVIL_SERVANT, prof::SOLDIER, prof::CLERGY]
+                .iter()
+                .map(|&p| workers(r.pops[p].size))
+                .sum();
+            econ.markets[r.market as usize].gov_workers += gov;
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Demography
+
+/// Births and deaths per thousand a year follow the demographic transition: births fall with
+/// literacy, towns and comfort; deaths fall with comfort, food, and with medicine once it
+/// exists (sulfa drugs, antibiotics and vaccines spread from the late 1930s).
+pub fn vital_rates(
+    literacy: Fixed,
+    urban: Fixed,
+    food: Fixed,
+    comfort: Fixed,
+    health: Fixed,
+    year: i32,
+) -> (Fixed, Fixed) {
+    // Fertility falls late: mass schooling has to reach mothers before families shrink, so
+    // literacy enters squared. Mortality falls early: vaccines and antibiotics spread after
+    // 1935 even where incomes stay low.
+    let transition = (literacy * literacy * milli(550) + urban * milli(250) + comfort * milli(200))
+        .min(Fixed::ONE);
+    let births = Fixed::from_int(44) - transition * 34;
+    let medicine = Fixed::from_ratio(i64::from((year - 1935).clamp(0, 35)), 35);
+    let tech = milli(150) + medicine * milli(850);
+    let deaths =
+        (Fixed::from_int(30) - transition * 18 - tech * (milli(500) + health * milli(500)) * 16)
+            * (milli(1400) - food * milli(400));
+    (births, deaths.max(Fixed::from_int(6)))
+}
+
+pub struct Demography;
+
+impl System<GameWorld> for Demography {
+    type Changes = Vec<Vec<i64>>;
+    fn name(&self) -> &'static str {
+        "economy-demography"
+    }
+    fn cadence(&self) -> Cadence {
+        Cadence::Monthly { day: 15 }
+    }
+    fn access(&self) -> Access {
+        Access::new().read(ECON).write(ECON)
+    }
+    fn compute(&self, ctx: &TickCtx, world: &GameWorld) -> Vec<Vec<i64>> {
+        let year = ctx.date.year;
+        world
+            .econ
+            .regions
+            .par_iter()
+            .map(|r| {
+                let total = r.population().max(1);
+                let avg = |t: usize| -> Fixed {
+                    r.pops
+                        .iter()
+                        .map(|p| p.satisfaction[t] * p.size)
+                        .sum::<Fixed>()
+                        / total
+                };
+                let (b, d) = vital_rates(r.literacy, r.urban_share(), avg(0), avg(2), avg(1), year);
+                let net = b - d;
+                r.pops
+                    .iter()
+                    .map(|p| {
+                        (Fixed::from_int(p.size) * net)
+                            .mul_ratio(1, 12_000)
+                            .to_int_round()
+                    })
+                    .collect()
+            })
+            .collect()
+    }
+    fn apply(&self, _ctx: &TickCtx, changes: Vec<Vec<i64>>, world: &mut GameWorld) {
+        for (r, deltas) in world.econ.regions.iter_mut().zip(changes) {
+            for (pop, d) in r.pops.iter_mut().zip(deltas) {
+                pop.size = (pop.size + d).max(0);
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Investment
+
+/// Construction goods for one level, as shares of its money cost, by building group.
+/// Half of a new level is the work of building it (bought as services), the rest materials
+/// and machines by group.
+fn construction_basket(group: &str) -> &'static [(&'static str, i64)] {
+    match group {
+        "agriculture" => &[
+            ("services", 500),
+            ("tools", 200),
+            ("timber", 250),
+            ("cement", 50),
+        ],
+        "extraction" => &[
+            ("services", 450),
+            ("machinery", 250),
+            ("steel", 150),
+            ("cement", 50),
+            ("explosives", 100),
+        ],
+        "energy" => &[
+            ("services", 450),
+            ("steel", 150),
+            ("cement", 100),
+            ("machinery", 150),
+            ("electrical_equipment", 150),
+        ],
+        "infrastructure" => &[
+            ("services", 500),
+            ("steel", 200),
+            ("cement", 80),
+            ("timber", 120),
+            ("rolling_stock", 100),
+        ],
+        "services" => &[
+            ("services", 600),
+            ("cement", 80),
+            ("timber", 150),
+            ("furniture", 120),
+            ("paper", 50),
+        ],
+        _ => &[
+            ("services", 450),
+            ("steel", 150),
+            ("cement", 70),
+            ("machinery", 250),
+            ("tools", 80),
+        ],
+    }
+}
+
+/// A level costs two years of the value it adds at base prices.
+const CAPITAL_YEARS: i64 = 2;
+/// The least yearly return worth building for.
+const MIN_RETURN: Fixed = milli(50);
+/// Most new levels a market starts in a month.
+const MAX_BUILDS: usize = 400;
+/// A quarter of losses closes a level.
+const LOSING_WEEKS_TO_CLOSE: u16 = 13;
+
+pub struct Investment {
+    pub cat: Arc<Catalogue>,
+}
+
+pub struct Build {
+    region: usize,
+    kind: u16,
+    method: u8,
+    goods: Vec<(u16, Fixed)>,
+    cost: Fixed,
+}
+
+pub struct InvestmentChanges {
+    builds: Vec<Build>,
+    closes: Vec<(usize, u16)>,
+}
+
+/// Value added per level per week at base prices of a method (used for capital cost).
+fn base_value_added(cat: &Catalogue, kind: usize, method: usize) -> Fixed {
+    let m = &cat.buildings[kind].methods[method];
+    let out: Fixed = m
+        .outputs
+        .iter()
+        .map(|(g, q)| *q * cat.goods[*g as usize].base_price)
+        .sum();
+    let inp: Fixed = m
+        .inputs
+        .iter()
+        .map(|(g, q)| *q * cat.goods[*g as usize].base_price)
+        .sum();
+    (out - inp).max(Fixed::ZERO)
+}
+
+/// Best method a building can use in `year` at market prices, with its weekly owners' profit
+/// per level.
+pub fn best_method(
+    cat: &Catalogue,
+    kind: usize,
+    year: i32,
+    price: &[Fixed],
+    buy: &[Fixed],
+    tfp: Fixed,
+) -> Option<(u8, Fixed)> {
+    let b = &cat.buildings[kind];
+    let mut best: Option<(u8, Fixed)> = None;
+    for (mi, m) in b.methods.iter().enumerate() {
+        if m.available_from > year {
+            continue;
+        }
+        // A method whose inputs the market cannot supply is not an option.
+        if m.inputs.iter().any(|(g, _)| {
+            buy[*g as usize] < milli(500) || cat.goods[*g as usize].available_from > year
+        }) {
+            continue;
+        }
+        let out: Fixed = m.outputs.iter().map(|(g, q)| *q * price[*g as usize]).sum();
+        let inp: Fixed = m.inputs.iter().map(|(g, q)| *q * price[*g as usize]).sum();
+        let profit = (out - inp) * tfp * (Fixed::ONE - labor_share(&b.group));
+        if best.is_none_or(|(_, p)| profit > p) {
+            best = Some((mi as u8, profit));
+        }
+    }
+    best
+}
+
+const BUSY_UTILIZATION: Fixed = milli(900);
+
+impl System<GameWorld> for Investment {
+    type Changes = InvestmentChanges;
+    fn name(&self) -> &'static str {
+        "economy-investment"
+    }
+    fn cadence(&self) -> Cadence {
+        Cadence::Monthly { day: 8 }
+    }
+    fn access(&self) -> Access {
+        Access::new().read(ECON).write(ECON)
+    }
+    fn compute(&self, ctx: &TickCtx, world: &GameWorld) -> InvestmentChanges {
+        let cat = &*self.cat;
+        let econ = &world.econ;
+        let year = ctx.date.year;
+        let mut closes = Vec::new();
+        for (ri, r) in econ.regions.iter().enumerate() {
+            for p in &r.plants {
+                if p.levels > 0 && p.losing_weeks >= LOSING_WEEKS_TO_CLOSE {
+                    closes.push((ri, p.kind));
+                }
+            }
+        }
+        // Utilization of each building across its market: nobody adds levels of a kind the
+        // market already leaves idle.
+        let nk = cat.buildings.len();
+        let mut used = vec![vec![Fixed::ZERO; nk]; econ.markets.len()];
+        let mut built = vec![vec![Fixed::ZERO; nk]; econ.markets.len()];
+        for r in &econ.regions {
+            for p in &r.plants {
+                let levels = Fixed::from_int(p.levels);
+                used[r.market as usize][p.kind as usize] += levels * p.utilization;
+                built[r.market as usize][p.kind as usize] += levels;
+            }
+        }
+        let busy: Vec<Vec<bool>> = used
+            .iter()
+            .zip(&built)
+            .map(|(u, b)| {
+                u.iter()
+                    .zip(b)
+                    .map(|(u, b)| *b <= Fixed::ZERO || *u >= *b * BUSY_UTILIZATION)
+                    .collect()
+            })
+            .collect();
+        // Candidates per market, ranked by yearly return.
+        let mut by_market: Vec<Vec<(Fixed, Build)>> =
+            (0..econ.markets.len()).map(|_| Vec::new()).collect();
+        let candidates: Vec<Vec<(Fixed, Build)>> = econ
+            .regions
+            .par_iter()
+            .enumerate()
+            .map(|(ri, r)| {
+                let m = &econ.markets[r.market as usize];
+                let idle: i64 =
+                    workers(r.pops[prof::PEASANT].size) - r.pops[prof::PEASANT].employed;
+                let mut out = Vec::new();
+                for (kind, b) in cat.buildings.iter().enumerate() {
+                    let current = r.plants.iter().find(|p| p.kind as usize == kind);
+                    let existing = current.map_or(0, |p| p.levels);
+                    if !busy[r.market as usize][kind] {
+                        continue;
+                    }
+                    let ceiling = if let Some(res) = b.resource {
+                        r.deposits
+                            .iter()
+                            .filter(|d| d.0 == res && d.1 <= year)
+                            .map(|d| d.2)
+                            .sum::<i64>()
+                    } else if let Some(farm) = b.farm {
+                        r.land
+                            .iter()
+                            .filter(|l| l.0 == farm)
+                            .map(|l| l.1)
+                            .sum::<i64>()
+                    } else {
+                        i64::MAX
+                    };
+                    if existing >= ceiling {
+                        continue;
+                    }
+                    let Some((method, profit)) =
+                        best_method(cat, kind, year, &m.price, &m.buy_ratio, r.tfp_for(b))
+                    else {
+                        continue;
+                    };
+                    if cat.buildings[kind].methods[method as usize].workers > idle {
+                        continue;
+                    }
+                    let cost = base_value_added(cat, kind, 0) * (52 * CAPITAL_YEARS);
+                    if cost <= Fixed::ZERO {
+                        continue;
+                    }
+                    let ret = profit * 52 / cost;
+                    if ret < MIN_RETURN {
+                        continue;
+                    }
+                    let goods = construction_basket(&b.group)
+                        .iter()
+                        .filter_map(|(k, share)| {
+                            let g = cat.good(k)?;
+                            Some((g, cost.mul_ratio(*share, 1000) / m.price[g as usize]))
+                        })
+                        .collect();
+                    out.push((
+                        ret,
+                        Build {
+                            region: ri,
+                            kind: kind as u16,
+                            method,
+                            goods,
+                            cost,
+                        },
+                    ));
+                }
+                out
+            })
+            .collect();
+        for (r, list) in econ.regions.iter().zip(candidates) {
+            by_market[r.market as usize].extend(list);
+        }
+        let mut builds = Vec::new();
+        for (mi, mut list) in by_market.into_iter().enumerate() {
+            let m = &econ.markets[mi];
+            let committed: Fixed = m
+                .construction
+                .iter()
+                .zip(&m.price)
+                .map(|(q, p)| *q * *p)
+                .sum();
+            let mut budget = m.pool - committed;
+            // Highest return first; ties by region then kind, so the order never depends on threads.
+            list.sort_by(|a, b| {
+                b.0.cmp(&a.0)
+                    .then(a.1.region.cmp(&b.1.region))
+                    .then(a.1.kind.cmp(&b.1.kind))
+            });
+            for (_, build) in list.into_iter().take(MAX_BUILDS * 4) {
+                if builds
+                    .iter()
+                    .filter(|b: &&Build| econ.regions[b.region].market as usize == mi)
+                    .count()
+                    >= MAX_BUILDS
+                {
+                    break;
+                }
+                if build.cost > budget {
+                    continue;
+                }
+                budget -= build.cost;
+                builds.push(build);
+            }
+        }
+        InvestmentChanges { builds, closes }
+    }
+    fn apply(&self, _ctx: &TickCtx, changes: InvestmentChanges, world: &mut GameWorld) {
+        let econ = &mut world.econ;
+        for (ri, kind) in changes.closes {
+            // A tenth of a losing plant closes each month, at least one level.
+            let p = econ.regions[ri].plant_mut(kind);
+            p.levels -= (p.levels / 10).max(1);
+            p.losing_weeks = 0;
+        }
+        for b in changes.builds {
+            let market = econ.regions[b.region].market as usize;
+            let p = econ.regions[b.region].plant_mut(b.kind);
+            if p.levels == 0 {
+                p.method = b.method;
+            }
+            p.levels += 1;
+            for (g, q) in b.goods {
+                econ.markets[market].construction[g as usize] += q;
+            }
+            let _ = b.cost;
+        }
+    }
+}

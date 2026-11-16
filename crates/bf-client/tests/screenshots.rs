@@ -124,7 +124,12 @@ fn walk_through_the_screens() {
         h.run_steps(1);
     }
     h.key_press(egui::Key::Space);
-    std::thread::sleep(std::time::Duration::from_millis(400));
+    // A tick in flight (the weekly market clearing takes longest) finishes before the pause.
+    let paused_at = std::time::Instant::now();
+    while !game_snapshot(&h).paused && paused_at.elapsed().as_secs() < 10 {
+        std::thread::sleep(std::time::Duration::from_millis(50));
+        h.run_steps(1);
+    }
     h.run_steps(2);
     let before = game_snapshot(&h);
     assert!(

@@ -493,6 +493,7 @@ name = "bf-sim"
 version = "0.0.1"
 dependencies = [
  "laplace-schelling",
+ "rayon",
  "ron",
  "serde",
 ]

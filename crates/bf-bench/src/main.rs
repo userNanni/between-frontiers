@@ -6,6 +6,7 @@
 //! `--check-determinism` it runs a second time on a different thread count and fails if any
 //! hash differs. The world is a synthetic toy until the game's systems exist.
 
+mod diag;
 mod game;
 mod world;
 
@@ -77,6 +78,7 @@ fn parse_args() -> Result<Options, String> {
             }
             "--check-determinism" => options.check_determinism = true,
             "--game" => options.game = true,
+            "--diag" => {}
             "--budget-ms" => {
                 options.budget_ms = Some(
                     value("--budget-ms")?
@@ -364,6 +366,15 @@ fn main() -> ExitCode {
             return ExitCode::from(if message.is_empty() { 0 } else { 64 });
         }
     };
+    if std::env::args().any(|a| a == "--diag") {
+        return match diag::main() {
+            Ok(()) => ExitCode::SUCCESS,
+            Err(e) => {
+                eprintln!("bf-bench --diag: {e}");
+                ExitCode::FAILURE
+            }
+        };
+    }
     if options.game {
         return match game::main(
             options.years,
