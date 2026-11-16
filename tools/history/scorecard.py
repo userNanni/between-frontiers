@@ -214,7 +214,7 @@ def aggregate(ref, members, year):
     pop = sum(ref.pop[i].get(year, 0) * w for i, w in members)
     out = {"population": pop or None}
     if not pop:
-        return {k: None for k in ("population", "gdp", "gdp_per_capita", "urban", "literacy")}
+        return {k: None for k in ("population", "gdp", "gdp_per_capita", "urban", "literacy", "non_farm")}
     covered = gdp = 0.0
     for i, w in members:
         g = ref.gdppc.get(i, {}).get(year)
@@ -235,6 +235,16 @@ def aggregate(ref, members, year):
                 cov += p
                 val += v * p
         out[name] = val / cov if cov >= MIN_COVERAGE * pop else None
+    # Employment outside agriculture (ILO modelled, from 1991), the reference for the
+    # simulation's share of people outside farming.
+    cov = val = 0.0
+    for i, w in members:
+        v = ref.wdi["employment_agriculture"].get(i, {}).get(year)
+        p = ref.pop[i].get(year, 0) * w
+        if v is not None and p:
+            cov += p
+            val += (1 - v / 100) * p
+    out["non_farm"] = val / cov if cov >= MIN_COVERAGE * pop else None
     return out
 
 
@@ -301,7 +311,7 @@ class Sim:
             "population": pop,
             "gdp": t["gdp"][i],
             "gdp_per_capita": t["gdp"][i] / pop,
-            "urban": t["non_farm"][i],
+            "non_farm": t["non_farm"][i],
             "literacy": t["literacy"][i],
             "employment": emp,
             "production": dict(zip(self.goods, t["production"][i])),
@@ -315,7 +325,7 @@ def sum_sim(rows):
     pop = sum(r["population"] for r in rows)
     out = {"population": pop, "gdp": sum(r["gdp"] for r in rows)}
     out["gdp_per_capita"] = out["gdp"] / pop
-    out["urban"] = sum(r["urban"] * r["population"] for r in rows) / pop
+    out["non_farm"] = sum(r["non_farm"] * r["population"] for r in rows) / pop
     out["literacy"] = sum(r["literacy"] * r["population"] for r in rows) / pop
     return out
 
@@ -418,7 +428,9 @@ def build(sim_path):
             "population": [w["sim"]["population"], w["ref"]["population"]],
             "gdp": [wg["sim"]["gdp"], wg["ref"]["gdp"]],
             "gdp_per_capita": [wg["sim"]["gdp_per_capita"], wg["ref"]["gdp_per_capita"]],
-            "urban": [w["sim"]["urban"], w["ref"]["urban"]],
+            "non_farm": [w["sim"]["non_farm"], w["ref"]["non_farm"]],
+            # The model has no urban population of its own: HYDE's urban share is context only.
+            "urban_reference": w["ref"]["urban"],
             "literacy": [w["sim"]["literacy"], w["ref"]["literacy"]],
         }
         # Across units with a reference: mean |log error| and rank correlation of GDP per head.
@@ -492,7 +504,8 @@ def build(sim_path):
                     "population": ratio(s["population"], f["population"]),
                     "gdp": ratio(sg["gdp"], fg["gdp"]) if sg else None,
                     "gdp_per_capita": ratio(sg["gdp_per_capita"], fg["gdp_per_capita"]) if sg else None,
-                    "urban": [s["urban"], f["urban"]],
+                    "non_farm": [s["non_farm"], f["non_farm"]],
+                    "urban_reference": f["urban"],
                     "literacy": [s["literacy"], f["literacy"]],
                 }
             )
@@ -563,6 +576,7 @@ def build(sim_path):
         "units": unit_rows,
         "largest": [f"{t}/{p}" for t, p in largest],
         "deviations": deviations,
+        "deviation_groups": group_deviations(deviations),
         "unmatched_states": unknown_states,
         "units_without_reference": [f"{t}/{p}" for t, p in missing_units],
         "_series": {
@@ -604,7 +618,8 @@ def find_deviations(table, largest, world, region_rows, regions, period_rows, la
     first = min(w)
     add("world", "World", "gdp first year", w[first]["sim"]["gdp"], w[first]["ref"]["gdp"], 1.0,
         f"{first}: the first simulated year against Maddison")
-    add("world", "World", "urban", w[last_pop]["sim"]["urban"], w[last_pop]["ref"]["urban"], 1.0, f"{last_pop} (simulation: share outside farming)")
+    add("world", "World", "non_farm", w[last_pop]["sim"]["non_farm"], w[last_pop]["ref"]["non_farm"], 1.0,
+        f"{last_pop}: people outside farming vs employment outside agriculture")
     for key in largest:
         t = table[key]
         s0, r0 = t[1925]["sim"], t[1925]["ref"]
@@ -645,6 +660,39 @@ def find_deviations(table, largest, world, region_rows, regions, period_rows, la
     return out
 
 
+# What the model lacks, by the deviations it explains. The first rule that matches wins; the
+# list is a reading aid, kept short on purpose: a new kind of gap gets a rule here.
+CAUSES = [
+    ("small_start", "Começo pequeno: o PIB do primeiro ano simulado e a recuperação dele",
+     lambda d: d["metric"] == "gdp first year" or d["metric"].endswith("1925-1929")),
+    ("no_cycle_or_war", "Sem ciclo nem guerra: Depressão, guerra e reconstrução",
+     lambda d: any(d["metric"].endswith(p) for p in ("1929-1933", "1933-1939", "1939-1945"))
+     or (d["metric"].endswith("1945-1973") and d["subject"] in ("Western Europe", "Western offshoots"))),
+    ("no_regime", "Sem efeito de regime: estagnação e colapso do bloco soviético",
+     lambda d: d["subject"] in ("Former USSR", "Eastern Europe") and d["kind"] == "period"),
+    ("demography", "Demografia: transição adiantada, população baixa",
+     lambda d: d["metric"].startswith("population")),
+    ("non_farm", "Emprego e urbanização: a parcela fora da agropecuária",
+     lambda d: d["metric"] == "non_farm"),
+    ("convergence", "Convergência mecânica: produtividade que fecha a distância ao líder",
+     lambda d: d["metric"].startswith("gdp_per_capita")),
+]
+
+
+def group_deviations(devs):
+    groups = {}
+    for d in devs:
+        key, label = next(((k, l) for k, l, rule in CAUSES if rule(d)), ("other", "Outros"))
+        d["cause"] = key
+        g = groups.setdefault(key, {"cause": key, "label": label, "score": 0.0, "members": []})
+        g["members"].append(d)
+        g["score"] = math.sqrt(g["score"] ** 2 + d["score"] ** 2)
+    out = sorted(groups.values(), key=lambda g: -g["score"])
+    for g in out:
+        g["members"].sort(key=lambda d: -d["score"])
+    return out
+
+
 # ---------------------------------------------------------------------------- output
 
 def fmt(v, kind):
@@ -672,12 +720,13 @@ def markdown(card):
         f"Simulação {card['sim_years'][0]}–{card['sim_years'][-1]} contra a referência em `data/history/`. "
         f"PIB em dólares internacionais de 2011 (Maddison); a referência de PIB vai até {card['last_reference_gdp_year']}, "
         f"e as linhas de PIB de 2025 comparam {card['last_reference_gdp_year']}. "
-        "Urbanização da simulação = parcela da população fora da agropecuária; referência = HYDE 3.5 (população urbana). "
+        "O modelo não tem população urbana própria: \"fora da agropecuária\" (profissões não rurais) é comparado com o "
+        "emprego não agrícola da OIT (desde 1991); a urbanização HYDE fica só como contexto. "
         "Como ler: `docs/history.pt-BR.md`.\n"
     )
     L.append("## Mundo por década (simulado / real)\n")
-    L.append("| Ano | População | PIB | PIB por hab. | Urbanização | Alfabetização | Erro log. médio pop / PIB / PIB pc | Correlação de ranking PIB pc (n) |")
-    L.append("|---|---|---|---|---|---|---|---|")
+    L.append("| Ano | População | PIB | PIB por hab. | Fora da agropecuária | Urbana (HYDE) | Alfabetização | Erro log. médio pop / PIB / PIB pc | Correlação de ranking PIB pc (n) |")
+    L.append("|---|---|---|---|---|---|---|---|---|")
     for r in card["world"]:
         e = r["mean_abs_log_error"]
         rc = r["rank_correlation_gdp_per_capita"]
@@ -686,7 +735,8 @@ def markdown(card):
             f"| {fmt(r['population'][0], 'pop')} / {fmt(r['population'][1], 'pop')} "
             f"| {fmt(r['gdp'][0], 'gdp')} / {fmt(r['gdp'][1], 'gdp')} "
             f"| {fmt(r['gdp_per_capita'][0], 'pc')} / {fmt(r['gdp_per_capita'][1], 'pc')} "
-            f"| {fmt(r['urban'][0], 'share')} / {fmt(r['urban'][1], 'share')} "
+            f"| {fmt(r['non_farm'][0], 'share')} / {fmt(r['non_farm'][1], 'share')} "
+            f"| {fmt(r['urban_reference'], 'share')} "
             f"| {fmt(r['literacy'][0], 'share')} / {fmt(r['literacy'][1], 'share')} "
             f"| {' / '.join('–' if e[k] is None else f'{e[k]:.2f}' for k in ('population', 'gdp', 'gdp_per_capita'))} "
             f"| {'–' if rc is None else f'{rc:.2f}'} ({r['units_with_gdp']}) |"
@@ -778,13 +828,26 @@ def markdown(card):
                 sv, rv = r[c]
                 cells.append(f"{'–' if sv is None else f'{sv:.0f}'} / {'–' if rv is None else f'{rv:.0f}'}")
             L.append(f"| {r['unit']} | " + " | ".join(cells) + " |")
-    L.append("\n## Maiores desvios\n")
-    L.append("Ordenados por |log(simulado/real)| × √(peso no mundo). Causas: `docs/history.pt-BR.md`.\n")
-    L.append("| # | Assunto | Métrica | Simulado | Real | Detalhe |")
-    L.append("|---|---|---|---|---|---|")
+    L.append("\n## Maiores desvios, por causa\n")
+    L.append("Cada desvio é |log(simulado/real)| × √(peso no mundo); os desvios com a mesma causa no modelo "
+             "ficam juntos, e a causa pesa a raiz da soma dos quadrados dos seus desvios. Até cinco desvios "
+             "por causa. Leitura das causas: `docs/history.pt-BR.md`.\n")
+    L.append("| # | Causa | Peso | Desvios (simulado vs real) |")
+    L.append("|---|---|---|---|")
+    for i, g in enumerate(card["deviation_groups"][:10], 1):
+        items = "; ".join(
+            f"{d['subject']} {d['metric']}: {d['detail']}" for d in g["members"][:5]
+        )
+        more = len(g["members"]) - 5
+        if more > 0:
+            items += f"; e mais {more}"
+        L.append(f"| {i} | {g['label']} | {g['score']:.2f} | {items} |")
+    L.append("\n### Os 15 maiores, um a um\n")
+    L.append("| # | Assunto | Métrica | Simulado | Real | Detalhe | Causa |")
+    L.append("|---|---|---|---|---|---|---|")
     for i, d in enumerate(card["deviations"][:15], 1):
         L.append(
-            f"| {i} | {d['subject']} | {d['metric']} | {d['sim']:.3g} | {d['ref']:.3g} | {d['detail']} |"
+            f"| {i} | {d['subject']} | {d['metric']} | {d['sim']:.3g} | {d['ref']:.3g} | {d['detail']} | {d['cause']} |"
         )
     if card["unmatched_states"]:
         L.append(f"\nEstados sem país moderno reconhecido (fora das regiões): {', '.join(card['unmatched_states'])}\n")
@@ -825,7 +888,10 @@ def charts(card, out):
     line(axs[0][0], w, "population", 1e-9, "População (bilhões)")
     line(axs[0][1], w, "gdp", 1e-12, "PIB (trilhões de US$ 2011)")
     line(axs[0][2], w, "gdp_per_capita", 1, "PIB por habitante (US$ 2011)")
-    line(axs[1][0], w, "urban", 100, "Urbanização % (sim.: fora da agropecuária)")
+    line(axs[1][0], w, "non_farm", 100, "Fora da agropecuária % (real: emprego, OIT)")
+    hyde = [w[y]["ref"]["urban"] * 100 if w[y]["ref"].get("urban") is not None else float("nan") for y in years]
+    axs[1][0].plot(years, hyde, color="#7f8c8d", lw=1.2, ls=":", label="urbana (HYDE), sem par no modelo")
+    axs[1][0].legend(fontsize=7)
     line(axs[1][1], w, "literacy", 100, "Alfabetização %")
     axs[1][2].axis("off")
     axs[0][0].legend(fontsize=8)

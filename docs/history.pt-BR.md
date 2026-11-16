@@ -17,7 +17,7 @@ O resultado fica em `target/history/`:
 |---|---|
 | `scorecard.md` | O placar para ler: tabelas por década, por região, por período e os maiores desvios |
 | `scorecard.json` | Os mesmos números, para comparar rodadas |
-| `world.png` | Mundo: população, PIB, PIB por habitante, urbanização, alfabetização |
+| `world.png` | Mundo: população, PIB, PIB por habitante, fora da agropecuária, alfabetização |
 | `regions_gdp_per_capita.png`, `regions_population.png` | As 11 regiões |
 | `countries_gdp_per_capita.png`, `countries_population.png` | As 20 maiores unidades de 1925 |
 | `production.png` | Produção mundial de carvão, petróleo, gás, eletricidade, aço e cereais |
@@ -39,7 +39,7 @@ sem ele.
 |---|---|
 | População | Média de 1º de janeiro do ano e do seguinte (≈ meio do ano, como nas séries históricas) |
 | PIB | `gdp_last_year` do mercado, a preços-base de 1925 (dólares de 2011). A divisão entre metrópole, colônias e estados segue o valor adicionado que o módulo estima semana a semana (produção vendida menos insumos comprados, a preço-base, mais a comida de subsistência) |
-| Urbanização | `urban_share`: parcela da população fora das profissões rurais (camponês, assalariado rural, proprietário de terra) |
+| Fora da agropecuária | `Region::urban_share()`: parcela da população fora das profissões rurais (camponês, assalariado rural, proprietário de terra). É a única "urbanização" que o modelo tem (ver "Urbanização" abaixo) |
 | Alfabetização | `literacy` dos estados, ponderada pela população |
 | Emprego por setor | Vagas preenchidas por grupo de edifício (agropecuária; extração, energia e indústrias; o resto em serviços), mais o funcionalismo, o clero e os soldados em serviços e os camponeses sem emprego, que vivem do próprio lote, na agropecuária |
 | Produção | Soma semanal da produção das plantas (níveis × ocupação × produtividade × utilização × insumos). Cereais somam trigo, milho e arroz, com a subsistência dos camponeses |
@@ -90,20 +90,31 @@ que têm série.
 - **Crescimento por período histórico**, em % ao ano, por região: 1925–29, 1929–33 (Depressão),
   1933–39, 1939–45 (guerra), 1945–73 (anos dourados), 1973–91 (choques do petróleo ao colapso
   soviético), 1991–2008, 2008–25. É onde aparece o que o modelo ainda não tem.
-- **Maiores desvios**: candidatos (mundo, as 20 maiores unidades, região × período) ordenados por
-  |ln(simulado/real)| × √(peso no mundo). O crescimento das unidades é medido desde 1925, para que
-  a diferença de fronteira de partida não conte.
+- **Maiores desvios, por causa**: candidatos (mundo, as 20 maiores unidades, região × período)
+  medidos por |ln(simulado/real)| × √(peso no mundo) e agrupados pela falta do modelo que os explica
+  (`CAUSES` em `tools/history/scorecard.py`: começo pequeno, sem ciclo nem guerra, sem efeito de
+  regime, demografia, emprego fora da agropecuária, convergência mecânica). A causa pesa a raiz da
+  soma dos quadrados dos seus desvios, e a lista mostra uma linha por causa; a tabela "um a um"
+  logo abaixo mantém a ordem bruta. O PIB por habitante das unidades entra como nível no fim
+  (por habitante, a diferença de fronteira de 1925 pesa pouco); a população, como crescimento
+  desde 1925, para que essa diferença de partida não conte.
 
 Como o PIB do Maddison termina em 2022, as linhas de PIB de 2025 e o último período (2008–25)
 comparam 2022 dos dois lados.
 
 ### O que não é a mesma coisa dos dois lados
 
-- **Urbanização.** A simulação conta todo mundo fora da agropecuária; a HYDE conta quem mora em
-  área urbana. Em 1925 isso dá 38 % contra 21 %: não é erro de dado de entrada (o cenário carrega a
-  urbanização da HYDE, 21,5 % no mundo, em `countries.ron`), é definição (`Region::urban_share`).
-  Cidades pequenas, aldeias com artesãos, mineiros e funcionários do interior são "urbanos" no
-  modelo.
+- **Urbanização: o modelo não tem.** `Region::urban_share()`, que o placar grava e o HUD mostra
+  (`bf-client/src/live.rs`), é a parcela da população fora das três profissões rurais. A
+  urbanização da HYDE de `countries.ron` só é usada no início: divide a demanda de 1925 entre
+  cidade e campo e posiciona as plantas (`econ/setup.rs`). Depois disso, migração, moradia
+  urbana e natalidade leem a profissão. Por isso o placar compara "fora da agropecuária" com o
+  **emprego não agrícola** da OIT (100 − `SL.AGR.EMPL.ZS`, desde 1991) e mostra a urbanização da
+  HYDE só como contexto, sem par do lado simulado. Em 1925 as duas medidas dão 37 % (fora da
+  agropecuária) e 21 % (urbana): mineiros, artesãos de aldeia, padres e soldados do interior estão
+  fora da agropecuária sem morar em cidade. Falta ao modelo uma população urbana própria por
+  estado (quem mora em cidade, além de em que trabalha), movida pela migração e pela moradia, com
+  empregos não agrícolas no campo e, ao contrário, agricultores que moram na cidade.
 - **Energia.** As séries de carvão, petróleo e gás estão em TWh de energia primária; a simulação
   produz toneladas e m³, convertidas por poder calorífico médio (carvão 7,0 MWh/t, petróleo
   11,63 MWh/t, gás 10 MWh por mil m³). Erros de 20 a 30 % no carvão podem ser só a mistura de
@@ -118,90 +129,87 @@ Rodada de 1925 a 2026-01-01, semente 1925, 4 threads (729 s de CPU, 266 s de par
 `d165c5e4…`. O hash de 10 anos com 1 thread é o mesmo com e sem `--history-out` e igual ao da
 `main` (`831ab118…`).
 
-| Ano | População | PIB (tri US$ 2011) | PIB por hab. | Urbanização¹ | Erro log. médio pop / PIB pc | Ranking PIB pc |
-|---|---|---|---|---|---|---|
-| 1925 | 1,96 / 1,97 bi | 3,0 / 5,6 | 1 525 / 2 859 | 37 / 21 % | 0,04 / 0,64 | 0,94 |
-| 1935 | 2,17 / 2,17 bi | 6,3 / 6,4 | 2 888 / 2 969 | 43 / 24 % | 0,07 / 0,37 | 0,81 |
-| 1945 | 2,44 / 2,38 bi | 9,4 / 8,0 | 3 857 / 3 378 | 47 / 27 % | 0,12 / 0,52 | 0,64 |
-| 1955 | 2,81 / 2,74 bi | 13,0 / 10,9 | 4 620 / 3 986 | 49 / 31 % | 0,20 / 0,57 | 0,63 |
-| 1965 | 3,30 / 3,33 bi | 20,2 / 17,2 | 6 128 / 5 168 | 51 / 35 % | 0,26 / 0,67 | 0,59 |
-| 1975 | 3,83 / 4,07 bi | 32,6 / 26,8 | 8 503 / 6 577 | 52 / 37 % | 0,32 / 0,76 | 0,54 |
-| 1985 | 4,38 / 4,87 bi | 48,4 / 37,1 | 11 052 / 7 622 | 53 / 41 % | 0,39 / 0,79 | 0,57 |
-| 1995 | 4,96 / 5,76 bi | 63,6 / 50,0 | 12 825 / 8 686 | 55 / 45 % | 0,46 / 0,89 | 0,58 |
-| 2005 | 5,56 / 6,58 bi | 77,4 / 74,7 | 13 928 / 11 348 | 56 / 49 % | 0,52 / 0,85 | 0,53 |
-| 2015 | 6,17 / 7,47 bi | 91,8 / 109,3 | 14 881 / 14 637 | 57 / 53 % | 0,59 / 0,80 | 0,48 |
-| 2025² | 6,78 / 8,23 bi | 102,7 / 133,4 | 15 578 / 16 633 | 59 / 57 % | 0,64 / 0,84 | 0,48 |
+| Ano | População | PIB (tri US$ 2011) | PIB por hab. | Fora da agropecuária¹ | Urbana (HYDE) | Erro log. médio pop / PIB pc | Ranking PIB pc |
+|---|---|---|---|---|---|---|---|
+| 1925 | 1,96 / 1,97 bi | 3,0 / 5,6 | 1 525 / 2 859 | 37 % / – | 21 % | 0,04 / 0,64 | 0,94 |
+| 1935 | 2,17 / 2,17 bi | 6,3 / 6,4 | 2 888 / 2 969 | 43 % / – | 24 % | 0,07 / 0,37 | 0,81 |
+| 1945 | 2,44 / 2,38 bi | 9,4 / 8,0 | 3 857 / 3 378 | 47 % / – | 27 % | 0,12 / 0,52 | 0,64 |
+| 1955 | 2,81 / 2,74 bi | 13,0 / 10,9 | 4 620 / 3 986 | 49 % / – | 31 % | 0,20 / 0,57 | 0,63 |
+| 1965 | 3,30 / 3,33 bi | 20,2 / 17,2 | 6 128 / 5 168 | 51 % / – | 35 % | 0,26 / 0,67 | 0,59 |
+| 1975 | 3,83 / 4,07 bi | 32,6 / 26,8 | 8 503 / 6 577 | 52 % / – | 37 % | 0,32 / 0,76 | 0,54 |
+| 1985 | 4,38 / 4,87 bi | 48,4 / 37,1 | 11 052 / 7 622 | 53 % / – | 41 % | 0,39 / 0,79 | 0,57 |
+| 1995 | 4,96 / 5,76 bi | 63,6 / 50,0 | 12 825 / 8 686 | 55 / 59 % | 45 % | 0,46 / 0,89 | 0,58 |
+| 2005 | 5,56 / 6,58 bi | 77,4 / 74,7 | 13 928 / 11 348 | 56 / 63 % | 49 % | 0,52 / 0,85 | 0,53 |
+| 2015 | 6,17 / 7,47 bi | 91,8 / 109,3 | 14 881 / 14 637 | 57 / 70 % | 53 % | 0,59 / 0,80 | 0,48 |
+| 2025² | 6,78 / 8,23 bi | 102,7 / 133,4 | 15 578 / 16 633 | 59 / 73 % | 57 % | 0,64 / 0,84 | 0,48 |
 
-Simulado / real. ¹ Simulação: fora da agropecuária; referência: HYDE, urbana. ² PIB de 2022 dos
-dois lados.
+Simulado / real. ¹ Simulação: população fora das profissões rurais; referência: emprego não
+agrícola da OIT, só desde 1991. A coluna HYDE é contexto: o modelo não tem urbanização própria.
+² PIB de 2022 dos dois lados.
 
 Leitura curta: a média mundial acerta a ordem de grandeza e termina perto (PIB por habitante 6 %
 abaixo em 2022), mas por um caminho errado. A economia começa com pouco mais da metade do PIB, se
 recupera em dez anos, cresce demais entre 1930 e 1990 e de menos depois. O mundo fica mais
 igual do que foi: a correlação de ranking cai de 0,94 para 0,48, e o erro típico do PIB por
-habitante passa de um fator 2 (0,84). A população anda em linha reta e termina 18 % abaixo.
+habitante passa de um fator 2 (0,84). A população anda em linha reta e termina 18 % abaixo. E o
+mundo simulado sai da agropecuária devagar demais depois de 1990 (59 % contra 73 % em 2025).
 
-### Os 10 maiores desvios
+### Os maiores desvios, por causa
 
-Ordem do placar (|log| × √peso). "Confirmado" quer dizer que o mecanismo foi visto no código, não
-que o tamanho do efeito foi medido.
+Seis causas explicam os 15 maiores desvios; a ordem é a do placar (peso da causa). "Confirmado"
+quer dizer que o mecanismo foi visto no código, não que o tamanho do efeito foi medido.
 
-1. **PIB do primeiro ano: 3,0 tri contra 5,6 tri.** O mercado nasce com `gdp_last_year` igual ao
-   PIB-alvo da calibração (`econ/setup.rs`), mas o PIB contado no primeiro ano (produção vendida a
-   preço-base menos insumos, mais a subsistência, `econ/week.rs::settle_region`) dá 57 % dele, em
-   todas as grandes unidades (razão PIB pc de 0,46 a 0,68 em 1925). Confirmado que as duas contas
-   são diferentes; **hipótese**: a diferença está em produção não vendida, plantas que reduzem a
-   utilização na primeira semana e serviços que a calibração conta e o mercado não fecha. O
-   antigo "tombo de 1926–27" era isto: o bench lia `gdp_last_year` antes da virada de 1º de
-   janeiro, que ainda guardava o alvo calibrado (o placar lê `gdp_running`; o relatório decenal do
-   `--game` continua com o rótulo um ano atrasado). É o desvio que mais pesa, porque todo o
-   crescimento de 1925–35 (+8 %/ano no mundo) é a recuperação dele.
-2. **China em 2022: 8 500 contra 19 200 $ por habitante**, depois de passar 2,6 vezes à frente em
-   1975. Confirmado: fora das tecnologias, a produtividade converge para o estado líder na
-   proporção da distância e da alfabetização (`econ/yearly.rs`, `catch_up`), sem regime, guerra
-   ou reforma; a China cresce cedo demais (1945–73) e para quando a distância fecha. Não há
-   mecanismo para a decolagem pós-1978 (**hipótese**: falta abertura comercial e investimento
-   estrangeiro como motor de convergência).
-3. **Depressão ausente nas economias ricas.** Ocidente de colonização europeia em 1929–33: +5,5 %
-   contra −9,1 % ao ano. Confirmado: não há padrão-ouro, crise bancária nem colapso do comércio
-   (planejados para a fase 4, `architecture.pt-BR.md`); o período ainda é a recuperação do item 1.
-4. **Leste da Ásia em 2008–25: +0,4 contra +4,6 % ao ano** (e 1991–2008: +0,9 contra +3,7 %). Mesma
-   causa do item 2: a convergência termina quando a distância ao líder fecha. Confirmado.
-5. **População das colônias britânicas: ×4,4 contra ×10** (Nigéria, África Oriental, Ceilão,
-   Malásia…). Confirmado: a natalidade cai com a "urbanização" (`econ/monthly.rs::vital_rates`
-   recebe `urban_share`, que conta todo mundo fora da agropecuária, 37 % do mundo em 1925 contra
-   21 % urbanos) e com a alfabetização ao quadrado, que o modelo faz crescer depressa. **Hipótese**:
-   isso adianta a transição demográfica em décadas onde ela foi tardia (África), e é a maior parte
-   dos 1,45 bilhão de pessoas que faltam em 2025.
-6. **Europa Ocidental em 1945–73: +2,3 contra +4,0 % ao ano.** Confirmado: sem guerra, não há
-   destruição para reconstruir; os anos dourados históricos foram em boa parte recuperação e
-   difusão tecnológica americana. A Europa chega a 1945 já rica (o item 9).
-7. **Leste da Ásia em 1991–2008:** ver item 4.
-8. **México em 2022: 3 100 contra 16 200 $ por habitante** (razão cai de 0,46 em 1925 para 0,19), e
-   população 0,50 da real. **Hipótese**: a convergência depende da alfabetização, que o modelo
-   eleva devagar no México rural, e a urbanização de 1925 (29 % fora da agropecuária) prende a
-   produtividade agrícola; não conferido no código além da fórmula do `catch_up`.
-9. **População mundial em 2025: 6,78 contra 8,23 bilhões.** Ver item 5; a curva é quase linear
-   (≈ 57 milhões por ano), sem a explosão de 1950–90. Confirmado também que a mortalidade
-   não cai abaixo de 6 por mil nem a natalidade abaixo de 7 (`vital_rates`), o que segura os
-   países ricos mas não explica o déficit dos pobres.
-10. **Guerra ausente: Europa Ocidental em 1939–45, +2,4 contra −3,3 % ao ano**; Ocidente de
-    colonização europeia, +1,8 contra +6,5 % (o boom americano de guerra). Confirmado: não há
-    guerra no modelo ainda.
-
-Também no placar, abaixo dos dez: a URSS cresce 3,7 % ao ano em 1973–91 contra 0,4 % (sem
-estagnação nem colapso, porque o modelo não tem efeito de regime sobre a economia; confirmado
-pela ausência) e o Sul da Ásia cresce 3,2 % ao ano em 1945–73 contra 0,8 % (a mesma convergência
-do item 2).
+1. **Convergência mecânica** (peso 0,73). China em 2022: 8 500 contra 19 200 $ por habitante,
+   depois de estar 2,6 vezes à frente em 1975; Leste da Ásia +0,4 contra +4,6 % ao ano em 2008–25
+   e +0,9 contra +3,7 % em 1991–2008; México em 2022: 3 100 contra 16 200 $; Sul da Ásia +3,2 contra
+   +0,8 % ao ano em 1945–73. Confirmado: fora das tecnologias, a produtividade de cada estado
+   converge para a do estado líder na proporção da distância e da alfabetização
+   (`econ/yearly.rs`, `catch_up`), sem regime, guerra, reforma ou abertura. Quem é pobre e
+   alfabetizado cresce cedo demais; quando a distância fecha, para. **Hipóteses**: falta um motor
+   para a decolagem chinesa pós-1978 (abertura e investimento estrangeiro), e no México a
+   alfabetização sobe devagar demais no campo para puxar a convergência.
+2. **Começo pequeno** (0,68). O PIB de 1925 é 3,0 contra 5,6 tri, e de 1925 a 1929 o mundo cresce
+   8,4 % ao ano por habitante, contra 2,4 % (+11,4 % no Ocidente de colonização europeia). O
+   mercado nasce com `gdp_last_year` igual ao PIB-alvo da calibração (`econ/setup.rs`), mas o PIB
+   contado no primeiro ano (produção vendida a preço-base menos insumos, mais a subsistência,
+   `econ/week.rs::settle_region`) dá 57 % dele, em todas as grandes unidades (razão PIB pc de
+   0,46 a 0,68 em 1925). Confirmado que as duas contas são diferentes. **Hipótese**: a diferença
+   está em produção não vendida, plantas que reduzem a utilização na primeira semana e serviços
+   que a calibração conta e o mercado não fecha. O antigo "tombo de 1926–27" era isto: o bench
+   lia `gdp_last_year` antes da virada de 1º de janeiro, que ainda guardava o alvo calibrado. O
+   placar lê `gdp_running`; o relatório decenal do `--game` continua com o rótulo um ano atrasado.
+3. **Sem ciclo nem guerra** (0,59). Na Depressão (1929–33), o Ocidente de colonização europeia
+   cresce +5,5 % ao ano contra −9,1 %, e a Europa Ocidental +6,9 % contra −2,2 %. Na guerra
+   (1939–45), a Europa Ocidental cresce +2,4 % contra −3,3 %, e os EUA e afins +1,8 % contra +6,5 %
+   (o boom da produção de guerra). Na reconstrução (1945–73), a Europa Ocidental cresce +2,3 %
+   contra +4,0 %, e os EUA e afins +3,0 % contra +1,8 %. Confirmado: não há padrão-ouro, crise
+   bancária, colapso do comércio nem guerra (fase 4, `architecture.pt-BR.md`). Sem destruição,
+   não há o que reconstruir, e a Europa chega a 1945 já rica.
+4. **Demografia** (0,46). A população das colônias britânicas cresce ×4,4 contra ×10, e a das
+   francesas ×4,5 contra ×8,1; a dos EUA ×1,6 contra ×3,1, e a do Brasil ×3,2 contra ×7,0. O mundo
+   tem 6,78 contra 8,23 bilhões em 2025, numa curva quase linear (≈ 57 milhões por ano) sem a
+   explosão de 1950–90. Confirmado: a natalidade em `econ/monthly.rs::vital_rates` cai com
+   `urban_share` (fora da agropecuária, 37 % do mundo em 1925 contra 21 % urbanos) e com a
+   alfabetização ao quadrado; a migração é só interna (`econ/migration.rs`; o contrato de política
+   prevê efeitos de imigração e emigração, ainda sem sistema), o que pesa nos EUA, no Brasil e na
+   Argentina; natalidade e
+   mortalidade têm pisos de 7 e 6 por mil. **Hipótese**: a transição demográfica chega décadas
+   cedo onde foi tardia (África, Sul da Ásia), e isso responde pela maior parte do 1,45 bilhão
+   que falta.
+5. **Sem efeito de regime** (0,26). A URSS cresce +3,7 % ao ano em 1973–91 contra +0,4 %, e o
+   Leste Europeu +3,2 % contra −0,1 %; depois, em 1991–2008, o Leste Europeu cresce +1,3 % contra
+   +4,6 % (sem colapso, não há recuperação). Confirmado pela ausência: o regime político não
+   pesa na economia, e não há planejamento central nem transição.
+6. **Emprego fora da agropecuária** (0,22). O mundo tem 59 % da população fora das profissões
+   rurais em 2025, contra 73 % do emprego fora da agropecuária. Em 2025, a agropecuária ocupa 71 %
+   contra 22 % na China e 75 % contra 12 % no México. Confirmado: os camponeses sem emprego
+   ficam na agropecuária (subsistência), e a migração campo-cidade (`econ/migration.rs`) só move
+   quem acha emprego e moradia urbana. **Hipótese**: a indústria e os serviços abrem vagas
+   devagar demais nos países pobres; a indústria fica baixa em todo lugar (5 a 21 % contra 19 a
+   35 %).
 
 ### Outros sinais do primeiro placar
 
-- **Urbanização de 1925**: 37 % contra 21 % é definição, não dado (ver "O que não é a mesma coisa").
-  Em 2025 as duas medidas quase se encontram (59 % contra 57 %), porque a parcela fora da
-  agropecuária quase não sobe depois de 1950.
-- **Emprego por setor em 2025**: a agropecuária fica alta demais nos países pobres (China 71 %
-  contra 22 %; México 75 % contra 12 %) e a indústria baixa em todo lugar (5 a 21 % contra 19 a
-  35 %). Os camponeses sem emprego contam na agropecuária.
 - **Energia**: o carvão simulado passa da referência a partir de 1935 (o dobro em 1945) e o gás
   fica em um terço da referência. O petróleo começa baixo (15 % em 1925) e chega em 1985.
   A conversão por poder calorífico médio pode responder por 20 a 30 % do carvão, não pelo
@@ -222,6 +230,16 @@ Sem referência por licença: aço por país (os termos do British Geological Su
 o dado; o placar usa a série só na máquina que a baixou), cimento por país e veículos (sem fonte
 livre por país). Sem referência por falta de série: cereais antes de 1961, emprego por setor antes
 de 1991, contas públicas antes de 1972.
+
+### Lacunas e o que as cobriria
+
+| Série | Referência hoje | O que cobriria antes | Por que não entrou |
+|---|---|---|---|
+| Alfabetização | Mundo só desde 1995 (a série da OWID tem um ponto por país em torno de 1950, da UNESCO, e quase nada antes; abaixo de 80 % da população coberta, o placar deixa `–`) | Clio Infra, "Literacy" (Buringh e van Zanden, por país e década desde 1500), e a série de anos de estudo de *How Was Life?* (OECD, CC BY 4.0), que é a origem da parte antiga da OWID | Clio Infra não declara licença na página e o download não foi testado; com a regra nova (dado público pode), é a primeira a entrar. A parte de *How Was Life?* já vem pela OWID, mas cobre poucos países antes de 1950 |
+| Aço | Desde 1970 (OWID `minerals`, USGS e BGS), só local | USGS *Minerals Yearbook* (domínio público): tabelas de produção mundial por país desde 1932, em PDF | O site da USGS recusou o acesso automático (403) e as tabelas são PDF por ano; daria para extrair, não foi feito. Antes de 1932, Mitchell (*International Historical Statistics*) é livro com direito autoral |
+| Cereais | Desde 1961 (FAOSTAT) | International Institute of Agriculture, anuários de 1910–1946 (domínio público por idade) | Escaneados, sem série digital por país encontrada |
+| Emprego por setor | Desde 1991 (OIT modelada) | Herrendorf, Rogerson e Valentinyi (via OWID, 1801–2015, poucos países) | Sem licença no metadado; com a regra nova pode entrar, com a licença anotada como desconhecida |
+| Contas públicas e inflação | Desde 1960–72 (WDI) | Jordà–Schularick–Taylor (CC BY-NC-SA, 18 países ricos, 1870–2020); IMF *Public Finances in Modern History* (termos do IMF, dívida de 151 países desde 1800) | NC e termos próprios eram proibidos quando a referência foi montada; com a regra nova, entram num arquivo separado com a licença original |
 
 
 ## Placar de eventos (formato de entrada)
