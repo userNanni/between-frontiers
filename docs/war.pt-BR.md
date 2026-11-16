@@ -121,9 +121,32 @@ regra de `rules.ron` leva cada clima a uma classe de terreno (aberto, floresta, 
 combate usa a mistura do estado: o fator de defesa é a média dos fatores das classes, pesada pela
 parcela de cada uma. Inverno multiplica o consumo e corta a velocidade (`winter`).
 
+### Frente e segmento: onde se manda e onde se luta
+
+Dois níveis, para o jogador não comandar dezenas de pedaços de fronteira:
+
+- **Segmento:** um par de estados vizinhos por terra em lados opostos. É onde rodam o passo de
+  combate e o suprimento. Ninguém comanda segmento.
+- **Frente:** toda a fronteira contínua em terra com um inimigo ou uma coalizão (os segmentos
+  ligados entre si). É onde o jogador e a IA dão objetivo, postura, formações e prioridade de
+  suprimento. Alemanha contra União Soviética é uma frente com dezenas de segmentos.
+
+`war::allocate` reparte os elementos da frente entre os seus segmentos por uma regra só, com a
+conta aberta:
+
+> **peso do segmento** = extensão × (1 + poder inimigo do segmento ÷ poder inimigo médio da frente)
+> × (1 + `objective_pull` se o segmento leva ao objetivo)
+
+Cada segmento recebe primeiro o piso de `min_share` dos elementos (nenhum trecho fica vazio) e o
+resto na proporção do peso. Os elementos são inteiros: a sobra do arredondamento vai, um a um, aos
+maiores restos, com empate resolvido pela ordem do segmento, o que torna a repartição determinística
+e estável: mesma frente, mesmo comando e mesmos números dão a mesma repartição de uma semana para
+a outra (teste). A tela mostra, por segmento, a extensão, o poder inimigo, se puxa o objetivo, o
+peso e os elementos recebidos.
+
 ### Passo de combate em terra
 
-`war::land_step` resolve uma semana de combate num trecho de frente. Para cada lado:
+`war::land_step` resolve uma semana de combate num segmento. Para cada lado:
 
 > **poder** = homens × fogo por homem × treino × suprimento × terreno × ar
 
@@ -232,12 +255,12 @@ sistemas; nada copiado.
 
 | # | Decisão | Recomendação | Como se testa | Quanto custa manter |
 |---|---|---|---|---|
-| 1 | Controle tático | **Objetivo por frente.** O jogador define objetivo, postura (atacar, segurar, recuar), formações por frente e prioridade de suprimento; a frente anda sozinha pelo passo semanal. A IA usa os mesmos comandos | guerra de teste entre dois países com os mesmos comandos dos dois lados: resultado simétrico | baixo: um comando por frente, sem caminho de unidade |
+| 1 | Controle tático | **Objetivo por frente**, sendo a frente toda a fronteira contínua com um inimigo. O jogador define objetivo, postura (atacar, segurar, recuar), formações e prioridade de suprimento; `allocate` reparte as formações entre os segmentos e o passo semanal anda sozinho. A IA usa os mesmos comandos | guerra de teste com os mesmos comandos dos dois lados dá resultado simétrico; a repartição fica igual de uma semana para a outra quando nada muda | baixo: um comando por frente, sem caminho de unidade nem comando por segmento |
 | 2 | Granularidade | **Elemento como conta, divisão como formação** (cerca de 10 elementos), frota e ala no mar e no ar | `forces.ron` de 1925 dá cerca de 700 divisões no mundo; o passo semanal por frente cabe no orçamento do tick | baixo: formação é só agrupamento |
 | 3 | Mar com zonas próprias | **Sim, zonas grossas** (cerca de 50, das bacias e estreitos), com portos ligando estados a zonas | teste de conexidade: todo porto alcança todo porto por zonas; rota de comércio e de suprimento passam pelas mesmas zonas | médio: um passo novo no gerador do mapa |
 | 4 | Arma nuclear na fase 5 | **Estoque e dissuasão na fase 5; uso numa fatia própria no fim dela**, com consequência: devastação, mortos por idade, precipitação nos vizinhos, hostilidade de todos | teste de 100 anos: com dissuasão dos dois lados, nenhuma guerra direta entre potências nucleares sem crise extrema | médio: o uso pede tela e regra de resposta |
 | 5 | Tipos e gerações | **33 tipos com gerações**, primeira fatia com os 22 de 1925–1945 | contagem: nunca mais de 20 tipos em uso numa década | baixo: geração nova é linha de dado |
-| 6 | Passo e frente | **Uma semana por passo, frente por par de estados vizinhos em guerra**, alinhada ao tick | custo por sistema no `bf-bench`: a guerra mundial de 1939 com todas as frentes abaixo de 15 % do tick | médio: frentes ativas por semana |
+| 6 | Passo e segmento | **Uma semana por passo, rodando por segmento** (par de estados vizinhos em guerra), alinhada ao tick; o comando fica na frente (decisão 1) | custo por sistema no `bf-bench`: a guerra mundial de 1939 com todos os segmentos abaixo de 15 % do tick | médio: segmentos ativos por semana |
 | 7 | Perdas na demografia | **Mortos e inválidos por idade na pirâmide**, civis também, quando a demografia nova (PR #54) entrar | teste: 1914–18 contrafactual na pirâmide francesa mostra o buraco da geração | baixo: uma escrita por semana de guerra |
 
 ## Telas que isso vai pedir
@@ -248,7 +271,9 @@ Cada uma nasce como painel registrado no HUD modular, com atalho no registro de 
   treino, custo semanal; quanto da indústria vai para a guerra.
 - **Mobilização:** em idade, chamáveis, reservados, disponíveis; efeito no trabalho por profissão.
 - **Frentes no mapa:** linha da frente, postura, objetivo, poder dos dois lados.
-- **Batalha da frente:** a decomposição do passo (número, equipamento, treino, suprimento,
+- **Repartição da frente:** por segmento, extensão, poder inimigo, puxada do objetivo, peso e
+  elementos recebidos.
+- **Batalha do segmento:** a decomposição do passo (número, equipamento, treino, suprimento,
   terreno, ar) dos dois lados e as perdas da semana.
 - **Suprimento:** o caminho até a frente trecho a trecho, o gargalo e o preenchimento.
 - **Mar:** zonas, frotas, comboios, bloqueio e perda por zona.
