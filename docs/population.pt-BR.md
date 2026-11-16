@@ -1,4 +1,9 @@
-# População: comunidades de 1925
+# População: comunidades de 1925 e demografia
+
+A demografia (nascimentos, mortes, idade e migração entre países) roda na simulação: seção
+"Demografia" no fim. As comunidades ainda não.
+
+## Comunidades de 1925
 
 Estado: contrato e dados, **sem ligação com a simulação**. Os parâmetros abaixo são **proposta
 para o dono decidir** (decisões em aberto 1 a 3 de `architecture.pt-BR.md`).
@@ -212,3 +217,102 @@ milhão em 1925 para ~0,2 milhão em 2000; imigrantes italianos na Argentina maj
   União; ficaram sem marca.
 - **Revisar** a estimativa religiosa da URSS, as culturas agregadas da África e da China, e as
   regras de raça como cultura.
+
+## Demografia
+
+Código: `crates/bf-sim/src/demography.rs` (sistema `demography`, todo dia 15). Estado salvo em
+`GameWorld::demography`: a pirâmide de cada estado, a escolaridade das mães e as taxas do mês.
+Nenhuma taxa é escrita por país nem por data: os parâmetros são mundiais e a diferença entre
+países sai da economia de cada estado.
+
+### Pirâmide
+
+Cada estado guarda quantas pessoas tem em 17 grupos de cinco anos (0–4 … 75–79, 80+). Todo mês:
+nascimentos entram em 0–4, cada grupo perde os seus mortos e um sessenta avos de cada grupo passa
+ao seguinte. A pirâmide é reescalada à população do estado antes do mês (a migração interna mexe
+nos pops) e o saldo do mês vai para as profissões na proporção do tamanho de cada uma.
+
+**1925.** Não há pirâmide nos dados. Cada estado começa estável nas taxas que teria com 60 % do
+desenvolvimento de hoje (conforto, escolaridade, trabalho fora do campo, hospitais, remédio) e
+cresce 60 anos com o desenvolvimento subindo até o de 1925. Assim a Europa de 1925 já é mais
+velha que a Índia e mais jovem do que seria se tivesse sempre tido a fecundidade de 1925.
+
+### Mortalidade
+
+Uma tabela mundial de mortes por idade em cinco níveis de saúde `h` (0, ¼, ½, ¾, 1), com
+esperança de vida ao nascer de 27,7, 38,9, 52,5, 68,0 e 82,0 anos; entre os níveis, linear. A
+tabela é um modelo de Gompertz-Makeham com mortalidade infantil (mortes de 0–4, 5–14, fundo
+adulto e alta exponencial com a idade), construída para isso, não copiada de tábua de país.
+
+    antes   = 0,45 × conforto + 0,25 × escolaridade − 0,05 − 0,25 × (1 − comida)
+    teto    = 0,62 + 0,25 × conforto + 0,13 × hospitais
+    alcance = 0,35 + 0,65 × max(hospitais, escolaridade)
+    remédio = clamp((efeito "mortality" da pesquisa − 0,20) / (0,80 − 0,20)) × alcance
+    h       = antes + (teto − antes) × remédio
+
+- **Conforto** é o atendimento médio das necessidades de nível 3; **comida**, as de nível 1;
+  **hospitais**, a cobertura hospitalar do estado (`public::coverage`).
+- O remédio é o efeito `mortality` das tecnologias que o país usa (`research_system`). O que os
+  países ricos já tinham em 1925 (vacina, saneamento) está no "antes"; só o que vem depois conta
+  como remédio, e ele chega inteiro com 80 % da árvore (antibióticos, vacinas e inseticidas são a
+  maior parte).
+- **Alcance:** a campanha de massa leva um terço do remédio a quem não tem hospital nem escola
+  (DDT no Ceilão de 1946); o resto vem com hospitais ou com mães que leem.
+- Substitui a fórmula da fase 1 (natalidade e mortalidade em função linear da alfabetização,
+  pisos de 7 e 6 por mil, remédio por calendário de 1935 a 1970 e mortalidade × hospitais). Sem
+  dados de pesquisa (ferramentas e testes) o remédio ainda segue esse calendário.
+
+### Fecundidade
+
+Filhos por mulher (TFR), distribuídos pelas idades de 15 a 49 num perfil fixo (8, 23, 25, 20,
+14, 8 e 2 %):
+
+    nota  = 0,30 × sobrevivência + 0,35 × escolaridade + 0,20 × fora do campo
+          + 0,15 × conforto + 0,10 × contracepção
+    T     = suave((nota − 0,46) / (0,95 − 0,46))           (suave(t) = 3t² − 2t³)
+    piso  = 1,6 + 0,5 × (1 − contracepção)
+    TFR   = piso + (6,2 − piso) × (1 − T)
+
+- **Sobrevivência:** a chance de passar dos 5 anos na mortalidade do mês, de 50 % (0) a 98 % (1).
+  Os filhos morrem menos, as famílias querem menos filhos; o atraso entre as duas quedas sai da
+  escolaridade.
+- **Escolaridade das mães:** a alfabetização do estado seguida com atraso de 15 anos (180 meses):
+  a menina na escola hoje é mãe daqui a uma geração.
+- **Fora do campo:** parcela da população fora das profissões rurais (`urban_share`).
+- **Contracepção:** o efeito `fertility` das tecnologias (a pílula) vezes a escolaridade. Sem
+  ela a transição para em 2,1 filhos (abstinência, coito interrompido, casamento tardio: a Europa
+  de 1930 chegou a 1,8–2,2 assim); com ela, em 1,6.
+
+### Migração entre países
+
+Unidade: território (metrópole ou colônias de um país). Por mês:
+
+- **Renda:** PIB por habitante do país a preços-base, repartido entre metrópole e colônias pela
+  renda monetária por habitante. Ninguém se move por menos de 1,8 vez a renda; a atração é cheia
+  em 4,8 vezes.
+- **Atração** de cada destino = (diferença de renda) × distância × vínculo × vagas × lei de
+  imigração. Distância: 1 / (1 + (d / 5 000 km)²) entre os centros de população. Vínculo: × 2 na
+  mesma família linguística (a maior do território, das comunidades de 1925). Metrópole e colônias
+  não têm bônus: com ele (× 2), Bélgica, Holanda e Portugal ficavam no teto de imigração por 60
+  anos, e o fluxo colonial real foi pequeno até 1960. A constante `SAME_EMPIRE` fica em 1. Vagas: a parcela empregada dos operários do destino, à quarta potência.
+- **Saída:** 3 por mil ao ano no máximo, vezes a melhor atração, a lei de emigração, quem pode
+  pagar a passagem (0,1 + 0,9 × alfabetização²) e o empurrão do desemprego no campo
+  (1 + parcela ociosa). Os emigrantes se repartem pelos destinos pela atração vezes a população.
+- **Teto:** nenhum território recebe mais de 8 por mil ao ano; acima disso o fluxo é cortado.
+- **Quem se move:** sai dos camponeses, assalariados rurais e operários; chega como operário, nas
+  cidades (na proporção da população urbana dos estados). Na pirâmide, idades de 20 a 34.
+- **Lei:** os efeitos `immigration` e `emigration` das leis em vigor (`world.politics`), lidos
+  num ponto só (`Demography::migration_laws`). Em 1925 os EUA têm cotas (300 ‰ do fluxo aberto)
+  e a URSS permissão de saída (100 ‰). A exclusão racial (domínios britânicos) é lei dirigida e
+  ainda não pesa, porque o migrante não carrega comunidade.
+
+### O que falta
+
+- **Guerra, fome e regime.** Não há guerra (1914–18 já passou; 1939–45 não acontece), nem fome
+  (China 1928–30 e 1959–61, URSS 1932–33, Bengala 1943), nem política de natalidade (filho único,
+  proibição do aborto na Romênia em 1966), nem a alfabetização forçada e a saúde pública dos
+  regimes socialistas, que adiantaram a transição no Leste Europeu e na URSS.
+- **Migração por comunidade** (quem chega leva a cultura e a religião), exclusão racial e
+  refugiados.
+- **Pirâmide por comunidade e profissão**; idade de trabalho fixa em 40 % de cada pop.
+- **Baby boom.** Nada no modelo faz a fecundidade dos ricos subir de 1946 a 1964.

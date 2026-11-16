@@ -143,6 +143,14 @@ impl GameData {
                 industry: self.industry.as_ref(),
             },
         );
+        world.demography = crate::demography::DemographyState {
+            territories: crate::demography::territories(
+                &world.econ,
+                &self.map,
+                self.communities.as_ref(),
+            ),
+            ..Default::default()
+        };
         if let Some(tree) = &self.tree {
             world.research = ResearchState::initial(
                 tree,

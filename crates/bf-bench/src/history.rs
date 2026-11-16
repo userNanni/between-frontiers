@@ -62,6 +62,13 @@ pub struct Territory {
     pub cleared_km2: Vec<[f64; 2]>,
     /// Yearly production by good (`GOODS`), in the catalogue's units.
     pub production: Vec<Vec<f64>>,
+    /// Births, deaths and net migration per thousand people, life expectancy at birth and
+    /// children per woman: the year's monthly rates, weighted by population.
+    pub births: Vec<f64>,
+    pub deaths: Vec<f64>,
+    pub migration: Vec<f64>,
+    pub life_expectancy: Vec<f64>,
+    pub fertility: Vec<f64>,
 }
 
 /// Public accounts and prices of one country (metropole and colonies together).
@@ -122,6 +129,9 @@ pub struct History {
     revenue: Vec<f64>,
     spending: Vec<f64>,
     price_jan: Vec<(f64, u16)>,
+    /// By territory: people summed over the months, and births, deaths, migration, life
+    /// expectancy and fertility times people.
+    vital: Vec<[f64; 6]>,
     report: HistoryReport,
 }
 
@@ -183,6 +193,7 @@ impl History {
             revenue: vec![0.0; markets],
             spending: vec![0.0; markets],
             price_jan: prices(w),
+            vital: vec![[0.0; 6]; markets * 2],
             report: HistoryReport {
                 first_year: year,
                 years: Vec::new(),
@@ -207,6 +218,10 @@ impl History {
         // The weekly market runs on Mondays: on Tuesday the world holds that week's outcome.
         if date.weekday() == Weekday::Tuesday {
             self.week(data, s.world());
+        }
+        // The demography runs on the 15th: on the 16th the world holds the month's rates.
+        if date.day == 16 {
+            self.month(s.world());
         }
         if date.month == 1 && date.day == 1 && date.year > self.year {
             self.close_year(data, s.world());
@@ -271,6 +286,21 @@ impl History {
         }
     }
 
+    fn month(&mut self, w: &GameWorld) {
+        for (r, v) in w.econ.regions.iter().zip(&w.demography.vital) {
+            let t = r.market as usize * 2 + usize::from(r.colony);
+            let n = r.population() as f64;
+            let acc = &mut self.vital[t];
+            acc[0] += n;
+            for (k, x) in [v.births, v.deaths, v.migration, v.life, v.tfr]
+                .into_iter()
+                .enumerate()
+            {
+                acc[k + 1] += x.to_f64_lossy() * n;
+            }
+        }
+    }
+
     fn close_year(&mut self, data: &GameData, w: &GameWorld) {
         let dec = stocks(data, w);
         let now = prices(w);
@@ -332,6 +362,13 @@ impl History {
                 ter.informal.push((a.informal + b.informal) / 2.0);
                 ter.cleared_km2.push(a.cleared);
                 ter.production.push(self.production[t].clone());
+                let v = &self.vital[t];
+                let mean = |k: usize| if v[0] > 0.0 { v[k] / v[0] } else { 0.0 };
+                ter.births.push(mean(1));
+                ter.deaths.push(mean(2));
+                ter.migration.push(mean(3));
+                ter.life_expectancy.push(mean(4));
+                ter.fertility.push(mean(5));
             }
             let c = &mut rep.countries[mi];
             let g = gdp.max(1.0);
@@ -352,6 +389,7 @@ impl History {
             .for_each(|row| row.iter_mut().for_each(|x| *x = 0.0));
         self.revenue.iter_mut().for_each(|x| *x = 0.0);
         self.spending.iter_mut().for_each(|x| *x = 0.0);
+        self.vital.iter_mut().for_each(|v| *v = [0.0; 6]);
     }
 }
 

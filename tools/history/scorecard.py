@@ -36,7 +36,9 @@ PERIODS = [
 # Below this share of the unit's population covered by a series, the unit has no reference.
 MIN_COVERAGE = 0.8
 # Longest gap (years) bridged by interpolation between two observations.
-MAX_GAP = {"gdppc": 25, "urban": 20, "literacy": 60}
+MAX_GAP = {"gdppc": 25, "urban": 20, "literacy": 60, "life_expectancy": 25}
+# Vital rates in the reference (vital.csv) and the simulation's names for them.
+VITAL = ("births", "deaths", "life_expectancy")
 # Maddison's former states and the modern countries they cover.
 AGGREGATES = {
     "SUN": "RUS UKR BLR KAZ UZB TKM KGZ TJK GEO ARM AZE EST LVA LTU MDA".split(),
@@ -180,6 +182,20 @@ class Reference:
             for r in read_csv(path):
                 for y in range(2000, 2031):
                     self.wdi["employment_informal"][r["iso3"]][y] = float(r["informal_share_percent"])
+        # Births and deaths per thousand (from 1950) and life expectancy (long run, gaps filled).
+        self.vital = {}
+        path = os.path.join(DATA, "vital.csv")
+        pts = {k: defaultdict(dict) for k in VITAL}
+        if os.path.exists(path):
+            for r in read_csv(path):
+                for k in VITAL:
+                    if r[k]:
+                        pts[k][r["iso3"]][int(r["year"])] = float(r[k])
+        for k in VITAL:
+            self.vital[k] = {
+                c: interpolate(p, first, last, MAX_GAP["life_expectancy"]) if k == "life_expectancy" else p
+                for c, p in pts[k].items()
+            }
         self.share = {}
         for name, file in (("urban", "urban.csv"), ("literacy", "literacy.csv")):
             pts = defaultdict(dict)
@@ -221,7 +237,7 @@ def aggregate(ref, members, year):
     pop = sum(ref.pop[i].get(year, 0) * w for i, w in members)
     out = {"population": pop or None}
     if not pop:
-        return {k: None for k in ("population", "gdp", "gdp_per_capita", "urban", "literacy", "non_farm")}
+        return {k: None for k in ("population", "gdp", "gdp_per_capita", "urban", "literacy", "non_farm") + VITAL}
     covered = gdp = 0.0
     for i, w in members:
         g = ref.gdppc.get(i, {}).get(year)
@@ -252,6 +268,15 @@ def aggregate(ref, members, year):
             cov += p
             val += (1 - v / 100) * p
     out["non_farm"] = val / cov if cov >= MIN_COVERAGE * pop else None
+    for name in VITAL:
+        cov = val = 0.0
+        for i, w in members:
+            v = ref.vital.get(name, {}).get(i, {}).get(year)
+            p = ref.pop[i].get(year, 0) * w
+            if v is not None and p:
+                cov += p
+                val += v * p
+        out[name] = val / cov if cov >= MIN_COVERAGE * pop else None
     return out
 
 
@@ -320,6 +345,8 @@ class Sim:
             "gdp_per_capita": t["gdp"][i] / pop,
             "non_farm": t["non_farm"][i],
             "literacy": t["literacy"][i],
+            # Older history files have no vital rates.
+            **{k: t[k][i] if t.get(k) else None for k in VITAL + ("migration", "fertility")},
             "employment": emp,
             "production": dict(zip(self.goods, t["production"][i])),
         }
@@ -514,6 +541,9 @@ def build(sim_path):
                     "non_farm": [s["non_farm"], f["non_farm"]],
                     "urban_reference": f["urban"],
                     "literacy": [s["literacy"], f["literacy"]],
+                    **{k: [s.get(k), f.get(k)] for k in VITAL},
+                    "migration": s.get("migration"),
+                    "fertility": s.get("fertility"),
                 }
             )
         unit_rows.append(r)
@@ -796,6 +826,34 @@ def markdown(card):
             d = next((d for d in u["decades"] if d["year"] == y), None)
             cells.append("–" if d is None else f"{fmt(d['population'], 'ratio')} · {fmt(d['gdp_per_capita'], 'ratio')}")
         L.append(f"| {name} | " + " | ".join(cells) + " |")
+    if any(d.get("births", [None])[0] is not None for u in card["units"] for d in u["decades"]):
+        L.append("\n## Demografia dos 20 maiores (simulado / real)\n")
+        L.append("Natalidade e mortalidade por mil habitantes ao ano (ONU, de 1950) · expectativa de vida ao "
+                 "nascer (anos) · migração líquida por mil (só simulada) · filhos por mulher (só simulado). "
+                 "`–` = sem referência.\n")
+        vy = [y for y in years if y in (1925, 1955, 1975, 1995, 2015)]
+        L.append("| Unidade | " + " | ".join(str(y) for y in vy) + " |")
+        L.append("|---|" + "---|" * len(vy))
+        units = {f"{u['tag']}/{u['part']}": u for u in card["units"]}
+
+        def pair(v, digits=0):
+            a, b = v
+            sa = "–" if a is None else f"{a:.{digits}f}"
+            sb = "–" if b is None else f"{b:.{digits}f}"
+            return f"{sa}/{sb}"
+
+        for name in card["largest"]:
+            u = units[name]
+            cells = []
+            for y in vy:
+                d = next((d for d in u["decades"] if d["year"] == y), None)
+                if d is None or d.get("births") is None:
+                    cells.append("–")
+                    continue
+                mig = "–" if d.get("migration") is None else f"{d['migration']:+.1f}"
+                tfr = "–" if d.get("fertility") is None else f"{d['fertility']:.1f}"
+                cells.append(f"{pair(d['births'])} · {pair(d['deaths'])} · {pair(d['life_expectancy'])} · {mig} · {tfr}")
+            L.append(f"| {name} | " + " | ".join(cells) + " |")
     if card.get("production"):
         L.append("\n## Produção mundial (simulado / real)\n")
         units = card["production_units"]

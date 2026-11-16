@@ -33,6 +33,9 @@ OWID_CHARTS = {
     "population_wpp": "population-with-un-projections",
     "urban": "long-term-urban-population-region",
     "literacy": "cross-country-literacy-rates",
+    "births": "crude-birth-rate",
+    "deaths": "crude-death-rate",
+    "life_expectancy": "life-expectancy",
 }
 # Physical production: output file -> (chart, query, column, unit). Chart views of OWID.
 PRODUCTION = {
@@ -177,6 +180,29 @@ def build_maddison():
     )
 
 
+def build_vital():
+    """Births and deaths per thousand (UN WPP, 1950-) and life expectancy at birth (long run)."""
+    columns = {
+        "births": ("crude-birth-rate", "birth_rate__sex_all__age_all__variant_estimates"),
+        "deaths": ("crude-death-rate", "death_rate__sex_all__age_all__variant_estimates"),
+        "life_expectancy": ("life-expectancy", "life_expectancy_0"),
+    }
+    rows = {}
+    for k, (slug, column) in columns.items():
+        for code, year, r in owid_rows(slug):
+            if r.get(column):
+                rows.setdefault((code, year), {})[k] = round(float(r[column]), 2)
+    write(
+        "vital.csv",
+        ["iso3", "year", "births", "deaths", "life_expectancy"],
+        [
+            (c, y, v.get("births", ""), v.get("deaths", ""), v.get("life_expectancy", ""))
+            for (c, y), v in rows.items()
+        ],
+        "Births and deaths per 1,000 (UN WPP 2024, 1950-) and life expectancy at birth (Riley; Zijdeman et al.; HMD; UN WPP), via Our World in Data. See SOURCES.md.",
+    )
+
+
 def build_share(slug, column, out, note, scale=0.01):
     rows = []
     for code, year, r in owid_rows(slug):
@@ -281,6 +307,7 @@ def main():
         "literacy.csv",
         "Adult literacy rate, Our World in Data (UNESCO, van Zanden et al., World Bank). See SOURCES.md.",
     )
+    build_vital()
     build_production()
     build_wdi()
     build_fdi()
