@@ -122,7 +122,7 @@ impl PublicKinds {
                 .iter()
                 .filter_map(|k| cat.building(k))
                 .collect(),
-            construction: cat.good("construction"),
+            construction: cat.construction,
         }
     }
 }

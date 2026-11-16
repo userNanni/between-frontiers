@@ -45,12 +45,16 @@ Brasil.
 
 ## Desempenho
 
-- Bench do `--game` roda um por vez na máquina, sob trava (`flock /tmp/bf-bench.lock ...`).
-  Vale sobretudo para os 100 anos.
-- PR que toca `bf-sim` ou `laplace-schelling` mede contra a `main`, os dois binários em seguida:
+- **A trava `flock /tmp/bf-bench.lock` é só para a rodada de 100 anos e para medição de CPU**,
+  uma de cada vez na máquina. Teste, print e rodada curta de conferência (hash, smoke) rodam fora
+  da trava, com `nice -n 19` e no máximo 2 threads (`--threads 2`, `cargo test -j 2`).
+- PR que toca `bf-sim` ou `laplace-schelling` mede o CPU contra a `main`, os dois binários em
+  seguida, sob a trava:
   `flock /tmp/bf-bench.lock env BF_SYSTEMS=1 /usr/bin/time -f '%U s' target/release/bf-bench --game --years 10 --threads 1`.
   Compare o tempo de CPU (`%U`) e a tabela por sistema, não o tempo de parede: a máquina é
   dividida com outras sessões e o tempo de parede varia o dobro.
+- Só conferir o hash (sem medir CPU):
+  `nice -n 19 target/release/bf-bench --game --years 10 --threads 1`, fora da trava.
 - **Refatoração e otimização não mudam o hash.** O `final hash` tem de ser igual ao da `main`; se
   mudar, é mudança de comportamento e o PR diz por quê.
 - Ao fechar uma fase, atualize a linha de desempenho de `docs/benchmarks.pt-BR.md` com a medição
