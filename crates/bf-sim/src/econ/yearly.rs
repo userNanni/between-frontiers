@@ -211,8 +211,9 @@ impl System<GameWorld> for Yearly {
                 r.tfp = tfp;
             }
         }
-        // Taxes for the year ahead.
+        // Last year's inflation and the central banks; taxes for the year ahead.
         for m in &mut econ.markets {
+            super::money::yearly(m, ctx.date.year);
             super::public::yearly_taxes(m, ctx.date.year);
         }
         // The first January of the run has no full year behind it: keep the 1925 figures.

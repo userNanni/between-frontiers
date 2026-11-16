@@ -167,6 +167,14 @@ pub enum GameCommand {
         tag: String,
         law: crate::econ::migration::MigrationLaw,
     },
+    /// Fixes the central bank's rate, in thousandths a year (50 is 5 %), capped at
+    /// `econ::money::MAX_RATE`; `None` hands it back to the Taylor rule.
+    SetPolicyRate { tag: String, rate: Option<u16> },
+    /// Who the central bank answers to: the historical rule, its own rule, or the treasury.
+    SetCentralBank {
+        tag: String,
+        bank: crate::econ::money::CentralBank,
+    },
 }
 
 impl Command<GameWorld> for GameCommand {
@@ -217,6 +225,24 @@ impl Command<GameWorld> for GameCommand {
                 };
                 if let Some(m) = world.econ.markets.get_mut(ci) {
                     m.laws.migration = *law;
+                }
+            }
+            GameCommand::SetPolicyRate { tag, rate } => {
+                let Some(ci) = world.countries.iter().position(|(_, c)| c.tag == *tag) else {
+                    return;
+                };
+                if let Some(m) = world.econ.markets.get_mut(ci) {
+                    m.money.rate_command = rate.map(|r| {
+                        crate::econ::money::pct(i64::from(r)).min(crate::econ::money::MAX_RATE)
+                    });
+                }
+            }
+            GameCommand::SetCentralBank { tag, bank } => {
+                let Some(ci) = world.countries.iter().position(|(_, c)| c.tag == *tag) else {
+                    return;
+                };
+                if let Some(m) = world.econ.markets.get_mut(ci) {
+                    m.money.bank = *bank;
                 }
             }
             GameCommand::SetPublicPriority { tag, weights } => {
@@ -511,7 +537,7 @@ mod tests {
     }
 
     #[test]
-    fn taxes_and_public_priorities_by_command() {
+    fn taxes_public_priorities_and_money_by_command() {
         use crate::econ::{Market, public};
         let mut s = session(1);
         s.sim.run_until(Date::new(1925, 1, 2));
@@ -534,6 +560,14 @@ mod tests {
             tag: "XXX".into(),
             rates: Some([1, 1, 1]),
         });
+        s.submit(GameCommand::SetPolicyRate {
+            tag: "BRA".into(),
+            rate: Some(65_000),
+        });
+        s.submit(GameCommand::SetCentralBank {
+            tag: "ARG".into(),
+            bank: crate::econ::money::CentralBank::Autonomous,
+        });
         s.sim.run_until(Date::new(1925, 1, 4));
         let bra = &s.world().econ.markets[0].budget;
         assert!(!bra.tax_auto);
@@ -548,6 +582,14 @@ mod tests {
         assert_eq!(
             s.world().econ.markets[1].laws.migration,
             crate::econ::migration::MigrationLaw::Restricted
+        );
+        assert_eq!(
+            s.world().econ.markets[0].money.rate_command,
+            Some(crate::econ::money::MAX_RATE)
+        );
+        assert_eq!(
+            s.world().econ.markets[1].money.bank,
+            crate::econ::money::CentralBank::Autonomous
         );
         s.submit(GameCommand::SetTaxRates {
             tag: "BRA".into(),

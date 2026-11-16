@@ -127,6 +127,9 @@ pub struct Market {
     pub budget: Budget,
     #[serde(default)]
     pub laws: Laws,
+    /// Currency, central bank and public debt.
+    #[serde(default)]
+    pub money: super::money::Money,
 }
 
 /// The country's laws that the economy reads.
@@ -157,6 +160,7 @@ impl Market {
             queue: Vec::new(),
             budget: Budget::default(),
             laws: Laws::default(),
+            money: super::money::Money::default(),
         }
     }
 }
@@ -192,8 +196,8 @@ pub struct Budget {
     pub adjust: Fixed,
     /// Weight of each public investment category (`PUBLIC_CATEGORIES`).
     pub priority: [u8; PUBLIC_CATEGORIES],
-    /// Last week: taxes, money issued by the monetary stand-in (negative when withdrawn),
-    /// payroll, goods, public services and public works paid.
+    /// Last week: taxes, new money the central bank lent the treasury (bonds it bought from
+    /// the treasury), payroll, goods, public services and public works paid.
     pub revenue: Fixed,
     pub issued: Fixed,
     pub payroll: Fixed,
@@ -202,10 +206,14 @@ pub struct Budget {
     pub works: Fixed,
     /// Weekly revenue smoothed over about a quarter.
     pub revenue_avg: Fixed,
-    /// Public debt. Always zero in this slice: a deficit only takes the treasury below zero.
-    /// The next slice (currencies, central bank, bonds) turns the negative balance into bonds
-    /// with interest.
+    /// Public debt, all holders, in real units (`money::Money::total_debt`).
     pub debt: Fixed,
+    /// Interest paid last week (the central bank's is handed back and left out).
+    #[serde(default)]
+    pub interest: Fixed,
+    /// Money the central bank created last week beyond its rule (a rate fixed below it).
+    #[serde(default)]
+    pub beyond_rule: Fixed,
 }
 
 impl Default for Budget {
@@ -223,6 +231,8 @@ impl Default for Budget {
             works: Fixed::ZERO,
             revenue_avg: Fixed::ZERO,
             debt: Fixed::ZERO,
+            interest: Fixed::ZERO,
+            beyond_rule: Fixed::ZERO,
         }
     }
 }
@@ -257,6 +267,8 @@ impl HashState for Budget {
             self.works,
             self.revenue_avg,
             self.debt,
+            self.interest,
+            self.beyond_rule,
         ] {
             v.hash_state(h);
         }
@@ -366,6 +378,7 @@ impl HashState for Market {
         self.queue.hash_state(h);
         self.budget.hash_state(h);
         h.write_u8(self.laws.migration as u8);
+        self.money.hash_state(h);
     }
 }
 

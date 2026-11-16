@@ -43,7 +43,128 @@ pub struct Decade {
     pub works_queued: usize,
     #[serde(default)]
     pub construction_price: f64,
+    /// Money (slice 3c): yearly inflation of the decade, GDP-weighted mean and median, in
+    /// percent; countries above 25 % in the last year; public debt, the central banks' share
+    /// of it, interest and new money lent to treasuries, as shares of world GDP; defaults so
+    /// far; the GDP-weighted policy rate.
+    #[serde(default)]
+    pub inflation: f64,
+    #[serde(default)]
+    pub inflation_median: f64,
+    #[serde(default)]
+    pub high_inflation: usize,
+    #[serde(default)]
+    pub debt: f64,
+    #[serde(default)]
+    pub debt_bank: f64,
+    #[serde(default)]
+    pub interest: f64,
+    #[serde(default)]
+    pub monetized: f64,
+    #[serde(default)]
+    pub defaults: u32,
+    #[serde(default)]
+    pub defaults_microstates: u32,
+    #[serde(default)]
+    pub policy_rate: f64,
+    /// The central banks' loans to banks, as a share of world GDP.
+    #[serde(default)]
+    pub credit: f64,
+    #[serde(default)]
+    pub countries: Vec<CountryMoney>,
     pub ms: f64,
+}
+
+/// Money and debt of one country at a decade mark.
+#[derive(Serialize, Clone)]
+pub struct CountryMoney {
+    pub tag: String,
+    /// Mean yearly inflation of the decade, percent.
+    pub inflation: f64,
+    pub policy_rate: f64,
+    pub bond_rate: f64,
+    /// Debt over GDP, and the shares held by the central bank and in foreign currency.
+    pub debt: f64,
+    pub bank_share: f64,
+    pub fx_share: f64,
+    pub defaults: u16,
+}
+
+/// GDP below which a market counts as a microstate in the report (a billion a year).
+const MICROSTATE_GDP: Fixed = Fixed::from_int(1_000_000_000);
+
+/// Countries the report follows by name.
+const WATCHED: [&str; 6] = ["USA", "GBR", "JAP", "BRA", "ARG", "GER"];
+
+/// Yearly inflation by market, from the price levels a year apart, and its decade sums.
+#[derive(Default)]
+struct InflationLog {
+    /// Price level and currency reforms of each market a year ago.
+    last_levels: Vec<(Fixed, u16)>,
+    sums: Vec<f64>,
+    world_mean: f64,
+    world_median: f64,
+    years: u32,
+    high: usize,
+}
+
+impl InflationLog {
+    fn year(&mut self, w: &bf_sim::game::GameWorld) {
+        let ms = &w.econ.markets;
+        let levels: Vec<(Fixed, u16)> = ms
+            .iter()
+            .map(|m| (m.money.price_level, m.money.redenominations))
+            .collect();
+        if self.last_levels.len() == levels.len() {
+            let mut rows: Vec<(f64, f64)> = ms
+                .iter()
+                .zip(&self.last_levels)
+                .map(|(m, (last, reforms))| {
+                    // A currency reform cuts three zeros: count them back in.
+                    let cut = 1000f64.powi(i32::from(m.money.redenominations - reforms));
+                    let now = m.money.price_level.to_f64_lossy() * cut;
+                    let rate = (now / last.to_f64_lossy().max(1e-9) - 1.0) * 100.0;
+                    (rate, m.gdp_last_year.to_f64_lossy())
+                })
+                .collect();
+            if self.sums.len() != rows.len() {
+                self.sums = vec![0.0; rows.len()];
+            }
+            for (s, (r, _)) in self.sums.iter_mut().zip(&rows) {
+                *s += r;
+            }
+            let gdp: f64 = rows.iter().map(|r| r.1).sum::<f64>().max(1.0);
+            self.world_mean += rows.iter().map(|(r, g)| r * g).sum::<f64>() / gdp;
+            rows.sort_by(|a, b| a.0.total_cmp(&b.0));
+            let mut acc = 0.0;
+            let median = rows
+                .iter()
+                .find(|(_, g)| {
+                    acc += g;
+                    acc >= gdp / 2.0
+                })
+                .map_or(0.0, |r| r.0);
+            self.world_median += median;
+            self.high = rows.iter().filter(|r| r.0 > 25.0).count();
+            self.years += 1;
+        }
+        self.last_levels = levels;
+    }
+
+    /// Decade averages, and a fresh start for the next decade.
+    fn take(&mut self) -> (f64, f64, Vec<f64>) {
+        let n = f64::from(self.years.max(1));
+        let out = (
+            self.world_mean / n,
+            self.world_median / n,
+            self.sums.iter().map(|s| s / n).collect(),
+        );
+        self.world_mean = 0.0;
+        self.world_median = 0.0;
+        self.years = 0;
+        self.sums.iter_mut().for_each(|s| *s = 0.0);
+        out
+    }
 }
 
 /// When a technology first worked and was first made at scale, in history and in the run.
@@ -90,7 +211,7 @@ fn new_session(data: &GameData, seed: u64, threads: usize) -> Session {
     s
 }
 
-fn snapshot(data: &GameData, s: &Session, ms: f64) -> Decade {
+fn snapshot(data: &GameData, s: &Session, ms: f64, log: &mut InflationLog) -> Decade {
     let w = s.world();
     let techs_industrial = w
         .research
@@ -139,10 +260,60 @@ fn snapshot(data: &GameData, s: &Session, ms: f64) -> Decade {
         e.markets.iter().map(|m| f(m).to_f64_lossy()).sum::<f64>()
     };
     let cg = cat.good("construction").map(usize::from);
+    let (inflation, inflation_median, by_market) = log.take();
+    let countries = WATCHED
+        .iter()
+        .filter_map(|tag| {
+            let c = w.countries.iter().position(|(_, x)| x.tag == *tag)?;
+            let m = e.markets.get(c)?;
+            let money = &m.money;
+            let g = m.gdp_last_year.to_f64_lossy().max(1.0);
+            let debt = money.total_debt().to_f64_lossy();
+            Some(CountryMoney {
+                tag: (*tag).to_owned(),
+                inflation: by_market.get(c).copied().unwrap_or(0.0),
+                policy_rate: money.policy_rate.to_f64_lossy(),
+                bond_rate: money.bond_rate.to_f64_lossy(),
+                debt: debt / g,
+                bank_share: money.debt_bank.to_f64_lossy() / debt.max(1.0),
+                fx_share: money.debt_fx_local().to_f64_lossy() / debt.max(1.0),
+                defaults: money.defaults,
+            })
+        })
+        .collect();
     Decade {
+        inflation,
+        inflation_median,
+        high_inflation: log.high,
+        debt: sum(&|m| m.money.total_debt()) / gdp_f,
+        debt_bank: sum(&|m| m.money.debt_bank) / gdp_f,
+        interest: sum(&|m| m.budget.interest) * 52.0 / gdp_f,
+        monetized: sum(&|m| m.budget.issued) * 52.0 / gdp_f,
+        // Microstates (San Marino, Andorra, Liechtenstein, Monaco) restructure almost every
+        // year: their economy is tiny and mostly idle. Counted apart.
+        defaults: e
+            .markets
+            .iter()
+            .filter(|m| m.gdp_last_year >= MICROSTATE_GDP)
+            .map(|m| u32::from(m.money.defaults))
+            .sum(),
+        defaults_microstates: e
+            .markets
+            .iter()
+            .filter(|m| m.gdp_last_year < MICROSTATE_GDP)
+            .map(|m| u32::from(m.money.defaults))
+            .sum(),
+        credit: sum(&|m| m.money.credit) / gdp_f,
+        policy_rate: sum(&|m| m.money.policy_rate.mul_div(m.gdp_last_year, Fixed::ONE)) / gdp_f,
+        countries,
         taxes: sum(&|m| m.budget.revenue) * 52.0 / gdp_f,
-        spending: sum(&|m| m.budget.payroll + m.budget.goods + m.budget.services + m.budget.works)
-            * 52.0
+        spending: sum(&|m| {
+            m.budget.payroll
+                + m.budget.goods
+                + m.budget.services
+                + m.budget.works
+                + m.budget.interest
+        }) * 52.0
             / gdp_f,
         treasury: sum(&|m| m.treasury) / gdp_f,
         in_deficit: e
@@ -187,8 +358,10 @@ fn run(data: &GameData, mut session: Session, until: Date, report: bool) -> Run 
     let (mut yearly, mut decades) = (Vec::new(), Vec::new());
     let (mut total, mut slowest, mut since) = (0.0f64, 0.0f64, 0.0f64);
     let mut ticks = 0;
+    let mut log = InflationLog::default();
+    log.year(session.world());
     if report {
-        decades.push(snapshot(data, &session, 0.0));
+        decades.push(snapshot(data, &session, 0.0, &mut log));
     }
     while session.clock().date < until {
         let t = Instant::now();
@@ -201,9 +374,12 @@ fn run(data: &GameData, mut session: Session, until: Date, report: bool) -> Run 
         let d = session.clock().date;
         if d.month == 1 && d.day == 1 {
             yearly.push(session.state_hash());
+            if report {
+                log.year(session.world());
+            }
             let every_year = std::env::var_os("BF_VERBOSE").is_some();
             if report && (d.year % 10 == 5 || every_year) {
-                let snap = snapshot(data, &session, since);
+                let snap = snapshot(data, &session, since, &mut log);
                 println!(
                     "{}: pop {:>5.0} M  GDP {:>7.0} bn  per head {:>6}  needs {:.2}  literacy {:.2}  urban {:.2}  levels {:>7}  prices at limit {}/{}  techs {}  ({:.0} ms)",
                     snap.year,
@@ -308,6 +484,33 @@ fn run(data: &GameData, mut session: Session, until: Date, report: bool) -> Run 
                             );
                         }
                     }
+                }
+                println!(
+                    "      money: inflation {:.1}% (median {:.1}%), {} above 25%; debt {:.0}% of GDP ({:.0}% central banks), interest {:.1}%, lent to treasuries {:.1}%, central bank credit {:.0}%, policy rate {:.1}%, defaults {} (+{} by microstates)",
+                    snap.inflation,
+                    snap.inflation_median,
+                    snap.high_inflation,
+                    snap.debt * 100.0,
+                    snap.debt_bank * 100.0,
+                    snap.interest * 100.0,
+                    snap.monetized * 100.0,
+                    snap.credit * 100.0,
+                    snap.policy_rate,
+                    snap.defaults,
+                    snap.defaults_microstates
+                );
+                for c in &snap.countries {
+                    println!(
+                        "        {}: inflation {:>6.1}%  rate {:>5.1}%  bonds {:>5.1}%  debt {:>4.0}% of GDP (bank {:>3.0}%, foreign currency {:>3.0}%)  defaults {}",
+                        c.tag,
+                        c.inflation,
+                        c.policy_rate,
+                        c.bond_rate,
+                        c.debt * 100.0,
+                        c.bank_share * 100.0,
+                        c.fx_share * 100.0,
+                        c.defaults
+                    );
                 }
                 if std::env::var_os("BF_TECH").is_some() {
                     let w = session.world();

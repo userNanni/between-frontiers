@@ -7,6 +7,7 @@ pub mod catalogue;
 pub mod construction;
 pub mod local;
 pub mod migration;
+pub mod money;
 pub mod monthly;
 pub mod public;
 pub mod setup;
