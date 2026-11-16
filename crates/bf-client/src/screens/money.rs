@@ -293,9 +293,7 @@ fn debt(ui: &mut Ui, i18n: &I18n, v: &GovernmentView) {
         ],
     );
     let value = money(i18n, interest);
-    Account::new(&i18n.tr("gov-interest-paid"), &value, &tip)
-        .tone(color::DANGER)
-        .show(ui);
+    Account::new(&i18n.tr("gov-interest-paid"), &value, &tip).show(ui);
     let rows = [
         ("gov-bond-rate", fx(m.bond_rate), "gov-tip-bond-rate"),
         ("gov-fx-rate", fx(m.fx_rate), "gov-tip-fx-rate"),

@@ -39,6 +39,15 @@ fn fx(x: laplace_schelling::Fixed) -> f64 {
     x.to_f64_lossy()
 }
 
+/// Money with the minus sign ahead of the currency: "−US$ 1,6 bilhão".
+pub fn signed_money(i18n: &I18n, value: f64) -> String {
+    if value < 0.0 {
+        format!("−{}", money(i18n, -value))
+    } else {
+        money(i18n, value)
+    }
+}
+
 /// Share of the GDP of a yearly amount, as text ("—" without a GDP).
 pub fn of_gdp(i18n: &I18n, yearly: f64, gdp: f64) -> String {
     if gdp > 0.0 {
@@ -159,7 +168,7 @@ fn accounts(ui: &mut Ui, i18n: &I18n, v: &GovernmentView) {
         );
         Account::new(&i18n.tr(&format!("gov-spend-{k}")), &value, &tip)
             .share(if total > 0.0 { amount / total } else { 0.0 })
-            .tone(if k == 4 { color::DANGER } else { color::ACCENT })
+            .bar(if k == 4 { color::DANGER } else { color::ACCENT })
             .show(ui);
     }
     let value = money(i18n, total * WEEKS);
@@ -188,7 +197,7 @@ fn accounts(ui: &mut Ui, i18n: &I18n, v: &GovernmentView) {
             ("bank", arg(money(i18n, fx(b.issued) * WEEKS))),
         ],
     );
-    let value = money(i18n, balance * WEEKS);
+    let value = signed_money(i18n, balance * WEEKS);
     Account::new(
         &i18n.tr(if balance < 0.0 {
             "gov-deficit"
@@ -209,13 +218,13 @@ fn accounts(ui: &mut Ui, i18n: &I18n, v: &GovernmentView) {
     let tip = i18n.tr_args(
         "gov-tip-treasury",
         &[
-            ("cash", arg(money(i18n, v.treasury))),
+            ("cash", arg(signed_money(i18n, v.treasury))),
             ("reserve", arg(money(i18n, reserve))),
             ("weeks", arg(RESERVE_WEEKS.to_string())),
             ("avg", arg(money(i18n, fx(b.revenue_avg)))),
         ],
     );
-    let value = money(i18n, v.treasury);
+    let value = signed_money(i18n, v.treasury);
     Account::new(&i18n.tr("gov-treasury"), &value, &tip)
         .share(if reserve > 0.0 {
             v.treasury / reserve

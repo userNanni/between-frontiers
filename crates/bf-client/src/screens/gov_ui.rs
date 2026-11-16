@@ -19,7 +19,10 @@ pub struct Account<'a> {
     pub share: Option<f32>,
     pub tip: &'a str,
     pub strong: bool,
+    /// Colour of the value (alerts); the text colour otherwise.
     pub tone: Option<Color32>,
+    /// Colour of the share bar; the accent otherwise.
+    pub bar: Option<Color32>,
 }
 
 impl<'a> Account<'a> {
@@ -31,6 +34,7 @@ impl<'a> Account<'a> {
             tip,
             strong: false,
             tone: None,
+            bar: None,
         }
     }
 
@@ -46,6 +50,11 @@ impl<'a> Account<'a> {
 
     pub fn tone(mut self, tone: Color32) -> Self {
         self.tone = Some(tone);
+        self
+    }
+
+    pub fn bar(mut self, bar: Color32) -> Self {
+        self.bar = Some(bar);
         self
     }
 
@@ -96,7 +105,7 @@ impl<'a> Account<'a> {
                 painter.rect_filled(track, radius::SM, color::SURFACE_SUNKEN);
                 let mut fill = track;
                 fill.set_width(track.width() * share);
-                painter.rect_filled(fill, radius::SM, self.tone.unwrap_or(color::ACCENT));
+                painter.rect_filled(fill, radius::SM, self.bar.unwrap_or(color::ACCENT));
             }
         }
         let label = self.label.to_owned();

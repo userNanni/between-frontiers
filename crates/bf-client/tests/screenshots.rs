@@ -402,6 +402,41 @@ fn walk_through_the_screens() {
     shot(&mut h, "06x-governo-divida-tooltip");
     h.hover_at(egui::pos2(800.0, 880.0));
     // The laws tab, still empty: the laws screen fills it.
+    // A tax raised while paused shows at once, says it waits for the clock, and the next tick
+    // applies it.
+    h.get_by_label("Orçamento").click();
+    h.run_steps(2);
+    let rule_rate = game_snapshot(&h).government.unwrap().budget.tax_rates[0];
+    h.get_all(egui_kittest::kittest::by().label("+"))
+        .next()
+        .expect("tax stepper")
+        .click();
+    h.run_steps(3);
+    shot(&mut h, "06z-governo-imposto-pendente");
+    h.key_press(egui::Key::Space);
+    let tick = game_snapshot(&h).tick;
+    let started = std::time::Instant::now();
+    while game_snapshot(&h).tick <= tick + 1 && started.elapsed().as_secs() < 20 {
+        std::thread::sleep(std::time::Duration::from_millis(20));
+        h.run_steps(1);
+    }
+    h.key_press(egui::Key::Space);
+    let paused_at = std::time::Instant::now();
+    while !game_snapshot(&h).paused && paused_at.elapsed().as_secs() < 10 {
+        std::thread::sleep(std::time::Duration::from_millis(50));
+        h.run_steps(1);
+    }
+    let budget = game_snapshot(&h).government.unwrap().budget.clone();
+    assert!(
+        !budget.tax_auto,
+        "the tax command did not reach the simulation"
+    );
+    println!(
+        "lower-class tax {:.4} -> {:.4}",
+        rule_rate.to_f64_lossy(),
+        budget.tax_rates[0].to_f64_lossy()
+    );
+    assert!(budget.tax_rates[0] > rule_rate);
     h.get_by_label("Leis").click();
     h.run_steps(3);
     shot(&mut h, "06y-governo-leis");

@@ -183,7 +183,10 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
             });
             paint_tip(ui, pos, state_name, &owner, extra.as_deref());
         }
-        super::lens_panel::show(ui, rect, i18n, world, view, snap.date.year);
+        // The government window covers the map; its mode picker would show through.
+        if state.government.is_none() {
+            super::lens_panel::show(ui, rect, i18n, world, view, snap.date.year);
+        }
     }
 
     // Top bar
