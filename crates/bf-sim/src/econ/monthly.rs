@@ -32,6 +32,19 @@ const PROMOTIONS: [(usize, usize, i64, bool); 12] = [
     (prof::CAPITALIST, prof::MANAGER, 20, false),
     (prof::LANDOWNER, prof::PEASANT, 10, false),
 ];
+/// Workers in urban self-employment in market `market` (`BuildingDef::informal`).
+pub fn informal_jobs(cat: &Catalogue, econ: &super::Economy, market: usize) -> i64 {
+    let Some(k) = cat.informal else { return 0 };
+    let per_level = cat.buildings[k as usize].methods[0].workers;
+    econ.regions
+        .iter()
+        .filter(|r| r.market as usize == market)
+        .flat_map(|r| r.plants.iter())
+        .filter(|p| p.kind == k)
+        .map(|p| p.levels * per_level)
+        .sum()
+}
+
 /// Share of the population the state employs, by profession.
 pub(crate) const STATE_SHARE: [(usize, i64); 3] = [
     (prof::CIVIL_SERVANT, 12),
@@ -46,6 +59,8 @@ pub struct Labour {
 pub struct LabourChange {
     pops: Vec<(i64, i64)>,
     staffing: Vec<Fixed>,
+    /// Levels of urban self-employment the town's jobless labourers fill this month.
+    informal: Option<i64>,
 }
 
 fn move_people(pops: &mut [(i64, i64)], from: usize, to: usize, workers_moved: i64) {
@@ -61,7 +76,8 @@ fn move_people(pops: &mut [(i64, i64)], from: usize, to: usize, workers_moved: i
 
 fn labour_region(cat: &Catalogue, r: &Region, moves: &super::migration::Moves) -> LabourChange {
     let mut required = [0i64; P];
-    for p in &r.plants {
+    // Self-employment is sized below, from the labourers the plants leave idle.
+    for p in r.plants.iter().filter(|p| Some(p.kind) != cat.informal) {
         let m = &cat.buildings[p.kind as usize].methods[p.method as usize];
         for (pi, n) in &m.jobs {
             required[*pi as usize] += *n * p.levels;
@@ -101,6 +117,20 @@ fn labour_region(cat: &Catalogue, r: &Region, moves: &super::migration::Moves) -
         let available = workers(pops[from].0) - required[from].min(workers(pops[from].0));
         move_people(&mut pops, from, to, n.min(available).max(0));
     }
+    // Labourers no plant employs work on their own (street trade, domestic service), where
+    // the town pays better than the land and has room for them; plants hire them first.
+    let informal = cat.informal.map(|k| {
+        let per_level = cat.buildings[k as usize].methods[0].workers.max(1);
+        if moves.push_back {
+            return 0;
+        }
+        let idle = (workers(pops[prof::LABORER].0) - required[prof::LABORER]).max(0);
+        let levels = idle / per_level;
+        for (pi, n) in &cat.buildings[k as usize].methods[0].jobs {
+            required[*pi as usize] += *n * levels;
+        }
+        levels
+    });
     // Idle workers drift back: to labourers from skilled jobs, to the land from the rest. Jobless
     // labourers stay in town while it pays better than the land and has room for them.
     for pi in [
@@ -157,7 +187,11 @@ fn labour_region(cat: &Catalogue, r: &Region, moves: &super::migration::Moves) -
             filled / m.workers
         })
         .collect();
-    LabourChange { pops, staffing }
+    LabourChange {
+        pops,
+        staffing,
+        informal,
+    }
 }
 
 impl System<GameWorld> for Labour {
@@ -197,6 +231,13 @@ impl System<GameWorld> for Labour {
             }
             for (plant, s) in r.plants.iter_mut().zip(c.staffing) {
                 plant.staffing = s;
+            }
+            if let (Some(k), Some(levels)) = (self.cat.informal, c.informal) {
+                if levels > 0 || r.plants.iter().any(|p| p.kind == k) {
+                    let p = r.plant_mut(k);
+                    p.levels = levels;
+                    p.method = 0;
+                }
             }
             let gov: i64 = [prof::CIVIL_SERVANT, prof::SOLDIER, prof::CLERGY]
                 .iter()
@@ -454,6 +495,29 @@ pub fn best_method(
 
 const BUSY_UTILIZATION: Fixed = milli(900);
 
+/// Share of a good's demand bought abroad above which a plant making it is worth building at
+/// home even with the existing ones idle. Reading point for the trade law: the tariff of
+/// `protective_tariffs` or `free_trade` will move it (politics); for now the rule of 1925.
+const SUBSTITUTION_SHARE: Fixed = milli(250);
+
+/// The import share that opens import substitution in market `m` (`SUBSTITUTION_SHARE`).
+pub fn substitution_share(_m: &super::Market) -> Fixed {
+    SUBSTITUTION_SHARE
+}
+
+/// Share of the demand for the main output of building `kind` that market `m` imported last
+/// week.
+fn imported_share(cat: &Catalogue, m: &super::Market, kind: usize) -> Fixed {
+    let Some(&(g, _)) = cat.buildings[kind].methods[0].outputs.first() else {
+        return Fixed::ZERO;
+    };
+    let g = g as usize;
+    if m.demand[g] <= Fixed::ZERO || m.net_import[g] <= Fixed::ZERO {
+        return Fixed::ZERO;
+    }
+    fill(m.net_import[g], m.demand[g])
+}
+
 /// Money of the pool already promised: construction goods still to buy and the private works
 /// in the queue.
 pub fn committed(cat: &Catalogue, m: &super::Market) -> Fixed {
@@ -526,13 +590,23 @@ impl System<GameWorld> for Investment {
             }
         }
         let construction = cat.construction;
+        // A kind is worth more levels when the ones there run full, or when the country buys
+        // abroad a large share of what they make: importing what could be made at home, at
+        // home wages, is the opening for a new plant.
         let busy: Vec<Vec<bool>> = used
             .iter()
             .zip(&built)
-            .map(|(u, b)| {
+            .enumerate()
+            .map(|(mi, (u, b))| {
+                let m = &econ.markets[mi];
                 u.iter()
                     .zip(b)
-                    .map(|(u, b)| *b <= Fixed::ZERO || *u >= *b * BUSY_UTILIZATION)
+                    .enumerate()
+                    .map(|(kind, (u, b))| {
+                        *b <= Fixed::ZERO
+                            || *u >= *b * BUSY_UTILIZATION
+                            || imported_share(cat, m, kind) >= substitution_share(m)
+                    })
                     .collect()
             })
             .collect();
@@ -550,7 +624,7 @@ impl System<GameWorld> for Investment {
                     workers(r.pops[prof::PEASANT].size) - r.pops[prof::PEASANT].employed;
                 let mut out = Vec::new();
                 for (kind, b) in cat.buildings.iter().enumerate() {
-                    if b.public {
+                    if b.public || b.informal {
                         continue;
                     }
                     let current = r.plants.iter().find(|p| p.kind as usize == kind);

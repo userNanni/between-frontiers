@@ -184,6 +184,7 @@ building-telecom_exchange = Telecommunications exchange
 building-construction_sector = Building trade
 building-school = School
 building-hospital = Hospital
+building-informal_trade = Informal trade
 building-urban_housing = Urban housing
 
 ## Grupos de construção
@@ -198,6 +199,7 @@ building-group-military_industry = Military industry
 
 ## Métodos de produção
 method-all_metal = All-metal airframe
+method-street_work = Street work
 method-arsenal = Arsenal
 method-assembly_line = Assembly line
 method-automatic_exchange = Automatic exchange

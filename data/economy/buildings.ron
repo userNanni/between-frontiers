@@ -398,5 +398,12 @@
         (key: "hospital", group: "services", resource: None, farm: None, public: true, methods: [
             (key: "general_hospital", available_from: 1925, inputs: [("medicines", 1500), ("services", 300)], outputs: [("hospital_care", 8000)], jobs: [("professional", 300), ("clerk", 150), ("skilled_worker", 100), ("laborer", 400)]),
         ]),
+        // Urban self-employment: street trade, domestic service, small workshops. Nobody builds
+        // it: each month it takes the town's labourers that no plant employs, and shrinks as plants
+        // hire them (econ/monthly.rs, `Labour`). No capital, no inputs; a worker makes a quarter of
+        // what a shop clerk makes (docs/economy.pt-BR.md, "Trabalho informal").
+        (key: "informal_trade", group: "services", resource: None, farm: None, informal: true, methods: [
+            (key: "street_work", available_from: 1925, inputs: [], outputs: [("services", 1500)], jobs: [("laborer", 1000)]),
+        ]),
     ],
 )

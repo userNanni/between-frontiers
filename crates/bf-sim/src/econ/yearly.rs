@@ -243,7 +243,8 @@ impl System<GameWorld> for Yearly {
             if ctx.tick > 0 {
                 for (p, m) in r.plants.iter_mut().zip(methods) {
                     p.method = m;
-                    if !self.cat.buildings[p.kind as usize].public {
+                    let b = &self.cat.buildings[p.kind as usize];
+                    if !b.public && !b.informal {
                         p.wear += Fixed::from_int(p.levels) * DEPRECIATION;
                         let gone = p.wear.to_int_floor().min(p.levels);
                         p.levels -= gone;

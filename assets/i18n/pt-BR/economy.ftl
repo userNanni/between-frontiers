@@ -184,6 +184,7 @@ building-telecom_exchange = Central de telecomunicações
 building-construction_sector = Construção civil
 building-school = Escola
 building-hospital = Hospital
+building-informal_trade = Comércio informal
 building-urban_housing = Moradia urbana
 
 ## Grupos de construção
@@ -198,6 +199,7 @@ building-group-military_industry = Indústria bélica
 
 ## Métodos de produção
 method-all_metal = Fuselagem metálica
+method-street_work = Trabalho de rua
 method-arsenal = Arsenal
 method-assembly_line = Linha de montagem
 method-automatic_exchange = Central automática

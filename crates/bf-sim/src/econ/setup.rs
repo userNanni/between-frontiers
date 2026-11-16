@@ -191,7 +191,7 @@ fn block_accounts(cat: &Catalogue, b: &Block, levels: &[f64]) -> Accounts {
         let va = f(m.value_added(|g| cat.goods[g].base_price)) * b.tfp * n;
         a.va += va;
         a.workers += m.workers as f64 * n;
-        let bill = if bd.public {
+        let bill = if bd.public || bd.informal {
             va.max(0.0)
         } else {
             va.max(0.0) * f(bd.labor_share)
