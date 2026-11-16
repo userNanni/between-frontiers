@@ -809,7 +809,16 @@ pub fn build(cat: &Catalogue, inp: &Inputs) -> Economy {
             .collect();
         let people: i64 = b.sizes.iter().sum::<i64>().max(1);
         let mut town: Option<Vec<f64>> = None;
+        let mut electrified = false;
         for ki in order {
+            // Before transport and power are laid: the share of the plants that ran on
+            // electricity in 1925, as far as the country made it (`industry.ron`).
+            if local(ki) && !electrified {
+                electrified = true;
+                let colony = regions[b.regions[0]].colony;
+                let target = electricity_1925(inp, cat, &inp.countries[b.market].tag, b, colony);
+                electrify(cat, b, &mut regions, target);
+            }
             if !is_raw(ki) && !local(ki) && town.is_none() {
                 let need: f64 = (0..nb)
                     .filter(|&k| !is_raw(k) && !local(k))
@@ -854,7 +863,7 @@ pub fn build(cat: &Catalogue, inp: &Inputs) -> Economy {
                             .plants
                             .iter()
                             .map(|p| {
-                                cat.buildings[p.kind as usize].methods[0]
+                                cat.buildings[p.kind as usize].methods[p.method as usize]
                                     .inputs
                                     .iter()
                                     .filter(|(gi, _)| *gi as usize == g)
@@ -924,12 +933,20 @@ pub fn build(cat: &Catalogue, inp: &Inputs) -> Economy {
             // Transport and power are rounded up state by state: rounded for the whole block,
             // most states with a little demand got no power plant at all and waited for a
             // neighbour's surplus.
-            let placed = if local_good.is_some() {
+            let placed = if let Some(g) = local_good {
                 let total: f64 = w.iter().sum();
+                // As many levels as the demand laid so far asks for: the plants moved to
+                // electric methods use more power than the balance planned for.
+                let per_level = yearly_output(cat, ki, g) / 52.0 * b.tfp;
+                let wanted = if per_level > 0.0 {
+                    (n * k).max(total / per_level)
+                } else {
+                    n * k
+                };
                 w.iter()
                     .map(|x| {
                         if total > 0.0 {
-                            (n * k * x / total - 1e-6).ceil().max(0.0) as i64
+                            (wanted * x / total - 1e-6).ceil().max(0.0) as i64
                         } else {
                             0
                         }
@@ -960,7 +977,7 @@ pub fn build(cat: &Catalogue, inp: &Inputs) -> Economy {
             r.subsistence = fx(staple * (per_head_ha / 0.3).clamp(0.4, 1.0) * 0.9);
             let mut jobs = [0i64; P];
             for p in &r.plants {
-                for (pi, n) in &cat.buildings[p.kind as usize].methods[0].jobs {
+                for (pi, n) in &cat.buildings[p.kind as usize].methods[p.method as usize].jobs {
                     jobs[*pi as usize] += *n * p.levels;
                 }
             }
@@ -978,7 +995,7 @@ pub fn build(cat: &Catalogue, inp: &Inputs) -> Economy {
                 r.plants.retain(|p| p.levels > 0);
                 jobs = [0; P];
                 for p in &r.plants {
-                    for (pi, n) in &cat.buildings[p.kind as usize].methods[0].jobs {
+                    for (pi, n) in &cat.buildings[p.kind as usize].methods[p.method as usize].jobs {
                         jobs[*pi as usize] += *n * p.levels;
                     }
                 }
@@ -1074,6 +1091,89 @@ pub fn build(cat: &Catalogue, inp: &Inputs) -> Economy {
         markets,
         world_price: base,
         history: Vec::new(),
+    }
+}
+
+/// Electricity a block's plants used in 1925, a week: what its country generated
+/// (`industry.ron`, colonies included in the owner's figure, so all of it goes to the
+/// metropole) less what its households and state buy.
+fn electricity_1925(inp: &Inputs, cat: &Catalogue, tag: &str, b: &Block, colony: bool) -> f64 {
+    let Some(g) = cat.good("electricity") else {
+        return 0.0;
+    };
+    if colony {
+        return 0.0;
+    }
+    let made = inp
+        .industry
+        .and_then(|f| f.countries.iter().find(|c| c.country == tag))
+        .and_then(|c| c.output.iter().find(|(k, _)| k == "electricity"))
+        .map_or(0.0, |(_, v)| f64::from(*v) * 1000.0 / 52.0);
+    (made - b.final_demand[g as usize]).max(0.0)
+}
+
+/// Moves plants of a block to the electric method their building had in 1925, the most urban
+/// states first, until the plants use `target` of electricity a week. A plant keeps its output:
+/// it runs as many levels of the new method as make what the old ones made.
+fn electrify(cat: &Catalogue, b: &Block, regions: &mut [Region], target: f64) {
+    let Some(g) = cat.good("electricity") else {
+        return;
+    };
+    let uses = |m: &super::catalogue::Method| -> f64 {
+        m.inputs
+            .iter()
+            .filter(|(gi, _)| *gi == g)
+            .map(|(_, q)| q.to_f64_lossy())
+            .sum()
+    };
+    let mut used: f64 = b
+        .regions
+        .iter()
+        .flat_map(|&ri| regions[ri].plants.iter())
+        .map(|p| uses(&cat.buildings[p.kind as usize].methods[p.method as usize]) * p.levels as f64)
+        .sum::<f64>()
+        * b.tfp;
+    let mut order: Vec<(usize, f64)> = b
+        .regions
+        .iter()
+        .copied()
+        .zip(b.urban.iter().copied())
+        .collect();
+    order.sort_by(|a, c| c.1.total_cmp(&a.1).then(a.0.cmp(&c.0)));
+    for (ri, _) in order {
+        for p in regions[ri].plants.iter_mut() {
+            if used >= target {
+                return;
+            }
+            let bd = &cat.buildings[p.kind as usize];
+            if bd.public || p.method != 0 || p.levels <= 0 {
+                continue;
+            }
+            let first = &bd.methods[0];
+            let Some(&(out, q0)) = first.outputs.first() else {
+                continue;
+            };
+            let Some((mi, m)) = bd.methods.iter().enumerate().skip(1).find(|(_, m)| {
+                m.available_from <= 1925
+                    && uses(m) > 0.0
+                    && m.outputs.first().is_some_and(|(o, _)| *o == out)
+            }) else {
+                continue;
+            };
+            let q1 = m.outputs[0].1.to_f64_lossy();
+            if q1 <= 0.0 {
+                continue;
+            }
+            let levels = (p.levels as f64 * q0.to_f64_lossy() / q1).ceil().max(1.0) as i64;
+            let extra = (uses(m) * levels as f64 - uses(first) * p.levels as f64) * b.tfp;
+            // A switch that would overshoot by more than what is missing waits for a smaller one.
+            if extra > 2.0 * (target - used) {
+                continue;
+            }
+            used += extra;
+            p.method = mi as u8;
+            p.levels = levels;
+        }
     }
 }
 
