@@ -419,6 +419,23 @@ fn stances(ui: &mut Ui, i18n: &I18n, view: &LawsView, law: usize) -> Option<Game
                 ],
             ),
         );
+        // What the balance means for the law, in words.
+        let reading = if b.for_ == 0 {
+            "laws-balance-none"
+        } else if b.against > b.for_ {
+            "laws-balance-minority"
+        } else {
+            "laws-balance-majority"
+        };
+        ui.label(
+            egui::RichText::new(i18n.tr(reading))
+                .font(sans(size::SMALL))
+                .color(if b.against > b.for_ {
+                    color::DANGER
+                } else {
+                    color::POSITIVE
+                }),
+        );
     }
     match view.propose(law) {
         Ok(command) => {
@@ -439,6 +456,13 @@ fn stances(ui: &mut Ui, i18n: &I18n, view: &LawsView, law: usize) -> Option<Game
             if why == Blocked::Pending {
                 bf_ui_kit::small(ui, &i18n.tr(why.key()));
             }
+        }
+    }
+
+    if !in_force {
+        bf_ui_kit::small(ui, &i18n.tr("laws-effects-inert"));
+        if view.group_key(view.law_group(law)) == "internal_movement" {
+            bf_ui_kit::small(ui, &i18n.tr("laws-migration-in-budget"));
         }
     }
 
