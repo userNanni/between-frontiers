@@ -74,11 +74,19 @@ impl PanelId {
         }
     }
 
-    /// Opened on demand and closed again: with no room among the others it may cover them
-    /// (a small logical screen), as a window does.
-    pub fn is_layer(self) -> bool {
-        self == PanelId::CountryPanel
+    /// The size the panel folds to when the screen has no room for it whole, in the order
+    /// panels fold: the overview into a button, the country figures into their banner (the
+    /// country panel the banner opens shows the same figures).
+    pub fn folded(self) -> Option<Vec2> {
+        match self {
+            PanelId::Outliner => Some(FOLDED_BUTTON),
+            PanelId::Country => Some(FOLDED_BANNER),
+            _ => None,
+        }
     }
+
+    /// Panels that fold for room, first to last.
+    pub const FOLDING: [PanelId; 2] = [PanelId::Outliner, PanelId::Country];
 
     /// The panel may grow shorter to make room, down to this height.
     pub fn min_height(self) -> Option<f32> {
@@ -493,7 +501,14 @@ pub fn export_file(config: &Path) -> PathBuf {
 pub struct Resolved {
     pub rects: BTreeMap<PanelId, Rect>,
     pub free: Option<Rect>,
+    /// Panels folded for want of room.
+    pub folded: std::collections::BTreeSet<PanelId>,
 }
+
+/// The overview folded: a button.
+pub const FOLDED_BUTTON: Vec2 = vec2(200.0, 40.0);
+/// The country figures folded: the banner with its medallion.
+pub const FOLDED_BANNER: Vec2 = vec2(84.0, 94.0);
 
 impl Resolved {
     pub fn rect(&self, p: PanelId) -> Option<Rect> {
@@ -582,43 +597,61 @@ pub fn hud_area(layout: &Layout, screen: Rect) -> Rect {
 pub fn resolve(layout: &Layout, screen: Rect, sizes: &BTreeMap<PanelId, Vec2>) -> Resolved {
     let screen = hud_area(layout, screen);
     let free = layout.free.map(|a| clamp_into(a.rect(screen), screen));
+    // Whole first; when a panel finds no clear place, fold panels one by one and try again.
+    let mut folded = std::collections::BTreeSet::new();
+    loop {
+        let mut sizes_now = sizes.clone();
+        for p in &folded {
+            if let (Some(s), Some(f)) = (sizes_now.get_mut(p), p.folded()) {
+                *s = f;
+            }
+        }
+        let (rects, clear) = place_all(layout, screen, free, &sizes_now);
+        let next = PanelId::FOLDING
+            .into_iter()
+            .find(|p| !folded.contains(p) && sizes.contains_key(p) && layout.place(*p).visible);
+        match (clear, next) {
+            (false, Some(p)) => {
+                folded.insert(p);
+            }
+            _ => {
+                return Resolved {
+                    rects,
+                    free,
+                    folded,
+                };
+            }
+        }
+    }
+}
+
+/// Places every visible panel; false when one of them found no clear place.
+fn place_all(
+    layout: &Layout,
+    screen: Rect,
+    free: Option<Rect>,
+    sizes: &BTreeMap<PanelId, Vec2>,
+) -> (BTreeMap<PanelId, Rect>, bool) {
     let mut rects: BTreeMap<PanelId, Rect> = BTreeMap::new();
-    // Panels laid over the others for want of room: no block for the panels after them.
-    let mut layered: Vec<PanelId> = Vec::new();
+    let mut clear = true;
     for p in PanelId::ALL {
         let place = layout.place(p);
         let Some(size) = sizes.get(&p) else { continue };
         if !place.visible {
             continue;
         }
-        let mut r = clamp_into(place.rect(screen, *size), screen);
-        let blocks: Vec<Rect> = free
-            .into_iter()
-            .chain(
-                rects
-                    .iter()
-                    .filter(|(q, _)| !layered.contains(q))
-                    .map(|(_, r)| *r),
-            )
-            .collect();
-        if let Some(c) = clear_place(r, &blocks, screen, p.min_height()) {
-            r = c;
-        } else if p.is_layer()
-            && let Some(c) = clear_place(
-                r,
-                &free.into_iter().collect::<Vec<_>>(),
-                screen,
-                p.min_height(),
-            )
-        {
-            // No room among the others: a panel that opens on demand covers them for a while,
-            // never the free area.
-            r = c;
-            layered.push(p);
-        }
+        let r = clamp_into(place.rect(screen, *size), screen);
+        let blocks: Vec<Rect> = free.into_iter().chain(rects.values().copied()).collect();
+        let r = match clear_place(r, &blocks, screen, p.min_height()) {
+            Some(c) => c,
+            None => {
+                clear = false;
+                r
+            }
+        };
         rects.insert(p, r);
     }
-    Resolved { rects, free }
+    (rects, clear)
 }
 
 /// What a resolution depends on; the rectangles are worked out again only when it changes.
@@ -853,5 +886,31 @@ mod tests {
         assert_eq!(*hud.resolved(s, &sizes()), a);
         toggle_panel(&mut hud, PanelId::MapModes);
         assert!(hud.resolved(s, &sizes()).rect(PanelId::MapModes).is_none());
+    }
+
+    #[test]
+    fn panels_fold_rather_than_cover_each_other() {
+        // 960 × 540 with the streaming corner: no room for every panel whole.
+        let screen = screen(960.0, 540.0);
+        let mut sizes = sizes_on(960.0);
+        sizes.insert(PanelId::CountryPanel, vec2(380.0, 444.0));
+        sizes.insert(PanelId::MapModes, vec2(200.0, 40.0));
+        let r = resolve(&Layout::preset(Preset::Streaming), screen, &sizes);
+        assert!(r.folded.contains(&PanelId::Outliner), "{:?}", r.folded);
+        let rects: Vec<_> = r.rects.iter().collect();
+        for (i, (p, a)) in rects.iter().enumerate() {
+            assert!(screen.contains_rect(**a), "{p:?} {a:?}");
+            assert!(!overlaps(**a, r.free.unwrap()), "{p:?} in the free area");
+            for (q, b) in &rects[i + 1..] {
+                assert!(!overlaps(**a, **b), "{p:?} {a:?} over {q:?} {b:?}");
+            }
+        }
+        // With room, nothing folds.
+        let r = resolve(
+            &Layout::default(),
+            self::screen(1600.0, 900.0),
+            &sizes_on(1600.0),
+        );
+        assert!(r.folded.is_empty());
     }
 }

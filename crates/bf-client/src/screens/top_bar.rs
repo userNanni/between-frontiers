@@ -55,6 +55,9 @@ pub struct BarResponse {
 pub struct Places {
     pub corner: Option<Rect>,
     pub time: Option<Rect>,
+    /// The figures folded for want of room: the banner alone (it opens the country panel,
+    /// which shows the same figures).
+    pub banner_only: bool,
 }
 
 /// Size of the country figures with the banner.
@@ -101,7 +104,20 @@ pub fn show(
         time_panel(ui, screen, r.min, i18n, extra.snap, &mut out);
     }
     if let (Some(world), Some(p), Some(r)) = (world, player, places.corner) {
-        corner_panel(ui, r.min, i18n, world, flags, p, &extra, &mut out);
+        if places.banner_only {
+            super::mark_frame(ui, r, "country-figures");
+            banner_ui(
+                ui,
+                Rect::from_min_size(r.min, BANNER),
+                i18n,
+                world,
+                flags,
+                p,
+                &mut out,
+            );
+        } else {
+            corner_panel(ui, r.min, i18n, world, flags, p, &extra, &mut out);
+        }
     }
     out
 }

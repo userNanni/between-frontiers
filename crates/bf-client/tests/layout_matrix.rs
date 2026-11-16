@@ -149,17 +149,8 @@ fn check_hud(h: &Harness<'_, App>, case: &str) -> Vec<String> {
             out.push(format!("{case}: no {want} on screen"));
         }
     }
-    // Below 1280 × 720 the country panel, opened on demand, may cover the others when there
-    // is no room for it (`PanelId::is_layer`).
-    let small = {
-        let s = h.ctx.content_rect();
-        s.width() < 1280.0 || s.height() < 720.0
-    };
     for (i, a) in frames.iter().enumerate() {
         for b in &frames[i + 1..] {
-            if small && (a.label == "country-panel" || b.label == "country-panel") {
-                continue;
-            }
             if a.rect.intersects(b.rect) && a.rect.intersect(b.rect).area() > 1.0 {
                 out.push(format!(
                     "{case}: {} {:?} over {} {:?}",

@@ -33,6 +33,8 @@ pub struct State {
     edit: super::hud_edit::Edit,
     /// The folded map mode picker is open.
     lens_open: bool,
+    /// The overview, folded into a button for want of room, is open.
+    overview_open: bool,
     research_camera: Option<super::research::TreeCamera>,
     /// Month the live map lenses were last coloured for.
     live_month: Option<(i32, u8)>,
@@ -93,6 +95,7 @@ impl State {
             fold: super::outliner::Fold::default(),
             edit: super::hud_edit::Edit::default(),
             lens_open: false,
+            overview_open: false,
             research_camera: None,
             live_month: None,
             live_figures: None,
@@ -309,32 +312,16 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
         state.fold.open = !state.fold.open;
     }
     if let Some(r) = place(PanelId::Outliner) {
-        let sections = shared.hud.layout.overview();
-        let res = super::outliner::show(
-            ui,
-            r,
-            super::outliner::Sources {
-                i18n: &shared.i18n,
-                world: shared.world.as_ref(),
-                catalogue: &state.rules.catalogue,
-                tree: state.rules.tree.as_deref(),
-                snap: &snap,
-                pinned: &state.save.meta.pinned,
-                sections: &sections,
-            },
-            &mut state.fold,
-        );
-        if res.open_budget {
-            state.government = Some(super::government::Window::default());
-        }
-        if res.open_research {
-            state.research_open = true;
-        }
-        if let Some(picked) = res.open_journal {
-            state.journal = Some(super::journal::Window { picked });
-        }
-        if let Some(id) = res.unpin {
-            state.toggle_pin(shared, &id, now);
+        if places.folded.contains(&PanelId::Outliner) {
+            // Folded for want of room: a button; open, the panel shows over the HUD, further
+            // down.
+            if super::outliner::folded_button(ui, r, &shared.i18n, state.overview_open)
+                && !state.edit.on
+            {
+                state.overview_open = !state.overview_open;
+            }
+        } else {
+            overview(state, shared, ui, r, &snap, now);
         }
     }
 
@@ -345,6 +332,7 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
         rect,
         top_bar::Places {
             corner: place(PanelId::Country),
+            banner_only: places.folded.contains(&PanelId::Country),
             time: place(PanelId::Time),
         },
         &shared.i18n,
@@ -401,6 +389,36 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
                 .auto_shrink([false, false])
                 .show(ui, |ui| country_panel::show(shared, ui, country));
         });
+    }
+
+    // The folded overview, open over the HUD; a click elsewhere folds it.
+    if state.overview_open
+        && places.folded.contains(&PanelId::Outliner)
+        && let Some(r) = place(PanelId::Outliner)
+    {
+        let catcher = ui.interact(
+            rect,
+            ui.make_persistent_id("overview-outside"),
+            Sense::click(),
+        );
+        let ctx = ui.ctx().clone();
+        let fold = state.fold;
+        let popup = lens_popup(
+            r,
+            |max_h| {
+                let s = super::outliner::size(&ctx, &fold);
+                egui::vec2(s.x, s.y.min(max_h))
+            },
+            rect,
+            places.free,
+        );
+        keys::cover(ui, popup);
+        overview(state, shared, ui, popup, &snap, now);
+        if catcher.clicked() {
+            state.overview_open = false;
+        }
+    } else if !places.folded.contains(&PanelId::Outliner) {
+        state.overview_open = false;
     }
 
     // The open map mode picker, over every panel of the HUD: a click anywhere else folds it.
@@ -941,4 +959,42 @@ pub fn lens_popup(
             screen,
         )
     })
+}
+
+/// The overview panel in `r`, and what its clicks open.
+fn overview(
+    state: &mut State,
+    shared: &mut Shared,
+    ui: &mut Ui,
+    r: Rect,
+    snap: &crate::sim::Snapshot,
+    now: f64,
+) {
+    let sections = shared.hud.layout.overview();
+    let res = super::outliner::show(
+        ui,
+        r,
+        super::outliner::Sources {
+            i18n: &shared.i18n,
+            world: shared.world.as_ref(),
+            catalogue: &state.rules.catalogue,
+            tree: state.rules.tree.as_deref(),
+            snap,
+            pinned: &state.save.meta.pinned,
+            sections: &sections,
+        },
+        &mut state.fold,
+    );
+    if res.open_budget {
+        state.government = Some(super::government::Window::default());
+    }
+    if res.open_research {
+        state.research_open = true;
+    }
+    if let Some(picked) = res.open_journal {
+        state.journal = Some(super::journal::Window { picked });
+    }
+    if let Some(id) = res.unpin {
+        state.toggle_pin(shared, &id, now);
+    }
 }
