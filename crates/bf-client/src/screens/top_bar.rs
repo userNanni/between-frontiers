@@ -45,6 +45,8 @@ pub struct BarResponse {
     pub open_research: bool,
     pub open_government: bool,
     pub open_journal: bool,
+    /// A block was clicked: the screen its figure comes from.
+    pub open: Option<super::tiles::Open>,
 }
 
 /// Where the two panels go: the HUD layout's rectangles; `None` hides a panel.
@@ -55,8 +57,16 @@ pub struct Places {
 }
 
 /// Size of the country figures with the banner.
-pub fn corner_size() -> Vec2 {
-    Vec2::new(HUD_RIGHT - MARGIN, LEFT_BOTTOM - MARGIN * 2.0)
+pub fn corner_size(tiles: usize) -> Vec2 {
+    let tiles = tiles.clamp(super::tiles::MIN, super::tiles::MAX);
+    let rows = tiles.div_ceil(super::tiles::COLS);
+    let cols = tiles.min(super::tiles::COLS);
+    // At least as tall as the banner with its medallion.
+    let height = (ROW1_H + ROW_H * (rows - 1) as f32 + PAD * 2.0).max(BANNER.y + 30.0);
+    Vec2::new(
+        BANNER.x - 6.0 + COL_W * cols as f32 + PAD * 2.0 + 6.0,
+        height,
+    )
 }
 
 /// Width of the date: what the country figures leave on the top row, up to its full width.
@@ -83,14 +93,14 @@ pub fn show(
     world: Option<&World>,
     flags: &Flags,
     player: Option<usize>,
-    snap: &Snapshot,
+    extra: Extra<'_>,
 ) -> BarResponse {
     let mut out = BarResponse::default();
     if let Some(r) = places.time {
-        time_panel(ui, screen, r.min, i18n, snap, &mut out);
+        time_panel(ui, screen, r.min, i18n, extra.snap, &mut out);
     }
     if let (Some(world), Some(p), Some(r)) = (world, player, places.corner) {
-        corner_panel(ui, r.min, i18n, world, flags, p, &mut out);
+        corner_panel(ui, r.min, i18n, world, flags, p, &extra, &mut out);
     }
     out
 }
@@ -110,6 +120,173 @@ struct Item {
     /// 0–1, for the headline row.
     bar: Option<f32>,
     tip: Tip,
+}
+
+/// What the blocks read besides the map's figures.
+#[derive(Clone, Copy)]
+pub struct Extra<'a> {
+    pub snap: &'a Snapshot,
+    pub tree: Option<&'a bf_sim::research::TechTree>,
+    /// The blocks to show, in order.
+    pub tiles: &'a [&'static str],
+}
+
+/// Blocks that read the treasury, the debt, politics, works and research.
+fn extra_items(i18n: &I18n, x: &Extra<'_>) -> Vec<(&'static str, Item)> {
+    use super::budget::WEEKS;
+    // Money short enough for a block: "−US$ 590 mi".
+    let signed_money = |_: &I18n, v: f64| {
+        if v < 0.0 {
+            format!("−{}", money_short(i18n, -v))
+        } else {
+            money_short(i18n, v)
+        }
+    };
+    let unknown = i18n.tr("bar-unknown");
+    let simple = |key: &'static str, value: String, bar: Option<f32>, summary: Vec<String>| {
+        let def = super::tiles::def(key).expect("block");
+        (
+            key,
+            Item {
+                icon: def.icon,
+                bar,
+                tip: Tip {
+                    title: i18n.tr(def.name),
+                    value: value.clone(),
+                    summary,
+                    breakdown: Vec::new(),
+                    footer: vec![i18n.tr("tile-click")],
+                },
+                value,
+            },
+        )
+    };
+    // Percent a year, written like the other blocks' shares.
+    let percent = |p: f64| pct(i18n, p / 100.0);
+    let fx = |x: laplace_schelling::Fixed| x.to_f64_lossy();
+    let mut out = Vec::new();
+    let g = x.snap.government.as_deref();
+    let gdp = g.map_or(0.0, |g| g.gdp_last_year);
+    let share_of_gdp = |v: f64| {
+        if gdp > 0.0 {
+            pct(i18n, v / gdp)
+        } else {
+            unknown.clone()
+        }
+    };
+    out.push(simple(
+        "treasury",
+        g.map_or(unknown.clone(), |g| signed_money(i18n, g.treasury)),
+        None,
+        vec![
+            i18n.tr("tile-treasury-tip"),
+            g.map_or(String::new(), |g| {
+                i18n.tr_args(
+                    "tile-treasury-reserve",
+                    &[(
+                        "reserve",
+                        Arg::String(crate::text::money(i18n, g.reserve())),
+                    )],
+                )
+            }),
+        ],
+    ));
+    out.push(simple(
+        "balance",
+        g.map_or(unknown.clone(), |g| signed_money(i18n, g.balance() * WEEKS)),
+        None,
+        vec![i18n.tr("tile-balance-tip")],
+    ));
+    out.push(simple(
+        "taxes",
+        g.map_or(unknown.clone(), |g| {
+            share_of_gdp(fx(g.budget.revenue) * WEEKS)
+        }),
+        None,
+        vec![i18n.tr("tile-taxes-tip")],
+    ));
+    out.push(simple(
+        "debt",
+        g.map_or(unknown.clone(), |g| share_of_gdp(fx(g.budget.debt))),
+        None,
+        vec![
+            i18n.tr("tile-debt-tip"),
+            g.map_or(String::new(), |g| {
+                crate::text::money(i18n, fx(g.budget.debt))
+            }),
+        ],
+    ));
+    out.push(simple(
+        "inflation",
+        g.map_or(unknown.clone(), |g| percent(fx(g.money.inflation))),
+        None,
+        vec![i18n.tr("tile-inflation-tip")],
+    ));
+    out.push(simple(
+        "policy-rate",
+        g.map_or(unknown.clone(), |g| percent(fx(g.money.policy_rate))),
+        None,
+        vec![i18n.tr("tile-policy-rate-tip")],
+    ));
+    let laws = x.snap.laws.as_deref();
+    out.push(simple(
+        "legitimacy",
+        laws.map_or(unknown.clone(), |l| {
+            pct(i18n, f64::from(l.legitimacy) / 1000.0)
+        }),
+        laws.map(|l| f32::from(l.legitimacy) / 1000.0),
+        vec![i18n.tr("tile-legitimacy-tip")],
+    ));
+    let mut movements = simple(
+        "movements",
+        laws.map_or(unknown.clone(), |l| i18n.int(l.movements.len() as i64)),
+        None,
+        vec![i18n.tr("tile-movements-tip")],
+    );
+    if let (Some(l), Some(cat)) = (laws, crate::laws_view::Catalogue::shared())
+        && let Some(view) = cat.country(&l.tag, Some(l))
+    {
+        movements.1.tip.breakdown = l
+            .movements
+            .iter()
+            .map(|(k, m)| {
+                (
+                    i18n.tr(&format!("movement-{}", view.movement_key(usize::from(*k)))),
+                    pct(i18n, f64::from(m.support) / 1000.0),
+                )
+            })
+            .collect();
+    }
+    out.push(movements);
+    let journal = x.snap.journal.as_deref();
+    out.push(simple(
+        "works",
+        journal.map_or(unknown.clone(), |j| {
+            i18n.int((j.works.public + j.works.private) as i64)
+        }),
+        None,
+        vec![journal.map_or(String::new(), |j| {
+            i18n.tr_args(
+                "outliner-works-count",
+                &[
+                    ("public", Arg::String(i18n.int(j.works.public as i64))),
+                    ("private", Arg::String(i18n.int(j.works.private as i64))),
+                ],
+            )
+        })],
+    ));
+    // The focus, or the technology the country is closest to on its own.
+    let research = journal.and_then(|j| j.research.first());
+    let tech = research
+        .and_then(|r| x.tree?.techs.get(usize::from(r.tech)))
+        .map(|t| i18n.tr(&format!("tech-{}", t.key)));
+    out.push(simple(
+        "research",
+        research.map_or(unknown.clone(), |r| pct(i18n, f64::from(r.progress))),
+        research.map(|r| r.progress),
+        vec![tech.unwrap_or_else(|| i18n.tr("outliner-research-none"))],
+    ));
+    out
 }
 
 fn rank(i18n: &I18n, r: usize) -> String {
@@ -533,6 +710,7 @@ fn items(i18n: &I18n, world: &World, p: usize) -> (Vec<Item>, Vec<Item>, Vec<Ite
     (row1, row2, row3)
 }
 
+#[allow(clippy::too_many_arguments)]
 fn corner_panel(
     ui: &mut Ui,
     origin: Pos2,
@@ -540,16 +718,28 @@ fn corner_panel(
     world: &World,
     flags: &Flags,
     p: usize,
+    extra: &Extra<'_>,
     out: &mut BarResponse,
 ) {
     let (row1, row2, row3) = items(i18n, world, p);
+    // Every block by its key; the panel takes the ones chosen, in their order.
+    let mut all: Vec<(&'static str, Item)> = super::tiles::DEFAULT
+        .iter()
+        .copied()
+        .zip(row1.into_iter().chain(row2).chain(row3))
+        .collect();
+    all.extend(extra_items(i18n, extra));
+    let mut chosen: Vec<(&'static str, Item)> = Vec::new();
+    for key in extra.tiles {
+        if let Some(i) = all.iter().position(|(k, _)| k == key) {
+            chosen.push(all.swap_remove(i));
+        }
+    }
+    let size = corner_size(chosen.len());
     let banner = Rect::from_min_size(origin, BANNER);
     let panel = Rect::from_min_size(
         Pos2::new(banner.right() - 6.0, banner.top()),
-        Vec2::new(
-            COL_W * COLS as f32 + PAD * 2.0 + 6.0,
-            ROW1_H + ROW_H * 2.0 + PAD * 2.0,
-        ),
+        Vec2::new(size.x - BANNER.x + 6.0, size.y),
     );
 
     // Panel behind the figures; it also blocks clicks from reaching the map.
@@ -569,33 +759,55 @@ fn corner_panel(
         );
     };
 
-    for (i, item) in row1.iter().enumerate() {
-        let cell = Rect::from_min_size(
-            Pos2::new(left + COL_W * i as f32, rows_top),
-            Vec2::new(COL_W - 6.0, ROW1_H - 4.0),
-        );
-        cell_ui(ui, cell, item, true, ("r1", i));
-    }
-    rule(ui, rows_top + ROW1_H);
-    for (r, row) in [&row2, &row3].into_iter().enumerate() {
-        let top = rows_top + ROW1_H + 2.0 + ROW_H * r as f32;
-        for (i, item) in row.iter().enumerate() {
-            let cell = Rect::from_min_size(
-                Pos2::new(left + COL_W * i as f32, top),
+    // The first row large, with bars; the others compact.
+    for (n, (key, item)) in chosen.iter().enumerate() {
+        let (row, col) = (n / COLS, n % COLS);
+        let cell = if row == 0 {
+            Rect::from_min_size(
+                Pos2::new(left + COL_W * col as f32, rows_top),
+                Vec2::new(COL_W - 6.0, ROW1_H - 4.0),
+            )
+        } else {
+            Rect::from_min_size(
+                Pos2::new(
+                    left + COL_W * col as f32,
+                    rows_top + ROW1_H + 2.0 + ROW_H * (row - 1) as f32,
+                ),
                 Vec2::new(COL_W - 6.0, ROW_H - 2.0),
-            );
-            cell_ui(ui, cell, item, false, (if r == 0 { "r2" } else { "r3" }, i));
+            )
+        };
+        // The figures that always had a bar keep its track even when empty.
+        let track = item.bar.is_some() || super::tiles::DEFAULT[..COLS].contains(key);
+        let open = super::tiles::def(key).and_then(|d| d.open);
+        if cell_ui(ui, cell, item, row == 0, track, open.is_some(), key) {
+            out.open = open;
         }
+    }
+    if chosen.len() > COLS {
+        rule(ui, rows_top + ROW1_H);
     }
 
     banner_ui(ui, banner, i18n, world, flags, p, out);
 }
 
-fn cell_ui(ui: &mut Ui, cell: Rect, item: &Item, headline: bool, salt: (&str, usize)) {
+/// Draws a block; true when it was clicked and it opens a screen.
+fn cell_ui(
+    ui: &mut Ui,
+    cell: Rect,
+    item: &Item,
+    headline: bool,
+    track: bool,
+    opens: bool,
+    key: &str,
+) -> bool {
     let response = ui.interact(
         cell,
-        ui.make_persistent_id(("hud-cell", salt)),
-        Sense::hover(),
+        ui.make_persistent_id(("hud-cell", key)),
+        if opens {
+            Sense::click()
+        } else {
+            Sense::hover()
+        },
     );
     let a11y = format!("{}: {}", item.tip.title, item.value);
     response.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Label, true, a11y.clone()));
@@ -627,20 +839,27 @@ fn cell_ui(ui: &mut Ui, cell: Rect, item: &Item, headline: bool, salt: (&str, us
         },
     );
     let tx = icon_rect.right() + if headline { 8.0 } else { 6.0 };
-    let font = if headline {
-        sans_semibold(16.0)
-    } else {
-        sans_semibold(13.0)
-    };
+    // The value at its size when it fits; smaller, then cut, when it does not.
+    let room = cell.right() - tx - 2.0;
+    let (mut size, floor) = if headline { (16.0, 12.0) } else { (13.0, 11.0) };
     let painter = ui.painter();
-    painter.text(
-        Pos2::new(tx, icon_rect.center().y),
-        Align2::LEFT_CENTER,
-        &item.value,
-        font,
+    while size > floor
+        && painter
+            .layout_no_wrap(item.value.clone(), sans_semibold(size), color::TEXT)
+            .size()
+            .x
+            > room
+    {
+        size -= 1.0;
+    }
+    let (galley, _) =
+        super::journal::one_line(painter, &item.value, sans_semibold(size), color::TEXT, room);
+    painter.galley(
+        Pos2::new(tx, icon_rect.center().y - galley.size().y / 2.0),
+        galley,
         color::TEXT,
     );
-    if headline {
+    if headline && track {
         let track = Rect::from_min_size(
             Pos2::new(tx, cell.bottom() - 9.0),
             Vec2::new(cell.right() - tx - 6.0, 4.0),
@@ -652,7 +871,14 @@ fn cell_ui(ui: &mut Ui, cell: Rect, item: &Item, headline: bool, salt: (&str, us
             painter.rect_filled(fill, 2, bar_color(f));
         }
     }
-    response.on_hover_ui(|ui| tooltip(ui, item.icon, &item.tip));
+    let response = if opens {
+        response.on_hover_cursor(egui::CursorIcon::PointingHand)
+    } else {
+        response
+    };
+    response
+        .on_hover_ui(|ui| tooltip(ui, item.icon, &item.tip))
+        .clicked()
 }
 
 /// Low values red, middle brass, high green: readable at a glance without reading the number.

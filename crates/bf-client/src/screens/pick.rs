@@ -82,7 +82,15 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
     }
     let size = super::lens_panel::size(view.lens);
     let origin = egui::pos2(rect.left() + 12.0, rect.bottom() - 12.0 - size.y);
-    super::lens_panel::show(ui, origin, &shared.i18n, world, view, world.start.year);
+    super::lens_panel::show(
+        ui,
+        origin,
+        &shared.i18n,
+        world,
+        view,
+        world.start.year,
+        None,
+    );
 
     // Title banner
     let banner = Rect::from_center_size(

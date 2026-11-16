@@ -10,7 +10,10 @@ use crate::map::MapView;
 use crate::map::lens::{self, Lens};
 use crate::world::World;
 
-const WIDTH: f32 = 400.0;
+// Wide enough for the five families in English and Portuguese.
+const WIDTH: f32 = 440.0;
+/// The collapsed picker: a button with a magnifier and the lens in use.
+pub const BUTTON: Vec2 = Vec2::new(200.0, 40.0);
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Family {
@@ -57,9 +60,94 @@ pub fn size(lens: Lens) -> Vec2 {
     Vec2::new(WIDTH, height(lens))
 }
 
-/// Shows the panel and recolours the map when the lens changes.
-/// Shows the panel with its top left corner at `origin`.
-pub fn show(ui: &mut Ui, origin: Pos2, i18n: &I18n, world: &World, view: &mut MapView, year: i32) {
+/// The lens in words: its family, and the resource, crop or good when it has one.
+pub fn name(i18n: &I18n, lens: Lens) -> String {
+    let fam = match family(lens) {
+        Family::Political => "lens-political",
+        Family::Resources => "lens-resources",
+        Family::Climate => "lens-climate",
+        Family::Farms => "lens-farms",
+        Family::Infrastructure => "lens-infrastructure",
+    };
+    let fam = i18n.tr(fam);
+    let item = match lens {
+        Lens::Resource(i) => RESOURCES.get(i).map(|k| i18n.tr(&format!("resource-{k}"))),
+        Lens::Farm(i) => FARMS.get(i).map(|k| i18n.tr(&format!("building-{k}"))),
+        Lens::Local(i) => lens::LOCAL_GOODS
+            .get(i)
+            .map(|k| i18n.tr(&format!("good-{k}"))),
+        _ => None,
+    };
+    match item {
+        Some(item) => format!("{fam} · {item}"),
+        None => fam,
+    }
+}
+
+/// What the player did in the panel.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct LensResponse {
+    /// Clicked the link that keeps the panel open or folds it.
+    pub toggle_pin: bool,
+    /// Finished a choice: an item of a list, or a family without one. Picking a family with a
+    /// list leaves the list to choose from.
+    pub chosen: bool,
+}
+
+/// The collapsed picker: a magnifier and the lens in use. True when clicked.
+pub fn button(ui: &mut Ui, rect: Rect, i18n: &I18n, lens: Lens, open: bool) -> bool {
+    let label = name(i18n, lens);
+    let resp = ui.interact(rect, ui.make_persistent_id("lens-button"), Sense::click());
+    let a11y = format!("{}: {label}", i18n.tr("lens-title"));
+    resp.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, a11y.clone()));
+    bf_ui_kit::paint_overlay(ui, rect);
+    let p = ui.painter();
+    if resp.hovered() || open {
+        p.rect_filled(rect.shrink(2.0), radius::MD, color::SURFACE_HOVER);
+    }
+    // The magnifier, drawn: a ring and a handle.
+    let c = rect.left_center() + Vec2::new(20.0, -2.0);
+    let tint = if open {
+        color::ACCENT_HOVER
+    } else {
+        color::ACCENT
+    };
+    p.circle_stroke(c, 7.0, Stroke::new(2.0, tint));
+    p.line_segment(
+        [c + Vec2::new(5.0, 5.0), c + Vec2::new(10.5, 10.5)],
+        Stroke::new(2.5, tint),
+    );
+    let (g, cut) =
+        super::journal::one_line(p, &label, sans(13.0), color::TEXT, rect.width() - 50.0);
+    p.galley(
+        Pos2::new(rect.left() + 38.0, rect.center().y - g.size().y / 2.0),
+        g,
+        color::TEXT,
+    );
+    let resp = resp.on_hover_cursor(egui::CursorIcon::PointingHand);
+    let tip = if cut {
+        format!("{}\n{label}", i18n.tr("lens-button-tip"))
+    } else {
+        i18n.tr("lens-button-tip")
+    };
+    resp.on_hover_text(bf_ui_kit::tooltip_text(&tip)).clicked()
+}
+
+/// Shows the panel with its top left corner at `origin` and recolours the map when the lens
+/// changes. With `pinned` given, a link at the top keeps the panel open or folds it back into
+/// its button; true when it was clicked.
+#[allow(clippy::too_many_arguments)]
+pub fn show(
+    ui: &mut Ui,
+    origin: Pos2,
+    i18n: &I18n,
+    world: &World,
+    view: &mut MapView,
+    year: i32,
+    pinned: Option<bool>,
+) -> LensResponse {
+    let mut toggle_pin = false;
+    let mut chosen = false;
     let current = view.lens;
     let fam = family(current);
     let list = items(fam);
@@ -78,7 +166,29 @@ pub fn show(ui: &mut Ui, origin: Pos2, i18n: &I18n, world: &World, view: &mut Ma
     let mut child = ui.new_child(egui::UiBuilder::new().max_rect(inner));
     let ui = &mut child;
     ui.spacing_mut().item_spacing.y = space::SM;
-    bf_ui_kit::caption(ui, &i18n.tr("lens-title"));
+    ui.horizontal(|ui| {
+        bf_ui_kit::caption(ui, &i18n.tr("lens-title"));
+        if let Some(pinned) = pinned {
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                let text = i18n.tr(if pinned { "lens-fold" } else { "lens-pin" });
+                if ui
+                    .add(
+                        egui::Label::new(
+                            egui::RichText::new(text)
+                                .font(sans(12.0))
+                                .color(color::ACCENT),
+                        )
+                        .sense(Sense::click())
+                        .selectable(false),
+                    )
+                    .on_hover_cursor(egui::CursorIcon::PointingHand)
+                    .clicked()
+                {
+                    toggle_pin = true;
+                }
+            });
+        }
+    });
     let mut f = fam;
     let options = vec![
         (Family::Political, i18n.tr("lens-political")),
@@ -88,6 +198,7 @@ pub fn show(ui: &mut Ui, origin: Pos2, i18n: &I18n, world: &World, view: &mut Ma
         (Family::Infrastructure, i18n.tr("lens-infrastructure")),
     ];
     if bf_ui_kit::segmented(ui, &mut f, &options) {
+        chosen = items(f).is_empty();
         next = match f {
             Family::Political => Lens::Political,
             Family::Resources => {
@@ -146,6 +257,7 @@ pub fn show(ui: &mut Ui, origin: Pos2, i18n: &I18n, world: &World, view: &mut Ma
                 .on_hover_cursor(egui::CursorIcon::PointingHand)
                 .clicked()
             {
+                chosen = true;
                 next = match fam {
                     Family::Resources => Lens::Resource(i),
                     Family::Infrastructure => Lens::Local(i),
@@ -165,6 +277,7 @@ pub fn show(ui: &mut Ui, origin: Pos2, i18n: &I18n, world: &World, view: &mut Ma
         view.lens = next;
         view.set_palette(lens::palette(world, next, year));
     }
+    LensResponse { toggle_pin, chosen }
 }
 
 fn ramp(ui: &mut Ui, from: [u8; 4], to: [u8; 4], low: &str, high: &str) {

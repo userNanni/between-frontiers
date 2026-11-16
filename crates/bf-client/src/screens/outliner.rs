@@ -54,6 +54,8 @@ pub struct Sources<'a> {
     pub tree: Option<&'a TechTree>,
     pub snap: &'a Snapshot,
     pub pinned: &'a [String],
+    /// Sections shown, in order (`tiles::SECTIONS` keys).
+    pub sections: &'a [&'static str],
 }
 
 /// Shows the panel between `top` and `bottom`, at the left of `screen`.
@@ -103,17 +105,28 @@ pub fn show(ui: &mut Ui, rect: Rect, src: Sources<'_>, fold: &mut Fold) -> Respo
     if !fold.open {
         return out;
     }
-    egui::ScrollArea::vertical()
+    let scroll = egui::ScrollArea::vertical()
         .id_salt("outliner-scroll")
         .max_height(room - HEADER_H - space::MD * 2.0)
         .auto_shrink([false, true])
         .show(ui, |ui| {
             ui.set_max_width(inner.width() - 10.0);
-            works(ui, &src, fold, &mut out);
-            research(ui, &src, fold, &mut out);
-            pinned(ui, &src, fold, &mut out);
+            let content_top = ui.min_rect().top();
+            // The sections the player keeps, in their order.
+            for section in src.sections {
+                match *section {
+                    "works" => works(ui, &src, fold, &mut out),
+                    "research" => research(ui, &src, fold, &mut out),
+                    "pinned" => pinned(ui, &src, fold, &mut out),
+                    _ => {}
+                }
+            }
+            ui.min_rect().bottom() - content_top
         });
-    let used = ui.min_rect().bottom() - start + space::XS;
+    // The content's whole height, not the part the scroll area shows: a panel squeezed by its
+    // neighbours asks again for all of it once the room is back.
+    let used =
+        scroll.content_size.y.max(scroll.inner) + (scroll.inner_rect.top() - start) + space::XS;
     ui.ctx().data_mut(|d| d.insert_temp(id, used));
     out
 }
