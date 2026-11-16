@@ -36,6 +36,9 @@ pub struct Snapshot {
     /// Country figures for the HUD, read on the first snapshot and then once a month; `None`
     /// without an economy.
     pub figures: Option<Arc<LiveFigures>>,
+    /// The player's treasury, currency and debt, read at every publication; `None` without a
+    /// player or an economy.
+    pub government: Option<Arc<crate::government::GovernmentView>>,
 }
 
 /// The player's research, copied out of the world for the interface.
@@ -116,6 +119,7 @@ fn snapshot_of(
         research: research_view(session),
         local: Arc::new(local_view(session)),
         figures,
+        government: crate::government::read(session.world(), session.clock().date).map(Arc::new),
     }
 }
 

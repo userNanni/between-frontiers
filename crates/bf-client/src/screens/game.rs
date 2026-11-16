@@ -20,6 +20,8 @@ pub struct State {
     menu_open: bool,
     rules: bf_sim::game::Rules,
     research_open: bool,
+    /// The government window while it is open.
+    government: Option<super::government::Window>,
     research_camera: Option<super::research::TreeCamera>,
     /// Month the live map lenses were last coloured for.
     live_month: Option<(i32, u8)>,
@@ -61,6 +63,7 @@ impl State {
             menu_open: false,
             rules: data.rules(),
             research_open: false,
+            government: None,
             research_camera: None,
             live_month: None,
             live_figures: None,
@@ -180,7 +183,10 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
             });
             paint_tip(ui, pos, state_name, &owner, extra.as_deref());
         }
-        super::lens_panel::show(ui, rect, i18n, world, view, snap.date.year);
+        // The government window covers the map; its mode picker would show through.
+        if state.government.is_none() {
+            super::lens_panel::show(ui, rect, i18n, world, view, snap.date.year);
+        }
     }
 
     // Top bar
@@ -204,6 +210,10 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
     }
     if bar_out.open_research {
         state.research_open = !state.research_open;
+        state.government = None;
+    }
+    if bar_out.open_government {
+        toggle_government(state);
     }
     if bar_out.open_menu {
         state.menu_open = true;
@@ -259,10 +269,39 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
         }
     }
 
+    // Government window.
+    if let Some(window) = &mut state.government
+        && !state.research_open
+    {
+        let res = super::government::show(
+            ui,
+            rect,
+            super::government::Sources {
+                i18n: &shared.i18n,
+                catalogue: &state.rules.catalogue,
+                world: shared.world.as_ref(),
+                snap: &snap,
+                tag: state.save.meta.player.as_deref(),
+            },
+            window,
+        );
+        for c in res.commands {
+            state.sim.send(Command::Issue(c));
+        }
+        if res.close {
+            state.government = None;
+        }
+    }
+
     // Keyboard
-    let research_key = ui.input(|i| i.key_pressed(egui::Key::R));
+    let (research_key, government_key) =
+        ui.input(|i| (i.key_pressed(egui::Key::R), i.key_pressed(egui::Key::G)));
     if research_key && !state.menu_open {
         state.research_open = !state.research_open;
+        state.government = None;
+    }
+    if government_key && !state.menu_open {
+        toggle_government(state);
     }
     let (space_key, esc, speed_key) = ui.input(|i| {
         let speed = [
@@ -290,6 +329,8 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
         if esc {
             if state.research_open {
                 state.research_open = false;
+            } else if state.government.is_some() {
+                state.government = None;
             } else if state.selected.is_some() {
                 state.selected = None;
             } else {
@@ -349,4 +390,13 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
         });
     }
     out
+}
+
+/// Opens the government window on its first tab, or closes it; the research screen gives way.
+fn toggle_government(state: &mut State) {
+    state.government = match state.government {
+        Some(_) => None,
+        None => Some(super::government::Window::default()),
+    };
+    state.research_open = false;
 }

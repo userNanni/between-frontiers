@@ -258,3 +258,12 @@ research-zoom-out = Zoom out
 research-fit = Fit
 research-fit-hint = Show the whole tree
 research-all-fields = All fields
+
+## Government window
+bar-government = Government (G)
+gov-title = Government
+gov-tab-budget = Budget
+gov-tab-money = Money and debt
+gov-tab-laws = Laws
+gov-close = Close
+gov-coming = Not built yet.
