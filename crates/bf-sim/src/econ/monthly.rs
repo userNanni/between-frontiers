@@ -236,7 +236,14 @@ pub fn calendar_medicine(year: i32) -> Fixed {
     Fixed::from_ratio(i64::from((year - 1935).clamp(0, 35)), 35)
 }
 
-pub struct Demography;
+pub struct Demography {
+    pub cat: Arc<Catalogue>,
+}
+
+/// Mortality with no hospitals, and what full hospital care takes off it: a fifth of the need
+/// met leaves the phase 1 mortality unchanged.
+const HOSPITAL_BASE: Fixed = milli(1050);
+const HOSPITAL_GAIN: Fixed = milli(250);
 
 impl System<GameWorld> for Demography {
     type Changes = Vec<Vec<i64>>;
@@ -251,6 +258,7 @@ impl System<GameWorld> for Demography {
     }
     fn compute(&self, ctx: &TickCtx, world: &GameWorld) -> Vec<Vec<i64>> {
         let year = ctx.date.year;
+        let hospital = self.cat.building("hospital");
         world
             .econ
             .regions
@@ -284,6 +292,17 @@ impl System<GameWorld> for Demography {
                     medicine,
                     contraception,
                 );
+                let d = if hospital.is_some() {
+                    let care = super::public::coverage(
+                        &self.cat,
+                        r,
+                        hospital,
+                        super::public::CARE_PER_PERSON,
+                    );
+                    d * (HOSPITAL_BASE - care * HOSPITAL_GAIN)
+                } else {
+                    d
+                };
                 let net = b - d;
                 r.pops
                     .iter()
@@ -358,7 +377,10 @@ fn construction_basket(group: &str) -> &'static [(&'static str, i64)] {
 }
 
 /// A level costs two years of the value it adds at base prices.
-const CAPITAL_YEARS: i64 = 2;
+pub(crate) const CAPITAL_YEARS: i64 = 2;
+/// Parts of the construction basket that are the building itself, made by the building trade
+/// and delivered as construction points; the rest (machines, tools) is bought directly.
+const BUILDING_WORK: [&str; 4] = ["services", "cement", "timber", "steel"];
 /// The least yearly return worth building for.
 const MIN_RETURN: Fixed = milli(50);
 /// Most new levels a market starts in a month.
@@ -375,17 +397,20 @@ pub struct Build {
     region: usize,
     kind: u16,
     method: u8,
+    /// Equipment bought directly, and construction points for the queue.
     goods: Vec<(u16, Fixed)>,
+    points: Fixed,
     cost: Fixed,
 }
 
 pub struct InvestmentChanges {
     builds: Vec<Build>,
     closes: Vec<(usize, u16)>,
+    public: Vec<super::state::Project>,
 }
 
 /// Value added per level per week at base prices of a method (used for capital cost).
-fn base_value_added(cat: &Catalogue, kind: usize, method: usize) -> Fixed {
+pub(crate) fn base_value_added(cat: &Catalogue, kind: usize, method: usize) -> Fixed {
     let m = &cat.buildings[kind].methods[method];
     let out: Fixed = m
         .outputs
@@ -493,7 +518,7 @@ impl System<GameWorld> for Investment {
             }
         }
         // Utilization of each building across its market: nobody adds levels of a kind the
-        // market already leaves idle.
+        // market already leaves idle. Levels under construction count as idle.
         let nk = cat.buildings.len();
         let mut used = vec![vec![Fixed::ZERO; nk]; econ.markets.len()];
         let mut built = vec![vec![Fixed::ZERO; nk]; econ.markets.len()];
@@ -504,6 +529,18 @@ impl System<GameWorld> for Investment {
                 built[r.market as usize][p.kind as usize] += levels;
             }
         }
+        let mut queued: Vec<Vec<(u16, i64)>> = vec![Vec::new(); econ.regions.len()];
+        for (mi, m) in econ.markets.iter().enumerate() {
+            for p in &m.queue {
+                built[mi][p.kind as usize] += Fixed::ONE;
+                let q = &mut queued[p.region as usize];
+                match q.iter_mut().find(|(k, _)| *k == p.kind) {
+                    Some(e) => e.1 += 1,
+                    None => q.push((p.kind, 1)),
+                }
+            }
+        }
+        let construction = cat.good("construction");
         let busy: Vec<Vec<bool>> = used
             .iter()
             .zip(&built)
@@ -527,8 +564,15 @@ impl System<GameWorld> for Investment {
                     workers(r.pops[prof::PEASANT].size) - r.pops[prof::PEASANT].employed;
                 let mut out = Vec::new();
                 for (kind, b) in cat.buildings.iter().enumerate() {
+                    if b.public {
+                        continue;
+                    }
                     let current = r.plants.iter().find(|p| p.kind as usize == kind);
-                    let existing = current.map_or(0, |p| p.levels);
+                    let existing = current.map_or(0, |p| p.levels)
+                        + queued[ri]
+                            .iter()
+                            .find(|(k, _)| *k as usize == kind)
+                            .map_or(0, |e| e.1);
                     if !busy[r.market as usize][kind] {
                         continue;
                     }
@@ -573,9 +617,19 @@ impl System<GameWorld> for Investment {
                     if ret < MIN_RETURN {
                         continue;
                     }
+                    // The building itself becomes points at the base price of construction;
+                    // without a building trade in the catalogue it is bought as goods.
+                    let mut points = Fixed::ZERO;
                     let goods = construction_basket(&b.group)
                         .iter()
                         .filter_map(|(k, share)| {
+                            if let Some(cg) = construction
+                                && BUILDING_WORK.contains(k)
+                            {
+                                points += cost.mul_ratio(*share, 1000)
+                                    / cat.goods[cg as usize].base_price;
+                                return None;
+                            }
                             let g = cat.good(k)?;
                             Some((g, cost.mul_ratio(*share, 1000) / m.price[g as usize]))
                         })
@@ -587,6 +641,7 @@ impl System<GameWorld> for Investment {
                             kind: kind as u16,
                             method,
                             goods,
+                            points,
                             cost,
                         },
                     ));
@@ -605,7 +660,14 @@ impl System<GameWorld> for Investment {
                 .iter()
                 .zip(&m.price)
                 .map(|(q, p)| *q * *p)
-                .sum();
+                .sum::<Fixed>()
+                + construction.map_or(Fixed::ZERO, |cg| {
+                    m.queue
+                        .iter()
+                        .filter(|p| !p.public)
+                        .map(|p| p.left * m.price[cg as usize])
+                        .sum()
+                });
             let mut budget = m.pool - committed;
             // Highest return first; ties by region then kind, so the order never depends on threads.
             list.sort_by(|a, b| {
@@ -613,13 +675,9 @@ impl System<GameWorld> for Investment {
                     .then(a.1.region.cmp(&b.1.region))
                     .then(a.1.kind.cmp(&b.1.kind))
             });
+            let mut started = 0;
             for (_, build) in list.into_iter().take(MAX_BUILDS * 4) {
-                if builds
-                    .iter()
-                    .filter(|b: &&Build| econ.regions[b.region].market as usize == mi)
-                    .count()
-                    >= MAX_BUILDS
-                {
+                if started >= MAX_BUILDS {
                     break;
                 }
                 if build.cost > budget {
@@ -627,9 +685,15 @@ impl System<GameWorld> for Investment {
                 }
                 budget -= build.cost;
                 builds.push(build);
+                started += 1;
             }
         }
-        InvestmentChanges { builds, closes }
+        let public = super::public::public_works(cat, econ, &unlocks);
+        InvestmentChanges {
+            builds,
+            closes,
+            public,
+        }
     }
     fn apply(&self, _ctx: &TickCtx, changes: InvestmentChanges, world: &mut GameWorld) {
         let econ = &mut world.econ;
@@ -641,15 +705,31 @@ impl System<GameWorld> for Investment {
         }
         for b in changes.builds {
             let market = econ.regions[b.region].market as usize;
-            let p = econ.regions[b.region].plant_mut(b.kind);
-            if p.levels == 0 {
-                p.method = b.method;
-            }
-            p.levels += 1;
             for (g, q) in b.goods {
                 econ.markets[market].construction[g as usize] += q;
             }
             let _ = b.cost;
+            if b.points > Fixed::ZERO {
+                // The level runs when the building trade has delivered its points.
+                econ.markets[market].queue.push(super::state::Project {
+                    region: b.region as u32,
+                    kind: b.kind,
+                    method: b.method,
+                    public: false,
+                    points: b.points,
+                    left: b.points,
+                });
+            } else {
+                let p = econ.regions[b.region].plant_mut(b.kind);
+                if p.levels == 0 {
+                    p.method = b.method;
+                }
+                p.levels += 1;
+            }
+        }
+        for p in changes.public {
+            let market = econ.regions[p.region as usize].market as usize;
+            econ.markets[market].queue.push(p);
         }
     }
 }

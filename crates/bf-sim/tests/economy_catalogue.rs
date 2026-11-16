@@ -148,8 +148,9 @@ fn every_good_is_made_and_used() {
                 .map(|(g, _)| g.as_str()),
         )
         .collect();
-    // Armies and the state consume these from the war and politics phases on.
-    let consumed_later = ["military", "capital"];
+    // Armies and the state consume these from the war and politics phases on; the state buys
+    // what public services make, and construction is bought by the queue of works.
+    let consumed_later = ["military", "capital", "public"];
     for g in &c.goods.goods {
         assert!(made.contains(g.key.as_str()), "nothing makes {}", g.key);
         if !consumed_later.contains(&g.category.as_str()) {

@@ -58,6 +58,8 @@ fn land_per_level(farm: &str) -> f64 {
 /// market spends about the same from taxes and from the investment pool.
 const STATE_GOODS_SHARE: f64 = 0.026;
 const INVESTMENT_SHARE: f64 = 0.10;
+/// Taxes as a share of GDP the start guesses for the treasury's first reserve.
+const EXPECTED_REVENUE: f64 = 0.06;
 /// Share of household consumption of each fifth of the population, poorest first.
 const CONSUMPTION_BY_FIFTH: [f64; 5] = [0.06, 0.10, 0.15, 0.22, 0.47];
 
@@ -310,6 +312,24 @@ pub fn build(cat: &Catalogue, inp: &Inputs) -> Economy {
                     final_demand[g as usize] += gdp_week * STATE_GOODS_SHARE * per_mille as f64
                         / 1000.0
                         / base_f[g as usize];
+                }
+            }
+            // Schools and hospitals: enrolment follows literacy, hospital care income.
+            for (key, per_person, cover) in [
+                (
+                    "schooling",
+                    super::public::PUPILS_PER_PERSON,
+                    f64::from(lit).clamp(0.05, 0.95),
+                ),
+                (
+                    "hospital_care",
+                    super::public::CARE_PER_PERSON,
+                    (gdppc / 15_000.0).clamp(0.02, 0.5),
+                ),
+            ] {
+                if let Some(g) = cat.good(key) {
+                    final_demand[g as usize] +=
+                        population as f64 * per_person.to_f64_lossy() * cover / 52.0;
                 }
             }
             for (key, share) in super::week::UPKEEP_BASKET
@@ -795,6 +815,8 @@ pub fn build(cat: &Catalogue, inp: &Inputs) -> Economy {
                 pop.savings = fx(income * 6.0);
             }
         }
+        // The treasury starts at its reserve, at a revenue guessed from the 1925 tax rates.
+        let revenue = fx(target_gdp * EXPECTED_REVENUE / 52.0);
         markets.push(Market {
             price: base.clone(),
             supply: vec![Fixed::ZERO; ng],
@@ -802,18 +824,22 @@ pub fn build(cat: &Catalogue, inp: &Inputs) -> Economy {
             buy_ratio: vec![Fixed::ONE; ng],
             sell_ratio: vec![Fixed::ONE; ng],
             net_import: vec![Fixed::ZERO; ng],
-            // A pool that spends its weekly upkeep share at the rate investment flows in, and a
-            // treasury that spends its share at the rate taxes come in.
+            // A pool that spends its weekly upkeep share at the rate investment flows in.
             pool: fx(target_gdp * INVESTMENT_SHARE
                 / 52.0
                 / super::week::UPKEEP_SHARE.to_f64_lossy()),
-            treasury: fx(target_gdp * 0.065 / 52.0 / super::week::STATE_SPENDING.to_f64_lossy()),
+            treasury: revenue * super::public::RESERVE_WEEKS,
             tfp: Fixed::ONE,
             construction: vec![Fixed::ZERO; ng],
             gdp_running: Fixed::ZERO,
             gdp_last_year: fx(target_gdp),
             tech_tfp: Vec::new(),
             gov_workers: 0,
+            queue: Vec::new(),
+            budget: super::state::Budget {
+                revenue_avg: revenue,
+                ..Default::default()
+            },
         });
     }
     Economy {

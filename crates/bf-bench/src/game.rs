@@ -27,6 +27,22 @@ pub struct Decade {
     pub priced_cells: usize,
     /// Technologies made at scale somewhere.
     pub techs_industrial: usize,
+    /// The states' budgets, as shares of world GDP: taxes and spending (payroll, goods, public
+    /// services, public works) over the last week times 52, and the treasuries' balance.
+    #[serde(default)]
+    pub taxes: f64,
+    #[serde(default)]
+    pub spending: f64,
+    #[serde(default)]
+    pub treasury: f64,
+    /// Countries whose treasury is below zero.
+    #[serde(default)]
+    pub in_deficit: usize,
+    /// Works waiting in the queues, and the world price of construction against its base.
+    #[serde(default)]
+    pub works_queued: usize,
+    #[serde(default)]
+    pub construction_price: f64,
     pub ms: f64,
 }
 
@@ -118,7 +134,26 @@ fn snapshot(data: &GameData, s: &Session, ms: f64) -> Decade {
             }
         }
     }
+    let gdp_f = (gdp as f64).max(1.0);
+    let sum = |f: &dyn Fn(&bf_sim::econ::Market) -> Fixed| -> f64 {
+        e.markets.iter().map(|m| f(m).to_f64_lossy()).sum::<f64>()
+    };
+    let cg = cat.good("construction").map(usize::from);
     Decade {
+        taxes: sum(&|m| m.budget.revenue) * 52.0 / gdp_f,
+        spending: sum(&|m| m.budget.payroll + m.budget.goods + m.budget.services + m.budget.works)
+            * 52.0
+            / gdp_f,
+        treasury: sum(&|m| m.treasury) / gdp_f,
+        in_deficit: e
+            .markets
+            .iter()
+            .filter(|m| m.treasury < Fixed::ZERO)
+            .count(),
+        works_queued: e.markets.iter().map(|m| m.queue.len()).sum(),
+        construction_price: cg.map_or(0.0, |g| {
+            (e.world_price[g] / cat.goods[g].base_price).to_f64_lossy()
+        }),
         year: s.clock().date.year,
         population,
         gdp,
@@ -183,6 +218,15 @@ fn run(data: &GameData, mut session: Session, until: Date, report: bool) -> Run 
                     snap.priced_cells,
                     snap.techs_industrial,
                     since
+                );
+                println!(
+                    "      state: taxes {:.1}% of GDP, spending {:.1}%, treasuries {:+.1}%, {} in deficit; works queued {}, construction price {:.2}",
+                    snap.taxes * 100.0,
+                    snap.spending * 100.0,
+                    snap.treasury * 100.0,
+                    snap.in_deficit,
+                    snap.works_queued,
+                    snap.construction_price
                 );
                 if std::env::var_os("BF_TECH").is_some() {
                     let w = session.world();
@@ -310,6 +354,18 @@ pub fn main(years: u32, seed: u64, threads: usize, check: bool, out: &str) -> Re
         technologies: timings(&data, &main.session),
     };
     print_timings(&report.technologies);
+    if std::env::var_os("BF_SYSTEMS").is_some() {
+        for st in main.session.sim.schedule().stats() {
+            println!(
+                "  system {:<22} runs {:>6} compute {:>8.1} ms apply {:>7.1} ms slowest {:>6.1} ms",
+                st.name,
+                st.runs,
+                st.compute.as_secs_f64() * 1000.0,
+                st.apply.as_secs_f64() * 1000.0,
+                st.slowest.as_secs_f64() * 1000.0
+            );
+        }
+    }
     println!(
         "simulation {:.1} s, slowest tick {:.1} ms, save {:.1} MB at {}, reload → {}",
         report.total_ms / 1000.0,

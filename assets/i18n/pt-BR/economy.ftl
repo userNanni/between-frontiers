@@ -80,6 +80,9 @@ good-transportation = Transporte
 good-services = Comércio e serviços
 good-finance = Serviços financeiros
 good-telecommunications = Telecomunicações
+good-construction = Construção
+good-schooling = Ensino
+good-hospital_care = Atendimento hospitalar
 
 ## Mercados
 good-category-staple_food = Alimentos básicos
@@ -92,6 +95,7 @@ good-category-consumer = Bens de consumo
 good-category-capital = Bens de capital
 good-category-military = Material militar
 good-category-service = Serviços
+good-category-public = Serviços públicos
 
 ## Construções
 building-grain_farm = Lavoura de cereais
@@ -176,6 +180,9 @@ building-port = Porto
 building-trade_center = Comércio
 building-bank = Banco
 building-telecom_exchange = Central de telecomunicações
+building-construction_sector = Construção civil
+building-school = Escola
+building-hospital = Hospital
 
 ## Grupos de construção
 building-group-agriculture = Agropecuária
@@ -270,6 +277,10 @@ method-wet_kiln = Forno via úmida
 method-wood_and_fabric = Madeira e tela
 method-wood_pulp = Celulose de madeira
 method-workshop = Oficina
+method-hand_construction = Construção manual
+method-mechanized_construction = Construção mecanizada
+method-classroom = Sala de aula
+method-general_hospital = Hospital geral
 
 ## Profissões
 profession-peasant = Camponeses

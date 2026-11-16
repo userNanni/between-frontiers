@@ -8,7 +8,7 @@ use laplace_schelling::command::{CommandLog, Issuer, Stamped};
 use laplace_schelling::hash::{HashState, StateHash, StateHasher, hash_of};
 use laplace_schelling::save::{SaveError, SaveFile, SaveHeader, decode_snapshot, encode_snapshot};
 use laplace_schelling::schedule::{Access, Cadence, Clock, ResourceId, Schedule, System, TickCtx};
-use laplace_schelling::{Command, Date, Id, Simulation, Table};
+use laplace_schelling::{Command, Date, Fixed, Id, Simulation, Table};
 use serde::{Deserialize, Serialize};
 
 use std::sync::Arc;
@@ -150,10 +150,22 @@ pub enum GameCommand {
     /// Points the country's research at a technology (index in the tree), or back to choosing
     /// by itself with `None`. Unknown tags and indices are no-ops.
     SetResearch { tag: String, tech: Option<u16> },
+    /// Sets the income tax of each class (lower, middle, upper) in thousandths, capped at
+    /// `econ::public::MAX_TAX`; `None` hands the rates back to the historical rule.
+    SetTaxRates {
+        tag: String,
+        rates: Option<[u16; crate::econ::state::TAX_CLASSES]>,
+    },
+    /// Weights of public investment (infrastructure, education, health, urban housing), each
+    /// capped at `econ::public::MAX_PRIORITY`. All zero stops new public works.
+    SetPublicPriority {
+        tag: String,
+        weights: [u8; crate::econ::state::PUBLIC_CATEGORIES],
+    },
 }
 
 impl Command<GameWorld> for GameCommand {
-    fn apply(&self, _ctx: &TickCtx, world: &mut GameWorld) {
+    fn apply(&self, ctx: &TickCtx, world: &mut GameWorld) {
         match self {
             GameCommand::ChoosePlayer { tag } => {
                 if let Some(id) = world.country_by_tag(tag) {
@@ -168,6 +180,40 @@ impl Command<GameWorld> for GameCommand {
                 let known = r.stage.get(ci).map_or(0, Vec::len);
                 if ci < r.focus.len() && tech.is_none_or(|t| usize::from(t) < known) {
                     r.focus[ci] = *tech;
+                }
+            }
+            GameCommand::SetTaxRates { tag, rates } => {
+                let Some(ci) = world.countries.iter().position(|(_, c)| c.tag == *tag) else {
+                    return;
+                };
+                let Some(m) = world.econ.markets.get_mut(ci) else {
+                    return;
+                };
+                let b = &mut m.budget;
+                match rates {
+                    Some(rates) => {
+                        b.tax_auto = false;
+                        for (r, v) in b.tax_rates.iter_mut().zip(rates) {
+                            *r = Fixed::from_raw(i64::from(*v)).min(crate::econ::public::MAX_TAX);
+                        }
+                    }
+                    None => {
+                        b.tax_auto = true;
+                        let base = crate::econ::public::historical_rates(ctx.date.year);
+                        for (r, v) in b.tax_rates.iter_mut().zip(base) {
+                            *r = (v * b.adjust).min(crate::econ::public::MAX_TAX);
+                        }
+                    }
+                }
+            }
+            GameCommand::SetPublicPriority { tag, weights } => {
+                let Some(ci) = world.countries.iter().position(|(_, c)| c.tag == *tag) else {
+                    return;
+                };
+                if let Some(m) = world.econ.markets.get_mut(ci) {
+                    for (p, w) in m.budget.priority.iter_mut().zip(weights) {
+                        *p = (*w).min(crate::econ::public::MAX_PRIORITY);
+                    }
                 }
             }
         }
@@ -249,7 +295,9 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
         s.add(crate::econ::monthly::Labour {
             cat: Arc::clone(&cat),
         });
-        s.add(crate::econ::monthly::Demography);
+        s.add(crate::econ::monthly::Demography {
+            cat: Arc::clone(&cat),
+        });
         s.add(crate::econ::monthly::Investment {
             cat: Arc::clone(&cat),
             tree: tree.clone(),
@@ -447,6 +495,47 @@ mod tests {
         s.sim.run_until(Date::new(1930, 1, 2));
         loaded.sim.run_until(Date::new(1930, 1, 2));
         assert_eq!(loaded.state_hash(), s.state_hash());
+    }
+
+    #[test]
+    fn taxes_and_public_priorities_by_command() {
+        use crate::econ::{Market, public};
+        let mut s = session(1);
+        s.sim.run_until(Date::new(1925, 1, 2));
+        let mut world = s.world().clone();
+        world.econ.markets = vec![Market::empty(0), Market::empty(0)];
+        let mut s = Session::new(world, 42, Date::new(1925, 1, 2), 1, None);
+        s.submit(GameCommand::SetTaxRates {
+            tag: "BRA".into(),
+            rates: Some([30, 80, 900]),
+        });
+        s.submit(GameCommand::SetPublicPriority {
+            tag: "ARG".into(),
+            weights: [0, 9, 99, 1],
+        });
+        s.submit(GameCommand::SetTaxRates {
+            tag: "XXX".into(),
+            rates: Some([1, 1, 1]),
+        });
+        s.sim.run_until(Date::new(1925, 1, 4));
+        let bra = &s.world().econ.markets[0].budget;
+        assert!(!bra.tax_auto);
+        assert_eq!(
+            bra.tax_rates,
+            [Fixed::from_raw(30), Fixed::from_raw(80), public::MAX_TAX]
+        );
+        assert_eq!(
+            s.world().econ.markets[1].budget.priority,
+            [0, 9, public::MAX_PRIORITY, 1]
+        );
+        s.submit(GameCommand::SetTaxRates {
+            tag: "BRA".into(),
+            rates: None,
+        });
+        s.sim.run_until(Date::new(1925, 1, 6));
+        let bra = &s.world().econ.markets[0].budget;
+        assert!(bra.tax_auto);
+        assert_eq!(bra.tax_rates, public::historical_rates(1925));
     }
 
     #[test]

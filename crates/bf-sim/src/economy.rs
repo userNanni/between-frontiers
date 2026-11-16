@@ -19,6 +19,7 @@ pub const GOOD_CATEGORIES: &[&str] = &[
     "capital",
     "military",
     "service",
+    "public",
 ];
 
 /// Occupations of the population table (state × community × profession).
@@ -85,6 +86,10 @@ pub struct BuildingDef {
     /// Land use it needs (a key of `resources::FARMS`), for farms, forestry and fisheries.
     #[serde(default)]
     pub farm: Option<String>,
+    /// Public service (school, hospital): the state builds it and buys all it makes, and its
+    /// value added goes entirely to wages.
+    #[serde(default)]
+    pub public: bool,
     /// Production methods, the oldest first. A building runs one at a time.
     pub methods: Vec<MethodDef>,
 }
