@@ -12,8 +12,9 @@ Brasil.
 - Antes de mexer num arquivo quente (`econ/week.rs`, `econ/monthly.rs`, `bf-bench/src/game.rs`,
   `bf-client/src/sim.rs`), veja se outra branch aberta já mexe nele:
   `git diff --stat main...<branch>`. Se sim, mantenha a sua mudança pequena e diga no PR.
-- Instrumentação provisória (`eprintln!`, contadores estáticos, `dbg_add`) não entra no commit. Para
-  medir, use `BF_SYSTEMS=1` e `BF_VERBOSE=1` no `bf-bench`.
+- Instrumentação provisória (`eprintln!`, contadores estáticos, `dbg_add`) não entra no commit. O
+  `bf-bench` já imprime e grava no JSON o custo por sistema; `BF_VERBOSE=1` imprime todo ano.
+  `python3 tools/bench/compare.py base.json novo.json` compara duas rodadas.
 
 ## Simulação
 

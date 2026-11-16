@@ -243,6 +243,8 @@ Existe a partir do primeiro PR com código e roda toda noite em Linux e Windows.
 - Grava o hash do estado por tick. Duas execuções com a mesma semente têm de dar o mesmo hash, nas
   duas plataformas.
 - Mede o custo por sistema e por década, e o número de linhas das duas tabelas de população.
+  Grava o custo por sistema no JSON; no CI, cada PR roda contra a base na mesma máquina e o job
+  avisa quando a simulação fica mais de 15 % mais cara (`tools/bench/compare.py`).
 - Falha se o tempo total ou o tick mais lento passarem do orçamento, ou se o hash divergir.
 - Verifica a saúde do mundo: nenhum país com dívida infinita, nenhum bem com preço preso no limite
   por décadas, população mundial dentro de uma faixa plausível.

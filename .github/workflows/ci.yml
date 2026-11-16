@@ -60,11 +60,47 @@ jobs:
       - name: Game smoke (real 1925 scenario, save and reload, determinism)
         run: cargo run -p bf-bench --release -- --game --years 10 --check-determinism --out game-smoke-${{ runner.os }}.json
 
+      - name: Cost per system (game smoke)
+        if: runner.os == 'Linux'
+        run: python3 tools/bench/compare.py game-smoke-${{ runner.os }}.json --title "Cost per system, game smoke (${{ runner.os }})"
+
       - uses: actions/upload-artifact@v4
         with:
           name: bench-smoke-${{ runner.os }}
           path: bench-smoke-${{ runner.os }}.json
           retention-days: 7
+
+  # The same campaign on this branch and on the base, one thread each, on the same runner: the
+  # summary shows the cost of every system and the job warns when the simulation got slower.
+  cost:
+    name: cost against the base
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build this branch and the base
+        run: |
+          cargo build -p bf-bench --release
+          cp target/release/bf-bench "$RUNNER_TEMP/bench-new"
+          git worktree add "$RUNNER_TEMP/base" "origin/${{ github.base_ref }}"
+          cargo build -p bf-bench --release --manifest-path "$RUNNER_TEMP/base/Cargo.toml" --target-dir target
+          cp target/release/bf-bench "$RUNNER_TEMP/bench-base"
+
+      - name: Run both (5 years, 1 thread)
+        run: |
+          "$RUNNER_TEMP/bench-base" --game --years 5 --threads 1 --out cost-base.json
+          "$RUNNER_TEMP/bench-new" --game --years 5 --threads 1 --out cost-new.json
+
+      - name: Compare
+        run: python3 tools/bench/compare.py cost-base.json cost-new.json --warn 15 --title "Cost per system against ${{ github.base_ref }} (5 years, 1 thread)"
 
   cross-platform:
     name: same hashes on Linux and Windows
