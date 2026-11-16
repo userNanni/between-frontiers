@@ -1,0 +1,13 @@
+# country: AUS
+# title: estados e territórios, censo de 1921 (4 abr. 1921)
+# source: Commonwealth Bureau of Census and Statistics, censo de 4 abr. 1921, totais por estado publicados em The Statesman's Year-Book 1923 (Macmillan), p. 364, https://archive.org/details/in.ernet.dli.2015.97231 (texto OCR https://archive.org/download/in.ernet.dli.2015.97231/2015.97231.The--Statesmans-Year--Book-1923_djvu.txt)
+# note: o censo excluía os aborígines "full blood" (estimados em cerca de 60000); total 5436794, conferido por soma de homens e mulheres por estado
+group,population,states
+New South Wales,2099763,AUS-NSW
+Victoria,1531529,AUS-VIC
+Queensland,757634,AUS-QLD
+South Australia,495336,AUS-SA
+Western Australia,332213,AUS-WA
+Tasmania,213877,AUS-TAS
+Northern Territory,3870,AUS-NT
+Federal Capital Territory (com Jervis Bay),2572,AUS-FCT

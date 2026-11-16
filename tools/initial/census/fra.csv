@@ -1,0 +1,29 @@
+# country: FRA
+# title: regiões do jogo, recenseamento de 7 mar. 1926 (soma dos departamentos, população legal)
+# source: populações legais por departamento no recenseamento de 1926, site SPLAF (splaf.free.fr, a partir dos recenseamentos publicados), páginas históricas por departamento http://splaf.free.fr/<NN>his.html (ex. http://splaf.free.fr/10his.html), consultadas em nov. 2026
+# note: o SPLAF dá as séries nos limites atuais dos departamentos; Paris e 92 93 94 95 91 78 são reconstituições do Seine e do Seine-et-Oise de 1926, cuja soma cobre a mesma Île-de-France
+# note: Corse (um só departamento em 1926) ficou de fora: o número de 1926 não foi achado em fonte consultada
+group,population,states
+Alsace (67 68),1161639,FRA-ALSACE
+Auvergne (03 15 43 63),1343570,FRA-AUVERGNE
+Berry et Touraine (18 36 37),887979,FRA-BERRY-TOURAINE
+Bourgogne (21 58 71 89),1415853,FRA-BOURGOGNE
+Bretagne (22 29 35 56),2411353,FRA-BRETAGNE
+Champagne (08 10 51 52),1128844,FRA-CHAMPAGNE
+Franche-Comté (25 39 70 90),850183,FRA-FRANCHE-COMTE
+Gascogne et Béarn (40 64 32 65),1061961,FRA-GASCOGNE
+Guyenne (24 33 47),1467071,FRA-GUYENNE
+Île-de-France (Seine + Seine-et-Oise + Seine-et-Marne),6146374,FRA-ILE-DE-FRANCE
+Languedoc-Roussillon (11 30 34 48 66),1529839,FRA-LANGUEDOC
+Limousin (19 23 87),839748,FRA-LIMOUSIN
+Lorraine (54 55 57 88),1785779,FRA-LORRAINE
+Haut-Languedoc et Quercy (09 12 31 46 81 82),1565573,FRA-MIDI-PYRENEES
+Nord-Pas-de-Calais (59 62),3141094,FRA-NORD
+Normandie (14 27 50 61 76),2293240,FRA-NORMANDIE
+Orléanais (28 41 45),844537,FRA-ORLEANAIS
+Pays de la Loire (44 49 53 72 85),2172246,FRA-PAYS-DE-LA-LOIRE
+Picardie (02 60 80),1368909,FRA-PICARDIE
+Poitou-Charentes (16 17 79 86),1350873,FRA-POITOU-CHARENTES
+Provence (04 05 06 13 83 84),2119593,FRA-PROVENCE
+Lyonnais et Dauphiné (01 07 26 38 42 69),3091418,FRA-RHONE-ALPES
+Savoie (73 74),476527,FRA-SAVOIE

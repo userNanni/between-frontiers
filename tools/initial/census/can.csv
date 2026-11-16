@@ -1,0 +1,16 @@
+# country: CAN
+# title: províncias e territórios, censo de 1921 (1 jun. 1921)
+# source: Dominion Bureau of Statistics, Sixth Census of Canada 1921 (Canada Year Book 1922-23), via Wikipedia, "1921 Canadian census", https://en.wikipedia.org/wiki/1921_Canadian_census
+# note: total do censo 8788483 inclui 485 da Royal Canadian Navy, fora de qualquer província; Labrador era da Terra Nova e não entra em Québec
+group,population,states
+Prince Edward Island,88615,CAN-PE
+Nova Scotia,523837,CAN-NS
+New Brunswick,387876,CAN-NB
+Québec,2361199,CAN-QC
+Ontario,2933622,CAN-ON
+Manitoba,610118,CAN-MB
+Saskatchewan,757510,CAN-SK
+Alberta,588454,CAN-AB
+British Columbia,524582,CAN-BC
+Yukon,4157,CAN-YT
+Northwest Territories (com o atual Nunavut),7988,CAN-NT

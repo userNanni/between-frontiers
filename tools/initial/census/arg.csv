@@ -1,0 +1,12 @@
+# country: ARG
+# title: regiões (somas de províncias e territórios nacionais), censo de 1914 (1 jun. 1914)
+# source: Comisión Nacional del Censo, Tercer Censo Nacional (1 jun. 1914), totais por província e território via Wikipedia, "Censo argentino de 1914", https://es.wikipedia.org/wiki/Censo_argentino_de_1914
+# note: censo de 1914, onze anos antes de 1925 (o seguinte é o de 1947); a tabela da fonte não traz linha do Território de Los Andes (hoje repartido entre Salta, Jujuy e Catamarca, todos no Noroeste) e soma exatamente o total nacional de 7885237
+group,population,states
+Buenos Aires + Capital Federal,3642762,ARG-BUENOS-AIRES
+Santa Fe + Entre Ríos + Corrientes + Misiones,1725631,ARG-LITORAL
+Córdoba,735472,ARG-CORDOBA
+Mendoza + San Juan + San Luis,513053,ARG-CUYO
+Tucumán + Santiago del Estero + Salta + Catamarca + La Rioja + Jujuy,994801,ARG-NOROESTE
+Chaco + Formosa,65555,ARG-CHACO
+La Pampa + Neuquén + Río Negro + Chubut + Santa Cruz + Tierra del Fuego,207963,ARG-PATAGONIA

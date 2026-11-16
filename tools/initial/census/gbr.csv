@@ -1,0 +1,13 @@
+# country: GBR
+# title: nações, censo de 19 jun. 1921 (Irlanda do Norte: censo de 1926)
+# source: General Register Office, Census 1921 e Registrar-General's Statistical Review of England and Wales (1928) p. 117, via https://en.wikipedia.org/wiki/1921_United_Kingdom_census (Grã-Bretanha, ilhas e Irlanda do Norte 1926); Inglaterra e País de Gales separados via https://en.wikipedia.org/wiki/Demography_of_England e https://en.wikipedia.org/wiki/Demographics_of_Wales (ONS, "200 years of the Census in Wales"); 35230225 + 2656474 = 37886699 (England and Wales)
+# note: País de Gales inclui Monmouthshire, como o Wales moderno; não houve censo na Irlanda em 1921, a linha da Irlanda do Norte é o censo de 1926
+# note: London fica dentro de England: o County of London de 1921 não cobre a Greater London do jogo
+group,population,states
+England (sem Monmouthshire),35230225,GBR-CHESHIRE;GBR-DEVON-CORNWALL;GBR-EAST-ANGLIA;GBR-EAST-MIDLANDS;GBR-HOME-COUNTIES;GBR-KENT-SUSSEX;GBR-LANCASHIRE;GBR-LONDON;GBR-NORTH-EAST-ENGLAND;GBR-THAMES-VALLEY-AND-HAMPSHIRE;GBR-WESSEX;GBR-WEST-MIDLANDS;GBR-YORKSHIRE
+Wales (com Monmouthshire),2656474,GBR-WALES
+Scotland,4882497,GBR-EAST-OF-SCOTLAND;GBR-WEST-OF-SCOTLAND;GBR-SCOTTISH-HIGHLANDS
+Northern Ireland (censo de 1926),1256561,GBR-NORTHERN-IRELAND
+Jersey,49701,JEY
+Guernsey e demais ilhas do bailiado,40519,GGY
+Isle of Man,60284,IMN

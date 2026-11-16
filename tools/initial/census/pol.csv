@@ -1,0 +1,7 @@
+# country: POL
+# title: voivodias, censo de 1921 (30 set. 1921), num grupo só
+# source: Główny Urząd Statystyczny, Pierwszy Powszechny Spis Rzeczypospolitej Polskiej (30 set. 1921), população por voivodia via Wikipedia polonesa, "Pierwszy powszechny spis ludności", tabela "Wyznania według województw", https://pl.wikipedia.org/wiki/Pierwszy_powszechny_spis_ludno%C5%9Bci
+# note: o censo de 1921 não cobriu a Alta Silésia polonesa (anexada em 1922) nem a Lituânia Central (Wilno), por isso POL-SLASK e POL-WILNO ficam fora
+# note: um grupo só porque as voivodias de 1921 não casam com as unidades modernas do jogo: o Zagłębie e Częstochowa (voivodia de Kielce) e Biała (Cracóvia) hoje estão em PL-SL (POL-SLASK); Miechów e Olkusz (Kielce) em PL-MA; Kremenets (Wołyń) em Ternopil; Nieśwież e Stołpce (Nowogródek) na oblast de Minsk, que no jogo é soviética. O grupo tende a ficar alguns por cento acima do território do jogo
+group,population,states
+Polônia sem Silésia e Wilno (14 voivodias e Varsóvia),24763639,POL-WARSZAWA;POL-LODZ;POL-KIELCE;POL-LUBLIN;POL-BIALYSTOK;POL-NOWOGRODEK;POL-POLESIE;POL-WOLYN;POL-POMORZE;POL-POZNAN;POL-KRAKOW;POL-LWOW;POL-STANISLAWOW;POL-TARNOPOL

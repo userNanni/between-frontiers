@@ -1,0 +1,18 @@
+# country: GER
+# title: Länder e províncias prussianas, censo de 16 jun. 1925 (Wohnbevölkerung), agrupados nos estados do jogo
+# source: Statistisches Reichsamt / Preußisches Statistisches Landesamt, Volkszählung vom 16. Juni 1925; totais por Land e província (e Rheinpfalz, Landesteile de Oldenburg) em https://gonschior.de/weimar/Deutschland/index.htm e páginas https://gonschior.de/weimar/<Land>/index.htm e https://gonschior.de/weimar/Preussen/<Provinz>/index.htm (cidades: Stolp, Görlitz, Gleiwitz, Beuthen, Ratibor); províncias conferidas com https://de.wikipedia.org/wiki/Freistaat_Preußen (tabela "Gliederung Preußens", Statistisches Jahrbuch für den Freistaat Preußen 23, 1927); Kreise de 1925 nos artigos da de.wikipedia "Landkreis <nome>"/"Kreis <nome>" (dados de verwaltungsgeschichte.de) e Regbez. Erfurt em https://de.wikipedia.org/wiki/Regierungsbezirk_Erfurt
+# note: soma do arquivo = Reich 1925 (62410619) menos 1092825 de Kreise que hoje estão em estados poloneses do jogo (PL-PM e PL-WP e PL-SL): Stolp (cidade e Kreis) Lauenburg Bütow Rummelsburg; Schneidemühl Flatow Netzekreis Schlochau; Marienburg Marienwerder Stuhm; Gleiwitz Beuthen Ratibor (cidades) e Kreise Beuthen Tarnowitz Hindenburg Tost-Gleiwitz Ratibor
+# note: Kreise movidos entre grupos (sem dividir Kreis): Arnswalde Soldin Königsberg Nm. e Deutsch Krone para Pommern; Meseritz Schwerin Bomst Fraustadt (Grenzmark) Grünberg Freystadt Sagan Sprottau (Silésia) e Liebenwerda (Prov. Sachsen) para Brandenburg; Hoyerswerda Rothenburg e cidade de Görlitz para Sachsen; Blankenburg (Braunschweig) para Sachsen-Anhalt; Herrschaft Schmalkalden para Thüringen; Grafschaft Schaumburg para Niedersachsen; Birkenfeld (Oldenburg) e Rheinpfalz (Bayern) para o oeste
+# note: sobras não corrigidas (Kreis dividido por fronteira atual): Landkreis Görlitz a oeste do Neiße fica na Silésia; Kreis Schweinitz (metade hoje em Brandenburg) fica em Sachsen-Anhalt; Gartz e franja oeste de Randow e Greifenhagen ficam em Pommern; resto alemão do Kreis Rybnik (cerca de 9 mil) fica na Silésia; Calvörde e Braunlage-Walkenried trocados entre Niedersachsen e Sachsen-Anhalt; Ostheim e Allstedt e Artern; o Soldaugebiet (polonês em 1925) entra no PL-WN do jogo sem contar no censo; Saargebiet fora do censo e do jogo
+group,population,states
+Berlin (Groß-Berlin),4024165,DEU-BE
+Bayern sem a Rheinpfalz,6447839,DEU-BY
+Baden + Württemberg + Hohenzollern,4964537,DEU-BW
+Oeste: Rheinprovinz + Westfalen + Lippe + Hessen-Nassau + Hessen + Waldeck + Rheinpfalz + Birkenfeld,16922373,DEU-NW;DEU-RP;DEU-HE
+Norte: Hamburg + Bremen + Lübeck + Schleswig-Holstein + Hannover + Oldenburg + Braunschweig + Schaumburg-Lippe (ajustes na nota),7379802,DEU-HH;DEU-HB;DEU-SH;DEU-NI
+Thüringen + Regbez. Erfurt + Schmalkalden,2226301,DEU-TH
+Freistaat Sachsen + Prov. Sachsen sem Erfurt + Anhalt (ajustes na nota),8231307,DEU-SN;DEU-ST
+Brandenburg + Neumark polonesa + Grenzmark sul + Lubúsquia silesiana,2788316,DEU-BB
+Pommern sem Stolp-Lauenburg-Bütow + Mecklenburg + Neumark norte + Deutsch Krone,2667563,GER-POMMERN;DEU-MV
+Silésia (Nieder- e Oberschlesien) sem a Alta Silésia hoje em PL-SL e sem Lubúsquia e Oberlausitz,3520423,GER-NIEDERSCHLESIEN;GER-OBERSCHLESIEN
+Ostpreußen sem Marienburg-Marienwerder-Stuhm,2145168,GER-OSTPREUSSEN

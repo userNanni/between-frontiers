@@ -1,0 +1,24 @@
+# country: JAP
+# title: regiões (somas de prefeituras), censo de 1925 (1 out. 1925, população presente)
+# source: Naikaku Tōkeikyoku, Taishō 14-nen kokusei chōsa (2º censo nacional, 1 out. 1925), totais por prefeitura via Wikipedia japonesa, "過去の都道府県の人口一覧", https://ja.wikipedia.org/wiki/%E9%81%8E%E5%8E%BB%E3%81%AE%E9%83%BD%E9%81%93%E5%BA%9C%E7%9C%8C%E3%81%AE%E4%BA%BA%E5%8F%A3%E4%B8%80%E8%A6%A7
+# note: só o Japão metropolitano (naichi); sem Karafuto, Coreia e Taiwan; as Curilas (no estado de Hokkaidō) são do censo de Hokkaidō
+group,population,states
+Hokkaidō,2498679,JPN-HOKKAIDO
+Aomori + Iwate + Akita,2650369,JPN-OU
+Miyagi + Yamagata + Fukushima,3508929,JPN-TOHOKU
+Ibaraki + Tochigi + Gunma,3618378,JPN-KITA-KANTO
+Saitama + Chiba,2793718,JPN-SAITAMA-CHIBA
+Tōkyō + Kanagawa,5901936,JPN-TOKYO
+Niigata,1849807,JPN-ECHIGO
+Toyama + Ishikawa + Fukui,2097996,JPN-HOKURIKU
+Yamanashi + Nagano + Gifu,3362449,JPN-TOSAN
+Shizuoka + Aichi + Mie,5098403,JPN-TOKAI
+Shiga + Kyōto + Nara + Wakayama,3440133,JPN-KINKI
+Ōsaka + Hyōgo,5514181,JPN-HANSHIN
+Tottori + Shimane,1194632,JPN-SANIN
+Okayama + Hiroshima + Yamaguchi,3950671,JPN-SANYO
+Tokushima + Kagawa + Ehime + Kōchi,3173966,JPN-SHIKOKU
+Fukuoka + Saga + Ōita,3901635,JPN-KITA-KYUSHU
+Nagasaki + Kumamoto,2460031,JPN-SAIKAI
+Miyazaki + Kagoshima,2163287,JPN-MINAMI-KYUSHU
+Okinawa,557622,JPN-OKINAWA

@@ -1,0 +1,36 @@
+# country: MEX
+# title: estados e territórios, censo de 1921 (30 nov. 1921)
+# source: Departamento de la Estadística Nacional, Censo General de Habitantes 1921 (via INEGI, Cien años de censos de población, 1996), totais por entidade via Wikipedia, "Censo de México de 1921", https://es.wikipedia.org/wiki/Censo_de_M%C3%A9xico_de_1921
+# note: a fonte dá o Territorio de Baja California num só número (distritos Norte e Sur), comparado com os dois estados do jogo
+group,population,states
+Aguascalientes,107581,MEX-AGU
+Baja California (Norte + Sur),62831,MEX-BCN;MEX-BCS
+Campeche,76419,MEX-CAM
+Chihuahua,401622,MEX-CHH
+Chiapas,421744,MEX-CHP
+Coahuila,393480,MEX-COA
+Colima,91749,MEX-COL
+Distrito Federal,906063,MEX-DIF
+Durango,336766,MEX-DUR
+Guerrero,566836,MEX-GRO
+Guanajuato,860364,MEX-GUA
+Hidalgo,622241,MEX-HID
+Jalisco,1191957,MEX-JAL
+México,884617,MEX-MEX
+Michoacán,939849,MEX-MIC
+Morelos,103440,MEX-MOR
+Nayarit,162499,MEX-NAY
+Nuevo León,336412,MEX-NLE
+Oaxaca,976005,MEX-OAX
+Puebla,1024955,MEX-PUE
+Querétaro,220231,MEX-QUE
+Quintana Roo,10966,MEX-ROO
+Sinaloa,341265,MEX-SIN
+San Luis Potosí,445681,MEX-SLP
+Sonora,275127,MEX-SON
+Tabasco,210437,MEX-TAB
+Tamaulipas,286904,MEX-TAM
+Tlaxcala,178570,MEX-TLA
+Veracruz,1159935,MEX-VER
+Yucatán,358221,MEX-YUC
+Zacatecas,379329,MEX-ZAC

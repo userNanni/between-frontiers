@@ -1,0 +1,87 @@
+# Industry output in 1925 and infrastructure stocks around 1925-01-01 / end of 1925 (see
+# data/scenario/1925/INITIAL.md, "Indústria"). Owners include their colonies. Units in industry.py.
+# est: keys whose value is a rough estimate ("all" = every non-zero value of the row).
+country,steel,pig_iron,cement,textiles,paper,electricity,fuel,chemicals,fertilizer,explosives,aluminium,copper,base_metals,automobiles,ships,railways_km,merchant_fleet_grt,telephones,est,note
+USA,46120,37290,27500,1660,8300,85000,96000,4800,800,236,64.5,950,1200,4266,128,402500,15400,16930,chemicals;fertilizer;textiles,Statistical Abstract of the US 1926-27 and Mineral Resources 1925 as cited in Mitchell; colonies (Philippines Puerto Rico) add rail and telephones
+GBR,7504,6362,4700,1140,1300,10100,1500,900,250,60,9.7,50,210,167,1100,53000,20000,1430,cement;fuel;chemicals;fertilizer;explosives;copper;base_metals;railways_km,UK series in Mitchell and Lloyd's Register 1925; colonies add Straits tin smelting Trinidad and Sarawak refining and about 20000 km of colonial railways
+GER,12195,10177,7100,570,2100,20300,300,1500,2200,80,27.2,150,240,49,406,58000,3000,2500,fuel;chemicals;explosives;textiles,Statistisches Jahrbuch für das Deutsche Reich 1926 as cited in Mitchell; fertilizer = synthetic and by-product N + superphosphate and Thomas slag P2O5 + potash K2O
+FRA,7446,8494,4000,490,800,11400,200,1300,1000,30,20,20,110,177,76,56500,3400,720,fuel;chemicals;explosives;textiles;paper,Annuaire statistique de la France as cited in Mitchell; colonies add Algerian Tunisian Indochinese and West African railways (about 14500 km)
+SOV,1868,1535,900,320,230,2925,6000,150,15,15,0,13,10,0.1,5,74500,280,260,cement;textiles;paper;chemicals;fertilizer;explosives;base_metals,calendar 1925 from Soviet statistical handbooks as cited in Mitchell and Davies; economic year 1925/26 is higher
+ITA,1786,482,2800,310,400,7300,100,1000,200,15,1.9,10,30,49,147,21700,3000,220,fuel;chemicals;explosives;textiles,Annuario statistico italiano as cited in Mitchell; colonies add Eritrean and Libyan railways
+JAP,1300,790,2100,600,700,9300,600,600,150,15,0,70,35,0.4,57,20800,3800,610,cement;textiles;paper;fuel;chemicals;explosives;base_metals,Japan Statistical Yearbook series as cited in Mitchell; colonies (Korea Taiwan Karafuto Kwantung) add pig iron rail paper and power
+BEL,2549,2543,2300,150,150,2500,50,500,260,15,0,70,250,10,10,8800,520,200,cement;textiles;paper;chemicals;explosives;automobiles,Annuaire statistique de la Belgique as cited in Mitchell; Congo adds railways; Katanga blister copper is refined in Belgium
+CZE,1467,1183,900,170,200,2000,150,150,40,10,0,1,5,4,0,13600,0,110,cement;textiles;paper;electricity;fuel;chemicals;fertilizer;explosives;automobiles,Statistická ročenka as cited in Mitchell
+POL,785,316,550,100,100,2000,800,150,50,10,0,0,150,0,0,17900,20,100,cement;textiles;paper;electricity;chemicals;fertilizer;explosives,Rocznik statystyczny as cited in Mitchell; zinc of East Upper Silesia
+CAN,765,580,1600,80,1900,10100,2300,100,20,30,13,5,165,162,10,64900,1200,1150,textiles;fuel;chemicals;fertilizer;explosives;copper,Canada Year Book 1926 as cited in Mitchell
+ESP,625,528,1200,120,150,1700,50,300,90,10,0,15,140,1,34,15800,1150,110,cement;textiles;paper;electricity;chemicals;fertilizer;explosives;copper,Anuario estadístico de España as cited in Mitchell
+SWE,520,433,500,35,480,3300,0,150,30,10,0.5,3,3,0.5,49,16300,1250,450,textiles;chemicals;fertilizer;explosives;aluminium;copper;base_metals,Statistisk årsbok as cited in Mitchell
+AUT,466,380,400,45,200,1900,50,80,10,3,2.3,3,10,3,0,6700,20,230,cement;textiles;paper;fuel;chemicals;fertilizer;explosives;copper;base_metals;automobiles,Statistisches Handbuch für die Republik Österreich as cited in Mitchell
+HUN,400,200,300,15,40,700,50,50,15,2,0,0,0,0.5,0,8700,5,80,all,Magyar statisztikai évkönyv series as cited in Mitchell; rounded
+SAA,1570,1450,80,0,5,600,0,30,50,5,0,0,0,0,0,450,0,15,cement;paper;electricity;chemicals;fertilizer;explosives;railways_km;telephones,Saar steel and pig iron in Mitchell (France/Germany notes); fertilizer = Thomas slag P2O5
+LUX,2087,2363,30,0,2,200,0,5,80,0,0,0,0,0,0,520,0,10,cement;paper;electricity;chemicals;fertilizer;telephones,ARBED and HADIR output as cited in Mitchell; fertilizer = Thomas slag P2O5
+NLD,0,140,150,85,300,1800,5000,300,150,2,0,0,20,0,166,11000,2600,290,pig_iron;cement;textiles;paper;electricity;fuel;chemicals;fertilizer;base_metals,Jaarcijfers voor Nederland as cited in Mitchell; fuel = refineries of the East Indies (Pladju Balikpapan) and Curaçao; East Indies railways
+CHE,40,10,600,35,100,4100,0,100,20,3,21,0,0,2,0,5800,0,220,steel;pig_iron;textiles;paper;chemicals;fertilizer;explosives;automobiles,Statistisches Jahrbuch der Schweiz as cited in Mitchell
+NOR,10,30,150,5,350,5400,0,50,35,5,22,2,20,0,17,3500,2700,190,steel;pig_iron;cement;textiles;paper;chemicals;explosives;copper;base_metals,Statistisk årbok as cited in Mitchell; fertilizer = Norsk Hydro nitrate N
+DEN,0,0,600,5,70,400,0,80,40,1,0,0,0,0,70,5000,1000,300,cement;textiles;paper;electricity;chemicals;fertilizer;ships,Statistisk aarbog as cited in Mitchell; Greenland adds nothing
+FIN,20,20,150,12,350,600,0,30,10,2,0,0,0,0,3,4900,210,100,all,Suomen tilastollinen vuosikirja series as cited in Mitchell; rounded
+RAJ,320,890,360,1460,40,900,1100,30,5,3,0,3,50,0,2,61600,200,50,steel;cement;paper;electricity;chemicals;fertilizer;explosives;base_metals;merchant_fleet_grt;telephones,Statistical Abstract for British India as cited in Mitchell; textiles = mill cotton 450 kt + Calcutta jute goods 1000 kt; fuel = Burma (Syriam) and Assam (Digboi); lead of Bawdwin
+CHN,30,360,400,420,50,1000,0,20,0,2,0,0,10,0,5,11500,450,100,all,Chinese Maritime Customs and Rawski 1989 as cited; pig iron includes Anshan and Penhsihu in Manchuria; mill textiles only (handloom excluded)
+BRA,7,30,15,115,40,800,0,10,0,2,0,0,0,0,1,31000,500,100,all,Anuário estatístico do Brasil 1936 back series and Mitchell; textiles = mill cotton
+ARG,0,0,120,10,25,900,700,20,0,2,0,0,5,0,1,36500,300,190,all,Anuario estadístico and Mitchell; YPF La Plata refinery opened in Dec 1925; Ford assembly not counted as production
+MEX,40,45,200,48,20,700,5500,20,0,5,0,10,150,0,0,23000,50,60,all,Anuario estadístico and Mitchell; fuel = Tampico and Minatitlán refineries; lead bullion of Monterrey
+AUS,450,440,700,20,50,1800,50,300,120,15,0,15,230,0,3,43500,600,350,cement;textiles;paper;electricity;fuel;chemicals;fertilizer;explosives;copper,Official Year Book of the Commonwealth of Australia as cited in Mitchell; lead of Port Pirie zinc of Risdon
+SAF,10,10,250,2,5,1700,0,100,20,45,0,5,0,0,0,19000,40,70,all,Official Year Book of the Union and Mitchell; explosives = Modderfontein for the Rand; South West Africa adds railways
+CHL,5,10,50,5,10,600,0,30,390,10,0,100,0,0,1,8800,150,40,all,Mitchell and Chilean nitrate statistics; fertilizer = 2.5 Mt of sodium nitrate as N; copper = Chuquicamata electrolytic
+NZL,0,0,150,5,5,300,0,30,25,2,0,0,0,0,0,5200,160,140,all,New Zealand Official Year-Book as cited in Mitchell
+IRL,0,0,0,5,5,100,0,20,15,0,0,0,0,0,0,4300,30,25,all,Statistical Abstract of Saorstát Éireann as cited; before the Shannon scheme
+TUR,0,0,30,10,2,50,0,5,0,1,0,0,0,0,0,4800,150,10,all,regional estimate
+ROM,100,70,200,10,30,400,2100,30,5,2,0,0,0,0,0,11300,70,30,all,Anuarul statistic and Mitchell; fuel = Ploiești refineries
+YUG,30,30,300,10,25,300,0,20,5,2,0,0,5,0,0,9500,200,25,all,Statistički godišnjak and Mitchell; Bor blister copper not refined yet
+GRE,0,0,150,8,5,100,0,30,15,2,0,0,10,0,0,3100,900,15,all,Statistical yearbook of Greece and Lloyd's Register; Laurium lead
+BUL,0,0,50,5,5,50,0,5,0,0,0,0,0,0,0,2600,15,10,all,regional estimate
+POR,0,0,80,25,25,200,0,50,25,2,0,0,0,0,2,7500,260,25,all,Anuário estatístico and Mitchell; colonies add Angolan and Mozambican railways
+EGY,0,0,60,5,0,150,150,10,0,0,0,0,0,0,0,4600,30,40,all,Annuaire statistique de l'Égypte as cited; fuel = Suez refinery
+CUB,0,0,50,1,2,200,50,10,5,0,0,0,0,0,0,4800,40,40,all,regional estimate; public railways only (sugar estate lines excluded)
+URY,0,0,20,3,0,100,0,0,0,0,0,0,0,0,0,2600,60,30,all,regional estimate
+PER,0,0,30,7,3,150,600,10,0,0,0,0,15,0,0,3500,50,10,all,Extracto estadístico and Mitchell; fuel = Talara; Cerro de Pasco lead
+COL,0,0,10,5,0,60,100,2,0,0,0,0,0,0,0,2200,5,10,all,regional estimate; Barrancabermeja refinery
+VEN,0,0,15,3,0,50,100,0,0,0,0,0,0,0,0,1000,10,8,all,regional estimate; most crude refined in Curaçao (NLD)
+LAT,0,0,30,3,15,80,0,10,5,0,0,0,0,0,1,2800,50,20,all,regional estimate
+EST,0,0,50,8,15,60,5,5,0,0,0,0,0,0,0,1400,60,15,all,regional estimate; oil shale oil
+LTU,0,0,0,2,3,30,0,0,0,0,0,0,0,0,0,1800,5,8,all,regional estimate
+DNZ,0,0,0,1,0,50,0,5,5,0,0,0,0,0,15,100,60,15,all,regional estimate; Danzig shipyards
+SIA,0,0,50,0,0,30,0,0,0,0,0,0,0,0,0,2600,30,3,all,regional estimate; Siam Cement
+PRS,0,0,0,3,0,30,4000,0,0,0,0,0,0,0,0,150,5,5,all,Anglo-Persian Oil Company: Abadan throughput about 4 Mt
+IRQ,0,0,0,0,0,10,0,0,0,0,0,0,0,0,0,1300,0,3,all,regional estimate
+ISL,0,0,0,0,0,15,0,0,0,0,0,0,0,0,0,0,15,5,all,regional estimate
+NFL,0,0,0,0,150,100,0,0,0,0,0,0,0,0,0,1450,30,5,all,regional estimate; Grand Falls and Corner Brook newsprint
+GUA,0,0,0,1,0,20,0,0,0,0,0,0,0,0,0,800,0,2,all,regional estimate
+HON,0,0,0,0,0,10,0,0,0,0,0,0,0,0,0,1000,20,1,all,regional estimate; banana company lines
+SAL,0,0,0,2,0,15,0,0,0,0,0,0,0,0,0,450,0,3,all,regional estimate
+NIC,0,0,0,0,0,10,0,0,0,0,0,0,0,0,0,300,0,1,all,regional estimate
+CRI,0,0,0,0,0,30,0,0,0,0,0,0,0,0,0,700,0,3,all,regional estimate
+PAN,0,0,0,0,0,30,0,0,0,0,0,0,0,0,0,300,70,3,all,regional estimate
+HAI,0,0,0,0,0,5,0,0,0,0,0,0,0,0,0,250,0,1,all,regional estimate
+DOM,0,0,0,0,0,10,0,0,0,0,0,0,0,0,0,250,0,2,all,regional estimate
+ECU,0,0,0,2,0,15,10,0,0,0,0,0,0,0,0,1100,0,3,all,regional estimate
+BOL,0,0,0,0,0,50,0,0,0,0,0,0,0,0,0,2100,0,3,all,regional estimate; tin concentrates are smelted abroad
+PRY,0,0,0,0,0,5,0,0,0,0,0,0,0,0,0,500,0,1,all,regional estimate
+ALB,0,0,0,0,0,3,0,0,0,0,0,0,0,0,0,0,0,1,all,regional estimate
+SMR,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0.3,all,regional estimate
+LIE,0,0,0,1,0,5,0,0,0,0,0,0,0,0,0,10,0,0.3,all,regional estimate
+MCO,0,0,0,0,0,20,0,0,0,0,0,0,0,0,0,2,0,2,all,regional estimate
+AND,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.05,all,regional estimate
+MGL,0,0,0,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0.5,all,regional estimate
+TUV,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,all,no modern industry
+TIB,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,all,no modern industry
+AFG,0,0,0,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0.5,all,regional estimate
+NEP,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,40,0,0.1,all,regional estimate; Raxaul-Amlekhganj line
+BHU,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,all,no modern industry
+TRJ,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,300,0,0.2,all,regional estimate; Hejaz Railway section
+HEJ,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0.5,all,regional estimate; Hejaz Railway out of service since 1918
+NEJ,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,all,no modern industry
+YEM,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,all,no modern industry
+OMA,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,all,no modern industry
+KUW,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.1,all,no modern industry
+ETH,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,690,0,1,all,regional estimate; Ethiopian section of the Djibouti line
+LBR,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.1,all,no modern industry
