@@ -8,7 +8,7 @@ use std::path::PathBuf;
 use bf_client::hud::{self, Anchor, GAP, Hud, Layout, PanelId};
 use bf_client::screens::hud_edit::{self, Edit};
 use bf_i18n::{I18n, Locale};
-use egui::{Pos2, Rect, Vec2, vec2};
+use egui::{Pos2, Rect, Vec2, pos2, vec2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::{NodeT, Queryable};
 
@@ -312,22 +312,118 @@ fn blocks_are_put_in_moved_and_taken_out_by_dragging() {
     assert_eq!(back.tiles(), vec!["debt", "inflation"]);
 }
 
+/// The open picker's size for a height, as a fresh context measures it.
+fn picker_size(lens: bf_client::map::lens::Lens) -> impl Fn(f32) -> Vec2 {
+    let ctx = egui::Context::default();
+    move |max_h| bf_client::screens::lens_panel::size(&ctx, lens, max_h)
+}
+
 #[test]
 fn the_lens_picker_opens_toward_the_free_side() {
+    use bf_client::map::lens::Lens;
     use bf_client::screens::game::lens_popup;
     let screen = Rect::from_min_size(Pos2::ZERO, vec2(1600.0, 900.0));
-    let size = vec2(440.0, 300.0);
+    let size = picker_size(Lens::Climate);
     // Bottom left: up, aligned on the left.
     let b = Rect::from_min_size(egui::pos2(12.0, 848.0), vec2(200.0, 40.0));
-    let p = lens_popup(b, size, screen);
+    let p = lens_popup(b, &size, screen, None);
     assert!(p.bottom() <= b.top() && p.left() == b.left(), "{p:?}");
     // Bottom right: up and to the left.
     let b = Rect::from_min_size(egui::pos2(1388.0, 848.0), vec2(200.0, 40.0));
-    let p = lens_popup(b, size, screen);
+    let p = lens_popup(b, &size, screen, None);
     assert!(p.bottom() <= b.top() && p.right() == b.right(), "{p:?}");
     // Top right: down and to the left.
     let b = Rect::from_min_size(egui::pos2(1388.0, 80.0), vec2(200.0, 40.0));
-    let p = lens_popup(b, size, screen);
+    let p = lens_popup(b, &size, screen, None);
     assert!(p.top() >= b.bottom() && p.right() == b.right(), "{p:?}");
     assert!(screen.contains_rect(p));
+}
+
+/// Every lens, from a button in each corner and the middle of each edge, on the screens the
+/// game supports: the open picker stays on the screen and out of the free area, and every part
+/// of it inside its frame.
+#[test]
+fn the_open_lens_picker_fits_its_frame_and_the_screen() {
+    use bf_client::screens::game::lens_popup;
+    use bf_client::screens::lens_panel;
+    let ctx = egui::Context::default();
+    for (w, h) in [(1600.0, 900.0), (1280.0, 720.0), (960.0, 540.0)] {
+        let screen = Rect::from_min_size(Pos2::ZERO, vec2(w, h));
+        let button = vec2(200.0, 40.0);
+        let corners = [
+            pos2(12.0, 12.0 + 140.0),
+            pos2(w - 212.0, 80.0),
+            pos2(12.0, h - 52.0),
+            pos2(w - 212.0, h - 52.0),
+            pos2(w / 2.0 - 100.0, h - 52.0),
+        ];
+        // The streaming preset's free corner, top right.
+        let free = hud::Layout::preset(hud::Preset::Streaming)
+            .free
+            .map(|a| hud::clamp_into(a.rect(screen), screen));
+        for at in corners {
+            let b = Rect::from_min_size(at, button);
+            for lens in lens_panel::all_lenses() {
+                for free in [None, free] {
+                    let p = lens_popup(b, picker_size(lens), screen, free);
+                    assert!(screen.contains_rect(p), "{lens:?} {p:?} off {w}×{h}");
+                    if let Some(f) = free
+                        && !f.intersects(b)
+                    {
+                        assert!(!f.intersects(p), "{lens:?} {p:?} in the free area {f:?}");
+                    }
+                    let lay = lens_panel::layout(&ctx, lens, p);
+                    for (part, r) in [
+                        ("header", Some(lay.header)),
+                        ("families", Some(lay.families)),
+                        ("list", lay.list),
+                        ("legend", lay.legend),
+                    ] {
+                        if let Some(r) = r {
+                            assert!(
+                                p.contains_rect(r),
+                                "{lens:?} {part} {r:?} out of {p:?} at {w}×{h}"
+                            );
+                        }
+                    }
+                    // The list keeps rows in view; the legend never folds under it.
+                    if let (Some(l), Some(g)) = (lay.list, lay.legend) {
+                        assert!(
+                            l.height() >= lay.list_h.min(48.0) - 0.5 && l.bottom() <= g.top(),
+                            "{lens:?} {l:?} {g:?}"
+                        );
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// The five families fit across the panel in both languages, as the kit draws them.
+#[test]
+fn the_lens_families_fit_across_the_panel() {
+    use bf_client::screens::lens_panel;
+    for locale in [Locale::PtBr, Locale::En] {
+        let i18n = I18n::load(&root().join("assets/i18n"), locale).expect("i18n");
+        let labels = lens_panel::family_labels(&i18n);
+        let width = lens_panel::inner_width();
+        let mut right = 0.0f32;
+        let mut h = Harness::builder()
+            .with_size(vec2(800.0, 200.0))
+            .build_ui(|ui| {
+                bf_ui_kit::theme::install(ui.ctx());
+                let area = Rect::from_min_size(pos2(10.0, 10.0), vec2(width, 60.0));
+                let mut child = ui.new_child(egui::UiBuilder::new().max_rect(area));
+                let options: Vec<(usize, String)> = labels.iter().cloned().enumerate().collect();
+                let mut v = 0usize;
+                let (_, rects) = bf_ui_kit::segmented_rects(&mut child, &mut v, &options);
+                right = rects.iter().map(|r| r.right()).fold(0.0, f32::max) - 10.0;
+            });
+        h.run_steps(3);
+        drop(h);
+        assert!(
+            right <= width,
+            "{locale:?}: families {right} wide in {width}"
+        );
+    }
 }

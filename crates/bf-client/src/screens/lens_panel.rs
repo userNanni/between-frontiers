@@ -11,8 +11,9 @@ use crate::map::MapView;
 use crate::map::lens::{self, Lens};
 use crate::world::World;
 
-// Wide enough for the five families in English and Portuguese.
-const WIDTH: f32 = 440.0;
+// Wide enough for the five families in English and Portuguese, as the kit draws them
+// (`the_lens_families_fit_across_the_panel` measures them).
+const WIDTH: f32 = 480.0;
 /// Sets the map's lens and recolours it, open picker or not (a command calls this; the
 /// `map.mode_*` commands can pass the family's first lens).
 pub fn choose(view: &mut MapView, world: &World, lens: Lens, year: i32) {
@@ -51,21 +52,148 @@ fn items(fam: Family) -> &'static [&'static str] {
     }
 }
 
-/// Height of the panel for a lens.
-fn height(lens: Lens) -> f32 {
-    let fam = family(lens);
-    let rows = items(fam).len().div_ceil(2) as f32;
-    let legend_h = match fam {
-        Family::Political => 0.0,
-        Family::Climate => 7.0 * 20.0 + 8.0,
-        _ => 44.0,
-    };
-    34.0 + 40.0 + rows * 24.0 + legend_h + space::LG * 2.0
+// ---------------------------------------------------------------------------------------------
+// Layout. The panel is measured from the same regions it is drawn in: a header, the families,
+// the list of the family's items (scrolling inside when the room is short) and the legend,
+// fixed at the foot. The heights of the families and the legend are what the last frame drew.
+
+/// Padding inside the frame and the gap between regions.
+const PAD: f32 = space::LG;
+const GAP: f32 = space::SM;
+const HEAD_H: f32 = 20.0;
+/// Height of a row of the list (two items a row).
+const ROW: f32 = 24.0;
+/// The list keeps at least this many rows in view.
+const MIN_ROWS: f32 = 2.0;
+
+fn families_id() -> egui::Id {
+    egui::Id::NULL.with("bf-lens-families")
 }
 
-/// Size of the panel for a lens.
-pub fn size(lens: Lens) -> Vec2 {
-    Vec2::new(WIDTH, height(lens))
+fn legend_id(lens: Lens) -> egui::Id {
+    egui::Id::NULL.with(("bf-lens-legend", family(lens) as u8))
+}
+
+/// Height of the families' row as drawn last; a guess before the first frame.
+fn families_h(ctx: &egui::Context) -> f32 {
+    ctx.data(|d| d.get_temp(families_id())).unwrap_or(36.0)
+}
+
+/// Height of the legend as drawn last; a guess before the first frame.
+fn legend_h(ctx: &egui::Context, lens: Lens) -> f32 {
+    let guess = match family(lens) {
+        Family::Political => 0.0,
+        Family::Climate => 7.0 * 20.0,
+        _ => 56.0,
+    };
+    ctx.data(|d| d.get_temp(legend_id(lens))).unwrap_or(guess)
+}
+
+/// Where each part of the panel goes inside `frame`.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct LensLayout {
+    pub frame: Rect,
+    pub header: Rect,
+    pub families: Rect,
+    /// The part of the list in view; `None` for a family without a list.
+    pub list: Option<Rect>,
+    /// The whole list's height (more than the view when it scrolls).
+    pub list_h: f32,
+    pub legend: Option<Rect>,
+}
+
+impl LensLayout {
+    /// Lays the regions out in `frame`, the list taking what the others leave.
+    fn new(frame: Rect, lens: Lens, families_h: f32, legend_h: f32) -> Self {
+        let inner = frame.shrink(PAD);
+        let header = Rect::from_min_size(inner.min, Vec2::new(inner.width(), HEAD_H));
+        let families = Rect::from_min_size(
+            Pos2::new(inner.left(), header.bottom() + GAP),
+            Vec2::new(inner.width(), families_h),
+        );
+        let legend = (legend_h > 0.0).then(|| {
+            Rect::from_min_max(
+                Pos2::new(inner.left(), inner.bottom() - legend_h),
+                inner.max,
+            )
+        });
+        let rows = items(family(lens)).len().div_ceil(2) as f32;
+        let list = (rows > 0.0).then(|| {
+            let bottom = legend.map_or(inner.bottom(), |l| l.top() - GAP);
+            Rect::from_min_max(
+                Pos2::new(inner.left(), families.bottom() + GAP),
+                Pos2::new(inner.right(), bottom.max(families.bottom() + GAP)),
+            )
+        });
+        Self {
+            frame,
+            header,
+            families,
+            list,
+            list_h: rows * ROW,
+            legend,
+        }
+    }
+}
+
+/// Height the panel needs with its whole list in view.
+fn natural_h(lens: Lens, families_h: f32, legend_h: f32) -> f32 {
+    let rows = items(family(lens)).len().div_ceil(2) as f32;
+    let list = if rows > 0.0 { GAP + rows * ROW } else { 0.0 };
+    let legend = if legend_h > 0.0 { GAP + legend_h } else { 0.0 };
+    PAD * 2.0 + HEAD_H + GAP + families_h + list + legend
+}
+
+/// The least height: the list keeps two rows in view.
+fn least_h(lens: Lens, families_h: f32, legend_h: f32) -> f32 {
+    let rows = items(family(lens)).len().div_ceil(2) as f32;
+    natural_h(lens, families_h, legend_h) - (rows - rows.min(MIN_ROWS)) * ROW
+}
+
+/// Size of the panel for a lens in at most `max_h` of height: its whole content, or less
+/// with the list scrolling (never less than two rows of it).
+pub fn size(ctx: &egui::Context, lens: Lens, max_h: f32) -> Vec2 {
+    size_with(lens, max_h, families_h(ctx), legend_h(ctx, lens))
+}
+
+fn size_with(lens: Lens, max_h: f32, families_h: f32, legend_h: f32) -> Vec2 {
+    let h = natural_h(lens, families_h, legend_h)
+        .min(max_h)
+        .max(least_h(lens, families_h, legend_h));
+    Vec2::new(WIDTH, h)
+}
+
+/// The regions of the panel in `frame`, as `show` draws them.
+pub fn layout(ctx: &egui::Context, lens: Lens, frame: Rect) -> LensLayout {
+    LensLayout::new(frame, lens, families_h(ctx), legend_h(ctx, lens))
+}
+
+/// Width inside the frame, where the families have to fit.
+pub fn inner_width() -> f32 {
+    WIDTH - PAD * 2.0
+}
+
+/// The families' names, as the panel shows them.
+pub fn family_labels(i18n: &I18n) -> Vec<String> {
+    [
+        "lens-political",
+        "lens-resources",
+        "lens-climate",
+        "lens-farms",
+        "lens-infrastructure",
+    ]
+    .iter()
+    .map(|k| i18n.tr(k))
+    .collect()
+}
+
+/// Every lens, one per family and every item: for checks that go through them all.
+pub fn all_lenses() -> Vec<Lens> {
+    let mut out = vec![Lens::Political, Lens::Climate];
+    out.extend((0..RESOURCES.len()).map(Lens::Resource));
+    out.extend((0..FARMS.len()).map(Lens::Farm));
+    out.extend((0..lens::LOCAL_GOODS.len()).map(Lens::Local));
+    out
 }
 
 /// The lens in words: its family, and the resource, crop or good when it has one.
@@ -160,13 +288,13 @@ pub fn mode_lens(mode: usize, current: Lens) -> Lens {
     }
 }
 
-/// Shows the panel with its top left corner at `origin` and recolours the map when the lens
-/// changes. With `pinned` given, a link at the top keeps the panel open or folds it back into
-/// its button; true when it was clicked.
+/// Shows the panel in `frame` and recolours the map when the lens changes. Every part is drawn
+/// in its region of [`layout`] and clipped to it, so nothing leaves the frame. With `pinned`
+/// given, a link at the top keeps the panel open or folds it back into its button.
 #[allow(clippy::too_many_arguments)]
 pub fn show(
     ui: &mut Ui,
-    origin: Pos2,
+    frame: Rect,
     i18n: &I18n,
     world: &World,
     view: &mut MapView,
@@ -178,133 +306,188 @@ pub fn show(
     let current = view.lens;
     let fam = family(current);
     let list = items(fam);
-    let height = height(current);
-    let rows = list.len().div_ceil(2) as f32;
-    let panel = Rect::from_min_size(origin, Vec2::new(WIDTH, height));
-    bf_ui_kit::paint_overlay(ui, panel);
-    ui.interact(
-        panel,
+    let lay = layout(ui.ctx(), current, frame);
+    bf_ui_kit::paint_overlay(ui, frame);
+    let block = ui.interact(
+        frame,
         ui.make_persistent_id("lens-panel"),
         Sense::click_and_drag(),
     );
+    let title = i18n.tr("lens-title");
+    block.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Pane, true, title.clone()));
+    let region = |ui: &mut Ui, r: Rect| {
+        let mut child = ui.new_child(egui::UiBuilder::new().max_rect(r));
+        child.set_clip_rect(r.intersect(ui.clip_rect()));
+        child
+    };
 
-    let mut next = current;
-    let inner = panel.shrink(space::LG);
-    let mut child = ui.new_child(egui::UiBuilder::new().max_rect(inner));
-    let ui = &mut child;
-    ui.spacing_mut().item_spacing.y = space::SM;
-    ui.horizontal(|ui| {
-        bf_ui_kit::caption(ui, &i18n.tr("lens-title"));
-        if let Some(pinned) = pinned {
-            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                let text = i18n.tr(if pinned { "lens-fold" } else { "lens-pin" });
-                let link = ui
-                    .add(
-                        egui::Label::new(
-                            egui::RichText::new(&text)
-                                .font(sans(12.0))
-                                .color(color::ACCENT),
+    // Header: the title and the pin.
+    {
+        let mut ui = region(ui, lay.header);
+        ui.horizontal(|ui| {
+            bf_ui_kit::caption(ui, &title);
+            if let Some(pinned) = pinned {
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    let text = i18n.tr(if pinned { "lens-fold" } else { "lens-pin" });
+                    let link = ui
+                        .add(
+                            egui::Label::new(
+                                egui::RichText::new(&text)
+                                    .font(sans(12.0))
+                                    .color(color::ACCENT),
+                            )
+                            .sense(Sense::click())
+                            .selectable(false),
                         )
-                        .sense(Sense::click())
-                        .selectable(false),
-                    )
-                    .on_hover_cursor(egui::CursorIcon::PointingHand);
-                let link = link.on_hover_text(keys::tip(ui.ctx(), &text, id::LENS_KEEP_OPEN));
-                if keys::pressed(ui, id::LENS_KEEP_OPEN, &link) {
-                    toggle_pin = true;
-                }
-            });
-        }
-    });
-    let mut f = fam;
-    let options = vec![
-        (Family::Political, i18n.tr("lens-political")),
-        (Family::Resources, i18n.tr("lens-resources")),
-        (Family::Climate, i18n.tr("lens-climate")),
-        (Family::Farms, i18n.tr("lens-farms")),
-        (Family::Infrastructure, i18n.tr("lens-infrastructure")),
-    ];
-    let tips = [
-        Tip::Command(id::MODE_POLITICAL),
-        Tip::Command(id::MODE_RESOURCES),
-        Tip::Command(id::MODE_CLIMATE),
-        Tip::Command(id::MODE_FARMS),
-        Tip::Command(id::MODE_INFRASTRUCTURE),
-    ];
-    // The keys of these commands are read by the game screen, folded or not.
-    if keys::segmented(ui, &mut f, &options, &tips) {
-        chosen = items(f).is_empty();
-        next = match f {
-            Family::Political => Lens::Political,
-            Family::Resources => {
-                Lens::Resource(RESOURCES.iter().position(|r| *r == "copper").unwrap_or(0))
+                        .on_hover_cursor(egui::CursorIcon::PointingHand);
+                    let link = link.on_hover_text(keys::tip(ui.ctx(), &text, id::LENS_KEEP_OPEN));
+                    if keys::pressed(ui, id::LENS_KEEP_OPEN, &link) {
+                        toggle_pin = true;
+                    }
+                });
             }
-            Family::Climate => Lens::Climate,
-            Family::Farms => Lens::Farm(0),
-            Family::Infrastructure => Lens::Local(lens::LOCAL_DEFAULT),
-        };
+        });
     }
 
-    if !list.is_empty() {
+    // The families; their height is kept for the next measure.
+    let mut next = current;
+    {
+        let mut ui = region(ui, lay.families);
+        let mut f = fam;
+        let options = vec![
+            (Family::Political, i18n.tr("lens-political")),
+            (Family::Resources, i18n.tr("lens-resources")),
+            (Family::Climate, i18n.tr("lens-climate")),
+            (Family::Farms, i18n.tr("lens-farms")),
+            (Family::Infrastructure, i18n.tr("lens-infrastructure")),
+        ];
+        let tips = [
+            Tip::Command(id::MODE_POLITICAL),
+            Tip::Command(id::MODE_RESOURCES),
+            Tip::Command(id::MODE_CLIMATE),
+            Tip::Command(id::MODE_FARMS),
+            Tip::Command(id::MODE_INFRASTRUCTURE),
+        ];
+        // The keys of these commands are read by the game screen, folded or not.
+        let changed = keys::segmented(&mut ui, &mut f, &options, &tips);
+        let used = ui.min_rect().height();
+        ui.ctx().data_mut(|d| d.insert_temp(families_id(), used));
+        if changed {
+            chosen = items(f).is_empty();
+            next = match f {
+                Family::Political => Lens::Political,
+                Family::Resources => {
+                    Lens::Resource(RESOURCES.iter().position(|r| *r == "copper").unwrap_or(0))
+                }
+                Family::Climate => Lens::Climate,
+                Family::Farms => Lens::Farm(0),
+                Family::Infrastructure => Lens::Local(lens::LOCAL_DEFAULT),
+            };
+        }
+    }
+
+    // The list, scrolling inside its region when the room is short.
+    if let Some(area) = lay.list {
         let selected = match current {
             Lens::Resource(i) | Lens::Farm(i) | Lens::Local(i) => i,
             _ => usize::MAX,
         };
-        let col_w = (inner.width() - space::SM) / 2.0;
-        let top = ui.cursor().top();
-        for (i, key) in list.iter().enumerate() {
-            let r = Rect::from_min_size(
-                Pos2::new(
-                    inner.left() + (i % 2) as f32 * (col_w + space::SM),
-                    top + (i / 2) as f32 * 24.0,
-                ),
-                Vec2::new(col_w, 22.0),
-            );
-            let id = ui.make_persistent_id(("lens-item", i));
-            let resp = ui.interact(r, id, Sense::click());
-            let label = match fam {
-                Family::Resources => i18n.tr(&format!("resource-{key}")),
-                Family::Infrastructure => i18n.tr(&format!("good-{key}")),
-                _ => i18n.tr(&format!("building-{key}")),
-            };
-            resp.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, label.clone()));
-            let on = i == selected;
-            let painter = ui.painter();
-            if on {
-                painter.rect(
-                    r,
-                    radius::SM,
-                    color::ACCENT_SOFT,
-                    Stroke::new(1.0, color::ACCENT.gamma_multiply(0.6)),
-                    egui::StrokeKind::Inside,
-                );
-            } else if resp.hovered() {
-                painter.rect_filled(r, radius::SM, color::SURFACE_HOVER);
-            }
-            painter.text(
-                Pos2::new(r.left() + 8.0, r.center().y),
-                Align2::LEFT_CENTER,
-                &label,
-                sans(12.5),
-                if on { color::ACCENT } else { color::TEXT },
-            );
-            let resp = resp.on_hover_cursor(egui::CursorIcon::PointingHand);
-            if resp.clicked() || keys::item(ui, 'W', format!("lens.item.{key}"), key, r) {
-                chosen = true;
-                next = match fam {
-                    Family::Resources => Lens::Resource(i),
-                    Family::Infrastructure => Lens::Local(i),
-                    _ => Lens::Farm(i),
-                };
-            }
-        }
-        ui.advance_cursor_after_rect(Rect::from_min_size(
-            Pos2::new(inner.left(), top),
-            Vec2::new(inner.width(), rows * 24.0),
-        ));
+        let mut ui = region(ui, area);
+        egui::ScrollArea::vertical()
+            .id_salt(("lens-list", fam as u8))
+            .max_height(area.height())
+            .auto_shrink([false, false])
+            .show(&mut ui, |ui| {
+                let width = ui.available_width()
+                    - if lay.list_h > area.height() {
+                        12.0
+                    } else {
+                        0.0
+                    };
+                let (rows_rect, _) =
+                    ui.allocate_exact_size(Vec2::new(width, lay.list_h), Sense::hover());
+                let col_w = (width - space::SM) / 2.0;
+                for (i, key) in list.iter().enumerate() {
+                    let r = Rect::from_min_size(
+                        Pos2::new(
+                            rows_rect.left() + (i % 2) as f32 * (col_w + space::SM),
+                            rows_rect.top() + (i / 2) as f32 * ROW,
+                        ),
+                        Vec2::new(col_w, ROW - 2.0),
+                    );
+                    let id = ui.make_persistent_id(("lens-item", i));
+                    let resp = ui.interact(r, id, Sense::click());
+                    let label = match fam {
+                        Family::Resources => i18n.tr(&format!("resource-{key}")),
+                        Family::Infrastructure => i18n.tr(&format!("good-{key}")),
+                        _ => i18n.tr(&format!("building-{key}")),
+                    };
+                    resp.widget_info(|| {
+                        egui::WidgetInfo::labeled(egui::Role::Button, true, label.clone())
+                    });
+                    let on = i == selected;
+                    let painter = ui.painter();
+                    if on {
+                        painter.rect(
+                            r,
+                            radius::SM,
+                            color::ACCENT_SOFT,
+                            Stroke::new(1.0, color::ACCENT.gamma_multiply(0.6)),
+                            egui::StrokeKind::Inside,
+                        );
+                    } else if resp.hovered() {
+                        painter.rect_filled(r, radius::SM, color::SURFACE_HOVER);
+                    }
+                    let (g, _) = super::journal::one_line(
+                        painter,
+                        &label,
+                        sans(12.5),
+                        if on { color::ACCENT } else { color::TEXT },
+                        r.width() - 12.0,
+                    );
+                    painter.galley(
+                        Pos2::new(r.left() + 8.0, r.center().y - g.size().y / 2.0),
+                        g,
+                        color::TEXT,
+                    );
+                    let resp = resp.on_hover_cursor(egui::CursorIcon::PointingHand);
+                    if resp.clicked() || keys::item(ui, 'W', format!("lens.item.{key}"), key, r) {
+                        chosen = true;
+                        next = match fam {
+                            Family::Resources => Lens::Resource(i),
+                            Family::Infrastructure => Lens::Local(i),
+                            _ => Lens::Farm(i),
+                        };
+                    }
+                }
+            });
     }
 
-    legend(ui, i18n, current, world);
+    // The legend, fixed at the foot; its height is kept for the next measure.
+    {
+        let area = lay.legend.unwrap_or(Rect::from_min_size(
+            Pos2::new(lay.header.left(), frame.bottom() - PAD),
+            Vec2::new(lay.header.width(), 0.0),
+        ));
+        // Drawn from the top of its region; a taller legend than measured is clipped once and
+        // measured whole for the next frame.
+        let mut ui = region(
+            ui,
+            Rect::from_min_size(area.min, Vec2::new(area.width(), 400.0)),
+        );
+        ui.set_clip_rect(area.intersect(ui.clip_rect()));
+        ui.spacing_mut().item_spacing.y = space::XS;
+        let top = ui.cursor().top();
+        legend(&mut ui, i18n, current, world);
+        let used = ui.min_rect().bottom() - top;
+        let used = if current == Lens::Political {
+            0.0
+        } else {
+            used
+        };
+        ui.ctx()
+            .data_mut(|d| d.insert_temp(legend_id(current), used.max(0.0)));
+    }
 
     if next != current {
         choose(view, world, next, year);
