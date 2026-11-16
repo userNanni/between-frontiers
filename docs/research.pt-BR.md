@@ -82,8 +82,8 @@ As 133 tecnologias posteriores a 1925 chegam ao protótipo, em média, 1,5 ano d
 emprego do campo sem a migração e a construção da fase 3.
 
 Com a árvore em níveis (requisitos novos e custo crescente ao longo de cada requisito), o
-protótipo chega em média 2,5 anos depois da história (desvio absoluto 3,5) e a indústria 2,1 anos
-depois (125 de 133 até 2025); população e PIB de 2025 quase não mudam (6,75 bilhões, US$ 49,5 tri).
+protótipo chega em média 2,6 anos depois da história (desvio absoluto 3,6) e a indústria 2,1 anos
+depois (125 de 133 até 2025); população e PIB de 2025 quase não mudam (6,75 bilhões, US$ 49,6 tri).
 
 ## A árvore de 1925 a 2025
 
