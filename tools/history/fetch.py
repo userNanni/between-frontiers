@@ -1,8 +1,9 @@
 """Downloads the historical reference series and writes them, trimmed to 1900-2025 and to
 modern-border countries, to data/history/. The raw files stay in data/raw/history/ (gitignored).
 
-Run from the repository root: python3 tools/history/fetch.py [--offline]
-`--offline` rebuilds data/history/ from the raw files already downloaded.
+Run from the repository root: python3 tools/history/fetch.py [--offline] [--only NAME]
+`--offline` rebuilds data/history/ from the raw files already downloaded; `--only fdi` downloads
+and rebuilds only that file (the names are the build_* steps in `main`).
 
 Every source, its licence and its attribution are listed in data/history/SOURCES.md; this script
 is the only way numbers enter data/history/.
@@ -53,6 +54,13 @@ WDI = {
     "debt": "GC.DOD.TOTL.GD.ZS",
 }
 WDI_URL = "https://api.worldbank.org/v2/country/all/indicator/{}?format=json&per_page=20000&date=1960:2025"
+# Foreign direct investment (World Bank WDI from the IMF balance of payments, with UNCTAD where the
+# IMF has no series): output column -> indicator. Net flows, current US$, from 1970.
+FDI = {
+    "fdi_inflow_usd": "BX.KLT.DINV.CD.WD",
+    "fdi_outflow_usd": "BM.KLT.DINV.CD.WD",
+    "fdi_inflow_gdp": "BX.KLT.DINV.WD.GD.ZS",
+}
 
 
 def fetch(url, path, tries=4):
@@ -69,6 +77,13 @@ def fetch(url, path, tries=4):
             print("  retry after", e)
 
 
+def download_wdi(indicators):
+    os.makedirs(RAW, exist_ok=True)
+    for ind in indicators.values():
+        print("download", ind)
+        fetch(WDI_URL.format(ind), os.path.join(RAW, f"wdi_{ind}.json"))
+
+
 def download():
     os.makedirs(RAW, exist_ok=True)
     for name, (url, file) in DOWNLOADS.items():
@@ -83,9 +98,8 @@ def download():
         url = OWID.format(slug) + ("&" + query if query else "")
         fetch(url, os.path.join(RAW, f"production_{name}.csv"))
         fetch(OWID_META.format(slug) + ("&" + query if query else ""), os.path.join(RAW, f"production_{name}.metadata.json"))
-    for name, ind in WDI.items():
-        print("download", ind)
-        fetch(WDI_URL.format(ind), os.path.join(RAW, f"wdi_{ind}.json"))
+    download_wdi(WDI)
+    download_wdi(FDI)
 
 
 def owid_rows(slug):
@@ -206,27 +220,50 @@ def build_production():
     )
 
 
-def build_wdi():
+def wdi_rows(indicators, digits=3):
     import json
 
     rows = []
     keep = countries()
-    for name, ind in WDI.items():
+    for name, ind in indicators.items():
         with open(os.path.join(RAW, f"wdi_{ind}.json"), encoding="utf-8") as f:
             data = json.load(f)
         for r in data[1] or []:
             code = r.get("countryiso3code") or ""
             if code in keep and r.get("value") is not None:
-                rows.append((code, int(r["date"]), name, round(float(r["value"]), 3)))
+                rows.append((code, int(r["date"]), name, num(r["value"], 0 if name.endswith("_usd") else digits)))
+    return rows
+
+
+def build_wdi():
     write(
         "wdi.csv",
         ["iso3", "year", "series", "value"],
-        rows,
+        wdi_rows(WDI),
         "World Bank, World Development Indicators (ILO modelled employment, IMF CPI and government finance), CC BY 4.0. Percent. See SOURCES.md.",
     )
 
 
+def build_fdi():
+    write(
+        "fdi.csv",
+        ["iso3", "year", "series", "value"],
+        wdi_rows(FDI),
+        "Foreign direct investment, net inflows and outflows (current US$) and net inflows (% of GDP): World Bank WDI after IMF BoP and UNCTAD, CC BY 4.0. See SOURCES.md.",
+    )
+
+
 def main():
+    if "--only" in sys.argv:
+        only = sys.argv[sys.argv.index("--only") + 1]
+        if only != "fdi":
+            sys.exit(f"--only: unknown file {only!r} (known: fdi)")
+        if "--offline" not in sys.argv:
+            download_wdi(FDI)
+        if not os.path.exists(os.path.join(RAW, "population.csv")):
+            fetch(OWID.format("population"), os.path.join(RAW, "population.csv"))
+        build_fdi()
+        return
     if "--offline" not in sys.argv:
         download()
     os.makedirs(OUT, exist_ok=True)
@@ -246,6 +283,7 @@ def main():
     )
     build_production()
     build_wdi()
+    build_fdi()
 
 
 if __name__ == "__main__":
