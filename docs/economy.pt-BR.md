@@ -1,6 +1,8 @@
 # Economia: catálogo e regras
 
-Estado: fase 1 em andamento. O catálogo existe como dados; o mercado que move os preços vem a seguir.
+Estado: fase 1 concluída (#29). Mercados nacionais fecham toda semana, com comércio mundial em pool; o
+investimento privado, o trabalho e a demografia rodam todo mês. O que ficou simplificado está no plano de
+melhoria em `architecture.pt-BR.md`, distribuído pelas fases 2 a 4.
 
 Os dados ficam em `data/economy/` (`goods.ron`, `buildings.ron`, `needs.ron`), com o contrato em
 `crates/bf-sim/src/economy.rs` e os nomes em `assets/i18n/*/economy.ftl`. O teste

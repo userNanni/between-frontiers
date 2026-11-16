@@ -91,6 +91,9 @@ pub struct GameWorld {
     /// Markets, regions, pops and plants; empty when the game runs without an economy.
     #[serde(default)]
     pub econ: crate::econ::Economy,
+    /// Stage of every technology in every country; empty without the research data.
+    #[serde(default)]
+    pub research: crate::research::ResearchState,
 }
 
 impl HashState for GameWorld {
@@ -105,6 +108,8 @@ impl HashState for GameWorld {
         self.census.hash_state(h);
         h.section("economy");
         self.econ.hash_state(h);
+        h.section("research");
+        self.research.hash_state(h);
     }
 }
 
@@ -119,6 +124,7 @@ impl GameWorld {
             countries: Table::from_vec(countries.into_iter().map(CountryState::from_def).collect()),
             census: Vec::new(),
             econ: crate::econ::Economy::default(),
+            research: crate::research::ResearchState::default(),
         }
     }
 
@@ -141,6 +147,9 @@ impl GameWorld {
 pub enum GameCommand {
     /// Takes control of a country; an unknown tag is a no-op.
     ChoosePlayer { tag: String },
+    /// Points the country's research at a technology (index in the tree), or back to choosing
+    /// by itself with `None`. Unknown tags and indices are no-ops.
+    SetResearch { tag: String, tech: Option<u16> },
 }
 
 impl Command<GameWorld> for GameCommand {
@@ -149,6 +158,16 @@ impl Command<GameWorld> for GameCommand {
             GameCommand::ChoosePlayer { tag } => {
                 if let Some(id) = world.country_by_tag(tag) {
                     world.player = Some(id);
+                }
+            }
+            GameCommand::SetResearch { tag, tech } => {
+                let Some(ci) = world.countries.iter().position(|(_, c)| c.tag == *tag) else {
+                    return;
+                };
+                let r = &mut world.research;
+                let known = r.stage.get(ci).map_or(0, Vec::len);
+                if ci < r.focus.len() && tech.is_none_or(|t| usize::from(t) < known) {
+                    r.focus[ci] = *tech;
                 }
             }
         }
