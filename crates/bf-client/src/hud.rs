@@ -74,6 +74,20 @@ impl PanelId {
         }
     }
 
+    /// The size the panel folds to when the screen has no room for it whole, in the order
+    /// panels fold: the overview into a button, the country figures into their banner (the
+    /// country panel the banner opens shows the same figures).
+    pub fn folded(self) -> Option<Vec2> {
+        match self {
+            PanelId::Outliner => Some(FOLDED_BUTTON),
+            PanelId::Country => Some(FOLDED_BANNER),
+            _ => None,
+        }
+    }
+
+    /// Panels that fold for room, first to last.
+    pub const FOLDING: [PanelId; 2] = [PanelId::Outliner, PanelId::Country];
+
     /// The panel may grow shorter to make room, down to this height.
     pub fn min_height(self) -> Option<f32> {
         match self {
@@ -285,6 +299,10 @@ pub struct Layout {
     /// The map mode picker kept open as a panel; folded into a button otherwise.
     #[serde(default)]
     pub map_modes_open: bool,
+    /// On a screen wider than 16:9, the HUD keeps to a 16:9 band in the middle, so nothing sits
+    /// at the far ends of an ultrawide screen.
+    #[serde(default)]
+    pub center_band: bool,
 }
 
 impl Default for Layout {
@@ -345,6 +363,7 @@ impl Layout {
             tiles,
             overview: None,
             map_modes_open: false,
+            center_band: false,
         }
     }
 
@@ -482,7 +501,14 @@ pub fn export_file(config: &Path) -> PathBuf {
 pub struct Resolved {
     pub rects: BTreeMap<PanelId, Rect>,
     pub free: Option<Rect>,
+    /// Panels folded for want of room.
+    pub folded: std::collections::BTreeSet<PanelId>,
 }
+
+/// The overview folded: a button.
+pub const FOLDED_BUTTON: Vec2 = vec2(200.0, 40.0);
+/// The country figures folded: the banner with its medallion.
+pub const FOLDED_BANNER: Vec2 = vec2(84.0, 94.0);
 
 impl Resolved {
     pub fn rect(&self, p: PanelId) -> Option<Rect> {
@@ -558,23 +584,74 @@ fn overlaps(a: Rect, b: Rect) -> bool {
 /// anchor, kept inside the screen, then at the nearest place off the free area and off the
 /// panels placed before it; a panel that may shrink can give up height instead. One with no
 /// clear place near stays where it is.
+/// The part of the screen the HUD takes: all of it, or the 16:9 band in its middle.
+pub fn hud_area(layout: &Layout, screen: Rect) -> Rect {
+    let band = screen.height() * 16.0 / 9.0;
+    if layout.center_band && screen.width() > band + 1.0 {
+        Rect::from_center_size(screen.center(), egui::vec2(band, screen.height()))
+    } else {
+        screen
+    }
+}
+
 pub fn resolve(layout: &Layout, screen: Rect, sizes: &BTreeMap<PanelId, Vec2>) -> Resolved {
+    let screen = hud_area(layout, screen);
     let free = layout.free.map(|a| clamp_into(a.rect(screen), screen));
+    // Whole first; when a panel finds no clear place, fold panels one by one and try again.
+    let mut folded = std::collections::BTreeSet::new();
+    loop {
+        let mut sizes_now = sizes.clone();
+        for p in &folded {
+            if let (Some(s), Some(f)) = (sizes_now.get_mut(p), p.folded()) {
+                *s = f;
+            }
+        }
+        let (rects, clear) = place_all(layout, screen, free, &sizes_now);
+        let next = PanelId::FOLDING
+            .into_iter()
+            .find(|p| !folded.contains(p) && sizes.contains_key(p) && layout.place(*p).visible);
+        match (clear, next) {
+            (false, Some(p)) => {
+                folded.insert(p);
+            }
+            _ => {
+                return Resolved {
+                    rects,
+                    free,
+                    folded,
+                };
+            }
+        }
+    }
+}
+
+/// Places every visible panel; false when one of them found no clear place.
+fn place_all(
+    layout: &Layout,
+    screen: Rect,
+    free: Option<Rect>,
+    sizes: &BTreeMap<PanelId, Vec2>,
+) -> (BTreeMap<PanelId, Rect>, bool) {
     let mut rects: BTreeMap<PanelId, Rect> = BTreeMap::new();
+    let mut clear = true;
     for p in PanelId::ALL {
         let place = layout.place(p);
         let Some(size) = sizes.get(&p) else { continue };
         if !place.visible {
             continue;
         }
-        let mut r = clamp_into(place.rect(screen, *size), screen);
+        let r = clamp_into(place.rect(screen, *size), screen);
         let blocks: Vec<Rect> = free.into_iter().chain(rects.values().copied()).collect();
-        if let Some(c) = clear_place(r, &blocks, screen, p.min_height()) {
-            r = c;
-        }
+        let r = match clear_place(r, &blocks, screen, p.min_height()) {
+            Some(c) => c,
+            None => {
+                clear = false;
+                r
+            }
+        };
         rects.insert(p, r);
     }
-    Resolved { rects, free }
+    (rects, clear)
 }
 
 /// What a resolution depends on; the rectangles are worked out again only when it changes.
@@ -659,6 +736,14 @@ pub fn reset(hud: &mut Hud) {
 
 pub fn set_free_area(hud: &mut Hud, area: Option<Area>) {
     hud.layout.free = area;
+    hud.layout.preset = Preset::Custom;
+    hud.changed();
+}
+
+/// Keeps the HUD to a 16:9 band in the middle of a wide screen, or lets it use the whole
+/// screen (a command calls this).
+pub fn toggle_center_band(hud: &mut Hud) {
+    hud.layout.center_band = !hud.layout.center_band;
     hud.layout.preset = Preset::Custom;
     hud.changed();
 }
@@ -801,5 +886,31 @@ mod tests {
         assert_eq!(*hud.resolved(s, &sizes()), a);
         toggle_panel(&mut hud, PanelId::MapModes);
         assert!(hud.resolved(s, &sizes()).rect(PanelId::MapModes).is_none());
+    }
+
+    #[test]
+    fn panels_fold_rather_than_cover_each_other() {
+        // 960 × 540 with the streaming corner: no room for every panel whole.
+        let screen = screen(960.0, 540.0);
+        let mut sizes = sizes_on(960.0);
+        sizes.insert(PanelId::CountryPanel, vec2(380.0, 444.0));
+        sizes.insert(PanelId::MapModes, vec2(200.0, 40.0));
+        let r = resolve(&Layout::preset(Preset::Streaming), screen, &sizes);
+        assert!(r.folded.contains(&PanelId::Outliner), "{:?}", r.folded);
+        let rects: Vec<_> = r.rects.iter().collect();
+        for (i, (p, a)) in rects.iter().enumerate() {
+            assert!(screen.contains_rect(**a), "{p:?} {a:?}");
+            assert!(!overlaps(**a, r.free.unwrap()), "{p:?} in the free area");
+            for (q, b) in &rects[i + 1..] {
+                assert!(!overlaps(**a, **b), "{p:?} {a:?} over {q:?} {b:?}");
+            }
+        }
+        // With room, nothing folds.
+        let r = resolve(
+            &Layout::default(),
+            self::screen(1600.0, 900.0),
+            &sizes_on(1600.0),
+        );
+        assert!(r.folded.is_empty());
     }
 }

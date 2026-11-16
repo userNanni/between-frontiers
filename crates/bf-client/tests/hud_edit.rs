@@ -171,7 +171,7 @@ fn a_dragged_panel_snaps_to_the_edge_and_keeps_its_place() {
 fn every_preset_fits_both_screens() {
     for preset in hud::Preset::CHOICES {
         let layout = Layout::preset(preset);
-        for (w, h) in [(1600.0, 900.0), (1280.0, 720.0)] {
+        for (w, h) in [(1600.0, 900.0), (1280.0, 720.0), (960.0, 540.0)] {
             let screen = Rect::from_min_size(Pos2::ZERO, vec2(w, h));
             let r = hud::resolve(&layout, screen, &sizes(w, h));
             // The country figures keep their corner in every preset.

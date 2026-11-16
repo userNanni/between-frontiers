@@ -55,6 +55,9 @@ pub struct BarResponse {
 pub struct Places {
     pub corner: Option<Rect>,
     pub time: Option<Rect>,
+    /// The figures folded for want of room: the banner alone (it opens the country panel,
+    /// which shows the same figures).
+    pub banner_only: bool,
 }
 
 /// Size of the country figures with the banner.
@@ -101,7 +104,20 @@ pub fn show(
         time_panel(ui, screen, r.min, i18n, extra.snap, &mut out);
     }
     if let (Some(world), Some(p), Some(r)) = (world, player, places.corner) {
-        corner_panel(ui, r.min, i18n, world, flags, p, &extra, &mut out);
+        if places.banner_only {
+            super::mark_frame(ui, r, "country-figures");
+            banner_ui(
+                ui,
+                Rect::from_min_size(r.min, BANNER),
+                i18n,
+                world,
+                flags,
+                p,
+                &mut out,
+            );
+        } else {
+            corner_panel(ui, r.min, i18n, world, flags, p, &extra, &mut out);
+        }
     }
     out
 }
@@ -745,6 +761,12 @@ fn corner_panel(
 
     // Panel behind the figures; it also blocks clicks from reaching the map.
     bf_ui_kit::paint_overlay(ui, panel);
+    // The banner is part of it.
+    super::mark_frame(
+        ui,
+        panel.union(Rect::from_min_size(origin, BANNER)),
+        "country-figures",
+    );
     ui.interact(
         panel,
         ui.make_persistent_id("hud-panel"),
@@ -1045,7 +1067,7 @@ fn time_panel(
     let small = TIME_SMALL;
     let date_w = date_width(screen);
     let panel = Rect::from_min_size(origin, time_size(screen));
-    bf_ui_kit::paint_overlay(ui, panel);
+    super::frame(ui, panel, "time");
     ui.interact(
         panel,
         ui.make_persistent_id("hud-time"),

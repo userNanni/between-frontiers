@@ -66,7 +66,7 @@ pub fn show(shared: &mut Shared, ui: &mut Ui, rect: Rect) {
     };
     let size = Vec2::new(1320.0, 840.0).min(rect.size() - Vec2::splat(24.0));
     let panel = centered(rect, size);
-    bf_ui_kit::paint_overlay(ui, panel);
+    super::frame(ui, panel, "keys-editor");
     ui.interact(
         panel,
         ui.make_persistent_id("keys-editor"),
@@ -208,7 +208,8 @@ fn name(shared: &Shared, cmd: &str) -> String {
 
 fn header(shared: &mut Shared, ui: &mut Ui, st: &mut State) -> bool {
     let mut close = false;
-    ui.horizontal(|ui| {
+    // Wraps on a narrow screen rather than leaving the window.
+    ui.horizontal_wrapped(|ui| {
         bf_ui_kit::title(ui, &shared.tr("keys-title"));
         ui.add_space(space::LG);
         let mut profile = shared.keys.config().profile.clone();
@@ -262,7 +263,7 @@ fn header(shared: &mut Shared, ui: &mut Ui, st: &mut State) -> bool {
 
 /// Modifier layers, the leader key and the legend.
 fn toolbar(shared: &mut Shared, ui: &mut Ui, st: &mut State) {
-    ui.horizontal(|ui| {
+    ui.horizontal_wrapped(|ui| {
         bf_ui_kit::caption(ui, &shared.tr("keys-layer"));
         for (label, on) in [
             ("Ctrl", &mut st.layer.ctrl),
@@ -912,7 +913,8 @@ fn files(shared: &mut Shared, ui: &mut Ui, st: &mut State) {
     let w = ui.available_width();
     bf_ui_kit::text_field(ui, name, w);
     let path = folder.join(name.as_str());
-    ui.horizontal(|ui| {
+    // A long folder (Windows' profile paths) wraps the button onto the next line.
+    ui.horizontal_wrapped(|ui| {
         bf_ui_kit::small(
             ui,
             &shared.i18n.tr_args(

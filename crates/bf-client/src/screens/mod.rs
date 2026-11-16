@@ -124,7 +124,7 @@ pub fn window_frame(
 ) -> (Rect, bool) {
     let rect = place.rect(default, screen, min);
     crate::keys::cover(ui, rect);
-    bf_ui_kit::paint_overlay(ui, rect);
+    frame(ui, rect, key);
     ui.interact(
         rect,
         ui.make_persistent_id((key, "block")),
@@ -180,4 +180,22 @@ pub fn window_grip(
         place.size = Some([size.x, size.y]);
     }
     r.drag_stopped()
+}
+
+/// Paints an overlay panel and names it for accessibility as a window, so that checks (and
+/// screen readers) know which elements it holds. `name` is stable, not shown.
+pub fn frame(ui: &mut Ui, rect: Rect, name: &str) {
+    bf_ui_kit::paint_overlay(ui, rect);
+    mark_frame(ui, rect, name);
+}
+
+/// Names `rect` as a window for accessibility, for frames painted another way.
+pub fn mark_frame(ui: &mut Ui, rect: Rect, name: &str) {
+    let r = ui.interact(
+        rect,
+        ui.make_persistent_id(("bf-frame", name)),
+        egui::Sense::hover(),
+    );
+    let name = name.to_owned();
+    r.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Window, true, name.clone()));
 }

@@ -1487,3 +1487,120 @@ fn lens_picker_fits_everywhere() {
     }
     let _ = std::fs::remove_dir_all(&user);
 }
+
+fn harness_scaled(
+    user: PathBuf,
+    locale: &str,
+    size: egui::Vec2,
+    scale: &str,
+) -> Harness<'static, App> {
+    std::fs::create_dir_all(&user).unwrap();
+    std::fs::write(
+        user.join("settings.ron"),
+        format!("(locale: \"{locale}\", {scale}, map_labels: true, autosave: Off)"),
+    )
+    .unwrap();
+    let paths = Paths::new(&root(), user.clone(), user);
+    let mut h = Harness::builder()
+        .with_size(size)
+        .wgpu()
+        .build_eframe(move |cc| App::new(cc, paths));
+    h.set_render_cursor(false);
+    h
+}
+
+/// The interface scale: the settings, 4K at 100 %, at 200 % and as a stream, the Steam Deck's
+/// 1280 × 800, an ultrawide 3440 × 1440 with the HUD in the middle band, and the floor of
+/// 960 × 540 with panels folded.
+#[test]
+#[ignore = "needs a GPU (or software Vulkan) and the generated map; run with --ignored"]
+fn interface_scale() {
+    let user = std::env::temp_dir().join(format!("bf-shots-scale-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&user);
+    let session = advanced_session(laplace_schelling::calendar::Date::new(1930, 3, 1));
+    let bra = write_campaign(&user, &session, "Brasil 1930", "BRA", &["works-large"]);
+    let open = |h: &mut Harness<'_, App>| {
+        let ctx = h.ctx.clone();
+        h.state_mut().apply(Transition::Game(bra.clone()), &ctx);
+        h.run_steps(6);
+    };
+    let report = |h: &Harness<'_, App>, name: &str| {
+        println!(
+            "{name}: {:.0}% logical {:?}",
+            h.ctx.pixels_per_point() * 100.0,
+            h.ctx.content_rect().size()
+        );
+    };
+
+    // The settings, with the trial bar after a change.
+    let mut s = harness_scaled(
+        user.join("s"),
+        "pt-BR",
+        egui::vec2(1600.0, 900.0),
+        "ui_scale: 0",
+    );
+    s.run_steps(4);
+    s.get_by_label("Configurações").click();
+    s.run_steps(4);
+    shot(&mut s, "60-escala-configuracoes");
+    s.get_by_label("Fixa").click();
+    s.run_steps(4);
+    // The automatic scale is 100 % here: one step up, so the bar that asks to keep it shows.
+    s.get_all(egui_kittest::kittest::by().label("+"))
+        .next()
+        .expect("scale stepper")
+        .click();
+    s.run_steps(6);
+    shot(&mut s, "61-escala-fixa-reverter");
+    drop(s);
+
+    for (dir, size, scale, name) in [
+        ("4k100", (3840.0, 2160.0), "ui_scale: 100", "62-4k-100"),
+        ("4k200", (3840.0, 2160.0), "ui_scale: 200", "63-4k-200"),
+        (
+            "4kstream",
+            (3840.0, 2160.0),
+            "ui_scale: 0, ui_stream: Some(Hd)",
+            "64-4k-transmissao",
+        ),
+        ("deck", (1280.0, 800.0), "ui_scale: 0", "65-1280x800-auto"),
+        (
+            "deck100",
+            (1280.0, 800.0),
+            "ui_scale: 100",
+            "66-1280x800-100",
+        ),
+        ("uw", (3440.0, 1440.0), "ui_scale: 0", "67-3440x1440-auto"),
+        (
+            "floor",
+            (960.0, 540.0),
+            "ui_scale: 100",
+            "69-960x540-transmissao-recolhido",
+        ),
+    ] {
+        let mut h = harness_scaled(user.join(dir), "pt-BR", egui::vec2(size.0, size.1), scale);
+        if dir == "floor" {
+            let layout = bf_client::hud::Layout::preset(bf_client::hud::Preset::Streaming);
+            layout.save(&bf_client::hud::file(&user.join(dir))).unwrap();
+            h = harness_scaled(user.join(dir), "pt-BR", egui::vec2(size.0, size.1), scale);
+        }
+        open(&mut h);
+        h.key_press(egui::Key::C);
+        h.run_steps(4);
+        report(&h, name);
+        shot(&mut h, name);
+        if dir == "uw" {
+            // The HUD in the middle 16:9 band.
+            h.state_mut().shared.hud.layout.center_band = true;
+            h.state_mut().shared.hud.changed();
+            h.run_steps(4);
+            shot(&mut h, "68-3440x1440-faixa-central");
+        }
+        if dir == "floor" {
+            h.get_by_label("Acompanhamento").click();
+            h.run_steps(4);
+            shot(&mut h, "69b-960x540-acompanhamento-aberto");
+        }
+    }
+    let _ = std::fs::remove_dir_all(&user);
+}

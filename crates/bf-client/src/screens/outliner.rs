@@ -83,7 +83,7 @@ pub fn show(ui: &mut Ui, rect: Rect, src: Sources<'_>, fold: &mut Fold) -> Respo
     let room = rect.height().max(HEADER_H + 8.0);
     let height = size(ui.ctx(), fold).y.min(room);
     let panel = Rect::from_min_size(rect.min, Vec2::new(WIDTH, height));
-    bf_ui_kit::paint_overlay(ui, panel);
+    super::frame(ui, panel, "overview");
     ui.interact(panel, id.with("block"), Sense::click_and_drag());
     let inner = panel.shrink2(Vec2::new(space::MD, space::SM));
     let mut child = ui.new_child(egui::UiBuilder::new().max_rect(inner));
@@ -572,4 +572,54 @@ fn pinned(ui: &mut Ui, src: &Sources<'_>, fold: &mut Fold, out: &mut Response) {
             }
         }
     }
+}
+
+/// The overview folded for want of room: a button with its title. True when clicked.
+pub fn folded_button(ui: &mut Ui, rect: Rect, i18n: &I18n, open: bool) -> bool {
+    let title = i18n.tr("outliner-title");
+    super::frame(ui, rect, "overview");
+    let resp = ui.interact(
+        rect,
+        ui.make_persistent_id("overview-folded"),
+        Sense::click(),
+    );
+    resp.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, title.clone()));
+    let p = ui.painter();
+    if resp.hovered() || open {
+        p.rect_filled(rect.shrink(2.0), radius::MD, color::SURFACE_HOVER);
+    }
+    // A fold mark, then the title.
+    let c = rect.left_center() + Vec2::new(18.0, 0.0);
+    let tri = if open {
+        vec![
+            c + Vec2::new(-4.0, -2.0),
+            c + Vec2::new(4.0, -2.0),
+            c + Vec2::new(0.0, 3.0),
+        ]
+    } else {
+        vec![
+            c + Vec2::new(-2.0, -4.0),
+            c + Vec2::new(3.0, 0.0),
+            c + Vec2::new(-2.0, 4.0),
+        ]
+    };
+    p.add(egui::Shape::convex_polygon(
+        tri,
+        color::ACCENT,
+        egui::Stroke::NONE,
+    ));
+    let (g, _) = one_line(
+        p,
+        &title,
+        sans_semibold(size::BODY),
+        color::TEXT,
+        rect.width() - 44.0,
+    );
+    p.galley(
+        Pos2::new(rect.left() + 32.0, rect.center().y - g.size().y / 2.0),
+        g,
+        color::TEXT,
+    );
+    resp.on_hover_cursor(egui::CursorIcon::PointingHand)
+        .clicked()
 }

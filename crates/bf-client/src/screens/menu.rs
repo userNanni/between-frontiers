@@ -16,7 +16,11 @@ pub fn show(shared: &mut Shared, ui: &mut Ui, rect: Rect) -> Option<Transition> 
     let mut out = None;
     let left = rect.left() + (rect.width() * 0.08).max(48.0);
     let column = Rect::from_min_size(
-        egui::pos2(left, rect.top() + rect.height() * 0.22),
+        // Lower on a tall screen; near the top on a short one, so every entry shows.
+        egui::pos2(
+            left,
+            rect.top() + rect.height() * if rect.height() >= 720.0 { 0.22 } else { 0.06 },
+        ),
         egui::vec2(COLUMN + 400.0, rect.height() * 0.7),
     );
     let last = shared.saves.first().cloned();

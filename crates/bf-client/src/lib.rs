@@ -15,6 +15,7 @@ pub mod screens;
 pub mod settings;
 pub mod sim;
 pub mod text;
+pub mod ui_scale;
 pub mod world;
 
 pub use app::App;

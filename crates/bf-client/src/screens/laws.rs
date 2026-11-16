@@ -61,8 +61,11 @@ pub fn show(ui: &mut Ui, cx: &mut TabContext<'_>) {
     // A little short of the window, so its own scroll bar never shows and steals width.
     let height = (ui.available_height() - space::SM).max(360.0);
     let width = ui.available_width();
-    // Four gaps around the two dividers, and the dividers.
-    let laws_w = (width - GROUPS_W - STANCES_W - 4.0 * space::LG - 2.0).max(260.0);
+    // Four gaps around the two dividers, and the dividers. On a narrow window the stances give
+    // up width first, then the laws, down to what still reads.
+    let room = width - GROUPS_W - 4.0 * space::LG - 2.0;
+    let stances_w = (room - 260.0).clamp(240.0, STANCES_W);
+    let laws_w = (room - stances_w).max(240.0);
     ui.spacing_mut().item_spacing.x = space::LG;
     ui.horizontal_top(|ui| {
         column(ui, "laws-groups", GROUPS_W, height, |ui| {
@@ -73,7 +76,7 @@ pub fn show(ui: &mut Ui, cx: &mut TabContext<'_>) {
             laws(ui, i18n, &view, picked.group, law, &mut picked);
         });
         divider_v(ui, height);
-        column(ui, "laws-stances", STANCES_W, height, |ui| {
+        column(ui, "laws-stances", stances_w, height, |ui| {
             if let Some(command) = stances(ui, i18n, &view, law) {
                 cx.commands.push(command);
                 picked.sent = Some((law, cx.snap.tick));
