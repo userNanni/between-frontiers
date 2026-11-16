@@ -38,7 +38,8 @@ pub struct DoctrineInputs {
     pub motorization: Fixed,
     /// Experience of war in the last years, decaying (the defeated learn the most).
     pub experience: Fixed,
-    /// Political control over the officer corps: commissars, purges, orders from the capital.
+    /// The culture of order: obedience over initiative, zero defects, purges and political
+    /// control of the officer corps, orders from the capital.
     pub central_control: Fixed,
 }
 
@@ -225,11 +226,11 @@ pub fn breakthrough(rules: &Rules, field: &LandField, i: &BreakthroughInputs) ->
     let ratio = defence
         .is_positive()
         .then(|| i.attacker_power.max(Fixed::ZERO) / defence);
-    let enough_without_reserve = i
-        .defender_power
-        .is_positive()
-        .then(|| i.attacker_power / i.defender_power >= d.breakthrough_ratio)
-        .unwrap_or(i.attacker_power.is_positive());
+    let enough_without_reserve = if i.defender_power.is_positive() {
+        i.attacker_power / i.defender_power >= d.breakthrough_ratio
+    } else {
+        i.attacker_power.is_positive()
+    };
     let enough = ratio.map_or(i.attacker_power.is_positive(), |r| {
         r >= d.breakthrough_ratio
     });

@@ -165,13 +165,17 @@
     invalid_share: 150,
 
     // Generations of war (docs/war.pt-BR.md, "Doutrina"). Readiness points at a full share of
-    // each cause; an army moves to the third generation at 650 and falls back below 450.
+    // each cause; an army moves to the third generation at 650 and falls back below 450. The
+    // weights follow the sources: ideas and the officer corps first (Lind et al. 1989, p. 23;
+    // Lind 1985), the tank as what made it operational (Lind 1989, p. 23); radio and motor
+    // vehicles are means, not causes, and weigh less. The culture of order (obedience over
+    // initiative, zero defects, purges) takes points away (Lind 2004; Lind 1985, PT73).
     doctrine: (
-        officer_education: 300,
+        officer_education: 350,
         training: 200,
-        radio: 200,
-        motorization: 200,
-        experience: 100,
+        radio: 100,
+        motorization: 150,
+        experience: 200,
         central_control: 400,
         up: 650,
         down: 450,

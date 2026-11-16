@@ -144,6 +144,98 @@ e estável: mesma frente, mesmo comando e mesmos números dão a mesma repartiç
 a outra (teste). A tela mostra, por segmento, a extensão, o poder inimigo, se puxa o objetivo, o
 peso e os elementos recebidos.
 
+### Doutrina: as gerações da guerra
+
+Não confundir com a geração de um tipo de unidade (o equipamento de cada época, acima). Aqui,
+geração é a doutrina do exército inteiro.
+
+Decisão 1. O dono pediu a leitura de William Lind sobre as gerações da guerra moderna. Para ele,
+a 2ª e a 3ª são as duas principais entre países: a 2ª, marcada pela conquista de território e
+pelo avanço e recuo; a 3ª, pela ação independente das frações, com foco nos centros de gravidade.
+Foram lidos:
+- Lind, Nightengale, Schmitt, Sutton e Wilson, "The Changing Face of War: Into the Fourth
+  Generation" (*Marine Corps Gazette*, out. 1989, pp. 22–26), inteiro;
+- Lind, "Understanding Fourth Generation War" (2004), inteiro;
+- Echevarria, *Fourth Generation War and Other Myths* (Strategic Studies Institute, 2005),
+  inteiro;
+- Lind, *Maneuver Warfare Handbook* (1985), só em parte: a prévia da editora e páginas da prévia
+  do Google Books. Por isso, nas citações dele, "PT" é o código de página do Google.
+
+O que as fontes dizem e o que o desenho tira:
+
+- **2ª geração.** Resposta ao poder de fogo. As táticas de fogo e movimento são lineares, a defesa
+  tenta parar toda penetração e o fogo indireto concentrado substitui a massa de homens: "a
+  artilharia conquista, a infantaria ocupa" (Lind 1989, p. 23). Mais tarde Lind a descreve como
+  doutrina francesa da 1ª Guerra em diante. Nela, o fogo é sincronizado pelo centro, numa
+  "batalha conduzida", e prevalece a cultura da ordem: obediência acima da iniciativa (Lind 2004).
+  **No jogo:** a frente se reparte pela extensão, pela ameaça e pelo objetivo (`allocate`) e anda
+  segmento a segmento pela razão de poder (`land_step`). Ganha-se por atrito e território.
+- **3ª geração.** Também é resposta ao poder de fogo, mas movida "sobretudo" por ideias: a
+  Alemanha sabia que perderia uma guerra de material (Lind 1989, p. 23). O ataque se infiltra para
+  contornar e fazer ruir as forças inimigas, em vez de cerrar e destruir; a defesa em profundidade
+  convida a penetração para contra-atacar. Os conceitos estavam prontos no fim de 1918, e o tanque
+  levou isso ao nível operacional (p. 23). O ataque busca a retaguarda e faz o inimigo ruir "de
+  trás para a frente". A ordem diz o resultado, nunca o método (Auftragstaktik), e a iniciativa
+  vale mais que a obediência (Lind 2004). O esforço principal (Schwerpunkt) é uma unidade, não um
+  ponto no mapa, e fica onde o comandante acha que pode decidir. As "superfícies e brechas"
+  orientam onde pô-lo: a unidade que acha a brecha passa por ela e puxa as outras (Lind 1985,
+  PT49 e trechos da busca). **No jogo:** o jogador escolhe o centro de gravidade do inimigo
+  (capital, região industrial, nó de transporte, o grosso do exército). A frente põe
+  `focus_share` dos seus elementos livres no **segmento de foco**, que é o de menor poder inimigo
+  por quilômetro entre os que levam ao objetivo, e só cobre os demais pela extensão
+  (`allocate_front`). Onde a razão de poder, com a reserva do defensor somada, passa
+  `breakthrough_ratio`, o segmento rompe (`breakthrough`): a exploração anda
+  `exploitation_speed` vezes a velocidade de base, e os segmentos vizinhos ficam **contornados**,
+  com o trecho de suprimento cortado (`interdiction` = 1, logo o termo de suprimento cai ao piso).
+  É o "contornar e fazer ruir" com a conta aberta.
+- **Como um exército passa de uma para a outra, e por que alguns não passam.** Para Lind a causa
+  são ideias e cultura, não a técnica. A 3ª exigiu romper com a cultura da ordem: jogos de guerra
+  em que o jovem oficial só resolvia o problema desobedecendo (Lind 2004), educação, jogos de
+  guerra livres e tolerância ao erro (Lind 1985, PT61–PT69). Os obstáculos são a "burocracia, a
+  política de promoção e o pensamento por fórmula" (PT73); com mentalidade de defeito zero, não há
+  ordem por missão (PT25). O rádio aparece só como meio de comando (PT45), e a confiança pesa mais
+  que o equipamento (PT37). **No jogo:** `readiness` soma termos nomeados:
+  - educação dos oficiais (o peso maior);
+  - treino;
+  - experiência de guerra (a Alemanha de 1918 aprendeu derrotada pelo material);
+  - motorização e rádio, que pesam menos porque, nas fontes, são meios e não causas.
+
+  A **cultura da ordem** desconta: obediência acima da iniciativa, defeito zero, expurgo e
+  controle político do corpo de oficiais. Com histerese: sobe a 650, cai abaixo de 450
+  (`next_generation`). Um exército com tudo de técnica e expurgo no corpo de oficiais não chega à
+  3ª.
+- **Contra o determinismo da sequência.** Echevarria critica sobretudo a 4ª geração, mas também a
+  ideia de que as gerações se substituem. As formas coexistem: o poder de fogo pesou tanto quanto
+  a manobra na 2ª Guerra, na Coreia e no Vietnã. A Blitzkrieg não era doutrina oficial, e sim a
+  continuação da guerra de movimento alemã dos anos 1890; o sucesso veio de planejamento, treino e
+  liderança descentralizada (pp. 9–10, 14–15). Ele não contesta a descentralização como qualidade
+  real. **No jogo:** a geração é traço institucional reversível, não degrau da árvore de
+  tecnologia. O poder de fogo continua no termo de equipamento das duas gerações, e a 3ª não ganha
+  bônus de combate, só outra regra de repartição e de ruptura.
+- **Como uma enfrenta a outra.** A 2ª, que tenta parar toda penetração, é exatamente o que a
+  infiltração explora (Lind 1989, p. 23). A França de 1940, que exigia certeza para decidir, ficou
+  paralisada pelas sondagens alemãs (Lind 1985, PT17). Mas profundidade e reserva derrotam o
+  atacante que só procura a brecha: a defesa elástica contra-ataca antes que ele se consolide
+  (PT21; Lind 2004), e a brecha pode ser armadilha, o "saco de fogo" soviético. **No jogo:** a
+  2ª reparte pelo poder inimigo da semana anterior e reage com uma semana de atraso à
+  concentração. A reserva do defensor entra na razão de ruptura, e frente contínua em terreno
+  preparado (terreno e fortificação já estão no poder do defensor) com reserva não rompe.
+- **Regras nossas, sem fonte nas leituras.** Nenhum texto lido trata o combustível como freio da
+  Blitzkrieg. Mesmo assim, a degradação da 3ª para a 2ª sem rádio ou sem combustível
+  (`effective_generation`, abaixo de `radio_min` ou `fuel_min`) é regra do desenho: sem
+  comunicação a ação por intenção se desfaz, e sem combustível não há exploração.
+- **4ª geração**, que o dono não pôs entre as principais: fica onde estava, no tipo `irregular`
+  e no movimento com território.
+
+Testes (`war::doctrine`):
+- a prontidão soma as causas, e a cultura da ordem a segura;
+- a 3ª sem rádio ou sem combustível luta como a 2ª e não rompe;
+- uma reserva atrás de frente preparada impede a ruptura;
+- infantaria a pé não explora;
+- a 2ª com o mesmo poder só empurra a linha;
+- a 3ª concentra na brecha rumo ao objetivo, e a 2ª, onde está o inimigo;
+- a repartição fica igual de uma semana para a outra.
+
 ### Passo de combate em terra
 
 `war::land_step` resolve uma semana de combate num segmento. Para cada lado:
@@ -398,17 +490,20 @@ sistemas; nada copiado.
 | Bases militares e acesso | ações diplomáticas | tratado de base e de acesso (fase 4) |
 | Corrida espacial | entrada de diário e decisões | satélite como tipo estratégico; prestígio depois |
 
-## Decisões para o dono
+## Decisões do dono
 
-| # | Decisão | Recomendação | Como se testa | Quanto custa manter |
-|---|---|---|---|---|
-| 1 | Controle tático | **Objetivo por frente**, sendo a frente toda a fronteira contínua com um inimigo. O jogador define objetivo, postura (atacar, segurar, recuar), formações e prioridade de suprimento; `allocate` reparte as formações entre os segmentos e o passo semanal anda sozinho. A IA usa os mesmos comandos | guerra de teste com os mesmos comandos dos dois lados dá resultado simétrico; a repartição fica igual de uma semana para a outra quando nada muda | baixo: um comando por frente, sem caminho de unidade nem comando por segmento |
-| 2 | Granularidade | **Elemento como conta, divisão como formação** (cerca de 10 elementos), frota e ala no mar e no ar | `forces.ron` de 1925 dá cerca de 700 divisões no mundo; o passo semanal por frente cabe no orçamento do tick | baixo: formação é só agrupamento |
-| 3 | Mar com zonas próprias | **Sim, zonas grossas** (cerca de 50, das bacias e estreitos), com portos ligando estados a zonas | teste de conexidade: todo porto alcança todo porto por zonas; rota de comércio e de suprimento passam pelas mesmas zonas | médio: um passo novo no gerador do mapa |
-| 4 | Arma nuclear na fase 5 | **Estoque e dissuasão na fase 5; uso numa fatia própria no fim dela**, com consequência: devastação, mortos por idade, precipitação nos vizinhos, hostilidade de todos | teste de 100 anos: com dissuasão dos dois lados, nenhuma guerra direta entre potências nucleares sem crise extrema | médio: o uso pede tela e regra de resposta |
-| 5 | Tipos e gerações | **33 tipos com gerações**, primeira fatia com os 22 de 1925–1945 | contagem: nunca mais de 20 tipos em uso numa década | baixo: geração nova é linha de dado |
-| 6 | Passo e segmento | **Uma semana por passo, rodando por segmento** (par de estados vizinhos em guerra), alinhada ao tick; o comando fica na frente (decisão 1) | custo por sistema no `bf-bench`: a guerra mundial de 1939 com todos os segmentos abaixo de 15 % do tick | médio: segmentos ativos por semana |
-| 7 | Perdas na demografia | **Mortos e inválidos por idade na pirâmide**, civis também, quando a demografia nova (PR #54) entrar | teste: 1914–18 contrafactual na pirâmide francesa mostra o buraco da geração | baixo: uma escrita por semana de guerra |
+Decididas pelo dono em 2026-11-16. A 2, a 3, a 5 e a 6 seguiram a recomendação. A 1, a 4 e a 7
+vieram com leitura, que mudou o desenho.
+
+| # | Decisão | O que vale | Fonte | Como se testa | Quanto custa manter |
+|---|---|---|---|---|---|
+| 1 | Controle tático | **Objetivo por frente**, sendo a frente toda a fronteira contínua com um inimigo; o segmento só luta. A **geração do exército** (2ª ou 3ª) é estado dele, com causa, e muda como a frente se reparte e anda (seção "Doutrina") | Lind et al. 1989; Lind 1985; Lind 2004; Echevarria 2005 | repartição estável de uma semana para a outra; a 3ª concentra no ponto fraco rumo ao centro de gravidade; sem rádio ou sem combustível degrada para a 2ª; reserva atrás de frente preparada impede a ruptura | baixo: um comando por frente, regra de repartição única |
+| 2 | Granularidade | **Elemento como conta, divisão como formação** (cerca de 10 elementos), frota e ala no mar e no ar | recomendação | `forces.ron` de 1925 dá cerca de 580 divisões no mundo; o passo semanal cabe no orçamento do tick | baixo: formação é só agrupamento |
+| 3 | Mar com zonas próprias | **Zonas grossas** (cerca de 50, das bacias e estreitos), com portos ligando estados a zonas | recomendação | todo porto alcança todo porto por zonas; comércio e suprimento passam pelas mesmas zonas | médio: um passo novo no gerador do mapa |
+| 4 | Arma nuclear | **Estoque e dissuasão na fase 5, uso numa fatia própria no fim dela.** A dissuasão é o segundo golpe medido, obstáculo a obstáculo, e entra na escada de crise (que degrau cada lado pode subir), não no combate (seção "Arma nuclear") | Wohlstetter 1958; Brodie 1946 e 1959; Schelling (RAND, 1958–59); Kahn 1960 e a escada de 1965 via Beal 1975; tratados do Departamento de Estado | segundo golpe com e sem alerta; defesa antimíssil quebra o segundo golpe do outro; simetria | médio: o uso pede tela e regra de resposta |
+| 5 | Tipos e gerações | **33 tipos com gerações**, primeira fatia com os 22 de 1925–1945 | recomendação | nunca mais de 20 tipos em uso numa década | baixo: geração nova é linha de dado |
+| 6 | Passo e segmento | **Uma semana por passo, rodando por segmento** (par de estados vizinhos em guerra); o comando fica na frente | recomendação | custo por sistema no `bf-bench`: a guerra mundial de 1939 com todos os segmentos abaixo de 15 % do tick | médio: segmentos ativos por semana |
+| 7 | Perdas e custo | **Mortos e inválidos por idade na pirâmide**, civis também, e a **conta da guerra** sempre à vista: gente, bens, dinheiro e dívida, produção perdida e preços (seção "A conta da guerra") | Sun Tzu, cap. II, trad. Giles 1910 | a exaustão cresce com a duração mesmo sem derrota; contrafactual de 1914–18 na pirâmide francesa quando o PR #54 entrar | baixo: uma escrita por semana de guerra |
 
 ## Telas que isso vai pedir
 
@@ -417,7 +512,11 @@ Cada uma nasce como painel registrado no HUD modular, com atalho no registro de 
 - **Forças do país:** efetivo por domínio e tipo, geração, equipamento contra o necessário,
   treino, custo semanal; quanto da indústria vai para a guerra.
 - **Mobilização:** em idade, chamáveis, reservados, disponíveis; efeito no trabalho por profissão.
-- **Frentes no mapa:** linha da frente, postura, objetivo, poder dos dois lados.
+- **Frentes no mapa:** linha da frente, postura, objetivo e centro de gravidade, poder dos dois
+  lados, o segmento de foco e os contornados.
+- **Doutrina:** a geração de cada exército, a prontidão termo a termo (educação dos oficiais,
+  treino, rádio, motorização, experiência, menos a cultura da ordem) e o que a degrada nesta
+  semana (falta de rádio ou de combustível).
 - **Repartição da frente:** por segmento, extensão, poder inimigo, puxada do objetivo, peso e
   elementos recebidos.
 - **Batalha do segmento:** a decomposição do passo (número, equipamento, treino, suprimento,
@@ -425,7 +524,13 @@ Cada uma nasce como painel registrado no HUD modular, com atalho no registro de 
 - **Suprimento:** o caminho até a frente trecho a trecho, o gargalo e o preenchimento.
 - **Mar:** zonas, frotas, comboios, bloqueio e perda por zona.
 - **Ar:** superioridade por zona, bombardeio e o que ele destruiu.
+- **Conta da guerra:** por semana e acumulada, sempre à vista no painel do país em guerra: mortos
+  e inválidos por idade, civis, bens consumidos, equipamento perdido, gasto e dívida, produção
+  perdida e índice de preços; a mesma conta do inimigo, até onde a inteligência alcança.
 - **Exaustão e paz:** os termos da exaustão dos dois lados, as exigências na mesa e a proposta.
+- **Dissuasão:** por par de potências, o segundo golpe de cada lado obstáculo a obstáculo (por
+  base: silo, submarino, bombardeiro, móvel), o dano inaceitável, quem é seguro, o teto na escada
+  e o risco semanal de escalada; tratados de controle de armas em vigor e sua verificação.
 - **Crise:** a escada com o degrau atual, o casus belli, a exigência, o prazo e quem tomou lado.
 - **Lente de guerra no mapa:** ocupação, devastação, terreno de combate.
 

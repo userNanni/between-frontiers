@@ -78,7 +78,7 @@ impl WarLedger {
         self.spending += week.spending;
         self.borrowed += week.borrowed;
         self.output_lost += week.output_lost;
-        self.price_index = self.price_index * (Fixed::ONE + week.inflation);
+        self.price_index *= Fixed::ONE + week.inflation;
         self.last = week.clone();
     }
 
