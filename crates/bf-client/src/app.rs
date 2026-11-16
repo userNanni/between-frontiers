@@ -28,6 +28,8 @@ pub struct Shared {
     pub keys: crate::keys::Keys,
     /// The keyboard editor, while it is open over the settings.
     pub key_editor: Option<crate::screens::keys_editor::State>,
+    /// A scale change waiting for the player to keep it.
+    pub scale_trial: Option<crate::ui_scale::Trial>,
     toast: Option<(String, f64)>,
 }
 
@@ -51,8 +53,68 @@ impl Shared {
         }
     }
 
+    /// The interface scale the player chose.
+    pub fn scale_choice(&self) -> crate::ui_scale::Choice {
+        crate::ui_scale::Choice::of(self.settings.ui_scale, self.settings.ui_stream)
+    }
+
+    /// Applies a scale at once, on trial: it goes back after a few seconds unless kept (a
+    /// command calls this).
+    pub fn try_scale(&mut self, choice: crate::ui_scale::Choice, now: f64) {
+        let previous = match self.scale_trial {
+            Some(t) => t.previous,
+            None => self.scale_choice(),
+        };
+        if choice == previous {
+            self.scale_trial = None;
+        } else {
+            self.scale_trial = Some(crate::ui_scale::Trial {
+                previous,
+                deadline: now + crate::ui_scale::TRIAL_SECONDS,
+            });
+        }
+        (self.settings.ui_scale, self.settings.ui_stream) = choice.store();
+        if self.scale_trial.is_none() {
+            self.persist_settings();
+        }
+    }
+
+    /// Keeps the scale on trial and writes it.
+    pub fn keep_scale(&mut self) {
+        self.scale_trial = None;
+        self.persist_settings();
+    }
+
+    /// Puts back the scale that was in use before the trial.
+    pub fn revert_scale(&mut self) {
+        if let Some(t) = self.scale_trial.take() {
+            (self.settings.ui_scale, self.settings.ui_stream) = t.previous.store();
+        }
+    }
+
+    /// One step up (`+1`) or down from the scale in use now (a command calls this).
+    pub fn step_scale(&mut self, ppp: f32, dir: i32, now: f64) {
+        self.try_scale(crate::ui_scale::step(ppp, dir), now);
+    }
+
+    /// Switches the stream interface on (full HD) or back to the automatic scale (a command
+    /// calls this).
+    pub fn toggle_stream_scale(&mut self, now: f64) {
+        use crate::ui_scale::{Choice, StreamTarget};
+        let next = match self.scale_choice() {
+            Choice::Stream(_) => Choice::Auto,
+            _ => Choice::Stream(StreamTarget::Hd),
+        };
+        self.try_scale(next, now);
+    }
+
     pub fn persist_settings(&self) {
-        if let Err(e) = self.settings.save(&self.paths.settings_file()) {
+        // A scale on trial is not written until kept.
+        let mut settings = self.settings.clone();
+        if let Some(t) = self.scale_trial {
+            (settings.ui_scale, settings.ui_stream) = t.previous.store();
+        }
+        if let Err(e) = settings.save(&self.paths.settings_file()) {
             log(&format!("settings: {e}"));
         }
     }
@@ -103,8 +165,6 @@ impl App {
                 log(&format!("i18n: {e}"));
                 I18n::from_sources(Locale::PtBr, []).expect("empty bundle")
             });
-        cc.egui_ctx
-            .set_zoom_factor(settings.ui_scale as f32 / 100.0);
 
         let paths_config = paths.config.clone();
         let (keys, notes) = crate::keys::Keys::load(Some(paths.keys_file()));
@@ -124,6 +184,7 @@ impl App {
             load_error: None,
             saves: Vec::new(),
             hud: crate::hud::Hud::new(crate::hud::Layout::load(&crate::hud::file(&paths_config))),
+            scale_trial: None,
             toast: None,
         };
         shared.refresh_saves();
@@ -273,6 +334,7 @@ fn load_world(paths: &Paths) -> Result<(World, MapData), String> {
 
 impl eframe::App for App {
     fn ui(&mut self, ui: &mut Ui, _frame: &mut eframe::Frame) {
+        apply_scale(ui.ctx(), self.shared.scale_choice());
         let screen = ui.max_rect();
         ui.painter()
             .rect_filled(screen, 0, bf_ui_kit::tokens::color::BACKDROP);
@@ -282,6 +344,7 @@ impl eframe::App for App {
             .keys
             .end_frame(ui.ctx(), &self.shared.i18n, screen);
         self.paint_toast(ui, screen);
+        self.scale_controls(ui, screen);
         if let Some(t) = transition {
             let ctx = ui.ctx().clone();
             self.apply(t, &ctx);
@@ -291,5 +354,83 @@ impl eframe::App for App {
 
     fn clear_color(&self, _visuals: &egui::Visuals) -> [f32; 4] {
         bf_ui_kit::tokens::color::BACKDROP.to_normalized_gamma_f32()
+    }
+}
+
+/// Sets the zoom so that a point takes the pixels the scale asks for, on the screen as it is
+/// now: a new resolution or a moved window take a new scale the next frame.
+pub fn apply_scale(ctx: &egui::Context, choice: crate::ui_scale::Choice) {
+    let ppp_now = ctx.pixels_per_point();
+    let size = ctx.content_rect().size() * ppp_now;
+    let native = ctx.native_pixels_per_point().unwrap_or(1.0);
+    let ppp = crate::ui_scale::pixels_per_point(choice, (size.x, size.y), native);
+    let zoom = ppp / native;
+    if (ctx.zoom_factor() - zoom).abs() > 1e-3 {
+        ctx.set_zoom_factor(zoom);
+    }
+}
+
+impl App {
+    /// The scale commands, on any screen, and the bar that asks to keep a new scale.
+    fn scale_controls(&mut self, ui: &mut Ui, screen: Rect) {
+        use crate::keys::{self, id};
+        use bf_ui_kit::tokens::space;
+        let ctx = ui.ctx().clone();
+        let now = ctx.input(|i| i.time);
+        let ppp = ctx.pixels_per_point();
+        if keys::fired(&ctx, id::UI_SCALE_UP) {
+            self.shared.step_scale(ppp, 1, now);
+        }
+        if keys::fired(&ctx, id::UI_SCALE_DOWN) {
+            self.shared.step_scale(ppp, -1, now);
+        }
+        if keys::fired(&ctx, id::UI_STREAM) {
+            self.shared.toggle_stream_scale(now);
+        }
+        let Some(trial) = self.shared.scale_trial else {
+            return;
+        };
+        let left = (trial.deadline - now).max(0.0);
+        if left <= 0.0 {
+            self.shared.revert_scale();
+            return;
+        }
+        ctx.request_repaint_after(std::time::Duration::from_millis(250));
+        let card = Rect::from_center_size(
+            egui::pos2(screen.center().x, screen.top() + 140.0),
+            egui::vec2(460.0_f32.min(screen.width() - 32.0), 96.0),
+        );
+        bf_ui_kit::paint_overlay(ui, card);
+        ui.interact(
+            card,
+            ui.make_persistent_id("scale-trial"),
+            egui::Sense::click_and_drag(),
+        );
+        let mut child = ui.new_child(egui::UiBuilder::new().max_rect(card.shrink(space::LG)));
+        let ui = &mut child;
+        ui.spacing_mut().item_spacing.y = space::SM;
+        bf_ui_kit::body(
+            ui,
+            &self.shared.i18n.tr_args(
+                "settings-ui-scale-keep-ask",
+                &[("seconds", bf_i18n::Arg::Num(left.ceil()))],
+            ),
+        );
+        ui.horizontal(|ui| {
+            if bf_ui_kit::Button::primary(&self.shared.tr("settings-ui-scale-keep"))
+                .size(bf_ui_kit::ButtonSize::Small)
+                .show(ui)
+                .clicked()
+            {
+                self.shared.keep_scale();
+            }
+            if bf_ui_kit::Button::ghost(&self.shared.tr("settings-ui-scale-revert"))
+                .size(bf_ui_kit::ButtonSize::Small)
+                .show(ui)
+                .clicked()
+            {
+                self.shared.revert_scale();
+            }
+        });
     }
 }

@@ -15,8 +15,10 @@ pub enum Autosave {
 #[serde(default)]
 pub struct Settings {
     pub locale: String,
-    /// Interface scale in percent.
+    /// Interface scale in percent; 0 is automatic (`ui_scale`).
     pub ui_scale: u32,
+    /// An interface sized for a stream, which wins over `ui_scale`.
+    pub ui_stream: Option<crate::ui_scale::StreamTarget>,
     pub map_labels: bool,
     /// Terrain shading on the map.
     pub map_relief: bool,
@@ -27,7 +29,8 @@ impl Default for Settings {
     fn default() -> Self {
         Self {
             locale: default_locale().code().to_owned(),
-            ui_scale: 100,
+            ui_scale: 0,
+            ui_stream: None,
             map_labels: true,
             map_relief: true,
             autosave: Autosave::Yearly,

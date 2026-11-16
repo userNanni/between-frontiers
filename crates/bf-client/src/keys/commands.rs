@@ -293,6 +293,9 @@ pub mod id {
     pub const SAVE: &str = "system.save";
     pub const SETTINGS: &str = "system.settings";
     pub const KEYS: &str = "system.keys";
+    pub const UI_SCALE_UP: &str = "system.ui_scale_up";
+    pub const UI_SCALE_DOWN: &str = "system.ui_scale_down";
+    pub const UI_STREAM: &str = "system.ui_stream";
 }
 
 fn builtin() -> Vec<CommandDef> {
@@ -424,5 +427,8 @@ fn builtin() -> Vec<CommandDef> {
     out.push(CommandDef::new(HUD_RESET_BLOCKS, Windows).hint('Z'));
     out.push(CommandDef::new(LENS_PICKER, Map).keys([k(KeyV)]).hint('V'));
     out.push(CommandDef::new(LENS_KEEP_OPEN, Map).hint('K'));
+    out.push(CommandDef::new(UI_SCALE_UP, System).keys([k(Equal).ctrl()]));
+    out.push(CommandDef::new(UI_SCALE_DOWN, System).keys([k(Minus).ctrl()]));
+    out.push(CommandDef::new(UI_STREAM, System).hint('T'));
     out
 }
