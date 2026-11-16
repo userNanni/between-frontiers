@@ -16,7 +16,6 @@ use crate::sim::Snapshot;
 use crate::world::World;
 
 pub const WIDTH: f32 = 300.0;
-const MARGIN: f32 = 12.0;
 const HEADER_H: f32 = 30.0;
 
 /// Which parts are folded; all open at first.
@@ -58,28 +57,29 @@ pub struct Sources<'a> {
 }
 
 /// Shows the panel between `top` and `bottom`, at the left of `screen`.
-pub fn show(
-    ui: &mut Ui,
-    screen: Rect,
-    top: f32,
-    bottom: f32,
-    src: Sources<'_>,
-    fold: &mut Fold,
-) -> Response {
-    let mut out = Response::default();
-    let room = (bottom - top).max(HEADER_H + 8.0);
-    let id = ui.make_persistent_id("outliner");
-    // The content's height of the last frame sizes the panel; the first frame takes the room.
-    let last: f32 = ui.ctx().data(|d| d.get_temp(id)).unwrap_or(room);
+fn id() -> egui::Id {
+    egui::Id::NULL.with("bf-outliner")
+}
+
+/// The size the panel asks for: its content's height of the last frame (the first frame asks
+/// for a tall panel); the HUD layout may give it less.
+pub fn size(ctx: &egui::Context, fold: &Fold) -> Vec2 {
     let height = if fold.open {
-        (last + space::MD * 2.0).min(room)
+        let last: f32 = ctx.data(|d| d.get_temp(id())).unwrap_or(480.0);
+        last + space::MD * 2.0
     } else {
         HEADER_H + space::SM
     };
-    let panel = Rect::from_min_size(
-        Pos2::new(screen.left() + MARGIN, top),
-        Vec2::new(WIDTH, height),
-    );
+    Vec2::new(WIDTH, height)
+}
+
+/// Shows the panel in `rect`, the room the HUD layout gave it.
+pub fn show(ui: &mut Ui, rect: Rect, src: Sources<'_>, fold: &mut Fold) -> Response {
+    let mut out = Response::default();
+    let id = id();
+    let room = rect.height().max(HEADER_H + 8.0);
+    let height = size(ui.ctx(), fold).y.min(room);
+    let panel = Rect::from_min_size(rect.min, Vec2::new(WIDTH, height));
     bf_ui_kit::paint_overlay(ui, panel);
     ui.interact(panel, id.with("block"), Sense::click_and_drag());
     let inner = panel.shrink2(Vec2::new(space::MD, space::SM));

@@ -880,3 +880,116 @@ fn session_for(save: &saves::Save) -> bf_sim::game::Session {
     let data = bf_sim::data::GameData::load(&root()).expect("game data");
     bf_sim::game::Session::load(&bytes, 2, Some(data.rules())).unwrap()
 }
+
+/// Drags with the left button from `from` to `to`, in steps, as a hand would.
+fn drag(h: &mut Harness<'_, App>, from: egui::Pos2, to: egui::Pos2) {
+    h.hover_at(from);
+    h.run_steps(1);
+    h.drag_at(from);
+    h.run_steps(1);
+    for k in 1..=6 {
+        let t = k as f32 / 6.0;
+        h.hover_at(from + (to - from) * t);
+        h.run_steps(1);
+    }
+    h.drop_at(to);
+    h.run_steps(2);
+}
+
+/// The HUD arranged by hand: the standard HUD of a player who never moved it, the edit mode
+/// with its handles, panels dragged elsewhere, the streaming preset with its free corner, and
+/// the same layouts in English at 1280 × 720.
+#[test]
+#[ignore = "needs a GPU (or software Vulkan) and the generated map; run with --ignored"]
+fn modular_hud() {
+    let user = std::env::temp_dir().join(format!("bf-shots-hud-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&user);
+    let session = advanced_session(laplace_schelling::calendar::Date::new(1940, 3, 1));
+    let bra = write_campaign(&user, &session, "Brasil 1940", "BRA", &["works-large"]);
+    let open = |h: &mut Harness<'_, App>| {
+        let ctx = h.ctx.clone();
+        h.state_mut().apply(Transition::Game(bra.clone()), &ctx);
+        h.run_steps(4);
+    };
+    let pt = user.join("pt");
+    let mut h = harness_sized(pt.clone(), "pt-BR", egui::vec2(1600.0, 900.0));
+    open(&mut h);
+    assert!(
+        !bf_client::hud::file(&pt).exists(),
+        "a new player has no layout file"
+    );
+    shot(&mut h, "30-hud-padrao");
+
+    // Edit mode, from the in-game menu.
+    h.get_by_label("Menu (Esc)").click();
+    h.run_steps(2);
+    h.get_by_label("Arrumar o HUD").click();
+    h.run_steps(3);
+    shot(&mut h, "31-hud-edicao");
+
+    // The overview to the right edge, the map modes to the bottom middle.
+    drag(&mut h, egui::pos2(60.0, 154.0), egui::pos2(1350.0, 300.0));
+    drag(&mut h, egui::pos2(200.0, 860.0), egui::pos2(840.0, 860.0));
+    shot(&mut h, "32-hud-edicao-arrastado");
+    h.get_by_label("Concluir").click();
+    h.run_steps(3);
+    shot(&mut h, "33-hud-rearranjado");
+    let layout = bf_client::hud::Layout::load(&bf_client::hud::file(&pt));
+    assert_eq!(layout.preset, bf_client::hud::Preset::Custom, "{layout:?}");
+    let rearranged = std::fs::read_to_string(bf_client::hud::file(&pt)).unwrap();
+
+    // The streaming preset: a free corner the panels keep out of.
+    h.key_press(egui::Key::F8);
+    h.run_steps(2);
+    h.get_by_label("Transmissão").click();
+    h.run_steps(3);
+    shot(&mut h, "34-hud-transmissao-edicao");
+    let streaming = std::fs::read_to_string(bf_client::hud::file(&pt)).unwrap();
+    // The free area grows by its lower left corner, by hand.
+    let free = bf_client::hud::Layout::load(&bf_client::hud::file(&pt))
+        .free
+        .expect("free area")
+        .rect(egui::Rect::from_min_size(
+            egui::Pos2::ZERO,
+            egui::vec2(1600.0, 900.0),
+        ));
+    drag(
+        &mut h,
+        free.left_bottom(),
+        free.left_bottom() + egui::vec2(-60.0, 40.0),
+    );
+    shot(&mut h, "34b-hud-area-livre-redimensionada");
+    h.get_by_label("Concluir").click();
+    h.run_steps(2);
+    let banner = egui::pos2(54.0, 42.0);
+    h.hover_at(banner);
+    h.run_steps(1);
+    h.drag_at(banner);
+    h.run_steps(1);
+    h.drop_at(banner);
+    h.hover_at(egui::pos2(800.0, 500.0));
+    h.run_steps(3);
+    shot(&mut h, "35-hud-transmissao");
+
+    // The same layouts at 1280 × 720, in English.
+    for (name, text) in [("rearranged", &rearranged), ("streaming", &streaming)] {
+        let dir = user.join(format!("en-{name}"));
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(bf_client::hud::file(&dir), text).unwrap();
+        let mut en = harness_sized(dir, "en", egui::vec2(1280.0, 720.0));
+        open(&mut en);
+        en.hover_at(banner);
+        en.run_steps(1);
+        en.drag_at(banner);
+        en.run_steps(1);
+        en.drop_at(banner);
+        en.hover_at(egui::pos2(640.0, 400.0));
+        en.run_steps(3);
+        shot(&mut en, &format!("36-hud-{name}-en-1280"));
+        en.key_press(egui::Key::F8);
+        en.run_steps(3);
+        shot(&mut en, &format!("37-hud-{name}-edit-en-1280"));
+    }
+
+    let _ = std::fs::remove_dir_all(&user);
+}

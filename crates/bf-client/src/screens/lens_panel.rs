@@ -52,22 +52,20 @@ fn height(lens: Lens) -> f32 {
     34.0 + 40.0 + rows * 24.0 + legend_h + space::LG * 2.0
 }
 
-/// Top of the panel on the screen, for panels placed above it.
-pub fn top(screen: Rect, lens: Lens) -> f32 {
-    screen.bottom() - 12.0 - height(lens)
+/// Size of the panel for a lens.
+pub fn size(lens: Lens) -> Vec2 {
+    Vec2::new(WIDTH, height(lens))
 }
 
 /// Shows the panel and recolours the map when the lens changes.
-pub fn show(ui: &mut Ui, screen: Rect, i18n: &I18n, world: &World, view: &mut MapView, year: i32) {
+/// Shows the panel with its top left corner at `origin`.
+pub fn show(ui: &mut Ui, origin: Pos2, i18n: &I18n, world: &World, view: &mut MapView, year: i32) {
     let current = view.lens;
     let fam = family(current);
     let list = items(fam);
     let height = height(current);
     let rows = list.len().div_ceil(2) as f32;
-    let panel = Rect::from_min_size(
-        Pos2::new(screen.left() + 12.0, screen.bottom() - 12.0 - height),
-        Vec2::new(WIDTH, height),
-    );
+    let panel = Rect::from_min_size(origin, Vec2::new(WIDTH, height));
     bf_ui_kit::paint_overlay(ui, panel);
     ui.interact(
         panel,
