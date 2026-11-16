@@ -114,9 +114,24 @@ impl<'a> Account<'a> {
     }
 }
 
+/// Key tips of a stepper: the family letter, a stable id, and the row's place in its list (the
+/// row's buttons read family + 1, 2 for the first row, 3, 4 for the second…).
+pub struct StepTips<'a> {
+    pub family: char,
+    pub id: &'a str,
+    pub row: usize,
+}
+
 /// `−  value  +`: returns −1, 0 or +1. The value sits in a fixed width so stacked steppers
 /// line up.
-pub fn stepper(ui: &mut Ui, value: &str, tip: &str, can_down: bool, can_up: bool) -> i32 {
+pub fn stepper(
+    ui: &mut Ui,
+    value: &str,
+    tip: &str,
+    can_down: bool,
+    can_up: bool,
+    tips: StepTips<'_>,
+) -> i32 {
     let mut out = 0;
     ui.horizontal(|ui| {
         ui.spacing_mut().item_spacing.x = space::XS;
@@ -145,12 +160,35 @@ pub fn stepper(ui: &mut Ui, value: &str, tip: &str, can_down: bool, can_up: bool
                     } else {
                         ("+", can_up)
                     };
-                    if Button::secondary(label)
+                    let response = Button::secondary(label)
                         .size(ButtonSize::Small)
                         .enabled(enabled)
-                        .show(ui)
-                        .clicked()
-                    {
+                        .show(ui);
+                    let (name, digit) = if d < 0 {
+                        ("down", tips.row * 2 + 1)
+                    } else {
+                        ("up", tips.row * 2 + 2)
+                    };
+                    let key = if digit < 10 {
+                        digit.to_string()
+                    } else {
+                        name.to_owned()
+                    };
+                    let id = format!("{}.{name}", tips.id);
+                    let typed = enabled
+                        && crate::keys::item_beside(
+                            ui,
+                            tips.family,
+                            id,
+                            &key,
+                            response.rect,
+                            if d < 0 {
+                                crate::keys::Side::Left
+                            } else {
+                                crate::keys::Side::Right
+                            },
+                        );
+                    if response.clicked() || typed {
                         out = d;
                     }
                 }

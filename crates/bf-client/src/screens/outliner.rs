@@ -3,6 +3,7 @@
 //! whole panel folds to its title. It reads only the snapshot, which the simulation fills once a
 //! month (the journal) or at every publication (research).
 
+use crate::keys::{self, id};
 use bf_i18n::{Arg, I18n};
 use bf_sim::econ::Catalogue;
 use bf_sim::research::TechTree;
@@ -92,12 +93,23 @@ pub fn show(ui: &mut Ui, rect: Rect, src: Sources<'_>, fold: &mut Fold) -> Respo
 
     // Title: folds the panel; the journal opens from its button.
     ui.horizontal(|ui| {
-        if fold_header(ui, &src.i18n.tr("outliner-title"), fold.open, true) {
+        if fold_header(
+            ui,
+            &src.i18n.tr("outliner-title"),
+            fold.open,
+            true,
+            id::OUTLINER,
+        ) {
             fold.open = !fold.open;
         }
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             let r = link(ui, &src.i18n.tr("outliner-journal"));
-            if r.clicked() {
+            let r = r.on_hover_text(keys::tip(
+                ui.ctx(),
+                &src.i18n.tr("bar-journal"),
+                id::JOURNAL,
+            ));
+            if keys::pressed(ui, id::JOURNAL, &r) {
                 out.open_journal = Some(None);
             }
         });
@@ -132,7 +144,7 @@ pub fn show(ui: &mut Ui, rect: Rect, src: Sources<'_>, fold: &mut Fold) -> Respo
 }
 
 /// A clickable section title with its fold mark; true when clicked.
-fn fold_header(ui: &mut Ui, title: &str, open: bool, big: bool) -> bool {
+fn fold_header(ui: &mut Ui, title: &str, open: bool, big: bool, cmd: &'static str) -> bool {
     let font = if big {
         sans_semibold(size::BODY)
     } else {
@@ -167,7 +179,12 @@ fn fold_header(ui: &mut Ui, title: &str, open: bool, big: bool) -> bool {
             .selectable(false),
     );
     let arrow = arrow.on_hover_cursor(egui::CursorIcon::PointingHand);
-    r.on_hover_cursor(egui::CursorIcon::PointingHand).clicked() || arrow.clicked()
+    let tip = keys::tip(ui.ctx(), title, cmd);
+    let r = r
+        .on_hover_cursor(egui::CursorIcon::PointingHand)
+        .on_hover_text(bf_ui_kit::tooltip_text(&tip));
+    let typed = keys::target(ui, cmd, arrow.rect.union(r.rect));
+    r.clicked() || arrow.clicked() || typed
 }
 
 fn link(ui: &mut Ui, text: &str) -> egui::Response {
@@ -278,7 +295,13 @@ fn works(ui: &mut Ui, src: &Sources<'_>, fold: &mut Fold, out: &mut Response) {
     };
     let w = &j.works;
     ui.horizontal(|ui| {
-        if fold_header(ui, &i18n.tr("outliner-works"), fold.works, false) {
+        if fold_header(
+            ui,
+            &i18n.tr("outliner-works"),
+            fold.works,
+            false,
+            id::OUTLINER_WORKS,
+        ) {
             fold.works = !fold.works;
         }
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
@@ -302,7 +325,7 @@ fn works(ui: &mut Ui, src: &Sources<'_>, fold: &mut Fold, out: &mut Response) {
         bf_ui_kit::small(ui, &i18n.tr("outliner-works-none"));
         return;
     }
-    for line in &w.first {
+    for (n, line) in w.first.iter().enumerate() {
         let (left, right) = work_text(src, line);
         let (rect, resp) = row(ui, 24.0, &left);
         let fill = if line.public {
@@ -324,7 +347,15 @@ fn works(ui: &mut Ui, src: &Sources<'_>, fold: &mut Fold, out: &mut Response) {
                     Arg::String(value(i18n, Value::Share(f64::from(line.done)))),
                 )],
             );
-        if resp.on_hover_text(bf_ui_kit::tooltip_text(&tip)).clicked() {
+        let resp = resp.on_hover_text(bf_ui_kit::tooltip_text(&tip));
+        let typed = keys::item(
+            ui,
+            'Z',
+            format!("outliner.work.{n}"),
+            &format!("W{n}"),
+            resp.rect,
+        );
+        if resp.clicked() || typed {
             out.open_budget = true;
         }
     }
@@ -380,7 +411,13 @@ fn research(ui: &mut Ui, src: &Sources<'_>, fold: &mut Fold, out: &mut Response)
     };
     bf_ui_kit::gap(ui, space::SM);
     ui.horizontal(|ui| {
-        if fold_header(ui, &i18n.tr("outliner-research"), fold.research, false) {
+        if fold_header(
+            ui,
+            &i18n.tr("outliner-research"),
+            fold.research,
+            false,
+            id::OUTLINER_RESEARCH,
+        ) {
             fold.research = !fold.research;
         }
         if let Some((_, _, _, chosen)) = lines.first() {
@@ -427,7 +464,8 @@ fn research(ui: &mut Ui, src: &Sources<'_>, fold: &mut Fold, out: &mut Response)
         } else {
             resp
         };
-        if resp.clicked() {
+        let typed = keys::item(ui, 'Z', format!("outliner.research.{name}"), "R", resp.rect);
+        if resp.clicked() || typed {
             out.open_research = true;
         }
     }
@@ -438,7 +476,13 @@ fn pinned(ui: &mut Ui, src: &Sources<'_>, fold: &mut Fold, out: &mut Response) {
     bf_ui_kit::gap(ui, space::SM);
     let pinned_count = src.pinned.len();
     ui.horizontal(|ui| {
-        if fold_header(ui, &i18n.tr("outliner-pinned"), fold.pinned, false) {
+        if fold_header(
+            ui,
+            &i18n.tr("outliner-pinned"),
+            fold.pinned,
+            false,
+            id::OUTLINER_PINNED,
+        ) {
             fold.pinned = !fold.pinned;
         }
         if pinned_count > 0 {
@@ -511,7 +555,8 @@ fn pinned(ui: &mut Ui, src: &Sources<'_>, fold: &mut Fold, out: &mut Response) {
                 } else {
                     resp
                 };
-                if resp.clicked() {
+                let typed = keys::item(ui, 'Z', format!("outliner.pinned.{id}"), "P", resp.rect);
+                if resp.clicked() || typed {
                     out.open_journal = Some(Some(id.clone()));
                 }
             }

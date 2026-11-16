@@ -1,6 +1,6 @@
 ## Agendas window (J) and the side panel on the map.
 
-bar-journal = Agendas (J)
+bar-journal = Agendas
 journal-title = Agendas
 journal-not-ready = The agendas fill in once the campaign has run its first day.
 journal-empty = Nothing under way: no queue, research, fiscal alert or movement to follow.

@@ -156,12 +156,12 @@ bar-literacy-tip = Adults (15 and older) who can read and write.
 bar-life-tip = Years a newborn would live at today's mortality.
 bar-urban-tip = Share of the population living in urban areas.
 bar-country-tip = Your country. Click for its summary.
-bar-speed-down = Slower (−)
-bar-speed-up = Faster (+)
-bar-pause = Pause (space)
-bar-play = Resume (space)
+bar-speed-down = Slower
+bar-speed-up = Faster
+bar-pause = Pause
+bar-play = Resume
 bar-date-tip = Speed { $speed } of 5. Click to pause or resume.
-bar-menu = Menu (Esc)
+bar-menu = Menu
 source-economy = Sources: Maddison Project 2023 and Our World in Data; own estimates where data is missing.
 source-social = Sources: Our World in Data and HYDE; own estimates where data is missing.
 
@@ -235,7 +235,7 @@ legend-met = Met
 tip-local = { $good }: { $share } of demand met
 
 ## Research
-bar-research = Research (R)
+bar-research = Research
 research-title = Research
 research-close = Close
 research-summary = { $points } research points a month · focus: { $focus }
@@ -260,7 +260,7 @@ research-fit-hint = Show the whole tree
 research-all-fields = All fields
 
 ## Government window
-bar-government = Government (G)
+bar-government = Government
 gov-title = Government
 gov-tab-budget = Budget
 gov-tab-money = Money and debt

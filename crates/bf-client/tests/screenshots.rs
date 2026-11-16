@@ -34,6 +34,7 @@ fn shot(harness: &mut Harness<'_, App>, name: &str) {
 }
 
 fn harness(user: PathBuf, locale: &str) -> Harness<'static, App> {
+    let size = egui::vec2(1600.0, 900.0);
     std::fs::create_dir_all(&user).unwrap();
     std::fs::write(
         user.join("settings.ron"),
@@ -42,7 +43,7 @@ fn harness(user: PathBuf, locale: &str) -> Harness<'static, App> {
     .unwrap();
     let paths = Paths::new(&root(), user.clone(), user);
     let mut h = Harness::builder()
-        .with_size(egui::vec2(1600.0, 900.0))
+        .with_size(size)
         .wgpu()
         .build_eframe(move |cc| App::new(cc, paths));
     h.set_render_cursor(false);
@@ -163,7 +164,7 @@ fn walk_through_the_screens() {
     lens(&mut h, "Político");
     h.run_steps(2);
     h.run_steps(2);
-    h.get_by_label("Menu (Esc)").click();
+    h.get_by_label("Menu (F10)").click();
     h.run_steps(2);
     h.get_by_label("Salvar").click();
     h.run_steps(2);
@@ -921,7 +922,7 @@ fn modular_hud() {
     shot(&mut h, "30-hud-padrao");
 
     // Edit mode, from the in-game menu.
-    h.get_by_label("Menu (Esc)").click();
+    h.get_by_label("Menu (F10)").click();
     h.run_steps(2);
     h.get_by_label("Arrumar o HUD").click();
     h.run_steps(3);
@@ -1089,6 +1090,182 @@ fn country_figure_blocks() {
     let _ = std::fs::remove_dir_all(&user);
 }
 
+/// Taps the key-tips leader (Alt, pressed and released alone).
+fn leader(h: &mut Harness<'_, App>) {
+    h.key_press(egui::Key::AltLeft);
+    h.run_steps(3);
+}
+
+/// Types a key tip and lets the element act.
+fn tip(h: &mut Harness<'_, App>, key: egui::Key) {
+    h.key_press(key);
+    h.run_steps(4);
+}
+
+fn government_tab(h: &Harness<'_, App>) -> Option<bf_client::screens::government::Tab> {
+    match &h.state().screen {
+        Screen::Game(g) => g.government_tab(),
+        _ => None,
+    }
+}
+
+/// Keyboard: key tips over the map and over the government window, a sequence of tips opening
+/// the laws, and the shortcut editor with its drawn keyboard (ABNT2, Ctrl layer, a conflict,
+/// then English on ANSI at 1280 × 720).
+#[test]
+#[ignore = "needs a GPU (or software Vulkan) and the generated map; run with --ignored"]
+fn keyboard_shortcuts() {
+    use bf_client::screens::government::Tab;
+    let user = std::env::temp_dir().join(format!("bf-shots-keys-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&user);
+    let mut h = harness(user.clone(), "pt-BR");
+    open_campaign(&mut h, &user, "Atalhos", "BRA");
+    run_until(&mut h, 20, |s| s.tick >= 3);
+
+    // 1. Key tips over the map. AltGr types characters on ABNT2: it does not turn them on.
+    h.key_press(egui::Key::AltRight);
+    h.run_steps(3);
+    assert!(
+        !h.state().shared.keys.hint_mode(),
+        "AltGr must not be the leader"
+    );
+    leader(&mut h);
+    assert!(h.state().shared.keys.hint_mode());
+    shot(&mut h, "12a-dicas-mapa");
+
+    // 2. Leader, G, L: the government window on its laws, with the tips of the new screen.
+    tip(&mut h, egui::Key::G);
+    assert_eq!(government_tab(&h), Some(Tab::Budget));
+    tip(&mut h, egui::Key::L);
+    assert_eq!(government_tab(&h), Some(Tab::Laws));
+    assert!(
+        h.state().shared.keys.hint_mode(),
+        "tips stay on for the next step"
+    );
+    shot(&mut h, "12b-dicas-governo-leis");
+    // Esc leaves the tips first, then closes the window.
+    h.key_press(egui::Key::Escape);
+    h.run_steps(2);
+    assert!(!h.state().shared.keys.hint_mode());
+    assert_eq!(government_tab(&h), Some(Tab::Laws));
+    h.key_press(egui::Key::Escape);
+    h.run_steps(2);
+    assert_eq!(government_tab(&h), None);
+    // The plain shortcut does the same as the tip.
+    h.key_press(egui::Key::L);
+    h.run_steps(2);
+    assert_eq!(government_tab(&h), Some(Tab::Laws));
+    h.key_press(egui::Key::Escape);
+    h.run_steps(2);
+
+    // 3. The editor, from the settings of the main menu.
+    let ctx = h.ctx.clone();
+    h.state_mut().apply(Transition::Menu, &ctx);
+    h.run_steps(2);
+    h.get_by_label("Configurações").click();
+    h.run_steps(2);
+    h.get_by_label("Editar atalhos").click();
+    h.run_steps(3);
+    // Point at G so its command shows.
+    let g = h
+        .get_all(egui_kittest::kittest::by().label_contains("(KeyG)"))
+        .next()
+        .expect("drawn G key")
+        .rect();
+    h.hover_at(g.center());
+    h.run_steps(4);
+    shot(&mut h, "12c-teclado-abnt2");
+
+    // 4. The Ctrl layer.
+    h.hover_at(egui::pos2(10.0, 10.0));
+    h.get_by_label("Ctrl").click();
+    h.run_steps(3);
+    shot(&mut h, "12d-teclado-ctrl");
+    h.get_by_label("Ctrl").click();
+    h.run_steps(2);
+
+    // 5. Research asks for G, which the government window holds.
+    list_button(&h, "Pesquisa").scroll_to_me();
+    h.run_steps(3);
+    list_button(&h, "Pesquisa").click();
+    h.run_steps(2);
+    h.get_all(egui_kittest::kittest::by().label_contains("(KeyG)"))
+        .next()
+        .unwrap()
+        .click();
+    h.run_steps(3);
+    assert!(
+        h.get_all(egui_kittest::kittest::by().label("Trocar"))
+            .next()
+            .is_some(),
+        "conflict offers a swap"
+    );
+    shot(&mut h, "12e-conflito");
+    h.get_by_label("Trocar").click();
+    h.run_steps(2);
+    {
+        let keys = &h.state().shared.keys;
+        let g = bf_client::keys::Chord::key(bf_client::keys::PhysKey::KeyG);
+        assert_eq!(keys.holder(g), Some(bf_client::keys::id::RESEARCH));
+    }
+    h.get_by_label("Desfazer").click();
+    h.run_steps(2);
+
+    // 6. English, ANSI, 1280 × 720.
+    let mut en = harness_sized(user.clone(), "en", egui::vec2(1280.0, 720.0));
+    en.get_by_label("Settings").click();
+    en.run_steps(2);
+    en.get_by_label("Edit shortcuts").click();
+    en.run_steps(2);
+    en.get_by_label("ANSI").click();
+    en.run_steps(2);
+    list_button(&en, "Save the campaign").scroll_to_me();
+    en.run_steps(3);
+    list_button(&en, "Save the campaign").click();
+    en.run_steps(3);
+    shot(&mut en, "12f-editor-en-ansi-1280");
+    en.get_by_label("Done").click();
+    en.run_steps(2);
+    en.get_by_label("Done").click();
+    en.run_steps(2);
+
+    // 7. Key tips at 1280 × 720 with the government window open.
+    open_campaign(&mut en, &user, "Keys", "FRA");
+    run_until(&mut en, 20, |s| s.tick >= 3);
+    en.key_press(egui::Key::G);
+    en.run_steps(3);
+    leader(&mut en);
+    shot(&mut en, "12g-tips-1280-government");
+    leader(&mut en);
+    en.key_press(egui::Key::Escape);
+    en.run_steps(2);
+
+    // 8. Arranging the HUD (F8): key tips on the handles and the toolbar.
+    en.key_press(egui::Key::F8);
+    en.run_steps(3);
+    leader(&mut en);
+    shot(&mut en, "12h-tips-1280-hud-edit");
+    leader(&mut en);
+    // The country figures' block editor (Shift+F8), with its tips.
+    en.key_press_modifiers(egui::Modifiers::SHIFT, egui::Key::F8);
+    en.run_steps(3);
+    leader(&mut en);
+    shot(&mut en, "12i-tips-1280-blocks");
+    leader(&mut en);
+    en.key_press(egui::Key::F8);
+    en.run_steps(2);
+    // The lens picker opened with V, and its tips.
+    en.key_press(egui::Key::V);
+    en.run_steps(3);
+    leader(&mut en);
+    shot(&mut en, "12j-tips-1280-lens-picker");
+    leader(&mut en);
+    en.key_press(egui::Key::Escape);
+    en.run_steps(2);
+
+    let _ = std::fs::remove_dir_all(&user);
+}
+
 /// Clicks the lens `label`, opening the folded map mode picker first when it is closed.
 fn lens(h: &mut Harness<'_, App>, label: &str) {
     if h.query_all(egui_kittest::kittest::by().label(label))
@@ -1191,4 +1368,11 @@ fn lens_picker() {
     shot(&mut en, "55-lens-open-en-1280");
 
     let _ = std::fs::remove_dir_all(&user);
+}
+
+/// The button labelled `label` (a command in the editor's list, not its category caption).
+fn list_button<'a>(h: &'a Harness<'_, App>, label: &'a str) -> egui_kittest::Node<'a> {
+    h.get_all(egui_kittest::kittest::by().label(label))
+        .find(|n| n.accesskit_node().role() == egui::accesskit::Role::Button)
+        .unwrap_or_else(|| panic!("{label} in the list"))
 }

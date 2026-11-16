@@ -15,6 +15,7 @@ use egui::text::LayoutJob;
 use egui::{Align2, Color32, Rect, Sense, Stroke, Ui, Vec2};
 
 use super::government::TabContext;
+use crate::keys::{self, id};
 use crate::laws_view::{Blocked, Catalogue, LawsView, Reading, Stance, reading};
 use bf_sim::game::GameCommand;
 use bf_sim::polity::Enactor;
@@ -150,7 +151,9 @@ fn groups(ui: &mut Ui, i18n: &I18n, view: &LawsView, picked: &mut Picked) {
                 current = i18n.tr_args("laws-row-pending", &[("law", Arg::String(current))]);
             }
             let held = view.in_force(g).is_some();
-            if group_row(ui, &name, &current, picked.group == g, held).clicked() {
+            let row = group_row(ui, &name, &current, picked.group == g, held);
+            let key = view.group_key(g);
+            if row.clicked() || keys::item(ui, 'H', format!("laws.group.{key}"), key, row.rect) {
                 picked.group = g;
                 picked.law = None;
             }
@@ -233,7 +236,9 @@ fn laws(ui: &mut Ui, i18n: &I18n, view: &LawsView, group: usize, law: usize, pic
         bf_ui_kit::small(ui, &i18n.tr("laws-not-held-hint"));
     }
     for l in view.laws_of(group) {
-        if law_card(ui, i18n, view, l, l == law, Some(l) == current).clicked() {
+        let card = law_card(ui, i18n, view, l, l == law, Some(l) == current);
+        let key = view.law_key(l);
+        if card.clicked() || keys::item(ui, 'Y', format!("laws.law.{key}"), key, card.rect) {
             picked.group = group;
             picked.law = Some(l);
         }
@@ -439,10 +444,16 @@ fn stances(ui: &mut Ui, i18n: &I18n, view: &LawsView, law: usize) -> Option<Game
     }
     match view.propose(law) {
         Ok(command) => {
-            if Button::primary(&i18n.tr("laws-propose"))
+            let propose = Button::primary(&i18n.tr("laws-propose"))
                 .size(ButtonSize::Small)
-                .show(ui)
-                .clicked()
+                .show(ui);
+            let propose = propose.on_hover_text(keys::tip(
+                ui.ctx(),
+                &i18n.tr("laws-propose"),
+                id::PROPOSE_LAW,
+            ));
+            if keys::pressed(ui, id::PROPOSE_LAW, &propose)
+                || keys::fired(ui.ctx(), id::PROPOSE_LAW)
             {
                 out = Some(command);
             }

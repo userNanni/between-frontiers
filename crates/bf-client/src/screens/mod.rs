@@ -7,6 +7,7 @@ pub mod gov_ui;
 pub mod government;
 pub mod hud_edit;
 pub mod journal;
+pub mod keys_editor;
 pub mod laws;
 pub mod lens_panel;
 pub mod menu;
@@ -122,6 +123,7 @@ pub fn window_frame(
     min: egui::Vec2,
 ) -> (Rect, bool) {
     let rect = place.rect(default, screen, min);
+    crate::keys::cover(ui, rect);
     bf_ui_kit::paint_overlay(ui, rect);
     ui.interact(
         rect,

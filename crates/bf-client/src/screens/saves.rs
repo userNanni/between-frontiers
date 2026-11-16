@@ -294,7 +294,7 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
         });
     });
 
-    if ui.input(|i| i.key_pressed(egui::Key::Escape)) {
+    if crate::keys::fired(ui.ctx(), crate::keys::id::BACK) {
         out = Some(Transition::Menu);
     }
     out

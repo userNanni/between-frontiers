@@ -57,3 +57,18 @@ fn every_literal_message_id_exists() {
         assert!(missing.is_empty(), "{locale} lacks: {missing:#?}");
     }
 }
+
+/// Every command has a name and a short label for the drawn keyboard, in every locale.
+#[test]
+fn every_command_has_a_name_and_a_short_label() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/i18n");
+    let registry = bf_client::keys::Registry::builtin();
+    for locale in Locale::ALL {
+        let i18n = I18n::load(&root, locale).unwrap();
+        for def in registry.all() {
+            let key = def.name_key();
+            assert!(!i18n.tr(&key).starts_with('‹'), "{locale}: {key}");
+            assert!(i18n.attr(&key, "short").is_some(), "{locale}: {key}.short");
+        }
+    }
+}

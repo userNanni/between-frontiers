@@ -2,6 +2,7 @@
 //! the screen edges and to the other panels; a toolbar shows and hides panels, picks a preset,
 //! marks the free area, exports, imports and resets. Outside this mode nothing moves.
 
+use crate::keys::{self, Tip, id};
 use std::collections::BTreeMap;
 
 use bf_i18n::{Arg, I18n};
@@ -219,6 +220,9 @@ pub fn show(
 ) -> Response {
     let mut out = Response::default();
     let resolved = hud_state.resolved(screen, sizes).clone();
+    // The panels under the veil (or under the block editor) take no key tips; the handles,
+    // the toolbar and the block editor do.
+    keys::cover(ui, screen);
     // Editing blocks, the panels show as they will be, with no veil nor handles over them;
     // only the map is kept from clicks.
     if let Some(which) = edit.blocks {
@@ -337,7 +341,8 @@ pub fn show(
             galley,
             color::ON_ACCENT,
         );
-        if hide_resp.clicked() {
+        let typed = keys::item(ui, 'Y', format!("hud.hide.{}", p.key()), p.key(), hide);
+        if hide_resp.clicked() || typed {
             hud::toggle_panel(hud_state, p);
             out.save = true;
         }
@@ -415,11 +420,11 @@ fn toolbar(
     ui.horizontal(|ui| {
         bf_ui_kit::heading(ui, &i18n.tr("hud-edit-title"));
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            if Button::primary(&i18n.tr("hud-done"))
+            let done = Button::primary(&i18n.tr("hud-done"))
                 .size(ButtonSize::Small)
-                .show(ui)
-                .clicked()
-            {
+                .show(ui);
+            let done = done.on_hover_text(keys::tip(ui.ctx(), &i18n.tr("hud-done"), id::HUD_EDIT));
+            if done.clicked() || keys::single(ui, "hud.done", 'D', done.rect) {
                 toggle(edit);
             }
         });
@@ -432,7 +437,8 @@ fn toolbar(
         .iter()
         .map(|p| (*p, i18n.tr(p.label())))
         .collect();
-    if bf_ui_kit::segmented(ui, &mut preset, &options) {
+    let tips = id::HUD_PRESETS.map(Tip::Command);
+    if keys::segmented(ui, &mut preset, &options, &tips) {
         hud::apply_preset(hud_state, preset);
         out.save = true;
     }
@@ -442,7 +448,7 @@ fn toolbar(
 
     bf_ui_kit::caption(ui, &i18n.tr("hud-panels"));
     ui.horizontal_wrapped(|ui| {
-        for p in PanelId::ALL {
+        for (p, cmd) in PanelId::ALL.into_iter().zip(id::HUD_PANELS) {
             let shown = hud_state.layout.visible(p);
             let label = i18n.tr(p.label());
             let b = if shown {
@@ -455,11 +461,13 @@ fn toolbar(
             } else {
                 "hud-tip-hidden"
             });
-            if b.size(ButtonSize::Small)
+            let tip = keys::tip(ui.ctx(), &tip, cmd);
+            let b = b
+                .size(ButtonSize::Small)
                 .show(ui)
-                .on_hover_text(bf_ui_kit::tooltip_text(&tip))
-                .clicked()
-            {
+                .on_hover_text(bf_ui_kit::tooltip_text(&tip));
+            // The key itself is handled by the game screen, in and out of this mode.
+            if b.clicked() || keys::target(ui, cmd, b.rect) {
                 hud::toggle_panel(hud_state, p);
                 out.save = true;
             }
@@ -467,15 +475,16 @@ fn toolbar(
     });
 
     ui.horizontal_wrapped(|ui| {
-        for (which, key) in [
-            (Blocks::Country, "hud-edit-tiles"),
-            (Blocks::Overview, "hud-edit-sections"),
+        for (which, key, cmd) in [
+            (Blocks::Country, "hud-edit-tiles", id::HUD_EDIT_BLOCKS),
+            (Blocks::Overview, "hud-edit-sections", id::HUD_EDIT_SECTIONS),
         ] {
-            if Button::secondary(&i18n.tr(key))
+            let b = Button::secondary(&i18n.tr(key))
                 .size(ButtonSize::Small)
-                .show(ui)
-                .clicked()
-            {
+                .show(ui);
+            let b = b.on_hover_text(keys::tip(ui.ctx(), &i18n.tr(key), cmd));
+            // The key is read by the game screen, so it opens the editor from anywhere.
+            if keys::pressed(ui, cmd, &b) {
                 edit_blocks(edit, which);
             }
         }
@@ -488,31 +497,29 @@ fn toolbar(
         } else {
             "hud-free-mark"
         });
-        if Button::secondary(&mark)
-            .size(ButtonSize::Small)
-            .show(ui)
-            .clicked()
-        {
+        let mark = Button::secondary(&mark).size(ButtonSize::Small).show(ui);
+        if keys::pressed(ui, id::HUD_FREE_MARK, &mark) || keys::fired(ui.ctx(), id::HUD_FREE_MARK) {
             edit.marking = !edit.marking;
             edit.mark_from = None;
         }
-        if hud_state.layout.free.is_some()
-            && Button::ghost(&i18n.tr("hud-free-clear"))
+        if hud_state.layout.free.is_some() {
+            let clear = Button::ghost(&i18n.tr("hud-free-clear"))
                 .size(ButtonSize::Small)
-                .show(ui)
-                .clicked()
-        {
-            hud::set_free_area(hud_state, None);
-            out.save = true;
+                .show(ui);
+            if keys::pressed(ui, id::HUD_FREE_CLEAR, &clear)
+                || keys::fired(ui.ctx(), id::HUD_FREE_CLEAR)
+            {
+                hud::set_free_area(hud_state, None);
+                out.save = true;
+            }
         }
     });
 
     ui.horizontal_wrapped(|ui| {
-        if Button::ghost(&i18n.tr("hud-export"))
+        let export = Button::ghost(&i18n.tr("hud-export"))
             .size(ButtonSize::Small)
-            .show(ui)
-            .clicked()
-        {
+            .show(ui);
+        if export.clicked() || keys::single(ui, "hud.export", 'X', export.rect) {
             out.message = Some(match hud::export(hud_state, config) {
                 Ok(path) => i18n.tr_args(
                     "hud-exported",
@@ -521,11 +528,10 @@ fn toolbar(
                 Err(e) => i18n.tr_args("hud-io-error", &[("error", Arg::String(e.to_string()))]),
             });
         }
-        if Button::ghost(&i18n.tr("hud-import"))
+        let import = Button::ghost(&i18n.tr("hud-import"))
             .size(ButtonSize::Small)
-            .show(ui)
-            .clicked()
-        {
+            .show(ui);
+        if import.clicked() || keys::single(ui, "hud.import", 'I', import.rect) {
             out.message = Some(match hud::import(hud_state, config) {
                 Ok(path) => {
                     out.save = true;
@@ -537,11 +543,10 @@ fn toolbar(
                 Err(e) => i18n.tr_args("hud-io-error", &[("error", Arg::String(e))]),
             });
         }
-        if Button::ghost(&i18n.tr("hud-reset"))
+        let reset = Button::ghost(&i18n.tr("hud-reset"))
             .size(ButtonSize::Small)
-            .show(ui)
-            .clicked()
-        {
+            .show(ui);
+        if reset.clicked() || keys::single(ui, "hud.reset", 'R', reset.rect) {
             hud::reset(hud_state);
             out.save = true;
         }
@@ -709,17 +714,22 @@ fn block_editor(
                 }),
             );
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                if Button::primary(&i18n.tr("hud-done"))
+                let done = Button::primary(&i18n.tr("hud-done"))
                     .size(ButtonSize::Small)
-                    .show(ui)
-                    .clicked()
-                {
+                    .show(ui);
+                if done.clicked() || keys::single(ui, "hud.blocks.done", 'D', done.rect) {
                     edit.blocks = None;
                 }
-                if Button::ghost(&i18n.tr("hud-blocks-reset"))
+                let reset = Button::ghost(&i18n.tr("hud-blocks-reset"))
                     .size(ButtonSize::Small)
-                    .show(ui)
-                    .clicked()
+                    .show(ui);
+                let reset = reset.on_hover_text(keys::tip(
+                    ui.ctx(),
+                    &i18n.tr("hud-blocks-reset"),
+                    id::HUD_RESET_BLOCKS,
+                ));
+                if keys::pressed(ui, id::HUD_RESET_BLOCKS, &reset)
+                    || keys::fired(ui.ctx(), id::HUD_RESET_BLOCKS)
                 {
                     reset_blocks(hud_state, which);
                     out.save = true;
@@ -819,7 +829,9 @@ fn block_editor(
         resp.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, name.clone()));
         paint_chip(ui, r, c, false, dragging.as_deref() == Some(c.key));
         start_drag(edit, &resp, c.key, false, r);
-        if resp.clicked() && used.len() < max {
+        // A click, or the block's key tip, puts it at the end.
+        let typed = keys::item(ui, 'A', format!("hud.block.{}", c.key), c.key, r);
+        if (resp.clicked() || typed) && used.len() < max {
             let mut list: Vec<String> = used.iter().map(|k| (*k).to_owned()).collect();
             list.push(c.key.to_owned());
             new_list = Some(list);

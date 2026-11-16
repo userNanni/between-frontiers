@@ -440,7 +440,17 @@ pub fn segmented<T: PartialEq + Clone>(
     value: &mut T,
     options: &[(T, String)],
 ) -> bool {
+    segmented_rects(ui, value, options).0
+}
+
+/// [`segmented`], also returning where each option was drawn (for key tips over them).
+pub fn segmented_rects<T: PartialEq + Clone>(
+    ui: &mut Ui,
+    value: &mut T,
+    options: &[(T, String)],
+) -> (bool, Vec<Rect>) {
     let mut changed = false;
+    let mut rects = Vec::with_capacity(options.len());
     let frame = Frame::new()
         .fill(color::SURFACE_SUNKEN)
         .stroke(Stroke::new(1.0, color::BORDER))
@@ -458,6 +468,7 @@ pub fn segmented<T: PartialEq + Clone>(
                 );
                 let size = Vec2::new(galley.size().x + space::LG * 2.0, control::HEIGHT_SM);
                 let (rect, response) = ui.allocate_exact_size(size, Sense::click());
+                rects.push(rect);
                 let text = label.clone();
                 response.widget_info(|| {
                     egui::WidgetInfo::selected(
@@ -497,7 +508,7 @@ pub fn segmented<T: PartialEq + Clone>(
             }
         });
     });
-    changed
+    (changed, rects)
 }
 
 /// On/off switch.

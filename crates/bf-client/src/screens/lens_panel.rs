@@ -6,6 +6,7 @@ use bf_ui_kit::theme::sans;
 use bf_ui_kit::tokens::{color, radius, space};
 use egui::{Align2, Color32, Pos2, Rect, Sense, Stroke, Ui, Vec2};
 
+use crate::keys::{self, Tip, id};
 use crate::map::MapView;
 use crate::map::lens::{self, Lens};
 use crate::world::World;
@@ -137,7 +138,26 @@ pub fn button(ui: &mut Ui, rect: Rect, i18n: &I18n, lens: Lens, open: bool) -> b
     } else {
         i18n.tr("lens-button-tip")
     };
-    resp.on_hover_text(bf_ui_kit::tooltip_text(&tip)).clicked()
+    let tip = keys::tip(ui.ctx(), &tip, id::LENS_PICKER);
+    let resp = resp.on_hover_text(bf_ui_kit::tooltip_text(&tip));
+    keys::pressed(ui, id::LENS_PICKER, &resp)
+}
+
+/// The lens a map mode command picks: the family's first lens, or the one in use when it is
+/// already of that family.
+pub fn mode_lens(mode: usize, current: Lens) -> Lens {
+    let lens = match mode {
+        0 => Lens::Political,
+        1 => Lens::Resource(RESOURCES.iter().position(|r| *r == "copper").unwrap_or(0)),
+        2 => Lens::Climate,
+        3 => Lens::Farm(0),
+        _ => Lens::Local(lens::LOCAL_DEFAULT),
+    };
+    if family(lens) == family(current) {
+        current
+    } else {
+        lens
+    }
 }
 
 /// Shows the panel with its top left corner at `origin` and recolours the map when the lens
@@ -178,19 +198,19 @@ pub fn show(
         if let Some(pinned) = pinned {
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 let text = i18n.tr(if pinned { "lens-fold" } else { "lens-pin" });
-                if ui
+                let link = ui
                     .add(
                         egui::Label::new(
-                            egui::RichText::new(text)
+                            egui::RichText::new(&text)
                                 .font(sans(12.0))
                                 .color(color::ACCENT),
                         )
                         .sense(Sense::click())
                         .selectable(false),
                     )
-                    .on_hover_cursor(egui::CursorIcon::PointingHand)
-                    .clicked()
-                {
+                    .on_hover_cursor(egui::CursorIcon::PointingHand);
+                let link = link.on_hover_text(keys::tip(ui.ctx(), &text, id::LENS_KEEP_OPEN));
+                if keys::pressed(ui, id::LENS_KEEP_OPEN, &link) {
                     toggle_pin = true;
                 }
             });
@@ -204,7 +224,15 @@ pub fn show(
         (Family::Farms, i18n.tr("lens-farms")),
         (Family::Infrastructure, i18n.tr("lens-infrastructure")),
     ];
-    if bf_ui_kit::segmented(ui, &mut f, &options) {
+    let tips = [
+        Tip::Command(id::MODE_POLITICAL),
+        Tip::Command(id::MODE_RESOURCES),
+        Tip::Command(id::MODE_CLIMATE),
+        Tip::Command(id::MODE_FARMS),
+        Tip::Command(id::MODE_INFRASTRUCTURE),
+    ];
+    // The keys of these commands are read by the game screen, folded or not.
+    if keys::segmented(ui, &mut f, &options, &tips) {
         chosen = items(f).is_empty();
         next = match f {
             Family::Political => Lens::Political,
@@ -260,10 +288,8 @@ pub fn show(
                 sans(12.5),
                 if on { color::ACCENT } else { color::TEXT },
             );
-            if resp
-                .on_hover_cursor(egui::CursorIcon::PointingHand)
-                .clicked()
-            {
+            let resp = resp.on_hover_cursor(egui::CursorIcon::PointingHand);
+            if resp.clicked() || keys::item(ui, 'W', format!("lens.item.{key}"), key, r) {
                 chosen = true;
                 next = match fam {
                     Family::Resources => Lens::Resource(i),

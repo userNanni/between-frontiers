@@ -3,9 +3,11 @@
 use bf_ui_kit::{Button, tokens::space};
 use egui::{Color32, Rect, Sense, Ui};
 
+use super::government::Tab;
 use super::{country_panel, pick::paint_tip, region, top_bar};
 use crate::app::{Shared, Transition};
 use crate::hud::PanelId;
+use crate::keys::{self, id};
 use crate::map::MapMode;
 use crate::saves::{self, Save};
 use crate::settings::Autosave;
@@ -117,6 +119,11 @@ impl State {
             );
             shared.toast(msg, now);
         }
+    }
+
+    /// Tab of the government window, while it is open.
+    pub fn government_tab(&self) -> Option<super::government::Tab> {
+        self.government.as_ref().map(|w| w.tab)
     }
 
     /// What the simulation last published.
@@ -301,6 +308,13 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
 
     // Side panel under the country figures, above the map mode picker, while no window covers
     // the map.
+    if keys::fired(ui.ctx(), id::OUTLINER)
+        && state.government.is_none()
+        && state.journal.is_none()
+        && !state.research_open
+    {
+        state.fold.open = !state.fold.open;
+    }
     if let Some(r) = place(PanelId::Outliner) {
         let sections = shared.hud.layout.overview();
         let res = super::outliner::show(
@@ -404,6 +418,8 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
     {
         let catcher = ui.interact(rect, ui.make_persistent_id("lens-outside"), Sense::click());
         let popup = lens_popup(r, super::lens_panel::size(view.lens), rect);
+        // Open over the HUD: the tips of what it covers go.
+        keys::cover(ui, popup);
         let res = super::lens_panel::show(
             ui,
             popup.min,
@@ -520,8 +536,49 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
         }
     }
 
+    // HUD panels and presets, in and out of the edit mode; the map lenses, folded or not.
+    if !state.menu_open {
+        let ctx = ui.ctx().clone();
+        let mut changed = false;
+        if keys::fired(&ctx, id::HUD_EDIT_BLOCKS) {
+            super::hud_edit::edit_blocks(&mut state.edit, super::hud_edit::Blocks::Country);
+        }
+        if keys::fired(&ctx, id::HUD_EDIT_SECTIONS) {
+            super::hud_edit::edit_blocks(&mut state.edit, super::hud_edit::Blocks::Overview);
+        }
+        if keys::fired(&ctx, id::LENS_PICKER) && !shared.hud.layout.map_modes_open {
+            toggle_lens_picker(state);
+        }
+        if keys::fired(&ctx, id::LENS_KEEP_OPEN) {
+            shared.hud.layout.map_modes_open = !shared.hud.layout.map_modes_open;
+            state.lens_open = false;
+            changed = true;
+        }
+        if let (Some(view), Some(world)) = (&mut shared.map_view, &shared.world)
+            && let Some(mode) = id::MODES.iter().position(|c| keys::fired(&ctx, c))
+        {
+            let lens = super::lens_panel::mode_lens(mode, view.lens);
+            super::lens_panel::choose(view, world, lens, snap.date.year);
+        }
+        for (p, cmd) in PanelId::ALL.into_iter().zip(id::HUD_PANELS) {
+            if keys::fired(&ctx, cmd) {
+                crate::hud::toggle_panel(&mut shared.hud, p);
+                changed = true;
+            }
+        }
+        for (p, cmd) in crate::hud::Preset::CHOICES.into_iter().zip(id::HUD_PRESETS) {
+            if keys::fired(&ctx, cmd) {
+                crate::hud::apply_preset(&mut shared.hud, p);
+                changed = true;
+            }
+        }
+        if changed {
+            shared.persist_hud();
+        }
+    }
+
     // Arranging the HUD: over everything but the in-game menu; the other keys wait.
-    if ui.input(|i| i.key_pressed(egui::Key::F8)) && !state.menu_open {
+    if keys::fired(ui.ctx(), id::HUD_EDIT) && !state.menu_open {
         toggle_hud_edit(state);
     }
     if state.edit.on && !state.menu_open {
@@ -540,55 +597,59 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
         if let Some(m) = res.message {
             shared.toast(m, now);
         }
-        if ui.input(|i| i.key_pressed(egui::Key::Escape)) {
+        if keys::fired(ui.ctx(), id::BACK) {
             super::hud_edit::toggle(&mut state.edit);
         }
         return out;
     }
 
-    // Keyboard
-    let (research_key, government_key, journal_key) = ui.input(|i| {
-        (
-            i.key_pressed(egui::Key::R),
-            i.key_pressed(egui::Key::G),
-            i.key_pressed(egui::Key::J),
-        )
-    });
-    if research_key && !state.menu_open {
-        state.research_open = !state.research_open;
-        state.government = None;
-        state.journal = None;
-    }
-    if government_key && !state.menu_open {
-        toggle_government(state);
-    }
-    if journal_key && !state.menu_open {
-        toggle_journal(state);
-    }
-    let (space_key, esc, speed_key) = ui.input(|i| {
-        let speed = [
-            egui::Key::Num1,
-            egui::Key::Num2,
-            egui::Key::Num3,
-            egui::Key::Num4,
-            egui::Key::Num5,
-        ]
-        .iter()
-        .position(|k| i.key_pressed(*k));
-        (
-            i.key_pressed(egui::Key::Space),
-            i.key_pressed(egui::Key::Escape),
-            speed,
-        )
-    });
+    // Keyboard: every key arrives as a command.
+    let ctx = ui.ctx().clone();
+    let fired = |cmd: &str| keys::fired(&ctx, cmd);
     if !state.menu_open {
-        if space_key {
+        if fired(id::RESEARCH) {
+            state.research_open = !state.research_open;
+            state.government = None;
+            state.journal = None;
+        }
+        if fired(id::GOVERNMENT) {
+            toggle_government(state);
+        }
+        if fired(id::JOURNAL) {
+            toggle_journal(state);
+        }
+        for (cmd, tab) in [
+            (id::TAB_BUDGET, Tab::Budget),
+            (id::TAB_MONEY, Tab::Money),
+            (id::TAB_LAWS, Tab::Laws),
+        ] {
+            if fired(cmd) {
+                state.research_open = false;
+                state.journal = None;
+                state.government.get_or_insert_with(Default::default).tab = tab;
+            }
+        }
+        if fired(id::COUNTRY) {
+            state.selected = player;
+        }
+        if fired(id::PAUSE) {
             state.sim.send(Command::SetPaused(!snap.paused));
         }
-        if let Some(s) = speed_key {
+        if fired(id::SPEED_DOWN) {
+            state
+                .sim
+                .send(Command::SetSpeed(snap.speed.saturating_sub(1).max(1)));
+        }
+        if fired(id::SPEED_UP) {
+            state.sim.send(Command::SetSpeed((snap.speed + 1).min(5)));
+        }
+        if let Some(s) = id::SPEEDS.iter().position(|c| fired(c)) {
             state.sim.send(Command::SetSpeed(s as u8 + 1));
         }
-        if esc {
+        if fired(id::MENU) {
+            state.menu_open = true;
+            state.sim.send(Command::SetPaused(true));
+        } else if fired(id::BACK) {
             if state.lens_open {
                 state.lens_open = false;
             } else if state.research_open {
@@ -604,8 +665,18 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
                 state.sim.send(Command::SetPaused(true));
             }
         }
-    } else if esc {
+    } else if fired(id::BACK) || fired(id::MENU) {
         state.menu_open = false;
+    }
+    if fired(id::SAVE) {
+        state.write(shared, now, true);
+    }
+    if fired(id::SETTINGS) || fired(id::KEYS) {
+        state.menu_open = false;
+        if fired(id::KEYS) {
+            shared.key_editor = Some(super::keys_editor::State::default());
+        }
+        out = Some(Transition::Settings);
     }
 
     // In-game menu
@@ -613,6 +684,7 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
         ui.painter()
             .rect_filled(rect, 0, Color32::from_black_alpha(140));
         let panel = Rect::from_center_size(rect.center(), egui::vec2(360.0, 352.0));
+        keys::cover(ui, rect);
         bf_ui_kit::paint_overlay(ui, panel);
         ui.interact(
             rect,
@@ -623,41 +695,36 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
             ui.spacing_mut().item_spacing.y = space::SM;
             ui.vertical_centered(|ui| bf_ui_kit::title(ui, &shared.tr("game-menu")));
             bf_ui_kit::gap(ui, space::SM);
-            if Button::primary(&shared.tr("game-menu-resume"))
+            let resume = Button::primary(&shared.tr("game-menu-resume"))
                 .width(f32::INFINITY)
-                .show(ui)
-                .clicked()
-            {
+                .show(ui);
+            if resume.clicked() || keys::single(ui, "menu.resume", 'R', resume.rect) {
                 state.menu_open = false;
             }
-            if Button::secondary(&shared.tr("game-menu-save"))
+            let save = Button::secondary(&shared.tr("game-menu-save"))
                 .width(f32::INFINITY)
-                .show(ui)
-                .clicked()
-            {
+                .show(ui);
+            if keys::pressed(ui, id::SAVE, &save) {
                 state.write(shared, now, true);
             }
-            if Button::secondary(&shared.tr("game-menu-hud"))
+            let hud = Button::secondary(&shared.tr("game-menu-hud"))
                 .width(f32::INFINITY)
-                .show(ui)
-                .clicked()
-            {
+                .show(ui);
+            if keys::pressed(ui, id::HUD_EDIT, &hud) {
                 state.menu_open = false;
                 toggle_hud_edit(state);
             }
-            if Button::secondary(&shared.tr("menu-settings"))
+            let settings = Button::secondary(&shared.tr("menu-settings"))
                 .width(f32::INFINITY)
-                .show(ui)
-                .clicked()
-            {
+                .show(ui);
+            if keys::pressed(ui, id::SETTINGS, &settings) {
                 state.menu_open = false;
                 out = Some(Transition::Settings);
             }
-            if Button::ghost(&shared.tr("game-menu-exit"))
+            let exit = Button::ghost(&shared.tr("game-menu-exit"))
                 .width(f32::INFINITY)
-                .show(ui)
-                .clicked()
-            {
+                .show(ui);
+            if exit.clicked() || keys::single(ui, "menu.exit", 'Q', exit.rect) {
                 state.write(shared, now, false);
                 out = Some(Transition::Menu);
             }
