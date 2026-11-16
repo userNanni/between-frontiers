@@ -252,3 +252,4 @@ research-zoom-in = Aproximar
 research-zoom-out = Afastar
 research-fit = Ajustar
 research-fit-hint = Mostrar a árvore inteira
+research-all-fields = Todas as áreas

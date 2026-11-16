@@ -99,6 +99,11 @@ depois (125 de 133 até 2025); população e PIB de 2025 quase não mudam (6,75 
 - Datas históricas dentro da era, com folga de 5 anos; custo cresce cerca de 2,5× por era.
 - **É uma árvore de verdade:** toda tecnologia posterior a 1925 nasce de pelo menos uma outra, e
   custa pelo menos 10 % mais que cada um dos seus requisitos.
+- **Uma árvore só, não doze:** as áreas se alimentam umas das outras, como na vida real (o
+  militar passa o radar, o foguete e a navegação por satélite para o civil; a escola e a
+  universidade, para a ciência; a mineração, para os materiais). Pelo menos 40 % dos requisitos
+  cruzam de área, e toda área alimenta pelo menos duas tecnologias de outras. É a diferença para
+  o Victoria 3, com três árvores separadas (produção, militar, sociedade).
 - **Níveis:** duas colunas por era (`LEVELS_PER_ERA`). O nível de uma tecnologia é o primeiro da
   sua era ou um a mais que o maior nível dos seus requisitos, o que vier depois. São 13 níveis,
   do 1 (≈ 40 pontos) ao 13 (≈ 6000 pontos); a mediana do custo nunca cai de um nível para o
@@ -112,7 +117,10 @@ depois (125 de 133 até 2025); população e PIB de 2025 quase não mudam (6,75 
 ## A tela
 
 A árvore é um grafo, como nos editores de nós (xyflow): colunas são os níveis, com a era e o
-custo típico no cabeçalho; linhas são os campos; curvas ligam cada tecnologia aos requisitos.
+custo típico no cabeçalho; curvas ligam cada tecnologia aos requisitos. Não há faixas por área:
+cada cartão fica perto dos cartões a que se liga, venham de que área vierem (desenho em camadas
+pelo baricentro), e só de leve perto das outras da sua área. A área é o ponto colorido no cartão,
+e o filtro por área acende as dela sem esconder o resto.
 Arrastar move, a roda do mouse aproxima, o minimapa no canto mostra onde se está e leva a
 qualquer ponto, e "Ajustar" mostra a árvore inteira. Passar o mouse por uma tecnologia acende o
 que ela pede e o que ela libera; o caminho até a tecnologia em foco fica animado. As abas de era

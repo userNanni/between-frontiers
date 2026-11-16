@@ -276,6 +276,39 @@ fn research_cost_grows_along_every_requirement() {
 }
 
 #[test]
+fn the_fields_feed_each_other() {
+    // One tree, not twelve: much of what a field needs comes from another, and every field
+    // passes something on (the military to civilian life, schooling to science, mining to
+    // materials).
+    let data = GameData::load(&root()).unwrap();
+    let tree = tree(&data);
+    let mut edges = 0;
+    let mut across = 0;
+    let mut feeds = [0; FIELDS.len()];
+    for t in &tree.techs {
+        for &r in &t.requires {
+            let req = &tree.techs[usize::from(r)];
+            edges += 1;
+            if req.field != t.field {
+                across += 1;
+                feeds[usize::from(req.field)] += 1;
+            }
+        }
+    }
+    assert!(
+        across * 100 >= edges * 40,
+        "only {across} of {edges} requirements cross between fields"
+    );
+    for (f, n) in feeds.iter().enumerate() {
+        assert!(
+            *n >= 2,
+            "{} feeds only {n} technologies of other fields",
+            FIELDS[f]
+        );
+    }
+}
+
+#[test]
 fn levels_are_filled_and_ask_for_more_research() {
     let data = GameData::load(&root()).unwrap();
     let tree = tree(&data);

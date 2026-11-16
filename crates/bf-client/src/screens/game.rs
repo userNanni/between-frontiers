@@ -134,10 +134,13 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
         if response.clicked_sea {
             state.selected = None;
         }
-        if let (Some(id), Some(pos)) = (
-            response.hovered_province,
-            ui.input(|i| i.pointer.hover_pos()),
-        ) && let Some((state_name, owner)) = world.place_name(id)
+        // Nothing of the map shows through the research screen.
+        if !state.research_open
+            && let (Some(id), Some(pos)) = (
+                response.hovered_province,
+                ui.input(|i| i.pointer.hover_pos()),
+            )
+            && let Some((state_name, owner)) = world.place_name(id)
         {
             let owner = owner.map(names).unwrap_or_else(|| i18n.tr("map-unowned"));
             let extra = world.provinces[id as usize - 1].state.and_then(|s| {

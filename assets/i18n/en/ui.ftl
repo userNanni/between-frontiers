@@ -240,3 +240,4 @@ research-zoom-in = Zoom in
 research-zoom-out = Zoom out
 research-fit = Fit
 research-fit-hint = Show the whole tree
+research-all-fields = All fields

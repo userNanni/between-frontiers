@@ -22,9 +22,7 @@ use crate::sim::ResearchView;
 const NODE: Vec2 = Vec2::new(212.0, 66.0);
 const GAP_X: f32 = 84.0;
 const GAP_Y: f32 = 12.0;
-const LANE_PAD: f32 = 14.0;
-/// Room on the left for the field names and on top for the level headers, in screen pixels.
-const GUTTER: f32 = 124.0;
+/// Room on top for the level headers, in screen pixels.
 const HEADER: f32 = 40.0;
 const MINIMAP: Vec2 = Vec2::new(220.0, 132.0);
 const ZOOM_MIN: f32 = 0.15;
@@ -60,11 +58,25 @@ fn open(tree: &TechTree, view: &ResearchView, t: usize) -> bool {
             .all(|&r| view.stages[r as usize] >= Stage::Science)
 }
 
+/// Colour of each field, in the order of `FIELDS`.
+pub const FIELD_COLORS: [Color32; 12] = [
+    Color32::from_rgb(0x8F, 0xB8, 0x60),
+    Color32::from_rgb(0xB0, 0x8A, 0x5A),
+    Color32::from_rgb(0xE0, 0xB0, 0x40),
+    Color32::from_rgb(0x9A, 0xA4, 0xB0),
+    Color32::from_rgb(0xB0, 0x7C, 0xC6),
+    Color32::from_rgb(0xD0, 0x88, 0x50),
+    Color32::from_rgb(0x60, 0xB0, 0xE0),
+    Color32::from_rgb(0x50, 0xC8, 0xB0),
+    Color32::from_rgb(0x70, 0x90, 0xE0),
+    Color32::from_rgb(0xE0, 0x70, 0x80),
+    Color32::from_rgb(0xC0, 0x50, 0x48),
+    Color32::from_rgb(0xD0, 0xA0, 0xC8),
+];
+
 /// Where each card sits in the tree, in tree units.
 pub struct TreeLayout {
     pub pos: Vec<Pos2>,
-    /// Field lanes: top and bottom.
-    pub lanes: Vec<(f32, f32)>,
     pub levels: usize,
     /// Median cost of each level.
     pub level_cost: Vec<u32>,
@@ -78,6 +90,10 @@ fn column_x(level: usize) -> f32 {
 }
 
 impl TreeLayout {
+    /// One tree for every field: layered graph drawing, with the levels as layers. Each card is
+    /// pulled toward the cards it links to (the barycentre method), so the curves run as flat
+    /// as they can whatever field they cross into, and weakly toward its field's home row, so
+    /// that the fields still gather in rough regions.
     pub fn new(tree: &TechTree) -> Self {
         let n = tree.techs.len();
         let levels = usize::from(tree.levels());
@@ -87,68 +103,81 @@ impl TreeLayout {
                 dependents[r as usize].push(t as u16);
             }
         }
-        // Cells: the technologies of one field in one level, first in historical order.
-        let mut cells = vec![vec![Vec::new(); levels]; FIELDS.len()];
+        let mut columns = vec![Vec::new(); levels];
         let mut order: Vec<usize> = (0..n).collect();
-        order.sort_by_key(|&t| (tree.techs[t].demonstrated, t));
+        order.sort_by_key(|&t| (tree.techs[t].field, tree.techs[t].demonstrated, t));
         for t in order {
-            let tech = &tree.techs[t];
-            cells[usize::from(tech.field)][usize::from(tech.level)].push(t);
+            columns[usize::from(tree.techs[t].level)].push(t);
         }
         let slot = NODE.y + GAP_Y;
-        let mut lanes = Vec::with_capacity(FIELDS.len());
-        let mut top = 0.0;
-        for field in &cells {
-            let most = field.iter().map(Vec::len).max().unwrap_or(0).max(1);
-            let height = most as f32 * slot - GAP_Y + slot * 0.5 + 2.0 * LANE_PAD;
-            lanes.push((top, top + height));
-            top += height;
-        }
+        let most = columns.iter().map(Vec::len).max().unwrap_or(1).max(1);
+        let height = most as f32 * slot;
+        let home =
+            |t: usize| f32::from(tree.techs[t].field) / (FIELDS.len() - 1) as f32 * (height - slot);
         let mut pos = vec![Pos2::ZERO; n];
-        for (f, field) in cells.iter().enumerate() {
-            for (l, cell) in field.iter().enumerate() {
-                for (k, &t) in cell.iter().enumerate() {
-                    pos[t] = Pos2::new(column_x(l), lanes[f].0 + LANE_PAD + k as f32 * slot);
-                }
+        for (l, column) in columns.iter().enumerate() {
+            let top = (height - column.len() as f32 * slot) * 0.5;
+            for (k, &t) in column.iter().enumerate() {
+                pos[t] = Pos2::new(column_x(l), top + k as f32 * slot);
             }
         }
-        // Pull each card toward the cards it links to, so the curves run as flat as they can
-        // (the barycentre method of layered graph drawing), keeping the cards of a cell apart
-        // and inside their lane.
-        for pass in 0..6 {
-            let mut desired = vec![0.0f32; n];
-            for t in 0..n {
-                let links: &[u16] = if pass % 2 == 0 && !tree.techs[t].requires.is_empty() {
-                    &tree.techs[t].requires
-                } else if !dependents[t].is_empty() {
-                    &dependents[t]
-                } else {
-                    &tree.techs[t].requires
-                };
-                desired[t] = if links.is_empty() {
-                    pos[t].y
-                } else {
-                    links.iter().map(|&r| pos[r as usize].y).sum::<f32>() / links.len() as f32
-                };
-            }
-            for (f, field) in cells.iter_mut().enumerate() {
-                let (lane_top, lane_bottom) = (lanes[f].0 + LANE_PAD, lanes[f].1 - LANE_PAD);
-                for cell in field.iter_mut() {
-                    cell.sort_by(|&a, &b| desired[a].total_cmp(&desired[b]).then(a.cmp(&b)));
-                    let mut next = lane_top;
-                    for &t in cell.iter() {
-                        let y = desired[t].clamp(lane_top, lane_bottom - NODE.y).max(next);
-                        pos[t].y = y;
-                        next = y + slot;
-                    }
-                    let mut limit = lane_bottom - NODE.y;
-                    for &t in cell.iter().rev() {
-                        pos[t].y = pos[t].y.min(limit);
-                        limit = pos[t].y - slot;
-                    }
+        for pass in 0..12 {
+            // Down the levels, toward the requirements; back up, toward the dependents.
+            let down = pass % 2 == 0;
+            let sweep: Vec<usize> = if down {
+                (0..levels).collect()
+            } else {
+                (0..levels).rev().collect()
+            };
+            for l in sweep {
+                let column = &mut columns[l];
+                let desired: Vec<(usize, f32)> = column
+                    .iter()
+                    .map(|&t| {
+                        let links: &[u16] = if down && !tree.techs[t].requires.is_empty() {
+                            &tree.techs[t].requires
+                        } else if !dependents[t].is_empty() {
+                            &dependents[t]
+                        } else {
+                            &tree.techs[t].requires
+                        };
+                        let pull = if links.is_empty() {
+                            pos[t].y
+                        } else {
+                            links.iter().map(|&r| pos[r as usize].y).sum::<f32>()
+                                / links.len() as f32
+                        };
+                        (t, pull * 0.8 + home(t) * 0.2)
+                    })
+                    .collect();
+                let mut sorted = desired.clone();
+                sorted.sort_by(|a, b| a.1.total_cmp(&b.1).then(a.0.cmp(&b.0)));
+                // Keep the cards a slot apart, then move the column back toward where the
+                // cards wanted to be.
+                let mut ys = Vec::with_capacity(sorted.len());
+                let mut next = f32::MIN;
+                for &(_, want) in &sorted {
+                    let y = want.max(next);
+                    ys.push(y);
+                    next = y + slot;
                 }
+                let shift = sorted
+                    .iter()
+                    .zip(&ys)
+                    .map(|(&(_, want), &y)| want - y)
+                    .sum::<f32>()
+                    / sorted.len().max(1) as f32;
+                for (&(t, _), &y) in sorted.iter().zip(&ys) {
+                    pos[t].y = y + shift;
+                }
+                *column = sorted.into_iter().map(|(t, _)| t).collect();
             }
         }
+        let top = pos.iter().map(|p| p.y).fold(f32::MAX, f32::min);
+        for p in &mut pos {
+            p.y -= top;
+        }
+        let bottom = pos.iter().map(|p| p.y).fold(0.0, f32::max) + NODE.y;
         let mut level_cost = Vec::with_capacity(levels);
         for l in 0..levels {
             let mut costs: Vec<u32> = tree
@@ -162,10 +191,9 @@ impl TreeLayout {
         }
         Self {
             pos,
-            lanes,
             levels,
             level_cost,
-            size: Vec2::new(column_x(levels) - GAP_X, top),
+            size: Vec2::new(column_x(levels) - GAP_X, bottom),
             dependents,
         }
     }
@@ -176,6 +204,8 @@ pub struct TreeCamera {
     pub pan: Vec2,
     pub zoom: f32,
     pub era: u8,
+    /// Field picked in the filter: its technologies stay lit, the rest fade.
+    pub field: Option<u8>,
     layout: Option<TreeLayout>,
     /// Era to bring into view on the next frame.
     jump: Option<u8>,
@@ -187,6 +217,7 @@ impl TreeCamera {
             pan: Vec2::ZERO,
             zoom: 0.8,
             era,
+            field: None,
             layout: None,
             jump: Some(era),
         }
@@ -299,6 +330,40 @@ pub fn show(
     if bf_ui_kit::segmented(ui, &mut camera.era, &eras) {
         camera.jump = Some(camera.era);
     }
+    ui.horizontal_wrapped(|ui| {
+        // Field filter: one tree, any field lit on demand.
+        ui.set_max_width(ui.max_rect().width());
+        ui.spacing_mut().item_spacing.x = space::XS;
+        if ui
+            .selectable_label(
+                camera.field.is_none(),
+                egui::RichText::new(i18n.tr("research-all-fields")).font(sans(12.5)),
+            )
+            .clicked()
+        {
+            camera.field = None;
+        }
+        for (f, field) in FIELDS.iter().enumerate() {
+            let on = camera.field == Some(f as u8);
+            let mut job = LayoutJob::default();
+            job.append(
+                "● ",
+                0.0,
+                egui::TextFormat::simple(sans(12.5), FIELD_COLORS[f]),
+            );
+            job.append(
+                &i18n.tr(&format!("tech-field-{field}")),
+                0.0,
+                egui::TextFormat::simple(
+                    sans(12.5),
+                    if on { color::TEXT } else { color::TEXT_MUTED },
+                ),
+            );
+            if ui.selectable_label(on, job).clicked() {
+                camera.field = if on { None } else { Some(f as u8) };
+            }
+        }
+    });
 
     let canvas = Rect::from_min_max(
         Pos2::new(ui.max_rect().left(), ui.cursor().top() + space::XS),
@@ -323,8 +388,8 @@ fn graph(
     layout: &TreeLayout,
 ) -> Option<Option<u16>> {
     let mut picked = None;
-    // The tree itself, right of the field names and below the level headers.
-    let area = Rect::from_min_max(canvas.min + Vec2::new(GUTTER, HEADER), canvas.max);
+    // The tree itself, below the level headers.
+    let area = Rect::from_min_max(canvas.min + Vec2::new(0.0, HEADER), canvas.max);
     let bg = ui.interact(
         area,
         ui.make_persistent_id("research-canvas"),
@@ -396,22 +461,6 @@ fn graph(
             );
         }
     }
-    // Field lanes.
-    for (f, &(top, bottom)) in layout.lanes.iter().enumerate() {
-        let a = camera.to_screen(canvas, Pos2::new(0.0, top));
-        let b = camera.to_screen(canvas, Pos2::new(layout.size.x, bottom));
-        if f % 2 == 1 {
-            painter.rect_filled(Rect::from_min_max(a, b), 0, Color32::from_white_alpha(4));
-        }
-        painter.line_segment(
-            [
-                Pos2::new(canvas.left(), a.y),
-                Pos2::new(canvas.right(), a.y),
-            ],
-            Stroke::new(1.0, color::BORDER),
-        );
-    }
-
     // What the pointer is on: that technology, what it needs and what it leads to.
     let pointer = ui.input(|i| i.pointer.hover_pos());
     let over_canvas = pointer.filter(|p| canvas.contains(*p));
@@ -439,12 +488,16 @@ fn graph(
         set
     });
     let lit = |t: usize| chain.as_ref().is_none_or(|c| c.contains(&t));
-    let dim = |c: Color32, t: usize| {
-        if hovered.is_some() && !lit(t) {
-            c.gamma_multiply(0.3)
+    let in_field = |t: usize| camera.field.is_none_or(|f| tree.techs[t].field == f);
+    let faded = |t: usize| {
+        if hovered.is_some() {
+            !lit(t)
         } else {
-            c
+            !in_field(t)
         }
+    };
+    let dim = |c: Color32, t: usize| {
+        if faded(t) { c.gamma_multiply(0.3) } else { c }
     };
 
     // Edges, behind the cards.
@@ -471,11 +524,12 @@ fn graph(
             } else {
                 (color::BORDER_STRONG, 1.2)
             };
-            let col = if hovered.is_some() && !on_chain {
-                col.gamma_multiply(0.25)
+            let off = if hovered.is_some() {
+                !on_chain
             } else {
-                col
+                !in_field(t) && !in_field(r)
             };
+            let col = if off { col.gamma_multiply(0.25) } else { col };
             let dx = ((to.x - from.x) * 0.5).max(40.0 * z);
             let curve = CubicBezierShape::from_points_stroke(
                 [from, from + Vec2::new(dx, 0.0), to - Vec2::new(dx, 0.0), to],
@@ -579,38 +633,6 @@ fn graph(
             color::TEXT_MUTED,
         );
     }
-    // Field names, pinned to the left.
-    let gutter = Rect::from_min_max(
-        Pos2::new(area.left() - GUTTER, area.top()),
-        Pos2::new(area.left(), area.bottom()),
-    );
-    painter.rect_filled(gutter, 0, color::SURFACE);
-    painter.line_segment(
-        [gutter.right_top(), gutter.right_bottom()],
-        Stroke::new(1.0, color::BORDER),
-    );
-    for (f, &(top, bottom)) in layout.lanes.iter().enumerate() {
-        let a = camera.to_screen(canvas, Pos2::new(0.0, top)).y;
-        let b = camera.to_screen(canvas, Pos2::new(0.0, bottom)).y;
-        let y = (a.max(gutter.top()) + space::SM).min(b - 16.0);
-        if b < gutter.top() || a > gutter.bottom() {
-            continue;
-        }
-        if a > gutter.top() {
-            painter.line_segment(
-                [Pos2::new(gutter.left(), a), Pos2::new(gutter.right(), a)],
-                Stroke::new(1.0, color::BORDER),
-            );
-        }
-        painter.text(
-            Pos2::new(gutter.left() + space::MD, y),
-            Align2::LEFT_TOP,
-            i18n.tr(&format!("tech-field-{}", FIELDS[f])),
-            sans_semibold(12.5),
-            color::TEXT_MUTED,
-        );
-    }
-
     minimap(ui, area, view, tree, camera, layout);
     controls(ui, area, i18n, camera, layout);
     picked
@@ -704,6 +726,14 @@ fn card(
     }
 
     let inner = r.shrink(space::SM * z);
+    // The field, as a dot before the name.
+    let dot = 4.0 * z;
+    painter.circle_filled(
+        Pos2::new(inner.left() + dot, inner.top() + 8.0 * z),
+        dot,
+        dim(FIELD_COLORS[usize::from(tech.field)], t),
+    );
+    let name_left = inner.left() + dot * 2.0 + 5.0 * z;
     let name = i18n.tr(&format!("tech-{}", tech.key));
     let name_color = if stage == Stage::Unknown && !can_focus {
         color::TEXT_MUTED
@@ -712,13 +742,13 @@ fn card(
     };
     let mut job = LayoutJob::simple_singleline(name, sans_semibold(13.5 * z), dim(name_color, t));
     job.wrap = TextWrapping {
-        max_width: inner.width(),
+        max_width: inner.right() - name_left,
         max_rows: 1,
         break_anywhere: true,
         overflow_character: Some('…'),
     };
     painter.galley(
-        inner.left_top(),
+        Pos2::new(name_left, inner.top()),
         ui.fonts_mut(|f| f.layout_job(job)),
         name_color,
     );
