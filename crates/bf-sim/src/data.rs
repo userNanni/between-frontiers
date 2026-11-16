@@ -30,8 +30,7 @@ pub struct GameData {
     pub tree: Option<Arc<TechTree>>,
     /// Who lives where, when `data/scenario/1925/communities.ron` exists. Not in the tick yet.
     pub communities: Option<crate::communities::Communities>,
-    /// Laws, interest groups and movements, when `data/politics/laws.ron` exists; not yet read
-    /// by the simulation.
+    /// Laws, interest groups and movements, when `data/politics/laws.ron` exists.
     pub politics: Option<Arc<Politics>>,
     /// Laws in force on the start date, when `data/scenario/1925/laws.ron` exists too.
     pub laws_1925: Option<LawsInForce>,
@@ -109,6 +108,7 @@ impl GameData {
         crate::game::Rules {
             catalogue: Arc::clone(&self.catalogue),
             tree: self.tree.clone(),
+            politics: self.politics.clone(),
         }
     }
 
@@ -131,6 +131,9 @@ impl GameData {
                 tree,
                 self.countries.countries.iter().map(|c| c.tag.as_str()),
             );
+        }
+        if let (Some(p), Some(laws)) = (&self.politics, &self.laws_1925) {
+            world.politics = crate::polity::PoliticsState::initial(p, laws);
         }
         world
     }

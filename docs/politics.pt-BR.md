@@ -2,8 +2,10 @@
 
 Estado: contrato e catálogo da fase 3. O código está em `crates/bf-sim/src/politics.rs`; os dados,
 em `data/politics/` (catálogo) e `data/scenario/1925/laws.ron` (leis vigentes em 1925, método e
-fontes em `data/scenario/1925/LAWS.md`); os nomes, em `assets/i18n/*/politics.ftl`. **Nada disto
-roda na simulação ainda**: `GameData` carrega e valida, ninguém lê.
+fontes em `data/scenario/1925/LAWS.md`); os nomes, em `assets/i18n/*/politics.ftl`. O estado que
+muda no jogo (leis em vigor, peso dos grupos, movimentos, legitimidade, registro das mudanças) está
+em `crates/bf-sim/src/polity.rs`, salvo e no hash; a dinâmica (efeitos, movimentos, mudança de lei
+sem jogador) ainda não roda.
 
 ## O desenho
 
@@ -112,10 +114,29 @@ vigente.
 - **Comparação:** o mod Cold War Era do Victoria 3 só como ordem de grandeza
   (`benchmarks.pt-BR.md`). Nenhum nome, texto ou dado dele nem do Victoria 3 entrou.
 
+## No jogo (`polity.rs`)
+
+- **Estado** (`GameWorld::politics`, `PoliticsState`): lei em vigor por país e grupo (parte de
+  `laws_1925`), comunidades visadas, peso de cada grupo de interesse (milésimos), apoio, pressão e
+  condição mais fraca de cada movimento, legitimidade (milésimos), pedidos pendentes e o registro
+  de cada mudança (data, país, de, para, quem: comando, movimento ou grupos).
+- **Comando** `GameCommand::SetLaw { tag, law }` (índice em `Politics::laws`): o pedido fica
+  pendente e o sistema `politics` o aplica no mesmo dia; lei desconhecida, lei colonial de país
+  sem colônias e etiqueta desconhecida não fazem nada; de dois pedidos para o mesmo grupo vale o
+  último.
+- **Leitura** para a interface: `PoliticsState::{laws_in_force, law_in_force, clout,
+  active_movements, legitimacy, pending_laws, law_changes}` e `polity::{possible_laws, stance,
+  effects_in_force, scope_of}`. `stance` compara o conjunto de leis em vigor com o mesmo conjunto
+  trocando uma lei e devolve, efeito por efeito, peso × variação do efeito combinado (um teto de
+  outro grupo conta como o povo o sentiria) e o total.
+- **Peso dos grupos** (mensal, dia 1): metade da parcela das pessoas da metrópole, metade da
+  parcela da renda, pelas profissões de cada grupo. Grupos de uma comunidade ficam com zero até as
+  comunidades entrarem nos pops.
+
 ## O que fica para ligar na simulação
 
-1. Estado salvo por país: leis vigentes (`Vec<u16>` por grupo), apoio dos movimentos, e o comando
-   `SetLaw`. Entra no hash e no save, como `Market::laws`, que passa a ser derivado das leis.
+1. ~~Estado salvo por país e o comando `SetLaw`.~~ Feito (acima). `Market::laws` passa a ser
+   derivado das leis no passo 2.
 2. Ler os efeitos que já têm onde cair: migração, tetos de imposto e arrecadação, parcela do Estado
    em escola e hospital, meta de matrícula, renda da terra.
 3. Medir os indicadores por linha populacional (mensal) e mover os movimentos (anual).
