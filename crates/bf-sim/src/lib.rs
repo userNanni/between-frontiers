@@ -14,3 +14,4 @@ pub mod research;
 pub mod research_system;
 pub mod resources;
 pub mod scenario;
+pub mod war;

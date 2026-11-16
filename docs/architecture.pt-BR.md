@@ -258,7 +258,7 @@ Existe a partir do primeiro PR com código e roda toda noite em Linux e Windows.
 | 2. Pesquisa | Árvore do século XIX como base, mais as eras de 1925 a 2025 | Maturidade por país: ciência, protótipo, industrialização, difusão |
 | 3. Política nacional | Grupos de interesse, leis, movimentos persistentes (`politics.pt-BR.md`) | Causa visível, pouco sorteio, sem funil ideológico |
 | 4. Diplomacia | Blocos, tratados, influência com retorno | Objetivo próprio para país pequeno; arma nuclear com consequência |
-| 5. Guerra | Frentes sobre a logística definida na fase 1 | Guerra mundial e paz negociada como sistema próprio |
+| 5. Guerra | Frentes sobre a logística definida na fase 1 (`war.pt-BR.md`) | Guerra mundial e paz negociada como sistema próprio |
 | 6. IA estratégica | Países que interpretam seu papel: interesses medidos, hostilidade e escada de crise (`history-rails.pt-BR.md`) | Interesse com a conta aberta, sem estratégia sorteada |
 | 7. Confiança e história (último bloco) | Ciclo de confiança e medo do mercado (`confidence.pt-BR.md`); entradas históricas com marcos, personagens, agendas e casus belli, medidas pelo placar (`history-rails.pt-BR.md`) | Crise que nasce da euforia (Minsky), não de evento; a história real acontece por roteiro com pontos e condições, não por data, e desvia com o esforço do jogador |
 

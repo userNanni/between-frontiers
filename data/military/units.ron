@@ -1,0 +1,440 @@
+// Between Frontiers: unit types of 1925–2025 (phase 5, not wired into the simulation yet).
+// Contract: crates/bf-sim/src/war/catalogue.rs (UnitsFile); reasoning in docs/war.pt-BR.md.
+// Licence: CC BY-SA 4.0. Nothing here comes from a game or a mod: types are roles, not names of
+// any game's units.
+//
+// Element: land 1,000 men; sea one ship; air one aircraft; strategic one weapon, launcher or
+// satellite. Equipment and upkeep are per element, in each good's unit (lots of US$ 1,000 at base
+// price for the military and capital goods, tonnes for food and fuel).
+//
+// Every quantity is a DESIGN PARAMETER, not a historical figure: an order of magnitude to be
+// calibrated (docs/war.pt-BR.md, "Calibração prevista"). The rules that set them:
+// - Food: 5 t of processed_food a week per 1,000 men (0.7 kg a man a day); fodder 30 t of grain
+//   for a mounted element (one horse a man, 4 kg a day).
+// - Ships: equipment = tonnage × cost per tonne of the class (battleship and cruiser ~US$ 1,000/t,
+//   destroyer and escort ~1,250/t, submarine ~1,700/t, later generations more); fuel 1 % of the
+//   tonnage a week in peace.
+// - Aircraft: equipment = what the aircraft cost; crew plus ground staff in `men`.
+// - Later generations cost more per element: the gain in fire comes from that equipment, through
+//   fire_per_unit (land) or value × role share (sea, air, strategic).
+// Technologies: chosen from data/research/technologies.ron; where the tree lacks the right one,
+// the nearest stands in and docs/war.pt-BR.md, "Pedidos", asks for it.
+(
+    types: [
+        // ================================== Land (element: 1,000 men) ==================================
+        (
+            key: "irregular", domain: Land, mobility: Foot, men: 1000, training_weeks: 4,
+            equipment: [("small_arms", 25)],
+            upkeep: [("processed_food", 5), ("clothes", "0.5"), ("ammunition", "0.5")],
+        ),
+        (
+            key: "garrison", domain: Land, mobility: Static, men: 1000, training_weeks: 8,
+            equipment: [("small_arms", 60), ("artillery", 10)],
+            upkeep: [("processed_food", 5), ("clothes", 1), ("ammunition", "0.5")],
+        ),
+        (
+            key: "infantry", domain: Land, mobility: Foot, requires: ["machine_gun"], men: 1000,
+            training_weeks: 16,
+            equipment: [("small_arms", 100), ("artillery", 20)],
+            upkeep: [("processed_food", 5), ("clothes", 1), ("ammunition", 1)],
+            generations: [
+                (requires: ["arms_mass_production"],
+                    equipment: Some([("small_arms", 140), ("artillery", 40), ("automobiles", 10)]),
+                    upkeep: Some([("processed_food", 5), ("clothes", 1), ("ammunition", 2), ("fuel", 2)])),
+                (requires: ["guided_missile"],
+                    equipment: Some([("small_arms", 200), ("artillery", 60), ("automobiles", 30), ("electronic_components", 20)]),
+                    upkeep: Some([("processed_food", 5), ("clothes", 1), ("ammunition", 3), ("fuel", 5), ("medicines", "0.5")])),
+            ],
+        ),
+        (
+            key: "light_infantry", domain: Land, mobility: Light, requires: ["machine_gun"],
+            men: 1000, training_weeks: 24,
+            equipment: [("small_arms", 90), ("artillery", 10)],
+            upkeep: [("processed_food", 5), ("clothes", 1), ("ammunition", 1)],
+            generations: [
+                (requires: ["arms_mass_production"],
+                    equipment: Some([("small_arms", 140), ("artillery", 20)])),
+                (requires: ["guided_missile"],
+                    equipment: Some([("small_arms", 200), ("artillery", 40), ("electronic_components", 20)]),
+                    upkeep: Some([("processed_food", 5), ("clothes", 1), ("ammunition", 2), ("medicines", "0.5")])),
+            ],
+        ),
+        (
+            key: "cavalry", domain: Land, mobility: Horse, men: 1000, training_weeks: 20,
+            equipment: [("small_arms", 80), ("artillery", 5)],
+            upkeep: [("processed_food", 5), ("grain", 30), ("clothes", 1), ("ammunition", "0.5")],
+        ),
+        (
+            key: "artillery", domain: Land, mobility: Horse, men: 1000, training_weeks: 20,
+            equipment: [("artillery", 250), ("small_arms", 20)],
+            upkeep: [("processed_food", 5), ("grain", 20), ("clothes", 1), ("ammunition", 3)],
+            generations: [
+                (requires: ["motor_vehicle"], mobility: Some(Wheeled),
+                    equipment: Some([("artillery", 300), ("small_arms", 20), ("automobiles", 40)]),
+                    upkeep: Some([("processed_food", 5), ("fuel", 10), ("clothes", 1), ("ammunition", 3)])),
+                (requires: ["guided_missile"],
+                    equipment: Some([("artillery", 450), ("small_arms", 20), ("automobiles", 60), ("electronic_components", 50)])),
+                (requires: ["precision_guided_munitions"],
+                    equipment: Some([("artillery", 500), ("small_arms", 20), ("automobiles", 60), ("electronic_components", 120)])),
+            ],
+        ),
+        (
+            key: "engineers", domain: Land, mobility: Foot, men: 1000, training_weeks: 20,
+            equipment: [("small_arms", 50), ("tools", 30), ("machinery", 20)],
+            upkeep: [("processed_food", 5), ("clothes", 1), ("ammunition", "0.5")],
+            roles: [(Engineering, 1000)],
+            generations: [
+                (requires: ["earthmoving_machinery"], mobility: Some(Wheeled),
+                    equipment: Some([("small_arms", 60), ("tools", 40), ("machinery", 80), ("automobiles", 30)]),
+                    upkeep: Some([("processed_food", 5), ("fuel", 8), ("clothes", 1), ("ammunition", "0.5")])),
+            ],
+        ),
+        (
+            key: "anti_air", domain: Land, mobility: Wheeled, requires: ["aviation"], men: 1000,
+            training_weeks: 20,
+            equipment: [("artillery", 150), ("automobiles", 20)],
+            upkeep: [("processed_food", 5), ("fuel", 5), ("clothes", 1), ("ammunition", 2)],
+            roles: [(AntiAir, 1000)],
+            generations: [
+                (requires: ["radar"],
+                    equipment: Some([("artillery", 200), ("automobiles", 30), ("electrical_equipment", 30)])),
+                (requires: ["guided_missile"],
+                    equipment: Some([("artillery", 300), ("automobiles", 40), ("electronic_components", 80)])),
+            ],
+        ),
+        (
+            key: "armor", domain: Land, mobility: Tracked, requires: ["tank"], men: 1000,
+            training_weeks: 26,
+            equipment: [("armored_vehicles", 300), ("small_arms", 20)],
+            upkeep: [("processed_food", 5), ("fuel", 20), ("clothes", 1), ("ammunition", 2)],
+            generations: [
+                (requires: ["armored_warfare"],
+                    equipment: Some([("armored_vehicles", 500), ("small_arms", 30), ("electrical_equipment", 10)]),
+                    upkeep: Some([("processed_food", 5), ("fuel", 30), ("clothes", 1), ("ammunition", 3)])),
+                (requires: ["composite_armor"],
+                    equipment: Some([("armored_vehicles", 900), ("small_arms", 30), ("electronic_components", 50)]),
+                    upkeep: Some([("processed_food", 5), ("fuel", 40), ("clothes", 1), ("ammunition", 4)])),
+            ],
+        ),
+        (
+            key: "mechanized", domain: Land, mobility: Wheeled, requires: ["motor_vehicle"],
+            men: 1000, training_weeks: 20,
+            equipment: [("small_arms", 100), ("artillery", 20), ("automobiles", 60)],
+            upkeep: [("processed_food", 5), ("fuel", 10), ("clothes", 1), ("ammunition", 1)],
+            generations: [
+                (requires: ["armored_warfare"], mobility: Some(Tracked),
+                    equipment: Some([("small_arms", 120), ("artillery", 30), ("armored_vehicles", 150), ("automobiles", 30)]),
+                    upkeep: Some([("processed_food", 5), ("fuel", 20), ("clothes", 1), ("ammunition", 2)])),
+                (requires: ["composite_armor"],
+                    equipment: Some([("small_arms", 150), ("artillery", 50), ("armored_vehicles", 400), ("electronic_components", 30)]),
+                    upkeep: Some([("processed_food", 5), ("fuel", 30), ("clothes", 1), ("ammunition", 3)])),
+            ],
+        ),
+        (
+            // Paratroops. `stressed_skin_aircraft` stands in for `airborne_forces` (requested).
+            key: "airborne", domain: Land, mobility: Light, requires: ["stressed_skin_aircraft"],
+            men: 1000, training_weeks: 40,
+            equipment: [("small_arms", 110), ("artillery", 10)],
+            upkeep: [("processed_food", 5), ("clothes", 1), ("ammunition", 1)],
+            generations: [
+                // Air assault by helicopter; `gas_turbine` stands in for `helicopter` (requested).
+                (requires: ["gas_turbine"],
+                    equipment: Some([("small_arms", 150), ("artillery", 20), ("military_aircraft", 60)]),
+                    upkeep: Some([("processed_food", 5), ("fuel", 10), ("clothes", 1), ("ammunition", 2)])),
+            ],
+        ),
+
+        // ===================================== Sea (element: one ship) =====================================
+        (
+            // Battleships and battlecruisers.
+            key: "battleship", domain: Sea, mobility: Ship, men: 1200, tonnage: 30000,
+            training_weeks: 26,
+            equipment: [("warships", 30000)],
+            upkeep: [("fuel", 300), ("processed_food", 6), ("ammunition", 5)],
+            roles: [(Gun, 850), (AntiAir, 100)],
+            generations: [
+                (requires: ["radar"], tonnage: Some(40000), men: Some(1800),
+                    equipment: Some([("warships", 45000), ("electrical_equipment", 500)]),
+                    upkeep: Some([("fuel", 400), ("processed_food", 9), ("ammunition", 6)]),
+                    roles: Some([(Gun, 700), (AntiAir, 250)])),
+            ],
+        ),
+        (
+            key: "carrier", domain: Sea, mobility: Ship, requires: ["aircraft_carrier"], men: 2000,
+            tonnage: 25000, aircraft: 60, training_weeks: 26,
+            equipment: [("warships", 25000)],
+            upkeep: [("fuel", 250), ("processed_food", 10), ("ammunition", 3)],
+            roles: [(Gun, 100), (AntiAir, 150)],
+            generations: [
+                (requires: ["jet_engine"], tonnage: Some(45000), aircraft: Some(70), men: Some(3000),
+                    equipment: Some([("warships", 60000), ("electrical_equipment", 1000)]),
+                    upkeep: Some([("fuel", 450), ("processed_food", 15), ("ammunition", 4)])),
+                (requires: ["nuclear_power"], tonnage: Some(90000), aircraft: Some(80), men: Some(5000),
+                    equipment: Some([("warships", 150000), ("electronic_components", 5000)]),
+                    upkeep: Some([("nuclear_fuel", 2), ("processed_food", 25), ("ammunition", 5)]),
+                    roles: Some([(AntiAir, 250)])),
+            ],
+        ),
+        (
+            key: "cruiser", domain: Sea, mobility: Ship, men: 600, tonnage: 8000, training_weeks: 26,
+            equipment: [("warships", 8000)],
+            upkeep: [("fuel", 80), ("processed_food", 3), ("ammunition", 2)],
+            roles: [(Gun, 650), (Torpedo, 100), (AntiAir, 100), (Asw, 50)],
+            generations: [
+                (requires: ["guided_missile"], tonnage: Some(9000),
+                    equipment: Some([("warships", 15000), ("electronic_components", 2000)]),
+                    upkeep: Some([("fuel", 90), ("processed_food", 3), ("ammunition", 3)]),
+                    roles: Some([(Gun, 200), (AntiShip, 200), (AntiAir, 450), (Asw, 100)])),
+            ],
+        ),
+        (
+            key: "destroyer", domain: Sea, mobility: Ship, men: 120, tonnage: 1200,
+            training_weeks: 20,
+            equipment: [("warships", 1500)],
+            upkeep: [("fuel", 12), ("processed_food", "0.6"), ("ammunition", "0.5")],
+            roles: [(Gun, 250), (Torpedo, 450), (Asw, 200), (AntiAir, 50)],
+            generations: [
+                // `radar` stands in for `sonar` (requested).
+                (requires: ["radar"], tonnage: Some(2500), men: Some(300),
+                    equipment: Some([("warships", 3500), ("electrical_equipment", 200)]),
+                    upkeep: Some([("fuel", 25), ("processed_food", "1.5"), ("ammunition", 1)]),
+                    roles: Some([(Gun, 250), (Torpedo, 250), (Asw, 300), (AntiAir, 200)])),
+                (requires: ["guided_missile"], tonnage: Some(7000),
+                    equipment: Some([("warships", 12000), ("electronic_components", 2000)]),
+                    upkeep: Some([("fuel", 70), ("processed_food", "1.5"), ("ammunition", 2)]),
+                    roles: Some([(Gun, 100), (AntiShip, 200), (Torpedo, 50), (Asw, 300), (AntiAir, 350)])),
+            ],
+        ),
+        (
+            key: "submarine", domain: Sea, mobility: Ship, men: 40, tonnage: 900, submerged: true,
+            training_weeks: 30,
+            equipment: [("warships", 1500)],
+            upkeep: [("fuel", 9), ("processed_food", "0.2"), ("ammunition", "0.3")],
+            roles: [(Torpedo, 900), (Gun, 50)],
+            generations: [
+                (requires: ["nuclear_submarine"], tonnage: Some(5000), men: Some(110),
+                    equipment: Some([("warships", 15000), ("electronic_components", 1000)]),
+                    upkeep: Some([("nuclear_fuel", "0.2"), ("processed_food", "0.6"), ("ammunition", "0.5")]),
+                    roles: Some([(Torpedo, 700), (Asw, 300)])),
+                (requires: ["cruise_missile"],
+                    equipment: Some([("warships", 18000), ("electronic_components", 3000)]),
+                    roles: Some([(Torpedo, 500), (AntiShip, 200), (Asw, 300)])),
+            ],
+        ),
+        (
+            // Sloops, corvettes, frigates: convoy escort.
+            key: "escort", domain: Sea, mobility: Ship, men: 100, tonnage: 1000, training_weeks: 16,
+            equipment: [("warships", 1200)],
+            upkeep: [("fuel", 10), ("processed_food", "0.5"), ("ammunition", "0.3")],
+            roles: [(Gun, 300), (Asw, 500), (AntiAir, 100)],
+            generations: [
+                (requires: ["radar"], tonnage: Some(1500),
+                    equipment: Some([("warships", 2000), ("electrical_equipment", 150)]),
+                    roles: Some([(Gun, 200), (Asw, 600), (AntiAir, 200)])),
+                (requires: ["guided_missile"], tonnage: Some(3500), men: Some(200),
+                    equipment: Some([("warships", 6000), ("electronic_components", 1000)]),
+                    upkeep: Some([("fuel", 35), ("processed_food", 1), ("ammunition", 1)]),
+                    roles: Some([(Gun, 100), (Asw, 550), (AntiAir, 300)])),
+            ],
+        ),
+        (
+            // Coast-defence ships, monitors, gunboats, torpedo boats.
+            key: "coastal", domain: Sea, mobility: Ship, men: 150, tonnage: 2000, training_weeks: 16,
+            equipment: [("warships", 2000)],
+            upkeep: [("fuel", 20), ("processed_food", "0.8"), ("ammunition", "0.5")],
+            roles: [(Gun, 650), (Torpedo, 250)],
+        ),
+        (
+            key: "mine_warfare", domain: Sea, mobility: Ship, men: 60, tonnage: 600, training_weeks: 16,
+            equipment: [("warships", 500)],
+            upkeep: [("fuel", 6), ("processed_food", "0.3"), ("explosives", 1)],
+            roles: [(Mine, 800), (Asw, 100)],
+        ),
+        (
+            // Troopships, supply ships and, later, landing ships. Built by merchant yards.
+            key: "transport", domain: Sea, mobility: Ship, men: 80, tonnage: 8000, cargo_t: 6000,
+            training_weeks: 8,
+            equipment: [("ships", 2000)],
+            upkeep: [("fuel", 40), ("processed_food", "0.4")],
+        ),
+
+        // ===================================== Air (element: one aircraft) =====================================
+        (
+            key: "fighter", domain: Air, mobility: Aircraft, requires: ["aviation"], men: 10,
+            training_weeks: 52,
+            equipment: [("military_aircraft", 15)],
+            upkeep: [("fuel", "0.5"), ("ammunition", "0.1")],
+            roles: [(AirToAir, 900), (GroundAttack, 100)],
+            generations: [
+                (requires: ["stressed_skin_aircraft"],
+                    equipment: Some([("military_aircraft", 40)]),
+                    upkeep: Some([("fuel", 1), ("ammunition", "0.2")])),
+                (requires: ["jet_engine"],
+                    equipment: Some([("military_aircraft", 200)]),
+                    upkeep: Some([("fuel", 4), ("ammunition", "0.3")])),
+                (requires: ["guided_missile"],
+                    equipment: Some([("military_aircraft", 600), ("electronic_components", 100)])),
+                (requires: ["stealth_aircraft"],
+                    equipment: Some([("military_aircraft", 2000), ("electronic_components", 500)])),
+            ],
+        ),
+        (
+            // Tactical bombers and ground-attack aircraft.
+            key: "attack", domain: Air, mobility: Aircraft, requires: ["aviation"], men: 12,
+            training_weeks: 52,
+            equipment: [("military_aircraft", 18)],
+            upkeep: [("fuel", 1), ("ammunition", "0.3")],
+            roles: [(AirToAir, 150), (GroundAttack, 700), (AntiShip, 150)],
+            generations: [
+                (requires: ["stressed_skin_aircraft"],
+                    equipment: Some([("military_aircraft", 50)]),
+                    upkeep: Some([("fuel", "1.5"), ("ammunition", "0.5")])),
+                (requires: ["jet_engine"],
+                    equipment: Some([("military_aircraft", 250)]),
+                    upkeep: Some([("fuel", 4), ("ammunition", 1)])),
+                (requires: ["precision_guided_munitions"],
+                    equipment: Some([("military_aircraft", 700), ("electronic_components", 150)])),
+                (requires: ["satellite_guided_munitions"],
+                    equipment: Some([("military_aircraft", 1200), ("electronic_components", 300)])),
+            ],
+        ),
+        (
+            key: "strategic_bomber", domain: Air, mobility: Aircraft, requires: ["strategic_bomber"],
+            men: 30, training_weeks: 60,
+            equipment: [("military_aircraft", 250)],
+            upkeep: [("fuel", 8), ("ammunition", 2)],
+            roles: [(Strategic, 850), (AntiShip, 100), (AirToAir, 50)],
+            generations: [
+                (requires: ["jet_engine"],
+                    equipment: Some([("military_aircraft", 1500)]),
+                    upkeep: Some([("fuel", 25), ("ammunition", 3)])),
+                (requires: ["cruise_missile"],
+                    equipment: Some([("military_aircraft", 3000), ("electronic_components", 500)])),
+                (requires: ["stealth_aircraft"],
+                    equipment: Some([("military_aircraft", 10000), ("electronic_components", 2000)])),
+            ],
+        ),
+        (
+            // Reconnaissance and maritime patrol.
+            key: "patrol", domain: Air, mobility: Aircraft, requires: ["aviation"], men: 12,
+            training_weeks: 40,
+            equipment: [("military_aircraft", 20)],
+            upkeep: [("fuel", 1)],
+            roles: [(Recon, 600), (AntiShip, 250), (Asw, 50), (AirToAir, 100)],
+            generations: [
+                (requires: ["radar"],
+                    equipment: Some([("military_aircraft", 80), ("electrical_equipment", 20)]),
+                    upkeep: Some([("fuel", 3)]),
+                    roles: Some([(Recon, 500), (AntiShip, 250), (Asw, 250)])),
+                (requires: ["jet_engine"],
+                    equipment: Some([("military_aircraft", 500), ("electronic_components", 100)]),
+                    upkeep: Some([("fuel", 6)])),
+            ],
+        ),
+        (
+            key: "air_transport", domain: Air, mobility: Aircraft, requires: ["aviation"], men: 8,
+            cargo_t: 1, training_weeks: 30,
+            equipment: [("military_aircraft", 20)],
+            upkeep: [("fuel", 1)],
+            generations: [
+                (requires: ["stressed_skin_aircraft"], cargo_t: Some(3),
+                    equipment: Some([("military_aircraft", 60)]),
+                    upkeep: Some([("fuel", 2)])),
+                (requires: ["jet_engine"], cargo_t: Some(40),
+                    equipment: Some([("military_aircraft", 800)]),
+                    upkeep: Some([("fuel", 15)])),
+            ],
+        ),
+        (
+            key: "naval_aviation", domain: Air, mobility: Aircraft, requires: ["aircraft_carrier"],
+            men: 10, training_weeks: 60,
+            equipment: [("military_aircraft", 18)],
+            upkeep: [("fuel", 1), ("ammunition", "0.3")],
+            roles: [(AirToAir, 350), (AntiShip, 550), (Recon, 100)],
+            generations: [
+                (requires: ["stressed_skin_aircraft"],
+                    equipment: Some([("military_aircraft", 50)])),
+                (requires: ["jet_engine"],
+                    equipment: Some([("military_aircraft", 300)]),
+                    upkeep: Some([("fuel", 4), ("ammunition", 1)])),
+            ],
+        ),
+        (
+            // `gas_turbine` stands in for `helicopter` (requested).
+            key: "helicopter", domain: Air, mobility: Aircraft, requires: ["gas_turbine"], men: 8,
+            cargo_t: 2, training_weeks: 40,
+            equipment: [("military_aircraft", 150)],
+            upkeep: [("fuel", 2), ("ammunition", "0.3")],
+            roles: [(GroundAttack, 400), (Recon, 300), (Asw, 200)],
+            generations: [
+                (requires: ["precision_guided_munitions"],
+                    equipment: Some([("military_aircraft", 500), ("electronic_components", 100)]),
+                    roles: Some([(GroundAttack, 600), (Recon, 200), (Asw, 200)])),
+            ],
+        ),
+        (
+            key: "drone", domain: Air, mobility: Aircraft, requires: ["armed_drone"], men: 4,
+            training_weeks: 20,
+            equipment: [("military_aircraft", 300), ("electronic_components", 50)],
+            upkeep: [("fuel", "0.5"), ("ammunition", "0.2")],
+            roles: [(Recon, 600), (GroundAttack, 400)],
+            generations: [
+                (requires: ["loitering_munition"],
+                    equipment: Some([("military_aircraft", 20), ("electronic_components", 20)]),
+                    upkeep: Some([("fuel", "0.05")]),
+                    roles: Some([(GroundAttack, 900), (Recon, 100)])),
+            ],
+        ),
+
+        // ============================== Strategic (one weapon, launcher or satellite) ==============================
+        (
+            key: "ballistic_missile", domain: Strategic, mobility: Static,
+            requires: ["ballistic_missile"], men: 30, training_weeks: 30,
+            equipment: [("machinery", 3000), ("electronic_components", 1000), ("fuel", 30)],
+            upkeep: [("fuel", 1), ("machinery", 2)],
+            roles: [(Strategic, 1000)],
+            generations: [
+                (requires: ["hypersonic_glide_vehicle"],
+                    equipment: Some([("machinery", 8000), ("electronic_components", 5000), ("fuel", 40)])),
+            ],
+        ),
+        (
+            key: "missile_submarine", domain: Strategic, mobility: Ship,
+            requires: ["nuclear_submarine", "ballistic_missile"], men: 140, tonnage: 9000,
+            submerged: true, training_weeks: 40,
+            equipment: [("warships", 40000), ("electronic_components", 5000)],
+            upkeep: [("nuclear_fuel", "0.3"), ("processed_food", "0.8")],
+            roles: [(Strategic, 900)],
+        ),
+        (
+            // One warhead in the stockpile.
+            key: "nuclear_warhead", domain: Strategic, mobility: Static, requires: ["atomic_bomb"],
+            men: 5, training_weeks: 10,
+            equipment: [("nuclear_fuel", 60), ("explosives", 2), ("electronic_components", 50)],
+            upkeep: [("electronic_components", "0.1")],
+            roles: [(Strategic, 1000)],
+            generations: [
+                (requires: ["thermonuclear_weapon"],
+                    equipment: Some([("nuclear_fuel", 30), ("explosives", 1), ("electronic_components", 100)])),
+            ],
+        ),
+        (
+            key: "satellite", domain: Strategic, mobility: Static, requires: ["artificial_satellite"],
+            men: 50, training_weeks: 30,
+            equipment: [("electronic_components", 5000), ("machinery", 5000)],
+            upkeep: [("electronic_components", 5)],
+            roles: [(Recon, 1000)],
+            generations: [
+                (requires: ["gps"],
+                    equipment: Some([("electronic_components", 8000), ("machinery", 4000)])),
+            ],
+        ),
+        (
+            key: "missile_defense", domain: Strategic, mobility: Static, requires: ["missile_defense"],
+            men: 500, training_weeks: 40,
+            equipment: [("electronic_components", 20000), ("artillery", 10000)],
+            upkeep: [("electronic_components", 20), ("fuel", 5)],
+            roles: [(AntiAir, 1000)],
+        ),
+    ],
+)
