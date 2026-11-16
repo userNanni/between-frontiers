@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use crate::diplomacy::DiplomacyFile;
 use crate::econ::{Catalogue, setup};
-use crate::economy::{BuildingsFile, GoodsFile, NeedsFile};
+use crate::economy::{BuildingsFile, GoodsFile, NeedsFile, PurchasesFile};
 use crate::game::GameWorld;
 use crate::initial::{IndustryFile, PopulationFile};
 use crate::politics::{
@@ -57,7 +57,9 @@ impl GameData {
         let goods: GoodsFile = read(&data.join("economy/goods.ron"))?;
         let buildings: BuildingsFile = read(&data.join("economy/buildings.ron"))?;
         let needs: NeedsFile = read(&data.join("economy/needs.ron"))?;
-        let catalogue = Catalogue::build(&goods, &buildings, &needs).map_err(|e| e.to_string())?;
+        let purchases: PurchasesFile = read(&data.join("economy/purchases.ron"))?;
+        let catalogue =
+            Catalogue::build(&goods, &buildings, &needs, &purchases).map_err(|e| e.to_string())?;
         let tree = optional::<TechnologiesFile>(&data.join("research/technologies.ron"))?
             .map(|file| TechTree::build(&file, &catalogue).map(Arc::new))
             .transpose()

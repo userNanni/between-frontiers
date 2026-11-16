@@ -7,6 +7,7 @@ use std::path::PathBuf;
 
 use bf_sim::economy::{
     BUILDING_GROUPS, BuildingsFile, GOOD_CATEGORIES, GoodsFile, NeedsFile, PROFESSIONS,
+    PurchasesFile,
 };
 use bf_sim::resources::{FARMS, RESOURCES};
 
@@ -23,6 +24,7 @@ struct Catalogue {
     goods: GoodsFile,
     buildings: BuildingsFile,
     needs: NeedsFile,
+    purchases: PurchasesFile,
 }
 
 fn catalogue() -> Catalogue {
@@ -30,6 +32,7 @@ fn catalogue() -> Catalogue {
         goods: load("data/economy/goods.ron"),
         buildings: load("data/economy/buildings.ron"),
         needs: load("data/economy/needs.ron"),
+        purchases: load("data/economy/purchases.ron"),
     }
 }
 
@@ -162,7 +165,8 @@ fn every_good_is_made_and_used() {
 #[test]
 fn local_goods_clear_by_state_and_freight_joins_shipping_plants() {
     let c = catalogue();
-    let cat = bf_sim::econ::Catalogue::build(&c.goods, &c.buildings, &c.needs).unwrap();
+    let cat =
+        bf_sim::econ::Catalogue::build(&c.goods, &c.buildings, &c.needs, &c.purchases).unwrap();
     // The client's infrastructure lens (`map::lens::LOCAL_GOODS`) relies on this order.
     let keys: Vec<&str> = cat
         .local
@@ -179,9 +183,11 @@ fn local_goods_clear_by_state_and_freight_joins_shipping_plants() {
     let freight = cat.freight.expect("transport exists");
     // Every mine, farm and factory that ships goods pays freight; services and power do not.
     for b in &cat.buildings {
-        let ships = bf_sim::econ::catalogue::FREIGHT
+        let ships = c
+            .purchases
+            .groups
             .iter()
-            .any(|(g, _)| *g == b.group);
+            .any(|g| g.group == b.group && g.freight > 0);
         for m in &b.methods {
             let sells_goods = m
                 .outputs
@@ -210,5 +216,22 @@ fn local_goods_clear_by_state_and_freight_joins_shipping_plants() {
                 );
             }
         }
+    }
+}
+
+#[test]
+fn purchases_cover_every_group_and_spend_all_the_money() {
+    let c = catalogue();
+    let p = &c.purchases;
+    for group in BUILDING_GROUPS {
+        let n = p.groups.iter().filter(|g| g.group == *group).count();
+        assert_eq!(n, 1, "group {group} listed {n} times in purchases.ron");
+    }
+    let baskets = [("state", &p.state), ("upkeep", &p.upkeep)]
+        .into_iter()
+        .chain(p.groups.iter().map(|g| (g.group.as_str(), &g.construction)));
+    for (name, basket) in baskets {
+        let total: i64 = basket.iter().map(|(_, share)| share).sum();
+        assert_eq!(total, 1000, "{name}: shares add up to {total} per mille");
     }
 }

@@ -1,6 +1,7 @@
 # Infraestrutura: transporte e eletricidade por estado
 
-Estado: fase 3b. O código está em `crates/bf-sim/src/econ/local.rs`; o frete entra no catálogo em
+Estado: fase 3b. O código está em `crates/bf-sim/src/econ/local.rs`; o frete de cada grupo de
+edifício está em `data/economy/purchases.ron` e entra nos métodos em
 `crates/bf-sim/src/econ/catalogue.rs`; as fronteiras saem do mapa (`StateDef::neighbours`, gerado
 pelo `bf-mapgen`).
 

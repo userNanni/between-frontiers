@@ -133,4 +133,33 @@ pub struct NeedDef {
     /// Goods that satisfy the need and how well (1 = fully), so the population substitutes
     /// when prices move.
     pub goods: Vec<(String, f32)>,
+    /// Tiers 3 and 4: weight of the need in the money left once every tier is met.
+    #[serde(default)]
+    pub spare: f32,
+}
+
+/// Format of `data/economy/purchases.ron`: what the state, the investment pool and the builders
+/// buy, as shares per mille of the money spent, and the freight of each building group.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct PurchasesFile {
+    /// What the state buys with its goods budget.
+    pub state: Vec<(String, i64)>,
+    /// What the investment pool spends on upkeep and housing.
+    pub upkeep: Vec<(String, i64)>,
+    /// Goods of a construction basket that are the building itself, delivered by the building
+    /// trade as construction points.
+    pub building_work: Vec<String>,
+    /// One entry per building group.
+    pub groups: Vec<GroupPurchases>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct GroupPurchases {
+    /// One of [`BUILDING_GROUPS`].
+    pub group: String,
+    /// Goods of one new level, per mille of its cost.
+    pub construction: Vec<(String, i64)>,
+    /// Transport bought per unit of output value at base prices, per mille (0: none).
+    #[serde(default)]
+    pub freight: i64,
 }
