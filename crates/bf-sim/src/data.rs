@@ -20,6 +20,8 @@ pub struct GameData {
     pub catalogue: Arc<Catalogue>,
     pub countries: CountriesFile,
     pub map: MapFile,
+    /// Sea zones, straits and ports, when `assets/map/seas.ron` exists (not simulated yet).
+    pub seas: Option<crate::sea::SeaGraph>,
     pub deposits: Option<DepositsFile>,
     pub land: Option<LandFile>,
     pub population: Option<PopulationFile>,
@@ -67,6 +69,10 @@ impl GameData {
             .transpose()
             .map_err(|e| format!("research/technologies.ron: {e}"))?;
         let map: MapFile = read(&root.join("assets/map/provinces.ron"))?;
+        let seas = optional::<crate::sea::SeasFile>(&root.join("assets/map/seas.ron"))?
+            .map(crate::sea::SeaGraph::new)
+            .transpose()
+            .map_err(|e| format!("assets/map/seas.ron: {e}"))?;
         let communities = crate::communities::load(&data, &map)?;
         let countries: CountriesFile = read(&scenario.join("countries.ron"))?;
         let politics = if data.join("politics/laws.ron").is_file() {
@@ -100,6 +106,7 @@ impl GameData {
             catalogue: Arc::new(catalogue),
             countries,
             map,
+            seas,
             communities,
             deposits: optional(&scenario.join("deposits.ron"))?,
             land: optional(&scenario.join("land.ron"))?,
