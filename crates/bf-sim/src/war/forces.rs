@@ -43,6 +43,11 @@ pub struct ForceRow {
     pub count: u64,
     #[serde(default)]
     pub station: Station,
+    /// Total displacement of the ships of the row, in tonnes, when the source gives it. The
+    /// catalogue's tonnage is a class average; a navy of small torpedo boats counted as
+    /// destroyers keeps its real weight here.
+    #[serde(default)]
+    pub tonnage: Option<u64>,
     pub source: String,
     /// How the number was estimated, when the source does not state it.
     #[serde(default)]

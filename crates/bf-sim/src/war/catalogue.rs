@@ -290,11 +290,12 @@ pub struct RulesFile {
     pub air_weight: u32,
     /// Bonus of full fortification to the defender, per mille.
     pub fortification_bonus: u32,
-    /// Casualties per week caused by one unit of land power.
+    /// Share of its men a side loses in a week of combat at even power; up to twice that when
+    /// the enemy holds all the power.
     pub land_lethality: Fixed,
-    /// Tonnes sunk per week per unit of naval fire.
+    /// Share of its tonnage a fleet loses in a week of action at even strike, as on land.
     pub naval_lethality: Fixed,
-    /// Aircraft downed per week per unit of air-to-air power.
+    /// Share of its aircraft a side loses in a week of contest at even superiority, as on land.
     pub air_lethality: Fixed,
     /// Ages of military service, from (inclusive) and to (exclusive).
     pub service_age: (u32, u32),

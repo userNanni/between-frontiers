@@ -1,0 +1,162 @@
+// Between Frontiers: combat and logistics rules of the war (phase 5, not wired into the
+// simulation yet). Contract: crates/bf-sim/src/war/catalogue.rs (RulesFile); reasoning in
+// docs/war.pt-BR.md. Licence: CC BY-SA 4.0.
+//
+// Every number here is a DESIGN PARAMETER, not a historical figure: an order of magnitude to be
+// calibrated against the wars of the century once the war runs (docs/war.pt-BR.md, "Calibração
+// prevista"). Per-mille fields are integers; Fixed fields take an integer or a decimal string.
+(
+    ammunition_good: "ammunition",
+    fuel_good: "fuel",
+    armor_good: "armored_vehicles",
+
+    // Land fire per unit held. A lot of small arms is the unit; a lot of guns hits four times as
+    // hard, of armour three times (it also protects), of electronics (fire control, guided
+    // weapons) twice. Lorries, tools and machinery carry and build; they add no fire.
+    fire_per_unit: [
+        ("small_arms", 1),
+        ("artillery", 4),
+        ("armored_vehicles", 3),
+        ("electronic_components", 2),
+        ("electrical_equipment", 1),
+    ],
+    // Fire of one element of 1925 infantry (units.ron: 100 small arms + 20 artillery).
+    reference_fire: 180,
+
+    // Tonnes per unit of each good a force consumes. Goods sold by the tonne weigh one; lots of
+    // US$ 1,000 weigh what a thousand dollars of the good weighed in 1925, roughly: a tonne of
+    // shells, half a tonne of uniforms, a fifth of a tonne of spare parts.
+    tonnes_per_unit: [
+        ("processed_food", 1),
+        ("grain", 1),
+        ("maize", 1),
+        ("fuel", 1),
+        ("coal", 1),
+        ("ammunition", 1),
+        ("clothes", "0.5"),
+        ("medicines", "0.2"),
+        ("small_arms", "0.5"),
+        ("artillery", "0.5"),
+        ("armored_vehicles", "0.5"),
+        ("military_aircraft", "0.2"),
+        ("warships", "0.5"),
+        ("automobiles", "0.5"),
+        ("tools", "0.5"),
+        ("machinery", "0.3"),
+        ("engines", "0.3"),
+        ("ships", "0.5"),
+        ("electrical_equipment", "0.2"),
+        ("electronic_components", "0.05"),
+        ("nuclear_fuel", "0.001"),
+        ("explosives", "0.5"),
+    ],
+    // 2 per mille of the equipment value a week: about a tenth a year, the order of the spares
+    // and overhaul budgets of standing forces.
+    maintenance_per_mille: 2,
+    combat_ammunition: 10,
+    moving_fuel: 3,
+
+    // An element all in armour is 80 % protected, capped at 60 %.
+    protection_per_armor_share: 800,
+    protection_max: 600,
+
+    // A force with no training fights at half strength; with no ammunition, at a quarter (the
+    // bayonet, the reserve in the pouch).
+    training_floor: 500,
+    supply_floor: 250,
+    // Losing the sky entirely costs a quarter of the power.
+    air_weight: 250,
+    // Full fortification adds half to the defender's terrain.
+    fortification_bonus: 500,
+
+    // At even power a side loses 1.5 % of its men a week in combat; at most twice that.
+    land_lethality: "0.015",
+    // At even strike a fleet loses 3 % of its tonnage a week of action; at most twice that.
+    naval_lethality: "0.03",
+    // At even superiority an air force loses 4 % of its aircraft a week of contest.
+    air_lethality: "0.04",
+
+    service_age: (18, 45),
+    // A fifth of the men called up stay in essential work (mines, railways, arms plants).
+    reserved_share: 200,
+
+    // Loss per 1,000 km: the lorry burns a tenth of what it carries; the rest lose little.
+    mode_loss: [
+        (Rail, 10),
+        (Road, 100),
+        (River, 20),
+        (Sea, 10),
+        (Air, 200),
+    ],
+    // Tonne-kilometres moved by one lot of the `transportation` good (US$ 1,000 at base price):
+    // about two cents a tonne-kilometre, the order of rail freight in the 1920s.
+    tkm_per_transport_lot: 50000,
+
+    // Terrain: the defender's factor, and the attacker's and the speed by mobility.
+    terrain: [
+        (terrain: Open, defense: 1),
+        (terrain: Forest, defense: "1.25",
+            attack: [(Wheeled, "0.8"), (Tracked, "0.7"), (Horse, "0.8")],
+            speed: [(Wheeled, "0.6"), (Tracked, "0.6"), (Horse, "0.7")]),
+        (terrain: Jungle, defense: "1.5",
+            attack: [(Foot, "0.8"), (Wheeled, "0.5"), (Tracked, "0.5"), (Horse, "0.6")],
+            speed: [(Foot, "0.6"), (Light, "0.8"), (Wheeled, "0.4"), (Tracked, "0.4"), (Horse, "0.5")]),
+        (terrain: Desert, defense: "1.1",
+            attack: [(Foot, "0.9")],
+            speed: [(Foot, "0.7"), (Light, "0.7"), (Horse, "0.8")]),
+        (terrain: Arctic, defense: "1.2",
+            attack: [(Foot, "0.8"), (Wheeled, "0.7"), (Tracked, "0.8"), (Horse, "0.6")],
+            speed: [(Foot, "0.6"), (Wheeled, "0.5"), (Tracked, "0.6"), (Horse, "0.5")]),
+        (terrain: Mountain, defense: 2,
+            attack: [(Foot, "0.8"), (Wheeled, "0.5"), (Tracked, "0.4"), (Horse, "0.6")],
+            speed: [(Foot, "0.5"), (Light, "0.8"), (Wheeled, "0.4"), (Tracked, "0.3"), (Horse, "0.5")]),
+        (terrain: Marsh, defense: "1.3",
+            attack: [(Wheeled, "0.6"), (Tracked, "0.5"), (Horse, "0.7")],
+            speed: [(Foot, "0.6"), (Wheeled, "0.4"), (Tracked, "0.3"), (Horse, "0.5")]),
+        (terrain: Urban, defense: "1.5",
+            attack: [(Tracked, "0.7"), (Horse, "0.6")],
+            speed: [(Foot, "0.5"), (Light, "0.5"), (Wheeled, "0.5"), (Tracked, "0.5"), (Horse, "0.5")]),
+    ],
+
+    // Köppen classes of data/scenario/1925/land.ron → terrain. Forest comes from forest_km2.
+    climate_terrain: [
+        ("tropical_rainforest", Jungle),
+        ("tropical_monsoon", Jungle),
+        ("tropical_savanna", Open),
+        ("hot_desert", Desert),
+        ("cold_desert", Desert),
+        ("hot_steppe", Open),
+        ("cold_steppe", Open),
+        ("mediterranean", Open),
+        ("humid_subtropical", Open),
+        ("oceanic", Open),
+        ("humid_continental", Open),
+        ("subarctic", Arctic),
+        ("tundra", Arctic),
+        ("ice_cap", Arctic),
+    ],
+
+    // Kilometres a week an attacker breaking through on open ground can cover.
+    speed_km_week: [
+        (Static, 0),
+        (Foot, 40),
+        (Light, 40),
+        (Horse, 70),
+        (Wheeled, 150),
+        (Tracked, 150),
+    ],
+    // A landing attacks at 60 % on top of the terrain.
+    amphibious: 600,
+    winter: (upkeep: "1.3", speed: "0.6"),
+    // Every segment holds at least 2 % of the front's elements; the objective doubles a weight.
+    allocation: (min_share: 20, objective_pull: 1000),
+    exhaustion: (
+        casualties: 600,
+        mobilization: 200,
+        shortage: 300,
+        occupation: 400,
+        duration_per_year: 40,
+        industry: 200,
+    ),
+    invalid_share: 150,
+)

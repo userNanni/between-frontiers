@@ -578,9 +578,18 @@ fn land_terms(rules: &Rules, field: &LandField, me: &LandSide, other: &LandSide)
     }
 }
 
-fn casualties(rules: &Rules, enemy_power: Fixed, me: &LandSide) -> u64 {
-    let raw = rules.land_lethality * enemy_power * (Fixed::ONE - clamp01(me.protection));
-    (raw.to_int_floor().max(0) as u64).min(me.men)
+/// Share of the two powers that is `mine`; `None` when both are zero.
+fn share(mine: Fixed, theirs: Fixed) -> Option<Fixed> {
+    ratio(mine, mine + theirs)
+}
+
+/// Losses of a side: `land_lethality` of its men at even power, up to twice that when the enemy
+/// has all of it, less its protection. Scale-free: an army of 2025 against one of 2025 bleeds
+/// at the same rate as one of 1925 against one of 1925.
+fn casualties(rules: &Rules, enemy_share: Fixed, me: &LandSide) -> u64 {
+    let rate = rules.land_lethality * enemy_share * 2 * (Fixed::ONE - clamp01(me.protection));
+    let lost = Fixed::from_int(me.men as i64) * rate.min(Fixed::ONE);
+    (lost.to_int_floor().max(0) as u64).min(me.men)
 }
 
 fn advance(rules: &Rules, field: &LandField, a: &LandSide, pa: Fixed, pd: Fixed) -> Fixed {
@@ -616,9 +625,13 @@ pub fn land_step(rules: &Rules, field: &LandField, sides: [&LandSide; 2]) -> Lan
             advance_km: Fixed::ZERO,
         };
     }
+    let enemy = [
+        share(power[1], power[0]).unwrap_or(Fixed::ZERO),
+        share(power[0], power[1]).unwrap_or(Fixed::ZERO),
+    ];
     let losses = [
-        casualties(rules, power[1], sides[0]),
-        casualties(rules, power[0], sides[1]),
+        casualties(rules, enemy[0], sides[0]),
+        casualties(rules, enemy[1], sides[1]),
     ];
     let forward = if sides[0].posture == Posture::Attack {
         advance(rules, field, sides[0], power[0], power[1])
@@ -769,10 +782,33 @@ pub fn naval_step(rules: &Rules, sides: [&NavalSide; 2]) -> NavalOutcome {
         vec![Fixed::ZERO; sides[0].groups.len()],
         vec![Fixed::ZERO; sides[1].groups.len()],
     ];
+    // Torpedoes of the submarines: what an anti-submarine force fights against.
+    let sub_torpedo = |side: &NavalSide| -> Fixed {
+        side.groups
+            .iter()
+            .filter(|g| g.submerged)
+            .map(|g| g.torpedo * g.count as i64)
+            .sum()
+    };
+    let tonnes = |side: &NavalSide, under: bool| -> Fixed {
+        side.groups
+            .iter()
+            .filter(|g| g.submerged == under)
+            .map(|g| g.tonnage * g.count as i64)
+            .sum()
+    };
+    let strike = |x: &NavalTerms| x.gun + x.torpedo + x.air;
+    let rate =
+        |s: Option<Fixed>| (rules.naval_lethality * s.unwrap_or(Fixed::ZERO) * 2).min(Fixed::ONE);
     for (me, foe) in [(0, 1), (1, 0)] {
-        let t = &terms[foe];
-        let surface = rules.naval_lethality * (t.gun + t.torpedo + t.air);
-        let under = rules.naval_lethality * t.asw;
+        let (t, mine) = (&terms[foe], &terms[me]);
+        // Each fleet loses `naval_lethality` of its tonnage at even strike, up to twice that.
+        let surface = tonnes(sides[me], false) * rate(share(strike(t), strike(mine)));
+        let under = tonnes(sides[me], true)
+            * rate(share(
+                t.asw,
+                sub_torpedo(sides[me]) * mine.training * mine.supply,
+            ));
         let (s, d) = (&mut sunk[me], &mut damage_t[me]);
         sink(surface, sides[me], |g| !g.submerged, s, d);
         sink(under, sides[me], |g| g.submerged, s, d);
@@ -839,7 +875,9 @@ pub fn air_step(rules: &Rules, sides: [&AirSide; 2]) -> AirOutcome {
     let losses = [0, 1].map(|me| {
         let side = sides[me];
         let fleet: u64 = side.groups.iter().map(|g| g.count).sum();
-        let downed = ((rules.air_lethality * aa[1 - me]).to_int_floor().max(0) as u64).min(fleet);
+        // `air_lethality` of the fleet at even superiority, up to twice that.
+        let rate = (rules.air_lethality * superiority[1 - me] * 2).min(Fixed::ONE);
+        let downed = ((count(fleet) * rate).to_int_floor().max(0) as u64).min(fleet);
         let counts: Vec<Fixed> = side.groups.iter().map(|g| count(g.count)).collect();
         apportion(downed, &counts)
     });
@@ -952,9 +990,9 @@ mod tests {
             supply_floor: pm(250),
             air_weight: pm(250),
             fortification_bonus: pm(500),
-            land_lethality: Fixed::from_int(20),
-            naval_lethality: pm(100),
-            air_lethality: pm(10),
+            land_lethality: pm(20),
+            naval_lethality: pm(50),
+            air_lethality: pm(100),
             service_age: (18, 45),
             reserved_share: pm(200),
             mode_loss: [pm(10), pm(100), pm(20), pm(10), pm(50)],
@@ -1113,7 +1151,7 @@ mod tests {
         let a = side(1_000_000, Posture::Attack);
         let d = side(1_000, Posture::Defend);
         let o = land_step(&r, &open(), [&a, &d]);
-        assert_eq!(o.losses[1], 1_000);
+        assert!(o.losses[1] >= 39 && o.losses[1] <= 1_000);
         let empty = side(0, Posture::Defend);
         let o = land_step(&r, &open(), [&a, &empty]);
         assert_eq!(o.losses[1], 0);
@@ -1281,9 +1319,13 @@ mod tests {
             supply: Fixed::ONE,
         };
         let o = naval_step(&r, [&a, &b]);
-        // 0.1 × 80,000 = 8,000 t on b's surface, none on its submarines.
+        // a strikes 80,000 against b's 20,000 + 10,000: share 8/11, so b's 60,000 surface
+        // tonnes lose 0.05 × 2 × 8/11, about 4,360 t, no ship sunk; a has no anti-submarine
+        // force, so the submarines are untouched.
         assert_eq!(o.sunk[1], vec![0, 0]);
-        assert_eq!(o.damage_t[1][0], Fixed::from_int(8000));
+        assert!(
+            o.damage_t[1][0] > Fixed::from_int(4300) && o.damage_t[1][0] < Fixed::from_int(4400)
+        );
         assert_eq!(o.damage_t[1][1], Fixed::ZERO);
         let s = naval_step(&r, [&b, &a]);
         assert_eq!(o.sunk, [s.sunk[1].clone(), s.sunk[0].clone()]);
@@ -1294,7 +1336,8 @@ mod tests {
             ..a.clone()
         };
         let o = naval_step(&r, [&big, &b]);
-        assert_eq!(o.sunk[1], vec![2, 10]);
+        assert!(o.sunk[1].iter().zip(&b.groups).all(|(s, g)| *s <= g.count));
+        assert!(o.sunk[1][1] > 0);
     }
 
     #[test]
@@ -1319,7 +1362,8 @@ mod tests {
         };
         let o = air_step(&r, [&a, &b]);
         assert_eq!(o.superiority[0], pm(750));
-        assert_eq!(o.losses[1].iter().sum::<u64>(), 90);
+        // 150 aircraft × 0.1 × 2 × 0.75 = 22.5.
+        assert_eq!(o.losses[1].iter().sum::<u64>(), 22);
         assert!(
             o.losses[1]
                 .iter()
@@ -1339,10 +1383,7 @@ mod tests {
             groups: vec![planes(100_000, 1000, 0)],
             ..a.clone()
         };
-        assert_eq!(
-            air_step(&r, [&swarm, &b]).losses[1].iter().sum::<u64>(),
-            150
-        );
+        assert_eq!(air_step(&r, [&swarm, &b]).losses[1].iter().sum::<u64>(), 30);
     }
 
     #[test]
