@@ -8,9 +8,10 @@ use bf_ui_kit::tokens::{color, space};
 use egui::Ui;
 
 use super::budget::{WEEKS, of_gdp, pct, pending_note};
-use super::gov_ui::{Account, control_row, stepper};
+use super::gov_ui::{Account, StepTips, control_row, stepper};
 use super::government::TabContext;
 use crate::government::GovernmentView;
+use crate::keys::{self, Tip};
 use crate::text::money;
 
 /// Step of the policy rate, in thousandths a year (half a point).
@@ -164,7 +165,12 @@ fn bank(ui: &mut Ui, cx: &mut TabContext<'_>, v: &GovernmentView) {
         (CentralBank::Autonomous, i18n.tr("gov-bank-autonomous")),
         (CentralBank::Subordinate, i18n.tr("gov-bank-subordinate")),
     ];
-    if bf_ui_kit::segmented(ui, &mut bank, &options) {
+    let tips = [
+        Tip::Item('A', "gov.bank.historical".into(), "historical"),
+        Tip::Item('A', "gov.bank.autonomous".into(), "autonomous"),
+        Tip::Item('A', "gov.bank.subordinate".into(), "subordinate"),
+    ];
+    if keys::segmented(ui, &mut bank, &options, &tips) {
         cx.commands.push(GameCommand::SetCentralBank {
             tag: cx.tag.to_owned(),
             bank,
@@ -183,7 +189,11 @@ fn bank(ui: &mut Ui, cx: &mut TabContext<'_>, v: &GovernmentView) {
         (true, i18n.tr("gov-rate-fixed")),
     ];
     let shown = current.unwrap_or_else(|| (rate * 10.0).round() as u16);
-    if bf_ui_kit::segmented(ui, &mut fixed, &options) {
+    let tips = [
+        Tip::Item('V', "gov.rate.rule".into(), "rule"),
+        Tip::Item('V', "gov.rate.fixed".into(), "fixed"),
+    ];
+    if keys::segmented(ui, &mut fixed, &options, &tips) {
         let rate = fixed.then_some(shown);
         cx.commands.push(GameCommand::SetPolicyRate {
             tag: cx.tag.to_owned(),
@@ -201,6 +211,11 @@ fn bank(ui: &mut Ui, cx: &mut TabContext<'_>, v: &GovernmentView) {
             &tip,
             shown > 0,
             shown < max,
+            StepTips {
+                family: 'V',
+                id: "gov.rate",
+                row: 0,
+            },
         )
     });
     if step != 0 {

@@ -11,6 +11,7 @@ use egui::{Rect, Ui, Vec2};
 
 use super::region;
 use crate::government::GovernmentView;
+use crate::keys::{self, Tip, id};
 use crate::sim::Snapshot;
 use crate::world::World;
 use bf_sim::econ::Catalogue;
@@ -29,6 +30,15 @@ pub enum Tab {
 
 impl Tab {
     pub const ALL: [Tab; 3] = [Tab::Budget, Tab::Money, Tab::Laws];
+
+    /// The command that opens the window on this tab.
+    pub fn command(self) -> &'static str {
+        match self {
+            Tab::Budget => id::TAB_BUDGET,
+            Tab::Money => id::TAB_MONEY,
+            Tab::Laws => id::TAB_LAWS,
+        }
+    }
 
     fn label_key(self) -> &'static str {
         match self {
@@ -150,13 +160,15 @@ pub fn show(
                 .iter()
                 .map(|t| (*t, i18n.tr(t.label_key())))
                 .collect();
-            bf_ui_kit::segmented(ui, tab, &options);
+            let tips = Tab::ALL.map(|t| Tip::Command(t.command()));
+            keys::segmented(ui, tab, &options, &tips);
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                if Button::ghost(&i18n.tr("gov-close"))
+                let close = Button::ghost(&i18n.tr("gov-close"))
                     .size(ButtonSize::Small)
-                    .show(ui)
-                    .clicked()
-                {
+                    .show(ui);
+                let close =
+                    close.on_hover_text(keys::tip(ui.ctx(), &i18n.tr("gov-close"), id::BACK));
+                if close.clicked() || keys::single(ui, "gov.close", 'X', close.rect) {
                     out.close = true;
                 }
             });

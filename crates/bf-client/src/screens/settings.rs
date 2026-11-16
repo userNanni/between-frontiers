@@ -10,8 +10,12 @@ use crate::settings::Autosave;
 
 /// Returns true when the player closes the dialog.
 pub fn show(shared: &mut Shared, ui: &mut Ui, rect: Rect) -> bool {
+    if shared.key_editor.is_some() {
+        super::keys_editor::show(shared, ui, rect);
+        return false;
+    }
     let mut done = false;
-    let panel = centered(rect, egui::vec2(600.0, 620.0));
+    let panel = centered(rect, egui::vec2(600.0, 700.0));
     region(ui, panel, |ui| {
         bf_ui_kit::overlay_frame().show(ui, |ui| {
             ui.set_width(panel.width() - space::XL * 2.0);
@@ -93,6 +97,26 @@ pub fn show(shared: &mut Shared, ui: &mut Ui, rect: Rect) -> bool {
                 bf_ui_kit::body(ui, &shared.tr("settings-map-relief"));
             });
 
+            let label = shared.tr("settings-keys");
+            let leader = super::keys_editor::leader_name(shared, shared.keys.config().leader);
+            let hint = shared.i18n.tr_args(
+                "settings-keys-hint",
+                &[("key", bf_i18n::Arg::String(leader))],
+            );
+            bf_ui_kit::field(ui, &label, Some(&hint), |ui| {
+                let open = Button::secondary(&shared.tr("settings-keys-open"))
+                    .size(ButtonSize::Small)
+                    .show(ui);
+                let open = open.on_hover_text(crate::keys::tip(
+                    ui.ctx(),
+                    &shared.tr("settings-keys-open"),
+                    crate::keys::id::KEYS,
+                ));
+                if crate::keys::pressed(ui, crate::keys::id::KEYS, &open) {
+                    shared.key_editor = Some(super::keys_editor::State::default());
+                }
+            });
+
             let folder = shared.paths.saves().display().to_string();
             bf_ui_kit::field(
                 ui,
@@ -107,10 +131,11 @@ pub fn show(shared: &mut Shared, ui: &mut Ui, rect: Rect) -> bool {
                 egui::vec2(w, 40.0),
                 egui::Layout::right_to_left(egui::Align::Center),
                 |ui| {
-                    if Button::primary(&shared.tr("settings-done"))
+                    let finish = Button::primary(&shared.tr("settings-done"))
                         .size(ButtonSize::Medium)
-                        .show(ui)
-                        .clicked()
+                        .show(ui);
+                    if finish.clicked()
+                        || crate::keys::single(ui, "settings.done", 'D', finish.rect)
                     {
                         done = true;
                     }
@@ -118,8 +143,12 @@ pub fn show(shared: &mut Shared, ui: &mut Ui, rect: Rect) -> bool {
             );
         });
     });
-    if ui.input(|i| i.key_pressed(egui::Key::Escape)) {
+    if crate::keys::fired(ui.ctx(), crate::keys::id::BACK) {
         done = true;
+    }
+    if crate::keys::fired(ui.ctx(), crate::keys::id::KEYS) {
+        shared.key_editor = Some(super::keys_editor::State::default());
+        done = false;
     }
     done
 }

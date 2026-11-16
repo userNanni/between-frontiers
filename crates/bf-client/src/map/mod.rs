@@ -540,24 +540,24 @@ impl MapView {
                         out.hovered_province = Some(id);
                     }
                 }
-                let pan = ui.input(|i| {
-                    let mut v = Vec2::ZERO;
-                    if i.key_down(egui::Key::ArrowLeft) || i.key_down(egui::Key::A) {
-                        v.x -= 1.0;
-                    }
-                    if i.key_down(egui::Key::ArrowRight) || i.key_down(egui::Key::D) {
-                        v.x += 1.0;
-                    }
-                    if i.key_down(egui::Key::ArrowUp) || i.key_down(egui::Key::W) {
-                        v.y -= 1.0;
-                    }
-                    if i.key_down(egui::Key::ArrowDown) || i.key_down(egui::Key::S) {
-                        v.y += 1.0;
-                    }
-                    v * i.stable_dt.min(0.1) * 700.0
-                });
-                if pan != Vec2::ZERO && !ui.ctx().egui_wants_keyboard_input() {
+                use crate::keys::{held, id};
+                let ctx = ui.ctx();
+                let axis = |neg: &str, pos: &str| {
+                    f32::from(u8::from(held(ctx, pos))) - f32::from(u8::from(held(ctx, neg)))
+                };
+                let dt = ui.input(|i| i.stable_dt).min(0.1);
+                let pan = Vec2::new(
+                    axis(id::PAN_LEFT, id::PAN_RIGHT),
+                    axis(id::PAN_UP, id::PAN_DOWN),
+                ) * dt
+                    * 700.0;
+                if pan != Vec2::ZERO {
                     camera.center += pan / camera.zoom;
+                    ui.ctx().request_repaint();
+                }
+                let zoom = axis(id::ZOOM_OUT, id::ZOOM_IN);
+                if zoom != 0.0 {
+                    camera.zoom *= (zoom * dt * 1.6).exp();
                     ui.ctx().request_repaint();
                 }
                 if response.clicked()

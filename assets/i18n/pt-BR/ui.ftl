@@ -168,12 +168,12 @@ bar-literacy-tip = Adultos (15 anos ou mais) que sabem ler e escrever.
 bar-life-tip = Anos que um recém-nascido viveria com a mortalidade de hoje.
 bar-urban-tip = Parcela da população que vive em áreas urbanas.
 bar-country-tip = Seu país. Clique para ver o resumo.
-bar-speed-down = Mais devagar (−)
-bar-speed-up = Mais rápido (+)
-bar-pause = Pausar (espaço)
-bar-play = Continuar (espaço)
+bar-speed-down = Mais devagar
+bar-speed-up = Mais rápido
+bar-pause = Pausar
+bar-play = Continuar
 bar-date-tip = Velocidade { $speed } de 5. Clique para pausar ou continuar.
-bar-menu = Menu (Esc)
+bar-menu = Menu
 source-economy = Fontes: Maddison Project 2023 e Our World in Data; estimativas próprias onde faltam dados.
 source-social = Fontes: Our World in Data e HYDE; estimativas próprias onde faltam dados.
 
@@ -247,7 +247,7 @@ legend-met = Atendida
 tip-local = { $good }: { $share } da demanda atendida
 
 ## Pesquisa
-bar-research = Pesquisa (R)
+bar-research = Pesquisa
 research-title = Pesquisa
 research-close = Fechar
 research-summary = { $points } pontos de pesquisa por mês · foco: { $focus }
@@ -272,7 +272,7 @@ research-fit-hint = Mostrar a árvore inteira
 research-all-fields = Todas as áreas
 
 ## Janela do governo
-bar-government = Governo (G)
+bar-government = Governo
 gov-title = Governo
 gov-tab-budget = Orçamento
 gov-tab-money = Moeda e dívida

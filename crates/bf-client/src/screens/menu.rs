@@ -6,6 +6,7 @@ use egui::{Rect, Ui};
 
 use super::{backdrop_map, region};
 use crate::app::{Shared, Transition};
+use crate::keys::{self, id};
 use crate::text::date_long;
 
 const COLUMN: f32 = 380.0;
@@ -37,14 +38,14 @@ pub fn show(shared: &mut Shared, ui: &mut Ui, rect: Rect) -> Option<Transition> 
         });
         let empty = shared.tr("menu-continue-empty");
         let continue_label = shared.tr("menu-continue");
-        if Button::primary(&continue_label)
+        let resume = Button::primary(&continue_label)
             .detail(Some(detail.as_deref().unwrap_or(&empty)))
             .size(ButtonSize::Large)
             .width(COLUMN)
             .align_left()
             .enabled(last.is_some())
-            .show(ui)
-            .clicked()
+            .show(ui);
+        if (resume.clicked() || keys::single(ui, "menu.continue", 'C', resume.rect))
             && let Some(save) = last.clone()
         {
             out = Some(if save.meta.player.is_some() {
@@ -55,37 +56,42 @@ pub fn show(shared: &mut Shared, ui: &mut Ui, rect: Rect) -> Option<Transition> 
         }
         bf_ui_kit::gap(ui, space::XS);
         let play = shared.tr("menu-play");
-        if Button::secondary(&play)
+        let play = Button::secondary(&play)
             .size(ButtonSize::Large)
             .width(COLUMN)
             .align_left()
-            .show(ui)
-            .clicked()
-        {
+            .show(ui);
+        if play.clicked() || keys::single(ui, "menu.play", 'P', play.rect) {
             out = Some(Transition::Saves);
         }
         bf_ui_kit::gap(ui, space::XS);
         let settings = shared.tr("menu-settings");
-        if Button::ghost(&settings)
+        let settings = Button::ghost(&settings)
             .size(ButtonSize::Large)
             .width(COLUMN)
             .align_left()
-            .show(ui)
-            .clicked()
-        {
+            .show(ui);
+        if keys::pressed(ui, id::SETTINGS, &settings) {
             out = Some(Transition::Settings);
         }
         let quit = shared.tr("menu-quit");
-        if Button::ghost(&quit)
+        let quit = Button::ghost(&quit)
             .size(ButtonSize::Large)
             .width(COLUMN)
             .align_left()
-            .show(ui)
-            .clicked()
-        {
+            .show(ui);
+        if quit.clicked() || keys::single(ui, "menu.quit", 'Q', quit.rect) {
             out = Some(Transition::Quit);
         }
     });
+    let ctx = ui.ctx().clone();
+    if keys::fired(&ctx, id::SETTINGS) {
+        out = Some(Transition::Settings);
+    }
+    if keys::fired(&ctx, id::KEYS) {
+        shared.key_editor = Some(super::keys_editor::State::default());
+        out = Some(Transition::Settings);
+    }
 
     let footer = Rect::from_min_size(
         egui::pos2(left, rect.bottom() - 48.0),

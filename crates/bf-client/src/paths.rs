@@ -60,6 +60,11 @@ impl Paths {
     pub fn settings_file(&self) -> PathBuf {
         self.config.join("settings.ron")
     }
+
+    /// The player's keyboard shortcuts.
+    pub fn keys_file(&self) -> PathBuf {
+        self.config.join("keys.ron")
+    }
 }
 
 fn is_root(p: &Path) -> bool {

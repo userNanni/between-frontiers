@@ -12,9 +12,10 @@ use bf_sim::game::GameCommand;
 use bf_ui_kit::tokens::{color, space};
 use egui::Ui;
 
-use super::gov_ui::{Account, control_row, stepper};
+use super::gov_ui::{Account, StepTips, control_row, stepper};
 use super::government::TabContext;
 use crate::government::{GovernmentView, Work};
+use crate::keys::{self, Tip};
 use crate::text::money;
 
 /// Weeks in the year the weekly accounts are multiplied by.
@@ -302,7 +303,11 @@ fn controls(ui: &mut Ui, cx: &mut TabContext<'_>, v: &GovernmentView) {
         (true, i18n.tr("gov-tax-rule")),
         (false, i18n.tr("gov-tax-fixed")),
     ];
-    if bf_ui_kit::segmented(ui, &mut mode, &options) {
+    let tips = [
+        Tip::Item('T', "gov.tax.rule".into(), "rule"),
+        Tip::Item('T', "gov.tax.fixed".into(), "fixed"),
+    ];
+    if keys::segmented(ui, &mut mode, &options, &tips) {
         let rates = (!mode).then_some(rates);
         cx.commands.push(GameCommand::SetTaxRates {
             tag: cx.tag.to_owned(),
@@ -333,6 +338,11 @@ fn controls(ui: &mut Ui, cx: &mut TabContext<'_>, v: &GovernmentView) {
                 &tip,
                 now > 0,
                 now < max,
+                StepTips {
+                    family: 'T',
+                    id: &format!("gov.tax.{c}"),
+                    row: c,
+                },
             )
         });
         if step != 0 {
@@ -413,6 +423,11 @@ fn controls(ui: &mut Ui, cx: &mut TabContext<'_>, v: &GovernmentView) {
                 &tip,
                 weights[k] > 0,
                 weights[k] < MAX_PRIORITY,
+                StepTips {
+                    family: 'I',
+                    id: &format!("gov.priority.{k}"),
+                    row: k,
+                },
             )
         });
         if step != 0 {
@@ -496,7 +511,11 @@ fn controls(ui: &mut Ui, cx: &mut TabContext<'_>, v: &GovernmentView) {
             i18n.tr("gov-migration-restricted"),
         ),
     ];
-    if bf_ui_kit::segmented(ui, &mut law, &options) {
+    let tips = [
+        Tip::Item('Y', "gov.migration.open".into(), "open"),
+        Tip::Item('Y', "gov.migration.restricted".into(), "restricted"),
+    ];
+    if keys::segmented(ui, &mut law, &options, &tips) {
         cx.commands.push(GameCommand::SetMigrationLaw {
             tag: cx.tag.to_owned(),
             law,

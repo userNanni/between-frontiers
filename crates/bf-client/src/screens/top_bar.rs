@@ -13,6 +13,7 @@ use bf_ui_kit::{Icon, icon_button, paint_icon};
 use egui::{Align2, Color32, Pos2, Rect, Sense, Stroke, Ui, Vec2};
 
 use crate::flags::{Flags, paint_flag};
+use crate::keys::{self, id};
 use crate::sim::Snapshot;
 use crate::text::{
     country_name, date_long, difficulty_key, economy_source, money_exact, money_unit,
@@ -1022,11 +1023,11 @@ fn banner_ui(
         i18n.tr(&format!("government-{}", c.def.government)),
         i18n.tr("bar-country-tip")
     );
-    if response
+    let tip = keys::tip(ui.ctx(), &tip, id::COUNTRY);
+    let response = response
         .on_hover_cursor(egui::CursorIcon::PointingHand)
-        .on_hover_text(bf_ui_kit::tooltip_text(&tip))
-        .clicked()
-    {
+        .on_hover_text(bf_ui_kit::tooltip_text(&tip));
+    if keys::pressed(ui, id::COUNTRY, &response) {
         out.open_country = true;
     }
 }
@@ -1071,13 +1072,33 @@ fn time_panel(
         let mut child = ui.new_child(egui::UiBuilder::new().max_rect(r));
         f(&mut child);
     };
+    // Each button triggers its command; the tooltip shows the command's key.
+    let command = |ui: &mut Ui, icon: Icon, side: f32, text: &str, cmd: &'static str, on: bool| {
+        let tip = keys::tip(ui.ctx(), text, cmd);
+        let response = icon_button(ui, icon, side, &tip, on);
+        keys::pressed(ui, cmd, &response)
+    };
     at(minus_rect, &mut |ui| {
-        if icon_button(ui, Icon::Minus, small, &i18n.tr("bar-speed-down"), false).clicked() {
+        if command(
+            ui,
+            Icon::Minus,
+            small,
+            &i18n.tr("bar-speed-down"),
+            id::SPEED_DOWN,
+            false,
+        ) {
             out.speed = Some(snap.speed.saturating_sub(1).max(1));
         }
     });
     at(plus_rect, &mut |ui| {
-        if icon_button(ui, Icon::Plus, small, &i18n.tr("bar-speed-up"), false).clicked() {
+        if command(
+            ui,
+            Icon::Plus,
+            small,
+            &i18n.tr("bar-speed-up"),
+            id::SPEED_UP,
+            false,
+        ) {
             out.speed = Some((snap.speed + 1).min(5));
         }
     });
@@ -1087,27 +1108,43 @@ fn time_panel(
         } else {
             (Icon::Pause, i18n.tr("bar-pause"))
         };
-        if icon_button(ui, icon, button, &tip, snap.paused).clicked() {
+        if command(ui, icon, button, &tip, id::PAUSE, snap.paused) {
             out.toggle_pause = true;
         }
     });
     at(government_rect, &mut |ui| {
-        if icon_button(ui, Icon::Shield, button, &i18n.tr("bar-government"), false).clicked() {
+        let text = i18n.tr("bar-government");
+        if command(ui, Icon::Shield, button, &text, id::GOVERNMENT, false) {
             out.open_government = true;
         }
     });
     at(journal_rect, &mut |ui| {
-        if icon_button(ui, Icon::Book, button, &i18n.tr("bar-journal"), false).clicked() {
+        if command(
+            ui,
+            Icon::Book,
+            button,
+            &i18n.tr("bar-journal"),
+            id::JOURNAL,
+            false,
+        ) {
             out.open_journal = true;
         }
     });
     at(research_rect, &mut |ui| {
-        if icon_button(ui, Icon::Flask, button, &i18n.tr("bar-research"), false).clicked() {
+        let text = i18n.tr("bar-research");
+        if command(ui, Icon::Flask, button, &text, id::RESEARCH, false) {
             out.open_research = true;
         }
     });
     at(menu_rect, &mut |ui| {
-        if icon_button(ui, Icon::Menu, button, &i18n.tr("bar-menu"), false).clicked() {
+        if command(
+            ui,
+            Icon::Menu,
+            button,
+            &i18n.tr("bar-menu"),
+            id::MENU,
+            false,
+        ) {
             out.open_menu = true;
         }
     });

@@ -1,6 +1,6 @@
 ## Janela de agendas (J) e o painel lateral do mapa.
 
-bar-journal = Agendas (J)
+bar-journal = Agendas
 journal-title = Agendas
 journal-not-ready = As agendas aparecem depois do primeiro dia da campanha.
 journal-empty = Nada em curso: nem fila, pesquisa, alerta fiscal ou movimento para acompanhar.

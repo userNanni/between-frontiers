@@ -2,6 +2,7 @@
 //! the right with where it comes from, the conditions that open and close it measured against
 //! their limits, its milestones, the forces that push it, and a pin for the side panel.
 
+use crate::keys::{self, id};
 use bf_i18n::{Arg as I18nArg, I18n};
 use bf_ui_kit::theme::{sans, sans_medium};
 use bf_ui_kit::tokens::{color, radius, size, space};
@@ -228,11 +229,10 @@ pub fn show(
         ui.horizontal(|ui| {
             bf_ui_kit::title(ui, &i18n.tr("journal-title"));
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                if Button::ghost(&i18n.tr("gov-close"))
+                let close = Button::ghost(&i18n.tr("gov-close"))
                     .size(ButtonSize::Small)
-                    .show(ui)
-                    .clicked()
-                {
+                    .show(ui);
+                if close.clicked() || keys::single(ui, "journal.close", 'X', close.rect) {
                     out.close = true;
                 }
             });
@@ -291,7 +291,9 @@ pub fn show(
                         bf_ui_kit::caption(ui, &i18n.tr(g));
                         for e in entries {
                             let pin = pinned.contains(&e.id);
-                            if list_row(ui, i18n, world, e, e.id == picked_id, pin).clicked() {
+                            let row = list_row(ui, i18n, world, e, e.id == picked_id, pin);
+                            let id = format!("journal.entry.{}", e.id);
+                            if row.clicked() || keys::item(ui, 'H', id, &e.id, row.rect) {
                                 window.picked = Some(e.id.clone());
                             }
                         }
@@ -499,7 +501,10 @@ fn entry_detail(
         } else {
             Button::primary(&pin_label)
         };
-        if pin.size(ButtonSize::Small).show(ui).clicked() {
+        let pin = pin.size(ButtonSize::Small).show(ui);
+        let label = if is_pinned { &unpin } else { &pin_label };
+        let pin = pin.on_hover_text(keys::tip(ui.ctx(), label, id::JOURNAL_PIN));
+        if keys::pressed(ui, id::JOURNAL_PIN, &pin) || keys::fired(ui.ctx(), id::JOURNAL_PIN) {
             out.toggle_pin.push(e.id.clone());
         }
         let go = match e.screen {
@@ -508,11 +513,9 @@ fn entry_detail(
             crate::journal::Screen::Laws => "journal-open-laws",
             crate::journal::Screen::Research => "journal-open-research",
         };
-        if Button::ghost(&i18n.tr(go))
-            .size(ButtonSize::Small)
-            .show(ui)
-            .clicked()
-        {
+        let open = Button::ghost(&i18n.tr(go)).size(ButtonSize::Small).show(ui);
+        let open = open.on_hover_text(keys::tip(ui.ctx(), &i18n.tr(go), id::JOURNAL_GO));
+        if keys::pressed(ui, id::JOURNAL_GO, &open) || keys::fired(ui.ctx(), id::JOURNAL_GO) {
             out.open = Some(e.screen);
         }
     });

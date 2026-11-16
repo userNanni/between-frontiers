@@ -16,6 +16,7 @@ use egui::epaint::CubicBezierShape;
 use egui::text::{LayoutJob, TextWrapping};
 use egui::{Align2, Color32, Pos2, Rect, Sense, Shape, Stroke, Ui, Vec2};
 
+use crate::keys::{self, Tip, id};
 use crate::sim::ResearchView;
 
 /// Card size and gaps, in tree units (pixels at zoom 1).
@@ -271,6 +272,7 @@ pub fn show(
         screen.min + Vec2::new(space::XL, 72.0),
         screen.max - Vec2::splat(space::XL),
     );
+    keys::cover(ui, panel);
     bf_ui_kit::paint_overlay(ui, panel);
     let block = ui.interact(
         screen,
@@ -307,40 +309,58 @@ pub fn show(
             ),
         );
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            if Button::ghost(&i18n.tr("research-close"))
+            let close = Button::ghost(&i18n.tr("research-close"))
                 .size(ButtonSize::Small)
-                .show(ui)
-                .clicked()
-            {
+                .show(ui);
+            if close.clicked() || keys::single(ui, "research.close", 'X', close.rect) {
                 out.close = true;
             }
-            if view.focus.is_some()
-                && Button::secondary(&i18n.tr("research-focus-clear"))
+            if view.focus.is_some() {
+                let clear = Button::secondary(&i18n.tr("research-focus-clear"))
                     .size(ButtonSize::Small)
-                    .show(ui)
-                    .clicked()
-            {
-                out.focus = Some(None);
+                    .show(ui);
+                let clear = clear.on_hover_text(keys::tip(
+                    ui.ctx(),
+                    &i18n.tr("research-focus-clear"),
+                    id::RESEARCH_CLEAR_FOCUS,
+                ));
+                if keys::pressed(ui, id::RESEARCH_CLEAR_FOCUS, &clear)
+                    || keys::fired(ui.ctx(), id::RESEARCH_CLEAR_FOCUS)
+                {
+                    out.focus = Some(None);
+                }
             }
         });
     });
     let eras: Vec<(u8, String)> = (0..ERAS.len() as u8)
         .map(|e| (e, i18n.tr(&format!("tech-era-{e}"))))
         .collect();
-    if bf_ui_kit::segmented(ui, &mut camera.era, &eras) {
+    let digits: Vec<String> = (1..=eras.len()).map(|e| e.to_string()).collect();
+    let tips: Vec<Tip<'_>> = (0..eras.len())
+        .map(|e| Tip::Item('Y', format!("research.era.{e}"), &digits[e]))
+        .collect();
+    let mut jump = keys::segmented(ui, &mut camera.era, &eras, &tips);
+    let last = eras.len().saturating_sub(1) as u8;
+    if keys::fired(ui.ctx(), id::RESEARCH_PREV_ERA) && camera.era > 0 {
+        camera.era -= 1;
+        jump = true;
+    }
+    if keys::fired(ui.ctx(), id::RESEARCH_NEXT_ERA) && camera.era < last {
+        camera.era += 1;
+        jump = true;
+    }
+    if jump {
         camera.jump = Some(camera.era);
     }
     ui.horizontal_wrapped(|ui| {
         // Field filter: one tree, any field lit on demand.
         ui.set_max_width(ui.max_rect().width());
         ui.spacing_mut().item_spacing.x = space::XS;
-        if ui
-            .selectable_label(
-                camera.field.is_none(),
-                egui::RichText::new(i18n.tr("research-all-fields")).font(sans(12.5)),
-            )
-            .clicked()
-        {
+        let all = ui.selectable_label(
+            camera.field.is_none(),
+            egui::RichText::new(i18n.tr("research-all-fields")).font(sans(12.5)),
+        );
+        if all.clicked() || keys::item(ui, 'Z', "research.field.all".into(), "all", all.rect) {
             camera.field = None;
         }
         for (f, field) in FIELDS.iter().enumerate() {
@@ -359,7 +379,9 @@ pub fn show(
                     if on { color::TEXT } else { color::TEXT_MUTED },
                 ),
             );
-            if ui.selectable_label(on, job).clicked() {
+            let chip = ui.selectable_label(on, job);
+            let typed = keys::item(ui, 'Z', format!("research.field.{field}"), field, chip.rect);
+            if chip.clicked() || typed {
                 camera.field = if on { None } else { Some(f as u8) };
             }
         }
@@ -872,9 +894,24 @@ fn controls(ui: &mut Ui, canvas: Rect, i18n: &I18n, camera: &mut TreeCamera, lay
     let base = canvas.left_bottom() + Vec2::new(space::MD, -space::MD - h);
     let center = canvas.center();
     let buttons = [
-        ("+".to_owned(), i18n.tr("research-zoom-in"), 30.0),
-        ("−".to_owned(), i18n.tr("research-zoom-out"), 30.0),
-        (i18n.tr("research-fit"), i18n.tr("research-fit-hint"), 76.0),
+        (
+            "+".to_owned(),
+            i18n.tr("research-zoom-in"),
+            30.0,
+            id::ZOOM_IN,
+        ),
+        (
+            "−".to_owned(),
+            i18n.tr("research-zoom-out"),
+            30.0,
+            id::ZOOM_OUT,
+        ),
+        (
+            i18n.tr("research-fit"),
+            i18n.tr("research-fit-hint"),
+            76.0,
+            id::RESEARCH_FIT,
+        ),
     ];
     let total: f32 = buttons.iter().map(|b| b.2 + 4.0).sum::<f32>() + 48.0;
     ui.painter_at(canvas).rect(
@@ -885,7 +922,8 @@ fn controls(ui: &mut Ui, canvas: Rect, i18n: &I18n, camera: &mut TreeCamera, lay
         egui::StrokeKind::Inside,
     );
     let mut x = base.x;
-    for (k, (label, hint, w)) in buttons.iter().enumerate() {
+    let dt = ui.input(|i| i.stable_dt).min(0.1);
+    for (k, (label, hint, w, cmd)) in buttons.iter().enumerate() {
         let r = Rect::from_min_size(Pos2::new(x, base.y), Vec2::new(*w, h));
         x += w + 4.0;
         let response = ui
@@ -895,8 +933,14 @@ fn controls(ui: &mut Ui, canvas: Rect, i18n: &I18n, camera: &mut TreeCamera, lay
                     .fill(color::SURFACE_RAISED)
                     .stroke(Stroke::new(1.0, color::BORDER)),
             )
-            .on_hover_text(hint);
-        if response.clicked() {
+            .on_hover_text(keys::tip(ui.ctx(), hint, cmd));
+        // Zoom keys act while held, like on the map.
+        if k < 2 && keys::held(ui.ctx(), cmd) {
+            let rate: f32 = if k == 0 { 1.6 } else { -1.6 };
+            camera.zoom_at(canvas, center, (rate * dt).exp());
+            ui.ctx().request_repaint();
+        }
+        if keys::pressed(ui, cmd, &response) || (k == 2 && keys::fired(ui.ctx(), cmd)) {
             match k {
                 0 => camera.zoom_at(canvas, center, 1.2),
                 1 => camera.zoom_at(canvas, center, 1.0 / 1.2),

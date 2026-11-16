@@ -24,6 +24,10 @@ pub struct Shared {
     pub saves: Vec<Save>,
     /// The player's HUD layout, from the config folder.
     pub hud: crate::hud::Hud,
+    /// Commands, the player's keys and key tips.
+    pub keys: crate::keys::Keys,
+    /// The keyboard editor, while it is open over the settings.
+    pub key_editor: Option<crate::screens::keys_editor::State>,
     toast: Option<(String, f64)>,
 }
 
@@ -103,7 +107,13 @@ impl App {
             .set_zoom_factor(settings.ui_scale as f32 / 100.0);
 
         let paths_config = paths.config.clone();
+        let (keys, notes) = crate::keys::Keys::load(Some(paths.keys_file()));
+        for n in notes {
+            log(&n);
+        }
         let mut shared = Shared {
+            keys,
+            key_editor: None,
             paths,
             settings,
             i18n,
@@ -266,7 +276,11 @@ impl eframe::App for App {
         let screen = ui.max_rect();
         ui.painter()
             .rect_filled(screen, 0, bf_ui_kit::tokens::color::BACKDROP);
+        self.shared.keys.begin_frame(ui.ctx(), &self.shared.i18n);
         let transition = screens::show(&mut self.screen, &mut self.shared, ui, screen);
+        self.shared
+            .keys
+            .end_frame(ui.ctx(), &self.shared.i18n, screen);
         self.paint_toast(ui, screen);
         if let Some(t) = transition {
             let ctx = ui.ctx().clone();
