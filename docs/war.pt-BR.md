@@ -208,6 +208,144 @@ entra no passo do mar. A superioridade alimenta o termo "ar" dos outros dois.
   resistência nasce como movimento (`politics.pt-BR.md`) e vira guerrilha com território
   (`irregular`).
 
+### A conta da guerra
+
+Decisão 7, pedida pelo dono com o capítulo II de *A Arte da Guerra* (Sun Tzu, trad. Lionel Giles,
+1910, domínio público, "Waging War",
+<https://en.wikisource.org/wiki/The_Art_of_War_(Giles)/Waging_War>). Dali vêm as ideias, não o
+texto:
+- o exército custa todo dia, em casa e na frente (II.1);
+- a campanha longa esgota o Estado e convida terceiros a aproveitar a fraqueza (II.2–4);
+- nenhum país ganhou com guerra prolongada (II.6);
+- abastecer de longe empobrece o povo (II.10);
+- o exército perto encarece tudo (II.11–12);
+- uma parte grande da renda das famílias e da receita do Estado vai para repor o que a guerra
+  gasta (II.13–14);
+- o que se toma do inimigo vale muitas vezes o que se traz de casa (II.15).
+
+O custo é personagem do desenho. `war::WarLedger` soma, semana a semana e desde o começo da guerra:
+
+| Linha | O que soma | De onde vem |
+|---|---|---|
+| Gente | soldados mortos **por faixa de idade**, inválidos, civis mortos | passos de combate, bombardeio, bloqueio, ocupação |
+| Bens | valor do que as forças consumiram (comida, combustível, munição, manutenção) e do equipamento perdido | `upkeep`, perdas dos passos |
+| Dinheiro e dívida | gasto de guerra do Estado e a dívida nova que o pagou | orçamento e títulos (3c) |
+| Produção que deixou de existir | trabalho dos mobilizados, fábricas destruídas ou ocupadas, comércio cortado | economia |
+| Preços | índice de preços desde o começo da guerra | mercado |
+
+A conta alimenta a exaustão por dois termos novos, **gasto** (gasto acumulado sobre um ano de
+produção) e **preços** (alta desde o começo da guerra). Os dois crescem com as semanas mesmo sem
+nenhuma derrota: a guerra longa dói também em quem está ganhando. Teste:
+`ledger::a_long_war_exhausts_even_without_defeat` (seis anos sem perdas e sem ocupação; a exaustão
+sobe todo ano).
+
+## Arma nuclear: dissuasão medida
+
+Decisão 4. O dono concordou e pediu que a dissuasão se apoie nos trabalhos sobre a diplomacia dos
+mísseis. Foram lidos:
+- Wohlstetter, "The Delicate Balance of Terror" (RAND P-1472, 1958), inteiro;
+- Brodie, "Implications for Military Policy", capítulo dele em *The Absolute Weapon* (1946), na
+  reimpressão autorizada da *Air Force Magazine*;
+- Brodie, *Strategy in the Missile Age* (RAND R-335, 1959): o resumo e o capítulo 8, "The Anatomy
+  of Deterrence";
+- três trabalhos de Schelling na RAND: "The Reciprocal Fear of Surprise Attack" (P-1342, 1958),
+  "Randomization of Threats and Promises" (P-1716, 1959) e "Nuclear Weapons and Limited War"
+  (RM-2510, 1959);
+- Kahn, *The Nature and Feasibility of War and Deterrence* (RAND P-1888-RC, 1960), e os degraus 1
+  a 9 da escada de *On Escalation* (1965), na reprodução de Beal, *Phases of a Crisis* (ONR/ARPA,
+  1975, DTIC AD-A005354);
+- os tratados nas páginas do Departamento de Estado americano (arquivo 2009–2017).
+
+Ficaram sem ler, porque só existem em empréstimo digital: *The Strategy of Conflict* (1960) e
+*Arms and Influence* (1966) de Schelling, e o *On Escalation* inteiro. Por isso compelência,
+brinkmanship nos termos dele e os 44 degraus de Kahn não estão citados aqui; entram quando houver
+leitura.
+
+O que o desenho tira deles:
+
+- **Dissuasão é o que sobra depois do primeiro golpe, não o que se tem.** Ter a arma não basta.
+  Wohlstetter lista os obstáculos que a retaliação precisa vencer, todos eles: sobreviver ao
+  ataque, decidir e transmitir a ordem, alcançar o território inimigo, atravessar as defesas e
+  destruir o alvo (P-1472, "The Quantitative Nature of the Problem"). Brodie diz o mesmo: o que
+  conta é o tamanho a que o inimigo acha que pode reduzir a força por surpresa (R-335, pp.
+  281–283). `war::second_strike` faz essa conta obstáculo a obstáculo, por base:
+  - silo endurecido: sempre alvo, difícil de matar;
+  - submarino: a salvo no mar, alvo mole no porto;
+  - bombardeiro: a salvo só na fração em alerta, e ainda precisa atravessar a defesa aérea;
+  - lançador móvel: a salvo quando disperso.
+
+  Depois vêm o alcance, a penetração da defesa antimíssil e o comando que sobrevive para dar a
+  ordem. Tudo em valor esperado, sem sorteio.
+- **Diversificar a base** multiplica a incerteza do atacante (Brodie, R-335, pp. 285–286): com
+  várias bases, os golpes do atacante se dividem pelos alvos expostos.
+- **Estabilidade, não simetria.** O equilíbrio é estável quando nenhum lado, golpeando primeiro,
+  destrói a capacidade do outro de responder (Brodie citando Schelling, R-335, pp. 302–304).
+  `war::deterrence` mede o segundo golpe de cada lado contra o dano que o outro tem por
+  inaceitável. Daí sai se a dissuasão é mútua, de um lado só ou de nenhum, e quem ganha por golpear
+  primeiro (`first_strike_incentive`). A paridade em números não entra.
+- **Defesa antimíssil desestabiliza.** Ela reduz o segundo golpe do outro lado. O Tratado ABM
+  limitou a defesa justamente para deixar de pé a capacidade de penetração da retaliação de cada
+  um (narrativa do Departamento de Estado). Teste:
+  `missile_defense_can_break_the_other_sides_second_strike`.
+- **Contraforça contra contravalor.** Golpear as bases inimigas perde valor no segundo golpe,
+  porque elas já estarão vazias. Golpear cidades dissuade mais antes da guerra, mas executar essa
+  ameaça queima o que resta para barganhar (Brodie, R-335, pp. 288–294). O primeiro golpe é
+  contraforça (`second_strike`); o contravalor é `countervalue_share` sobre os alvos que o mapa
+  conta. A reserva retida fica para a fatia de uso.
+- **A ameaça que deixa algo ao acaso.** Schelling mostra que a ameaça pode carregar um risco real
+  de se cumprir sem que ninguém queira (P-1716, pp. 8–10). Mostra também que a linha
+  nuclear/não nuclear é arbitrária mas útil, que o primeiro uso abre precedente e que nenhum dos
+  lados destrói essa linha facilmente (RM-2510, pp. 1–12). No jogo isso vira
+  `escalation_risk_per_week`: o custo esperado que uma guerra direta entre duas potências com
+  segundo golpe garantido carrega por semana. A decisão pesa esse custo; ninguém o sorteia. O
+  primeiro uso na partida rebaixa de vez o limiar de todas as guerras seguintes (fatia de uso).
+- **A escada.** Kahn separa a subcrise (gestos e declarações) da crise tradicional (endurecimento,
+  demonstração de força, mobilização, assédio e confronto). Entre as duas fica o limiar "não
+  balançar o barco"; acima da crise, o limiar "a guerra nuclear é impensável" (Beal 1975,
+  reproduzindo Kahn 1965). Os nossos degraus de `history-rails` cabem aí: tensão e rivalidade na
+  subcrise, corrida armamentista e crise na crise tradicional. Acima vêm `War`,
+  `NuclearCoercion` e `NuclearUse`. `war::escalation_limits` diz até que degrau cada lado pode
+  subir contra o outro:
+
+| Situação | Quem tem segundo golpe | Teto de cada um | Risco por semana de guerra direta |
+|---|---|---|---|
+| Ninguém armado | — | guerra | 0 |
+| Só A tem segundo golpe | só A | A: até o uso; B: crise | `escalation_risk_per_week` se B também tem a arma; 0 se não |
+| Dissuasão mútua | A e B | guerra, com risco; a coerção não tem crédito | `escalation_risk_per_week` |
+| Um armado sem segundo golpe, outro desarmado | ninguém | A: coerção; B: guerra | 0 |
+
+  Kahn lembra o motivo de medir e não supor: quem acredita sozinho na destruição mútua automática
+  se expõe a "Munique" (P-1888-RC, pp. 1–3).
+- **A capacidade de mobilizar também dissuade:** a provocação dispara o rearmamento do outro lado
+  (Kahn, P-1888-RC, pp. 35–38). Entra na hostilidade como corrida armamentista.
+- **Controle de armas** é tratado da fase 4 com **modo de verificação**. Meios técnicos nacionais
+  só veem o que é observável (silos, submarinos) e pedem regra de contagem. Inspeção no local vê
+  ogivas e móveis, ao custo de se expor. Salvaguardas da AIEA servem para os não nucleares.
+  Schelling defende que o acordo mire o desenho observável das forças, não regras de alerta que
+  ninguém vê (P-1342, pp. 25–27). Pedido à fase 4: um campo de verificação no `Treaty`. Os tratados
+  entram como fatos datados de referência, não como roteiro:
+
+| Tratado | Assinado | Em vigor | Limita | Verificação |
+|---|---|---|---|---|
+| Proibição parcial de testes | 1963-08-05 | 1963-10-10 | testes na atmosfera, no espaço e debaixo d'água | nenhuma no tratado; só a detecção nacional |
+| TNP | 1968-07-01 | 1970-03-05 | transferência e aquisição de armas por não nucleares | salvaguardas da AIEA (art. III) |
+| SALT I (acordo interino) | 1972-05-26 | 1972-10-03 | congela lançadores de ICBM; teto de SLBM | meios técnicos nacionais; comissão consultiva |
+| ABM | 1972-05-26 | 1972-10-03 | dois sítios de defesa antimíssil (um, pelo protocolo de 1974), 100 interceptadores cada | meios técnicos nacionais |
+| SALT II | 1979-06-18 | nunca ratificado | 2.400 vetores, depois 2.250; tetos para MIRV | meios técnicos nacionais, regras de contagem |
+| INF | 1987-12-08 | 1988-06-01 | elimina os mísseis de solo de 500 a 5.500 km | inspeção no local por 13 anos, monitoramento contínuo |
+| START I | 1991-07-31 | 1994-12-05 (fonte secundária) | 1.600 vetores, 6.000 ogivas atribuídas | inspeções no local de vários tipos, telemetria |
+| New START | 2010-04-08 | 2011-02-05 | 700 vetores, 1.550 ogivas, 800 lançadores | 18 inspeções no local por ano |
+
+Fontes dos tratados: páginas do Departamento de Estado americano, arquivo 2009–2017. O texto e o
+artigo de cada tratado estão em `https://2009-2017.state.gov/t/isn/4797.htm` (LTBT),
+`/t/isn/trty/16281.htm` (TNP), `/t/isn/4795.htm` (SALT I), `/t/avc/trty/101888.htm` (ABM),
+`/t/isn/5195.htm` (SALT II), `/t/avc/trty/102360.htm` (INF), `/documents/organization/27360.pdf`
+(START I) e `/t/avc/newstart/index.htm` (New START). A entrada em vigor do START I vem da Arms
+Control Association.
+
+Teste da regra da casa: `deterrence_is_mutual_only_with_secure_second_strikes`. Bombardeiros sem
+alerta não dão segundo golpe; com alerta, dão. Trocar os lados troca o resultado.
+
 ## Como começa e como acaba
 
 1. **Escada de crise** (`history-rails.pt-BR.md`): tensão, rivalidade, corrida armamentista, crise
@@ -220,7 +358,8 @@ entra no passo do mar. A superioridade alimenta o termo "ar" dos outros dois.
    decide entrar pelo mesmo cálculo de valor contra custo da IA.
 4. **Exaustão medida:** `war::exhaustion` soma termos nomeados, cada um com peso em `rules.ron`:
    perdas sobre os homens em idade, mobilizados sobre os homens em idade (trabalho drenado), falta
-   de bens de consumo, população ocupada, semanas de guerra e indústria destruída. Vai de 0 a 1.000
+   de bens de consumo, população ocupada, semanas de guerra, indústria destruída, gasto de guerra
+   e alta de preços (a conta da guerra, acima). Vai de 0 a 1.000
    por mil, e a tela mostra cada termo.
 5. **Paz negociada:** o lado que pede paz oferece parte das exigências; o outro aceita quando o
    valor esperado de continuar (o que ainda pode tomar menos o custo de mais semanas de exaustão)
