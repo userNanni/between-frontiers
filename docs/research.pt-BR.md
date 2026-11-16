@@ -85,6 +85,32 @@ Com a árvore em níveis (requisitos novos e custo crescente ao longo de cada re
 protótipo chega em média 2,6 anos depois da história (desvio absoluto 3,6) e a indústria 2,1 anos
 depois (125 de 133 até 2025); população e PIB de 2025 quase não mudam (6,75 bilhões, US$ 49,6 tri).
 
+## A fronteira depois de 1980, conferida
+
+Ganho de produtividade da árvore por década (soma de ln(1 + ganho), em %), contra a produtividade
+total dos fatores (PTF) medida nos EUA, a fronteira. A PTF é a comparação certa: a troca de método
+(máquina por trabalhador) já entra como método, e a tecnologia dá o resto.
+
+| Grupo | Árvore 1980–89 / 1990–99 / 2000–09 / 2010–25 | PTF medida, % ao ano (anos 1980 / 1990 / 2000 / 2010) |
+|---|---|---|
+| Serviços | 6,5 / 10,1 / 2,8 / 12,1 | economia de mercado 0,88 (2000) e 0,35 (2010); setor empresarial privado 0,56 / 1,01 / 1,11 / 0,55 |
+| Indústria pesada | 5,6 / 8,5 / 0 / 14,2 | manufatura 0,29 (1987–90) / 1,51 / 1,34 / −0,30 |
+| Indústria leve | 14,1 / 21,1 / 0 / 17,9 | bens duráveis 0,79 / 2,33 / 1,97 / 0,23; eletrônicos 4,65 / 11,08 / 6,00 / 0,99 |
+| Agropecuária | 0 / 20,7 / 8,3 / 8,3 | fazendas 3,26 / 1,47 / 1,17 / −0,36 |
+
+Fontes: BLS (Major Sector Productivity e Multifactor Productivity: séries OPHPBS, MFPPBS,
+OPHMFG, MPU9900013, MPU9920013, MPU5250013, lidas pelo espelho do FRED; domínio público); USDA ERS,
+*Agricultural Productivity in the U.S.*, tabela 1 (domínio público); EU KLEMS & INTANProd, release
+2024 (Luiss Lab), contas de crescimento dos EUA (VATFP_I).
+
+Conclusão: a árvore não para depois de 1980. Ela dá à fronteira cerca de 0,7 % ao ano nos serviços
+e 0,5 a 1,5 % na indústria, a mesma ordem da PTF medida (0,5 a 1,1 % no setor privado). Os ganhos
+grandes de 1930–1979 (indústria pesada +20 a +42 % por década) também seguem a história: foi a
+época de PTF alta. Eletrônica, informática, telecomunicações, contêiner (1966) e comércio
+eletrônico já estão na árvore. Por isso ela não foi mexida: o crescimento mundial lento depois de
+1991 não vem da fronteira, e sim de os países pobres não saírem do campo (`history.pt-BR.md`,
+"Convergência e campo"), que é o que cresceu no mundo real depois de 1991.
+
 ## A árvore de 1925 a 2025
 
 168 tecnologias em 12 campos e 6 eras (`data/research/technologies.ron`). Regras que os testes de
