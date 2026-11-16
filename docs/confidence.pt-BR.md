@@ -1,6 +1,6 @@
 # Confiança: medo do mercado e ciclo emocional
 
-Estado: proposta de desenho, **sem código**. Entra no último bloco do plano (fase 7, ver
+Estado: desenho, **sem código**, com as decisões do dono de 2026-11-16 (fim do documento). Entra no último bloco do plano (fase 7, ver
 `architecture.pt-BR.md`), depois de política, diplomacia e guerra. A única parte que pode ser
 adiantada é guardar as séries que este sistema vai ler (fim do documento).
 
@@ -172,7 +172,10 @@ data.
 
 ## Alvos de calibração
 
-Para o placar histórico (`tools/history/`, em construção). Cada alvo diz o que a rodada sem
+Para o placar histórico (`tools/history/`, `docs/history.pt-BR.md`). O primeiro placar põe
+"sem ciclo nem guerra" como a terceira causa dos desvios (peso 0,59): na Depressão o Ocidente de
+colonização europeia cresce +5,5 % ao ano simulado contra −9,1 % real. Este sistema é a resposta
+a essa causa, junto com a guerra (fase 5). Cada alvo diz o que a rodada sem
 jogador tem de produzir, com a fonte do número histórico. A regra do placar: o modelo acerta a
 **ordem de grandeza e o mapa** (quem caiu mais, quem saiu antes), não o número exato.
 
@@ -294,14 +297,15 @@ novos.
 
 ## Decisões do dono
 
-1. **Três confianças por país (investidor, banco, família) ou uma só?** Recomendação: três. Uma só
-   não distingue a corrida bancária (famílias) do congelamento do crédito (bancos) nem da greve de
-   investimento (investidores), e são essas três que as alavancas do jogador consertam.
-2. **Criar a dívida privada como estoque?** Recomendação: sim. Sem ela não há Minsky nem Fisher; é
-   o único estado novo que muda contas existentes.
-3. **O ciclo pode nascer sozinho, sem choque externo?** Recomendação: sim (Minsky). A alternativa
-   é só reagir a choques (guerra, petróleo), o que deixa 1929 e 2008 sem causa.
-4. **O placar aceita a crise de 1929 entre 1928 e 1931, ou exige 1929?** Recomendação: aceitar a
-   janela. Determinismo sem data marcada não garante o ano; garantir o ano exigiria roteiro.
-5. **A IA aprende com a crise (a regra do banco central muda depois de uma Depressão) ou segue
-   sempre a regra do seu tempo?** Recomendação: aprende, pela memória da crise, sem data.
+Todas decididas em 2026-11-16, como recomendado:
+
+1. ~~Três confianças por país~~: investidor, banco e família.
+2. ~~Dívida privada~~: entra como estoque novo.
+3. ~~Ciclo sem choque externo~~: sim (Minsky).
+4. ~~Janela da crise~~: não se crava data. Rodando sozinho, a crise vem na janela (início entre
+   1928 e 1931); uma intervenção grande do jogador pode evitá-la, adiantá-la ou atrasá-la. A
+   entrada histórica da Depressão (`history-rails.pt-BR.md`, fio 1) não soma pressão histórica: é
+   só causa.
+5. ~~A IA aprende com a crise~~: sim, pela memória da crise, sem data.
+
+Nenhuma decisão aberta neste documento.

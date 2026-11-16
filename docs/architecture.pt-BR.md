@@ -260,7 +260,7 @@ Existe a partir do primeiro PR com código e roda toda noite em Linux e Windows.
 | 4. Diplomacia | Blocos, tratados, influência com retorno | Objetivo próprio para país pequeno; arma nuclear com consequência |
 | 5. Guerra | Frentes sobre a logística definida na fase 1 | Guerra mundial e paz negociada como sistema próprio |
 | 6. IA estratégica | Países que interpretam seu papel: interesses medidos, hostilidade e escada de crise (`history-rails.pt-BR.md`) | Interesse com a conta aberta, sem estratégia sorteada |
-| 7. Confiança e história (último bloco) | Ciclo de confiança e medo do mercado (`confidence.pt-BR.md`); agenda histórica da IA, pressão histórica visível e placar de eventos (`history-rails.pt-BR.md`) | Crise que nasce da euforia (Minsky), não de evento; a história real acontece sem roteiro datado e desvia com o jogador |
+| 7. Confiança e história (último bloco) | Ciclo de confiança e medo do mercado (`confidence.pt-BR.md`); entradas históricas com marcos, personagens, agendas e casus belli, medidas pelo placar (`history-rails.pt-BR.md`) | Crise que nasce da euforia (Minsky), não de evento; a história real acontece por roteiro com pontos e condições, não por data, e desvia com o esforço do jogador |
 
 Toda fase fecha comparada com o mod Cold War Era do Victoria 3 (e com o Tech & Res): o que eles
 têm, o que temos, o que fazer com a diferença. Ver `benchmarks.pt-BR.md`.
@@ -302,24 +302,36 @@ e guerras com os interesses de cada país, e a história real acontecendo sozinh
 o jogador mexe. Fica por último, como ele pediu. Desenho em `confidence.pt-BR.md` e
 `history-rails.pt-BR.md`.
 
+Decidido pelo dono em 2026-11-16: a mistura "como o Victoria 3", com entradas históricas que têm
+condição de entrada e de saída, marcos e esforço para desviar; personagens com janela de datas;
+casus belli com pressão popular como único empurrão na guerra; agendas por ondas; dívida privada e
+três confianças por país. Aberta: as regras de partida.
+
 | O quê | Depende de | Fase |
 |---|---|---|
 | Guardar as séries que a confiança vai ler (lucro do fundo, fechamentos por prejuízo, crédito bancário, juro do título, utilização, índice de preços, desemprego por país) no `YearRecord` | nada; campos de leitura | **adiantável já** |
-| Movimentos `revisionism` e `regime_change` no catálogo, sem efeito | catálogo da fase 3 | **adiantável já** (3) |
-| Estados de referência de 1914 por país (território perdido) e as 132 mudanças de `laws.ron` como eventos do placar | dados do cenário | **adiantável já** (dados) |
-| Peso político dos grupos e mudança de forma de governo, não só de lei | 3d | 3 |
+| Movimentos `revisionism` e `regime_change` no catálogo | catálogo da fase 3 | em andamento (PR #53) |
+| Fronteiras de 1914 por país, para o indicador `lost_territory` | dados do cenário | **adiantável já** (dados) |
+| Na política: margem do movimento e postura do grupo como lista de termos nomeados; variantes "personagem" e "entrada" no registro de mudanças; lugares vazios de chefe de governo e de líder de grupo e de movimento no estado | 3d | **adiantável já** (3, ver `history-rails.pt-BR.md`, "O que os personagens e as entradas pedem da política agora") |
 | Reparações e dívidas de guerra como dívida em moeda estrangeira; padrão-ouro com reservas e saída por perda de reservas | contrato da diplomacia | 4 |
 | Ajuda e empréstimo entre governos, blocos, cartel com cota, união aduaneira e moeda comum | diplomacia | 4 |
-| Guerra que começa por crise (exigência, terceiros, recuo), não por declaração seca; insurgência com território; memória de guerra | guerra | 5 |
+| Guerra que começa por crise (exigência com casus belli, terceiros, recuo), não por declaração seca; insurgência com território; memória de guerra | guerra | 5 |
 | Interesses medidos, papel (hegemon, potência em ascensão, pequena), hostilidade por par | 3, 4, 5 | 6 |
 | Dívida privada, três confianças por país, corrida bancária, contágio, alavancas do jogador (emprestador de última instância, seguro de depósito) | 3c, 4 | 7 |
-| Agenda histórica dos cerca de 12 protagonistas, pressão histórica, opção de partida (histórico, plausível, livre) | 6 | 7 |
-| Placar de eventos e testes de desvio no CI | `tools/history/`, 7 | 7 |
+| Entradas históricas com marcos e pressão histórica (`data/history/entries.ron`); casus belli e pressão popular | 5, 6 | 7 |
+| Personagens: agitador, líder de grupo, chefe de governo, com janela, condição e sorteio pela semente (`data/history/characters.ron`, Wikidata) | 3d (lugares e termos), 7 | 7 |
+| Agendas por ondas: GER, ITA, JAP, SOV, USA, GBR, FRA, CHN primeiro | 6 | 7, depois contínuo |
+| Marcos das entradas no `events.json` do placar; testes de desvio no CI | `tools/history/` | 7 |
 
-Nada disto muda a ordem das fases em curso. Duas coisas pedem cuidado agora, para não refazer
-depois: a guerra (fase 5) deve nascer da escada de crise, que é por onde a IA de interesses vai
-entrar; e a política 3d deve permitir trocar a forma de governo, não só as leis, porque é por ela
-que o nacionalismo expansionista chega ao poder.
+Nada disto muda a ordem das fases em curso. Três coisas pedem cuidado agora, para não refazer
+depois:
+
+- **Política (PR #53):** termos abertos na margem e na postura, lugares de personagem no estado e
+  as variantes novas no registro de mudanças, todos vazios até a fase 7.
+- **Guerra (fase 5):** nascer da escada de crise com casus belli, que é por onde a pressão
+  histórica e a IA de interesses vão entrar.
+- **Diplomacia (fase 4):** reparações como dívida em moeda estrangeira e o padrão-ouro com
+  reservas, pré-requisitos da confiança e do fio alemão.
 
 ### Pesquisa e maturidade tecnológica
 
@@ -402,7 +414,7 @@ As correções podem voltar para o OpenHistoricalMap.
 3. Regra de assimilação: taxa base e peso de lei, discriminação e concentração. Proposta, sem
    código, para o dono decidir: 1,5 % ao ano para a cultura e 0,2 % para a religião, vezes lei,
    (1 − discriminação), (1 − concentração)² e família linguística (`docs/population.pt-BR.md`).
-4. Trilho histórico e confiança (último bloco): como conduzir a história (roteiro datado,
-   condições, agenda da IA ou mistura), personagens, alcance do placar e as três confianças por
-   país. Propostas e recomendações nas "Decisões do dono" de `history-rails.pt-BR.md` e
-   `confidence.pt-BR.md`.
+4. Regras de partida do último bloco: um jogo só com o padrão calibrado, e no máximo duas regras
+   escalares em dados (`historical_pressure`, `historical_characters`) só com fumaça e
+   determinismo no CI, ou nenhuma. O resto do trilho histórico e da confiança foi decidido em
+   2026-11-16 (`history-rails.pt-BR.md`, `confidence.pt-BR.md`).
