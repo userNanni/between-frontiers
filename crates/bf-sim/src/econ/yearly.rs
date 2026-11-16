@@ -18,6 +18,10 @@ use crate::game::GameWorld;
 /// the state's to keep.
 pub const DEPRECIATION: Fixed = milli(15);
 
+/// Share of its 1925 distance to the leader a region's institutions can close, at full
+/// literacy: the rest of the gap persists (conditional convergence).
+const CLOSE_WITH_SCHOOLING: Fixed = milli(500);
+
 /// A plant switches when another method earns this much more.
 const SWITCH_MARGIN: Fixed = milli(1100);
 /// Literacy speed with no schools, and the gain at full enrolment: half the children in
@@ -144,6 +148,12 @@ impl System<GameWorld> for Yearly {
             .map(|r| r.tfp)
             .max()
             .unwrap_or(Fixed::ONE);
+        let leader_start = econ
+            .regions
+            .iter()
+            .map(|r| r.tfp_start)
+            .max()
+            .unwrap_or(Fixed::ONE);
         let tfp = econ
             .regions
             .iter()
@@ -155,7 +165,14 @@ impl System<GameWorld> for Yearly {
                 } else {
                     Fixed::ZERO
                 };
-                let gap = ((leader - r.tfp) / r.tfp.max(milli(1))).min(Fixed::from_int(2));
+                // Convergence is conditional: a region closes in on the share of the leader its
+                // institutions allow, which starts at its 1925 standing and rises with schooling
+                // (`CLOSE_WITH_SCHOOLING` of the rest at full literacy).
+                let standing = (r.tfp_start / leader_start.max(milli(1))).min(Fixed::ONE);
+                let reach = standing
+                    + (Fixed::ONE - standing) * CLOSE_WITH_SCHOOLING * r.literacy * r.literacy;
+                let gap = ((leader * reach - r.tfp) / r.tfp.max(milli(1)))
+                    .clamp(Fixed::ZERO, Fixed::from_int(2));
                 let catch_up = gap * (milli(5) + r.literacy * milli(20));
                 r.tfp * (Fixed::ONE + own + catch_up)
             })

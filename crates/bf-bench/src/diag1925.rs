@@ -154,8 +154,8 @@ pub fn main() -> Result<(), String> {
         if let Some(gr) = cat.good("grain") {
             for r in &e.regions {
                 let m = &e.markets[r.market as usize];
-                flows[6] +=
-                    bf_sim::econ::week::subsistence_food(r, m).to_f64_lossy() * base(gr as usize);
+                flows[6] += bf_sim::econ::week::subsistence_food(&cat, r, m).to_f64_lossy()
+                    * base(gr as usize);
             }
         }
         util_sum += p.iter().sum::<f64>() / full.iter().sum::<f64>().max(1.0);
@@ -400,6 +400,104 @@ pub fn main() -> Result<(), String> {
         }
         (at1, at_tfp, wsum)
     };
+    // Why a country's industry does or does not grow: every 10 years.
+    if let Ok(tag) = std::env::var("BF_DIAG_COUNTRY") {
+        let mi = tags.iter().position(|t| *t == tag).ok_or("tag")?;
+        for y in (1930..=2000).step_by(10) {
+            s.sim.run_until(Date::new(y, 1, 2));
+            let e = &s.world().econ;
+            let m = &e.markets[mi];
+            let mut by: std::collections::BTreeMap<String, (f64, f64, i64)> = Default::default();
+            let (mut idle, mut people) = (0i64, 0i64);
+            for r in e.regions.iter().filter(|r| r.market as usize == mi) {
+                let p = &r.pops[0];
+                idle += bf_sim::econ::workers(p.size) - p.employed;
+                people += r.population();
+                for pl in &r.plants {
+                    let b = &cat.buildings[pl.kind as usize];
+                    let x = by.entry(b.group.clone()).or_default();
+                    x.0 += pl.utilization.to_f64_lossy() * pl.levels as f64;
+                    x.1 += pl.levels as f64;
+                    x.2 += b.methods[pl.method as usize].workers * pl.levels;
+                }
+            }
+            let gdp = m.gdp_last_year.to_f64_lossy();
+            println!(
+                "{y}: gdp/head {:.0}, pool {:.1}% of GDP, idle peasant workers {:.0} M of {:.0} M people, hurdle {:.3}, wage/wk {:.1}",
+                gdp / people as f64,
+                m.pool.to_f64_lossy() / gdp * 100.0,
+                idle as f64 / 1e6,
+                people as f64 / 1e6,
+                bf_sim::econ::monthly::hurdle(m).to_f64_lossy(),
+                bf_sim::econ::monthly::market_wages(e)[mi].to_f64_lossy()
+            );
+            for (g, (u, l, w)) in &by {
+                print!(
+                    "  {g}: use {:.2} jobs {:.1} M;",
+                    u / l.max(1.0),
+                    *w as f64 / 1e6
+                );
+            }
+            println!();
+            let mut imp: Vec<(f64, String)> = (0..cat.goods.len())
+                .filter(|&g| m.demand[g] > laplace_schelling::Fixed::ZERO)
+                .map(|g| {
+                    let d = m.demand[g].to_f64_lossy();
+                    (m.net_import[g].to_f64_lossy() / d, cat.goods[g].key.clone())
+                })
+                .collect();
+            imp.sort_by(|a, b| b.0.total_cmp(&a.0));
+            println!(
+                "  most imported (share of demand): {}",
+                imp.iter()
+                    .take(8)
+                    .map(|(x, k)| format!("{k} {:.0}%", x * 100.0))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            );
+        }
+        return Ok(());
+    }
+    // Productivity by decade for a few countries: base (regions) and technology (by group).
+    if std::env::var_os("BF_DIAG_TFP").is_some() {
+        let groups = bf_sim::economy::BUILDING_GROUPS;
+        let gi = |k: &str| groups.iter().position(|g| *g == k).unwrap_or(0);
+        for y in (1935..=2025).step_by(10) {
+            s.sim.run_until(Date::new(y, 1, 2));
+            let e = &s.world().econ;
+            print!("{y}:");
+            for tag in [
+                "USA", "GBR", "GER", "JAP", "SOV", "BRA", "MEX", "CHN", "RAJ",
+            ] {
+                let Some(mi) = tags.iter().position(|t| t == tag) else {
+                    continue;
+                };
+                let m = &e.markets[mi];
+                let rs: Vec<_> = e
+                    .regions
+                    .iter()
+                    .filter(|r| r.market as usize == mi && !r.colony)
+                    .collect();
+                let pop: i64 = rs.iter().map(|r| r.population()).sum();
+                let base: f64 = rs
+                    .iter()
+                    .map(|r| r.tfp.to_f64_lossy() * r.population() as f64)
+                    .sum::<f64>()
+                    / pop.max(1) as f64;
+                let t = |k: &str| m.tech_tfp.get(gi(k)).map_or(1.0, |x| x.to_f64_lossy());
+                print!(
+                    " {tag} gdp {:.0} base {:.2} heavy {:.2} serv {:.2} agr {:.2} |",
+                    m.gdp_last_year.to_f64_lossy() / pop.max(1) as f64,
+                    base,
+                    t("heavy_industry"),
+                    t("services"),
+                    t("agriculture")
+                );
+            }
+            println!();
+        }
+        return Ok(());
+    }
     for y in 1..=years {
         s.sim.run_until(Date::new(1926 + y, 1, 2));
         let e = &s.world().econ;

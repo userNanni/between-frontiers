@@ -258,22 +258,36 @@ fn plant_run<'c>(
 }
 
 /// Grain smallholders bring to market: a sixth of what they eat, rising to half as farming
-/// methods improve.
-pub fn peasant_surplus(r: &Region, staple: Fixed) -> Fixed {
-    let gain = if r.tfp_start > Fixed::ZERO {
-        (r.tfp / r.tfp_start - Fixed::ONE).clamp(Fixed::ZERO, Fixed::ONE)
-    } else {
-        Fixed::ZERO
-    };
+/// technology (seed, fertilizer, machines) improves. The region's own catch-up in productivity
+/// (institutions, schooling) does not make a smallholder's plot yield more.
+pub fn peasant_surplus(m: &Market, staple: Fixed) -> Fixed {
+    let agri = m.tech_tfp.first().copied().unwrap_or(Fixed::ONE);
+    let gain = (agri - Fixed::ONE).clamp(Fixed::ZERO, Fixed::ONE);
     staple * (milli(160) + gain * milli(340))
 }
 
 /// Staples the jobless grow for themselves. Smallholders get half the gain of farm technology
-/// (better seed, fertilizer): the Green Revolution reached them too.
-pub fn subsistence_food(r: &Region, m: &Market) -> Fixed {
+/// (better seed, fertilizer): the Green Revolution reached them too. They till only the
+/// cropland the farms leave free: where farms hold the land, the jobless grow less and look for
+/// work in town instead of crowding the farms out of their market.
+pub fn subsistence_food(cat: &Catalogue, r: &Region, m: &Market) -> Fixed {
     let agri = m.tech_tfp.first().copied().unwrap_or(Fixed::ONE);
     let gain = Fixed::ONE + (agri - Fixed::ONE).max(Fixed::ZERO) * milli(500);
-    r.subsistence.mul_ratio(unemployed_people(r), 1000) * gain
+    let wanted = r.subsistence.mul_ratio(unemployed_people(r), 1000) * gain;
+    if cat.staple_farms.is_empty() {
+        return wanted;
+    }
+    let mut free = Fixed::ZERO;
+    for &(farm, kind, per_level) in &cat.staple_farms {
+        let land: i64 = r.land.iter().filter(|l| l.0 == farm).map(|l| l.1).sum();
+        let used = r
+            .plants
+            .iter()
+            .find(|p| p.kind == kind)
+            .map_or(0, |p| p.levels);
+        free += per_level * (land - used).max(0);
+    }
+    wanted.min(free * gain)
 }
 
 fn unemployed_people(r: &Region) -> i64 {
@@ -323,9 +337,9 @@ fn region_orders(
             supply[*gi as usize] += *q * out_scale;
         }
     }
-    let staple = subsistence_food(r, m);
+    let staple = subsistence_food(cat, r, m);
     if let Some(grain) = cat.grain {
-        supply[grain as usize] += peasant_surplus(r, staple);
+        supply[grain as usize] += peasant_surplus(m, staple);
     }
     let total = r.population().max(1);
     let mixes = NeedMixes::new(cat, &view.price, exists);
@@ -515,9 +529,9 @@ fn settle_region(
         pool += owners_land;
     }
     // Smallholders sell what they grow beyond their own table.
-    let staple = subsistence_food(r, m);
+    let staple = subsistence_food(cat, r, m);
     if let Some(grain) = cat.grain {
-        let surplus = peasant_surplus(r, staple);
+        let surplus = peasant_surplus(m, staple);
         let sold = surplus * v.sell[grain as usize] * v.price[grain as usize];
         wages[prof::PEASANT] += sold;
         gdp += sold;

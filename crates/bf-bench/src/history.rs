@@ -246,8 +246,8 @@ impl History {
                 }
             }
             if let Some(g) = grain {
-                let own = week::subsistence_food(r, m);
-                let grown = (own + week::peasant_surplus(r, own)).to_f64_lossy();
+                let own = week::subsistence_food(&data.catalogue, r, m);
+                let grown = (own + week::peasant_surplus(m, own)).to_f64_lossy();
                 out[g] += grown;
                 va += grown * cat.goods[g].base_price.to_f64_lossy();
             }
