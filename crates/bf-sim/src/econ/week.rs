@@ -250,16 +250,21 @@ pub(crate) fn plan_pop(
     }
 }
 
-/// A plant's building and method, and the scale it runs at this week: levels × staffing ×
-/// productivity × utilization.
-fn plant_run<'c>(
+/// What a plant could run at full use: levels × staffing × productivity.
+pub(crate) fn plant_capacity(cat: &Catalogue, r: &Region, m: &Market, p: &Plant) -> Fixed {
+    Fixed::from_int(p.levels) * p.staffing * plant_tfp(r, m, &cat.buildings[p.kind as usize])
+}
+
+/// A plant's building and method, and the scale it runs at this week: its capacity ×
+/// utilization.
+pub(crate) fn plant_run<'c>(
     cat: &'c Catalogue,
     r: &Region,
     m: &Market,
     p: &Plant,
 ) -> (&'c Building, &'c Method, Fixed) {
     let b = &cat.buildings[p.kind as usize];
-    let scale = Fixed::from_int(p.levels) * p.staffing * plant_tfp(r, m, b) * p.utilization;
+    let scale = plant_capacity(cat, r, m, p) * p.utilization;
     (b, &b.methods[p.method as usize], scale)
 }
 

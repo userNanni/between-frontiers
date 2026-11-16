@@ -376,12 +376,7 @@ fn power_at_hand(
 ) -> Vec<u8> {
     let mut methods: Vec<u8> = r.plants.iter().map(|p| p.method).collect();
     let nl = cat.local.len();
-    let scale = |p: &super::Plant| {
-        Fixed::from_int(p.levels)
-            * p.staffing
-            * p.utilization
-            * plant_tfp(r, m, &cat.buildings[p.kind as usize])
-    };
+    let scale = |p: &super::Plant| super::week::plant_run(cat, r, m, p).2;
     let use_of = |p: &super::Plant, method: u8, g: u16| -> Fixed {
         cat.buildings[p.kind as usize].methods[method as usize]
             .inputs
@@ -408,9 +403,7 @@ fn power_at_hand(
                     .filter(|(gi, _)| *gi == g)
                     .map(|(_, q)| *q)
                     .sum();
-                q * Fixed::from_int(p.levels)
-                    * p.staffing
-                    * plant_tfp(r, m, &cat.buildings[p.kind as usize])
+                q * super::week::plant_capacity(cat, r, m, p)
             })
             .sum();
         let used = r.local.get(li).map_or(Fixed::ZERO, |l| l.demand);
