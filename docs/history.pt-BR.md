@@ -392,6 +392,144 @@ campo" e "1925: eletricidade e petróleo".
   Colônias continuam ricas demais (Congo Belga 9 vezes o real na `main` e 17 aqui).
 - **Substituição de importações testada e retirada:** construir o que se importa, por regra,
   levou o Congo Belga de 3,5 a 17 vezes o real e o ranking de 2022 a 0,40.
+## Placar com a demografia
+
+Rodada de 101 anos da branch `feat/demography` (pirâmide etária, transição demográfica, migração
+entre países com corrente e ondas: `population.pt-BR.md`, "Demografia") contra a `main` do mesmo
+dia (971bdf1, com a economia do #55 e o crescimento do #61), semente 1925, 2 threads. "Antes" é
+a `main`; "depois", a branch. Para refazer: `tools/history/run.sh` nas duas worktrees.
+
+### Mundo
+
+| Ano | População antes | depois | real | erro log pop antes → depois | erro log PIB pc antes → depois |
+|---|---|---|---|---|---|
+| 1925 | 1.96 | 1.96 | 1.97 | 0.04 → 0.04 | 0.12 → 0.12 |
+| 1935 | 2.18 | 2.28 | 2.17 | 0.07 → 0.08 | 0.25 → 0.26 |
+| 1945 | 2.45 | 2.67 | 2.38 | 0.12 → 0.15 | 0.44 → 0.44 |
+| 1955 | 2.80 | 3.19 | 2.74 | 0.20 → 0.22 | 0.59 → 0.63 |
+| 1965 | 3.28 | 3.92 | 3.33 | 0.27 → 0.25 | 0.68 → 0.72 |
+| 1975 | 3.80 | 4.80 | 4.07 | 0.34 → 0.28 | 0.80 → 0.85 |
+| 1985 | 4.33 | 5.72 | 4.87 | 0.42 → 0.32 | 0.91 → 0.92 |
+| 1995 | 4.89 | 6.72 | 5.76 | 0.50 → 0.39 | 1.10 → 1.05 |
+| 2005 | 5.47 | 7.74 | 6.58 | 0.56 → 0.45 | 1.10 → 1.07 |
+| 2015 | 6.08 | 8.74 | 7.47 | 0.64 → 0.51 | 1.08 → 1.07 |
+| 2025 | 6.70 | 9.71 | 8.23 | 0.69 → 0.56 | 1.14 → 1.11 |
+
+O erro logarítmico médio da população em 2025 cai de 0,69 para 0,56. O PIB por habitante não
+piora (1,14 → 1,11). O mundo passa de 6,70 para 9,71 bilhões (real 8,23): a curva acelera de
+1950 a 1990 como a real, mas vem alta desde 1935 (sem guerra e sem fome) e não desacelera na
+Ásia depois de 1990.
+
+### Os 20 maiores: população simulada / real
+
+| Unidade | 1925 | 1945 | 1965 | 1985 | 2005 | 2025 |
+|---|---|---|---|---|---|---|
+| CHN/metropole | 1.02 → 1.02 | 1.16 → 1.27 | 1.18 → 1.39 | 1.12 → 1.52 | 1.21 → 1.87 | 1.45 → 2.45 |
+| RAJ/metropole | 0.88 → 0.88 | 0.96 → 1.04 | 0.98 → 1.15 | 0.87 → 1.16 | 0.77 → 1.13 | 0.77 → 1.17 |
+| SOV/metropole | 1.03 → 1.04 | 1.10 → 1.36 | 1.10 → 1.67 | 1.18 → 1.82 | 1.36 → 2.06 | 1.49 → 2.07 |
+| USA/metropole | 1.04 → 1.04 | 0.97 → 0.92 | 0.78 → 0.71 | 0.67 → 0.59 | 0.58 → 0.49 | 0.52 → 0.42 |
+| GBR/colonies | 1.00 → 1.00 | 0.98 → 1.04 | 0.89 → 1.07 | 0.72 → 0.94 | 0.56 → 0.71 | 0.43 → 0.49 |
+| FRA/colonies | 1.02 → 1.02 | 1.04 → 1.10 | 0.94 → 1.12 | 0.81 → 1.06 | 0.66 → 0.84 | 0.54 → 0.63 |
+| GER/metropole | 0.97 → 0.97 | 1.01 → 0.88 | 1.10 → 0.87 | 1.16 → 0.88 | 1.16 → 0.90 | 1.19 → 0.92 |
+| JAP/metropole | 0.98 → 0.98 | 0.86 → 0.80 | 0.79 → 0.65 | 0.73 → 0.59 | 0.74 → 0.62 | 0.83 → 0.69 |
+| NLD/colonies | 1.16 → 1.16 | 1.15 → 1.35 | 1.01 → 1.38 | 0.86 → 1.30 | 0.79 → 1.17 | 0.78 → 1.05 |
+| GBR/metropole | 0.98 → 0.98 | 1.07 → 0.92 | 1.11 → 0.85 | 1.17 → 0.90 | 1.18 → 0.95 | 1.12 → 0.92 |
+| FRA/metropole | 1.03 → 1.03 | 1.15 → 1.22 | 1.11 → 1.21 | 1.07 → 1.21 | 1.04 → 1.25 | 1.05 → 1.29 |
+| ITA/metropole | 1.03 → 1.04 | 1.06 → 1.06 | 1.14 → 1.07 | 1.16 → 1.09 | 1.22 → 1.20 | 1.28 → 1.29 |
+| BRA/metropole | 0.99 → 0.99 | 0.78 → 0.93 | 0.57 → 0.82 | 0.46 → 0.68 | 0.41 → 0.60 | 0.41 → 0.56 |
+| POL/metropole | 1.15 → 1.16 | 1.32 → 1.50 | 1.42 → 1.64 | 1.39 → 1.66 | 1.49 → 1.94 | 1.61 → 2.17 |
+| JAP/colonies | 0.98 → 0.99 | 0.90 → 1.03 | 0.77 → 1.06 | 0.70 → 0.97 | 0.72 → 0.96 | 0.80 → 0.96 |
+| ESP/metropole | 1.00 → 1.00 | 1.02 → 1.20 | 1.08 → 1.41 | 1.04 → 1.43 | 0.99 → 1.44 | 0.97 → 1.38 |
+| ROM/metropole | 1.11 → 1.12 | 1.13 → 1.44 | 1.26 → 1.89 | 1.35 → 2.00 | 1.77 → 2.36 | 2.40 → 2.73 |
+| MEX/metropole | 1.02 → 1.03 | 0.87 → 1.09 | 0.64 → 0.98 | 0.49 → 0.78 | 0.42 → 0.65 | 0.38 → 0.55 |
+| CZE/metropole | 1.04 → 1.04 | 1.14 → 1.11 | 1.32 → 1.24 | 1.33 → 1.23 | 1.40 → 1.34 | 1.45 → 1.38 |
+| EGY/metropole | 1.04 → 1.04 | 0.92 → 1.04 | 0.76 → 0.96 | 0.64 → 0.90 | 0.51 → 0.71 | 0.42 → 0.55 |
+
+### O que não fecha, e por quê
+
+Critérios do orquestrador e onde a rodada chega (2025):
+
+| Critério | Meta | Antes | Depois |
+|---|---|---:|---:|
+| Erro log da população, total | < 0,40 | 0,69 | 0,56 |
+| Erro log, "resto" (Américas, África, Ásia colonial, domínios; 49 unidades) | < 0,35 | 0,78 | 0,50 |
+| EUA, simulado / real | > 0,70 | 0,52 | 0,42 |
+| Europa ocidental (16 unidades), erro log | < 0,25 | 0,20 | 0,37 |
+| Mundo | 7,8–8,6 bi | 6,70 | 9,71 |
+
+Por grupo (média de |ln(simulado/real)| em 2025):
+
+| Grupo | n | Antes | Depois | Causa principal do que sobra |
+|---|---:|---:|---:|---|
+| Resto | 49 | 0,78 | 0,50 | Economia: as colônias, a África e a América Latina simuladas se alfabetizam e enriquecem cedo (alfabetização das colônias britânicas 0,74 em 1985, real 0,57), e a transição delas vem 10 a 20 anos antes: natalidade da África subsaariana em 1980 é 30 contra 47; da América Latina, 22 contra 32 |
+| URSS e Leste Europeu | 13 | 0,53 | 0,87 | Regime e guerra: sem 1939–45, sem a fome de 1932–33 e sem a alfabetização e a saúde pública socialistas, a URSS e a Romênia seguem a curva de um país pobre (natalidade da ex-URSS em 1950: 43 contra 28) |
+| China e Tibete | 2 | 0,21 | 0,91 | A economia simulada mantém a China pobre e rural (PIB por habitante de 2015 a 0,17 do real; fora do campo, 0,25), e a fecundidade não cai (4,0 filhos em 2025); faltam também a guerra, o Grande Salto e o filho único |
+| Golfo e Arábia | 9 | 1,42 | 0,77 | A economia não tem a renda do petróleo, e a imigração do Golfo depende dela |
+| Europa ocidental | 16 | 0,20 | 0,37 | França (+3 a +4 por mil de imigração todo o século, real +1,5), Espanha e Itália altas desde 1945, sem a guerra; Alemanha, Reino Unido e Japão baixos (sem o *baby boom*) |
+| Microestados | 7 | 0,69 | 0,50 | Unidades de dezenas de milhares de pessoas |
+
+O que nenhum parâmetro mundial resolve: as entradas da economia erram em sentidos opostos por
+região. China e Índia saem pobres demais (fecundidade alta demais); colônias, África e América
+Latina saem alfabetizadas demais (transição cedo demais). Apertar a curva corrige um lado e
+piora o outro. As rodadas de calibração foram dos dois extremos (mundo de 6,95 a 11,2 bilhões)
+com o erro por unidade sempre entre 0,54 e 0,58.
+
+**EUA (0,42).** A população para em 145 milhões a partir de 1975. Faltam duas coisas:
+
+- **imigração:** a lei de cotas de 1924 vale o século todo (a de 1965 não acontece sem a
+  política rodando), e entram 140 a 210 mil por ano de 1955 a 2005, contra 334 mil a 1,5 milhão
+  reais. De 1965 a 2025, cerca de 40 milhões de imigrantes a menos, sem contar os filhos;
+- ***baby boom*:** 2,2 filhos por mulher em 1946–64, contra 3,0 a 3,7. Nada no modelo faz a
+  fecundidade dos ricos subir.
+
+### Chegadas ao Brasil por origem (mil por ano, simulado / IBGE)
+
+| Estrada | 1925s | 1935s | 1945s | 1955s | 1965s |
+|---|---|---|---|---|---|
+| Brasil ← Itália | 42.2 / 6.0 [7] | 25.7 / 1.3 [5] | 68.6 / 4.9 [3] | 33.7 / – | 22.0 / – |
+| Brasil ← Portugal | 0.1 / 24.1 [7] | 0.4 / 10.1 [5] | 0.5 / 12.3 [3] | 0.6 / – | 0.6 / – |
+| Brasil ← Espanha | 1.9 / 4.9 [7] | 3.4 / 0.5 [5] | 6.4 / 4.0 [3] | 6.9 / – | 5.6 / – |
+| Brasil ← Alemanha | 0.0 / 4.8 [7] | 0.0 / 2.3 [5] | 0.0 / 1.7 [3] | 0.0 / – | 0.0 / – |
+| Brasil ← Japão | 0.0 / 12.0 [7] | 0.0 / 2.6 [5] | 0.0 / 0.0 [3] | 0.0 / – | 0.0 / – |
+| Brasil ← URSS | 0.0 / 0.9 [7] | 0.0 / 0.0 [5] | 0.0 / 0.0 [3] | 0.0 / – | 0.0 / – |
+| Brasil ← todos | 44.4 / 73.1 [7] | 30.0 / 21.6 [5] | 76.7 / 29.9 [3] | 43.3 / – | 31.5 / – |
+| EUA ← todos | 232.0 / 194.8 | 219.9 / 47.6 | 224.0 / 175.2 | 161.9 / 281.9 | 191.8 / 371.6 |
+
+- **Italianos** chegam pela corrente (896 mil no Brasil em 1925, 3 % da população): a rede puxa
+  mesmo para um destino mais pobre. Vêm demais (42 mil contra 6 mil por ano), porque a Itália
+  simulada tem alfabetização alta e paga a passagem.
+- **Portugueses** quase não vêm (0,1 contra 24 mil): Portugal simulado é pobre e analfabeto
+  (alfabetização 0,38 em 1925, como a real) e a passagem pesa como pesa no resto do mundo. O subsídio à passagem e a
+  ida de lavradores analfabetos não são regra do modelo.
+- **Japoneses** não vêm (0 contra 12 mil): a distância (18 mil km) mata a atração, e a emigração
+  incentivada pelo governo japonês e as passagens pagas não existem no catálogo de leis.
+- **Sírio-libaneses:** o IBGE não os separa ("outros"); no modelo a estrada das colônias
+  francesas para o Brasil não passa de 10 mil pessoas no século.
+- **Pela terra** o Brasil não atrai: os dados de terra do cenário dão 2,5 níveis de fazenda por
+  mil lavradores no Brasil, contra 7,8 na Itália e 23 na Argentina. Para o modelo, o Brasil de
+  1925 não é fronteira agrícola.
+
+### Ondas de migração (as maiores)
+
+| Origem → destino | Abriu | Fechou | Por quê abriu | Por quê fechou | Pessoas (mil) |
+|---|---|---|---|---|---:|
+| RAJ/metropole → NLD/metropole | 1964-02 | 1989-12 | Land | Full | 2632 |
+| GER/metropole → HUN/metropole | 1941-02 | 1962-02 | Poverty | Full | 1383 |
+| ITA/metropole → FRA/metropole | 1931-02 | 1945-02 | Poverty | Full | 1224 |
+| GER/metropole → CAN/metropole | 1925-01 | 1941-02 | Poverty | Full | 934 |
+| JAP/metropole → AUS/metropole | 1939-11 | 1954-02 | Poverty | Full | 808 |
+| RAJ/metropole → GER/metropole | 1937-03 | 1948-02 | Land | Full | 760 |
+| ESP/metropole → CUB/metropole | 1957-02 | 1966-02 | Poverty | Full | 642 |
+| POL/metropole → LAT/metropole | 1925-01 | 1954-05 | Poverty | Full | 631 |
+| ROM/metropole → FIN/metropole | 2000-06 | 2009-02 | Poverty | Full | 614 |
+| ESP/metropole → CUB/metropole | 1928-02 | 1944-03 | Poverty | Full | 609 |
+| GBR/metropole → SWE/metropole | 1941-02 | 1951-02 | Poverty | Full | 573 |
+| ROM/metropole → NLD/metropole | 1957-09 | 1989-12 | Land | Full | 536 |
+
+As ondas abrem por terra (camponeses ociosos), fome ou renda e fecham quase sempre por `Full`
+(o emprego dos operários no destino cai abaixo da metade). As que vão para destinos sem vínculo
+(Índia → Holanda, Romênia → Finlândia) mostram que a "falta de terra" da economia é alta em
+quase todo país pobre e que a rede ainda nasce sozinha do fluxo contínuo em 20–30 anos.
 
 ## Fontes
 

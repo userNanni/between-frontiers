@@ -133,6 +133,15 @@ pub struct DemographyState {
     pub waves_ended: Vec<WaveRecord>,
 }
 
+/// One term of the fertility score of a territory ([`DemographyState::fertility_breakdown`]).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct FertilityTerm {
+    pub key: &'static str,
+    pub value: Fixed,
+    pub weight: Fixed,
+    pub contribution: Fixed,
+}
+
 /// Rates of a region, per thousand people a year, and what produced them.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Vital {
@@ -144,6 +153,9 @@ pub struct Vital {
     pub life: Fixed,
     /// Children per woman at this month's fertility.
     pub tfr: Fixed,
+    /// Values of [`FERTILITY_TERMS`] this month.
+    #[serde(default)]
+    pub fertility_terms: [Fixed; 5],
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -174,6 +186,7 @@ impl HashState for Vital {
         ] {
             v.hash_state(h);
         }
+        self.fertility_terms.as_slice().hash_state(h);
     }
 }
 
@@ -239,6 +252,46 @@ impl DemographyState {
         out
     }
 
+    /// Why women have the children they have in a territory (`market`, `colony`): every term
+    /// of the fertility score with its value (0–1, weighted by population), its weight and its
+    /// contribution (value × weight); the transition starts at a score of `F_START` and ends at
+    /// `F_END`. Empty before the first month.
+    pub fn fertility_breakdown(
+        &self,
+        econ: &Economy,
+        market: u16,
+        colony: bool,
+    ) -> Vec<FertilityTerm> {
+        let mut sum = [0i128; 5];
+        let mut people = 0i128;
+        for (r, v) in econ.regions.iter().zip(&self.vital) {
+            if r.market != market || r.colony != colony {
+                continue;
+            }
+            let n = i128::from(r.population());
+            people += n;
+            for (s, x) in sum.iter_mut().zip(v.fertility_terms) {
+                *s += i128::from(x.raw()) * n;
+            }
+        }
+        if people == 0 {
+            return Vec::new();
+        }
+        FERTILITY_TERMS
+            .iter()
+            .zip(sum)
+            .map(|(&(key, weight), s)| {
+                let value = Fixed::from_raw((s / people) as i64);
+                FertilityTerm {
+                    key,
+                    value,
+                    weight,
+                    contribution: value * weight,
+                }
+            })
+            .collect()
+    }
+
     pub fn is_empty(&self) -> bool {
         self.territories.is_empty() && self.ages.is_empty()
     }
@@ -269,6 +322,8 @@ impl DemographyState {
                 migration: f(sum[2]),
                 life: f(sum[3]),
                 tfr: f(sum[4]),
+                // The terms by territory: `fertility_breakdown`.
+                fertility_terms: [Fixed::ZERO; 5],
             }
         })
     }
@@ -407,16 +462,38 @@ pub struct FertilityInputs {
     pub contraception: Fixed,
 }
 
-pub fn fertility(i: &FertilityInputs) -> Fixed {
+/// What moves fertility, in the order of [`FERTILITY_TERMS`]: each value is 0–1, and the
+/// transition score is the sum of value × weight. A new cause (the diffusion of the transition
+/// across a language family, a religion's measured effect) enters as one more term here.
+pub const FERTILITY_TERMS: [(&str, Fixed); 5] = [
+    ("child_survival", F_SURVIVAL),
+    ("schooling", F_SCHOOLING),
+    ("off_farm", F_OFF_FARM),
+    ("comfort", F_COMFORT),
+    ("contraception", F_CONTRACEPTION),
+];
+
+/// Values of [`FERTILITY_TERMS`] for these inputs.
+pub fn fertility_values(i: &FertilityInputs) -> [Fixed; 5] {
     // Share of children dead before 5, per mille: 1 − (1 − 2.5m)/(1 + 2.5m).
     let m = i.child_deaths; // per 100,000
     let q5 = 1000 - (100_000 - 250 * m / 100).max(0) * 1000 / (100_000 + 250 * m / 100);
     let survival = Fixed::from_ratio((Q5_HIGH - q5).clamp(0, Q5_HIGH - Q5_LOW), Q5_HIGH - Q5_LOW);
-    let score = survival * F_SURVIVAL
-        + i.schooling * F_SCHOOLING
-        + i.off_farm * F_OFF_FARM
-        + i.comfort * F_COMFORT
-        + i.contraception * F_CONTRACEPTION;
+    [
+        survival,
+        i.schooling,
+        i.off_farm,
+        i.comfort,
+        i.contraception,
+    ]
+}
+
+pub fn fertility(i: &FertilityInputs) -> Fixed {
+    let values = fertility_values(i);
+    let score = values
+        .iter()
+        .zip(FERTILITY_TERMS)
+        .fold(Fixed::ZERO, |acc, (v, (_, w))| acc + *v * w);
     let t = ((score - F_START) / (F_END - F_START)).clamp(Fixed::ZERO, Fixed::ONE);
     let smooth = t * t * (Fixed::from_int(3) - t * 2);
     let floor = TFR_LOW + TFR_WITHOUT_PILL * (Fixed::ONE - i.contraception.min(Fixed::ONE));
@@ -548,6 +625,7 @@ pub(crate) struct RegionMonth {
     deaths: i64,
     life: Fixed,
     tfr: Fixed,
+    fertility_terms: [Fixed; 5],
     people: i64,
     income: Fixed,
     literacy_people: Fixed,
@@ -651,6 +729,13 @@ impl System<GameWorld> for Demography {
                     (h, rates, tfr)
                 };
                 let (h, rates, tfr) = rates_at(Fixed::ONE);
+                let fertility_terms = fertility_values(&FertilityInputs {
+                    child_deaths: rates[0],
+                    schooling,
+                    off_farm,
+                    comfort,
+                    contraception,
+                });
                 let mut ages = if first {
                     initial_pyramid(people, |d| {
                         let (_, m, f) = rates_at(d);
@@ -677,6 +762,7 @@ impl System<GameWorld> for Demography {
                     deaths,
                     life: life_expectancy(h),
                     tfr,
+                    fertility_terms,
                     people,
                     income: r.pops.iter().map(|p| p.income).sum(),
                     literacy_people: r.literacy * people,
@@ -736,6 +822,7 @@ impl System<GameWorld> for Demography {
                 migration: per_year(moved),
                 life: m.life,
                 tfr: m.tfr,
+                fertility_terms: m.fertility_terms,
             };
         }
     }

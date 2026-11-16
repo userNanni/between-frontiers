@@ -232,7 +232,7 @@ nascimentos entram em 0–4, cada grupo perde os seus mortos e um sessenta avos 
 ao seguinte. A pirâmide é reescalada à população do estado antes do mês (a migração interna mexe
 nos pops) e o saldo do mês vai para as profissões na proporção do tamanho de cada uma.
 
-**1925.** Não há pirâmide nos dados. Cada estado começa estável nas taxas que teria com 60 % do
+**1925.** Não há pirâmide nos dados. Cada estado começa estável nas taxas que teria com 65 % do
 desenvolvimento de hoje (conforto, escolaridade, trabalho fora do campo, hospitais, remédio) e
 cresce 60 anos com o desenvolvimento subindo até o de 1925. Assim a Europa de 1925 já é mais
 velha que a Índia e mais jovem do que seria se tivesse sempre tido a fecundidade de 1925.
@@ -244,8 +244,8 @@ esperança de vida ao nascer de 27,7, 38,9, 52,5, 68,0 e 82,0 anos; entre os ní
 tabela é um modelo de Gompertz-Makeham com mortalidade infantil (mortes de 0–4, 5–14, fundo
 adulto e alta exponencial com a idade), construída para isso, não copiada de tábua de país.
 
-    antes   = 0,45 × conforto + 0,25 × escolaridade − 0,05 − 0,25 × (1 − comida)
-    teto    = 0,62 + 0,25 × conforto + 0,13 × hospitais
+    antes   = 0,38 × conforto + 0,35 × escolaridade − 0,05 − 0,25 × (1 − comida)
+    teto    = 0,70 + 0,25 × conforto + 0,13 × hospitais
     alcance = 0,35 + 0,65 × max(hospitais, escolaridade)
     remédio = clamp((efeito "mortality" da pesquisa − 0,20) / (0,80 − 0,20)) × alcance
     h       = antes + (teto − antes) × remédio
@@ -267,21 +267,26 @@ adulto e alta exponencial com a idade), construída para isso, não copiada de t
 Filhos por mulher (TFR), distribuídos pelas idades de 15 a 49 num perfil fixo (8, 23, 25, 20,
 14, 8 e 2 %):
 
-    nota  = 0,30 × sobrevivência + 0,35 × escolaridade + 0,20 × fora do campo
-          + 0,15 × conforto + 0,10 × contracepção
-    T     = suave((nota − 0,46) / (0,95 − 0,46))           (suave(t) = 3t² − 2t³)
-    piso  = 1,6 + 0,5 × (1 − contracepção)
-    TFR   = piso + (6,2 − piso) × (1 − T)
+    nota  = 0,25 × sobrevivência + 0,55 × escolaridade + 0,10 × fora do campo
+          + 0,10 × conforto + 0,17 × contracepção
+    T     = suave((nota − 0,45) / (0,90 − 0,45))           (suave(t) = 3t² − 2t³)
+    piso  = 1,75 + 0,5 × (1 − contracepção)
+    TFR   = piso + (6,5 − piso) × (1 − T)
 
 - **Sobrevivência:** a chance de passar dos 5 anos na mortalidade do mês, de 50 % (0) a 98 % (1).
   Os filhos morrem menos, as famílias querem menos filhos; o atraso entre as duas quedas sai da
   escolaridade.
-- **Escolaridade das mães:** a alfabetização do estado seguida com atraso de 15 anos (180 meses):
+- **Escolaridade das mães:** a alfabetização do estado seguida com atraso de 20 anos (240 meses):
   a menina na escola hoje é mãe daqui a uma geração.
 - **Fora do campo:** parcela da população fora das profissões rurais (`urban_share`).
-- **Contracepção:** o efeito `fertility` das tecnologias (a pílula) vezes a escolaridade. Sem
-  ela a transição para em 2,1 filhos (abstinência, coito interrompido, casamento tardio: a Europa
-  de 1930 chegou a 1,8–2,2 assim); com ela, em 1,6.
+- **Contracepção:** o efeito `fertility` das tecnologias (a pílula) vezes o alcance,
+  0,25 + 0,75 × escolaridade: os programas de planejamento familiar levaram a contracepção a
+  mães sem escola (Bangladesh), mas menos. Sem ela a transição para em 2,25 filhos (abstinência,
+  coito interrompido, casamento tardio); com ela, em 1,75.
+- **Decomposição:** `DemographyState::fertility_breakdown(econ, mercado, colônia)` dá, por
+  território, cada termo com valor, peso e contribuição (`FertilityTerm`), para a tela mostrar
+  "por que nascem tantos aqui". Os termos são a lista `FERTILITY_TERMS`: termo novo entra como
+  mais uma linha ali.
 
 ### Migração entre países
 
@@ -377,5 +382,18 @@ cidades (na proporção da população urbana dos estados). Na pirâmide, idades
   migrante não carrega comunidade; não há refugiado (sem guerra).
 - **Subsídio à imigração** (passagens pagas por São Paulo, emigração japonesa incentivada pelo
   governo): não é lei do catálogo.
-- **Pirâmide por comunidade e profissão**; idade de trabalho fixa em 40 % de cada pop.
+- **Natalidade por classe (próximo PR).** Hoje os nascimentos do estado vão às profissões na
+  proporção do tamanho (`distribute`). Desenho: cada pop com o seu TFR, pelos mesmos termos
+  regionais (sobrevivência, escolaridade, contracepção) mais o conforto da própria pop
+  (`satisfaction[2]`) e "fora do campo" igual a 0 ou 1 pela profissão; nascimentos do estado =
+  mulheres férteis da pirâmide × parcela de cada pop × TFR dela, e cada pop recebe os próprios
+  filhos. Sem pirâmide por pop: todas as pops do estado têm a mesma estrutura de idade. Custa 13
+  avaliações por estado por mês (~1 s de CPU em 100 anos). Fica para depois porque o TFR da
+  região passa a ser a média dos TFR das pops, não o TFR da média (a curva é não linear), o que
+  desloca a calibração, e porque muda a composição de classes e o êxodo rural.
+- **Cultura e religião na natalidade (próximo PR, com as comunidades).** Cultura como difusão da
+  transição dentro da família linguística (a conferir no Princeton European Fertility Project),
+  não como "cultura X tem mais filhos"; religião só com efeito medido em fonte pública, líquido
+  de escolaridade e renda. Entram como termos novos de `FERTILITY_TERMS`.
+- **Pirâmide por comunidade**; idade de trabalho fixa em 40 % de cada pop.
 - **Baby boom.** Nada no modelo faz a fecundidade dos ricos subir de 1946 a 1964.
