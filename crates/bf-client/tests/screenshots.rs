@@ -1122,7 +1122,13 @@ fn keyboard_shortcuts() {
     open_campaign(&mut h, &user, "Atalhos", "BRA");
     run_until(&mut h, 20, |s| s.tick >= 3);
 
-    // 1. Key tips over the map.
+    // 1. Key tips over the map. AltGr types characters on ABNT2: it does not turn them on.
+    h.key_press(egui::Key::AltRight);
+    h.run_steps(3);
+    assert!(
+        !h.state().shared.keys.hint_mode(),
+        "AltGr must not be the leader"
+    );
     leader(&mut h);
     assert!(h.state().shared.keys.hint_mode());
     shot(&mut h, "12a-dicas-mapa");
@@ -1240,7 +1246,21 @@ fn keyboard_shortcuts() {
     leader(&mut en);
     shot(&mut en, "12h-tips-1280-hud-edit");
     leader(&mut en);
+    // The country figures' block editor (Shift+F8), with its tips.
+    en.key_press_modifiers(egui::Modifiers::SHIFT, egui::Key::F8);
+    en.run_steps(3);
+    leader(&mut en);
+    shot(&mut en, "12i-tips-1280-blocks");
+    leader(&mut en);
     en.key_press(egui::Key::F8);
+    en.run_steps(2);
+    // The lens picker opened with V, and its tips.
+    en.key_press(egui::Key::V);
+    en.run_steps(3);
+    leader(&mut en);
+    shot(&mut en, "12j-tips-1280-lens-picker");
+    leader(&mut en);
+    en.key_press(egui::Key::Escape);
     en.run_steps(2);
 
     let _ = std::fs::remove_dir_all(&user);
