@@ -1,5 +1,6 @@
 //! Between Frontiers game rules on top of the Laplace-Schelling engine.
 
+pub mod communities;
 pub mod data;
 pub mod econ;
 pub mod economy;

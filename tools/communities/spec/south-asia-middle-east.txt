@@ -1,0 +1,223 @@
+# Communities of 1925, region south-asia-middle-east. One line per state: STATE | culture/religion share, ... | source | C/M/E.
+# Format and build: tools/communities/generate.py; method: docs/population.pt-BR.md. Licence: CC BY-SA 4.0.
+# Drafted from the censuses cited on each line and in the SOURCES block; `~` is the rest of the state.
+
+# Region SAME: South Asia and Middle East, composition on 1925-01-01.
+# Modelling choices for this region:
+# - India: the Census of India 1921 language groups Western Hindi, Eastern Hindi, Bihari and Rajasthani
+#   (incl. Gujari, Lambadi, Malvi) are merged into `hindustani`; Lahnda (Western Punjabi: Multani/Seraiki,
+#   Pothohari, Hindko) and Dogri are merged into `punjabi`; Kutchi into `gujarati`; Western/Central Pahari
+#   (Himachali, Garhwali, Kumaoni) form `pahari`; Nepali (Eastern Pahari, Khas) is `nepali`.
+# - Indian states are modern units (IN-*, BD-*, PK-*), so 1921 district/division figures were reallocated to
+#   them: flag M (census religion; culture by the 1921 language table and tradition).
+# - Shia among Indian Muslims were not counted in 1921; shown only where the group is distinct and known
+#   (Bohras/Khojas, Hyderabad, Baltistan/Gilgit, Kurram, Sind), else folded into sunni.
+# - Tribal religion returned as "Animist/Tribal" in 1921 -> folk; the Hindu/tribal boundary was fluid.
+# - Indian Christians take the language of their area; Europeans -> english; Eurasians -> anglo_indian.
+# - Kuki, Lushai (Mizo) and Chin share `chin` (Census 1921 Kuki-Chin group); Iraqi/Syrian Turkmen and the
+#   "Turks" of the Mosul Commission -> `turkish`; Turkmen of Persia/Afghanistan -> `turkmen`.
+# - Arabs of Khuzestan speak Mesopotamian Arabic -> `mesopotamian`. Arabs of Transjordan -> `levantine`.
+# - Maronites and Melkites both -> levantine/eastern_catholic (one community).
+# - Folded without a key: Mandaeans (into mesopotamian), Yarsan/Ahl-e Haqq (into kurdish/shia), Baha'is
+#   (into persian/shia), Zikris (into baluch/sunni), Kirat religion kept as folk.
+# - GBR colonies: english/protestant listed where tiny but present, flagged with !GBR:C (colonial scope).
+
+# ---------------------------------------------------------------- Bengal, Assam, Bihar, Orissa
+IND-BENGAL | bengali/hindu ~, bengali/sunni 0.305, hindustani/hindu 0.040, hindustani/sunni 0.013, santal/folk 0.030, nepali/hindu 0.008, english/protestant 0.002, anglo_indian/catholic 0.001 | Census of India 1921 vol. V Bengal (district religion, Burdwan/Presidency/Rajshahi divisions) reallocated to West Bengal + Khulna division; language table for Hindustani/Santali/Nepali | M
+BGD-DACCA | bengali/sunni ~, bengali/hindu 0.295 | Census of India 1921 vol. V Bengal (Dacca division: Dacca, Mymensingh, Faridpur, Bakarganj; religion) | C
+BGD-CHITTAGONG | bengali/sunni ~, bengali/hindu 0.218, chakma/theravada 0.014, arakanese/theravada 0.012, bengali/theravada 0.010 | Census of India 1921 vol. V Bengal (Chittagong division incl. Chittagong Hill Tracts; religion and caste/tribe) | C
+BGD-RAJSHAHI | bengali/sunni ~, bengali/hindu 0.285, santal/folk 0.012 | Census of India 1921 vol. V Bengal (Rajshahi division districts now in Bangladesh; religion) | M
+IND-ASSAM | assamese/hindu ~, bengali/sunni 0.285, bengali/hindu 0.170, hindustani/hindu 0.080, bodo/folk 0.050, naga/folk 0.040, khasi/folk 0.020, garo/folk 0.020, munda/folk 0.020, khasi/protestant 0.017 | Census of India 1921 vol. III Assam (province incl. Sylhet: Hindu 54%, Muslim 29%, tribal 15%, Christian 1.7%); tribes by language table | M
+IND-MANIPUR | meitei/hindu ~, naga/folk 0.200, chin/folk 0.120, meitei/sunni 0.040, naga/protestant 0.010 | Census of India 1921 vol. III Assam (Manipur State: Hindu, Animist, Muslim, Christian) | C
+IND-TRIPURA | bengali/hindu ~, tripuri/hindu 0.350, bengali/sunni 0.150, tripuri/folk 0.050, chin/folk 0.030, chakma/theravada 0.030, arakanese/theravada 0.010 | estimate: Census of India 1921 vol. V Bengal (Hill Tippera State religion) with tribes split by tradition | E
+IND-BIHAR | hindustani/hindu ~, hindustani/sunni 0.130, santal/folk 0.005, english/protestant 0.0002 | Census of India 1921 vol. VII Bihar and Orissa (district religion, Patna/Tirhut/Bhagalpur divisions minus Santal Parganas) | M
+IND-CHOTA-NAGPUR | hindustani/hindu ~, santal/folk 0.130, munda/folk 0.080, bengali/hindu 0.080, hindustani/sunni 0.080, oraon/folk 0.050, oriya/hindu 0.020, munda/protestant 0.020, oraon/catholic 0.020 | Census of India 1921 vol. VII Bihar and Orissa (Chota Nagpur division + Santal Parganas; religion, tribe and language tables) | M
+IND-ORISSA | oriya/hindu ~, khond/folk 0.050, munda/folk 0.040, telugu/hindu 0.030, santal/folk 0.030, gond/folk 0.030, oriya/sunni 0.015 | Census of India 1921 vols. VII (Orissa division, Feudatory States) and XIII Madras (Ganjam, Vizagapatam agency) reallocated to Odisha | M
+
+# ---------------------------------------------------------------- Hindustan, Punjab, Kashmir
+IND-UNITED-PROVINCES | hindustani/hindu ~, hindustani/sunni 0.144, hindustani/protestant 0.0035, hindustani/jain 0.0015, punjabi/sikh 0.0005, english/protestant 0.0004 | Census of India 1921 vol. XVI United Provinces (religion by district, minus the Uttarakhand districts) | M
+IND-KUMAON | pahari/hindu ~, hindustani/hindu 0.120, hindustani/sunni 0.085, hindustani/protestant 0.003, english/protestant 0.003 | Census of India 1921 vol. XVI United Provinces (Kumaon division, Dehra Dun, Saharanpur part, Tehri-Garhwal State) | M
+IND-DELHI | hindustani/hindu ~, hindustani/sunni 0.310, punjabi/hindu 0.020, hindustani/jain 0.015, punjabi/sikh 0.010, english/protestant 0.008, hindustani/protestant 0.006 | Census of India 1921 vol. XV Punjab and Delhi (Delhi Province, religion) | C
+IND-PUNJAB | hindustani/hindu ~, punjabi/sunni 0.226, punjabi/hindu 0.207, punjabi/sikh 0.181, hindustani/sunni 0.052, punjabi/protestant 0.013, hindustani/jain 0.005 | Census of India 1921 vol. XV Punjab (district religion of Ambala and Jullundur divisions, Lahore division east, Patiala/Nabha/Jind/Faridkot/Kapurthala/Malerkotla) reallocated to Indian Punjab + Haryana | M
+PAK-PUNJAB | punjabi/sunni ~, punjabi/hindu 0.140, punjabi/sikh 0.068, punjabi/shia 0.040, punjabi/protestant 0.012, pashtun/sunni 0.010, baluch/sunni 0.007, punjabi/catholic 0.006 | Census of India 1921 vol. XV Punjab (Lahore west, Rawalpindi and Multan divisions, Bahawalpur State; religion); Shia share estimated | M
+IND-HILL-STATES | pahari/hindu ~, pahari/sunni 0.040, tibetan/vajrayana 0.006, punjabi/sikh 0.005 | Census of India 1921 vol. XV Punjab (Kangra, Simla and Punjab Hill States; religion) | M
+IND-KASHMIR | kashmiri/sunni ~, punjabi/sunni 0.257, punjabi/hindu 0.180, hindustani/sunni 0.070, tibetan/shia 0.040, dard/shia 0.030, kashmiri/hindu 0.020, punjabi/sikh 0.012, tibetan/vajrayana 0.011 | Census of India 1921 vol. XXII Kashmir (Muslim 76.8%, Hindu 20.9%, Sikh 1.2%, Buddhist 1.1%; Jammu/Kashmir/Frontier districts; language table: Kashmiri, Dogri/Punjabi, Gujari, Balti, Shina) | M
+PAK-NWFP | pashtun/sunni ~, punjabi/sunni 0.160, punjabi/hindu 0.030, dard/sunni 0.025, pashtun/shia 0.015, dard/shia 0.008, punjabi/sikh 0.007, english/protestant 0.001 | Census of India 1921 vol. XIV NWFP (districts: Muslim 91.6%, Hindu 6.7%, Sikh 1.3%) + estimate for the unenumerated tribal agencies and Chitral/Dir/Swat | M
+PAK-BALUCHISTAN | baluch/sunni ~, brahui/sunni 0.280, pashtun/sunni 0.240, sindhi/sunni 0.040, punjabi/hindu 0.030, punjabi/sikh 0.005, english/protestant 0.003 | Census of India 1921 vol. IV Baluchistan (religion; race/tribe: Baloch, Brahui, Pathan, Jat) | M
+PAK-SIND | sindhi/sunni ~, sindhi/hindu 0.210, baluch/sunni 0.080, punjabi/sunni 0.040, sindhi/shia 0.030, gujarati/sunni 0.015, bhil/folk 0.015, punjabi/sikh 0.003, gujarati/zoroastrian 0.001, english/protestant 0.001 | Census of India 1921 vol. VIII Bombay (Sind districts + Khairpur: Muslim 73.5%, Hindu 26%); language table; Shia estimated | M
+
+# ---------------------------------------------------------------- West, Central and South India
+IND-RAJPUTANA | hindustani/hindu ~, hindustani/sunni 0.090, hindustani/jain 0.032, bhil/folk 0.030 | Census of India 1921 vol. XXIV Rajputana and Ajmer-Merwara (religion) | C
+IND-GUJARAT | gujarati/hindu ~, gujarati/sunni 0.085, bhil/folk 0.040, gujarati/jain 0.025, gujarati/shia 0.010, gujarati/zoroastrian 0.0025 | Census of India 1921 vols. VIII Bombay (Gujarat districts), XVII Baroda, Western India States Agency (religion; Bhil from tribe table) | M
+IND-BOMBAY | marathi/hindu ~, hindustani/sunni 0.075, bhil/folk 0.035, hindustani/hindu 0.030, gujarati/hindu 0.025, marathi/catholic 0.012, gujarati/jain 0.008, gujarati/shia 0.005, gujarati/zoroastrian 0.003, english/protestant 0.002 | Census of India 1921 vols. VIII Bombay (Deccan, Konkan, Bombay City), XI Central Provinces and Berar (Berar, Nagpur), XXI Hyderabad (Marathwada) reallocated to Maharashtra | M
+IND-CENTRAL-INDIA | hindustani/hindu ~, gond/folk 0.060, hindustani/sunni 0.050, bhil/folk 0.045, marathi/hindu 0.020, munda/folk 0.010, hindustani/jain 0.009 | Census of India 1921 vols. XVIII Central India Agency and XI Central Provinces (northern districts) reallocated to Madhya Pradesh | M
+IND-CHHATTISGARH | hindustani/hindu ~, gond/folk 0.170, oraon/folk 0.030, oriya/hindu 0.020, hindustani/sunni 0.012, oraon/catholic 0.005 | Census of India 1921 vol. XI Central Provinces (Chhattisgarh division and Feudatory States; religion, tribe) | M
+IND-HYDERABAD | telugu/hindu ~, hindustani/sunni 0.105, hindustani/hindu 0.030, gond/folk 0.025, hindustani/shia 0.010, marathi/hindu 0.010, telugu/protestant 0.008, english/protestant 0.002 | Census of India 1921 vol. XXI Hyderabad (Telingana districts and Hyderabad City; religion and language) | M
+IND-ANDHRA | telugu/hindu ~, hindustani/sunni 0.065, telugu/protestant 0.025, tamil/hindu 0.015, gond/folk 0.012, telugu/catholic 0.008, kannada/hindu 0.008, oriya/hindu 0.008 | Census of India 1921 vol. XIII Madras (Northern Circars and Ceded Districts; religion and language) | M
+IND-MADRAS | tamil/hindu ~, telugu/hindu 0.070, tamil/catholic 0.035, tamil/sunni 0.030, kannada/hindu 0.020, hindustani/sunni 0.020, tamil/protestant 0.020, malayali/hindu 0.007, anglo_indian/catholic 0.002, english/protestant 0.001 | Census of India 1921 vol. XIII Madras (Tamil districts, Madras City, Nilgiris, Pudukkottai) and vol. XXV Travancore (Kanyakumari taluks) | M
+IND-MYSORE | kannada/hindu ~, hindustani/sunni 0.090, telugu/hindu 0.080, marathi/hindu 0.050, tulu/hindu 0.040, tamil/hindu 0.025, hindustani/hindu 0.015, konkani/catholic 0.012, kannada/jain 0.007, english/protestant 0.001 | Census of India 1921 vols. XXIII Mysore, VIII Bombay (Karnatak), XIII Madras (S. Kanara, Bellary), XXI Hyderabad (Gulbarga, Bidar, Raichur), Coorg; reallocated to Karnataka | M
+IND-MALABAR | malayali/hindu ~, malayali/sunni 0.170, malayali/eastern_catholic 0.065, malayali/syriac 0.050, malayali/catholic 0.035, malayali/protestant 0.030, tamil/hindu 0.010 | Census of India 1921 vols. XXV Travancore, XIX Cochin, XIII Madras (Malabar, Laccadives); Christian rites from the Travancore and Cochin denomination tables | M
+IND-ANDAMAN | nicobarese/folk 0.300, hindustani/hindu ~, hindustani/sunni 0.140, malayali/sunni 0.050, bengali/hindu 0.050, bengali/sunni 0.040, burman/theravada 0.040, tamil/hindu 0.040, andamanese/folk 0.030, english/protestant 0.005 | estimate: Census of India 1921 vol. II Andaman and Nicobar Islands (total 27,086; convict settlement + Nicobarese and Andamanese counts), origin of convicts by tradition | E
+IND-SIKKIM | nepali/hindu ~, tibetan/vajrayana 0.140, lepcha/vajrayana 0.130, tamang/vajrayana 0.090, kirati/folk 0.040, hindustani/hindu 0.005 | estimate: Census of India 1921 (Sikkim total 81,721) split by the 1891 and 1931 Sikkim community counts | E
+IND-FRANCAISE | tamil/hindu ~, tamil/catholic 0.090, tamil/sunni 0.060, malayali/hindu 0.030, telugu/hindu 0.020, malayali/sunni 0.010 | estimate: Annuaire des Établissements français dans l'Inde (recensement 1921: Pondichéry, Karikal, Mahé, Yanaon) shares by comptoir, religion by tradition | E
+IND-PORTUGUESA | konkani/catholic ~, konkani/hindu 0.400, bhil/folk 0.055, gujarati/hindu 0.040, konkani/sunni 0.015, gujarati/sunni 0.010, portuguese/catholic 0.003 | Censo da População do Estado da Índia 1921 (Goa religion; Damão, Diu, Nagar Aveli totals), culture by tradition | M
+
+# ---------------------------------------------------------------- Burma
+MMR-LOWER | burman/theravada ~, karen/theravada 0.105, mon/theravada 0.045, arakanese/theravada 0.045, bengali/sunni 0.045, telugu/hindu 0.040, karen/protestant 0.030, tamil/hindu 0.020, han/chinese_folk 0.015, english/protestant 0.002 | Census of India 1921 vol. X Burma (Lower Burma divisions: race and religion tables; Indians by language) | M
+MMR-UPPER | burman/theravada ~, chin/folk 0.050, kachin/folk 0.030, shan/theravada 0.030, hindustani/hindu 0.015, han/chinese_folk 0.008, kachin/protestant 0.002 | Census of India 1921 vol. X Burma (Mandalay, Sagaing, Magwe divisions, Chin Hills, Kachin hill tracts) | M
+MMR-SHAN | shan/theravada ~, karen/theravada 0.080, burman/theravada 0.070, palaung/theravada 0.060, kachin/folk 0.050, wa/folk 0.050, lahu/folk 0.040, karen/folk 0.040, han/chinese_folk 0.020 | Census of India 1921 vol. X Burma (Federated Shan States and Karenni race tables; Wa and Lahu partly estimated) | M
+
+# ---------------------------------------------------------------- Ceylon and Maldives
+LKA-WESTERN-PROVINCE | sinhalese/theravada ~, sinhalese/catholic 0.120, tamil/hindu 0.075, ceylon_moor/sunni 0.045, sinhalese/protestant 0.035, tamil/catholic 0.010, malay/sunni 0.008, burgher/protestant 0.008, burgher/catholic 0.006, english/protestant 0.004 | Census of Ceylon 1921 (province totals; Moors 52,000 in Western Province) with religion by community from the 1921 island tables | M
+LKA-CENTRAL-PROVINCE | sinhalese/theravada ~, tamil/hindu 0.330, ceylon_moor/sunni 0.055, tamil/catholic 0.015, sinhalese/catholic 0.010, english/protestant 0.005, burgher/protestant 0.004 | Census of Ceylon 1921 (Moors 38,500 in Central Province; Indian estate Tamils of Kandy, Matale, Nuwara Eliya) | M
+LKA-SOUTHERN-PROVINCE | sinhalese/theravada ~, ceylon_moor/sunni 0.035, tamil/hindu 0.015, sinhalese/catholic 0.012 | Census of Ceylon 1921 (Southern Province 871,205), community split by the 1921 district tables, religion by tradition | M
+LKA-NORTHERN-PROVINCE | tamil/hindu ~, tamil/catholic 0.080, tamil/protestant 0.040, ceylon_moor/sunni 0.035, sinhalese/theravada 0.010 | Census of Ceylon 1921 (Northern Province 374,829: Tamil 95.2%, Muslim 3.5%, Sinhalese 1.0%); Christian share by tradition | M
+LKA-EASTERN-PROVINCE | tamil/hindu ~, ceylon_moor/sunni 0.394, sinhalese/theravada 0.045, tamil/catholic 0.040, tamil/protestant 0.015, burgher/catholic 0.013, vedda/folk 0.012 | Census of Ceylon 1921 (Eastern Province 192,821: Tamil 53.5%, Muslim 39.4%, Sinhalese 4.5%, other 2.5%) | M
+LKA-NORTH-WESTERN-PROVINCE | sinhalese/theravada ~, sinhalese/catholic 0.080, ceylon_moor/sunni 0.070, tamil/hindu 0.025, tamil/catholic 0.020 | Census of Ceylon 1921 (province), community split from the 1921/1946 district pattern | M
+LKA-NORTH-CENTRAL-PROVINCE | sinhalese/theravada ~, ceylon_moor/sunni 0.090, tamil/hindu 0.070, sinhalese/catholic 0.010, vedda/folk 0.005 | Census of Ceylon 1921 (province), community split from the 1921/1946 district pattern | M
+LKA-UVA-PROVINCE | sinhalese/theravada ~, tamil/hindu 0.340, ceylon_moor/sunni 0.040, tamil/catholic 0.010, vedda/folk 0.005, english/protestant 0.003 | Census of Ceylon 1921 (province; Indian estate Tamils of Badulla) | M
+LKA-SABARAGAMUWA-PROVINCE | sinhalese/theravada ~, tamil/hindu 0.160, ceylon_moor/sunni 0.030, tamil/catholic 0.005 | Census of Ceylon 1921 (province; estate Tamils of Ratnapura and Kegalle) | M
+MDV | maldivian/sunni ~ | estimate: Census of Ceylon 1921 (Maldive Islands enumerated ~70,000), all Sunni Maldivians | E
+
+# ---------------------------------------------------------------- Himalaya
+NPL | nepali/hindu ~, hindustani/hindu 0.170, tamang/vajrayana 0.080, kirati/folk 0.050, tharu/hindu 0.040, newar/hindu 0.040, magar/hindu 0.035, hindustani/sunni 0.030, newar/vajrayana 0.015 | estimate: Nepal census 1952/54 language and religion shares (Nepali, Maithili/Bhojpuri/Awadhi, Tamang, Newari, Tharu, Magar, Rai/Limbu) applied to the 1920 count | E
+BTN | bhutanese/vajrayana ~, nepali/hindu 0.120, nepali/vajrayana 0.030 | estimate: British Political Officer (Sikkim) reports, 1920s-1930s, on Nepali settlers in southern Bhutan | E
+
+# ---------------------------------------------------------------- Afghanistan
+AFG-KABUL | pashtun/sunni ~, tajik/sunni 0.200, hazara/shia 0.170, dard/sunni 0.030, persian/shia 0.010, punjabi/hindu 0.006 | estimate: ethnic shares of the eastern provinces (Kabul, Nangarhar, Ghazni, Hazarajat) from later Afghan surveys applied to 1925; no census | E
+AFG-KANDAHAR | pashtun/sunni ~, hazara/shia 0.070, baluch/sunni 0.060, tajik/sunni 0.050, brahui/sunni 0.010 | estimate: ethnic shares of Kandahar, Helmand, Zabul, Uruzgan, Nimruz from later Afghan surveys; no census | E
+AFG-HERAT | tajik/sunni ~, pashtun/sunni 0.250, tajik/shia 0.080, hazara/shia 0.050, turkmen/sunni 0.040, uzbek/sunni 0.020, baluch/sunni 0.020 | estimate: ethnic shares of Herat, Badghis, Farah, Ghor (Aimaq folded into tajik) from later surveys; no census | E
+AFG-TURKESTAN | uzbek/sunni ~, tajik/sunni 0.300, pashtun/sunni 0.120, turkmen/sunni 0.100, hazara/shia 0.060, tajik/shia 0.030 | estimate: ethnic shares of the northern provinces (incl. 1920s Bukharan refugees; Ismaili Pamiris as tajik/shia); no census | E
+
+# ---------------------------------------------------------------- Persia (no census before 1956)
+IRN-TEHRAN | persian/shia ~, azerbaijani/shia 0.150, kurdish/shia 0.020, armenian/oriental_orthodox 0.010, mizrahi/jewish 0.008, persian/zoroastrian 0.003 | estimate: provincial language shares of the 1956 Iranian census back-projected; minorities from 1920s community estimates | E
+IRN-AZARBAIJAN | azerbaijani/shia ~, kurdish/sunni 0.130, armenian/oriental_orthodox 0.015, assyrian/syriac 0.010, persian/shia 0.010, mizrahi/jewish 0.003 | estimate: 1956 census language shares back-projected; Armenians and Assyrians reduced for the 1918 exodus from Urmia/Salmas | E
+IRN-CASPIAN | mazandarani/shia ~, gilaki/shia 0.400, turkmen/sunni 0.070, persian/shia 0.040, talysh/shia 0.025, azerbaijani/shia 0.020, kurdish/shia 0.010 | estimate: 1956 census language shares (Gilaki, Mazandarani, Turkmen, Talysh) back-projected | E
+IRN-KHORASAN | persian/shia ~, kurdish/shia 0.080, persian/sunni 0.060, azerbaijani/shia 0.060, turkmen/sunni 0.040, baluch/sunni 0.025, hazara/shia 0.010, mizrahi/jewish 0.002 | estimate: 1956 census language shares back-projected (Khorasani Turks folded into azerbaijani; Sunni Persians of Jam/Khaf/Qaen) | E
+IRN-ESFAHAN | persian/shia ~, lur/shia 0.120, qashqai/shia 0.020, armenian/oriental_orthodox 0.012, mizrahi/jewish 0.008, persian/zoroastrian 0.006 | estimate: 1956 census language shares back-projected; Bakhtiari as lur; Julfa Armenians, Isfahan Jews, Yazd Zoroastrians from 1920s community counts | E
+IRN-FARS | persian/shia ~, qashqai/shia 0.150, lur/shia 0.120, persian/sunni 0.060, peninsular_arab/sunni 0.030, peninsular_arab/shia 0.020, baluch/sunni 0.010, mizrahi/jewish 0.005 | estimate: tribal population estimates (Qashqai, Khamseh, Mamasani, Kohgiluyeh) and 1956 census shares back-projected | E
+IRN-KERMAN | persian/shia ~, baluch/sunni 0.280, azerbaijani/shia 0.020, persian/zoroastrian 0.004, mizrahi/jewish 0.002 | estimate: 1956 census language shares back-projected (Afshar Turks folded into azerbaijani) | E
+IRN-ARABISTAN | mesopotamian/shia ~, persian/shia 0.245, lur/shia 0.200, mesopotamian/sunni 0.050, armenian/oriental_orthodox 0.005 | estimate: British estimates for Sheikh Khazal's Arabistan (Muhammara) and 1956 census language shares | E
+IRN-KORDESTAN | kurdish/shia ~, lur/shia 0.240, kurdish/sunni 0.200, persian/shia 0.200, azerbaijani/shia 0.090, mizrahi/jewish 0.010 | estimate: 1956 census language shares back-projected (Kermanshah and Ilam Kurds Shia/Yarsan, Ardalan Kurds Sunni, Lorestan Lurs, Hamadan Persians/Turks) | E
+
+# ---------------------------------------------------------------- Iraq
+IRQ-BAGHDAD | mesopotamian/shia ~, mesopotamian/sunni 0.355, mizrahi/jewish 0.046, kurdish/shia 0.025, persian/shia 0.025, kurdish/sunni 0.015, assyrian/syriac 0.008, armenian/oriental_orthodox 0.005, turkish/sunni 0.005 | 1920 Iraq population estimate (Baghdad vilayet 1,360,304: Sunni 524,414, Shia 750,421, Jews 62,565, Christians 20,771; Statesman's Year-Book 1921); Kurds/Persians split by tradition | M
+IRQ-BASRA | mesopotamian/shia ~, mesopotamian/sunni 0.054, mizrahi/jewish 0.006, assyrian/syriac 0.006, english/protestant 0.002 | 1920 Iraq population estimate (Basra vilayet: Sunni 42,558, Shia ~721,000; Statesman's Year-Book 1921); Mandaeans folded | M
+IRQ-MOSUL | kurdish/sunni ~, mesopotamian/sunni 0.207, assyrian/syriac 0.080, kurdish/yazidi 0.032, turkish/sunni 0.030, turkish/shia 0.018, mizrahi/jewish 0.015, armenian/oriental_orthodox 0.006 | Iraq enumeration 1922-24 as given to the League of Nations Mosul Commission 1925 (Kurds ~494,000, Arabs 166,941, Turks 38,652, Christians 61,336 + 8,000 Assyrian refugees, Yazidis ~26,000, Jews 11,897) | C
+
+# ---------------------------------------------------------------- Levant
+SYR-DAMAS | levantine/sunni ~, levantine/orthodox 0.075, levantine/eastern_catholic 0.038, levantine/shia 0.028, armenian/oriental_orthodox 0.020, kurdish/sunni 0.015, circassian/sunni 0.012, mizrahi/jewish 0.011, levantine/alawite 0.008, levantine/druze 0.007 | French census 1921-22, State of Damascus (595,000: Sunni 75.1%, Christians 11.3%, foreigners 8.2%, Twelvers 1.5%, Ismailis 1.3%, Jews 1.1%, Alawis 0.8%, Druze 0.7%); Christians split by church and Kurds/Circassians by tradition | M
+SYR-ALEP | levantine/sunni ~, kurdish/sunni 0.120, armenian/oriental_orthodox 0.080, turkish/sunni 0.030, levantine/eastern_catholic 0.025, levantine/orthodox 0.015, assyrian/syriac 0.015, mizrahi/jewish 0.012, circassian/sunni 0.005 | French census 1921-22, State of Aleppo (Sunni 83.1%, Christians 8.6%, Alawis 5% mostly in Alexandretta, Jews 1.2%) adjusted for Alexandretta's separation and the 1921-23 Armenian refugee inflow | M
+SYR-ALAOUITES | levantine/alawite ~, levantine/sunni 0.135, levantine/orthodox 0.080, levantine/eastern_catholic 0.037, levantine/shia 0.036, turkish/sunni 0.005 | French census 1921-22, Latakia (358,000: Alawites 70.7%, Sunni 14%, Christians 11.7%, Ismailis 3.6%) | C
+SYR-DJEBEL-DRUZE | levantine/druze ~, levantine/orthodox 0.080, levantine/eastern_catholic 0.040, levantine/sunni 0.030 | estimate: French mandate estimates for the État du Djebel Druze (~50,000), Christians and Sunni Bedouin by tradition | E
+SYR-ALEXANDRETTE | turkish/sunni ~, levantine/alawite 0.280, armenian/oriental_orthodox 0.110, levantine/sunni 0.100, levantine/orthodox 0.060, levantine/eastern_catholic 0.020, kurdish/sunni 0.020, circassian/sunni 0.010 | French estimate 1936 for the Sanjak (Turks 39%, Alawites 28%, Armenians 11%, Sunni Arabs 10%, other Christians 8%) applied to 1925 | M
+LBN | levantine/eastern_catholic ~, levantine/sunni 0.195, levantine/shia 0.165, levantine/orthodox 0.125, levantine/druze 0.068, armenian/oriental_orthodox 0.040, levantine/protestant 0.006, mizrahi/jewish 0.005 | Lebanese census 1921-22 (629,034: Maronite 31.7%, Melkite 6.7%, other Catholic 2.0%, Greek Orthodox 12.9%, Sunni 19.8%, Shia 16.7%, Druze 6.9%) adjusted for Armenian refugees naturalized 1924 | M
+GBR-PALESTINE | levantine/sunni ~, ashkenazi/jewish 0.070, levantine/orthodox 0.044, mizrahi/jewish 0.021, sephardi/jewish 0.020, levantine/catholic 0.019, levantine/eastern_catholic 0.019, levantine/druze 0.009, english/protestant 0.003, levantine/protestant 0.003 | Census of Palestine 1922 (757,182: Muslims 78.0%, Jews 11.1%, Christians 9.6% by denomination, Druze 0.9%); Jewish split by community estimated | C
+JOR | levantine/sunni ~, levantine/orthodox 0.065, circassian/sunni 0.030, levantine/catholic 0.015, levantine/eastern_catholic 0.015 | estimate: British estimates for Transjordan 1922-24 (~230,000) with Christians and Circassians/Chechens from mission and community counts | E
+GBR-CYPRUS | greek/orthodox ~, turkish/sunni 0.197, armenian/oriental_orthodox 0.004, levantine/eastern_catholic 0.004, english/protestant 0.004 | Census of Cyprus 1921 (310,715: Greek Orthodox 78.8%, Muslims 19.7%, Maronites, Armenians, Anglicans) | C
+
+# ---------------------------------------------------------------- Egypt
+EGY-CAIRO | egyptian/sunni ~, egyptian/oriental_orthodox 0.058, greek/orthodox 0.009, mizrahi/jewish 0.008, italian/catholic 0.007, levantine/eastern_catholic 0.006, english/protestant 0.005, sephardi/jewish 0.005, armenian/oriental_orthodox 0.003, french/catholic 0.003 | Egypt census 1927 (Cairo, Giza, Qalyubia: religion and nationality of foreigners); provincial Christian share estimated from the 1927 national 8.3% and the 1937 provincial pattern | M
+EGY-WESTERN-DELTA | egyptian/sunni ~, egyptian/oriental_orthodox 0.031, greek/orthodox 0.009, italian/catholic 0.005, sephardi/jewish 0.005, english/protestant 0.002, levantine/eastern_catholic 0.002, french/catholic 0.001 | Egypt census 1927 (Alexandria, Gharbia, Menoufia, Beheira: religion and foreign nationals) | M
+EGY-EASTERN-DELTA | egyptian/sunni ~, egyptian/oriental_orthodox 0.028, greek/orthodox 0.003, italian/catholic 0.0015, english/protestant 0.001 | Egypt census 1927 (Sharqia, Dakahlia, Canal Governorate, Suez) | M
+EGY-UPPER | egyptian/sunni ~, egyptian/oriental_orthodox 0.120, nubian/sunni 0.017, egyptian/protestant 0.008, egyptian/eastern_catholic 0.005 | Egypt census 1927 (Fayoum to Aswan; Copts strongest in Asyut and Minya); Nubians from the Aswan language return | M
+EGY-FRONTIER | egyptian/sunni ~, maghrebi/sunni 0.250, peninsular_arab/sunni 0.120, beja/sunni 0.060, berber/sunni 0.040, egyptian/oriental_orthodox 0.010 | estimate: Egypt census 1927 Frontier Districts totals split by tradition (Awlad Ali of the Western Desert, Sinai Bedouin, Ababda/Bisharin, Siwa) | E
+
+# ---------------------------------------------------------------- Arabia and the Gulf
+SAU-NEJD | peninsular_arab/sunni ~ | estimate: no census; Wahhabi Sunni population of Nejd, Qasim, Ha'il, Jawf | E
+SAU-HASA | peninsular_arab/sunni ~, peninsular_arab/shia 0.350 | estimate: Lorimer, Gazetteer of the Persian Gulf (1908-15), settled Shia of Hasa and Qatif oases against Sunni towns and Bedouin | E
+SAU-ASIR | peninsular_arab/sunni ~, yemeni/sunni 0.250, yemeni/shia 0.070 | estimate: no census; Tihamat Asir/Jizan as Yemeni Shafi'i, Najran Ismailis (Yam) as yemeni/shia | E
+SAU-HEJAZ | peninsular_arab/sunni ~, hindustani/sunni 0.020, peninsular_arab/shia 0.015, javanese/sunni 0.010 | estimate: no census; resident Indian and Jawi colonies of Mecca/Jeddah, Nakhawila of Medina | E
+YEM | yemeni/sunni ~, yemeni/shia 0.450, mizrahi/jewish 0.015 | estimate: no census; Zaydi highlands vs Shafi'i Tihama and south, Jews ~40,000-50,000 | E
+YEM-ADEN | yemeni/sunni ~, mahri/sunni 0.050, somali/sunni 0.010, mizrahi/jewish 0.007, gujarati/hindu 0.005, english/protestant 0.002 | Census of India 1921 (Aden settlement: Arabs, Indians, Somalis, Jews, Europeans) + estimate for the Protectorate and Hadhramaut | M
+OMN | peninsular_arab/ibadi ~, peninsular_arab/sunni 0.280, baluch/sunni 0.100, mahri/sunni 0.040, peninsular_arab/shia 0.020, swahili/sunni 0.020, gujarati/shia 0.010, gujarati/hindu 0.005 | estimate: Lorimer, Gazetteer of the Persian Gulf (Oman tribes by sect), Dhofar and Batinah Baluch | E
+ARE | peninsular_arab/sunni ~, persian/sunni 0.050, baluch/sunni 0.050, persian/shia 0.020, peninsular_arab/shia 0.010, gujarati/hindu 0.005 | estimate: Lorimer, Gazetteer of the Persian Gulf (Trucial Coast towns), Persian and Baluch settlers | E
+QAT | peninsular_arab/sunni ~, persian/shia 0.040, baluch/sunni 0.030, peninsular_arab/shia 0.020 | estimate: Lorimer, Gazetteer of the Persian Gulf (Qatar) | E
+BHR | peninsular_arab/shia ~, peninsular_arab/sunni 0.370, persian/shia 0.100, gujarati/hindu 0.010, hindustani/sunni 0.010, mizrahi/jewish 0.004, english/protestant 0.002 | estimate: Lorimer's Gazetteer and the 1941 Bahrain census structure back-projected | E
+KWT | peninsular_arab/sunni ~, peninsular_arab/shia 0.100, persian/shia 0.080, mizrahi/jewish 0.003 | estimate: Lorimer, Gazetteer of the Persian Gulf (Kuwait town), Hasawi/Baharna and Persian (Ajam) Shia | E
+
+# ---------------------------------------------------------------- Relevance (1925)
+!RAJ | english/protestant | elite, legal_status | British officials, officers and planters; European British subjects had criminal-trial privileges (Code of Criminal Procedure, ch. XXXIII) in 1925
+!RAJ | anglo_indian/catholic | legal_status | Anglo-Indian communal representation under the Government of India Act 1919 (Bengal, Madras councils); reserved railway/telegraph posts
+!RAJ | punjabi/sikh | organization, legal_status | Akali movement and SGPC (Gurdwara Act 1925 in passage); separate Sikh electorate in Punjab since 1919
+!RAJ | hindustani/sunni | elite, legal_status, organization | separate Muslim electorates since 1909; Khilafat committees and revived Muslim League (1924); Muslim aristocracy rules Hyderabad, Bhopal, Rampur and holds many UP taluqdaris
+!RAJ | bengali/sunni | legal_status, organization | separate Muslim electorate (Morley-Minto 1909, Montagu-Chelmsford 1919); Bengal Pact 1923
+!RAJ | punjabi/sunni | legal_status | separate Muslim electorate in Punjab (1919)
+!RAJ | malayali/sunni | legal_status | separate Muslim electorate; Mappila Outrages Act regime after the 1921 Malabar rebellion
+!RAJ | sindhi/sunni | legal_status | separate Muslim electorate (Bombay Presidency)
+!RAJ | kashmiri/sunni | legal_status | Dogra state: Muslims barred from arms licences, death/long terms for cow slaughter, begar forced labour
+!RAJ | pashtun/sunni | legal_status | NWFP excluded from the 1919 reforms; Frontier Crimes Regulation 1901
+!RAJ | baluch/sunni | legal_status | Baluchistan outside the 1919 reforms; Frontier Crimes Regulation and jirga law
+!RAJ | punjabi/hindu | elite, legal_status | Punjab Land Alienation Act 1900 bars non-agricultural (mostly Hindu Khatri/Arora/Bania) castes from buying land; dominate trade, credit, professions; Dogra Rajput dynasty rules Kashmir
+!RAJ | sindhi/hindu | elite | Amil bureaucrats and Bhaiband traders/moneylenders in Muslim-majority Sind (Census 1921 occupation tables)
+!RAJ | bengali/hindu | elite | bhadralok hold most zamindaris, posts and professions in Muslim-majority Bengal (Census of India 1921 vol. V occupation)
+!RAJ | kashmiri/hindu | elite | Kashmiri Pandits in the Dogra state bureaucracy
+!RAJ | gujarati/zoroastrian | elite | Parsis: capital, industry and municipal politics of Bombay (Census of India 1921 vol. VIII)
+!RAJ | gujarati/jain | elite | Jain merchant and banking castes of Gujarat and Bombay
+!RAJ | hindustani/jain | elite | Marwari and Oswal Jain banking families (Rajputana, Calcutta, Delhi)
+!RAJ | gujarati/shia | elite | Bohra and Khoja (Ismaili, Aga Khan) trading communities of Bombay and Gujarat
+!RAJ | karen/protestant | organization, legal_status | Karen National Association (1881); communal Karen seats in the Burma Legislative Council (1923 reforms)
+!RAJ | karen/theravada | legal_status | communal Karen seats in the Burma Legislative Council (1923 reforms)
+!RAJ | shan/theravada | legal_status | Federated Shan States (1922) under their sawbwas, outside the 1923 Burma reforms
+!RAJ | tibetan/vajrayana | elite | Bhutia Chogyal and kazi landlords of Sikkim
+!RAJ | lepcha/vajrayana | legal_status | Sikkim Revenue Order No. 1 (1917) protects Lepcha and Bhutia land from sale to Nepalis
+!NEP | tamang/vajrayana | legal_status | Muluki Ain ranks Tamang as enslavable matwali; slavery abolition proclaimed 1924-25
+!BHU | nepali/hindu | legal_status | Nepali settlers confined to the southern foothills under the Bhutan House (Dorji) system
+!AFG | hazara/shia | legal_status | Hazaras enslaved/dispossessed after 1891-93; Amanullah's 1923 constitution abolished slavery, discrimination persisted
+!AFG | persian/shia | elite | Qizilbash of Kabul in the court bureaucracy and secretariat
+!PRS | armenian/oriental_orthodox | legal_status | reserved Majlis seats for Armenians (Electoral Law 1909/1911)
+!PRS | assyrian/syriac | legal_status, patron | reserved Majlis seat; Assyrians of Urmia under British protection after 1918
+!PRS | mizrahi/jewish | legal_status | reserved Majlis seat; najes-based restrictions in provincial towns
+!PRS | persian/zoroastrian | legal_status | reserved Majlis seat; jizya abolished only 1882
+!PRS | mesopotamian/shia | organization, patron | Sheikh Khazal's autonomous Muhammara sheikhdom with British protection, submitting to Reza Khan in late 1924
+!PRS | qashqai/shia | organization | Qashqai confederacy under its ilkhan with its own armed tribesmen
+!PRS | lur/shia | organization | Bakhtiari khans (governorships, oil royalties, armed tribes); Lorestan Lur risings 1923-24
+!PRS | turkmen/sunni | organization | Turkmen revolt in Gorgan 1924-25
+!PRS | baluch/sunni | organization | Dost Mohammad Khan Baluch rules Persian Baluchistan de facto until 1928
+!PRS | kurdish/sunni | organization | Shikak confederacy of Simko (revolt 1918-22, return 1926)
+!IRQ | kurdish/sunni | organization | Shaikh Mahmud's Sulaymaniyah revolt 1922-24, still in the field in 1925
+!IRQ | assyrian/syriac | organization, patron | Assyrian Levies under British command; Mar Shimun patriarchate; British protection
+!IRQ | mizrahi/jewish | elite | Baghdad Jewish merchants and bankers; Sassoon Eskell first finance minister
+!IRQ | mesopotamian/sunni | elite | ex-Ottoman Sharifian officers and Sunni notables dominate cabinet, army and civil service
+!IRQ | turkish/sunni | patron | Turkey claims the Mosul vilayet (League of Nations Mosul question, 1924-26)
+!IRQ | turkish/shia | patron | Turkey claims the Mosul vilayet (League of Nations Mosul question, 1924-26)
+!FRA:C | levantine/eastern_catholic | organization, patron | Maronite patriarchate drove the creation of Grand Liban (1920); France as protector
+!FRA:C | levantine/alawite | legal_status | separate État des Alaouites under French rule (1920/1922)
+!FRA:C | levantine/druze | organization | État du Djebel Druze under the Atrash; Great Syrian Revolt begins July 1925
+!FRA:C | turkish/sunni | patron, legal_status | Franklin-Bouillon agreement 1921: special regime and Turkish language rights in Alexandretta; Turkey as protector
+!GBR:C | english/protestant | elite, legal_status | colonial officials, officers and planters in Ceylon, Palestine, Cyprus, Aden and the Gulf residencies; European British subjects outside native jurisdiction
+!GBR:C | ashkenazi/jewish | organization, patron | Zionist Organization, Va'ad Leumi, Histadrut, Haganah; Balfour Declaration in the Mandate
+!GBR:C | sephardi/jewish | organization, patron | part of the organized yishuv (Va'ad Leumi, Sephardi Chief Rabbinate)
+!GBR:C | mizrahi/jewish | organization, patron | part of the organized yishuv (Va'ad Leumi)
+!GBR:C | turkish/sunni | legal_status | Cyprus: separate Muslim seats in the Legislative Council, Evkaf and sharia courts
+!GBR:C | ceylon_moor/sunni | legal_status | communal Muslim seats in the Ceylon Legislative Council (1924 constitution)
+!GBR:C | burgher/protestant | elite, legal_status | Burgher communal seat; overrepresented in the Ceylon civil service
+!GBR:C | burgher/catholic | elite, legal_status | Burgher communal seat
+!GBR:C | peninsular_arab/shia | legal_status | Bahrain Baharna: discriminatory taxes and forced labour until the British-imposed reforms of 1923
+!EGY | english/protestant | elite, legal_status | British reserved points (1922 declaration), army of occupation, capitulations
+!EGY | greek/orthodox | elite, legal_status | capitulations and Mixed Courts; cotton and commerce
+!EGY | italian/catholic | elite, legal_status | capitulations and Mixed Courts
+!EGY | french/catholic | elite, legal_status | capitulations and Mixed Courts; Suez Canal Company
+!EGY | sephardi/jewish | elite | Cattaui, Mosseri, Suarès banking families; many foreign-protected
+!EGY | levantine/eastern_catholic | elite | Syro-Lebanese in press, finance and administration
+!EGY | egyptian/oriental_orthodox | organization | Coptic Orthodox Church and the lay Majlis Milli (communal council); weak case, drop if a church alone does not qualify
+!TRJ | circassian/sunni | elite | Circassians in Emir Abdullah's guard, police and administration
+!NEJ | peninsular_arab/shia | legal_status | Ikhwan and Wahhabi restrictions on Shia practice in Hasa and Qatif
+!YEM | mizrahi/jewish | legal_status | dhimmi status; Orphans' Decree (1922) of Imam Yahya
+
+# SOURCES
+# Census of India 1921, vols. I-XXV (provincial reports and tables: II Andamans, III Assam, IV Baluchistan, V Bengal, VII Bihar and Orissa, VIII Bombay incl. Sind and Aden, X Burma, XI Central Provinces and Berar, XIII Madras, XIV NWFP, XV Punjab and Delhi, XVI United Provinces, XVII Baroda, XVIII Central India, XIX Cochin, XXI Hyderabad, XXII Kashmir, XXIII Mysore, XXIV Rajputana, XXV Travancore) | religion, language, caste/tribe by district and state | Government of India publication 1922-23, public domain
+# Census of India 1931 | cross-check of 1921 shares | public domain
+# Census of Ceylon 1921 (L.J.B. Turner), Report and General Tables | race and religion by province; Northern (374,829) and Eastern (192,821) Province race totals; Moors by province | public domain
+# Census of Cyprus 1921 | religion | public domain
+# Census of Palestine 1922 (J.B. Barron) | religion and Christian denominations | public domain
+# Lebanese census 1921-22 (as tabulated in Chamie, Religion and Fertility, CUP 1981, p. 29) and 1932 census (Maktabi 1999) | sect counts | census facts, public domain
+# French census of Syria 1921-22 (as tabulated in E.J. Brill's First Encyclopaedia of Islam 1913-36, vol. 2 p. 301) | religion for the States of Damascus, Aleppo and Latakia | census facts
+# Longrigg, Syria and Lebanon under French Mandate (1958) | 1923 Alawite and 1936 Alexandretta figures | facts only
+# Iraq 1920 population estimate (Review of the Civil Administration of Mesopotamia, 1920; Statesman's Year-Book 1921) | sect by vilayet | public domain
+# League of Nations, Question of the Frontier between Turkey and Iraq, Report of the Commission (1925); HC Deb 21 Dec 1925 vol 189 c1931 | Mosul vilayet ethnic counts | public domain
+# Egypt Ministry of Finance, Population Census of Egypt 1927 | religion, foreign nationals; 8.3% Christian nationally | public domain
+# J.G. Lorimer, Gazetteer of the Persian Gulf, Oman and Central Arabia (1908-15) | settlements and sects of Hasa, Qatif, Bahrain, Kuwait, Qatar, Trucial Coast, Oman | public domain
+# Iranian National Census 1956 (language) | back-projection for Persia | facts only
+# Nepal census 1952/54 (language and religion) | back-projection for Nepal | facts only
+# Censo da População do Estado da Índia 1921; Annuaire des Établissements français dans l'Inde | Goa and French India totals | public domain

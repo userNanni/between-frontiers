@@ -1,0 +1,228 @@
+# Communities of 1925, region ussr-mongolia. One line per state: STATE | culture/religion share, ... | source | C/M/E.
+# Format and build: tools/communities/generate.py; method: docs/population.pt-BR.md. Licence: CC BY-SA 4.0.
+# Drafted from the censuses cited on each line and in the SOURCES block; `~` is the rest of the state.
+
+# Between Frontiers — population composition on 1925-01-01, region SOV (USSR, Tannu Tuva, Mongolia)
+# Base: All-Union census of 17 Dec 1926 (vol. 9-17, Table VI "population by sex and nationality"),
+# read at guberniya/okrug/ASSR level from the Demoscope Weekly transcriptions. Shares are of total
+# population incl. foreign citizens; foreigners are allocated to the nationality they mostly were
+# (Chinese/Korean columns in the Far East, Persian subjects in Transcaucasia/Turkmenia).
+# 1926 is taken as close enough to 1925-01-01 (two years; no border change inside the Union that
+# moves these units, except the 1924-25 Central Asian delimitation already in force).
+# No religion question in 1926: religion by tradition of each nationality (flag M). Conventions:
+#   Russians, Ukrainians, Belarusians, Old Believers -> orthodox; Kryashens and Nagaibaks (baptized
+#   Tatars) -> tatar/orthodox; Chuvash, Mordvins, Komi, Karelians, Veps -> orthodox; Mari and
+#   Udmurts split orthodox/folk where unbaptized communities were large (Bashkiria, Mari AO);
+#   Volga/Siberian Tatars, Bashkirs, Kazakhs, Central Asians, North Caucasians (except Ossetians)
+#   -> sunni; Azerbaijanis split shia ~70% / sunni ~30% (north-west sunni); Talysh, Tats, Kurds of
+#   Transcaucasia -> shia, Yazidis -> kurdish/yazidi; Ossetians orthodox with a sunni (Digor) minority
+#   in North Ossetia; Abkhaz split orthodox/sunni; Ajarians and Laz -> georgian/sunni;
+#   Armenians -> oriental_orthodox; Georgians incl. Mingrelians and Svans (census sub-groups of
+#   Georgians) -> orthodox; Jews: Yiddish-speaking -> ashkenazi/jewish; Mountain Jews (Judeo-Tat)
+#   and Bukharan/Central Asian Jews (Judeo-Tajik) -> mizrahi/jewish (Persian-speaking); Georgian Jews
+#   -> georgian/jewish (Georgian-speaking); Krymchaks and Karaites -> crimean_tatar/jewish
+#   (Turkic-speaking; Karaites are not rabbinic but are Judaic); Germans: Volga Lutheran ~70% /
+#   Catholic ~30%, Black Sea colonies (Odessa, Mykolaiv) half Catholic, Volhynia, Molochna,
+#   Chortitza, Crimea, Siberia, Kazakhstan Lutheran/Mennonite -> protestant; Kalmyks, Buryats of
+#   Transbaikalia, Tuvans, Mongols -> vajrayana; western (Irkutsk) Buryats -> folk; Yakuts split
+#   orthodox/folk; Siberian and Far Eastern small peoples -> folk; Koreans -> folk, with an
+#   Orthodox share among Soviet-citizen Koreans of the Far East; Chinese -> han/chinese_folk.
+# Census nationalities merged (<= 10 entries per line): Mishars, Teptyars, Siberian "Bukhartsy" ->
+#   tatar; Besermyans -> udmurt; Kurama, Kipchaks, Fergana "Turks" -> uzbek; Taranchi, Kashgarliks,
+#   Uyghurs -> uyghur; Andi-Dido peoples -> avar; Kaitaks, Kubachi -> dargin; Tabasarans, Rutuls,
+#   Aguls, Tsakhurs -> lezgin; Altaians, Telengits, Teleuts, Kumandins, Oirats -> altai; Evenks,
+#   Evens (Lamuts), Nanais, Ulchs, Udege, Negidals, Orochi, Oroks, Samagirs -> tungusic.
+# Groups under 0.5 % are folded into the nearest listed community (same religion first) unless
+# they carry a relevance factor (Poles: patron).
+#
+# ---------------------------------------------------------------- RSFSR: North and North-West
+RUS-MOSKVA | russian/orthodox ~, ashkenazi/jewish 0.031, tatar/sunni 0.006, ukrainian/orthodox 0.005, polish/catholic 0.005 | All-Union census 1926 (Moscow guberniya incl. city, nationality); religion by tradition | M
+RUS-LENINGRAD | russian/orthodox ~, finnish/protestant 0.045, ashkenazi/jewish 0.032, estonian/protestant 0.024, polish/catholic 0.015, german/protestant 0.009, latvian/protestant 0.007, izhorian/orthodox 0.006, veps/orthodox 0.005, ukrainian/orthodox 0.005 | All-Union census 1926 (Leningrad guberniya incl. city; Ingrian Finns + Finns as finnish); religion by tradition | M
+RUS-ARKHANGELSK | russian/orthodox ~, komi/orthodox 0.009, nenets/folk 0.007 | All-Union census 1926 (Arkhangelsk guberniya, nationality); religion by tradition | M
+# Vologda = Vologda + Severo-Dvinsk + Cherepovets guberniyas (Veps 0.45 % folded).
+RUS-VLG | russian/orthodox ~ | All-Union census 1926 (Vologda, Severo-Dvinsk, Cherepovets guberniyas, nationality); religion by tradition | M
+RUS-KO | komi/orthodox ~, russian/orthodox 0.066, nenets/folk 0.010 | All-Union census 1926 (Komi-Zyryan AO, nationality); religion by tradition | M
+RUS-KR | russian/orthodox ~, karelian/orthodox 0.374, veps/orthodox 0.032, finnish/protestant 0.009 | All-Union census 1926 (Karelian ASSR, nationality); religion by tradition | M
+RUS-MUR | russian/orthodox ~, sami/orthodox 0.074, finnish/protestant 0.074, komi/orthodox 0.031, karelian/orthodox 0.018, tatar/sunni 0.014, ukrainian/orthodox 0.009, latvian/protestant 0.006, polish/catholic 0.006 | All-Union census 1926 (Murmansk guberniya, nationality); religion by tradition | M
+RUS-NGR | russian/orthodox ~, latvian/protestant 0.008, estonian/protestant 0.007 | All-Union census 1926 (Novgorod guberniya, nationality); religion by tradition | M
+# Pskov "Estonians" are largely Setos (Orthodox).
+RUS-PSK | russian/orthodox ~, belarusian/orthodox 0.019, ashkenazi/jewish 0.013, estonian/orthodox 0.007, latvian/protestant 0.006, polish/catholic 0.003 | All-Union census 1926 (Pskov guberniya, nationality); religion by tradition | M
+RUS-TVE | russian/orthodox ~, karelian/orthodox 0.063 | All-Union census 1926 (Tver guberniya, nationality); religion by tradition | M
+RUS-SMO | russian/orthodox ~, ashkenazi/jewish 0.016, belarusian/orthodox 0.009 | All-Union census 1926 (Smolensk guberniya, nationality); religion by tradition | M
+RUS-BRY | russian/orthodox ~, ukrainian/orthodox 0.066, ashkenazi/jewish 0.019, belarusian/orthodox 0.010 | All-Union census 1926 (Bryansk guberniya, nationality); religion by tradition | M
+# ---------------------------------------------------------------- RSFSR: Centre and Black Earth
+RUS-VLA RUS-IVA RUS-KOS RUS-YAR RUS-TUL RUS-ORL RUS-LIP | russian/orthodox ~ | All-Union census 1926 (Vladimir, Ivanovo, Kostroma, Yaroslavl, Tula, Oryol guberniyas: 98.8-99.5 % Russian; Lipetsk from parts of Tambov/Oryol/Ryazan/Voronezh); religion by tradition | M
+RUS-KLU | russian/orthodox ~, ukrainian/orthodox 0.007 | All-Union census 1926 (Kaluga guberniya, nationality); religion by tradition | M
+RUS-RYA | russian/orthodox ~ | All-Union census 1926 (Ryazan guberniya: 99.4 % Russian, Kasimov Tatars 0.4 % folded); religion by tradition | M
+RUS-TAM | russian/orthodox ~, ukrainian/orthodox 0.005 | All-Union census 1926 (Tambov guberniya, nationality); religion by tradition | M
+RUS-NIZ | russian/orthodox ~, mordvin/orthodox 0.031, tatar/sunni 0.029 | All-Union census 1926 (Nizhny Novgorod guberniya, nationality); religion by tradition | M
+# Kursk guberniya (Ukrainians 19.1 %) is split between modern Kursk and Belgorod; the Ukrainian
+# population sat in the southern uezds (Belgorod, Graivoron, Novy Oskol, Korocha) and in the
+# Voronezh uezds later given to Belgorod (Valuyki, Alekseyevka). Split estimated, totals kept.
+RUS-KRS | russian/orthodox ~, ukrainian/orthodox 0.070 | estimate: Kursk guberniya 1926 (Ukrainians 19.1 %) split by uezd geography, northern part | M
+RUS-BEL | russian/orthodox ~, ukrainian/orthodox 0.420 | estimate: southern Kursk + western Voronezh uezds of the 1926 census, Ukrainian share by geography | M
+RUS-VOR | russian/orthodox ~, ukrainian/orthodox 0.300 | All-Union census 1926 (Voronezh guberniya: Ukrainians 32.6 %), less the Ukrainian-majority uezds given to Belgorod | M
+# ---------------------------------------------------------------- RSFSR: Volga and Urals
+RUS-TA | tatar/sunni ~, russian/orthodox 0.431, chuvash/orthodox 0.049, tatar/orthodox 0.038, mordvin/orthodox 0.014, udmurt/orthodox 0.009, mari/orthodox 0.005 | All-Union census 1926 (Tatar ASSR; Kryashens as tatar/orthodox); religion by tradition | M
+RUS-CU | chuvash/orthodox ~, russian/orthodox 0.200, mordvin/orthodox 0.027, tatar/sunni 0.025 | All-Union census 1926 (Chuvash ASSR, nationality); religion by tradition | M
+RUS-ME | mari/orthodox 0.385, russian/orthodox ~, mari/folk 0.129, tatar/sunni 0.042, chuvash/orthodox 0.005 | All-Union census 1926 (Mari AO, nationality); Mari religion estimated 3/4 Orthodox, 1/4 traditional (Kugu Sorta and unbaptized) | M
+# Udmurtia = Votyak AO + the Russian-majority Sarapul/Votkinsk area added in 1934 (est. 250k, 95 % Russian).
+RUS-UD | russian/orthodox ~, udmurt/orthodox 0.360, udmurt/folk 0.050, tatar/sunni 0.020 | All-Union census 1926 (Votyak AO + est. Sarapul/Votkinsk part of Sarapul okrug); religion by tradition, unbaptized Udmurts estimated | M
+RUS-KIR | russian/orthodox ~, mari/orthodox 0.015, mari/folk 0.012, udmurt/orthodox 0.017, tatar/sunni 0.009, komi_permyak/orthodox 0.006 | All-Union census 1926 (Vyatka guberniya, nationality); religion by tradition | M
+# Mordovia did not exist in 1926 (Mordovian okrug 1928); shares from the 1939 census of the
+# Mordovian ASSR, adjusted slightly toward the 1926 Mordvin share of Penza guberniya.
+RUS-MO | russian/orthodox ~, mordvin/orthodox 0.355, tatar/sunni 0.042 | estimate: 1939 census Mordovian ASSR (R 60.5 %, Mordvins 34.1 %, Tatars 4.0 %) adjusted to 1926 | M
+RUS-PNZ | russian/orthodox ~, mordvin/orthodox 0.065, tatar/sunni 0.059 | estimate: All-Union census 1926 Penza guberniya (Mordvins 17.1 %, Mishars+Tatars 5.4 %) less the part given to Mordovia | M
+RUS-ULY | russian/orthodox ~, mordvin/orthodox 0.129, chuvash/orthodox 0.033, tatar/sunni 0.028 | All-Union census 1926 (Ulyanovsk guberniya, nationality); religion by tradition | M
+RUS-SAM | russian/orthodox ~, mordvin/orthodox 0.104, tatar/sunni 0.051, chuvash/orthodox 0.044, ukrainian/orthodox 0.033, german/protestant 0.005 | All-Union census 1926 (Samara guberniya, nationality); religion by tradition | M
+# Saratov = Saratov guberniya + Volga German ASSR (most of its cantons are in modern Saratov oblast).
+RUS-SAR | russian/orthodox ~, german/protestant 0.085, german/catholic 0.036, ukrainian/orthodox 0.078, mordvin/orthodox 0.044, tatar/sunni 0.034, chuvash/orthodox 0.005 | All-Union census 1926 (Saratov guberniya + ASSR of the Volga Germans, nationality); German religion ~70 % Lutheran / 30 % Catholic by colony | M
+RUS-VGG | russian/orthodox ~, ukrainian/orthodox 0.100, german/protestant 0.009, tatar/sunni 0.009 | All-Union census 1926 (Stalingrad guberniya, nationality); religion by tradition | M
+RUS-AST | russian/orthodox ~, tatar/sunni 0.095, kazakh/sunni 0.090, ukrainian/orthodox 0.027, ashkenazi/jewish 0.012, kalmyk/vajrayana 0.009, armenian/oriental_orthodox 0.006, german/protestant 0.006 | All-Union census 1926 (Astrakhan guberniya, nationality); religion by tradition | M
+RUS-KL | kalmyk/vajrayana ~, russian/orthodox 0.107, ukrainian/orthodox 0.103, german/protestant 0.018, tatar/sunni 0.007, estonian/protestant 0.005 | All-Union census 1926 (Kalmyk AO, nationality); religion by tradition | M
+RUS-BA | russian/orthodox ~, tatar/sunni 0.233, bashkir/sunni 0.235, chuvash/orthodox 0.032, ukrainian/orthodox 0.029, mari/folk 0.020, mordvin/orthodox 0.019, mari/orthodox 0.010, udmurt/folk 0.009 | All-Union census 1926 (Bashkir ASSR; Tatars incl. Mishars and Teptyars); eastern Mari and Udmurts largely unbaptized | M
+RUS-ORE | russian/orthodox ~, ukrainian/orthodox 0.145, tatar/sunni 0.070, mordvin/orthodox 0.031, kazakh/sunni 0.027, bashkir/sunni 0.020, german/protestant 0.014 | All-Union census 1926 (Orenburg guberniya, nationality); religion by tradition | M
+# Perm = Perm + Verkhnekamsk + Kungur + Komi-Permyak okrugs of the Ural oblast.
+RUS-PER | russian/orthodox ~, komi_permyak/orthodox 0.081, tatar/sunni 0.036, mari/orthodox 0.010 | All-Union census 1926 (Ural oblast: Perm, Verkhnekamsk, Kungur, Komi-Permyak okrugs, nationality); religion by tradition | M
+RUS-SVE | russian/orthodox ~, tatar/sunni 0.015, belarusian/orthodox 0.010, bashkir/sunni 0.005 | All-Union census 1926 (Ural oblast: Sverdlovsk, Tagil, Irbit okrugs, nationality); religion by tradition | M
+RUS-CHE | russian/orthodox ~, tatar/sunni 0.043, ukrainian/orthodox 0.025, bashkir/sunni 0.016, tatar/orthodox 0.011, kazakh/sunni 0.006, mordvin/orthodox 0.005 | All-Union census 1926 (Ural oblast: Chelyabinsk, Troitsk, Zlatoust okrugs; Nagaibaks as tatar/orthodox); religion by tradition | M
+RUS-KGN | russian/orthodox ~, tatar/sunni 0.007, ukrainian/orthodox 0.005 | All-Union census 1926 (Ural oblast: Kurgan, Shadrinsk okrugs, nationality); religion by tradition | M
+RUS-TYUMEN | russian/orthodox ~, tatar/sunni 0.051, khanty/folk 0.012, ukrainian/orthodox 0.011, komi/orthodox 0.009, nenets/folk 0.008, belarusian/orthodox 0.005, mansi/folk 0.005 | All-Union census 1926 (Ural oblast: Tyumen, Tobolsk, Ishim okrugs, nationality); religion by tradition | M
+# ---------------------------------------------------------------- RSFSR: North Caucasus and Crimea
+# Crimean Tatars get their own key (crimean_tatar); the census counted them as "Tatars".
+RUS-KRYM | russian/orthodox ~, crimean_tatar/sunni 0.251, ukrainian/orthodox 0.108, german/protestant 0.061, ashkenazi/jewish 0.056, greek/orthodox 0.026, bulgarian/orthodox 0.016, armenian/oriental_orthodox 0.015, crimean_tatar/jewish 0.014, polish/catholic 0.006 | All-Union census 1926 (Crimean ASSR incl. Sevastopol; Krymchaks + Karaites as crimean_tatar/jewish; foreign Greeks added to greek); religion by tradition | M
+RUS-KUBAN | ukrainian/orthodox ~, russian/orthodox 0.440, armenian/oriental_orthodox 0.028, circassian/sunni 0.019, greek/orthodox 0.012, german/protestant 0.010, belarusian/orthodox 0.008 | All-Union census 1926 (North Caucasus krai: Kuban, Armavir, Maikop, Black Sea okrugs + Adyghe-Cherkess AO; Kuban Cossacks declared Ukrainian); religion by tradition | M
+RUS-ROS | russian/orthodox ~, ukrainian/orthodox 0.421, armenian/oriental_orthodox 0.016, ashkenazi/jewish 0.011, german/protestant 0.010, belarusian/orthodox 0.006 | All-Union census 1926 (North Caucasus krai: Don, Donetsk, Salsk, Taganrog, Shakhty-Donetsk okrugs, nationality); religion by tradition | M
+RUS-STA | russian/orthodox ~, ukrainian/orthodox 0.321, german/protestant 0.019, armenian/oriental_orthodox 0.017, ossetian/orthodox 0.005, nogai/sunni 0.005 | All-Union census 1926 (North Caucasus krai: Stavropol, Terek okrugs; nogai incl. Trukhmens); religion by tradition | M
+# Karachay-Cherkessia = Karachay AO + Cherkess AO + est. 50k Russians/Ukrainians of the Batalpashinsk
+# Cossack stanitsas (then outside both AOs). Cherkess of the Cherkess AO were counted as Kabardians.
+RUS-KC | karachay/sunni ~, russian/orthodox 0.320, kabardian/sunni 0.108, abaza/sunni 0.091, ukrainian/orthodox 0.061, nogai/sunni 0.041, ossetian/orthodox 0.022, greek/orthodox 0.007 | All-Union census 1926 (Karachay AO, Cherkess AO) + estimate for the Batalpashinsk Cossack area; religion by tradition | M
+RUS-KB | kabardian/sunni ~, balkar/sunni 0.163, ukrainian/orthodox 0.084, russian/orthodox 0.079, kumyk/sunni 0.017, german/protestant 0.013, ossetian/orthodox 0.010, ossetian/sunni 0.010, mizrahi/jewish 0.007 | All-Union census 1926 (Kabardino-Balkar AO, nationality); religion by tradition | M
+# North Ossetia = North Ossetian AO + autonomous city of Vladikavkaz.
+RUS-SE | ossetian/orthodox ~, russian/orthodox 0.268, ossetian/sunni 0.151, ukrainian/orthodox 0.062, armenian/oriental_orthodox 0.028, georgian/orthodox 0.024, german/protestant 0.009, ingush/sunni 0.006 | All-Union census 1926 (North Ossetian AO + Vladikavkaz city); Ossetians est. 3/4 Orthodox, 1/4 Muslim | M
+# Chechnya-Ingushetia = Chechen AO + Ingush AO + autonomous city of Grozny + Sunzha Cossack okrug.
+RUS-CHECHNYA-INGUSHETIA | chechen/sunni ~, ingush/sunni 0.136, russian/orthodox 0.215, ukrainian/orthodox 0.022, armenian/oriental_orthodox 0.011, tatar/sunni 0.006, mizrahi/jewish 0.006 | All-Union census 1926 (Chechen AO, Ingush AO, Grozny city, Sunzha okrug; Jews of Grozny incl. Mountain Jews); religion by tradition | M
+RUS-DA | lezgin/sunni 0.183, avar/sunni ~, dargin/sunni 0.159, russian/orthodox 0.143, kumyk/sunni 0.112, lak/sunni 0.051, azerbaijani/shia 0.034, nogai/sunni 0.033, chechen/sunni 0.028, mizrahi/jewish 0.019 | All-Union census 1926 (Dagestan ASSR; Andi-Dido peoples in avar, Tabasarans/Rutuls/Aguls/Tsakhurs in lezgin, Kaitaks in dargin, Armenians 0.8 % folded into russian); religion by tradition | M
+# ---------------------------------------------------------------- RSFSR: Siberia
+RUS-OMS | russian/orthodox ~, ukrainian/orthodox 0.151, belarusian/orthodox 0.050, german/protestant 0.033, kazakh/sunni 0.022, tatar/sunni 0.021, polish/catholic 0.008, estonian/protestant 0.006, latvian/protestant 0.006 | All-Union census 1926 (Siberian krai: Omsk, Tara okrugs; Bukhartsy as tatar); religion by tradition | M
+RUS-NVS | russian/orthodox ~, ukrainian/orthodox 0.099, belarusian/orthodox 0.049, mordvin/orthodox 0.010, tatar/sunni 0.010, chuvash/orthodox 0.006, polish/catholic 0.006 | All-Union census 1926 (Siberian krai: Novosibirsk, Barabinsk okrugs, nationality); religion by tradition | M
+RUS-ALT | russian/orthodox ~, ukrainian/orthodox 0.144, mordvin/orthodox 0.017, german/protestant 0.013, belarusian/orthodox 0.008, kazakh/sunni 0.007 | All-Union census 1926 (Siberian krai: Barnaul, Biysk, Rubtsovsk, Slavgorod, Kamen okrugs; Tatars folded into kazakh, Kumandins into russian); religion by tradition | M
+RUS-AL | russian/orthodox ~, altai/folk 0.282, altai/orthodox 0.141, kazakh/sunni 0.023 | All-Union census 1926 (Oirot AO; Altaians incl. Telengits, Kumandins, Oirats, Teleuts); Altaians est. 2/3 shamanist/Burkhanist, 1/3 baptized | M
+RUS-KEM | russian/orthodox ~, chuvash/orthodox 0.037, mordvin/orthodox 0.035, shor/folk 0.035, ukrainian/orthodox 0.032, tatar/sunni 0.011, belarusian/orthodox 0.010, komi_permyak/orthodox 0.009 | All-Union census 1926 (Siberian krai: Kuznetsk okrug; Teleuts in shor); religion by tradition | M
+RUS-TOM | russian/orthodox ~, belarusian/orthodox 0.036, tatar/sunni 0.032, ukrainian/orthodox 0.029, polish/catholic 0.011, khanty/folk 0.011, mordvin/orthodox 0.011, chuvash/orthodox 0.008, ashkenazi/jewish 0.008, estonian/protestant 0.007 | All-Union census 1926 (Siberian krai: Tomsk okrug, nationality); religion by tradition | M
+RUS-KRASNOYARSK | russian/orthodox ~, belarusian/orthodox 0.072, ukrainian/orthodox 0.056, khakas/folk 0.028, tatar/sunni 0.015, mordvin/orthodox 0.013, latvian/protestant 0.010, tungusic/folk 0.010, polish/catholic 0.009, estonian/protestant 0.006 | All-Union census 1926 (Siberian krai: Achinsk, Kansk, Krasnoyarsk, Minusinsk, Khakass okrugs, Turukhansk krai; Latgalians in latvian; northern peoples in tungusic); religion by tradition | M
+# Irkutsk incl. Ust-Orda (then the western aimags of the Buryat-Mongol ASSR: est. 100k, 61k Buryats,
+# so that 1926 BMASSR Buryats in modern Buryatia match the 1939 census).
+RUS-IRK | russian/orthodox ~, buryat/folk 0.088, belarusian/orthodox 0.043, ukrainian/orthodox 0.019, tatar/sunni 0.013, ashkenazi/jewish 0.012, polish/catholic 0.005 | All-Union census 1926 (Irkutsk, Tulun, Kirensk okrugs + est. western aimags of the Buryat-Mongol ASSR); western Buryats shamanist | M
+RUS-BU | russian/orthodox ~, buryat/vajrayana 0.357, ashkenazi/jewish 0.012, tatar/sunni 0.008, tungusic/folk 0.008, ukrainian/orthodox 0.005 | estimate: All-Union census 1926 Buryat-Mongol ASSR (Buryats 43.8 %) less est. Ust-Orda and Aga parts, checked against 1939 census | M
+RUS-ZAB | russian/orthodox ~, buryat/vajrayana 0.052, ukrainian/orthodox 0.016, han/chinese_folk 0.011, tungusic/folk 0.009, ashkenazi/jewish 0.008 | All-Union census 1926 (Far Eastern krai: Chita, Sretensk okrugs + est. Aga Buryat area; foreigners mostly Chinese) | M
+RUS-SA | yakut/orthodox ~, yakut/folk 0.326, russian/orthodox 0.120, tungusic/folk 0.045, han/chinese_folk 0.013, tatar/sunni 0.006 | All-Union census 1926 (Yakut ASSR; foreign citizens, mostly Chinese gold miners of Aldan); Yakuts est. 60 % Orthodox, 40 % shamanist | M
+# ---------------------------------------------------------------- RSFSR: Far East
+RUS-AMU | russian/orthodox ~, ukrainian/orthodox 0.232, belarusian/orthodox 0.038, han/chinese_folk 0.024, korean/folk 0.013 | All-Union census 1926 (Far Eastern krai: Amur, Zeya okrugs; foreign Chinese/Koreans from the census foreigner columns) | M
+RUS-PRI | russian/orthodox ~, ukrainian/orthodox 0.260, korean/folk 0.194, han/chinese_folk 0.076, korean/orthodox 0.060, polish/catholic 0.005 | All-Union census 1926 (Far Eastern krai: Vladivostok okrug; Koreans 12.3 % citizens + 13.1 % foreign, Chinese 7.4 % foreign); half the citizen Koreans est. Orthodox | M
+RUS-KHABAROVSK | russian/orthodox ~, ukrainian/orthodox 0.226, tungusic/folk 0.067, belarusian/orthodox 0.054, korean/folk 0.048, han/chinese_folk 0.039, korean/orthodox 0.022, nivkh/folk 0.011, polish/catholic 0.007 | All-Union census 1926 (Far Eastern krai: Khabarovsk, Nikolayevsk okrugs, with foreigner columns) | M
+# North Sakhalin was under Japanese occupation until May 1925; the 1926 count is after evacuation.
+RUS-SAK | russian/orthodox ~, nivkh/folk 0.143, ukrainian/orthodox 0.097, han/chinese_folk 0.057, polish/catholic 0.030, tungusic/folk 0.027, japanese/shinto 0.026, korean/folk 0.021, belarusian/orthodox 0.017 | All-Union census 1926 (Far Eastern krai: Sakhalin okrug = North Sakhalin; non-Chinese, non-Korean foreigners taken as Japanese) | M
+# The 1926 Kamchatka okrug (34.9k) covered Kamchatka, Koryakia, Chukotka and the Okhotsk-Kolyma coast;
+# split by where each people lived (Chukchi and Eskimos north, Koryaks and Kamchadals south).
+RUS-KAM | koryak/folk ~, russian/orthodox 0.339, kamchadal/orthodox 0.200, tungusic/folk 0.075, chukchi/folk 0.027, aleut/orthodox 0.019 | estimate: All-Union census 1926 Kamchatka okrug (Chukchi 31.6 %, Koryaks 20.5 %, Russians 19.6 %, Kamchadals 10.6 %...) split by area | E
+RUS-MAGADAN | chukchi/folk ~, russian/orthodox 0.130, tungusic/folk 0.080, yupik/folk 0.080, koryak/folk 0.050 | estimate: All-Union census 1926 Kamchatka okrug split by area (Chukotka + Okhotsk/Kolyma coast; Chuvans in russian) | E
+# ---------------------------------------------------------------- Ukrainian SSR (Soviet part only)
+# Modern oblasts built from 1926 okrugs: Vinnytsia = Vinnytsia+Tulchyn+Mohyliv; Zhytomyr = Volyn+
+# Korosten+Berdychiv; Khmelnytskyi = Kamianets+Proskuriv+Shepetivka; Kyiv = Kyiv+Bila Tserkva;
+# Cherkasy = Shevchenko+Uman; Kirovohrad = Zinovievsk; Mykolaiv = Mykolaiv+Pervomaisk; Odessa =
+# Odessa okrug + Balta part of the Moldavian ASSR (est. 282k); Kherson = Kherson; Zaporizhzhia =
+# Zaporizhzhia+Melitopol; Donetsk = Stalino+Mariupol+Artemivsk; Luhansk = Luhansk+Starobilsk;
+# Dnipropetrovsk = Dnipropetrovsk+Kryvyi Rih; Poltava = Poltava+Lubny+Kremenchuk; Sumy = Sumy+
+# Hlukhiv+Romny+Konotop; Chernihiv = Chernihiv+Nizhyn+Pryluky; Kharkiv = Kharkiv+Izium+Kupiansk.
+UKR-05 | ukrainian/orthodox ~, ashkenazi/jewish 0.082, polish/catholic 0.022, russian/orthodox 0.020 | All-Union census 1926 (Ukrainian SSR okrugs, nationality); religion by tradition | M
+UKR-18 | ukrainian/orthodox ~, polish/catholic 0.090, ashkenazi/jewish 0.090, german/protestant 0.040, russian/orthodox 0.020 | All-Union census 1926 (Ukrainian SSR okrugs; Czechs in polish/catholic); religion by tradition | M
+UKR-68 | ukrainian/orthodox ~, polish/catholic 0.084, ashkenazi/jewish 0.079, russian/orthodox 0.012 | All-Union census 1926 (Ukrainian SSR okrugs, nationality); religion by tradition | M
+UKR-KYIV | ukrainian/orthodox ~, ashkenazi/jewish 0.084, russian/orthodox 0.062, polish/catholic 0.014 | All-Union census 1926 (Kyiv okrug incl. city + Bila Tserkva okrug); religion by tradition | M
+UKR-71 | ukrainian/orthodox ~, ashkenazi/jewish 0.050, russian/orthodox 0.007, polish/catholic 0.003 | All-Union census 1926 (Ukrainian SSR okrugs, nationality); religion by tradition | M
+UKR-35 | ukrainian/orthodox ~, russian/orthodox 0.089, ashkenazi/jewish 0.043, romanian/orthodox 0.030, polish/catholic 0.002 | All-Union census 1926 (Zinovievsk okrug; Moldovans as romanian); religion by tradition | M
+UKR-48 | ukrainian/orthodox ~, russian/orthodox 0.103, ashkenazi/jewish 0.067, romanian/orthodox 0.025, german/catholic 0.014, german/protestant 0.013, bulgarian/orthodox 0.011, polish/catholic 0.005 | All-Union census 1926 (Mykolaiv, Pervomaisk okrugs; Belarusians in russian); Beresan Germans half Catholic | M
+UKR-51 | ukrainian/orthodox ~, russian/orthodox 0.188, ashkenazi/jewish 0.173, romanian/orthodox 0.051, german/catholic 0.033, german/protestant 0.033, bulgarian/orthodox 0.018, polish/catholic 0.011 | All-Union census 1926 (Odessa okrug incl. city + est. Balta part of the Moldavian ASSR); Kutschurgan colonies Catholic, Glückstal/Liebental Lutheran | M
+UKR-65 | ukrainian/orthodox ~, russian/orthodox 0.114, ashkenazi/jewish 0.063, german/protestant 0.030, polish/catholic 0.008 | All-Union census 1926 (Kherson okrug, nationality); religion by tradition | M
+UKR-23 | ukrainian/orthodox ~, russian/orthodox 0.193, german/protestant 0.052, bulgarian/orthodox 0.042, ashkenazi/jewish 0.026, polish/catholic 0.004 | All-Union census 1926 (Zaporizhzhia, Melitopol okrugs; Tauride Albanians in bulgarian; Molochna Mennonites/Lutherans as protestant) | M
+UKR-14 | ukrainian/orthodox ~, russian/orthodox 0.253, greek/orthodox 0.053, german/protestant 0.030, ashkenazi/jewish 0.024, tatar/sunni 0.005, polish/catholic 0.004 | All-Union census 1926 (Stalino, Mariupol, Artemivsk okrugs; Mariupol Greeks incl. Urums) | M
+UKR-09 | ukrainian/orthodox ~, russian/orthodox 0.287, ashkenazi/jewish 0.010, german/protestant 0.007, tatar/sunni 0.005, polish/catholic 0.002 | All-Union census 1926 (Luhansk, Starobilsk okrugs, nationality); religion by tradition | M
+UKR-12 | ukrainian/orthodox ~, russian/orthodox 0.091, ashkenazi/jewish 0.051, german/protestant 0.012, polish/catholic 0.005 | All-Union census 1926 (Dnipropetrovsk, Kryvyi Rih okrugs; Chortitza Mennonites as protestant) | M
+UKR-53 | ukrainian/orthodox ~, ashkenazi/jewish 0.029, russian/orthodox 0.027, polish/catholic 0.002 | All-Union census 1926 (Poltava, Lubny, Kremenchuk okrugs, nationality); religion by tradition | M
+UKR-59 | ukrainian/orthodox ~, russian/orthodox 0.077, ashkenazi/jewish 0.016 | All-Union census 1926 (Sumy, Hlukhiv, Romny, Konotop okrugs, nationality); religion by tradition | M
+UKR-74 | ukrainian/orthodox ~, ashkenazi/jewish 0.027, russian/orthodox 0.018 | All-Union census 1926 (Chernihiv, Nizhyn, Pryluky okrugs, nationality); religion by tradition | M
+UKR-63 | ukrainian/orthodox ~, russian/orthodox 0.201, ashkenazi/jewish 0.036, polish/catholic 0.003 | All-Union census 1926 (Kharkiv okrug incl. city, Izium, Kupiansk okrugs); religion by tradition | M
+# Left-bank (Transnistrian) part of the Moldavian ASSR; the eastern Balta/Kodyma/Ananiv raions are in
+# UKR-51. Split of the 1926 MASSR totals (572k) estimated so both parts add back to the census totals.
+SOV-MOLDAVIAN-ASSR | romanian/orthodox ~, ukrainian/orthodox 0.300, russian/orthodox 0.130, ashkenazi/jewish 0.070, german/protestant 0.025, bulgarian/orthodox 0.015, polish/catholic 0.010 | estimate: All-Union census 1926 Moldavian ASSR (Ukr 48.5 %, Mold 30.1 %, R 8.5 %, Jews 8.5 %) split left bank vs Balta area | M
+# ---------------------------------------------------------------- Belorussian SSR (Soviet part)
+BLR | belarusian/orthodox ~, ashkenazi/jewish 0.082, russian/orthodox 0.077, belarusian/catholic 0.030, polish/catholic 0.020, ukrainian/orthodox 0.007 | All-Union census 1926 (BSSR after the 1924/26 enlargements, nationality); Catholic Belarusians estimated | M
+# ---------------------------------------------------------------- Transcaucasian SFSR
+# The Georgian-SSR totals of 1926 include Abkhazia and Ajaria; GEO = Georgian SSR less both, with
+# South Ossetia. "Georgians" incl. Mingrelians (8.6 %) and Svans. Of the 5.9 % "Turks" of Georgia
+# an estimated 40k (1.7 %) are Meskhetian Turks (turkish/sunni), the rest Borchalo Azerbaijanis.
+GEO | georgian/orthodox ~, armenian/oriental_orthodox 0.116, ossetian/orthodox 0.048, azerbaijani/shia 0.042, russian/orthodox 0.035, turkish/sunni 0.017, greek/orthodox 0.014, georgian/jewish 0.011, german/protestant 0.005 | All-Union census 1926 (Georgian SSR less Abkhaz SSR and Ajar ASSR; Meskhetian split estimated); religion by tradition | M
+# Abkhazia: 7.5 % foreign citizens allocated to Greeks (+3.0), Armenians (+1.7), Turks (+0.8).
+GEO-ABKHAZIA | georgian/orthodox ~, abkhaz/orthodox 0.185, armenian/oriental_orthodox 0.145, russian/orthodox 0.127, greek/orthodox 0.100, abkhaz/sunni 0.093, turkish/sunni 0.014 | All-Union census 1926 (Abkhaz SSR; Georgians incl. Mingrelians 20.4 %); Abkhaz est. 2/3 Christian, 1/3 Muslim | M
+GEO-AJARIA | georgian/sunni ~, georgian/orthodox 0.147, armenian/oriental_orthodox 0.079, russian/orthodox 0.097, greek/orthodox 0.052, kurdish/sunni 0.025, turkish/sunni 0.024, ashkenazi/jewish 0.015, persian/shia 0.011 | All-Union census 1926 (Ajar ASSR: Ajarians 53.7 %, Laz and Khemshins in georgian/sunni, foreigners split Turkish/Greek/Persian) | M
+ARM | armenian/oriental_orthodox ~, azerbaijani/shia 0.094, russian/orthodox 0.025, kurdish/yazidi 0.014, persian/shia 0.006 | All-Union census 1926 (SSR of Armenia; "Turks" + Karapapakhs as azerbaijani; Muslim Kurds folded) | M
+# Azärbaycan = Azerbaijan SSR less Nakhchivan, incl. Nagorno-Karabakh AO. Persian subjects (1.9 %)
+# and Persians added to azerbaijani/shia; Tats in talysh; Ukrainians, Belarusians, Georgians
+# (Ingiloys) in russian/sunni respectively; Mountain Jews in ashkenazi (cap of 10 entries).
+AZE-AZARBAYCAN | azerbaijani/shia ~, azerbaijani/sunni 0.180, armenian/oriental_orthodox 0.123, russian/orthodox 0.110, talysh/shia 0.048, lezgin/sunni 0.024, kurdish/shia 0.018, ashkenazi/jewish 0.013, avar/sunni 0.008, german/protestant 0.006 | All-Union census 1926 (Azerbaijan SSR less Nakhchivan ASSR; "Turks" = Azerbaijanis); Azerbaijanis est. 70 % Shia / 30 % Sunni | M
+AZE-NAXCIVAN | azerbaijani/shia ~, armenian/oriental_orthodox 0.107, kurdish/shia 0.025, russian/orthodox 0.018 | All-Union census 1926 (Nakhichevan ASSR, nationality); religion by tradition | M
+# ---------------------------------------------------------------- Kazakh ASSR (then in the RSFSR)
+# KAZ-WEST = Aktyubinsk + Uralsk guberniyas + Adaev uezd; KAZ-NORTH = Akmolinsk guberniya + Kustanai
+# okrug + Pavlodar uezd (est. 220k from Semipalatinsk); KAZ-EAST = rest of Semipalatinsk guberniya;
+# KAZ-SOUTH = Syr-Darya + Dzhetysu guberniyas (Karakalpak AO goes to UZB-KARAKALPAKSTAN).
+KAZ-WEST | kazakh/sunni ~, russian/orthodox 0.139, ukrainian/orthodox 0.092, tatar/sunni 0.016 | All-Union census 1926 (Kazakh ASSR guberniyas, nationality); religion by tradition | M
+KAZ-NORTH | kazakh/sunni ~, russian/orthodox 0.298, ukrainian/orthodox 0.274, german/protestant 0.019, tatar/sunni 0.014, mordvin/orthodox 0.011, belarusian/orthodox 0.006 | All-Union census 1926 (Akmolinsk guberniya, Kustanai okrug + est. Pavlodar uezd); religion by tradition | M
+KAZ-EAST | kazakh/sunni ~, russian/orthodox 0.305, ukrainian/orthodox 0.104, tatar/sunni 0.015, german/protestant 0.008, belarusian/orthodox 0.008, mordvin/orthodox 0.005 | All-Union census 1926 (Semipalatinsk guberniya less est. Pavlodar uezd); religion by tradition | M
+KAZ-SOUTH | kazakh/sunni ~, russian/orthodox 0.111, uzbek/sunni 0.067, ukrainian/orthodox 0.064, uyghur/sunni 0.034, tatar/sunni 0.009 | All-Union census 1926 (Syr-Darya, Dzhetysu guberniyas; Taranchi/Kashgarliks/Uyghurs/Dungans in uyghur, Tajiks in uzbek) | M
+# ---------------------------------------------------------------- Central Asia
+KGZ | kyrgyz/sunni ~, russian/orthodox 0.121, uzbek/sunni 0.115, ukrainian/orthodox 0.065, uyghur/sunni 0.009, hui/sunni 0.006, tatar/sunni 0.005 | All-Union census 1926 (Kirghiz ASSR; Germans in russian, Fergana "Turks" in uzbek) | M
+TKM | turkmen/sunni ~, uzbek/sunni 0.105, russian/orthodox 0.075, persian/shia 0.025, armenian/oriental_orthodox 0.014, baluch/sunni 0.014, kazakh/sunni 0.009, ukrainian/orthodox 0.007, tatar/sunni 0.005 | All-Union census 1926 (Turkmen SSR; foreign citizens, mostly Persian subjects, in persian; Afghans in baluch) | M
+# Tajikistan = Tajik ASSR (incl. Pamirs) + Khujand okrug + Isfara raion of the Uzbek SSR of 1926.
+# Pamiri peoples (counted as Tajiks) are Ismaili: est. 35k -> tajik/shia.
+TJK | tajik/sunni ~, uzbek/sunni 0.248, tajik/shia 0.035, kyrgyz/sunni 0.024, russian/orthodox 0.009 | All-Union census 1926 (Tajik ASSR, Khujand okrug, Isfara raion); Pamiri Ismailis estimated | M
+UZB-TASHKENT | uzbek/sunni ~, russian/orthodox 0.198, kazakh/sunni 0.129, ukrainian/orthodox 0.023, tajik/sunni 0.022, tatar/sunni 0.018, ashkenazi/jewish 0.014, armenian/oriental_orthodox 0.008, kyrgyz/sunni 0.005, german/protestant 0.005 | All-Union census 1926 (Tashkent okrug incl. city; Kurama in uzbek) | M
+UZB-FERGANA | uzbek/sunni ~, tajik/sunni 0.063, kyrgyz/sunni 0.040, russian/orthodox 0.029, uyghur/sunni 0.023, karakalpak/sunni 0.013 | All-Union census 1926 (Andijan, Fergana okrugs; Kipchaks, Kurama, Fergana "Turks" in uzbek) | M
+UZB-SAMARKAND | uzbek/sunni ~, russian/orthodox 0.059, tajik/sunni 0.051, mizrahi/jewish 0.015, persian/shia 0.013, armenian/oriental_orthodox 0.007, ukrainian/orthodox 0.006, kyrgyz/sunni 0.006, tatar/sunni 0.005 | All-Union census 1926 (Samarkand okrug; Bukharan Jews as mizrahi, Irani as persian); Tajiks undercounted (many Persian speakers declared Uzbek) | M
+UZB-BUKHARA | uzbek/sunni ~, tajik/sunni 0.079, russian/orthodox 0.024, central_asian_arab/sunni 0.017, turkmen/sunni 0.014, kazakh/sunni 0.011, persian/shia 0.006, mizrahi/jewish 0.006 | All-Union census 1926 (Bukhara, Zeravshan, Kashka-Darya, Surkhan-Darya okrugs, Kenimekh raion) | M
+UZB-KHOREZM | uzbek/sunni ~, kazakh/sunni 0.010, russian/orthodox 0.008, turkmen/sunni 0.006 | All-Union census 1926 (Khorezm okrug, nationality); religion by tradition | M
+UZB-KARAKALPAKSTAN | karakalpak/sunni ~, kazakh/sunni 0.282, uzbek/sunni 0.276, turkmen/sunni 0.032, russian/orthodox 0.016 | All-Union census 1926 (Kara-Kalpak AO of the Kazakh ASSR, nationality); religion by tradition | M
+# ---------------------------------------------------------------- Mongolia and Tannu Tuva
+# Mongolia: census totals 647.5k (1918) and 738.2k (1935); ~680k in 1925. No ethnic count of the
+# period: shares estimated from the later ethnic structure (Khalkha ~3/4, Oirat groups — Dörbet,
+# Bayad, Zakhchin, Torguud, Ööld, Altai Uriankhai — ~9 %, Kazakhs of the far west, Buryat refugees of
+# 1918-21) plus the Chinese trading/artisan community and Russian settlers of the 1920s.
+MNG | mongol/vajrayana ~, oirat/vajrayana 0.090, han/chinese_folk 0.040, kazakh/sunni 0.030, buryat/vajrayana 0.020, russian/orthodox 0.010 | estimate: 1918/1935 census totals, ethnic shares projected back from the later ethnic structure, Chinese and Russian communities from 1920s accounts | E
+# Tuva: total ~65-70k; Russian settlers ~10k (many left after 1921), a few Mongols and Chinese traders.
+RUS-TY | tuvan/vajrayana ~, russian/orthodox 0.150, han/chinese_folk 0.010, mongol/vajrayana 0.010 | estimate: Tuvan statistics of 1925 and the 1931 TNR census as reported in the literature (Russians ~15 %), rounded | E
+#
+# ---------------------------------------------------------------- Relevance (judged for 1925 only)
+!SOV | polish/catholic | patron | Poland claims protection of the Poles of Soviet Ukraine and Belorussia; minority clauses of the Riga treaty 1921 (art. VII); Polish consulates in Kyiv/Kharkiv/Minsk; ~1.6 % of the Ukrainian SSR, 2 % of the BSSR (census 1926)
+!SOV | uzbek/sunni | organization | Basmachi bands still active in 1925 (eastern Bukhara, Lokai/Ibrahim Bek, remnants in Fergana); Soviet operations against them through 1926
+!SOV | tajik/sunni | organization | Basmachi insurgency centred in the Tajik ASSR (eastern Bukhara) in 1925, with bases across the Afghan border
+!SOV | chechen/sunni | organization | armed resistance in Chechnya and Dagestan (Gotsinsky's imamate remnants) until the August-September 1925 disarmament operation
+!SOV | georgian/orthodox | organization | Menshevik government of Georgia in exile (Paris) and its underground after the crushed August 1924 uprising
+!SOV | georgian/sunni | patron | Treaty of Kars 1921 (art. 6): Ajaria's autonomy for its Muslim population guaranteed with Turkey as party
+!SOV | korean/folk | legal_status | in the Far East most Koreans were foreign (Japanese-subject or stateless) residents in 1925-26 (87k foreign vs 87k citizens, census 1926), without land allotment until naturalization
+# Russians as a settler and party-state elite in Central Asia and Kazakhstan (Semirechye land, korenizatsiya only
+# beginning) are not flagged: relevance is per country and Russians are the all-Union majority. Needs relevance by
+# state or region (follow-up in docs/population.pt-BR.md).
+!MGL | han/chinese_folk | elite, patron | Chinese firms controlled most of Mongolia's trade and credit until the late 1920s; the Republic of China still claimed sovereignty (Sino-Soviet agreement of 1924 recognised Outer Mongolia as part of China)
+!MGL | buryat/vajrayana | elite | Buryat émigré intellectuals and officers (Rinchino, Jamtsarano) held key posts in the MPR government, army and Comintern apparatus in 1925
+!MGL | russian/orthodox | patron | the USSR: Red Army units stationed until March 1925, Soviet advisers and the Mongolian-Soviet trade monopoly
+!TUV | russian/orthodox | legal_status, patron | Russian settlers kept Soviet citizenship and their own self-governing "Russian colony" administration (1920s); the USSR as protector of the Tuvan People's Republic
+# Not flagged, by judgment: Jews (legal equality in 1925; the Yevsektsiya is a party organ, Zionists
+# persecuted, no own movement acting openly); Germans (Volga German ASSR is a titular autonomy like
+# any other, not a distinct legal status; Weimar Germany did not claim Soviet Germans in 1925);
+# Kalmyks/Buryats in the USSR (titular autonomies).
+#
+# SOURCES
+# Всесоюзная перепись населения 1926 года, т. 9-17 (М.: ЦСУ Союза ССР, 1928-29), Таблица VI "Население по полу, народности", as transcribed by Demoscope Weekly (demoscope.ru/weekly/ssp/rus_nac_26.php, sng_nac_26.php, ussr_nac_26.php, with the .xls files) | nationality by guberniya/okrug/ASSR/AO and city, foreign citizens incl. Chinese/Korean columns | official statistics of 1928-29, public domain; transcription used only for the numbers
+# Всесоюзная перепись населения 1939 года, национальный состав по регионам РСФСР (Demoscope Weekly, rus_nac_39.php) | Mordovian ASSR and Buryat-Mongol ASSR composition used to split 1926 units | official statistics, public domain
+# Mongolian censuses 1918 (647.5k) and 1935 (738.2k), totals as cited in statistical references | Mongolia total population | facts
+# Tuvan People's Republic statistics 1925 and census 1931 as reported in Novye issledovaniya Tuvy articles (Lamochenko) | Tuva Russian share ~15-20 % | facts, estimate
+# Treaty of Riga 1921, art. VII; Treaty of Kars 1921, art. 6; Sino-Soviet Agreement 1924 | relevance lines | public treaties

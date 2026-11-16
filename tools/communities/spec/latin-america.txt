@@ -1,0 +1,218 @@
+# Communities of 1925, region latin-america. One line per state: STATE | culture/religion share, ... | source | C/M/E.
+# Format and build: tools/communities/generate.py; method: docs/population.pt-BR.md. Licence: CC BY-SA 4.0.
+# Drafted from the censuses cited on each line and in the SOURCES block; `~` is the rest of the state.
+
+# Region LAM: Mexico, Central America, Caribbean, Guianas, South America, Falklands, Philippines.
+# Composition on 1925-01-01, shares of state population. Format: tools/communities/generate.py.
+#
+# Modelling choices for this region:
+# - National culture keys for Spanish-speaking republics: guatemalan, salvadoran, honduran,
+#   nicaraguan, costa_rican, panamanian, dominican, colombian, venezuelan, ecuadorian, peruvian,
+#   bolivian, chilean, argentine, uruguayan, paraguayan (mestizos, whites, Spanish-speaking
+#   Amerindian and Afro descendants who have switched to Spanish). Indigenous peoples counted by
+#   language, not by the census race question (Mexico: 1930 "habla lengua indígena").
+# - Race kept as culture only for afro_brazilian (1940 "preto") and afro_cuban (1919 "negro");
+#   pardos/mestizos/mulatos are in brazilian/cuban. Elsewhere in mainland Latin America Afro
+#   descendants are in the national key (no legal boundary in 1925).
+# - afro_caribbean = Afro-Caribbean people of the British/Dutch Windward/English-creole world
+#   (Jamaica, Barbados, Trinidad, Leewards, Windwards, Bahamas, Belize Creoles, West Indian migrant
+#   workers in Central America and Cuba, raizales of San Andrés). Dominica and St Lucia speak
+#   Antillean French creole but are kept in afro_caribbean (catholic) as British West Indians.
+# - antillean = Afro/mixed Creoles of Guadeloupe, Martinique and French Guiana.
+# - Brazil and Paraguay Guarani: paraguayan speaks Guarani; one key. Brazilian indigenous
+#   (excluded from the 1940 census) estimated as amazonian.
+# - Aglipayans (Iglesia Filipina Independiente, 13.7 % of the Philippines in 1918) are counted as
+#   catholic (schismatic Catholic rite; no better key). Moros = moro/sunni, pagans = igorot (Cordillera)
+#   or lumad (all other non-Christian non-Muslim Philippine peoples, incl. Mangyan, Aeta, Palawan).
+# - Mexican indigenous Catholics (folk-Catholic syncretism) are catholic; Huichol, gentile
+#   Tarahumara and Lacandón folk.
+# - Haitian Vodou and Afro-Cuban/Brazilian syncretic cults counted catholic (by tradition).
+# - Mexico state shares: the 1930 census (población de 5 años y más que habla lengua indígena,
+#   by entidad; national 16.0 %) applied to 1925; the per-state figures and the split among languages
+#   could NOT be re-verified online in this pass (only the national 16.0 % was), hence flag E.
+
+# ---------------------------------------------------------------- Mexico
+MEX-AGU | mexican/catholic ~ | estimate: 1930 census HLI share (negligible) | E
+MEX-BCN | mexican/catholic ~, han/chinese_folk 0.100, anglo_american/protestant 0.040, japanese/shinto 0.010 | estimate: 1921/1930 census nationality + 1927 count of Chinese residents by state | E
+MEX-BCS | mexican/catholic ~, han/chinese_folk 0.005 | estimate: 1921 census | E
+MEX-CAM | mexican/catholic ~, maya/catholic 0.400 | estimate: 1930 census HLI by state, applied to 1925 | E
+MEX-CHH | mexican/catholic ~, tarahumara/catholic 0.030, tarahumara/folk 0.020, mexican/protestant 0.010, german/protestant 0.012, anglo_american/protestant 0.005, anglo_american/latter_day_saints 0.003, han/chinese_folk 0.003 | estimate: 1930 census HLI; Mennonite settlers of 1922-24 (~6,000); Mormon colonies | E
+MEX-CHP | mexican/catholic ~, tzeltal/catholic 0.090, tzotzil/catholic 0.080, chol/catholic 0.040, mixe_zoque/catholic 0.030, tojolabal/catholic 0.015, guatemalan_maya/catholic 0.015, guatemalan/catholic 0.010, german/protestant 0.002 | estimate: 1930 census HLI by language; Soconusco German planters | E
+MEX-COA | mexican/catholic ~, mexican/protestant 0.012 | estimate: 1921/1930 census religion | E
+MEX-COL | mexican/catholic ~ | estimate: 1930 census | E
+MEX-DIF | mexican/catholic ~, nahua/catholic 0.020, spanish/catholic 0.014, mexican/protestant 0.008, levantine/eastern_catholic 0.004, anglo_american/protestant 0.004, ashkenazi/jewish 0.004, han/chinese_folk 0.002, french/catholic 0.002, german/protestant 0.002 | estimate: 1921 census nationality, 1930 HLI | E
+MEX-DUR | mexican/catholic ~, tepehuan/catholic 0.008 | estimate: 1930 census HLI | E
+MEX-GRO | mexican/catholic ~, nahua/catholic 0.120, mixtec/catholic 0.080, tlapanec/catholic 0.040 | estimate: 1930 census HLI by language (Amuzgo folded into mixtec) | E
+MEX-GUA | mexican/catholic ~ | estimate: 1930 census | E
+MEX-HID | mexican/catholic ~, nahua/catholic 0.160, otomi/catholic 0.140, mexican/protestant 0.005 | estimate: 1930 census HLI by language (Tepehua folded) | E
+MEX-JAL | mexican/catholic ~, huichol/folk 0.003 | estimate: 1930 census HLI | E
+MEX-MEX | mexican/catholic ~, otomi/catholic 0.065, mazahua/catholic 0.050, nahua/catholic 0.030 | estimate: 1930 census HLI by language (Matlatzinca, Ocuiltec folded into otomi) | E
+MEX-MIC | mexican/catholic ~, purepecha/catholic 0.050 | estimate: 1930 census HLI (Mazahua, Otomí, Nahua folded) | E
+MEX-MOR | mexican/catholic ~, nahua/catholic 0.080 | estimate: 1930 census HLI | E
+MEX-NAY | mexican/catholic ~, cora/catholic 0.012, huichol/folk 0.012 | estimate: 1930 census HLI | E
+MEX-NLE | mexican/catholic ~, mexican/protestant 0.012 | estimate: 1930 census religion | E
+MEX-OAX | mexican/catholic ~, zapotec/catholic 0.210, mixtec/catholic 0.140, mazatec/catholic 0.060, mixe_zoque/catholic 0.040, chinantec/catholic 0.040, nahua/catholic 0.010 | estimate: 1930 census HLI by language (Chatino, Chontal, Huave in zapotec; Trique, Cuicatec, Amuzgo in mixtec; Chocho, Ixcatec in mazatec) | E
+MEX-PUE | mexican/catholic ~, nahua/catholic 0.200, totonac/catholic 0.050, otomi/catholic 0.010, mazatec/catholic 0.010, mixtec/catholic 0.010 | estimate: 1930 census HLI by language (Popoloca in mazatec) | E
+MEX-QUE | mexican/catholic ~, otomi/catholic 0.060 | estimate: 1930 census HLI (Pame folded) | E
+MEX-ROO | maya/catholic 0.550, mexican/catholic ~, afro_caribbean/protestant 0.020 | estimate: 1921/1930 census; Cruzob Maya of the centre, Belizean chicleros | E
+MEX-SIN | mexican/catholic ~, cahita/catholic 0.012, han/chinese_folk 0.005 | estimate: 1930 census HLI (Mayo) | E
+MEX-SLP | mexican/catholic ~, nahua/catholic 0.080, huastec/catholic 0.070 | estimate: 1930 census HLI (Pame folded) | E
+MEX-SON | mexican/catholic ~, cahita/catholic 0.075, han/chinese_folk 0.012, mexican/protestant 0.006, anglo_american/protestant 0.005 | estimate: 1930 census HLI (Yaqui and Mayo); 1927 count of Chinese | E
+MEX-TAB | mexican/catholic ~, chontal/catholic 0.050, mexican/protestant 0.010 | estimate: 1930 census HLI (Chol folded) | E
+MEX-TAM | mexican/catholic ~, mexican/protestant 0.008, anglo_american/protestant 0.006, spanish/catholic 0.005 | estimate: 1921 census nationality (Tampico oil) | E
+MEX-TLA | mexican/catholic ~, nahua/catholic 0.120 | estimate: 1930 census HLI (Otomí of Ixtenco folded) | E
+MEX-VER | mexican/catholic ~, nahua/catholic 0.085, totonac/catholic 0.040, huastec/catholic 0.015, mixe_zoque/catholic 0.010, otomi/catholic 0.005, mexican/protestant 0.005 | estimate: 1930 census HLI by language (Popoluca in mixe_zoque; Tepehua in totonac) | E
+MEX-YUC | maya/catholic 0.660, mexican/catholic ~, levantine/eastern_catholic 0.008, mexican/protestant 0.005 | estimate: 1930 census HLI; Lebanese of Mérida | E
+MEX-ZAC | mexican/catholic ~ | estimate: 1930 census | E
+
+# ---------------------------------------------------------------- Central America
+GTM | guatemalan_maya/catholic 0.640, guatemalan/catholic ~, afro_caribbean/protestant 0.004, german/protestant 0.002, german/catholic 0.001 | Guatemala census 1921 (indígena 64.8 %, ladino 35.2 %); religion by tradition | M
+BLZ | afro_caribbean/protestant ~, afro_caribbean/catholic 0.200, mexican/catholic 0.240, maya/catholic 0.080, garifuna/catholic 0.080, guatemalan_maya/catholic 0.040, english/protestant 0.015, hindustani/catholic 0.015 | estimate: British Honduras 1921 census total, shares from colonial reports (Creole, Mestizo, Maya, Carib, East Indian) | E
+SLV | salvadoran/catholic ~, pipil/catholic 0.055 | El Salvador census 1930 (indígena 5.6 %) applied to 1925; Nawat speech among Pipil assumed | M
+HND | honduran/catholic ~, afro_caribbean/protestant 0.015, garifuna/catholic 0.012, miskito/folk 0.009, levantine/orthodox 0.004 | estimate: Honduras 1926 census total; Bay Islanders, West Indian banana workers, Garifuna, Miskito/Pech/Tawahka/Tolupan | E
+NIC | nicaraguan/catholic ~, miskito/protestant 0.032, afro_caribbean/protestant 0.012 | estimate: Nicaragua 1920 census total; Mosquitia (Miskito + Sumu, Moravian), Creoles of Bluefields | E
+CRI | costa_rican/catholic ~, afro_caribbean/protestant 0.034, afro_caribbean/catholic 0.006, bribri/folk 0.008, han/chinese_folk 0.002 | Costa Rica census 1927 (race: negros 4.1 %, indígenas 0.8 %); religion by tradition | M
+PAN | panamanian/catholic ~, afro_caribbean/protestant 0.100, ngabe/folk 0.065, kuna/folk 0.020, han/chinese_folk 0.010 | estimate: Panama 1920 census (race and birthplace) adjusted; Emberá folded into ngabe | E
+
+# ---------------------------------------------------------------- Caribbean (sovereign)
+CUB-PINAR-DEL-RIO | cuban/catholic ~, afro_cuban/catholic 0.085, spanish/catholic 0.070, han/chinese_folk 0.004 | Cuba census 1919 (province, color; foreign-born) adjusted for 1919-25 Spanish immigration | M
+CUB-HABANA | cuban/catholic ~, afro_cuban/catholic 0.085, spanish/catholic 0.130, han/chinese_folk 0.009, anglo_american/protestant 0.004, afro_caribbean/protestant 0.003 | Cuba census 1919 (province, color; foreign-born) adjusted to 1925 | M
+CUB-MATANZAS | cuban/catholic ~, afro_cuban/catholic 0.130, spanish/catholic 0.060, han/chinese_folk 0.008 | Cuba census 1919 (province, color; foreign-born) adjusted to 1925 | M
+CUB-SANTA-CLARA | cuban/catholic ~, afro_cuban/catholic 0.100, spanish/catholic 0.080, han/chinese_folk 0.010, haitian/catholic 0.005 | Cuba census 1919 (province, color; foreign-born) adjusted to 1925 | M
+CUB-CAMAGUEY | cuban/catholic ~, afro_cuban/catholic 0.070, spanish/catholic 0.080, haitian/catholic 0.050, afro_caribbean/protestant 0.040, han/chinese_folk 0.008, anglo_american/protestant 0.004 | Cuba census 1919 + immigration of braceros 1919-25 (1931 census foreign-born by province back-projected) | M
+CUB-ORIENTE | cuban/catholic ~, afro_cuban/catholic 0.160, spanish/catholic 0.060, haitian/catholic 0.055, afro_caribbean/protestant 0.020, han/chinese_folk 0.006, anglo_american/protestant 0.004 | Cuba census 1919 + Haitian and Jamaican braceros 1919-25 (1931 census back-projected) | M
+HTI | haitian/catholic ~, haitian/protestant 0.030, levantine/eastern_catholic 0.002 | estimate: US occupation population estimate 1918-22; religion by mission reports | E
+DOM | dominican/catholic ~, haitian/catholic 0.040, afro_caribbean/protestant 0.012, puerto_rican/catholic 0.007 | Dominican census 1920 (nationality) adjusted to 1925; religion by tradition | M
+
+# ---------------------------------------------------------------- British colonies
+JAM | afro_caribbean/protestant ~, afro_caribbean/catholic 0.055, hindustani/hindu 0.014, hindustani/sunni 0.002, hindustani/protestant 0.005, english/protestant 0.015, english/jewish 0.002, han/chinese_folk 0.004, levantine/eastern_catholic 0.001 | Jamaica census 1921 (race: black 77 %, coloured 18 %, white 1.7 %, East Indian 2.2 %, Chinese 0.4 %; religion by denomination) | M
+BHS | afro_caribbean/protestant ~, afro_caribbean/catholic 0.020, english/protestant 0.120 | Bahamas census 1921 total; colour shares estimated from colonial reports | E
+BRB | afro_caribbean/protestant ~, afro_caribbean/catholic 0.005, english/protestant 0.067 | Barbados census 1921 (white ~6.7 %); Anglican majority | M
+GBR-LEEWARD | afro_caribbean/protestant ~, afro_caribbean/catholic 0.320, english/protestant 0.015, portuguese/catholic 0.008, amazonian/folk 0.003 | Leeward Islands censuses 1921 (Antigua, St Kitts-Nevis, Montserrat, Virgin Is., Dominica); Kalinago of Dominica as amazonian | M
+GBR-WINDWARD | afro_caribbean/catholic 0.520, afro_caribbean/protestant ~, hindustani/hindu 0.020, hindustani/catholic 0.015, english/protestant 0.012, portuguese/catholic 0.006 | Windward Islands censuses 1921 (Grenada, St Vincent, St Lucia); religion by denomination | M
+TTO | afro_caribbean/catholic 0.300, afro_caribbean/protestant ~, hindustani/hindu 0.225, hindustani/sunni 0.055, hindustani/protestant 0.045, hindustani/catholic 0.007, french/catholic 0.015, english/protestant 0.010, venezuelan/catholic 0.010, han/chinese_folk 0.006 | Trinidad and Tobago census 1921 (East Indians 33.2 %; religion by denomination); whites split French creole/English (Portuguese folded into french/catholic) | M
+GUY | hindustani/hindu 0.340, hindustani/sunni 0.065, hindustani/protestant 0.015, afro_caribbean/protestant ~, afro_caribbean/catholic 0.075, portuguese/catholic 0.031, amazonian/folk 0.016, amazonian/protestant 0.015, english/protestant 0.011, han/chinese_folk 0.009 | British Guiana census 1921 (East Indian 42.0 %, Black 39.4 %, Mixed 10.3 %, Portuguese 3.1 %, Amerindian 3.1 %, Chinese 0.9 %, other European 1.1 %); religion by tradition | M
+FLK | english/protestant ~, scottish/protestant 0.250, norwegian/protestant 0.100, chilean/catholic 0.020 | estimate: Falkland Islands census 1921 + whaling stations of South Georgia | E
+
+# ---------------------------------------------------------------- French, Dutch colonies
+FRA-GUADELOUPE | antillean/catholic ~, tamil/catholic 0.040, tamil/hindu 0.035, french/catholic 0.030, afro_caribbean/protestant 0.008 | estimate: recensement 1921/1926 total; Indian descent, békés, Saint-Barth whites, English-speaking St-Martin | E
+FRA-MQ | antillean/catholic ~, tamil/catholic 0.030, tamil/hindu 0.020, french/catholic 0.030 | estimate: recensement 1921/1926 total; Indian descent, békés and metropolitans | E
+FRA-GF | antillean/catholic ~, french/catholic 0.120, afro_caribbean/catholic 0.120, maroon/folk 0.050, amazonian/folk 0.040, brazilian/catholic 0.020, han/chinese_folk 0.010 | estimate: recensement 1921 total; convicts of the bagne, St Lucian gold miners, Aluku/Saramaka, Amerindians | E
+CLP | french/catholic ~ | uninhabited in 1925 (garrison withdrawn 1917) | E
+NLD-CURACAO | papiamento/catholic ~, papiamento/protestant 0.050, afro_caribbean/protestant 0.070, afro_caribbean/catholic 0.030, dutch/protestant 0.050, sephardi/jewish 0.012, venezuelan/catholic 0.015 | estimate: Koloniaal Verslag 1925 population and religion of Curaçao, Aruba, Bonaire and the Windward Islands (St Maarten, Saba, St Eustatius) | E
+SUR | hindustani/hindu 0.220, hindustani/sunni 0.050, javanese/sunni 0.170, surinamese_creole/protestant 0.200, surinamese_creole/catholic ~, maroon/folk 0.140, maroon/protestant 0.020, amazonian/folk 0.025, han/chinese_folk 0.012, dutch/protestant 0.012 | estimate: Suriname census 1921 (107,723) + estimated Bush Negroes and Amerindians; ethnic shares from colonial reports | E
+
+# ---------------------------------------------------------------- South America
+COL-CARIBE | colombian/catholic ~, wayuu/folk 0.030, levantine/eastern_catholic 0.005 | estimate: Colombia census 1918 totals; Wayuu of La Guajira and Sierra Nevada peoples (folded) | E
+COL-ANTIOQUIA | colombian/catholic ~, embera/folk 0.005 | estimate: Colombia census 1918 | E
+COL-CUNDINAMARCA | colombian/catholic ~ | estimate: Colombia census 1918 | E
+COL-SANTANDER | colombian/catholic ~, amazonian/folk 0.003 | estimate: Colombia census 1918 (Barí, U'wa) | E
+COL-TOLIMA | colombian/catholic ~, nasa/catholic 0.008 | estimate: Colombia census 1918 (Nasa of Huila) | E
+COL-PACIFICO | colombian/catholic ~, nasa/catholic 0.035, embera/folk 0.015 | estimate: Colombia census 1918; Nasa and Guambiano (nasa), Emberá, Wounaan, Awá (embera) | E
+COL-SAN-ANDRES | afro_caribbean/protestant ~, colombian/catholic 0.060 | estimate: Colombia census 1918 (raizal English-speaking Baptists) | E
+COL-TERRITORIOS | colombian/catholic ~, amazonian/folk 0.330, amazonian/catholic 0.060 | estimate: Colombia census 1918 of intendencias and comisarías + uncounted forest peoples | E
+VEN | venezuelan/catholic ~, amazonian/folk 0.020, wayuu/folk 0.005, colombian/catholic 0.010, afro_caribbean/protestant 0.004, spanish/catholic 0.004 | estimate: Venezuela census 1926 total; indigenous estimated | E
+ECU | ecuadorian/catholic ~, quechua/catholic 0.360, amazonian/folk 0.030 | estimate: Ecuador census 1950 language and ethnicity shares back-projected to 1925 | E
+PER-NORTE | peruvian/catholic ~, quechua/catholic 0.175, amazonian/folk 0.010, han/chinese_folk 0.004, japanese/shinto 0.002 | estimate: Peru census 1940 (department, mother tongue and race) back-projected | E
+PER-CENTRO | peruvian/catholic ~, quechua/catholic 0.380, amazonian/folk 0.006, japanese/shinto 0.006, han/chinese_folk 0.005 | estimate: Peru census 1940 (department, mother tongue and race) back-projected | E
+PER-SUR | quechua/catholic 0.640, aymara/catholic 0.150, peruvian/catholic ~, amazonian/folk 0.004 | estimate: Peru census 1940 (department, mother tongue) back-projected | E
+PER-ORIENTE | peruvian/catholic ~, amazonian/folk 0.300, quechua/catholic 0.050, han/chinese_folk 0.003 | estimate: Peru census 1940 (Loreto) + uncounted forest peoples | E
+BOL | bolivian/catholic ~, quechua/catholic 0.330, aymara/catholic 0.240, amazonian/catholic 0.020, amazonian/folk 0.010, chaco_indigenous/folk 0.012, chilean/catholic 0.005 | estimate: Bolivia census 1900 (indígena 50.9 %) and 1950 (language) interpolated | E
+PRY | paraguayan/catholic ~, chaco_indigenous/folk 0.025, amazonian/folk 0.010, argentine/catholic 0.010, spanish/catholic 0.006, italian/catholic 0.005, german/protestant 0.004, german/catholic 0.002 | estimate: 1920s Paraguayan official estimates; forest Guaraní (Mbyá, Paĩ, Aché) as amazonian | E
+URY | uruguayan/catholic ~, spanish/catholic 0.060, italian/catholic 0.045, brazilian/catholic 0.015, argentine/catholic 0.010, ashkenazi/jewish 0.006, uruguayan/protestant 0.006, french/catholic 0.004, english/protestant 0.003, german/protestant 0.003 | estimate: Uruguay census 1908 nationality shares projected to 1925 with arrivals | E
+CHL-NORTE | chilean/catholic ~, peruvian/catholic 0.040, bolivian/catholic 0.020, aymara/catholic 0.020, chilean/protestant 0.012, croat/catholic 0.008, spanish/catholic 0.008, english/protestant 0.005, italian/catholic 0.005, han/chinese_folk 0.003 | Chile census 1920 (province, nationality and religion) incl. Tacna under Chilean rule | M
+CHL-CENTRO | chilean/catholic ~, chilean/protestant 0.010, mapuche/folk 0.008, spanish/catholic 0.008, italian/catholic 0.005, levantine/orthodox 0.004, english/protestant 0.003, german/protestant 0.003 | Chile census 1920 (province, nationality and religion) | M
+CHL-SUR | chilean/catholic ~, mapuche/folk 0.100, mapuche/catholic 0.030, german/protestant 0.025, german/catholic 0.015, croat/catholic 0.008, chilean/protestant 0.008, spanish/catholic 0.005, english/protestant 0.004 | Chile census 1920 (province, nationality, religion); Mapuche from 1907 indigenous count | M
+ARG-BUENOS-AIRES | argentine/catholic ~, italian/catholic 0.150, spanish/catholic 0.140, ashkenazi/jewish 0.022, french/catholic 0.010, levantine/eastern_catholic 0.008, uruguayan/catholic 0.008, german/protestant 0.005, english/protestant 0.005 | Argentina census 1914 (Capital + Buenos Aires province, birthplace) adjusted to 1925 with net immigration | M
+ARG-LITORAL | argentine/catholic ~, italian/catholic 0.100, spanish/catholic 0.060, ashkenazi/jewish 0.015, german/catholic 0.015, german/protestant 0.010, paraguayan/catholic 0.012, levantine/eastern_catholic 0.005, french/catholic 0.005, ukrainian/eastern_catholic 0.004 | Argentina census 1914 (Santa Fe, Entre Ríos, Corrientes, Misiones; birthplace) adjusted to 1925 | M
+ARG-CORDOBA | argentine/catholic ~, italian/catholic 0.090, spanish/catholic 0.065, levantine/eastern_catholic 0.007 | Argentina census 1914 (birthplace) adjusted to 1925 | M
+ARG-CUYO | argentine/catholic ~, spanish/catholic 0.090, italian/catholic 0.060, chilean/catholic 0.025, levantine/eastern_catholic 0.008, french/catholic 0.006 | Argentina census 1914 (Mendoza, San Juan, San Luis; birthplace) adjusted to 1925 | M
+ARG-NOROESTE | argentine/catholic ~, quechua/catholic 0.080, spanish/catholic 0.035, italian/catholic 0.020, bolivian/catholic 0.020, chaco_indigenous/folk 0.020, levantine/eastern_catholic 0.006, levantine/orthodox 0.004, levantine/sunni 0.002 | Argentina census 1914 (birthplace) adjusted; Quichua of Santiago del Estero and eastern Salta/Jujuy indigenous estimated | E
+ARG-CHACO | argentine/catholic ~, chaco_indigenous/folk 0.250, paraguayan/catholic 0.100, spanish/catholic 0.040, italian/catholic 0.040, german/catholic 0.010 | estimate: national territories census 1920 + indigenous estimate (Toba, Mocoví, Wichí, Pilagá) | E
+ARG-PATAGONIA | argentine/catholic ~, chilean/catholic 0.100, spanish/catholic 0.070, italian/catholic 0.060, mapuche/folk 0.030, german/catholic 0.025, german/protestant 0.015, welsh/protestant 0.015, english/protestant 0.010 | Argentina census 1914 (La Pampa and Patagonian territories, birthplace) + 1920 territories census, adjusted | M
+
+# ---------------------------------------------------------------- Brazil: color and religion = 1940
+# census by state (preto -> afro_brazilian), immigrant communities from the 1920 census of
+# foreigners by state plus home-language descendants (south) estimated; indigenous estimated.
+BRA-AC | brazilian/catholic ~, afro_brazilian/catholic 0.142, amazonian/folk 0.050, bolivian/catholic 0.010, peruvian/catholic 0.010, brazilian/protestant 0.010 | IBGE census 1940 (color, religion by state) applied to 1925; 1920 census foreigners | E
+BRA-AL | brazilian/catholic ~, afro_brazilian/catholic 0.138, brazilian/protestant 0.005 | IBGE census 1940 (color, religion by state) applied to 1925 | E
+BRA-AM | brazilian/catholic ~, afro_brazilian/catholic 0.072, amazonian/folk 0.080, amazonian/catholic 0.040, portuguese/catholic 0.020, brazilian/protestant 0.010, levantine/eastern_catholic 0.005, sephardi/jewish 0.003 | IBGE census 1940 (color, religion; Amazonas + Roraima) applied to 1925; 1920 foreigners; indigenous estimated | E
+BRA-BA | brazilian/catholic ~, afro_brazilian/catholic 0.201, brazilian/protestant 0.008 | IBGE census 1940 (color, religion by state) applied to 1925 | E
+BRA-CE | brazilian/catholic ~, afro_brazilian/catholic 0.233 | IBGE census 1940 (color, religion by state) applied to 1925 | E
+BRA-ES | brazilian/catholic ~, afro_brazilian/catholic 0.171, italian/catholic 0.080, german/protestant 0.060, german/catholic 0.010, brazilian/protestant 0.015 | IBGE census 1940 (color, religion: 7.5 % evangelical) + 1920 foreigners; Pomeranian/German and Italian colonies estimated | E
+BRA-GO | brazilian/catholic ~, afro_brazilian/catholic 0.169, amazonian/folk 0.012, brazilian/protestant 0.011 | IBGE census 1940 (color, religion; Goiás + Tocantins) applied to 1925 | E
+BRA-MA | brazilian/catholic ~, afro_brazilian/catholic 0.276, amazonian/folk 0.020, brazilian/protestant 0.006 | IBGE census 1940 (color, religion by state) applied to 1925 | E
+BRA-MG | brazilian/catholic ~, afro_brazilian/catholic 0.193, italian/catholic 0.012, brazilian/protestant 0.011 | IBGE census 1940 (color, religion by state) + 1920 foreigners | E
+BRA-MT | brazilian/catholic ~, afro_brazilian/catholic 0.084, amazonian/folk 0.080, paraguayan/catholic 0.060, bolivian/catholic 0.012, brazilian/protestant 0.012 | IBGE census 1940 (color, religion; MT + MS + RO) + 1920 foreigners (10.3 %); indigenous estimated | E
+BRA-PA | brazilian/catholic ~, afro_brazilian/catholic 0.095, amazonian/folk 0.030, portuguese/catholic 0.015, brazilian/protestant 0.012, levantine/eastern_catholic 0.003, sephardi/jewish 0.002 | IBGE census 1940 (color, religion; Pará + Amapá) + 1920 foreigners | E
+BRA-PB | brazilian/catholic ~, afro_brazilian/catholic 0.137, brazilian/protestant 0.007 | IBGE census 1940 (color, religion by state) applied to 1925 | E
+BRA-PE | brazilian/catholic ~, afro_brazilian/catholic 0.155, brazilian/protestant 0.014 | IBGE census 1940 (color, religion by state) applied to 1925 | E
+BRA-PI | brazilian/catholic ~, afro_brazilian/catholic 0.319 | IBGE census 1940 (color, religion by state) applied to 1925 | E
+BRA-PR | brazilian/catholic ~, polish/catholic 0.080, afro_brazilian/catholic 0.049, italian/catholic 0.040, ukrainian/eastern_catholic 0.030, german/protestant 0.025, german/catholic 0.025, brazilian/protestant 0.008, ukrainian/orthodox 0.005 | IBGE census 1940 (color, religion) + 1920 foreigners (9.2 %); Polish, Ukrainian, German colonies estimated | E
+BRA-RJ | brazilian/catholic ~, afro_brazilian/catholic 0.164, portuguese/catholic 0.080, brazilian/protestant 0.025, italian/catholic 0.013, spanish/catholic 0.009, levantine/eastern_catholic 0.003, ashkenazi/jewish 0.002, english/protestant 0.002 | IBGE census 1940 (color, religion; RJ + Distrito Federal) + 1920 foreigners (DF 20.7 %, RJ 3.3 %) | E
+BRA-RN | brazilian/catholic ~, afro_brazilian/catholic 0.134, brazilian/protestant 0.007 | IBGE census 1940 (color, religion by state) applied to 1925 | E
+BRA-RS | brazilian/catholic ~, german/protestant 0.085, german/catholic 0.045, italian/catholic 0.100, afro_brazilian/catholic 0.066, polish/catholic 0.012, uruguayan/catholic 0.012, brazilian/protestant 0.012, ashkenazi/jewish 0.003 | IBGE census 1940 (color, religion: 10.2 % evangelical) + 1920 foreigners (6.9 %); German- and Italian-speaking colonies estimated | E
+BRA-SC | brazilian/catholic ~, german/protestant 0.110, german/catholic 0.110, italian/catholic 0.100, afro_brazilian/catholic 0.052, polish/catholic 0.015, brazilian/protestant 0.005 | IBGE census 1940 (color, religion: 10.9 % evangelical) + 1920 foreigners; German- and Italian-speaking colonies estimated | E
+BRA-SE | brazilian/catholic ~, afro_brazilian/catholic 0.187, brazilian/protestant 0.006 | IBGE census 1940 (color, religion by state) applied to 1925 | E
+BRA-SP | brazilian/catholic ~, italian/catholic 0.100, afro_brazilian/catholic 0.073, spanish/catholic 0.050, portuguese/catholic 0.040, brazilian/protestant 0.012, japanese/shinto 0.006, german/protestant 0.004, german/catholic 0.003, levantine/eastern_catholic 0.007 | IBGE census 1940 (color, religion) + 1920 census foreigners (18.1 %: Italians, Spaniards, Portuguese); Japanese arrivals 1908-24 | E
+
+# ---------------------------------------------------------------- Philippines (US colony)
+PHL-NORTHERN-LUZON | filipino/catholic ~, igorot/folk 0.155, filipino/protestant 0.016 | Philippine census 1918 (province, religion: Catholic + Aglipayan 82 %, pagan 16 %); culture by religion | M
+PHL-CENTRAL-LUZON | filipino/catholic ~, filipino/protestant 0.034, han/chinese_folk 0.015, anglo_american/protestant 0.004, lumad/folk 0.003, spanish/catholic 0.002, japanese/shinto 0.001 | Philippine census 1918 (province incl. Manila, religion; Chinese and foreign residents) | M
+PHL-SOUTHERN-LUZON | filipino/catholic ~, lumad/folk 0.015, filipino/protestant 0.008, han/chinese_folk 0.004, moro/sunni 0.003 | Philippine census 1918 (province, religion) | M
+PHL-WESTERN-VISAYAS | filipino/catholic ~, filipino/protestant 0.012, lumad/folk 0.012, han/chinese_folk 0.004 | Philippine census 1918 (province, religion) | M
+PHL-EASTERN-VISAYAS | filipino/catholic ~, filipino/protestant 0.004, han/chinese_folk 0.003, lumad/folk 0.003 | Philippine census 1918 (province, religion) | M
+PHL-MINDANAO-AND-SULU | moro/sunni 0.370, lumad/folk 0.160, filipino/catholic ~, filipino/protestant 0.006, japanese/shinto 0.006, han/chinese_folk 0.004 | Philippine census 1918 (province, religion: Mohammedan 38 %, pagan 17 %, Buddhist 0.5 % = Japanese of Davao) | M
+
+# ---------------------------------------------------------------- Relevance (1925 only)
+!MEX | spanish/catholic | elite | Spaniards hold a large share of commerce, textile mills and haciendas (1921 census nationality; business registers)
+!MEX | han/chinese_folk | elite, legal_status | Chinese dominate retail in Sonora/Baja California; Sonora laws 27 and 31 (1923) ban Chinese-Mexican marriage and order segregated barrios
+!MEX | german/protestant | elite, legal_status | Mennonite Privilegium granted by Obregón (1921): exemption from military service, own schools; German coffee planters of the Soconusco
+!MEX | maya/catholic | organization | Cruzob Maya of central Quintana Roo, de facto autonomous with own armed force under Gen. Francisco May (agreement of 1915-1929)
+!MEX | cahita/catholic | organization | Yaqui pueblos keep armed bands in the Sierra del Bacatete; open war resumes 1926
+!GUA | german/protestant | elite | German planters control about a third of coffee output (Alta Verapaz, Costa Cuca)
+!GUA | guatemalan_maya/catholic | legal_status | Indigenous labour bound by debt (habilitación) under the 1894 Ley de Trabajadores, enforced until 1934
+!NIC | miskito/protestant | legal_status | Harrison-Altamirano treaty (1905): Mosquitia natives exempt from military service and taxes
+!PAN | kuna/folk | organization | Kuna congress movement (Nele Kantule, Simral Colman); Tule revolution breaks out February 1925
+!PAN | han/chinese_folk | legal_status | Chinese immigration prohibited and residents registered (laws of 1904, 1913)
+!CUB | spanish/catholic | elite | Spaniards hold much of retail and wholesale commerce (1919 census occupation by nativity)
+!CUB | anglo_american/protestant | elite, patron | US interests own most sugar mills; Platt Amendment gives the US a right to intervene
+!CUB | haitian/catholic | legal_status | Contract braceros admitted under the 1917 decree, subject to deportation
+!GBR:C | english/protestant | elite | White planters and merchants dominate land, commerce and the legislative councils of Jamaica, Barbados, Bahamas, Trinidad, British Guiana, British Honduras
+!GBR:C | portuguese/catholic | elite | Madeiran Portuguese dominate retail commerce in British Guiana (1921 census occupations)
+!GBR:C | hindustani/hindu | legal_status | Indenture abolished 1917-20 but East Indians in Trinidad and British Guiana remain under separate immigration ordinances (Hindu/Muslim marriages not legally recognised until 1945/1946)
+!FRA:C | french/catholic | elite, legal_status | Békés own most plantation land in Martinique and Guadeloupe; in French Guiana several thousand of the French are transported convicts of the bagne
+!NLD:C | dutch/protestant | elite | Dutch officials and Protestant planter-merchant families govern Suriname and Curaçao
+!NLD:C | sephardi/jewish | elite | Sephardic merchant families of Curaçao and Paramaribo
+!COL | nasa/catholic | organization, legal_status | Resguardo regime of Law 89 of 1890 (indigenous as legal minors); Quintín Lame movement in Cauca and Tolima
+!PER | quechua/catholic | organization, legal_status | Comunidades indígenas recognised by the 1920 constitution (inalienable lands); Comité Pro-Derecho Indígena Tahuantinsuyo (1919-27)
+!PER | japanese/shinto | patron | Japanese colonists under consular protection; ~20,000 in 1925
+!BOL | aymara/catholic | organization | Caciques apoderados movement (Santos Marka T'ula) litigating ayllu lands; Jesús de Machaca rising 1921
+!CHL | mapuche/folk | organization, legal_status | Reducciones under the títulos de merced regime; Federación Araucana (1922) and Sociedad Caupolicán; Mapuche deputy Francisco Melivilu (1924)
+!CHL | peruvian/catholic | patron | Peruvians of Tacna-Arica, claimed by Peru pending the plebiscite (Coolidge award March 1925)
+!ARG | english/protestant | elite | British-owned railways, meat-packing and Patagonian sheep estancias
+!ARG | chaco_indigenous/folk | legal_status | Toba and Mocoví held in state reducciones (Napalpí, massacre of July 1924)
+!BRA | german/protestant | organization | German-language Lutheran synods, school network and Volksverein of Rio Grande do Sul and Santa Catarina
+!BRA | japanese/shinto | patron | Japanese government subsidises emigration (Kaigai Kogyo Kabushiki Kaisha, 1924-25) and protects settlers through consulates
+!BRA | amazonian/folk | legal_status | Indigenous under tutelage of the SPI (1910) and "relatively incapable" under the 1916 Civil Code
+!USA:C | moro/sunni | legal_status, organization | Separate Department of Mindanao and Sulu / Bureau of Non-Christian Tribes; datus petition to remain under US rule (Zamboanga declaration 1924)
+!USA:C | igorot/folk | legal_status | Mountain Province administered as special non-Christian province
+!USA:C | han/chinese_folk | elite, legal_status | Chinese dominate retail; US Chinese exclusion applied; Bookkeeping Act 2972 (1921) aimed at Chinese merchants
+!USA:C | japanese/shinto | patron, legal_status | Japanese abaca planters of Davao; Public Land Act 1919 bars them from owning land; Japanese consulate
+!USA:C | anglo_american/protestant | elite, legal_status | American colonial officials and businessmen with US-citizen status
+!USA:C | spanish/catholic | elite | Spanish landowning and commercial families (haciendas, tobacco, Manila trade)
+
+# SOURCES
+# IBGE, Tendências demográficas: uma análise da população com base nos resultados dos Censos Demográficos 1940 e 2000 (Estudos e Pesquisas 20, 2007), tables 6 and 8 | 1940 population present by color and by religion per state (exact numbers used) | official statistics, facts
+# IBGE, Anuário Estatístico do Brasil 1936, table IX "Recenseamento de 1920 - População do Brasil e das suas Unidades Políticas, segundo o sexo, o estado civil e a nacionalidade" | foreigners by state 1920 (SP 829,851; DF 239,129; RS 151,025; PR 62,753 ...) | official statistics, public domain
+# Census Office of the Philippine Islands, Census of the Philippine Islands 1918, vol. II (Manila 1921), ch. VII Religion (archive.org censusofphilippi02phil) | religion % by province (Catholic, Aglipayan, Protestant, Mohammedan, pagan, Buddhist) and population by province | public domain (US/PH government 1921)
+# Dirección General de Estadística, Censo de la República de Guatemala 1921 (1924) | indígenas vs ladinos (704,973 ladinos of 2,004,900) | public domain
+# INEGI, La población indígena en México (2004) and Censo General de Población 1930 | national 16.0 % HLI 1930; state shares not re-verified | official statistics, facts
+# Dirección General del Censo, Census of the Republic of Cuba 1919 | color and nativity by province (shares recalled, not re-verified) | public domain
+# Tercer Censo Nacional de la República Argentina 1914, vol. II | population and foreign-born by province (province totals checked; nationality shares recalled) | public domain
+# Census of Trinidad and Tobago 1921; Census of British Guiana 1921; Census of Jamaica 1921; Barbados, Windward and Leeward censuses 1921 | race and religion (recalled shares) | public domain (colonial government reports)
+# Dirección General de Estadística de Chile, Censo 1920 | province population, nationality, religion | public domain
+# Censo de la República Dominicana 1920; Censo de Costa Rica 1927; Censo de El Salvador 1930; Censo de Panamá 1920 | race / nationality shares (recalled) | public domain
+# Dirección Nacional de Estadística, Censo Nacional del Perú 1940 | department mother tongue and race, back-projected | public domain
+# Oficina Nacional de Estadística de Bolivia, Censo 1900 and Censo 1950 | indigenous share and language, interpolated | public domain
+# Wikipedia (es) "Censo de México de 1930" | pointer only, state totals 1930 | used as pointer

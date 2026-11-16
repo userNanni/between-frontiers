@@ -1,0 +1,191 @@
+# Communities of 1925, region europe-east. One line per state: STATE | culture/religion share, ... | source | C/M/E.
+# Format and build: tools/communities/generate.py; method: docs/population.pt-BR.md. Licence: CC BY-SA 4.0.
+# Drafted from the censuses cited on each line and in the SOURCES block; `~` is the rest of the state.
+
+# Region EEU: population composition on 1925-01-01, as shares of each state.
+# Modelling choices for this region:
+# - Jews are counted by RELIGION (not declared nationality): ashkenazi in Central/Eastern Europe and
+#   the Baltics, sephardi in the Balkans, Greece, Turkey and the Dodecanese (Corfu and Ioannina
+#   Romaniotes folded into sephardi).
+# - Religion "none"/"without confession" (Czech lands 1921) is folded into the tradition of origin
+#   (catholic). Czechoslovak Hussite Church (1920) counted with protestant.
+# - Unitarians (Transylvania) and Reformed/Calvinists counted as protestant. Old Believers and
+#   Lipovans as orthodox. Mariavites as catholic.
+# - Anatolian Alevis (Turkish and Kurdish) and Albanian Bektashis mapped to shia; the 1927 Turkish
+#   and 1923 Albanian counts had no sect question, so those splits are estimates (flag M).
+# - Yugoslavia 1921 counted "Serbian or Croatian" as one mother tongue: speakers are split by
+#   religion (orthodox = serb, catholic = croat incl. Bunjevci/Sokci, muslim = bosniak).
+#   Slavic speakers of Vardar Macedonia (Juzna Srbija) and the Slavophones of Greek Macedonia use the
+#   key `macedonian`. Montenegrins are under `serb` (the census did not separate them).
+# - Rusyns of Subcarpathia, eastern Slovakia, Vojvodina and Maramures use `rusyn`; Lemkos in the
+#   Polish census ("ruska" nationality) stay under `ukrainian`.
+# - Pomaks (Bulgarian-speaking Muslims) = bulgarian/sunni, also in Greece and Turkey.
+# - Kashubians (Pomorze, Danzig) folded into polish; Arvanites (Orthodox Albanian speakers of Attica,
+#   Boeotia, Epirus) folded into greek, as the 1928 census mostly recorded them.
+# - Geometry: states follow modern units (states.ron), so 1921 voivodeship/land figures were blended
+#   where the modern unit differs (noted per line).
+
+# ---------------------------------------------------------------- Poland
+POL-WARSZAWA | polish/catholic ~, ashkenazi/jewish 0.170, german/protestant 0.025, polish/protestant 0.007 | Polish census 1921 (Warszawa city + Warszawa voivodeship, religion × nationality), weighted to modern Mazowieckie | M
+POL-LODZ | polish/catholic ~, ashkenazi/jewish 0.143, german/protestant 0.075, german/catholic 0.008, polish/protestant 0.010 | Polish census 1921 (Łódź voivodeship, religion × nationality) | C
+POL-KIELCE | polish/catholic ~, ashkenazi/jewish 0.100 | Polish census 1921 (Kielce voivodeship, religion), core counties of modern Świętokrzyskie | M
+POL-KRAKOW | polish/catholic ~, ashkenazi/jewish 0.074, ukrainian/eastern_catholic 0.020 | Polish census 1921 (Kraków voivodeship, religion × nationality; Lemkos as Ruthenian) | C
+POL-LUBLIN | polish/catholic ~, ashkenazi/jewish 0.138, ukrainian/orthodox 0.065, german/protestant 0.008 | Polish census 1921 (Lublin voivodeship, religion: RC 77.6, Orthodox 7.3, Jewish 13.8) | C
+POL-LWOW | polish/catholic ~, ukrainian/eastern_catholic 0.345, ashkenazi/jewish 0.115, polish/eastern_catholic 0.065, german/protestant 0.005 | Polish census 1921 (Lwów voivodeship, religion RC 46.5/GC 41.5/Jewish 11.5 × nationality) | C
+POL-STANISLAWOW | ukrainian/eastern_catholic ~, polish/catholic 0.140, ashkenazi/jewish 0.106, polish/eastern_catholic 0.040, german/protestant 0.008 | Polish census 1921 (Stanisławów voivodeship, religion GC 74.3/RC 14.3/Jewish 10.6 × nationality) | C
+POL-TARNOPOL | ukrainian/eastern_catholic ~, polish/catholic 0.313, ashkenazi/jewish 0.090, polish/eastern_catholic 0.075 | Polish census 1921 (Tarnopol voivodeship, religion RC 447,810/GC 847,907/Jewish ~129k × nationality) | C
+POL-WOLYN | ukrainian/orthodox ~, polish/catholic 0.130, ashkenazi/jewish 0.110, german/protestant 0.024, czech/catholic 0.015, russian/orthodox 0.015 | Polish census 1921 (Wołyń voivodeship, religion × nationality), checked against 1931 mother tongue | M
+POL-POLESIE | belarusian/orthodox ~, ukrainian/orthodox 0.330, polish/catholic 0.110, ashkenazi/jewish 0.105, russian/orthodox 0.015 | Polish census 1921 (Polesie voivodeship, religion); Orthodox locals ("tutejsi", many declared Polish) split by dialect zone of modern Brest oblast | M
+POL-NOWOGRODEK | belarusian/orthodox ~, polish/catholic 0.380, ashkenazi/jewish 0.110, belarusian/catholic 0.070, russian/orthodox 0.010 | Polish census 1921 (Nowogródek voiv. + Grodno and Wołkowysk counties of Białystok voiv., religion), blended to modern Hrodna oblast | M
+POL-BIALYSTOK | polish/catholic ~, belarusian/orthodox 0.135, ashkenazi/jewish 0.120, lithuanian/catholic 0.015, german/protestant 0.008 | Polish census 1921 (Białystok voivodeship, religion RC 68.5/Orthodox 15.1/Jewish 14.9) minus Grodno and Wołkowysk | M
+POL-WILNO | polish/catholic ~, ashkenazi/jewish 0.150, lithuanian/catholic 0.080, belarusian/catholic 0.050, russian/orthodox 0.040, belarusian/orthodox 0.030 | estimate: Wilno land not in the 1921 Polish census; 1931 Polish census (Wilno city and Wilno-Troki/Święciany counties, religion × language) applied to 1925 | E
+POL-POMORZE | polish/catholic ~, german/protestant 0.120, german/catholic 0.010 | Polish census 1921 (Pomorze voivodeship: Polish 80.9, German 18.8) adjusted for German emigration to 1925 using 1931 | M
+POL-POZNAN | polish/catholic ~, german/protestant 0.100, german/catholic 0.015, ashkenazi/jewish 0.008 | Polish census 1921 (Poznań voivodeship: Polish 83.4, German 16.5) adjusted for German emigration to 1925 using 1931 | M
+POL-SLASK | polish/catholic ~, german/catholic 0.085, ashkenazi/jewish 0.030, polish/protestant 0.016, german/protestant 0.015 | estimate: Polish Upper Silesia joined 1922 (not in 1921 census); Cieszyn 1921 + Zagłębie/Częstochowa (Kielce voiv. 1921) + German minority per 1922–26 school/vote counts | E
+!POL | german/protestant | patron, organization | Germany contests the Corridor and Upper Silesia; German parties in the Sejm (Deutschtumsbund, Deutscher Volksbund); Polish/League minority petitions 1920s
+!POL | german/catholic | patron, organization | Upper Silesian Germans, Deutscher Volksbund (1921) and Geneva Convention 1922 minority regime
+!POL | ukrainian/eastern_catholic | organization | Galician Ukrainian parties and the Ukrainian Military Organization (UVO, active 1920–); boycott of the 1922 election; UNDO forms July 1925
+!POL | belarusian/orthodox | organization | Belarusian Sejm club (1922) and KPZB-led partisan unrest in 1924 in Polesie/Nowogródek
+!POL | ashkenazi/jewish | organization | Zionist, Bund and Agudat parties; Bloc of National Minorities in the 1922 election
+!POL | lithuanian/catholic | patron | Lithuania claims Wilno and has no relations with Poland (1922–1938)
+
+# ---------------------------------------------------------------- Free City of Danzig
+POL-DANZIG | german/protestant ~, german/catholic 0.340, polish/catholic 0.040, ashkenazi/jewish 0.020 | Danzig census 1923 (language: German 95.0, Polish 3.3, Kashubian 0.7) × 1924/1926 religion shares (Protestant 57, Catholic 38, Jewish ~2–3) | M
+!DNZ | polish/catholic | legal_status, patron | Poland–Danzig Convention 1920: Polish citizens' rights, Polish post and port rights; Poland represents Danzig abroad
+
+# ---------------------------------------------------------------- Czechoslovakia
+CZE-CECHY | czech/catholic ~, german/catholic 0.311, czech/protestant 0.080, german/protestant 0.015, ashkenazi/jewish 0.012 | Czechoslovak census 1921 (Bohemia: Czechoslovak 65.7, German 32.6; religion incl. Czechoslovak Church and Czech Brethren) | C
+CZE-MORAVA | czech/catholic ~, german/catholic 0.227, czech/protestant 0.050, german/protestant 0.015, ashkenazi/jewish 0.013, polish/catholic 0.011, polish/protestant 0.010 | Czechoslovak census 1921 (Moravia + Silesia, nationality × religion) | C
+SVK | slovak/catholic ~, hungarian/catholic 0.135, slovak/protestant 0.107, hungarian/protestant 0.064, ashkenazi/jewish 0.045, german/catholic 0.035, slovak/eastern_catholic 0.031, rusyn/eastern_catholic 0.029, german/protestant 0.010 | Czechoslovak census 1921 (Slovakia: Czechoslovak 67.2, Hungarian 21.7, German 4.7, Ruthenian 2.9; RC 70.9, Lutheran 12.7, Reformed 5.4, GC 6.5, Jewish 4.5) | C
+CZE-PODKARPATSKA-RUS | rusyn/eastern_catholic ~, ashkenazi/jewish 0.153, rusyn/orthodox 0.100, hungarian/protestant 0.100, hungarian/catholic 0.068, czech/catholic 0.030, romanian/orthodox 0.018, german/catholic 0.017 | Czechoslovak census 1921 (Subcarpathian Ruthenia: Ruthenian ~62, Hungarian 17, Jewish 13, Czechoslovak 3; Jewish by religion ~15) | M
+!CZE | german/catholic | patron, organization | Sudeten German parties in parliament (DNP, DNSAP, BdL, DSAP); claimed by Austria/Germany in 1918–19
+!CZE | german/protestant | patron, organization | as above
+!CZE | hungarian/catholic | patron, organization | Hungary's revisionism after Trianon; Hungarian parties (OKP, Hungarian National Party)
+!CZE | hungarian/protestant | patron, organization | as above
+!CZE | polish/catholic | patron | Poland claims Teschen Silesia (1920 Spa division)
+!CZE | polish/protestant | patron | as above (Lutheran Poles of Teschen)
+!CZE | slovak/catholic | organization | Hlinka's Slovak People's Party, autonomist opposition
+!CZE | ashkenazi/jewish | organization | Jewish Party (1919); Jewish nationality recognized in the census
+
+# ---------------------------------------------------------------- Hungary
+HUN-CENTRAL-HUNGARY | hungarian/catholic ~, hungarian/protestant 0.180, ashkenazi/jewish 0.147, german/catholic 0.075, slovak/catholic 0.012 | Hungarian census 1920 (Budapest + Pest-Pilis-Solt-Kiskun, mother tongue × religion), weighted to modern Central Hungary | M
+HUN-CENTRAL-TRANSDANUBIA | hungarian/catholic ~, hungarian/protestant 0.190, german/catholic 0.080, ashkenazi/jewish 0.031, german/protestant 0.020, slovak/catholic 0.014 | Hungarian census 1920 (Fejér, Komárom-Esztergom, Veszprém counties, mother tongue × religion) | M
+HUN-WESTERN-TRANSDANUBIA | hungarian/catholic ~, hungarian/protestant 0.120, german/catholic 0.050, ashkenazi/jewish 0.031, german/protestant 0.026, croat/catholic 0.015, slovene/catholic 0.006 | Hungarian census 1920 (Győr-Moson-Pozsony, Sopron, Vas, Zala counties, mother tongue × religion) | M
+HUN-SOUTHERN-TRANSDANUBIA | hungarian/catholic ~, hungarian/protestant 0.200, german/catholic 0.130, german/protestant 0.050, croat/catholic 0.027, ashkenazi/jewish 0.024, serb/orthodox 0.005 | Hungarian census 1920 (Baranya, Somogy, Tolna counties, mother tongue × religion) | M
+HUN-NORTHERN-HUNGARY | hungarian/catholic ~, hungarian/protestant 0.220, hungarian/eastern_catholic 0.065, ashkenazi/jewish 0.047, german/catholic 0.013, slovak/catholic 0.012, slovak/protestant 0.009 | Hungarian census 1920 (Borsod, Abaúj, Zemplén, Heves, Nógrád counties, mother tongue × religion) | M
+HUN-NORTHERN-GREAT-PLAIN | hungarian/catholic ~, hungarian/protestant 0.400, hungarian/eastern_catholic 0.085, ashkenazi/jewish 0.046, romanian/orthodox 0.009, slovak/protestant 0.008 | Hungarian census 1920 (Hajdú, Bihar, Szabolcs, Szatmár, Jász-Nagykun-Szolnok counties, mother tongue × religion) | M
+HUN-GREAT-SOUTHERN-PLAIN | hungarian/catholic ~, hungarian/protestant 0.240, slovak/protestant 0.040, german/catholic 0.032, ashkenazi/jewish 0.028, croat/catholic 0.012, romanian/orthodox 0.010 | Hungarian census 1920 (Bács-Bodrog, Békés, Csongrád, south Pest counties, mother tongue × religion) | M
+!HUN | ashkenazi/jewish | legal_status | numerus clausus, Act XXV of 1920 (university quotas by "race and nationality")
+
+# ---------------------------------------------------------------- Romania
+ROU-OLTENIA | romanian/orthodox ~, romani/orthodox 0.020 | Romanian census 1930 (Oltenia, ethnicity × religion) applied to 1925 | M
+ROU-MUNTENIA | romanian/orthodox ~, ashkenazi/jewish 0.022, romani/orthodox 0.022, hungarian/catholic 0.009, bulgarian/orthodox 0.008 | Romanian census 1930 (Muntenia incl. Bucharest, ethnicity × religion) applied to 1925 | M
+ROU-MOLDOVA | romanian/orthodox ~, ashkenazi/jewish 0.065, romanian/catholic 0.035, romani/orthodox 0.015, hungarian/catholic 0.010, russian/orthodox 0.005 | Romanian census 1930 (Moldavia, ethnicity × religion; Csángó Catholics mostly declared Romanian) applied to 1925 | M
+ROU-DOBROGEA | romanian/orthodox ~, bulgarian/orthodox 0.250, turkish/sunni 0.200, russian/orthodox 0.030, tatar/sunni 0.030, german/catholic 0.015, romani/sunni 0.012, ukrainian/orthodox 0.012, greek/orthodox 0.010, armenian/oriental_orthodox 0.005 | Romanian census 1930 (Constanța, Tulcea, Durostor, Caliacra) adjusted back to 1925: Aromanian colonists of 1925–30 removed, Turkish emigration added back | M
+ROU-BUCOVINA | romanian/orthodox ~, ukrainian/orthodox 0.330, ashkenazi/jewish 0.098, german/catholic 0.045, russian/orthodox 0.036, polish/catholic 0.027, ukrainian/eastern_catholic 0.020, german/protestant 0.020, hungarian/catholic 0.010 | Romanian census 1930 (Bukovina + Hotin county parts in modern Chernivtsi), ethnicity × religion, applied to 1925 | M
+MDA | romanian/orthodox ~, russian/orthodox 0.100, ashkenazi/jewish 0.080, ukrainian/orthodox 0.060, gagauz/orthodox 0.050, bulgarian/orthodox 0.023, romani/orthodox 0.006 | Romanian census 1930 (Bessarabia counties within modern Moldova, ethnicity), religion by tradition, applied to 1925 | M
+ROU-TRANSILVANIA | romanian/orthodox ~, romanian/eastern_catholic 0.270, hungarian/protestant 0.170, hungarian/catholic 0.130, german/protestant 0.072, ashkenazi/jewish 0.025, romani/orthodox 0.022, german/catholic 0.008 | Romanian census 1930 (Transylvania proper counties, ethnicity × religion; Reformed + Unitarian = protestant) applied to 1925 | M
+ROU-BANAT | romanian/orthodox ~, german/catholic 0.235, hungarian/catholic 0.100, serb/orthodox 0.040, romanian/eastern_catholic 0.030, romani/orthodox 0.015, czech/catholic 0.015, ashkenazi/jewish 0.012, bulgarian/catholic 0.010, croat/catholic 0.006 | Romanian census 1930 (Timiș-Torontal, Caraș, Severin parts; ethnicity × religion) applied to 1925 | M
+ROU-CRISANA-MARAMURES | romanian/orthodox ~, romanian/eastern_catholic 0.250, hungarian/protestant 0.160, hungarian/catholic 0.100, ashkenazi/jewish 0.055, german/catholic 0.030, rusyn/eastern_catholic 0.015, romani/orthodox 0.015, slovak/catholic 0.012 | Romanian census 1930 (Arad, Bihor, Satu Mare, Maramureș, Sălaj; ethnicity × religion) applied to 1925 | M
+!ROM | hungarian/protestant | patron, organization | Hungary's revisionism; Országos Magyar Párt (Hungarian Party, 1922)
+!ROM | hungarian/catholic | patron, organization | as above
+!ROM | german/protestant | organization | Verband der Deutschen in Großrumänien (1921), German parliamentary group
+!ROM | german/catholic | organization | Banat Swabians: Deutsch-Schwäbische Volksgemeinschaft (1921)
+!ROM | bulgarian/orthodox | patron, organization | Bulgaria claims Southern Dobruja; Internal Dobrujan Revolutionary Organization (1923)
+!ROM | russian/orthodox | patron | USSR does not recognize the union of Bessarabia; Tatarbunary rising Sept 1924; Moldavian ASSR Oct 1924
+!ROM | ukrainian/orthodox | patron | as above
+!ROM | ashkenazi/jewish | organization | Union of Native Jews / Union of Romanian Jews (Filderman), Jewish national clubs in Bukovina and Bessarabia
+
+# ---------------------------------------------------------------- Yugoslavia
+SVN | slovene/catholic ~, german/catholic 0.039, slovene/protestant 0.020, hungarian/catholic 0.014, croat/catholic 0.010, serb/orthodox 0.005 | Yugoslav census 1921 (Slovenia, mother tongue × religion; Prekmurje Lutherans) | C
+HRV | croat/catholic ~, serb/orthodox 0.220, german/catholic 0.040, hungarian/catholic 0.025, czech/catholic 0.012, german/protestant 0.008, hungarian/protestant 0.008, slovene/catholic 0.008, ashkenazi/jewish 0.008, slovak/protestant 0.005 | Yugoslav census 1921 (Croatia-Slavonia without eastern Srem, plus Baranja; mother tongue × religion) | M
+HRV-DALMACIJA | croat/catholic ~, serb/orthodox 0.170, italian/catholic 0.006 | Yugoslav census 1921 (Dalmatia, mother tongue × religion) | C
+BIH | serb/orthodox ~, bosniak/sunni 0.311, croat/catholic 0.230, german/catholic 0.009, sephardi/jewish 0.006 | Yugoslav census 1921 (Bosnia-Herzegovina: Orthodox 43.9, Muslim 31.1, Catholic 23.5, Jewish 0.6) | C
+SRB | serb/orthodox ~, romanian/orthodox 0.045, bosniak/sunni 0.032, bulgarian/orthodox 0.018, albanian/sunni 0.016, romani/orthodox 0.015 | Yugoslav census 1921 (Serbia proper incl. Belgrade, Serbian Sandžak, Preševo and the Western Outlands; mother tongue × religion; Vlachs as romanian) | M
+SRB-VOJVODINA | serb/orthodox ~, hungarian/catholic 0.200, german/catholic 0.180, croat/catholic 0.078, romanian/orthodox 0.041, slovak/protestant 0.037, hungarian/protestant 0.035, german/protestant 0.030, ashkenazi/jewish 0.011, rusyn/eastern_catholic 0.008 | Yugoslav census 1921 (Banat, Bačka and Srem, mother tongue × religion; Bunjevci and Šokci as croat) | M
+KOS | albanian/sunni ~, serb/orthodox 0.260, albanian/catholic 0.030, turkish/sunni 0.025, bosniak/sunni 0.030, romani/sunni 0.020 | Yugoslav census 1921 (Kosovo districts: Albanian ~64, Muslim ~72) | M
+MKD | macedonian/orthodox ~, albanian/sunni 0.150, turkish/sunni 0.130, serb/orthodox 0.030, macedonian/sunni 0.020, romani/sunni 0.020, aromanian/orthodox 0.010, sephardi/jewish 0.009 | Yugoslav census 1921 (Vardar Macedonia: Turkish 118,758, Albanian 110,674 of ~808k; Slavic speakers recorded as Serbo-Croatian) | M
+MNE | serb/orthodox ~, bosniak/sunni 0.120, albanian/sunni 0.060, albanian/catholic 0.030, croat/catholic 0.030 | Yugoslav census 1921 (Montenegro + Boka + Montenegrin Sandžak, mother tongue × religion) | M
+!YUG | croat/catholic | organization | Croatian (Republican) Peasant Party, main opposition; banned under the Obznana and its leaders arrested in early Jan 1925
+!YUG | bosniak/sunni | organization | Yugoslav Muslim Organization (JMO)
+!YUG | albanian/sunni | organization | kaçak insurgency and the Kosovo Committee; Džemijet party in the 1923 parliament
+!YUG | macedonian/orthodox | organization, patron | IMRO cheta raids from Bulgaria; Bulgaria claims Macedonia
+!YUG | hungarian/catholic | patron | Hungary's revisionism after Trianon
+!YUG | hungarian/protestant | patron | as above
+!YUG | german/catholic | organization | Schwäbisch-Deutscher Kulturbund (1920) and the Partei der Deutschen (1922, seats in 1923)
+!YUG | german/protestant | organization | as above
+!YUG | bulgarian/orthodox | patron | Western Outlands ceded by Bulgaria at Neuilly (1919), claimed by Bulgaria
+!YUG | italian/catholic | legal_status, patron | Treaty of Rapallo (1920): Italians in Dalmatia keep Italian citizenship and schools
+
+# ---------------------------------------------------------------- Bulgaria
+BGR-SEVERNA | bulgarian/orthodox ~, turkish/sunni 0.137, romanian/orthodox 0.028, romani/sunni 0.017, romani/orthodox 0.012, bulgarian/catholic 0.006, bulgarian/sunni 0.005 | Bulgarian census 1926 (northern okrugs, mother tongue × religion; Pomaks = bulgarian/sunni) | M
+BGR-YUZHNA | bulgarian/orthodox ~, turkish/sunni 0.081, bulgarian/sunni 0.030, sephardi/jewish 0.012, romani/orthodox 0.012, romani/sunni 0.009, bulgarian/catholic 0.008, armenian/oriental_orthodox 0.006, russian/orthodox 0.005 | Bulgarian census 1926 (southern and western okrugs, mother tongue × religion) | M
+
+# ---------------------------------------------------------------- Greece
+GRC-MAKEDONIA | greek/orthodox ~, macedonian/orthodox 0.075, sephardi/jewish 0.050, aromanian/orthodox 0.015, armenian/oriental_orthodox 0.007, romani/orthodox 0.005 | Greek census 1928 (Central and Western Macedonia, mother tongue × religion; Slavophones counted 81,984, raised for under-declaration) | M
+GRC-THRAKI | greek/orthodox ~, turkish/sunni 0.150, bulgarian/sunni 0.030, armenian/oriental_orthodox 0.014, sephardi/jewish 0.009, romani/sunni 0.007 | Greek census 1928 (Western Thrace: Turkish-speaking Muslims 84,585, Pomaks 16,740; plus Drama and Kavala) | C
+GRC-REST | greek/orthodox ~, albanian/sunni 0.025, aromanian/orthodox 0.020, sephardi/jewish 0.006 | Greek census 1928 (Thessaly and Epirus, mother tongue × religion; Muslim Chams) | C
+GRC-STEREA | greek/orthodox ~, armenian/oriental_orthodox 0.012 | Greek census 1928 (Attica and Central Greece; Arvanites recorded mostly as Greek) | C
+GRC-PELOPONNISOS | greek/orthodox ~ | Greek census 1928 (Peloponnese and Western Greece) | C
+GRC-IONIOI | greek/orthodox ~, greek/catholic 0.020, sephardi/jewish 0.009 | Greek census 1928 (Ionian Islands; Corfu Catholics and Jews) | C
+GRC-AIGAIO | greek/orthodox ~, greek/catholic 0.021 | Greek census 1928 (North Aegean and Cyclades; Catholics of Syros, Tinos, Naxos) | C
+GRC-KRITI | greek/orthodox ~ | Greek census 1928 (Crete; Muslims exchanged 1923–24) | C
+!GRE | macedonian/orthodox | patron | Bulgaria; the Politis–Kalfov Protocol (Sept 1924) named them a Bulgarian minority, rejected by the Greek parliament in early 1925
+!GRE | turkish/sunni | legal_status, patron | Western Thrace Muslims exempt from the exchange (Lausanne 1923, minority clauses); Turkey as protector
+!GRE | bulgarian/sunni | legal_status | Pomaks of Western Thrace, same Lausanne exemption
+!GRE | albanian/sunni | patron | Chams: Albania protests their inclusion in the exchange before the League (1924–25)
+!GRE | sephardi/jewish | organization | Zionist Federation and the Jewish community of Salonica act in elections
+
+# ---------------------------------------------------------------- Dodecanese (Italian)
+GRC-DODECANESE | greek/orthodox ~, turkish/sunni 0.060, sephardi/jewish 0.040, italian/catholic 0.020 | estimate: Italian administration counts of 1922 and Italian census 1931 (Rhodes Jews ~4,000, Muslims of Rhodes and Kos) applied to 1925 | E
+!ITA:C | italian/catholic | legal_status | Italian citizens (officials, garrison, early settlers) in a possession whose natives hold a lesser status
+
+# ---------------------------------------------------------------- Albania
+ALB | albanian/sunni ~, albanian/shia 0.160, albanian/orthodox 0.150, albanian/catholic 0.100, greek/orthodox 0.035, aromanian/orthodox 0.015, macedonian/orthodox 0.005 | Albanian government count 1923 (religion); Bektashi share and minorities estimated | M
+!ALB | greek/orthodox | patron, legal_status | Greece claims Northern Epirus; minority schools under Albania's declaration to the League (1921)
+
+# ---------------------------------------------------------------- Turkey
+TUR-ISTANBUL | turkish/sunni ~, greek/orthodox 0.125, armenian/oriental_orthodox 0.060, sephardi/jewish 0.058, italian/catholic 0.012, russian/orthodox 0.008, bulgarian/orthodox 0.005 | Turkish census 1927 (İstanbul vilayet 794,444, mother tongue × religion; Levantine Catholics as italian) | M
+TUR-BATI-MARMARA | turkish/sunni ~, turkish/shia 0.030, circassian/sunni 0.010, bulgarian/sunni 0.010, sephardi/jewish 0.009, greek/orthodox 0.009 | Turkish census 1927 (Balıkesir, Çanakkale, Edirne, Kırklareli, Tekirdağ; Imbros/Tenedos Greeks) | M
+TUR-EGE | turkish/sunni ~, turkish/shia 0.030, sephardi/jewish 0.008 | Turkish census 1927 (İzmir, Aydın, Manisa, Denizli, Muğla, Afyon, Kütahya) | M
+TUR-DOGU-MARMARA | turkish/sunni ~, circassian/sunni 0.050, turkish/shia 0.030, georgian/sunni 0.011, bosniak/sunni 0.006 | Turkish census 1927 (Bursa, Kocaeli, Bolu, Eskişehir, Bilecik; Abkhaz folded into circassian) | M
+TUR-BATI-ANADOLU | turkish/sunni ~, kurdish/sunni 0.040, turkish/shia 0.025 | Turkish census 1927 (Ankara, Konya; Central Anatolian Kurds) | M
+TUR-AKDENIZ | turkish/sunni ~, turkish/shia 0.043, kurdish/sunni 0.023, kurdish/shia 0.013, levantine/alawite 0.013 | Turkish census 1927 (Antalya, Burdur, Isparta, İçel, Mersin, Adana, Cebelibereket, Maraş; Arab Alawites of Çukurova) | M
+TUR-ORTA-ANADOLU | turkish/sunni ~, turkish/shia 0.110, circassian/sunni 0.030, kurdish/shia 0.025, kurdish/sunni 0.020 | Turkish census 1927 (Sivas, Kayseri, Yozgat, Kırşehir, Niğde, Aksaray; Uzunyayla Circassians) | M
+TUR-BATI-KARADENIZ | turkish/sunni ~, turkish/shia 0.080, circassian/sunni 0.017 | Turkish census 1927 (Zonguldak, Kastamonu, Çankırı, Sinop, Samsun, Tokat, Çorum, Amasya) | M
+TUR-DOGU-KARADENIZ | turkish/sunni ~, laz/sunni 0.052, georgian/sunni 0.025, turkish/shia 0.020, greek/sunni 0.008 | Turkish census 1927 (Trabzon, Rize, Artvin, Giresun, Ordu, Gümüşane, Şebinkarahisar); Laz from the 1935 count | M
+TUR-KUZEYDOGU-ANADOLU | turkish/sunni ~, kurdish/sunni 0.190, azerbaijani/shia 0.060, turkish/shia 0.060, kurdish/shia 0.040, georgian/sunni 0.010 | Turkish census 1927 (Erzurum, Erzincan, Bayazıt 58% Kurdish, Kars; Karapapak/Azeris of Kars-Iğdır) | M
+TUR-ORTADOGU-ANADOLU | kurdish/sunni ~, turkish/sunni 0.370, kurdish/shia 0.150, turkish/shia 0.060 | Turkish census 1927 (Elazığ incl. Dersim 53% Kurdish, Malatya, Bitlis 75%, Van 77%, Hakkâri 89%, Muş, Genç); Dersim Alevis estimated | M
+TUR-GUNEYDOGU-ANADOLU | kurdish/sunni ~, turkish/sunni 0.393, mesopotamian/sunni 0.090, assyrian/syriac 0.017, armenian/oriental_orthodox 0.005, kurdish/yazidi 0.005 | Turkish census 1927 (Diyarbekir 69% Kurdish, Mardin 61%, Siirt 74%, Urfa 42%, Gaziantep; Arabic and Syriac speakers) | M
+!TUR | kurdish/sunni | organization | Azadî society (1923) and the Beytüşşebap mutiny (Sept 1924), preparing the Sheikh Said revolt of Feb 1925
+!TUR | greek/orthodox | legal_status, patron | Lausanne minority status, Istanbul Greeks "établis" exempt from the exchange, Imbros/Tenedos (Art. 14); Greece as protector
+!TUR | armenian/oriental_orthodox | legal_status | Lausanne non-Muslim minority clauses (Arts. 37–45)
+!TUR | sephardi/jewish | legal_status | Lausanne non-Muslim minority clauses (Arts. 37–45)
+
+# ---------------------------------------------------------------- Baltics
+EST | estonian/protestant ~, estonian/orthodox 0.108, russian/orthodox 0.082, german/protestant 0.017, swedish/protestant 0.007, latvian/protestant 0.005 | Estonian census 1922 (nationality: Estonian 87.6, Russian 8.2, German 1.7, Swedish 0.7; Lutheran 78.2, Orthodox 19.0) | C
+LVA | latvian/protestant ~, latvian/catholic 0.180, russian/orthodox 0.126, ashkenazi/jewish 0.052, german/protestant 0.038, polish/catholic 0.028, latvian/orthodox 0.015, lithuanian/catholic 0.012, belarusian/catholic 0.008, belarusian/orthodox 0.006 | Latvian census 1925 (nationality: Latvian 73.4, Russian 12.6, Jewish 5.2, German 3.8, Polish 2.8; Lutheran 57.2, Catholic 23.7, Orthodox + Old Believers 14.3) | C
+LTU | lithuanian/catholic ~, ashkenazi/jewish 0.072, lithuanian/protestant 0.045, german/protestant 0.040, polish/catholic 0.030, russian/orthodox 0.023, latvian/protestant 0.006 | Lithuanian census 1923 (Lithuanian 84.2, Jewish 7.6, Polish 3.2, Russian 2.5, German 1.4) + Memel Territory census 1925 (German 41.9, Lithuanian 26.6, Memellander 24.2) | C
+!EST | german/protestant | elite, organization | Baltic German landed and urban elite (estates expropriated 1919 but still dominant in commerce); German-Baltic Party in the Riigikogu
+!LAT | german/protestant | elite, organization | Baltic German urban and former landowning elite; German-Baltic parliamentary faction (Schiemann)
+!LTU | german/protestant | patron, organization | Memel Territory: Germany contests the 1923 annexation; autonomy under the Memel Convention (1924); German parties dominate the Memel Diet
+!LTU | polish/catholic | patron | Poland, in open conflict with Lithuania over Wilno
+
+# SOURCES
+# Główny Urząd Statystyczny, Pierwszy Powszechny Spis Rzeczypospolitej Polskiej z dnia 30 września 1921 r. (Statystyka Polski, voivodeship volumes, 1926–28) | religion × nationality by voivodeship | official statistics, public domain
+# Główny Urząd Statystyczny, Drugi Powszechny Spis Ludności z dn. 9.XII.1931 r. (voivodeship volumes) | Wilno land, Upper Silesia, German emigration adjustment, Wołyń/Polesie/Nowogródek cross-checks | official statistics, public domain
+# Statistisches Landesamt der Freien Stadt Danzig, Volkszählung 1. Nov. 1923 and 1924/1926 results | language and religion | official statistics, public domain
+# Státní úřad statistický, Sčítání lidu v republice Československé ze dne 15. února 1921 (Československá statistika, sv. 9, 1924) | nationality and religion by land | official statistics, public domain
+# Magyar Statisztikai Közlemények, Az 1920. évi népszámlálás (vols. 69, 71) | mother tongue and religion by county | official statistics, public domain
+# Institutul Central de Statistică, Recensământul general al populației României din 29 decemvrie 1930 (vol. II, neam și religie) | ethnicity and religion by county/province | official statistics, public domain
+# Definitivni rezultati popisa stanovništva od 31 januara 1921 god. (Sarajevo 1932) | mother tongue and religion by oblast/district | official statistics, public domain
+# B. Ilievski, "The ethnic and religious structure of the population in the Vardar part of Macedonia according to the censuses of 1921 and 1931", Macedonian Historical Review 3 (2012) | Turkish and Albanian speakers in Vardar Macedonia 1921 | facts only
+# Glavna direktsiya na statistikata, Prebroyavane na naselenieto v Tsarstvo Bulgaria na 31.XII.1926 | mother tongue and religion by okrug | official statistics, public domain
+# Γενική Στατιστική Υπηρεσία, Στατιστικά αποτελέσματα της απογραφής του πληθυσμού της Ελλάδος της 15-16 Μαΐου 1928 | mother tongue and religion by region; Western Thrace Muslim, Turkish-speaking and Pomak counts | official statistics, public domain
+# Albanian Ministry of the Interior, population count of 1923 (as reported in the Statesman's Year-Book and League of Nations documents) | religion totals | public domain facts
+# İstatistik Umum Müdürlüğü, 28 Teşrinievvel 1927 Umumi Nüfus Tahriri (1928–29); F. Dündar, Türkiye nüfus sayımlarında azınlıklar (1999) for the tables | vilayet populations, mother tongue totals and Kurdish shares by vilayet | official statistics, public domain; facts only from the secondary work
+# Riigi Statistika Keskbüroo, 1922 a. üldrahvalugemise andmed | nationality and religion | official statistics, public domain
+# Valsts statistiskā pārvalde, Trešā tautas skaitīšana Latvijā 1925. gadā | nationality and religion | official statistics, public domain
+# Centralinis statistikos biuras, Lietuvos gyventojai: 1923 m. rugsėjo 17 d. surašymo duomenys; Memelgebiet Volkszählung 1925 | nationality and religion | official statistics, public domain
+# Annuario statistico italiano / Istituto Centrale di Statistica, VII Censimento 1931 (Isole italiane dell'Egeo) | Dodecanese composition (back-projected) | official statistics, public domain
+# Wikipedia articles (1921 Polish census, Lwów/Stanisławów/Tarnopol/Lublin/Białystok voivodeships, 1927 Turkish census, Turkish Kurdistan, Free City of Danzig, Turks of Western Thrace) used only as pointers to the census figures above | pointers | CC BY-SA, not copied

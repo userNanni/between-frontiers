@@ -364,5 +364,12 @@ As correções podem voltar para o OpenHistoricalMap.
 ## Decisões em aberto
 
 1. Parâmetros da curva ABC das comunidades: pesos da relevância, corte e teto de linhas por estado.
-2. Lista de comunidades (pares cultura + religião) de 1925.
-3. Regra de assimilação: taxa base e peso de lei, discriminação e concentração.
+   Proposta, para o dono decidir: pesos 3/2/1/1/1 (elite, status legal, organização, patrono,
+   concentração), corte de 95 %, teto de 8 linhas e piso nacional de 2 %
+   (`docs/population.pt-BR.md`).
+2. Lista de comunidades (pares cultura + religião) de 1925. Proposta, para o dono decidir: 552
+   culturas, 24 religiões e 852 comunidades, com a composição dos 870 estados e a fonte de cada um
+   (`docs/population.pt-BR.md`, `data/scenario/1925/communities.ron`).
+3. Regra de assimilação: taxa base e peso de lei, discriminação e concentração. Proposta, sem
+   código, para o dono decidir: 1,5 % ao ano para a cultura e 0,2 % para a religião, vezes lei,
+   (1 − discriminação), (1 − concentração)² e família linguística (`docs/population.pt-BR.md`).
