@@ -336,3 +336,130 @@ A lista de tags não tem estes casos. Ficam com o dono mais próximo:
 
 - Jubalândia → ITA. A transferência do Quênia para a Itália foi em 29 de junho de 1925.
 - Svalbard → NOR. A soberania norueguesa entrou em vigor em 14 de agosto de 1925.
+
+## Zonas marítimas
+
+`bf-mapgen seas` corta a água do mapa em zonas marítimas e grava o grafo que a guerra (comboio,
+bloqueio, desembarque) e o comércio da fase 4 vão usar. Ele lê a `provinces.png` já gravada, então
+as províncias não mudam:
+
+```bash
+cargo run -p bf-mapgen --release -- seas            # gera seas.png e seas.ron
+cargo run -p bf-mapgen --release -- seas --survey   # lista os polígonos marinhos, para escrever as regras
+```
+
+| Arquivo | Conteúdo |
+|---|---|
+| `data/raw/ne_10m_geography_marine_polys.zip` | Natural Earth 5.1.0, polígonos marinhos com nome (306: oceanos, mares, golfos, baías, estreitos). Domínio público, hash fixo em `sources.rs` |
+| `data/map/sea_zones.ron` | Regras escritas à mão: zonas, gelo, estreitos e canais (CC BY-SA 4.0) |
+| `assets/map/seas.png` | PNG cinza de 8 bits do tamanho da `provinces.png`. Pixel = id da zona (1..N); 0 = terra ou lago. É para o thread de interface; o cliente ainda não lê |
+| `assets/map/seas.ron` | `SeasFile` de `bf_sim::sea`: zonas, contatos, portos, estreitos e canais |
+
+Em uso: **63 zonas**, 98 contatos, 24 estreitos e canais, 713 portos (estado × zona) em 497 estados
+costeiros. O `bf_sim::sea::SeaGraph` carrega o grafo (`GameData::seas`) e responde
+`route(de, para, opções)`. Nada disso está no tick.
+
+### Recorte
+
+- Cada zona é uma lista de polígonos do Natural Earth, pelo nome. Um polígono pode vir cortado por
+  uma caixa lon/lat: assim o Atlântico Norte se divide em oeste, centro, nordeste e sudeste, e o
+  Barents, em sul (livre de gelo) e norte. O pixel fica com a primeira zona do arquivo que o
+  reivindica, então os mares vêm antes dos oceanos em volta.
+- O pixel de água que nenhum polígono listado cobre vai para a zona mais próxima pela água: busca
+  em largura na ordem dos pixels, determinística. Isso cobre golfos e baías não listados (179
+  polígonos) e a faixa ao sul do Cabo Horn. Água que não toca nenhuma zona (lagos) fica fora.
+- São 63 zonas, mais que as cerca de 50 do desenho. As que passaram são os mares pequenos que um
+  estreito fecha (Mármara, Azov, Kattegat, Golfo de Finlândia e de Bótnia, Mar Branco) e os
+  oceanos partidos para que o comboio tenha onde estar.
+- O Cáspio é zona isolada (`isolated`): o único fora da regra de que todo porto alcança todo porto.
+
+### Portos, contatos e distância
+
+- **Porto:** o estado com pixel de terra encostado (vizinhança de 4, com a volta em ±180°) numa
+  zona tem porto nela. O peso é a extensão do contato em arestas de pixel, **só geometria**. A
+  capacidade do porto vem depois, com a infraestrutura portuária da economia.
+- **Contato:** duas zonas com pixels encostados.
+- **Distância:** geodésica entre os polos de inacessibilidade das zonas (o mesmo cálculo do
+  `center` dos estados) e do centro do estado ao centro da zona. É grosseira: serve para comparar
+  rotas, não para medir viagem.
+
+### Estreitos e canais
+
+Critério (pedido do dono): entra o que **pode ser fechado por quem tem as margens e cujo
+fechamento muda a rota ou prende uma frota**. O estreito é uma aresta declarada que substitui o
+contato natural entre as duas zonas: fechar tira a passagem. Ele também cria a aresta quando a
+textura, a cerca de 5 km por pixel, não mostra água (o Bósforo tem 3 pixels).
+
+| Entram | Tipo |
+|---|---|
+| Gibraltar, Dover, Øresund, os Belts, Messina, Otranto, Dardanelos, Bósforo, Kerch, Bab-el-Mandeb, Ormuz, Malaca (com Singapura), Sunda, Lombok, Tsushima, Tsugaru, La Pérouse, Tartária, Bering, Magalhães | estreito |
+| Suez (1869), Panamá (1914), Kiel (1895), Corinto (1893) | canal, fechado antes da data de abertura |
+
+Ficam como contato comum, porque ninguém fecha das margens ou porque há outro caminho ao lado:
+Groenlândia–Islândia–Reino Unido, o Canal de Moçambique, o Estreito da Sicília (largo), o
+Estreito de Taiwan (passa-se pelo leste da ilha), o Estreito da Flórida, o Canal de Iucatã, Belle
+Isle e Cabot (há dois caminhos para o Golfo de São Lourenço) e a Passagem de Drake. Magalhães entra
+porque o Cabo Horn fica como contato aberto: fechar o estreito alonga a rota, não a corta.
+
+**Quem controla.** O arquivo grava os estados das margens, nunca o dono. O controlador sai do dono
+desses estados no momento (`SeaGraph::controllers`), então muda quando a margem muda de mão.
+Margens de donos diferentes (Øresund: Dinamarca e Suécia; Bab-el-Mandeb: Iêmen, Reino Unido,
+França e Itália): **basta um fechar**. Uma bateria, um campo minado ou uma frota de um lado só
+fecham a passagem, como na prática. Teste: a Suécia fecha o Øresund mas não os Belts, e o Báltico
+fica aberto; a Dinamarca fecha os dois, e sobra o canal de Kiel; Dinamarca e Alemanha juntas
+fecham o Báltico. Dois limites do mapa ficam ditos: a Zona do Canal do Panamá não é estado (a
+margem é PAN, e o controle americano de 1925 está só no campo de regime), e Suez sai egípcio (os
+"pontos reservados" britânicos de 1922 também estão só no regime).
+
+**Regime jurídico.** O campo `regime` cita o tratado que governa a passagem, com a fonte, para a
+fase 4 ligar "fechar é romper tratado":
+- Convenção de Constantinopla de 1888 (Suez);
+- Convenção dos Estreitos de Lausanne (1923), em vigor em 1925, depois Montreux (1936);
+- Hay–Bunau-Varilla (1903) e Torrijos–Carter (1977), para o Panamá;
+- Versalhes, arts. 380–386 (Kiel);
+- Convenção de Copenhague de 1857 (estreitos dinamarqueses);
+- tratado de limites Chile–Argentina de 1881 (Magalhães);
+- passagem em trânsito da CNUDM de 1982, para os estreitos sem tratado próprio.
+
+Sem comportamento agora.
+
+### Gelo
+
+Atributo por zona: livre, sazonal (fechado no inverno do norte sem quebra-gelo) ou permanente
+(fechado nas duas estações do jogo sem quebra-gelo). Toda zona com gelo cita a fonte em
+`sea_zones.ron` (Wikipedia, NOAA, só fatos). `route` recebe a estação e se há quebra-gelo.
+
+- **Livres:** o Barents sul, onde está Murmansk (a Corrente do Atlântico Norte), e o Mar da
+  Noruega. Teste: Murmansk sai para Londres no inverno.
+- **Sazonais:**
+  - o Mar Branco (Arkhangelsk, de outubro/novembro a abril/maio; teste: fechado no inverno, aberto
+    com quebra-gelo);
+  - Bótnia e Finlândia (Leningrado);
+  - Azov, Okhotsk, Bering, Hudson, Labrador–Baffin, Groenlândia, Golfo de São Lourenço (Montreal
+    só passa a ter navegação no ano todo em 1964);
+  - o Cáspio.
+- **Permanentes:** o Oceano Ártico, o arquipélago canadense e o Beaufort, e também Kara,
+  Laptev–Sibéria Oriental e Chukchi. Esses mares abrem só 2 a 4 meses por ano e precisam de
+  quebra-gelo na Rota do Mar do Norte (a primeira travessia numa temporada é de 1932). Abertos no
+  "verão" do jogo, fariam a rota do Ártico mais curta que Suez já em 1925.
+
+Limite conhecido: o gelo é da zona inteira. O Golfo de Pedro, o Grande (Vladivostok) congela de
+dezembro a abril, mas o Mar do Japão é livre; o Bo Hai tem gelo na Baía de Liaodong, mas fica com o
+Mar Amarelo. Quando o porto contar (fase 4), o gelo pode ir para o porto.
+
+### Testes
+
+- `cargo test -p bf-mapgen seas`:
+  - o gerador é determinístico num mundo sintético e preenche a água aberta sem tocar no lago;
+  - regras quebradas são recusadas;
+  - o `seas.ron` gravado bate com as regras e com a contagem de pixels do `seas.png`.
+- `crates/bf-sim/tests/sea_zones.rs`:
+  - todo porto alcança todo porto, menos o Cáspio;
+  - todo estreito liga duas zonas e tem margem;
+  - fechar Suez leva Bombaim–Londres para o Cabo;
+  - fechar Malaca desvia por Sunda ou Lombok;
+  - fechar o Bósforo ou os Dardanelos fecha o Mar Negro;
+  - Murmansk segue aberto no inverno e Arkhangelsk não;
+  - o controle segue a margem;
+  - o Panamá abre em 1914, e Magalhães tem o Horn atrás.
+- Duas rodadas do gerador dão os mesmos bytes.
