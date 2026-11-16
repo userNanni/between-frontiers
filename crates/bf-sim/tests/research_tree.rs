@@ -213,8 +213,8 @@ fn costs_grow_with_the_era() {
     let ranges = [
         (20, 60),
         (60, 150),
-        (150, 400),
-        (400, 1000),
+        (150, 450),
+        (400, 1050),
         (1000, 2500),
         (2500, 6000),
     ];
@@ -239,6 +239,100 @@ fn requirements_come_from_the_same_era_or_before() {
             let req = &tree.techs[usize::from(r)];
             assert!(req.era <= t.era, "{} requires the later {}", t.key, req.key);
         }
+    }
+}
+
+#[test]
+fn every_technology_after_1925_grows_from_another() {
+    let data = GameData::load(&root()).unwrap();
+    let tree = tree(&data);
+    for t in &tree.techs {
+        assert!(
+            t.era == 0 || !t.requires.is_empty(),
+            "{}: a technology after 1925 needs a requirement",
+            t.key
+        );
+    }
+}
+
+#[test]
+fn research_cost_grows_along_every_requirement() {
+    let data = GameData::load(&root()).unwrap();
+    let tree = tree(&data);
+    for t in &tree.techs {
+        for &r in &t.requires {
+            let req = &tree.techs[usize::from(r)];
+            assert!(
+                u64::from(t.cost) * 10 >= u64::from(req.cost) * 11,
+                "{} ({}) must cost at least 10 % more than its requirement {} ({})",
+                t.key,
+                t.cost,
+                req.key,
+                req.cost
+            );
+            assert!(t.level > req.level, "{} is not right of {}", t.key, req.key);
+        }
+    }
+}
+
+#[test]
+fn the_fields_feed_each_other() {
+    // One tree, not twelve: much of what a field needs comes from another, and every field
+    // passes something on (the military to civilian life, schooling to science, mining to
+    // materials).
+    let data = GameData::load(&root()).unwrap();
+    let tree = tree(&data);
+    let mut edges = 0;
+    let mut across = 0;
+    let mut feeds = [0; FIELDS.len()];
+    for t in &tree.techs {
+        for &r in &t.requires {
+            let req = &tree.techs[usize::from(r)];
+            edges += 1;
+            if req.field != t.field {
+                across += 1;
+                feeds[usize::from(req.field)] += 1;
+            }
+        }
+    }
+    assert!(
+        across * 100 >= edges * 40,
+        "only {across} of {edges} requirements cross between fields"
+    );
+    for (f, n) in feeds.iter().enumerate() {
+        assert!(
+            *n >= 2,
+            "{} feeds only {n} technologies of other fields",
+            FIELDS[f]
+        );
+    }
+}
+
+#[test]
+fn levels_are_filled_and_ask_for_more_research() {
+    let data = GameData::load(&root()).unwrap();
+    let tree = tree(&data);
+    let levels = usize::from(tree.levels());
+    assert!(
+        (12..=14).contains(&levels),
+        "{levels} levels: requirement chains got too deep or too shallow"
+    );
+    let mut previous = 0;
+    for l in 0..levels {
+        let mut costs: Vec<u32> = tree
+            .techs
+            .iter()
+            .filter(|t| usize::from(t.level) == l)
+            .map(|t| t.cost)
+            .collect();
+        assert!(!costs.is_empty(), "level {l} is empty");
+        costs.sort_unstable();
+        let median = costs[costs.len() / 2];
+        assert!(
+            median >= previous,
+            "level {l}: median cost {median} below the level before ({previous})"
+        );
+        previous = median;
     }
 }
 

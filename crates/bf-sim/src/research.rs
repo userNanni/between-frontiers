@@ -33,6 +33,11 @@ pub const FIELDS: [&str; 12] = [
 /// Eras by first year; era 0 holds what was known before the game starts.
 pub const ERAS: [i32; 6] = [0, 1925, 1945, 1965, 1985, 2005];
 
+/// Levels per era. A technology's level is the first level of its era, or one past the highest
+/// level among its requirements, whichever is later: the tree reads left to right by level, each
+/// level asking for more research than the one before (the cost grows along every requirement).
+pub const LEVELS_PER_ERA: u8 = 2;
+
 /// What a technology changes besides unlocking methods and goods, per mille.
 pub const EFFECTS: [&str; 5] = [
     // Fewer deaths (vaccines, antibiotics, sanitation).
@@ -149,6 +154,8 @@ pub struct Tech {
     pub field: u8,
     pub era: u8,
     pub requires: Vec<u16>,
+    /// Column in the tree: see [`LEVELS_PER_ERA`].
+    pub level: u8,
     pub demonstrated: i32,
     pub industrialized: i32,
     pub cost: u32,
@@ -322,6 +329,7 @@ impl TechTree {
                 field,
                 era: d.era,
                 requires,
+                level: 0,
                 demonstrated: d.demonstrated,
                 industrialized: d.industrialized,
                 cost: d.cost,
@@ -351,11 +359,32 @@ impl TechTree {
         for t in 0..techs.len() {
             visit(t, &techs, &mut state)?;
         }
+        // Levels, requirements first.
+        fn level(t: usize, techs: &mut [Tech], done: &mut [bool]) -> u8 {
+            if !done[t] {
+                let mut l = techs[t].era * LEVELS_PER_ERA;
+                for r in techs[t].requires.clone() {
+                    l = l.max(level(r as usize, techs, done) + 1);
+                }
+                techs[t].level = l;
+                done[t] = true;
+            }
+            techs[t].level
+        }
+        let mut done = vec![false; techs.len()];
+        for t in 0..techs.len() {
+            level(t, &mut techs, &mut done);
+        }
         Ok(Self {
             techs,
             method_tech,
             good_techs,
         })
+    }
+
+    /// Number of levels (columns) in the tree.
+    pub fn levels(&self) -> u8 {
+        self.techs.iter().map(|t| t.level + 1).max().unwrap_or(0)
     }
 
     pub fn tech(&self, key: &str) -> Option<usize> {
