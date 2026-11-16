@@ -84,7 +84,7 @@ uma necessidade pode ser só das profissões urbanas (aluguel de moradia urbana)
 1. Preço por estado e por mercado nacional: oferta e demanda fecham semanalmente, com preço sensível à escassez.
 2. Estoques, para que a falta e o excesso não se resolvam no mesmo tick.
 3. Comércio entre mercados nacionais, com custo de transporte.
-4. Moeda, câmbio e inflação, por último.
+4. Moeda, câmbio e inflação, por último (feito na fase 3, fatia 3c: `state.pt-BR.md`).
 
 Cada passo entra com o benchmark de 100 anos verde e com a calibração de 1925 conferida: produção mundial de cada
 bem, PIB e consumo por habitante dentro das faixas dos dados históricos.

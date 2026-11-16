@@ -68,6 +68,18 @@ O CWE escolheu linhas para fugir do "espaguete" de centenas de tecnologias. A no
 oposta: as áreas se alimentam umas das outras, e a tela de grafo (filtro por área, caminho aceso)
 é a resposta ao espaguete.
 
+## Fase 3c: moeda, banco central e dívida
+
+| | CWE | Nós | Diferença |
+|---|---|---|---|
+| Moeda | uma só, a do Victoria 3 (sem inflação nem câmbio) | por país: nível de preços, inflação, câmbio por paridade com inércia e risco | à frente |
+| Dívida | a do Victoria 3: limite de crédito pelo ouro e pelo PIB, juro, falência | títulos por credor (casa, banco central, exterior, dólar), prêmio de risco, calote com perdão parcial e histórico | à frente no mecanismo |
+| Banco central | não há | regra de Taylor, autonomia histórica, taxa do jogador | à frente |
+| Perspectiva econômica | sistema "Economic Outlook" | inflação, juros e dívida por país, ainda sem confiança nem ciclo de investimento | atrás no ciclo; o plano continua |
+| FMI | dentro da ONU funcional | não há; o calote só fecha o crédito por três anos | fase 4, com Bretton Woods |
+
+O CWE só serviu de comparação: nada dele entrou.
+
 ## Fases seguintes: o que o CWE tem e nós ainda não
 
 | Sistema do CWE | Nossa fase | Nota |
