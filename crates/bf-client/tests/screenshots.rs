@@ -1038,11 +1038,7 @@ fn country_figure_blocks() {
         let used: Vec<egui::Rect> = {
             let layout = bf_client::hud::Layout::load(&bf_client::hud::file(&pt));
             let first = layout.tiles()[k];
-            let label = h
-                .state()
-                .shared
-                .i18n
-                .tr(&format!("tile-short-{first}"));
+            let label = h.state().shared.i18n.tr(&format!("tile-short-{first}"));
             vec![button_at(&h, &label)]
         };
         drag(&mut h, from, used[0].left_center() + egui::vec2(4.0, 0.0));
