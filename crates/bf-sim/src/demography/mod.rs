@@ -104,8 +104,10 @@ const F_END: Fixed = milli(900);
 const Q5_HIGH: i64 = 500;
 const Q5_LOW: i64 = 20;
 
-/// Share of the contraception a country uses that reaches mothers who never went to school:
-/// family planning programmes (clinics, campaigns) brought it to illiterate villages.
+/// Share of the contraception a country uses that reaches mothers with neither schooling nor a
+/// health service; the rest arrives with whichever of the two the state has more of: family
+/// planning came through clinics and health posts as much as through schools (barefoot doctors
+/// in China, Indonesia, Bangladesh).
 const CONTRACEPTION_REACH: Fixed = milli(250);
 /// Months for the mothers' schooling to close the gap with today's literacy: girls at school
 /// now are mothers in 15 to 20 years.
@@ -692,12 +694,13 @@ impl System<GameWorld> for Demography {
                     Some(&s) if !first => s + (r.literacy - s).mul_ratio(1, SCHOOLING_MONTHS),
                     _ => r.literacy,
                 };
+                let care = coverage(&self.cat, r, self.kinds.hospital, CARE_PER_PERSON);
                 let (medicine, contraception) =
                     match world.research.effects.get(usize::from(r.market)) {
                         Some(e) => (
                             e[0],
                             e[1] * (CONTRACEPTION_REACH
-                                + (Fixed::ONE - CONTRACEPTION_REACH) * schooling),
+                                + (Fixed::ONE - CONTRACEPTION_REACH) * schooling.max(care)),
                         ),
                         // Without research data, medicine spreads from 1935 to 1970.
                         None => (
@@ -707,7 +710,6 @@ impl System<GameWorld> for Demography {
                     };
                 let comfort = average(r, 2);
                 let food = average(r, 0);
-                let care = coverage(&self.cat, r, self.kinds.hospital, CARE_PER_PERSON);
                 let off_farm = r.urban_share();
                 // Mortality and fertility at a share `d` of today's development.
                 let rates_at = |d: Fixed| {

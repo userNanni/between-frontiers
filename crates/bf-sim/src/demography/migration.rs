@@ -45,7 +45,12 @@ const NETWORK_MIN_RATIO: Fixed = milli(250);
 /// A wave needs at least this pull toward its destination.
 const WAVE_MIN_PULL: Fixed = milli(250);
 
-/// Chain migration: a diaspora of `CHAIN_SHARE` per mille of the destination's people
+/// Prepaid passage: a diaspora of `PREPAID_SHARE` per mille of the origin's people, on a
+/// road, pays the ticket for everyone who takes it (relatives and labour contractors sent
+/// tickets home); a smaller one, in proportion.
+const PREPAID_SHARE: i64 = 50;
+
+/// Chain migration: a diaspora of `CHAIN_SHARE` per mille of the origin's people
 /// multiplies the pull by `1 + CHAIN`; a smaller one, in proportion. A road with no diaspora
 /// starts at `STRANGER`: without someone there, few go (the network theory of migration).
 const CHAIN: i64 = 3;
@@ -65,7 +70,7 @@ const PRESSURE_PULL: Fixed = milli(500);
 /// takes from waves, per mille of its people a year; least share of its labourers in jobs
 /// for a destination to stay open.
 const WAVE_RATE: i64 = 3;
-const WAVE_CAP: i64 = 8;
+const WAVE_CAP: i64 = 5;
 const WAVE_JOBS: Fixed = milli(500);
 
 /// People of one origin living in one destination, by culture: the descendants of who was
@@ -187,6 +192,34 @@ fn stock(diaspora: &[Diaspora], nt: usize) -> std::collections::BTreeMap<(u16, u
     out
 }
 
+/// Share of a law's value above the open flow (1000 per mille) that pays the passage: an
+/// immigration law above 1000 is the destination paying tickets, an emigration law above 1000
+/// the origin paying them; 0 to 1.
+fn subsidy(law: i64) -> Fixed {
+    Fixed::from_ratio((law - 1000).clamp(0, 1000), 1000)
+}
+
+/// Who can pay the passage from `i` to `j`: the literate, those whose ticket the diaspora on
+/// that road prepays, and those whose ticket a law pays.
+fn afford(
+    lands: &[Land],
+    abroad: &std::collections::BTreeMap<(u16, u16), i64>,
+    laws: &[(i64, i64)],
+    i: usize,
+    j: usize,
+) -> Fixed {
+    let lit = lands[i].literacy;
+    let own = AFFORD_BASE + (Fixed::ONE - AFFORD_BASE) * lit * lit;
+    let there = abroad.get(&(i as u16, j as u16)).copied().unwrap_or(0);
+    let prepaid = Fixed::from_ratio(
+        there.min(lands[i].people),
+        (lands[i].people * PREPAID_SHARE / 1000).max(1),
+    )
+    .min(Fixed::ONE);
+    let paid = (subsidy(laws[j / 2].0) + subsidy(laws[i / 2].1)).min(Fixed::ONE);
+    Fixed::ONE - (Fixed::ONE - own) * (Fixed::ONE - prepaid) * (Fixed::ONE - paid)
+}
+
 pub(super) fn plan(
     world: &GameWorld,
     regions: &[RegionMonth],
@@ -233,11 +266,11 @@ pub(super) fn plan(
             .min(Fixed::ONE);
         best_pull[i] = best;
         let (_, emi) = laws[i / 2];
-        let lit = lands[i].literacy;
-        let afford = AFFORD_BASE + (Fixed::ONE - AFFORD_BASE) * lit * lit;
         let push = Fixed::ONE + lands[i].idle;
-        let emigrants = (Fixed::from_int(lands[i].people) * best * afford * push)
-            .mul_ratio(EMIGRATION_RATE * emi, 1000 * 1000 * 12)
+        // Would-be emigrants of the month, before the passage; each road keeps those who can
+        // pay for it.
+        let emigrants = (Fixed::from_int(lands[i].people) * best * push)
+            .mul_ratio(EMIGRATION_RATE * emi.min(1000), 1000 * 1000 * 12)
             .to_int_floor();
         if emigrants > 0 {
             // Shares by pull × size of the destination.
@@ -248,7 +281,9 @@ pub(super) fn plan(
             let total: i128 = weights.iter().map(|(_, w)| *w).sum();
             if total > 0 {
                 for (j, w) in weights {
-                    let n = (i128::from(emigrants) * w / total) as i64;
+                    let paying = afford(&lands, &abroad, laws, i, j);
+                    let n = (i128::from(emigrants) * w * i128::from(paying.raw()) / (total * 1000))
+                        as i64;
                     if n > 0 {
                         flows.push((i, j, n));
                         inflow[j] += n;
@@ -357,10 +392,9 @@ pub(super) fn plan(
         let (i, j) = (usize::from(w.origin), usize::from(w.dest));
         let (p, _) = pressure(i);
         let strength = ((p - WAVE_CLOSE) / (WAVE_OPEN - WAVE_CLOSE)).clamp(Fixed::ZERO, Fixed::ONE);
-        let lit = lands[i].literacy;
-        let afford = AFFORD_BASE + (Fixed::ONE - AFFORD_BASE) * lit * lit;
+        let paying = afford(&lands, &abroad, laws, i, j);
         let n =
-            (Fixed::from_int(lands[i].people) * strength * afford * pull_of(i, j).min(Fixed::ONE))
+            (Fixed::from_int(lands[i].people) * strength * paying * pull_of(i, j).min(Fixed::ONE))
                 .mul_ratio(WAVE_RATE, 12_000)
                 .to_int_floor();
         if n > 0 {
@@ -559,8 +593,9 @@ fn pull(
         Fixed::ZERO
     };
     let there = abroad.get(&(i as u16, j as u16)).copied().unwrap_or(0);
+    // Measured against the origin: how many families there have someone on that road.
     let chain_share =
-        Fixed::from_ratio(there.min(b.people), (b.people * CHAIN_SHARE / 1000).max(1))
+        Fixed::from_ratio(there.min(a.people), (a.people * CHAIN_SHARE / 1000).max(1))
             .min(Fixed::ONE);
     let network = if ratio >= NETWORK_MIN_RATIO {
         chain_share * NETWORK
@@ -572,6 +607,8 @@ fn pull(
         return Fixed::ZERO;
     }
     let (ti, tj) = (&territories[i], &territories[j]);
+    // A paid passage makes the distance cheaper in proportion.
+    let paid = (subsidy(laws[j / 2].0) + subsidy(laws[i / 2].1)).min(Fixed::ONE);
     let dlat = (ti.lat - tj.lat) * milli(111_200); // km
     let mut dlon = (ti.lon - tj.lon).abs();
     if dlon > Fixed::from_int(180) {
@@ -580,6 +617,7 @@ fn pull(
     let dlon = dlon * milli(111_200) * ((cos[i] + cos[j]) / 2);
     let d2 = (dlat * dlat + dlon * dlon) / (DISTANCE_KM * DISTANCE_KM);
     let distance = Fixed::ONE / (Fixed::ONE + d2);
+    let distance = distance + (Fixed::ONE - distance) * paid;
     let mut link = 1;
     if ti.family != u8::MAX && ti.family == tj.family {
         link *= SAME_FAMILY;
@@ -588,8 +626,9 @@ fn pull(
         link *= SAME_EMPIRE;
     }
     let chain = STRANGER + (Fixed::from_int(1 + CHAIN) - STRANGER) * chain_share;
+    // Above the open flow the law pays the passage (in `afford` and the distance), not more pull.
     let (imm, _) = laws[j / 2];
-    (gap * distance * b.jobs * chain * link).mul_ratio(imm, 1000)
+    (gap * distance * b.jobs * chain * link).mul_ratio(imm.min(1000), 1000)
 }
 
 /// Cosine of a latitude in degrees (|lat| ≤ 90), by its Taylor series.
