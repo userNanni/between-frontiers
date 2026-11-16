@@ -1,7 +1,7 @@
 //! Interface scale: how many screen pixels a point of the interface takes.
 //!
 //! The interface is drawn for a reference screen 1080 pixels high and scaled to the real one
-//! (the automatic scale); the player can fix the scale instead, or ask for an interface sized
+//! (the automatic scale, never below 100 %); the player can fix the scale instead, or ask for an interface sized
 //! for a stream, so that viewers on a small screen can read it. Whatever the choice, the
 //! logical screen never goes below [`FLOOR`]: the scale is capped so that it fits. Only the
 //! interface scales; the map draws at the screen's own resolution.
@@ -12,8 +12,9 @@ use serde::{Deserialize, Serialize};
 pub const REFERENCE_HEIGHT: f32 = 1080.0;
 /// The smallest logical screen the interface supports.
 pub const FLOOR: (f32, f32) = (960.0, 540.0);
-/// The automatic scale never goes below this.
-pub const AUTO_MIN: f32 = 0.75;
+/// The automatic scale never goes below this: a small screen wants a readable interface,
+/// not a smaller one. Less than 100 % is a fixed choice of the player.
+pub const AUTO_MIN: f32 = 1.0;
 /// Scales a fixed choice can take, in percent (without the automatic one).
 pub const FIXED: [u32; 8] = [75, 100, 125, 150, 175, 200, 250, 300];
 
@@ -81,14 +82,9 @@ pub fn ceiling(physical: (f32, f32)) -> f32 {
 pub fn pixels_per_point(choice: Choice, physical: (f32, f32), native: f32) -> f32 {
     let wanted = match choice {
         Choice::Auto => {
-            // The reference height, a floor, and the system's own factor when it asks more
-            // (a high-density laptop, an accessibility setting).
-            let by_height = (physical.1 / REFERENCE_HEIGHT).max(AUTO_MIN);
-            if native > 1.0 {
-                by_height.max(native)
-            } else {
-                by_height
-            }
+            // The largest of 100 %, the reference height and the system's own factor (a
+            // high-density laptop, an accessibility setting).
+            (physical.1 / REFERENCE_HEIGHT).max(AUTO_MIN).max(native)
         }
         Choice::Fixed(p) => p as f32 / 100.0,
         Choice::Stream(t) => {
@@ -136,7 +132,10 @@ mod tests {
         assert_eq!(auto(3840.0, 2160.0, 1.0), 2.0);
         assert!((auto(2560.0, 1440.0, 1.0) - 4.0 / 3.0).abs() < 1e-5);
         assert_eq!(auto(1920.0, 1080.0, 1.0), 1.0);
-        assert_eq!(auto(1280.0, 720.0, 1.0), 0.75);
+        // Never below 100 %: the Steam Deck and a 720p screen stay at 100 %.
+        assert_eq!(auto(1280.0, 720.0, 1.0), 1.0);
+        assert_eq!(auto(1280.0, 800.0, 1.0), 1.0);
+        assert_eq!(auto(1600.0, 900.0, 1.0), 1.0);
         // A system that asks for more is heard.
         assert_eq!(auto(1920.0, 1080.0, 1.25), 1.25);
     }

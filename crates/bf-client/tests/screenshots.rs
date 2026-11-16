@@ -1544,6 +1544,12 @@ fn interface_scale() {
     s.run_steps(4);
     shot(&mut s, "60-escala-configuracoes");
     s.get_by_label("Fixa").click();
+    s.run_steps(4);
+    // The automatic scale is 100 % here: one step up, so the bar that asks to keep it shows.
+    s.get_all(egui_kittest::kittest::by().label("+"))
+        .next()
+        .expect("scale stepper")
+        .click();
     s.run_steps(6);
     shot(&mut s, "61-escala-fixa-reverter");
     drop(s);
