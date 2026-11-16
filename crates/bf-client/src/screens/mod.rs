@@ -1,9 +1,13 @@
 //! Screens. Each one draws with `bf_ui_kit` components only and returns a transition.
 
+pub mod budget;
 pub mod country_panel;
 pub mod game;
+pub mod government;
+pub mod laws;
 pub mod lens_panel;
 pub mod menu;
+pub mod money;
 pub mod pick;
 pub mod research;
 pub mod saves;

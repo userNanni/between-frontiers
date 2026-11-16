@@ -270,3 +270,12 @@ research-zoom-out = Afastar
 research-fit = Ajustar
 research-fit-hint = Mostrar a árvore inteira
 research-all-fields = Todas as áreas
+
+## Janela do governo
+bar-government = Governo (G)
+gov-title = Governo
+gov-tab-budget = Orçamento
+gov-tab-money = Moeda e dívida
+gov-tab-laws = Leis
+gov-close = Fechar
+gov-coming = Ainda não feito.
