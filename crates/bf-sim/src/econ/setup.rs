@@ -725,11 +725,11 @@ pub fn build(cat: &Catalogue, inp: &Inputs) -> Economy {
             let n = &lv[bi][ki];
             let k = if is_raw(ki) { 1.0 } else { k_other };
             let levels = (n * k).round() as i64;
-            if levels <= 0 {
-                continue;
-            }
             let bd = &cat.buildings[ki];
             let local_good = super::local::local_output(cat, ki).map(|li| cat.local[li] as usize);
+            if levels <= 0 && (local_good.is_none() || n * k <= 0.0) {
+                continue;
+            }
             let w: Vec<f64> = b
                 .regions
                 .iter()
@@ -781,7 +781,24 @@ pub fn build(cat: &Catalogue, inp: &Inputs) -> Economy {
                     }
                 })
                 .collect();
-            for (&ri, n) in b.regions.iter().zip(split(levels, &w)) {
+            // Transport and power are rounded up state by state: rounded for the whole block,
+            // most states with a little demand got no power plant at all and waited for a
+            // neighbour's surplus.
+            let placed = if local_good.is_some() {
+                let total: f64 = w.iter().sum();
+                w.iter()
+                    .map(|x| {
+                        if total > 0.0 {
+                            (n * k * x / total - 1e-6).ceil().max(0.0) as i64
+                        } else {
+                            0
+                        }
+                    })
+                    .collect()
+            } else {
+                split(levels, &w)
+            };
+            for (&ri, n) in b.regions.iter().zip(placed) {
                 if n > 0 {
                     let p: &mut Plant = regions[ri].plant_mut(ki as u16);
                     p.levels += n;

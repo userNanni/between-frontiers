@@ -49,12 +49,21 @@ impl System<GameWorld> for Yearly {
         let year = ctx.date.year;
         let unlocks = Unlocks::new(cat, year, self.tree.as_deref(), &world.research);
         let wages = super::monthly::market_wages(econ);
+        let national = super::local::national(
+            cat,
+            self.tree.as_deref(),
+            &world.research,
+            econ.markets.len(),
+        );
         let methods = econ
             .regions
             .par_iter()
             .map(|r| {
                 let m = &econ.markets[r.market as usize];
-                r.plants
+                // Transport and power are judged at the state's price and supply.
+                let view = super::local::View::last_week(cat, m, r, &national[r.market as usize]);
+                let candidates: Vec<Option<(u8, Fixed)>> = r
+                    .plants
                     .iter()
                     .map(|p| {
                         let current = {
@@ -62,12 +71,12 @@ impl System<GameWorld> for Yearly {
                             let out: Fixed = me
                                 .outputs
                                 .iter()
-                                .map(|(g, q)| *q * m.price[*g as usize])
+                                .map(|(g, q)| *q * view.price[*g as usize])
                                 .sum();
                             let inp: Fixed = me
                                 .inputs
                                 .iter()
-                                .map(|(g, q)| *q * m.price[*g as usize])
+                                .map(|(g, q)| *q * view.price[*g as usize])
                                 .sum();
                             (out - inp) * plant_tfp(r, m, &cat.buildings[p.kind as usize])
                                 - wages[r.market as usize] * me.workers
@@ -77,8 +86,8 @@ impl System<GameWorld> for Yearly {
                             p.kind as usize,
                             &unlocks,
                             r.market as usize,
-                            &m.price,
-                            &m.buy_ratio,
+                            &view.price,
+                            &view.buy,
                             plant_tfp(r, m, &cat.buildings[p.kind as usize]),
                             wages[r.market as usize],
                         ) {
@@ -86,12 +95,13 @@ impl System<GameWorld> for Yearly {
                                 if mi != p.method
                                     && profit > current.max(Fixed::ZERO) * SWITCH_MARGIN =>
                             {
-                                mi
+                                Some((mi, profit - current))
                             }
-                            _ => p.method,
+                            _ => None,
                         }
                     })
-                    .collect()
+                    .collect();
+                power_at_hand(cat, r, m, &national[r.market as usize], candidates)
             })
             .collect();
         // Schooling: literacy closes part of its gap each year, faster where people are richer
@@ -202,12 +212,13 @@ impl System<GameWorld> for Yearly {
             .zip(changes.literacy)
             .zip(changes.tfp)
         {
-            for (p, m) in r.plants.iter_mut().zip(methods) {
-                p.method = m;
-            }
             r.literacy = lit;
-            // The first January has no year behind it.
+            // The first January has no year behind it: no prices seen yet, and the 1925 plants
+            // were sized for the methods they start with.
             if ctx.tick > 0 {
+                for (p, m) in r.plants.iter_mut().zip(methods) {
+                    p.method = m;
+                }
                 r.tfp = tfp;
             }
         }
@@ -224,5 +235,213 @@ impl System<GameWorld> for Yearly {
                 m.gdp_running = Fixed::ZERO;
             }
         }
+    }
+}
+
+/// The methods the plants of `r` run next year, from the switches they want (`candidates`, new
+/// method and gain). A switch that needs more of the state's own transport or power than the
+/// state has to spare waits, the most profitable first: a mill is electrified when there is a
+/// line to plug it into.
+fn power_at_hand(
+    cat: &Catalogue,
+    r: &super::Region,
+    m: &super::Market,
+    national: &[bool],
+    candidates: Vec<Option<(u8, Fixed)>>,
+) -> Vec<u8> {
+    let mut methods: Vec<u8> = r.plants.iter().map(|p| p.method).collect();
+    let nl = cat.local.len();
+    let scale = |p: &super::Plant| {
+        Fixed::from_int(p.levels)
+            * p.staffing
+            * p.utilization
+            * plant_tfp(r, m, &cat.buildings[p.kind as usize])
+    };
+    let use_of = |p: &super::Plant, method: u8, g: u16| -> Fixed {
+        cat.buildings[p.kind as usize].methods[method as usize]
+            .inputs
+            .iter()
+            .filter(|(gi, _)| *gi == g)
+            .map(|(_, q)| *q)
+            .sum::<Fixed>()
+            * scale(p)
+    };
+    // What the state makes of each local good at full use, less what it used last week.
+    let mut spare = vec![Fixed::ZERO; nl];
+    for (li, &g) in cat.local.iter().enumerate() {
+        if national.get(li).copied().unwrap_or(false) {
+            spare[li] = Fixed::MAX;
+            continue;
+        }
+        let made: Fixed = r
+            .plants
+            .iter()
+            .map(|p| {
+                let q: Fixed = cat.buildings[p.kind as usize].methods[p.method as usize]
+                    .outputs
+                    .iter()
+                    .filter(|(gi, _)| *gi == g)
+                    .map(|(_, q)| *q)
+                    .sum();
+                q * Fixed::from_int(p.levels)
+                    * p.staffing
+                    * plant_tfp(r, m, &cat.buildings[p.kind as usize])
+            })
+            .sum();
+        let used = r.local.get(li).map_or(Fixed::ZERO, |l| l.demand);
+        spare[li] = (made - used).max(Fixed::ZERO);
+    }
+    let mut wanted: Vec<(Fixed, usize, u8)> = candidates
+        .iter()
+        .enumerate()
+        .filter_map(|(i, c)| c.map(|(mi, gain)| (gain, i, mi)))
+        .collect();
+    wanted.sort_by(|a, b| b.0.cmp(&a.0).then(a.1.cmp(&b.1)));
+    for (_, i, mi) in wanted {
+        let p = &r.plants[i];
+        let extra: Vec<Fixed> = cat
+            .local
+            .iter()
+            .map(|&g| use_of(p, mi, g) - use_of(p, p.method, g))
+            .collect();
+        if extra.iter().zip(&spare).all(|(e, s)| *e <= *s) {
+            for (s, e) in spare.iter_mut().zip(&extra) {
+                if *s != Fixed::MAX {
+                    *s -= *e;
+                }
+            }
+            methods[i] = mi;
+        }
+    }
+    methods
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::econ::catalogue::{Building, Good, Method};
+    use crate::econ::state::{LocalGood, empty_pops};
+    use crate::econ::{Market, Plant, Region};
+
+    fn good(key: &str, local: bool) -> Good {
+        Good {
+            key: key.into(),
+            category: "energy".into(),
+            base_price: Fixed::ONE,
+            available_from: 1925,
+            tradable: !local,
+            local,
+            national_with: None,
+        }
+    }
+
+    fn method(inputs: Vec<(u16, i64)>, outputs: Vec<(u16, i64)>) -> Method {
+        let q = |v: Vec<(u16, i64)>| {
+            v.into_iter()
+                .map(|(g, n)| (g, Fixed::from_int(n)))
+                .collect()
+        };
+        Method {
+            key: String::new(),
+            available_from: 1925,
+            inputs: q(inputs),
+            outputs: q(outputs),
+            jobs: Vec::new(),
+            workers: 0,
+            freight: Fixed::ZERO,
+        }
+    }
+
+    fn building(key: &str, methods: Vec<Method>) -> Building {
+        Building {
+            key: key.into(),
+            group: "light_industry".into(),
+            group_ix: 0,
+            resource: None,
+            farm: None,
+            stagnant: false,
+            public: false,
+            methods,
+        }
+    }
+
+    fn plant(kind: u16) -> Plant {
+        Plant {
+            kind,
+            levels: 1,
+            method: 0,
+            staffing: Fixed::ONE,
+            input_ratio: Fixed::ONE,
+            utilization: Fixed::ONE,
+            profit: Fixed::ZERO,
+            losing_weeks: 0,
+        }
+    }
+
+    /// Goods: electricity (local), coal, cloth. A power plant makes 100 a week; two mills burn
+    /// coal and could switch to an electric method that takes 50.
+    fn world(used_last_week: i64) -> (Catalogue, Region) {
+        let mill = || {
+            vec![
+                method(vec![(1, 10)], vec![(2, 10)]),
+                method(vec![(0, 50)], vec![(2, 20)]),
+            ]
+        };
+        let cat = Catalogue {
+            goods: vec![
+                good("electricity", true),
+                good("coal", false),
+                good("cloth", false),
+            ],
+            buildings: vec![
+                building("power_plant", vec![method(vec![(1, 50)], vec![(0, 100)])]),
+                building("mill_a", mill()),
+                building("mill_b", mill()),
+            ],
+            needs: Vec::new(),
+            local: vec![0],
+            freight: None,
+        };
+        let region = Region {
+            market: 0,
+            colony: false,
+            pops: empty_pops(),
+            plants: vec![plant(0), plant(1), plant(2)],
+            literacy: Fixed::ZERO,
+            deposits: Vec::new(),
+            land: Vec::new(),
+            subsistence: Fixed::ZERO,
+            tfp: Fixed::ONE,
+            tfp_start: Fixed::ONE,
+            state: 0,
+            neighbours: Vec::new(),
+            local: vec![LocalGood {
+                price: Fixed::ONE,
+                buy: Fixed::ONE,
+                sell: Fixed::ONE,
+                demand: Fixed::from_int(used_last_week),
+            }],
+        };
+        (cat, region)
+    }
+
+    #[test]
+    fn plants_electrify_only_as_far_as_the_state_has_power_to_spare() {
+        // 70 to spare: room for one mill, the one that gains more.
+        let (cat, r) = world(30);
+        let wants = vec![
+            None,
+            Some((1, Fixed::from_int(5))),
+            Some((1, Fixed::from_int(9))),
+        ];
+        let got = power_at_hand(&cat, &r, &Market::empty(3), &[false], wants.clone());
+        assert_eq!(got, vec![0, 0, 1]);
+        // With the grid across the country, the state's own plants do not limit anyone.
+        let got = power_at_hand(&cat, &r, &Market::empty(3), &[true], wants.clone());
+        assert_eq!(got, vec![0, 1, 1]);
+        // Nothing to spare: both wait.
+        let (cat, r) = world(100);
+        let got = power_at_hand(&cat, &r, &Market::empty(3), &[false], wants);
+        assert_eq!(got, vec![0, 0, 0]);
     }
 }

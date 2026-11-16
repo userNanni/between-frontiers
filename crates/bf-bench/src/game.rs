@@ -221,10 +221,20 @@ fn snapshot(data: &GameData, s: &Session, ms: f64, log: &mut InflationLog) -> De
         .count();
     let e = &w.econ;
     let population: i64 = e.regions.iter().map(|r| r.population()).sum();
+    // Snapshots are taken on 1 January before that day's tick, so the year just closed is still
+    // in `gdp_running` (`gdp_last_year` is the year before it, and before the first tick the
+    // scenario's figure, which nothing measured).
     let gdp: i64 = e
         .markets
         .iter()
-        .map(|m| m.gdp_last_year.to_int_round())
+        .map(|m| {
+            if s.clock().tick > 0 {
+                m.gdp_running
+            } else {
+                m.gdp_last_year
+            }
+            .to_int_round()
+        })
         .sum();
     let weighted = |f: &dyn Fn(&bf_sim::econ::Region) -> Fixed| -> f64 {
         e.regions
