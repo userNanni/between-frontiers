@@ -338,9 +338,19 @@
             (key: "arsenal", available_from: 1925, inputs: [("steel", 1500), ("engines", 300), ("ferroalloys", 120)], outputs: [("armored_vehicles", 8220)], jobs: [("laborer", 500), ("skilled_worker", 350), ("engineer", 40), ("clerk", 50), ("manager", 15), ("capitalist", 5)]),
             (key: "mass_production", available_from: 1935, inputs: [("steel", 1500), ("engines", 300), ("ferroalloys", 120), ("machinery", 8), ("electricity", 5000)], outputs: [("armored_vehicles", 20550)], jobs: [("laborer", 300), ("skilled_worker", 420), ("engineer", 80), ("clerk", 70), ("manager", 20), ("capitalist", 5)]),
         ]),
+        // Steel per dollar of warship: hull structure and armour taken as 55 % of standard
+        // displacement for an armoured cruiser and 45 % for an unarmoured destroyer. Treaty cruiser USS Pensacola (ordered 1924): cost
+        // limit $11.1 M, 9,100 long tons standard; at 2011 prices (CPI-U, factor 12.85) about
+        // 35 t of steel per $1 M, 360 t a level of $10.22 M. Fletcher-class destroyer (1942):
+        // $6 M a ship, 2,050 tons standard; at 2011 prices (CPI-U 1942-2011, factor 13.8) about
+        // 11 t per $1 M, 280 t a level of $25.55 M. Costs and displacements: the ships' public
+        // records as summarized in Wikipedia (CC BY-SA). The 4,000 t a level used before were
+        // 157 t per $1 M, a bulk carrier's ratio. A modern destroyer (Arleigh Burke IIA:
+        // $1.84 bn at FY2011 prices, about 6,600 t light) is near 1.6 t per $1 M; the century
+        // keeps the 1942 ratio, an upper bound after 1960 (docs/economy.pt-BR.md, "Aço").
         (key: "naval_yard", group: "military_industry", resource: None, farm: None, methods: [
-            (key: "arsenal", available_from: 1925, inputs: [("steel", 4000), ("engines", 500), ("ferroalloys", 200), ("electrical_equipment", 100)], outputs: [("warships", 10220)], jobs: [("laborer", 500), ("skilled_worker", 350), ("engineer", 40), ("clerk", 50), ("manager", 15), ("capitalist", 5)]),
-            (key: "mass_production", available_from: 1935, inputs: [("steel", 4000), ("engines", 500), ("ferroalloys", 200), ("electrical_equipment", 100), ("machinery", 8), ("electricity", 5000)], outputs: [("warships", 25550)], jobs: [("laborer", 300), ("skilled_worker", 420), ("engineer", 80), ("clerk", 70), ("manager", 20), ("capitalist", 5)]),
+            (key: "arsenal", available_from: 1925, inputs: [("steel", 360), ("engines", 500), ("ferroalloys", 200), ("electrical_equipment", 100)], outputs: [("warships", 10220)], jobs: [("laborer", 500), ("skilled_worker", 350), ("engineer", 40), ("clerk", 50), ("manager", 15), ("capitalist", 5)]),
+            (key: "mass_production", available_from: 1935, inputs: [("steel", 280), ("engines", 500), ("ferroalloys", 200), ("electrical_equipment", 100), ("machinery", 8), ("electricity", 5000)], outputs: [("warships", 25550)], jobs: [("laborer", 300), ("skilled_worker", 420), ("engineer", 80), ("clerk", 70), ("manager", 20), ("capitalist", 5)]),
         ]),
         (key: "military_aircraft_plant", group: "military_industry", resource: None, farm: None, methods: [
             (key: "arsenal", available_from: 1925, inputs: [("aluminium", 400), ("engines", 500), ("electrical_equipment", 80)], outputs: [("military_aircraft", 10500)], jobs: [("laborer", 500), ("skilled_worker", 350), ("engineer", 40), ("clerk", 50), ("manager", 15), ("capitalist", 5)]),
