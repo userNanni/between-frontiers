@@ -80,6 +80,9 @@ Países Baixos no mesmo dia; França, Itália, Bélgica, Japão e Brasil só vol
 
 ## O que fica para ligar na simulação
 
+Os tratados passam a ser conjuntos de cláusulas, com dívida entre Estados nomeada, reconhecimento,
+súditos e negociação: desenho em `treaties.pt-BR.md`. Os itens 3 e 4 abaixo seguem esse desenho.
+
 1. **Regime monetário no gancho da 3c.** `econ/money.rs` tem `exchange_target`: hoje toda moeda
    flutua pela paridade do poder de compra com prêmio de risco. A fase 4 troca o alvo conforme o
    regime em vigor (`regime_on`):
