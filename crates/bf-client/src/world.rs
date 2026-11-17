@@ -253,6 +253,8 @@ pub struct World {
     pub candidates: Vec<bf_sim::borders::Candidate>,
     /// Countries of the scenario; those after them were born in the game.
     pub scenario_countries: usize,
+    /// The clause catalogue of treaties (`data/diplomacy/clauses.ron`): what a subject yields.
+    pub clauses: Option<bf_sim::treaty::ClauseCatalogue>,
 }
 
 /// A country born during the game: the catalogue's colour, capital and flag; a grey one with no
@@ -370,6 +372,7 @@ impl World {
             owners_seen: 0,
             candidates: Vec::new(),
             scenario_countries: 0,
+            clauses: None,
         };
         world.scenario_countries = world.countries.len();
         world.index_countries();

@@ -340,11 +340,14 @@ fn items(i18n: &I18n, world: &World, p: usize) -> (Vec<Item>, Vec<Item>, Vec<Ite
     let unknown = i18n.tr("bar-unknown");
     let social = social_source(i18n, table.source);
     // Life expectancy is the scenario's even in a campaign: the simulation has none yet.
-    let life_source = if live {
+    let mut life_source = if live {
         vec![i18n.tr("hud-life-scenario"), i18n.tr("source-social")]
     } else {
         vec![i18n.tr("source-social")]
     };
+    if p >= world.scenario_countries {
+        life_source.insert(0, i18n.tr("hud-life-inherited"));
+    }
     let economy = economy_source(i18n, table.source);
     let unit = money_unit(i18n, table.source);
     let due = i18n.tr("hud-due-to");

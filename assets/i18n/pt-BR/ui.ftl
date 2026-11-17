@@ -121,6 +121,7 @@ borders-switch-detail = O jogo continua; este país passa a ser o seu.
 borders-liberate = Libertar { $state }
 borders-liberate-subject = Libertar { $state } como súdito
 borders-liberate-detail = O estado vira país próprio, com a sua gente, as fábricas e parte do fundo de investimento; o seu Tesouro fica com a dívida.
+borders-subject-detail = Como súdito (protetorado), o estado cede { $gives } e recebe { $receives }. Sai negociando cláusula a cláusula ou por denúncia, que só vale quando a pressão de saída passa o controle do suserano.
 borders-select-state = Clique num estado seu para libertá-lo.
 stat-rank-population = { $rank }º do mundo em população
 stat-rank-gdp = { $rank }ª economia do mundo
@@ -228,6 +229,7 @@ source-live-gdp-year = PIB de { $year }, o último ano completo.
 source-live-gdp-calibration = Ainda sem ano completo de jogo: vale o PIB calibrado em 1925.
 hud-gdp-split = Metrópole e colônias negociam no mesmo mercado: o PIB dele se divide entre as duas pela renda das pessoas, e no primeiro ano como no cenário.
 hud-life-scenario = Dado de 1925: a simulação ainda não calcula a expectativa de vida.
+hud-life-inherited = País nascido no jogo: a dos estados de origem em 1925, ponderada pela população de cada um.
 hud-quality-life-scenario = A saúde usa a expectativa de vida de 1925, que a simulação ainda não calcula.
 
 ## Modos de mapa

@@ -109,6 +109,7 @@ borders-switch-detail = You keep the game; this country is yours from now on.
 borders-liberate = Free { $state }
 borders-liberate-subject = Free { $state } as a subject
 borders-liberate-detail = The state becomes a country of its own, with its people, plants and a share of the investment fund; your treasury keeps its debt.
+borders-subject-detail = As a subject (protectorate), the state yields { $gives } and receives { $receives }. It leaves by negotiating clause by clause, or by denouncing the treaty, which holds only once the pressure to leave passes the overlord's control.
 borders-select-state = Click one of your states to free it.
 stat-rank-population = #{ $rank } in the world by population
 stat-rank-gdp = #{ $rank } economy in the world
@@ -216,6 +217,7 @@ source-live-gdp-year = GDP of { $year }, the last full year.
 source-live-gdp-calibration = No full year of play yet: the GDP calibrated in 1925 stands.
 hud-gdp-split = Metropole and colonies trade in the same market: its GDP is split between them by people's income, and in the first year as in the scenario.
 hud-life-scenario = 1925 figure: the simulation does not compute life expectancy yet.
+hud-life-inherited = A country born in the game: that of its states' 1925 owners, weighted by the people of each.
 hud-quality-life-scenario = Health uses the 1925 life expectancy, which the simulation does not compute yet.
 
 ## Map modes

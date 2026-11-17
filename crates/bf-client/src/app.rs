@@ -340,6 +340,7 @@ fn load_world(paths: &Paths) -> Result<(World, MapData), String> {
     )
     .map(|f| f.countries)
     .unwrap_or_default();
+    world.clauses = read_optional(&paths.data.join("diplomacy/clauses.ron"));
     let relief = crate::map::Relief::load(&map_dir.join("relief.png"))
         .unwrap_or_else(crate::map::Relief::flat);
     let map = MapData::build(&world, w, h, ids, relief);

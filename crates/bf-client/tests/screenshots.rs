@@ -2051,6 +2051,7 @@ fn borders_and_switching_country() {
                 "71-libertar-estado",
                 "72-trocar-de-pais",
                 "73-jogando-ucrania",
+                "71b-dicas-de-tecla",
             ],
         ),
         (
@@ -2060,6 +2061,7 @@ fn borders_and_switching_country() {
                 "71-free-state-en",
                 "72-switch-country-en",
                 "73-playing-ukraine-en",
+                "71b-key-tips-en",
             ],
         ),
     ] {
@@ -2113,6 +2115,11 @@ fn borders_and_switching_country() {
         h.drop_at(moscow);
         h.run_steps(4);
         shot(&mut h, names[1]);
+        // The key tips over the panel's buttons, as everywhere in the interface.
+        leader(&mut h);
+        shot(&mut h, names[4]);
+        h.key_press(egui::Key::Escape);
+        h.run_steps(2);
         // Ukraine: play it, by the key.
         let kyiv = at(&mut h, 30.52, 50.45);
         h.hover_at(kyiv);

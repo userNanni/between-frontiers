@@ -215,5 +215,30 @@ fn borders(
         }
     }
     bf_ui_kit::small(ui, &i18n.tr("borders-liberate-detail"));
+    // What a subject yields: the bundle of clauses of the grade a freed subject gets.
+    if let Some(b) = world
+        .clauses
+        .as_ref()
+        .and_then(|c| c.bundle_for(&bf_sim::scenario::SubjectKind::Protectorate))
+    {
+        let names = |give: bool| -> String {
+            b.clauses
+                .iter()
+                .filter(|l| l.overlord_gives != give)
+                .map(|l| i18n.tr(&format!("clause-{}", l.clause)).to_lowercase())
+                .collect::<Vec<_>>()
+                .join(", ")
+        };
+        bf_ui_kit::small(
+            ui,
+            &i18n.tr_args(
+                "borders-subject-detail",
+                &[
+                    ("gives", Arg::String(names(true))),
+                    ("receives", Arg::String(names(false))),
+                ],
+            ),
+        );
+    }
     out
 }
