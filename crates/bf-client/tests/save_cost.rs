@@ -26,9 +26,14 @@ fn save_cost_by_decade() {
     session.submit(bf_sim::game::GameCommand::ChoosePlayer { tag: "BRA".into() });
     let dir = std::env::temp_dir().join(format!("bf-save-cost-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
-    println!("| year | MB | write ms | load ms | month ms | autosave / month |");
-    println!("|---|---|---|---|---|---|");
-    for year in [1925, 1975, 2025] {
+    println!("| year | MB | write ms | load ms | month ms | autosave / month | interface ms |");
+    println!("|---|---|---|---|---|---|---|");
+    // `BF_SAVE_COST_UNTIL=1925` stops early, to try the measure.
+    let until: i32 = std::env::var("BF_SAVE_COST_UNTIL")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(2025);
+    for year in [1925, 1975, 2025].into_iter().filter(|y| *y <= until) {
         // Up to three months before the point, then time three months.
         let before = Date::new(year, 1, 1);
         let mut d = Date::new(year - 1, 10, 1);
@@ -69,13 +74,53 @@ fn save_cost_by_decade() {
             load_ms = load_ms.min(t.elapsed().as_secs_f64() * 1000.0);
             assert_eq!(loaded.clock().date, session.clock().date);
         }
+        // What the interface's thread does once the simulation has written a point: record it,
+        // rotate, measure the folder. The writing itself is on the simulation's thread.
+        let mut campaign = bf_client::saves::create(
+            &dir.join("saves"),
+            &format!("Custo {year}"),
+            1,
+            Date::new(1925, 1, 1),
+        )
+        .unwrap();
+        campaign.meta.player = Some("BRA".into());
+        let mut ui_ms = 0.0f64;
+        for n in 0..8 {
+            let id = format!("p{year}{n}");
+            let target = bf_client::points::save_path(&campaign, &id);
+            std::fs::create_dir_all(target.parent().unwrap()).unwrap();
+            std::fs::copy(&path, &target).unwrap();
+            let t = Instant::now();
+            bf_client::points::record(
+                &campaign,
+                bf_client::points::Point {
+                    id,
+                    kind: bf_client::points::Kind::Auto,
+                    name: None,
+                    date: session.clock().date,
+                    written: n,
+                    bytes: 0,
+                },
+            )
+            .unwrap();
+            bf_client::points::prune(
+                &campaign,
+                bf_client::points::Limits {
+                    keep_auto: 5,
+                    cap: 30,
+                },
+            );
+            let _ = bf_client::points::folder_bytes(&campaign.dir);
+            ui_ms = ui_ms.max(t.elapsed().as_secs_f64() * 1000.0);
+        }
         println!(
-            "| {year} | {:.1} | {:.0} | {:.0} | {:.0} | {:.1} % |",
+            "| {year} | {:.1} | {:.0} | {:.0} | {:.0} | {:.1} % | {:.1} |",
             bytes_len as f64 / 1e6,
             write_ms,
             load_ms,
             month_ms,
-            write_ms / month_ms * 100.0
+            write_ms / month_ms * 100.0,
+            ui_ms
         );
     }
     let _ = std::fs::remove_dir_all(&dir);
