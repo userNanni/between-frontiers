@@ -980,12 +980,11 @@ impl System<GameWorld> for Demography {
                 let tfr: Vec<Fixed> = state.vital.iter().map(|v| v.tfr).collect();
                 Some(Diffusion::new(t, rows, &tfr))
             }
-            (Some(_), Some(rows)) => Some(Diffusion {
+            (Some(_), Some(rows)) => (!rows.is_empty()).then(|| Diffusion {
                 people: Vec::new(),
                 moving: Vec::new(),
                 mean: Fixed::ZERO,
-            })
-            .filter(|_| !rows.is_empty()),
+            }),
             _ => None,
         };
         let regions: Vec<RegionMonth> = econ
@@ -1500,6 +1499,23 @@ mod tests {
     }
 
     #[test]
+    fn diffusion_moves_the_transition_both_ways_around_the_world_mean() {
+        let at = |diffusion: Fixed| {
+            fertility(&FertilityInputs {
+                child_deaths: mortality(milli(600))[0],
+                schooling: milli(500),
+                off_farm: milli(500),
+                comfort: milli(500),
+                contraception: milli(200),
+                diffusion,
+            })
+        };
+        // Ahead of the world: fewer children; behind it: more; at the mean, as without it.
+        assert!(at(milli(500)) < at(Fixed::ZERO));
+        assert!(at(-milli(500)) > at(Fixed::ZERO));
+    }
+
+    #[test]
     fn fertility_falls_through_the_transition() {
         let high = fertility(&FertilityInputs {
             child_deaths: mortality(milli(70))[0],
@@ -1515,6 +1531,7 @@ mod tests {
             off_farm: milli(900),
             comfort: milli(900),
             contraception: milli(900),
+            diffusion: Fixed::ZERO,
         });
         assert_eq!(high, TFR_HIGH);
         // Past the transition, fertility sits on the floor that contraception allows.
