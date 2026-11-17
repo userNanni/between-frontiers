@@ -49,6 +49,8 @@ Brasil.
 
 ## Desempenho
 
+- **Antes de escrever ou mudar um sistema, leia `docs/performance.pt-BR.md`**: onde o tick gasta,
+  o orçamento de CPU por cadência, o que evitar e como medir (inclusive o amostrador de pilha).
 - **A trava `flock /tmp/bf-bench.lock` é só para a rodada de 100 anos e para medição de CPU**,
   uma de cada vez na máquina. Teste, print e rodada curta de conferência (hash, smoke) rodam fora
   da trava, com `nice -n 19` e no máximo 2 threads (`--threads 2`, `cargo test -j 2`).
