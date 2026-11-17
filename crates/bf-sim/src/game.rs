@@ -784,9 +784,30 @@ mod tests {
         #[derive(Serialize)]
         struct OldEconomy<'a> {
             regions: &'a Vec<crate::econ::Region>,
-            markets: &'a Vec<crate::econ::Market>,
+            markets: &'a Vec<crate::econ::compat::MarketBeforeResearch>,
             world_price: &'a Vec<laplace_schelling::Fixed>,
             history: &'a Vec<crate::econ::YearRecord>,
+        }
+        /// The economy of before research that costs: the ledger, markets of then.
+        #[derive(Serialize)]
+        struct EconomyWithLedger<'a> {
+            regions: &'a Vec<crate::econ::Region>,
+            markets: &'a Vec<crate::econ::compat::MarketBeforeResearch>,
+            world_price: &'a Vec<laplace_schelling::Fixed>,
+            history: &'a Vec<crate::econ::YearRecord>,
+            ledger: &'a crate::treaty::Ledger,
+        }
+        #[derive(Serialize)]
+        struct BeforeResearch<'a> {
+            scenario: &'a String,
+            player: &'a Option<Id<Country>>,
+            countries: &'a Table<Country, CountryState>,
+            census: &'a Vec<CensusRecord>,
+            econ: EconomyWithLedger<'a>,
+            research: &'a crate::research::ResearchState,
+            politics: &'a crate::polity::PoliticsState,
+            demography: &'a crate::demography::DemographyState,
+            borders: &'a crate::borders::BordersState,
         }
         /// `DemographyState` without `communities` (its last field).
         #[derive(Serialize)]
@@ -834,9 +855,15 @@ mod tests {
         // Older layouts: the world of then had no ledger.
         let mut world = data.new_world();
         world.econ.ledger = Default::default();
+        let old_markets: Vec<_> = world
+            .econ
+            .markets
+            .iter()
+            .map(crate::econ::compat::MarketBeforeResearch::of)
+            .collect();
         let econ = || OldEconomy {
             regions: &world.econ.regions,
-            markets: &world.econ.markets,
+            markets: &old_markets,
             world_price: &world.econ.world_price,
             history: &world.econ.history,
         };
@@ -849,6 +876,27 @@ mod tests {
             assert_eq!(hash_of(&loaded), hash_of(&world), "{what}");
             loaded
         };
+        // Before research that costs (the main after the ledger): markets with four public
+        // works categories and no research priority.
+        let before_research = encode_snapshot(&BeforeResearch {
+            scenario: &world.scenario,
+            player: &world.player,
+            countries: &world.countries,
+            census: &world.census,
+            econ: EconomyWithLedger {
+                regions: &world.econ.regions,
+                markets: &old_markets,
+                world_price: &world.econ.world_price,
+                history: &world.econ.history,
+                ledger: &world.econ.ledger,
+            },
+            research: &world.research,
+            politics: &world.politics,
+            demography: &world.demography,
+            borders: &world.borders,
+        })
+        .unwrap();
+        assert_eq!(check(before_research, "before research that costs"), world);
         // Before the ledger (the main after the borders).
         let before_ledger = encode_snapshot(&WithBorders {
             scenario: &world.scenario,

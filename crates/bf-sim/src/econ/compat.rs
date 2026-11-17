@@ -4,7 +4,7 @@
 //! research category at its default weight and no research priority, which hash as before.
 
 use laplace_schelling::Fixed;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use super::state::{
     Budget, Economy, LawEffects, Laws, Market, Project, Region, TAX_CLASSES, YearRecord,
@@ -21,7 +21,7 @@ pub(crate) struct EconomyBeforeResearch {
 }
 
 /// A market with four public works categories and no research priority.
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 pub(crate) struct MarketBeforeResearch {
     price: Vec<Fixed>,
     supply: Vec<Fixed>,
@@ -43,7 +43,7 @@ pub(crate) struct MarketBeforeResearch {
     money: super::money::Money,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 struct BudgetBeforeResearch {
     tax_rates: [Fixed; TAX_CLASSES],
     tax_auto: bool,
@@ -64,13 +64,13 @@ struct BudgetBeforeResearch {
     revenue_firms: Fixed,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 struct LawsBeforeResearch {
     migration: super::migration::MigrationLaw,
     effects: [LawEffectsBeforeResearch; 2],
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 struct LawEffectsBeforeResearch {
     migration_reach: [Fixed; 2],
     tax_caps: [Fixed; TAX_CLASSES],
@@ -200,5 +200,71 @@ pub(crate) fn fit_goods(econ: &mut Economy, cat: &super::Catalogue) {
     }
     for g in econ.world_price.len()..n {
         econ.world_price.push(base(g));
+    }
+}
+
+#[cfg(test)]
+impl MarketBeforeResearch {
+    /// A market of today written as before research that costs, for the tests of old saves.
+    /// Only for markets at the default research weight and without a research priority.
+    pub(crate) fn of(m: &Market) -> Self {
+        let b = &m.budget;
+        let effect = |e: &LawEffects| LawEffectsBeforeResearch {
+            migration_reach: e.migration_reach,
+            tax_caps: e.tax_caps,
+            tax_collection: e.tax_collection,
+            public_share: e.public_share.clone(),
+            enrolment_target: e.enrolment_target,
+            landowner_rent: e.landowner_rent,
+            state_ownership: e.state_ownership,
+            state_profit_to_treasury: e.state_profit_to_treasury,
+            tariff: e.tariff,
+            frontier_access: e.frontier_access,
+            foreign_investment: e.foreign_investment,
+            colonial_tribute: e.colonial_tribute,
+            discrimination: e.discrimination,
+            church_privilege: e.church_privilege,
+        };
+        Self {
+            price: m.price.clone(),
+            supply: m.supply.clone(),
+            demand: m.demand.clone(),
+            buy_ratio: m.buy_ratio.clone(),
+            sell_ratio: m.sell_ratio.clone(),
+            net_import: m.net_import.clone(),
+            pool: m.pool,
+            treasury: m.treasury,
+            tfp: m.tfp,
+            construction: m.construction.clone(),
+            gdp_running: m.gdp_running,
+            gdp_last_year: m.gdp_last_year,
+            tech_tfp: m.tech_tfp.clone(),
+            gov_workers: m.gov_workers,
+            queue: m.queue.clone(),
+            budget: BudgetBeforeResearch {
+                tax_rates: b.tax_rates,
+                tax_auto: b.tax_auto,
+                adjust: b.adjust,
+                priority: [b.priority[0], b.priority[1], b.priority[2], b.priority[3]],
+                revenue: b.revenue,
+                issued: b.issued,
+                payroll: b.payroll,
+                goods: b.goods,
+                services: b.services,
+                works: b.works,
+                revenue_avg: b.revenue_avg,
+                debt: b.debt,
+                interest: b.interest,
+                beyond_rule: b.beyond_rule,
+                indirect_rate: b.indirect_rate,
+                revenue_indirect: b.revenue_indirect,
+                revenue_firms: b.revenue_firms,
+            },
+            laws: LawsBeforeResearch {
+                migration: m.laws.migration,
+                effects: [effect(&m.laws.effects[0]), effect(&m.laws.effects[1])],
+            },
+            money: m.money.clone(),
+        }
     }
 }

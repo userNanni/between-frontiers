@@ -320,6 +320,7 @@ impl History {
             let m = &w.econ.markets[mi];
             self.revenue.push(0.0);
             self.spending.push(0.0);
+            self.points.push(0.0);
             self.price_jan
                 .push((m.money.price_level.to_f64_lossy(), m.money.redenominations));
             self.report.countries.push(Country {
@@ -328,6 +329,7 @@ impl History {
                 spending: vec![0.0; years],
                 debt: vec![0.0; years],
                 inflation: vec![0.0; years],
+                research_points: vec![0.0; years],
             });
         }
     }
