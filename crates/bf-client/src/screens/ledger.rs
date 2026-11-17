@@ -24,6 +24,14 @@ fn treaty_name(i18n: &I18n, key: &str) -> String {
     }
 }
 
+/// "US$ 59 bi": a sum for a narrow column.
+fn money_short(i18n: &I18n, x: f64) -> String {
+    i18n.tr_args(
+        "money-intl-dollars",
+        &[("value", Arg::String(i18n.compact_short(x)))],
+    )
+}
+
 fn pct(i18n: &I18n, x: f64) -> String {
     format!("{} %", i18n.decimal(x * 100.0, 1))
 }
@@ -112,11 +120,11 @@ fn columns(r: Rect) -> [Rect; 5] {
         )
     };
     [
-        col(0.0, 0.34),
-        col(0.34, 0.54),
-        col(0.54, 0.72),
-        col(0.72, 0.80),
-        col(0.80, 1.0),
+        col(0.0, 0.32),
+        col(0.32, 0.52),
+        col(0.52, 0.70),
+        col(0.70, 0.78),
+        col(0.78, 1.0),
     ]
 }
 
@@ -155,8 +163,9 @@ fn row(ui: &mut Ui, cx: &mut TabContext<'_>, l: &Line) {
     let text = |s: String| RichText::new(s).font(sans(size::SMALL)).color(color::TEXT);
     let c = columns(r.shrink2(vec2(space::SM, 0.0)));
     cell(ui, c[0], text(name), false);
-    cell(ui, c[1], text(money(i18n, l.principal)), true);
-    cell(ui, c[2], text(money(i18n, l.annuity)), true);
+    // The table's sums short, never cut; the detail has them whole.
+    cell(ui, c[1], text(money_short(i18n, l.principal)), true);
+    cell(ui, c[2], text(money_short(i18n, l.annuity)), true);
     cell(ui, c[3], text(l.years_left.to_string()), true);
     cell(
         ui,

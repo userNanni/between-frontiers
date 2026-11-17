@@ -2434,7 +2434,7 @@ fn debts_tab() {
         h.run_steps(4);
         shot(&mut h, &format!("110-debts-{name}"));
         // Another line selected.
-        if let Some(r) = h
+        let clicked = match h
             .query_all(
                 egui_kittest::kittest::by()
                     .role(egui::accesskit::Role::Button)
@@ -2442,7 +2442,13 @@ fn debts_tab() {
             )
             .next()
         {
-            r.click();
+            Some(r) => {
+                r.click();
+                true
+            }
+            None => false,
+        };
+        if clicked {
             h.run_steps(3);
             shot(&mut h, &format!("111-debts-{name}-selected"));
         }
