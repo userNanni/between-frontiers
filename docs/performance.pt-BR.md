@@ -25,12 +25,15 @@ Rodada de 101 anos na `main` (`7b10b48`, 2 threads, tempo de simulação de 229 
 - **Dentro do semanal** (amostragem de pilha, 1925–27): `settle_region` 28 %, `plan_pop` 18 %,
   `need_mix` 5 %, `region_orders` e `plant_run` o resto. Cerca de 40 % do tempo total é aritmética
   `Fixed` (multiplicação e divisão com arredondamento) e cerca de 10 % é `malloc`/`free`/`memcpy`.
-- **Escala:** o laço por estado roda em paralelo, mas o trecho entre os dois `par_iter` do
-  semanal (soma por mercado, comércio, `clear_market`, `local::finish`) e todo `apply` são
-  seriais.
-- **O bench roda a simulação duas vezes:** a rodada principal e, para conferir o save, uma
-  segunda até o meio e a retomada até o fim. O tempo de CPU de uma rodada é cerca de 2 × o tempo
-  de simulação impresso.
+- **Escala:** os sistemas rodam um de cada vez (quase todo tick tem um sistema só; o semanal
+  roda sozinho na segunda-feira). O paralelismo está dentro do sistema: os dois `par_iter` por
+  estado do semanal, que somam 82–85 % das amostras. Seriais: o trecho entre os dois (soma por
+  mercado, comércio mundial, `clear_market`, `local::finish`, `market_wages`) e todo `apply`,
+  15–18 % do tick. Pela lei de Amdahl, o teto é 1,7× com 2 threads, 2,5× com 4 e 2,9× com 6. O
+  hash é o mesmo com 1, 2, 4 e 6 threads.
+- **O bench conferia o save simulando o século duas vezes.** Desde o #141 a conferência retoma de
+  um save feito durante a rodada principal: a CPU de uma rodada é cerca de 1,5 × o tempo de
+  simulação impresso (era 2 ×).
 
 ## Orçamento de CPU por sistema novo
 
@@ -75,6 +78,13 @@ diga no PR quanto o `economy-week` subiu, em 10 anos e nos últimos anos do séc
    o ponto de arredondamento de um produto de `Fixed` muda o hash: é mudança de comportamento, não
    otimização.
 
+## Regra que muda o hash
+
+Regra nova que muda o resultado de todos entra **desligada**, num campo de `rules.*` (ou do
+catálogo) com o valor que deixa o hash da `main` igual. Ligar é um PR separado, com o teste de
+100 anos contra a `main`. Assim o PR do código prova que não mexeu no resto, e o PR que liga mede
+só o efeito da regra.
+
 ## Como medir
 
 - **CPU, não parede.** A máquina é dividida com outras sessões e a carga passa de 15:
@@ -93,5 +103,26 @@ diga no PR quanto o `economy-week` subiu, em 10 anos e nos últimos anos do séc
 
   A saída dá o custo próprio por função e por linha e, mais útil, a linha do jogo mais interna de
   cada amostra. O terceiro argumento filtra (`week::`, `demography`).
-- **Rodada longa** (mais de 10 anos) vai por `bf-bench-slot` e `systemd-run --user`, com arquivo
-  de status no fim. Binários e resultados em `target/measure/` da sua worktree.
+- **Rodada longa** (mais de 10 anos) vai por `bf-bench-slot` (atende por ordem de chegada) e
+  numa unidade `systemd-run --user`, com arquivo de status no fim. Use
+  `tools/bench/run-long.sh OUTDIR BIN [argumentos]`. Ele grava `game.json`, `history.json`,
+  `cpu.txt` e `status`, e acrescenta uma linha ao livro de rodadas.
+- **A base da `main` não se roda de novo.** `tools/bench/baseline.sh [commit]` devolve
+  `~/Projects/between-frontiers/target/baseline/<sha>/`, com `bf-bench`, `game.json`,
+  `history.json`, `hash.txt`, `cpu.txt` e `systems.txt`. Só roda se ainda não existe, com
+  `flock` por sha: dois threads que pedem o mesmo commit esperam um pelo outro.
+- **Livro de rodadas:** `~/Projects/between-frontiers/target/runs/ledger.jsonl`, uma linha por
+  rodada longa. Tem commit, ramo, hash, threads, CPU, CPU por sistema, PIB e população por década
+  e a carga da máquina. `python3 tools/bench/ledger.py show [--branch B]` mostra a tendência de
+  CPU por commit e a dispersão dos agregados por década.
+
+## Compilar
+
+- `~/.local/bin/bf-cargo` é o `cargo` com `sccache` (`~/.cache/sccache-bf`). Reaproveita as
+  dependências de terceiros entre worktrees, mas não os crates do workspace: o `sccache` põe no
+  hash as variáveis `CARGO_*`, e `CARGO_MANIFEST_DIR` muda de worktree para worktree.
+  - **Não force o reaproveitamento.** `bf-bench`, `bf-client` e `bf-mapgen` gravam no binário o
+    caminho dos dados (`env!("CARGO_MANIFEST_DIR")`), e um acerto de cache vindo de outra
+    worktree leria os dados dela.
+- `bf-build-governor` segura em 4 os `rustc` simultâneos do projeto; os excedentes ficam parados.
+  Compile com `-j 2`. Com 8 compilações ao mesmo tempo a máquina fica sem memória.
