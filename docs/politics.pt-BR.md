@@ -146,7 +146,7 @@ para movimentos e mudança de lei, em 1º de janeiro.
 
 O sistema escreve em `Market::laws.effects` (metrópole e colônias) o que as leis em vigor dizem; a
 economia lê ali. Efeito que nenhuma lei em vigor declara fica com a regra de antes (sem lei, sem
-mudança). Os 12 efeitos ligados e onde caem:
+mudança). Os 14 efeitos ligados e onde caem:
 
 | Efeito | Onde cai | Arquivo |
 |---|---|---|
@@ -157,8 +157,9 @@ mudança). Os 12 efeitos ligados e onde caem:
 | `school_enrolment_target` | teto da cobertura escolar que conta para a alfabetização | `econ/yearly.rs` |
 | `landowner_rent` | parte do lucro da terra que vai ao proprietário (1 = o pagamento aos donos, como antes); abaixo de 1, a diferença vai ao camponês | `econ/week.rs` |
 | `state_ownership`, `state_profit_to_treasury` | parte do pagamento aos donos da indústria que vai ao Estado em vez dos capitalistas; dessa parte, a que entra como receita do Tesouro (o resto é reinvestido) | `econ/week.rs` |
+| `tariff`, `foreign_investment` | canal por onde o saber de fora entra na pesquisa: protótipo e indústria do que o mundo já faz, imitação e, com piso alto, a ciência que o mundo já conhece; tarifa até 25 % e capital aberto deixam a regra sem canal (`late-industrialization.pt-BR.md`, "A imitação com canal") | `research_system.rs`, `foreign_capital.rs` |
 
-Os outros 25 efeitos esperam sistema (sindicato, previdência, investimento estatal, comunidades,
+Os outros 23 efeitos esperam sistema (sindicato, previdência, investimento estatal, comunidades,
 mídia, colônias, fronteiras, exército) e não fazem nada ainda.
 
 ### Imposto sobre o consumo
