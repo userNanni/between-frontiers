@@ -317,8 +317,20 @@ fn root() -> PathBuf {
 fn new_session(data: &GameData, seed: u64, threads: usize) -> Session {
     // No player: every country runs its own politics, so the law changes can be scored
     // against history everywhere.
+    let mut world = data.new_world();
+    // `BF_PERTURB=K`: K dollars more in every country's investment pool on 1 January 1925, an
+    // amount with no economic weight. Runs that differ only by K measure how far the model's
+    // own sensitivity moves a result (`docs/history.pt-BR.md`, "Faixa de ruído").
+    if let Some(k) = std::env::var("BF_PERTURB")
+        .ok()
+        .and_then(|v| v.parse::<i64>().ok())
+    {
+        for m in &mut world.econ.markets {
+            m.pool += laplace_schelling::Fixed::from_int(k);
+        }
+    }
     Session::new(
-        data.new_world(),
+        world,
         seed,
         Date::new(1925, 1, 1),
         threads,
