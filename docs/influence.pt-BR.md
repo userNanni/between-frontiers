@@ -1,6 +1,7 @@
 # Influência, blocos e o país pequeno (fase 4)
 
-Estado: desenho decidido em 2026-11-17 (seções 9 e 13); contrato fora do tick em andamento (#105). Fica entre os tratados (`treaties.pt-BR.md`:
+Estado: desenho decidido em 2026-11-17 (seções 9 e 13); contrato fora do tick em andamento
+(#105). Fica entre os tratados (`treaties.pt-BR.md`:
 cláusulas, livro de dívida, avaliação de proposta) e a IA estratégica da fase 6
 (`history-rails.pt-BR.md`: interesses medidos). Princípios de sempre: causa visível, nada sorteado,
 determinismo, e **sem retorno mensurável não entra**.
