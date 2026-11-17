@@ -348,6 +348,8 @@ impl Command<GameWorld> for GameCommand {
                     states: states.clone(),
                     tag: tag.clone().unwrap_or_default(),
                     overlord: subject.then(|| by.clone()),
+                    // Freeing one's own land: the old owner signs the creation.
+                    signatories: vec![by.clone()],
                     terms: Default::default(),
                 }),
             GameCommand::SetPublicPriority { tag, weights } => {

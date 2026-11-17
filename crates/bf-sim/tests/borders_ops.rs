@@ -96,6 +96,7 @@ fn a_colony_is_born_without_debt_and_with_capped_technique() {
             ]),
             tag: "NGA".into(),
             overlord: None,
+            signatories: Vec::new(),
             terms: Terms::default(),
         }],
     );
@@ -161,6 +162,7 @@ fn a_metropole_secession_splits_the_debt() {
             states: s(&["UKR-05", "UKR-09", "UKR-12"]),
             tag: "UKR".into(),
             overlord: None,
+            signatories: Vec::new(),
             terms: Terms::default(),
         }],
     );
@@ -203,6 +205,7 @@ fn annexation_leaves_a_tombstone_that_can_be_born_again() {
             states,
             tag: "AUT".into(),
             overlord: None,
+            signatories: Vec::new(),
             terms: Terms::default(),
         }],
     );
@@ -277,6 +280,7 @@ fn the_player_frees_its_own_land_only() {
             states: s(&["ARG-BUENOS-AIRES"]),
             tag: String::new(),
             overlord: None,
+            signatories: Vec::new(),
             terms: Terms::default(),
         },
         Operation::Secede {
@@ -284,6 +288,7 @@ fn the_player_frees_its_own_land_only() {
             states: s(&["NOWHERE"]),
             tag: String::new(),
             overlord: None,
+            signatories: Vec::new(),
             terms: Terms::default(),
         },
         Operation::Secede {
@@ -291,6 +296,7 @@ fn the_player_frees_its_own_land_only() {
             states: s(&["BRA-SP", "BRA-SP"]),
             tag: String::new(),
             overlord: None,
+            signatories: Vec::new(),
             terms: Terms::default(),
         },
         Operation::Secede {
@@ -304,6 +310,7 @@ fn the_player_frees_its_own_land_only() {
                 .collect(),
             tag: String::new(),
             overlord: None,
+            signatories: Vec::new(),
             terms: Terms::default(),
         },
         Operation::Secede {
@@ -311,6 +318,7 @@ fn the_player_frees_its_own_land_only() {
             states: s(&["BRA-RJ"]),
             tag: "ARG".into(),
             overlord: None,
+            signatories: Vec::new(),
             terms: Terms::default(),
         },
         Operation::Status {
@@ -323,6 +331,7 @@ fn the_player_frees_its_own_land_only() {
             states: s(&["BRA-SP"]),
             tag: String::new(),
             overlord: Some("BRA".into()),
+            signatories: Vec::new(),
             terms: Terms::default(),
         },
     ];
@@ -375,6 +384,7 @@ fn campaign(threads: usize, save: bool) -> (laplace_schelling::hash::StateHash, 
             states: s(&["NGA-WESTERN", "NGA-EASTERN"]),
             tag: "NGA".into(),
             overlord: None,
+            signatories: Vec::new(),
             terms: Terms::default(),
         },
     });

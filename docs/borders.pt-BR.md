@@ -401,7 +401,13 @@ Código em `crates/bf-sim/src/borders/op.rs`; testes em `crates/bf-sim/tests/bor
   `ChangeRecord::repatriated`. As ondas abertas dos territórios mudados terminam com
   `WaveEnd::Border`, e os fatos dos territórios são recalculados.
 - **Súditos:** `BorderRules::overlord_of(world, país)` lê o suserano. Até a primeira operação ele
-  vem do cenário; depois, de `GameWorld::borders.subjects`.
+  vem do cenário; depois, de `GameWorld::borders.subjects`. A operação `Status` só registra a
+  mudança. Quem decide quando o súdito sai é a regra dos tratados, por negociação cláusula a
+  cláusula ou por denúncia, que só vale quando a pressão de saída passa o controle do suserano
+  (decisão do dono de 2026-11-17).
+- **Reconhecimento** (decisão do dono de 2026-11-17): o país novo nasce reconhecido só por quem
+  assinou a criação dele. `Secede` leva a lista `signatories`, e ao libertar o próprio território
+  o antigo dono é o signatário. Os pares que não se reconhecem ficam com os tratados.
 - **Hash:** o estado de fronteiras só entra no hash depois da primeira operação ou recusa. Teste:
   meio ano com e sem o sistema dá o mesmo hash.
 - **Conservação** (`borders::Totals`): pessoas, poupança, fundo, Tesouro, as quatro dívidas de

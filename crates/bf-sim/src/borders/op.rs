@@ -78,12 +78,16 @@ pub enum Operation {
         terms: Terms,
     },
     /// States become country `tag` (new, or born again from a tombstone), independent or a subject
-    /// of `overlord`.
+    /// of `overlord`. `signatories`: who signs the creation, and so recognizes the new country
+    /// (the owner's decision of 2026-11-17, `docs/treaties.pt-BR.md`); the treaties keep the
+    /// pairs that do not recognize each other.
     Secede {
         from: Tag,
         states: Vec<String>,
         tag: Tag,
         overlord: Option<Tag>,
+        #[serde(default)]
+        signatories: Vec<Tag>,
         terms: Terms,
     },
     /// Country `from` ends inside `into`; its states become metropole or colonies of `into`.
@@ -400,6 +404,7 @@ pub fn check(world: &GameWorld, rules: &BorderRules, op: &Operation) -> Result<(
             states,
             tag,
             overlord,
+            signatories,
             terms,
         } => {
             let f = alive(from)?;
@@ -414,6 +419,9 @@ pub fn check(world: &GameWorld, rules: &BorderRules, op: &Operation) -> Result<(
                 if o == tag {
                     return Err("a country is not its own overlord".into());
                 }
+            }
+            for s in signatories {
+                tag_ix(world, s).ok_or_else(|| format!("unknown signatory {s}"))?;
             }
             let rs = regions_of(rules, world, f, states)?;
             if rs.len() == holds[f] {
@@ -950,6 +958,7 @@ fn execute(
             tag,
             overlord,
             terms,
+            ..
         } => {
             let f = ix(world, from);
             let rs = regions_of(rules, world, f, states).expect("checked");
