@@ -519,6 +519,7 @@ fn run(
     until: Date,
     report: bool,
     mut history: Option<&mut crate::history::History>,
+    saves: &mut [(Date, Option<Vec<u8>>)],
 ) -> Run {
     let (mut yearly, mut decades) = (Vec::new(), Vec::new());
     let (mut total, mut slowest, mut since) = (0.0f64, 0.0f64, 0.0f64);
@@ -544,6 +545,13 @@ fn run(
             h.tick(data, &session);
         }
         let d = session.clock().date;
+        // Saved on the way: the save/load check resumes from here instead of simulating the
+        // first half again.
+        for (at, bytes) in saves.iter_mut() {
+            if bytes.is_none() && *at == d {
+                *bytes = session.save(env!("CARGO_PKG_VERSION"), "bench").ok();
+            }
+        }
         if d.month == 1 && d.day == 1 {
             yearly.push(session.state_hash());
             if report {
@@ -805,22 +813,34 @@ pub fn main(
     );
     let session = new_session(&data, seed, threads);
     let mut history = history_out.map(|_| crate::history::History::new(&data, &session));
-    let main = run(&data, session, end, true, history.as_mut());
+    let mut saves: Vec<(Date, Option<Vec<u8>>)> =
+        save_points.iter().map(|&at| (at, None)).collect();
+    let main = run(&data, session, end, true, history.as_mut(), &mut saves);
     if let (Some(h), Some(path)) = (history, history_out) {
         crate::history::write(h, path)?;
     }
 
     // Save at each point, reload and finish: the end must not change.
     let mut reloads = Vec::new();
-    for &at in &save_points {
-        let half = run(&data, new_session(&data, seed, threads), at, false, None);
-        let bytes = half
+    for (at, saved) in saves {
+        // A point the main run did not pass (before the start or after the end): simulate to it.
+        let bytes = match saved {
+            Some(bytes) => bytes,
+            None => run(
+                &data,
+                new_session(&data, seed, threads),
+                at,
+                false,
+                None,
+                &mut [],
+            )
             .session
             .save(env!("CARGO_PKG_VERSION"), "bench")
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| e.to_string())?,
+        };
         let reloaded =
             Session::load(&bytes, threads, Some(data.rules())).map_err(|e| e.to_string())?;
-        let resumed = run(&data, reloaded, end, false, None);
+        let resumed = run(&data, reloaded, end, false, None, &mut []);
         let ok = resumed.session.state_hash() == main.session.state_hash();
         reloads.push((at, bytes.len(), ok));
     }
@@ -829,7 +849,14 @@ pub fn main(
 
     let determinism = if check {
         let other = if threads == 1 { 0 } else { 1 };
-        let alt = run(&data, new_session(&data, seed, other), end, false, None);
+        let alt = run(
+            &data,
+            new_session(&data, seed, other),
+            end,
+            false,
+            None,
+            &mut [],
+        );
         Some(alt.yearly == main.yearly)
     } else {
         None
