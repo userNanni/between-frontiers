@@ -22,6 +22,7 @@ image.workspace = true
 serde.workspace = true
 ron.workspace = true
 directories.workspace = true
+libc.workspace = true
 
 [dev-dependencies]
 egui_kittest.workspace = true

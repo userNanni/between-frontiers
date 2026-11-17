@@ -57,8 +57,8 @@ ponto "Antes de voltar a outro ponto", para desfazer a volta.
 À esquerda, as campanhas. Cada uma tem um botão "…" com Renomear, Apagar campanha e Abrir pasta
 (`screens::saves::MenuItem`, ids `saves.menu.rename`, `saves.menu.delete`,
 `saves.menu.open_folder`; o id `saves.menu.play_other` fica reservado para "Jogar com outro país").
-À direita, os pontos da campanha selecionada: data do jogo, quando foi gravado (UTC, sem biblioteca
-de fuso horário), tipo e motivo; Voltar a este ponto, Renomear e Apagar. Tudo tem dica de tecla.
+À direita, os pontos da campanha selecionada: data do jogo, quando foi gravado (na hora local do
+jogador; o arquivo guarda segundos Unix, em UTC), tipo e motivo; Voltar a este ponto, Renomear e Apagar. Tudo tem dica de tecla.
 
 ## Custo do save
 

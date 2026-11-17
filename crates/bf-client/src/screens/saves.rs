@@ -162,11 +162,10 @@ fn io_error(shared: &Shared, e: impl ToString) -> String {
         .tr_args("saves-error-io", &[("error", Arg::String(e.to_string()))])
 }
 
-/// Local hour and minute are not known without a time zone library: the day and the UTC time.
+/// When a point was written, on the player's clock.
 fn written(shared: &Shared, secs: u64) -> String {
-    let day = date_long(&shared.i18n, civil_date(secs));
-    let t = secs % 86_400;
-    format!("{day} {:02}:{:02} UTC", t / 3600, t % 3600 / 60)
+    let (day, h, m) = saves::local_time(secs);
+    format!("{} {h:02}:{m:02}", date_long(&shared.i18n, day))
 }
 
 pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> Option<Transition> {
