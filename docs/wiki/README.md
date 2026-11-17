@@ -15,18 +15,26 @@ documentos de [`docs/`](../), e cada página daqui aponta para eles.
 |---|---|
 | [Princípios](principios.md) | as regras de desenho que valem para o jogo inteiro |
 | [Estado](estado.md) | as fases 0 a 7: o que já está no jogo e o que falta |
-| Glossário *(em breve)* | os termos do jogo e da literatura |
+| [Glossário](glossario.md) | os termos do jogo e da literatura |
 | [Como manter](como-manter.md) | a regra para atualizar a wiki junto com o código |
 | `decisoes/` | uma página por tema, com as decisões e o efeito de cada uma |
 
 Páginas de decisão prontas:
 
 - [Alianças](decisoes/aliancas.md)
+- [Fronteiras e países](decisoes/fronteiras-e-paises.md)
+- [Tratados e acordos](decisoes/tratados-e-acordos.md)
+- [Crise e guerra](decisoes/crise-e-guerra.md)
+- [Comércio](decisoes/comercio.md)
+- [Capital entre países](decisoes/capital-entre-paises.md)
+- [Ensino](decisoes/ensino.md)
+- [População e comunidades](decisoes/populacao-e-comunidades.md)
+- [Pesquisa](decisoes/pesquisa.md)
+- [Economia](decisoes/economia.md)
+- [Tempo e ordem de cálculo](decisoes/tempo-e-ordem-de-calculo.md)
 - [Diplomacia e influência](decisoes/diplomacia-e-influencia.md)
 - [Saves e interface](decisoes/saves-e-interface.md)
 
-Em preparação: fronteiras e países, tratados e acordos, crise e guerra, comércio, capital entre
-países, população e comunidades, ensino, pesquisa, economia, tempo e ordem de cálculo.
 
 ## Como ler uma página de decisão
 
