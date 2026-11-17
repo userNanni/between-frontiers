@@ -210,13 +210,16 @@ fn dates_fall_inside_the_era() {
 fn costs_grow_with_the_era() {
     let data = GameData::load(&root()).unwrap();
     let tree = tree(&data);
+    // In the research points of laboratories that cost (`tools/research/convert_tree.py`,
+    // `docs/research.pt-BR.md`, "A árvore na unidade nova"): the head-count ranges times the
+    // conversion factor of their years (1.0 in 1930, 2.2 around 1970, 1.2 in 2025).
     let ranges = [
         (20, 60),
-        (60, 150),
-        (150, 450),
-        (400, 1050),
-        (1000, 2500),
-        (2500, 6000),
+        (55, 230),
+        (200, 900),
+        (850, 2300),
+        (2300, 5600),
+        (4000, 9700),
     ];
     for t in &tree.techs {
         let (lo, hi) = ranges[usize::from(t.era)];
