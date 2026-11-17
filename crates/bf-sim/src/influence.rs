@@ -79,6 +79,11 @@ pub struct InfluenceRules {
     /// Most the term may add to a proposal, per mille of the proposal's size: influence makes a
     /// country accept a small loss for a patron, never any loss.
     pub proposal_cap: u32,
+    /// The trade and investment channels read the world (`docs/influence.pt-BR.md`, 13c). Off by
+    /// default: with it off both stay dormant and the hash is the one without them; switching it
+    /// on is a PR of its own.
+    #[serde(default)]
+    pub live_ties: bool,
     /// The foreign service: missions, teams, the cost at home.
     pub service: ServiceRules,
     pub source: String,
@@ -156,13 +161,121 @@ fn milli(n: u32) -> Fixed {
     Fixed::from_raw(i64::from(n))
 }
 
+/// What the trade and investment channels read, built once per pass over the pairs (the month's
+/// map, a frame of the window): trade by pair from `Economy::trade` and foreign capital by pair
+/// from the stakes (`foreign_stakes::owned_shares`).
+#[derive(Clone, Debug, Default)]
+pub struct Ties {
+    /// Trade by pair is in the world: the trade channel is live.
+    pub trade_live: bool,
+    /// Read the year so far, not the last full year: the first year of a game, before any
+    /// January 1st closed one.
+    pub running: bool,
+    /// Each country's exports to every other, in the year read, base prices.
+    pub exports: Vec<Fixed>,
+    /// Foreign capital by pair; `None` without the economy catalogue (investment dormant).
+    pub owned: Option<crate::foreign_stakes::OwnedShares>,
+}
+
+impl Ties {
+    /// The world's ties in `year`. Without the catalogue the investment channel stays dormant.
+    pub fn of(
+        world: &GameWorld,
+        cat: Option<&crate::econ::catalogue::Catalogue>,
+        year: i32,
+    ) -> Self {
+        let t = &world.econ.trade;
+        let n = usize::from(t.n);
+        let running = t.last_year.iter().all(|v| *v == Fixed::ZERO);
+        let flows = if running { &t.year } else { &t.last_year };
+        let exports = (0..n)
+            .map(|s| {
+                (0..n)
+                    .filter(|b| *b != s)
+                    .map(|b| flows.get(s * n + b).copied().unwrap_or(Fixed::ZERO))
+                    .sum()
+            })
+            .collect();
+        Self {
+            trade_live: !t.is_empty(),
+            running,
+            exports,
+            owned: cat.map(|c| crate::foreign_stakes::owned_shares(world, c, year)),
+        }
+    }
+
+    /// The ties the rules let the channels read: the world's with `live_ties`, none without.
+    pub fn under(setup: &InfluenceSetup, world: &GameWorld, year: i32) -> Self {
+        if setup.rules.live_ties {
+            Self::of(world, setup.catalogue.as_deref(), year)
+        } else {
+            Self::default()
+        }
+    }
+
+    /// Exports of `from` to `to` in the year read, base prices.
+    pub fn flow(&self, world: &GameWorld, from: usize, to: usize) -> Fixed {
+        let t = &world.econ.trade;
+        let n = usize::from(t.n);
+        if from >= n || to >= n || from == to {
+            return Fixed::ZERO;
+        }
+        let v = if self.running { &t.year } else { &t.last_year };
+        v.get(from * n + to).copied().unwrap_or(Fixed::ZERO)
+    }
+
+    /// The pairs (A, B) the two channels can make live: A buys from B, or A owns plants in B.
+    pub fn pairs(&self, world: &GameWorld) -> BTreeSet<(u16, u16)> {
+        let mut out = BTreeSet::new();
+        if self.trade_live {
+            let n = usize::from(world.econ.trade.n);
+            for b in 0..n {
+                for a in 0..n {
+                    if self.flow(world, b, a) > Fixed::ZERO {
+                        out.insert((a as u16, b as u16));
+                    }
+                }
+            }
+        }
+        if let Some(o) = &self.owned {
+            out.extend(o.pair.keys().copied());
+        }
+        out
+    }
+}
+
+/// Trade channel of A over B: B's exports to A over B's GDP, times A's share of B's exports
+/// (what B could not sell elsewhere at once), minus the same of A toward B (Hirschman 1945: the
+/// asymmetry is the power). Never below zero: the other side is the pair (B, A).
+pub fn trade_dependence(world: &GameWorld, ties: &Ties, a: usize, b: usize) -> Fixed {
+    let exp = |c: usize| ties.exports.get(c).copied().unwrap_or(Fixed::ZERO);
+    let x_ba = ties.flow(world, b, a);
+    let x_ab = ties.flow(world, a, b);
+    let of_b = share(x_ba, gdp(world, b)) * share(x_ba, exp(b));
+    let of_a = share(x_ab, gdp(world, a)) * share(x_ab, exp(a));
+    (of_b - of_a).max(Fixed::ZERO)
+}
+
+/// Investment channel of A over B: the plants of B owned from A over B's GDP, times A's share of
+/// B's foreign capital (an owner among many weighs less than the only one).
+pub fn investment_dependence(
+    owned: &crate::foreign_stakes::OwnedShares,
+    a: usize,
+    b: usize,
+) -> Fixed {
+    let mine = owned.of(a as u16, b as u16);
+    mine * share(mine, owned.foreign(b as u16))
+}
+
 /// Dependence of `b` on `a` (country indices) in `year`: each channel is the flow over B's GDP
 /// times A's share of that channel in B (Keohane and Nye: vulnerability, what cannot be replaced).
 /// Credit: B's debt to A in the ledger, times A's share of B's foreign creditors (the ledger and
 /// the bond market; the market counts only while B is not shut out of it after a default).
+/// Trade and investment: [`trade_dependence`] and [`investment_dependence`], read from `ties`.
 pub fn dependence(
     world: &GameWorld,
     rules: &InfluenceRules,
+    ties: &Ties,
     a: usize,
     b: usize,
     year: i32,
@@ -185,8 +298,15 @@ pub fn dependence(
     let credit = share(owed, gdp(world, b)) * share(owed, creditors);
     let mut d = Dependence {
         credit: Channel::Live(credit),
-        investment: Channel::Dormant("foreign-capital"),
-        trade: Channel::Dormant("bilateral-trade"),
+        investment: match &ties.owned {
+            Some(o) => Channel::Live(investment_dependence(o, a, b)),
+            None => Channel::Dormant("foreign-capital"),
+        },
+        trade: if ties.trade_live {
+            Channel::Live(trade_dependence(world, ties, a, b))
+        } else {
+            Channel::Dormant("bilateral-trade")
+        },
         protection: Channel::Dormant("war"),
         by_issue: [Fixed::ZERO; Issue::COUNT],
     };
@@ -367,13 +487,14 @@ pub struct InfluenceMap {
 }
 
 impl InfluenceMap {
-    /// Every pair with debt in the ledger or goodwill recorded, A over B.
+    /// Every pair with debt in the ledger, goodwill recorded, trade or foreign capital, A over B.
     pub fn build(
         world: &GameWorld,
         rules: &InfluenceRules,
         table: Option<&CommunityTable>,
         colonial: &[bool],
         goodwill: &BTreeMap<(u16, u16), Goodwill>,
+        ties: &Ties,
         year: i32,
     ) -> Self {
         let cultures = table.map(|t| main_cultures(world, t)).unwrap_or_default();
@@ -385,6 +506,7 @@ impl InfluenceMap {
             .map(|d| (d.creditor, d.debtor))
             .collect();
         pairs.extend(goodwill.keys().copied());
+        pairs.extend(ties.pairs(world));
         let mut worth = BTreeMap::new();
         for (a, b) in pairs {
             let (ai, bi) = (usize::from(a), usize::from(b));
@@ -392,7 +514,7 @@ impl InfluenceMap {
                 continue;
             }
             let i = interest(
-                dependence(world, rules, ai, bi, year),
+                dependence(world, rules, ties, ai, bi, year),
                 goodwill.get(&(a, b)).copied().unwrap_or_default(),
                 affinity(world, rules, table, &cultures, colonial, ai, bi),
             );
@@ -901,6 +1023,7 @@ mod tests {
             people_full: 200,
             proposal_weight: 1000,
             proposal_cap: 250,
+            live_ties: false,
             service: ServiceRules {
                 great_powers: 7,
                 missions_per_team: 10,
@@ -1192,6 +1315,9 @@ pub struct InfluenceSetup {
     pub table: Option<std::sync::Arc<CommunityTable>>,
     /// Law groups that hold only for colonies.
     pub colonial: Vec<bool>,
+    /// The economy catalogue, for the value of foreign plants (investment channel); `None`
+    /// leaves the channel dormant.
+    pub catalogue: Option<std::sync::Arc<crate::econ::catalogue::Catalogue>>,
 }
 
 /// A dependence channel by name, for the influence window.
@@ -1263,8 +1389,9 @@ pub fn channels(
         .map(|t| main_cultures(world, t))
         .unwrap_or_default();
     let key = (a as u16, b as u16);
+    let ties = Ties::under(setup, world, year);
     let i = interest(
-        dependence(world, rules, a, b, year),
+        dependence(world, rules, &ties, a, b, year),
         world
             .influence
             .goodwill
@@ -1321,13 +1448,14 @@ fn influence_pair(
     world: &GameWorld,
     setup: &InfluenceSetup,
     cultures: &[Option<u16>],
+    ties: &Ties,
     a: usize,
     b: usize,
     year: i32,
 ) -> [Fixed; Issue::COUNT] {
     let rules = &setup.rules;
     interest(
-        dependence(world, rules, a, b, year),
+        dependence(world, rules, ties, a, b, year),
         world
             .influence
             .goodwill
@@ -1347,9 +1475,10 @@ fn influence_pair(
     .influence
 }
 
-/// The pairs that can hold influence today: a creditor over its debtor in the ledger, and every
-/// pair with goodwill recorded. Every other pair is zero (the other channels are dormant).
-fn live_pairs(world: &GameWorld) -> BTreeSet<(u16, u16)> {
+/// The pairs that can hold influence today: a creditor over its debtor in the ledger, every pair
+/// with goodwill recorded, and the pairs of trade and foreign capital the ties read. Every other
+/// pair is zero.
+fn live_pairs(world: &GameWorld, ties: &Ties) -> BTreeSet<(u16, u16)> {
     let mut pairs: BTreeSet<(u16, u16)> = world
         .econ
         .ledger
@@ -1358,6 +1487,7 @@ fn live_pairs(world: &GameWorld) -> BTreeSet<(u16, u16)> {
         .map(|d| (d.creditor, d.debtor))
         .collect();
     pairs.extend(world.influence.goodwill.keys().copied());
+    pairs.extend(ties.pairs(world));
     pairs.retain(|(a, b)| a != b);
     pairs
 }
@@ -1376,13 +1506,14 @@ pub fn influence_over(
         .as_deref()
         .map(|t| main_cultures(world, t))
         .unwrap_or_default();
-    live_pairs(world)
+    let ties = Ties::under(setup, world, year);
+    live_pairs(world, &ties)
         .into_iter()
         .filter(|(x, _)| usize::from(*x) == a)
         .map(|(_, b)| {
             (
                 b,
-                influence_pair(world, setup, &cultures, a, usize::from(b), year),
+                influence_pair(world, setup, &cultures, &ties, a, usize::from(b), year),
             )
         })
         .collect()
@@ -1400,13 +1531,14 @@ pub fn influence_on(
         .as_deref()
         .map(|t| main_cultures(world, t))
         .unwrap_or_default();
-    live_pairs(world)
+    let ties = Ties::under(setup, world, year);
+    live_pairs(world, &ties)
         .into_iter()
         .filter(|(_, y)| usize::from(*y) == b)
         .map(|(a, _)| {
             (
                 a,
-                influence_pair(world, setup, &cultures, usize::from(a), b, year),
+                influence_pair(world, setup, &cultures, &ties, usize::from(a), b, year),
             )
         })
         .collect()
@@ -1460,6 +1592,7 @@ impl laplace_schelling::schedule::System<GameWorld> for InfluenceSystem {
             s.table.as_deref(),
             &s.colonial,
             &goodwill,
+            &Ties::under(s, world, ctx.date.year),
             ctx.date.year,
         );
         InfluenceState {

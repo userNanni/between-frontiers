@@ -219,6 +219,7 @@ impl GameData {
                     .as_ref()
                     .map(|p| p.groups.iter().map(|g| g.colonial).collect())
                     .unwrap_or_default(),
+                catalogue: Some(Arc::clone(&self.catalogue)),
             })
         });
         let independence = match (&self.independence, &self.politics) {

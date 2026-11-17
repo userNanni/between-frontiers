@@ -36,6 +36,9 @@
     // The term never adds more than this share of the proposal's size: a patron's influence makes
     // a country accept a small loss, never any loss.
     proposal_cap: 250,
+    // Trade and investment channels (docs/influence.pt-BR.md, 13c): off until the PR that turns
+    // them on, judged by itself on the aggregates.
+    live_ties: false,
     // The foreign service (section 12): missions of 1925 by rule (the Correlates of War data may
     // not be redistributed), teams for simultaneous negotiations, an act without a mission yields
     // half, and administrative efficiency (computers) adds up to as many teams again.
