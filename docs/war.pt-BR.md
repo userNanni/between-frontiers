@@ -616,3 +616,23 @@ trabalhos.
   temos o cenário), as frentes do oeste param pela razão de poder perto de 1. Fica como referência
   qualitativa: a frente estática nasce da defesa em terreno preparado e do suprimento por
   ferrovia, não de uma regra de "trincheira".
+
+## O que falta para ligar ao tick
+
+O contrato, os dados e as funções estão prontos e testados. Nada roda ainda. Quando a fase 5
+abrir, a ordem proposta é esta, cada passo com o hash e o custo medidos contra a `main`:
+
+| # | Passo | O que entra no estado e no save | Depende de |
+|---|---|---|---|
+| 1 | **Forças no `GameWorld`** | formações por país: tipo, geração, elementos, equipamento que têm, treino, estado onde estão; carga de `forces.ron` na partida | nada novo |
+| 2 | **Custo semanal** | as forças compram o consumo (`upkeep`) e a manutenção no mercado, pelo orçamento do Estado, e o transporte do estado onde estão; o equipamento novo entra como compra do Estado à indústria bélica | orçamento e compras do Estado (3c); transporte local (3b) |
+| 3 | **Recrutamento e reserva** | homens tirados da força de trabalho pela lei `conscription` (`mobilizable`) e a reserva chamada (`call_up`) | efeitos da política ligados (fase 3); pirâmide por idade (demografia nova, PR #54) para tirar homens por idade |
+| 4 | **Doutrina** | geração de cada exército, recalculada uma vez por ano (`readiness`, `next_generation`) | indicadores de educação dos oficiais e de controle político (fase 3) |
+| 5 | **Guerra pelo comando do jogador** | estado de guerra entre países, frentes (fronteira contínua no grafo de vizinhança dos estados) e segmentos; passo semanal por segmento (`allocate_front`, `land_step`, `breakthrough`, `supply`); ocupação muda o controle do estado, não o dono | 1–3; terreno (`terrain.ron`) |
+| 6 | **Ar e mar** | superioridade por zona (`air_step`); frotas em zonas marítimas, comboio, bloqueio como perda do trecho e do comércio, desembarque (`naval_step`, `SeaGraph::route`) | 5; o comércio da fase 4 roteando pelo mesmo grafo |
+| 7 | **Custo e fim** | `WarLedger` por país; perdas por idade na pirâmide e devastação de edifícios e transporte (fila de obras); `exhaustion`; paz pelas exigências | 3–6; tratados da fase 4 (reparações como dívida, desarmamento, cessão de território) |
+| 8 | **Escada de crise** | guerra que nasce de crise com exigência e prazo; terceiros entram por aliança e garantia | hostilidade e IA estratégica (fase 6); casus belli e pressão histórica (fase 7) |
+| 9 | **Arma nuclear** | estoque e dissuasão na escada (`deterrence`, `escalation_limits`); a fatia de uso por último | tecnologia `atomic_bomb` difundida; tratados com verificação (fase 4) |
+
+Até o passo 8, a guerra começa só por comando do jogador ou de teste; a IA não declara. Orçamento:
+a guerra mundial de 1939, com todos os segmentos ativos, abaixo de 15 % do tick (decisão 6).
