@@ -461,6 +461,28 @@ O teste atual (`tests/diplomacy_1925.rs`) continua valendo e ganha: todo súdito
 `countries.ron` tem um acordo de sujeição; toda dívida do livro tem credor vivo; a soma do livro
 fecha.
 
+### Feito no contrato (etapa 2, primeira parte)
+
+- `crates/bf-sim/src/treaty.rs`: `Clause`, `ClauseKind` (30 cláusulas), `ClauseCatalogue`,
+  `Proposal`, `evaluate` (dinheiro em valor presente, soberania e confiança já com preço; os outros
+  termos aparecem com a frente de cada um), `Ledger` e `InterstateDebt` (serviço semanal, teto de
+  transferência, moratória, corte no calote, anexação), `validate_treaties`, `ledger_1925`.
+- `data/diplomacy/clauses.ron`: catálogo, feixes de súdito, chaves do dono (`policy`) e pesos.
+- `data/scenario/1925/diplomacy.ron`: os 58 tratados com `clauses` (ou `bundle`, os 7 de
+  sujeição). O `kind` antigo fica como rótulo histórico, e o teste exige que cada tipo tenha a
+  cláusula que o define.
+- `data/scenario/1925/war_debts.ron`: reparação alemã (títulos A e B, 50 bilhões de marcos-ouro,
+  parte nominal de 82 bilhões, anuidade Dawes do primeiro ano, repartida pelas porcentagens de
+  Spa: França 52 %, Reino Unido 22 %, Itália 10 %, Bélgica 8 %; os 8 % dos outros aliados ficam
+  fora, sem repartição na fonte) e dívida britânica aos Estados Unidos (US$ 4,6 bilhões, 1922 a
+  1984, 3 % até 1932). Juro zero e 50 anos na reparação são escolha de desenho, marcada.
+- `assets/i18n/{pt-BR,en}/treaties.ftl`: nome e efeito de cada cláusula, e para cada frente o
+  texto "sem efeito até…": toda cláusula dormente diz na tela por que dorme e o que a acorda
+  (teste `every_text_exists_in_both_languages`).
+- Pendente de fonte lida (fica sem número, anotado na cláusula): tetos de exército de
+  Saint-Germain, Trianon e Neuilly; degraus da anuidade Dawes; a taxa de 3,5 % britânica a partir
+  de 1932; a renda anual do canal do Panamá.
+
 ## 13. Interface: a mesa de negociação
 
 Painel registrado (`PanelId::Treaty`), escondido até ser aberto, teclado primeiro, textos em

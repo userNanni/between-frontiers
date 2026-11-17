@@ -1,0 +1,52 @@
+// Between Frontiers: debts between governments on 1925-01-01 (phase 4). Contract:
+// crates/bf-sim/src/treaty.rs (WarDebtsFile). Entered into the ledger on the start date when the
+// switch `policy.war_debts_1925` of data/diplomacy/clauses.ron is on (owner's decision 6 of
+// docs/treaties.pt-BR.md, recommended on). Licence: CC BY-SA 4.0. WP = Wikipedia (en), facts only.
+//
+// Amounts are in the treaty's own money, turned into 1925 dollars (1.504632 g of fine gold) by
+// gold content (gold mark 0.358423 g, the Reichsmark parity of diplomacy.ron), then into the
+// economy's reference units (2011 dollars at 1925 base prices) by the CPI-U factor 12.85 that
+// docs/economy.pt-BR.md already uses (BLS). Every number below is either read in the cited
+// source or marked as a design choice; nothing else enters.
+(
+    start_date: "1925-01-01",
+    dollar_gold_grams: 1.504632,
+    price_factor: 12.85,
+    lines: [
+        // German reparations under the Dawes plan, split by the Spa percentages. The A and B
+        // bonds of the London Schedule (50 billion gold marks) are the debt; the rest of the 132
+        // billion (the C bonds, 82 billion) is the nominal part. Dawes fixed no total: the first
+        // annuity is 1 billion, rising to 2.5 billion after five years (the steps are not
+        // modelled yet). Rate 0 and 50 years: DESIGN CHOICE, the annuity over the principal,
+        // since Dawes set yearly payments, not interest. The remaining 8 % of the Spa split went
+        // to the other Allies without a split in the source: not in the ledger.
+        (treaty: "dawes_plan", debtor: "GER", creditor: "FRA", unit: "gold mark",
+            unit_gold_grams: 0.358423, principal: 50000000000.0, contingent: 82000000000.0,
+            annuity: Some(1000000000.0), rate: 0.0, years: 50, share: 0.52,
+            pledge: Some(ConsumptionTaxes),
+            source: "WP 'World War I reparations' (lead: A and B bonds, 50 billion; 132 billion in all); WP 'Dawes Plan' (Background: 132 billion, only the A and B bonds expected; The Plan: one billion the first year, two and a half after five, customs, alcohol, tobacco and sugar taxes); WP 'Spa Conference of 1920' (War reparations: France 52 %)"),
+        (treaty: "dawes_plan", debtor: "GER", creditor: "GBR", unit: "gold mark",
+            unit_gold_grams: 0.358423, principal: 50000000000.0, contingent: 82000000000.0,
+            annuity: Some(1000000000.0), rate: 0.0, years: 50, share: 0.22,
+            pledge: Some(ConsumptionTaxes),
+            source: "as the French line; WP 'Spa Conference of 1920' (War reparations: UK 22 %)"),
+        (treaty: "dawes_plan", debtor: "GER", creditor: "ITA", unit: "gold mark",
+            unit_gold_grams: 0.358423, principal: 50000000000.0, contingent: 82000000000.0,
+            annuity: Some(1000000000.0), rate: 0.0, years: 50, share: 0.10,
+            pledge: Some(ConsumptionTaxes),
+            source: "as the French line; WP 'Spa Conference of 1920' (War reparations: Italy 10 %)"),
+        (treaty: "dawes_plan", debtor: "GER", creditor: "BEL", unit: "gold mark",
+            unit_gold_grams: 0.358423, principal: 50000000000.0, contingent: 82000000000.0,
+            annuity: Some(1000000000.0), rate: 0.0, years: 50, share: 0.08,
+            pledge: Some(ConsumptionTaxes),
+            source: "as the French line; WP 'Spa Conference of 1920' (War reparations: Belgium 8 %)"),
+        // British war debt to the United States, funded in 1923: bonds of US$ 4.6 billion dated
+        // 1922-12-15, maturing 1984-12-15, at 3 % until 1932 and 3.5 % after. The ledger has one
+        // rate: 3 %, the one in force in 1925 (the step of 1932 is not modelled yet). The annuity
+        // is not in the text: the level annuity over the 60 years left (computed). The principal
+        // is the one of 1922; what was repaid in 1923-24 is not subtracted.
+        (treaty: "baldwin_mellon_settlement", debtor: "GBR", creditor: "USA", unit: "dollar",
+            unit_gold_grams: 1.504632, principal: 4600000000.0, rate: 0.03, years: 60,
+            source: "British proposal of 1923-06-18 accepted by the United States, sections 1-2 (principal US$ 4,600,000,000; bonds dated 1922-12-15 maturing 1984-12-15; 3 % to 1932-12-15, 3.5 % after), https://digi.econbiz.de/viewer/fulltext/1831796236/4/"),
+    ],
+)

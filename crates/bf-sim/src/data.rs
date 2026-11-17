@@ -41,6 +41,11 @@ pub struct GameData {
     /// Countries that may be born after 1925, when `data/borders/candidates.ron` exists (border
     /// changes; not simulated yet).
     pub candidates: Option<crate::borders::CandidatesFile>,
+    /// The clause catalogue of treaties, when `data/diplomacy/clauses.ron` exists (phase 4; not
+    /// simulated yet).
+    pub clauses: Option<crate::treaty::ClauseCatalogue>,
+    /// Debts between governments on the start date, when `war_debts.ron` exists.
+    pub war_debts: Option<crate::treaty::WarDebtsFile>,
 }
 
 fn read<T: serde::de::DeserializeOwned>(path: &Path) -> Result<T, String> {
@@ -117,6 +122,8 @@ impl GameData {
             industry: optional(&scenario.join("industry.ron"))?,
             diplomacy: optional(&scenario.join("diplomacy.ron"))?,
             candidates: optional(&data.join("borders/candidates.ron"))?,
+            clauses: optional(&data.join("diplomacy/clauses.ron"))?,
+            war_debts: optional(&scenario.join("war_debts.ron"))?,
         })
     }
 
