@@ -1087,6 +1087,6 @@ fn load_sea(
             Some(egui::pos2(s.def.center.0, s.def.center.1))
         });
     }
-    shared.sea_texture = Some(layer.texture(ctx));
+    shared.sea_texture = Some(layer.textures(ctx));
     Ok(std::sync::Arc::new(layer))
 }

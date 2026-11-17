@@ -14,7 +14,7 @@ use egui::{Align2, Color32, Pos2, Rect, Sense, Stroke, TextureHandle, Ui, Vec2};
 
 use crate::keys;
 use crate::map::Camera;
-use crate::map::sea::{SHRINK, SeaLayer};
+use crate::map::sea::SeaLayer;
 use crate::text::country_name;
 use crate::world::World;
 
@@ -72,7 +72,8 @@ pub struct Sources<'a> {
     pub i18n: &'a I18n,
     pub world: &'a World,
     pub layer: &'a SeaLayer,
-    pub texture: &'a TextureHandle,
+    /// The overlay's tiles and the texels each covers.
+    pub texture: &'a [(TextureHandle, Rect)],
     pub camera: Camera,
     /// ISO date and month of the game.
     pub date: &'a str,
@@ -215,19 +216,17 @@ pub fn show(
     let painter = ui.painter().with_clip_rect(map_rect);
 
     // Zones: tint, outline and ice, from the overlay.
-    let full = Rect::from_min_max(
-        to_screen(Pos2::ZERO),
-        to_screen(Pos2::new(
-            (layer.overlay.size[0] as u32 * SHRINK) as f32,
-            (layer.overlay.size[1] as u32 * SHRINK) as f32,
-        )),
-    );
-    painter.image(
-        src.texture.id(),
-        full,
-        Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
-        Color32::WHITE,
-    );
+    for (tex, texels) in src.texture {
+        let on_screen = Rect::from_min_max(to_screen(texels.min), to_screen(texels.max));
+        if on_screen.intersects(map_rect) {
+            painter.image(
+                tex.id(),
+                on_screen,
+                Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
+                Color32::WHITE,
+            );
+        }
+    }
 
     // Names, where the zone is big enough on screen to carry one.
     for z in &layer.graph.file.zones {

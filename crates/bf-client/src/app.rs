@@ -33,7 +33,7 @@ pub struct Shared {
     /// The sea lens' layer, read the first time the lens opens (an error says why it could not),
     /// and its overlay on the GPU.
     pub sea: Option<Result<std::sync::Arc<crate::map::sea::SeaLayer>, String>>,
-    pub sea_texture: Option<egui::TextureHandle>,
+    pub sea_texture: Option<Vec<(egui::TextureHandle, egui::Rect)>>,
     toast: Option<(String, f64)>,
 }
 

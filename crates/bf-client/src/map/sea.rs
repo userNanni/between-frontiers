@@ -168,9 +168,34 @@ impl SeaLayer {
         best.map(|(_, p)| p)
     }
 
-    /// The overlay as a texture of `ctx`, made once.
-    pub fn texture(&self, ctx: &egui::Context) -> TextureHandle {
-        ctx.load_texture("sea-overlay", self.overlay.clone(), TextureOptions::LINEAR)
+    /// The overlay as textures of `ctx`, made once: tiles no larger than the GPU takes, each
+    /// with the part of the map it covers, in texels.
+    pub fn textures(&self, ctx: &egui::Context) -> Vec<(TextureHandle, egui::Rect)> {
+        let side = ctx.input(|i| i.max_texture_side).clamp(256, 4096);
+        let [w, h] = self.overlay.size;
+        let mut out = Vec::new();
+        for y0 in (0..h).step_by(side) {
+            for x0 in (0..w).step_by(side) {
+                let (tw, th) = ((w - x0).min(side), (h - y0).min(side));
+                let mut pixels = Vec::with_capacity(tw * th);
+                for y in y0..y0 + th {
+                    pixels.extend_from_slice(&self.overlay.pixels[y * w + x0..y * w + x0 + tw]);
+                }
+                let tile = ColorImage::new([tw, th], pixels);
+                let tex = ctx.load_texture(
+                    format!("sea-overlay-{x0}-{y0}"),
+                    tile,
+                    TextureOptions::LINEAR,
+                );
+                let s = SHRINK as f32;
+                let rect = egui::Rect::from_min_size(
+                    Pos2::new(x0 as f32 * s, y0 as f32 * s),
+                    egui::vec2(tw as f32 * s, th as f32 * s),
+                );
+                out.push((tex, rect));
+            }
+        }
+        out
     }
 }
 
