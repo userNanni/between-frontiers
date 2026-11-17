@@ -33,8 +33,9 @@ PRs abertos.
 
 No jogo: menu, campanhas e escolha de país no mapa (#8), HUD modular (#58), teclado e editor de
 atalhos (#59), painel lateral e Agendas (#56), escala de interface (#63), pontos de restauração e
-salvamento automático configurável (#98). Em revisão, para entrar em breve: formato de save versionado, com
-o salvamento automático trimestral por padrão (#114).
+salvamento automático configurável (#98), cartão da campanha com o menu "…" (#108), formato de save
+versionado com cadeia de migração e chaves do catálogo, e o salvamento automático trimestral por padrão
+(#114).
 
 ## O que vem depois
 

@@ -45,23 +45,26 @@ em [`saves.pt-BR.md`](../../saves.pt-BR.md) e nos PRs do cliente.
   da rotação. O custo medido: o automático mensal toma 5,5 % do tempo de simular um mês de 1975 em
   diante, o trimestral cerca de 1,8 %, o anual cerca de 0,5 %; um ponto tem de 1,2 a 1,8 MB. A
   gravação roda no thread da simulação, e a interface não trava.
-- **Estado:** no jogo com padrão **anual** (#98). O PR #114, em revisão, muda o padrão para
-  **trimestral** e mostra o custo de cada intervalo na tela; quem já escolheu mantém a escolha.
+- **Estado:** no jogo (#98), com padrão **trimestral** e o custo de cada intervalo na tela desde o
+  #114; quem já tinha escolhido mantém a escolha.
 - **Onde está o detalhe:** [`saves.pt-BR.md`, "Custo do save"](../../saves.pt-BR.md#custo-do-save).
 
 ### Save que sobrevive às atualizações
 
 - **Decisão:** o save tem versão e uma cadeia de migração, e guarda as chaves do catálogo
-  (tecnologias, bens, prédios). Campo novo no mundo sobe a versão e ganha um degrau de migração.
+  (tecnologias, bens, prédios). Todo PR que muda o que o mundo grava sobe a versão e acrescenta um
+  degrau de migração; um teste de esquema falha enquanto isso não for feito.
 - **O que o autor pensou:** decisão técnica, para que os pontos de restauração de uma campanha
   continuem abrindo depois de cada atualização do jogo (a condição do princípio de voltar atrás).
 - **Como o jogo funciona por causa disso:** uma tecnologia nova inserida no meio da árvore não
-  estraga o save: ele se realinha pela chave. Campanha gravada numa versão mais nova diz "Não abre
-  nesta versão"; arquivo danificado diz "Arquivo danificado"; quando há ponto de restauração, a ação
-  principal vira "Voltar a este ponto".
-- **Estado:** em revisão, para entrar em breve (#114).
-- **Onde está o detalhe:** PR #114; a seção "Formato do mundo e migração" entra em
-  `saves.pt-BR.md` com ele.
+  estraga o save: ele se realinha pela chave. Um save que não dá para seguir (sem as chaves e com
+  a árvore mudada, como os de antes do #100) é recusado ao carregar, com aviso, e nunca quebra no
+  meio do jogo. Campanha gravada numa versão mais nova diz "Não abre nesta versão"; arquivo
+  danificado diz "Arquivo danificado"; quando há ponto de restauração, a ação principal vira
+  "Voltar a este ponto". O formato novo não muda a simulação: o hash do mundo é o mesmo com ele.
+- **Estado:** no jogo (#114), na versão 6 do formato.
+- **Onde está o detalhe:** [`saves.pt-BR.md`, "Formato do mundo e migração"](../../saves.pt-BR.md#formato-do-mundo-e-migração),
+  com a tabela de versões e a regra em três linhas para quem muda o mundo.
 
 ### Decisão rara não fica a um toque
 
