@@ -451,6 +451,29 @@ pub struct Economy {
     pub ledger: crate::treaty::Ledger,
 }
 
+/// The economy as saves wrote it before the ledger of debts between states (2026-11-17).
+/// Postcard is not self-describing: loading an older save tries this layout
+/// (`game::decode_world`).
+#[derive(Deserialize)]
+pub(crate) struct EconomyBeforeLedger {
+    regions: Vec<Region>,
+    markets: Vec<Market>,
+    world_price: Vec<Fixed>,
+    history: Vec<YearRecord>,
+}
+
+impl From<EconomyBeforeLedger> for Economy {
+    fn from(e: EconomyBeforeLedger) -> Self {
+        Self {
+            regions: e.regions,
+            markets: e.markets,
+            world_price: e.world_price,
+            history: e.history,
+            ledger: Default::default(),
+        }
+    }
+}
+
 impl HashState for Pop {
     fn hash_state(&self, h: &mut StateHasher) {
         h.write_i64(self.size);
