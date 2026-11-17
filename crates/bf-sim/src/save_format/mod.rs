@@ -173,12 +173,11 @@ pub fn migrate(v: u32, body: &[u8]) -> Result<GameWorld, SaveError> {
 /// would read a newer snapshot wrongly; and a newer layout reads an older snapshot only with
 /// its missing tail of empty lists padded in (one zero byte each).
 fn decode_legacy(bytes: &[u8]) -> Result<GameWorld, SaveError> {
-    // Snapshots without the header are version 6 at the newest.
-    let first = migrate(6, bytes);
+    let first = migrate(WORLD_VERSION, bytes);
     if first.is_ok() {
         return first;
     }
-    for v in [5, 4, 2] {
+    for v in [6, 5, 4, 2] {
         if let Ok(w) = migrate(v, bytes) {
             return Ok(w);
         }
@@ -188,7 +187,7 @@ fn decode_legacy(bytes: &[u8]) -> Result<GameWorld, SaveError> {
     let mut padded = bytes.to_vec();
     for k in 1..=8 {
         padded.resize(bytes.len() + k, 0);
-        for v in [6, 5, 4, 2] {
+        for v in [WORLD_VERSION, 6, 5, 4, 2] {
             if let Ok(w) = migrate(v, &padded) {
                 return Ok(w);
             }
