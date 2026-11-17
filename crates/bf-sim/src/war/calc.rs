@@ -280,6 +280,30 @@ pub fn mobilizable(
     }
 }
 
+/// Reservists reporting after a call-up.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct CallUp {
+    /// Reported by now, in the order's `weeks`.
+    pub reported: u64,
+    /// Still on the way.
+    pub waiting: u64,
+    /// Training of those who reported, 0 to 1 ([`LandSide::training`]).
+    pub training: Fixed,
+}
+
+/// The reserve called up `weeks` ago: it reports in equal shares over `call_up_weeks`, with the
+/// training of a reservist. Each man reporting leaves the work force.
+pub fn call_up(rules: &Rules, reserve: u64, weeks: u32) -> CallUp {
+    let r = &rules.reserve;
+    let total = r.call_up_weeks.max(1) as u128;
+    let reported = (reserve as u128 * (weeks as u128).min(total) / total) as u64;
+    CallUp {
+        reported,
+        waiting: reserve - reported,
+        training: Fixed::from_ratio(r.training.min(1000) as i64, 1000),
+    }
+}
+
 // ---------------------------------------------------------------------------------------------
 // Supply.
 
@@ -1068,6 +1092,10 @@ pub(crate) mod tests {
                 breakthrough_ratio: Fixed::from_int(3),
                 exploitation_speed: Fixed::from_int(2),
             },
+            reserve: crate::war::catalogue::ReserveRule {
+                call_up_weeks: 4,
+                training: 700,
+            },
             nuclear: NuclearRule {
                 silo_kill: 500,
                 soft_kill: 900,
@@ -1228,6 +1256,17 @@ pub(crate) mod tests {
         assert_eq!(m.available, 1470 - 294 - 100);
         assert_eq!(mobilizable(&r, &bands, 2000, 0).callable, 4900);
         assert_eq!(mobilizable(&r, &bands, 20, 1_000_000).available, 0);
+    }
+
+    #[test]
+    fn the_reserve_reports_over_the_call_up_weeks() {
+        let r = rules();
+        let c = call_up(&r, 100_000, 0);
+        assert_eq!((c.reported, c.waiting), (0, 100_000));
+        let c = call_up(&r, 100_000, 1);
+        assert_eq!((c.reported, c.waiting), (25_000, 75_000));
+        assert_eq!(c.training, pm(700));
+        assert_eq!(call_up(&r, 100_000, 52).reported, 100_000);
     }
 
     #[test]

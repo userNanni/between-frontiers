@@ -20,7 +20,12 @@ este arquivo diz o que cada fonte é, a licença e como foi lida.
 - **Data.** O Year-Book de 1925-26 não foi achado em forma legível; os números são de 1923-1924, os
   mais próximos de 1º de janeiro de 1925 que as fontes imprimem, e entram como de 1925 sem
   marcação de estimativa. Linha com número de outro ano (Pérsia 1926, México 1920) é estimativa.
-- **Exército.** Só o exército: gendarmaria, polícia, milícia e reserva ficam de fora. Todo o
+- **Reserva.** Homens treinados fora do serviço (milícia, Guarda Nacional, territoriais,
+  reservas) entram em linhas à parte com `reserve: true`: CHE (milícia mobilizável, Hansard),
+  USA (Guarda Nacional + Reservas Organizadas), GBR (Exército Territorial + Reserva do Exército),
+  CAN (milícia treinada), AUS (estabelecimento de paz, estimativa).
+- **Exército.** Só o exército: gendarmaria, polícia, milícia e reserva ficam fora da linha em
+  serviço. Todo o
   exército de 1925 entra como `infantry` (a artilharia e a cavalaria orgânicas estão no
   equipamento do elemento) até uma fonte dividir por arma. Tropas coloniais pagas pelo orçamento
   colonial entram como `garrison` nas colônias (FRA, GBR, NLD). As tropas britânicas na Índia
@@ -36,7 +41,6 @@ este arquivo diz o que cada fonte é, a licença e como foi lida.
 
 ## Fora por falta de fonte aberta
 
-Exército: SAF, AUS (só o estabelecimento de tempo parcial), CHE (milícia: 500.000 mobilizáveis,
-sem efetivo permanente), EGY, PER, COL, VEN, URY, BOL, PRY, ECU, CUB, SIA, AFG, ETH. Aviação: SOV,
+Exército: SAF, EGY, PER, COL, VEN, URY, BOL, PRY, ECU, CUB, SIA, AFG, ETH. Aviação: SOV,
 POL, ROM, BEL, TUR, BRA, ARG, AUS, SAF, GRE, PRS, MEX. Marinha: os destróieres alemães (a lista
 consultada é incompleta) e a Marinha Real Indiana (só embarcações auxiliares).

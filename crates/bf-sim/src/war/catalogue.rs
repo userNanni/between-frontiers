@@ -319,6 +319,16 @@ pub struct RulesFile {
     pub invalid_share: u32,
     pub doctrine: DoctrineRule,
     pub nuclear: NuclearRule,
+    pub reserve: ReserveRule,
+}
+
+/// Calling up the reserve.
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+pub struct ReserveRule {
+    /// Weeks from the order until the whole reserve has reported, in equal shares.
+    pub call_up_weeks: u32,
+    /// Training of a reservist on arrival, per mille of full training.
+    pub training: u32,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -497,6 +507,7 @@ pub struct Rules {
     pub invalid_share: Fixed,
     pub doctrine: DoctrineRule,
     pub nuclear: NuclearRule,
+    pub reserve: ReserveRule,
 }
 
 /// The catalogue and the rules, resolved.
@@ -799,10 +810,14 @@ fn resolve_rules(file: &RulesFile, cat: &Catalogue, errors: &mut Vec<String>) ->
             "nuclear.bomber_penetration",
             file.nuclear.bomber_penetration,
         ),
+        ("reserve.training", file.reserve.training),
     ] {
         if v > 1000 {
             errors.push(format!("rules: {what} {v} is more than 1,000 per mille"));
         }
+    }
+    if file.reserve.call_up_weeks == 0 {
+        errors.push("rules: reserve.call_up_weeks must be at least 1".into());
     }
     if file.doctrine.down > file.doctrine.up {
         errors.push("rules: doctrine.down above doctrine.up".into());
@@ -857,6 +872,7 @@ fn resolve_rules(file: &RulesFile, cat: &Catalogue, errors: &mut Vec<String>) ->
         invalid_share: per_mille(file.invalid_share),
         doctrine: file.doctrine,
         nuclear: file.nuclear,
+        reserve: file.reserve,
     })
 }
 

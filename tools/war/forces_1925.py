@@ -66,6 +66,16 @@ LAND = [
     ("MEX", "infantry", 80000, "Metropole", "WP 'Mexican Army' (post-revolution): more than 80,000 under arms in 1920", "1920 figure, the latest found, taken for 1925; the army shrank in the 1920s"),
 ]
 
+# ---- Reserve: trained men out of service, called up on mobilization ---------------------------
+# (tag, type, men, source, estimate)
+RESERVE = [
+    ("CHE", "infantry", 500000, f"{HANSARD_ARMIES}: militia, mobilisable strength (no standing army)", None),
+    ("USA", "infantry", 237743, f"{AYB}, United States, p.802: National Guard 160,784 + Organized Reserves 76,959 (30 June 1924)", None),
+    ("GBR", "infantry", 279419, f"{AYB}, Great Britain, pp.93-94: Territorial Army 187,419 + Army Reserve 92,000 (1924-25)", None),
+    ("CAN", "infantry", 34085, f"{AYB}, Canada, p.227: Non-Permanent Active Militia, trained men (establishment 129,467)", None),
+    ("AUS", "infantry", 110000, f"{AYB}, Australia, p.204: peace establishment of about 110,000, Permanent and Citizen Forces", "the establishment, mostly part-time Citizen Forces, taken as the trained reserve"),
+]
+
 # ---- Sea: hulls by type, with the total tonnage when the source gives it ------------------------
 # (tag, type, ships, tonnage or None, source, estimate)
 def ayb_navy(country, page):
@@ -242,6 +252,8 @@ def main():
 
     for tag, ty, men, station, source, est in LAND:
         add(tag, (ty, men, station, None, source, est))
+    for tag, ty, men, source, est in RESERVE:
+        add(tag, (ty, men, "Reserve", None, source, est))
     for tag, ty, n, tonnage, source, est in SEA:
         add(tag, (ty, n, "Metropole", tonnage, source, est))
     for tag, fi, bo, re_, na, source in AIR_SPLIT:
@@ -277,7 +289,8 @@ def main():
         "// count: men (land), ships (sea), aircraft (air). Land: the army only (gendarmerie, police,",
         "// militia and reserves left out); in 1925 the whole army counts as `infantry`, its guns and",
         "// horses inside the element's equipment, until a source splits it by arm. Sea: ships in the",
-        "// fleet, active and reserve; `tonnage` is the source's total for the row. The figures are of",
+        "// fleet, active and reserve; `tonnage` is the source's total for the row. `reserve: true`: trained",
+        "// men out of service (militia, territorials, reserves), called up on mobilization. The figures are of",
         "// 1923-1924, the nearest to the start date the sources print; rows whose number the source",
         "// does not state carry `estimate`.",
         "(",
@@ -290,7 +303,9 @@ def main():
         out.append(f'        (tag: "{tag}", rows: [')
         for ty, n, station, tonnage, source, est in rows[tag]:
             parts = [f'type: "{ty}"', f"count: {n}"]
-            if station != "Metropole":
+            if station == "Reserve":
+                parts.append("reserve: true")
+            elif station != "Metropole":
                 parts.append(f"station: {station}")
             if tonnage is not None:
                 parts.append(f"tonnage: Some({tonnage})")
