@@ -1801,19 +1801,40 @@ fn population_panel() {
             false,
         ),
     ];
-    for (locale, size, tag, bottom) in [
-        ("pt-BR", egui::vec2(1600.0, 900.0), "pt", "Ondas abertas"),
-        ("en", egui::vec2(1280.0, 720.0), "en-1280", "Open waves"),
+    for (locale, size, tag, bottom, classes) in [
+        (
+            "pt-BR",
+            egui::vec2(1600.0, 900.0),
+            "pt",
+            "Ondas abertas",
+            "Filhos por mulher por classe: País inteiro",
+        ),
+        (
+            "en",
+            egui::vec2(1280.0, 720.0),
+            "en-1280",
+            "Open waves",
+            "Children per woman by class: Whole country",
+        ),
     ] {
         for (i, (save, name, state)) in saves.iter().enumerate() {
             let mut h = harness_sized(user.join(format!("{tag}-{name}")), locale, size);
             let ctx = h.ctx.clone();
             h.state_mut().apply(Transition::Game(save.clone()), &ctx);
             h.run_steps(4);
+            // Children per woman by class is an output kept out of the save: it is back on the
+            // 15th, at the first demography month after the load.
+            run_until(&mut h, 120, |s| {
+                s.population.as_ref().is_some_and(|p| !p.classes.is_empty())
+            });
             h.key_press(egui::Key::Y);
             h.run_steps(4);
             let n = 90 + i * 2;
             shot(&mut h, &format!("{n}-population-{name}-{tag}"));
+            // Children per woman by class, of the whole country.
+            h.get_by_label(classes).scroll_to_me();
+            h.run_steps(4);
+            shot(&mut h, &format!("{n}-population-{name}-classes-{tag}"));
             if *state {
                 h.get_by_label("›").click();
                 h.run_steps(3);

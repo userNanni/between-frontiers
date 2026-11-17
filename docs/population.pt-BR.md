@@ -320,6 +320,60 @@ Filhos por mulher (TFR), distribuídos pelas idades de 15 a 49 num perfil fixo (
   (`fertility_terms`). Os termos são a lista `FERTILITY_TERMS`: termo novo entra como mais uma
   linha ali.
 
+### Natalidade por classe
+
+Cada pop (estado × profissão) tem o próprio TFR, pela mesma curva: sobrevivência infantil,
+escolaridade das mães e contracepção do estado; o conforto da própria pop (`satisfaction[2]`) e
+"fora do campo" 1 para as profissões urbanas e 0 para camponês, assalariado rural e proprietário
+de terra (`is_urban`). Os nascimentos do estado saem da pirâmide com o TFR médio das pops,
+ponderado pelo tamanho, e cada pop recebe os seus: parcela da pop × TFR dela
+(`split_births`). As mortes continuam proporcionais ao tamanho. Não há pirâmide por pop: todas
+as pops do estado têm a mesma estrutura de idade.
+
+- **Escolaridade fica do estado.** Não há alfabetização por profissão nos pops nem em `data/`.
+  A diferença entre classes vem só do conforto (peso 0,10) e do trabalho fora do campo (0,03).
+- **A fome de terra freia todas as classes do estado**, como foi calibrada (#54). Medido em 51
+  anos: só nos camponeses e assalariados rurais, o pobre das cidades da Ásia escapa do freio, a
+  Índia de 1975 fica com camponês 0,81 vez o operário (a NFHS-1 de 1992–93 mede o rural 1,36
+  vez o urbano) e China, Raj, URSS e Romênia sobem mais de 0,05 na razão de população de 1975.
+- **Nenhum peso mudou.** A média dos TFR das pops em vez do TFR das médias desloca o TFR das
+  regiões em no máximo 0,1 contra a base (tabela do PR): não houve o que recompensar.
+- **Saída, não estado:** `Vital::tfr_by_class` é recalculado todo mês e nada na simulação o
+  lê; fica fora do save e do hash, e o save antigo carrega (zerado até o primeiro mês).
+- **Tela:** a de População mostra os filhos por mulher de cada classe do país ou do estado que
+  a pirâmide mostra; o `--history-out` grava `class_share` e `class_fertility` por território.
+- **CPU:** a demografia passa de 4,6 para 5,4 ms por mês (13 avaliações da curva por estado), cerca
+  de 1 s em 100 anos.
+
+**O diferencial contra a literatura.** Fontes (fecundidade marital, bruta de escolaridade e
+renda): Kiser, *Milbank Memorial Fund Quarterly* 33(4), 1955, fig. 6 e 8 (EUA, filhos de mulheres
+de 45–49 anos: em 1910 fazendeiro 5,60, braçal urbano 4,79, profissional liberal urbano 2,76; em
+1940, 4,14, 3,23 e 1,96); censo da Inglaterra e Gales de 1911, *Fertility of Marriage*, parte II,
+tabela XLIV (por classe, padronizado pela idade ao casar: trabalhador agrícola 5,56, não
+qualificado 5,28, classe I 3,89); Lerch, MPIDR WP 2017-011 (a razão rural/urbano começa em 1,0 e
+sobe a 1,3–1,7 durante a transição); Berquó e Cavenaghi (Brasil 1991, rural 4,3 e urbano 2,3).
+
+| Unidade | Camponês ÷ liberal (simulado) | Operário ÷ liberal (simulado) | Referência |
+|---|---:|---:|---|
+| EUA 1925 / 1940 | 1,36 / 1,58 | 0,99 / 1,00 | fazendeiro ÷ liberal 2,03 (1910), 2,1 (1940); braçal ÷ liberal 1,74, 1,65 |
+| Grã-Bretanha 1925 | 1,43 | 1,00 | trabalhador agrícola ÷ classe I 1,43; não qualificado ÷ classe I 1,36 (1911) |
+| Itália 1930 / 1950 | 1,31 / 1,51 | 1,00 / 1,01 | – |
+| Japão 1950 | 1,51 | 1,00 | – |
+| Brasil 1960 / 1970 | 1,00 / 1,15 | 1,01 / 1,02 | rural ÷ urbano 1,87 (1991) |
+| México 1970 | 1,22 | 1,00 | América Latina 1,3 a 1,7 (Lerch) |
+| Índia 1975 | 0,99 | 1,04 | rural ÷ urbano 1,36 (1992–93) |
+
+Critério **parcialmente atendido**: campo contra cidade com o sinal certo e a magnitude da
+Inglaterra, metade da dos EUA em log, fraco no Brasil e no México; entre classes urbanas, zero.
+Por quê: a diferença de nota entre classes vai a no máximo 0,13 (conforto e fora do campo),
+contra 0,45 de largura da transição, e só aparece enquanto o estado está no meio da curva; nos
+países ricos o conforto das classes urbanas está perto do teto e é igual entre elas. Pela curva
+de hoje, os EUA de 1910 pedem 0,17 de nota entre o liberal e o braçal e 0,23 entre o liberal e o
+fazendeiro, o que, com o peso da escolaridade (0,57), são **cerca de 0,30 de escolaridade das
+mães entre a mulher do liberal e a do braçal**. Fecha com escolaridade por ocupação com fonte
+(amostras de censo do IPUMS para os EUA de 1910–40, o censo inglês de 1911, WFS e DHS nos países
+em desenvolvimento), como PR de dados; nenhum peso foi mexido para fabricar o diferencial.
+
 ### Migração entre países
 
 Código: `crates/bf-sim/src/demography/migration.rs`. Unidade: território (metrópole ou colônias de
@@ -566,15 +620,8 @@ passa para (b). A difusão e a religião não precisam de pirâmide por comunida
   acontecem se um movimento da política as fizer; na rodada de 100 anos o `nativism` tira o
   subsídio brasileiro em 1976 e põe cotas em 1981, e os EUA não saem das cotas de 1924.
 - **Ondas de minorias.** As minorias têm fluxo contínuo próprio, não ondas.
-- **Natalidade por classe (próximo PR).** Hoje os nascimentos do estado vão às profissões na
-  proporção do tamanho (`distribute`). Desenho: cada pop com o seu TFR, pelos mesmos termos
-  regionais (sobrevivência, escolaridade, contracepção) mais o conforto da própria pop
-  (`satisfaction[2]`) e "fora do campo" igual a 0 ou 1 pela profissão; nascimentos do estado =
-  mulheres férteis da pirâmide × parcela de cada pop × TFR dela, e cada pop recebe os próprios
-  filhos. Sem pirâmide por pop: todas as pops do estado têm a mesma estrutura de idade. Custa 13
-  avaliações por estado por mês (~1 s de CPU em 100 anos). Fica para depois porque o TFR da
-  região passa a ser a média dos TFR das pops, não o TFR da média (a curva é não linear), o que
-  desloca a calibração, e porque muda a composição de classes e o êxodo rural.
+- **Escolaridade por ocupação.** A natalidade por classe usa a escolaridade do estado; a do
+  liberal e a do braçal são iguais (ver "Natalidade por classe"). Próximo PR de dados.
 - **Cultura e religião na natalidade.** Desenho acima ("Cultura e religião na natalidade"): entra
   depois das decisões 1 a 3, com as comunidades nos pops.
 - **Pirâmide por comunidade**; idade de trabalho fixa em 40 % de cada pop.

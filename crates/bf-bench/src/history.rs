@@ -72,6 +72,10 @@ pub struct Territory {
     pub fertility: Vec<f64>,
     /// Values of `demography::FERTILITY_TERMS` (in that order), weighted by population.
     pub fertility_terms: Vec<Vec<f64>>,
+    /// By profession (`econ::prof`): share of the people (mean of the months) and children per
+    /// woman.
+    pub class_share: Vec<Vec<f64>>,
+    pub class_fertility: Vec<Vec<f64>>,
 }
 
 /// Public accounts and prices of one country (metropole and colonies together).
@@ -131,12 +135,13 @@ pub struct StateSeries {
     pub colony: bool,
     pub population: Vec<i64>,
     pub gdp: Vec<f64>,
-    /// Births, deaths and net migration per thousand, and life expectancy: the year's monthly
-    /// rates weighted by population.
+    /// Births, deaths and net migration per thousand, life expectancy and children per woman:
+    /// the year's monthly rates weighted by population.
     pub births: Vec<f64>,
     pub deaths: Vec<f64>,
     pub migration: Vec<f64>,
     pub life_expectancy: Vec<f64>,
+    pub fertility: Vec<f64>,
 }
 
 /// Stocks seen on 1 January, by territory.
@@ -167,6 +172,9 @@ pub struct History {
     vital: Vec<[f64; 6]>,
     /// By territory: the fertility terms times people.
     terms: Vec<[f64; 5]>,
+    /// By territory and profession: people summed over the months, and children per woman
+    /// times people.
+    class: Vec<[[f64; 2]; bf_sim::econ::prof::P]>,
     /// The same by region.
     region_vital: Vec<[f64; 6]>,
     /// Arrivals since the start by (origin, destination) at the last 1 January, and their
@@ -236,6 +244,7 @@ impl History {
             price_jan: prices(w),
             vital: vec![[0.0; 6]; TerritoryId::count(markets)],
             terms: vec![[0.0; 5]; TerritoryId::count(markets)],
+            class: vec![[[0.0; 2]; bf_sim::econ::prof::P]; TerritoryId::count(markets)],
             region_vital: vec![[0.0; 6]; w.econ.regions.len()],
             arrived: arrived(w),
             pairs: Default::default(),
@@ -340,6 +349,14 @@ impl History {
             for (k, x) in v.fertility_terms.iter().enumerate() {
                 self.terms[t][k] += x.to_f64_lossy() * n;
             }
+            for (acc, (p, x)) in self.class[t]
+                .iter_mut()
+                .zip(r.pops.iter().zip(v.tfr_by_class))
+            {
+                let n = p.size as f64;
+                acc[0] += n;
+                acc[1] += x.to_f64_lossy() * n;
+            }
             for acc in [&mut self.vital[t], &mut self.region_vital[ri]] {
                 acc[0] += n;
                 for (k, x) in [v.births, v.deaths, v.migration, v.life, v.tfr]
@@ -394,6 +411,7 @@ impl History {
             st.deaths.push(mean(2));
             st.migration.push(mean(3));
             st.life_expectancy.push(mean(4));
+            st.fertility.push(mean(5));
         }
         for (mi, m) in w.econ.markets.iter().enumerate() {
             let gdp = m.gdp_running.to_f64_lossy();
@@ -432,6 +450,18 @@ impl History {
                         .map(|x| if v[0] > 0.0 { x / v[0] } else { 0.0 })
                         .collect(),
                 );
+                ter.class_share.push(
+                    self.class[t]
+                        .iter()
+                        .map(|c| if v[0] > 0.0 { c[0] / v[0] } else { 0.0 })
+                        .collect(),
+                );
+                ter.class_fertility.push(
+                    self.class[t]
+                        .iter()
+                        .map(|c| if c[0] > 0.0 { c[1] / c[0] } else { 0.0 })
+                        .collect(),
+                );
             }
             let c = &mut rep.countries[mi];
             let g = gdp.max(1.0);
@@ -454,6 +484,9 @@ impl History {
         self.spending.iter_mut().for_each(|x| *x = 0.0);
         self.vital.iter_mut().for_each(|v| *v = [0.0; 6]);
         self.terms.iter_mut().for_each(|v| *v = [0.0; 5]);
+        self.class
+            .iter_mut()
+            .for_each(|v| *v = [[0.0; 2]; bf_sim::econ::prof::P]);
         // Arrivals of the year by road; the series and the waves are rewritten every year.
         let now = arrived(w);
         let n = self.report.years.len();

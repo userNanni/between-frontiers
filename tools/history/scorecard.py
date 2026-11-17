@@ -38,7 +38,7 @@ MIN_COVERAGE = 0.8
 # Longest gap (years) bridged by interpolation between two observations.
 MAX_GAP = {"gdppc": 25, "urban": 20, "literacy": 60, "life_expectancy": 25}
 # Vital rates in the reference (vital.csv) and the simulation's names for them.
-VITAL = ("births", "deaths", "life_expectancy")
+VITAL = ("births", "deaths", "life_expectancy", "fertility")
 # Units whose net migration by decade the scorecard shows.
 MIGRATION_UNITS = [
     ("USA", "metropole"), ("CAN", "metropole"), ("AUS", "metropole"), ("ARG", "metropole"),
@@ -192,10 +192,13 @@ class Reference:
         self.vital = {}
         path = os.path.join(DATA, "vital.csv")
         pts = {k: defaultdict(dict) for k in VITAL}
-        if os.path.exists(path):
+        # Children per woman (UN WPP, from 1950) in a file of its own.
+        for path in (path, os.path.join(DATA, "fertility.csv")):
+            if not os.path.exists(path):
+                continue
             for r in read_csv(path):
                 for k in VITAL:
-                    if r[k]:
+                    if r.get(k):
                         pts[k][r["iso3"]][int(r["year"])] = float(r[k])
         for k in VITAL:
             self.vital[k] = {
@@ -352,7 +355,7 @@ class Sim:
             "non_farm": t["non_farm"][i],
             "literacy": t["literacy"][i],
             # Older history files have no vital rates.
-            **{k: t[k][i] if t.get(k) else None for k in VITAL + ("migration", "fertility")},
+            **{k: t[k][i] if t.get(k) else None for k in VITAL + ("migration",)},
             "employment": emp,
             "production": dict(zip(self.goods, t["production"][i])),
         }
@@ -555,7 +558,6 @@ def build(sim_path):
                     "literacy": [s["literacy"], f["literacy"]],
                     **{k: [s.get(k), f.get(k)] for k in VITAL},
                     "migration": s.get("migration"),
-                    "fertility": s.get("fertility"),
                 }
             )
         unit_rows.append(r)
@@ -946,7 +948,7 @@ def markdown(card):
     if any(d.get("births", [None])[0] is not None for u in card["units"] for d in u["decades"]):
         L.append("\n## Demografia dos 20 maiores (simulado / real)\n")
         L.append("Natalidade e mortalidade por mil habitantes ao ano (ONU, de 1950) · expectativa de vida ao "
-                 "nascer (anos) · migração líquida por mil (só simulada) · filhos por mulher (só simulado). "
+                 "nascer (anos) · migração líquida por mil (só simulada) · filhos por mulher (ONU, de 1950). "
                  "`–` = sem referência.\n")
         vy = [y for y in years if y in (1925, 1955, 1975, 1995, 2015)]
         L.append("| Unidade | " + " | ".join(str(y) for y in vy) + " |")
@@ -968,7 +970,7 @@ def markdown(card):
                     cells.append("–")
                     continue
                 mig = "–" if d.get("migration") is None else f"{d['migration']:+.1f}"
-                tfr = "–" if d.get("fertility") is None else f"{d['fertility']:.1f}"
+                tfr = pair(d.get("fertility") or [None, None], 1)
                 cells.append(f"{pair(d['births'])} · {pair(d['deaths'])} · {pair(d['life_expectancy'])} · {mig} · {tfr}")
             L.append(f"| {name} | " + " | ".join(cells) + " |")
     if card.get("vital_regions"):
@@ -1003,6 +1005,21 @@ def markdown(card):
                 v = r["years"].get(y)
                 cells.append("–" if not v else f"{pr(v['births'])} · {pr(v['deaths'])} · {pr(v['migration'], True)}")
             L.append(f"| {r['region']} | " + " | ".join(cells) + " |")
+        if any(v.get("fertility", [None, None])[1] is not None for r in card["vital_regions"] for v in r["years"].values()):
+            L.append("\n### Filhos por mulher por região (simulado / real)\n")
+            L.append("TFR médio ponderado pela população dos dois lados (ONU WPP 2024, de 1950). Entre "
+                     "colchetes, simulado menos real quando passa de ±0,5.\n")
+            L.append("| Região | " + " | ".join(str(y) for y in dys) + " |")
+            L.append("|---|" + "---|" * len(dys))
+            for r in card["vital_regions"]:
+                cells = []
+                for y in dys:
+                    a, b = (r["years"].get(y) or {}).get("fertility", [None, None])
+                    c = f"{'–' if a is None else f'{a:.1f}'}/{'–' if b is None else f'{b:.1f}'}"
+                    if a is not None and b is not None and abs(a - b) > 0.5:
+                        c += f" [{a - b:+.1f}]"
+                    cells.append(c)
+                L.append(f"| {r['region']} | " + " | ".join(cells) + " |")
     if card.get("migration"):
         L.append("\n## Migração líquida por década (simulado / real)\n")
         L.append("Milhares de pessoas por ano, média da década; positivo entra. A real é a variação da "

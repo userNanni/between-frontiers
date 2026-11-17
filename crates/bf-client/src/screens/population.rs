@@ -9,7 +9,7 @@ use bf_ui_kit::tokens::{color, size, space};
 use egui::{Align2, Rect, RichText, Sense, Ui, vec2};
 
 use crate::keys;
-use crate::population::{Part, PopulationView, Push, Road, WaveEnd, WaveLine};
+use crate::population::{ClassTfr, Part, PopulationView, Push, Road, WaveEnd, WaveLine};
 use crate::text::country_name;
 use crate::world::World;
 
@@ -66,6 +66,7 @@ fn body(ui: &mut Ui, i18n: &I18n, world: &World, view: &PopulationView, scope: &
     bf_ui_kit::divider(ui);
 
     pyramid_section(ui, i18n, world, view, scope);
+    class_section(ui, i18n, world, view, *scope);
     bf_ui_kit::divider(ui);
     for part in &view.parts {
         rates_section(ui, i18n, part, view.parts.len() > 1);
@@ -161,6 +162,91 @@ fn pyramid_section(
     };
     pyramid(ui, i18n, ages);
     bf_ui_kit::caption(ui, &i18n.tr("population-no-sexes"));
+}
+
+/// Children per woman of each profession, of the country or of the state the pyramid shows.
+fn class_section(ui: &mut Ui, i18n: &I18n, world: &World, view: &PopulationView, scope: Scope) {
+    let (place, lines): (String, &[ClassTfr]) = match scope.0 {
+        None => (i18n.tr("population-whole-country"), &view.classes),
+        Some(s) => (
+            state_name(world, s),
+            view.state_classes
+                .iter()
+                .find(|(x, _)| *x == s)
+                .map_or(&[][..], |(_, l)| l),
+        ),
+    };
+    ui.add_space(space::XS);
+    ui.label(
+        RichText::new(i18n.tr_args("population-by-class", &[("place", Arg::String(place))]))
+            .font(sans_medium(size::BODY))
+            .color(color::TEXT),
+    );
+    if lines.is_empty() {
+        bf_ui_kit::muted(ui, &i18n.tr("population-by-class-wait"));
+        return;
+    }
+    // One painted row per class: name, share, children per woman and a bar for the gradient.
+    let width = ui.available_width() - space::MD;
+    let line = 16.0;
+    let (rect, _) =
+        ui.allocate_exact_size(vec2(width, line * (lines.len() + 1) as f32), Sense::hover());
+    let p = ui.painter_at(rect);
+    let bar_w = 90.0;
+    let tfr_x = rect.right() - bar_w - space::SM;
+    // The share column is narrow: "100,0 %" fits, and the header of the children column, wider
+    // than its numbers, spreads over the share's empty left side.
+    let share_x = tfr_x - 110.0;
+    let max = lines.iter().map(|l| l.tfr).fold(0.0, f64::max).max(0.1);
+    let mid = |row: usize| rect.top() + line * row as f32 + line / 2.0;
+    for (x, align, key) in [
+        (rect.left(), Align2::LEFT_CENTER, "population-class"),
+        (share_x, Align2::RIGHT_CENTER, "population-class-share"),
+        (tfr_x, Align2::RIGHT_CENTER, "population-class-tfr"),
+    ] {
+        p.text(
+            egui::pos2(x, mid(0)),
+            align,
+            i18n.tr(key),
+            sans(size::CAPTION),
+            color::TEXT_FAINT,
+        );
+    }
+    for (row, l) in lines.iter().enumerate() {
+        let y = mid(row + 1);
+        let key = bf_sim::economy::PROFESSIONS
+            .get(l.prof)
+            .copied()
+            .unwrap_or("?");
+        p.text(
+            egui::pos2(rect.left(), y),
+            Align2::LEFT_CENTER,
+            i18n.tr(&format!("profession-{key}")),
+            sans(size::SMALL),
+            color::TEXT,
+        );
+        p.text(
+            egui::pos2(share_x, y),
+            Align2::RIGHT_CENTER,
+            format!("{} %", i18n.decimal(l.share * 100.0, 1)),
+            sans(size::SMALL),
+            color::TEXT_MUTED,
+        );
+        p.text(
+            egui::pos2(tfr_x, y),
+            Align2::RIGHT_CENTER,
+            i18n.decimal(l.tfr, 2),
+            sans_medium(size::SMALL),
+            color::TEXT,
+        );
+        let len = (bar_w * (l.tfr / max) as f32).max(1.0);
+        p.rect_filled(
+            Rect::from_min_size(egui::pos2(tfr_x + space::SM, y - 4.0), vec2(len, 8.0)),
+            1.0,
+            color::ACCENT,
+        );
+    }
+    bf_ui_kit::caption(ui, &i18n.tr("population-by-class-note"));
 }
 
 /// One bar per five-year group, the oldest on top, with its share of the people.
@@ -298,7 +384,7 @@ fn fertility_section(ui: &mut Ui, i18n: &I18n, part: &Part) {
             // Causes the simulation weighs but does not show, and causes it does not model yet.
             for (key, why) in [
                 ("population-term-land", "population-hidden"),
-                ("population-term-class", "population-not-modelled"),
+                ("population-term-class", "population-by-class-above"),
                 ("population-term-culture", "population-not-modelled"),
                 ("population-term-religion", "population-not-modelled"),
             ] {

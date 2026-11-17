@@ -5,6 +5,7 @@
 use std::collections::BTreeMap;
 
 use bf_sim::demography::{AGE_GROUPS, FertilityTerm, TerritoryId};
+use bf_sim::econ::prof;
 use bf_sim::game::GameWorld;
 use laplace_schelling::calendar::Date;
 
@@ -43,6 +44,44 @@ pub struct Rates {
     pub migration: f64,
     pub life: f64,
     pub tfr: f64,
+}
+
+/// Children per woman of one profession, and its share of the people.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct ClassTfr {
+    /// Index of the profession (`bf_sim::economy::PROFESSIONS`).
+    pub prof: usize,
+    pub share: f64,
+    pub tfr: f64,
+}
+
+/// Children per woman by profession: Σ TFR × people and people, by profession.
+#[derive(Clone, Copy, Debug, Default)]
+struct ClassSum([(f64, f64); prof::P]);
+
+impl ClassSum {
+    fn add(&mut self, r: &bf_sim::econ::Region, tfr: &[laplace_schelling::Fixed; prof::P]) {
+        for (acc, (p, t)) in self.0.iter_mut().zip(r.pops.iter().zip(tfr)) {
+            let n = p.size as f64;
+            acc.0 += t.to_f64_lossy() * n;
+            acc.1 += n;
+        }
+    }
+
+    /// Professions with people, in the order of the professions.
+    fn lines(&self) -> Vec<ClassTfr> {
+        let total: f64 = self.0.iter().map(|a| a.1).sum();
+        self.0
+            .iter()
+            .enumerate()
+            .filter(|(_, a)| a.1 > 0.0 && total > 0.0)
+            .map(|(prof, a)| ClassTfr {
+                prof,
+                share: a.1 / total,
+                tfr: a.0 / a.1,
+            })
+            .collect()
+    }
 }
 
 /// The metropole or the colonies of the country.
@@ -88,6 +127,10 @@ pub struct PopulationView {
     pub pyramid: [i64; AGE_GROUPS],
     /// By map state id: its name's index is the state, its pyramid.
     pub states: Vec<(u16, [i64; AGE_GROUPS])>,
+    /// Children per woman by profession, of the country and by map state id; empty in a save
+    /// from before the rates by class.
+    pub classes: Vec<ClassTfr>,
+    pub state_classes: Vec<(u16, Vec<ClassTfr>)>,
     pub parts: Vec<Part>,
     /// Communities of foreign origin living here, by origin, largest first.
     pub immigrants: Vec<Road>,
@@ -142,6 +185,17 @@ pub fn read_country(world: &GameWorld, c: usize, date: Date) -> Option<Populatio
         }
     }
     states.sort_by_key(|(s, _)| *s);
+    let mut country = ClassSum::default();
+    let mut by_state: BTreeMap<u16, ClassSum> = BTreeMap::new();
+    for (r, v) in econ.regions.iter().zip(&d.vital) {
+        if usize::from(r.market) != c || v.tfr_by_class.iter().all(|t| t.raw() == 0) {
+            continue;
+        }
+        country.add(r, &v.tfr_by_class);
+        by_state.entry(r.state).or_default().add(r, &v.tfr_by_class);
+    }
+    let classes = country.lines();
+    let state_classes = by_state.into_iter().map(|(s, c)| (s, c.lines())).collect();
     let parts = [false, true]
         .into_iter()
         .filter_map(|colony| {
@@ -262,6 +316,8 @@ pub fn read_country(world: &GameWorld, c: usize, date: Date) -> Option<Populatio
         tag: tag_of(c),
         pyramid,
         states,
+        classes,
+        state_classes,
         parts,
         immigrants,
         emigrants,
