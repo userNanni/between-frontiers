@@ -33,6 +33,8 @@ pub struct State {
     edit: super::hud_edit::Edit,
     /// The folded map mode picker is open.
     lens_open: bool,
+    /// The sea lens' route and preview.
+    sea: super::sea_lens::SeaView,
     /// The overview, folded into a button for want of room, is open.
     overview_open: bool,
     research_camera: Option<super::research::TreeCamera>,
@@ -95,6 +97,7 @@ impl State {
             fold: super::outliner::Fold::default(),
             edit: super::hud_edit::Edit::default(),
             lens_open: false,
+            sea: super::sea_lens::SeaView::default(),
             overview_open: false,
             research_camera: None,
             live_month: None,
@@ -127,6 +130,11 @@ impl State {
     /// Tab of the government window, while it is open.
     pub fn government_tab(&self) -> Option<super::government::Tab> {
         self.government.as_ref().map(|w| w.tab)
+    }
+
+    /// The sea lens' route and preview (tests and commands set them).
+    pub fn sea_view_mut(&mut self) -> &mut super::sea_lens::SeaView {
+        &mut self.sea
     }
 
     /// What the simulation last published.
@@ -251,14 +259,65 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
 
     let map_rect = rect;
     let mut fold_lens = false;
+    // The sea lens reads its layer the first time it opens.
+    let sea_lens = shared
+        .map_view
+        .as_ref()
+        .is_some_and(|v| v.lens == crate::map::lens::Lens::Sea);
+    if sea_lens && shared.sea.is_none() {
+        shared.sea = Some(load_sea(shared, ui.ctx()));
+    }
+    let sea_layer = shared
+        .sea
+        .as_ref()
+        .and_then(|r| r.as_ref().ok())
+        .cloned()
+        .filter(|_| sea_lens);
+    let sea_texture = shared.sea_texture.clone();
     let i18n = &shared.i18n;
     if let (Some(map), Some(view), Some(world)) = (&shared.map, &mut shared.map_view, &shared.world)
     {
         view.selected_owner = state.selected;
         let names = |c: usize| country_name(i18n, world.countries[c].tag());
         let response = view.show(ui, map_rect, map, world, &names, MapMode::Interactive);
-        if let Some(id) = response.clicked_province {
+        if let (Some(id), Some(layer)) = (response.clicked_province, &sea_layer) {
+            // On the sea lens a click picks the ends of a route, not a country.
+            if let Some(s) = world.provinces[id as usize - 1].state {
+                state.sea.pick(layer, world.states[s].def.id);
+            }
+        } else if let Some(id) = response.clicked_province {
             state.selected = world.provinces[id as usize - 1].owner;
+        }
+        if let (Some(layer), Some(texture), Some(camera)) = (&sea_layer, &sea_texture, view.camera)
+            && !state.research_open
+        {
+            let date = format!(
+                "{:04}-{:02}-{:02}",
+                snap.date.year, snap.date.month, snap.date.day
+            );
+            let res = super::sea_lens::show(
+                ui,
+                map_rect,
+                rect,
+                &super::sea_lens::Sources {
+                    i18n,
+                    world,
+                    layer,
+                    texture,
+                    camera,
+                    date: &date,
+                    month: snap.date.month,
+                },
+                &mut state.sea,
+            );
+            if let Some(s) = res.toggle
+                && !state.sea.closed.remove(&s)
+            {
+                state.sea.closed.insert(s);
+            }
+            if res.clear {
+                state.sea.clear();
+            }
         }
         if response.clicked_sea {
             state.selected = None;
@@ -952,6 +1011,23 @@ pub fn lens_popup(
             ways.push((r, (clear, aligned, r.height().round() as i32, pref)));
         }
     }
+    // Last resort, when the free area takes the button's column and its side: just under the
+    // free area, wherever the panel fits across.
+    if let Some(f) = free {
+        let y = f.bottom() + margin;
+        let room = screen.bottom() - margin - y;
+        if room > 0.0 {
+            let size = size_for(room);
+            let x = fit_x(if left_first {
+                button.left()
+            } else {
+                button.right() - size.x
+            });
+            let r = crate::hud::clamp_into(Rect::from_min_size(egui::pos2(x, y), size), screen);
+            let clear = !f.intersects(r);
+            ways.push((r, (clear, false, r.height().round() as i32, -1)));
+        }
+    }
     let best = ways.into_iter().max_by_key(|(_, key)| *key);
     best.map(|(r, _)| r).unwrap_or_else(|| {
         crate::hud::clamp_into(
@@ -997,4 +1073,20 @@ fn overview(
     if let Some(id) = res.unpin {
         state.toggle_pin(shared, &id, now);
     }
+}
+
+/// Reads the sea lens' layer and uploads its overlay; why not, when it cannot.
+fn load_sea(
+    shared: &mut Shared,
+    ctx: &egui::Context,
+) -> Result<std::sync::Arc<crate::map::sea::SeaLayer>, String> {
+    let mut layer = crate::map::sea::load(&shared.paths.assets)?;
+    if let Some(world) = &shared.world {
+        layer.place_straits(|id| {
+            let s = world.states.get(usize::from(id).checked_sub(1)?)?;
+            Some(egui::pos2(s.def.center.0, s.def.center.1))
+        });
+    }
+    shared.sea_texture = Some(layer.textures(ctx));
+    Ok(std::sync::Arc::new(layer))
 }

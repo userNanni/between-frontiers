@@ -11,9 +11,9 @@ use crate::map::MapView;
 use crate::map::lens::{self, Lens};
 use crate::world::World;
 
-// Wide enough for the five families in English and Portuguese, as the kit draws them
+// Wide enough for the six families in English and Portuguese, as the kit draws them
 // (`the_lens_families_fit_across_the_panel` measures them).
-const WIDTH: f32 = 480.0;
+const WIDTH: f32 = 560.0;
 /// Sets the map's lens and recolours it, open picker or not (a command calls this; the
 /// `map.mode_*` commands can pass the family's first lens).
 pub fn choose(view: &mut MapView, world: &World, lens: Lens, year: i32) {
@@ -31,6 +31,7 @@ enum Family {
     Climate,
     Farms,
     Infrastructure,
+    Sea,
 }
 
 fn family(lens: Lens) -> Family {
@@ -40,6 +41,7 @@ fn family(lens: Lens) -> Family {
         Lens::Climate => Family::Climate,
         Lens::Farm(_) => Family::Farms,
         Lens::Local(_) => Family::Infrastructure,
+        Lens::Sea => Family::Sea,
     }
 }
 
@@ -84,6 +86,7 @@ fn legend_h(ctx: &egui::Context, lens: Lens) -> f32 {
     let guess = match family(lens) {
         Family::Political => 0.0,
         Family::Climate => 7.0 * 20.0,
+        Family::Sea => 96.0,
         _ => 56.0,
     };
     ctx.data(|d| d.get_temp(legend_id(lens))).unwrap_or(guess)
@@ -193,6 +196,7 @@ pub fn all_lenses() -> Vec<Lens> {
     out.extend((0..RESOURCES.len()).map(Lens::Resource));
     out.extend((0..FARMS.len()).map(Lens::Farm));
     out.extend((0..lens::LOCAL_GOODS.len()).map(Lens::Local));
+    out.push(Lens::Sea);
     out
 }
 
@@ -204,6 +208,7 @@ pub fn name(i18n: &I18n, lens: Lens) -> String {
         Family::Climate => "lens-climate",
         Family::Farms => "lens-farms",
         Family::Infrastructure => "lens-infrastructure",
+        Family::Sea => "lens-sea",
     };
     let fam = i18n.tr(fam);
     let item = match lens {
@@ -279,7 +284,8 @@ pub fn mode_lens(mode: usize, current: Lens) -> Lens {
         1 => Lens::Resource(RESOURCES.iter().position(|r| *r == "copper").unwrap_or(0)),
         2 => Lens::Climate,
         3 => Lens::Farm(0),
-        _ => Lens::Local(lens::LOCAL_DEFAULT),
+        4 => Lens::Local(lens::LOCAL_DEFAULT),
+        _ => Lens::Sea,
     };
     if family(lens) == family(current) {
         current
@@ -360,6 +366,7 @@ pub fn show(
             (Family::Climate, i18n.tr("lens-climate")),
             (Family::Farms, i18n.tr("lens-farms")),
             (Family::Infrastructure, i18n.tr("lens-infrastructure")),
+            (Family::Sea, i18n.tr("lens-sea")),
         ];
         let tips = [
             Tip::Command(id::MODE_POLITICAL),
@@ -367,6 +374,7 @@ pub fn show(
             Tip::Command(id::MODE_CLIMATE),
             Tip::Command(id::MODE_FARMS),
             Tip::Command(id::MODE_INFRASTRUCTURE),
+            Tip::Command(id::MODE_SEA),
         ];
         // The keys of these commands are read by the game screen, folded or not.
         let changed = keys::segmented(&mut ui, &mut f, &options, &tips);
@@ -382,6 +390,7 @@ pub fn show(
                 Family::Climate => Lens::Climate,
                 Family::Farms => Lens::Farm(0),
                 Family::Infrastructure => Lens::Local(lens::LOCAL_DEFAULT),
+                Family::Sea => Lens::Sea,
             };
         }
     }
@@ -535,6 +544,10 @@ fn legend(ui: &mut Ui, i18n: &I18n, current: Lens, world: &World) {
     if current == Lens::Political {
         return;
     }
+    if current == Lens::Sea {
+        sea_legend(ui, i18n);
+        return;
+    }
     if let Lens::Local(_) = current {
         if world.live_local.is_empty() {
             bf_ui_kit::small(ui, &i18n.tr("lens-no-data"));
@@ -598,8 +611,48 @@ fn legend(ui: &mut Ui, i18n: &I18n, current: Lens, world: &World) {
                 );
             }
         }
-        Lens::Political | Lens::Local(_) => {}
+        Lens::Political | Lens::Local(_) | Lens::Sea => {}
     }
+}
+
+/// The sea lens: the ice of each zone, and how to ask for a route.
+fn sea_legend(ui: &mut Ui, i18n: &I18n) {
+    use crate::map::sea::zone_tint;
+    bf_ui_kit::caption(ui, &i18n.tr("legend-sea-ice"));
+    ui.horizontal_wrapped(|ui| {
+        for (key, fill, hatch) in [
+            ("sea-ice-free", zone_tint(3).gamma_multiply(2.5), None),
+            (
+                "sea-ice-seasonal",
+                zone_tint(3).gamma_multiply(2.5),
+                Some(Color32::from_rgb(225, 235, 245)),
+            ),
+            (
+                "sea-ice-permanent",
+                Color32::from_rgb(200, 215, 230),
+                Some(Color32::from_rgb(245, 248, 252)),
+            ),
+        ] {
+            let (r, _) = ui.allocate_exact_size(Vec2::new(16.0, 12.0), Sense::hover());
+            ui.painter().rect_filled(r, 2, fill);
+            if let Some(h) = hatch {
+                for k in 0..3 {
+                    let x = r.left() + 3.0 + k as f32 * 5.0;
+                    ui.painter().line_segment(
+                        [Pos2::new(x, r.bottom()), Pos2::new(x + 4.0, r.top())],
+                        Stroke::new(1.0, h),
+                    );
+                }
+            }
+            ui.label(
+                egui::RichText::new(i18n.tr(key))
+                    .font(sans(11.5))
+                    .color(color::TEXT),
+            );
+            ui.add_space(8.0);
+        }
+    });
+    bf_ui_kit::small(ui, &i18n.tr("legend-sea-route"));
 }
 
 /// Extra tooltip line for the state under the pointer in the current lens.
@@ -611,7 +664,7 @@ pub fn tooltip_line(
     year: i32,
 ) -> Option<String> {
     match lens {
-        Lens::Political => None,
+        Lens::Political | Lens::Sea => None,
         Lens::Local(i) => {
             let v = world.live_local.get(state)?.get(i).copied()?;
             if v < 0.0 {

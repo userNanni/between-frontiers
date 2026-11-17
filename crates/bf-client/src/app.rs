@@ -30,6 +30,10 @@ pub struct Shared {
     pub key_editor: Option<crate::screens::keys_editor::State>,
     /// A scale change waiting for the player to keep it.
     pub scale_trial: Option<crate::ui_scale::Trial>,
+    /// The sea lens' layer, read the first time the lens opens (an error says why it could not),
+    /// and its overlay on the GPU.
+    pub sea: Option<Result<std::sync::Arc<crate::map::sea::SeaLayer>, String>>,
+    pub sea_texture: Option<Vec<(egui::TextureHandle, egui::Rect)>>,
     toast: Option<(String, f64)>,
 }
 
@@ -185,6 +189,8 @@ impl App {
             saves: Vec::new(),
             hud: crate::hud::Hud::new(crate::hud::Layout::load(&crate::hud::file(&paths_config))),
             scale_trial: None,
+            sea: None,
+            sea_texture: None,
             toast: None,
         };
         shared.refresh_saves();

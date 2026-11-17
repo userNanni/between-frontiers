@@ -1676,3 +1676,90 @@ fn budget_revenue_sources() {
     }
     let _ = std::fs::remove_dir_all(&user);
 }
+
+/// The sea lens: the zones with their ice and names, the Mediterranean with Suez and Gibraltar,
+/// the Baltic, and the route Bombay–Kent (London's state has no port in the graph) with Suez open and closed in the preview; in
+/// Portuguese at 1600 × 900 and in English at 1280 × 720.
+#[test]
+#[ignore = "needs a GPU (or software Vulkan) and the generated map; run with --ignored"]
+fn sea_lens() {
+    use bf_client::map::lens::Lens;
+    let user = std::env::temp_dir().join(format!("bf-shots-sea-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&user);
+    let session = advanced_session(laplace_schelling::calendar::Date::new(1925, 6, 1));
+    let save = write_campaign(&user, &session, "Mar 1925", "BRA", &[]);
+    let (bombay, london, suez, gibraltar, oresund) = (358u16, 276u16, 11u16, 0u16, 2u16);
+    for (locale, size, tag) in [
+        ("pt-BR", egui::vec2(1600.0, 900.0), "pt"),
+        ("en", egui::vec2(1280.0, 720.0), "en-1280"),
+    ] {
+        let mut h = harness_sized(user.join(tag), locale, size);
+        let ctx = h.ctx.clone();
+        h.state_mut().apply(Transition::Game(save.clone()), &ctx);
+        h.run_steps(4);
+        let set_lens = |h: &mut Harness<'_, App>| {
+            let app = h.state_mut();
+            if let (Some(view), Some(world)) = (&mut app.shared.map_view, &app.shared.world) {
+                bf_client::screens::lens_panel::choose(view, world, Lens::Sea, 1925);
+            }
+            h.run_steps(6);
+        };
+        set_lens(&mut h);
+        shot(&mut h, &format!("80-sea-overview-{tag}"));
+        let look = |h: &mut Harness<'_, App>, lon: f64, lat: f64, zoom: f32| {
+            let app = h.state_mut();
+            let meta = app.shared.world.as_ref().unwrap().map.meta.clone();
+            let (x, y) = bf_client::world::project(&meta, lon, lat).unwrap();
+            let view = app.shared.map_view.as_mut().unwrap();
+            view.camera
+                .as_mut()
+                .unwrap()
+                .look_at(egui::pos2(x, y), zoom);
+            h.run_steps(4);
+        };
+        let marker = |h: &Harness<'_, App>, id: u16| {
+            let app = h.state();
+            let layer = app.shared.sea.as_ref().unwrap().as_ref().unwrap();
+            let cam = app.shared.map_view.as_ref().unwrap().camera.unwrap();
+            let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, size);
+            cam.to_screen(screen, layer.straits[id as usize])
+        };
+        let set = |h: &mut Harness<'_, App>,
+                   f: &dyn Fn(&mut bf_client::screens::sea_lens::SeaView)| {
+            if let Screen::Game(g) = &mut h.state_mut().screen {
+                f(g.sea_view_mut());
+            }
+            h.run_steps(4);
+        };
+        // The Mediterranean: Suez's card kept open, Gibraltar's under the pointer.
+        look(&mut h, 15.0, 36.0, size.x / 1600.0 * 1.0);
+        set(&mut h, &|v| v.focus = Some(suez));
+        let g = marker(&h, gibraltar);
+        h.hover_at(g);
+        h.run_steps(8);
+        shot(&mut h, &format!("81-sea-mediterranean-{tag}"));
+        // The Baltic, with the Øresund's card.
+        h.hover_at(egui::pos2(5.0, 5.0));
+        set(&mut h, &|v| v.focus = Some(oresund));
+        look(&mut h, 18.0, 58.0, size.x / 1600.0 * 1.8);
+        shot(&mut h, &format!("82-sea-baltic-{tag}"));
+        // Bombay to London, Suez open, then closed in the preview.
+        let ctx = h.ctx.clone();
+        if let Some(v) = h.state_mut().shared.map_view.as_mut() {
+            v.camera = None;
+        }
+        let _ = ctx;
+        h.run_steps(2);
+        set(&mut h, &|v| {
+            v.focus = None;
+            v.from = Some(bombay);
+            v.to = Some(london);
+        });
+        shot(&mut h, &format!("83-sea-route-suez-open-{tag}"));
+        set(&mut h, &|v| {
+            v.closed.insert(suez);
+        });
+        shot(&mut h, &format!("84-sea-route-suez-closed-{tag}"));
+    }
+    let _ = std::fs::remove_dir_all(&user);
+}

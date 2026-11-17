@@ -16,6 +16,7 @@ pub mod outliner;
 pub mod pick;
 pub mod research;
 pub mod saves;
+pub mod sea_lens;
 pub mod settings;
 pub mod tiles;
 pub mod top_bar;
