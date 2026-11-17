@@ -26,10 +26,12 @@ pub enum Tab {
     Budget,
     Money,
     Laws,
+    /// Debts between governments.
+    Ledger,
 }
 
 impl Tab {
-    pub const ALL: [Tab; 3] = [Tab::Budget, Tab::Money, Tab::Laws];
+    pub const ALL: [Tab; 4] = [Tab::Budget, Tab::Money, Tab::Ledger, Tab::Laws];
 
     /// The command that opens the window on this tab.
     pub fn command(self) -> &'static str {
@@ -37,6 +39,7 @@ impl Tab {
             Tab::Budget => id::TAB_BUDGET,
             Tab::Money => id::TAB_MONEY,
             Tab::Laws => id::TAB_LAWS,
+            Tab::Ledger => id::TAB_LEDGER,
         }
     }
 
@@ -45,6 +48,7 @@ impl Tab {
             Tab::Budget => "gov-tab-budget",
             Tab::Money => "gov-tab-money",
             Tab::Laws => "gov-tab-laws",
+            Tab::Ledger => "gov-tab-ledger",
         }
     }
 }
@@ -80,6 +84,8 @@ impl Drafts {
 pub struct Window {
     pub tab: Tab,
     pub drafts: Drafts,
+    /// The debts tab's selected line.
+    pub ledger: super::ledger::LedgerUi,
 }
 
 /// What a tab gets to draw with.
@@ -96,6 +102,10 @@ pub struct TabContext<'a> {
     pub tag: &'a str,
     /// Commands for the simulation; they apply at the start of the next tick.
     pub commands: &'a mut Vec<GameCommand>,
+    /// The debts tab's selection.
+    pub ledger: &'a mut super::ledger::LedgerUi,
+    /// The principal each 1925 debt was signed with.
+    pub signed: &'a crate::ledger_view::Signed,
 }
 
 #[derive(Default)]
@@ -122,6 +132,8 @@ pub struct Sources<'a> {
     pub snap: &'a Snapshot,
     /// Tag of the player's country, from the campaign.
     pub tag: Option<&'a str>,
+    /// The principal each 1925 debt was signed with.
+    pub signed: &'a crate::ledger_view::Signed,
 }
 
 pub fn show(
@@ -137,6 +149,7 @@ pub fn show(
         world,
         snap,
         tag,
+        signed,
     } = src;
     let mut out = GovernmentResponse::default();
     let top = screen.top() + super::top_bar::LEFT_BOTTOM;
@@ -151,7 +164,11 @@ pub fn show(
     if snap.tick > window.drafts.tick {
         window.drafts = Drafts::default();
     }
-    let Window { tab, drafts } = window;
+    let Window {
+        tab,
+        drafts,
+        ledger,
+    } = window;
     region(ui, rect.shrink(space::XL), |ui| {
         ui.horizontal(|ui| {
             bf_ui_kit::title(ui, &i18n.tr("gov-title"));
@@ -187,6 +204,8 @@ pub fn show(
             drafts,
             tag,
             commands: &mut out.commands,
+            ledger,
+            signed,
         };
         egui::ScrollArea::vertical()
             .auto_shrink([false, false])
@@ -198,6 +217,7 @@ pub fn show(
                     Tab::Budget => super::budget::show(ui, &mut cx),
                     Tab::Money => super::money::show(ui, &mut cx),
                     Tab::Laws => super::laws::show(ui, &mut cx),
+                    Tab::Ledger => super::ledger::show(ui, &mut cx),
                 }
             });
     });

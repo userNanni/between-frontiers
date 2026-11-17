@@ -51,6 +51,8 @@ pub struct Snapshot {
     /// The player's population: pyramid, rates, fertility terms, migration; read on the first
     /// snapshot and then once a month.
     pub population: Option<Arc<crate::population::PopulationView>>,
+    /// The player's debts between governments, read once a month.
+    pub ledger: Option<Arc<crate::ledger_view::LedgerView>>,
     /// Who holds every state, read again when a border operation ran; `None` without the rules.
     pub owners: Option<Arc<bf_sim::borders::op::OwnersView>>,
     /// The ways the player's country can free land (the decision "Libertar território"), read
@@ -197,12 +199,28 @@ fn population_of(
     }
 }
 
+fn ledger_of(
+    session: &Session,
+    last: &Option<Arc<crate::ledger_view::LedgerView>>,
+) -> Option<Arc<crate::ledger_view::LedgerView>> {
+    let date = session.clock().date;
+    match last {
+        Some(l)
+            if l.month == (date.year, date.month) && Some(l.tag.as_str()) == session.player() =>
+        {
+            Some(Arc::clone(l))
+        }
+        _ => crate::ledger_view::read(session.world(), session.player(), date).map(Arc::new),
+    }
+}
+
 /// What a snapshot carries that is read once a month, or when it changed.
 #[derive(Clone, Default)]
 struct Monthly {
     figures: Option<Arc<LiveFigures>>,
     journal: Option<Arc<Journal>>,
     population: Option<Arc<crate::population::PopulationView>>,
+    ledger: Option<Arc<crate::ledger_view::LedgerView>>,
     owners: Option<Arc<bf_sim::borders::op::OwnersView>>,
     liberation: Option<Arc<LiberationView>>,
 }
@@ -232,6 +250,7 @@ impl Monthly {
             figures: figures_of(session, &last.figures),
             journal: journal_of(session, rules, &last.journal),
             population: population_of(session, rules, &last.population),
+            ledger: ledger_of(session, &last.ledger),
             owners: owners_of(session, rules, &last.owners),
             liberation: liberation_of(session, rules, &last.liberation),
         }
@@ -258,6 +277,7 @@ fn snapshot_of(
         figures: monthly.figures,
         journal: monthly.journal,
         population: monthly.population,
+        ledger: monthly.ledger,
         owners: monthly.owners,
         liberation: monthly.liberation,
         government: crate::government::read(

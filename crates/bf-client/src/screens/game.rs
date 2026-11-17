@@ -22,6 +22,8 @@ pub struct State {
     selected: Option<usize>,
     menu_open: bool,
     rules: bf_sim::game::Rules,
+    /// The principal each 1925 debt between governments was signed with.
+    signed: crate::ledger_view::Signed,
     research_open: bool,
     /// The government window while it is open.
     government: Option<super::government::Window>,
@@ -112,6 +114,7 @@ impl State {
             selected: None,
             menu_open: false,
             rules: data.rules(),
+            signed: crate::ledger_view::signed_1925(&data),
             research_open: false,
             government: None,
             journal: None,
@@ -740,6 +743,7 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
                 world: shared.world.as_ref(),
                 snap: &snap,
                 tag: state.save.meta.player.as_deref(),
+                signed: &state.signed,
             },
             window,
             &mut gov_place,
@@ -899,6 +903,7 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
             (id::TAB_BUDGET, Tab::Budget),
             (id::TAB_MONEY, Tab::Money),
             (id::TAB_LAWS, Tab::Laws),
+            (id::TAB_LEDGER, Tab::Ledger),
         ] {
             if fired(cmd) {
                 state.research_open = false;

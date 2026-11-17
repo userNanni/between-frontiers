@@ -7,6 +7,7 @@ pub mod hud;
 pub mod journal;
 pub mod keys;
 pub mod laws_view;
+pub mod ledger_view;
 pub mod live;
 pub mod map;
 pub mod paths;
