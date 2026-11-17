@@ -45,7 +45,7 @@
     // after 1925); research productivity in the United States fell 5.1 % a year since the 1930s
     // (Bloom, Jones, Van Reenen and Webb 2020, AER 110(4), p. 1110). Source value: the
     // difference, 35 basis points (docs/research.pt-BR.md, "Pesquisa que custa").
-    harder_per_year_bp: 35,
+    harder_per_year_bp: 300,
     technologies: [
         (
             key: "tractor",
