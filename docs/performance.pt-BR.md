@@ -25,17 +25,26 @@ Rodada de 101 anos na `main` (`7b10b48`, 2 threads, tempo de simulação de 229 
 - **Dentro do semanal** (amostragem de pilha, 1925–27): `settle_region` 28 %, `plan_pop` 18 %,
   `need_mix` 5 %, `region_orders` e `plant_run` o resto. Cerca de 40 % do tempo total é aritmética
   `Fixed` (multiplicação e divisão com arredondamento) e cerca de 10 % é `malloc`/`free`/`memcpy`.
-- **Escala:** o laço por estado roda em paralelo, mas o trecho entre os dois `par_iter` do
-  semanal (soma por mercado, comércio, `clear_market`, `local::finish`) e todo `apply` são
-  seriais.
-- **O bench roda a simulação duas vezes:** a rodada principal e, para conferir o save, uma
-  segunda até o meio e a retomada até o fim. O tempo de CPU de uma rodada é cerca de 2 × o tempo
-  de simulação impresso.
+- **Escala:** os sistemas rodam um de cada vez (quase todo tick tem um sistema só; o semanal
+  roda sozinho na segunda-feira). O paralelismo está dentro do sistema: os dois `par_iter` por
+  estado do semanal, que somam 82–85 % das amostras. Seriais: o trecho entre os dois (soma por
+  mercado, comércio mundial, `clear_market`, `local::finish`, `market_wages`) e todo `apply`,
+  15–18 % do tick. Pela lei de Amdahl, o teto é 1,7× com 2 threads, 2,5× com 4 e 2,9× com 6. O
+  hash é o mesmo com 1, 2, 4 e 6 threads.
+- **O bench conferia o save simulando o século duas vezes.** Desde o #141 a conferência retoma de
+  um save feito durante a rodada principal: a CPU de uma rodada é cerca de 1,5 × o tempo de
+  simulação impresso (era 2 ×).
 
 ## Orçamento de CPU por sistema novo
 
-Um sistema novo não deve passar de **5 % da simulação** (cerca de 10 s em 101 anos) sem
-discussão no PR. Em média por execução, medido em 1 thread:
+- **Sistema novo:** até **5 % da simulação** (cerca de 10 s em 101 anos).
+- **Mudança dentro de um sistema que já existe:** até **2 % do custo daquele sistema**.
+- Acima disso, o PR traz a justificativa e o ganho que compensa, ou a regra entra desligada.
+- **Regra desligada custa zero.** A chave em `game::Switches` (ou `rules.*`) vem desligada por
+  padrão. Desligada, a regra não aloca estado, não pré-calcula nada e o sistema sai na primeira
+  linha. A CPU com a regra desligada fica a até 2 % da `main`.
+
+Em média por execução, medido em 1 thread:
 
 | cadência | execuções em 101 anos | orçamento por execução |
 |---|---|---|
@@ -57,8 +66,13 @@ diga no PR quanto o `economy-week` subiu, em 10 anos e nos últimos anos do séc
    pop, por planta, por bem ou por par de países em sistema diário ou semanal. Use um buffer por
    estado ou por mercado, um array fixo (`[Fixed; P]`) ou uma matriz plana `n × m` alocada uma vez
    por execução e reaproveitada entre bens.
-3. **`clone` de estrutura grande.** O `compute` lê o mundo por referência; as `Changes` levam só
-   o que muda, não a cópia inteira de um `Market`, de um `CountryWar` ou de uma lista de pops.
+3. **`clone` de estrutura grande que quase não muda.** O `compute` lê o mundo por referência e
+   as `Changes` levam o que muda.
+   - Copiar um `Market` inteiro para mudar três campos é desperdício.
+   - Quando o sistema reescreve todo campo da estrutura toda semana (o `country_week` da guerra
+     com o `CountryWar`), devolvê-la nova é o certo: a cópia é o próprio resultado.
+   - Separe as partes que não mudam (catálogo, tabelas, nomes) e passe-as por referência ou por
+     índice; elas não entram na cópia.
 4. **Mapa onde vetor serve.** Id denso (país, mercado, estado, bem, profissão) indexa `Vec` ou
    matriz plana. `BTreeMap` só para chave esparsa; `HashMap` não entra no estado (a ordem de
    iteração muda o resultado).
@@ -66,21 +80,51 @@ diga no PR quanto o `economy-week` subiu, em 10 anos e nos últimos anos do séc
    chave, `== "military"`, `law("...")`: o índice se resolve na carga (regra do `CLAUDE.md`).
    Uma busca dentro de laço por planta ou por país vira O(n²).
 6. **Pares O(n²) por semana.** 83 países dão 6 889 pares; 870 estados, 757 mil. Par país × país
-   por semana só com trabalho trivial por par; o que depende só de um lado sai do laço interno.
+   por semana só com trabalho trivial por par, e o que depende só de um lado sai do laço interno.
+   - Guarde só os pares acima do piso, numa lista esparsa ordenada por id.
+   - Não expanda a esparsa em matriz densa toda semana. O `dense()` do #113 fazia isso; uma tabela
+     de preferência que muda por mês se refaz no mês.
 7. **Lista que só cresce percorrida no tick.** Histórico, coorte por ano de construção, fila nunca
-   podada: o custo por ano não pode crescer com o tempo de jogo. Funda ou pode, ou indexe.
-8. **Trabalho pesado no `apply`.** O `apply` é serial; a conta vai no `compute`, que é paralelo
-   por estado.
+   podada: o custo por ano não pode crescer com o tempo de jogo. Funda, pode ou indexe.
+   - Vale também para o que o jogador faz crescer, como a fila de encomendas e os pedidos: ponha
+     um teto ou pode.
+8. **Trabalho pesado no `apply`.** O `apply` é serial e a conta vai no `compute`, que é paralelo
+   por estado. Exemplo: um `apply` semanal que soma num vetor de mercados × mercados (o
+   `trade.add` do #113) é O(n²) serial toda semana. Prefira somar por mercado no `compute` e
+   aplicar a linha pronta.
 9. **Ordem de soma.** Reduções em ordem de id, sem `rayon::reduce`. Trocar a ordem de uma soma ou
    o ponto de arredondamento de um produto de `Fixed` muda o hash: é mudança de comportamento, não
    otimização.
 
+## Regra que muda o hash
+
+Regra nova que muda o resultado de todos entra **desligada**, num campo de `rules.*` (ou do
+catálogo) com o valor que deixa o hash da `main` igual. Ligar é um PR separado, com o teste de
+100 anos contra a `main`. Assim o PR do código prova que não mexeu no resto, e o PR que liga mede
+só o efeito da regra.
+
 ## Como medir
 
+- **Carga à parte.** O `%U` do `/usr/bin/time` inclui a carga dos dados (`GameData::load`). O
+  que não é simulação sai de `%U − 1,5 × simulação impressa`; uma conta pesada na carga aparece
+  ali, em toda rodada e em todo jogo aberto. Conta de carga de regra desligada é preguiçosa: no #113, `Geography::build` calculava as
+  distâncias em toda carga, mesmo com o comércio desligado.
 - **CPU, não parede.** A máquina é dividida com outras sessões e a carga passa de 15:
   `BF_SYSTEMS=1 /usr/bin/time -f '%U s' target/release/bf-bench --game --years 2 --threads 1`.
   Compare com um binário da `main` compilado por você, os dois em seguida, e repita (3 a 5 vezes,
-  use a mediana): o ruído chega a ±7 % com a máquina cheia.
+  use a mediana).
+  - O ruído chega a ±7 % com a máquina cheia, e passa disso com os três slots ocupados.
+  - Rode as duas medidas no mesmo slot, uma depois da outra (`bf-bench-slot sh -c 'A; B'`).
+  - **`user` de momentos diferentes não se compara.** Duas rodadas de 101 anos do mesmo binário
+    deram 1 785 s e 1 080 s, com carga de 75 na mais lenta. Só vale o par no mesmo slot, um
+    binário depois do outro.
+  - **1 thread ou 2.** O orçamento por sistema é a média por execução em 1 thread. A rodada de 10
+    anos em 1 thread mede o começo do século, e o fim custa cerca de 1,45× o começo por ano. Para
+    o fim do século, compare a parte de cada sistema (custo do sistema sobre a simulação) na
+    rodada de 101 anos em 2 threads contra a base guardada com as mesmas threads. A parte não
+    depende do número de threads do jeito que o tempo depende.
+  - Descarte o par se a carga de 1 min (`/proc/loadavg`) passar de **12** em qualquer das duas:
+    acima disso há mais threads prontas que núcleos lógicos.
 - **Por sistema:** a tabela que o `bf-bench` imprime e grava no JSON;
   `python3 tools/bench/compare.py base.json novo.json` compara duas rodadas. `BF_VERBOSE=1`
   imprime o tempo de cada ano.
@@ -93,5 +137,45 @@ diga no PR quanto o `economy-week` subiu, em 10 anos e nos últimos anos do séc
 
   A saída dá o custo próprio por função e por linha e, mais útil, a linha do jogo mais interna de
   cada amostra. O terceiro argumento filtra (`week::`, `demography`).
-- **Rodada longa** (mais de 10 anos) vai por `bf-bench-slot` e `systemd-run --user`, com arquivo
-  de status no fim. Binários e resultados em `target/measure/` da sua worktree.
+- **Rodada longa** (mais de 10 anos) vai por `bf-bench-slot` (atende por ordem de chegada) e
+  numa unidade `systemd-run --user`, com arquivo de status no fim. Use
+  `tools/bench/run-long.sh OUTDIR BIN [argumentos]`. Ele grava `game.json`, `history.json`,
+  `cpu.txt` e `status`, e acrescenta uma linha ao livro de rodadas.
+- **A base da `main` não se roda de novo.** `tools/bench/baseline.sh [commit]` devolve
+  `~/Projects/between-frontiers/target/baseline/<sha>/`, com `bf-bench`, `game.json`,
+  `history.json`, `hash.txt`, `cpu.txt` e `systems.txt`. Só roda se ainda não existe, com
+  `flock` por sha: dois threads que pedem o mesmo commit esperam um pelo outro.
+- **Livro de rodadas:** `~/Projects/between-frontiers/target/runs/ledger.jsonl`, uma linha por
+  rodada longa. Tem commit, ramo, hash, threads, CPU, CPU por sistema, PIB e população por década
+  e a carga da máquina. `python3 tools/bench/ledger.py show [--branch B]` mostra a tendência de
+  CPU por commit e a dispersão dos agregados por década.
+
+## Julgar agregados em 101 anos
+
+Uma mudança de regra muda o mundo. A pergunta é se a mudança sai da faixa que um empurrão
+mínimo já produz. Essa faixa cresce muito ao longo do século: o 2σ do PIB da Itália é de 0,3
+ponto em 1935 e de 33 pontos em 2024.
+
+- **Três amostras não decidem.** Com 3 rodadas, o desvio-padrão estimado erra por até ±50 %; com
+  8, por cerca de ±25 %. Use **pelo menos oito amostras** (`BF_PERTURB_PERMILLE` = ±1, ±2, ±3,
+  ±4) sobre a `main` atual, e não sobre a `main` de quando a branch nasceu.
+- **A faixa sai da base guardada, não de cada thread.** Ela é feita uma vez por commit da `main`
+  que muda a simulação, guardada ao lado da base (`target/baseline/<sha>/`) e registrada no livro
+  de rodadas. Cada PR roda só a própria rodada e compara país a país, por década, com a faixa.
+  Oito rodadas de 101 anos ocupam um slot por cerca de 3 h, uma vez por commit, em vez de 3 h por
+  thread.
+- **Fora da faixa não é erro:** é efeito da regra, e o PR diz qual e por quê.
+
+## Compilar
+
+- `~/.local/bin/bf-cargo` é o `cargo` com `sccache` (`~/.cache/sccache-bf`). Reaproveita as
+  dependências de terceiros entre worktrees, mas não os crates do workspace: o `sccache` põe no
+  hash as variáveis `CARGO_*`, e `CARGO_MANIFEST_DIR` muda de worktree para worktree.
+  - **Não force o reaproveitamento.** `bf-bench`, `bf-client` e `bf-mapgen` gravam no binário o
+    caminho dos dados (`env!("CARGO_MANIFEST_DIR")`), e um acerto de cache vindo de outra
+    worktree leria os dados dela.
+- `bf-build-governor` segura em 4 os `rustc` simultâneos do projeto; os excedentes ficam parados.
+  Compile com `-j 2`. Com 8 compilações ao mesmo tempo a máquina fica sem memória.
+- **Teste e clippy em release:** `cargo test --release -j 2` e
+  `cargo clippy --release -j 2 ...`. Os `target/debug` das worktrees chegaram a 20 GB; o build de
+  release já existe para o bench e é reaproveitado.
