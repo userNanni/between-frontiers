@@ -127,7 +127,27 @@ o resultado ([Princípios](../principios.md#não-forçar-o-resultado-histórico-
   petróleo argelino ficou francês por 8,6 anos). Quase toda estatização terminou num acordo de soma
   fixa, abaixo do pedido e pago em parcelas: a Indonésia acertou em 1966 uma soma paga em 30
   parcelas a 1 %.
-- **Estado:** decidido; regra desenhada para o passo 4 do capital (estatização e contrato).
+- **Estado:** decidido; acordo sem cláusula (C6a), revolta sem garantia (C6c) e estatização pela
+  lei no passo 4a, atrás da chave `foreign_contract`, desligada.
 - **Onde está o detalhe:** [`foreign-capital.pt-BR.md`, seção 5](../../foreign-capital.pt-BR.md#5-decisões-do-dono)
   e seção 7, "As fábricas da metrópole na independência" (com o PR #118);
   [seção 2, "As fábricas das colônias"](../../foreign-capital.pt-BR.md#as-fábricas-das-colônias).
+
+### A parte dos donos locais segue a densidade de capitalistas da colônia
+
+- **Decisão (C7, 2026-11-17):** na independência, a parte das fábricas privadas que fica com os
+  donos da própria colônia é a densidade de capitalistas da colônia sobre a da metrópole, até 1. O
+  resto vira camada da ex-metrópole.
+- **O que mudou:** a regra da C6 dizia "menos a parte dos donos locais", e o desenho levado dizia
+  que essa parte era "a fração do dividendo que, no último ano, ficou com os capitalistas da
+  própria região". No código isso virava tudo ou nada: a divisão semanal do lucro dá o dividendo
+  inteiro de um estado aos capitalistas dele se houver um só. Quase toda colônia tem algum
+  capitalista, e nenhuma camada nascia.
+- **O que o autor pensou:** aceitou a proposta de ler quem pode ser dono em vez de para onde vai o
+  dividendo: uma colônia com tantos capitalistas por habitante quanto a metrópole é dona das suas
+  fábricas; uma com um décimo deles, de um décimo.
+- **Como o jogo funciona por causa disso:** a Nigéria que sai por acordo em 1925 deixa 2.137
+  níveis britânicos em 108 fábricas; uma colônia com tantos capitalistas por habitante quanto a
+  metrópole sai sem nenhuma camada.
+- **Estado:** decidido; entra com o passo 4a (`foreign_stakes::local_owners`).
+- **Onde está o detalhe:** [`foreign-capital.pt-BR.md`, seções 5 e 6](../../foreign-capital.pt-BR.md#5-decisões-do-dono).

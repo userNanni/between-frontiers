@@ -594,6 +594,10 @@ pub struct Switches {
     /// Armed forces in peace (`war`, docs/war.pt-BR.md, "Forças em paz"): the soldiers are the
     /// men of the formations. Off, the old rule of `data/military/peace.ron` (`soldiers`).
     pub forces: bool,
+    /// The contract and the expropriation of foreign plants, and the colony's plants that stay
+    /// the old metropole's at independence (`foreign_stakes::january`, `colonial_stakes`,
+    /// docs/foreign-capital.pt-BR.md, step 4a).
+    pub foreign_contract: bool,
     /// Capital crosses borders (`econ::monthly::abroad`, docs/foreign-capital.pt-BR.md): the
     /// funds build abroad with what they have left at home; the stakes and the weekly
     /// remittance follow from what they build.
@@ -626,8 +630,9 @@ pub struct Switches {
 
 impl Switches {
     /// The names `switch_on` knows, in the order of the fields.
-    pub const NAMES: [&'static str; 9] = [
+    pub const NAMES: [&'static str; 10] = [
         "forces",
+        "foreign_contract",
         "foreign_flow",
         "independence",
         "influence_ties",
@@ -642,6 +647,7 @@ impl Switches {
     pub fn switch_on(&mut self, name: &str) -> Result<(), String> {
         match name {
             "forces" => self.forces = true,
+            "foreign_contract" => self.foreign_contract = true,
             "foreign_flow" => self.foreign_flow = true,
             "independence" => self.independence = true,
             "influence_ties" => self.influence_ties = true,
@@ -711,7 +717,9 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
             geo: trade.filter(|_| switches.trade_by_pair),
             by_pair: switches.trade_by_pair,
             wage_floor: switches.small_market_wage_floor,
-            foreign_flow: switches.foreign_flow,
+            // The week reads the stakes whenever a rule can make them: the funds abroad, or the
+            // colony's plants at independence.
+            foreign_flow: switches.foreign_flow || switches.foreign_contract,
         });
         s.add(crate::econ::monthly::Labour {
             cat: Arc::clone(&cat),
@@ -735,10 +743,18 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
                 wage_floor: switches.small_market_wage_floor,
             });
         }
+        let borders = borders.map(|b| {
+            if switches.foreign_contract {
+                Arc::new(b.with_colonial_plants(&cat))
+            } else {
+                b
+            }
+        });
         s.add(crate::econ::yearly::Yearly {
             cat,
             tree,
             wage_floor: switches.small_market_wage_floor,
+            foreign_contract: switches.foreign_contract,
         });
         // Last in the day: an operation sees the day's results and the next day sees its own.
         if let Some(setup) = influence {

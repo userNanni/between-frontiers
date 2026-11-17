@@ -1,6 +1,6 @@
 # Capital entre países: o fundo que investe fora (fase 4)
 
-Estado: desenho; decisões C1 a C6 tomadas pelo dono em 2026-11-17 (seção 5). O estudo e a conta
+Estado: desenho; decisões C1 a C7 tomadas pelo dono em 2026-11-17 (seção 5). O estudo e a conta
 do retorno estão em `late-industrialization.pt-BR.md` (parte 2). O contrato puro está em
 `crates/bf-sim/src/foreign_capital.rs`, fora do tick. Este documento diz como ele entra no tick:
 em que passo do agendador, o que o save guarda, como se testa e o que o dono decide.
@@ -151,6 +151,7 @@ Decididas em 2026-11-17:
 | C4 | Câmbio | remessa sem efeito no câmbio agora; o efeito entra com o balanço de pagamentos |
 | C5 | Técnica pela planta estrangeira | sim, como **efeito de primeira ordem** ("isso é muito importante para o processo de globalização"): a tela do país mostra quanto da difusão vem de fábrica estrangeira, e a direção é testada contra `fdi.csv` |
 | C6 | Fábricas da colônia na independência | decidida em 2026-11-17: **sim às cinco partes** do padrão da seção 7 (C6a acordo sem cláusula; C6b cláusula `ColonialPlants`; C6c revolta; C6d terra fora da camada; C6e indenização posterior, que pode ser renegociada e pode não ser cumprida) |
+| C7 | Parte dos donos locais na independência | decidida em 2026-11-17: **a densidade de capitalistas da colônia sobre a da metrópole, até 1** (`foreign_stakes::local_owners`), no lugar da "fração do dividendo que, no último ano, ficou com os capitalistas da própria região" da decisão 6, que no código vira tudo ou nada (a divisão semanal dá o dividendo inteiro de um estado aos capitalistas dele se houver um só). Na Nigéria de 1925: 2.137 níveis britânicos em 108 plantas |
 
 O texto abaixo é o que foi levado ao dono, com a recomendação de cada uma.
 
@@ -251,7 +252,36 @@ O texto abaixo é o que foi levado ao dono, com a recomendação de cada uma.
 2. Estado e camadas no save, sem fluxo, com hash igual ao da `main` (`foreign_stakes`, neste mesmo
    PR, assumindo a decisão 1).
 3. Fluxo mensal e remessa semanal, com os testes de conservação (seção 8).
-4. Contrato, estatização e técnica.
+4. Contrato, estatização e técnica, em duas partes:
+   - **4a. Fábricas da colônia (C6a, C6c sem garantia) e o 1º de janeiro.** Feito:
+     - **Independência:** na secessão de uma região colonial, por acordo ou por revolta, os
+       níveis privados das plantas que não são fazenda, nem públicas, nem informais viram camada
+       da ex-metrópole, sem contrato, menos a parte dos donos locais
+       (`foreign_stakes::colonial_stakes`). A parte do Estado (`state_ownership` da lei colonial
+       da véspera) passa ao país novo. Níveis que já são de outro dono estrangeiro ficam com ele.
+     - **Parte dos donos locais (C7, decidida pelo dono em 2026-11-17):** a regra levada
+       era "a fração do dividendo que, no último ano, ficou com os capitalistas da região". No
+       código ela vira tudo ou nada: a divisão semanal dá o dividendo inteiro do estado aos
+       capitalistas dele se houver um só (`econ::week`). Toda região da Nigéria tem algum, e
+       nenhuma camada nascia. Entra no lugar a densidade de capitalistas no estado sobre a da
+       metrópole em casa, até 1 (`foreign_stakes::local_owners`). Com ela, a Nigéria de 1925
+       sai com 2137 níveis britânicos em 108 plantas.
+     - **1º de janeiro, depois da depreciação** (`foreign_stakes::january`):
+       - sai a camada cujo contrato já passou a planta inteira ao sócio; os níveis ficam na
+         planta, agora do país;
+       - em cada estado cuja lei em vigor fecha o capital (`foreign_investment` até a do
+         `closed_capital`) ou planifica a economia (`state_ownership` de 900‰ para cima), as
+         camadas e as obras pagas de fora na fila passam ao país sem pagamento. Onde a lei de
+         casa do país (não a das colônias) toma, o lucro retido de fora também passa;
+       - a memória ganha uma linha por dono tomado, com a parcela do capital estrangeiro do país
+         (camadas pelo custo de um nível ali) que era dele. As linhas de um mesmo janeiro somam a
+         parcela tomada do todo, e o prêmio de risco já soma as linhas. O formato do save não
+         muda.
+       - A lei lida é a do dia: uma lei aprovada no ano toma no janeiro seguinte. Na revolta com
+         o capital fechado ao nascer, a C6c pede "na hora"; aqui é no 1º de janeiro seguinte.
+   - **4b.** A estatização com pagamento (c), a compra (j), a diluição pela lei (k), a cláusula
+     `ColonialPlants` com garantia e paridade (C6b, com o thread dos tratados), a técnica
+     (`transfer_rate` no canal de imitação, C5) e o termo do contrato nas leis.
 5. Canal de influência e rodadas de direção (China e Índia).
 
 Cada passo fecha com o hash ou com a rodada, e o placar de investimento direto contra `fdi.csv`

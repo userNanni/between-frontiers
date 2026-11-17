@@ -234,6 +234,7 @@ impl HashState for BordersState {
 }
 
 /// What the operations read besides the world: the map, the catalogues and the scenario.
+#[derive(Clone)]
 pub struct BorderRules {
     /// Land neighbours of every map state, by state id.
     pub neighbours: BTreeMap<u16, Vec<u16>>,
@@ -252,6 +253,10 @@ pub struct BorderRules {
     /// How a new country is recognised (`treaty::Policy::recognition_default`); `None` without
     /// the treaty data: recognition is not kept.
     pub recognition: Option<crate::treaty::RecognitionDefault>,
+    /// Building kinds whose private levels in a colony stay the old metropole's at independence
+    /// (`foreign_stakes::colonial_stakes`): neither farms, nor public, nor informal. Empty (no
+    /// catalogue, or the rule switched off): none.
+    pub colonial_kinds: Vec<bool>,
 }
 
 impl BorderRules {
@@ -298,7 +303,20 @@ impl BorderRules {
                 .map(|p| p.groups.iter().map(|g| g.colonial).collect())
                 .unwrap_or_default(),
             recognition: None,
+            colonial_kinds: Vec::new(),
         }
+    }
+
+    /// The same rules with the colony's plants staying the old metropole's at independence
+    /// (`Switches::foreign_contract`).
+    pub fn with_colonial_plants(&self, cat: &crate::econ::Catalogue) -> Self {
+        let mut out = self.clone();
+        out.colonial_kinds = cat
+            .buildings
+            .iter()
+            .map(|b| !b.agriculture && !b.public && !b.informal)
+            .collect();
+        out
     }
 
     /// The overlord of country `c`, if it is a subject.
@@ -1109,6 +1127,39 @@ fn execute(
                     shift(&mut x.debt_abroad, &mut y.debt_abroad, w_metro);
                     shift(&mut x.debt_fx, &mut y.debt_fx, w_metro);
                 }
+            }
+            // The plants of the colony stay the old metropole's, less what local owners held
+            // (C6a, C6c), from the metropole's colonial laws of the day before.
+            let capitalists = |r: &crate::econ::Region| {
+                let n: i64 = r.pops.iter().map(|p| p.size).sum();
+                (r.pops[crate::econ::prof::CAPITALIST].size, n)
+            };
+            let home = world
+                .econ
+                .regions
+                .iter()
+                .filter(|r| usize::from(r.market) == f && !r.colony)
+                .map(capitalists)
+                .fold((0i64, 0i64), |a, b| (a.0 + b.0, a.1 + b.1));
+            for &ri in &rs {
+                let r = &world.econ.regions[ri];
+                if !r.colony {
+                    continue;
+                }
+                let private = crate::foreign_stakes::colonial_private_share(
+                    world.econ.markets[f].laws.of(r),
+                    crate::foreign_stakes::local_owners(capitalists(r), home),
+                );
+                let plants: Vec<(u16, i64)> = r.plants.iter().map(|p| (p.kind, p.levels)).collect();
+                crate::foreign_stakes::colonial_stakes(
+                    &mut world.foreign,
+                    ri as u32,
+                    f as u16,
+                    date.year,
+                    private,
+                    &rules.colonial_kinds,
+                    plants.into_iter(),
+                );
             }
             move_regions(world, rules, f, c, &rs, Some(false));
             keep_plant_techniques(world, rules, f, c, &rs);

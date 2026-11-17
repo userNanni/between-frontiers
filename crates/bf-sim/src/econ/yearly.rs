@@ -42,6 +42,8 @@ pub struct Yearly {
     pub tree: Option<Arc<crate::research::TechTree>>,
     /// `game::Switches::small_market_wage_floor`.
     pub wage_floor: bool,
+    /// `Switches::foreign_contract`: the contracts and the hosts' laws act on the stakes.
+    pub foreign_contract: bool,
 }
 
 pub struct YearlyChanges {
@@ -291,6 +293,11 @@ impl System<GameWorld> for Yearly {
                 r.tfp = tfp;
             }
         }
+        // The contracts and the laws of the hosts, on the plants left after the wear.
+        if self.foreign_contract {
+            crate::foreign_stakes::january(world, &self.cat, ctx.date.year);
+        }
+        let econ = &mut world.econ;
         if ctx.tick > 0 {
             for (m, goods) in econ.markets.iter_mut().zip(changes.switches) {
                 for (g, q) in goods {
