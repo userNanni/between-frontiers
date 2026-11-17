@@ -507,6 +507,30 @@ fecha.
   se confere é salvar e recarregar no mesmo binário com o mesmo hash. Proposta ao orquestrador:
   versão de formato com migração antes de o cliente gravar mundos.
 
+### Feito: a ponte entre cláusula e operação de fronteira
+
+- `treaty_exec::settle(catálogo, proposta, chave)` traduz as cláusulas de um tratado assinado;
+  `treaty_exec::queue(mundo, acerto, ano)` põe em movimento. Quem assina chama os dois: a
+  negociação dos tratados e a paz da guerra (fatia D).
+- **Território** vira operação de fronteira, na fila do sistema `borders` (fim do dia, cada uma
+  conferida antes de mexer em algo), na ordem do tratado: cessão → `Transfer`; país novo →
+  `Secede`, independente ou súdito do lado que recebe quando a cláusula nomeia um feixe, com
+  todas as partes como signatárias; união → `Annex`. Cessão e união pedem um dador e um
+  recebedor; mais que isso é recusado na tradução.
+- **Dívida do acordo** vai para o livro por um termo novo das operações,
+  `DebtTerm::Agreement { debtor, creditor, treaty, terms }`, numa `Operation::Terms` depois do
+  território: o país que nasce pelo mesmo tratado já pode dever ou receber (a independência que
+  nasce devendo). Os nomes se resolvem quando a operação roda; nome desconhecido não cria linha
+  de um lado só.
+- **Pagamento** move Tesouros na hora; **revisão** muda as linhas do credor naquele tratado
+  (juro, anuidade, prazo, carência; perdoa, nunca acrescenta).
+- O resto fica guardado para valer enquanto o acordo vigora.
+- A frente `Borders` passa a viva: cessão, país novo e união deixam de aparecer dormentes.
+- Testes (`tests/treaties_bridge.rs`), cada um conferindo as somas das fronteiras, o saldo do livro
+  e o dinheiro: paz com cessão de estado e reparação; independência da Nigéria devendo ao Reino
+  Unido e como protetorado dele; união da Áustria à Alemanha com pagamento e perdão da parte
+  francesa da reparação com carência; recusa de cessão com dois recebedores.
+
 ## 13. Interface: a mesa de negociação
 
 Painel registrado (`PanelId::Treaty`), escondido até ser aberto, teclado primeiro, textos em
