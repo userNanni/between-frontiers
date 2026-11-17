@@ -107,13 +107,21 @@ fn mobilization(ui: &mut Ui, i18n: &I18n, d: &Demand) {
     ] {
         p.vline(x(mark), r.y_range(), egui::Stroke::new(2.0, c));
     }
+    // In words first: how near a refusal is to turning into a revolt; the numbers back it.
+    let key = if v.mobilized >= v.revolt_mark {
+        "demand-closeness-ready"
+    } else if u32::from(v.mobilized) * 2 >= u32::from(v.revolt_mark) {
+        "demand-closeness-near"
+    } else {
+        "demand-closeness-far"
+    };
+    ui.add(egui::Label::new(RichText::new(i18n.tr(key)).font(sans(size::BODY))).wrap());
     bf_ui_kit::small(
         ui,
         &i18n.tr_args(
-            "demand-mobilization",
+            "demand-closeness-number",
             &[
                 ("mobilized", Arg::String(v.mobilized.to_string())),
-                ("demand", Arg::String(v.demand_mark.to_string())),
                 ("revolt", Arg::String(v.revolt_mark.to_string())),
             ],
         ),
