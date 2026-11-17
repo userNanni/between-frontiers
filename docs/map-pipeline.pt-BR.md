@@ -136,6 +136,12 @@ províncias segundo `data/scenario/1925/states.ron` e grava em `provinces.ron`:
 `provinces.png` não muda: o estado é só metadado. Hoje são **870 estados** (220 coloniais), a
 partir de 4.606 províncias; o `bf-mapgen` imprime a distribuição por dono e os maiores e menores.
 
+O nome que a tela mostra vem de `assets/i18n/<idioma>/states.ftl` (`state-<KEY>`); o `name` do
+mapa só aparece se faltar a chave. Em pt-BR vale o exônimo consagrado (Baviera, Catalunha, Alto
+Egito); onde não existe, o nome próprio fica como no mapa. O arquivo `en` repete o `name` do mapa.
+Estado novo ou chave renomeada precisa da linha nos dois arquivos; o teste
+`every_state_has_a_name` (`crates/bf-client/tests/i18n_keys.rs`) acusa a falta.
+
 ### Regras
 
 Aplicadas nesta ordem:
