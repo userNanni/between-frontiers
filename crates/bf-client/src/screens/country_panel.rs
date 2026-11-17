@@ -198,7 +198,7 @@ fn borders(
         bf_ui_kit::small(ui, &i18n.tr("borders-select-state"));
         return None;
     };
-    let name = st.def.name.clone();
+    let name = crate::text::state_name(i18n, &st.def);
     for (cmd, key, subject) in [
         (id::LIBERATE, "borders-liberate", false),
         (id::LIBERATE_SUBJECT, "borders-liberate-subject", true),

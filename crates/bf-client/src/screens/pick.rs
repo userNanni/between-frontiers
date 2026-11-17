@@ -70,7 +70,7 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
     if let (Some(id), Some(pos)) = (
         response.hovered_province,
         ui.input(|i| i.pointer.hover_pos()),
-    ) && let Some((state_name, owner)) = world.place_name(id)
+    ) && let Some((state_name, owner)) = world.place_name(&shared.i18n, id)
     {
         let owner = owner
             .map(names)
@@ -78,7 +78,7 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
         let extra = world.provinces[id as usize - 1].state.and_then(|s| {
             super::lens_panel::tooltip_line(&shared.i18n, world, s, view.lens, world.start.year)
         });
-        paint_tip(ui, pos, state_name, &owner, extra.as_deref());
+        paint_tip(ui, pos, &state_name, &owner, extra.as_deref());
     }
     let size = super::lens_panel::size(ui.ctx(), view.lens, rect.height() * 0.6);
     let origin = egui::pos2(rect.left() + 12.0, rect.bottom() - 12.0 - size.y);

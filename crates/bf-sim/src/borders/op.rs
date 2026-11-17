@@ -1194,6 +1194,8 @@ pub struct OwnersView {
     pub owners: Vec<(u16, bool)>,
     /// Overlord of every country, by index.
     pub overlords: Vec<Option<u16>>,
+    /// People of every map state, index = state id − 1 (to weigh what a new country inherits).
+    pub people: Vec<i64>,
 }
 
 impl OwnersView {
@@ -1206,12 +1208,11 @@ impl OwnersView {
             .max()
             .unwrap_or(0);
         let mut owners = vec![(u16::MAX, false); n];
+        let mut people = vec![0i64; n];
         for r in &world.econ.regions {
-            if let Some(o) = usize::from(r.state)
-                .checked_sub(1)
-                .and_then(|i| owners.get_mut(i))
-            {
-                *o = (r.market, r.colony);
+            if let Some(i) = usize::from(r.state).checked_sub(1).filter(|&i| i < n) {
+                owners[i] = (r.market, r.colony);
+                people[i] = r.population();
             }
         }
         Self {
@@ -1221,6 +1222,7 @@ impl OwnersView {
             overlords: (0..world.countries.len())
                 .map(|c| rules.overlord_of(world, c).map(|o| o as u16))
                 .collect(),
+            people,
         }
     }
 }

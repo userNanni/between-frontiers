@@ -482,13 +482,13 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
                 response.hovered_province,
                 ui.input(|i| i.pointer.hover_pos()),
             )
-            && let Some((state_name, owner)) = world.place_name(id)
+            && let Some((state_name, owner)) = world.place_name(i18n, id)
         {
             let owner = owner.map(names).unwrap_or_else(|| i18n.tr("map-unowned"));
             let extra = world.provinces[id as usize - 1].state.and_then(|s| {
                 super::lens_panel::tooltip_line(i18n, world, s, view.lens, snap.date.year)
             });
-            paint_tip(ui, pos, state_name, &owner, extra.as_deref());
+            paint_tip(ui, pos, &state_name, &owner, extra.as_deref());
         }
         // The government and journal windows cover the map; the mode picker would show
         // through.

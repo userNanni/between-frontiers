@@ -251,6 +251,8 @@ pub struct World {
     pub owners_seen: usize,
     /// Countries that may be born (`data/borders/candidates.ron`); empty when the file is missing.
     pub candidates: Vec<bf_sim::borders::Candidate>,
+    /// Countries of the scenario; those after them were born in the game.
+    pub scenario_countries: usize,
 }
 
 /// A country born during the game: the catalogue's colour, capital and flag; a grey one with no
@@ -367,9 +369,50 @@ impl World {
             live_local: std::sync::Arc::default(),
             owners_seen: 0,
             candidates: Vec::new(),
+            scenario_countries: 0,
         };
+        world.scenario_countries = world.countries.len();
         world.index_countries();
         world
+    }
+
+    /// A country born in the game has no 1925 figures of its own: its life expectancy (the
+    /// scenario's until health is simulated) is that of the 1925 owners of its states, metropole
+    /// or colonies, weighted by the people of each state now.
+    fn inherit_social(&mut self, view: &bf_sim::borders::op::OwnersView) {
+        let first_new = self.scenario.countries.len().min(self.scenario_countries);
+        let tag_ix = |tag: &str| {
+            self.countries[..first_new]
+                .iter()
+                .position(|c| c.def.tag == tag)
+        };
+        let mut sums = vec![(0.0f64, 0.0f64); self.countries.len()];
+        for (i, st) in self.map.states.iter().enumerate() {
+            let Some(&(owner, _)) = view.owners.get(i) else {
+                continue;
+            };
+            let owner = usize::from(owner);
+            if owner < first_new || owner >= sums.len() {
+                continue;
+            }
+            let Some(old) = tag_ix(&st.owner) else {
+                continue;
+            };
+            let def = &self.countries[old].def;
+            let life = if st.colony {
+                def.colonies.as_ref().and_then(|c| c.life_expectancy)
+            } else {
+                def.life_expectancy
+            };
+            let people = view.people.get(i).copied().unwrap_or(0) as f64;
+            if let Some(l) = life {
+                sums[owner].0 += f64::from(l) * people;
+                sums[owner].1 += people;
+            }
+        }
+        for (c, (lp, p)) in self.countries.iter_mut().zip(sums).skip(first_new) {
+            c.def.life_expectancy = (p > 0.0).then(|| (lp / p) as f32);
+        }
     }
 
     /// Each country's provinces, states, areas, overlord and subjects, from the owners of the
@@ -457,6 +500,7 @@ impl World {
                 p.def.colony = s.def.colony;
             }
         }
+        self.inherit_social(view);
         for (c, overlord) in self.countries.iter_mut().zip(&view.overlords) {
             c.def.status = match overlord {
                 Some(o) => Status::Subject {
@@ -483,11 +527,16 @@ impl World {
 
     /// Tooltip text for a province: the state name (the province name on maps without states)
     /// and the owner.
-    pub fn place_name(&self, province: u16) -> Option<(&str, Option<usize>)> {
+    pub fn place_name(
+        &self,
+        i18n: &bf_i18n::I18n,
+        province: u16,
+    ) -> Option<(String, Option<usize>)> {
         let p = self.provinces.get(usize::from(province).checked_sub(1)?)?;
-        let name = p
-            .state
-            .map_or(p.def.name.as_str(), |s| self.states[s].def.name.as_str());
+        let name = p.state.map_or_else(
+            || p.def.name.clone(),
+            |s| crate::text::state_name(i18n, &self.states[s].def),
+        );
         Some((name, p.owner))
     }
 
