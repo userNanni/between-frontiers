@@ -1,26 +1,15 @@
 //! Research that costs: laboratories make the research a country's firms and state pay for, the
-//! colonies have none, the law splits the bill, and the tree's costs grow with the year of the
-//! breakthrough (`docs/research.pt-BR.md`, "Pesquisa que custa").
+//! colonies have none, and the law splits the bill (`docs/research.pt-BR.md`, "Pesquisa que custa").
 
 use std::path::PathBuf;
 
 use bf_sim::data::GameData;
 use bf_sim::econ::public::{research_spending, research_target};
 use bf_sim::game::Session;
-use bf_sim::research::harder_cost;
 use laplace_schelling::{Date, Fixed};
 
 fn root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
-}
-
-#[test]
-fn ideas_get_harder_to_find_at_one_rate() {
-    assert_eq!(harder_cost(1000, 0, 1990), 1000);
-    assert_eq!(harder_cost(1000, 350, 1925), 1000);
-    assert_eq!(harder_cost(1000, 350, 1926), 1035);
-    let late = harder_cost(1000, 350, 1975);
-    assert!(late > harder_cost(1000, 350, 1955) && late > 5000 && late < 6000);
 }
 
 #[test]

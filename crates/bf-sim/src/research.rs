@@ -97,21 +97,9 @@ impl Stage {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TechnologiesFile {
-    /// Ideas get harder to find: every technology costs this much more, in basis points a year,
-    /// for each year its breakthrough came after 1925, on top of the costs in the file
-    /// (`docs/research.pt-BR.md`, "Pesquisa que custa").
-    #[serde(default)]
-    pub harder_per_year_bp: u32,
     pub technologies: Vec<TechnologyDef>,
 }
 
-/// `cost × (1 + bp/10 000)^(year − 1925)`, compounded in integers so that every machine gets
-/// the same tree.
-pub fn harder_cost(cost: u32, bp: u32, year: i32) -> u32 {
-    let mut factor: u64 = 1_000_000;
-    for _ in 1925..year {
-        factor = factor * (10_000 + u64::from(bp)) / 10_000;
-    }
     u32::try_from(u64::from(cost) * factor / 1_000_000).unwrap_or(u32::MAX)
 }
 
@@ -174,9 +162,6 @@ pub struct Tech {
     pub demonstrated: i32,
     pub industrialized: i32,
     pub cost: u32,
-    /// What research pays for it: `cost` grown by the file's `harder_per_year_bp` for each
-    /// year after 1925 of its breakthrough ([`harder_cost`]).
-    pub research_cost: u32,
     /// (building index, method index) pairs in the economy catalogue.
     pub methods: Vec<(u16, u8)>,
     pub goods: Vec<u16>,
@@ -351,7 +336,6 @@ impl TechTree {
                 demonstrated: d.demonstrated,
                 industrialized: d.industrialized,
                 cost: d.cost,
-                research_cost: harder_cost(d.cost, file.harder_per_year_bp, d.demonstrated),
                 methods,
                 goods,
                 productivity: d.productivity.clone(),
