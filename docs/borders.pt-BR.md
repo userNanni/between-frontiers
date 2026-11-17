@@ -522,7 +522,7 @@ No bench (`--borders-history`), três linhas da referência viram outras operaç
 Com isso, as 260 linhas aplicam sem recusa. O teste `the_whole_reference_applies_and_conserves`
 aplica a referência inteira sobre o mundo de 1925, sem simular, e confere as somas a cada linha.
 
-## 11. Parte C: independência por movimento (desenho)
+## 11. Parte C: independência por movimento (desenho; decisões I1 a I5 tomadas em 2026-11-17)
 
 O primeiro gatilho de mudança de fronteira com causa medida (seção 2, "De onde vem a mudança"):
 o movimento `independence` da política (fase 3) passa de um limiar numa colônia, a metrópole cede
@@ -625,9 +625,9 @@ Duas marcas na **mobilização** da unidade (apoio × recrutas ÷ população), 
 **Quanto custa:** um teste mensal por unidade colonial (cerca de cem), e uma operação de fronteira
 por independência.
 
-### Decisões para o dono
+### Decisões do dono (decididas em 2026-11-17: as cinco como recomendado)
 
-| Código | Pergunta | Recomendação | Alternativa |
+| Código | Pergunta | Decidido | Alternativa recusada |
 |---|---|---|---|
 | I1 | Onde mora o movimento | por unidade colonial (candidato), somado no país | um por país; separa a unidade mais mobilizada |
 | I2 | As marcas | exigência e revolta na mobilização da unidade, valores de desenho no `data/borders/rules.ron`, a equilibrar depois da fase 6 | só uma marca (revolta) e nenhuma negociação |

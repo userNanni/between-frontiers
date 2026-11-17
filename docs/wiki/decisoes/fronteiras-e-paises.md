@@ -127,10 +127,31 @@ condição, ou o jogador libertando o próprio território.
 - **Estado:** a lista de quem assinou no jogo (#95); os pares que não se reconhecem, nos tratados.
 - **Onde está o detalhe:** [`treaties.pt-BR.md`, seção 6](../../treaties.pt-BR.md#6-reconhecimento).
 
+### Independência por movimento: a colônia exige, a metrópole cede ou recusa
+
+- **Decisão:** o movimento de independência é medido em cada colônia (o país candidato do catálogo,
+  ou o súdito). Quando a mobilização passa a marca da **exigência**, a metrópole responde: concede
+  governo próprio, solta como domínio, solta independente por acordo, ou recusa. Se recusa e a
+  mobilização passa a marca da **revolta**, a colônia se separa sem acordo. A IA da metrópole
+  responde por conta medida: o custo de segurar contra o valor da colônia.
+- **O que o autor pensou:** aceitou as cinco recomendações (I1 a I5) como estavam.
+- **Como o jogo funciona por causa disso:** a Índia e a Gâmbia não sobem juntas; cada colônia tem
+  o seu movimento, que nomeia a condição que o segura. Conceder governo próprio (a lei
+  `trusteeship`) tira a causa e ganha tempo, porque o apoio só decai devagar. Por acordo, o tratado
+  de independência leva as cláusulas da mesa (fábricas, dívida, base); por revolta, nasce sem o
+  reconhecimento da metrópole e as fábricas seguem a regra da revolta. O jogador recebe a exigência
+  em Agendas, com as quatro saídas, o preço à vista e ponto de restauração.
+- **Como é na vida real:** a pressão cresce por décadas (o Congresso indiano de 1885 à
+  independência de 1947); as metrópoles concedem aos poucos (as leis indianas de 1919 e 1935, a
+  lei-quadro francesa de 1956, o domínio); a recusa leva à guerra (Indochina, Indonésia, Argélia,
+  as colônias portuguesas).
+- **Estado:** decidido; desenhado (#133). Até a guerra existir (fase 5), a revolta separa sem
+  batalha.
+- **Onde está o detalhe:** [`borders.pt-BR.md`, seção 11](../../borders.pt-BR.md#11-parte-c-independência-por-movimento-desenho-decisões-i1-a-i5-tomadas-em-2026-11-17).
+
 ## O que ainda não existe
 
-- **Independência por movimento:** o primeiro gatilho automático, em que a colônia se separa quando
-  o movimento de independência passa um limite e a metrópole não responde. Desenhado (parte C).
+- **Independência por movimento:** decidida e desenhada (acima), ainda sem código.
 - **Fábricas da metrópole na independência:** decididas (viram capital estrangeiro), ainda sem
   código; ver [Capital entre países](capital-entre-paises.md#as-fábricas-da-metrópole-na-independência-ficam-como-capital-estrangeiro).
 - **Divisão por ocupação** (Alemanha e Coreia em 1945): fica com a paz da fase 5.
