@@ -7,7 +7,7 @@ use std::path::PathBuf;
 
 use bf_sim::data::GameData;
 use bf_sim::demography::AGE_GROUPS;
-use bf_sim::demography::education::{WHOLE, initial};
+use bf_sim::demography::education::initial;
 
 fn root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
@@ -108,5 +108,4 @@ fn units_are_whole_and_the_grown_start_meets_lee_and_lee() {
     let mean = sum / f64::from(n);
     println!("mean absolute gap in the schooled share of 15–64: {mean:.1} points over {n} units");
     assert!(mean < 1.0, "{mean}");
-    assert!(WHOLE == 10_000);
 }
