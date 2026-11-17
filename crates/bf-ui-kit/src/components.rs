@@ -681,10 +681,19 @@ impl ListRow<'_> {
             color::TEXT,
             right - trailing.size().x - space::MD - x,
         );
-        let subtitle = one_line(self.subtitle, sans(size::SMALL), color::TEXT_MUTED, right - x);
+        let subtitle = one_line(
+            self.subtitle,
+            sans(size::SMALL),
+            color::TEXT_MUTED,
+            right - x,
+        );
         let cut = title.elided || subtitle.elided || trailing.elided;
         painter.galley(egui::pos2(x, rect.top() + 12.0), title, color::TEXT);
-        painter.galley(egui::pos2(x, rect.top() + 34.0), subtitle, color::TEXT_MUTED);
+        painter.galley(
+            egui::pos2(x, rect.top() + 34.0),
+            subtitle,
+            color::TEXT_MUTED,
+        );
         painter.galley(
             egui::pos2(right - trailing.size().x, rect.top() + 14.0),
             trailing,
