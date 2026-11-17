@@ -187,6 +187,14 @@ fn broken_forces_are_refused() {
         "colonies the country does not have",
     );
     assert_refused(
+        &errors_after(|f| {
+            let c = f.countries.iter_mut().find(|c| c.tag == "GBR").unwrap();
+            let row = c.rows.iter_mut().find(|r| r.unit == "battleship").unwrap();
+            row.reserve = true;
+        }),
+        "only land forces have a reserve",
+    );
+    assert_refused(
         &errors_after(|f| f.start_date = "1926-01-01".into()),
         "start_date",
     );
@@ -297,4 +305,23 @@ fn a_front_keeps_its_split_from_week_to_week() {
     for _ in 0..52 {
         assert_eq!(allocate(rules, 1500, &segments), first);
     }
+}
+
+#[test]
+fn the_reserve_is_apart_from_the_army_in_service() {
+    let f = forces();
+    let m = military();
+    // Switzerland: a militia of 500,000 mobilisable men and no standing army.
+    assert_eq!(f.reserve("CHE"), 500_000);
+    assert_eq!(f.total(m, "CHE", Domain::Land), 0);
+    // The National Guard and the Organized Reserves do not count in the Regular Army.
+    assert_eq!(f.reserve("USA"), 160_784 + 76_959);
+    assert_eq!(f.total(m, "USA", Domain::Land), 133_264);
+    assert_eq!(f.reserve("GBR"), 187_419 + 92_000);
+    assert_eq!(f.reserve("GER"), 0);
+    // Called up, it reports over the weeks of the rule, less trained than the army.
+    let c = bf_sim::war::call_up(&m.rules, f.reserve("CHE"), 2);
+    assert_eq!(c.reported + c.waiting, 500_000);
+    assert!(c.reported > 0 && c.waiting > 0);
+    assert!(c.training < Fixed::ONE);
 }

@@ -133,7 +133,7 @@ Contagem nas definições de `common/` do CWE no commit `8316f96` (2026-11-16). 
 | Mobilização | 24 opções de mobilização | lei de conscrição sobre a pirâmide, reservados no trabalho essencial | atrás em variedade; as opções viram leis e ordens de indústria |
 | Guerra nuclear, química e biológica | decisões, ultimato e ataque nuclear | ogiva como estoque e dissuasão; uso numa fatia própria; química e biológica não planejadas | atrás até a fatia nuclear |
 | Fim da guerra | pontuação de guerra do Victoria 3 | exaustão medida por termos e paz pelas exigências da crise | só nosso |
-| 1925 | começa em 1950 | 44 países com forças de fonte anotada (182 linhas, 30 estimadas) | — |
+| 1925 | começa em 1950 | 44 países com forças de fonte anotada (187 linhas, 31 estimadas), reserva e milícia à parte | — |
 
 
 

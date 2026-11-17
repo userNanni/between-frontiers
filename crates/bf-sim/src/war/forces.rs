@@ -48,6 +48,10 @@ pub struct ForceRow {
     /// destroyers keeps its real weight here.
     #[serde(default)]
     pub tonnage: Option<u64>,
+    /// Trained men out of service (reserve, militia, territorials), called up on mobilization
+    /// ([`crate::war::call_up`]). Land only.
+    #[serde(default)]
+    pub reserve: bool,
     pub source: String,
     /// How the number was estimated, when the source does not state it.
     #[serde(default)]
@@ -72,11 +76,19 @@ impl ForcesFile {
         self.countries.iter().find(|c| c.tag == tag)
     }
 
-    /// Sum of the counts of one domain for a country.
+    /// Men in the reserve of a country.
+    pub fn reserve(&self, tag: &str) -> u64 {
+        self.country(tag).map_or(0, |c| {
+            c.rows.iter().filter(|r| r.reserve).map(|r| r.count).sum()
+        })
+    }
+
+    /// Sum of the counts of one domain for a country, in service (the reserve apart).
     pub fn total(&self, military: &Military, tag: &str, domain: Domain) -> u64 {
         self.country(tag).map_or(0, |c| {
             c.rows
                 .iter()
+                .filter(|r| !r.reserve)
                 .filter(|r| {
                     military
                         .unit(&r.unit)
@@ -126,7 +138,7 @@ impl ForcesFile {
             let mut rows = BTreeSet::new();
             for r in &c.rows {
                 let what = format!("{} {}", c.tag, r.unit);
-                if !rows.insert((r.unit.as_str(), r.station as u8)) {
+                if !rows.insert((r.unit.as_str(), r.station as u8, r.reserve)) {
                     errors.push(format!("{what}: listed twice for the same station"));
                 }
                 if r.count == 0 {
@@ -147,6 +159,9 @@ impl ForcesFile {
                     errors.push(format!("{what}: unknown unit type"));
                     continue;
                 };
+                if r.reserve && military.types[ty as usize].domain != Domain::Land {
+                    errors.push(format!("{what}: only land forces have a reserve"));
+                }
                 // The first generation must be known in the country on the start date.
                 for &t in &military.spec(ty, 0).requires {
                     if tree.start_stage(t as usize, &c.tag) == Stage::Unknown {

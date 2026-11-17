@@ -6,7 +6,8 @@
 // count: men (land), ships (sea), aircraft (air). Land: the army only (gendarmerie, police,
 // militia and reserves left out); in 1925 the whole army counts as `infantry`, its guns and
 // horses inside the element's equipment, until a source splits it by arm. Sea: ships in the
-// fleet, active and reserve; `tonnage` is the source's total for the row. The figures are of
+// fleet, active and reserve; `tonnage` is the source's total for the row. `reserve: true`: trained
+// men out of service (militia, territorials, reserves), called up on mobilization. The figures are of
 // 1923-1924, the nearest to the start date the sources print; rows whose number the source
 // does not state carry `estimate`.
 (
@@ -14,6 +15,7 @@
     countries: [
         (tag: "USA", rows: [
             (type: "infantry", count: 133264, source: "LoN Armaments Year-Book 1924 (A.37.1924.IX), United States, p.802: Regular Army 30 June 1924 (11,767 officers + 121,497 enlisted); National Guard and Organized Reserves left out"),
+            (type: "infantry", count: 237743, reserve: true, source: "LoN Armaments Year-Book 1924 (A.37.1924.IX), United States, p.802: National Guard 160,784 + Organized Reserves 76,959 (30 June 1924)"),
             (type: "battleship", count: 18, tonnage: Some(525850), source: "LoN Armaments Year-Book 1924 (A.37.1924.IX), United States, Navy, p.810: ships in the fleet, 1924 (active and reserve not told apart)"),
             (type: "carrier", count: 1, tonnage: Some(19300), source: "LoN Armaments Year-Book 1924 (A.37.1924.IX), United States, Navy, p.810: ships in the fleet, 1924 (active and reserve not told apart)"),
             (type: "cruiser", count: 30, tonnage: Some(240840), source: "LoN Armaments Year-Book 1924 (A.37.1924.IX), United States, Navy, p.810: ships in the fleet, 1924 (active and reserve not told apart)"),
@@ -27,6 +29,7 @@
         (tag: "GBR", rows: [
             (type: "infantry", count: 152592, source: "LoN Armaments Year-Book 1924 (A.37.1924.IX), Great Britain, pp.93-94: British troops 1924-25 excluding India (9,644 officers + 142,948 other ranks); Territorial Army and reserve left out"),
             (type: "garrison", count: 3343, station: Colonies, source: "LoN Armaments Year-Book 1924 (A.37.1924.IX), Great Britain, pp.93-94: colonial and native troops on the British estimates 1924-25"),
+            (type: "infantry", count: 279419, reserve: true, source: "LoN Armaments Year-Book 1924 (A.37.1924.IX), Great Britain, pp.93-94: Territorial Army 187,419 + Army Reserve 92,000 (1924-25)"),
             (type: "battleship", count: 22, source: "LoN Armaments Year-Book 1924 (A.37.1924.IX), Great Britain, Navy, p.105: ships in the fleet, 1924 (active and reserve not told apart); battleships and battle cruisers"),
             (type: "carrier", count: 4, source: "LoN Armaments Year-Book 1924 (A.37.1924.IX), Great Britain, Navy, p.105: ships in the fleet, 1924 (active and reserve not told apart)"),
             (type: "cruiser", count: 44, source: "LoN Armaments Year-Book 1924 (A.37.1924.IX), Great Britain, Navy, p.105: ships in the fleet, 1924 (active and reserve not told apart)"),
@@ -45,6 +48,7 @@
         ]),
         (tag: "CAN", rows: [
             (type: "infantry", count: 3643, source: "LoN Armaments Year-Book 1924 (A.37.1924.IX), Canada, p.227: Permanent Force 1 Jan 1923 (428 officers + 3,215 other ranks); militia left out"),
+            (type: "infantry", count: 34085, reserve: true, source: "LoN Armaments Year-Book 1924 (A.37.1924.IX), Canada, p.227: Non-Permanent Active Militia, trained men (establishment 129,467)"),
             (type: "cruiser", count: 1, tonnage: Some(3500), source: "LoN Armaments Year-Book 1924 (A.37.1924.IX), Canada, Navy, p.230: ships in the fleet, 1924 (active and reserve not told apart)"),
             (type: "destroyer", count: 2, tonnage: Some(2008), source: "LoN Armaments Year-Book 1924 (A.37.1924.IX), Canada, Navy, p.230: ships in the fleet, 1924 (active and reserve not told apart)"),
             (type: "submarine", count: 2, tonnage: Some(728), source: "LoN Armaments Year-Book 1924 (A.37.1924.IX), Canada, Navy, p.230: ships in the fleet, 1924 (active and reserve not told apart)"),
@@ -53,6 +57,7 @@
             (type: "patrol", count: 18, source: "LoN Armaments Year-Book 1924 (A.37.1924.IX), Canada, p.227: machines on 1 Jan 1923: total 29", estimate: Some("split by the shares of fighters, bombers and reconnaissance aircraft in the air forces whose split the Year-Book prints (GBR, JAP, CZE, ESP, SWE, CHE, EST, LAT, YUG): 486:259:1174")),
         ]),
         (tag: "AUS", rows: [
+            (type: "infantry", count: 110000, reserve: true, source: "LoN Armaments Year-Book 1924 (A.37.1924.IX), Australia, p.204: peace establishment of about 110,000, Permanent and Citizen Forces", estimate: Some("the establishment, mostly part-time Citizen Forces, taken as the trained reserve")),
             (type: "cruiser", count: 6, tonnage: Some(29830), source: "LoN Armaments Year-Book 1924 (A.37.1924.IX), Australia, Navy, p.207: ships in the fleet, 1924 (active and reserve not told apart)"),
             (type: "destroyer", count: 12, tonnage: Some(11245), source: "LoN Armaments Year-Book 1924 (A.37.1924.IX), Australia, Navy, p.207: ships in the fleet, 1924 (active and reserve not told apart)"),
             (type: "submarine", count: 6, tonnage: Some(7200), source: "LoN Armaments Year-Book 1924 (A.37.1924.IX), Australia, Navy, p.207: ships in the fleet, 1924 (active and reserve not told apart)"),
@@ -172,6 +177,7 @@
             (type: "patrol", count: 40, source: "LoN Armaments Year-Book 1924 (A.37.1924.IX), Sweden, p.717: army 25 fighting + 25 scouts, navy 15 (counted as patrol)"),
         ]),
         (tag: "CHE", rows: [
+            (type: "infantry", count: 500000, reserve: true, source: "Hansard HC Deb 18 June 1924 vol 174 cc2150-2W 'European Armies' (War Office, peace strengths 1924): militia, mobilisable strength (no standing army)"),
             (type: "fighter", count: 60, source: "LoN Armaments Year-Book 1924 (A.37.1924.IX), Switzerland, p.742: 60 fighting + 150 scouts, training left out"),
             (type: "patrol", count: 150, source: "LoN Armaments Year-Book 1924 (A.37.1924.IX), Switzerland, p.742: 60 fighting + 150 scouts, training left out"),
         ]),

@@ -197,4 +197,8 @@
         // Half a percent a week of direct war between two secure nuclear powers.
         escalation_risk_per_week: 5,
     ),
+
+    // The reserve reports in four weeks, at seven tenths of full training (a reservist keeps
+    // part of what he learned; design parameter).
+    reserve: (call_up_weeks: 4, training: 700),
 )

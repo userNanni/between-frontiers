@@ -96,6 +96,16 @@ faixa a idade é uniforme) e a lei de conscrição:
 A pirâmide entra como lista de faixas, sem depender do tipo da demografia nova (PR #54): quando ela
 entrar na `main`, a ligação é uma conversão.
 
+**Reserva e milícia.** São homens treinados fora do serviço: a milícia suíça, a Guarda Nacional e
+as reservas organizadas americanas, o Exército Territorial e a reserva britânicos, a milícia ativa
+canadense e as forças cidadãs australianas. Em `forces.ron` são linhas com `reserve: true`, à
+parte do exército em serviço. `war::call_up` chama a reserva:
+- ela se apresenta em partes iguais ao longo de `reserve.call_up_weeks` (4 em `rules.ron`);
+- chega com `reserve.training` de treino (70 %), parâmetro de desenho;
+- cada reservista que se apresenta sai da força de trabalho, como o mobilizado.
+
+É assim que a Suíça, sem exército permanente, tem meio milhão de homens em um mês.
+
 ### Suprimento: o que chega à frente
 
 `war::supply` recebe a necessidade semanal da frente em toneladas e o caminho até ela como trechos
@@ -537,8 +547,8 @@ Cada uma nasce como painel registrado no HUD modular, com atalho no registro de 
 ## Forças de 1º de janeiro de 1925
 
 `data/scenario/1925/forces.ron`, gerado por `tools/war/forces_1925.py` (fontes, licenças e regras
-de leitura em `tools/war/SOURCES.md`). Contagem: 44 países, 182 linhas, das quais 30 com
-`estimate` e 152 com o número impresso na fonte; 40 países com exército (5,84 milhões de homens),
+de leitura em `tools/war/SOURCES.md`). Contagem: 44 países, 187 linhas, das quais 31 com
+`estimate` e 156 com o número impresso na fonte; 40 países com exército (5,84 milhões de homens),
 27 com marinha e 20 com aviação.
 
 - **Fonte principal:** *Armaments Year-Book* da Liga das Nações, 1º ano (1924), domínio público;
@@ -557,10 +567,10 @@ de leitura em `tools/war/SOURCES.md`). Contagem: 44 países, 182 linhas, das qua
 
 ### Lacunas
 
-- **Reserva e milícia:** Suíça (500.000 mobilizáveis, nenhum efetivo permanente), Austrália e
-  África do Sul (forças de tempo parcial), Guarda Nacional americana, Exército Territorial
-  britânico. Pedem uma regra de reserva (homens treinados fora do serviço, chamados na
-  mobilização), que entra com a mobilização.
+- **Reserva e milícia:** entraram Suíça, Estados Unidos, Reino Unido, Canadá e Austrália (5
+  linhas, a australiana estimada pelo estabelecimento). Falta a África do Sul, sem número no
+  Year-Book, e a reserva dos exércitos de conscrição do continente: o Year-Book de 1924 não a
+  totaliza.
 - Sem número em fonte aberta: exército de Egito, Peru, Colômbia, Venezuela, Uruguai, Bolívia,
   Paraguai, Equador, Cuba, Sião, Afeganistão e Etiópia; aviação de URSS, Polônia, Romênia,
   Bélgica, Turquia, Brasil e Argentina; destróieres alemães.
