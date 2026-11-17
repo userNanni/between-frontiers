@@ -457,8 +457,13 @@ cai. O preço de cada parte está com os tratados e a guerra; aqui fica só a pa
 - **Os parceiros que atenderam o chamado (decidido pelo dono em 2026-11-17).** Quando a cláusula
   quebrada é do feixe de um bloco, os outros membros do bloco que **atenderam** o mesmo chamado
   perdem boa vontade com quem não atendeu, **metade** do que perde o traído direto. Quem também não
-  atendeu não perde nada. Na frase do dono: "se eu atendi o chamado e o outro país não". O
-  registro de quebras dos tratados precisa dizer, por chamado, quem atendeu.
+  atendeu não perde nada. Na frase do dono: "se eu atendi o chamado e o outro país não".
+- **O que a influência lê (combinado com os tratados e a guerra):** as quebras novas do mês por
+  `treaty::breaches_since(world, data)`, cada uma `Breach { date, breaker, victim, agreement,
+  clause, value, call }`. O chamado (`call`, com `called` e `answered`) é da guerra, e a
+  influência o lê de lá. A guerra decide se a obrigação foi acionada antes de registrar a quebra
+  (as condições do ATOP na cláusula), então os casos de não disparo (Itália em 1914, Romênia em
+  1968) são testes dela; o da influência é que sem quebra registrada nada muda.
 
 #### Conferência com a história (pedido do dono)
 
