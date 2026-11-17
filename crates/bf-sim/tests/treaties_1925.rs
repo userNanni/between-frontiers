@@ -220,17 +220,17 @@ fn the_ledger_of_1925() {
             .unwrap() as u16
     };
     // Germany owes 92 % of 50 billion gold marks (the Spa shares in the ledger), in 1925
-    // dollars by gold content.
+    // dollars by gold content, at 2011 prices.
     let german = ledger.owed_by(idx("GER")).to_f64_lossy();
-    let expected = 0.92 * 50e9 * 0.358423 / 1.504632;
+    let expected = 0.92 * 50e9 * 0.358423 / 1.504632 * 12.85;
     assert!(
         (german - expected).abs() / expected < 1e-6,
         "{german} vs {expected}"
     );
-    // The British debt: US$ 4.6 billion, a level annuity at 3 % over 60 years.
+    // The British debt: US$ 4.6 billion of 1925, a level annuity at 3 % over 60 years.
     let gbr = &ledger.debts[4];
-    assert_eq!(gbr.principal, Fixed::from_int(4_600_000_000));
-    let a = gbr.annuity.to_f64_lossy();
+    assert_eq!(gbr.principal.to_f64_lossy(), 4.6e9 * 12.85);
+    let a = gbr.annuity.to_f64_lossy() / 12.85;
     assert!(a > 160e6 && a < 170e6, "{a}");
     // Claims equal debts, world-wide.
     let n = d.countries.countries.len() as u16;

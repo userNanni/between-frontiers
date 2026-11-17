@@ -151,7 +151,8 @@ pub enum ClauseKind {
     TroopsQuota,
 }
 
-/// Terms of a debt between states, in reference units (1925 dollars).
+/// Terms of a debt between states, in reference units (the economy's 2011 dollars at 1925 base
+/// prices, as `Money::debt_fx`).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct DebtTerms {
     pub principal: Fixed,
@@ -936,8 +937,10 @@ impl Ledger {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct WarDebtsFile {
     pub start_date: String,
-    /// Grams of fine gold in one reference unit (the 1925 dollar).
-    pub reference_gold_grams: f64,
+    /// Grams of fine gold in a 1925 dollar.
+    pub dollar_gold_grams: f64,
+    /// Reference units (the economy's 2011 dollars at 1925 base prices) per 1925 dollar.
+    pub price_factor: f64,
     pub lines: Vec<WarDebtLine>,
 }
 
@@ -989,9 +992,10 @@ pub fn level_annuity(principal: f64, rate: f64, years: u16) -> f64 {
 }
 
 impl WarDebtLine {
-    /// The line in reference units: amounts times the creditor's share times the gold ratio.
-    pub fn terms(&self, reference_gold_grams: f64) -> DebtTerms {
-        let k = self.share * self.unit_gold_grams / reference_gold_grams;
+    /// The line in reference units: amounts times the creditor's share, into 1925 dollars by
+    /// gold content, then into reference units by the price factor.
+    pub fn terms(&self, dollar_gold_grams: f64, price_factor: f64) -> DebtTerms {
+        let k = self.share * self.unit_gold_grams / dollar_gold_grams * price_factor;
         let annuity = self
             .annuity
             .unwrap_or_else(|| level_annuity(self.principal, self.rate, self.years));
@@ -1215,7 +1219,7 @@ pub fn ledger_1925(
         let (Some(debtor), Some(creditor)) = (index(&l.debtor), index(&l.creditor)) else {
             continue;
         };
-        let t = l.terms(debts.reference_gold_grams);
+        let t = l.terms(debts.dollar_gold_grams, debts.price_factor);
         ledger.create(InterstateDebt {
             id: 0,
             debtor,

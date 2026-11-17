@@ -3,13 +3,15 @@
 // switch `policy.war_debts_1925` of data/diplomacy/clauses.ron is on (owner's decision 6 of
 // docs/treaties.pt-BR.md, recommended on). Licence: CC BY-SA 4.0. WP = Wikipedia (en), facts only.
 //
-// Amounts are in the treaty's own money and turned into reference units (the 1925 dollar,
-// 1.504632 g of fine gold) by gold content: gold mark 0.358423 g, the Reichsmark parity of
-// diplomacy.ron. Every number below is either read in the cited source or marked as a design
-// choice; nothing else enters.
+// Amounts are in the treaty's own money, turned into 1925 dollars (1.504632 g of fine gold) by
+// gold content (gold mark 0.358423 g, the Reichsmark parity of diplomacy.ron), then into the
+// economy's reference units (2011 dollars at 1925 base prices) by the CPI-U factor 12.85 that
+// docs/economy.pt-BR.md already uses (BLS). Every number below is either read in the cited
+// source or marked as a design choice; nothing else enters.
 (
     start_date: "1925-01-01",
-    reference_gold_grams: 1.504632,
+    dollar_gold_grams: 1.504632,
+    price_factor: 12.85,
     lines: [
         // German reparations under the Dawes plan, split by the Spa percentages. The A and B
         // bonds of the London Schedule (50 billion gold marks) are the debt; the rest of the 132
