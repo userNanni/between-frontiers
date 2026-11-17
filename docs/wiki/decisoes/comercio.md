@@ -21,8 +21,8 @@ de países passa a existir, com frete, tarifa e preferência.
 - **Como é na vida real:** ninguém compra só do mais barato; a parte de cada fornecedor cai com o
   custo de chegada (a elasticidade entre origens; Head e Mayer 2014).
 - **Estado:** em rascunho (#113).
-
 - **Onde está o detalhe:** `trade.pt-BR.md`, seções 2 e 3 (no #113).
+
 ### O frete segue a rota e cai com a técnica e a logística
 
 - **Decisão:** o frete é pela rota marítima entre os portos, mais o trecho por terra até o porto, e
@@ -37,8 +37,8 @@ de países passa a existir, com frete, tarifa e preferência.
   1967–75), o navio ia pelo Cabo.
 - **Estado:** em rascunho (#113); as tecnologias que ainda não têm efeito no comércio (navio a
   diesel, graneleiro, ferrovia) entram quando a árvore os ganhar.
-
 - **Onde está o detalhe:** `trade.pt-BR.md`, seção 10 (no #113).
+
 ### O parceiro tem inércia, mas a inércia não segura comércio impedido
 
 - **Decisão:** a preferência por um parceiro anda só uma parte do caminho por mês (meia-vida de
@@ -54,8 +54,8 @@ de países passa a existir, com frete, tarifa e preferência.
   prazo é em média o dobro da de curto (Gallaway, McDaniel e Rivera 2003).
 - **Estado:** inércia em rascunho (#113); embargo e sanção dormentes até as cláusulas e a guerra
   existirem.
-
 - **Onde está o detalhe:** `trade.pt-BR.md`, seções 4 e 11 (no #113).
+
 ### Quem promete entrega tem de arcar
 
 - **Decisão:** a promessa de entrega acumulada ("vendo X de Y até tal data") sai da oferta do
@@ -69,8 +69,8 @@ de países passa a existir, com frete, tarifa e preferência.
   *clearing* alemão com os Bálcãs nos anos 1930 (Hirschman 1945).
 - **Estado:** em rascunho (#113); a cláusula está desenhada
   ([Diplomacia e influência](diplomacia-e-influencia.md#favor-devido-é-uma-promessa-num-tratado-ato-único-ou-entrega-acumulada)).
-
 - **Onde está o detalhe:** `trade.pt-BR.md`, seção 5 (no #113).
+
 ### Tarifa e preferência no custo; receita e preço de chegada depois
 
 - **Decisão:** o primeiro PR põe a tarifa e a preferência dos tratados no custo de chegada; a
@@ -80,8 +80,8 @@ de países passa a existir, com frete, tarifa e preferência.
   aduaneira passam a mudar quem compra de quem; o efeito no Tesouro chega depois.
 - **Como é na vida real:** a preferência imperial de Ottawa (1932), a área da libra, a CEE (1957).
 - **Estado:** em rascunho (#113).
-
 - **Onde está o detalhe:** `trade.pt-BR.md`, seção 9, T3 (no #113).
+
 ### O comércio liga o canal de influência
 
 - **Decisão:** com o comércio por par, o canal de comércio da influência deixa de ser dormente. Não
