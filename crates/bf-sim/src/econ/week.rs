@@ -78,6 +78,7 @@ pub struct Week {
 /// travel and luxury; what is beyond this is invested (`PopPlan::unplaced`).
 const SPARE_CEILING: Fixed = Fixed::from_int(120);
 
+#[cfg_attr(test, derive(Debug, PartialEq))]
 pub(crate) struct PopPlan {
     pub(crate) orders: Vec<(GoodIx, Fixed)>,
     /// Money the full need of each tier would cost, and what the plan covers.
@@ -90,12 +91,14 @@ pub(crate) struct PopPlan {
     pub(crate) unplaced: Fixed,
 }
 
+#[cfg_attr(test, derive(Debug, PartialEq))]
 struct RegionOrders {
     demand: Vec<Fixed>,
     supply: Vec<Fixed>,
     pops: Vec<Option<PopPlan>>,
 }
 
+#[cfg_attr(test, derive(Debug, PartialEq))]
 pub struct RegionSettlement {
     pub pops: Vec<(Fixed, Fixed, [Fixed; 4])>,
     pub plants: Vec<(Fixed, Fixed, Fixed, Fixed)>,
@@ -349,7 +352,9 @@ impl MulDivFloor for i64 {
     }
 }
 
-fn region_orders(
+/// With `SKIP_IDLE`, a plant running at scale zero (no levels left) is passed over: everything
+/// it would add is zero. The tests run both ways.
+fn region_orders<const SKIP_IDLE: bool>(
     cat: &Catalogue,
     econ: &Economy,
     r: &Region,
@@ -363,6 +368,9 @@ fn region_orders(
     let mut supply = vec![Fixed::ZERO; g];
     for p in &r.plants {
         let (_, method, scale) = plant_run(cat, r, m, p);
+        if SKIP_IDLE && scale == Fixed::ZERO {
+            continue;
+        }
         for (gi, q) in &method.inputs {
             demand[*gi as usize] += *q * scale;
         }
@@ -469,7 +477,10 @@ fn clear_market(
     (m, orders)
 }
 
-fn settle_region(
+/// With `SKIP_IDLE`, a plant at scale zero skips the sums it would add zero to (cost, revenue,
+/// output, pay); its input ratio and utilization still move as for any plant, so it restarts
+/// where it would have. The tests run both ways.
+fn settle_region<const SKIP_IDLE: bool>(
     cat: &Catalogue,
     m: &Market,
     r: &Region,
@@ -488,6 +499,7 @@ fn settle_region(
     let mut plants = Vec::with_capacity(r.plants.len());
     for p in &r.plants {
         let (b, method, scale) = plant_run(cat, r, m, p);
+        let idle = SKIP_IDLE && scale == Fixed::ZERO;
         let mut cost = Fixed::ZERO;
         let mut cost_base = Fixed::ZERO;
         // Missing inputs cut output by their share in the value of the output (a linear
@@ -497,9 +509,11 @@ fn settle_region(
         let mut loss = Fixed::ZERO;
         for (gi, q) in &method.inputs {
             let base = cat.goods[*gi as usize].base_price;
-            let bought = *q * scale * v.buy[*gi as usize];
-            cost += bought * v.price[*gi as usize];
-            cost_base += bought * base;
+            if !idle {
+                let bought = *q * scale * v.buy[*gi as usize];
+                cost += bought * v.price[*gi as usize];
+                cost_base += bought * base;
+            }
             if output_value > Fixed::ZERO {
                 let mut share = fill(*q * base, output_value);
                 // Freight: what the plant cannot ship it does not sell.
@@ -513,7 +527,7 @@ fn settle_region(
         let out_scale = scale * p.input_ratio;
         let mut revenue = Fixed::ZERO;
         let mut revenue_base = Fixed::ZERO;
-        for (gi, q) in &method.outputs {
+        for (gi, q) in method.outputs.iter().filter(|_| !idle) {
             let sold = *q * out_scale * v.sell[*gi as usize];
             revenue += sold * v.price[*gi as usize];
             revenue_base += sold * cat.goods[*gi as usize].base_price;
@@ -528,7 +542,7 @@ fn settle_region(
         };
         let profit = value_added - wage_bill;
         let weight_total = method.job_weight;
-        if weight_total > Fixed::ZERO {
+        if !idle && weight_total > Fixed::ZERO {
             for (pi, n) in &method.jobs {
                 wages[*pi as usize] += wage_bill * (WAGE_WEIGHT[*pi as usize] * *n) / weight_total;
             }
@@ -696,7 +710,7 @@ impl System<GameWorld> for Week {
         let orders: Vec<RegionOrders> = econ
             .regions
             .par_iter()
-            .map(|r| region_orders(cat, econ, r, exists, &national[r.market as usize]))
+            .map(|r| region_orders::<true>(cat, econ, r, exists, &national[r.market as usize]))
             .collect();
         let g = cat.goods.len();
         let mut demand = vec![vec![Fixed::ZERO; g]; econ.markets.len()];
@@ -784,7 +798,7 @@ impl System<GameWorld> for Week {
             .map(|((r, o), l)| {
                 let mi = r.market as usize;
                 let m = &markets[mi];
-                settle_region(cat, m, r, o, wages[mi], &View::new(cat, m, l, &[]))
+                settle_region::<true>(cat, m, r, o, wages[mi], &View::new(cat, m, l, &[]))
             })
             .collect();
         // World price: average of the market prices weighted by volume.
@@ -971,4 +985,74 @@ pub fn plan_pop_where(
 ) -> Vec<(GoodIx, Fixed)> {
     let mixes = NeedMixes::new(cat, prices, &Unlocks::by_year(cat, year).goods);
     plan_pop(cat, &mixes, size, budget, in_kind, Some(urban)).orders
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Skipping plants at scale zero changes nothing: on the 1925 world, with one plant per state
+    /// idled (no levels), then brought back to one level after a week idle, the orders and the
+    /// settlement of every state are the same with and without the skip.
+    #[test]
+    fn idle_plants_skip_only_zeros_and_restart_the_same() {
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let data = crate::data::GameData::load(&root).unwrap();
+        let cat = &*data.catalogue;
+        let mut world = data.new_world();
+        let unlocks = Unlocks::new(cat, 1925, data.tree.as_deref(), &world.research);
+        let national = super::super::local::national(
+            cat,
+            data.tree.as_deref(),
+            &world.research,
+            world.econ.markets.len(),
+        );
+        let compare = |econ: &Economy| {
+            let mut idle = 0;
+            let mut settled = Vec::new();
+            for (ri, r) in econ.regions.iter().enumerate() {
+                let nat = &national[r.market as usize];
+                let m = &econ.markets[r.market as usize];
+                let skip = region_orders::<true>(cat, econ, r, &unlocks.goods, nat);
+                let full = region_orders::<false>(cat, econ, r, &unlocks.goods, nat);
+                assert_eq!(skip, full, "orders of state {ri}");
+                // Short of every good, so that an input's shortfall moves the input ratio.
+                let mut v = View::last_week(cat, m, r, nat);
+                v.buy.iter_mut().for_each(|b| *b = milli(700));
+                let wage = Fixed::from_int(3);
+                let s = settle_region::<true>(cat, m, r, &skip, wage, &v);
+                let f = settle_region::<false>(cat, m, r, &full, wage, &v);
+                assert_eq!(s, f, "settlement of state {ri}");
+                idle += r
+                    .plants
+                    .iter()
+                    .filter(|p| plant_run(cat, r, m, p).2 == Fixed::ZERO)
+                    .count();
+                settled.push(s);
+            }
+            (idle, settled)
+        };
+        // A week idle: the first plant of every state loses its levels, at half use (so the
+        // utilization the idle week moves is visible).
+        for r in &mut world.econ.regions {
+            if let Some(p) = r.plants.first_mut() {
+                p.levels = 0;
+                p.utilization = milli(500);
+            }
+        }
+        let (idle, settled) = compare(&world.econ);
+        assert!(idle >= world.econ.regions.len() / 2, "{idle} idle plants");
+        // The week's input ratio and utilization go back to the plants, as the week's apply does,
+        // and the idled plants get a level again.
+        for (r, s) in world.econ.regions.iter_mut().zip(&settled) {
+            for (p, &(input_ratio, _, _, utilization)) in r.plants.iter_mut().zip(&s.plants) {
+                p.input_ratio = input_ratio;
+                p.utilization = utilization;
+            }
+            if let Some(p) = r.plants.first_mut() {
+                p.levels = 1;
+            }
+        }
+        compare(&world.econ);
+    }
 }
