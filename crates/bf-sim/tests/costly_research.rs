@@ -1,0 +1,63 @@
+//! Research that costs: laboratories make the research a country's firms and state pay for, the
+//! colonies have none, the law splits the bill, and the tree's costs grow with the year of the
+//! breakthrough (`docs/research.pt-BR.md`, "Pesquisa que custa").
+
+use std::path::PathBuf;
+
+use bf_sim::data::GameData;
+use bf_sim::econ::public::{research_spending, research_target};
+use bf_sim::game::Session;
+use bf_sim::research::harder_cost;
+use laplace_schelling::{Date, Fixed};
+
+fn root() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
+}
+
+#[test]
+fn ideas_get_harder_to_find_at_one_rate() {
+    assert_eq!(harder_cost(1000, 0, 1990), 1000);
+    assert_eq!(harder_cost(1000, 350, 1925), 1000);
+    assert_eq!(harder_cost(1000, 350, 1926), 1035);
+    let late = harder_cost(1000, 350, 1975);
+    assert!(late > harder_cost(1000, 350, 1955) && late > 5000 && late < 6000);
+}
+
+#[test]
+fn laboratories_in_the_metropole_paid_by_state_and_firms() {
+    let data = GameData::load(&root()).unwrap();
+    let cat = &data.catalogue;
+    let lab = cat.laboratory.expect("the catalogue has a laboratory") as usize;
+    let mut s = Session::new(
+        data.new_world(),
+        7,
+        Date::new(1925, 1, 1),
+        2,
+        Some(data.rules()),
+    );
+    s.sim.run_until(Date::new(1925, 2, 1));
+    let w = s.world();
+    let levels = |c: usize, colony: bool| -> i64 {
+        w.econ
+            .regions
+            .iter()
+            .filter(|r| r.market as usize == c && r.colony == colony)
+            .flat_map(|r| r.plants.iter())
+            .filter(|p| p.kind as usize == lab)
+            .map(|p| p.levels)
+            .sum()
+    };
+    let tag = |t: &str| w.countries.iter().position(|(_, x)| x.tag == t).unwrap();
+    let (usa, gbr, chn) = (tag("USA"), tag("GBR"), tag("CHN"));
+    // 1925 already has its laboratories, sized by the economy outside the farms.
+    assert!(levels(usa, false) > levels(chn, false));
+    // A colony does not research: its laboratories are the metropole's business.
+    assert_eq!(levels(gbr, true), 0);
+    // Both buyers pay: the treasury its legal share, the firms' fund the rest.
+    let (state, firms) = research_spending(cat, &w.econ.markets[usa]);
+    assert!(state > Fixed::ZERO && firms > Fixed::ZERO);
+    // The firms near the frontier want more research than those far behind.
+    let (near, _) = research_target(cat, &w.econ, usa, Fixed::ONE);
+    let (far, _) = research_target(cat, &w.econ, usa, Fixed::from_ratio(1, 2));
+    assert!(near > far);
+}

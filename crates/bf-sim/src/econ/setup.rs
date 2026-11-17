@@ -100,6 +100,8 @@ fn best_yearly_output(cat: &Catalogue, kind: usize) -> f64 {
 
 struct Block {
     market: usize,
+    /// The colonies of `market`: no laboratories there, a colony does not research.
+    colony: bool,
     regions: Vec<usize>,
     sizes: Vec<i64>,
     urban: Vec<f64>,
@@ -322,7 +324,7 @@ fn research_1925(gdp_week: f64, agr: f64, gdp_per_capita: f64) -> f64 {
 /// at base prices.
 fn public_services(cat: &Catalogue, b: &Block, fd: &mut [f64]) -> f64 {
     let mut value = 0.0;
-    if let Some(g) = cat.research {
+    if let Some(g) = cat.research.filter(|_| !b.colony) {
         let q = research_1925(
             b.population as f64 * b.gdp_per_capita / 52.0,
             b.agr,
@@ -597,7 +599,7 @@ pub fn build(cat: &Catalogue, inp: &Inputs) -> Economy {
                         population as f64 * per_person.to_f64_lossy() * cover / 52.0;
                 }
             }
-            if let Some(g) = cat.research {
+            if let Some(g) = cat.research.filter(|_| !colony) {
                 final_demand[g as usize] += research_1925(gdp_week, agr, gdppc);
             }
             for &(g, per_mille) in &cat.upkeep_basket {
@@ -661,6 +663,7 @@ pub fn build(cat: &Catalogue, inp: &Inputs) -> Economy {
             let state_workers =
                 total_workers * STATE_SHARE.iter().map(|s| s.1 as f64).sum::<f64>() / 1000.0;
             blocks.push(Block {
+                colony,
                 market_workers: (total_workers * (1.0 - jobless) * WORKER_ROOM)
                     .min(total_workers * TOWN_ROOM - state_workers),
                 // As `week::subsistence_food` grows it: nine tenths of a full ration.
