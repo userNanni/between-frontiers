@@ -1,7 +1,7 @@
 # Capital entre países: o fundo que investe fora (fase 4)
 
-Estado: desenho; decisões 1 a 5 tomadas pelo dono em 2026-11-17, a 6 espera o estudo (seção 5). O estudo e a conta do retorno estão em
-`late-industrialization.pt-BR.md` (parte 2). O contrato puro está em
+Estado: desenho; decisões C1 a C6 tomadas pelo dono em 2026-11-17 (seção 5). O estudo e a conta
+do retorno estão em `late-industrialization.pt-BR.md` (parte 2). O contrato puro está em
 `crates/bf-sim/src/foreign_capital.rs`, fora do tick. Este documento diz como ele entra no tick:
 em que passo do agendador, o que o save guarda, como se testa e o que o dono decide.
 
@@ -150,7 +150,7 @@ Decididas em 2026-11-17:
 | C3 | Veto nos dois sentidos | sim, `SetCapitalEmbargo` |
 | C4 | Câmbio | remessa sem efeito no câmbio agora; o efeito entra com o balanço de pagamentos |
 | C5 | Técnica pela planta estrangeira | sim, como **efeito de primeira ordem** ("isso é muito importante para o processo de globalização"): a tela do país mostra quanto da difusão vem de fábrica estrangeira, e a direção é testada contra `fdi.csv` |
-| C6 | Fábricas da colônia na independência | **aberta**: o dono pediu ver como aconteceu na história antes da regra ("a história irá nos revelar quais os fluxos possíveis"). Estudo na seção 7 |
+| C6 | Fábricas da colônia na independência | decidida em 2026-11-17: **sim às cinco partes** do padrão da seção 7 (C6a acordo sem cláusula; C6b cláusula `ColonialPlants`; C6c revolta; C6d terra fora da camada; C6e indenização posterior, que pode ser renegociada e pode não ser cumprida) |
 
 O texto abaixo é o que foi levado ao dono, com a recomendação de cada uma.
 
@@ -256,3 +256,269 @@ O texto abaixo é o que foi levado ao dono, com a recomendação de cada uma.
 
 Cada passo fecha com o hash ou com a rodada, e o placar de investimento direto contra `fdi.csv`
 entra no passo 5.
+
+## 7. As fábricas da metrópole na independência: o estudo da C6
+
+O dono pediu: "veja historicamente como isso aconteceu, a história irá nos revelar quais os
+fluxos possíveis". Esta seção traz os desfechos reais, quando cada um aconteceu e quanto tempo
+levou. Deles saem as opções da cláusula `ColonialPlants` e o padrão de cada situação. As datas e
+os valores ficam com a fonte na rodada de referência; a regra não depende de nenhum deles.
+
+### Como é na vida real
+
+**Os desfechos possíveis.** Os pedidos (a) a (g) apareceram todos, e o estudo achou mais seis,
+de (h) a (m).
+
+| | Desfecho | Casos |
+|---|---|---|
+| a | o dono estrangeiro fica e remete o lucro | Índia (casas britânicas, saindo aos poucos nos anos 1950 a 1970); Union Minière no Congo até 1967; Fria na Guiné; Malásia até os anos 1970 |
+| b | compra com empréstimo ou com dinheiro da metrópole | Irlanda (terra comprada com empréstimos da Land Commission antes de 1922); Quênia (Million-Acre Scheme, desde 1962, com doações e empréstimos britânicos); Zimbábue nos anos 1980; Zâmbia 1969 (51 % comprados com títulos) |
+| c | estatização com indenização | petróleo na Índia, 1974–77; petróleo da Argélia, 1971; Birmânia 1963; Suez, acertado em 1958 |
+| d | estatização sem indenização, seguida de sanção ou litígio | Indonésia 1957–58; Union Minière 1967 (a SGM se recusa a vender o cobre); Guiné 1961; Uganda 1972; Zimbábue 2000; Irlanda 1932 (anuidades retidas, guerra tarifária) |
+| e | garantia ou direito de paridade com prazo, no acordo | Mesa-Redonda (Indonésia, 1949); Évian (Argélia, 1962); Lancaster House (Zimbábue, 10 anos); Bell Trade Act (Filipinas, até 1974) |
+| f | saída dos colonos | Argélia (quase um milhão em meses de 1962); Angola e Moçambique (463 mil retornados em 1977); Guiné 1958; asiáticos de Uganda em 1972 |
+| g | o país novo indeniza a metrópole como dívida | Haiti (1825; os empréstimos em cadeia só terminam em 1947); Indonésia (dívida da colônia assumida em 1949) |
+| h | a metrópole indeniza os próprios colonos | França, lei de 1970; Guiné 1958 |
+| i | indenização disfarçada de contrato de gestão ou de taxa sobre as vendas | Congo (SGM, 4,5 % das vendas desde 1967, depois 6 %); Zâmbia 1973 |
+| j | compra a preço de mercado ou em bolsa | Índia nos anos 1950; Malásia (Guthrie, comprada na Bolsa de Londres em 1981) |
+| k | lei que obriga o dono estrangeiro a diluir sua parte | Índia (FERA, 1973: até 40 %); Malásia (NEP, 1971) |
+| l | devolução posterior aos donos | Uganda (lei de 1982); um caso isolado na Argélia (1998) |
+| m | confisco com o nome de "bem vacante", depois que o dono sai | Argélia (decretos de março de 1963) |
+
+**O que se repete:**
+1. **Independência negociada: o dono estrangeiro fica de 5 a 30 anos.** A tomada vem depois de uma
+   ruptura política, quase nunca na data da independência. Exemplos: Birmânia (15 anos), Congo
+   (6,5 anos, depois do golpe), Indonésia (8 anos), Índia (26 a 30 anos) e Malásia (24 anos).
+2. **Guerra com muitos colonos: eles saem em meses, e a terra é confiscada em menos de um ano.** A
+   mina e o petróleo das empresas da metrópole demoram mais: o petróleo argelino ficou francês
+   por 8,6 anos, e a Fria continuou estrangeira. A terra cai rápido; a mina, devagar.
+3. **A garantia do tratado tem prazo, e o conflito vem quando ela vence.** No Zimbábue, a cláusula
+   valia 10 anos e a tomada veio aos 20. Nas Filipinas, a paridade durou 28 anos. Em Évian, a
+   garantia virou letra morta em 8 meses, porque os colonos já tinham saído.
+4. **A terra dos colonos se resolve de três jeitos:**
+   - a metrópole paga a compra (Irlanda, Quênia, Zimbábue nos anos 1980);
+   - o país novo toma quando a garantia acaba (Zimbábue, 2000);
+   - a metrópole indeniza os próprios colonos (França; Portugal ainda não, 50 anos depois).
+5. **Quase toda estatização termina num acordo de soma fixa,** abaixo do pedido, pago em parcelas
+   e com juro baixo. Leva de 2 anos (Suez) a 17 (Indonésia) ou 40 (Zimbábue, ainda não pago).
+6. **A metrópole consegue o acordo com pressão:** tarifas (Irlanda), ameaça de cortar a ajuda
+   (Argélia), dinheiro bloqueado (Egito), boicote de venda (o cobre do Congo). Sem pressão, o caso
+   fica aberto (colônias portuguesas).
+7. **Depois de perder a propriedade, o antigo dono continua recebendo parte do fluxo** pela
+   indenização em forma de contrato (Congo, Zâmbia).
+
+**A diferença importa?** Sim, por três motivos.
+- O fluxo de remessa dura de 5 a 30 anos e sai do país novo para a ex-metrópole. Entregar tudo no
+  dia da independência, como o jogo faz hoje, apaga esse fluxo.
+- A estatização gera a memória e o prêmio de risco que o capital lê depois. Sem camada, não há o
+  que estatizar, e o país novo não carrega nem a reputação nem o acordo de indenização.
+- A terra e a fábrica têm destinos diferentes (regularidade 2). Uma regra única para as duas erra
+  uma delas.
+
+### Como cada desfecho entra no jogo
+
+| | No jogo | Peça |
+|---|---|---|
+| a | camada da ex-metrópole com remessa | passo 3 (já existe) |
+| b, g | `kept` = 0 e uma linha no livro de dívida (o país novo deve à ex-metrópole, ou a metrópole empresta para a compra) | `Debt` no acordo (já existe em `treaty_exec`) |
+| c | estatização com pagamento: a camada passa ao Estado, a indenização vira linha no livro, e o prêmio de risco cai na parte paga | passo 4, ação nova |
+| d | estatização sem pagamento: memória e prêmio de risco cheios; a ex-metrópole pode responder com o veto (C3) | passo 4 |
+| e | garantia com prazo: estatizar antes do fim do prazo é quebra de tratado, como a cláusula `capital_protection` com fim | campo `guarantee_years` da cláusula |
+| e (paridade) | o fundo da ex-metrópole é tratado como nacional por N anos (sem o prêmio da lei, e entra mesmo com a porta filtrada) | campo `parity_years` da cláusula |
+| f | os colonos (os donos locais e as comunidades de fora) saem | depende das comunidades e da migração (thread da demografia); fica anotado |
+| h | transferência do Tesouro da metrópole para a poupança dos colonos que voltam | junto com (f) |
+| i | a camada vira contrato: o antigo dono recebe parte do lucro por N anos, e depois a planta passa ao Estado (`Handover::AtTerm`) | passo 4, como forma de pagamento de (c) |
+| j | o fundo do país novo compra a camada pelo valor | passo 4, ação nova |
+| k | a lei de capital ganha a parcela máxima do estrangeiro; ao mudar, as camadas acima dela são vendidas pelo valor | leis de contrato, passo 4 |
+| l, m | (l) fica fora por ser raro; (m) é (d) depois de (f) | — |
+
+### Padrão, por situação (decidido: C6a a C6e)
+
+1. **C6a. Independência por acordo, sem cláusula:** como na regra da decisão 6. A ex-metrópole fica
+   com os níveis privados não agrícolas, menos a parte dos donos locais, sem prazo e sem garantia.
+   O que vem depois sai das leis do país novo: fechar o capital ou planificar a economia estatiza
+   pela regra de (c) ou (d). Isso dá a regularidade 1 sem impor uma data.
+2. **C6b. Independência por acordo, com a cláusula `ColonialPlants`:**
+   - `kept`: a parte da ex-metrópole, de 0 a 1;
+   - `guarantee_years`: o prazo da garantia (e);
+   - `parity_years`: o prazo da paridade (e);
+   - com `kept` = 0, uma cláusula `Debt` no mesmo acordo faz a compra (b) ou a indenização (g).
+3. **C6c. Independência por revolta, sem acordo.** Aqui a história mudou a proposta anterior, que
+   era "nenhuma camada".
+   - **Fábricas e minas:** a camada nasce como no acordo, mas sem garantia. A propriedade não some
+     na data; quem a toma é o país novo, pelas suas leis. Se ele nasce com o capital fechado ou a
+     economia planificada, estatiza na hora, sem pagamento, com memória e prêmio de risco (d).
+   - **Terra:** sai da camada (regularidade 2). Fica com os donos locais da região, e a saída
+     deles depende das comunidades (f).
+4. **C6d. Terra agrícola, em qualquer situação:** fora das camadas. O dono é quem mora na região (o
+   colono, no jogo um proprietário local). A compra financiada pela metrópole (b) entra como
+   cláusula `Debt` do acordo quando a saída dos colonos (f) existir.
+5. **C6e. Acordo de indenização posterior:** um tratado com cláusula `Debt` entre o país que
+   estatizou e o antigo dono reduz o prêmio de risco na proporção do que foi **de fato pago**
+   (regularidade 5). A pressão da regularidade 6 é o veto (C3) e, depois, a influência.
+
+### Renegociar e não cumprir (C6e)
+
+O dono lembrou que a dívida de indenização precisa poder ser renegociada e que os tratados podem
+não ser cumpridos. As duas coisas já têm regra geral no thread dos tratados, que é o dono do livro
+de dívida e de `clauses.ron` (`treaties.pt-BR.md`, seção 6, graus de calote, e seção 9). Aqui elas
+só ganham o que é próprio do capital.
+
+**Renegociar.** A indenização é uma linha do livro de dívida como qualquer outra. A revisão que o
+`treaty_exec` já executa (`revise_debt`: prazo, juro, parte adiável, perdão parcial; só o credor dá)
+vale para ela sem regra nova.
+- **O prêmio de risco lê o pago, não o prometido.** Cada estatização na memória guarda o valor
+  tomado. O livro guarda, em cada linha, o que foi de fato pago (`paid`) e o que uma revisão
+  perdoou (`forgiven`), ao lado do que falta (`principal`) e do atraso (`arrears`). Isso vem do
+  thread dos tratados, com o degrau de save.
+  - A parte do prêmio que cai é `pago / tomado`, com o pago lido da linha da indenização entre os
+    dois países.
+  - Uma moratória congela a queda, porque não há pagamento.
+  - O perdão parcial reduz a dívida mas não soma ao pago: o prêmio da parte perdoada fica.
+  - Os tratados dão também `treaty::indemnity_paid_share` = `paid / (paid + principal + arrears +
+    forgiven)`, a parcela paga do que foi acordado, que a tela mostra.
+- Isso repete o caso da Indonésia: o acordo de 1966 fixou uma soma abaixo do pedido, paga em 30
+  parcelas a 1 %. O capital olha o que entra, não o tratado.
+
+**Não cumprir.** Qualquer das partes pode deixar de cumprir. A quebra é o teste mensal falhar,
+como na seção 9 dos tratados, e custa pela regra geral:
+- registro no acordo;
+- suspensão recíproca: o lado prejudicado pode suspender o que dava em troca;
+- causa medida pelo valor da cláusula quebrada;
+- reputação do país que quebrou, que sobe com cada quebra e cai 10 % ao ano.
+
+No capital, a quebra custa também:
+
+| Quem quebra | Como | Custo próprio do capital |
+|---|---|---|
+| país novo | para de pagar a indenização (atraso, calote parcial, repúdio) | a memória de expropriação volta a pesar na parte não paga; a ex-metrópole pode aplicar o veto (C3) sem quebrar nada, por suspensão recíproca |
+| país novo | estatiza dentro de `guarantee_years` | expropriação sem pagamento com memória e prêmio cheios, mais quebra da garantia (causa e reputação) |
+| país novo | veta o fundo da ex-metrópole, ou o dilui à força, dentro de `parity_years` (ver abaixo) | quebra da paridade: causa e reputação; a ex-metrópole pode vetar o capital entre os dois sem quebrar, por suspensão recíproca |
+| ex-metrópole | com paridade recíproca (como a do acordo Laurel-Langley de 1955 nas Filipinas), não trata o fundo do país novo como nacional | quebra da paridade dela: causa e reputação; o país novo pode suspender a garantia e a indenização em troca, sem quebrar |
+
+**A IA decide pela mesma conta dos tratados:** quebra quando o valor de quebrar passa o custo
+medido (causa, reputação, suspensão recíproca e, aqui, o prêmio de risco que o próprio país
+passará a pagar ao capital de todos). A tela mostra a conta à vítima.
+
+**Testes de jogo:**
+1. **Renegociação.** O país estatiza 100 de capital da ex-metrópole e assina uma indenização de 60
+   em 10 parcelas. Depois de pagar 30, o prêmio de risco é o de 70 % tomados sem pagar.
+   - O credor dá moratória de 3 anos: o prêmio não cai nesses 3 anos e não é quebra.
+   - O credor perdoa 20: a dívida fica em 10, e o prêmio continua sendo o de 70 %.
+   - Pagos os 10 restantes, o prêmio é o de 60 % tomados sem pagar, decaindo pela meia-vida
+     como sempre.
+2. **Calote na indenização.** O mesmo país para de pagar:
+   - a linha vai para atraso e depois para calote, pela regra do livro;
+   - cada parcela não paga é quebra com a ex-metrópole;
+   - a reputação dele sobe pelo valor não pago;
+   - a ex-metrópole ganha causa e pode vetar o capital entre os dois sem quebra própria.
+3. **Estatização dentro da garantia.** Independência com `guarantee_years` = 10; o país novo fecha
+   o capital no ano 6:
+   - as camadas viram do Estado sem pagamento;
+   - a memória e o prêmio são cheios;
+   - a garantia quebra: causa e reputação.
+   - No ano 11, o mesmo ato é só estatização, sem quebra de tratado.
+4. **Paridade não cumprida.** Com `parity_years` = 20:
+   - se o país novo filtra a lei de capital no ano 5, o fundo da ex-metrópole continua com a
+     porta aberta e não há quebra;
+   - se o país novo veta a ex-metrópole no ano 5, é quebra da paridade, com causa da ex-metrópole,
+     reputação do país novo e o direito dela de vetar de volta sem quebrar;
+   - com a paridade recíproca, se a ex-metrópole veta o país novo no ano 5, é quebra dela, e o
+     país novo pode suspender a indenização sem que isso conte como quebra.
+5. **Sem quebra, nada muda.** Um acordo cumprido até o fim não deixa registro de quebra, e o prêmio
+   segue só a memória das estatizações e o que foi pago.
+
+**Como entra no catálogo dos tratados** (combinado com o thread dos tratados):
+- **`ColonialPlants { kept, guarantee_years, parity_years }` é de execução única.** Reparte a
+  propriedade das fábricas logo depois do território, no mesmo lote da `Debt` em `treaty_exec`.
+  Na assinatura, ela gera duas cláusulas contínuas com fim, uma para cada teste:
+  - **a garantia é a `capital_protection` que já existe:** o país novo dá, a ex-metrópole recebe,
+    com `until` = assinatura + `guarantee_years`. O teste mensal dela é "expropriação sem pagamento
+    = quebra", e é aí que cai estatizar dentro do prazo;
+  - **a paridade é a cláusula nova `capital_parity`:** o país novo dá, a ex-metrópole recebe, com
+    `until` = assinatura + `parity_years`. Com a paridade recíproca, cada lado dá uma.
+- **O que é "tratado como nacional"** é o que o sistema de capital mede para o teste mensal da
+  `capital_parity`. Enquanto a cláusula vigora, o fundo de quem recebe deve ter, no país de quem
+  dá:
+  - **a porta aberta:** `Openness::OPEN` para esse dono, qualquer que seja a lei de capital em
+    vigor. Não entra o prêmio da lei, e não há parcela máxima, prazo nem transferência;
+  - **nenhum veto:** nenhum `SetCapitalEmbargo` de quem dá contra quem recebe;
+  - **nenhuma diluição forçada:** as camadas desse dono ficam fora da venda obrigatória quando a
+    lei baixa a parcela máxima (desfecho k).
+
+  O sistema de capital publica, a cada mês, uma função `parity_kept(world, giver, receiver) ->
+  bool` com essas três condições. O teste da cláusula a lê, e a quebra passa pela regra única
+  (`treaty::breach`, com preço pelo tamanho da obrigação). Enquanto a cláusula vigora, o próprio
+  sistema de capital já aplica a porta aberta a esse dono. Por isso a quebra só acontece por ato
+  de quem dá: o veto, ou uma diluição que não isenta esse dono.
+- **Custo próprio do capital:** a memória de expropriação e o veto (C3) são aplicados por este
+  sistema, lendo o registro de quebra.
+- **Ordem:** as duas cláusulas entram no PR das cláusulas novas (promessa, embargo,
+  `ColonialPlants`), depois do PR da negociação e da quebra, que traz `breach` e `reputation`. Até a
+  estatização e a lei de capital estarem no tick, elas nascem dormentes (`front: ForeignCapital`).
+  Os testes de jogo 1 a 4 são escritos nesse PR, contra o contrato deste sistema no `main`.
+
+O livro, a revisão, os graus de calote, a reputação e a suspensão recíproca já são do thread dos
+tratados.
+
+### Testes
+
+- **Acordo sem cláusula:** a colônia sem capitalistas próprios nasce com a camada da ex-metrópole
+  em todas as fábricas privadas não agrícolas, e a remessa começa na semana seguinte.
+- **Cláusula:**
+  - `kept` = 0 com `Debt` dá zero camada e uma linha no livro;
+  - `guarantee_years` = 10 torna quebra de tratado estatizar no ano 9, e não no ano 11.
+- **Revolta:** com o capital fechado ao nascer, a camada vira estatização no mesmo dia, com
+  memória e prêmio; com o capital aberto, a camada fica.
+- **Antes de qualquer independência:** o hash é o da `main`.
+
+### Fontes
+
+Abertas, todas lidas. As marcadas com "trecho" só foram vistas no resultado da busca, porque a
+página bloqueou o acesso.
+
+- **Índia:**
+  - Khanna e Palepu, NBER 2005: https://www.nber.org/system/files/chapters/c10272/c10272.pdf
+  - FERA 1973 (ORF): https://www.orfonline.org/expert-speak/43065-70-policies-foreign-exchange-regulation-act-1973
+- **Indonésia:**
+  - Lei 86/1958: https://pasal.id/peraturan/uu/uu-no-86-tahun-1958
+  - Tratado de 1966: https://wetten.overheid.nl/BWBV0004205
+  - Mesa-Redonda (Wikipédia, que cita Kahin 1961): https://en.wikipedia.org/wiki/Dutch%E2%80%93Indonesian_Round_Table_Conference
+- **Argélia:**
+  - Évian: https://mjp.univ-perp.fr/france/1962-1903evian.htm
+  - Decreto 63-88: https://archive.gazettes.africa/archive/dz/1963/dz-government-gazette-dated-1963-03-26-no-16.pdf
+  - Saída dos colonos: https://refugeehistory.org/blog/2019/9/17/victims-of-decolonisation-the-french-settlers-of-algeria
+  - Petróleo, 1971: https://www.larousse.fr/archives/journaux_annee/1972/115/afrique
+- **Congo e Zâmbia:**
+  - NRGI, *Copper Giants*: https://resourcegovernance.org/sites/default/files/nrgi_NMC_English.pdf
+  - Lei Bakajika: https://www.stanleyville.be/loi_bakajika.html
+- **Egito:**
+  - FRUS: https://history.state.gov/historicaldocuments/frus1955-57v16/d1
+  - Hansard 1958: https://api.parliament.uk/historic-hansard/written-answers/1958/may/05/suez-canal-company-and-egypt-agreement-1
+  - Hansard 1959: https://api.parliament.uk/historic-hansard/commons/1959/mar/16/anglo-egyptian-financial-agreement
+- **Quênia:**
+  - Hansard 1962: https://api.parliament.uk/historic-hansard/written_answers/1962/dec/18/land-settlement
+  - Hansard 1970: https://api.parliament.uk/historic-hansard/written_answers/1970/dec/18/kenya
+- **Zimbábue:**
+  - HRW 2002: https://hrw.org/reports/2002/zimbabwe/ZimLand0302-02.htm
+  - ISS 2020: https://issafrica.org/iss-today/zimbabwes-unaffordable-billion-dollar-land-deal
+- **Filipinas:**
+  - Quasha, 1972: https://lawphil.net/judjuris/juri1972/aug1972/gr_l_30299_1972.html
+  - Bell Trade Act (Wikipédia, que cita Shalom 1980): https://en.wikipedia.org/wiki/Bell_Trade_Act
+- **Haiti** (Wikipédia, que cita Brière): https://en.wikipedia.org/wiki/Haitian_independence_debt
+- **Irlanda:**
+  - Acordo de 1938: https://www.difp.ie/docs/1938/British-Irish-tripartite-agreement-on-trade-finance-and-defence/2321.htm
+  - Guerra tarifária: https://en.wikipedia.org/wiki/Anglo-Irish_trade_war
+- **Uganda** (IRB Canadá, 1990): https://www.ecoi.net/de/dokument/197460
+- **Malásia:** https://www.ehm.my/publications/articles/imperial-icons-to-malaysian-flagships-the-fall-of-british-business-in-malaysia
+- **Guiné** (Rivière): https://webguine.site/bibliotheque/sociology/riviere/mobilization_people/chap3.html
+- **Birmânia:** https://www.encyclopedia.com/social-sciences-and-law/economics-business-and-labor/businesses-and-occupations/burmah-castrol-plc
+- **Angola e Moçambique:** https://observador.pt/2025/01/29/maioria-dos-partidos-quer-resolver-pedidos-dos-espoliados-das-ex-colonias-portuguesas/
+
+**Sem fonte, ou só em trecho de busca:**
+- datas das guerras do Mau Mau, da Irlanda e de Angola e Moçambique;
+- o destino dos ativos americanos nas Filipinas depois de 1974;
+- os valores pagos à Esso, à Caltex e à Burmah Shell (este último só em trecho);
+- a devolução em massa em Uganda nos anos 1990;
+- a indenização belga de 1974 no Congo (só numa compilação sem autor);
+- o dia de fevereiro de 1971 no petróleo argelino e a lei francesa 70-632 (só em trecho).
