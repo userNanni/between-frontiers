@@ -1,7 +1,8 @@
 # Fronteiras: mudança de dono, nascimento e morte de países
 
-Estado: desenho (parte A). Nada aqui roda no tick ainda. A operação entra na parte B, o primeiro
-gatilho (independência por movimento) na parte C.
+Estado: desenho (parte A, integrada no #73) com as decisões do dono de 2026-11-17 (seção 6). Nada
+aqui roda no tick ainda. A operação entra na parte B, o primeiro gatilho (independência por
+movimento) na parte C.
 
 Hoje o mapa político é o de 1925 para sempre: em 2025 a Índia ainda é o Raj, a África ainda é
 colônia, a URSS não se dissolve. Este documento define **a operação de mudar o dono de um
@@ -124,9 +125,14 @@ acesso às regras; por isso não executa ele mesmo, como `SetLaw`.
 
 ```
 Transfer  { from, to, states, colony: Option<bool> }          estados entre dois países que existem
-Secede    { from, states, tag, laws: Option<template> }       estados viram país novo (ou renascido)
+Secede    { from, states, tag, overlord: Option<tag> }        estados viram país novo (ou renascido),
+                                                              independente ou súdito
 Annex     { from, into, colony: bool }                        um país deixa de existir
 Status    { tag, overlord: Option<tag> }                      súdito vira soberano ou o contrário
+
+toda operação, termos opcionais (decisões 1 e 6):
+  debt:       [ { amount, debtor, creditor, currency } ]      dívida transferida ou criada por acordo
+  techniques: [ { tech, from, to, stage, people } ]           técnica levada (paz) ou roubada (espionagem)
 ```
 
 Renomear (Pérsia → Irã, URSS → Rússia) não é operação de fronteira: é a etiqueta de exibição
@@ -281,38 +287,80 @@ Mudança menor que um estado fica de fora e anotada (`partial`).
 - Teste de 100 anos com roteiro de operações em datas fixas (só no teste): mesmo hash com 1 e 2
   threads e depois de salvar e recarregar no meio.
 
-## 6. Decisões para o dono
+## 6. Decisões do dono (decididas em 2026-11-17)
 
-Propostas, aguardando o dono. A parte B só começa depois da resposta.
+As seis recomendações foram aceitas como estavam, com quatro acréscimos (marcados). Direção geral
+do dono no mesmo dia: funcionalidade antes de equilíbrio. A operação se julga por funcionar e
+conservar (população, dinheiro, dívida, estoques, plantas; soma mundial igual antes e depois), por
+determinismo de 100 anos, por save antigo carregando e por CPU, não por célula de país no placar;
+o equilíbrio fino fica para depois da fase 6.
 
-1. **Dívida do país novo.** Recomendação: **colônia que se emancipa nasce sem dívida pública**
-   (o modelo põe as contas coloniais no Tesouro da metrópole, que fica com a dívida inteira e perde
-   a receita: a metrópole sai mais endividada, como saíram); **secessão de metrópole** (Bangladesh,
-   repúblicas soviéticas, Iugoslávia) reparte toda a dívida por **w**; anexação total passa tudo.
-   Teste: soma mundial de dívida igual antes e depois. Custo: uma regra por tipo de operação.
-2. **Moeda.** Recomendação: **moeda própria na hora**, com nível de preços, inflação e câmbio do
-   antigo dono no dia (nada salta); a união monetária (zona do franco, CFA, rublo até 1993) entra
-   com a moeda comum da fase 4. Alternativa: ficar na moeda do antigo dono por um tempo, que exige
-   moeda compartilhada entre mercados agora. Teste: preços e câmbio do país novo iguais aos do
-   antigo dono na semana da operação. Custo: nenhum além da cópia.
-3. **O jogador pode libertar ou criar país por decisão?** Recomendação: **sim, só do próprio
-   território** (libertar colônia ou estado como país independente ou súdito), pelo mesmo comando;
-   tirar território de outro só por tratado ou paz. Teste: comando do jogador sobre estado alheio é
-   recusado. Custo: um botão na interface depois; a regra já é a operação.
-4. **O jogador continua se o país dele for anexado?** Recomendação: **sim, como observador**, com a
-   escolha de outro país (inclusive o herdeiro); o país dele vira lápide e pode renascer. Teste:
-   anexar o país do jogador não derruba a sessão e o save carrega. Custo: uma tela de escolha que já
-   existe.
-5. **Granularidade.** Recomendação: **só estado inteiro** (870 estados). Corredor de Danzig, Memel,
-   Hatay, Oder-Neisse e Caxemira ficam com a maioria da área e anotados em `partial`; dividir
-   estado exige mexer no gerador do mapa e só entra se o placar mostrar que pesa. Teste: a
-   operação recusa província solta. Custo: zero agora; dividir estado depois custa a regeneração do
-   mapa.
-6. **Herança tecnológica do país novo.** Recomendação: **herda os estágios do antigo dono limitados
-   a Protótipo, salvo as técnicas usadas por plantas que existem nos seus estados**, que ficam no
-   estágio do antigo dono (a técnica vai com a fábrica e com a escola, não com a bandeira). Copiar
-   tudo faria a Índia de 1947 industrializar o que só a Grã-Bretanha fazia. Teste: país novo sem
-   planta química não constrói química no dia seguinte. Custo: uma regra de cópia.
+1. **Dívida.** Padrão por tipo de operação: colônia que se emancipa nasce sem dívida pública e a
+   metrópole fica com a dívida inteira; secessão de metrópole reparte toda a dívida por **w**;
+   anexação total passa tudo; transferência de estados não mexe na dívida.
+   **Acréscimo: dívida criada por acordo.** Toda operação aceita um termo opcional `debt`, uma
+   lista de linhas de dívida a criar ou transferir. Cobre a paz com reparação de guerra (como a
+   de 1919), a independência que nasce devendo ao antigo dono (a dívida da independência do Haiti
+   é o caso extremo; as colônias que herdaram empréstimos coloniais, o caso comum) e o acordo de
+   reconhecimento. Dois usos, combinados com o thread dos tratados (`docs/treaties.pt-BR.md`,
+   seção 5):
+   - **dívida de mercado que muda de devedor** (`DebtTerm::Market`: quanto, de quem para quem):
+     fica em `Money` (`debt_home`, `debt_bank`, `debt_abroad`, `debt_fx`), sai de cada detentor em
+     proporção; é da operação de fronteira;
+   - **dívida criada entre Estados** (`DebtTerm::Agreement`, quando o contrato dos tratados
+     entrar): uma linha do **livro nomeado de dívida entre Estados** dos tratados, fonte da
+     verdade (devedor, credor, moeda, principal, juro, calendário, teto de transferência,
+     garantia). A operação só chama `treaty::ledger_create`; o crédito do credor é a soma do livro
+     (`treaty::claims_of`), nunca um campo guardado à parte. Na anexação e na secessão a operação
+     chama `treaty::ledger_on_annex` e `treaty::ledger_on_secede`, que os tratados escrevem.
+
+   A soma mundial fecha com as duas partes: dívida de mercado e `foreign_assets` em `Money`, e o
+   livro, em que dívida e crédito são iguais por construção (teste).
+2. **Moeda.** Moeda própria na hora, com nível de preços, inflação, expectativa e câmbio do antigo
+   dono no dia (nada salta). A união monetária entra com a moeda comum da fase 4.
+3. **O jogador liberta ou cria país do próprio território**, pelo mesmo comando das operações:
+   colônia ou estado próprio vira país **independente ou súdito** do jogador. Tirar território de
+   outro só por tratado ou paz. Recusas testadas: estado alheio, estado que não existe, libertar
+   todos os estados do próprio país, etiqueta viva.
+4. **O jogador anexado continua**, e **acréscimo: o jogador troca de país a qualquer momento.**
+   - Derrotado por anexação ou por revolta, escolhe outro país, inclusive o que nasceu da revolta.
+   - Fora de qualquer operação, troca quando quiser: começar com a URSS, libertar uma república e
+     passar a jogar com ela; começar com o Brasil, libertar São Paulo e jogar com São Paulo; jogar
+     como súdito e sair do controle do suserano.
+   - **Estado de sessão, fora do hash.** Quem joga com qual país é do jogador, não do mundo: a
+     simulação não lê a escolha (os países do jogador e da IA seguem as mesmas regras), então a
+     troca não muda o hash. A sessão guarda o mapa emissor → país; o save grava esse mapa no
+     cabeçalho, ao lado do registro de comandos; o comando de troca entra no registro (o replay
+     mostra quem jogava com quem e quando) mas não muda o mundo. O `GameWorld::player` dos saves
+     antigos é lido uma vez na carga como a escolha do emissor local e deixa de ser escrito
+     (continua no hash enquanto existir, com o valor da primeira escolha, para os saves antigos
+     carregarem e conferirem). No multiplayer futuro, cada emissor tem a sua entrada; dois
+     jogadores no mesmo país é decisão do servidor, não da simulação.
+   - **Súdito.** O país criado como súdito guarda o suserano (`borders::Subject`: suserano, tipo
+     da sujeição, desde quando), lido do cenário para os súditos de 1925 (`countries.ron`,
+     `Status::Subject`). O ponto de leitura para romper é `GameWorld::overlord_of(país)`; a regra
+     de quando o súdito rompe (força, legitimidade, movimento de independência, guerra) é da
+     diplomacia (fase 4). A operação `Status` muda o vínculo; romper é uma `Status` com suserano
+     vazio.
+5. **Granularidade.** Só estado inteiro. A operação recusa estado repetido ou que não existe; o
+   que é menor que um estado fica em `partial` na referência.
+6. **Herança tecnológica.** O país novo herda os estágios do antigo dono limitados a Protótipo,
+   salvo as técnicas usadas por plantas que existem nos seus estados, que ficam no estágio do
+   antigo dono; o progresso das limitadas zera. A colônia que vira país herda, assim, o que a
+   metrópole sabe e o que a colônia já opera, sem herdar a indústria da metrópole. (Enquanto o
+   estágio colonial de `economy.pt-BR.md`, "Colônias: salário e técnica", estiver estacionado, a
+   base é o estágio do país; quando entrar, a base passa a ser o estágio colonial do antigo dono.)
+   **Acréscimo: técnicas transferidas por evento.** Toda operação aceita um termo opcional
+   `techniques: Vec<TechniqueTerm>` (técnica, de quem, para quem, estágio a que chega, e se o
+   doador perde gente: o estágio dele não cai, mas o progresso da próxima etapa recua na parte
+   levada). Não é usado agora; os usos desenhados:
+   - **Paz (fase 5):** o vencedor leva cientistas, engenheiros e projetos (a Operação Paperclip,
+     os especialistas alemães levados para a URSS). A exigência "técnicas" entra na mesa como as
+     outras; aceita, vira o termo, com as técnicas em que o derrotado está acima do vencedor.
+   - **Espionagem (fase 4):** os soviéticos e a bomba. Uma ação diplomática com custo e risco
+     medidos (relação, contraespionagem do alvo); quando dá certo, um termo de uma técnica com o
+     espião subindo um estágio, nunca acima do estágio do alvo. Fica fora da operação de
+     fronteira: a espionagem chama só a parte do termo, sem estados.
 
 ## 7. O que a interface vai precisar ler
 

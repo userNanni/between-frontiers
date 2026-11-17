@@ -296,6 +296,21 @@ O teste de 100 anos da fase 1 fecha determinístico: população 2,1 → 7,6 bil
 | Informática só acelera a pesquisa | Serviços digitais (datacenter, software) como insumo das empresas, com ganho de produtividade para quem usa | 4 |
 | Água não é recurso | Água por região para irrigação, hidrelétrica e cidades, com escassez | 4 |
 
+### Fronteiras: adiantadas para o início da fase 4
+
+Pedido do dono, decidido em 2026-11-17: mudar o dono de estados, criar país (independente ou
+súdito), anexar, e trocar de país jogado a qualquer momento, antes dos tratados e da guerra, que
+chamam essas operações. Desenho e decisões em `borders.pt-BR.md`.
+
+| O quê | Estado |
+|---|---|
+| Auditoria, operações, catálogo de 158 países possíveis com bandeira livre, 293 mudanças de soberania de referência (`data/history/borders.ron`) | feito (#73) |
+| Operações no tick (transferir, criar país, anexar, estatuto de súdito) com termos de dívida por acordo e de técnica transferida; libertar estado próprio | parte B |
+| Trocar de país jogado a qualquer momento (estado de sessão, fora do hash) | parte B |
+| Rodada de 100 anos com a história aplicada por data, só para exercitar as operações (chave do `bf-bench`, desligada por padrão) | parte B |
+| Independência por movimento, primeiro gatilho com causa medida | parte C |
+| Tratado (fase 4), paz (fase 5) e entrada histórica (fase 7) como gatilhos; romper sujeição pela diplomacia | fases 4, 5 e 7 |
+
 ### Plano do último bloco: confiança, interesses e trilho histórico
 
 Pedido do dono: depois da simulação simples, a crise de 1929 pelo medo do mercado, as hostilidades
