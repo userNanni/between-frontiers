@@ -6,6 +6,7 @@
 //! `--check-determinism` it runs a second time on a different thread count and fails if any
 //! hash differs. The world is a synthetic toy until the game's systems exist.
 
+mod borders;
 mod diag;
 mod diag1925;
 mod game;
@@ -37,6 +38,8 @@ Usage: bf-bench [options]
   --history-out PATH    with --game: write every country's yearly series to PATH (JSON)
   --save-at DATES       with --game: save, reload and finish from each YYYY-MM-DD in this
                         comma-separated list (default: 1 January of the middle year)
+  --borders-history     with --game: apply data/history/borders.ron on its dates, only to
+                        exercise the border operations (off by default; not the reference run)
 ";
 
 struct Options {
@@ -104,6 +107,9 @@ fn parse_args() -> Result<Options, String> {
             }
             "--check-determinism" => options.check_determinism = true,
             "--game" => options.game = true,
+            "--borders-history" => {
+                let _ = crate::borders::ON.set(true);
+            }
             "--diag" | "--diag-1925" => {}
             "--budget-ms" => {
                 options.budget_ms = Some(

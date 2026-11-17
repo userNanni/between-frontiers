@@ -198,6 +198,10 @@ pub struct GameReport {
     /// Law changes of the campaign against the dated reference changes of 1925–1994.
     #[serde(default)]
     pub politics: Option<PoliticsReport>,
+    /// With `--borders-history`: the reference changes submitted, applied, refused, and any whose
+    /// totals changed.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub borders: Option<crate::borders::Log>,
 }
 
 /// One dated law change of the reference as a closed question for the history scorecard
@@ -494,6 +498,7 @@ fn snapshot(data: &GameData, s: &Session, ms: f64, log: &mut InflationLog) -> De
 
 struct Run {
     session: Session,
+    borders: crate::borders::Log,
     yearly: Vec<StateHash>,
     decades: Vec<Decade>,
     total_ms: f64,
@@ -516,7 +521,11 @@ fn run(
     if report {
         decades.push(snapshot(data, &session, 0.0, &mut log));
     }
+    let mut borders = crate::borders::Log::default();
     while session.clock().date < until {
+        if crate::borders::on() {
+            crate::borders::submit(data, &mut session, &mut borders);
+        }
         let t = Instant::now();
         session.sim.step();
         let ms = t.elapsed().as_secs_f64() * 1000.0;
@@ -736,8 +745,10 @@ fn run(
             }
         }
     }
+    crate::borders::close(session.world(), &mut borders);
     Run {
         session,
+        borders,
         yearly,
         decades,
         total_ms: total,
@@ -820,7 +831,23 @@ pub fn main(
         systems: crate::system_reports(main.session.sim.schedule().stats()),
         technologies: timings(&data, &main.session),
         politics: politics_report(&data, &main.session),
+        borders: crate::borders::on().then(|| main.borders.clone()),
     };
+    if let Some(b) = &report.borders {
+        println!(
+            "borders: {} reference changes submitted, {} applied, {} refused, {} not conserved",
+            b.submitted,
+            b.applied,
+            b.refused.len(),
+            b.not_conserved.len()
+        );
+        for r in b.refused.iter().take(20) {
+            println!("  refused {r}");
+        }
+        for r in &b.not_conserved {
+            println!("  NOT CONSERVED {r}");
+        }
+    }
     if let Some(pr) = &report.politics {
         println!(
             "politics: {} reference changes: {} within {WINDOW} years, {} early, {} late, {} never; {} changes not in the reference",
@@ -860,6 +887,13 @@ pub fn main(
     .map_err(|e| format!("{out}: {e}"))?;
 
     let mut failures = Vec::new();
+    if report
+        .borders
+        .as_ref()
+        .is_some_and(|b| !b.not_conserved.is_empty())
+    {
+        failures.push("a border operation changed the world's totals".to_owned());
+    }
     if !save_load_ok {
         failures.push("save/load changed the outcome".to_owned());
     }
