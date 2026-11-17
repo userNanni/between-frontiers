@@ -70,6 +70,8 @@ pub struct Territory {
     pub migration: Vec<f64>,
     pub life_expectancy: Vec<f64>,
     pub fertility: Vec<f64>,
+    /// Values of `demography::FERTILITY_TERMS` (in that order), weighted by population.
+    pub fertility_terms: Vec<Vec<f64>>,
 }
 
 /// Public accounts and prices of one country (metropole and colonies together).
@@ -163,6 +165,8 @@ pub struct History {
     /// By territory: people summed over the months, and births, deaths, migration, life
     /// expectancy and fertility times people.
     vital: Vec<[f64; 6]>,
+    /// By territory: the fertility terms times people.
+    terms: Vec<[f64; 5]>,
     /// The same by region.
     region_vital: Vec<[f64; 6]>,
     /// Arrivals since the start by (origin, destination) at the last 1 January, and their
@@ -231,6 +235,7 @@ impl History {
             spending: vec![0.0; markets],
             price_jan: prices(w),
             vital: vec![[0.0; 6]; TerritoryId::count(markets)],
+            terms: vec![[0.0; 5]; TerritoryId::count(markets)],
             region_vital: vec![[0.0; 6]; w.econ.regions.len()],
             arrived: arrived(w),
             pairs: Default::default(),
@@ -332,6 +337,9 @@ impl History {
         for (ri, (r, v)) in w.econ.regions.iter().zip(&w.demography.vital).enumerate() {
             let t = TerritoryId::of(r).index();
             let n = r.population() as f64;
+            for (k, x) in v.fertility_terms.iter().enumerate() {
+                self.terms[t][k] += x.to_f64_lossy() * n;
+            }
             for acc in [&mut self.vital[t], &mut self.region_vital[ri]] {
                 acc[0] += n;
                 for (k, x) in [v.births, v.deaths, v.migration, v.life, v.tfr]
@@ -418,6 +426,12 @@ impl History {
                 ter.migration.push(mean(3));
                 ter.life_expectancy.push(mean(4));
                 ter.fertility.push(mean(5));
+                let tm = &self.terms[t];
+                ter.fertility_terms.push(
+                    tm.iter()
+                        .map(|x| if v[0] > 0.0 { x / v[0] } else { 0.0 })
+                        .collect(),
+                );
             }
             let c = &mut rep.countries[mi];
             let g = gdp.max(1.0);
@@ -439,6 +453,7 @@ impl History {
         self.revenue.iter_mut().for_each(|x| *x = 0.0);
         self.spending.iter_mut().for_each(|x| *x = 0.0);
         self.vital.iter_mut().for_each(|v| *v = [0.0; 6]);
+        self.terms.iter_mut().for_each(|v| *v = [0.0; 5]);
         // Arrivals of the year by road; the series and the waves are rewritten every year.
         let now = arrived(w);
         let n = self.report.years.len();

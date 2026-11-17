@@ -18,8 +18,9 @@ const GAP_START: Fixed = milli(1500);
 const GAP_FULL: Fixed = milli(3000);
 /// Most of a territory's people who emigrate in a year in the steady flow, at the full pull.
 const EMIGRATION_RATE: i64 = 3; // per mille a year
-/// Most immigrants a territory takes in a year from the steady flow, per mille of its people.
-const IMMIGRATION_CAP: i64 = 3;
+/// Most immigrants a territory takes in a year from the steady flow, per million of its people
+/// (Brazil and the United States took about 2,400 and 2,600 in the 1920s).
+const IMMIGRATION_CAP: i64 = 2500;
 /// Distance at which the pull halves, in km.
 const DISTANCE_KM: i64 = 8000;
 /// Pull multiplier within a language family and within an empire. The empire gets none: at 2,
@@ -31,13 +32,14 @@ const SAME_EMPIRE: i64 = 1;
 /// squared (who reads hears of the jobs abroad and saves for the ticket).
 const AFFORD_BASE: Fixed = milli(50);
 
-/// Land per farmer (the land's ceiling in farm levels over peasants and farm labourers): a
+/// Land per farmer (cropland open and still to clear, in farm levels, over peasants and farm
+/// labourers): a
 /// destination with `LAND_START` times the origin's starts to pull, with `LAND_START +
 /// LAND_FULL` times pulls fully, if it is not poorer than `LAND_MIN_RATIO` of the origin's
 /// income (the frontiers of the Americas, Siberia, Australia).
 const LAND_START: Fixed = milli(2000);
-const LAND_FULL: Fixed = milli(4000);
-const LAND_MIN_RATIO: Fixed = milli(300);
+const LAND_FULL: Fixed = milli(20_000);
+const LAND_MIN_RATIO: Fixed = milli(200);
 /// The diaspora pulls by itself (letters, tickets, a job waiting): at full chain it adds this
 /// to the gap, toward a destination at least `NETWORK_MIN_RATIO` of the origin's income.
 const NETWORK: Fixed = milli(500);
@@ -50,7 +52,7 @@ const WAVE_MIN_CHAIN: Fixed = milli(300);
 
 /// A colonization programme of both governments recruits like a chain of this strength (share
 /// of a full chain): agents in the villages, not a diaspora's letters.
-const PROGRAMME_CHAIN: Fixed = milli(150);
+const PROGRAMME_CHAIN: Fixed = milli(50);
 
 /// Market (country) of a territory index.
 fn market(t: usize) -> usize {
@@ -482,7 +484,7 @@ pub(super) fn plan(
     }
     let cap: Vec<i64> = lands
         .iter()
-        .map(|l| l.people * IMMIGRATION_CAP / 12_000)
+        .map(|l| l.people * IMMIGRATION_CAP / 12_000_000)
         .collect();
     let mut moved: Vec<(usize, usize, u16, i64)> = flows
         .into_iter()
@@ -813,10 +815,11 @@ fn pull(
     let dlon = dlon * milli(111_200) * ((cos[i] + cos[j]) / 2);
     let d2 = (dlat * dlat + dlon * dlon) / (DISTANCE_KM * DISTANCE_KM);
     let distance = Fixed::ONE / (Fixed::ONE + d2);
-    // A programme of the origin (agents, ships, land bought abroad) makes the distance cheaper;
+    // A programme of the origin (agents, ships, land bought abroad) makes the distance half as
+    // costly;
     // a ticket the destination pays does not bring the news and the contacts the distance
     // stands for.
-    let distance = distance + (Fixed::ONE - distance) * programme;
+    let distance = distance + (Fixed::ONE - distance) * programme / 2;
     let mut link = 1;
     if ti.family != u8::MAX && ti.family == tj.family {
         link *= SAME_FAMILY;

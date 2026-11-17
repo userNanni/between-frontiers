@@ -139,15 +139,17 @@ const MEDICINE_FULL: Fixed = milli(800);
 const TFR_HIGH: Fixed = milli(6500);
 const TFR_LOW: Fixed = milli(1750);
 const TFR_WITHOUT_PILL: Fixed = milli(500);
-/// Share of fertility lost when the land per farmer has fallen to nothing from the state's own
-/// of 1925; in proportion before that. Zero until the land ceiling is the arable land and not
-/// the cropland of 1925: without a farming frontier every growing country "runs out of land",
-/// Brazil and Argentina too, and the brake punished the missing frontier, not land hunger.
-const LAND_BRAKE: Fixed = milli(0);
+/// Land hunger, the preventive check: where the cropland a farmer has (open and still to clear,
+/// farm levels per thousand farmers) is below `LAND_SCARCE` and below the state's own of 1925,
+/// fertility falls in proportion to what was lost, by `LAND_BRAKE` at most. Brazil, Argentina
+/// and Africa have land to clear and do not brake; rural Asia does. An absolute measure alone
+/// would brake the irrigated Nile in 1925, where fertility was 6.5.
+const LAND_BRAKE: Fixed = milli(500);
+const LAND_SCARCE: Fixed = milli(20_000);
 /// Weights of the transition score and where the transition starts and ends.
-const F_SURVIVAL: Fixed = milli(250);
-const F_SCHOOLING: Fixed = milli(550);
-const F_OFF_FARM: Fixed = milli(100);
+const F_SURVIVAL: Fixed = milli(300);
+const F_SCHOOLING: Fixed = milli(570);
+const F_OFF_FARM: Fixed = milli(30);
 const F_COMFORT: Fixed = milli(100);
 const F_CONTRACEPTION: Fixed = milli(170);
 const F_START: Fixed = milli(450);
@@ -654,6 +656,8 @@ pub struct Demography {
     kinds: PublicKinds,
     /// The law catalogue and the indices of the `immigration` and `emigration` effects.
     laws: Option<(Arc<Politics>, usize, usize)>,
+    /// Whether each farm of `resources::FARMS` is cropland (not pasture, forest or fishery).
+    crop: Vec<bool>,
 }
 
 impl Demography {
@@ -663,7 +667,32 @@ impl Demography {
             let index = |k| crate::politics::effect_index(k).expect("migration law effect");
             (p, index("immigration"), index("emigration"))
         });
-        Self { cat, kinds, laws }
+        let crop = crate::resources::FARMS
+            .iter()
+            .map(|f| !matches!(*f, "livestock_ranch" | "forestry" | "fishery"))
+            .collect();
+        Self {
+            cat,
+            kinds,
+            laws,
+            crop,
+        }
+    }
+
+    /// Cropland a region has and could still clear, in farm levels: open cropland and the
+    /// farming frontier (`Region::frontier`).
+    fn cropland(&self, r: &Region) -> i64 {
+        let crop = |f: u8| self.crop.get(usize::from(f)).copied().unwrap_or(false);
+        r.land
+            .iter()
+            .filter(|l| crop(l.0))
+            .map(|l| l.1)
+            .sum::<i64>()
+            + r.frontier
+                .iter()
+                .filter(|l| crop(l.0))
+                .map(|l| l.1)
+                .sum::<i64>()
     }
 
     /// What the laws in force in `country` let through, per mille of the open flow:
@@ -794,7 +823,7 @@ impl System<GameWorld> for Demography {
                 let (h, rates, tfr) = rates_at(Fixed::ONE);
                 // Land hunger: as the land per farmer falls below the state's own of 1925, sons
                 // wait for land to marry and families stop earlier (the preventive check).
-                let land_total: i64 = r.land.iter().map(|l| l.1).sum();
+                let land_total = self.cropland(r);
                 let farmers = r.pops[prof::PEASANT].size + r.pops[prof::FARM_LABORER].size;
                 let land_now = if farmers > 0 {
                     Fixed::from_ratio(land_total * 1000, farmers)
@@ -805,7 +834,7 @@ impl System<GameWorld> for Demography {
                     Some(&l) if !first => l,
                     _ => land_now,
                 };
-                let lost = if land_then > Fixed::ZERO {
+                let lost = if land_then > Fixed::ZERO && land_now < LAND_SCARCE {
                     (Fixed::ONE - land_now / land_then).clamp(Fixed::ZERO, Fixed::ONE)
                 } else {
                     Fixed::ZERO
@@ -828,7 +857,7 @@ impl System<GameWorld> for Demography {
                 };
                 let (births, deaths) = month(&mut ages, &rates, tfr);
                 let p = &r.pops[prof::PEASANT];
-                let land_total: i64 = r.land.iter().map(|l| l.1).sum();
+                let land_total = self.cropland(r);
                 let farmers = r.pops[prof::PEASANT].size + r.pops[prof::FARM_LABORER].size;
                 let urban: i64 = r
                     .pops
