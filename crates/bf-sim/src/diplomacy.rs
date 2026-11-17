@@ -117,6 +117,14 @@ pub struct Treaty {
     #[serde(default)]
     pub bloc: Option<String>,
     pub source: String,
+    /// What the treaty does, clause by clause (`treaty.rs`, `docs/treaties.pt-BR.md`). The kind
+    /// above stays as the historical label shown on the screen.
+    #[serde(default)]
+    pub clauses: Vec<crate::treaty::Clause>,
+    /// For [`TreatyKind::Subjection`]: the subject bundle of the clause catalogue, which must be
+    /// the one of the grade in `countries.ron`.
+    #[serde(default)]
+    pub bundle: Option<String>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
