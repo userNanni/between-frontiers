@@ -427,6 +427,118 @@ da Síria e do Líbano), japoneses 27 mil, ucranianos 24 mil. Ficam de fora:
 **Quem se move:** sai dos camponeses, assalariados rurais e operários; chega como operário, nas
 cidades (na proporção da população urbana dos estados). Na pirâmide, idades de 20 a 34.
 
+### Cultura e religião na natalidade (desenho, sem código)
+
+Estado: desenho para o dono decidir junto com as decisões 1 a 3 (`architecture.pt-BR.md`). Nada
+disto roda: os termos só entram quando as comunidades estiverem nos pops. Regra: cultura entra
+como **difusão** da transição, nunca como "a cultura X tem mais filhos"; religião só com efeito
+medido **líquido de escolaridade e renda**. Efeito sem essa medição não entra.
+
+#### O que a literatura mede
+
+**Difusão pela língua.** O Projeto Europeu de Fecundidade de Princeton (Coale e Watkins, orgs.,
+*The Decline of Fertility in Europe*, 1986) datou a queda de 10 % da fecundidade marital (`Ig`)
+por província e concluiu, como o resumem Spolaore e Wacziarg (2022), que a data segue mais a
+língua e a região cultural do que a economia. As críticas: a província agregada mistura cidade e
+campo e controla pouco a economia (Brown e Guinnane, *Economic History Review* 60(3), 2007; na
+Baviera, Brown e Guinnane, *Population Studies*, 2002, acham que o Projeto deixou passar a
+economia). A medida mais limpa que encontramos responde à crítica:
+
+| Fonte | O que mede | Efeito |
+|---|---|---|
+| Spolaore e Wacziarg, "Fertility and Modernity", *Economic Journal* 132(642), 2022, tab. 1, 2, 5, 6 e A9 | Ano da queda de 10 % de `Ig` em 771 regiões europeias (média 1899, desvio-padrão 25 anos) contra a distância linguística (nós da árvore) ao francês de Paris, com efeito fixo de país | 2,26 anos de atraso por nó sem controles; 3,19 com a alfabetização de 1880 (413 regiões; a alfabetização sai não significativa, t = 0,89); 3,90 com todos os controles (296 regiões). Um desvio-padrão de distância (3 nós) ≈ 7 a 12 anos. O efeito some nas coortes de 1931–60 (tab. 5). A distância à região vizinha que já caiu pesa pouco (tab. A9): é difusão a partir da fronteira, não contágio entre vizinhos |
+| Lesthaeghe, *The Decline of Belgian Fertility, 1800–1970*, 1977, citado em Spolaore e Wacziarg, p. 799–800 | 70 pares de aldeias valãs e flamengas vizinhas de economia parecida | A valã caiu primeiro em 62 pares, cerca de 20 anos antes; Liège e Bruges, com 59 % e 61 % de alfabetizados em 1880, caíram em 1875 e 1905 |
+
+Falta renda direta nas duas (só carvão, urbanização e densidade como substitutos); a
+alfabetização entra e não apaga o efeito.
+
+**Religião, líquida de escolaridade e renda.**
+
+| Fonte | Medida | Líquido de | Efeito | Entra? |
+|---|---|---|---|---|
+| Becker, Cinnirella e Woessmann, CESifo WP 2775, 2009, tab. 2 e 8 (334 condados da Prússia) | Crianças por mulher (1849); queda da fecundidade marital 1890–1905 | Matrícula escolar, indústria, agricultura, urbanização, densidade, casadas, poloneses, expectativa de vida (renda só pela ocupação) | Condado todo protestante: cerca de 6 % menos crianças por mulher em 1849 (coef. −0,038 a −0,045 sobre média 0,64) e queda cerca de 14 pontos mais rápida em 1890–1905 | **Não**: medida de antes de 1925; usá-la de 1925 a 2025 seria extrapolar |
+| Pasupuleti, Pathak e Jatrana, *Journal of Biosocial Science*, 2017 (só o resumo lido) | Fecundidade completa de muçulmanas e hindus na Índia (NFHS) | Características socioeconômicas e demográficas | Diferença de mais de 1,3 filho; os controles explicam 31 %; sobra cerca de 0,9 | **Ainda não**: falta ler a tabela (ou a de Dharmalingam e Morgan, *Demography* 41(3), 2004) |
+| Diferença bruta na Índia (Pew Research Center, 2021; NFHS) | TFR | Nada | 1,1 filho em 1992 (4,4 e 3,3), 0,5 em 2015, 0,4 em 2019–21 | Não (bruta) |
+| Liefbroer, 2012, Historical Sample of the Netherlands | Intervalo entre nascimentos, casais de 1850–1920 | Só idade, parturição e coorte | Católicos com cerca de 1/3 da chance de espaçar dos protestantes liberais | Não (sem classe) |
+| Westoff e Jones, 1979; Mosher, Williams e Johnson, 1992 (EUA) | Católicos, mórmons, protestantes | Educação, segundo Lehrer (IZA DP 3541, 2008) | Católicos convergem nos anos 1970; mórmons e protestantes de alta frequência acima | **Ainda não**: números não lidos |
+
+McQuillan ("When does religion influence fertility?", *Population and Development Review*,
+2004) dá a condição: a religião pesa quando a igreja tem norma sobre filhos, meios de fazê-la
+cumprir e é centro da identidade. Lehrer (2008) lembra que controlar a escolaridade subestima o
+efeito total, porque a religião também molda a escola: o efeito líquido é o piso, e é o que a
+regra aceita.
+
+#### Termo novo: difusão (`diffusion`)
+
+    D_f   = parcela das pessoas da família linguística f, no mundo e fora do próprio estado,
+            que vive em estados já em transição (TFR 10 % abaixo de 6,5), no mês anterior
+    valor = Σ (parcela da comunidade c no pop) × D_família(c)
+
+- **O que lê:** a composição de comunidades de cada pop (cultura → família, `CULTURE_FAMILIES`)
+  e o TFR do mês anterior de todos os estados (`Vital::tfr`). Fora do próprio estado e com um
+  mês de atraso, para o termo não se alimentar de si mesmo no mesmo mês.
+- **Por que a família e não a distância na árvore:** os dados têm 34 famílias e nenhuma árvore.
+  Dentro da família o termo dá o que Lesthaeghe e Spolaore e Wacziarg medem (quem fala a língua
+  de quem já caiu cai antes); entre famílias, não há gradação (romance e germânico ficam tão
+  longe quanto romance e banto). Uma árvore com fonte (Glottolog, CC BY 4.0) daria a distância
+  em nós, como no artigo; fica como passo seguinte, se a família não bastar no placar.
+- **Neutro por construção:** se todas as famílias tivessem o mesmo D, o termo seria igual para
+  todos e não mudaria a ordem de ninguém. Não há valor por cultura nos dados; a diferença só nasce
+  de onde a transição já chegou.
+- **Some sozinho:** quando toda família passou da transição, D = 1 para todos e o termo vira
+  constante, como o efeito que se apaga nas coortes de 1931–60.
+- **Peso (proposta, a calibrar):** o índice da transição sobe, na mediana dos territórios, 0,0095
+  por ano quando cruza o início da queda (`F_START`; base `origin/main` em fb95145, 31
+  territórios com mais de 2 milhões). Um adiantamento de 10 anos entre D = 1 e D = 0 pede peso
+  ≈ 10 × 0,0095 ≈ 0,10; os 20 anos de Lesthaeghe pedem ≈ 0,19; um desvio-padrão de Spolaore e
+  Wacziarg (7 a 12 anos) pede 0,07 a 0,11. Proposta: **0,10**, com o mesmo valor descontado da
+  soma dos outros pesos ou de `F_START`, para a média mundial de 1925 não se mexer, e recalibrado
+  no placar.
+- **CPU:** D_f é uma soma por família sobre as linhas da tabela (cerca de 45 mil no teto de 1925)
+  por mês, mais uma soma por pop: menos de 0,2 s em 100 anos.
+- **Teste contrafactual:** (1) teste de unidade com duas regiões iguais em tudo menos a família,
+  uma com D = 0,9 e outra com D = 0,1: a queda de 10 % da segunda vem de 5 a 20 anos depois;
+  (2) teste de neutralidade: com D igual para todas as famílias, o TFR de cada estado é o mesmo
+  que sem o termo, a menos da constante descontada; (3) rodada de 100 anos com peso 0 e com o
+  peso proposto: desvio-padrão do ano da queda de 10 % entre os estados europeus (Princeton: 25
+  anos) e regressão do ano da queda sobre D, contra os 2 a 4 anos por nó do artigo.
+
+#### Termo novo: religião (`religion`), sem número
+
+    valor = Σ (parcela da religião r no pop) × efeito(r, região, década)
+
+- **O que lê:** a religião das comunidades do pop e uma tabela de efeitos
+  (`data/demography/religion_fertility.ron`), cada linha com religião, região, período, efeito em
+  filhos por mulher, controles usados e a fonte com tabela.
+- **Hoje a tabela fica vazia.** A única medida líquida lida (Prússia) é anterior a 1925; o
+  diferencial muçulmano–hindu na Índia é o primeiro candidato, quando a tabela de Pasupuleti et
+  al. (2017) ou de Dharmalingam e Morgan (2004) for lida; o dos católicos nos EUA depois de
+  Westoff e Jones (1979) e Mosher et al. (1992). O efeito entra como diferença ao TFR (não como
+  peso da nota) para que "0,9 filho líquido" seja o número lido, e só no período em que foi medido.
+- **CPU:** uma busca por pop e por mês; desprezível.
+- **Teste contrafactual:** trocar a religião de uma comunidade e conferir que o TFR muda pelo
+  efeito da tabela e nada mais; com a tabela vazia, o hash de 100 anos é o mesmo que sem o termo.
+
+#### O que a ligação das comunidades aos pops pede da demografia
+
+Hoje o pop é estado × profissão (11 310 linhas). Com as comunidades vira estado × comunidade ×
+profissão: no teto de 1925, 45 630 linhas (`communities_1925`), na prática menos, porque nem
+toda comunidade ocupa toda profissão.
+
+| Peça | Opção | Linhas de código (estimativa) | CPU em 100 anos (base: demografia 5,5 s de 198 s, 2 threads) |
+|---|---|---|---|
+| Filhos por linha | TFR por linha com os termos de hoje mais difusão e religião; cada linha recebe os seus (como a natalidade por classe) | 100–150 | ×3 a ×4 das avaliações de TFR: +2 a +3 s |
+| Pirâmide | **(a) por estado**, todas as linhas com a mesma estrutura de idade (recomendado para começar) | 0 | 0 |
+| | (b) por estado × comunidade (cerca de 3 700 pirâmides contra 870) | 400–600 | +6 a +10 s; save +0,5 MB |
+| Migração internacional | A diáspora já guarda a cultura: quem chega entra na linha da sua comunidade no destino | 150–250 | desprezível |
+| Migração interna | O êxodo rural e a mudança de profissão movem gente de cada comunidade na proporção da linha de origem | 300–500 (em `econ/migration`) | economia mensal ×3: +5 a +7 s |
+| Assimilação (decisão 3) | Fluxo anual entre linhas | do lado das comunidades | anual: desprezível |
+
+Recomendação: (a) e a pirâmide por estado. O que (a) erra: imigrante chega com 20 a 34 anos e
+tem mais filhos por cabeça no começo; com a pirâmide do estado, a comunidade imigrante cresce
+devagar demais nos primeiros 20 anos. Se o placar mostrar isso (diáspora no Brasil e nos EUA),
+passa para (b). A difusão e a religião não precisam de pirâmide por comunidade: leem parcelas.
+
 ### O que falta
 
 - **Guerra, fome e regime.** Não há guerra (1914–18 já passou; 1939–45 não acontece), nem fome
@@ -463,9 +575,7 @@ cidades (na proporção da população urbana dos estados). Na pirâmide, idades
   avaliações por estado por mês (~1 s de CPU em 100 anos). Fica para depois porque o TFR da
   região passa a ser a média dos TFR das pops, não o TFR da média (a curva é não linear), o que
   desloca a calibração, e porque muda a composição de classes e o êxodo rural.
-- **Cultura e religião na natalidade (próximo PR, com as comunidades).** Cultura como difusão da
-  transição dentro da família linguística (a conferir no Princeton European Fertility Project),
-  não como "cultura X tem mais filhos"; religião só com efeito medido em fonte pública, líquido
-  de escolaridade e renda. Entram como termos novos de `FERTILITY_TERMS`.
+- **Cultura e religião na natalidade.** Desenho acima ("Cultura e religião na natalidade"): entra
+  depois das decisões 1 a 3, com as comunidades nos pops.
 - **Pirâmide por comunidade**; idade de trabalho fixa em 40 % de cada pop.
 - **Baby boom.** Nada no modelo faz a fecundidade dos ricos subir de 1946 a 1964.
