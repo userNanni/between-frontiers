@@ -46,6 +46,7 @@ pub struct BarResponse {
     pub open_research: bool,
     pub open_government: bool,
     pub open_journal: bool,
+    pub open_population: bool,
     /// A block was clicked: the screen its figure comes from.
     pub open: Option<super::tiles::Open>,
 }
@@ -79,9 +80,9 @@ fn date_width(screen: Rect) -> f32 {
     room.clamp(130.0, 210.0)
 }
 
-const TIME_BUTTON: f32 = 36.0;
+const TIME_BUTTON: f32 = 32.0;
 const TIME_SMALL: f32 = 28.0;
-const TIME_FIXED: f32 = TIME_SMALL * 2.0 + TIME_BUTTON * 5.0 + space::SM * 7.0;
+const TIME_FIXED: f32 = TIME_SMALL * 2.0 + TIME_BUTTON * 6.0 + space::SM * 8.0;
 
 /// Size of the date and speed panel on `screen`.
 pub fn time_size(screen: Rect) -> Vec2 {
@@ -1087,6 +1088,7 @@ fn time_panel(
     let pause_rect = next(button, button);
     let government_rect = next(button, button);
     let journal_rect = next(button, button);
+    let population_rect = next(button, button);
     let research_rect = next(button, button);
     let menu_rect = next(button, button);
 
@@ -1150,6 +1152,18 @@ fn time_panel(
             false,
         ) {
             out.open_journal = true;
+        }
+    });
+    at(population_rect, &mut |ui| {
+        if command(
+            ui,
+            Icon::People,
+            button,
+            &i18n.tr("bar-population-panel"),
+            id::POPULATION,
+            false,
+        ) {
+            out.open_population = true;
         }
     });
     at(research_rect, &mut |ui| {
