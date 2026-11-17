@@ -34,6 +34,8 @@ pub enum Reason {
     Treaty,
     /// The player went back to another point: this is where they were.
     Load,
+    /// An answer to a colony's demand of independence.
+    Demand,
 }
 
 impl Reason {
@@ -45,6 +47,7 @@ impl Reason {
             Reason::War => "points-reason-war",
             Reason::Treaty => "points-reason-treaty",
             Reason::Load => "points-reason-load",
+            Reason::Demand => "points-reason-demand",
         }
     }
 }

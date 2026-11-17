@@ -2509,6 +2509,52 @@ fn influence_window() {
     ] {
         let home = user.join(name);
         let save = write_campaign(&home, &session, "Influência", "GBR", &[]);
+/// Answering a demand of independence: Nigeria's demand pending on the United Kingdom, from the
+/// red button in the Agendas to the screen with the four answers, the refusal chosen and the
+/// review before confirming; in Portuguese at 1600 × 900 and in English at 1280 × 720.
+#[test]
+#[ignore = "needs a GPU (or software Vulkan) and the generated map; run with --ignored"]
+fn demand_screen() {
+    use bf_sim::borders::independence::{Account, Answer, Demand, units_of};
+    use laplace_schelling::Fixed;
+    use laplace_schelling::calendar::Date;
+    let data = bf_sim::data::GameData::load(&root()).expect("game data");
+    let rules = data.rules();
+    let setup = rules.independence.clone().expect("independence rules");
+    let mut world = data.new_world();
+    let ix = |w: &bf_sim::game::GameWorld, tag: &str| {
+        w.countries.iter().position(|(_, c)| c.tag == tag).unwrap() as u16
+    };
+    let mut units = units_of(&setup, &world, &[]);
+    let top: Vec<(u16, Fixed)> = ["USA", "SOV", "YUG", "TUR", "ITA"]
+        .iter()
+        .map(|t| (ix(&world, t), Fixed::from_ratio(3, 1000)))
+        .collect();
+    let u = units.iter_mut().find(|u| u.key == "NGA").expect("NGA");
+    u.movement.support = 1000;
+    u.mobilized = 640;
+    u.demand = Some(Demand {
+        since: Date::new(1925, 1, 2),
+        answer: Answer::Pending,
+        account: Account {
+            value: Fixed::from_ratio(12, 1000),
+            legitimacy: Fixed::from_ratio(4, 1000),
+            international: Fixed::from_ratio(9, 1000),
+            material: Fixed::from_ratio(2, 1000),
+            top,
+        },
+    });
+    world.independence.units = units;
+    let mut session = bf_sim::game::Session::new(world, 7, Date::new(1925, 1, 2), 1, Some(rules));
+    session.submit(bf_sim::game::GameCommand::ChoosePlayer { tag: "GBR".into() });
+    let user = std::env::temp_dir().join(format!("bf-shots-demand-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&user);
+    for (locale, size, name) in [
+        ("pt-BR", egui::vec2(1600.0, 900.0), "pt"),
+        ("en", egui::vec2(1280.0, 720.0), "en-1280"),
+    ] {
+        let home = user.join(name);
+        let save = write_campaign(&home, &session, "Exigência", "GBR", &[]);
         let mut h = harness_sized(home.clone(), locale, size);
         let ctx = h.ctx.clone();
         h.state_mut().apply(Transition::Game(save), &ctx);
@@ -2517,6 +2563,32 @@ fn influence_window() {
         h.run_steps(4);
         shot(&mut h, &format!("120-influence-over-{name}"));
         let clicked = match h.query_all(egui_kittest::kittest::by().label(other)).next() {
+        h.key_press(egui::Key::J);
+        h.run_steps(3);
+        shot(&mut h, &format!("130-demand-agendas-{name}"));
+        let title = if locale == "en" {
+            "Nigeria"
+        } else {
+            "Nigéria"
+        };
+        h.query_all(egui_kittest::kittest::by().label_contains(title))
+            .find(|n| n.accesskit_node().role() == egui::accesskit::Role::Button)
+            .expect("the demand in the Agendas")
+            .click();
+        h.run_steps(4);
+        shot(&mut h, &format!("131-demand-screen-{name}"));
+        let refuse = if locale == "en" { "Refuse" } else { "Recusar" };
+        h.get_all(egui_kittest::kittest::by().label_contains(refuse))
+            .next()
+            .expect("refuse")
+            .click();
+        h.run_steps(4);
+        shot(&mut h, &format!("132-demand-refuse-{name}"));
+        let review = if locale == "en" { "Review" } else { "Revisar" };
+        let clicked = match h
+            .query_all(egui_kittest::kittest::by().label_contains(review))
+            .find(|n| n.accesskit_node().role() == egui::accesskit::Role::Button)
+        {
             Some(b) => {
                 b.click();
                 true
@@ -2526,6 +2598,7 @@ fn influence_window() {
         if clicked {
             h.run_steps(4);
             shot(&mut h, &format!("121-influence-on-{name}"));
+            shot(&mut h, &format!("133-demand-review-{name}"));
         }
     }
     let _ = std::fs::remove_dir_all(&user);

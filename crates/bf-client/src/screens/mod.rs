@@ -3,6 +3,7 @@
 pub mod budget;
 pub mod country_panel;
 pub mod forces;
+pub mod demand;
 pub mod game;
 pub mod gov_ui;
 pub mod government;
