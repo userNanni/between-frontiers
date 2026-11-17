@@ -37,8 +37,14 @@ Rodada de 101 anos na `main` (`7b10b48`, 2 threads, tempo de simulação de 229 
 
 ## Orçamento de CPU por sistema novo
 
-Um sistema novo não deve passar de **5 % da simulação** (cerca de 10 s em 101 anos) sem
-discussão no PR. Em média por execução, medido em 1 thread:
+- **Sistema novo:** até **5 % da simulação** (cerca de 10 s em 101 anos).
+- **Mudança dentro de um sistema que já existe:** até **2 % do custo daquele sistema**.
+- Acima disso, o PR traz a justificativa e o ganho que compensa, ou a regra entra desligada.
+- **Regra desligada custa zero.** A chave em `game::Switches` (ou `rules.*`) vem desligada por
+  padrão. Desligada, a regra não aloca estado, não pré-calcula nada e o sistema sai na primeira
+  linha. A CPU com a regra desligada fica a até 2 % da `main`.
+
+Em média por execução, medido em 1 thread:
 
 | cadência | execuções em 101 anos | orçamento por execução |
 |---|---|---|
@@ -69,11 +75,16 @@ diga no PR quanto o `economy-week` subiu, em 10 anos e nos últimos anos do séc
    chave, `== "military"`, `law("...")`: o índice se resolve na carga (regra do `CLAUDE.md`).
    Uma busca dentro de laço por planta ou por país vira O(n²).
 6. **Pares O(n²) por semana.** 83 países dão 6 889 pares; 870 estados, 757 mil. Par país × país
-   por semana só com trabalho trivial por par; o que depende só de um lado sai do laço interno.
+   por semana só com trabalho trivial por par, e o que depende só de um lado sai do laço interno.
+   - Guarde só os pares acima do piso, numa lista esparsa ordenada por id.
+   - Não expanda a esparsa em matriz densa toda semana. O `dense()` do #113 fazia isso; uma tabela
+     de preferência que muda por mês se refaz no mês.
 7. **Lista que só cresce percorrida no tick.** Histórico, coorte por ano de construção, fila nunca
    podada: o custo por ano não pode crescer com o tempo de jogo. Funda ou pode, ou indexe.
-8. **Trabalho pesado no `apply`.** O `apply` é serial; a conta vai no `compute`, que é paralelo
-   por estado.
+8. **Trabalho pesado no `apply`.** O `apply` é serial e a conta vai no `compute`, que é paralelo
+   por estado. Exemplo: um `apply` semanal que soma num vetor de mercados × mercados (o
+   `trade.add` do #113) é O(n²) serial toda semana. Prefira somar por mercado no `compute` e
+   aplicar a linha pronta.
 9. **Ordem de soma.** Reduções em ordem de id, sem `rayon::reduce`. Trocar a ordem de uma soma ou
    o ponto de arredondamento de um produto de `Fixed` muda o hash: é mudança de comportamento, não
    otimização.
@@ -87,10 +98,18 @@ só o efeito da regra.
 
 ## Como medir
 
+- **Carga à parte.** O `%U` do `/usr/bin/time` inclui a carga dos dados (`GameData::load`). O
+  que não é simulação sai de `%U − 1,5 × simulação impressa`; uma conta pesada na carga aparece
+  ali, em toda rodada e em todo jogo aberto. Conta de carga de regra desligada é preguiçosa: no #113, `Geography::build` calculava as
+  distâncias em toda carga, mesmo com o comércio desligado.
 - **CPU, não parede.** A máquina é dividida com outras sessões e a carga passa de 15:
   `BF_SYSTEMS=1 /usr/bin/time -f '%U s' target/release/bf-bench --game --years 2 --threads 1`.
   Compare com um binário da `main` compilado por você, os dois em seguida, e repita (3 a 5 vezes,
-  use a mediana): o ruído chega a ±7 % com a máquina cheia.
+  use a mediana).
+  - O ruído chega a ±7 % com a máquina cheia, e passa disso com os três slots ocupados.
+  - Rode as duas medidas no mesmo slot, uma depois da outra (`bf-bench-slot sh -c 'A; B'`).
+  - Descarte o par se a carga de 1 min (`/proc/loadavg`) passar de **12** em qualquer das duas:
+    acima disso há mais threads prontas que núcleos lógicos.
 - **Por sistema:** a tabela que o `bf-bench` imprime e grava no JSON;
   `python3 tools/bench/compare.py base.json novo.json` compara duas rodadas. `BF_VERBOSE=1`
   imprime o tempo de cada ano.
