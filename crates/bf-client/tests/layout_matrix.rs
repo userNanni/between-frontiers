@@ -62,7 +62,7 @@ fn nodes(h: &Harness<'_, App>) -> Vec<Node> {
             let b = a.bounding_box()?;
             Some(Node {
                 role: a.role(),
-                label: a.label().unwrap_or_default(),
+                label: a.label().or_else(|| a.value()).unwrap_or_default(),
                 rect: Rect::from_min_max(
                     egui::pos2(b.x0 as f32, b.y0 as f32),
                     egui::pos2(b.x1 as f32, b.y1 as f32),
@@ -758,11 +758,6 @@ fn no_overlapping_text(h: &Harness<'_, App>, case: &str) -> Vec<String> {
         t.chars().any(|c| c.is_ascii_digit())
             && (t.starts_with("US$") || t.starts_with('$') || t.chars().all(|c| c.is_ascii_digit()))
     };
-    if std::env::var_os("BF_DEBUG_LABELS").is_some() {
-        for n in nodes(h).iter().filter(|n| n.label.chars().any(|c| c.is_ascii_digit())) {
-            eprintln!("{case}: {:?} {:?} {:?}", n.role, n.label, n.rect);
-        }
-    }
     for n in labels.iter().filter(|n| numeric(&n.label)) {
         let wide = h.ctx.fonts_mut(|f| {
             f.layout_no_wrap(
