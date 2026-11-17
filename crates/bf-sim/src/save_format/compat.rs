@@ -179,8 +179,8 @@ pub struct V6 {
 }
 
 /// 6 → 7: the influence state (`GameWorld::influence`), empty, which hashes as nothing.
-pub fn v6_to_v7(w: V6) -> GameWorld {
-    GameWorld {
+pub fn v6_to_v7(w: V6) -> V7 {
+    V7 {
         scenario: w.scenario,
         player: w.player,
         countries: w.countries,
@@ -192,5 +192,39 @@ pub fn v6_to_v7(w: V6) -> GameWorld {
         borders: w.borders,
         foreign: w.foreign,
         influence: Default::default(),
+    }
+}
+
+/// Version 7: the world with the influence state (#110), before the treaty state.
+#[derive(Deserialize)]
+pub struct V7 {
+    scenario: String,
+    player: Option<Id<Country>>,
+    countries: Table<Country, CountryState>,
+    census: Vec<CensusRecord>,
+    econ: crate::econ::Economy,
+    research: crate::research::ResearchState,
+    politics: crate::polity::PoliticsState,
+    demography: crate::demography::DemographyState,
+    borders: crate::borders::BordersState,
+    foreign: crate::foreign_stakes::ForeignState,
+    influence: crate::influence::InfluenceState,
+}
+
+/// 7 → 8: the treaty state (recognition between states); empty, it stays out of the hash.
+pub fn v7_to_v8(w: V7) -> GameWorld {
+    GameWorld {
+        scenario: w.scenario,
+        player: w.player,
+        countries: w.countries,
+        census: w.census,
+        econ: w.econ,
+        research: w.research,
+        politics: w.politics,
+        demography: w.demography,
+        borders: w.borders,
+        foreign: w.foreign,
+        influence: w.influence,
+        treaties: Default::default(),
     }
 }

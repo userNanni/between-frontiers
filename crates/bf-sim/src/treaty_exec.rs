@@ -62,10 +62,21 @@ fn one<'a>(list: &[&'a str], what: &str, clause: &str) -> Result<&'a str, String
 pub fn settle(cat: &ClauseCatalogue, proposal: &Proposal, key: &str) -> Result<Settlement, String> {
     let mut out = Settlement::default();
     let mut debts: Vec<DebtTerm> = Vec::new();
+    // The countries the treaty itself creates sign it, but are not signatories of their own
+    // creation: they do not exist yet when the operation runs.
+    let created: Vec<&Tag> = proposal
+        .clauses
+        .iter()
+        .filter_map(|c| match &c.kind {
+            ClauseKind::ReleaseCountry { tag, .. } => Some(tag),
+            _ => None,
+        })
+        .collect();
     let signatories: Vec<Tag> = proposal
         .side_a
         .iter()
         .chain(&proposal.side_b)
+        .filter(|t| !created.contains(t))
         .cloned()
         .collect();
     for cl in &proposal.clauses {

@@ -530,6 +530,20 @@ fecha.
   e o dinheiro: paz com cessão de estado e reparação; independência da Nigéria devendo ao Reino
   Unido e como protetorado dele; união da Áustria à Alemanha com pagamento e perdão da parte
   francesa da reparação com carência; recusa de cessão com dois recebedores.
+### Feito: reconhecimento
+
+- `GameWorld::treaties.recognition` (`treaty::Recognition`): só os pares que não se reconhecem.
+  No hash só quando não está vazio.
+- `data/scenario/1925/recognition.ron`: a lista curta de 1925, cada linha com fonte lida: os
+  Estados Unidos não reconhecem a URSS (até 1933, referência); a Mongólia só é reconhecida pela
+  URSS; o Tibete, por ninguém. A lista cresce com fonte, não com memória. A Convenção de Simla
+  passa a ser o Tibete aceitando a fronteira, sem o Reino Unido reconhecê-lo como Estado.
+- `recognition_conflicts`: numa proposta, toda cláusula contínua que não seja o próprio
+  reconhecimento exige que dador e recebedor se reconheçam; pagamento, cessão e dívida podem.
+  `validate_recognition` confere isso nos tratados em vigor em 1925.
+- País novo: `Recognition::on_new_country` (só quem assinou a criação reconhece); anexação:
+  `on_annex`. A parte B das fronteiras chama as duas na operação.
+- "Não reconhecido" é derivado: `recognised_by_share` (parcela do PIB mundial que reconhece).
 
 ## 13. Interface: a mesa de negociação
 

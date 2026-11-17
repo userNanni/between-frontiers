@@ -56,6 +56,8 @@ pub struct GameData {
     pub influence: Option<crate::influence::InfluenceRules>,
     /// What the border operations read (map, communities, catalogue, the 1925 subjects).
     pub border_rules: Arc<crate::borders::BorderRules>,
+    /// Who did not recognise whom on the start date, when `recognition.ron` exists.
+    pub recognition: Option<crate::treaty::RecognitionFile>,
 }
 
 fn read<T: serde::de::DeserializeOwned>(path: &Path) -> Result<T, String> {
@@ -121,7 +123,9 @@ impl GameData {
         let candidates: Option<crate::borders::CandidatesFile> =
             optional(&data.join("borders/candidates.ron"))?;
         let politics = politics.map(Arc::new);
-        let border_rules = Arc::new(crate::borders::BorderRules::new(
+        let clauses: Option<crate::treaty::ClauseCatalogue> =
+            optional(&data.join("diplomacy/clauses.ron"))?;
+        let mut border_rules = crate::borders::BorderRules::new(
             Arc::new(map.clone()),
             communities.clone().map(Arc::new),
             candidates
@@ -133,7 +137,9 @@ impl GameData {
             tree.clone(),
             politics.as_deref(),
             laplace_schelling::Date::new(1925, 1, 1),
-        ));
+        );
+        border_rules.recognition = clauses.as_ref().map(|c| c.policy.recognition_default);
+        let border_rules = Arc::new(border_rules);
         Ok(Self {
             border_rules,
             war,
@@ -157,8 +163,9 @@ impl GameData {
             diplomacy: optional(&scenario.join("diplomacy.ron"))?,
             candidates,
             influence: optional(&data.join("diplomacy/influence.ron"))?,
-            clauses: optional(&data.join("diplomacy/clauses.ron"))?,
+            clauses,
             war_debts: optional(&scenario.join("war_debts.ron"))?,
+            recognition: optional(&scenario.join("recognition.ron"))?,
         })
     }
 
@@ -226,6 +233,10 @@ impl GameData {
             && !world.econ.markets.is_empty()
         {
             world.econ.ledger = crate::treaty::ledger_1925(debts, &cat.policy, &self.countries);
+        }
+        // Recognition withheld on the start date (owner's decision 4).
+        if let (Some(cat), Some(rec)) = (&self.clauses, &self.recognition) {
+            world.treaties.recognition = rec.start(&self.countries, &cat.policy);
         }
         world
     }

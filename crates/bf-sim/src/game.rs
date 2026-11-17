@@ -117,6 +117,10 @@ pub struct GameWorld {
     /// influence.
     #[serde(default)]
     pub influence: crate::influence::InfluenceState,
+    /// Recognition between states (and, as they enter the tick, agreements and breaches);
+    /// empty without the treaty data.
+    #[serde(default)]
+    pub treaties: crate::treaty::TreatyState,
 }
 
 impl HashState for GameWorld {
@@ -158,6 +162,11 @@ impl HashState for GameWorld {
             h.section("influence");
             self.influence.hash_state(h);
         }
+        // Worlds without treaty data keep their hash.
+        if !self.treaties.is_empty() {
+            h.section("treaties");
+            self.treaties.hash_state(h);
+        }
     }
 }
 
@@ -178,6 +187,7 @@ impl GameWorld {
             foreign: Default::default(),
             influence: Default::default(),
             demography: crate::demography::DemographyState::default(),
+            treaties: Default::default(),
         }
     }
 
@@ -829,9 +839,48 @@ mod tests {
             hash_of(&with_ledger)
         );
         assert_eq!(
-            hash_of(&headed(7, &encode_snapshot(&with_ledger).unwrap())),
+            hash_of(&headed(8, &encode_snapshot(&with_ledger).unwrap())),
             hash_of(&with_ledger)
         );
+        // Version 7, before the treaty state: this build's fields without the last one.
+        #[derive(Serialize)]
+        struct BeforeTreaties<'a> {
+            scenario: &'a String,
+            player: &'a Option<Id<Country>>,
+            countries: &'a Table<Country, CountryState>,
+            census: &'a Vec<CensusRecord>,
+            econ: &'a crate::econ::Economy,
+            research: &'a crate::research::ResearchState,
+            politics: &'a crate::polity::PoliticsState,
+            demography: &'a crate::demography::DemographyState,
+            borders: &'a crate::borders::BordersState,
+            foreign: &'a crate::foreign_stakes::ForeignState,
+            influence: &'a crate::influence::InfluenceState,
+        }
+        assert!(!with_ledger.treaties.is_empty());
+        // The worlds of before had no treaty state.
+        let with_ledger = {
+            let mut w = with_ledger;
+            w.treaties = Default::default();
+            w
+        };
+        let before_treaties = encode_snapshot(&BeforeTreaties {
+            scenario: &with_ledger.scenario,
+            player: &with_ledger.player,
+            countries: &with_ledger.countries,
+            census: &with_ledger.census,
+            econ: &with_ledger.econ,
+            research: &with_ledger.research,
+            politics: &with_ledger.politics,
+            demography: &with_ledger.demography,
+            borders: &with_ledger.borders,
+            foreign: &with_ledger.foreign,
+            influence: &with_ledger.influence,
+        })
+        .unwrap();
+        let loaded = headed(7, &before_treaties);
+        assert_eq!(hash_of(&loaded), hash_of(&with_ledger));
+        assert_eq!(loaded, with_ledger);
         // Version 6, before the influence state: this build's fields without the last one,
         // behind the header and without it (a version 6 file may have been written either way).
         let before_influence = encode_snapshot(&BeforeInfluence {
@@ -849,9 +898,10 @@ mod tests {
         .unwrap();
         assert_eq!(headed(6, &before_influence), with_ledger);
         assert_eq!(decode_world(&before_influence).unwrap(), with_ledger);
-        // Older layouts: the world of then had no ledger.
+        // Older layouts: the world of then had no ledger nor treaty state.
         let mut world = data.new_world();
         world.econ.ledger = Default::default();
+        world.treaties = Default::default();
         let old_markets: Vec<_> = world
             .econ
             .markets

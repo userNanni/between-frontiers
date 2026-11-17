@@ -52,10 +52,12 @@ fn moving_a_region_keeps_people_and_money() {
 fn a_save_from_before_the_border_state_loads() {
     use laplace_schelling::save::encode_snapshot;
     let data = GameData::load(&root()).unwrap();
-    let world = data.new_world();
+    let mut world = data.new_world();
+    // A save of then had no treaty state either (the last field; empty, one byte).
+    world.treaties = Default::default();
     let bytes = encode_snapshot(&world).unwrap();
-    // An empty border state is four empty lists, one byte each at the end of the snapshot.
-    let old = &bytes[..bytes.len() - 4];
+    // An empty border state is four empty lists, one byte each, near the end of the snapshot.
+    let old = &bytes[..bytes.len() - 5];
     let back = bf_sim::game::decode_world(old).unwrap();
     assert!(back.borders.is_empty());
     assert_eq!(back, world);

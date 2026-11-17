@@ -249,6 +249,9 @@ pub struct BorderRules {
     pub independence: Option<usize>,
     /// Law groups that hold only for colonies.
     pub colonial_groups: Vec<bool>,
+    /// How a new country is recognised (`treaty::Policy::recognition_default`); `None` without
+    /// the treaty data: recognition is not kept.
+    pub recognition: Option<crate::treaty::RecognitionDefault>,
 }
 
 impl BorderRules {
@@ -294,6 +297,7 @@ impl BorderRules {
             colonial_groups: politics
                 .map(|p| p.groups.iter().map(|g| g.colonial).collect())
                 .unwrap_or_default(),
+            recognition: None,
         }
     }
 
@@ -1079,8 +1083,8 @@ fn execute(
             states,
             tag,
             overlord,
+            signatories,
             terms,
-            ..
         } => {
             let f = ix(world, from);
             let rs = regions_of(rules, world, f, states).expect("checked");
@@ -1119,6 +1123,19 @@ fn execute(
                 kind: SubjectKind::Protectorate,
                 since: date,
             });
+            // Recognised only by the signatories of its creation (owner's decision 4 of
+            // `docs/treaties.pt-BR.md`).
+            if let Some(policy) = rules.recognition {
+                let signed: Vec<u16> = signatories
+                    .iter()
+                    .filter_map(|s| tag_ix(world, s).map(|i| i as u16))
+                    .collect();
+                let n = world.countries.len() as u16;
+                world
+                    .treaties
+                    .recognition
+                    .on_new_country(c as u16, n, &signed, policy);
+            }
             apply_terms(world, terms);
             repatriated = demography(world, rules, &old, date);
             born = Some(c as u16);
@@ -1175,6 +1192,7 @@ fn execute(
             world.econ.ledger.on_annex(f as u16, t as u16);
             apply_terms(world, terms);
             repatriated = demography(world, rules, &old, date);
+            world.treaties.recognition.on_annex(f as u16);
             ended = Some(f as u16);
         }
         Operation::Status { tag, overlord } => {
@@ -1264,6 +1282,7 @@ fn execute(
             world.borders.subjects[f] = None;
             apply_terms(world, terms);
             repatriated = demography(world, rules, &old, date);
+            world.treaties.recognition.on_annex(f as u16);
             ended = Some(f as u16);
         }
     }
