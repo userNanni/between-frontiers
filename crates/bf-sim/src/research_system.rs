@@ -71,7 +71,11 @@ fn ahead(year: i32, history: i32) -> Fixed {
 }
 
 struct CountryFacts {
+    /// Engineers and professionals at work in the metropole: colonies do no research.
     researchers: i64,
+    /// Literacy of the metropole, which weighs its researchers.
+    home_literacy: Fixed,
+    home_population: i64,
     literacy: Fixed,
     population: i64,
     gdp: Fixed,
@@ -84,6 +88,8 @@ fn facts(world: &GameWorld) -> Vec<CountryFacts> {
         .iter()
         .map(|m| CountryFacts {
             researchers: 0,
+            home_literacy: Fixed::ZERO,
+            home_population: 0,
             literacy: Fixed::ZERO,
             population: 0,
             gdp: m.gdp_last_year.max(Fixed::ZERO),
@@ -92,13 +98,20 @@ fn facts(world: &GameWorld) -> Vec<CountryFacts> {
     for r in &econ.regions {
         let c = &mut out[r.market as usize];
         let people = r.population();
-        c.researchers += r.pops[prof::ENGINEER].employed + r.pops[prof::PROFESSIONAL].employed;
         c.literacy += r.literacy * people;
         c.population += people;
+        if !r.colony {
+            c.researchers += r.pops[prof::ENGINEER].employed + r.pops[prof::PROFESSIONAL].employed;
+            c.home_literacy += r.literacy * people;
+            c.home_population += people;
+        }
     }
     for c in &mut out {
         if c.population > 0 {
             c.literacy = c.literacy / c.population;
+        }
+        if c.home_population > 0 {
+            c.home_literacy = c.home_literacy / c.home_population;
         }
     }
     out
@@ -198,7 +211,7 @@ impl System<GameWorld> for Research {
             let f = &facts[c];
             let boost = Fixed::ONE + state.effects[c][3] * 2;
             let points = Fixed::from_int(f.researchers).mul_ratio(1, 1000)
-                * f.literacy
+                * f.home_literacy
                 * POINTS_PER_THOUSAND
                 * boost
                 / 12;
