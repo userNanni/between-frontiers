@@ -20,6 +20,12 @@ pub struct Forces {
     pub military: Arc<Military>,
     pub peace: Arc<PeaceRules>,
     pub politics: Option<Arc<Politics>>,
+    /// The military goods of the state's basket and their weights over 1,000, resolved at load.
+    pub basket: Vec<(u16, i64)>,
+    /// Their weights summed: the military budget's share of the goods budget.
+    pub military_weight: i64,
+    /// The type the reservists report to.
+    pub infantry: Option<u16>,
 }
 
 pub struct ForcesChanges {
@@ -101,6 +107,31 @@ fn bands(ages: &[i64]) -> Vec<AgeBand> {
 }
 
 impl Forces {
+    pub fn new(
+        cat: Arc<crate::econ::Catalogue>,
+        military: Arc<Military>,
+        peace: Arc<PeaceRules>,
+        politics: Option<Arc<Politics>>,
+    ) -> Self {
+        let basket: Vec<(u16, i64)> = cat
+            .state_basket
+            .iter()
+            .filter(|(g, _)| cat.goods[*g as usize].category == "military")
+            .copied()
+            .collect();
+        let military_weight = basket.iter().map(|(_, w)| *w).sum();
+        let infantry = military.unit("infantry");
+        Self {
+            cat,
+            military,
+            peace,
+            politics,
+            basket,
+            military_weight,
+            infantry,
+        }
+    }
+
     fn conscription(&self, world: &GameWorld, country: usize) -> i32 {
         let (Some(p), Some(e)) = (
             &self.politics,
@@ -497,7 +528,7 @@ impl Forces {
         }
         // 3. The reserve reports when mobilized, a share each week; goes back when demobilized.
         if c.mobilized && c.reserve > 0 {
-            if let Some(inf) = mil.unit("infantry") {
+            if let Some(inf) = self.infantry {
                 let weeks = u64::from(rules.reserve.call_up_weeks.max(1));
                 let n = (c.reserve / weeks).max(1000).min(c.reserve);
                 c.reserve -= n;
@@ -572,16 +603,9 @@ impl Forces {
         // the civilian basket's, as before the forces. It pays first what the forces consume and
         // what makes good their equipment; with room left, part of the force moves to a newer
         // generation, and what is still left buys equipment above the needs.
-        let military_weight: i64 = self
-            .cat
-            .state_basket
-            .iter()
-            .filter(|(g, _)| self.cat.goods[*g as usize].category == "military")
-            .map(|(_, w)| *w)
-            .sum();
         let room = crate::econ::public::goods_budget(m)
             .max(Fixed::ZERO)
-            .mul_ratio(military_weight, 1000);
+            .mul_ratio(self.military_weight, 1000);
         let weeks = i64::from(self.peace.replace_weeks.max(1));
         let price = |list: &[(u16, Fixed)]| -> Fixed {
             list.iter().map(|(g, q)| *q * m.price[*g as usize]).sum()
@@ -646,16 +670,14 @@ impl Forces {
             // equipment; ammunition bought this way is used up in training.
             let left = room - cost;
             if left.is_positive() {
-                let basket: Vec<(u16, i64)> = self
-                    .cat
-                    .state_basket
-                    .iter()
-                    .filter(|(g, _)| self.cat.goods[*g as usize].category == "military")
-                    .filter(|(g, _)| m.price[*g as usize].is_positive())
-                    .copied()
-                    .collect();
-                let total: i64 = basket.iter().map(|(_, w)| *w).sum();
-                for (g, w) in basket {
+                let priced = || {
+                    self.basket
+                        .iter()
+                        .copied()
+                        .filter(|(g, _)| m.price[*g as usize].is_positive())
+                };
+                let total: i64 = priced().map(|(_, w)| w).sum();
+                for (g, w) in priced() {
                     let q = left.mul_ratio(w, total.max(1)) / m.price[g as usize];
                     if q.is_positive() {
                         add(&mut upgrade, g, q);

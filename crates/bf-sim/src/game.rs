@@ -536,12 +536,12 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
             ));
         }
         if let Some((military, peace)) = war {
-            s.add(crate::war::Forces {
-                cat: Arc::clone(&cat),
+            s.add(crate::war::Forces::new(
+                Arc::clone(&cat),
                 military,
                 peace,
-                politics: politics.clone(),
-            });
+                politics.clone(),
+            ));
         }
         s.add(crate::econ::week::Week {
             cat: Arc::clone(&cat),
