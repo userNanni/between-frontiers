@@ -23,17 +23,54 @@ colapsar), não como meta fina. O desequilíbrio que aparece vira dependência a
 
 ## Otimizar antes de calibrar
 
-**Decisão (2026-11-17):** depois da fase 6 e antes da calibração vêm rodadas de otimização e
-simplificação do código. A ordem fica: funcionalidade até a fase 6, depois desempenho, depois
-calibração.
+**Decisão (2026-11-17):** antes da calibração vêm rodadas de otimização e simplificação do código.
+A ordem fica: funcionalidade até a fase 6, depois desempenho, depois calibração. Mais tarde no
+mesmo dia, o autor adiantou a primeira rodada de otimização, que roda já, sem esperar a fase 6;
+as demais seguem a ordem. Só entra otimização que deixa o resultado idêntico (o mesmo hash do
+estado na rodada de 101 anos).
 
 **O que o autor pensou:** "Para calibrar, vai ser preciso rodar muitas vezes e observar. Antes
 disso, vale otimizar o código e ver o que dá para simplificar e melhorar em desempenho: as rodadas
-de calibração já ganham com isso e servem também como mais testes de desempenho."
+de calibração já ganham com isso e servem também como mais testes de desempenho." Sobre adiantar:
+"25 minutos por rodada já é muito."
 
 **O que muda no jogo:** o jogador não vê a ordem, mas sente o efeito: um ano de simulação mais
-rápido. As rodadas de 100 anos da calibração passam a medir também o custo de cada sistema, como o
-benchmark noturno já faz ([`benchmarks.pt-BR.md`](../benchmarks.pt-BR.md)).
+rápido, com o mesmo jogo. As rodadas de 100 anos da calibração passam a medir também o custo de
+cada sistema, como o benchmark noturno já faz ([`benchmarks.pt-BR.md`](../benchmarks.pt-BR.md)).
+
+- **O que se aprende vira guia.** Os aprendizados de desempenho ficam em
+  `docs/performance.pt-BR.md` (PR #140), e todo sistema novo, de qualquer frente, segue o guia
+  desde a primeira versão.
+- **O que se investiga primeiro:** não calcular o que está zerado ou o que ainda não foi inventado
+  (tecnologia, prédio ou cláusula que nenhum país tem), e usar direito os núcleos da máquina.
+- **GPU descartada por ora.** A simulação fica na CPU: o resultado tem de ser o mesmo em qualquer
+  máquina, e o trabalho do tick é feito de muitos laços pequenos e diferentes, não de uma conta
+  densa e repetida. A questão reabre se o perfil mostrar um núcleo denso dominando o tempo.
+
+## Toda rodada longa fica guardada
+
+**Decisão (2026-11-17):** a rodada de 101 anos do `main` fica guardada por commit, como base, e um
+livro de rodadas registra toda rodada: o tempo de CPU por sistema e os agregados do mundo por
+década.
+
+**O que o autor pensou:** ele aprovou a proposta da coordenação: cada rodada custa quase meia hora
+de máquina, e jogar fora o que ela mediu é desperdício. Guardada, ela serve de comparação para o PR seguinte e, mais tarde, de material para
+a calibração.
+
+**O que muda no jogo:** nada direto. Para quem desenvolve, um PR compara com a base do commit de
+onde saiu, sem rodar o `main` de novo, e a calibração começa com um histórico de trajetórias já
+medidas.
+
+## Regra que muda o mundo inteiro entra desligada
+
+**Decisão (2026-11-17):** uma regra nova que muda o resultado de todos os países entra desligada.
+Ligá-la é um PR separado, julgado sozinho, com a rodada de 101 anos de antes e de depois.
+
+**O que o autor pensou:** ele aprovou a proposta da coordenação: com várias frentes entrando ao mesmo tempo, uma regra global ligada junto
+com outras mudanças esconde qual delas moveu os números. Separada, cada efeito tem um dono.
+
+**O que muda no jogo:** a regra chega primeiro sem efeito; o jogador só a sente quando o PR que a
+liga entrar. A diferença que ela causa no século fica registrada no PR que a ligou.
 
 ## Gradual como na vida real, mas não tanto assim
 

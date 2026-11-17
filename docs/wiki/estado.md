@@ -27,7 +27,7 @@ PRs abertos.
 | Tratados | tratados como cláusulas, os de 1925 convertidos (#92, #93); livro de dívidas no passo semanal (#101); cláusula vira operação de fronteira (#104) | proposta e avaliação no tick (etapa 4 dos tratados); cláusula de promessa; renegociar e não cumprir como regras gerais de todo acordo: desenhados |
 | Influência e blocos | desenho decidido (#103); contrato fora do tick (#105) | influência no tick (#110) e serviço exterior (#112), rascunhos |
 | Capital entre países | contrato fora do tick (#70); camadas no save (#109); capital por método (#111) | fluxo mensal e remessa (#117), rascunho; fábricas da metrópole na independência decididas (estudo no #118) |
-| Comércio com parceiro | — | rascunho (#113) |
+| Comércio com parceiro | — | rascunho (#113); na fila: união aduaneira dos microestados (San Marino com a Itália, Liechtenstein com a Suíça, Mônaco com a França) |
 
 ## Interface e saves
 
@@ -39,8 +39,12 @@ versionado com cadeia de migração e chaves do catálogo, e o salvamento autom�
 
 ## O que vem depois
 
+- **Agora, adiantada:** a primeira rodada de otimização, só com mudanças que deixam o resultado
+  idêntico; os aprendizados vão para `docs/performance.pt-BR.md` (#140). A rodada de 101 anos do
+  `main` fica guardada por commit, e o livro de rodadas registra cada rodada
+  ([Princípios](principios.md#toda-rodada-longa-fica-guardada)).
 - Depois da fase 6, nesta ordem ([Princípios](principios.md#otimizar-antes-de-calibrar)):
-  1. rodadas de otimização e simplificação do código, para desempenho;
+  1. as demais rodadas de otimização e simplificação do código, para desempenho;
   2. calibração (equilíbrio fino), cujas rodadas servem também de teste de desempenho.
 - Referência gerada dos dados de `data/` (bens, prédios, tecnologias, leis, cláusulas), por script.
 - Guias de como jogar, depois da primeira versão estável.
