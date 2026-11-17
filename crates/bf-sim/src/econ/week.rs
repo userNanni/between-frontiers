@@ -496,7 +496,7 @@ fn settle_region(
         gdp += revenue_base - cost_base;
         let value_added = revenue - cost;
         // Public services have no owners: all their value added is pay.
-        let wage_bill = if b.public {
+        let wage_bill = if b.public || b.informal {
             value_added.max(Fixed::ZERO)
         } else {
             value_added.max(Fixed::ZERO) * b.labor_share

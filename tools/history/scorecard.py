@@ -173,6 +173,13 @@ class Reference:
         if os.path.exists(path):
             for r in read_csv(path):
                 self.wdi[r["series"]][r["iso3"]][int(r["year"])] = float(r["value"])
+        # Informal employment (ILOSTAT, SDG 8.3.1): one recent year per country, which stands for
+        # the last simulated years (the series is short and moves slowly).
+        path = os.path.join(DATA, "informal.csv")
+        if os.path.exists(path):
+            for r in read_csv(path):
+                for y in range(2000, 2031):
+                    self.wdi["employment_informal"][r["iso3"]][y] = float(r["informal_share_percent"])
         self.share = {}
         for name, file in (("urban", "urban.csv"), ("literacy", "literacy.csv")):
             pts = defaultdict(dict)
@@ -550,6 +557,9 @@ def build(sim_path):
         for k, sector in enumerate(sim.sectors):
             ref_v = ref_wdi(ref, members, f"employment_{sector}", [last_pop - 1, last_pop])
             row[f"employment_{sector}"] = [emp[k] / tot * 100, ref_v]
+        if t.get("informal"):
+            ref_v = ref_wdi(ref, members, "employment_informal", [last_pop - 1, last_pop])
+            row["employment_informal"] = [t["informal"][i] / tot * 100, ref_v]
         c = sim.countries.get(key[0])
         if key[1] == "metropole" and c:
             def mean(xs):
@@ -815,8 +825,9 @@ def markdown(card):
                  "dívida: % do PIB no fim. A simulação conta o país inteiro (metrópole e colônias) nas contas públicas; "
                  "a referência, os países modernos da metrópole. Receita do WDI exclui doações; gasto do WDI é despesa "
                  "do governo central.\n")
-        cols = ["employment_agriculture", "employment_industry", "employment_services", "taxes", "spending", "debt", "inflation"]
-        heads = ["Agro", "Indústria", "Serviços", "Impostos", "Gasto", "Dívida", "Inflação"]
+        cols = ["employment_agriculture", "employment_industry", "employment_services", "employment_informal",
+                "taxes", "spending", "debt", "inflation"]
+        heads = ["Agro", "Indústria", "Serviços", "Informal", "Impostos", "Gasto", "Dívida", "Inflação"]
         L.append("| Unidade | " + " | ".join(heads) + " |")
         L.append("|---|" + "---|" * len(cols))
         for r in card["largest_other"]:

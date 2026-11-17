@@ -42,9 +42,15 @@ pub const CROWDING: Fixed = milli(1250);
 /// Town pay per head must beat country pay per head by this factor before anyone moves.
 const PREMIUM: Fixed = milli(1500);
 /// Monthly share of the idle peasants, per 10,000, who move when town pay beats country pay by
-/// twice the premium: to the state's own towns, and to the best cities of the country.
-const LOCAL_RATE: i64 = 3;
-const DISTANT_RATE: i64 = 1;
+/// twice the premium: to the state's own towns, and to the best cities of the country. Town pay
+/// is the labourers' income per head, jobless included: the expected wage, the urban wage times
+/// the chance of finding work (Harris–Todaro). At full pull, 1.7 % of the idle peasants a year,
+/// about 0.8 % of the rural population: net rural–urban migration in developing countries after
+/// 1960 was 1.5 % of the urban population a year (Jedwab, Christiaensen and Gindelsky 2017,
+/// *Journal of Urban Economics* 98, table A.3), or 0.4 % (1960) to 1.0 % (2000) of the rural
+/// population.
+const LOCAL_RATE: i64 = 10;
+const DISTANT_RATE: i64 = 4;
 /// Cities a country's migrants head for each month.
 const DESTINATIONS: usize = 3;
 

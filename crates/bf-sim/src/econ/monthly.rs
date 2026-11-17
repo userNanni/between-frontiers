@@ -32,6 +32,19 @@ const PROMOTIONS: [(usize, usize, i64, bool); 12] = [
     (prof::CAPITALIST, prof::MANAGER, 20, false),
     (prof::LANDOWNER, prof::PEASANT, 10, false),
 ];
+/// Workers in urban self-employment in market `market` (`BuildingDef::informal`).
+pub fn informal_jobs(cat: &Catalogue, econ: &super::Economy, market: usize) -> i64 {
+    let Some(k) = cat.informal else { return 0 };
+    let per_level = cat.buildings[k as usize].methods[0].workers;
+    econ.regions
+        .iter()
+        .filter(|r| r.market as usize == market)
+        .flat_map(|r| r.plants.iter())
+        .filter(|p| p.kind == k)
+        .map(|p| p.levels * per_level)
+        .sum()
+}
+
 /// Share of the population the state employs, by profession.
 pub(crate) const STATE_SHARE: [(usize, i64); 3] = [
     (prof::CIVIL_SERVANT, 12),
@@ -46,6 +59,8 @@ pub struct Labour {
 pub struct LabourChange {
     pops: Vec<(i64, i64)>,
     staffing: Vec<Fixed>,
+    /// Levels of urban self-employment the town's jobless labourers fill this month.
+    informal: Option<i64>,
 }
 
 fn move_people(pops: &mut [(i64, i64)], from: usize, to: usize, workers_moved: i64) {
@@ -61,7 +76,8 @@ fn move_people(pops: &mut [(i64, i64)], from: usize, to: usize, workers_moved: i
 
 fn labour_region(cat: &Catalogue, r: &Region, moves: &super::migration::Moves) -> LabourChange {
     let mut required = [0i64; P];
-    for p in &r.plants {
+    // Self-employment is sized below, from the labourers the plants leave idle.
+    for p in r.plants.iter().filter(|p| Some(p.kind) != cat.informal) {
         let m = &cat.buildings[p.kind as usize].methods[p.method as usize];
         for (pi, n) in &m.jobs {
             required[*pi as usize] += *n * p.levels;
@@ -101,6 +117,20 @@ fn labour_region(cat: &Catalogue, r: &Region, moves: &super::migration::Moves) -
         let available = workers(pops[from].0) - required[from].min(workers(pops[from].0));
         move_people(&mut pops, from, to, n.min(available).max(0));
     }
+    // Labourers no plant employs work on their own (street trade, domestic service), where
+    // the town pays better than the land and has room for them; plants hire them first.
+    let informal = cat.informal.map(|k| {
+        let per_level = cat.buildings[k as usize].methods[0].workers.max(1);
+        if moves.push_back {
+            return 0;
+        }
+        let idle = (workers(pops[prof::LABORER].0) - required[prof::LABORER]).max(0);
+        let levels = idle / per_level;
+        for (pi, n) in &cat.buildings[k as usize].methods[0].jobs {
+            required[*pi as usize] += *n * levels;
+        }
+        levels
+    });
     // Idle workers drift back: to labourers from skilled jobs, to the land from the rest. Jobless
     // labourers stay in town while it pays better than the land and has room for them.
     for pi in [
@@ -157,7 +187,11 @@ fn labour_region(cat: &Catalogue, r: &Region, moves: &super::migration::Moves) -
             filled / m.workers
         })
         .collect();
-    LabourChange { pops, staffing }
+    LabourChange {
+        pops,
+        staffing,
+        informal,
+    }
 }
 
 impl System<GameWorld> for Labour {
@@ -197,6 +231,13 @@ impl System<GameWorld> for Labour {
             }
             for (plant, s) in r.plants.iter_mut().zip(c.staffing) {
                 plant.staffing = s;
+            }
+            if let (Some(k), Some(levels)) = (self.cat.informal, c.informal)
+                && (levels > 0 || r.plants.iter().any(|p| p.kind == k))
+            {
+                let p = r.plant_mut(k);
+                p.levels = levels;
+                p.method = 0;
             }
             let gov: i64 = [prof::CIVIL_SERVANT, prof::SOLDIER, prof::CLERGY]
                 .iter()
@@ -372,6 +413,9 @@ pub struct Build {
 
 pub struct InvestmentChanges {
     builds: Vec<Build>,
+    /// Money each market's pool has left this month after the works it started at home: the
+    /// reading point for capital that crosses borders (not applied; the hash does not see it).
+    pub leftover: Vec<Fixed>,
     closes: Vec<(usize, u16)>,
     public: Vec<super::state::Project>,
 }
@@ -536,6 +580,7 @@ impl System<GameWorld> for Investment {
                     .collect()
             })
             .collect();
+
         // Candidates per market, ranked by yearly return.
         let mut by_market: Vec<Vec<(Fixed, Build)>> =
             (0..econ.markets.len()).map(|_| Vec::new()).collect();
@@ -546,11 +591,20 @@ impl System<GameWorld> for Investment {
             .map(|(ri, r)| {
                 let m = &econ.markets[r.market as usize];
                 let view = super::local::View::last_week(cat, m, r, &national[r.market as usize]);
-                let idle: i64 =
-                    workers(r.pops[prof::PEASANT].size) - r.pops[prof::PEASANT].employed;
+                // Hands a new plant can hire here: idle peasants, jobless labourers and those
+                // working on their own in town, who take a plant's wage over the street.
+                let idle_of = |pi: usize| (workers(r.pops[pi].size) - r.pops[pi].employed).max(0);
+                let informal: i64 = cat.informal.map_or(0, |k| {
+                    r.plants
+                        .iter()
+                        .filter(|p| p.kind == k)
+                        .map(|p| p.levels * cat.buildings[k as usize].methods[0].workers)
+                        .sum()
+                });
+                let idle: i64 = idle_of(prof::PEASANT) + idle_of(prof::LABORER) + informal;
                 let mut out = Vec::new();
                 for (kind, b) in cat.buildings.iter().enumerate() {
-                    if b.public {
+                    if b.public || b.informal {
                         continue;
                     }
                     let current = r.plants.iter().find(|p| p.kind as usize == kind);
@@ -648,6 +702,7 @@ impl System<GameWorld> for Investment {
             by_market[r.market as usize].extend(list);
         }
         let mut builds = Vec::new();
+        let mut leftover = Vec::with_capacity(econ.markets.len());
         for (mi, mut list) in by_market.into_iter().enumerate() {
             let m = &econ.markets[mi];
             let mut budget = m.pool - committed(cat, m);
@@ -669,10 +724,12 @@ impl System<GameWorld> for Investment {
                 builds.push(build);
                 started += 1;
             }
+            leftover.push(budget);
         }
         let public = super::public::public_works(cat, econ, &unlocks);
         InvestmentChanges {
             builds,
+            leftover,
             closes,
             public,
         }

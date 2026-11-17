@@ -170,6 +170,44 @@ investimento por acaso). Três regras faltavam para o crescimento não disparar:
   (`week::peasant_surplus`). Antes, os ociosos plantavam sem limite de terra e vendiam até metade
   do que comiam, tirando o mercado das fazendas.
 
+## Saída do campo
+
+- **Migração pelo salário esperado** (`econ/migration.rs`). O camponês ocioso vai para a cidade
+  quando a renda por cabeça dos operários (o salário urbano vezes a chance de achar trabalho,
+  com os desempregados na conta: Harris–Todaro) passa da do campo com a comida da própria terra.
+  Ritmo: até 1,7 % dos camponeses ociosos por ano, cerca de 0,8 % da população rural, a ordem da
+  migração líquida campo–cidade dos países em desenvolvimento depois de 1960 (1,5 % da população
+  urbana por ano; Jedwab, Christiaensen e Gindelsky, 2017, *Journal of Urban Economics* 98). Antes
+  era 0,5 % dos ociosos por ano.
+- **Trabalho informal urbano** (`informal_trade`, `BuildingDef::informal`). Comércio de rua,
+  serviço doméstico, oficina: ninguém constrói; todo mês o mercado de trabalho o dimensiona para os
+  operários que nenhuma planta emprega, nas cidades que pagam mais que o campo e têm lugar. Sem
+  capital nem insumo, um trabalhador faz um quarto do que faz um balconista, e todo o valor
+  adicionado é renda dele. Vende serviços a outras pops: nenhum dinheiro é criado. Encolhe quando
+  as plantas contratam: o investimento conta como mão de obra disponível os camponeses ociosos, os
+  operários sem emprego e os informais (antes, só os camponeses ociosos, e uma cidade sem
+  camponeses não recebia planta). Emprego informal por país: `monthly::informal_jobs`; no placar,
+  contra a OIT (`data/history/informal.csv`), com os camponeses que vivem da própria terra, como a
+  OIT os conta.
+- **Sem substituição de importações por regra.** Construir o que o país importa, mesmo com as
+  plantas paradas, foi testado: industrializou colônias sem capital nem política por trás (Congo
+  Belga de 3,5 para 17 vezes o PIB por habitante real em 2022) e piorou o ranking. Industrializar
+  pede capital, técnica ou um Estado que planeje; isso fica para o capital estrangeiro e o regime
+  (fases 4 e 7). A tarifa da lei de comércio em vigor já chega à economia (`LawEffects::tariff`).
+
+## 1925: eletricidade e petróleo
+
+- **Eletricidade.** Antes de pôr as usinas, o setup passa as plantas de cada país para o método
+  elétrico de 1925 do edifício, os estados mais urbanos primeiro, mantendo a produção, até usarem a
+  eletricidade que o país gerava (`industry.ron`) menos a das famílias; as usinas vêm depois, para
+  a demanda posta. 1925: 228 TWh contra 195 (era 93); o excesso é de colônias e países pequenos
+  cujas plantas já usam eletricidade no primeiro método.
+- **Petróleo.** Navios e ferrovias a vapor queimam óleo na parcela de 1925: 30,3 % da tonelagem
+  mercante mundial (Lloyd's Register, via *Transportation and Communication in the United States
+  1925*) e 11 % do combustível das ferrovias dos EUA em energia (HSUS Q 388–389), trocando carvão
+  pela mesma energia. 1925: combustível 0,65 do real (era 0,30), petróleo bruto 92 contra 146 Mt
+  (*Mineral Resources of the United States 1925*), carvão 1 269 contra 1 205 Mt.
+
 ## Ordem de trabalho do mercado
 
 1. Preço por estado e por mercado nacional: oferta e demanda fecham semanalmente, com preço sensível à escassez.

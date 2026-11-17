@@ -55,6 +55,9 @@ pub struct Territory {
     /// Workers by sector (`SECTORS`), in jobs filled; agriculture counts the jobless who live off
     /// their own plot.
     pub employment: Vec<[f64; 3]>,
+    /// Informal workers, as the ILO counts them: urban self-employment
+    /// (`BuildingDef::informal`) and the smallholders who work their own plot.
+    pub informal: Vec<f64>,
     /// Yearly production by good (`GOODS`), in the catalogue's units.
     pub production: Vec<Vec<f64>>,
 }
@@ -101,6 +104,7 @@ struct Stocks {
     literate: f64,
     non_farm: f64,
     employment: [f64; 3],
+    informal: f64,
 }
 
 /// The year's running sums, by territory (`market * 2 + colony`) and by market.
@@ -322,6 +326,7 @@ impl History {
                 ter.employment.push(std::array::from_fn(|k| {
                     (a.employment[k] + b.employment[k]) / 2.0
                 }));
+                ter.informal.push((a.informal + b.informal) / 2.0);
                 ter.production.push(self.production[t].clone());
             }
             let c = &mut rep.countries[mi];
@@ -370,9 +375,13 @@ fn stocks(data: &GameData, w: &GameWorld) -> Vec<Stocks> {
             let m = &b.methods[p.method as usize];
             let jobs = (Fixed::from_int(p.levels * m.workers) * p.staffing).to_f64_lossy();
             s.employment[sector[usize::from(b.group_ix)]] += jobs;
+            if b.informal {
+                s.informal += jobs;
+            }
         }
         s.employment[2] += state_payroll(r) as f64;
         s.employment[0] += smallholders(r) as f64;
+        s.informal += smallholders(r) as f64;
     }
     out
 }

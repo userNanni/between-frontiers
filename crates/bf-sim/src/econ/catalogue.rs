@@ -73,6 +73,8 @@ pub struct Building {
     pub stagnant: bool,
     /// Built and paid for by the state (`BuildingDef::public`).
     pub public: bool,
+    /// Urban self-employment sized by the labour market (`BuildingDef::informal`).
+    pub informal: bool,
     /// Goods of one new level, per mille of its cost, and whether each is the building itself
     /// (bought from the building trade as construction points) ([`PurchasesFile`]).
     pub construction: Vec<(GoodIx, i64, bool)>,
@@ -112,6 +114,8 @@ pub struct Catalogue {
     /// Farms that grow a staple, as (farm index, building, staples a level of its first method
     /// grows in a week): the land smallholders can till when the farms leave it free.
     pub staple_farms: Vec<(u8, u16, Fixed)>,
+    /// The urban self-employment building, if the catalogue has one.
+    pub informal: Option<u16>,
     /// Goods the state buys whole (category `public`: schools, hospitals).
     pub public_goods: Vec<GoodIx>,
     /// What the state and the investment pool buy, per mille ([`PurchasesFile`]).
@@ -211,6 +215,7 @@ impl Catalogue {
                     as u8,
                 stagnant: b.group == "services",
                 public: b.public,
+                informal: b.informal,
                 agriculture: b.group == "agriculture",
                 labor_share: super::labor_share(&b.group),
                 construction: group_of(&b.group)?
@@ -326,7 +331,9 @@ impl Catalogue {
                 (q > Fixed::ZERO).then_some((farm, k as u16, q))
             })
             .collect();
+        let informal = bs.iter().position(|b| b.informal).map(|k| k as u16);
         Ok(Self {
+            informal,
             staple_farms,
             grain: gx("grain").ok(),
             construction: gx("construction").ok(),

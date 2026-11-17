@@ -92,6 +92,88 @@ pub fn main() -> Result<(), String> {
         .map(|(k, _, _)| cat.good(k).map(usize::from))
         .collect();
     let mut s = Session::new(world, 1, Date::new(1925, 1, 1), 0, Some(data.rules()));
+    // Energy in a later year: demand by source, prices and the power plants' methods.
+    if let Some(year) = std::env::var("BF_DIAG_ENERGY")
+        .ok()
+        .and_then(|v| v.parse::<i32>().ok())
+    {
+        s.sim.run_until(Date::new(year, 7, 2));
+        let e = &s.world().econ;
+        for key in [
+            "coal",
+            "crude_oil",
+            "natural_gas",
+            "fuel",
+            "electricity",
+            "steel",
+        ] {
+            let Some(g) = cat.good(key) else { continue };
+            let g = g as usize;
+            let (mut sup, mut dem, mut pv) = (0.0, 0.0, 0.0);
+            for m in &e.markets {
+                sup += m.supply[g].to_f64_lossy();
+                dem += m.demand[g].to_f64_lossy();
+                pv += (m.price[g] / cat.goods[g].base_price).to_f64_lossy()
+                    * m.demand[g].to_f64_lossy();
+            }
+            let mut by = vec![0.0f64; cat.buildings.len()];
+            for r in &e.regions {
+                let m = &e.markets[r.market as usize];
+                for pl in &r.plants {
+                    let b = &cat.buildings[pl.kind as usize];
+                    let meth = &b.methods[pl.method as usize];
+                    let sc = pl.levels as f64
+                        * pl.staffing.to_f64_lossy()
+                        * plant_tfp(r, m, b).to_f64_lossy()
+                        * pl.utilization.to_f64_lossy();
+                    for (gi, q) in &meth.inputs {
+                        if *gi as usize == g {
+                            by[pl.kind as usize] += q.to_f64_lossy() * sc;
+                        }
+                    }
+                }
+            }
+            let plants: f64 = by.iter().sum();
+            let mut top: Vec<usize> = (0..by.len()).collect();
+            top.sort_by(|a, b| by[*b].total_cmp(&by[*a]));
+            let tops: Vec<String> = top
+                .iter()
+                .take(5)
+                .filter(|k| by[**k] > 0.0)
+                .map(|k| {
+                    format!(
+                        "{} {:.0}%",
+                        cat.buildings[*k].key,
+                        by[*k] / dem.max(1.0) * 100.0
+                    )
+                })
+                .collect();
+            println!(
+                "{year} {key}: supply {:.3e}/yr demand {:.3e}/yr price/base {:.2}; plants {:.0}% [{}]",
+                sup * 52.0,
+                dem * 52.0,
+                pv / dem.max(1.0),
+                plants / dem.max(1.0) * 100.0,
+                tops.join(", ")
+            );
+        }
+        if let Some(k) = cat.building("power_plant") {
+            let mut by = vec![0i64; cat.buildings[k].methods.len()];
+            for r in &e.regions {
+                for p in r.plants.iter().filter(|p| p.kind as usize == k) {
+                    by[p.method as usize] += p.levels;
+                }
+            }
+            let names: Vec<String> = cat.buildings[k]
+                .methods
+                .iter()
+                .zip(&by)
+                .map(|(m, n)| format!("{} {n}", m.key))
+                .collect();
+            println!("{year} power plants: {}", names.join(", "));
+        }
+        return Ok(());
+    }
     let mut made = vec![vec![0.0f64; GOODS.len()]; nm];
     let mut run = vec![0.0f64; nm];
     let mut util_sum = 0.0;

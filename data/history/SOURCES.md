@@ -30,6 +30,7 @@ stay out of the repository (see "Left out").
 | `production.csv` | Production of coal, crude oil and natural gas (TWh of primary energy), electricity (TWh) and cereals (tonnes) | OWID `fossil-fuels` (fuel = coal, oil, gas; production), `electricity-mix` (total generation), `cereal-production` | OWID processing CC BY 4.0. Fossil fuels: Energy Institute, *Statistical Review of World Energy* (© Energy Institute, its own terms of use, not a Creative Commons licence; not read, the site blocks automated access); The Shift Data Portal, after Etemad and Luciani (CC BY-SA 3.0); US EIA (public domain). Electricity: Ember (CC BY 4.0), Energy Institute (as above), Pinto et al. (2023) (CC BY 4.0). Cereals: FAOSTAT (CC BY 4.0) | fossil fuels from 1900; electricity from 1900 for a few countries, 1985 for most; cereals from 1961 |
 | `wdi.csv` | Employment in agriculture, industry and services (% of employment); consumer price inflation (%); government revenue, expense and debt (% of GDP) | World Bank, World Development Indicators, via its API: `SL.AGR.EMPL.ZS`, `SL.IND.EMPL.ZS`, `SL.SRV.EMPL.ZS` (ILO modelled estimates), `FP.CPI.TOTL.ZG` (IMF), `GC.REV.XGRT.GD.ZS`, `GC.XPN.TOTL.GD.ZS`, `GC.DOD.TOTL.GD.ZS` (IMF Government Finance Statistics) | CC BY 4.0 (the indicators' own metadata, `License_Type`) | employment 1991–; inflation 1960–; public finance 1972–, patchy |
 | `fdi.csv` | Foreign direct investment: net inflows and net outflows (current US$), net inflows (% of GDP) | World Bank, World Development Indicators, via its API: `BX.KLT.DINV.CD.WD`, `BM.KLT.DINV.CD.WD`, `BX.KLT.DINV.WD.GD.ZS`; the indicators' own source is the IMF Balance of Payments database, supplemented by UNCTAD | CC BY 4.0 (the indicators' own metadata, `License_Type`) | 1970– (China from 1979 for inflows and 1982 for outflows; Russia and Ukraine from 1992, Czechia from 1993) |
+| `informal.csv` | Informal employment, % of total employment, both sexes, all activities; latest year per country (147 countries, 2009–2025; no China, no United States) | ILOSTAT, indicator `SDG_0831_SEX_ECO_RT_A` (SDG 8.3.1, ICLS13 definition), `https://rplumber.ilo.org/data/indicator?id=SDG_0831_SEX_ECO_RT_A&format=.csv` | CC BY 4.0 (ILO, "Rights and permissions": datasets and their metadata since 3 May 2023) | latest available |
 
 Downloaded 2026-11-16.
 
@@ -48,6 +49,8 @@ Downloaded 2026-11-16.
 - Energy Institute (2026), *Statistical Review of World Energy*; The Shift Project, The Shift
   Data Portal; U.S. Energy Information Administration, International Energy Statistics; Ember,
   Yearly Electricity Data; FAO, FAOSTAT, Crops and livestock products.
+- International Labour Organization (2026), ILOSTAT, SDG indicator 8.3.1 "Proportion of informal
+  employment in total employment", CC BY 4.0.
 - World Bank (2026), World Development Indicators, CC BY 4.0, with data from the International
   Labour Organization (ILOSTAT modelled estimates), the International Monetary Fund (Balance of
   Payments, Government Finance Statistics, International Financial Statistics) and UNCTAD.

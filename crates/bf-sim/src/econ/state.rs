@@ -177,6 +177,9 @@ pub struct LawEffects {
     /// Share of the state's take that reaches the treasury as revenue; the rest is reinvested.
     #[serde(default)]
     pub state_profit_to_treasury: Fixed,
+    /// Ad valorem tariff on imports (`tariff` of the trade law); zero without politics.
+    #[serde(default)]
+    pub tariff: Fixed,
 }
 
 impl Default for LawEffects {
@@ -190,6 +193,7 @@ impl Default for LawEffects {
             landowner_rent: Fixed::ONE,
             state_ownership: Fixed::ZERO,
             state_profit_to_treasury: Fixed::ZERO,
+            tariff: Fixed::ZERO,
         }
     }
 }
@@ -218,6 +222,7 @@ impl HashState for LawEffects {
         self.landowner_rent.hash_state(h);
         self.state_ownership.hash_state(h);
         self.state_profit_to_treasury.hash_state(h);
+        self.tariff.hash_state(h);
     }
 }
 

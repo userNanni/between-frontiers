@@ -98,6 +98,11 @@ pub struct BuildingDef {
     /// value added goes entirely to wages.
     #[serde(default)]
     pub public: bool,
+    /// Urban self-employment (street trade, domestic service, workshops): nobody builds it; the
+    /// labour market sizes it to the town's jobless each month, and all its value added is the
+    /// pay of those who work it.
+    #[serde(default)]
+    pub informal: bool,
     /// Production methods, the oldest first. A building runs one at a time.
     pub methods: Vec<MethodDef>,
 }

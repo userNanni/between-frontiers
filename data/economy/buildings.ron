@@ -353,8 +353,14 @@
             (key: "hydroelectric", available_from: 1925, inputs: [("machinery", 3)], outputs: [("electricity", 150000)], jobs: [("skilled_worker", 150), ("engineer", 40), ("clerk", 15), ("manager", 8), ("capitalist", 5)]),
             (key: "nuclear", available_from: 1956, inputs: [("nuclear_fuel", 3000), ("electronic_components", 20)], outputs: [("electricity", 400000)], jobs: [("skilled_worker", 250), ("engineer", 150), ("clerk", 30), ("manager", 15), ("capitalist", 5)]),
         ]),
+        // Steam railways and ships of 1925 burned some oil: 11 % of U.S. Class I railway fuel by
+        // energy (fuel oil 3,114 M gal against 131.5 M short tons of bituminous coal; Historical
+        // Statistics of the United States, series Q 388-389) and 30.3 % of the world's merchant
+        // tonnage (17.8 of 58.8 M gross tons oil-burning, Lloyd's Register via Transportation
+        // and Communication in the United States 1925, pp. 534-535; public domain). The coal they
+        // no longer burn is replaced at the same energy (coal 7.0, oil 11.63 MWh/t).
         (key: "railway", group: "infrastructure", resource: None, farm: None, methods: [
-            (key: "steam_railway", available_from: 1925, inputs: [("coal", 15000), ("rolling_stock", 30), ("steel", 200)], outputs: [("transportation", 9000)], jobs: [("laborer", 500), ("skilled_worker", 250), ("engineer", 20), ("clerk", 80), ("manager", 15), ("capitalist", 5)]),
+            (key: "steam_railway", available_from: 1925, inputs: [("coal", 13350), ("fuel", 990), ("rolling_stock", 30), ("steel", 200)], outputs: [("transportation", 9000)], jobs: [("laborer", 500), ("skilled_worker", 250), ("engineer", 20), ("clerk", 80), ("manager", 15), ("capitalist", 5)]),
             (key: "diesel_railway", available_from: 1935, inputs: [("fuel", 6000), ("rolling_stock", 40), ("steel", 200)], outputs: [("transportation", 14000)], jobs: [("laborer", 300), ("skilled_worker", 300), ("engineer", 30), ("clerk", 80), ("manager", 15), ("capitalist", 5)]),
             (key: "electric_railway", available_from: 1925, inputs: [("electricity", 30000), ("rolling_stock", 40), ("copper", 20)], outputs: [("transportation", 14000)], jobs: [("laborer", 300), ("skilled_worker", 300), ("engineer", 40), ("clerk", 80), ("manager", 15), ("capitalist", 5)]),
         ]),
@@ -362,7 +368,7 @@
             (key: "road_haulage", available_from: 1925, inputs: [("fuel", 4000), ("automobiles", 60), ("natural_rubber", 20)], outputs: [("transportation", 8000)], jobs: [("laborer", 600), ("skilled_worker", 150), ("clerk", 60), ("manager", 15), ("capitalist", 5)]),
         ]),
         (key: "port", group: "infrastructure", resource: None, farm: None, methods: [
-            (key: "break_bulk", available_from: 1925, inputs: [("ships", 10), ("coal", 3000)], outputs: [("transportation", 10000)], jobs: [("laborer", 800), ("skilled_worker", 100), ("clerk", 80), ("manager", 15), ("capitalist", 5)]),
+            (key: "break_bulk", available_from: 1925, inputs: [("ships", 10), ("coal", 2100), ("fuel", 540)], outputs: [("transportation", 10000)], jobs: [("laborer", 800), ("skilled_worker", 100), ("clerk", 80), ("manager", 15), ("capitalist", 5)]),
             (key: "containers", available_from: 1960, inputs: [("ships", 15), ("fuel", 4000), ("machinery", 8), ("electricity", 4000)], outputs: [("transportation", 30000)], jobs: [("laborer", 250), ("skilled_worker", 250), ("engineer", 20), ("clerk", 80), ("manager", 15), ("capitalist", 5)]),
         ]),
         (key: "trade_center", group: "services", resource: None, farm: None, methods: [
@@ -397,6 +403,13 @@
         ]),
         (key: "hospital", group: "services", resource: None, farm: None, public: true, methods: [
             (key: "general_hospital", available_from: 1925, inputs: [("medicines", 1500), ("services", 300)], outputs: [("hospital_care", 8000)], jobs: [("professional", 300), ("clerk", 150), ("skilled_worker", 100), ("laborer", 400)]),
+        ]),
+        // Urban self-employment: street trade, domestic service, small workshops. Nobody builds
+        // it: each month it takes the town's labourers that no plant employs, and shrinks as plants
+        // hire them (econ/monthly.rs, `Labour`). No capital, no inputs; a worker makes a quarter of
+        // what a shop clerk makes (docs/economy.pt-BR.md, "Trabalho informal").
+        (key: "informal_trade", group: "services", resource: None, farm: None, informal: true, methods: [
+            (key: "street_work", available_from: 1925, inputs: [], outputs: [("services", 1500)], jobs: [("laborer", 1000)]),
         ]),
     ],
 )

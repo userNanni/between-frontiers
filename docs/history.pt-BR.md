@@ -363,6 +363,36 @@ Medido com `bf-bench --diag-1925` (`BF_DIAG_TFP=1` e `BF_DIAG_COUNTRY=<tag>`):
 
 Nenhum dos quatro foi corrigido aqui.
 
+## Saída do campo (`fix/leave-the-land`)
+
+Rodada de 100 anos (2 threads), hash `96f15a6d…`, contra a `main` em 16535f9 (com política,
+manutenção corrigida e escala única), hash `0419184…`. O que mudou: `economy.pt-BR.md`, "Saída do
+campo" e "1925: eletricidade e petróleo".
+
+| | `main` 16535f9 | Esta branch | Real |
+|---|---|---|---|
+| Fora da agropecuária, mundo 2025 | 48 % | 70 % | 73 % |
+| Agro 2025: Brasil / México / China / Índia | 41 / 38 / 91 / 79 | 12 / 10 / 53 / 37 | 8 / 12 / 22 / 42 |
+| Informal 2025: Brasil / México / Índia / Alemanha / Itália | – | 36 / 48 / 81 / 31 / 27 | 36 / 57 / 87 / 4 / 8 |
+| Ranking do PIB pc, 1985 / 2022 | 0,63 / 0,47 | 0,63 / 0,47 | — |
+| Crescimento pc 1973–91 / 1991–2008 / 2008–25 (% a.a.) | +2,6 / +0,7 / +0,5 | +2,8 / +1,0 / +1,0 | +1,2 / +2,6 / +2,0 |
+| PIB mundial 2025 (PIB 2022), tri | 93,3 | 114,2 | 133,4 |
+
+- **A urbanização que a política tirou volta:** de 48 % para 70 % fora da agropecuária (73 % real).
+  O que faltava era a saída: o camponês sem emprego não migrava (0,5 % dos ociosos por ano) e a
+  cidade não tinha onde pô-lo.
+- **A China fica pobre e agrária, como deve sem abertura nem capital estrangeiro:** indústria em
+  1 %; quem sai do campo vai para o informal urbano, não para a fábrica.
+- **Quanto do crescimento de 1991–2008 que falta é a Ásia:** Leste da Ásia +0,7 contra +3,7 % ao
+  ano, Sul +0,9 contra +3,9, Sudeste +1,8 contra +3,5. Com as parcelas da Ásia no PIB (simuladas ou
+  reais), é 0,6 a 0,9 dos 1,6 pontos que faltam ao mundo: o resto é o crescimento depois de 1991 dos
+  demais, que ainda depende da fronteira tecnológica e da convergência.
+- **Aberto:** o informal dos países ricos fica muito acima da OIT (Alemanha 31 % contra 4 %): a
+  automação dispensa operários e a indústria e os serviços formais não crescem para recebê-los.
+  Colônias continuam ricas demais (Congo Belga 9 vezes o real na `main` e 17 aqui).
+- **Substituição de importações testada e retirada:** construir o que se importa, por regra,
+  levou o Congo Belga de 3,5 a 17 vezes o real e o ranking de 2022 a 0,40.
+
 ## Fontes
 
 As fontes, licenças e atribuições estão em `data/history/SOURCES.md`. Em resumo: Maddison Project
