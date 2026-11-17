@@ -91,8 +91,6 @@ pick-none = Nenhum país selecionado
 pick-switch-title = Jogar com outro país
 pick-switch-hint = Clique em qualquer país que exista nesta campanha. A campanha continua de onde parou, com o país escolhido.
 pick-switch = Jogar com este país
-saves-more = Mais ações desta campanha
-saves-switch = Jogar com outro país
 game-country-gone = O seu país deixou de existir. Escolha outro para continuar a campanha.
 
 ## Painel do país

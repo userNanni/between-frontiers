@@ -20,16 +20,24 @@ use crate::text::{country_name, date_long};
 /// `saves-menu-<id>`); "play_other" is reserved for playing the campaign as another country.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum MenuItem {
+    /// Play the campaign as another country (`docs/borders.pt-BR.md`, "Onde ficam as ações").
+    PlayOther,
     Rename,
     Delete,
     OpenFolder,
 }
 
 impl MenuItem {
-    pub const ALL: [MenuItem; 3] = [MenuItem::Rename, MenuItem::Delete, MenuItem::OpenFolder];
+    pub const ALL: [MenuItem; 4] = [
+        MenuItem::PlayOther,
+        MenuItem::Rename,
+        MenuItem::Delete,
+        MenuItem::OpenFolder,
+    ];
 
     pub fn id(self) -> &'static str {
         match self {
+            MenuItem::PlayOther => "saves.menu.play_other",
             MenuItem::Rename => "saves.menu.rename",
             MenuItem::Delete => "saves.menu.delete",
             MenuItem::OpenFolder => "saves.menu.open_folder",
@@ -38,6 +46,7 @@ impl MenuItem {
 
     fn label(self) -> &'static str {
         match self {
+            MenuItem::PlayOther => "saves-menu-play-other",
             MenuItem::Rename => "saves-menu-rename",
             MenuItem::Delete => "saves-menu-delete",
             MenuItem::OpenFolder => "saves-menu-open-folder",
@@ -46,6 +55,7 @@ impl MenuItem {
 
     fn letter(self) -> char {
         match self {
+            MenuItem::PlayOther => 'J',
             MenuItem::Rename => 'R',
             MenuItem::Delete => 'X',
             MenuItem::OpenFolder => 'F',
@@ -74,6 +84,8 @@ pub struct State {
     confirm_point_delete: bool,
     /// Bytes each campaign folder takes, in list order.
     sizes: Vec<u64>,
+    /// "Play another country" was picked in a campaign's menu: the country choice opens.
+    play_other: Option<Box<saves::Save>>,
 }
 
 impl State {
@@ -109,6 +121,7 @@ impl State {
             renaming_point: None,
             confirm_point_delete: false,
             sizes: sizes(shared),
+            play_other: None,
         }
     }
 
@@ -255,6 +268,9 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
     // The open "…" menu, over the rest.
     if let Some(i) = state.menu {
         campaign_menu(state, shared, ui, rect, i);
+        if let Some(save) = state.play_other.take() {
+            out = Some(Transition::SwitchCountry(*save));
+        }
     }
 
     if keys::fired(ui.ctx(), keys::id::BACK) {
@@ -488,12 +504,17 @@ fn campaign_menu(state: &mut State, shared: &mut Shared, ui: &mut Ui, screen: Re
     region(ui, r.shrink(space::MD), |ui| {
         ui.spacing_mut().item_spacing.y = space::XS;
         for item in MenuItem::ALL {
+            // A campaign whose country is not chosen yet has no other country to switch to.
+            if item == MenuItem::PlayOther && save.meta.player.is_none() {
+                continue;
+            }
             let b = Button::ghost(&shared.tr(item.label()))
                 .width(f32::INFINITY)
                 .show(ui);
             if b.clicked() || keys::single(ui, item.id(), item.letter(), b.rect) {
                 close = true;
                 match item {
+                    MenuItem::PlayOther => state.play_other = Some(Box::new(save.clone())),
                     MenuItem::Rename => state.renaming = Some(save.meta.name.clone()),
                     MenuItem::Delete => state.confirm_delete = true,
                     MenuItem::OpenFolder => {

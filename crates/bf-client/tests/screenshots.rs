@@ -2114,7 +2114,7 @@ fn borders_and_switching_country() {
         h.get_by_label("…").click();
         h.run_steps(3);
         shot(&mut h, &format!("74-campanhas-mais{suffix}"));
-        h.get_by_label(&tr(&h, "saves-switch")).click();
+        h.get_by_label(&tr(&h, "saves-menu-play-other")).click();
         h.run_steps(6);
         let kyiv = {
             let app = h.state();

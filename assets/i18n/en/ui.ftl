@@ -82,8 +82,6 @@ pick-none = No country selected
 pick-switch-title = Play another country
 pick-switch-hint = Click any country that exists in this campaign. The campaign goes on where it stopped, with the country you choose.
 pick-switch = Play this country
-saves-more = More actions for this campaign
-saves-switch = Play another country
 game-country-gone = Your country no longer exists. Choose another to go on with the campaign.
 
 ## Country panel

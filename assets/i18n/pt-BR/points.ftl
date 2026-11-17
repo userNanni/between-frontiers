@@ -54,6 +54,7 @@ saves-menu = Opções da campanha
 saves-menu-rename = Renomear
 saves-menu-delete = Apagar campanha
 saves-menu-open-folder = Abrir pasta
+saves-menu-play-other = Jogar com outro país
 saves-rename-ok = Renomear
 saves-cancel = Cancelar
 saves-new-cancel = Voltar aos pontos de restauração

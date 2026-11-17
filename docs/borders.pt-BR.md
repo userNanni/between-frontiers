@@ -435,7 +435,9 @@ espaço na tela e deixa o jogador fazer isso sem querer. Por isso:
   - As opções e os números vêm de `borders::op::liberation_options` e `borders::op::preview`,
     lidos na thread da simulação uma vez por mês e quando as fronteiras ou o jogador mudam.
 - **Jogar com outro país fica fora do jogo em andamento**, na tela de Campanhas: menu "…" da
-  campanha → "Jogar com outro país".
+  campanha → "Jogar com outro país" (`screens::saves::MenuItem::PlayOther`, id
+  `saves.menu.play_other`). Antes de confirmar uma libertação, o jogo grava um ponto de
+  restauração (`restore_point_before(Reason::Liberate)`).
   - Abre a escolha de país (`screens::pick::State::switching`) com as fronteiras e os números do
     próprio save, e grava a escolha na campanha.
   - Ao abrir a campanha, o jogo emite `GameCommand::SwitchCountry` se a escolha difere da sessão.

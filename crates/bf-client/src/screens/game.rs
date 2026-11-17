@@ -772,6 +772,8 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
             &mut journal_place,
         );
         if let (Some((states, tag, subject)), Some(by)) = (res.liberate, snap.player.clone()) {
+            // Freeing land cannot be undone in the game: a point to go back to first.
+            state.restore_point_before(shared, Reason::Liberate);
             state.sim.send(Command::Issue(GameCommand::Liberate {
                 by,
                 states,

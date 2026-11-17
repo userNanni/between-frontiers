@@ -54,6 +54,7 @@ saves-menu = Campaign options
 saves-menu-rename = Rename
 saves-menu-delete = Delete campaign
 saves-menu-open-folder = Open folder
+saves-menu-play-other = Play another country
 saves-rename-ok = Rename
 saves-cancel = Cancel
 saves-new-cancel = Back to the restore points
