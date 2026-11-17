@@ -122,7 +122,7 @@ fn blocs_come_from_the_clauses() {
     let without = dip
         .treaties_on("1925-01-01")
         .filter(|t| t.key != "rom_yug_alliance");
-    let after = influence::blocs_from(without, Vec::new(), &d.countries);
+    let after = influence::blocs_from(without, Vec::new(), Vec::new());
     assert!(after.iter().all(|b| b.key != "little_entente"));
     // The Latin Union ends on 1927-01-01.
     let later = influence::blocs_on(dip, &d.countries, "1927-06-01");
@@ -284,4 +284,51 @@ fn rapprochement_with_an_opposite_regime_costs_more_at_home() {
         cost("USA", "CAN")
     );
     assert_eq!(cost("USA", "USA"), Fixed::ZERO);
+}
+
+/// The "Blocs" lens: countries by index, the treaties that tie each member, and the date the bloc
+/// as it stands came to be (the Little Entente closes with the Romanian-Yugoslav treaty).
+#[test]
+fn bloc_views_for_the_map() {
+    let d = data();
+    let w = world();
+    let views = influence::bloc_views(
+        d.diplomacy.as_ref().unwrap(),
+        &d.border_rules,
+        w,
+        Date::new(1925, 1, 1),
+    );
+    let le = views.iter().find(|b| b.key == "little_entente").unwrap();
+    assert_eq!(le.leader, None);
+    assert_eq!(le.since, Date::new(1921, 6, 7));
+    let members: Vec<usize> = le.members.iter().map(|m| usize::from(m.country)).collect();
+    assert_eq!(members, [ix("CZE"), ix("ROM"), ix("YUG")]);
+    let cze = &le.members[0];
+    assert_eq!(cze.since, Date::new(1920, 8, 14));
+    assert_eq!(cze.treaties, ["cze_rom_alliance", "cze_yug_alliance"]);
+    let gbr = views.iter().find(|b| b.key == "subjects:GBR").unwrap();
+    assert_eq!(gbr.leader, Some(ix("GBR") as u16));
+    assert!(
+        gbr.members
+            .iter()
+            .any(|m| usize::from(m.country) == ix("NZL"))
+    );
+}
+
+/// The "Influence" lens: one pass gives, for each country, what `channels` gives pair by pair.
+#[test]
+fn influence_over_and_on_match_the_pair_reading() {
+    let d = data();
+    let w = world();
+    let rules = d.rules();
+    let setup = rules.influence.as_deref().unwrap();
+    let debt = w.econ.ledger.debts.first().unwrap();
+    let (a, b) = (usize::from(debt.creditor), usize::from(debt.debtor));
+    let over = influence::influence_over(w, setup, a, 1925);
+    let (_, v) = over.iter().find(|(x, _)| usize::from(*x) == b).unwrap();
+    let pair = influence::channels(w, setup, a, b, 1925);
+    assert_eq!(*v, pair.interest.influence);
+    let on = influence::influence_on(w, setup, b, 1925);
+    assert!(on.iter().any(|(x, u)| usize::from(*x) == a && u == v));
+    assert!(v[Issue::Money as usize] > Fixed::ZERO);
 }
