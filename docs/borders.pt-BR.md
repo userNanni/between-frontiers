@@ -416,3 +416,53 @@ Código em `crates/bf-sim/src/borders/op.rs`; testes em `crates/bf-sim/tests/bor
 - **Save antigo:** o postcard não aceita campo faltando no fim; `game::decode_world` completa com estado vazio o snapshot escrito antes do campo `borders` (teste).
 - **Determinismo:** campanha com libertação, anexação e independência dá o mesmo hash com 1 e 2
   threads e com save e load no meio.
+
+## 9. Rodada de 100 anos com a história aplicada por data (só para exercitar as operações)
+
+`bf-bench --game --borders-history` aplica `data/history/borders.ron` nas datas reais. É desligada
+por padrão e não é a rodada de referência: na fase 7 a história acontece por condição, não por
+data. Antes de enviar cada operação, o bench a roda numa cópia do mundo e compara as somas
+(`borders::Totals`). `tools/history/borders.py` compara colônias e metrópoles por década contra a
+rodada sem mudanças, pelas unidades de 1925 fixas por estados.
+
+Rodada de 101 anos, semente 1925, 2 threads, contra a `main` 7c43500:
+
+- **Operações:** 260 mudanças da referência submetidas, 253 aplicadas, 7 recusadas e nenhuma que
+  mude as somas.
+  - Cinco das recusas são dissoluções em que o último herdeiro leva todos os estados que restam
+    (Tchecoslováquia em 1939 e em 1993, Federação do Mali, Iugoslávia); a operação recusa
+    esvaziar um país por secessão. As outras duas são a Sérvia e Montenegro, que não nasceu por
+    causa da recusa iugoslava.
+  - A dissolução precisa de uma operação própria, que entra com os tratados e a paz.
+- **Determinismo:** mesmo hash com 1 e 2 threads; salvar em 1975 e recarregar dá o mesmo hash
+  final.
+- **Placar**, comparado pela faixa de reembaralhamento de `noise.py compare`:
+
+| 2025 (PIB de 2022) | sem mudanças | com mudanças |
+|---|---|---|
+| Erro log. médio do PIB por habitante | 1,09 | 0,90 |
+| Correlação de ranking do PIB por habitante | 0,53 | 0,61 |
+| Erro log. médio da população | 0,52 | 0,55 |
+| PIB mundial, simulado/real | 0,87 | 0,73 |
+
+| PIB por habitante, simulado/real | 1975 | 2025 |
+|---|---|---|
+| Colônias britânicas | 2,28 → 1,53 | 2,13 → 0,75 |
+| Colônias americanas (Filipinas) | 2,05 → 1,37 | 3,69 → 1,19 |
+| Colônias francesas | 2,62 → 1,99 | 2,26 → 1,85 |
+| Congo Belga | 3,06 → 2,00 | 3,78 → 3,08 |
+| Colônias portuguesas | 1,24 → 1,36 | 0,52 → 0,86 |
+| Metrópole britânica | 1,52 → 1,49 | 1,89 → 1,24 |
+| Metrópole holandesa | 1,30 → 1,20 | 1,47 → 1,09 |
+| Metrópole japonesa | 0,98 → 0,79 | 1,22 → 1,10 |
+
+O excesso de PIB por habitante das colônias, estudado em `economy.pt-BR.md` ("Colônias: salário e
+técnica"), cai pela metade ou mais quando a colônia vira país. A técnica fica no teto da decisão
+6, e a colônia sai do fundo e dos métodos da metrópole. As metrópoles também se aproximam do
+real, porque perdem a renda colonial.
+
+O PIB mundial cai 15 %: melhor até 2005, pior depois.
+
+Fora da faixa de ruído ficam 1.323 dos 3.196 números (734 mais perto do real, 541 mais longe).
+É uma mudança de mundo, não de ajuste. Nada aqui é calibração: o equilíbrio fino fica para depois
+da fase 6.
