@@ -105,3 +105,10 @@ súditos e negociação: desenho em `treaties.pt-BR.md`. Os itens 3 e 4 abaixo s
 4. **Tratados e Liga** alimentam a guerra (fase 5: aliança chama aliado, garantia chama
    garantidor), a influência e as sanções; ocupação (Ruhr até 1925-08-25, Renânia até 1930) pesa na
    produção e na opinião do ocupado.
+
+## Influência e blocos
+
+Desenho em `influence.pt-BR.md`: influência como dependência medida (crédito, investimento,
+comércio, proteção) mais boa vontade com meia-vida (ajuda, cumprimento), vezes a afinidade de
+regime e de gente; o retorno entra como termo da avaliação de proposta dos tratados. Bloco é rótulo
+sobre tratados com o mesmo feixe de cláusulas e um líder.
