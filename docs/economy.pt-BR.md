@@ -349,6 +349,44 @@ colônia que vira país herda `ResearchState::stages(dono, true)`, o estágio co
 da decisão 6) e a alocação de capital entre países (fase 4); e o insumo que falta tem de poder ser
 importado. A branch `fix/colonial-productivity` tem a regra, os testes e os diagnósticos.
 
+## Aço
+
+Medido com `bf-bench --diag-1925` e `BF_DIAG_ENERGY=<ano>` mais `BF_DIAG_ENERGY_TAGS=USA,FRA,...`
+(produção, uso por mil dólares de PIB e quem usa cada bem, por país). Na `main` em d5570d0 o aço
+mundial de 2020 sai perto do real (1 957 contra 1 880 Mt), mas por razões erradas: os ricos fazem
+muito mais que o real (EUA 407 Mt contra cerca de 73; França 119 contra 12; Grã-Bretanha 102 contra
+7) e a China, menos (62 contra cerca de 1 065). Quem usa o aço em 2020: construção 38 %,
+**estaleiro naval militar 24 %**, máquinas 17 %.
+
+**O navio de guerra.** O estaleiro naval gastava 4 000 t de aço por nível de US$ 10,2 a 25,5
+milhões de navio, cerca de 157 t por milhão: a proporção de um graneleiro. A estrutura e a
+blindagem de um cruzador do tratado (USS Pensacola, encomendado em 1924: limite de US$ 11,1
+milhões, 9 100 t padrão) dão cerca de 35 t por milhão de dólares de 2011, e as de um destróier de
+guerra (Fletcher, 1942: US$ 6 milhões, 2 050 t), cerca de 11 (`buildings.ron`, com a conta). O
+método de 1925 passa a 360 t por nível, e o de 1935, a 280. Um destróier moderno (Arleigh Burke
+IIA) fica perto de 1,6 t por milhão; o século guarda a proporção de 1942, que depois de 1960 é um
+teto.
+
+| Aço, Mt (simulado / real) | 1955 | 1985 | 2020 |
+|---|---|---|---|
+| Mundo, antes | 353 / 270 | 1 023 / 719 | 1 957 / 1 880 |
+| Mundo, depois | 281 / 270 | 821 / 719 | 1 603 / 1 880 |
+| EUA, antes / depois | 83 / 68 (real 106) | 223 / 177 (80) | 407 / 338 (73) |
+| França, antes / depois | 20 / 19 (13) | 60 / 47 (19) | 119 / 90 (12) |
+| Grã-Bretanha, antes / depois | 27 / 19 (20) | 74 / 56 (16) | 102 / 81 (7) |
+
+O estaleiro passa de 24 % para menos de 4 % do aço mundial em 2020; em 1925 o aço mundial fica
+em 86 contra 90,5 Mt (era 93). O mundo de 2020 fica abaixo do real porque o aço chinês, que
+dependeu de política e capital externo, não acontece (sem a China, o real é cerca de 815 Mt). O
+carvão cai junto (2025: 0,44 → 0,40 do real), porque a usina nuclear já toma a eletricidade
+(`Aberto`).
+
+**O que fica.** Os ricos continuam com 4 a 7 vezes o aço real em 2020: é o volume de construção
+(o fundo recebe 28 % do PIB nos EUA; a intensidade de aço da obra, 31 t por milhão de dólares,
+está perto do real), em "Aberto". Os 10 % das compras do Estado em navio de guerra (`purchases.ron`),
+iguais para todo país e em tempo de paz, são provisórios até as forças de
+`data/scenario/1925/forces.ron` e a guerra ditarem a frota (fase 5).
+
 ## Ordem de trabalho do mercado
 
 1. Preço por estado e por mercado nacional: oferta e demanda fecham semanalmente, com preço sensível à escassez.
