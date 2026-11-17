@@ -82,6 +82,47 @@ fn the_blocs_of_1925() {
     );
 }
 
+/// Blocs are read from the clauses: a pair alone is an alliance, the French web of pacts is not one
+/// bloc, and the label of each pact follows its clauses.
+#[test]
+fn blocs_come_from_the_clauses() {
+    let d = data();
+    let dip = d.diplomacy.as_ref().unwrap();
+    let blocs = influence::blocs_on(dip, &d.countries, "1925-01-01");
+    let military: Vec<_> = blocs
+        .iter()
+        .filter(|b| b.kind == BlocKind::Military)
+        .collect();
+    // Only the Little Entente: the Estonian-Latvian pact is a pair, and France's pacts with
+    // Poland, Belgium and Czechoslovakia do not tie those three to each other.
+    assert_eq!(military.len(), 1, "{military:?}");
+    assert_eq!(military[0].key, "little_entente");
+    assert_eq!(military[0].leader, None);
+    let label = |key: &str| {
+        let t = dip.treaties.iter().find(|t| t.key == key).unwrap();
+        influence::alliance_label(&t.clauses)
+    };
+    assert_eq!(
+        label("cze_yug_alliance"),
+        Some(influence::AllianceLabel::DefencePact)
+    );
+    assert_eq!(
+        label("estonian_latvian_alliance"),
+        Some(influence::AllianceLabel::DefencePact)
+    );
+    assert_eq!(label("belgium_luxembourg_union"), None);
+    // A member who leaves: without the Yugoslav-Romanian treaty the triangle is gone, and so is
+    // the bloc (a denunciation takes the member out when the treaty ends).
+    let without = dip
+        .treaties_on("1925-01-01")
+        .filter(|t| t.key != "rom_yug_alliance");
+    let after = influence::blocs_from(without, Vec::new(), &d.countries);
+    assert!(after.iter().all(|b| b.key != "little_entente"));
+    // The Latin Union ends on 1927-01-01.
+    let later = influence::blocs_on(dip, &d.countries, "1927-06-01");
+    assert!(later.iter().all(|b| b.key != "latin_monetary_union"));
+}
+
 #[test]
 fn credit_is_live_and_the_rest_dormant() {
     let w = world();

@@ -117,6 +117,37 @@ influência e para a IA.
 | **Monetário** | `currency_peg` à moeda do líder, depósito de reservas | área da libra, franco CFA |
 | **De súditos** | os feixes de sujeição | Império Britânico e domínios (1925) |
 
+### Como o jogo reconhece um bloco nas cláusulas
+
+O bloco é lido só das cláusulas dos tratados em vigor (`influence::blocs_from`); o tipo do tratado
+e o campo `bloc` dos dados só dão o nome.
+
+| Feixe | Com líder (lado `senior`) | Sem líder |
+|---|---|---|
+| `defence` mútua | — | os países todos ligados entre si pelo feixe, a partir de **3** (Pequena Entente) |
+| `defence` de um lado ou `border_guarantee` | o líder e quem ele defende, a partir de **2** protegidos | — |
+| `customs_union`, `tariff_preference` | o líder e os membros, a partir de **1** (Bélgica e Luxemburgo) | — |
+| `currency_peg`, `monetary_union` | o líder e os membros, a partir de 1 | os membros da união, a partir de 3 |
+| súdito | o suserano e os súditos (do estado do país) | — |
+
+- **Um par sozinho é aliança, não bloco.** O pacto Estônia–Letônia de 1923 é aliança; a Entente
+  Báltica só nasce em 1934, com a Lituânia.
+- **Ligados entre si, não em cadeia.** A França tinha pacto com a Polônia, a Bélgica e a
+  Tchecoslováquia em 1925, mas esses três não tinham pacto entre si: a rede francesa não é um bloco
+  só, e a Pequena Entente (o triângulo Tchecoslováquia–Romênia–Iugoslávia) é. Em grafo, o bloco
+  sem líder é uma clique máxima, não um componente conexo.
+- **Uma garantia sozinha é garantia** (Locarno). Duas ou mais do mesmo garante fazem bloco.
+- **Saída:** quando o tratado de um membro termina (fim do aviso da denúncia, ou a quebra que o
+  outro lado usa para encerrar), o bloco é lido de novo no mês seguinte. Se o triângulo perde um
+  lado, o bloco deixa de existir: a Pequena Entente sem o tratado Romênia–Iugoslávia é dois pares.
+- **Nome do tipo na tela:** `alliance_label` dá o rótulo do tratado pela tabela da wiki
+  ([Alianças](wiki/decisoes/aliancas.md)): garantia, pacto de defesa, aliança, pacto de não
+  agressão, entente.
+- **Decisão para o dono (B1, limiares):** recomendação, os da tabela (bloco sem líder a partir de
+  3; garantia a partir de 2 protegidos; aduaneiro e monetário a partir de 1). Alternativa: todo
+  tratado com feixe de bloco já é bloco, inclusive o par; a tela fica cheia de "blocos" de dois
+  países, que a literatura chama de aliança.
+
 - **O que o membro ganha e cede** é a soma das cláusulas do feixe, na mesma conta de valor dos
   tratados (dinheiro, comércio, segurança, soberania), com a influência do líder como termo a mais.
   Nada de bônus fixo de "estar no bloco".
