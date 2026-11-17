@@ -248,6 +248,10 @@ impl System<GameWorld> for Yearly {
     }
     fn apply(&self, ctx: &TickCtx, changes: YearlyChanges, world: &mut GameWorld) {
         let econ = &mut world.econ;
+        // Trade by pair: the year closes on the first of January.
+        if ctx.tick > 0 {
+            econ.trade.roll_year();
+        }
         for (((r, methods), lit), tfp) in econ
             .regions
             .iter_mut()

@@ -162,6 +162,33 @@ pub struct PurchasesFile {
     pub building_work: Vec<String>,
     /// One entry per building group.
     pub groups: Vec<GroupPurchases>,
+    /// Trade with a partner (`docs/trade.pt-BR.md`).
+    #[serde(default)]
+    pub trade: TradeDef,
+}
+
+/// The parameters of trade with a partner, all design values.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct TradeDef {
+    pub reach: f32,
+    pub sigma: u8,
+    pub monthly_step: f32,
+    pub reference_km: u32,
+    pub sea_per_land: f32,
+    pub land_detour: f32,
+}
+
+impl Default for TradeDef {
+    fn default() -> Self {
+        Self {
+            reach: 0.85,
+            sigma: 5,
+            monthly_step: 1.0 / 6.0,
+            reference_km: 1000,
+            sea_per_land: 1.0 / 3.0,
+            land_detour: 1.2,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

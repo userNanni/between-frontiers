@@ -87,6 +87,8 @@ pub fn main() -> Result<(), String> {
             borders: None,
             influence: None,
             war: None,
+            trade: None,
+            switches: Default::default(),
         }),
     );
     let world_supply = |e: &bf_sim::econ::Economy| -> Vec<f64> {

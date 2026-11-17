@@ -52,8 +52,9 @@ pub const WORLD_MAGIC: [u8; 4] = *b"BFWD";
 /// 6. foreign capital (`GameWorld::foreign`);
 /// 7. the influence state (`GameWorld::influence`);
 /// 8. the treaty state (`GameWorld::treaties`: recognition between states);
-/// 9. the armed forces (`GameWorld::war`), the last field of the world.
-pub const WORLD_VERSION: u32 = 9;
+/// 9. the armed forces (`GameWorld::war`), the last field of the world;
+/// 10. trade by pair (`Economy::trade`), the last field of the economy.
+pub const WORLD_VERSION: u32 = 10;
 
 /// Why a snapshot does not read.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -156,24 +157,27 @@ pub fn decode_world(bytes: &[u8]) -> Result<GameWorld, WorldError> {
 pub fn migrate(v: u32, body: &[u8]) -> Result<GameWorld, SaveError> {
     use compat::*;
     Ok(match v {
-        0 => v8_to_v9(v7_to_v8(v6_to_v7(v5_to_v6(v2_to_v5(v1_to_v2(v0_to_v1(
+        0 => v9_to_v10(v8_to_v9(v7_to_v8(v6_to_v7(v5_to_v6(v2_to_v5(v1_to_v2(
+            v0_to_v1(decode_snapshot(body)?),
+        ))))))),
+        1 => v9_to_v10(v8_to_v9(v7_to_v8(v6_to_v7(v5_to_v6(v2_to_v5(v1_to_v2(
             decode_snapshot(body)?,
         ))))))),
-        1 => v8_to_v9(v7_to_v8(v6_to_v7(v5_to_v6(v2_to_v5(v1_to_v2(
+        2 => v9_to_v10(v8_to_v9(v7_to_v8(v6_to_v7(v5_to_v6(v2_to_v5(
             decode_snapshot(body)?,
         )))))),
-        2 => v8_to_v9(v7_to_v8(v6_to_v7(v5_to_v6(v2_to_v5(decode_snapshot(
-            body,
-        )?))))),
         // Version 3 lacks only enum variants added at the end since: its bytes read as 4.
-        3 | 4 => v8_to_v9(v7_to_v8(v6_to_v7(v5_to_v6(v4_to_v5(decode_snapshot(
+        3 | 4 => v9_to_v10(v8_to_v9(v7_to_v8(v6_to_v7(v5_to_v6(v4_to_v5(
+            decode_snapshot(body)?,
+        )))))),
+        5 => v9_to_v10(v8_to_v9(v7_to_v8(v6_to_v7(v5_to_v6(decode_snapshot(
             body,
         )?))))),
-        5 => v8_to_v9(v7_to_v8(v6_to_v7(v5_to_v6(decode_snapshot(body)?)))),
-        6 => v8_to_v9(v7_to_v8(v6_to_v7(decode_snapshot(body)?))),
-        7 => v8_to_v9(v7_to_v8(decode_snapshot(body)?)),
-        8 => v8_to_v9(decode_snapshot(body)?),
-        9 => decode_snapshot(body)?,
+        6 => v9_to_v10(v8_to_v9(v7_to_v8(v6_to_v7(decode_snapshot(body)?)))),
+        7 => v9_to_v10(v8_to_v9(v7_to_v8(decode_snapshot(body)?))),
+        8 => v9_to_v10(v8_to_v9(decode_snapshot(body)?)),
+        9 => v9_to_v10(decode_snapshot(body)?),
+        10 => decode_snapshot(body)?,
         _ => return Err(SaveError::Malformed(format!("unknown world version {v}"))),
     })
 }
@@ -187,17 +191,28 @@ fn decode_legacy(bytes: &[u8]) -> Result<GameWorld, SaveError> {
     if first.is_ok() {
         return first;
     }
-    for v in [8, 7, 6, 5, 4, 2] {
+    // This build's world cut short of its tail of empty lists, before any older layout: since
+    // the economy gained its trade state, an older layout would misread its bytes.
+    let pad = |k: usize| {
+        let mut p = bytes.to_vec();
+        p.resize(bytes.len() + k, 0);
+        p
+    };
+    for k in 1..=8 {
+        if let Ok(w) = migrate(WORLD_VERSION, &pad(k)) {
+            return Ok(w);
+        }
+    }
+    for v in [9, 8, 7, 6, 5, 4, 2] {
         if let Ok(w) = migrate(v, bytes) {
             return Ok(w);
         }
     }
     // Version 1 (no border state), and the ledger written before the border state on some
     // branches: read with the border state's empty lists padded in.
-    let mut padded = bytes.to_vec();
     for k in 1..=8 {
-        padded.resize(bytes.len() + k, 0);
-        for v in [WORLD_VERSION, 8, 7, 6, 5, 4, 2] {
+        let padded = pad(k);
+        for v in [9, 8, 7, 6, 5, 4, 2] {
             if let Ok(w) = migrate(v, &padded) {
                 return Ok(w);
             }

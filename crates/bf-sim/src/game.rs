@@ -464,6 +464,35 @@ pub struct Rules {
     pub influence: Option<Arc<crate::influence::InfluenceSetup>>,
     /// The unit catalogue and how the forces sit in peace; without them no forces run.
     pub war: Option<(Arc<crate::war::Military>, Arc<crate::war::PeaceRules>)>,
+    /// Distances for the freight of trade; without them trade pays no freight.
+    pub trade: Option<Arc<crate::econ::trade::Geography>>,
+    /// Rules that change everyone's results, each off by default until a PR of its own
+    /// switches it on.
+    pub switches: Switches,
+}
+
+/// Rules that can be switched on, all off by default: a rule enters the main switched off, with
+/// the world's hash unchanged, and a later PR switches it on and is judged on its own.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Switches {
+    /// Trade by pair (`econ::trade`, docs/trade.pt-BR.md): each buyer splits what it seeks among
+    /// the sellers by the cost of arrival. Off, the world pool shares trade pro rata.
+    pub trade_by_pair: bool,
+}
+
+impl Switches {
+    /// The switches named in a comma-separated list (`trade_by_pair`), on; unknown names are
+    /// refused.
+    pub fn parse(names: &str) -> Result<Self, String> {
+        let mut s = Self::default();
+        for name in names.split(',').map(str::trim).filter(|n| !n.is_empty()) {
+            match name {
+                "trade_by_pair" => s.trade_by_pair = true,
+                other => return Err(format!("unknown rule switch {other}")),
+            }
+        }
+        Ok(s)
+    }
 }
 
 pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
@@ -477,6 +506,8 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
         borders,
         influence,
         war,
+        trade,
+        switches,
     }) = rules
     {
         if let Some(p) = &politics {
@@ -496,6 +527,8 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
         s.add(crate::econ::week::Week {
             cat: Arc::clone(&cat),
             tree: tree.clone(),
+            geo: trade.filter(|_| switches.trade_by_pair),
+            by_pair: switches.trade_by_pair,
         });
         s.add(crate::econ::monthly::Labour {
             cat: Arc::clone(&cat),
@@ -774,14 +807,55 @@ mod tests {
             history: &'a Vec<crate::econ::YearRecord>,
             ledger: &'a crate::treaty::Ledger,
         }
-        /// The world of before the influence state: this build's fields without the last one.
+        /// The economy of before trade by pair: this build's fields without `trade`.
+        #[derive(Serialize)]
+        struct EconomyNoTrade<'a> {
+            regions: &'a Vec<crate::econ::Region>,
+            markets: &'a Vec<crate::econ::Market>,
+            world_price: &'a Vec<laplace_schelling::Fixed>,
+            history: &'a Vec<crate::econ::YearRecord>,
+            ledger: &'a crate::treaty::Ledger,
+        }
+        /// Version 9: this build's world with the economy of before trade by pair.
+        #[derive(Serialize)]
+        struct BeforeTrade<'a> {
+            scenario: &'a String,
+            player: &'a Option<Id<Country>>,
+            countries: &'a Table<Country, CountryState>,
+            census: &'a Vec<CensusRecord>,
+            econ: EconomyNoTrade<'a>,
+            research: &'a crate::research::ResearchState,
+            politics: &'a crate::polity::PoliticsState,
+            demography: &'a crate::demography::DemographyState,
+            borders: &'a crate::borders::BordersState,
+            foreign: &'a crate::foreign_stakes::ForeignState,
+            influence: &'a crate::influence::InfluenceState,
+            treaties: &'a crate::treaty::TreatyState,
+            war: &'a crate::war::WarState,
+        }
+        /// Version 7: version 8 without the treaty state, its last field, and its economy.
+        #[derive(Serialize)]
+        struct BeforeTreaties<'a> {
+            scenario: &'a String,
+            player: &'a Option<Id<Country>>,
+            countries: &'a Table<Country, CountryState>,
+            census: &'a Vec<CensusRecord>,
+            econ: EconomyNoTrade<'a>,
+            research: &'a crate::research::ResearchState,
+            politics: &'a crate::polity::PoliticsState,
+            demography: &'a crate::demography::DemographyState,
+            borders: &'a crate::borders::BordersState,
+            foreign: &'a crate::foreign_stakes::ForeignState,
+            influence: &'a crate::influence::InfluenceState,
+        }
+        /// The world of before the influence state: version 7 without its last field.
         #[derive(Serialize)]
         struct BeforeInfluence<'a> {
             scenario: &'a String,
             player: &'a Option<Id<Country>>,
             countries: &'a Table<Country, CountryState>,
             census: &'a Vec<CensusRecord>,
-            econ: &'a crate::econ::Economy,
+            econ: EconomyNoTrade<'a>,
             research: &'a crate::research::ResearchState,
             politics: &'a crate::polity::PoliticsState,
             demography: &'a crate::demography::DemographyState,
@@ -795,7 +869,7 @@ mod tests {
             player: &'a Option<Id<Country>>,
             countries: &'a Table<Country, CountryState>,
             census: &'a Vec<CensusRecord>,
-            econ: &'a crate::econ::Economy,
+            econ: EconomyNoTrade<'a>,
             research: &'a crate::research::ResearchState,
             politics: &'a crate::polity::PoliticsState,
             demography: &'a crate::demography::DemographyState,
@@ -808,7 +882,7 @@ mod tests {
             player: &'a Option<Id<Country>>,
             countries: &'a Table<Country, CountryState>,
             census: &'a Vec<CensusRecord>,
-            econ: &'a crate::econ::Economy,
+            econ: EconomyNoTrade<'a>,
             research: &'a crate::research::ResearchState,
             politics: &'a crate::polity::PoliticsState,
             demography: &'a crate::demography::DemographyState,
@@ -890,9 +964,36 @@ mod tests {
             hash_of(&with_ledger)
         );
         assert_eq!(
-            hash_of(&headed(9, &encode_snapshot(&with_ledger).unwrap())),
+            hash_of(&headed(10, &encode_snapshot(&with_ledger).unwrap())),
             hash_of(&with_ledger)
         );
+        fn no_trade(w: &GameWorld) -> EconomyNoTrade<'_> {
+            EconomyNoTrade {
+                regions: &w.econ.regions,
+                markets: &w.econ.markets,
+                world_price: &w.econ.world_price,
+                history: &w.econ.history,
+                ledger: &w.econ.ledger,
+            }
+        }
+        // Version 9, before trade by pair: the economy without its trade state.
+        let before_trade = encode_snapshot(&BeforeTrade {
+            scenario: &with_ledger.scenario,
+            player: &with_ledger.player,
+            countries: &with_ledger.countries,
+            census: &with_ledger.census,
+            econ: no_trade(&with_ledger),
+            research: &with_ledger.research,
+            politics: &with_ledger.politics,
+            demography: &with_ledger.demography,
+            borders: &with_ledger.borders,
+            foreign: &with_ledger.foreign,
+            influence: &with_ledger.influence,
+            treaties: &with_ledger.treaties,
+            war: &with_ledger.war,
+        })
+        .unwrap();
+        assert_eq!(headed(9, &before_trade), with_ledger);
         // Version 8, before the forces: no forces then.
         let mut no_forces = data.new_world();
         no_forces.war = Default::default();
@@ -902,7 +1003,7 @@ mod tests {
             player: &no_forces.player,
             countries: &no_forces.countries,
             census: &no_forces.census,
-            econ: &no_forces.econ,
+            econ: no_trade(&no_forces),
             research: &no_forces.research,
             politics: &no_forces.politics,
             demography: &no_forces.demography,
@@ -918,20 +1019,6 @@ mod tests {
         assert_eq!(hash_of(&loaded), hash_of(&no_forces));
         assert_eq!(loaded, no_forces);
         // Version 7, before the treaty state: no forces and no treaties then.
-        #[derive(Serialize)]
-        struct BeforeTreaties<'a> {
-            scenario: &'a String,
-            player: &'a Option<Id<Country>>,
-            countries: &'a Table<Country, CountryState>,
-            census: &'a Vec<CensusRecord>,
-            econ: &'a crate::econ::Economy,
-            research: &'a crate::research::ResearchState,
-            politics: &'a crate::polity::PoliticsState,
-            demography: &'a crate::demography::DemographyState,
-            borders: &'a crate::borders::BordersState,
-            foreign: &'a crate::foreign_stakes::ForeignState,
-            influence: &'a crate::influence::InfluenceState,
-        }
         let no_forces = {
             let mut w = no_forces;
             w.treaties = Default::default();
@@ -942,7 +1029,7 @@ mod tests {
             player: &no_forces.player,
             countries: &no_forces.countries,
             census: &no_forces.census,
-            econ: &no_forces.econ,
+            econ: no_trade(&no_forces),
             research: &no_forces.research,
             politics: &no_forces.politics,
             demography: &no_forces.demography,
@@ -961,7 +1048,7 @@ mod tests {
             player: &no_forces.player,
             countries: &no_forces.countries,
             census: &no_forces.census,
-            econ: &no_forces.econ,
+            econ: no_trade(&no_forces),
             research: &no_forces.research,
             politics: &no_forces.politics,
             demography: &no_forces.demography,
@@ -1003,7 +1090,7 @@ mod tests {
             player: &world.player,
             countries: &world.countries,
             census: &world.census,
-            econ: &world.econ,
+            econ: no_trade(&world),
             research: &world.research,
             politics: &world.politics,
             demography: &world.demography,

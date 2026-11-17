@@ -130,4 +130,25 @@
             research: 40,
         ),
     ],
+    // Trade with a partner (docs/trade.pt-BR.md). Design values, to calibrate after phase 6.
+    trade: (
+        // Share of a surplus or a shortage that reaches the world in a week (the 85 % of before).
+        reach: 0.85,
+        // Substitution between origins (Armington), long run: about 5 (Head and Mayer, 2014,
+        // Handbook of International Economics vol. 4).
+        sigma: 5,
+        // Share of the way a buyer's preference for a seller moves each month toward the cost
+        // of arrival. The long-run elasticity is on average twice the short-run one (Gallaway,
+        // McDaniel and Rivera, 2003, NAJEF 14): half the way in a period of the data, about 0.2
+        // a month for a quarter; 1/6 (half-life of four months) is the design value.
+        monthly_step: 0.1667,
+        // International freight, as a share of the value, is the group's freight per mille
+        // (`groups[..].freight`, a haul inside the country) times the effective km over this
+        // reference.
+        reference_km: 1000,
+        // A tonne-km by sea costs about a third of one by land (design value).
+        sea_per_land: 0.333,
+        // Land route over the great circle between capitals (design value).
+        land_detour: 1.2,
+    ),
 )

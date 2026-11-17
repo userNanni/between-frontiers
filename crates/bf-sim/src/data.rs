@@ -20,8 +20,11 @@ pub struct GameData {
     pub catalogue: Arc<Catalogue>,
     pub countries: CountriesFile,
     pub map: MapFile,
-    /// Sea zones, straits and ports, when `assets/map/seas.ron` exists (not simulated yet).
+    /// Sea zones, straits and ports, when `assets/map/seas.ron` exists.
     pub seas: Option<crate::sea::SeaGraph>,
+    /// Distances between countries for the freight of trade (`econ::trade::Geography`), built
+    /// the first time trade by pair is switched on (`trade_geography`).
+    trade_geography: std::sync::OnceLock<Arc<crate::econ::trade::Geography>>,
     pub deposits: Option<DepositsFile>,
     pub land: Option<LandFile>,
     pub population: Option<PopulationFile>,
@@ -140,7 +143,9 @@ impl GameData {
         );
         border_rules.recognition = clauses.as_ref().map(|c| c.policy.recognition_default);
         let border_rules = Arc::new(border_rules);
+        let diplomacy: Option<DiplomacyFile> = optional(&scenario.join("diplomacy.ron"))?;
         let mut data = Self {
+            trade_geography: std::sync::OnceLock::new(),
             border_rules,
             war,
             tree,
@@ -160,7 +165,7 @@ impl GameData {
             land: optional(&scenario.join("land.ron"))?,
             population: optional(&scenario.join("population.ron"))?,
             industry: optional(&scenario.join("industry.ron"))?,
-            diplomacy: optional(&scenario.join("diplomacy.ron"))?,
+            diplomacy,
             candidates,
             influence: optional(&data.join("diplomacy/influence.ron"))?,
             clauses,
@@ -183,8 +188,27 @@ impl GameData {
         }
     }
 
-    /// The rules the schedule runs with.
+    /// The distances of trade by pair, built on the first call: a game with trade by pair
+    /// switched off never pays for them.
+    pub fn trade_geography(&self) -> Arc<crate::econ::trade::Geography> {
+        Arc::clone(self.trade_geography.get_or_init(|| {
+            Arc::new(crate::econ::trade::Geography::build(
+                &self.map,
+                &self.countries.countries,
+                self.seas.as_ref(),
+                self.diplomacy.as_ref(),
+                &self.catalogue.trade,
+            ))
+        }))
+    }
+
+    /// The rules the schedule runs with, every switch off.
     pub fn rules(&self) -> crate::game::Rules {
+        self.rules_with(crate::game::Switches::default())
+    }
+
+    /// The rules the schedule runs with, with these switches.
+    pub fn rules_with(&self, switches: crate::game::Switches) -> crate::game::Rules {
         crate::game::Rules {
             catalogue: Arc::clone(&self.catalogue),
             tree: self.tree.clone(),
@@ -203,6 +227,8 @@ impl GameData {
                 })
             }),
             war: self.war_rules(),
+            trade: switches.trade_by_pair.then(|| self.trade_geography()),
+            switches,
         }
     }
 

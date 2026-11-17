@@ -1,11 +1,11 @@
 # Comércio
 
 Quem vende o quê a quem, por quanto chega, e o que acontece quando a rota fecha. O desenho completo
-está em `docs/trade.pt-BR.md`, que entra com o PR #113.
+está em `docs/trade.pt-BR.md` (PR #113).
 
-Hoje o comércio mundial é um *pool* por bem: cada país vende ao mundo, não a outro país. A Argentina
-vende trigo ao mundo, não à Grã-Bretanha. A fase 4 troca isso por **comércio com parceiro**: o par
-de países passa a existir, com frete, tarifa e preferência.
+Até o #113 o comércio mundial era um *pool* por bem: cada país vendia ao mundo, não a outro país.
+Com o #113 o comércio passa a ser **com parceiro**: o par de países existe, com frete, tarifa e
+preferência, e o valor comerciado por par fica gravado.
 
 ## Decisões
 
@@ -20,8 +20,9 @@ de países passa a existir, com frete, tarifa e preferência.
   parceiros por país e por bem e a conta do custo de chegada de cada par.
 - **Como é na vida real:** ninguém compra só do mais barato; a parte de cada fornecedor cai com o
   custo de chegada (a elasticidade entre origens; Head e Mayer 2014).
-- **Estado:** em rascunho (#113).
-- **Onde está o detalhe:** `trade.pt-BR.md`, seções 2 e 3 (no #113).
+- **Estado:** no jogo (#113); a tela de parceiros vem num PR do cliente.
+- **Onde está o detalhe:** `trade.pt-BR.md`, seções 2 e 3; parâmetros em
+  `data/economy/purchases.ron` (`trade`).
 
 ### O frete segue a rota e cai com a técnica e a logística
 
@@ -35,9 +36,10 @@ de países passa a existir, com frete, tarifa e preferência.
   porto próprios. Quando um estreito fecha, a rota muda e o frete sobe.
 - **Como é na vida real:** o contêiner barateou o frete depois de 1960; com Suez fechado (1956–57,
   1967–75), o navio ia pelo Cabo.
-- **Estado:** em rascunho (#113); as tecnologias que ainda não têm efeito no comércio (navio a
-  diesel, graneleiro, ferrovia) entram quando a árvore os ganhar.
-- **Onde está o detalhe:** `trade.pt-BR.md`, seção 10 (no #113).
+- **Estado:** no jogo (#113); as tecnologias que ainda não têm efeito no comércio (navio a
+  diesel, graneleiro, ferrovia) entram quando a árvore os ganhar. A rota é calculada na carga;
+  estreito fechado no meio do jogo entra quando o fecho de estreito existir.
+- **Onde está o detalhe:** `trade.pt-BR.md`, seção 10.
 
 ### O parceiro tem inércia, mas a inércia não segura comércio impedido
 
@@ -52,9 +54,9 @@ de países passa a existir, com frete, tarifa e preferência.
   depois volta aos poucos, como o comércio depois de uma guerra.
 - **Como é na vida real:** contrato, rede e costume seguram o fornecedor; a elasticidade de longo
   prazo é em média o dobro da de curto (Gallaway, McDaniel e Rivera 2003).
-- **Estado:** inércia em rascunho (#113); embargo e sanção dormentes até as cláusulas e a guerra
-  existirem.
-- **Onde está o detalhe:** `trade.pt-BR.md`, seções 4 e 11 (no #113).
+- **Estado:** inércia e par fechado no jogo (#113); embargo e sanção dormentes até as cláusulas e a
+  guerra existirem.
+- **Onde está o detalhe:** `trade.pt-BR.md`, seções 4 e 11.
 
 ### Quem promete entrega tem de arcar
 
@@ -67,9 +69,10 @@ de países passa a existir, com frete, tarifa e preferência.
   com o preço do pão subindo em casa. O entregue soma no tratado, e a barra mostra o saldo e o prazo.
 - **Como é na vida real:** o trigo e o petróleo soviéticos entregues à Alemanha em 1939–41; o
   *clearing* alemão com os Bálcãs nos anos 1930 (Hirschman 1945).
-- **Estado:** em rascunho (#113); a cláusula está desenhada
+- **Estado:** desenhado; a cláusula é do thread dos tratados e entra no fechamento por par quando
+  existir
   ([Diplomacia e influência](diplomacia-e-influencia.md#favor-devido-é-uma-promessa-num-tratado-ato-único-ou-entrega-acumulada)).
-- **Onde está o detalhe:** `trade.pt-BR.md`, seção 5 (no #113).
+- **Onde está o detalhe:** `trade.pt-BR.md`, seção 5.
 
 ### Tarifa e preferência no custo; receita e preço de chegada depois
 
@@ -79,14 +82,17 @@ de países passa a existir, com frete, tarifa e preferência.
 - **Como o jogo funciona por causa disso:** preferência imperial, porta aberta dos mandatos e união
   aduaneira passam a mudar quem compra de quem; o efeito no Tesouro chega depois.
 - **Como é na vida real:** a preferência imperial de Ottawa (1932), a área da libra, a CEE (1957).
-- **Estado:** em rascunho (#113).
-- **Onde está o detalhe:** `trade.pt-BR.md`, seção 9, T3 (no #113).
+- **Estado:** tarifa e preferência no custo de chegada no jogo (#113); receita e preço de chegada
+  no PR 2.
+- **Onde está o detalhe:** `trade.pt-BR.md`, seção 9, T3.
 
 ### O comércio liga o canal de influência
 
 - **Decisão:** com o comércio por par, o canal de comércio da influência deixa de ser dormente. Não
   se estima o comércio bilateral para preencher o canal antes disso.
-- **Estado:** desenhado; ver [Diplomacia e influência](diplomacia-e-influencia.md#canais-que-ainda-não-existem-ficam-dormentes).
+- **Estado:** o valor exportado por par, a preço-base, está no jogo (#113,
+  `TradeState::exports`); o canal liga no tick da influência; ver
+  [Diplomacia e influência](diplomacia-e-influencia.md#canais-que-ainda-não-existem-ficam-dormentes).
 
 ## Fontes
 
