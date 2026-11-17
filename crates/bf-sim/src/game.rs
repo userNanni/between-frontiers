@@ -98,6 +98,9 @@ pub struct GameWorld {
     /// politics data.
     #[serde(default)]
     pub politics: crate::polity::PoliticsState,
+    /// Age pyramids, vital rates and migration links; empty without an economy.
+    #[serde(default)]
+    pub demography: crate::demography::DemographyState,
 }
 
 impl HashState for GameWorld {
@@ -119,6 +122,11 @@ impl HashState for GameWorld {
             h.section("politics");
             self.politics.hash_state(h);
         }
+        // Worlds without an economy keep their hash.
+        if !self.demography.is_empty() {
+            h.section("demography");
+            self.demography.hash_state(h);
+        }
     }
 }
 
@@ -135,6 +143,7 @@ impl GameWorld {
             econ: crate::econ::Economy::default(),
             research: crate::research::ResearchState::default(),
             politics: crate::polity::PoliticsState::default(),
+            demography: crate::demography::DemographyState::default(),
         }
     }
 
@@ -354,8 +363,11 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
         politics,
     }) = rules
     {
-        if let Some(p) = politics {
-            s.add(crate::polity::PoliticsSystem::new(p, Arc::clone(&cat)));
+        if let Some(p) = &politics {
+            s.add(crate::polity::PoliticsSystem::new(
+                Arc::clone(p),
+                Arc::clone(&cat),
+            ));
         }
         s.add(crate::econ::week::Week {
             cat: Arc::clone(&cat),
@@ -364,9 +376,10 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
         s.add(crate::econ::monthly::Labour {
             cat: Arc::clone(&cat),
         });
-        s.add(crate::econ::monthly::Demography {
-            cat: Arc::clone(&cat),
-        });
+        s.add(crate::demography::Demography::new(
+            Arc::clone(&cat),
+            politics,
+        ));
         s.add(crate::econ::monthly::Investment {
             cat: Arc::clone(&cat),
             tree: tree.clone(),

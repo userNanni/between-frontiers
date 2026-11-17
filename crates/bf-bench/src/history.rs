@@ -7,6 +7,7 @@
 //! and of the next, close to the mid-year figures the historical series give.
 
 use bf_sim::data::GameData;
+use bf_sim::demography::TerritoryId;
 use bf_sim::econ::{Market, Region, week, workers};
 use bf_sim::economy::BUILDING_GROUPS;
 use bf_sim::game::{GameWorld, Session};
@@ -62,6 +63,15 @@ pub struct Territory {
     pub cleared_km2: Vec<[f64; 2]>,
     /// Yearly production by good (`GOODS`), in the catalogue's units.
     pub production: Vec<Vec<f64>>,
+    /// Births, deaths and net migration per thousand people, life expectancy at birth and
+    /// children per woman: the year's monthly rates, weighted by population.
+    pub births: Vec<f64>,
+    pub deaths: Vec<f64>,
+    pub migration: Vec<f64>,
+    pub life_expectancy: Vec<f64>,
+    pub fertility: Vec<f64>,
+    /// Values of `demography::FERTILITY_TERMS` (in that order), weighted by population.
+    pub fertility_terms: Vec<Vec<f64>>,
 }
 
 /// Public accounts and prices of one country (metropole and colonies together).
@@ -87,6 +97,30 @@ pub struct HistoryReport {
     pub countries: Vec<Country>,
     /// Population and GDP of every state of the map, for aggregating by modern country.
     pub states: Vec<StateSeries>,
+    /// Arrivals by year, origin and destination (`TAG/metropole`, `TAG/colonies`), for every
+    /// road that carried 1,000 people or more over the run.
+    pub migration_pairs: Vec<PairSeries>,
+    /// Mass migrations: ended and still open at the last year.
+    pub waves: Vec<WaveSeries>,
+}
+
+#[derive(Serialize, Default)]
+pub struct PairSeries {
+    pub origin: String,
+    pub dest: String,
+    pub arrivals: Vec<i64>,
+}
+
+#[derive(Serialize)]
+pub struct WaveSeries {
+    pub origin: String,
+    pub dest: String,
+    pub from: [i32; 2],
+    /// `None` while open.
+    pub until: Option<[i32; 2]>,
+    pub cause: String,
+    pub end: Option<String>,
+    pub people: i64,
 }
 
 #[derive(Serialize, Default)]
@@ -97,6 +131,12 @@ pub struct StateSeries {
     pub colony: bool,
     pub population: Vec<i64>,
     pub gdp: Vec<f64>,
+    /// Births, deaths and net migration per thousand, and life expectancy: the year's monthly
+    /// rates weighted by population.
+    pub births: Vec<f64>,
+    pub deaths: Vec<f64>,
+    pub migration: Vec<f64>,
+    pub life_expectancy: Vec<f64>,
 }
 
 /// Stocks seen on 1 January, by territory.
@@ -122,6 +162,17 @@ pub struct History {
     revenue: Vec<f64>,
     spending: Vec<f64>,
     price_jan: Vec<(f64, u16)>,
+    /// By territory: people summed over the months, and births, deaths, migration, life
+    /// expectancy and fertility times people.
+    vital: Vec<[f64; 6]>,
+    /// By territory: the fertility terms times people.
+    terms: Vec<[f64; 5]>,
+    /// The same by region.
+    region_vital: Vec<[f64; 6]>,
+    /// Arrivals since the start by (origin, destination) at the last 1 January, and their
+    /// yearly series.
+    arrived: std::collections::BTreeMap<(TerritoryId, TerritoryId), i64>,
+    pairs: std::collections::BTreeMap<(TerritoryId, TerritoryId), Vec<i64>>,
     report: HistoryReport,
 }
 
@@ -139,7 +190,7 @@ impl History {
         let w = s.world();
         let markets = w.econ.markets.len();
         let tags: Vec<String> = w.countries.iter().map(|(_, c)| c.tag.clone()).collect();
-        let mut territories = Vec::with_capacity(markets * 2);
+        let mut territories = Vec::with_capacity(TerritoryId::count(markets));
         for tag in &tags {
             for part in ["metropole", "colonies"] {
                 territories.push(Territory {
@@ -179,10 +230,15 @@ impl History {
                 .map(|r| r.population() as f64)
                 .collect(),
             value_added: vec![0.0; w.econ.regions.len()],
-            production: vec![vec![0.0; GOODS.len()]; markets * 2],
+            production: vec![vec![0.0; GOODS.len()]; TerritoryId::count(markets)],
             revenue: vec![0.0; markets],
             spending: vec![0.0; markets],
             price_jan: prices(w),
+            vital: vec![[0.0; 6]; TerritoryId::count(markets)],
+            terms: vec![[0.0; 5]; TerritoryId::count(markets)],
+            region_vital: vec![[0.0; 6]; w.econ.regions.len()],
+            arrived: arrived(w),
+            pairs: Default::default(),
             report: HistoryReport {
                 first_year: year,
                 years: Vec::new(),
@@ -190,6 +246,8 @@ impl History {
                 sectors: SECTORS,
                 territories,
                 states,
+                migration_pairs: Vec::new(),
+                waves: Vec::new(),
                 countries: tags
                     .into_iter()
                     .map(|tag| Country {
@@ -208,6 +266,10 @@ impl History {
         if date.weekday() == Weekday::Tuesday {
             self.week(data, s.world());
         }
+        // The demography runs on the 15th: on the 16th the world holds the month's rates.
+        if date.day == 16 {
+            self.month(s.world());
+        }
         if date.month == 1 && date.day == 1 && date.year > self.year {
             self.close_year(data, s.world());
             self.year = date.year;
@@ -224,7 +286,7 @@ impl History {
         for (ri, r) in w.econ.regions.iter().enumerate() {
             let mi = r.market as usize;
             let m = &w.econ.markets[mi];
-            let t = mi * 2 + usize::from(r.colony);
+            let t = TerritoryId::of(r).index();
             let mut out = vec![0.0f64; cat.goods.len()];
             let mut va = 0.0;
             for p in &r.plants {
@@ -271,6 +333,25 @@ impl History {
         }
     }
 
+    fn month(&mut self, w: &GameWorld) {
+        for (ri, (r, v)) in w.econ.regions.iter().zip(&w.demography.vital).enumerate() {
+            let t = TerritoryId::of(r).index();
+            let n = r.population() as f64;
+            for (k, x) in v.fertility_terms.iter().enumerate() {
+                self.terms[t][k] += x.to_f64_lossy() * n;
+            }
+            for acc in [&mut self.vital[t], &mut self.region_vital[ri]] {
+                acc[0] += n;
+                for (k, x) in [v.births, v.deaths, v.migration, v.life, v.tfr]
+                    .into_iter()
+                    .enumerate()
+                {
+                    acc[k + 1] += x.to_f64_lossy() * n;
+                }
+            }
+        }
+    }
+
     fn close_year(&mut self, data: &GameData, w: &GameWorld) {
         let dec = stocks(data, w);
         let now = prices(w);
@@ -292,7 +373,7 @@ impl History {
             va_sum[r.market as usize] += self.value_added[ri].max(0.0);
             pop_sum[r.market as usize] += pops[ri];
         }
-        let mut territory_gdp = vec![0.0f64; nm * 2];
+        let mut territory_gdp = vec![0.0f64; TerritoryId::count(nm)];
         for (ri, r) in regions.iter().enumerate() {
             let mi = r.market as usize;
             let gdp = w.econ.markets[mi].gdp_running.to_f64_lossy();
@@ -303,15 +384,21 @@ impl History {
             } else {
                 0.0
             };
-            territory_gdp[mi * 2 + usize::from(r.colony)] += gdp * share;
+            territory_gdp[TerritoryId::of(r).index()] += gdp * share;
             let st = &mut rep.states[ri];
             st.population.push(pops[ri].round() as i64);
             st.gdp.push(gdp * share);
+            let v = &self.region_vital[ri];
+            let mean = |k: usize| if v[0] > 0.0 { v[k] / v[0] } else { 0.0 };
+            st.births.push(mean(1));
+            st.deaths.push(mean(2));
+            st.migration.push(mean(3));
+            st.life_expectancy.push(mean(4));
         }
         for (mi, m) in w.econ.markets.iter().enumerate() {
             let gdp = m.gdp_running.to_f64_lossy();
             for part in 0..2 {
-                let t = mi * 2 + part;
+                let t = TerritoryId::new(mi as u16, part == 1).index();
                 let (a, b) = (&self.jan[t], &dec[t]);
                 let pop = (a.population + b.population) / 2.0;
                 let g = territory_gdp[t];
@@ -332,6 +419,19 @@ impl History {
                 ter.informal.push((a.informal + b.informal) / 2.0);
                 ter.cleared_km2.push(a.cleared);
                 ter.production.push(self.production[t].clone());
+                let v = &self.vital[t];
+                let mean = |k: usize| if v[0] > 0.0 { v[k] / v[0] } else { 0.0 };
+                ter.births.push(mean(1));
+                ter.deaths.push(mean(2));
+                ter.migration.push(mean(3));
+                ter.life_expectancy.push(mean(4));
+                ter.fertility.push(mean(5));
+                let tm = &self.terms[t];
+                ter.fertility_terms.push(
+                    tm.iter()
+                        .map(|x| if v[0] > 0.0 { x / v[0] } else { 0.0 })
+                        .collect(),
+                );
             }
             let c = &mut rep.countries[mi];
             let g = gdp.max(1.0);
@@ -352,7 +452,72 @@ impl History {
             .for_each(|row| row.iter_mut().for_each(|x| *x = 0.0));
         self.revenue.iter_mut().for_each(|x| *x = 0.0);
         self.spending.iter_mut().for_each(|x| *x = 0.0);
+        self.vital.iter_mut().for_each(|v| *v = [0.0; 6]);
+        self.terms.iter_mut().for_each(|v| *v = [0.0; 5]);
+        // Arrivals of the year by road; the series and the waves are rewritten every year.
+        let now = arrived(w);
+        let n = self.report.years.len();
+        for (&k, &v) in &now {
+            let year = v - self.arrived.get(&k).copied().unwrap_or(0);
+            let row = self.pairs.entry(k).or_insert_with(|| vec![0; n - 1]);
+            row.push(year);
+        }
+        for row in self.pairs.values_mut() {
+            row.resize(n, 0);
+        }
+        self.arrived = now;
+        let names = territory_names(w);
+        let name = |t: TerritoryId| territory_name(&names, t);
+        self.report.migration_pairs = self
+            .pairs
+            .iter()
+            .filter(|(_, v)| v.iter().sum::<i64>() >= 1_000)
+            .map(|(&(o, d), v)| PairSeries {
+                origin: name(o),
+                dest: name(d),
+                arrivals: v.clone(),
+            })
+            .collect();
+        let month = |m: i32| [m.div_euclid(12), m.rem_euclid(12) + 1];
+        let dem = &w.demography;
+        self.report.waves = dem
+            .waves_ended
+            .iter()
+            .map(|r| (&r.wave, Some((r.until, format!("{:?}", r.end)))))
+            .chain(dem.waves.iter().map(|w| (w, None)))
+            .map(|(wave, end)| WaveSeries {
+                origin: name(wave.origin),
+                dest: name(wave.dest),
+                from: month(wave.since),
+                until: end.as_ref().map(|(u, _)| month(*u)),
+                cause: format!("{:?}", wave.cause),
+                end: end.map(|(_, e)| e),
+                people: wave.people,
+            })
+            .collect();
+        self.region_vital.iter_mut().for_each(|v| *v = [0.0; 6]);
     }
+}
+
+/// Arrivals since the start by (origin, destination), all cultures together.
+fn arrived(w: &GameWorld) -> std::collections::BTreeMap<(TerritoryId, TerritoryId), i64> {
+    let mut out = std::collections::BTreeMap::new();
+    for d in &w.demography.diaspora {
+        *out.entry((d.origin, d.dest)).or_insert(0) += d.arrived;
+    }
+    out
+}
+
+/// Country tags by market.
+fn territory_names(w: &GameWorld) -> Vec<String> {
+    w.countries.iter().map(|(_, c)| c.tag.clone()).collect()
+}
+
+/// `TAG/metropole` or `TAG/colonies`.
+fn territory_name(tags: &[String], t: TerritoryId) -> String {
+    let tag = tags.get(t.market()).cloned().unwrap_or_default();
+    let part = if t.colony() { "colonies" } else { "metropole" };
+    format!("{tag}/{part}")
 }
 
 fn prices(w: &GameWorld) -> Vec<(f64, u16)> {
@@ -367,9 +532,9 @@ fn prices(w: &GameWorld) -> Vec<(f64, u16)> {
 fn stocks(data: &GameData, w: &GameWorld) -> Vec<Stocks> {
     let cat = &data.catalogue;
     let sector: Vec<usize> = BUILDING_GROUPS.iter().map(|g| sector_of(g)).collect();
-    let mut out = vec![Stocks::default(); w.econ.markets.len() * 2];
+    let mut out = vec![Stocks::default(); TerritoryId::count(w.econ.markets.len())];
     for r in &w.econ.regions {
-        let s = &mut out[r.market as usize * 2 + usize::from(r.colony)];
+        let s = &mut out[TerritoryId::of(r).index()];
         let pop = r.population() as f64;
         s.population += pop;
         s.literate += r.literacy.to_f64_lossy() * pop;

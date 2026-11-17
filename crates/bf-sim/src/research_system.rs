@@ -31,8 +31,6 @@ const IMITATION_YEARS: i64 = 5;
 /// Years for a technology made abroad to reach full use at home (vaccines, the pill) without
 /// being made there.
 const ADOPTION_YEARS: i64 = 15;
-/// Fewer births at full contraception, per thousand people a year.
-pub const CONTRACEPTION_BIRTHS: i64 = 5;
 
 pub struct Research {
     pub cat: Arc<Catalogue>,

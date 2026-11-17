@@ -1,4 +1,9 @@
-# População: comunidades de 1925
+# População: comunidades de 1925 e demografia
+
+A demografia (nascimentos, mortes, idade e migração entre países) roda na simulação: seção
+"Demografia" no fim. As comunidades ainda não.
+
+## Comunidades de 1925
 
 Estado: contrato e dados, **sem ligação com a simulação**. Os parâmetros abaixo são **proposta
 para o dono decidir** (decisões em aberto 1 a 3 de `architecture.pt-BR.md`).
@@ -212,3 +217,233 @@ milhão em 1925 para ~0,2 milhão em 2000; imigrantes italianos na Argentina maj
   União; ficaram sem marca.
 - **Revisar** a estimativa religiosa da URSS, as culturas agregadas da África e da China, e as
   regras de raça como cultura.
+
+## Demografia
+
+Código: `crates/bf-sim/src/demography.rs` (sistema `demography`, todo dia 15). Estado salvo em
+`GameWorld::demography`: a pirâmide de cada estado, a escolaridade das mães e as taxas do mês.
+Nenhuma taxa é escrita por país nem por data: os parâmetros são mundiais e a diferença entre
+países sai da economia de cada estado.
+
+### Pirâmide
+
+Cada estado guarda quantas pessoas tem em 17 grupos de cinco anos (0–4 … 75–79, 80+). Todo mês:
+nascimentos entram em 0–4, cada grupo perde os seus mortos e um sessenta avos de cada grupo passa
+ao seguinte. A pirâmide é reescalada à população do estado antes do mês (a migração interna mexe
+nos pops) e o saldo do mês vai para as profissões na proporção do tamanho de cada uma.
+
+**1925.** Não há pirâmide nos dados. Cada estado começa estável nas taxas que teria com 65 % do
+desenvolvimento de hoje (conforto, escolaridade, trabalho fora do campo, hospitais, remédio) e
+cresce 60 anos com o desenvolvimento subindo até o de 1925. Assim a Europa de 1925 já é mais
+velha que a Índia e mais jovem do que seria se tivesse sempre tido a fecundidade de 1925.
+
+### Mortalidade
+
+Uma tabela mundial de mortes por idade em cinco níveis de saúde `h` (0, ¼, ½, ¾, 1), com
+esperança de vida ao nascer de 27,7, 38,9, 52,5, 68,0 e 82,0 anos; entre os níveis, linear. A
+tabela é um modelo de Gompertz-Makeham com mortalidade infantil (mortes de 0–4, 5–14, fundo
+adulto e alta exponencial com a idade), construída para isso, não copiada de tábua de país.
+
+    antes   = 0,38 × conforto + 0,35 × escolaridade − 0,05 − 0,25 × (1 − comida)
+    teto    = 0,70 + 0,25 × conforto + 0,13 × hospitais
+    alcance = 0,35 + 0,65 × max(hospitais, escolaridade)
+    remédio = clamp((efeito "mortality" da pesquisa − 0,20) / (0,80 − 0,20)) × alcance
+    h       = antes + (teto − antes) × remédio
+
+- **Conforto** é o atendimento médio das necessidades de nível 3; **comida**, as de nível 1;
+  **hospitais**, a cobertura hospitalar do estado (`public::coverage`).
+- O remédio é o efeito `mortality` das tecnologias que o país usa (`research_system`). O que os
+  países ricos já tinham em 1925 (vacina, saneamento) está no "antes"; só o que vem depois conta
+  como remédio, e ele chega inteiro com 80 % da árvore (antibióticos, vacinas e inseticidas são a
+  maior parte).
+- **Alcance:** a campanha de massa leva um terço do remédio a quem não tem hospital nem escola
+  (DDT no Ceilão de 1946); o resto vem com hospitais ou com mães que leem.
+- Substitui a fórmula da fase 1 (natalidade e mortalidade em função linear da alfabetização,
+  pisos de 7 e 6 por mil, remédio por calendário de 1935 a 1970 e mortalidade × hospitais). Sem
+  dados de pesquisa (ferramentas e testes) o remédio ainda segue esse calendário.
+
+### Fecundidade
+
+Filhos por mulher (TFR), distribuídos pelas idades de 15 a 49 num perfil fixo (8, 23, 25, 20,
+14, 8 e 2 %):
+
+    nota  = 0,30 × sobrevivência + 0,57 × escolaridade + 0,03 × fora do campo
+          + 0,10 × conforto + 0,17 × contracepção
+    T     = suave((nota − 0,45) / (0,90 − 0,45))           (suave(t) = 3t² − 2t³)
+    piso  = 1,75 + 0,5 × (1 − contracepção)
+    TFR   = (piso + (6,5 − piso) × (1 − T)) × (1 − 0,5 × fome de terra)
+
+- **Sobrevivência:** a chance de passar dos 5 anos na mortalidade do mês, de 50 % (0) a 98 % (1).
+  Os filhos morrem menos, as famílias querem menos filhos; o atraso entre as duas quedas sai da
+  escolaridade.
+- **Escolaridade das mães:** a alfabetização do estado seguida com atraso de 20 anos (240 meses):
+  a menina na escola hoje é mãe daqui a uma geração.
+- **Fora do campo:** parcela da população fora das profissões rurais (`urban_share`), com peso
+  pequeno (0,03). A literatura põe a escola das mães e a sobrevivência infantil como causas
+  sustentadas da queda; a urbanização por trabalho informal, sem escola e sem saúde, não derruba a
+  fecundidade (com peso 0,10 ela derrubava a do Brasil e da África cedo demais depois do #69).
+- **Contracepção:** o efeito `fertility` das tecnologias (a pílula) vezes o alcance,
+  0,25 + 0,75 × max(escolaridade, cobertura hospitalar): o planejamento familiar chegou pela
+  escola e pela rede de saúde (médicos descalços na China, postos na Indonésia e em Bangladesh).
+  Sem contracepção a transição para em 2,25 filhos (abstinência, coito interrompido, casamento
+  tardio); com ela, em 1,75.
+- **Fome de terra (freio preventivo):** a lavoura que cada lavrador tem, aberta e ainda por abrir
+  na fronteira agrícola (`Region::land` + `Region::frontier`, níveis por mil camponeses e
+  assalariados rurais). Onde ela está abaixo de 20 níveis por mil **e** abaixo da do próprio estado
+  em 1925, a fecundidade cai na proporção do que se perdeu, até a metade. Em 1925: Brasil 140,
+  Argentina 126, Austrália 329, Itália 11, Japão 6, Índia 5, China 4, Egito 0,8. Brasil, Argentina e
+  África têm terra para abrir e não freiam; a Ásia rural freia quando os lavradores crescem. Uma
+  medida só absoluta frearia o Nilo irrigado já em 1925, quando a fecundidade era 6,5; uma só
+  relativa a 1925, sem fronteira, freava todo país que crescia (o mundo de 2025 caía a 5,5 bilhões).
+- **Decomposição:** `DemographyState::fertility_breakdown(econ, mercado, colônia)` dá, por
+  território, cada termo com valor, peso e contribuição (`FertilityTerm`), para a tela mostrar
+  "por que nascem tantos aqui"; o `--history-out` grava os termos por território e ano
+  (`fertility_terms`). Os termos são a lista `FERTILITY_TERMS`: termo novo entra como mais uma
+  linha ali.
+
+### Migração entre países
+
+Código: `crates/bf-sim/src/demography/migration.rs`. Unidade: território (metrópole ou colônias de
+um país, `TerritoryId`). Tudo roda no mês da demografia, em três camadas: o fluxo contínuo, a
+corrente da diáspora e as ondas.
+
+**Atração** de um destino `j` sobre a gente de `i`:
+
+    atração = brecha × distância × vagas × corrente × família × lei de imigração de j (até 1000)
+    brecha  = min(1, max(renda, terra) + rede)
+
+- **Renda:** PIB por habitante do país a preços-base, repartido entre metrópole e colônias pela
+  renda monetária por habitante. Começa a puxar a 1,5 vez a renda da origem; cheia a 4,5 vezes.
+- **Terra:** lavoura aberta e por abrir por mil lavradores. Puxa a partir de 2 vezes a da origem,
+  cheia a 22 vezes, se o destino não for mais pobre que 0,2 da renda da origem: as fronteiras das
+  Américas e da Austrália.
+- **Rede:** a diáspora puxa sozinha (cartas, passagem paga, emprego esperando): até 0,5 de
+  brecha, para destino com pelo menos 0,20 da renda da origem. É o que leva italiano e português
+  a um Brasil mais pobre que a Itália e que Portugal.
+- **Distância:** 1 / (1 + (d / 8 000 km)²) entre os centros de população.
+- **Vagas:** parcela dos operários do destino com emprego, à quarta potência.
+- **Corrente:** 0,2 numa estrada sem ninguém do outro lado; sobe até ×4 quando a diáspora chega
+  a 5 % da população da **origem** (quantas famílias têm alguém naquela estrada). Sem rede, pouca
+  gente vai (teoria das redes de migração); com ela, a estrada se mantém. Medida contra a origem,
+  a rede não nasce sozinha do fluxo contínuo de um país enorme.
+- **Minorias com estrada própria** (`DemographyState::homes`): uma cultura que vive fora da pátria
+  e não é a maior do seu território de origem (levantinos nas colônias francesas, armênios e
+  ucranianos na URSS, galegos e catalães na Espanha, guzerates e punjabis na Índia) tem o próprio
+  fluxo contínuo, tirado da sua gente na origem (a de 1925, escalada pela população do
+  território), com a corrente medida contra ela. Os 41 mil sírio-libaneses do Brasil em 1925 são
+  0,06 % das colônias francesas, mas 1,8 % dos levantinos delas.
+- **Família:** × 2 na mesma família linguística (a maior do território). Metrópole e colônias
+  não têm bônus próprio (`SAME_EMPIRE` = 1): com ele, Bélgica, Holanda e Portugal ficavam no teto
+  de imigração por 60 anos.
+
+**Fluxo contínuo.** Sai por ano até 3 por mil da população, vezes a melhor atração (até 1), a lei
+de emigração (até 1000) e o empurrão do desemprego no campo (1 + parcela ociosa). Em cada
+estrada fica quem pode pagar a passagem: 1 − (1 − própria) × (1 − pré-paga) × (1 − paga pela lei),
+com a própria = 0,05 + 0,95 × alfabetização², a pré-paga = diáspora da estrada contra 5 % da
+origem (parentes e contratadores mandavam a passagem) e a paga pela lei abaixo. Os emigrantes se
+repartem pelos destinos pela atração vezes a população; nenhum destino recebe do fluxo contínuo
+mais de 2 500 por milhão ao ano (o Brasil e os EUA receberam perto de 2 400 e 2 600 nos anos 1920).
+
+**Ondas.** A pressão de saída de uma origem soma a parcela ociosa do campo, a fome (1 − necessidades
+básicas atendidas) e metade da melhor atração. Quando passa de 0,6 e a origem não tem onda, abre
+uma para o destino de maior atração × tamanho (relativo à origem), entre os que têm atração de
+0,25 ou mais, porta aberta, vagas (operários empregados ≥ 0,5) e estrada aberta: pioneiros
+(diáspora de pelo menos 0,3 da corrente cheia) ou um programa dos dois governos. Por mês a onda
+leva até 1 por mil ao ano da origem, vezes a força da pressão, quem pode pagar e a atração; o
+destino recebe de ondas no máximo 3 por mil ao ano. A onda fecha, com motivo registrado, quando:
+
+| Motivo (`WaveEnd`) | Condição |
+|---|---|
+| `DoorClosed` | a lei de imigração do destino ou a de emigração da origem cai abaixo de 1000 ‰ (cota, emigração regulada) |
+| `PressureEased` | a pressão cai abaixo de 0,35 |
+| `Full` | as vagas do destino caem abaixo de 0,5 |
+| `NoPull` | a atração cai abaixo de 0,125 |
+
+O motivo da abertura (`Push`) é o maior termo da pressão: terra (`Land`), fome (`Hunger`) ou renda
+lá fora (`Poverty`). `DemographyState::waves` guarda as abertas e `waves_ended` as fechadas; o
+placar lista as maiores ("Ondas de migração").
+
+**Passagem paga pela lei.** Valor da lei acima de 1000 é a parcela da passagem que o Estado paga
+(`subsidy`): `subsidized_immigration` (2000, destino) e `sponsored_emigration` (2000, origem).
+O subsídio do destino só paga a passagem de quem vem de origem com emigração livre ou patrocinada
+(`regulated_emigration`, 700, a Itália de 1925: o rei proibiu a emigração subsidiada para o
+Brasil); não recruta ninguém nem encurta a distância (a distância também é notícia e contato, que
+uma passagem não traz). Um programa de colonização dos dois governos (a origem patrocina e o
+destino subsidia, só para a metrópole: o Japão e o Brasil a partir de 1925) recruta como 0,05 de uma
+corrente cheia, abre estrada para onda e encurta a distância pela metade. Em 1925: o Brasil
+subsidia (lavoura paulista), o Japão patrocina, a Itália regula (fontes em
+`data/scenario/1925/laws.ron`); a referência dá a cota brasileira de 1934.
+
+**Porta.** Cotas (300 ‰) e emigração regulada fecham a porta para ondas, não para o fluxo contínuo,
+que passa reduzido. Quando a porta de um destino fecha, a onda termina com `DoorClosed` e a próxima
+abre para o melhor destino aberto: é o desvio de destino (EUA fecham → Brasil e Argentina). As leis
+vêm do estado político (`Demography::migration_laws`, efeitos `immigration` e `emigration`); quando
+a política muda as leis (o `nativism` fecha, o `immigration_reform` abre), as ondas reagem no mês
+seguinte.
+
+**Diáspora.** `DemographyState::diaspora`: pessoas por origem, destino e cultura (`Diaspora`), com
+`people` (chegados e descendentes, crescendo com nascimentos e mortes do destino) e `arrived`
+(chegadas desde 1925, sem filhos). Quem chega por uma estrada leva as culturas que já estão nela,
+na proporção; numa estrada nova, a cultura principal da origem. Quando os pops carregarem cultura,
+cada entrada vira a comunidade `culture` no destino. `immigrant_share(econ, país)` e
+`immigrants_by_origin(país)` dão a parcela de origem estrangeira para a política.
+
+**1925.** O estoque inicial sai das comunidades de 1925 (`initial_diaspora`): uma cultura fora da
+pátria (o território com mais gente dela), onde não é nativa (a maior em algum estado) e em estado
+que não encosta na pátria por terra, conta como gente da pátria naquele território. Resultado
+(`cargo test -p bf-sim --test demography_1925 -- --nocapture`): 270 estradas, 28 milhões de
+pessoas. No Brasil: italianos 896 mil, alemães 519 mil, portugueses 415 mil, espanhóis 249 mil,
+poloneses 89 mil, sírio-libaneses 41 mil (vindos das colônias francesas, onde ficava o mandato
+da Síria e do Líbano), japoneses 27 mil, ucranianos 24 mil. Ficam de fora:
+
+- culturas sem pátria clara (a maior parte em nenhum território): asquenazes (32 % no maior),
+  sefarditas, curdos, melanésios, amazônicos, inuítes;
+- minorias de fronteira (alemães da Boêmia, húngaros da Transilvânia, quíchuas da Bolívia), que
+  não migraram;
+- o que os dados de 1925 já fundiram na cultura do país (o "brasileiro" de origem italiana).
+
+**Quem se move:** sai dos camponeses, assalariados rurais e operários; chega como operário, nas
+cidades (na proporção da população urbana dos estados). Na pirâmide, idades de 20 a 34.
+
+### O que falta
+
+- **Guerra, fome e regime.** Não há guerra (1914–18 já passou; 1939–45 não acontece), nem fome
+  (China 1928–30 e 1959–61, URSS 1932–33, Bengala 1943), nem política de natalidade (filho único,
+  proibição do aborto na Romênia em 1966), nem a alfabetização forçada e a saúde pública dos
+  regimes socialistas, que adiantaram a transição no Leste Europeu e na URSS.
+- **Comunidade nos pops.** O imigrante chega como gente, não como comunidade: o `Pop` é estado ×
+  profissão. A diáspora guarda origem e cultura até as comunidades entrarem nos pops.
+- **Exclusão racial e refugiados.** A exclusão racial é lei dirigida e não pesa enquanto o
+  migrante não carrega comunidade; não há refugiado (sem guerra).
+- **Ensino e saúde coloniais.** As colônias se alfabetizam no ritmo da metrópole (colônias
+  britânicas 0,79 em 1985, real 0,57) e recebem o remédio e a pílula com a força da metrópole,
+  porque os efeitos de pesquisa são por mercado e a colônia divide o mercado (expectativa de vida
+  78 em 1985 contra 54 reais). Daí a transição cedo demais depois de 1975 na Ásia do Sul e na
+  África (placar em `history.pt-BR.md`, "Placar com a demografia"). É entrada da economia e da
+  política (trabalho de ensino e orçamento coloniais), não parâmetro da demografia; a demografia
+  se recalibra depois que ele entrar.
+- **Pioneiro.** A fronteira agrícola (#77) só abre pela fazenda comercial; o lavrador que abre terra
+  para si (e com ela o freio por fome de terra fora da Ásia) vem com o efeito `frontier_access`.
+- **Planejamento familiar como lei.** Hoje a causa é a rede de saúde; quando a política tiver
+  quem peça, vira lei (programa voluntário, programa de Estado, limite coercitivo como o filho
+  único).
+- **Datas das leis de migração.** As mudanças da referência (o fim do subsídio paulista por volta
+  de 1930, a cota brasileira de 1934, a restrição fascista de 1927, a guerra civil espanhola) só
+  acontecem se um movimento da política as fizer; na rodada de 100 anos o `nativism` tira o
+  subsídio brasileiro em 1976 e põe cotas em 1981, e os EUA não saem das cotas de 1924.
+- **Ondas de minorias.** As minorias têm fluxo contínuo próprio, não ondas.
+- **Natalidade por classe (próximo PR).** Hoje os nascimentos do estado vão às profissões na
+  proporção do tamanho (`distribute`). Desenho: cada pop com o seu TFR, pelos mesmos termos
+  regionais (sobrevivência, escolaridade, contracepção) mais o conforto da própria pop
+  (`satisfaction[2]`) e "fora do campo" igual a 0 ou 1 pela profissão; nascimentos do estado =
+  mulheres férteis da pirâmide × parcela de cada pop × TFR dela, e cada pop recebe os próprios
+  filhos. Sem pirâmide por pop: todas as pops do estado têm a mesma estrutura de idade. Custa 13
+  avaliações por estado por mês (~1 s de CPU em 100 anos). Fica para depois porque o TFR da
+  região passa a ser a média dos TFR das pops, não o TFR da média (a curva é não linear), o que
+  desloca a calibração, e porque muda a composição de classes e o êxodo rural.
+- **Cultura e religião na natalidade (próximo PR, com as comunidades).** Cultura como difusão da
+  transição dentro da família linguística (a conferir no Princeton European Fertility Project),
+  não como "cultura X tem mais filhos"; religião só com efeito medido em fonte pública, líquido
+  de escolaridade e renda. Entram como termos novos de `FERTILITY_TERMS`.
+- **Pirâmide por comunidade**; idade de trabalho fixa em 40 % de cada pop.
+- **Baby boom.** Nada no modelo faz a fecundidade dos ricos subir de 1946 a 1964.

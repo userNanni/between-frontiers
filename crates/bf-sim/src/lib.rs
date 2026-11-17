@@ -3,6 +3,7 @@
 pub mod borders;
 pub mod communities;
 pub mod data;
+pub mod demography;
 pub mod diplomacy;
 pub mod econ;
 pub mod economy;

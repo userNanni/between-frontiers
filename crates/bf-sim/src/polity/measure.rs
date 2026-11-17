@@ -28,11 +28,14 @@ pub const GDP_GROWTH: usize = 17;
 pub const IMMIGRANT_SHARE: usize = 13;
 
 /// Share of the people of `country` of foreign origin, per mille: the one place politics reads
-/// it. `None` until the demography keeps the stock of migrants by origin (#54); then it is
-/// `world.demography.immigrant_share(&world.econ, country)` (a `Fixed` 0–1, metropole and
-/// colonies, read as of the last 15th).
-pub fn immigrant_share(_world: &crate::game::GameWorld, _country: usize) -> Option<i32> {
-    None
+/// it. The demography's stock of migrants by origin (metropole and colonies, as of the last
+/// 15th); `None` in a world without demography (tools, old saves).
+pub fn immigrant_share(world: &crate::game::GameWorld, country: usize) -> Option<i32> {
+    if world.demography.diaspora.is_empty() && world.demography.ages.is_empty() {
+        return None;
+    }
+    let share = world.demography.immigrant_share(&world.econ, country);
+    Some((share.raw() * 1000 / Fixed::ONE.raw()) as i32)
 }
 
 fn one() -> i128 {

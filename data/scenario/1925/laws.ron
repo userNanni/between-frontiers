@@ -181,9 +181,9 @@
             laws: [
                 "great_estates", "unions_tolerated", "public_hospitals", "male_suffrage",
                 "official_nationality", "press_licensing", "emergency_powers", "mixed_service",
-                "direct_rule", "forced_labour",
+                "direct_rule", "forced_labour", "regulated_emigration",
             ],
-            source: "Imposta complementare 1923 (progressive surtax); Ferrovie dello Stato 1905; latifondi of the south; tariff of 1921; fascist violence against unions, Palazzo Chigi pact 1923; eight-hour decree RDL 15 March 1923 n. 692; compulsory old-age and invalidity insurance 1919; Gentile school reform 1923 (school to 14, Italian only in the new provinces: targets Germans of South Tyrol and Slovenes and Croats of Venezia Giulia); universal male suffrage 1919 and Acerbo law 1923; Statuto Albertino art. 1 (Catholic state religion); press decrees of 15 July 1923 and 10 July 1924 (seizure by the prefects); URI broadcasting concession 1924; colonies: governors of Libya, Eritrea and Somalia, forced labour on the Somali plantations",
+            source: "Imposta complementare 1923 (progressive surtax); Ferrovie dello Stato 1905; latifondi of the south; tariff of 1921; fascist violence against unions, Palazzo Chigi pact 1923; eight-hour decree RDL 15 March 1923 n. 692; compulsory old-age and invalidity insurance 1919; Gentile school reform 1923 (school to 14, Italian only in the new provinces: targets Germans of South Tyrol and Slovenes and Croats of Venezia Giulia); universal male suffrage 1919 and Acerbo law 1923; Statuto Albertino art. 1 (Catholic state religion); press decrees of 15 July 1923 and 10 July 1924 (seizure by the prefects); URI broadcasting concession 1924; colonies: governors of Libya, Eritrea and Somalia, forced labour on the Somali plantations; state control of emigration, subsidized passages to Brazil forbidden by royal decree (“passagens subsidiadas fora proibida pelo rei Vitório Emanuel III”: IBGE, Brasil: 500 anos de povoamento, 2007)",
         ),
         (
             tag: "SMR",
@@ -525,9 +525,9 @@
             template: Some("latin_republic"),
             laws: [
                 "protective_tariffs", "private_schooling", "separation", "prior_censorship",
-                "emergency_powers",
+                "emergency_powers", "subsidized_immigration",
             ],
-            source: "Constitution of 1891 (art. 70 literate men vote, open ballot; church separated by decree 119-A of 1890; primary schooling left to the states, not compulsory nationwide); state of siege and press censorship under Bernardes (1922–1926); Lei Eloy Chaves 1923 (railway workers' pension funds only); Lei do Sorteio of 1908 (conscription by lot, applied from 1916)",
+            source: "Constitution of 1891 (art. 70 literate men vote, open ballot; church separated by decree 119-A of 1890; primary schooling left to the states, not compulsory nationwide); state of siege and press censorship under Bernardes (1922–1926); Lei Eloy Chaves 1923 (railway workers' pension funds only); Lei do Sorteio of 1908 (conscription by lot, applied from 1916); immigrant labour subsidized for the São Paulo coffee farms (passages and contracts; IBGE, Resistência & Integração: 100 anos de imigração japonesa no Brasil, 2008)",
         ),
         // ---- Asia ----
         (
@@ -545,9 +545,10 @@
             laws: [
                 "great_estates", "screened_capital", "unions_tolerated", "factory_acts", "poor_relief",
                 "private_medicine", "restricted_suffrage", "official_nationality", "quota_immigration",
-                "press_licensing", "emergency_powers", "direct_rule", "labour_taxation",
+                "sponsored_emigration", "press_licensing", "emergency_powers", "direct_rule",
+                "labour_taxation",
             ],
-            source: "Meiji Constitution 1889 and Election Law (tax qualification; manhood suffrage only from May 1925); Income Tax Act 1887 as revised 1920; railway nationalization 1906, Yawata state steel works; tenancy on about 46 % of farmland; tariff autonomy 1911; Public Peace Police Law 1900 art. 17 (strikes restricted); Factory Act 1911 (in force 1916, revised 1923); Health Insurance Act 1922 (in force only from 1927); compulsory schooling of six years (1907); Hokkaido Former Aborigines Protection Act 1899 (targets the Ainu); State Shinto; Imperial Ordinance 352 of 1899 (foreign labourers); Newspaper Law 1909; Tokkō special police since 1911; Tokyo Broadcasting Station 1925 (NHK 1926); Conscription Ordinance 1873; Government-General of Korea and of Taiwan",
+            source: "Meiji Constitution 1889 and Election Law (tax qualification; manhood suffrage only from May 1925); Income Tax Act 1887 as revised 1920; railway nationalization 1906, Yawata state steel works; tenancy on about 46 % of farmland; tariff autonomy 1911; Public Peace Police Law 1900 art. 17 (strikes restricted); Factory Act 1911 (in force 1916, revised 1923); Health Insurance Act 1922 (in force only from 1927); compulsory schooling of six years (1907); Hokkaido Former Aborigines Protection Act 1899 (targets the Ainu); State Shinto; Imperial Ordinance 352 of 1899 (foreign labourers); Newspaper Law 1909; Tokkō special police since 1911; Tokyo Broadcasting Station 1925 (NHK 1926); Conscription Ordinance 1873; Government-General of Korea and of Taiwan; from 1925 the government paid the passage of emigrants to Brazil (“a partir de 1925, quando o governo japonês passou a subsidiar diretamente a vinda dos seus súditos”: IBGE, Resistência & Integração, 2008)",
         ),
         (
             tag: "MGL",
@@ -821,6 +822,7 @@
         (tag: "ARG", date: "1947-09-23", law: "universal_suffrage", source: "Ley 13010 of 23 September 1947 (women's vote)"),
         (tag: "URY", date: "1932-12-16", law: "universal_suffrage", source: "Ley 8927 of 16 December 1932 (women's vote)"),
         (tag: "BRA", date: "1931-03-19", law: "state_unions", source: "Decree 19770 of 19 March 1931 (union law under the Ministry of Labour)"),
+        (tag: "BRA", date: "1934-07-16", law: "quota_immigration", source: "Constitution of 16 July 1934, art. 121 § 6 (yearly entry of each nationality limited to 2 % of those settled in the last 50 years)"),
         (tag: "BRA", date: "1937-11-10", law: "no_free_elections", source: "Estado Novo, Constitution of 10 November 1937"),
         (tag: "BRA", date: "1943-05-01", law: "labour_code", source: "Consolidação das Leis do Trabalho, decree-law 5452 of 1 May 1943"),
         (tag: "BRA", date: "1985-05-15", law: "universal_suffrage", source: "Constitutional Amendment 25 of 15 May 1985 (illiterates vote)"),

@@ -93,8 +93,8 @@ por mês.
 
 - **Alfabetização:** a velocidade anual da fase 1 é multiplicada por 0,6 + 0,8 × cobertura escolar
   (metade das crianças na escola mantém a velocidade antiga).
-- **Mortalidade:** multiplicada por 1,05 − 0,25 × cobertura hospitalar (um quinto da necessidade
-  atendida mantém a taxa antiga).
+- **Mortalidade:** a cobertura hospitalar sobe o teto de saúde e o alcance do remédio
+  (`population.pt-BR.md`, "Demografia").
 - **1925:** as escolas começam com cobertura igual à alfabetização do país (5 % a 95 %); os
   hospitais, com renda per capita / US$ 15 mil (2 % a 50 %).
 

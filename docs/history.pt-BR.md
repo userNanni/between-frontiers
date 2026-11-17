@@ -392,6 +392,192 @@ campo" e "1925: eletricidade e petróleo".
   Colônias continuam ricas demais (Congo Belga 9 vezes o real na `main` e 17 aqui).
 - **Substituição de importações testada e retirada:** construir o que se importa, por regra,
   levou o Congo Belga de 3,5 a 17 vezes o real e o ranking de 2022 a 0,40.
+## Placar com a demografia
+
+Rodada de 101 anos da branch `feat/demography` contra a `main` do mesmo dia (9cc71e1, com a saída
+do campo do #69 e a fronteira agrícola do #77), semente 1925, 2 threads. "`main`" é a base;
+"branch", a demografia (pirâmide, transição, corrente, diáspora, ondas, decomposição:
+`population.pt-BR.md`, "Demografia").
+
+**A população mundial de 2025 fica em 5,76 bilhões contra 8,23; a transição chega cedo demais
+depois de 1975 na Ásia do Sul e na África.** Até 1975 o mundo acompanha o real (4,26 contra 4,07);
+depois ele quase para (5,46 em 2005). A causa está nas entradas da economia (abaixo, "Por que o
+mundo para depois de 1975").
+
+### Mundo
+
+| Ano | População `main` | branch | real | erro log pop `main` → branch | erro log PIB pc `main` → branch |
+|---|---|---|---|---|---|
+| 1925 | 1.96 | 1.96 | 1.97 | 0.04 → 0.04 | 0.11 → 0.11 |
+| 1935 | 2.18 | 2.28 | 2.17 | 0.07 → 0.07 | 0.26 → 0.26 |
+| 1945 | 2.44 | 2.64 | 2.38 | 0.12 → 0.12 | 0.47 → 0.45 |
+| 1955 | 2.80 | 3.11 | 2.74 | 0.20 → 0.18 | 0.61 → 0.63 |
+| 1965 | 3.25 | 3.70 | 3.33 | 0.27 → 0.22 | 0.68 → 0.73 |
+| 1975 | 3.74 | 4.26 | 4.07 | 0.35 → 0.27 | 0.80 → 0.84 |
+| 1985 | 4.21 | 4.72 | 4.87 | 0.43 → 0.34 | 0.92 → 0.94 |
+| 1995 | 4.68 | 5.13 | 5.76 | 0.51 → 0.42 | 1.13 → 1.11 |
+| 2005 | 5.13 | 5.46 | 6.58 | 0.58 → 0.49 | 1.11 → 1.11 |
+| 2015 | 5.56 | 5.67 | 7.47 | 0.66 → 0.59 | 1.11 → 1.12 |
+| 2025 | 5.98 | 5.76 | 8.23 | 0.72 → 0.67 | 1.18 → 1.18 |
+
+### Erro por grupo (média de |ln(simulado/real)| da população em 2025)
+
+| Grupo | n | `main` | branch |
+|---|---:|---:|---:|
+| Total | 96 | 0,72 | 0,67 |
+| Resto (Américas, África, Ásia colonial, domínios) | 49 | 0,86 | 0,69 |
+| Europa ocidental | 16 | 0,24 | 0,38 |
+| URSS e Leste Europeu | 13 | 0,45 | 0,45 |
+| China e Tibete | 2 | 0,15 | 0,04 |
+| Golfo e Arábia | 9 | 1,42 | 1,34 |
+| Microestados | 7 | 0,69 | 0,87 |
+
+A Europa ocidental piora (França a 1,37 por imigração de mais, sem a guerra) e os microestados
+também; o resto melhora, e a China fica na medida (1,08) pelo freio da fome de terra.
+
+### Os 20 maiores: população simulada / real
+
+| Unidade | 1925 | 1945 | 1965 | 1985 | 2005 | 2025 |
+|---|---|---|---|---|---|---|
+| CHN/metropole | 1.02 → 1.02 | 1.16 → 1.26 | 1.17 → 1.29 | 1.10 → 1.16 | 1.15 → 1.11 | 1.31 → 1.08 |
+| RAJ/metropole | 0.88 → 0.88 | 0.95 → 1.03 | 0.97 → 1.08 | 0.85 → 0.92 | 0.73 → 0.72 | 0.70 → 0.60 |
+| SOV/metropole | 1.03 → 1.04 | 1.11 → 1.36 | 1.11 → 1.52 | 1.13 → 1.51 | 1.21 → 1.63 | 1.23 → 1.57 |
+| USA/metropole | 1.04 → 1.04 | 0.98 → 0.95 | 0.80 → 0.76 | 0.69 → 0.66 | 0.59 → 0.57 | 0.53 → 0.50 |
+| GBR/colonies | 1.00 → 1.00 | 0.94 → 1.00 | 0.81 → 0.98 | 0.63 → 0.72 | 0.45 → 0.50 | 0.32 → 0.34 |
+| FRA/colonies | 1.01 → 1.02 | 1.00 → 1.05 | 0.87 → 1.05 | 0.71 → 0.86 | 0.54 → 0.65 | 0.40 → 0.48 |
+| GER/metropole | 0.97 → 0.97 | 1.01 → 0.87 | 1.10 → 0.80 | 1.15 → 0.76 | 1.14 → 0.71 | 1.17 → 0.67 |
+| JAP/metropole | 0.98 → 0.98 | 0.88 → 0.83 | 0.81 → 0.70 | 0.74 → 0.60 | 0.74 → 0.58 | 0.81 → 0.59 |
+| NLD/colonies | 1.16 → 1.16 | 1.11 → 1.22 | 0.95 → 1.22 | 0.77 → 1.02 | 0.67 → 0.90 | 0.59 → 0.86 |
+| GBR/metropole | 0.98 → 0.98 | 1.14 → 1.04 | 1.24 → 1.02 | 1.33 → 1.04 | 1.34 → 1.00 | 1.24 → 0.85 |
+| FRA/metropole | 1.03 → 1.03 | 1.23 → 1.20 | 1.25 → 1.23 | 1.24 → 1.29 | 1.24 → 1.33 | 1.24 → 1.37 |
+| ITA/metropole | 1.04 → 1.04 | 1.07 → 1.13 | 1.14 → 1.18 | 1.15 → 1.19 | 1.18 → 1.24 | 1.22 → 1.23 |
+| BRA/metropole | 0.99 → 0.99 | 0.78 → 1.02 | 0.58 → 0.96 | 0.46 → 0.79 | 0.39 → 0.68 | 0.37 → 0.62 |
+| POL/metropole | 1.15 → 1.16 | 1.33 → 1.54 | 1.41 → 1.65 | 1.34 → 1.56 | 1.39 → 1.66 | 1.46 → 1.70 |
+| JAP/colonies | 0.98 → 0.99 | 0.87 → 0.99 | 0.72 → 0.95 | 0.63 → 0.78 | 0.61 → 0.74 | 0.62 → 0.71 |
+| ESP/metropole | 1.00 → 1.00 | 1.02 → 1.19 | 1.07 → 1.26 | 1.02 → 1.14 | 0.96 → 1.02 | 0.92 → 0.89 |
+| ROM/metropole | 1.11 → 1.12 | 1.14 → 1.45 | 1.27 → 1.75 | 1.31 → 1.63 | 1.60 → 1.82 | 2.00 → 2.00 |
+| MEX/metropole | 1.02 → 1.03 | 0.87 → 1.10 | 0.64 → 0.95 | 0.47 → 0.69 | 0.38 → 0.56 | 0.32 → 0.47 |
+| CZE/metropole | 1.04 → 1.04 | 1.14 → 1.05 | 1.31 → 1.09 | 1.29 → 1.00 | 1.34 → 1.01 | 1.36 → 0.97 |
+| EGY/metropole | 1.04 → 1.04 | 0.93 → 1.02 | 0.75 → 0.89 | 0.62 → 0.77 | 0.51 → 0.57 | 0.41 → 0.43 |
+
+### Por que o mundo para depois de 1975
+
+Termos da fecundidade (`fertility_terms`, valores de 0 a 1) e o que sai deles, por década:
+
+| Território | Ano | TFR | e0 | Sobrevivência | Escolaridade | Fora do campo | Conforto | Contracepção | Nota |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| Colônias britânicas | 1955 | 6,2 | 48 | 0,50 | 0,33 | 0,54 | 0,58 | 0,00 | 0,41 |
+| Colônias britânicas | 1975 | 2,3 | 70 | 0,89 | 0,56 | 0,66 | 0,68 | 0,79 | 0,81 |
+| Colônias britânicas | 1995 | 1,8 | 82 | 1,00 | 0,74 | 0,75 | 0,76 | 1,00 | 0,99 |
+| Colônias britânicas | 2015 | 1,8 | 82 | 1,00 | 0,82 | 0,82 | 0,83 | 1,00 | 1,04 |
+| Brasil | 1955 | 5,8 | 49 | 0,53 | 0,52 | 0,64 | 0,67 | 0,00 | 0,54 |
+| Brasil | 1975 | 2,6 | 63 | 0,78 | 0,64 | 0,75 | 0,76 | 0,54 | 0,79 |
+| Brasil | 1995 | 1,8 | 78 | 0,98 | 0,75 | 0,82 | 0,84 | 0,86 | 0,98 |
+| Brasil | 2015 | 1,8 | 82 | 1,00 | 0,82 | 0,87 | 0,88 | 1,00 | 1,05 |
+| China | 1955 | 5,5 | 41 | 0,35 | 0,35 | 0,34 | 0,31 | 0,00 | 0,34 |
+| China | 1975 | 4,2 | 51 | 0,55 | 0,47 | 0,33 | 0,32 | 0,48 | 0,56 |
+| China | 1995 | 2,8 | 62 | 0,76 | 0,58 | 0,38 | 0,38 | 0,68 | 0,72 |
+| China | 2015 | 2,4 | 66 | 0,81 | 0,66 | 0,43 | 0,44 | 0,74 | 0,80 |
+| Índia (RAJ) | 1955 | 5,6 | 41 | 0,35 | 0,27 | 0,43 | 0,43 | 0,00 | 0,31 |
+| Índia (RAJ) | 1975 | 4,1 | 53 | 0,60 | 0,45 | 0,47 | 0,45 | 0,47 | 0,58 |
+| Índia (RAJ) | 1995 | 2,5 | 66 | 0,82 | 0,59 | 0,52 | 0,53 | 0,70 | 0,77 |
+| Índia (RAJ) | 2015 | 1,9 | 72 | 0,90 | 0,70 | 0,62 | 0,63 | 0,78 | 0,88 |
+| Egito | 1955 | 5,7 | 40 | 0,33 | 0,31 | 0,52 | 0,55 | 0,00 | 0,34 |
+| Egito | 1975 | 4,5 | 55 | 0,64 | 0,47 | 0,65 | 0,67 | 0,34 | 0,60 |
+| Egito | 1995 | 1,9 | 71 | 0,90 | 0,61 | 0,74 | 0,76 | 0,71 | 0,84 |
+| Egito | 2015 | 1,8 | 78 | 0,99 | 0,75 | 0,81 | 0,82 | 0,85 | 0,97 |
+
+As entradas, simulado contra real:
+
+| Território, 1985 | Alfabetização | Expectativa de vida | Natalidade (por mil) |
+|---|---|---|---|
+| Índia (RAJ) | 0,65 / 0,42 | 61 / 56 | 22 / 37 |
+| Egito | 0,65 / 0,44 | 62 / 59 | 22 / 38 |
+| Colônias britânicas | 0,79 / 0,57 | 78 / 54 | 15 / 42 |
+| Colônias francesas | 0,78 / 0,56 | 77 / 59 | 15 / 40 |
+| China | 0,65 / 0,70 | 57 / 67 | 25 / 23 |
+
+A queda vem da escolaridade e da sobrevivência infantil, os dois termos de maior peso, e da
+contracepção. As três entram infladas na Ásia do Sul, no Egito e nas colônias:
+
+- a economia alfabetiza as colônias no ritmo da metrópole (+0,22 nas colônias britânicas em 1985);
+- os efeitos de pesquisa (remédio e pílula) são por mercado, e as colônias dividem o mercado com a
+  metrópole: recebem a medicina britânica e francesa (expectativa de vida de 78 anos em 1985,
+  contra 54) e a pílula com a força delas (contracepção 1,0 em 1985).
+
+Entre 1965 e 1975 a nota das colônias britânicas sobe de 0,58 para 0,81: +0,10 vêm da
+contracepção, +0,07 da escolaridade e +0,05 da sobrevivência. É entrada errada da economia e da
+política (ensino, saúde e orçamento coloniais), não parâmetro da demografia: com as entradas reais
+de 1985, a nota da Índia ficaria perto de 0,60 em vez de 0,70, e a fecundidade perto de 4 filhos
+(real 4,3) em vez de 2,9. A China vai no sentido oposto (alfabetização e saúde abaixo do real) e
+fica na medida pelo freio da fome de terra.
+
+### O que guerra e fome tirariam
+
+O modelo não tem guerra nem fome. A Segunda Guerra matou de 60 a 75 milhões de pessoas, das quais
+19 a 28 milhões por fome e doença da guerra (Wikipedia, *World War II casualties*, CC BY-SA). As
+fomes de 1920 a 2019 mataram 98 milhões, 61 milhões delas de 1930 a 1969 (China, URSS, Bengala;
+World Peace Foundation, via Our World in Data, *Deaths from famines by decade*, CC BY). Juntas, e
+descontada a sobreposição, são de 130 a 150 milhões de mortes antes de 1970, mais os nascimentos
+que não houve e os descendentes de ambos. É o que explica o mundo simulado de 1945 a 1975 acima do
+real; não é o que explica 2025, que fica abaixo.
+
+**China e Índia, dependência.** A queda real da fecundidade chinesa (6 filhos em 1970, 2,7 em
+1979) veio de saúde, escola e planejamento familiar de um regime ("mais tarde, mais espaçados,
+menos" e o filho único), que o modelo ainda não tem (fase 7). Na rodada a China chega a 1,08 do
+real pelo freio da fome de terra; a Índia, a 0,60, pela entrada inflada acima.
+
+### Chegadas ao Brasil por origem (mil por ano, simulado / IBGE)
+
+| Estrada | 1925s | 1935s | 1945s | 1955s | 1965s |
+|---|---|---|---|---|---|
+| Brasil ← Itália | 18.4 / 6.0 [7] | 25.2 / 1.3 [5] | 32.5 / 4.9 [3] | 38.5 / – | 41.2 / – |
+| Brasil ← Portugal | 18.5 / 24.1 [7] | 23.0 / 10.1 [5] | 26.3 / 12.3 [3] | 31.6 / – | 37.0 / – |
+| Brasil ← Espanha | 14.4 / 4.9 [7] | 21.5 / 0.5 [5] | 28.0 / 4.0 [3] | 37.9 / – | 40.1 / – |
+| Brasil ← Alemanha | 9.1 / 4.8 [7] | 9.8 / 2.3 [5] | 13.7 / 1.7 [3] | 13.2 / – | 20.2 / – |
+| Brasil ← Japão | 7.6 / 12.0 [7] | 3.6 / 2.6 [5] | 10.3 / 0.0 [3] | 14.9 / – | 21.8 / – |
+| Brasil ← URSS | 0.1 / 0.9 [7] | 0.3 / 0.0 [5] | 0.4 / 0.0 [3] | 0.6 / – | 1.0 / – |
+| Brasil ← todos | 90.3 / 73.1 [7] | 116.0 / 21.6 [5] | 150.2 / 29.9 [3] | 189.9 / – | 237.3 / – |
+| EUA ← todos | 295.5 / 194.8 | 317.1 / 47.6 | 336.5 / 175.2 | 358.2 / 281.9 | 377.9 / 371.6 |
+
+- **1925:** dentro do fator 3 Portugal (0,77), Espanha (2,9), Alemanha (1,9) e Japão (0,63); a
+  Itália fica no limite (3,07). O total (90 contra 73) fica perto.
+- **1935:** dentro, Portugal (2,3) e Japão (1,4). Fora, a Itália (19×), a Espanha (43×) e a
+  Alemanha (4,3×). A referência despenca pela Depressão, pela cota brasileira de 1934 (a lei muda
+  só por movimento político, e na rodada o `nativism` tira o subsídio em 1976 e põe cotas em 1981),
+  pela restrição fascista de 1927 e pela Guerra Civil Espanhola (1936–39). Regime e guerra:
+  dependência anotada.
+- **Sírio-libaneses:** fluxo positivo, de 2,9 mil por ano em 1925–34 a 14 mil por ano nos anos
+  1980. O IBGE de 1952 não os separa ("outros"), e a série anual não existe em fonte aberta. A
+  conferência é o estoque: 19 290 no estado de São Paulo em 1920 (Truzzi, *Revista Brasileira de
+  Estudos de População*, 2019, CC BY) e 45 786 de nacionalidade síria no Brasil em 1940
+  (recenseamento de 1940, edição de 1947, nota 7). No modelo, 41 mil em 1925 (comunidades, com os
+  filhos) mais cerca de 52 mil chegados até 1940: a mesma ordem, contando descendentes.
+
+### Ondas de migração (as maiores)
+
+| Origem → destino | Abriu | Fechou | Por quê abriu | Por quê fechou | Pessoas (mil) |
+|---|---|---|---|---|---:|
+| CHN/metropole → NLD/colonies | 2002-04 | 2013-01 | Land | Full | 6712 |
+| ESP/metropole → ARG/metropole | 1925-01 | aberta | Poverty | – | 3789 |
+| ROM/metropole → FRA/metropole | 1951-10 | aberta | Poverty | – | 3029 |
+| CHN/metropole → NLD/colonies | 2013-02 | 2017-02 | Land | Full | 2728 |
+| CHN/metropole → NLD/colonies | 2017-03 | 2020-02 | Land | Full | 2048 |
+| CHN/metropole → NLD/colonies | 2021-10 | 2024-03 | Land | Full | 1751 |
+| BRA/metropole → FRA/metropole | 2012-12 | aberta | Poverty | – | 1632 |
+| CHN/metropole → NLD/colonies | 2024-04 | aberta | Land | – | 1286 |
+| TUR/metropole → BUL/metropole | 1925-01 | 1983-01 | Land | DoorClosed | 1195 |
+| CHN/metropole → NLD/colonies | 2020-03 | 2021-09 | Land | Full | 1072 |
+| GER/metropole → CAN/metropole | 2004-06 | aberta | Poverty | – | 872 |
+| EGY/metropole → FRA/colonies | 2008-03 | aberta | Poverty | – | 781 |
+
+### Determinismo e desempenho
+
+Salvar em 1975 e recarregar dá o mesmo hash final na rodada de 100 anos. Com 10 anos e 1 thread,
+o hash é o mesmo com outro número de threads (`--check-determinism`). CPU de 10 anos, 1 thread,
+sob a trava: `main` 48,4 s, branch 50,8 s (+4,8 %). O sistema `demography` custa 0,55 s, contra
+0,06 s da demografia antiga; o tick mais lento é o primeiro mês (197 ms), que monta a pirâmide de
+1925 de cada estado.
 
 ## Fontes
 

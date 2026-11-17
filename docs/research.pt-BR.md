@@ -53,8 +53,8 @@ país), até a IA da fase 6.
   própria, mais rápido onde se lê e quanto maior a parcela do mundo que já faz.
 - **Uso sem fabricar:** os efeitos de mortalidade, fecundidade e alfabetização chegam pelo uso
   (vacina, antibiótico, pílula importados), em 15 anos a partir da primeira fábrica no mundo,
-  mais depressa onde se lê. A pílula só baixa a natalidade na proporção da alfabetização ao
-  quadrado (a escola das mães).
+  mais depressa onde se lê. A pílula baixa o piso da fecundidade na proporção da escolaridade das
+  mães; como os efeitos entram na demografia: `population.pt-BR.md`, "Demografia".
 - **Escolha de método:** lucro = valor adicionado − salário de mercado × trabalhadores. Mecanizar
   compensa onde o trabalho é caro e não onde é barato; antes, com o lucro como fração fixa do valor
   adicionado, quase nenhuma fábrica trocava de método.
