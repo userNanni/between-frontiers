@@ -58,3 +58,6 @@ saves-menu-play-other = Jogar com outro país
 saves-rename-ok = Renomear
 saves-cancel = Cancelar
 saves-new-cancel = Voltar aos pontos de restauração
+cmd-campaign-menu = Opções da campanha
+    .short = Opções
+saves-list-title = Campanhas salvas

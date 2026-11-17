@@ -15,6 +15,8 @@ pub enum Icon {
     Minus,
     Plus,
     Menu,
+    /// Three dots: more options.
+    More,
     Shield,
     Chart,
     Globe,
@@ -43,6 +45,7 @@ impl Icon {
             Icon::Minus => include_image!("../../../assets/icons/minus.svg"),
             Icon::Plus => include_image!("../../../assets/icons/plus.svg"),
             Icon::Menu => include_image!("../../../assets/icons/menu.svg"),
+            Icon::More => include_image!("../../../assets/icons/more.svg"),
             Icon::Shield => include_image!("../../../assets/icons/shield.svg"),
             Icon::Chart => include_image!("../../../assets/icons/chart.svg"),
             Icon::Globe => include_image!("../../../assets/icons/globe.svg"),
@@ -87,7 +90,14 @@ pub fn icon_button(ui: &mut Ui, icon: Icon, side: f32, tip: &str, active: bool) 
     } else {
         color::SURFACE_RAISED
     };
-    let stroke = if active { color::ACCENT } else { color::BORDER };
+    // Focused from the keyboard: the accent around it.
+    let stroke = if active || response.has_focus() {
+        color::ACCENT
+    } else if hovered {
+        color::BORDER_STRONG
+    } else {
+        color::BORDER
+    };
     ui.painter().rect(
         rect,
         radius::MD,
