@@ -92,6 +92,11 @@ pub fn main() -> Result<(), String> {
         .map(|(k, _, _)| cat.good(k).map(usize::from))
         .collect();
     let mut s = Session::new(world, 1, Date::new(1925, 1, 1), 0, Some(data.rules()));
+    // Counterfactual laws held all century: `BF_LAWS="CHN=planned_economy+closed_capital+autarky"`
+    // (several countries separated by `;`). Applied on the first day and every 1 January after,
+    // so that no movement undoes them.
+    let forced = forced_laws(&data)?;
+    force(&mut s, &forced);
     // Energy in a later year: demand by source, prices and the power plants' methods.
     if let Some(year) = std::env::var("BF_DIAG_ENERGY")
         .ok()
@@ -545,11 +550,15 @@ pub fn main() -> Result<(), String> {
         let groups = bf_sim::economy::BUILDING_GROUPS;
         let gi = |k: &str| groups.iter().position(|g| *g == k).unwrap_or(0);
         for y in (1935..=2025).step_by(10) {
-            s.sim.run_until(Date::new(y, 1, 2));
-            let e = &s.world().econ;
+            for year in (y - 9)..=y {
+                s.sim.run_until(Date::new(year, 1, 2));
+                force(&mut s, &forced);
+            }
+            let w = s.world();
+            let e = &w.econ;
             print!("{y}:");
             for tag in [
-                "USA", "GBR", "GER", "JAP", "SOV", "BRA", "MEX", "CHN", "RAJ",
+                "USA", "GBR", "GER", "FRA", "JAP", "SOV", "BRA", "MEX", "CHN", "RAJ",
             ] {
                 let Some(mi) = tags.iter().position(|t| t == tag) else {
                     continue;
@@ -567,13 +576,17 @@ pub fn main() -> Result<(), String> {
                     .sum::<f64>()
                     / pop.max(1) as f64;
                 let t = |k: &str| m.tech_tfp.get(gi(k)).map_or(1.0, |x| x.to_f64_lossy());
+                let jobs = crate::history::sector_shares(&data, w, mi);
                 print!(
-                    " {tag} gdp {:.0} base {:.2} heavy {:.2} serv {:.2} agr {:.2} |",
+                    " {tag} gdp {:.0} base {:.2} heavy {:.2} serv {:.2} agr {:.2} jobs {:.0}/{:.0}/{:.0} |",
                     m.gdp_last_year.to_f64_lossy() / pop.max(1) as f64,
                     base,
                     t("heavy_industry"),
                     t("services"),
-                    t("agriculture")
+                    t("agriculture"),
+                    jobs[0] * 100.0,
+                    jobs[1] * 100.0,
+                    jobs[2] * 100.0
                 );
             }
             println!();
@@ -603,4 +616,34 @@ pub fn main() -> Result<(), String> {
         );
     }
     Ok(())
+}
+
+/// `BF_LAWS`: (tag, law index) pairs to hold all century.
+fn forced_laws(data: &GameData) -> Result<Vec<(String, u16)>, String> {
+    let Ok(spec) = std::env::var("BF_LAWS") else {
+        return Ok(Vec::new());
+    };
+    let p = data.politics.as_ref().ok_or("BF_LAWS: no politics data")?;
+    let mut out = Vec::new();
+    for part in spec.split(';').filter(|x| !x.trim().is_empty()) {
+        let (tag, laws) = part
+            .split_once('=')
+            .ok_or_else(|| format!("BF_LAWS: {part:?} is not TAG=law+law"))?;
+        for law in laws.split('+') {
+            let i = p
+                .law(law.trim())
+                .ok_or_else(|| format!("BF_LAWS: unknown law {law:?}"))?;
+            out.push((tag.trim().to_string(), i as u16));
+        }
+    }
+    Ok(out)
+}
+
+fn force(s: &mut Session, laws: &[(String, u16)]) {
+    for (tag, law) in laws {
+        s.submit(bf_sim::game::GameCommand::SetLaw {
+            tag: tag.clone(),
+            law: *law,
+        });
+    }
 }
