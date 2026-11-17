@@ -28,10 +28,62 @@ pub struct ForcesChanges {
 }
 
 /// Merges a list of (good, quantity) into a sorted list.
+pub fn add_goods(list: &mut Vec<(u16, Fixed)>, g: u16, q: Fixed) {
+    add(list, g, q)
+}
+
 fn add(list: &mut Vec<(u16, Fixed)>, g: u16, q: Fixed) {
     match list.binary_search_by_key(&g, |(k, _)| *k) {
         Ok(i) => list[i].1 += q,
         Err(i) => list.insert(i, (g, q)),
+    }
+}
+
+fn held(list: &[(u16, Fixed)], g: u16) -> Fixed {
+    list.iter()
+        .find(|(k, _)| *k == g)
+        .map_or(Fixed::ZERO, |e| e.1)
+}
+
+/// Puts `elements` of a type into the formation of the same kind, or a new one, diluting its
+/// training by the newcomers' and adding their equipment.
+fn join(
+    c: &mut CountryWar,
+    (unit, generation, colonial, raised): (u16, u8, bool, bool),
+    elements: Fixed,
+    training: Fixed,
+    equipment: Vec<(u16, Fixed)>,
+) {
+    let i = match c.formations.iter().position(|f| {
+        f.unit == unit
+            && f.generation == generation
+            && f.colonial == colonial
+            && f.raised == raised
+            && !f.called_up
+    }) {
+        Some(i) => i,
+        None => {
+            c.formations.push(Formation {
+                unit,
+                generation,
+                elements: Fixed::ZERO,
+                colonial,
+                called_up: false,
+                equipment: Vec::new(),
+                training,
+                raised,
+            });
+            c.formations.len() - 1
+        }
+    };
+    let f = &mut c.formations[i];
+    let total = f.elements + elements;
+    if total.is_positive() {
+        f.training = (f.training * f.elements + training * elements) / total;
+    }
+    f.elements = total;
+    for (g, q) in equipment {
+        add(&mut f.equipment, g, q);
     }
 }
 
@@ -156,12 +208,13 @@ impl Forces {
                 e.1 -= *q;
             }
             f.elements -= moved;
-            let (unit, colonial, training) = (f.unit, f.colonial, f.training);
+            let (unit, colonial, training, raised) = (f.unit, f.colonial, f.training, f.raised);
             let to = match c.formations.iter().position(|g| {
                 g.unit == unit
                     && g.generation as usize == next
                     && g.colonial == colonial
                     && !g.called_up
+                    && g.raised == raised
             }) {
                 Some(j) => j,
                 None => {
@@ -173,6 +226,7 @@ impl Forces {
                         called_up: false,
                         equipment: Vec::new(),
                         training,
+                        raised,
                     });
                     c.formations.len() - 1
                 }
@@ -187,6 +241,158 @@ impl Forces {
         }
         c.formations
             .retain(|f| f.elements.is_positive() || f.called_up);
+    }
+
+    /// The newest generation of type `ty` the country can equip, if any.
+    fn newest(&self, world: &GameWorld, country: usize, ty: u16) -> Option<u8> {
+        let n = self.military.types[ty as usize].generations.len();
+        (0..n)
+            .rev()
+            .find(|&g| self.can_equip(world, country, ty, g))
+            .map(|g| g as u8)
+    }
+
+    /// Ships, aircraft and strategic forces whose equipment is complete join the forces, with
+    /// their crews untrained: aircraft one by one, ships and strategic forces the whole order at
+    /// once; orders fully delivered leave the queue.
+    fn deliver(&self, c: &mut CountryWar) {
+        let mil = &self.military;
+        let mut done = Vec::new();
+        for k in 0..c.queue.len() {
+            let o = &c.queue[k];
+            let (Some(ty), Some(generation)) = (mil.unit(&o.unit), o.generation) else {
+                continue;
+            };
+            if mil.types[ty as usize].domain == Domain::Land {
+                continue;
+            }
+            let per = &mil.spec(ty, generation as usize).equipment;
+            // Whole elements still to deliver, the last one perhaps a part.
+            let left = (o.ordered - o.delivered + Fixed::from_raw(Fixed::SCALE - 1)).to_int_floor();
+            let ready = per
+                .iter()
+                .filter(|(_, q)| q.is_positive())
+                .map(|(g, q)| (held(&o.built, *g) / *q).to_int_floor())
+                .min()
+                .unwrap_or(left)
+                .min(left);
+            // Ships and strategic forces are built side by side and join together at the end
+            // of their build weeks; aircraft leave the line one by one.
+            let ready = if mil.types[ty as usize].domain == Domain::Air || ready >= left {
+                ready
+            } else {
+                0
+            };
+            if ready <= 0 {
+                continue;
+            }
+            let n = Fixed::from_int(ready).min(o.ordered - o.delivered);
+            let equipment: Vec<(u16, Fixed)> = per.iter().map(|(g, q)| (*g, *q * n)).collect();
+            let o = &mut c.queue[k];
+            for (g, q) in &equipment {
+                if let Ok(i) = o.built.binary_search_by_key(g, |(k, _)| *k) {
+                    o.built[i].1 = (o.built[i].1 - *q).max(Fixed::ZERO);
+                }
+            }
+            o.delivered += n;
+            let colonial = o.colonial;
+            if o.delivered >= o.ordered {
+                done.push(k);
+            }
+            join(c, (ty, generation, colonial, false), n, Fixed::ZERO, equipment);
+        }
+        for k in done.into_iter().rev() {
+            let o = c.queue.remove(k);
+            // What was built beyond the last element goes to the depot.
+            for (g, q) in o.built {
+                if q.is_positive() {
+                    add(&mut c.depot, g, q);
+                }
+            }
+        }
+    }
+
+    /// Pays the orders from `money`, the military budget left this week once the needs are
+    /// paid, in the order they were placed. Land orders raise a class of men this week, as far
+    /// as the money pays the replacement of their equipment over `replace_weeks`; the others
+    /// draw on the depot and buy this week's part of their equipment. Returns what is left.
+    fn place_orders(
+        &self,
+        world: &GameWorld,
+        ci: usize,
+        c: &mut CountryWar,
+        mut money: Fixed,
+        prices: &[Fixed],
+    ) -> Fixed {
+        let mil = &self.military;
+        let weeks = i64::from(self.peace.replace_weeks.max(1));
+        let mut raised = Vec::new();
+        let CountryWar { queue, depot, .. } = c;
+        for o in queue.iter_mut() {
+            o.buying.clear();
+            let Some(ty) = mil.unit(&o.unit) else {
+                continue;
+            };
+            if o.generation.is_none() {
+                o.generation = self.newest(world, ci, ty);
+            }
+            let Some(generation) = o.generation else {
+                continue;
+            };
+            if !money.is_positive() {
+                continue;
+            }
+            let per = &mil.spec(ty, generation as usize).equipment;
+            let unit_cost: Fixed = per.iter().map(|(g, q)| *q * prices[*g as usize]).sum();
+            let left = o.ordered - o.delivered;
+            if mil.types[ty as usize].domain == Domain::Land {
+                let pace = o.ordered / i64::from(self.peace.raise_weeks.max(1));
+                let mut n = pace.min(left);
+                if unit_cost.is_positive() {
+                    n = n.min(money * weeks / unit_cost);
+                }
+                if !n.is_positive() {
+                    continue;
+                }
+                money -= n * unit_cost / weeks;
+                o.delivered += n;
+                raised.push(((ty, generation, o.colonial, true), n));
+            } else {
+                // This week's part of the whole order, short of what is built: from the depot
+                // first, the rest bought. The depot does not shorten the build, it pays for it.
+                let build = i64::from(self.peace.build_weeks(&mil.types[ty as usize].key));
+                for (g, q) in per {
+                    let want = (*q * left - held(&o.built, *g)).max(Fixed::ZERO);
+                    let mut pace = (*q * o.ordered / build).min(want);
+                    if let Ok(i) = depot.binary_search_by_key(g, |(k, _)| *k) {
+                        let take = pace.min(depot[i].1);
+                        if take.is_positive() {
+                            depot[i].1 -= take;
+                            add(&mut o.built, *g, take);
+                            pace -= take;
+                        }
+                    }
+                    let p = prices[*g as usize];
+                    if !pace.is_positive() || !p.is_positive() {
+                        continue;
+                    }
+                    let q = pace.min(money / p);
+                    if q.is_positive() {
+                        money -= q * p;
+                        add(&mut o.buying, *g, q);
+                    }
+                }
+            }
+        }
+        for (key, n) in raised {
+            // Recruits report untrained and without equipment: the depot and the replacement
+            // purchases equip them.
+            join(c, key, n, Fixed::ZERO, Vec::new());
+        }
+        c.queue.retain(|o| {
+            o.delivered < o.ordered || o.built.iter().any(|(_, q)| q.is_positive())
+        });
+        money
     }
 
     fn country_week(
@@ -262,6 +468,15 @@ impl Forces {
                 }
             }
         }
+        // Orders (slice A2): last week's purchases go to what is being built, and whatever is
+        // complete joins the forces.
+        for o in &mut c.queue {
+            for (g, q) in std::mem::take(&mut o.buying) {
+                let got = q * m.buy_ratio.get(g as usize).copied().unwrap_or(Fixed::ZERO);
+                add(&mut o.built, g, got);
+            }
+        }
+        self.deliver(&mut c);
         // 2. Training rises a week at a time toward complete, over the type's training weeks.
         for f in &mut c.formations {
             let weeks = mil
@@ -297,6 +512,7 @@ impl Forces {
                         called_up: true,
                         equipment: Vec::new(),
                         training: Fixed::from_ratio(i64::from(rules.reserve.training), 1000),
+                        raised: false,
                     }),
                 }
             }
@@ -314,8 +530,10 @@ impl Forces {
         let new_year = ctx.date.month == 1 && ctx.date.day <= 7;
         if new_year && self.peace.peace_size == PeaceSize::ShareOfServiceAge && !c.mobilized {
             let of_age = self.men_of_service_age(world, ci);
-            let land =
-                |f: &Formation| mil.types[f.unit as usize].domain == Domain::Land && !f.called_up;
+            // Forces raised by an order stay outside the size in peace.
+            let land = |f: &Formation| {
+                mil.types[f.unit as usize].domain == Domain::Land && !f.called_up && !f.raised
+            };
             let land_men: i64 = c
                 .formations
                 .iter()
@@ -394,11 +612,19 @@ impl Forces {
             (orders, repair)
         };
         let (first, _) = needs(&c);
-        let spare = room - price(&first);
+        let mut spare = room - price(&first);
+        if spare.is_positive() && !c.queue.is_empty() {
+            spare = self.place_orders(world, ci, &mut c, spare, &m.price);
+        }
         if spare.is_positive() && !c.mobilized {
             self.modernize(world, ci, &mut c, spare * weeks, &m.price);
         }
         let (mut orders, mut repair) = needs(&c);
+        for o in &c.queue {
+            for (g, q) in &o.buying {
+                add(&mut orders, *g, *q);
+            }
+        }
         let cost = price(&orders);
         let mut upgrade: Vec<(u16, Fixed)> = Vec::new();
         if cost > room && cost.is_positive() {
@@ -406,6 +632,11 @@ impl Forces {
             let cut = room / cost;
             for (_, q) in orders.iter_mut().chain(repair.iter_mut()) {
                 *q *= cut;
+            }
+            for o in &mut c.queue {
+                for (_, q) in o.buying.iter_mut() {
+                    *q *= cut;
+                }
             }
         } else {
             // The rest buys the military goods in the proportions of the state's military basket

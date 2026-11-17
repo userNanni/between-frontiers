@@ -223,6 +223,19 @@ pub enum GameCommand {
     /// Calls up the country's reserve (`on`) or sends it home; the forces system carries it out
     /// over the weeks of `reserve.call_up_weeks`.
     Mobilize { tag: String, on: bool },
+    /// Orders `elements` of unit type `unit` (key in `units.ron`; thousands of men on land, ships
+    /// at sea, aircraft in the air), in the colonies or at home. The forces system pays it from
+    /// the military budget right after the needs (`war::ForceOrder`). Unknown tags, zero
+    /// elements and countries without forces are no-ops.
+    OrderForces {
+        tag: String,
+        unit: String,
+        elements: u32,
+        colonial: bool,
+    },
+    /// Cancels the country's order at `index` of its queue: what it built goes to the depot,
+    /// the men it raised stay.
+    CancelOrder { tag: String, index: u32 },
     /// Points the country's research at a technology (index in the tree), or back to choosing
     /// by itself with `None`. Unknown tags and indices are no-ops.
     SetResearch { tag: String, tech: Option<u16> },
@@ -352,6 +365,43 @@ impl Command<GameWorld> for GameCommand {
                 };
                 if let Some(c) = world.war.countries.get_mut(ci) {
                     c.mobilized = *on;
+                }
+            }
+            GameCommand::OrderForces {
+                tag,
+                unit,
+                elements,
+                colonial,
+            } => {
+                let Some(ci) = world.countries.iter().position(|(_, c)| c.tag == *tag) else {
+                    return;
+                };
+                if *elements == 0 {
+                    return;
+                }
+                if let Some(c) = world.war.countries.get_mut(ci) {
+                    c.queue.push(crate::war::ForceOrder {
+                        unit: unit.clone(),
+                        generation: None,
+                        colonial: *colonial,
+                        ordered: Fixed::from_int(i64::from(*elements)),
+                        delivered: Fixed::ZERO,
+                        built: Vec::new(),
+                        buying: Vec::new(),
+                    });
+                }
+            }
+            GameCommand::CancelOrder { tag, index } => {
+                let Some(ci) = world.countries.iter().position(|(_, c)| c.tag == *tag) else {
+                    return;
+                };
+                if let Some(c) = world.war.countries.get_mut(ci)
+                    && (*index as usize) < c.queue.len()
+                {
+                    let o = c.queue.remove(*index as usize);
+                    for (g, q) in o.built {
+                        crate::war::add_goods(&mut c.depot, g, q);
+                    }
                 }
             }
             GameCommand::SetLaw { tag, law } => {
@@ -890,9 +940,102 @@ mod tests {
             hash_of(&with_ledger)
         );
         assert_eq!(
-            hash_of(&headed(9, &encode_snapshot(&with_ledger).unwrap())),
+            hash_of(&headed(10, &encode_snapshot(&with_ledger).unwrap())),
             hash_of(&with_ledger)
         );
+        // Version 9, before the orders: formations without `raised`, countries without a queue.
+        #[derive(Serialize)]
+        struct FormationV8<'a> {
+            unit: u16,
+            generation: u8,
+            elements: laplace_schelling::Fixed,
+            colonial: bool,
+            called_up: bool,
+            equipment: &'a Vec<(u16, laplace_schelling::Fixed)>,
+            training: laplace_schelling::Fixed,
+        }
+        #[derive(Serialize)]
+        struct CountryWarV8<'a> {
+            formations: Vec<FormationV8<'a>>,
+            reserve: u64,
+            peace_share: laplace_schelling::Fixed,
+            law_then: i32,
+            mobilized: bool,
+            orders: &'a Vec<(u16, laplace_schelling::Fixed)>,
+            repair: &'a Vec<(u16, laplace_schelling::Fixed)>,
+            upgrade: &'a Vec<(u16, laplace_schelling::Fixed)>,
+            depot: &'a Vec<(u16, laplace_schelling::Fixed)>,
+        }
+        #[derive(Serialize)]
+        struct WarV8<'a> {
+            countries: Vec<CountryWarV8<'a>>,
+            soldiers: &'a Vec<i64>,
+        }
+        #[derive(Serialize)]
+        struct BeforeOrders<'a> {
+            scenario: &'a String,
+            player: &'a Option<Id<Country>>,
+            countries: &'a Table<Country, CountryState>,
+            census: &'a Vec<CensusRecord>,
+            econ: &'a crate::econ::Economy,
+            research: &'a crate::research::ResearchState,
+            politics: &'a crate::polity::PoliticsState,
+            demography: &'a crate::demography::DemographyState,
+            borders: &'a crate::borders::BordersState,
+            foreign: &'a crate::foreign_stakes::ForeignState,
+            influence: &'a crate::influence::InfluenceState,
+            treaties: &'a crate::treaty::TreatyState,
+            war: WarV8<'a>,
+        }
+        let w = &with_ledger;
+        let v8 = encode_snapshot(&BeforeOrders {
+            scenario: &w.scenario,
+            player: &w.player,
+            countries: &w.countries,
+            census: &w.census,
+            econ: &w.econ,
+            research: &w.research,
+            politics: &w.politics,
+            demography: &w.demography,
+            borders: &w.borders,
+            foreign: &w.foreign,
+            influence: &w.influence,
+            treaties: &w.treaties,
+            war: WarV8 {
+                countries: w
+                    .war
+                    .countries
+                    .iter()
+                    .map(|c| CountryWarV8 {
+                        formations: c
+                            .formations
+                            .iter()
+                            .map(|f| FormationV8 {
+                                unit: f.unit,
+                                generation: f.generation,
+                                elements: f.elements,
+                                colonial: f.colonial,
+                                called_up: f.called_up,
+                                equipment: &f.equipment,
+                                training: f.training,
+                            })
+                            .collect(),
+                        reserve: c.reserve,
+                        peace_share: c.peace_share,
+                        law_then: c.law_then,
+                        mobilized: c.mobilized,
+                        orders: &c.orders,
+                        repair: &c.repair,
+                        upgrade: &c.upgrade,
+                        depot: &c.depot,
+                    })
+                    .collect(),
+                soldiers: &w.war.soldiers,
+            },
+        })
+        .unwrap();
+        assert_eq!(hash_of(&headed(9, &v8)), hash_of(&with_ledger));
+        assert_eq!(hash_of(&decode_world(&v8).unwrap()), hash_of(&with_ledger));
         // Version 8, before the forces: no forces then.
         let mut no_forces = data.new_world();
         no_forces.war = Default::default();

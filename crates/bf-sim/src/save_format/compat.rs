@@ -247,8 +247,8 @@ pub struct V8 {
 }
 
 /// 8 → 9: the armed forces (`GameWorld::war`), empty: a world without forces hashes as before.
-pub fn v8_to_v9(w: V8) -> GameWorld {
-    GameWorld {
+pub fn v8_to_v9(w: V8) -> V9 {
+    V9 {
         scenario: w.scenario,
         player: w.player,
         countries: w.countries,
@@ -262,5 +262,43 @@ pub fn v8_to_v9(w: V8) -> GameWorld {
         influence: w.influence,
         treaties: w.treaties,
         war: Default::default(),
+    }
+}
+
+/// Version 9: the armed forces, before the orders (slice A2).
+#[derive(Deserialize)]
+pub struct V9 {
+    scenario: String,
+    player: Option<Id<Country>>,
+    countries: Table<Country, CountryState>,
+    census: Vec<CensusRecord>,
+    econ: crate::econ::Economy,
+    research: crate::research::ResearchState,
+    politics: crate::polity::PoliticsState,
+    demography: crate::demography::DemographyState,
+    borders: crate::borders::BordersState,
+    foreign: crate::foreign_stakes::ForeignState,
+    influence: crate::influence::InfluenceState,
+    treaties: crate::treaty::TreatyState,
+    war: crate::war::state::WarStateBeforeOrders,
+}
+
+/// 9 → 10: the orders of forces (`CountryWar::queue`, `Formation::raised`), empty: a world where
+/// nobody ordered anything hashes as before.
+pub fn v9_to_v10(w: V9) -> GameWorld {
+    GameWorld {
+        scenario: w.scenario,
+        player: w.player,
+        countries: w.countries,
+        census: w.census,
+        econ: w.econ,
+        research: w.research,
+        politics: w.politics,
+        demography: w.demography,
+        borders: w.borders,
+        foreign: w.foreign,
+        influence: w.influence,
+        treaties: w.treaties,
+        war: w.war.into(),
     }
 }

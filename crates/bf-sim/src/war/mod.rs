@@ -33,7 +33,7 @@ pub use forces::*;
 pub use ledger::*;
 pub use nuclear::*;
 pub use state::*;
-pub use system::{Forces, place_soldiers, state_purchases, station_soldiers};
+pub use system::{Forces, add_goods, place_soldiers, state_purchases, station_soldiers};
 pub use terrain::*;
 
 use crate::econ::Catalogue;

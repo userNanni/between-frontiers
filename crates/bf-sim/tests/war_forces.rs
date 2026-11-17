@@ -265,3 +265,141 @@ fn equipment_beyond_the_needs_goes_to_the_depot_and_reservists_draw_on_it() {
     // The reservists took rifles from the depot as they reported, before any purchase arrived.
     assert!(fill(called) > 0.2, "{}", fill(called));
 }
+
+fn ordered(s: &Session, tag: &str, unit: &str) -> (laplace_schelling::Fixed, usize) {
+    let mil = &data().war.as_ref().unwrap().military;
+    let ty = mil.unit(unit).unwrap();
+    let c = &s.world().war.countries[index(s.world(), tag)];
+    let raised = c
+        .formations
+        .iter()
+        .filter(|f| f.unit == ty && f.raised)
+        .map(|f| f.elements)
+        .sum();
+    (raised, c.queue.len())
+}
+
+/// Slice A2: twenty thousand men ordered report a class a week over the raise weeks, untrained,
+/// and stay outside the size in peace the next January.
+#[test]
+fn a_land_order_raises_men_a_class_a_week_and_keeps_them() {
+    use laplace_schelling::Fixed;
+    let d = data();
+    let mut s = Session::new(
+        d.new_world(),
+        1925,
+        Date::new(1925, 1, 1),
+        2,
+        Some(d.rules()),
+    );
+    s.sim.run_until(Date::new(1926, 1, 12));
+    s.submit(GameCommand::OrderForces {
+        tag: "GBR".into(),
+        unit: "infantry".into(),
+        elements: 24,
+        colonial: false,
+    });
+    s.sim.run_until(Date::new(1926, 2, 9));
+    let (raised, queue) = ordered(&s, "GBR", "infantry");
+    // Four Mondays at 24 / 12 a week.
+    assert!(raised > Fixed::ZERO && raised <= Fixed::from_int(8), "{raised:?}");
+    assert_eq!(queue, 1);
+    let gbr = index(s.world(), "GBR");
+    let recruits = s.world().war.countries[gbr]
+        .formations
+        .iter()
+        .find(|f| f.raised)
+        .unwrap();
+    assert!(recruits.training < Fixed::from_ratio(1, 2), "recruits report untrained");
+    s.sim.run_until(Date::new(1926, 6, 1));
+    let (raised, queue) = ordered(&s, "GBR", "infantry");
+    assert_eq!(raised, Fixed::from_int(24));
+    assert_eq!(queue, 0, "the order is delivered");
+    s.sim.run_until(Date::new(1927, 1, 20));
+    let (after_january, _) = ordered(&s, "GBR", "infantry");
+    assert_eq!(after_january, Fixed::from_int(24), "January leaves the raised men alone");
+}
+
+/// Slice A2: destroyers ordered are built over their build weeks and join whole, not a part
+/// at a time; the money in construction shows as equipment built.
+#[test]
+fn ships_ordered_join_whole_after_their_build_weeks() {
+    let d = data();
+    let mil = &d.war.as_ref().unwrap().military;
+    let ty = mil.unit("destroyer").unwrap();
+    let mut s = Session::new(
+        d.new_world(),
+        1925,
+        Date::new(1925, 1, 1),
+        2,
+        Some(d.rules()),
+    );
+    s.sim.run_until(Date::new(1926, 1, 12));
+    let gbr = index(s.world(), "GBR");
+    let destroyers = |s: &Session| -> laplace_schelling::Fixed {
+        s.world().war.countries[gbr]
+            .formations
+            .iter()
+            .filter(|f| f.unit == ty)
+            .map(|f| f.elements)
+            .sum()
+    };
+    let before = destroyers(&s);
+    s.submit(GameCommand::OrderForces {
+        tag: "GBR".into(),
+        unit: "destroyer".into(),
+        elements: 4,
+        colonial: false,
+    });
+    s.sim.run_until(Date::new(1926, 7, 1));
+    let c = &s.world().war.countries[gbr];
+    assert_eq!(c.queue.len(), 1);
+    assert!(
+        c.queue[0].built.iter().any(|(_, q)| q.is_positive()),
+        "half built"
+    );
+    // Wear takes a share of the old destroyers, but no new one has joined.
+    assert!(destroyers(&s) <= before);
+    s.sim.run_until(Date::new(1927, 3, 1));
+    let c = &s.world().war.countries[gbr];
+    assert!(c.queue.is_empty(), "{:?}", c.queue);
+    let got = destroyers(&s) - before;
+    assert!(
+        got.to_int_floor() >= 3 && got <= laplace_schelling::Fixed::from_int(4),
+        "{got:?}"
+    );
+}
+
+/// Slice A2: an order cancelled hands what it built to the depot.
+#[test]
+fn a_cancelled_order_goes_to_the_depot() {
+    let d = data();
+    let mut s = Session::new(
+        d.new_world(),
+        1925,
+        Date::new(1925, 1, 1),
+        2,
+        Some(d.rules()),
+    );
+    s.sim.run_until(Date::new(1926, 1, 12));
+    s.submit(GameCommand::OrderForces {
+        tag: "GBR".into(),
+        unit: "cruiser".into(),
+        elements: 2,
+        colonial: false,
+    });
+    s.sim.run_until(Date::new(1926, 4, 1));
+    let gbr = index(s.world(), "GBR");
+    let built = s.world().war.countries[gbr].queue[0].built.clone();
+    assert!(!built.is_empty());
+    let mil = &d.war.as_ref().unwrap().military;
+    let depot = mil.value_lots(&s.world().war.countries[gbr].depot);
+    s.submit(GameCommand::CancelOrder {
+        tag: "GBR".into(),
+        index: 0,
+    });
+    s.sim.step();
+    let c = &s.world().war.countries[gbr];
+    assert!(c.queue.is_empty());
+    assert!(mil.value_lots(&c.depot) > depot);
+}

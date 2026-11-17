@@ -717,6 +717,49 @@ O PR que liga as forças precisa de:
 - uma faixa com pelo menos oito amostras de reembaralhamento sobre a `main` atual;
 - a origem do PIB a mais de 1975 (+3,2 % com o depósito, +0,5 % sem ele).
 
+## Encomenda de forças (fatia A2, rascunho)
+
+O jogador encomenda tropas, navios e aviões; o Estado paga com o teto militar, logo depois das
+necessidades. Código em `war/system.rs` (`place_orders`, `deliver`), estado em
+`CountryWar::queue`; prazos em `data/military/peace.ron`.
+
+**Ordem dentro do teto:**
+1. necessidades (consumo e reposição);
+2. **encomendas**, na ordem em que foram feitas;
+3. modernização;
+4. reserva de guerra (depósito).
+
+A encomenda consome a sobra que antes ia para o depósito. Com o teto curto, ela espera: a
+encomenda não corta a reposição das formações que já existem.
+
+| Peça | Como é na vida real | No jogo | Muda a simulação? |
+|---|---|---|---|
+| Divisão nova | chamam-se classes de recrutas ao longo de meses; o treino básico vem depois, e a divisão fica pronta em cerca de um ano | os homens se apresentam por classe: a cada semana 1/12 do pedido (`raise_weeks` = 12), sem treino e sem equipamento. O treino sobe pelas semanas do tipo, e o equipamento sai do depósito e da reposição | sim: tira homens do trabalho e pede equipamento à indústria |
+| Exército encomendado e lei | o tamanho em paz segue a lei e o orçamento; uma expansão decidida fica | as formações encomendadas (`raised`) ficam fora da regra de janeiro, que só ajusta o exército de paz | sim: as tropas encomendadas não somem no ano seguinte |
+| Navio | lançado no estaleiro, fica de 1 a 3 anos na carreira e entra em serviço inteiro (contratorpedeiro 1 ano, cruzador 2, encouraçado e porta-aviões 3) | o equipamento é comprado a cada semana, na parte do pedido inteiro sobre as semanas de construção (`build_weeks`), e fica "em construção". Os navios do pedido são construídos lado a lado e entram juntos, inteiros, ao fim das semanas de construção, com a tripulação sem treino | sim: é demanda aos estaleiros por anos, antes de haver navio |
+| Avião | encomendado em lote, entregue em meses | comprado como o navio, em 26 semanas, mas sai da linha avião a avião | sim |
+| Depósito | o estoque paga a encomenda, mas não apressa o estaleiro | o depósito paga primeiro a parte da semana; a construção leva o mesmo tempo | sim: gasta o estoque antes de comprar |
+| Cancelar | o casco inacabado vira sucata ou estoque | o que foi construído vai ao depósito; os homens já chamados ficam | sim |
+| Geração | o navio segue o projeto de quando foi lançado | a geração é a mais nova que o país sabe equipar na primeira semana paga, e fica | não |
+
+**Gradual ou por coorte.** O soldado é gradual (classe por classe), e o navio e o avião são por
+coorte: um navio pela metade não luta. A diferença importa, porque metade do dinheiro de um
+encouraçado não dá meio encouraçado no mar. A aba mostra o estoque intermediário: as encomendas,
+quantos elementos já foram entregues e quanto do equipamento está em construção.
+
+**Hash.** Sem encomendas, o hash é o da fatia A: a fila vazia e o `raised` falso não entram no
+hash.
+
+**Dependência: o teto da alavanca D3.** Hoje o teto é a parte militar da cesta (fatia A). Quando a
+alavanca das compras do Estado entrar (thread da demografia e do ensino), as encomendas passam a
+ler o teto de `public::military_room(m)`, que o jogador decide, e mais nada muda aqui.
+
+**Falta no rascunho:**
+- dissolver tropas encomendadas (os homens voltam à reserva) e baixar navios;
+- a tela (lista de encomendas na aba Forças, com a encomenda e o cancelamento) e o teste de
+  comandos do jogador;
+- a rodada de 101 anos com encomendas de teste e a CPU.
+
 ## O que falta para ligar ao tick
 
 O contrato, os dados e as funções estão prontos e testados. Nada roda ainda. Quando a fase 5

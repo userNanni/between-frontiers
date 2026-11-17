@@ -34,6 +34,31 @@ pub struct PeaceRules {
     /// (country, men under arms per mille of the men of service age), in place of 1925's.
     #[serde(default)]
     pub share_override: Vec<(String, u32)>,
+    /// Weeks over which the men of a land order report, a class at a time (slice A2).
+    #[serde(default = "default_raise_weeks")]
+    pub raise_weeks: u32,
+    /// Weeks from laying down to delivery of the ships, aircraft and strategic forces of an
+    /// order, by unit type key; the types not listed take [`DEFAULT_BUILD_WEEKS`].
+    #[serde(default)]
+    pub build_weeks: Vec<(String, u32)>,
+}
+
+fn default_raise_weeks() -> u32 {
+    12
+}
+
+/// Build weeks of a type not listed in [`PeaceRules::build_weeks`].
+pub const DEFAULT_BUILD_WEEKS: u32 = 52;
+
+impl PeaceRules {
+    /// Weeks to build one batch of type `key`, at least one.
+    pub fn build_weeks(&self, key: &str) -> u32 {
+        self.build_weeks
+            .iter()
+            .find(|(k, _)| k == key)
+            .map_or(DEFAULT_BUILD_WEEKS, |(_, w)| *w)
+            .max(1)
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -69,6 +94,30 @@ pub struct Formation {
     pub equipment: Vec<(u16, Fixed)>,
     /// Training completed, 0 to 1.
     pub training: Fixed,
+    /// Raised by an order (slice A2): outside the size in peace, which the January rule keeps
+    /// to the share of the men of service age.
+    pub raised: bool,
+}
+
+/// Forces a country ordered (slice A2), paid from the military budget right after the needs.
+/// Land orders raise men a class a week over [`PeaceRules::raise_weeks`], untrained and drawing
+/// their equipment from the depot and the purchases; ships, aircraft and strategic forces are
+/// built over [`PeaceRules::build_weeks`] and join whole, when their equipment is complete.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ForceOrder {
+    /// Unit type key in `units.ron`; an order of a type the catalogue lacks is dropped.
+    pub unit: String,
+    /// The generation laid down: the newest the country could equip in the first week the order
+    /// was paid; `None` until then.
+    pub generation: Option<u8>,
+    pub colonial: bool,
+    /// Elements ordered, and of them delivered.
+    pub ordered: Fixed,
+    pub delivered: Fixed,
+    /// Equipment of the elements still being built (ships on the slipway, aircraft on the line).
+    pub built: Vec<(u16, Fixed)>,
+    /// Of [`CountryWar::orders`], what this order buys this week; credited to `built` next week.
+    pub buying: Vec<(u16, Fixed)>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -93,6 +142,8 @@ pub struct CountryWar {
     /// The war reserve: equipment held in store, by good. Formations that lack equipment draw on
     /// it first (reservists called up, a newer generation, the wear); it wears like the rest.
     pub depot: Vec<(u16, Fixed)>,
+    /// Forces ordered and not yet delivered, in the order they were placed (slice A2).
+    pub queue: Vec<ForceOrder>,
 }
 
 /// The forces of the world. Empty when the forces are not loaded: the economy then runs the
@@ -145,6 +196,7 @@ impl WarState {
                             .map(|(g, q)| (*g, *q * elements))
                             .collect(),
                         training: Fixed::ONE,
+                        raised: false,
                     });
                 }
                 cw
@@ -197,6 +249,32 @@ impl HashState for Formation {
             q.hash_state(h);
         }
         self.training.hash_state(h);
+        // Only when set, and the queue only when it holds orders: a world where nobody ordered
+        // anything hashes as before the orders (slice A).
+        if self.raised {
+            h.write_u8(1);
+        }
+    }
+}
+
+impl HashState for ForceOrder {
+    fn hash_state(&self, h: &mut StateHasher) {
+        h.write_len(self.unit.len());
+        for b in self.unit.bytes() {
+            h.write_u8(b);
+        }
+        match self.generation {
+            None => h.write_u8(0),
+            Some(g) => {
+                h.write_u8(1);
+                h.write_u8(g);
+            }
+        }
+        self.colonial.hash_state(h);
+        self.ordered.hash_state(h);
+        self.delivered.hash_state(h);
+        hash_goods(h, &self.built);
+        hash_goods(h, &self.buying);
     }
 }
 
@@ -222,6 +300,12 @@ impl HashState for CountryWar {
         hash_goods(h, &self.repair);
         hash_goods(h, &self.upgrade);
         hash_goods(h, &self.depot);
+        if !self.queue.is_empty() {
+            h.write_len(self.queue.len());
+            for o in &self.queue {
+                o.hash_state(h);
+            }
+        }
     }
 }
 
@@ -232,5 +316,75 @@ impl HashState for WarState {
             c.hash_state(h);
         }
         h.write_i64_slice(&self.soldiers);
+    }
+}
+
+/// [`Formation`] as version 9 of the world wrote it, before the orders (no `raised`).
+#[derive(Deserialize)]
+pub(crate) struct FormationBeforeOrders {
+    unit: u16,
+    generation: u8,
+    elements: Fixed,
+    colonial: bool,
+    called_up: bool,
+    equipment: Vec<(u16, Fixed)>,
+    training: Fixed,
+}
+
+/// [`CountryWar`] as version 9 of the world wrote it, before the orders (no `queue`).
+#[derive(Deserialize)]
+pub(crate) struct CountryWarBeforeOrders {
+    formations: Vec<FormationBeforeOrders>,
+    reserve: u64,
+    peace_share: Fixed,
+    law_then: i32,
+    mobilized: bool,
+    orders: Vec<(u16, Fixed)>,
+    repair: Vec<(u16, Fixed)>,
+    upgrade: Vec<(u16, Fixed)>,
+    depot: Vec<(u16, Fixed)>,
+}
+
+/// [`WarState`] as version 9 of the world wrote it, before the orders.
+#[derive(Default, Deserialize)]
+pub(crate) struct WarStateBeforeOrders {
+    countries: Vec<CountryWarBeforeOrders>,
+    soldiers: Vec<i64>,
+}
+
+impl From<WarStateBeforeOrders> for WarState {
+    fn from(w: WarStateBeforeOrders) -> Self {
+        Self {
+            countries: w
+                .countries
+                .into_iter()
+                .map(|c| CountryWar {
+                    formations: c
+                        .formations
+                        .into_iter()
+                        .map(|f| Formation {
+                            unit: f.unit,
+                            generation: f.generation,
+                            elements: f.elements,
+                            colonial: f.colonial,
+                            called_up: f.called_up,
+                            equipment: f.equipment,
+                            training: f.training,
+                            raised: false,
+                        })
+                        .collect(),
+                    reserve: c.reserve,
+                    peace_share: c.peace_share,
+                    law_then: c.law_then,
+                    mobilized: c.mobilized,
+                    orders: c.orders,
+                    repair: c.repair,
+                    upgrade: c.upgrade,
+                    depot: c.depot,
+                    queue: Vec::new(),
+                })
+                .collect(),
+            soldiers: w.soldiers,
+        }
     }
 }
