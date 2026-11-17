@@ -500,3 +500,58 @@ fn annexation_carries_the_ledger() {
             .any(|d| d.debtor == fra && d.creditor == gbr && d.principal == to_gbr)
     );
 }
+
+/// Yugoslavia dissolves into two heirs: every state goes, nothing is created or lost, the
+/// country ends; heirs that miss a state are refused.
+#[test]
+fn a_dissolution_ends_the_country_and_conserves() {
+    let mut w = world();
+    let yug: Vec<String> = data()
+        .map
+        .states
+        .iter()
+        .filter(|s| s.owner == "YUG")
+        .map(|s| s.key.clone())
+        .collect();
+    assert!(yug.len() >= 2);
+    let (a, b) = yug.split_at(yug.len() / 2);
+    let heirs = |a: &[String], b: &[String]| {
+        vec![
+            bf_sim::borders::Heir {
+                tag: "HRV".into(),
+                states: a.to_vec(),
+                overlord: None,
+            },
+            bf_sim::borders::Heir {
+                tag: "SCG".into(),
+                states: b.to_vec(),
+                overlord: None,
+            },
+        ]
+    };
+    // Missing a state: refused, nothing moves.
+    w.borders.pending = vec![Operation::Dissolve {
+        from: "YUG".into(),
+        heirs: heirs(a, &b[1..]),
+        terms: Terms::default(),
+    }];
+    op::run_pending(&mut w, &data().border_rules, Date::new(1925, 2, 1));
+    assert_eq!(w.borders.refused.len(), 1, "{:?}", w.borders.refused);
+    let yug_ix = ix(&w, "YUG");
+    let debt_before = debt(&w, yug_ix);
+    run(
+        &mut w,
+        vec![Operation::Dissolve {
+            from: "YUG".into(),
+            heirs: heirs(a, b),
+            terms: Terms::default(),
+        }],
+    );
+    assert_eq!(holds(&w, yug_ix), 0);
+    assert_eq!(debt(&w, yug_ix), Fixed::ZERO);
+    assert_eq!(w.econ.markets[yug_ix].treasury, Fixed::ZERO);
+    let (hrv, scg) = (ix(&w, "HRV"), ix(&w, "SCG"));
+    assert_eq!(holds(&w, hrv) + holds(&w, scg), yug.len());
+    assert_eq!(debt(&w, hrv) + debt(&w, scg), debt_before);
+    assert_eq!(w.borders.changes.last().unwrap().ended, Some(yug_ix as u16));
+}

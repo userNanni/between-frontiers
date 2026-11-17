@@ -41,17 +41,69 @@ fn parse(d: &str) -> Date {
 }
 
 fn holds(w: &GameWorld, tag: &str) -> bool {
+    held(w, tag) > 0
+}
+
+fn held(w: &GameWorld, tag: &str) -> usize {
     let Some(c) = w.countries.iter().position(|(_, c)| c.tag == tag) else {
-        return false;
+        return 0;
     };
-    w.econ.regions.iter().any(|r| usize::from(r.market) == c)
+    w.econ
+        .regions
+        .iter()
+        .filter(|r| usize::from(r.market) == c)
+        .count()
 }
 
 /// The operation for one line of the reference, as the world stands: a secession into a country
 /// already born that day (Libya in 1951, from two administrations) is a transfer to it.
-fn operation(w: &GameWorld, c: &bf_sim::borders::SovereigntyChange) -> Option<Operation> {
+/// Map state keys of the states `tag` holds.
+fn keys_of(w: &GameWorld, rules: &bf_sim::borders::BorderRules, tag: &str) -> Vec<String> {
+    let Some(c) = w.countries.iter().position(|(_, c)| c.tag == tag) else {
+        return Vec::new();
+    };
+    let ids: std::collections::BTreeSet<u16> = w
+        .econ
+        .regions
+        .iter()
+        .filter(|r| usize::from(r.market) == c)
+        .map(|r| r.state)
+        .collect();
+    rules
+        .state_ids
+        .iter()
+        .filter(|(_, id)| ids.contains(id))
+        .map(|(k, _)| k.clone())
+        .collect()
+}
+
+fn operation(
+    w: &GameWorld,
+    rules: &bf_sim::borders::BorderRules,
+    c: &bf_sim::borders::SovereigntyChange,
+) -> Option<Operation> {
     let terms = Terms::default();
+    // The line takes every state the country still holds: the end of a dissolution (the last
+    // heir of Czechoslovakia, Yugoslavia, the Mali Federation) or a whole country handed over.
+    let everything = !c.states.is_empty() && c.states.len() == held(w, &c.from);
     Some(match c.kind {
+        ChangeKind::Transfer if everything && holds(w, &c.to) => Operation::Annex {
+            from: c.from.clone(),
+            into: c.to.clone(),
+            colony: false,
+            terms,
+        },
+        ChangeKind::Secession | ChangeKind::Transfer if everything && !holds(w, &c.to) => {
+            Operation::Dissolve {
+                from: c.from.clone(),
+                heirs: vec![bf_sim::borders::Heir {
+                    tag: c.to.clone(),
+                    states: c.states.clone(),
+                    overlord: None,
+                }],
+                terms,
+            }
+        }
         ChangeKind::Transfer => Operation::Transfer {
             from: c.from.clone(),
             to: c.to.clone(),
@@ -72,6 +124,17 @@ fn operation(w: &GameWorld, c: &bf_sim::borders::SovereigntyChange) -> Option<Op
             tag: c.to.clone(),
             overlord: None,
             signatories: vec![c.from.clone()],
+            terms,
+        },
+        // Into a country that is not there yet (Slovakia into the Czechoslovakia restored in April
+        // 1945, while the Czech lands were still German): the country is born again of it.
+        ChangeKind::Annexation if !holds(w, &c.to) => Operation::Dissolve {
+            from: c.from.clone(),
+            heirs: vec![bf_sim::borders::Heir {
+                tag: c.to.clone(),
+                states: keys_of(w, rules, &c.from),
+                overlord: None,
+            }],
             terms,
         },
         ChangeKind::Annexation => Operation::Annex {
@@ -109,7 +172,9 @@ pub fn submit(data: &GameData, s: &mut Session, log: &mut Log) {
         .filter(|c| parse(&c.date) == date)
     {
         let w = copy.as_ref().unwrap_or(s.world());
-        let Some(op) = operation(w, c) else { continue };
+        let Some(op) = operation(w, rules, c) else {
+            continue;
+        };
         let mut probe = copy.take().unwrap_or_else(|| s.world().clone());
         let before = Totals::of(&probe);
         let done = probe.borders.changes.len();
@@ -139,4 +204,46 @@ pub fn close(w: &GameWorld, log: &mut Log) {
         .iter()
         .map(|r| format!("{:?}: {}", r.date, r.reason))
         .collect();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The whole reference, applied on the 1925 world in date order with no tick in between:
+    /// every line maps to an operation that applies, and none changes the totals.
+    #[test]
+    fn the_whole_reference_applies_and_conserves() {
+        let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let data = GameData::load(&root).unwrap();
+        let mut w = data.new_world();
+        let rules = &data.border_rules;
+        for c in &reference().changes {
+            let Some(op) = operation(&w, rules, c) else {
+                continue;
+            };
+            let before = Totals::of(&w);
+            let done = w.borders.changes.len();
+            w.borders.pending = vec![op];
+            op::run_pending(&mut w, rules, parse(&c.date));
+            let mut after = Totals::of(&w);
+            for ch in &w.borders.changes[done..] {
+                after.diaspora += ch.repatriated.0;
+                after.arrived += ch.repatriated.1;
+            }
+            assert_eq!(
+                after, before,
+                "{} {:?} {} -> {}",
+                c.date, c.kind, c.from, c.to
+            );
+        }
+        let refused: Vec<String> = w
+            .borders
+            .refused
+            .iter()
+            .map(|r| format!("{:?}: {}", r.date, r.reason))
+            .collect();
+        assert!(refused.is_empty(), "{refused:#?}");
+        assert!(op::tables_agree(&w));
+    }
 }
