@@ -67,6 +67,9 @@ pub struct Region {
     /// Pasture and forest turned into cropland since 1925, km².
     #[serde(default)]
     pub cleared_km2: [i64; 2],
+    /// Land the pioneers have cleared toward the next farm level, km².
+    #[serde(default)]
+    pub pioneer_km2: Fixed,
     /// Staple food the unemployed grow for themselves, per 1,000 people per week, in tonnes.
     pub subsistence: Fixed,
     /// Labour productivity: scales a plant's inputs and outputs per worker. Calibrated in
@@ -190,6 +193,9 @@ pub struct LawEffects {
     /// Ad valorem tariff on imports (`tariff` of the trade law); zero without politics.
     #[serde(default)]
     pub tariff: Fixed,
+    /// Share of the pioneers' clearing the land law allows (`frontier_access`); 1 without one.
+    #[serde(default = "one")]
+    pub frontier_access: Fixed,
 }
 
 impl Default for LawEffects {
@@ -204,6 +210,7 @@ impl Default for LawEffects {
             state_ownership: Fixed::ZERO,
             state_profit_to_treasury: Fixed::ZERO,
             tariff: Fixed::ZERO,
+            frontier_access: Fixed::ONE,
         }
     }
 }
@@ -233,6 +240,7 @@ impl HashState for LawEffects {
         self.state_ownership.hash_state(h);
         self.state_profit_to_treasury.hash_state(h);
         self.tariff.hash_state(h);
+        self.frontier_access.hash_state(h);
     }
 }
 
@@ -470,6 +478,7 @@ impl HashState for Region {
             for v in self.wild_km2.iter().chain(&self.cleared_km2) {
                 h.write_i64(*v);
             }
+            self.pioneer_km2.hash_state(h);
         }
         self.subsistence.hash_state(h);
         self.tfp.hash_state(h);

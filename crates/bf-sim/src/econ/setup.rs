@@ -430,6 +430,7 @@ pub fn build(cat: &Catalogue, inp: &Inputs) -> Economy {
             frontier,
             wild_km2,
             cleared_km2: [0; 2],
+            pioneer_km2: Fixed::ZERO,
             subsistence: Fixed::ZERO,
             tfp: Fixed::ONE,
             tfp_start: Fixed::ONE,

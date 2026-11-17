@@ -142,6 +142,7 @@ mod tests {
             frontier: Vec::new(),
             wild_km2: [0; 2],
             cleared_km2: [0; 2],
+            pioneer_km2: Fixed::ZERO,
             subsistence: Fixed::ZERO,
             tfp: Fixed::ONE,
             tfp_start: Fixed::ONE,

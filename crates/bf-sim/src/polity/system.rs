@@ -54,6 +54,7 @@ struct Wired {
     ownership: usize,
     profit_to_treasury: usize,
     tariff: usize,
+    frontier: usize,
     franchise: usize,
     repression: usize,
 }
@@ -73,6 +74,7 @@ impl Wired {
             ownership: e("state_ownership"),
             profit_to_treasury: e("state_profit_to_treasury"),
             tariff: e("tariff"),
+            frontier: e("frontier_access"),
             franchise: e("franchise"),
             repression: e("repression"),
         }
@@ -209,6 +211,9 @@ impl PoliticsSystem {
             }
             if let Some(v) = share(w.tariff) {
                 e.tariff = v;
+            }
+            if let Some(v) = share(w.frontier) {
+                e.frontier_access = v;
             }
             e
         })

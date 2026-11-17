@@ -230,6 +230,32 @@ de faltar: a produtividade agrícola cresce e a população simulada fica abaixo
 pioneiro que desmata para si (o camponês sem terra que abre a própria roça), que foi a maior
 parte da fronteira histórica no Brasil e na África.
 
+## Pioneiros
+
+- **Quem abre e quanto** (`monthly::pioneers`). O camponês ocioso de um estado em que a terra
+  aberta livre não alimenta os sem emprego abre a fronteira do próprio estado com o trabalho
+  dele: 1,5 ha por trabalhador por ano (colonos da Transamazônica, cerca de 10 ha a cada dois anos
+  por família nos primeiros oito; Colúmbia Britânica, 2 a 3,7 acres por fazenda por ano em
+  1943–45), vezes a parte do transporte que chega ao estado e o `frontier_access` da lei de
+  terras. A área acumula em `Region::pioneer_km2`; cada nível completo sai da fronteira, do pasto
+  e da floresta e vira terra aberta, onde ele planta a própria comida.
+- **Assentados** (`migration::plan`). O camponês ocioso de um estado sem terra muda para o vizinho
+  por terra, do mesmo país, com mais fronteira aberta à lei, como camponês, ao ritmo da migração
+  local (10 por 10 mil ociosos por mês, vezes o alcance da lei de migração e o acesso à
+  fronteira). A migração para a cidade não mudou.
+- **Lei de terras** (`frontier_access`, `data/politics/laws.ron`): posse livre e reforma agrária,
+  acesso inteiro; latifúndio, 0,3 (a terra pública vendida e tomada pelos grandes, Lei de Terras de
+  1850); servidão, 0,1; fazenda coletiva, 0: a terra nova nela é aberta pelo plano do Estado (as
+  Terras Virgens), que a simulação ainda não tem.
+
+Rodada de 100 anos: 292 mil km² abertos até 2015 (125 mil sem os pioneiros), contra 5,5 milhões de
+lavoura nova no mundo (HYDE 3.5, `data/history/cropland.csv`). Índia 71 contra 658, China 113
+contra 479, Brasil 24 contra 523, Argentina, Canadá e Austrália 0 contra 285, 183 e 267. A
+fronteira que falta foi comercial e de exportação (trigo da Argentina, do Canadá e da Austrália;
+soja e gado no Brasil) e de Estado (Terras Virgens, colonização dirigida); o pioneiro quase não
+acha quem abrir, porque o ocioso já vai para a cidade (Brasil 12 % no campo), e a população
+simulada fica em 6,0 contra 8,2 bilhões, com menos comida para vender.
+
 ## Ordem de trabalho do mercado
 
 1. Preço por estado e por mercado nacional: oferta e demanda fecham semanalmente, com preço sensível à escassez.

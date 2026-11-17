@@ -298,6 +298,7 @@ law-effect-state_media = State media
 law-effect-conscription = Conscription
 law-effect-colonial_tribute = Colonial tribute
 law-effect-colonial_self_rule = Colonial self-rule
+law-effect-frontier_access = Access of settlers to the frontier
 
 ## Indicators
 

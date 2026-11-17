@@ -282,11 +282,24 @@ pub fn peasant_surplus(m: &Market, staple: Fixed) -> Fixed {
 /// cropland the farms leave free: where farms hold the land, the jobless grow less and look for
 /// work in town instead of crowding the farms out of their market.
 pub fn subsistence_food(cat: &Catalogue, r: &Region, m: &Market) -> Fixed {
+    let (wanted, land) = subsistence_and_land(cat, r, m);
+    wanted.min(land)
+}
+
+/// Whether the jobless here want more staples than the open land the farms leave free can
+/// grow: they are short of land, and clear it if they can (`monthly::pioneers`).
+pub fn short_of_land(cat: &Catalogue, r: &Region, m: &Market) -> bool {
+    let (wanted, land) = subsistence_and_land(cat, r, m);
+    wanted > land
+}
+
+/// Staples the jobless would grow with land enough, and what the free open land can grow.
+fn subsistence_and_land(cat: &Catalogue, r: &Region, m: &Market) -> (Fixed, Fixed) {
     let agri = m.tech_tfp.first().copied().unwrap_or(Fixed::ONE);
     let gain = Fixed::ONE + (agri - Fixed::ONE).max(Fixed::ZERO) * milli(500);
     let wanted = r.subsistence.mul_ratio(unemployed_people(r), 1000) * gain;
     if cat.staple_farms.is_empty() {
-        return wanted;
+        return (wanted, Fixed::MAX);
     }
     let mut free = Fixed::ZERO;
     for &(farm, kind, per_level) in &cat.staple_farms {
@@ -298,7 +311,7 @@ pub fn subsistence_food(cat: &Catalogue, r: &Region, m: &Market) -> Fixed {
             .map_or(0, |p| p.levels);
         free += per_level * (land - used).max(0);
     }
-    wanted.min(free * gain)
+    (wanted, free * gain)
 }
 
 fn unemployed_people(r: &Region) -> i64 {

@@ -51,6 +51,9 @@ const PREMIUM: Fixed = milli(1500);
 /// population.
 const LOCAL_RATE: i64 = 10;
 const DISTANT_RATE: i64 = 4;
+/// Monthly share of the land-short idle peasants, per 10,000, who settle a neighbouring
+/// frontier: the pace of the rural–urban flow, which settlers joined or replaced.
+const SETTLE_RATE: i64 = 10;
 /// Cities a country's migrants head for each month.
 const DESTINATIONS: usize = 3;
 
@@ -140,6 +143,9 @@ pub struct Moves {
     pub push_back: bool,
     /// People beyond the crowding limit.
     pub crowded: i64,
+    /// Peasants who leave to settle a neighbouring state's frontier, and who arrive to settle.
+    pub settling_out: i64,
+    pub settling_in: i64,
 }
 
 /// Plans the month's migration of every region, country by country.
@@ -209,6 +215,45 @@ pub fn plan(cat: &Catalogue, econ: &Economy) -> Vec<Moves> {
                 }
             }
         }
+        // Peasants short of land settle the frontier of a neighbouring state across a land
+        // border, the one with the most land to open, as peasants: who has land to clear does
+        // not go to town.
+        for &ri in regions {
+            let r = &econ.regions[ri];
+            if idle[ri] <= 0 || !super::week::short_of_land(cat, r, &econ.markets[mi]) {
+                continue;
+            }
+            let frontier = |i: usize| -> i64 {
+                let d = &econ.regions[i];
+                let open: i64 = d.frontier.iter().map(|f| f.1).sum();
+                if laws.of(d).frontier_access > Fixed::ZERO {
+                    open
+                } else {
+                    0
+                }
+            };
+            let Some(&di) = r
+                .neighbours
+                .iter()
+                .map(|n| *n as usize)
+                .filter(|&n| frontier(n) > 0)
+                .collect::<Vec<_>>()
+                .iter()
+                .max_by_key(|&&n| (frontier(n), std::cmp::Reverse(n)))
+            else {
+                continue;
+            };
+            let reach = laws.of(r).migration_reach[1] * laws.of(&econ.regions[di]).frontier_access;
+            let n = (Fixed::from_int(idle[ri]) * reach)
+                .mul_ratio(SETTLE_RATE, 10_000)
+                .to_int_floor()
+                .min(idle[ri]);
+            if n > 0 {
+                moves[ri].settling_out += n;
+                moves[di].settling_in += n;
+                idle[ri] -= n;
+            }
+        }
     }
     moves
 }
@@ -218,6 +263,8 @@ pub fn apply(pops: &mut [(i64, i64)], m: &Moves) {
     let out = (m.to_town + m.leaving).min(pops[prof::PEASANT].0);
     pops[prof::PEASANT].0 -= out;
     pops[prof::LABORER].0 += m.to_town.min(out) + m.arriving;
+    let settlers = m.settling_out.min(pops[prof::PEASANT].0);
+    pops[prof::PEASANT].0 += m.settling_in - settlers;
 }
 
 #[cfg(test)]

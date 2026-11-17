@@ -88,10 +88,15 @@
             // Serfdom, slavery and labour owed to the lord.
             ("landowner_rent", 1600), ("unfree_labour", 300),
             ("migration_within_state", 500), ("migration_between_states", 500),
+            // The bound cannot leave to settle; the lord takes what is cleared.
+            ("frontier_access", 100),
         ]),
         (key: "great_estates", group: "land_tenure", effects: [
             // Latifundia, zamindari, sharecropping.
             ("landowner_rent", 1300),
+            // Public land sold, not granted, and claimed by estates (Brazil's Lei de Terras of
+            // 1850, Lei 601, art. 1): the squatter clears for an owner and moves on.
+            ("frontier_access", 300),
         ]),
         (key: "freehold_farming", group: "land_tenure", effects: []),
         (key: "land_reform", group: "land_tenure", effects: [
@@ -101,6 +106,9 @@
         (key: "collective_farming", group: "land_tenure", effects: [
             ("landowner_rent", 100), ("state_ownership", 100),
             ("migration_within_state", 700), ("migration_between_states", 700),
+            // No private clearing: new land is opened by the plan (the Virgin Lands), which the
+            // simulation does not have yet.
+            ("frontier_access", 0),
         ]),
 
         // ---- trade ----
