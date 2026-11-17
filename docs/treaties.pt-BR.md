@@ -97,7 +97,8 @@ Treaty
   mensal de cumprimento (tarifa, limite de frota, base, tributo, sujeição).
 - **Uma cláusula, um teste.** Toda cláusula contínua declara o que mede para saber se está sendo
   cumprida; a quebra é o teste falhar, não um evento (seção 9).
-- **Estado salvo:** `GameWorld::treaties` (acordos, livro de dívidas entre Estados, reconhecimento,
+- **Estado salvo:** o livro de dívidas fica em `Economy::ledger` (é dinheiro, servido no passo da
+  moeda); acordos, reconhecimento e reputação em `GameWorld::treaties` quando entrarem (
   reputação), com `#[serde(default)]`; só entra no hash quando não está vazio, como a fronteira.
 
 ## 4. Catálogo de cláusulas
@@ -192,7 +193,7 @@ Lausanne perdoou só o que os credores aceitaram, e a força revisionista da Ale
 diz a quem se deve.
 
 ```text
-InterstateDebt                       GameWorld::treaties.debts, em ordem de criação
+InterstateDebt                       Economy::ledger.debts, em ordem de criação
   id
   debtor, creditor                   índices de país (estáveis; lápide herda pela anexação)
   treaty                             acordo que a criou ou a revisou por último
@@ -482,6 +483,29 @@ fecha.
 - Pendente de fonte lida (fica sem número, anotado na cláusula): tetos de exército de
   Saint-Germain, Trianon e Neuilly; degraus da anuidade Dawes; a taxa de 3,5 % britânica a partir
   de 1932; a renda anual do canal do Panamá.
+
+### Feito no tick (etapa 2, segunda parte): o livro de dívidas
+
+- **Onde:** `Economy::ledger`, servido no fim de `econ::money::week` (`treaty_service`), depois do
+  mercado de títulos. No hash só quando não está vazio: com a chave `war_debts_1925` desligada, o
+  hash de 10 anos é o da `main`.
+- **Unidade:** a da economia, dólares de 2011 a preço-base de 1925. As dívidas de 1925 entram pelo
+  ouro (marco-ouro e dólar de 1925) e pelo fator 12,85 do CPI-U que `economy.pt-BR.md` já usa.
+- **Serviço:** juro e anuidade da semana, do Tesouro do devedor ao do credor; pesa mais com a
+  moeda fraca (câmbio real, como `debt_fx_local`), e o credor recebe o que saiu do devedor. Entra
+  em `Budget::interest` e o estoque em `Budget::debt` do devedor.
+- **Prêmio e calote:** a dívida do livro conta no prêmio de risco como dívida externa em moeda
+  estrangeira e o serviço conta no limite de calote e na reestruturação. No calote, o livro perde a
+  mesma fração que a dívida de mercado (metade, ou 40 % na reestruturação), e cada credor perde o
+  seu crédito.
+- **1925–1935, chave ligada:** a Alemanha começa devendo 39 % do PIB aos credores (França 52 %,
+  Reino Unido 22 %, Itália 10 %, Bélgica 8 % da reparação) e chega a 25 % em 1935, sem calote; o
+  título alemão paga 6,7 % contra 5,1 % do britânico em 1926. O Reino Unido deve 13 % do PIB aos
+  Estados Unidos e tem 7 % de créditos.
+- **Save:** o snapshot é postcard, que não aceita campo novo; save da `main` não carrega neste
+  binário (vale para todo campo novo desde a demografia). O cliente ainda não grava o mundo; o que
+  se confere é salvar e recarregar no mesmo binário com o mesmo hash. Proposta ao orquestrador:
+  versão de formato com migração antes de o cliente gravar mundos.
 
 ## 13. Interface: a mesa de negociação
 
