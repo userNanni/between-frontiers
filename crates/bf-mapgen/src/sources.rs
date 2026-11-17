@@ -44,6 +44,73 @@ pub const MARINE: Source = Source {
     blake3: "5ad0125cbe8d5a79d3a13a8614e0b46888d0896c788a9a2ca84210f670b65a19",
 };
 
+/// Natural Earth 1:10m rivers and lake centrelines, with names and a scale rank.
+pub const RIVERS: Source = Source {
+    stem: "ne_10m_rivers_lake_centerlines",
+    url: "https://naciscdn.org/naturalearth/10m/physical/ne_10m_rivers_lake_centerlines.zip",
+    blake3: "2a5def415e8de8e16185dc6b26c014066367b6ee4ade3cac51be2cdc1b166096",
+};
+
+/// Release of the river centrelines, as their `VERSION.txt` says.
+pub const RIVERS_VERSION: &str = "5.0.0";
+
+/// Global Lakes and Wetlands Database v2 (Lehner et al. 2025), combined classes, GeoTIFF, 15
+/// arc-seconds, CC BY 4.0: https://doi.org/10.6084/m9.figshare.28519994. 925 MB: read by
+/// [`fetch_member`], which hashes the archive as a stream and unpacks one file.
+pub const GLWD: Source = Source {
+    stem: "GLWD_v2_0_combined_classes_tif",
+    url: "https://ndownloader.figshare.com/files/54001814",
+    blake3: "28744db34bfd465f1e49aaf9f2123b321ac2e11162c7124af371362dd601a01e",
+};
+
+/// NOAA ETOPO5: elevation of the land and the sea floor on a 5-minute grid, 2160 rows (from
+/// 90° N southwards) × 4320 columns (from 0° E eastwards), big-endian 16-bit metres, no header.
+/// Free to use and redistribute, as stated by the PacIOOS mirror (the NOAA record did not open).
+pub const ETOPO5: Source = Source {
+    stem: "ETOPO5",
+    url: "https://www.ngdc.noaa.gov/mgg/global/relief/ETOPO5/TOPO/ETOPO5/ETOPO5.DAT",
+    blake3: "f4a2874fdc175d2eca90f568ae137a7bcd0409548530a6ec69e6b20bedd39189",
+};
+
+/// Downloads a file that is not an archive into `raw_dir/<stem>/<file name of the url>` and
+/// checks its hash.
+pub fn fetch_plain(source: &Source, raw_dir: &Path) -> Result<PathBuf, String> {
+    let name = source
+        .url
+        .rsplit('/')
+        .next()
+        .ok_or("url without a file name")?;
+    let dir = raw_dir.join(source.stem);
+    fs::create_dir_all(&dir).map_err(|e| format!("{}: {e}", dir.display()))?;
+    let path = dir.join(name);
+    if !path.exists() {
+        eprintln!("downloading {}", source.url);
+        let partial = path.with_extension("part");
+        let status = Command::new("curl")
+            .args(["--fail", "--location", "--silent", "--show-error"])
+            .args(["--retry", "3", "--output"])
+            .arg(&partial)
+            .arg(source.url)
+            .status()
+            .map_err(|e| format!("could not run curl: {e}"))?;
+        if !status.success() {
+            return Err(format!("curl failed for {}", source.url));
+        }
+        fs::rename(&partial, &path).map_err(|e| e.to_string())?;
+    }
+    let bytes = fs::read(&path).map_err(|e| format!("{}: {e}", path.display()))?;
+    let hash = blake3::hash(&bytes).to_hex().to_string();
+    if hash != source.blake3 {
+        return Err(format!(
+            "{} has BLAKE3 {hash}, expected {}. Delete it to download again, or update the hash \
+             in sources.rs if the source published a new release on purpose.",
+            path.display(),
+            source.blake3
+        ));
+    }
+    Ok(path)
+}
+
 /// Natural Earth 1:50m shaded relief raster (10800×5400, 8-bit, equirectangular).
 pub const SHADED_RELIEF: Source = Source {
     stem: "SR_50M",
@@ -96,6 +163,60 @@ pub fn fetch_file(source: &Source, raw_dir: &Path, inner: &str) -> Result<PathBu
             .map_err(|e| format!("unzip {}: {e}", archive.display()))?;
     }
     Ok(shp)
+}
+
+/// Like [`fetch_file`] for a large archive: the hash is computed as a stream and only `member`
+/// (its path inside the archive) is unpacked, to `raw_dir/<stem>/<file name>`. The archive can be
+/// deleted after a run; the next run downloads it again.
+pub fn fetch_member(source: &Source, raw_dir: &Path, member: &str) -> Result<PathBuf, String> {
+    let dir = raw_dir.join(source.stem);
+    let name = Path::new(member)
+        .file_name()
+        .ok_or("member without a file name")?;
+    let out = dir.join(name);
+    let stamp = dir.join(format!("{}.blake3", name.to_string_lossy()));
+    // Unpacked before from an archive with the pinned hash: no need for the archive.
+    if out.exists() && fs::read_to_string(&stamp).is_ok_and(|h| h.trim() == source.blake3) {
+        return Ok(out);
+    }
+    fs::create_dir_all(&dir).map_err(|e| format!("{}: {e}", dir.display()))?;
+    let archive = raw_dir.join(format!("{}.zip", source.stem));
+    if !archive.exists() {
+        eprintln!("downloading {}", source.url);
+        let partial = archive.with_extension("zip.part");
+        let status = Command::new("curl")
+            .args(["--fail", "--location", "--silent", "--show-error"])
+            .args(["--retry", "3", "--output"])
+            .arg(&partial)
+            .arg(source.url)
+            .status()
+            .map_err(|e| format!("could not run curl: {e}"))?;
+        if !status.success() {
+            return Err(format!("curl failed for {}", source.url));
+        }
+        fs::rename(&partial, &archive).map_err(|e| e.to_string())?;
+    }
+    let mut hasher = blake3::Hasher::new();
+    let mut file = fs::File::open(&archive).map_err(|e| format!("{}: {e}", archive.display()))?;
+    io::copy(&mut file, &mut hasher).map_err(|e| e.to_string())?;
+    let hash = hasher.finalize().to_hex().to_string();
+    if hash != source.blake3 {
+        return Err(format!(
+            "{} has BLAKE3 {hash}, expected {}. Delete it to download again, or update the hash \
+             in sources.rs if the source published a new release on purpose.",
+            archive.display(),
+            source.blake3
+        ));
+    }
+    let file = fs::File::open(&archive).map_err(|e| e.to_string())?;
+    let mut zip = zip::ZipArchive::new(io::BufReader::new(file)).map_err(|e| e.to_string())?;
+    let mut entry = zip
+        .by_name(member)
+        .map_err(|e| format!("{}: {member}: {e}", archive.display()))?;
+    let mut target = fs::File::create(&out).map_err(|e| format!("{}: {e}", out.display()))?;
+    io::copy(&mut entry, &mut target).map_err(|e| e.to_string())?;
+    fs::write(&stamp, source.blake3).map_err(|e| e.to_string())?;
+    Ok(out)
 }
 
 /// One source feature with the attributes the pipeline uses.

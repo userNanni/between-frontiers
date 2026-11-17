@@ -147,6 +147,15 @@
     ],
     // A landing attacks at 60 % on top of the terrain.
     amphibious: 600,
+    // A segment whose whole border runs along a big river (terrain.ron) gives the defender 30 %
+    // more on top of the terrain (design parameter).
+    river_defense: 300,
+    // People per km² of urbanized area, to turn the urban population of population.ron into the
+    // urban share of a state's terrain. Angel et al. 2010, "Persistent Decline in Urban
+    // Densities" (Lincoln Institute), Annex IV p. 133: the average density of the urbanized area of
+    // 30 cities was 238 people per hectare in 1920 and 207 in 1930; 1925 taken midway. Those are
+    // large cities; smaller towns are less dense, so this tends to understate the urban share.
+    urban_density_km2: 22000,
     winter: (upkeep: "1.3", speed: "0.6"),
     // Every segment holds at least 2 % of the front's elements; the objective doubles a weight.
     allocation: (min_share: 20, objective_pull: 1000),
