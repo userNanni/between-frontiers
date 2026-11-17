@@ -298,16 +298,24 @@ o equilíbrio fino fica para depois da fase 6.
 1. **Dívida.** Padrão por tipo de operação: colônia que se emancipa nasce sem dívida pública e a
    metrópole fica com a dívida inteira; secessão de metrópole reparte toda a dívida por **w**;
    anexação total passa tudo; transferência de estados não mexe na dívida.
-   **Acréscimo: dívida criada por acordo.** Toda operação aceita um termo opcional
-   `debt: Vec<DebtTerm>`, cada um "quanto, de quem para quem, em que moeda" (moeda do devedor, do
-   credor ou de referência). Cobre a paz com reparação de guerra (como a de 1919), a independência
-   que nasce devendo ao antigo dono (a dívida da independência do Haiti é o caso extremo; as
-   colônias que herdaram empréstimos coloniais, o caso comum) e o acordo de reconhecimento. O
-   termo cria dívida do devedor e um crédito do mesmo valor para o Tesouro credor (campo novo,
-   `Money::claims`, que recebe o serviço da dívida; não se confunde com `foreign_assets`, que é das
-   famílias), ou transfere dívida que já existe de um devedor a outro; nos dois casos a soma
-   mundial de dívida menos créditos entre Estados não muda (teste). Quem escreve o
-   termo é o tratado (fase 4, outro thread) e a paz (fase 5); a operação só o executa.
+   **Acréscimo: dívida criada por acordo.** Toda operação aceita um termo opcional `debt`, uma
+   lista de linhas de dívida a criar ou transferir. Cobre a paz com reparação de guerra (como a
+   de 1919), a independência que nasce devendo ao antigo dono (a dívida da independência do Haiti
+   é o caso extremo; as colônias que herdaram empréstimos coloniais, o caso comum) e o acordo de
+   reconhecimento. Dois usos, combinados com o thread dos tratados (`docs/treaties.pt-BR.md`,
+   seção 5):
+   - **dívida de mercado que muda de devedor** (`DebtTerm::Market`: quanto, de quem para quem):
+     fica em `Money` (`debt_home`, `debt_bank`, `debt_abroad`, `debt_fx`), sai de cada detentor em
+     proporção; é da operação de fronteira;
+   - **dívida criada entre Estados** (`DebtTerm::Agreement`, quando o contrato dos tratados
+     entrar): uma linha do **livro nomeado de dívida entre Estados** dos tratados, fonte da
+     verdade (devedor, credor, moeda, principal, juro, calendário, teto de transferência,
+     garantia). A operação só chama `treaty::ledger_create`; o crédito do credor é a soma do livro
+     (`treaty::claims_of`), nunca um campo guardado à parte. Na anexação e na secessão a operação
+     chama `treaty::ledger_on_annex` e `treaty::ledger_on_secede`, que os tratados escrevem.
+
+   A soma mundial fecha com as duas partes: dívida de mercado e `foreign_assets` em `Money`, e o
+   livro, em que dívida e crédito são iguais por construção (teste).
 2. **Moeda.** Moeda própria na hora, com nível de preços, inflação, expectativa e câmbio do antigo
    dono no dia (nada salta). A união monetária entra com a moeda comum da fase 4.
 3. **O jogador liberta ou cria país do próprio território**, pelo mesmo comando das operações:
