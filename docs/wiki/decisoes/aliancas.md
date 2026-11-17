@@ -44,10 +44,10 @@ citação.
 - **Decisão:** os tipos de aliança têm os nomes do Correlates of War e do ATOP, e cada tipo é um
   feixe de cláusulas do catálogo de tratados.
 - **O que o autor pensou:** "Use o que a literatura diz, com a nomenclatura do Correlates of
-  War." Ele também separa a aliança de "um simples pacto mútuo de defesa": a aliança é mais larga.
-  Os degraus que ele usa, do menor ao maior: garantia, pacto de defesa mútua, aliança.
+  War." Ele também lembrou que a aliança é mais do que um simples pacto de defesa mútua.
 - **Como o jogo funciona por causa disso:** o ATOP já pensa a aliança como feixe de obrigações,
-  que é a forma dos tratados do jogo. Cada obrigação vira uma cláusula com quem dá e quem recebe:
+  que é a forma dos tratados do jogo. Cada obrigação vira uma cláusula com quem dá e quem recebe.
+  A tabela abaixo é a proposta da coordenação para os nomes que o jogo mostra:
 
   | Nome | Cláusulas no jogo |
   |---|---|
