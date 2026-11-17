@@ -1,0 +1,17 @@
+// Between Frontiers: who did not recognise whom on 1925-01-01 (phase 4). Contract:
+// crates/bf-sim/src/treaty.rs (RecognitionFile). Only the exceptions: everyone else recognises
+// everyone (owner's decision 4 of docs/treaties.pt-BR.md, decided on 2026-11-17). `until` is the
+// history, a reference for the scorecard, never a script. Licence: CC BY-SA 4.0. WP = Wikipedia
+// (en), facts only. A pair enters only when a source read says so; the list is short on purpose
+// and grows with sources.
+(
+    start_date: "1925-01-01",
+    withheld: [
+        (to: "SOV", by: Countries(["USA"]),
+            source: "WP 'Foreign relations of the Soviet Union' (Respectability and normal relations: 'The United States refused recognition until 1933'; United States: 'President Franklin Roosevelt recognized the USSR in 1933')"),
+        (to: "MGL", by: AllExcept(["SOV"]),
+            source: "WP 'Mongolian People's Republic' (Revolution and early years: 'recognized by the Bolshevik government in August 1919'; in 1945 it 'was still internationally recognized as part of China')"),
+        (to: "TIB", by: AllExcept([]),
+            source: "WP 'Tibet (1912-1951)' (lead: independence proclaimed, 'although almost no country formally recognized this'; the 1913 Tibet-Mongolia treaty is disputed and not counted)"),
+    ],
+)

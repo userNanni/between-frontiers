@@ -107,11 +107,13 @@ commit, como `0.0.1+92093bd4e`), para a mensagem de erro.
 | 3 | livro de dívidas entre Estados (`Economy::ledger`) | lê como a 4 |
 | 4 | dívida acordada em tratado (`DebtTerm::Agreement`) e dissolução de país (`Operation::Dissolve`) | `compat::V4` (vale para a 3) |
 | 5 | pesquisa que custa (obra pública de pesquisa, prioridade de pesquisa nas leis) | `compat::V5` |
-| 6 | capital estrangeiro (`GameWorld::foreign`, #109); a primeira gravada com cabeçalho | `GameWorld` |
+| 6 | capital estrangeiro (`GameWorld::foreign`, #109); a primeira gravada com cabeçalho | `compat::V6` |
+| 7 | influência (`GameWorld::influence`, #110) | `compat::V7` |
+| 8 | estado dos tratados (`GameWorld::treaties`: reconhecimento entre Estados) | `GameWorld` |
 
 `decode_world` lê a versão e aplica a cadeia até a atual: `v0_to_v1 → v1_to_v2 → v2_to_now`
 (a economia da 2 converte direto para a da 5: `v2_to_v5`), `v4_to_v5` (a 3 lê direto como a 4) e
-`v5_to_v6`
+`v5_to_v6`, `v6_to_v7` e `v7_to_v8`
 (`save_format::migrate`). Os saves sem cabeçalho, de antes deste formato, continuam abrindo pelas
 tentativas de antes (da versão mais nova para a mais velha, com a cauda de listas vazias
 completada). Um save de versão mais nova que o jogo não abre: a tela de Campanhas diz qual

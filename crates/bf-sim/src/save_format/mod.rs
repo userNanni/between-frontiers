@@ -51,7 +51,7 @@ pub const WORLD_MAGIC: [u8; 4] = *b"BFWD";
 /// 5. research that costs (public works with research, a research priority in the laws);
 /// 6. foreign capital (`GameWorld::foreign`);
 /// 7. the influence state (`GameWorld::influence`), the last field of the world.
-pub const WORLD_VERSION: u32 = 7;
+pub const WORLD_VERSION: u32 = 8;
 
 /// Why a snapshot does not read.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -154,16 +154,19 @@ pub fn decode_world(bytes: &[u8]) -> Result<GameWorld, WorldError> {
 pub fn migrate(v: u32, body: &[u8]) -> Result<GameWorld, SaveError> {
     use compat::*;
     Ok(match v {
-        0 => v6_to_v7(v5_to_v6(v2_to_v5(v1_to_v2(v0_to_v1(decode_snapshot(
+        0 => v7_to_v8(v6_to_v7(v5_to_v6(v2_to_v5(v1_to_v2(v0_to_v1(
+            decode_snapshot(body)?,
+        )))))),
+        1 => v7_to_v8(v6_to_v7(v5_to_v6(v2_to_v5(v1_to_v2(decode_snapshot(
             body,
         )?))))),
-        1 => v6_to_v7(v5_to_v6(v2_to_v5(v1_to_v2(decode_snapshot(body)?)))),
-        2 => v6_to_v7(v5_to_v6(v2_to_v5(decode_snapshot(body)?))),
+        2 => v7_to_v8(v6_to_v7(v5_to_v6(v2_to_v5(decode_snapshot(body)?)))),
         // Version 3 lacks only enum variants added at the end since: its bytes read as 4.
-        3 | 4 => v6_to_v7(v5_to_v6(v4_to_v5(decode_snapshot(body)?))),
-        5 => v6_to_v7(v5_to_v6(decode_snapshot(body)?)),
-        6 => v6_to_v7(decode_snapshot(body)?),
-        7 => decode_snapshot(body)?,
+        3 | 4 => v7_to_v8(v6_to_v7(v5_to_v6(v4_to_v5(decode_snapshot(body)?)))),
+        5 => v7_to_v8(v6_to_v7(v5_to_v6(decode_snapshot(body)?))),
+        6 => v7_to_v8(v6_to_v7(decode_snapshot(body)?)),
+        7 => v7_to_v8(decode_snapshot(body)?),
+        8 => decode_snapshot(body)?,
         _ => return Err(SaveError::Malformed(format!("unknown world version {v}"))),
     })
 }

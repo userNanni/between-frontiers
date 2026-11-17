@@ -56,6 +56,8 @@ pub struct GameData {
     pub influence: Option<crate::influence::InfluenceRules>,
     /// What the border operations read (map, communities, catalogue, the 1925 subjects).
     pub border_rules: Arc<crate::borders::BorderRules>,
+    /// Who did not recognise whom on the start date, when `recognition.ron` exists.
+    pub recognition: Option<crate::treaty::RecognitionFile>,
 }
 
 fn read<T: serde::de::DeserializeOwned>(path: &Path) -> Result<T, String> {
@@ -159,6 +161,7 @@ impl GameData {
             influence: optional(&data.join("diplomacy/influence.ron"))?,
             clauses: optional(&data.join("diplomacy/clauses.ron"))?,
             war_debts: optional(&scenario.join("war_debts.ron"))?,
+            recognition: optional(&scenario.join("recognition.ron"))?,
         })
     }
 
@@ -226,6 +229,10 @@ impl GameData {
             && !world.econ.markets.is_empty()
         {
             world.econ.ledger = crate::treaty::ledger_1925(debts, &cat.policy, &self.countries);
+        }
+        // Recognition withheld on the start date (owner's decision 4).
+        if let (Some(cat), Some(rec)) = (&self.clauses, &self.recognition) {
+            world.treaties.recognition = rec.start(&self.countries, &cat.policy);
         }
         world
     }
