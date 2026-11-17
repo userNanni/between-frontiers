@@ -123,7 +123,9 @@ impl GameData {
         let candidates: Option<crate::borders::CandidatesFile> =
             optional(&data.join("borders/candidates.ron"))?;
         let politics = politics.map(Arc::new);
-        let border_rules = Arc::new(crate::borders::BorderRules::new(
+        let clauses: Option<crate::treaty::ClauseCatalogue> =
+            optional(&data.join("diplomacy/clauses.ron"))?;
+        let mut border_rules = crate::borders::BorderRules::new(
             Arc::new(map.clone()),
             communities.clone().map(Arc::new),
             candidates
@@ -135,7 +137,9 @@ impl GameData {
             tree.clone(),
             politics.as_deref(),
             laplace_schelling::Date::new(1925, 1, 1),
-        ));
+        );
+        border_rules.recognition = clauses.as_ref().map(|c| c.policy.recognition_default);
+        let border_rules = Arc::new(border_rules);
         Ok(Self {
             border_rules,
             war,
@@ -159,7 +163,7 @@ impl GameData {
             diplomacy: optional(&scenario.join("diplomacy.ron"))?,
             candidates,
             influence: optional(&data.join("diplomacy/influence.ron"))?,
-            clauses: optional(&data.join("diplomacy/clauses.ron"))?,
+            clauses,
             war_debts: optional(&scenario.join("war_debts.ron"))?,
             recognition: optional(&scenario.join("recognition.ron"))?,
         })

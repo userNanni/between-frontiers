@@ -160,9 +160,11 @@ fn an_independence_born_owing_and_a_release_as_subject() {
     let mut w = world();
     let gbr = ix(&w, "GBR");
     let n = w.countries.len();
+    // The new country is a side of the treaty that creates it (as the independence by
+    // movement writes it); it is not a signatory of its own creation.
     let p = Proposal {
         side_a: vec!["GBR".into()],
-        side_b: vec!["GBR".into()],
+        side_b: vec!["NGA".into()],
         clauses: vec![
             clause(
                 ClauseKind::ReleaseCountry {

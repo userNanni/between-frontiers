@@ -462,7 +462,12 @@ fn recognition_gates_the_table() {
     assert!(treaty::recognition_conflicts(&alliance, &rec, &d.cat, index).is_empty());
     // A new country is recognised only by those who signed its creation.
     let n = d.countries.countries.len() as u16;
-    rec.on_new_country(n, n + 1, &[index("GBR").unwrap()], &d.cat.policy);
+    rec.on_new_country(
+        n,
+        n + 1,
+        &[index("GBR").unwrap()],
+        d.cat.policy.recognition_default,
+    );
     assert!(rec.recognises(index("GBR").unwrap(), n));
     assert!(!rec.recognises(index("FRA").unwrap(), n));
     rec.on_annex(n);

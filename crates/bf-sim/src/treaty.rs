@@ -1067,9 +1067,9 @@ impl Recognition {
         new: u16,
         countries: u16,
         signatories: &[u16],
-        policy: &Policy,
+        policy: RecognitionDefault,
     ) {
-        if policy.recognition_default == RecognitionDefault::Everyone {
+        if policy == RecognitionDefault::Everyone {
             return;
         }
         for c in 0..countries {
