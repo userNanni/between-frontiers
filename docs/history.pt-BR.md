@@ -102,6 +102,51 @@ que têm série.
 Como o PIB do Maddison termina em 2022, as linhas de PIB de 2025 e o último período (2008–25)
 comparam 2022 dos dois lados.
 
+### Faixa de ruído
+
+O modelo é sensível: uma mudança que não toca um país ainda move a trajetória dele. Antes de
+julgar uma branch país a país, compare com a faixa que essa sensibilidade sozinha produz.
+
+    # três rodadas que diferem só por K dólares a mais no fundo de cada país em 1925
+    for k in 0 1 2; do
+      BF_PERTURB=$k target/release/bf-bench --game --years 101 --history-out target/noise/p$k/history.json
+      python3 tools/history/scorecard.py --sim target/noise/p$k/history.json --out target/noise/p$k
+    done
+    python3 tools/history/noise.py band --runs target/noise/p{0,1,2}/scorecard.json --out target/noise/band.json
+    # uma branch contra a base: só o que sai de 2 desvios, e se ficou mais perto ou mais longe do real
+    python3 tools/history/noise.py compare --band target/noise/band.json \
+        --base base/scorecard.json --new branch/scorecard.json --largest-only
+
+A semente do `bf-bench` não serve para isso: a simulação do jogo não sorteia nada.
+`BF_PERTURB=K` soma K dólares, quantia sem peso econômico, ao fundo de investimento de cada país em
+1º de janeiro de 1925 (`crates/bf-bench/src/game.rs`). A faixa é o desvio-padrão, entre as rodadas,
+da razão simulado/real de cada célula (unidade × década × população, PIB, PIB por habitante) e dos
+agregados (mundo, ranking, parcela das regiões no PIB mundial, produção mundial).
+
+Faixa da `main` em d5570d0 (três rodadas, K = 0, 1, 2; desvio-padrão da razão):
+
+| Década | PIB pc: mediana | PIB pc: p90 | PIB pc dos 20 maiores: p90 | PIB: p90 | População: p90 |
+|---|---|---|---|---|---|
+| 1955 | 0,007 | 0,043 | 0,019 | 0,047 | 0,000 |
+| 1975 | 0,020 | 0,058 | 0,036 | 0,068 | 0,002 |
+| 1985 | 0,017 | 0,093 | 0,064 | 0,118 | 0,005 |
+| 1995 | 0,023 | 0,140 | 0,060 | 0,163 | 0,007 |
+| 2005 | 0,020 | 0,122 | 0,056 | 0,123 | 0,013 |
+| 2025 | 0,020 | 0,074 | 0,046 | 0,090 | 0,029 |
+
+Os agregados são estáveis: ranking do PIB por habitante ±0,003, PIB mundial ±0,02, produção
+mundial de energia ±0,01 a 0,06. Os menos estáveis, com o maior desvio do PIB por habitante e a
+década em que ele passa de 0,10: Etiópia (0,57, desde 1975), Argentina (0,47, 1985), metrópole
+holandesa (0,46, 1985), Congo Belga (0,35, 1995), Danzig (0,34, 1965), Afeganistão (0,30, 1975),
+Indonésia (0,25, 1985), Itália (0,23, 1995). Antes de 1955 uma perturbação tão pequena ainda não
+se espalhou e a faixa sai zero: ela subestima o ruído do começo do século, em que uma mudança de
+regra já move os números.
+
+Critério para PR que muda a simulação: os agregados e as grandezas que a mudança mira, e nenhuma
+célula dos 20 maiores fora da faixa (2 desvios) para pior sem causa nomeada. Duas rodadas que
+diferem por uma regra que não toca um país mudaram até 251 de 746 células de metrópole em mais
+de 0,05: julgar país a país sem a faixa confunde ruído com efeito.
+
 ### O que não é a mesma coisa dos dois lados
 
 - **Urbanização: o modelo não tem.** `Region::urban_share()`, que o placar grava e o HUD mostra
