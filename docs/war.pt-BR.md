@@ -779,3 +779,16 @@ abrir, a ordem proposta é esta, cada passo com o hash e o custo medidos contra 
 
 Até o passo 8, a guerra começa só por comando do jogador ou de teste; a IA não declara. Orçamento:
 a guerra mundial de 1939, com todos os segmentos ativos, abaixo de 15 % do tick (decisão 6).
+
+**A paz passa pelos tratados (passo 7, pedido do thread dos tratados depois do #145).** A paz é
+uma proposta de `treaty_exec::settle` e `queue`, e valem as regras do reconhecimento:
+- toda cláusula contínua (defesa, base, desmilitarização, limite de armas, ocupação) pede que quem
+  dá e quem recebe se reconheçam (`treaty::recognition_conflicts`);
+- pagamento, cessão e dívida passam sempre;
+- em 1925, só os EUA não reconhecem a URSS, a Mongólia é reconhecida só pela URSS e o Tibete por
+  ninguém. Uma paz com ocupação entre EUA e URSS seria recusada sem reconhecimento antes;
+- o país criado pela paz (`ReleaseCountry`) é reconhecido só pelos signatários, e já pode estar
+  em `side_b`;
+- na fatia seguinte deles, `queue` devolve o id do acordo e o grava em
+  `GameWorld::treaties.agreements` com as cláusulas contínuas. A ocupação e o desarmamento da paz
+  moram ali, e o teste mensal de cumprimento lê deles; a guerra não guarda cópia própria.
