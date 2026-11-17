@@ -93,6 +93,26 @@ impl EducationFile {
     }
 }
 
+/// `data/economy/literacy_campaign.ron`: the adult literacy campaign, a budget programme.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct CampaignRules {
+    /// Share of the illiterate adults (15–49) enrolled each year.
+    pub reach: f32,
+    /// Share of those enrolled who still read years later.
+    pub durable: f32,
+    /// Cost per participant, in primary pupil-years (`schooling` at its base price).
+    pub cost: f32,
+    /// Years a campaign runs once decided.
+    pub years: u32,
+}
+
+impl CampaignRules {
+    /// Share of the illiterate adults taught to read for good each year, per ten thousand.
+    pub fn yearly(&self) -> u32 {
+        (f64::from(self.reach * self.durable) * f64::from(WHOLE)).round() as u32
+    }
+}
+
 /// A state's schooling, saved and hashed.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Schooling {
@@ -198,8 +218,8 @@ impl Schooling {
             }
         }
         // The youngest groups have reached nothing yet.
-        for g in 0..ADULT {
-            self.levels[g] = [0; STORED];
+        for g in self.levels.iter_mut().take(ADULT) {
+            *g = [0; STORED];
         }
         // An adult literacy campaign: some of the illiterate 15–49 learn to read.
         let mut taught = 0i64;
@@ -263,6 +283,48 @@ impl Schooling {
         })
     }
 
+    /// Scales each level, over the adult groups, so that the share of those 15–64 who reached
+    /// it is `attained` (per ten thousand: primary, secondary, tertiary).
+    fn match_attainment(&mut self, ages: &[i64; AGE_GROUPS], attained: [u32; SCHOOL_LEVELS]) {
+        // Cumulative shares by group: at least primary, at least secondary, tertiary.
+        let mut cum: Vec<[u32; 3]> = self
+            .levels
+            .iter()
+            .map(|g| {
+                let t = u32::from(g[3]);
+                let s = t + u32::from(g[2]);
+                [s + u32::from(g[1]), s, t]
+            })
+            .collect();
+        let adults = ADULT..=12;
+        let total: i64 = adults.clone().map(|g| ages[g].max(0)).sum();
+        if total <= 0 {
+            return;
+        }
+        for k in 0..3 {
+            let now: i64 = adults
+                .clone()
+                .map(|g| ages[g].max(0) * i64::from(cum[g][k]))
+                .sum::<i64>()
+                / total;
+            let want = i64::from(attained[k].min(WHOLE));
+            for c in cum.iter_mut().skip(ADULT) {
+                let cap = if k == 0 { WHOLE } else { c[k - 1] };
+                let v = if now > 0 {
+                    i64::from(c[k]) * want / now
+                } else {
+                    want
+                };
+                c[k] = (v.max(0) as u32).min(cap);
+            }
+        }
+        for g in ADULT..AGE_GROUPS {
+            let [c1, c2, c3] = cum[g];
+            let reads = u32::from(self.levels[g][0]).min(WHOLE - c1);
+            self.levels[g] = [reads as u16, (c1 - c2) as u16, (c2 - c3) as u16, c3 as u16];
+        }
+    }
+
     fn weighted(
         &self,
         ages: &[i64; AGE_GROUPS],
@@ -276,7 +338,7 @@ impl Schooling {
             num += n * u128::from(f(&s));
             den += n;
         }
-        if den == 0 { 0 } else { (num / den) as u64 }
+        num.checked_div(den).map_or(0, |v| v as u64)
     }
 }
 
@@ -285,9 +347,16 @@ impl Schooling {
 /// start's pyramid, with the share of children who learn to read without school found so that
 /// the literacy of those 15 and over is `literacy` (per ten thousand). When schools alone
 /// already give more, the informal share is zero and literacy comes out higher.
+///
+/// `attained`, when known, is the share of those 15–64 who reached primary, secondary and
+/// tertiary schooling, complete or not (per ten thousand; Lee and Lee's attainment): each level
+/// is then scaled over the adult groups to it, keeping the younger groups ahead of the older.
+/// Enrolment alone undershoots it (Lee and Lee count anyone who entered a level, and secondary
+/// begins at 12).
 pub fn initial(
     ages: &[i64; AGE_GROUPS],
     path: &[[u32; SCHOOL_LEVELS]],
+    attained: Option<[u32; SCHOOL_LEVELS]>,
     literacy: u32,
 ) -> Schooling {
     let years = (path.len().max(1) as u32 - 1) * 5;
@@ -317,6 +386,9 @@ pub fn initial(
         }
         // The start's enrolment as it was, not where it was heading.
         s.enrolment = std::array::from_fn(|l| enrolment[l].min(WHOLE) as u16);
+        if let Some(a) = attained {
+            s.match_attainment(ages, a);
+        }
         s
     };
     let (mut lo, mut hi) = (0u32, WHOLE);
@@ -477,7 +549,7 @@ mod tests {
         let path: Vec<[u32; 3]> = (0..13)
             .map(|i| [1_000 + 160 * i, 100 + 30 * i, 20 + 7 * i])
             .collect();
-        let s = initial(&ages, &path, 4_000);
+        let s = initial(&ages, &path, None, 4_000);
         let lit = s.literacy(&ages);
         assert!((3_950..=4_100).contains(&lit), "{lit}");
         let reads = |g: usize| Schooling::at_least(&s.levels[g], Level::ReadsNoSchool);

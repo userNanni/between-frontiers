@@ -217,6 +217,20 @@ pub const EFFECTS: [EffectKind; 40] = [
         System::Budget,
         Some("econ::public"),
     ),
+    // Share of the 15–19 the law wants in secondary school and of the 20–24 in higher
+    // education (`demography::education`).
+    effect(
+        "secondary_enrolment_target",
+        Add,
+        System::Budget,
+        Some("demography::education"),
+    ),
+    effect(
+        "tertiary_enrolment_target",
+        Add,
+        System::Budget,
+        Some("demography::education"),
+    ),
     // Landowners' share of farm income, relative to 1925 free tenancy.
     effect(
         "landowner_rent",

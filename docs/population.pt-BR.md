@@ -286,6 +286,62 @@ território, e a relevância, são lidas do novo dono na conta de janeiro.
 - Revisar a estimativa religiosa da URSS, as culturas agregadas da África e da China, e as regras
   de raça como cultura.
 
+## Ensino por coorte
+
+Estado: **dados e contrato** (`crates/bf-sim/src/demography/education.rs`, regras puras com
+testes); a ligação com a simulação vem no PR seguinte. Pedido do dono em 2026-11-17: níveis de
+ensino, quantos estão na escola, e a escola que só vira escolaridade nos anos seguintes.
+
+**O que se guarda, por estado.** Para cada um dos 17 grupos de idade da pirâmide, a parcela de
+cada nível mais alto alcançado: sem escola e não lê; lê sem escola (em casa, no Exército, numa
+campanha); fundamental; médio; superior (por dez mil; o primeiro é o resto). A gente de cada nível
+é o grupo vezes a parcela, com o maior resto: a soma dos níveis de um grupo é o grupo, sempre,
+também depois de guerra e epidemia, que tiram gente da pirâmide e não mexem nas parcelas. E a
+matrícula de cada nível como parcela das idades que ele recebe: fundamental 5–14, médio 15–19,
+superior 20–24.
+
+**Alfabetização** é a parcela de 15 anos ou mais que lê e escreve: todos os níveis menos o
+primeiro. É a definição da referência do placar (OWID e UNESCO) e do `literacy` de 1925.
+
+**O ano letivo** (janeiro):
+
+| Peça | Regra | Como é na vida real |
+|---|---|---|
+| Matrícula | Anda metade da distância por ano até o menor entre vagas, meta da lei e (no médio e no superior) quem concluiu o nível de baixo | A escola nova enche em um a três anos; as famílias demoram |
+| Coorte | A matrícula que a coorte teve é a média exponencial de cinco anos da matrícula | Quem termina o fundamental hoje estudou nos últimos anos, não só neste |
+| Envelhecimento | Um quinto de cada grupo vem do grupo de baixo | A pirâmide envelhece um sexagésimo por mês |
+| Conclusão | Quem passa dos 15 leva o fundamental da sua coorte, dos 20 o médio, dos 25 o superior; quem não foi à escola pode aprender a ler em casa | Por coorte, com defasagem |
+| Campanha de adultos | Programa do orçamento: alcança 25 % dos analfabetos de 15–49 por ano, 20 % deles ficam alfabetizados de vez, custa 0,3 ano-aluno do fundamental por participante (`data/economy/literacy_campaign.ron`, com as fontes) | Cuba 1961, a liquidação do analfabetismo soviética, o Mobral; metade evade, metade passa, metade regride (Abadzi 2003) |
+
+Teste de gradualidade (`education.rs`): dobrar as vagas do fundamental sobe a matrícula de 20 %
+para 30 % no ano e a 40 % em quatro; o fundamental dos 15–19 sobe 5 pontos em cinco anos e 16
+em quinze; a alfabetização adulta, 2 pontos em cinco anos. A campanha sobe a alfabetização adulta
+mais de 20 pontos em três anos.
+
+**Prédios e custo por aluno.** Um prédio público por nível:
+
+| Prédio | Alunos por professor | Custo por aluno (fundamental = 1) | Fonte |
+|---|---:|---:|---|
+| `school` (fundamental) | 30 | 1 | o de antes |
+| `secondary_school` | 20 | ≈ 1,8 | Mingat, Ledoux e Rakotomalala (2010), Banco Mundial, tab. 6.1 e pp. 29–30 (renda média) |
+| `university` | 12 | ≈ 5 (calibrado) | entre 2 (países ricos) e 26 (em desenvolvimento) de Psacharopoulos, Tan e Jimenez (1986), tab. 9, e 1,2–1,7 da OCDE (*Education at a Glance* 2024) |
+
+**Lei de educação:** cada lei dá a meta de cada nível (`school_enrolment_target`,
+`secondary_enrolment_target`, `tertiary_enrolment_target`, por mil), de "ensino tradicional"
+(50, 20, 5) a "médio universal" (1000, 900, 300). São valores de desenho, marcados como
+calibrados em `data/politics/laws.ron`.
+
+**1925.** Cada estado nasce dos 60 anos de matrícula da sua unidade (Lee e Lee 2016, de 1865 a
+1925; `data/scenario/1925/education.ron`), vividos ano a ano na pirâmide de 1925, com cada nível
+escalado à escolaridade dos 15–64 que Lee e Lee dão para 1925 (eles contam quem chegou ao
+nível, completo ou não; a matrícula sozinha dava metade do médio nos EUA). Quem lê sem escola é
+achado para que a alfabetização de 15 anos ou mais bata com o `literacy` do estado. Diferença
+média na parcela com escola dos 15–64, nas 94 unidades: 0,3 ponto
+(`cargo test -p bf-sim --test education_1925 -- --nocapture`).
+
+**Referência do placar:** `data/history/education.csv`, Lee e Lee (2016), 111 países, de 1870 a
+2010, matrícula por nível e escolaridade dos 15–64.
+
 ## Demografia
 
 Código: `crates/bf-sim/src/demography.rs` (sistema `demography`, todo dia 15). Estado salvo em

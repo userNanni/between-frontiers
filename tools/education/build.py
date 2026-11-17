@@ -116,7 +116,7 @@ def build():
             region = region_of.get(largest, "")
             have = region_members.get(region, [])
             covered = 0.0
-            estimate = f", estimate: \"mean of {region}\""
+            estimate = f", estimate: Some(\"mean of {region}\")"
         if not have or total <= 0:
             continue
         def mean(field, year):
