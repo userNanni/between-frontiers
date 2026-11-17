@@ -129,5 +129,5 @@ condição, ou o jogador libertando o próprio território.
 - **Independência por movimento:** o primeiro gatilho automático, em que a colônia se separa quando
   o movimento de independência passa um limite e a metrópole não responde. Desenhado (parte C).
 - **Fábricas de dono estrangeiro na independência:** em decisão com o autor; ver
-  a página de capital entre países (em preparação).
+  [Capital entre países](capital-entre-paises.md#as-fábricas-da-metrópole-na-independência-em-decisão).
 - **Divisão por ocupação** (Alemanha e Coreia em 1945): fica com a paz da fase 5.
