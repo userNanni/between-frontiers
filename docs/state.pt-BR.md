@@ -231,6 +231,199 @@ o valor real da dívida, os juros e o crédito.
 - **Dívida de 1925:** todos começam com 25 % do PIB em casa e 5 % no banco central (as dívidas de
   guerra por país ficam para os dados do cenário).
 
+## Alavancas do orçamento e da dívida (desenho)
+
+Estado: **desenho**, sem código. Decisões do autor de 2026-11-17 (D1 a D9 e D13,
+`docs/wiki/o-que-o-jogador-decide.md`). Em cada alavanca, a regra de hoje continua como padrão
+("Regra histórica") e o governo pode fixar o valor ("Fixado pelo governo"), como já faz com os
+impostos.
+
+### Forma comum
+
+- **Onde se guarda.** Cada alavanca é um `Option` em `Budget` (ou em `Money`, para a dívida).
+  `None` é a regra. `Some(x)` é o valor fixado, cortado ao piso e ao teto do arquivo de dados
+  `data/economy/fiscal_levers.ron`. Piso e teto saem do que países reais fizeram; cada um com fonte.
+- **Hash e save.** Com tudo em `None`, o hash é o do `main`: o campo só entra no hash quando é
+  `Some`, como em `state.rs`. O save congela o `Budget` e o `Money` de antes, como
+  `econ/compat.rs` já faz com `MarketBeforeResearch`, e sobe para a próxima versão livre do mundo.
+  O ensino leva a 8.
+- **Um comando para o orçamento.** `GameCommand::SetFiscalLever { tag, lever: FiscalLever }`.
+  `FiscalLever` é um enum com uma variante por alavanca, cada uma com o seu `Option`. A dívida usa
+  `SetDebtIssue`, e o calote usa `DeclareDefault`. O teste `player_commands.rs` ganha uma linha por
+  comando.
+- **A IA fica na regra.** Os países sem jogador continuam em `None`. Ensinar a IA a fixar alavancas
+  é trabalho à parte, depois do equilíbrio.
+- **Gradual como na vida real.** O decreto vale no mês seguinte. O efeito anda na velocidade do
+  processo real: contratar e demitir leva meses, um título novo só muda o custo do estoque quando
+  vence, e a obra muda de lugar na fila mas não se constrói mais rápido.
+- **Tela.** O Orçamento ganha uma linha por alavanca, com "Regra histórica" e "Fixado", o valor da
+  regra ao lado do fixado e o efeito estimado. Tudo pelo teclado, como os impostos. D6 fica nas
+  Agendas, e D9 em Moeda e dívida.
+- **CPU.** Uma conta escalar por país por semana em D1 a D5 e D9. D8 ordena até 200 obras por país
+  por mês. Nada mensurável no tick. O PR mede 10 anos contra o `main`.
+
+### D1. Tamanho da folha
+
+- **Regra:** servidores 1,2 % da população e clero 0,5 % (`monthly::STATE_SHARE`). O Estado
+  contrata 1/10 da diferença por mês e nunca demite. Os soldados saem daqui: o efetivo de paz segue
+  a lei de conscrição (#115, D13).
+- **Fixado:** servidores por mil habitantes, de 2 a 80. O piso é o Estado mínimo de 1925. O teto é
+  o emprego público dos nórdicos e do bloco soviético, por volta de 1980, sobre a população (fonte
+  a fixar no PR: ILO, *Public sector employment*, e Maddison para a população).
+- **Demissão gradual (nova).** Acima da meta, a folha encolhe pela aposentadoria e pelo
+  congelamento de vagas, mais a demissão até um teto por mês. O ritmo é calibrado em cortes reais,
+  como a Grécia de 2010 a 2015 e o Reino Unido de 2010 a 2015 (números com fonte no PR). Os
+  demitidos voltam a trabalhadores urbanos, sem emprego, na região.
+- **Clero e lei de religião** (nota do autor). A parte do clero paga pelo Tesouro vem da lei de
+  religião em vigor, e não de um número fixo:
+  - Teocracia e Igreja oficial: tudo pelo Tesouro.
+  - Separação, Estado anticlerical e ateísmo de Estado: nada pelo Tesouro.
+  - O resto do clero é pago pelos fiéis, como um gasto das famílias, igual à parte do usuário na
+    escola.
+  - A curva entre um caso e outro é `church_privilege`, de 100 a 500.
+  - Casos para o teste: França depois de 1905 (separação, nada pelo Tesouro), Bélgica (o Estado
+    paga), Alemanha (imposto da Igreja cobrado pelo Estado e repassado: conta como dos fiéis).
+- **O que o servidor faz.** Hoje o servidor só custa. Sem efeito, cortar a folha é dinheiro de
+  graça. Proponho a **capacidade de cobrar**: abaixo dos servidores que a regra pediria para a
+  renda do país, a arrecadação cai na proporção que falta, e acima deles não sobe. É a ideia de
+  capacidade fiscal de Besley e Persson (2009, AER 99(4)). A elasticidade sai calibrada, com a
+  conta, no PR. **Decisão pendente (pergunta 1).**
+
+### D2. Salário público
+
+- **Regra:** o salário privado médio vezes o peso da profissão vezes 0,7 (`public::PUBLIC_PAY`).
+- **Fixado:** o fator, de 0,4 a 1,5. O piso é o salário público achatado das hiperinflações. O teto
+  é o prêmio do setor público em países pobres (fonte no PR: Banco Mundial, *Worldwide Bureaucracy
+  Indicators*).
+- **Efeito real:**
+  - Com o salário abaixo do que a profissão ganharia no privado, a contratação anda mais devagar e
+    parte dos servidores sai todo mês para o privado.
+  - Acima, a vaga enche mais rápido.
+  - O salário entra na folha no mês seguinte.
+
+### D3. Compras do Estado e a parte militar
+
+Forma combinada com o thread da guerra (#115):
+
+- **`public::military_room(m, cat) -> Fixed`:** o teto militar por semana, a única leitura de
+  `war`. Na regra, é `goods_budget(m)` × a soma dos pesos `military` da cesta / 1000 (hoje 400), e
+  o hash fica o do `main`.
+- **`Budget::military_share: Option<Fixed>`:** a parcela militar fixada, de 0 a 0,8. A cesta civil
+  fica com `goods_budget − military_room`, repartida pelos pesos civis, que não mudam.
+- **`Budget::purchases: Option<Fixed>`:** o fator sobre `goods_budget`, de 0,25 a 2. Abaixo de 1 é
+  austeridade escolhida, igual à automática. Acima de 1, o déficit é pago por D5 e D9.
+- **A ordem dentro do teto** é da guerra: necessidade das forças, encomenda (D13), geração nova e
+  depósito.
+
+### D4. Excedente e reserva do Tesouro
+
+- **Regra:**
+  - Reserva de 13 semanas de receita (`RESERVE_WEEKS`).
+  - Acima do dobro da reserva, gasta 1/10 do excesso por semana (`SURPLUS_SPENDING`).
+  - Com a dívida acima de 60 % do PIB, paga dívida com esse excesso (`money::REPAY_SHARE`,
+    `REPAY_ABOVE`).
+- **Fixado:**
+  - Reserva, de 4 a 52 semanas.
+  - Destino do excesso: gastar, pagar dívida ou guardar. Guardar é o fundo soberano: o caixa
+    cresce sem gastar.
+  - O ritmo fica em 1/10 por semana, porque é a velocidade da regra e não uma escolha.
+- **Efeito real:** a reserva maior adia a obra pública, que só começa acima dela. A reserva menor
+  aproxima o atraso de folha, que começa abaixo de 8 semanas (`PAY_RESERVE_WEEKS`, fixo).
+
+### D5. Teto de déficit
+
+- **Regra:** `money::deficit_room` para as compras, e `borrowing_room` para as obras. As duas caem
+  a nada com a dívida no limite ou com o juro de 15 %.
+- **Fixado:** um teto anual em % do PIB, de 0 a 10 %, no lugar do alvo da regra. Zero é orçamento
+  equilibrado. O freio da dívida e do juro continua: o mercado não compra mais porque o governo
+  quer, e o prêmio sobe pelas regras de hoje.
+- **Efeito real:** o teto alto não vira dinheiro se ninguém compra o título. O caixa fica negativo,
+  entram a austeridade e a correção fiscal, e com dívida fora vem o calote. É a lição do caso
+  argentino que as regras já têm.
+
+### D6. Calote e reestruturação
+
+Decisão rara, nas Agendas, com ponto de restauração antes (motivo "dívida").
+
+- **Regra:** o calote automático de hoje, quando o serviço em moeda estrangeira passa de 30 % da
+  receita ou o caixa não fecha, e a reestruturação com juros acima de metade da receita. Continua
+  igual para quem não decide.
+- **Declarar calote** (`DeclareDefault { tag, haircut }`): a qualquer momento, com o perdão de 25,
+  50 ou 75 % da dívida externa. Quanto maior o perdão, mais anos fora do crédito e mais prêmio
+  depois. Cruces e Trebesch (2013, AEJ: Macro 5(3)) medem essa relação; o PR traz a tabela.
+- **Reestruturar a dívida interna:** mesmo comando, com o alvo "interna". Corta o estoque em casa,
+  e a poupança das famílias que tinha título perde junto.
+- **Honrar a todo custo** (postura, `Money::honour: bool`): o gatilho automático vira austeridade
+  forçada, até a folha cair ao piso. É a Romênia de 1981 a 1989, que pagou a dívida externa
+  cortando o consumo. **Decisão pendente (pergunta 3).**
+
+### D7. Câmbio
+
+Fica para a fase 4, com o padrão-ouro e o regime internacional (`money::exchange_target`).
+
+### D8. Fila de obras públicas
+
+Nota do autor: "uma lista de prioridades que o jogador define e em que pode ordenar tudo".
+
+- **Hoje:** as obras públicas e as privadas dividem `Market::queue`. Os pontos vão às mais velhas
+  primeiro, e a regra escolhe cada obra pública (`public_works`, até 200 por mês).
+- **Fixado:** a lista das obras públicas em andamento e das que a regra propõe neste mês. Nela o
+  jogador pode:
+  - subir ou descer uma obra;
+  - fixá-la no topo;
+  - cancelar uma obra (os pontos pagos se perdem);
+  - pôr uma obra nova por estado e por tipo.
+- **"Só a minha lista":** a regra para de acrescentar obras.
+- **Gradual:** reordenar muda quem recebe os pontos da semana. A obra continua com o teto de 1/26
+  por semana, e os pontos do país são os que a construção civil produz.
+- **Ponto de desenho:** a obra privada fica na ordem de chegada ou entra na lista. **Decisão
+  pendente (pergunta 2).**
+
+### D9. Dívida interna ou externa
+
+Nota do autor: "o mercado decide quem compra; o jogador escolhe onde emite".
+
+- **Regra:** a ordem de hoje: a poupança de casa, o banco central subordinado, os estrangeiros e o
+  banco central de novo.
+- **Fixado** (`SetDebtIssue { tag, issue: Option<Issue> }`): a parcela de cada emissão nova em casa,
+  fora em moeda própria e fora em dólar.
+  - Cada comprador segue limitado pelo quanto absorve por semana, como hoje.
+  - Fora em moeda própria, o comprador só leva `1 − fx_share`: o "pecado original" continua, e o
+    país pobre que pede tudo fora em moeda própria não vende.
+  - O que não vende numa praça não passa sozinho para outra: o caixa cai e a austeridade entra.
+- **Gradual:** a escolha muda só a emissão nova. O estoque troca de mãos quando vence, no ritmo de
+  cinco anos que o custo já usa.
+
+### D13. Construir tropas de propósito
+
+É do thread da guerra (#115, A2). Daqui sai só `military_room` (D3). A encomenda come o espaço que
+hoje vai ao depósito, e o efetivo de paz continua pela lei.
+
+### Testes, por alavanca
+
+- **Regra:** com todas as alavancas em `None`, 10 anos dão o mesmo hash do `main`.
+- **Efeito:** fixar o valor move a quantidade na direção e no ritmo do desenho:
+  - D1 sobe a folha 1/10 da diferença por mês e desce no teto de demissão.
+  - D3 muda o teto militar e deixa a cesta civil nos seus pesos.
+  - D5 em zero zera o déficit das compras.
+  - D9 com tudo fora num país pobre não vende.
+- **Limites:** valores fora do piso e do teto são cortados.
+- **Save:** um save gravado pelo `main` carrega com o seu hash. Um save com alavanca fixada
+  recarrega com o mesmo hash.
+- **Comandos:** o `player_commands.rs` passa com as linhas novas.
+- **Contrafactual na rodada de 100 anos:** um país grande com cada alavanca fixada ao contrário da
+  regra (folha mínima, compras no teto, déficit zero, tudo emitido fora). O número que mexe tem de
+  ser o esperado (receita, dívida, prêmio, calote), sem quebrar o resto do mundo.
+
+### Fatias propostas
+
+1. D1, D2, D4 e D5: escalares do orçamento, comando e tela no Orçamento.
+2. D3 com `military_room`, junto com a guerra, e D9 em Moeda e dívida.
+3. D8, a fila com a lista do jogador.
+4. D6 nas Agendas, com ponto de restauração.
+
+Cada fatia é um PR com determinismo, CPU, save e o contrafactual.
+
 ## Comandos do jogador
 
 - `SetTaxRates { tag, rates }`: alíquotas das três classes em milésimos (teto 600); `None` devolve o
