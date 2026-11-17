@@ -48,6 +48,8 @@ pub struct GameData {
     pub clauses: Option<crate::treaty::ClauseCatalogue>,
     /// Debts between governments on the start date, when `war_debts.ron` exists.
     pub war_debts: Option<crate::treaty::WarDebtsFile>,
+    /// Who did not recognise whom on the start date, when `recognition.ron` exists.
+    pub recognition: Option<crate::treaty::RecognitionFile>,
 }
 
 fn read<T: serde::de::DeserializeOwned>(path: &Path) -> Result<T, String> {
@@ -129,6 +131,7 @@ impl GameData {
             candidates: optional(&data.join("borders/candidates.ron"))?,
             clauses: optional(&data.join("diplomacy/clauses.ron"))?,
             war_debts: optional(&scenario.join("war_debts.ron"))?,
+            recognition: optional(&scenario.join("recognition.ron"))?,
         })
     }
 
@@ -184,6 +187,10 @@ impl GameData {
             && !world.econ.markets.is_empty()
         {
             world.econ.ledger = crate::treaty::ledger_1925(debts, &cat.policy, &self.countries);
+        }
+        // Recognition withheld on the start date (owner's decision 4).
+        if let (Some(cat), Some(rec)) = (&self.clauses, &self.recognition) {
+            world.treaties.recognition = rec.start(&self.countries, &cat.policy);
         }
         world
     }

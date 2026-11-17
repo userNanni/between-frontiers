@@ -381,3 +381,90 @@ fn fluent_ids(locale: &str, file: &str) -> BTreeSet<String> {
         .map(|l| l.split_once('=').unwrap().0.trim().to_owned())
         .collect()
 }
+
+#[test]
+fn recognition_of_1925() {
+    let d = load();
+    let file: treaty::RecognitionFile = read("data/scenario/1925/recognition.ron");
+    file.validate(&d.countries).unwrap();
+    let rec = file.start(&d.countries, &d.cat.policy);
+    if let Err(e) = treaty::validate_recognition(&d.diplomacy, &d.cat, &rec, &d.countries) {
+        panic!("{} problems:\n{}", e.len(), e.join("\n"));
+    }
+    let idx = |tag: &str| {
+        d.countries
+            .countries
+            .iter()
+            .position(|c| c.tag == tag)
+            .unwrap() as u16
+    };
+    assert!(!rec.recognises(idx("USA"), idx("SOV")));
+    assert!(rec.recognises(idx("SOV"), idx("USA")));
+    assert!(rec.recognises(idx("SOV"), idx("MGL")));
+    assert!(!rec.recognises(idx("GBR"), idx("MGL")));
+    assert!(rec.recognises(idx("FRA"), idx("GER")));
+    // Mongolia, recognised by the Soviet Union alone, is recognised by a small share of the world.
+    let gdp: Vec<Fixed> = d
+        .countries
+        .countries
+        .iter()
+        .map(|c| Fixed::from_int(c.population as i64 * c.gdp_per_capita as i64 / 1000))
+        .collect();
+    let share = rec.recognised_by_share(idx("MGL"), &gdp);
+    assert!(
+        share > Fixed::ZERO && share < Fixed::from_ratio(1, 10),
+        "{share:?}"
+    );
+    assert_eq!(rec.recognised_by_share(idx("FRA"), &gdp), Fixed::ONE);
+    // The other policy: everyone recognises everyone.
+    let mut everyone = d.cat.policy.clone();
+    everyone.recognition_default = treaty::RecognitionDefault::Everyone;
+    assert!(file.start(&d.countries, &everyone).is_empty());
+}
+
+#[test]
+fn recognition_gates_the_table() {
+    let d = load();
+    let file: treaty::RecognitionFile = read("data/scenario/1925/recognition.ron");
+    let mut rec = file.start(&d.countries, &d.cat.policy);
+    let index = |t: &str| {
+        d.countries
+            .countries
+            .iter()
+            .position(|c| c.tag == t)
+            .map(|i| i as u16)
+    };
+    let clause = |kind: ClauseKind| Clause {
+        kind,
+        giver: Side::All,
+        receiver: Side::All,
+        until: None,
+        note: None,
+    };
+    let p = |clauses| Proposal {
+        side_a: vec!["USA".into()],
+        side_b: vec!["SOV".into()],
+        clauses,
+        term_years: None,
+        notice_years: 0,
+    };
+    // No alliance, tariff or loan between the United States and the Soviet Union in 1925...
+    let alliance = p(vec![clause(ClauseKind::Defence)]);
+    assert!(!treaty::recognition_conflicts(&alliance, &rec, &d.cat, index).is_empty());
+    // ...but recognition itself and a one-off exchange may be signed.
+    let rec_only = p(vec![
+        clause(ClauseKind::Recognition { border: false }),
+        clause(ClauseKind::Payment { amount: Fixed::ONE }),
+    ]);
+    assert!(treaty::recognition_conflicts(&rec_only, &rec, &d.cat, index).is_empty());
+    // Once recognised, the alliance may be signed.
+    rec.grant(index("USA").unwrap(), index("SOV").unwrap());
+    assert!(treaty::recognition_conflicts(&alliance, &rec, &d.cat, index).is_empty());
+    // A new country is recognised only by those who signed its creation.
+    let n = d.countries.countries.len() as u16;
+    rec.on_new_country(n, n + 1, &[index("GBR").unwrap()], &d.cat.policy);
+    assert!(rec.recognises(index("GBR").unwrap(), n));
+    assert!(!rec.recognises(index("FRA").unwrap(), n));
+    rec.on_annex(n);
+    assert!(rec.recognises(index("FRA").unwrap(), n));
+}

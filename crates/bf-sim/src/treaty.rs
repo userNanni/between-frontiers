@@ -987,6 +987,252 @@ impl Ledger {
 }
 
 // ---------------------------------------------------------------------------------------------
+// Recognition
+// ---------------------------------------------------------------------------------------------
+
+/// Who does not recognise whom. Only the exceptions are kept: in 1925 nearly everyone recognises
+/// everyone (owner's decision 4). A country that is not recognised is not a stored state: it is
+/// the share of the world that recognises it ([`Recognition::recognised_by_share`]).
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Recognition {
+    /// `(from, to)`: `from` does not recognise `to`. Country indices.
+    pub withheld: BTreeSet<(u16, u16)>,
+}
+
+impl HashState for Recognition {
+    fn hash_state(&self, h: &mut StateHasher) {
+        h.write_len(self.withheld.len());
+        for (a, b) in &self.withheld {
+            h.write_u16(*a);
+            h.write_u16(*b);
+        }
+    }
+}
+
+impl Recognition {
+    pub fn is_empty(&self) -> bool {
+        self.withheld.is_empty()
+    }
+
+    pub fn recognises(&self, from: u16, to: u16) -> bool {
+        from == to || !self.withheld.contains(&(from, to))
+    }
+
+    /// Both recognise each other: the condition for any clause but recognition itself and
+    /// one-off exchanges.
+    pub fn mutual(&self, a: u16, b: u16) -> bool {
+        self.recognises(a, b) && self.recognises(b, a)
+    }
+
+    pub fn grant(&mut self, from: u16, to: u16) {
+        self.withheld.remove(&(from, to));
+    }
+
+    pub fn withhold(&mut self, from: u16, to: u16) {
+        if from != to {
+            self.withheld.insert((from, to));
+        }
+    }
+
+    /// Share of the world's GDP, other than its own, held by the countries that recognise `to`.
+    pub fn recognised_by_share(&self, to: u16, gdp: &[Fixed]) -> Fixed {
+        let mut all = Fixed::ZERO;
+        let mut yes = Fixed::ZERO;
+        for (i, g) in gdp.iter().enumerate() {
+            let i = i as u16;
+            if i == to {
+                continue;
+            }
+            all += *g;
+            if self.recognises(i, to) {
+                yes += *g;
+            }
+        }
+        if all > Fixed::ZERO {
+            yes / all
+        } else {
+            Fixed::ONE
+        }
+    }
+
+    /// A country is born (`borders::Secede`): recognised only by the signatories of the treaty
+    /// that made it (none when it leaves by a movement), under the decided policy.
+    pub fn on_new_country(
+        &mut self,
+        new: u16,
+        countries: u16,
+        signatories: &[u16],
+        policy: &Policy,
+    ) {
+        if policy.recognition_default == RecognitionDefault::Everyone {
+            return;
+        }
+        for c in 0..countries {
+            if c != new && !signatories.contains(&c) {
+                self.withhold(c, new);
+            }
+        }
+    }
+
+    /// `annexed` is gone: the pairs that named it go with it.
+    pub fn on_annex(&mut self, annexed: u16) {
+        self.withheld
+            .retain(|(a, b)| *a != annexed && *b != annexed);
+    }
+}
+
+/// Whether a clause may be signed between two governments that do not recognise each other:
+/// only recognition itself and the one-off exchanges (a payment, a cession, a debt) may.
+pub fn allowed_without_recognition(kind: &ClauseKind, cat: &ClauseCatalogue) -> bool {
+    matches!(kind, ClauseKind::Recognition { .. }) || cat.get(kind.key()).is_some_and(|d| d.once)
+}
+
+/// The clauses of `proposal` that recognition forbids: `(clause, giver, receiver)` for each pair
+/// of a giver and a receiver that do not recognise each other. `index` turns a tag into the
+/// country index.
+pub fn recognition_conflicts(
+    proposal: &Proposal,
+    rec: &Recognition,
+    cat: &ClauseCatalogue,
+    index: impl Fn(&str) -> Option<u16>,
+) -> Vec<(usize, Tag, Tag)> {
+    let mut out = Vec::new();
+    for (ci, c) in proposal.clauses.iter().enumerate() {
+        if allowed_without_recognition(&c.kind, cat) {
+            continue;
+        }
+        for g in side_members(&c.giver, proposal) {
+            for r in side_members(&c.receiver, proposal) {
+                if g == r {
+                    continue;
+                }
+                if let (Some(a), Some(b)) = (index(g), index(r))
+                    && !rec.mutual(a, b)
+                {
+                    out.push((ci, g.to_string(), r.to_string()));
+                }
+            }
+        }
+    }
+    out
+}
+
+/// Who did not recognise whom on the start date, `data/scenario/1925/recognition.ron`.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct RecognitionFile {
+    pub start_date: String,
+    pub withheld: Vec<Withheld>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Withheld {
+    /// The country not recognised.
+    pub to: Tag,
+    /// Who withholds recognition: these countries, or everyone but `except`.
+    pub by: WithheldBy,
+    /// When the history granted it: a reference for the scorecard, never a script.
+    #[serde(default)]
+    pub until: Option<String>,
+    pub source: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum WithheldBy {
+    Countries(Vec<Tag>),
+    AllExcept(Vec<Tag>),
+}
+
+impl RecognitionFile {
+    /// The recognition state on the start date.
+    pub fn start(
+        &self,
+        countries: &crate::scenario::CountriesFile,
+        policy: &Policy,
+    ) -> Recognition {
+        let mut rec = Recognition::default();
+        if policy.recognition_default == RecognitionDefault::Everyone {
+            return rec;
+        }
+        let index = |t: &str| {
+            countries
+                .countries
+                .iter()
+                .position(|c| c.tag == t)
+                .map(|i| i as u16)
+        };
+        for w in &self.withheld {
+            let Some(to) = index(&w.to) else { continue };
+            match &w.by {
+                WithheldBy::Countries(list) => {
+                    for f in list.iter().filter_map(|t| index(t)) {
+                        rec.withhold(f, to);
+                    }
+                }
+                WithheldBy::AllExcept(except) => {
+                    for (i, c) in countries.countries.iter().enumerate() {
+                        if !except.contains(&c.tag) {
+                            rec.withhold(i as u16, to);
+                        }
+                    }
+                }
+            }
+        }
+        rec
+    }
+
+    pub fn validate(&self, countries: &crate::scenario::CountriesFile) -> Result<(), Vec<String>> {
+        let tags: BTreeSet<&str> = countries.countries.iter().map(|c| c.tag.as_str()).collect();
+        let mut errors = Vec::new();
+        for w in &self.withheld {
+            let at = format!("recognition of {}", w.to);
+            let named = match &w.by {
+                WithheldBy::Countries(l) | WithheldBy::AllExcept(l) => l,
+            };
+            for t in std::iter::once(&w.to).chain(named) {
+                if !tags.contains(t.as_str()) {
+                    errors.push(format!("{at}: unknown tag {t}"));
+                }
+            }
+            if matches!(&w.by, WithheldBy::Countries(l) if l.is_empty()) {
+                errors.push(format!("{at}: nobody withholds"));
+            }
+            if w.source.trim().is_empty() {
+                errors.push(format!("{at}: no source"));
+            }
+            if let Some(u) = &w.until
+                && !crate::diplomacy::is_iso_date(u)
+            {
+                errors.push(format!("{at}: bad date {u}"));
+            }
+        }
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(errors)
+        }
+    }
+}
+
+/// The diplomatic state of the world that is not money: recognition now; agreements in force,
+/// proposals and the memory of breaches as they enter the tick. `GameWorld::treaties`.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TreatyState {
+    pub recognition: Recognition,
+}
+
+impl TreatyState {
+    pub fn is_empty(&self) -> bool {
+        self.recognition.is_empty()
+    }
+}
+
+impl HashState for TreatyState {
+    fn hash_state(&self, h: &mut StateHasher) {
+        self.recognition.hash_state(h);
+    }
+}
+
+// ---------------------------------------------------------------------------------------------
 // War debts of 1925
 // ---------------------------------------------------------------------------------------------
 
@@ -1246,6 +1492,67 @@ pub fn validate_treaties(
     }
     if debts.start_date != diplomacy.start_date {
         errors.push("war_debts.ron: start_date differs from diplomacy.ron".into());
+    }
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors)
+    }
+}
+
+/// Checks the 1925 treaties in force against recognition: a continuous clause other than
+/// recognition needs the two governments to recognise each other, and a recognition clause in
+/// force cannot be withheld.
+pub fn validate_recognition(
+    diplomacy: &crate::diplomacy::DiplomacyFile,
+    cat: &ClauseCatalogue,
+    rec: &Recognition,
+    countries: &crate::scenario::CountriesFile,
+) -> Result<(), Vec<String>> {
+    let index = |t: &str| {
+        countries
+            .countries
+            .iter()
+            .position(|c| c.tag == t)
+            .map(|i| i as u16)
+    };
+    let mut errors = Vec::new();
+    for t in diplomacy.treaties_on(&diplomacy.start_date) {
+        let proposal = Proposal {
+            side_a: t.senior.clone(),
+            side_b: t
+                .parties
+                .iter()
+                .filter(|p| !t.senior.contains(p))
+                .cloned()
+                .collect(),
+            clauses: t.clauses.clone(),
+            term_years: None,
+            notice_years: 0,
+        };
+        for (ci, g, r) in recognition_conflicts(&proposal, rec, cat, index) {
+            errors.push(format!(
+                "treaty {}: {} between {g} and {r}, who do not recognise each other",
+                t.key,
+                t.clauses[ci].kind.key()
+            ));
+        }
+        for c in &t.clauses {
+            if let ClauseKind::Recognition { .. } = c.kind {
+                for g in side_members(&c.giver, &proposal) {
+                    for r in side_members(&c.receiver, &proposal) {
+                        if let (Some(a), Some(b)) = (index(g), index(r))
+                            && !rec.recognises(a, b)
+                        {
+                            errors.push(format!(
+                                "treaty {}: {g} recognises {r} by treaty but withholds it",
+                                t.key
+                            ));
+                        }
+                    }
+                }
+            }
+        }
     }
     if errors.is_empty() {
         Ok(())

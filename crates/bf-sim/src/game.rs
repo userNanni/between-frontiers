@@ -101,6 +101,10 @@ pub struct GameWorld {
     /// Age pyramids, vital rates and migration links; empty without an economy.
     #[serde(default)]
     pub demography: crate::demography::DemographyState,
+    /// Recognition between states (and, as they enter the tick, agreements and breaches);
+    /// empty without the treaty data.
+    #[serde(default)]
+    pub treaties: crate::treaty::TreatyState,
 }
 
 /// The world as saves wrote it before the communities were in the population (2026-11-17):
@@ -199,6 +203,11 @@ impl HashState for GameWorld {
             h.section("demography");
             self.demography.hash_state(h);
         }
+        // Worlds without treaty data keep their hash.
+        if !self.treaties.is_empty() {
+            h.section("treaties");
+            self.treaties.hash_state(h);
+        }
     }
 }
 
@@ -216,6 +225,7 @@ impl GameWorld {
             research: crate::research::ResearchState::default(),
             politics: crate::polity::PoliticsState::default(),
             demography: crate::demography::DemographyState::default(),
+            treaties: Default::default(),
         }
     }
 
