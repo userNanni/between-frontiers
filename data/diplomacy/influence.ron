@@ -1,0 +1,27 @@
+// Between Frontiers: rules of influence (phase 4). Contract: crates/bf-sim/src/influence.rs
+// (InfluenceRules); design: docs/influence.pt-BR.md. Licence: CC BY-SA 4.0.
+//
+// DESIGN CHOICES, to balance after phase 6 (the owner's rule: features before balance). Per
+// mille throughout.
+//
+// - Dependence of B on A is the weighted sum of its channels, each a share of B's GDP. Only credit
+//   is live; investment, trade and protection are dormant until their fronts exist.
+// - Goodwill keeps 917 per mille a year: half in 8 years (0.917^8 = 0.50), the design's
+//   half-life. Aid buys a vote only while it lasts and a little after (Kuziemko and Werker 2006).
+// - Affinity multiplies: from 500 (opposite regimes, no people in common) to 1500 (same laws, a
+//   large community of A's main culture in B); the people term is full at 20 % of B's people.
+(
+    credit_weight: 1000,
+    investment_weight: 1000,
+    trade_weight: 1000,
+    protection_weight: 1000,
+    goodwill_yearly_retention: 917,
+    affinity_floor: 500,
+    affinity_ceiling: 1500,
+    regime_weight: 500,
+    people_weight: 500,
+    people_full: 200,
+    // In a proposal of A that B weighs, A's influence over B adds influence × B's GDP × this.
+    proposal_weight: 1000,
+    source: "docs/influence.pt-BR.md, sections 2 and 3; Hirschman 1945; Kuziemko and Werker 2006",
+)

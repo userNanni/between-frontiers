@@ -48,6 +48,8 @@ pub struct GameData {
     pub clauses: Option<crate::treaty::ClauseCatalogue>,
     /// Debts between governments on the start date, when `war_debts.ron` exists.
     pub war_debts: Option<crate::treaty::WarDebtsFile>,
+    /// Rules of influence (`data/diplomacy/influence.ron`; phase 4, not simulated yet).
+    pub influence: Option<crate::influence::InfluenceRules>,
     /// What the border operations read (map, communities, catalogue, the 1925 subjects).
     pub border_rules: Arc<crate::borders::BorderRules>,
 }
@@ -146,6 +148,7 @@ impl GameData {
             industry: optional(&scenario.join("industry.ron"))?,
             diplomacy: optional(&scenario.join("diplomacy.ron"))?,
             candidates,
+            influence: optional(&data.join("diplomacy/influence.ron"))?,
             clauses: optional(&data.join("diplomacy/clauses.ron"))?,
             war_debts: optional(&scenario.join("war_debts.ron"))?,
         })
