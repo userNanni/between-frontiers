@@ -457,6 +457,7 @@ dependencies = [
  "egui_kittest",
  "image",
  "laplace-schelling",
+ "libc",
  "png 0.18.1",
  "ron",
  "serde",

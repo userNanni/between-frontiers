@@ -135,6 +135,12 @@ pub fn create(saves_dir: &Path, name: &str, seed: u64, start: Date) -> std::io::
     Ok(save)
 }
 
+/// Gives the campaign another name; its folder stays where it is.
+pub fn rename(save: &mut Save, name: &str) -> std::io::Result<()> {
+    save.meta.name = name.trim().to_owned();
+    write(save)
+}
+
 pub fn delete(save: &Save) -> std::io::Result<()> {
     // Only remove folders that hold a campaign file, never anything else.
     if save.dir.join(META).is_file() {
@@ -159,6 +165,48 @@ pub fn civil_date(secs: u64) -> Date {
     Date::new((y + i64::from(m <= 2)) as i32, m, d)
 }
 
+/// Date, hour and minute of a Unix timestamp on the player's clock (the system's time zone);
+/// UTC when the system cannot say.
+pub fn local_time(secs: u64) -> (Date, u8, u8) {
+    local_tm(secs).unwrap_or_else(|| {
+        let t = secs % 86_400;
+        (civil_date(secs), (t / 3600) as u8, (t % 3600 / 60) as u8)
+    })
+}
+
+#[cfg(unix)]
+fn local_tm(secs: u64) -> Option<(Date, u8, u8)> {
+    let t = libc::time_t::try_from(secs).ok()?;
+    // SAFETY: `tm` is plain data, zeroed is a valid value; `localtime_r` writes it and keeps no
+    // pointer to it.
+    let mut tm: libc::tm = unsafe { std::mem::zeroed() };
+    let done = unsafe { libc::localtime_r(&t, &mut tm) };
+    (!done.is_null()).then(|| from_tm(&tm))
+}
+
+#[cfg(windows)]
+fn local_tm(secs: u64) -> Option<(Date, u8, u8)> {
+    let t = libc::time_t::try_from(secs).ok()?;
+    // SAFETY: as above; `localtime_s` returns 0 on success.
+    let mut tm: libc::tm = unsafe { std::mem::zeroed() };
+    let err = unsafe { libc::localtime_s(&mut tm, &t) };
+    (err == 0).then(|| from_tm(&tm))
+}
+
+#[cfg(not(any(unix, windows)))]
+fn local_tm(_: u64) -> Option<(Date, u8, u8)> {
+    None
+}
+
+#[cfg(any(unix, windows))]
+fn from_tm(tm: &libc::tm) -> (Date, u8, u8) {
+    (
+        Date::new(tm.tm_year + 1900, (tm.tm_mon + 1) as u8, tm.tm_mday as u8),
+        tm.tm_hour as u8,
+        tm.tm_min as u8,
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -175,6 +223,17 @@ mod tests {
         assert_eq!(civil_date(0), Date::new(1970, 1, 1));
         assert_eq!(civil_date(1_763_164_800), Date::new(2025, 11, 15));
         assert_eq!(civil_date(951_782_400), Date::new(2000, 2, 29));
+    }
+
+    #[test]
+    fn local_time_is_within_a_day_of_utc() {
+        let secs = 1_763_164_800 + 13 * 3600 + 7 * 60;
+        let (d, h, m) = local_time(secs);
+        assert!(h < 24 && m < 60);
+        let day = |d: Date| d.year * 400 + i32::from(d.month) * 32 + i32::from(d.day);
+        assert!((day(d) - day(Date::new(2025, 11, 15))).abs() <= 32);
+        // Time zones move whole quarter hours at most.
+        assert_eq!(m % 15, 7);
     }
 
     #[test]

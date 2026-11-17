@@ -983,7 +983,7 @@ fn home_short(path: &std::path::Path) -> String {
 }
 
 /// Opens the folder in the system's file manager.
-fn open_folder(path: &std::path::Path) -> Result<(), String> {
+pub(crate) fn open_folder(path: &std::path::Path) -> Result<(), String> {
     std::fs::create_dir_all(path).map_err(|e| e.to_string())?;
     let program = if cfg!(target_os = "windows") {
         "explorer"
