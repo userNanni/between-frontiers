@@ -350,6 +350,10 @@ pub struct Totals {
     /// Plant levels, and levels under construction.
     pub levels: i64,
     pub works: usize,
+    /// Debts between governments (`Economy::ledger`): claims minus debts, world-wide. Zero by
+    /// construction; an annexation that joins a debtor and its creditor removes the line from
+    /// both sides at once.
+    pub ledger_net: laplace_schelling::Fixed,
 }
 
 impl Totals {
@@ -366,6 +370,10 @@ impl Totals {
         for d in &world.demography.diaspora {
             t.diaspora += d.people;
             t.arrived += d.arrived;
+        }
+        let ledger = &world.econ.ledger;
+        for c in 0..world.econ.markets.len() as u16 {
+            t.ledger_net += ledger.claims_of(c) - ledger.owed_by(c);
         }
         for m in &world.econ.markets {
             let y = &m.money;
