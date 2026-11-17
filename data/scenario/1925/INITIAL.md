@@ -3,14 +3,15 @@
 `population.ron` (contrato `bf_sim::initial::PopulationFile`) dá a população de cada um dos 870
 estados em 1925-01-01 com a parcela urbana, e a força de trabalho de cada país (metrópole e colônias
 à parte). `industry.ron` (`bf_sim::initial::IndustryFile`) dá a produção de 1925 de 15 bens e três
-estoques de infraestrutura por país, colônias somadas ao dono. Licença dos dados: CC BY-SA 4.0, com
-as atribuições abaixo. Invariantes em `crates/bf-sim/tests/initial_1925.rs`.
+estoques de infraestrutura por país, colônias somadas ao dono. Licença dos dados: `industry.ron`
+CC BY-SA 4.0; `population.ron` **CC BY-NC-SA 4.0** (uso não comercial), porque deriva do HYDE (ver
+`LAND.md`, "Licença do HYDE"). Atribuições abaixo. Invariantes em `crates/bf-sim/tests/initial_1925.rs`.
 
 ## Fontes e licenças
 
 | Fonte | O que dá | Licença |
 |---|---|---|
-| Klein Goldewijk, K. (2023). *History Database of the Global Environment 3.3* (HYDE 3.3), Universidade de Utrecht, doi:10.24416/UU01-AEZZIT. Cenário de base (`hyde33_c7_base_mrt2023`), `1920AD_pop.zip` e `1930AD_pop.zip` | População total (`popc`) e urbana (`urbc`) por célula de 5' em 1920 e 1930 | CC BY 4.0 (DataCite e página pública do Yoda); a mesma dúvida de licença anotada em `LAND.md` |
+| Klein Goldewijk, K. (2023). *History Database of the Global Environment 3.3* (HYDE 3.3), Universidade de Utrecht, doi:10.24416/UU01-AEZZIT. Cenário de base (`hyde33_c7_base_mrt2023`), `1920AD_pop.zip` e `1930AD_pop.zip` | População total (`popc`) e urbana (`urbc`) por célula de 5' em 1920 e 1930 | CC BY 4.0 no DataCite e na página pública do Yoda; o projeto segue o texto mais restritivo do pacote, **CC BY-NC-SA 4.0** (`LAND.md`, "Licença do HYDE") |
 | `countries.ron` deste cenário (Maddison 2023, OWID, censos; ver `SOURCES.md`) | Totais de população e urbanização de cada bloco | CC BY-SA 4.0 |
 | Censos nacionais dos anos 1920 (lista em "Conferência com censos") | Só os totais publicados, como fatos, para conferir a distribuição | Estatística oficial |
 | Séries históricas de produção (anuários estatísticos nacionais, *Statistical Abstract of the United States*, *Mineral Resources*, Lloyd's Register, AT&T *Telephone and Telegraph Statistics of the World*, Liga das Nações), na forma compilada por B. R. Mitchell, *International Historical Statistics* | Produção industrial e estoques de 1925 | Fatos citados; nenhuma tabela copiada |
@@ -223,8 +224,8 @@ economias são os das séries publicadas, arredondados.
    declarada fora dos bens. Se a economia não quiser altos-fornos à parte, a chave pode sair.
 4. **URSS em ano civil.** As estatísticas soviéticas eram por ano econômico (out.–set.); usei o ano
    civil de 1925 quando conhecido, abaixo de 1925/26.
-5. **Licença do HYDE.** Igual a `LAND.md`: CC BY 4.0 no DataCite e no Yoda, mas outra licença num
-   arquivo de metadados do pacote.
+5. **Licença do HYDE.** Decidido em 2026-11-17: `population.ron` e `tools/initial/state_hyde.csv`
+   ficam sob CC BY-NC-SA 4.0, como diz `LAND.md` ("Licença do HYDE").
 6. **Urbano de `countries.ron`.** Onde o alvo de `countries.ron` e o HYDE discordam muito (Sarre,
    Hejaz, Kuwait, Terra Nova, Tuva, Tibete), o fator único por bloco desloca todos os estados do
    bloco; vale rever o alvo nesses países.

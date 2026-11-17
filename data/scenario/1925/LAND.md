@@ -2,15 +2,16 @@
 
 `land.ron` (formato `bf_sim::resources::LandFile`) dá, para cada um dos 870 estados do mapa, as
 parcelas de clima, a lavoura, o pasto e a floresta por volta de 1925, se o estado tem costa e a
-aptidão (0 a 1) de cada tipo de fazenda. Licença dos dados: CC BY-SA 4.0, com as atribuições
-abaixo.
+aptidão (0 a 1) de cada tipo de fazenda. Licença de `land.ron`: **CC BY-NC-SA 4.0** (uso não
+comercial), porque lavoura, pasto, floresta e irrigação derivam do HYDE; ver "Licença do HYDE" em
+"Dúvidas". Atribuições abaixo.
 
 ## Fontes e licenças
 
 | Fonte | O que dá | Licença conferida |
 |---|---|---|
 | Beck, H. E., Zimmermann, N. E., McVicar, T. R., Vergopolan, N., Berg, A., Wood, E. F. (2018). "Present and future Köppen-Geiger climate classification maps at 1-km resolution". *Scientific Data* 5, 180214. doi:10.1038/sdata.2018.214. Arquivo `Beck_KG_V1.zip`, figshare, artigo 6396959 (versão 2) | Classe de Köppen–Geiger em 1 km e 10 km (`Beck_KG_V1_present_0p0083.tif`, `_0p083.tif`: clima de 1980–2016) | **CC BY 4.0** na página do figshare (API do figshare, campo `license`, consultada em 2026-11-15) |
-| Klein Goldewijk, K. (2023). *History Database of the Global Environment 3.3* (HYDE 3.3), Universidade de Utrecht, doi:10.24416/UU01-AEZZIT. Cenário de base (`hyde33_c7_base_mrt2023`), arquivos `1920AD_lu.zip`, `1930AD_lu.zip` e `general_files.zip` | Lavoura, pasto, pastagem natural, irrigação e arroz em 1920 e 1930 (grade de 5'), área máxima de terra por célula, máscara de floresta potencial (`forest_wwf_cr.asc`) | **CC BY 4.0** no DataCite e na página pública do Yoda; **CC BY 3.0** no `readme_HYDE_3.3.txt` do pacote; **CC BY-NC-SA 4.0** no `yoda-metadata.json` do pacote. Ver "Dúvidas" |
+| Klein Goldewijk, K. (2023). *History Database of the Global Environment 3.3* (HYDE 3.3), Universidade de Utrecht, doi:10.24416/UU01-AEZZIT. Cenário de base (`hyde33_c7_base_mrt2023`), arquivos `1920AD_lu.zip`, `1930AD_lu.zip` e `general_files.zip` | Lavoura, pasto, pastagem natural, irrigação e arroz em 1920 e 1930 (grade de 5'), área máxima de terra por célula, máscara de floresta potencial (`forest_wwf_cr.asc`) | **CC BY 4.0** no DataCite e na página pública do Yoda; **CC BY 3.0** no `readme_HYDE_3.3.txt` do pacote; **CC BY-NC-SA 4.0** no `yoda-metadata.json` do pacote. O projeto segue a mais restritiva, CC BY-NC-SA 4.0 (decisão do dono, 2026-11-17). Ver "Dúvidas" |
 | `assets/map/provinces.png` e `provinces.ron` do jogo | Ids de província em projeção de Miller, estados, áreas | CC BY-SA 4.0 (Natural Earth, domínio público, na origem) |
 
 Os arquivos grandes ficam em `data/raw/` (ignorado pelo git). Para reproduzir, da raiz do
@@ -222,10 +223,24 @@ desloca, mesmo com a aptidão certa.
    Yoda (`https://public.yoda.uu.nl/geo/UU01/AEZZIT.html`) dão CC BY 4.0; o
    `readme_HYDE_3.3.txt` dentro do pacote dá CC BY 3.0; e o `yoda-metadata.json` do próprio pacote
    no cofre dá **CC BY-NC-SA 4.0**. No HYDE 3.5 (doi:10.24416/UU01-F45D44) é igual: página e
-   DataCite CC BY 4.0, `yoda-metadata.json` CC BY-NC 4.0 (o que a OWID repete). Este arquivo segue
-   o registro publicado (DataCite e página), como o `SOURCES.md` já faz para a população; se o
-   mantenedor quiser certeza, a pergunta vai a Kees Klein Goldewijk (contato na página). Se valer o
-   NC, lavoura, pasto e floresta precisam de outra fonte e só o clima fica.
+   DataCite CC BY 4.0, `yoda-metadata.json` CC BY-NC 4.0 (o que a OWID repete).
+
+   **Licença do HYDE: decidido pelo dono em 2026-11-17.** Na dúvida entre os três textos, o
+   projeto adota o mais restritivo e marca como **CC BY-NC-SA 4.0** tudo o que deriva do HYDE. O
+   jogo não é vendido, então dado de uso não comercial pode entrar (regra de
+   `data/history/SOURCES.md`); esses arquivos só não são relicenciados sob a CC BY-SA 4.0 do resto
+   dos dados, e quem reusar o repositório comercialmente tem de tirá-los ou trocá-los. A lista:
+
+   | Arquivo | O que vem do HYDE |
+   |---|---|
+   | `data/scenario/1925/land.ron` | Lavoura, pasto, floresta e irrigação por estado (HYDE 3.3) |
+   | `data/scenario/1925/population.ron` | População e parcela urbana por estado (HYDE 3.3; ver `INITIAL.md`) |
+   | `tools/initial/state_hyde.csv`, `tools/initial/population_check.md`, `tools/land/check.md` | Somas das grades do HYDE 3.3 por estado e as conferências feitas sobre elas |
+   | `data/scenario/1925/countries.ron` | O campo de urbanização (HYDE 3.5 via OWID; ver `SOURCES.md` do cenário) |
+   | `data/history/urban.csv`, `data/history/cropland.csv` | Séries de referência do placar (HYDE 3.5 via OWID) |
+
+   Arquivo novo que usar o HYDE entra nesta lista. Se o autor (Kees Klein Goldewijk, contato na
+   página) confirmar a CC BY 4.0, a lista volta para a licença geral dos dados.
 2. **Floresta** é estimativa própria, não dado: potencial do WWF menos o uso do HYDE, com um fator
    de paisagem calibrado a olho contra ordens de grandeza nacionais. Sub-estima a Europa Central
    manejada e a Polônia, super-estima Japão, Índia e as fronteiras agrícolas que o HYDE subestima.
