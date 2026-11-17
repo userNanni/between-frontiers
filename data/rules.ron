@@ -31,4 +31,8 @@
     // (`docs/treaties.pt-BR.md`, "o registro de cada linha"): what was paid and written off, and a
     // line that ends stays closed in the record. Off: a line that ends leaves the ledger.
     ledger_record: false,
+    // Independence by movement (`docs/borders.pt-BR.md`, section 11): colonial units demand an
+    // answer, the metropole answers by its measured account, a refusal can end in revolt. Off:
+    // colonies only grow their movement.
+    independence: false,
 )

@@ -414,7 +414,7 @@ pub fn effects_in_force(
     }
 }
 
-mod measure;
+pub(crate) mod measure;
 mod system;
 
 pub use system::{PoliticsSystem, ScoreRow, Scoreboard, score_against_history};

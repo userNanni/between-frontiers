@@ -68,7 +68,12 @@ impl Facts {
         self.size.iter().sum()
     }
 
-    fn add_region(&mut self, cat: &Catalogue, kinds: (Option<usize>, Option<usize>), r: &Region) {
+    pub(crate) fn add_region(
+        &mut self,
+        cat: &Catalogue,
+        kinds: (Option<usize>, Option<usize>),
+        r: &Region,
+    ) {
         let lit = i128::from(r.literacy.raw());
         for (p, pop) in r.pops.iter().enumerate().take(P) {
             let n = pop.size.max(0);

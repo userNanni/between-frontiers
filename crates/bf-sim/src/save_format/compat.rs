@@ -506,5 +506,47 @@ pub fn v15_to_v16(w: V15) -> GameWorld {
         treaties: w.treaties,
         war: w.war,
         education: w.education,
+        independence: Default::default(),
+    }
+}
+
+/// Version 16: the record of each line of the ledger and the agreements (#158), before the
+/// independence state.
+#[derive(Deserialize)]
+pub struct V16 {
+    scenario: String,
+    player: Option<Id<Country>>,
+    countries: Table<Country, CountryState>,
+    census: Vec<CensusRecord>,
+    econ: crate::econ::Economy,
+    research: crate::research::ResearchState,
+    politics: crate::polity::PoliticsState,
+    demography: crate::demography::DemographyState,
+    borders: crate::borders::BordersState,
+    foreign: crate::foreign_stakes::ForeignState,
+    influence: crate::influence::InfluenceState,
+    treaties: crate::treaty::TreatyState,
+    war: crate::war::WarState,
+    education: crate::demography::education::EducationState,
+}
+
+/// 16 → 17: the independence state (`GameWorld::independence`), empty, which hashes as nothing.
+pub fn v16_to_v17(w: V16) -> GameWorld {
+    GameWorld {
+        scenario: w.scenario,
+        player: w.player,
+        countries: w.countries,
+        census: w.census,
+        econ: w.econ,
+        research: w.research,
+        politics: w.politics,
+        demography: w.demography,
+        borders: w.borders,
+        foreign: w.foreign,
+        influence: w.influence,
+        treaties: w.treaties,
+        war: w.war,
+        education: w.education,
+        independence: Default::default(),
     }
 }

@@ -985,6 +985,7 @@ pub fn main(
             pr.extra.len()
         );
     }
+    print_independence(&main.session);
     print_timings(&report.technologies);
     crate::print_systems(&report.systems);
     println!(
@@ -1174,4 +1175,62 @@ fn foreign_report(w: &bf_sim::game::GameWorld) {
         top(&hosted, true),
         top(&owned, false)
     );
+}
+
+/// Independence by movement: the units at the end, the independences by decade and how, and the
+/// checks of the broken-rule signals (`docs/borders.pt-BR.md`, section 11).
+fn print_independence(session: &bf_sim::game::Session) {
+    use bf_sim::borders::independence::How;
+    let w = session.world();
+    let st = &w.independence;
+    if st.is_empty() {
+        return;
+    }
+    let tag = |c: u16| {
+        w.countries
+            .iter()
+            .nth(usize::from(c))
+            .map_or("?", |(_, x)| x.tag.as_str())
+            .to_owned()
+    };
+    let mut by_decade: std::collections::BTreeMap<i32, [u32; 3]> = Default::default();
+    for r in &st.history {
+        let e = by_decade.entry(r.date.year / 10 * 10).or_default();
+        e[match r.how {
+            How::Agreement => 0,
+            How::Dominion => 1,
+            How::Revolt => 2,
+        }] += 1;
+    }
+    println!(
+        "independence: {} units at the end, {} independences",
+        st.units.len(),
+        st.history.len()
+    );
+    for (d, [a, dm, rv]) in &by_decade {
+        println!("  {d}s: {a} by agreement, {dm} as dominion, {rv} by revolt");
+    }
+    for r in &st.history {
+        println!(
+            "  {} {} from {} ({:?})",
+            r.date,
+            r.unit,
+            tag(r.owner),
+            r.how
+        );
+    }
+    let mut top: Vec<_> = st.units.iter().collect();
+    top.sort_by(|a, b| b.mobilized.cmp(&a.mobilized).then(a.key.cmp(&b.key)));
+    for u in top.iter().take(10) {
+        println!(
+            "  unit {} of {}: support {} mobilized {} pressure {} weakest {} answer {:?}",
+            u.key,
+            tag(u.owner),
+            u.movement.support,
+            u.mobilized,
+            u.movement.pressure,
+            u.movement.weakest,
+            u.demand.as_ref().map(|d| d.answer)
+        );
+    }
 }

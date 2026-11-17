@@ -1,0 +1,27 @@
+// Between Frontiers: independence by movement (docs/borders.pt-BR.md, section 11; decisions I1–I5
+// and the owner's addition to I4 of 2026-11-17). Design values, to balance after phase 6.
+// Licence: CC BY-SA 4.0.
+(
+    // The switch is `game::Switches::independence`, off by default (a new rule enters off;
+    // turning it on is a PR of its own), in `data/rules.ron`; `--rule independence` in the bench.
+    // Mobilization of a colonial unit (per mille: support × recruits ÷ people) at which it demands
+    // an answer, and at which, after a refusal, it breaks away without an agreement.
+    demand: 80,
+    revolt: 200,
+    // Months a player metropole has to answer before silence counts as a refusal.
+    answer_months: 12,
+    // What one per mille of the metropole's legitimacy is worth, per mille of its GDP a year.
+    legitimacy_price: 2,
+    // Anticolonial stance (per mille): a country born of an independence in the game, a country
+    // without colonies; a holder of colonies has none.
+    born_independent: 1000,
+    no_colonies: 400,
+    // Goodwill each anticolonial country withdraws a year from a metropole holding a unit with a
+    // movement, per mille of its own GDP at full stance and full mobilization, and the yearly cap
+    // per pair (per mille of its GDP).
+    reputation_rate: 50,
+    reputation_cap: 5,
+    // Weight of the influence anticolonial countries hold over the metropole (issue Money) in the
+    // cost of holding, per mille.
+    material_weight: 1000,
+)

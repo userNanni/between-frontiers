@@ -627,7 +627,7 @@ mês, em duas partes que já existem no jogo:
 1. **Postura anticolonial de cada país** (0 a 1000‰), de coisas que o mundo sabe: nasceu de uma
    independência (o registro de mudanças de fronteira), não tem colônias, as leis coloniais que
    tem, e a afinidade com os que nasceram de independência. Valores de desenho em
-   `data/borders/rules.ron`.
+   `data/borders/independence.ron`.
 2. **Reputação:** a cada ano que a metrópole segura uma colônia com movimento ativo, perde boa
    vontade com cada país anticolonial, na proporção da postura dele, do peso dele (a parte do PIB
    mundial) e da mobilização da colônia. Com teto. A soma cresce sozinha à medida que nascem países
@@ -695,10 +695,39 @@ por independência.
 | Código | Pergunta | Decidido | Alternativa recusada |
 |---|---|---|---|
 | I1 | Onde mora o movimento | por unidade colonial (candidato), somado no país | um por país; separa a unidade mais mobilizada |
-| I2 | As marcas | exigência e revolta na mobilização da unidade, valores de desenho no `data/borders/rules.ron`, a equilibrar depois da fase 6 | só uma marca (revolta) e nenhuma negociação |
+| I2 | As marcas | exigência e revolta na mobilização da unidade, valores de desenho em `data/borders/independence.ron`, a equilibrar depois da fase 6 | só uma marca (revolta) e nenhuma negociação |
 | I3 | Revolta antes da guerra | a revolta separa a unidade sem acordo quando a recusa continua, até a fase 5 trazer a guerra colonial | revolta dormente até a fase 5; até lá, só independência por acordo |
 | I4 | Como a IA da metrópole responde | por conta medida: o custo de segurar (legitimidade perdida pelo movimento sem resposta, a fração do orçamento em repressão) contra o valor da colônia (receita colonial, fábricas, colonos); concede o degrau mais barato que tira a causa | sempre concede na exigência (onda limpa, sem guerra) |
 | I5 | O degrau do domínio | soltar como súdito é uma das saídas, com o feixe `dominion` ou `associated` | só independência plena |
 
 As fábricas (C6a a C6e), a dívida (decisão 1) e o reconhecimento já estão decididos; esta parte só
 os chama.
+
+### Implementação (parte C, primeira entrega)
+
+- **Unidades:** cada candidato de `candidates.ron` sem fim (`ended`) e com estados, cujos estados
+  presentes são em mais da metade da população colônia de um só dono. Um estado entra numa unidade
+  só (a primeira do arquivo). Regiões coloniais fora de unidade continuam só no movimento do país;
+  o país súdito rompe pela regra "Depois do súdito", numa entrega seguinte.
+- **Estado no mundo:** `GameWorld::independence` (unidades com dono, movimento e a exigência em
+  aberto; registro das independências), salvo e no hash só quando não está vazio. Versão do mundo:
+  a próxima livre.
+- **Quando:** todo 2 de janeiro, depois de a política mover os movimentos do país no dia 1.
+- **Regras e valores de desenho:** `data/borders/independence.ron`. A chave é
+  `game::Switches::independence`, desligada por padrão: desligada, o hash de 101 anos é o da
+  `main`. Fica em `data/rules.ron`; no bench, `--rule independence` liga. Ligar no jogo é um PR
+  separado.
+- **Jogador metrópole:** a exigência fica em aberto no mundo; o comando
+  `GameCommand::AnswerDemand { unit, answer }` responde; sem resposta no prazo, conta como recusa.
+
+**Sinais de regra quebrada, declarados antes da rodada:**
+1. uma independência sem exigência registrada antes, ou com a mobilização da unidade abaixo da
+   marca;
+2. uma revolta sem recusa antes, ou com a mobilização abaixo da marca da revolta;
+3. uma colônia sem movimento (apoio zero) gerando custo internacional;
+4. o custo internacional dependendo da data e não do número e do peso dos anticoloniais (teste
+   controlado: mais anticoloniais, concessão mais cedo);
+5. a onda não acelerando: na rodada sem história, a taxa por década depois das primeiras
+   independências não é maior que antes;
+6. conservação quebrada (população, dinheiro, dívida, plantas) em qualquer separação;
+7. o hash com `enabled: false` diferente do da `main`.

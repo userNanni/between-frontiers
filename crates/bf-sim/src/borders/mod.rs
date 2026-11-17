@@ -10,6 +10,7 @@
 //! Dates are ISO strings, `YYYY-MM-DD`. Names live in `assets/i18n/*/countries.ftl`
 //! (`country-<TAG>`, `.article`, `country-<TAG>-capital`), as for the 1925 countries.
 
+pub mod independence;
 pub mod op;
 
 pub use op::{BorderRules, BordersState, Heir, Operation, Terms};

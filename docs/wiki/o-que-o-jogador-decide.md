@@ -34,6 +34,7 @@ de ferramentas; o jogador liberta a própria terra com `Liberate`.
 | Mobilizar e desmobilizar | `Mobilize { on }` | Agendas, decisão em dois passos, com ponto de restauração antes (motivo "guerra") | em revisão (#115) |
 | Encomendar tropas, navios e aviões | `OrderForces` | Governo → Forças → "Nova encomenda": tipo, elementos, colonial; o custo de construir e o de todo ano; a encomenda grande pede um segundo clique | em revisão |
 | Cancelar uma encomenda | `CancelOrder` | Governo → Forças → "Encomendas": "Cancelar" e confirmação; o construído vai ao depósito | em revisão |
+| Responder à exigência de independência de uma colônia (governo próprio, domínio, independência, recusar) | `AnswerDemand` | Agendas → Decisões, com o preço de cada saída, o prazo e confirmação; ponto de restauração antes (motivo "exigência"); entrada de agenda fixável enquanto pende | em rascunho (#136); a tela vem no PR da interface empilhado nele, e até lá o comando está na lista de exceções do teste |
 
 ## Desenhadas, sem comando ainda
 

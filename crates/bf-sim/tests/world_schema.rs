@@ -39,6 +39,8 @@ fn schema() -> String {
         bf_sim::treaty::ArmsCategory,
         bf_sim::treaty::Obligation,
         bf_sim::treaty::AgreementStatus,
+        bf_sim::borders::independence::Answer,
+        bf_sim::borders::independence::How,
     );
     let registry = tracer
         .registry()
