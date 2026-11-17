@@ -186,67 +186,63 @@ fn class_section(ui: &mut Ui, i18n: &I18n, world: &World, view: &PopulationView,
         bf_ui_kit::muted(ui, &i18n.tr("population-no-data"));
         return;
     }
-    let num = 72.0;
-    let name_w = (ui.available_width() - num * 2.0 - space::SM * 3.0 - space::MD).max(60.0);
+    // One painted row per class: name, share, children per woman and a bar for the gradient.
+    let width = ui.available_width() - space::MD;
+    let line = 16.0;
+    let (rect, _) = ui.allocate_exact_size(
+        vec2(width, line * (lines.len() + 1) as f32),
+        Sense::hover(),
+    );
+    let p = ui.painter_at(rect);
+    let bar_w = 90.0;
+    let tfr_x = rect.right() - bar_w - space::SM;
+    let share_x = tfr_x - 64.0;
     let max = lines.iter().map(|l| l.tfr).fold(0.0, f64::max).max(0.1);
-    egui::Grid::new("population-classes")
-        .num_columns(3)
-        .spacing([space::SM, 2.0])
-        .show(ui, |ui| {
-            let cell = |ui: &mut Ui, w: f32, text: String, faint: bool, right: bool| {
-                let layout = if right {
-                    egui::Layout::right_to_left(egui::Align::Center)
-                } else {
-                    egui::Layout::left_to_right(egui::Align::Center)
-                };
-                ui.allocate_ui_with_layout(vec2(w, 0.0), layout, |ui| {
-                    ui.set_min_width(w);
-                    ui.add(
-                        egui::Label::new(
-                            RichText::new(text)
-                                .font(sans(if faint { size::CAPTION } else { size::SMALL }))
-                                .color(if faint { color::TEXT_FAINT } else { color::TEXT }),
-                        )
-                        .truncate(),
-                    );
-                });
-            };
-            cell(ui, name_w, i18n.tr("population-class"), true, false);
-            cell(ui, num, i18n.tr("population-class-share"), true, true);
-            cell(ui, num, i18n.tr("population-tfr"), true, true);
-            ui.end_row();
-            for l in lines {
-                let key = bf_sim::economy::PROFESSIONS.get(l.prof).copied().unwrap_or("?");
-                cell(ui, name_w, i18n.tr(&format!("profession-{key}")), false, false);
-                cell(
-                    ui,
-                    num,
-                    format!("{} %", i18n.decimal(l.share * 100.0, 1)),
-                    false,
-                    true,
-                );
-                // The number with a bar under it, to read the gradient at a glance.
-                let (rect, _) = ui.allocate_exact_size(vec2(num, 14.0), Sense::hover());
-                let p = ui.painter_at(rect);
-                let len = (rect.width() * (l.tfr / max) as f32).max(1.0);
-                p.rect_filled(
-                    Rect::from_min_size(
-                        egui::pos2(rect.right() - len, rect.bottom() - 3.0),
-                        vec2(len, 2.0),
-                    ),
-                    1.0,
-                    color::ACCENT,
-                );
-                p.text(
-                    egui::pos2(rect.right(), rect.center().y - 1.0),
-                    Align2::RIGHT_CENTER,
-                    i18n.decimal(l.tfr, 2),
-                    sans(size::SMALL),
-                    color::TEXT,
-                );
-                ui.end_row();
-            }
-        });
+    let mid = |row: usize| rect.top() + line * row as f32 + line / 2.0;
+    for (x, align, key) in [
+        (rect.left(), Align2::LEFT_CENTER, "population-class"),
+        (share_x, Align2::RIGHT_CENTER, "population-class-share"),
+        (tfr_x, Align2::RIGHT_CENTER, "population-class-tfr"),
+    ] {
+        p.text(
+            egui::pos2(x, mid(0)),
+            align,
+            i18n.tr(key),
+            sans(size::CAPTION),
+            color::TEXT_FAINT,
+        );
+    }
+    for (row, l) in lines.iter().enumerate() {
+        let y = mid(row + 1);
+        let key = bf_sim::economy::PROFESSIONS.get(l.prof).copied().unwrap_or("?");
+        p.text(
+            egui::pos2(rect.left(), y),
+            Align2::LEFT_CENTER,
+            i18n.tr(&format!("profession-{key}")),
+            sans(size::SMALL),
+            color::TEXT,
+        );
+        p.text(
+            egui::pos2(share_x, y),
+            Align2::RIGHT_CENTER,
+            format!("{} %", i18n.decimal(l.share * 100.0, 1)),
+            sans(size::SMALL),
+            color::TEXT_MUTED,
+        );
+        p.text(
+            egui::pos2(tfr_x, y),
+            Align2::RIGHT_CENTER,
+            i18n.decimal(l.tfr, 2),
+            sans_medium(size::SMALL),
+            color::TEXT,
+        );
+        let len = (bar_w * (l.tfr / max) as f32).max(1.0);
+        p.rect_filled(
+            Rect::from_min_size(egui::pos2(tfr_x + space::SM, y - 4.0), vec2(len, 8.0)),
+            1.0,
+            color::ACCENT,
+        );
+    }
     bf_ui_kit::caption(ui, &i18n.tr("population-by-class-note"));
 }
 

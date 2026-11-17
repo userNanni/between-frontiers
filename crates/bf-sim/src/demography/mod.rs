@@ -234,8 +234,10 @@ pub struct Vital {
     #[serde(default)]
     pub fertility_terms: [Fixed; 5],
     /// Children per woman of each profession (`prof`), at its own comfort and work; `tfr` is
-    /// their mean weighted by the size of each pop. Zero in saves from before it existed.
-    #[serde(default)]
+    /// their mean weighted by the size of each pop. An output for the screen and the history
+    /// that nothing in the simulation reads: recomputed every month, it is not saved nor
+    /// hashed, so saves keep their format and are zero until the first month after a load.
+    #[serde(skip)]
     pub tfr_by_class: [Fixed; prof::P],
 }
 
@@ -268,7 +270,6 @@ impl HashState for Vital {
             v.hash_state(h);
         }
         self.fertility_terms.as_slice().hash_state(h);
-        self.tfr_by_class.as_slice().hash_state(h);
     }
 }
 
