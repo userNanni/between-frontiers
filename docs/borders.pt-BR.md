@@ -479,6 +479,9 @@ Tchecoslováquia de 1993, a Iugoslávia de 1992, a Federação do Mali.
   cada herdeiro; os créditos no exterior, pela população. Cada herdeiro, em ordem, leva a sua
   parte do que sobrou, e o último leva tudo o que resta: a soma fecha sem perda de arredondamento
   (teste).
+- **Livro de dívida entre Estados (#101):** as linhas do país dissolvido, como devedor e como
+  credor, passam inteiras ao herdeiro de maior **w**, que continua o país (como a Rússia em 1991).
+  Repartir uma linha entre herdeiros cria linhas novas, e isso fica com os tratados.
 - **Súditos:** os do país dissolvido ficam livres.
 - **Quem chama:** os tratados e a paz, nunca o jogador. A decisão "Libertar território" continua
   sem poder esvaziar o próprio país.
