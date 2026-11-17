@@ -135,6 +135,12 @@ pub fn create(saves_dir: &Path, name: &str, seed: u64, start: Date) -> std::io::
     Ok(save)
 }
 
+/// Gives the campaign another name; its folder stays where it is.
+pub fn rename(save: &mut Save, name: &str) -> std::io::Result<()> {
+    save.meta.name = name.trim().to_owned();
+    write(save)
+}
+
 pub fn delete(save: &Save) -> std::io::Result<()> {
     // Only remove folders that hold a campaign file, never anything else.
     if save.dir.join(META).is_file() {

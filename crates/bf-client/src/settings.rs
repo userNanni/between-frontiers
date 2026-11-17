@@ -7,9 +7,38 @@ use serde::{Deserialize, Serialize};
 pub enum Autosave {
     Off,
     Monthly,
+    Quarterly,
+    Semiannual,
     #[default]
     Yearly,
 }
+
+impl Autosave {
+    pub const ALL: [Autosave; 5] = [
+        Autosave::Off,
+        Autosave::Monthly,
+        Autosave::Quarterly,
+        Autosave::Semiannual,
+        Autosave::Yearly,
+    ];
+
+    pub fn key(self) -> &'static str {
+        match self {
+            Autosave::Off => "settings-autosave-off",
+            Autosave::Monthly => "settings-autosave-monthly",
+            Autosave::Quarterly => "settings-autosave-quarterly",
+            Autosave::Semiannual => "settings-autosave-semiannual",
+            Autosave::Yearly => "settings-autosave-yearly",
+        }
+    }
+}
+
+/// Choices offered for the automatic points kept.
+pub const KEEP_CHOICES: [u32; 4] = [3, 5, 10, 20];
+/// Choices offered for the ceiling of points per campaign.
+pub const CAP_CHOICES: [u32; 4] = [10, 30, 60, 100];
+/// Choices offered for the folder size that warns, MB.
+pub const WARN_CHOICES: [u32; 4] = [250, 500, 1000, 2000];
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
@@ -22,7 +51,16 @@ pub struct Settings {
     pub map_labels: bool,
     /// Terrain shading on the map.
     pub map_relief: bool,
+    /// Interval of the automatic restore points.
     pub autosave: Autosave,
+    /// Automatic points kept per campaign; older ones rotate out.
+    pub autosave_keep: u32,
+    /// An automatic point before a risky or irreversible decision.
+    pub point_before_risk: bool,
+    /// Points per campaign at most; past it the oldest automatic go (never a manual one).
+    pub points_cap: u32,
+    /// A campaign folder past this many MB is flagged.
+    pub warn_mb: u32,
 }
 
 impl Default for Settings {
@@ -34,6 +72,10 @@ impl Default for Settings {
             map_labels: true,
             map_relief: true,
             autosave: Autosave::Yearly,
+            autosave_keep: 5,
+            point_before_risk: true,
+            points_cap: 30,
+            warn_mb: 1000,
         }
     }
 }
@@ -52,6 +94,13 @@ fn default_locale() -> Locale {
 }
 
 impl Settings {
+    pub fn limits(&self) -> crate::points::Limits {
+        crate::points::Limits {
+            keep_auto: self.autosave_keep.max(1) as usize,
+            cap: self.points_cap.max(1) as usize,
+        }
+    }
+
     pub fn locale(&self) -> Locale {
         Locale::from_code(&self.locale).unwrap_or_default()
     }

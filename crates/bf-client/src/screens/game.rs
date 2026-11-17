@@ -9,8 +9,8 @@ use crate::app::{Shared, Transition};
 use crate::hud::PanelId;
 use crate::keys::{self, id};
 use crate::map::MapMode;
+use crate::points::{self, Kind, Point, Reason};
 use crate::saves::{self, Save};
-use crate::settings::Autosave;
 use crate::sim::{Command, SimHandle};
 use crate::text::country_name;
 use bf_sim::data::GameData;
@@ -45,14 +45,24 @@ pub struct State {
     /// Figures the HUD shows, as last read from the simulation.
     live_figures: Option<std::sync::Arc<crate::live::LiveFigures>>,
     last_autosave: laplace_schelling::calendar::Date,
-    /// An autosave the simulation is writing: its answer, and the date and time it records.
-    autosaving: Option<Autosaving>,
+    /// Saves the simulation is writing while the interface keeps drawing.
+    writing: Vec<Writing>,
+    /// The name of a point being saved with a name, while its dialog is open.
+    naming: Option<String>,
+    /// The campaign folder was found past the size that warns, this session.
+    warned_size: bool,
 }
 
-struct Autosaving {
+/// A save the simulation is writing: its answer, and what to record once it is on disk.
+struct Writing {
     answer: std::sync::mpsc::Receiver<Result<(), String>>,
-    date: laplace_schelling::calendar::Date,
-    played: u64,
+    /// The restore point it writes, if any.
+    point: Option<Point>,
+    /// Also the campaign's current state: the date and time the campaign file then records.
+    /// `None` when it is not, or when a later save superseded it.
+    world: Option<(laplace_schelling::calendar::Date, u64)>,
+    /// Text of the toast once written.
+    announce: Option<String>,
 }
 
 impl State {
@@ -87,7 +97,9 @@ impl State {
         let sim = SimHandle::start(session, rules.clone(), move || repaint.request_repaint());
         let state = Self {
             last_autosave: save.meta.date,
-            autosaving: None,
+            writing: Vec::new(),
+            naming: None,
+            warned_size: false,
             save,
             sim,
             selected: None,
@@ -145,9 +157,159 @@ impl State {
         self.sim.snapshot()
     }
 
+    /// Writes an automatic restore point before a risky or irreversible decision, when the
+    /// player's settings ask for it: the one door for every system that takes such a decision
+    /// (a law, freeing territory, accepting an agreement; later war and treaties). Call it
+    /// before sending the decision's command, so the point holds the world before it.
+    pub fn restore_point_before(&mut self, shared: &Shared, reason: Reason) {
+        if shared.settings.point_before_risk {
+            self.write_point(Kind::Before(reason), None, None, false);
+        }
+    }
+
+    /// Asks the simulation for a restore point (and the current state with it when `world`);
+    /// the answer is read in [`Self::poll_writes`].
+    fn write_point(
+        &mut self,
+        kind: Kind,
+        name: Option<String>,
+        announce: Option<String>,
+        world: bool,
+    ) {
+        let id = if kind == Kind::Quick {
+            points::QUICK.to_owned()
+        } else {
+            points::new_id(&self.save)
+        };
+        let date = self.sim.snapshot().date;
+        let point = Point {
+            id: id.clone(),
+            kind,
+            name,
+            date,
+            written: saves::now(),
+            bytes: 0,
+        };
+        let mut paths = vec![points::save_path(&self.save, &id)];
+        if world {
+            // The current state first: a later manual save lands after it.
+            paths.insert(0, self.save.dir.join(saves::WORLD_FILE));
+        }
+        let main = paths.remove(0);
+        let answer = self.sim.save_to(main, paths, self.save.meta.name.clone());
+        self.writing.push(Writing {
+            answer,
+            point: Some(point),
+            world: world.then(|| (date, saves::now())),
+            announce,
+        });
+    }
+
+    /// Records what the simulation finished writing: the points' files, the campaign's date.
+    fn poll_writes(&mut self, shared: &mut Shared, now: f64) {
+        let mut i = 0;
+        while i < self.writing.len() {
+            let result = match self.writing[i].answer.try_recv() {
+                Ok(r) => r,
+                Err(std::sync::mpsc::TryRecvError::Empty) => {
+                    i += 1;
+                    continue;
+                }
+                Err(e) => Err(e.to_string()),
+            };
+            let w = self.writing.remove(i);
+            self.finish(shared, now, w, result);
+        }
+    }
+
+    /// Waits for every save in flight (before the campaign goes back to a point).
+    fn wait_writes(&mut self, shared: &mut Shared, now: f64) {
+        for w in std::mem::take(&mut self.writing) {
+            let result = w
+                .answer
+                .recv_timeout(std::time::Duration::from_secs(60))
+                .map_err(|e| e.to_string())
+                .and_then(|r| r);
+            self.finish(shared, now, w, result);
+        }
+    }
+
+    fn finish(&mut self, shared: &mut Shared, now: f64, w: Writing, result: Result<(), String>) {
+        let result = result.and_then(|()| {
+            if let Some(p) = w.point {
+                points::record(&self.save, p).map_err(|e| e.to_string())?;
+                points::prune(&self.save, shared.settings.limits());
+            }
+            if let Some((date, played)) = w.world {
+                self.save.meta.date = date;
+                self.save.meta.last_played = played;
+                saves::write(&self.save).map_err(|e| e.to_string())?;
+            }
+            Ok(())
+        });
+        match result {
+            Ok(()) => {
+                if let Some(text) = w.announce {
+                    shared.toast(text, now);
+                }
+                self.check_size(shared, now);
+            }
+            Err(e) => {
+                let msg = shared
+                    .i18n
+                    .tr_args("saves-error-io", &[("error", bf_i18n::Arg::String(e))]);
+                shared.toast(msg, now);
+            }
+        }
+    }
+
+    /// Warns once a session when the campaign folder passes the size the player set.
+    fn check_size(&mut self, shared: &mut Shared, now: f64) {
+        if self.warned_size {
+            return;
+        }
+        let bytes = points::folder_bytes(&self.save.dir);
+        if bytes > u64::from(shared.settings.warn_mb) * 1_000_000 {
+            self.warned_size = true;
+            let msg = shared.i18n.tr_args(
+                "points-folder-large",
+                &[
+                    ("size", bf_i18n::Arg::String(mb(&shared.i18n, bytes))),
+                    (
+                        "limit",
+                        bf_i18n::Arg::String(shared.settings.warn_mb.to_string()),
+                    ),
+                ],
+            );
+            shared.toast(msg, now);
+        }
+    }
+
+    /// Goes back to the point `id`: writes where the player is now as a point (so the jump can
+    /// be undone), makes the point the campaign's state and reopens the campaign on it.
+    fn go_back_to(&mut self, shared: &mut Shared, now: f64, id: &str) -> Option<Transition> {
+        self.wait_writes(shared, now);
+        self.write_point(Kind::Before(Reason::Load), None, None, false);
+        self.wait_writes(shared, now);
+        let mut save = self.save.clone();
+        match points::restore(&mut save, id) {
+            Ok(()) => Some(Transition::Game(save)),
+            Err(e) => {
+                let msg = shared.i18n.tr_args(
+                    "saves-error-io",
+                    &[("error", bf_i18n::Arg::String(e.to_string()))],
+                );
+                shared.toast(msg, now);
+                None
+            }
+        }
+    }
+
     fn write(&mut self, shared: &mut Shared, now: f64, announce: bool) {
-        // A pending autosave was queued first: this save's world lands after it and wins.
-        self.autosaving = None;
+        // Saves in flight were queued first: this one's world lands after theirs and wins.
+        for w in &mut self.writing {
+            w.world = None;
+        }
         self.save.meta.date = self.sim.snapshot().date;
         self.save.meta.last_played = saves::now();
         let result = self
@@ -175,49 +337,15 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
     let now = ui.input(|i| i.time);
     let snap = state.sim.snapshot();
 
-    // Autosave on month or year change.
-    let due = match shared.settings.autosave {
-        Autosave::Off => false,
-        Autosave::Monthly => {
-            (snap.date.year, snap.date.month)
-                != (state.last_autosave.year, state.last_autosave.month)
-        }
-        Autosave::Yearly => snap.date.year != state.last_autosave.year,
-    };
-    if due && state.autosaving.is_none() {
-        // The simulation writes the world while the interface keeps drawing; the campaign's
-        // metadata follows once the world is on disk.
+    // Automatic restore point on the interval's calendar boundary: the simulation writes it
+    // (and the current state with it) while the interface keeps drawing.
+    if points::due(shared.settings.autosave, state.last_autosave, snap.date)
+        && !state.writing.iter().any(|w| w.world.is_some())
+    {
         state.last_autosave = snap.date;
-        let answer = state.sim.save_later(
-            state.save.dir.join(saves::WORLD_FILE),
-            state.save.meta.name.clone(),
-        );
-        state.autosaving = Some(Autosaving {
-            answer,
-            date: snap.date,
-            played: saves::now(),
-        });
+        state.write_point(Kind::Auto, None, None, true);
     }
-    if let Some(pending) = &state.autosaving {
-        let result = match pending.answer.try_recv() {
-            Ok(r) => Some(r),
-            Err(std::sync::mpsc::TryRecvError::Empty) => None,
-            Err(e) => Some(Err(e.to_string())),
-        };
-        if let Some(result) = result {
-            state.save.meta.date = pending.date;
-            state.save.meta.last_played = pending.played;
-            state.autosaving = None;
-            if let Err(e) =
-                result.and_then(|()| saves::write(&state.save).map_err(|e| e.to_string()))
-            {
-                let msg = shared
-                    .i18n
-                    .tr_args("saves-error-io", &[("error", bf_i18n::Arg::String(e))]);
-                shared.toast(msg, now);
-            }
-        }
-    }
+    state.poll_writes(shared, now);
 
     let player = shared.world.as_ref().and_then(|w| {
         state
@@ -585,6 +713,9 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
         );
         keep_window_place(shared, "government", gov_place, res.place_done);
         for c in res.commands {
+            if matches!(c, GameCommand::SetLaw { .. }) {
+                state.restore_point_before(shared, Reason::Law);
+            }
             state.sim.send(Command::Issue(c));
         }
         if res.close {
@@ -773,6 +904,18 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
     if fired(id::SAVE) {
         state.write(shared, now, true);
     }
+    if state.naming.is_none() {
+        if fired(id::QUICK_SAVE) {
+            quick_save(state, shared);
+        }
+        if fired(id::QUICK_LOAD) {
+            out = out.or_else(|| quick_load(state, shared, now));
+        }
+        if fired(id::SAVE_NAMED) {
+            state.naming = Some(default_point_name(shared, &state.save, &snap));
+            state.menu_open = false;
+        }
+    }
     if fired(id::SETTINGS) || fired(id::KEYS) {
         state.menu_open = false;
         if fired(id::KEYS) {
@@ -785,7 +928,7 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
     if state.menu_open {
         ui.painter()
             .rect_filled(rect, 0, Color32::from_black_alpha(140));
-        let panel = Rect::from_center_size(rect.center(), egui::vec2(360.0, 352.0));
+        let panel = Rect::from_center_size(rect.center(), egui::vec2(360.0, 440.0));
         keys::cover(ui, rect);
         super::frame(ui, panel, "game-menu");
         ui.interact(
@@ -808,6 +951,39 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
                 .show(ui);
             if keys::pressed(ui, id::SAVE, &save) {
                 state.write(shared, now, true);
+            }
+            ui.columns(2, |cols| {
+                let quick = Button::secondary(&shared.tr("game-menu-quick-save"))
+                    .width(f32::INFINITY)
+                    .show(&mut cols[0]);
+                let quick = quick.on_hover_text(keys::tip(
+                    cols[0].ctx(),
+                    &shared.tr("game-menu-quick-save"),
+                    id::QUICK_SAVE,
+                ));
+                if keys::pressed(&cols[0], id::QUICK_SAVE, &quick) {
+                    quick_save(state, shared);
+                }
+                let has_quick = points::save_path(&state.save, points::QUICK).is_file();
+                let load = Button::secondary(&shared.tr("game-menu-quick-load"))
+                    .width(f32::INFINITY)
+                    .enabled(has_quick)
+                    .show(&mut cols[1]);
+                let load = load.on_hover_text(keys::tip(
+                    cols[1].ctx(),
+                    &shared.tr("game-menu-quick-load"),
+                    id::QUICK_LOAD,
+                ));
+                if has_quick && keys::pressed(&cols[1], id::QUICK_LOAD, &load) {
+                    out = quick_load(state, shared, now);
+                }
+            });
+            let named = Button::secondary(&shared.tr("game-menu-save-named"))
+                .width(f32::INFINITY)
+                .show(ui);
+            if keys::pressed(ui, id::SAVE_NAMED, &named) {
+                state.naming = Some(default_point_name(shared, &state.save, &snap));
+                state.menu_open = false;
             }
             let hud = Button::secondary(&shared.tr("game-menu-hud"))
                 .width(f32::INFINITY)
@@ -832,7 +1008,77 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
             }
         });
     }
+    // Saving with a name: a small dialog over the map.
+    if let Some(mut name) = state.naming.take() {
+        ui.painter()
+            .rect_filled(rect, 0, Color32::from_black_alpha(140));
+        let panel = Rect::from_center_size(rect.center(), egui::vec2(420.0, 200.0));
+        keys::cover(ui, rect);
+        super::frame(ui, panel, "save-named");
+        ui.interact(
+            rect,
+            ui.make_persistent_id("naming-block"),
+            Sense::click_and_drag(),
+        );
+        let mut keep = true;
+        region(ui, panel.shrink(space::XL), |ui| {
+            ui.spacing_mut().item_spacing.y = space::MD;
+            bf_ui_kit::heading(ui, &shared.tr("points-name-title"));
+            let field = bf_ui_kit::text_field(ui, &mut name, ui.available_width());
+            if !field.has_focus() && !field.lost_focus() {
+                field.request_focus();
+            }
+            let enter = field.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter));
+            ui.horizontal(|ui| {
+                let ok = Button::primary(&shared.tr("points-name-save")).show(ui);
+                let cancel = Button::ghost(&shared.tr("points-name-cancel")).show(ui);
+                if (ok.clicked() || enter) && !name.trim().is_empty() {
+                    let text = shared.i18n.tr_args(
+                        "points-saved-named",
+                        &[("name", bf_i18n::Arg::String(name.trim().to_owned()))],
+                    );
+                    state.write_point(Kind::Manual, Some(name.trim().to_owned()), Some(text), true);
+                    keep = false;
+                }
+                if cancel.clicked() || ui.input(|i| i.key_pressed(egui::Key::Escape)) {
+                    keep = false;
+                }
+            });
+        });
+        if keep {
+            state.naming = Some(name);
+        }
+    }
     out
+}
+
+/// The quick save: the campaign's state and the quick slot, replaced each time.
+fn quick_save(state: &mut State, shared: &Shared) {
+    let text = shared.tr("points-saved-quick");
+    state.write_point(Kind::Quick, None, Some(text), true);
+}
+
+/// Goes back to the quick save, if there is one.
+fn quick_load(state: &mut State, shared: &mut Shared, now: f64) -> Option<Transition> {
+    if !points::save_path(&state.save, points::QUICK).is_file() {
+        shared.toast(shared.tr("points-no-quick"), now);
+        return None;
+    }
+    state.go_back_to(shared, now, points::QUICK)
+}
+
+/// What the name field starts with: the country and the date.
+fn default_point_name(shared: &Shared, save: &Save, snap: &crate::sim::Snapshot) -> String {
+    let date = crate::text::date_long(&shared.i18n, snap.date);
+    match &save.meta.player {
+        Some(tag) => format!("{} · {date}", country_name(&shared.i18n, tag)),
+        None => date,
+    }
+}
+
+/// Megabytes, one decimal, in the player's language.
+pub fn mb(i18n: &bf_i18n::I18n, bytes: u64) -> String {
+    i18n.decimal(bytes as f64 / 1e6, 1)
 }
 
 /// Opens the government window on its first tab, or closes it; the research screen gives way.

@@ -92,6 +92,8 @@ pub enum Command {
     /// Writes the engine save to `path`; replies with the error text on failure.
     Save {
         path: PathBuf,
+        /// More files that get the same bytes (a restore point beside the current state).
+        copies: Vec<PathBuf>,
         label: String,
         reply: Sender<Result<(), String>>,
     },
@@ -263,22 +265,41 @@ impl SimHandle {
     /// Asks the simulation thread to write a save; the answer comes on the returned channel, so
     /// the interface keeps drawing meanwhile.
     pub fn save_later(&self, path: PathBuf, label: String) -> Receiver<Result<(), String>> {
+        self.save_to(path, Vec::new(), label)
+    }
+
+    /// [`Self::save_later`] writing the same save to `path` and to each of `copies`: the world is
+    /// serialised once.
+    pub fn save_to(
+        &self,
+        path: PathBuf,
+        copies: Vec<PathBuf>,
+        label: String,
+    ) -> Receiver<Result<(), String>> {
         let (reply, answer) = channel();
-        self.send(Command::Save { path, label, reply });
+        self.send(Command::Save {
+            path,
+            copies,
+            label,
+            reply,
+        });
         answer
     }
 }
 
-fn write_save(session: &Session, path: &std::path::Path, label: &str) -> Result<(), String> {
+fn write_save(session: &Session, paths: &[&std::path::Path], label: &str) -> Result<(), String> {
     let bytes = session
         .save(env!("CARGO_PKG_VERSION"), label)
         .map_err(|e| e.to_string())?;
-    if let Some(dir) = path.parent() {
-        std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
+    for path in paths {
+        if let Some(dir) = path.parent() {
+            std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
+        }
+        let tmp = path.with_extension("tmp");
+        std::fs::write(&tmp, &bytes).map_err(|e| e.to_string())?;
+        std::fs::rename(tmp, path).map_err(|e| e.to_string())?;
     }
-    let tmp = path.with_extension("tmp");
-    std::fs::write(&tmp, bytes).map_err(|e| e.to_string())?;
-    std::fs::rename(tmp, path).map_err(|e| e.to_string())
+    Ok(())
 }
 
 /// The loop's state that commands change.
@@ -302,8 +323,16 @@ fn apply(session: &mut Session, ctl: &mut Control, command: Command) {
         }
         // Applies at the start of the next tick and enters the history then.
         Command::Issue(c) => session.submit(c),
-        Command::Save { path, label, reply } => {
-            let _ = reply.send(write_save(session, &path, &label));
+        Command::Save {
+            path,
+            copies,
+            label,
+            reply,
+        } => {
+            let paths: Vec<&std::path::Path> = std::iter::once(path.as_path())
+                .chain(copies.iter().map(PathBuf::as_path))
+                .collect();
+            let _ = reply.send(write_save(session, &paths, &label));
         }
     }
 }

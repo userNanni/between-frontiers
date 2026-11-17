@@ -294,6 +294,9 @@ pub mod id {
     pub const RESEARCH_CLEAR_FOCUS: &str = "research.clear_focus";
     pub const BACK: &str = "system.back";
     pub const SAVE: &str = "system.save";
+    pub const QUICK_SAVE: &str = "campaign.quick_save";
+    pub const QUICK_LOAD: &str = "campaign.quick_load";
+    pub const SAVE_NAMED: &str = "campaign.save_named";
     pub const SETTINGS: &str = "system.settings";
     pub const KEYS: &str = "system.keys";
     pub const POPULATION: &str = "window.population";
@@ -402,6 +405,11 @@ fn builtin() -> Vec<CommandDef> {
         CommandDef::new(SAVE, System)
             .keys([k(KeyS).ctrl()])
             .hint('S'),
+        CommandDef::new(QUICK_SAVE, System).keys([k(F5)]).hint('V'),
+        CommandDef::new(QUICK_LOAD, System).keys([k(F9)]).hint('L'),
+        CommandDef::new(SAVE_NAMED, System)
+            .keys([k(KeyS).ctrl().shift()])
+            .hint('N'),
         CommandDef::new(SETTINGS, System)
             .keys([k(Comma).ctrl()])
             .hint('O'),

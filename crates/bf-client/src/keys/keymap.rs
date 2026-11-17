@@ -103,6 +103,9 @@ pub fn base_keys(profile: &str, def: &CommandDef) -> Vec<Chord> {
             id::TAB_MONEY => return f(F6),
             id::TAB_LAWS => return f(F7),
             id::RESEARCH_FIT => return f(F9),
+            // F5 and F9 went to the tabs: the quick save and load move to Shift.
+            id::QUICK_SAVE => return vec![Chord::key(F5).shift()],
+            id::QUICK_LOAD => return vec![Chord::key(F9).shift()],
             _ => {}
         }
     }
@@ -515,7 +518,7 @@ mod tests {
         let r = registry();
         let mut cfg = KeyConfig::default();
         cfg.migrate(&r);
-        cfg.assign(&r, id::SAVE, Chord::key(PhysKey::F5), false)
+        cfg.assign(&r, id::SAVE, Chord::key(PhysKey::F12), false)
             .unwrap();
         let text = ron::ser::to_string_pretty(&cfg, Default::default()).unwrap();
         assert_eq!(KeyConfig::parse(&text).unwrap(), cfg);
@@ -525,6 +528,6 @@ mod tests {
         let mut other = KeyConfig::default();
         other.migrate(&r);
         other.import(&r, export);
-        assert_eq!(other.resolve(&r).keys(id::SAVE), [Chord::key(PhysKey::F5)]);
+        assert_eq!(other.resolve(&r).keys(id::SAVE), [Chord::key(PhysKey::F12)]);
     }
 }
