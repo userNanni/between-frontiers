@@ -178,6 +178,77 @@ pub fn main() -> Result<(), String> {
                 .collect();
             println!("{year} power plants: {}", names.join(", "));
         }
+        // By country (`BF_DIAG_ENERGY_TAGS=USA,FRA,...`): who makes and who uses steel and gas.
+        let tags_of: Vec<String> = s
+            .world()
+            .countries
+            .iter()
+            .map(|(_, c)| c.tag.clone())
+            .collect();
+        for tag in std::env::var("BF_DIAG_ENERGY_TAGS")
+            .unwrap_or_default()
+            .split(',')
+        {
+            let Some(mi) = tags_of.iter().position(|t| t == tag) else {
+                continue;
+            };
+            let m = &e.markets[mi];
+            let gdp = m.gdp_last_year.to_f64_lossy();
+            for key in ["steel", "natural_gas", "cement", "machinery"] {
+                let Some(g) = cat.good(key) else { continue };
+                let g = g as usize;
+                let dem = m.demand[g].to_f64_lossy() * 52.0;
+                let sup = m.supply[g].to_f64_lossy() * 52.0;
+                let mut by = vec![0.0f64; cat.buildings.len()];
+                for r in e.regions.iter().filter(|r| r.market as usize == mi) {
+                    for pl in &r.plants {
+                        let b = &cat.buildings[pl.kind as usize];
+                        let meth = &b.methods[pl.method as usize];
+                        let sc = pl.levels as f64
+                            * pl.staffing.to_f64_lossy()
+                            * plant_tfp(r, m, b).to_f64_lossy()
+                            * pl.utilization.to_f64_lossy()
+                            * 52.0;
+                        for (gi, q) in &meth.inputs {
+                            if *gi as usize == g {
+                                by[pl.kind as usize] += q.to_f64_lossy() * sc;
+                            }
+                        }
+                    }
+                }
+                let plants: f64 = by.iter().sum();
+                let mut top: Vec<usize> = (0..by.len()).collect();
+                top.sort_by(|a, b| by[*b].total_cmp(&by[*a]));
+                let tops: Vec<String> = top
+                    .iter()
+                    .take(6)
+                    .filter(|k| by[**k] > 0.0)
+                    .map(|k| {
+                        format!(
+                            "{} {:.0}%",
+                            cat.buildings[*k].key,
+                            by[*k] / dem.max(1.0) * 100.0
+                        )
+                    })
+                    .collect();
+                println!(
+                    "{year} {tag} {key}: made {:.3e} used {:.3e} ({:.1} per $1,000 of GDP), net import {:.0}%; plants {:.0}% [{}], rest {:.0}%",
+                    sup,
+                    dem,
+                    dem / gdp.max(1.0) * 1000.0,
+                    m.net_import[g].to_f64_lossy() * 52.0 / dem.max(1.0) * 100.0,
+                    plants / dem.max(1.0) * 100.0,
+                    tops.join(", "),
+                    (dem - plants) / dem.max(1.0) * 100.0
+                );
+            }
+            println!(
+                "{year} {tag}: GDP {:.0} bn, pool {:.1}% of GDP, queue {}",
+                gdp / 1e9,
+                m.pool.to_f64_lossy() / gdp.max(1.0) * 100.0,
+                m.queue.len()
+            );
+        }
         return Ok(());
     }
     let mut made = vec![vec![0.0f64; GOODS.len()]; nm];
