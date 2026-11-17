@@ -402,16 +402,57 @@ impl TerrainMix {
 /// The terrain of a state from its climate shares and forest share (`land.ron`), read at load:
 /// forest takes its share, the climates share the rest; an unknown climate counts as open.
 pub fn terrain_of_state(rules: &Rules, climate: &[(String, f32)], forest_share: f32) -> TerrainMix {
-    let forest = Fixed::from_f64_lossy(forest_share.clamp(0.0, 1.0) as f64);
-    let rest = Fixed::ONE - forest;
-    let mut mix: Vec<(Terrain, Fixed)> = Vec::new();
-    let mut add = |t: Terrain, s: Fixed| match mix.iter_mut().find(|(k, _)| *k == t) {
-        Some(e) => e.1 += s,
-        None => mix.push((t, s)),
-    };
-    if forest.is_positive() {
-        add(Terrain::Forest, forest);
+    state_terrain(rules, None, climate, forest_share, Fixed::ZERO)
+}
+
+/// Share of a state's land that is town: its urban population over `urban_density_km2`, over
+/// its area, at most 1.
+pub fn urban_share(rules: &Rules, population: u64, urban: f32, area_km2: f32) -> Fixed {
+    if area_km2 <= 0.0 {
+        return Fixed::ZERO;
     }
+    let townsfolk = Fixed::from_f64_lossy(population as f64 * urban.clamp(0.0, 1.0) as f64);
+    let area = Fixed::from_f64_lossy(area_km2 as f64);
+    clamp01(townsfolk / rules.urban_density_km2 / area)
+}
+
+/// The terrain mix of a state: town, mountain, marsh and forest take their shares in that order,
+/// each at most what is left; the climates share the rest. `terrain` comes from
+/// `assets/map/terrain.ron`, `forest_share` from `land.ron`, `urban` from [`urban_share`].
+pub fn state_terrain(
+    rules: &Rules,
+    terrain: Option<&super::terrain::StateTerrain>,
+    climate: &[(String, f32)],
+    forest_share: f32,
+    urban: Fixed,
+) -> TerrainMix {
+    let mut mix: Vec<(Terrain, Fixed)> = Vec::new();
+    let mut add = |t: Terrain, s: Fixed| {
+        if !s.is_positive() {
+            return;
+        }
+        match mix.iter_mut().find(|(k, _)| *k == t) {
+            Some(e) => e.1 += s,
+            None => mix.push((t, s)),
+        }
+    };
+    let mut left = Fixed::ONE;
+    let mut take = |want: Fixed| {
+        let got = clamp01(want).min(left);
+        left -= got;
+        got
+    };
+    let per_mille = |v: u16| Fixed::from_ratio(v.min(1000) as i64, 1000);
+    add(Terrain::Urban, take(urban));
+    if let Some(t) = terrain {
+        add(Terrain::Mountain, take(per_mille(t.mountain)));
+        add(Terrain::Marsh, take(per_mille(t.marsh)));
+    }
+    add(
+        Terrain::Forest,
+        take(Fixed::from_f64_lossy(forest_share.clamp(0.0, 1.0) as f64)),
+    );
+    let rest = left;
     for (key, share) in climate {
         let t = rules.climate(key).unwrap_or(Terrain::Open);
         add(t, Fixed::from_f64_lossy(*share as f64) * rest);
@@ -574,6 +615,9 @@ pub struct LandOutcome {
 pub struct LandField {
     pub terrain: TerrainMix,
     pub winter: bool,
+    /// Share of the segment's border that runs along a big river, 0 to 1
+    /// ([`crate::war::TerrainFile::river_share`]).
+    pub river: Fixed,
 }
 
 fn land_terms(rules: &Rules, field: &LandField, me: &LandSide, other: &LandSide) -> LandTerms {
@@ -585,6 +629,7 @@ fn land_terms(rules: &Rules, field: &LandField, me: &LandSide, other: &LandSide)
     let terrain = if defending {
         field.terrain.weighted(|t| rules.defense_factor(t))
             * (Fixed::ONE + rules.fortification_bonus * clamp01(me.fortification))
+            * (Fixed::ONE + rules.river_defense * clamp01(field.river))
     } else {
         let attack = field
             .terrain
@@ -1062,6 +1107,8 @@ pub(crate) mod tests {
                 Fixed::from_int(150),
             ],
             amphibious: pm(600),
+            river_defense: pm(300),
+            urban_density_km2: Fixed::from_int(20_000),
             winter_upkeep: pm(1300),
             winter_speed: pm(600),
             min_share: pm(50),
@@ -1124,6 +1171,7 @@ pub(crate) mod tests {
         LandField {
             terrain: TerrainMix::only(Terrain::Open),
             winter: false,
+            river: Fixed::ZERO,
         }
     }
 
@@ -1138,6 +1186,7 @@ pub(crate) mod tests {
             &LandField {
                 terrain: TerrainMix::only(Terrain::Forest),
                 winter: false,
+                river: Fixed::ZERO,
             },
             [&a, &d],
         );
@@ -1201,6 +1250,7 @@ pub(crate) mod tests {
         let field = LandField {
             terrain: TerrainMix(vec![(Terrain::Forest, pm(400)), (Terrain::Open, pm(600))]),
             winter: true,
+            river: Fixed::ZERO,
         };
         let mut a = side(15_000, Posture::Attack);
         a.mobility = Mobility::Tracked;
@@ -1513,6 +1563,53 @@ pub(crate) mod tests {
             },
         );
         assert_eq!(worst.total, 1000);
+    }
+
+    #[test]
+    fn a_river_on_the_border_helps_the_defender() {
+        let r = rules();
+        let a = side(30_000, Posture::Attack);
+        let d = side(10_000, Posture::Defend);
+        let dry = land_step(&r, &open(), [&a, &d]);
+        let river = LandField {
+            river: Fixed::ONE,
+            ..open()
+        };
+        let wet = land_step(&r, &river, [&a, &d]);
+        assert_eq!(wet.terms[1].terrain, pm(1300));
+        assert!(wet.advance_km < dry.advance_km);
+        assert_eq!(wet.terms[0], dry.terms[0]);
+    }
+
+    #[test]
+    fn state_terrain_takes_town_mountain_marsh_and_forest_before_the_climate() {
+        let r = rules();
+        let t = crate::war::terrain::StateTerrain {
+            state: 1,
+            key: "A".into(),
+            mountain: 600,
+            marsh: 300,
+            elevation_m: Some(2000),
+        };
+        // 600 mountain, then marsh takes 300, forest 0.5 wants 500 and gets the 100 left.
+        let mix = state_terrain(&r, Some(&t), &[("oceanic".into(), 1.0)], 0.5, Fixed::ZERO);
+        assert_eq!(
+            mix.0,
+            vec![
+                (Terrain::Forest, pm(100)),
+                (Terrain::Mountain, pm(600)),
+                (Terrain::Marsh, pm(300))
+            ]
+        );
+        // A town of 2 million at 20,000 per km² in 1,000 km² is a tenth of the state.
+        let urban = urban_share(&r, 4_000_000, 0.5, 1000.0);
+        assert_eq!(urban, pm(100));
+        let mix = state_terrain(&r, None, &[("oceanic".into(), 1.0)], 0.0, urban);
+        assert_eq!(
+            mix.0,
+            vec![(Terrain::Open, pm(900)), (Terrain::Urban, pm(100))]
+        );
+        assert_eq!(urban_share(&r, 1, 1.0, 0.0), Fixed::ZERO);
     }
 
     #[test]

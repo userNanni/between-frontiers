@@ -273,6 +273,7 @@ fn a_1925_battle_on_the_real_rules() {
     let field = LandField {
         terrain: TerrainMix::only(Terrain::Open),
         winter: false,
+        river: Fixed::ZERO,
     };
     let o = land_step(&m.rules, &field, [&attacker, &defender]);
     assert!(o.advance_km.is_positive());
@@ -285,6 +286,7 @@ fn a_1925_battle_on_the_real_rules() {
     let hills = LandField {
         terrain: TerrainMix::only(Terrain::Mountain),
         winter: true,
+        river: Fixed::ZERO,
     };
     let o = land_step(&m.rules, &hills, [&attacker, &dug_in]);
     assert_eq!(o.advance_km, Fixed::ZERO);

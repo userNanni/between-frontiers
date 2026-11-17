@@ -270,6 +270,7 @@ mod tests {
         LandField {
             terrain: TerrainMix::only(Terrain::Open),
             winter: false,
+            river: Fixed::ZERO,
         }
     }
 
