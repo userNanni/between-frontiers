@@ -1,7 +1,7 @@
 //! Components. Each one paints itself from the tokens; screens compose these and nothing else.
 
 use egui::{
-    Align2, Color32, CornerRadius, Frame, Margin, Rect, Response, RichText, Sense, Shadow, Stroke,
+    Color32, CornerRadius, Frame, Margin, Rect, Response, RichText, Sense, Shadow, Stroke,
     StrokeKind, TextFormat, Ui, Vec2, WidgetText, text::LayoutJob,
 };
 
@@ -656,28 +656,47 @@ impl ListRow<'_> {
             );
             x += 18.0 + space::MD;
         }
-        painter.text(
-            egui::pos2(x, rect.top() + 12.0),
-            Align2::LEFT_TOP,
-            self.title,
-            sans_semibold(size::BODY),
-            color::TEXT,
-        );
-        painter.text(
-            egui::pos2(x, rect.top() + 34.0),
-            Align2::LEFT_TOP,
-            self.subtitle,
-            sans(size::SMALL),
-            color::TEXT_MUTED,
-        );
-        painter.text(
-            egui::pos2(rect.right() - space::LG, rect.top() + 14.0),
-            Align2::RIGHT_TOP,
+        // Each text on one line, cut with an ellipsis where it would run into the next; the
+        // whole of a cut text shows on hover.
+        let one_line = |text: &str, font: egui::FontId, color: Color32, width: f32| {
+            let mut job = egui::text::LayoutJob::simple_singleline(text.to_owned(), font, color);
+            job.wrap = egui::text::TextWrapping {
+                max_width: width.max(1.0),
+                max_rows: 1,
+                break_anywhere: true,
+                overflow_character: Some('…'),
+            };
+            painter.layout_job(job)
+        };
+        let right = rect.right() - space::LG;
+        let trailing = one_line(
             self.trailing,
             sans(size::SMALL),
             color::TEXT_FAINT,
+            (right - x) * 0.45,
         );
-        response.on_hover_cursor(egui::CursorIcon::PointingHand)
+        let title = one_line(
+            self.title,
+            sans_semibold(size::BODY),
+            color::TEXT,
+            right - trailing.size().x - space::MD - x,
+        );
+        let subtitle = one_line(self.subtitle, sans(size::SMALL), color::TEXT_MUTED, right - x);
+        let cut = title.elided || subtitle.elided || trailing.elided;
+        painter.galley(egui::pos2(x, rect.top() + 12.0), title, color::TEXT);
+        painter.galley(egui::pos2(x, rect.top() + 34.0), subtitle, color::TEXT_MUTED);
+        painter.galley(
+            egui::pos2(right - trailing.size().x, rect.top() + 14.0),
+            trailing,
+            color::TEXT_FAINT,
+        );
+        let response = response.on_hover_cursor(egui::CursorIcon::PointingHand);
+        if cut {
+            let full = format!("{}\n{}\n{}", self.title, self.subtitle, self.trailing);
+            response.on_hover_text(tooltip_text(&full))
+        } else {
+            response
+        }
     }
 }
 
