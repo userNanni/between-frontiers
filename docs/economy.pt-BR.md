@@ -270,6 +270,85 @@ soja e gado no Brasil) e de Estado (Terras Virgens, colonização dirigida); o p
 acha quem abrir, porque o ocioso já vai para a cidade (Brasil 12 % no campo), e a população
 simulada fica em 6,0 contra 8,2 bilhões, com menos comida para vender.
 
+## Colônias: salário e técnica (estudo, regra estacionada)
+
+O placar dava às colônias PIB por habitante muito acima do real (2022, `main` antes do #82:
+britânicas 2,75 vezes, francesas 3,56, americanas 5,19, Congo Belga 7,56). Estudo medido com
+`bf-bench --diag-1925` e `BF_DIAG_COLONIES=1` (na branch estacionada `fix/colonial-productivity`),
+que decompõe o valor adicionado das plantas por habitante em emprego de mercado, valor adicionado
+por emprego à produtividade 1 (prédios e métodos), produtividade de base e técnica.
+
+**O que foi medido**
+
+- **Metade do excesso era população.** Em 2025 a população colonial ficava em 0,27 a 0,49 da
+  real, com o PIB total perto do real (colônias britânicas 0,98, portuguesas 0,87). O #82
+  (bolsa colonial) levou a população colonial para perto do real e baixou sozinho o PIB por
+  habitante colonial (britânicas 2,75 → 2,16, francesas 3,56 → 2,12).
+- **A produtividade de 1925 não separa as colônias.** O setup dá às colônias 1,3 a 1,7 porque
+  poucos trabalhadores de mercado fazem o PIB de 1925; tirar as minas de 1925 do cálculo muda
+  pouco (Congo 1,44 → 1,39, as demais até 0,01). Turquia (1,67), Sião (1,76) e Pérsia (1,82),
+  soberanos com a mesma produtividade de partida, terminam em 0,27 a 0,38 do real.
+- **O que separa é a técnica da metrópole.** Contra a Turquia em 2025, em log do valor adicionado
+  por habitante, as colônias britânicas ficam +1,23: +0,80 de prédios e métodos (a colônia
+  constrói os métodos da metrópole: um centro comercial colonial faz 17,6 mil dólares por emprego
+  à produtividade 1, contra 12,3 mil na Turquia), +0,33 de produtividade técnica, +0,07 de base.
+
+**Salário por bloco (testado e retirado).** Um salário só por mercado (`monthly::market_wages`)
+mistura metrópole e colônia; separado por bloco (`[metrópole, colônias]`), o colonial fica em
+cerca de um terço do metropolitano (britânico: 5,1 contra 16 mil dólares por ano em 1925). Na
+escolha de método e no investimento, isso piorou o placar: com mão de obra barata o fundo do
+país constrói mais na colônia (emprego de mercado das colônias americanas em 1975: 28 → 34 %), e
+as colônias ficam mais ricas (1955: americanas 1,63 → 3,19 vezes o real, Congo 2,20 → 3,04). Na
+história o capital não correu para as colônias (risco, falta de mercado e de gente treinada,
+política de manter a colônia fornecedora): é assunto da alocação de capital (fase 4,
+`foreign_capital.rs`).
+
+**Estágio colonial (testado e estacionado).** Cada mercado guarda o estágio das suas colônias em
+cada tecnologia; a colônia não pesquisa, chega ao estágio industrial pela mesma imitação de
+qualquer país (alfabetização da colônia, parcela do mundo que faz, canal do país), só depois da
+metrópole, e difunde pela regra de difusão; o estágio colonial decide os métodos da colônia e a
+produtividade técnica dela. Rodada de 101 anos contra a `main` com o #82 (e0d6a7e):
+
+| PIB por habitante, razão simulado/real | `main` 1975 | estágio colonial 1975 | `main` 2025 | estágio colonial 2025 |
+|---|---|---|---|---|
+| Colônias britânicas | 2,28 | 1,83 | 2,16 | 1,90 |
+| Colônias francesas | 2,53 | 2,20 | 2,12 | 1,93 |
+| Colônias americanas (Filipinas) | 1,80 | 1,13 | 3,45 | 3,10 |
+| Congo Belga | 3,39 | 2,63 | 8,73 | 4,18 |
+| Indonésia | 1,70 | 1,37 | 0,61 | 0,23 |
+| Metrópole holandesa | 1,21 | 1,09 | 1,54 | 0,55 |
+| Metrópole espanhola | 0,97 | 0,84 | 1,21 | 0,58 |
+| Ranking (Spearman) | 0,612 | 0,632 | 0,528 | 0,512 |
+
+As colônias chegam perto do real em 1955 e 1975, mas três metrópoles caem. O que foi medido nelas:
+
+- **Espanha e Bélgica: pesquisa.** O esforço de pesquisa do país conta os engenheiros e
+  profissionais empregados no mercado inteiro, colônias incluídas; com métodos atrasados a colônia
+  emprega menos deles e a pesquisa da metrópole cai. Contar só os pesquisadores da metrópole
+  (a colônia não pesquisa) deixa as duas como na `main` (2025: 1,22 e 1,76). Medir também a
+  imitação e a difusão pela alfabetização da metrópole derruba a Espanha (1,21 → 0,63) mesmo sem
+  o estágio colonial: a Espanha já oscila de década em década na `main`.
+- **Holanda: insumo e construção.** A metrópole tem as mesmas tecnologias com e sem a regra (149
+  em escala, 146 difundidas em 2025), uso das plantas de 0,85 a 1,0 e o mesmo emprego de mercado;
+  o que cai é a construção do mercado inteiro (5 111 → 1 065 níveis em 2025; na metrópole, 1 453 →
+  230) e, com ela, as plantas modernas de máquinas e remédios. Já em 1985 os sítios
+  metropolitanos de construção, máquinas e remédios ficam sem método possível: algum insumo dos
+  métodos deles é atendido abaixo de 50 % no mercado (`monthly::best_method`; o único comum aos
+  três é ferramentas, o que não foi isolado). Sem a regra, as máquinas do mercado holandês são
+  feitas sobretudo na Indonésia, que tem nove vezes a população da metrópole (2025: 986 níveis na
+  colônia contra 271 na metrópole), e os mesmos sítios rendem 0,58 a 1,30 contra o mínimo de 0,05.
+  Medir o gatilho de 90 % de uso por bloco, em vez de no mercado inteiro, não muda a Holanda (2025:
+  0,57).
+- **Refutado:** migração da Indonésia para a Holanda (a chegada é menor com a regra; a população
+  da metrópole cresce por natalidade depois que a renda trava) e demanda baixa da metrópole.
+
+**Por que estacionada.** Na história a Indonésia é independente desde 1949 e a Holanda importou e
+investiu fora; no modelo a colônia fica para sempre no mercado da metrópole e o fundo do país não
+tem para onde ir. A regra volta quando existirem a descolonização (`borders.pt-BR.md`, parte B: a
+colônia que vira país herda `ResearchState::stages(dono, true)`, o estágio colonial, com o teto
+da decisão 6) e a alocação de capital entre países (fase 4); e o insumo que falta tem de poder ser
+importado. A branch `fix/colonial-productivity` tem a regra, os testes e os diagnósticos.
+
 ## Ordem de trabalho do mercado
 
 1. Preço por estado e por mercado nacional: oferta e demanda fecham semanalmente, com preço sensível à escassez.
@@ -293,3 +372,5 @@ cada bem por origem, produção contra `industry.ron`; `BF_DIAG_YEARS=N` acompan
   (contra 6 a 8 % na história); por isso as intensidades de aço e cimento da obra calibradas em
   1925 são baixas por unidade, e o aço do século ainda sai 1,7 a 2 vezes o real.
 - **Estrutura setorial dos pobres.** Ver `history.pt-BR.md`, "Depois da correção de 1925".
+- **Colônias ricas demais.** O estágio colonial aproxima as colônias do real até 1975 e espera a
+  descolonização e a alocação de capital: "Colônias: salário e técnica".
