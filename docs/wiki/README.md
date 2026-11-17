@@ -28,10 +28,11 @@ Páginas de decisão prontas:
 - [Comércio](decisoes/comercio.md)
 - [Capital entre países](decisoes/capital-entre-paises.md)
 - [Ensino](decisoes/ensino.md)
+- [População e comunidades](decisoes/populacao-e-comunidades.md)
 - [Diplomacia e influência](decisoes/diplomacia-e-influencia.md)
 - [Saves e interface](decisoes/saves-e-interface.md)
 
-Em preparação: população e comunidades, pesquisa, economia, tempo e ordem de cálculo.
+Em preparação: pesquisa, economia, tempo e ordem de cálculo.
 
 ## Como ler uma página de decisão
 
