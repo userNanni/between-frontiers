@@ -13,6 +13,9 @@ O jogo é gratuito e de código aberto, e vai continuar assim.
 Fase de projeto. Ainda não há versão jogável. A proposta de arquitetura está em
 [docs/architecture.pt-BR.md](docs/architecture.pt-BR.md).
 
+A wiki do jogo explica as decisões de desenho do autor e o que elas mudam para quem joga:
+[docs/wiki](docs/wiki/README.md).
+
 ## Objetivos
 
 - Simulação econômica e demográfica na menor granularidade que o desempenho permitir.
