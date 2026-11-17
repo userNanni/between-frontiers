@@ -1100,4 +1100,13 @@ mod tests {
         assert!((milli(490)..=milli(510)).contains(&c60), "{c60:?}");
         assert!(migration::cos_deg(Fixed::from_int(90)) <= milli(20));
     }
+
+    #[test]
+    fn women_read_less_where_few_read() {
+        assert_eq!(women_literacy(Fixed::ONE), Fixed::ONE);
+        assert_eq!(women_literacy(Fixed::ZERO), Fixed::ZERO);
+        // India 1991: 48 % of all, 34 % of women.
+        let w = women_literacy(milli(482));
+        assert!((milli(330)..=milli(370)).contains(&w), "{w:?}");
+    }
 }

@@ -28,8 +28,8 @@ const SWITCH_MARGIN: Fixed = milli(1100);
 /// Without a school, few learn to read (adult
 /// classes, a literate relative): India with a tenth of its children in school went from 10 to
 /// 17 % literate between 1925 and 1950, Brazil with a third from 37 to 48 % (UNESCO 1957).
-const SCHOOL_BASE: Fixed = milli(100);
-const SCHOOL_GAIN: Fixed = milli(1000);
+const SCHOOL_BASE: Fixed = milli(300);
+const SCHOOL_GAIN: Fixed = milli(900);
 /// Enrolment that mission schools reach in the colonies outside the Treasury, at full
 /// `church_privilege` of the metropole's religion law (missions follow the flag), paid by the
 /// churches, grants and fees. Sovereign countries' church schools are in their own coverage. British Africa (established church)
@@ -144,14 +144,11 @@ impl System<GameWorld> for Yearly {
                 } else {
                     Fixed::ZERO
                 };
-                let schools = (super::public::coverage(
-                    cat,
-                    r,
-                    school,
-                    super::public::PUPILS_PER_PERSON,
-                ) + religious)
-                    .min(laws.of(r).enrolment_target)
-                    .min(Fixed::ONE);
+                let schools =
+                    (super::public::coverage(cat, r, school, super::public::PUPILS_PER_PERSON)
+                        + religious)
+                        .min(laws.of(r).enrolment_target)
+                        .min(Fixed::ONE);
                 let reach = if school.is_some() {
                     SCHOOL_BASE + schools * SCHOOL_GAIN
                 } else {
