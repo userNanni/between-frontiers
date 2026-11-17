@@ -502,8 +502,8 @@ calculada na carga, a partir da população urbana de `population.ron` (do HYDE 
 pela densidade urbana de `rules.ron` (22.000 hab/km²). Essa densidade sai de Angel et al., 2010,
 *Persistent Decline in Urban Densities*: anexo IV, média de 30 cidades, 238 hab/ha em 1920 e 207
 em 1930. São cidades grandes, então a parcela urbana tende a sair baixa. Sobre a licença do HYDE,
-vale a nota de `data/scenario/1925/LAND.md` ("Dúvidas"): três textos oficiais divergem (CC BY
-4.0, CC BY 3.0 e CC BY-NC-SA 4.0).
+vale a nota de `data/scenario/1925/LAND.md` ("Licença do HYDE"): três textos oficiais divergem (CC
+BY 4.0, CC BY 3.0 e CC BY-NC-SA 4.0) e o projeto adota o mais restritivo, CC BY-NC-SA 4.0.
 
 O ETOPO5 e o zip do Natural Earth ficam em `data/raw/`, com hash fixo em `sources.rs`. O zip do
 GLWD v2 tem 925 MB: o gerador confere o hash lendo-o por fluxo e extrai só o

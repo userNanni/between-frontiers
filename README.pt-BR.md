@@ -41,3 +41,6 @@ micromotivos que viram macrocomportamento.
 
 O código está sob a [GNU Affero General Public License v3.0 ou posterior](LICENSE). Dados e textos
 do jogo estão sob [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/deed.pt-br).
+Exceção: os arquivos derivados do HYDE estão sob
+[CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.pt-br) (uso não comercial);
+a lista está em [`data/scenario/1925/LAND.md`](data/scenario/1925/LAND.md), "Licença do HYDE".

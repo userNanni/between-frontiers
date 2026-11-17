@@ -386,7 +386,7 @@ de uso não comercial fica de fora, e dado sob GPL não entra nos dados sob CC B
 | OpenHistoricalMap | CC0 | Países e colônias em 1925; subdivisões onde existem |
 | Cliopatria (Seshat) | CC BY 4.0 | Conferência das fronteiras políticas |
 | geoBoundaries | CC BY 4.0 | Subdivisões atuais, redesenhadas para 1925 onde o OpenHistoricalMap é vazio |
-| HYDE 3.3 | CC BY 4.0 | População de 1920 e 1930 em grade, somada por estado |
+| HYDE 3.3 | CC BY-NC-SA 4.0 (o mais restritivo de três textos divergentes; decisão de 2026-11-17, `data/scenario/1925/LAND.md`) | População de 1920 e 1930 em grade, somada por estado |
 | Maddison Project 2023 | CC BY 4.0 | PIB per capita por país |
 | Wikidata | CC0 | Identificadores, datas, cidades |
 | Atlas de época no Wikimedia Commons (Stieler, Andrees) | Por arquivo | Referência de desenho |

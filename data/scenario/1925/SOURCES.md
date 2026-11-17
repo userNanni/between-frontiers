@@ -1,7 +1,10 @@
 # 1925 scenario: country data sources
 
 Data in `countries.ron`, `assets/i18n/*/countries.ftl` and `assets/i18n/*/governments.ftl` is
-licensed CC BY-SA 4.0. This file records where every number comes from and how it was built.
+licensed CC BY-SA 4.0, except `countries.ron`, which is **CC BY-NC-SA 4.0** (non-commercial)
+because its urban share comes from HYDE 3.5 (owner's decision of 2026-11-17; the list of
+HYDE-derived files is in `LAND.md`, "Licença do HYDE"). This file records where every number
+comes from and how it was built.
 
 ## Rule: what a tag counts
 
@@ -1107,6 +1110,8 @@ rows that borrow it (Weihaiwei, Guangzhouwan, Kwantung).
    literacy figures of the 1921–1930 censuses as reported in the secondary literature; they were not
    checked against the census tables.
 3. **HYDE licence label** (CC BY 4.0 in the repository, CC BY-NC 4.0 in OWID's metadata).
+   Settled on 2026-11-17: the project takes the most restrictive text and marks every
+   HYDE-derived file CC BY-NC-SA 4.0 (`LAND.md`, "Licença do HYDE").
 4. **Southern Africa.** The UN 1950 values are high (Zimbabwe 49.4, Zambia 46.8), so the ratio rule
    gives 31–34 years for the Rhodesias against 23–30 for most of the continent.
 

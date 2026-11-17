@@ -41,3 +41,6 @@ Schelling, for micromotives that turn into macrobehavior.
 
 Code is licensed under the [GNU Affero General Public License v3.0 or later](LICENSE). Game data
 and text are licensed under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).
+Exception: the files derived from HYDE are licensed under
+[CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) (non-commercial use); the
+list is in [`data/scenario/1925/LAND.md`](data/scenario/1925/LAND.md), "Licença do HYDE".
