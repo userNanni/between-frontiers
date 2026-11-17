@@ -365,6 +365,26 @@ pub fn level_capital(cat: &Catalogue, kind: usize, method: usize, tfp: Fixed) ->
     base_value_added(cat, kind, method) * tfp * (52 * CAPITAL_YEARS)
 }
 
+/// Capital a level of `method` costs to build or to switch to. Where the building declares
+/// capital by method (`Method::capital`), the first method's level times the method's share:
+/// a nuclear plant costs more than a gas turbine for the same work. Elsewhere, as before:
+/// `level_capital` of the method.
+pub fn method_capital(cat: &Catalogue, kind: usize, method: usize, tfp: Fixed) -> Fixed {
+    match cat.buildings[kind].methods[method].capital {
+        Some(share) => level_capital(cat, kind, 0, tfp) * share,
+        None => level_capital(cat, kind, method, tfp),
+    }
+}
+
+/// What the choice of method weighs: the profit of a level over the capital it ties up, where
+/// the building declares capital by method; the profit itself elsewhere.
+pub fn method_score(m: &super::catalogue::Method, profit: Fixed) -> Fixed {
+    match m.capital {
+        Some(share) => profit / share,
+        None => profit,
+    }
+}
+
 /// Average weekly pay of a worker in each market: what a method that needs fewer hands saves.
 pub fn market_wages(econ: &crate::econ::Economy) -> Vec<Fixed> {
     let mut pay = vec![Fixed::ZERO; econ.markets.len()];
@@ -407,7 +427,7 @@ pub fn best_method(
     wage: Fixed,
 ) -> Option<(u8, Fixed)> {
     let b = &cat.buildings[kind];
-    let mut best: Option<(u8, Fixed)> = None;
+    let mut best: Option<(u8, Fixed, Fixed)> = None;
     for (mi, m) in b.methods.iter().enumerate() {
         if !unlocks.method(cat, country, kind, mi) {
             continue;
@@ -420,11 +440,12 @@ pub fn best_method(
             continue;
         }
         let profit = m.profit(price, tfp, wage);
-        if best.is_none_or(|(_, p)| profit > p) {
-            best = Some((mi as u8, profit));
+        let score = method_score(m, profit);
+        if best.is_none_or(|(_, _, s)| score > s) {
+            best = Some((mi as u8, profit, score));
         }
     }
-    best
+    best.map(|(mi, profit, _)| (mi, profit))
 }
 
 const BUSY_UTILIZATION: Fixed = milli(900);
@@ -634,7 +655,12 @@ impl System<GameWorld> for Investment {
                     if cat.buildings[kind].methods[method as usize].workers > idle {
                         continue;
                     }
-                    let level = level_capital(cat, kind, 0, plant_tfp(r, m, b));
+                    // A new level is built in the building's first method's terms, at the
+                    // capital of the method it will run.
+                    let level = match b.methods[method as usize].capital {
+                        Some(share) => level_capital(cat, kind, 0, plant_tfp(r, m, b)) * share,
+                        None => level_capital(cat, kind, 0, plant_tfp(r, m, b)),
+                    };
                     if level <= Fixed::ZERO {
                         continue;
                     }
@@ -761,5 +787,39 @@ impl System<GameWorld> for Investment {
             let market = econ.regions[p.region as usize].market as usize;
             econ.markets[market].queue.push(p);
         }
+    }
+}
+
+#[cfg(test)]
+mod capital_tests {
+    use super::*;
+    use crate::econ::catalogue::Method;
+
+    #[test]
+    fn without_declared_capital_the_choice_is_the_profit_itself() {
+        let m = Method::default();
+        let profit = Fixed::from_int(1234);
+        assert_eq!(method_score(&m, profit), profit);
+        let unit = Method {
+            capital: Some(Fixed::ONE),
+            ..Method::default()
+        };
+        assert_eq!(method_score(&unit, profit), profit);
+    }
+
+    #[test]
+    fn a_method_that_ties_up_more_capital_needs_more_profit() {
+        // A gas turbine at a third of the capital beats a reactor earning twice as much.
+        let gas = Method {
+            capital: Some(milli(385)),
+            ..Method::default()
+        };
+        let nuclear = Method {
+            capital: Some(milli(3960)),
+            ..Method::default()
+        };
+        assert!(
+            method_score(&gas, Fixed::from_int(25)) > method_score(&nuclear, Fixed::from_int(74))
+        );
     }
 }
