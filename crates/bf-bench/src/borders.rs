@@ -71,6 +71,7 @@ fn operation(w: &GameWorld, c: &bf_sim::borders::SovereigntyChange) -> Option<Op
             states: c.states.clone(),
             tag: c.to.clone(),
             overlord: None,
+            signatories: vec![c.from.clone()],
             terms,
         },
         ChangeKind::Annexation => Operation::Annex {
