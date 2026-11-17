@@ -865,7 +865,7 @@ fn the_country_is_chosen_by_keyboard() {
             }
         }
         h.set_size(egui::vec2(1280.0, 720.0));
-        h.event(egui::Event::Text("Brasi".into()));
+        h.event(egui::Event::Text("BRA".into()));
         steps(&mut h);
         h.key_press(egui::Key::Enter);
         steps(&mut h);
