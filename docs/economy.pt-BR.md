@@ -434,12 +434,24 @@ hidrelétrica 2,94, nuclear 3,96. Rodada de 101 anos sobre a `main` em 40ca61c:
 | Gás, sem → com | 0,59 → 0,89 | 0,46 → 1,62 | 0,38 → 1,59 |
 | Carvão, sem → com | 0,85 → 1,04 | 0,52 → 0,57 | 0,40 → 0,42 |
 
-Em 2020 a eletricidade do mundo passa de toda nuclear para toda a gás (15 073 níveis; nenhum a
-carvão, óleo, hidrelétrica ou nuclear). A escolha de método é de canto: cada usina toma o melhor
-método, o preço do gás não sobe porque os campos acompanham a demanda, e o modelo não tem o que
-mantém a mistura real: preço regional do combustível (o carvão é barato perto da mina e caro longe
-dela), a idade da usina que já existe e o despacho (a térmica a gás cobre o pico, o carvão e a
-nuclear a base). Os valores ficam na branch `feat/method-capital-power` até uma dessas peças
+Parte da capacidade de geração por método (`BF_DIAG_POWER=1`), carvão / gás / hidrelétrica /
+nuclear (o óleo fica em zero nas duas):
+
+| Ano | `main` | Com os valores |
+|---|---|---|
+| 1935 | 73 / 0 / 27 / 0 % | 99 / 0 / 1 / 0 % |
+| 1955 | 12 / 0 / 88 / 0 % | 51 / 49 / 0 / 0 % |
+| 1965 | 7 / 3 / 64 / 26 % | 38 / 62 / 0 / 0 % |
+| 1975 | 2 / 3 / 26 / 70 % | 5 / 95 / 0 / 0 % |
+| 1985 | 0 / 1 / 6 / 93 % | 0 / 100 / 0 / 0 % |
+| 2005–2025 | 0 / 0 / 0 / 100 % | 0 / 100 / 0 / 0 % |
+
+Sem os valores, a hidrelétrica, que não paga a barragem, toma a geração em 1955 e a nuclear a toma
+depois; com eles, carvão e gás convivem de 1955 a 1965 e o gás fica com tudo depois de 1975. A
+escolha de método é de canto: cada usina toma o melhor método, o preço do gás não sobe porque os
+campos acompanham a demanda, e o modelo não tem o que mantém a mistura real: preço regional do
+combustível (o carvão é barato perto da mina e caro longe dela), a idade da usina que já existe e o
+despacho (a térmica a gás cobre o pico, o carvão e a nuclear a base). Os valores ficam na branch `feat/method-capital-power` até uma dessas peças
 existir; a parcela nuclear que a política travou depois de 1979 não é meta.
 
 ## Ordem de trabalho do mercado

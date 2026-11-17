@@ -98,6 +98,33 @@ pub fn main() -> Result<(), String> {
     // that no movement undoes them.
     let forced = forced_laws(&data)?;
     force(&mut s, &forced, 1925);
+    // Power plants by method every ten years, as a share of the electricity they can make.
+    if std::env::var_os("BF_DIAG_POWER").is_some()
+        && let Some(k) = cat.building("power_plant")
+    {
+        let methods = &cat.buildings[k].methods;
+        let mut y = 1925;
+        while y <= 2025 {
+            s.sim.run_until(Date::new(y, 7, 2));
+            let mut out = vec![0.0f64; methods.len()];
+            for r in &s.world().econ.regions {
+                for p in r.plants.iter().filter(|p| p.kind as usize == k) {
+                    let m = &methods[p.method as usize];
+                    out[p.method as usize] +=
+                        p.levels as f64 * m.outputs.first().map_or(0.0, |(_, q)| q.to_f64_lossy());
+                }
+            }
+            let total: f64 = out.iter().sum::<f64>().max(1.0);
+            let parts: Vec<String> = methods
+                .iter()
+                .zip(&out)
+                .map(|(m, o)| format!("{} {:.0}%", m.key, o / total * 100.0))
+                .collect();
+            println!("{y} power: {}", parts.join(", "));
+            y += 10;
+        }
+        return Ok(());
+    }
     // Energy in a later year: demand by source, prices and the power plants' methods.
     if let Some(year) = std::env::var("BF_DIAG_ENERGY")
         .ok()
