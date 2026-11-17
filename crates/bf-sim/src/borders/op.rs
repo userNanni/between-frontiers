@@ -101,6 +101,24 @@ pub enum Operation {
     Status { tag: Tag, overlord: Option<Tag> },
     /// Only the terms (an agreement with no territory: a reparation, a technique handed over).
     Terms { terms: Terms },
+    /// Country `from` ends, all of its states split among new (or reborn) countries: the
+    /// Czechoslovakia of 1993, Yugoslavia, the Mali Federation. Every state of `from` goes to
+    /// exactly one heir. The treasury, the fund, the savers' claims abroad and the public debt
+    /// split among the heirs by the income of their states (**w**).
+    Dissolve {
+        from: Tag,
+        heirs: Vec<Heir>,
+        terms: Terms,
+    },
+}
+
+/// One country born of a dissolution.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Heir {
+    pub tag: Tag,
+    pub states: Vec<String>,
+    #[serde(default)]
+    pub overlord: Option<Tag>,
 }
 
 /// A subject's tie to its overlord, read by the diplomacy to decide when it breaks.
@@ -451,6 +469,38 @@ pub fn check(world: &GameWorld, rules: &BorderRules, op: &Operation) -> Result<(
         Operation::Terms { terms } => {
             if terms.is_empty() {
                 return Err("no terms".into());
+            }
+            check_terms(world, rules, terms)
+        }
+        Operation::Dissolve { from, heirs, terms } => {
+            let f = alive(from)?;
+            if heirs.is_empty() {
+                return Err("a dissolution needs heirs".into());
+            }
+            let mut tags = BTreeSet::new();
+            let mut all = Vec::new();
+            for h in heirs {
+                if !valid_tag(&h.tag) {
+                    return Err(format!("bad tag {}", h.tag));
+                }
+                if h.tag == *from || !tags.insert(h.tag.as_str()) {
+                    return Err(format!("heir {} repeated or the dissolved country", h.tag));
+                }
+                if tag_ix(world, &h.tag).is_some_and(|c| holds[c] > 0) {
+                    return Err(format!("{} already holds states", h.tag));
+                }
+                if let Some(o) = &h.overlord {
+                    alive(o)?;
+                }
+                all.extend(h.states.iter().cloned());
+            }
+            let rs = regions_of(rules, world, f, &all)?;
+            if rs.len() != holds[f] {
+                return Err(format!(
+                    "the heirs take {} of the {} states of {from}",
+                    rs.len(),
+                    holds[f]
+                ));
             }
             check_terms(world, rules, terms)
         }
@@ -1064,6 +1114,86 @@ fn execute(
             });
         }
         Operation::Terms { terms } => apply_terms(world, terms),
+        Operation::Dissolve { from, heirs, terms } => {
+            let f = ix(world, from);
+            let all: Vec<usize> = world
+                .econ
+                .regions
+                .iter()
+                .enumerate()
+                .filter(|(_, r)| usize::from(r.market) == f)
+                .map(|(i, _)| i)
+                .collect();
+            let old: Vec<_> = all
+                .iter()
+                .map(|&r| (r, TerritoryId::of(&world.econ.regions[r])))
+                .collect();
+            // The heir with the largest income continues the dissolved country in the ledger of
+            // debts between governments: its lines pass whole (a line split among heirs would be
+            // a new line, which the treaties write).
+            let main_heir = heirs
+                .iter()
+                .enumerate()
+                .map(|(i, h)| {
+                    let rs = regions_of(rules, world, f, &h.states).expect("checked");
+                    (weights(world, f, &rs).0, std::cmp::Reverse(i))
+                })
+                .max()
+                .map_or(0, |(_, std::cmp::Reverse(i))| i);
+            let mut main_ix = None;
+            // Each heir in turn takes its share of what is left: w over the country as it stands
+            // then. The last takes all that remains, so nothing is lost to rounding.
+            let n = heirs.len();
+            for (i, h) in heirs.iter().enumerate() {
+                let rs = regions_of(rules, world, f, &h.states).expect("checked");
+                let (w, p) = if i + 1 == n {
+                    (Fixed::ONE, Fixed::ONE)
+                } else {
+                    weights(world, f, &rs)
+                };
+                let c = ensure_country(world, rules, &h.tag, f);
+                if i == main_heir {
+                    main_ix = Some(c);
+                }
+                {
+                    let (a, b) = two(&mut world.econ.markets, f, c);
+                    for (x, y) in [
+                        (&mut a.pool, &mut b.pool),
+                        (&mut a.treasury, &mut b.treasury),
+                        (&mut a.gdp_running, &mut b.gdp_running),
+                        (&mut a.gdp_last_year, &mut b.gdp_last_year),
+                        (&mut a.budget.revenue_avg, &mut b.budget.revenue_avg),
+                        (&mut a.money.debt_home, &mut b.money.debt_home),
+                        (&mut a.money.debt_bank, &mut b.money.debt_bank),
+                        (&mut a.money.debt_abroad, &mut b.money.debt_abroad),
+                        (&mut a.money.debt_fx, &mut b.money.debt_fx),
+                    ] {
+                        shift(x, y, w);
+                    }
+                    shift(&mut a.money.foreign_assets, &mut b.money.foreign_assets, p);
+                }
+                move_regions(world, rules, f, c, &rs, Some(false));
+                keep_plant_techniques(world, rules, f, c, &rs);
+                world.borders.subjects[c] = h.overlord.as_ref().map(|o| Subject {
+                    overlord: ix(world, o) as u16,
+                    kind: SubjectKind::Protectorate,
+                    since: date,
+                });
+            }
+            if let Some(m) = main_ix {
+                world.econ.ledger.on_annex(f as u16, m as u16);
+            }
+            // Subjects of the dissolved country are free.
+            for s in world.borders.subjects.iter_mut() {
+                if s.as_ref().is_some_and(|s| usize::from(s.overlord) == f) {
+                    *s = None;
+                }
+            }
+            world.borders.subjects[f] = None;
+            apply_terms(world, terms);
+            repatriated = demography(world, rules, &old, date);
+            ended = Some(f as u16);
+        }
     }
     (born, ended, repatriated)
 }

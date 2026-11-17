@@ -460,7 +460,7 @@ Rodada de 101 anos, semente 1925, 2 threads, contra a `main` 7c43500:
     (Tchecoslováquia em 1939 e em 1993, Federação do Mali, Iugoslávia); a operação recusa
     esvaziar um país por secessão. As outras duas são a Sérvia e Montenegro, que não nasceu por
     causa da recusa iugoslava.
-  - A dissolução precisa de uma operação própria, que entra com os tratados e a paz.
+  - A dissolução precisa de uma operação própria: `Dissolve`, abaixo.
 - **Determinismo:** mesmo hash com 1 e 2 threads; salvar em 1975 e recarregar dá o mesmo hash
   final.
 - **Placar**, comparado pela faixa de reembaralhamento de `noise.py compare`:
@@ -493,3 +493,31 @@ O PIB mundial cai 15 %: melhor até 2005, pior depois.
 Fora da faixa de ruído ficam 1.323 dos 3.196 números (734 mais perto do real, 541 mais longe).
 É uma mudança de mundo, não de ajuste. Nada aqui é calibração: o equilíbrio fino fica para depois
 da fase 6.
+
+## 10. Dissolução
+
+`Operation::Dissolve { from, heirs, terms }`: o país `from` deixa de existir e todos os estados
+dele se repartem entre herdeiros novos ou renascidos (`Heir { tag, states, overlord }`). Casos: a
+Tchecoslováquia de 1993, a Iugoslávia de 1992, a Federação do Mali.
+
+- **Conferência:** cada estado de `from` vai para exatamente um herdeiro. Os herdeiros não podem
+  estar vivos nem se repetir.
+- **Divisão:** Tesouro, fundo, PIB do ano e dívida (as quatro formas) se repartem pelo **w** de
+  cada herdeiro; os créditos no exterior, pela população. Cada herdeiro, em ordem, leva a sua
+  parte do que sobrou, e o último leva tudo o que resta: a soma fecha sem perda de arredondamento
+  (teste).
+- **Livro de dívida entre Estados (#101):** as linhas do país dissolvido, como devedor e como
+  credor, passam inteiras ao herdeiro de maior **w**, que continua o país (como a Rússia em 1991).
+  Repartir uma linha entre herdeiros cria linhas novas, e isso fica com os tratados.
+- **Súditos:** os do país dissolvido ficam livres.
+- **Quem chama:** os tratados e a paz, nunca o jogador. A decisão "Libertar território" continua
+  sem poder esvaziar o próprio país.
+
+No bench (`--borders-history`), três linhas da referência viram outras operações:
+- linha que leva tudo o que o país ainda tem e cria um país: `Dissolve` com um herdeiro;
+- transferência de tudo a um país vivo: `Annex`;
+- anexação a um país que ainda é lápide: `Dissolve`, com o país renascendo dela (a Eslováquia na
+  Tchecoslováquia restaurada em abril de 1945, quando as terras tchecas ainda eram alemãs).
+
+Com isso, as 260 linhas aplicam sem recusa. O teste `the_whole_reference_applies_and_conserves`
+aplica a referência inteira sobre o mundo de 1925, sem simular, e confere as somas a cada linha.

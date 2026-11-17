@@ -12,7 +12,7 @@
 
 pub mod op;
 
-pub use op::{BorderRules, BordersState, Operation, Terms};
+pub use op::{BorderRules, BordersState, Heir, Operation, Terms};
 
 use std::collections::{BTreeMap, BTreeSet};
 
