@@ -29,7 +29,8 @@ pub const INFRASTRUCTURE: usize = 0;
 pub const EDUCATION: usize = 1;
 pub const HEALTH: usize = 2;
 pub const HOUSING: usize = 3;
-pub const DEFAULT_PRIORITY: [u8; PUBLIC_CATEGORIES] = [3, 2, 2, 3];
+pub const RESEARCH: usize = 4;
+pub const DEFAULT_PRIORITY: [u8; PUBLIC_CATEGORIES] = [3, 2, 2, 3, 2];
 /// Highest weight a category takes.
 pub const MAX_PRIORITY: u8 = 10;
 
@@ -132,6 +133,7 @@ pub struct PublicKinds {
     pub school: Option<usize>,
     pub hospital: Option<usize>,
     pub housing: Option<usize>,
+    pub laboratory: Option<usize>,
     /// Infrastructure the state builds when its output is scarce.
     pub infrastructure: Vec<usize>,
     pub construction: Option<u16>,
@@ -143,6 +145,7 @@ impl PublicKinds {
             school: cat.building("school"),
             hospital: cat.building("hospital"),
             housing: cat.building("urban_housing"),
+            laboratory: cat.building("laboratory"),
             infrastructure: ["railway", "road_transport", "power_plant"]
                 .iter()
                 .filter_map(|k| cat.building(k))
@@ -323,6 +326,7 @@ fn market_works(
             cands[INFRASTRUCTURE].push((score, ri, kind, method as u8, Fixed::ZERO));
         }
     }
+    let research_levels = research_candidates(cat, econ, kinds, mi, regions, &queued, &mut cands);
     let weights: Vec<i64> = (0..PUBLIC_CATEGORIES)
         .map(|c| {
             if cands[c].is_empty() {
@@ -360,6 +364,8 @@ fn market_works(
         // gaps first, one level at a time.
         let cap = if c == INFRASTRUCTURE {
             (regions.len() / 4).max(1)
+        } else if c == RESEARCH {
+            research_levels
         } else {
             MAX_PUBLIC_BUILDS
         };
@@ -472,6 +478,109 @@ pub fn colonial_purse(econ: &Economy, m: &Market, regions: &[usize]) -> Colonial
     let natives = ((Fixed::ONE - law.colonial_tribute) * (Fixed::ONE - law.discrimination))
         .clamp(Fixed::ZERO, Fixed::ONE);
     ColonialPurse { share, natives }
+}
+
+/// Share of its revenue the state wants spent on research at the default priority, before
+/// the law's `research_priority` (`docs/research.pt-BR.md`, "Pesquisa que custa").
+pub const STATE_RESEARCH_SHARE: Fixed = milli(10);
+
+/// Research a country wants in a year, in value at base prices: what its firms want (the value
+/// each building group adds times the group's research intensity) and what its state wants
+/// (revenue times `STATE_RESEARCH_SHARE`, times one plus the law's priority, times the player's
+/// weight against the default).
+pub fn research_target(cat: &Catalogue, econ: &Economy, mi: usize) -> (Fixed, Fixed) {
+    let m = &econ.markets[mi];
+    let mut firms = Fixed::ZERO;
+    for r in econ.regions.iter().filter(|r| r.market as usize == mi) {
+        for p in &r.plants {
+            let b = &cat.buildings[p.kind as usize];
+            let Some(&k) = cat.research_intensity.get(usize::from(b.group_ix)) else {
+                continue;
+            };
+            if k <= Fixed::ZERO || p.levels <= 0 {
+                continue;
+            }
+            firms += super::monthly::base_value_added(cat, p.kind as usize, p.method as usize)
+                * super::plant_tfp(r, m, b)
+                * p.levels
+                * p.staffing
+                * 52
+                * k;
+        }
+    }
+    let laws = &m.laws.effects[0];
+    let weight = Fixed::from_ratio(
+        i64::from(m.budget.priority[RESEARCH]),
+        i64::from(DEFAULT_PRIORITY[RESEARCH].max(1)),
+    );
+    let state = m.budget.revenue_avg.max(Fixed::ZERO)
+        * 52
+        * STATE_RESEARCH_SHARE
+        * (Fixed::ONE + laws.research_priority)
+        * weight;
+    (firms, state)
+}
+
+/// What the country paid for research last week: the treasury's part and the firms' (out of
+/// the investment pool), as `econ::week` charges them.
+pub fn research_spending(cat: &Catalogue, m: &Market) -> (Fixed, Fixed) {
+    let Some(g) = cat.research.map(usize::from) else {
+        return (Fixed::ZERO, Fixed::ZERO);
+    };
+    let cost = m.supply[g] * m.sell_ratio[g] * m.price[g];
+    let state = cost * m.laws.effects[0].public_share(g) * pay_share(m);
+    (state, cost - state)
+}
+
+/// Laboratories to start: the levels that close the gap between the research the country wants
+/// and what its laboratories make, placed where engineers and professionals live and are not
+/// yet at a bench. Returns the most levels to start.
+fn research_candidates(
+    cat: &Catalogue,
+    econ: &Economy,
+    kinds: &PublicKinds,
+    mi: usize,
+    regions: &[usize],
+    queued: &dyn Fn(usize, usize) -> i64,
+    cands: &mut [Vec<Candidate>; PUBLIC_CATEGORIES],
+) -> usize {
+    let (Some(kind), Some(good)) = (kinds.laboratory, cat.research) else {
+        return 0;
+    };
+    let (firms, state) = research_target(cat, econ, mi);
+    let want = (firms + state) / cat.goods[good as usize].base_price;
+    let mut have = Fixed::ZERO;
+    let mut per_level_sum = Fixed::ZERO;
+    let mut n = 0i64;
+    let bench: i64 = cat.buildings[kind].methods[0].workers;
+    for &ri in regions {
+        let r = &econ.regions[ri];
+        let per_level = level_output(cat, r, kind, 0);
+        let q = queued(ri, kind);
+        have += yearly_output(cat, r, kind) + per_level * q;
+        if per_level > Fixed::ZERO {
+            per_level_sum += per_level;
+            n += 1;
+        }
+        let levels = r
+            .plants
+            .iter()
+            .filter(|p| p.kind as usize == kind)
+            .map(|p| p.levels)
+            .sum::<i64>()
+            + q;
+        let free = super::workers(r.pops[prof::ENGINEER].size + r.pops[prof::PROFESSIONAL].size)
+            - levels * bench;
+        if free > 0 && per_level > Fixed::ZERO {
+            cands[RESEARCH].push((Fixed::from_int(free), ri, kind, 0, Fixed::from_int(bench)));
+        }
+    }
+    let gap = want - have;
+    if gap <= Fixed::ZERO || n == 0 {
+        return 0;
+    }
+    let mean = per_level_sum / n;
+    ((gap / mean.max(milli(1))).to_int_floor() + 1).clamp(0, MAX_PUBLIC_BUILDS as i64) as usize
 }
 
 /// Bounds of the fiscal correction.

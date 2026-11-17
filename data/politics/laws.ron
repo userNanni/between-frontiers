@@ -66,21 +66,28 @@
 
         // ---- ownership: how much of industry the state owns and builds, and where the profit
         // of state firms goes. ----
-        (key: "laissez_faire", group: "ownership", effects: []),
+        // `research_state_share`: share of R&D the treasury pays. Government-funded share of
+        // gross R&D in 1981: United States 47.8 %, Germany 41.8 %, France 53.4 %, Japan 24.9 %;
+        // Russia 62.3 % in 1994 (OECD MSTI, read in docs/research.pt-BR.md); the order follows
+        // state ownership. `research_priority`: the state wants that much more research than its
+        // base share of revenue (Soviet R&D above 2 % of GNP from 1962, IIASA 1994).
+        (key: "laissez_faire", group: "ownership", effects: [("research_state_share", 250)]),
         (key: "regulated_market", group: "ownership", effects: [
             // State railways, posts and some utilities.
             ("state_ownership", 50), ("state_investment_share", 100), ("state_profit_to_treasury", 300),
+            ("research_state_share", 450),
         ]),
         (key: "mixed_economy", group: "ownership", effects: [
             ("state_ownership", 250), ("state_investment_share", 300), ("state_profit_to_treasury", 500),
+            ("research_state_share", 550),
         ]),
         (key: "state_capitalism", group: "ownership", effects: [
             ("state_ownership", 500), ("state_investment_share", 600), ("state_profit_to_treasury", 700),
-            ("foreign_investment", 700),
+            ("foreign_investment", 700), ("research_state_share", 700), ("research_priority", 500),
         ]),
         (key: "planned_economy", group: "ownership", effects: [
             ("state_ownership", 950), ("state_investment_share", 1000), ("state_profit_to_treasury", 1000),
-            ("foreign_investment", 100),
+            ("foreign_investment", 100), ("research_state_share", 950), ("research_priority", 1000),
         ]),
 
         // ---- land_tenure ----

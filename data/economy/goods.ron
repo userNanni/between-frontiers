@@ -87,5 +87,6 @@
         (key: "schooling", category: "public", base_price: 300, available_from: 1925, tradable: false, unit: "one pupil taught for a year"),
         (key: "housing", category: "service", base_price: 100, available_from: 1925, tradable: false, unit: "one city dweller housed for a year"),
         (key: "hospital_care", category: "public", base_price: 1000, available_from: 1925, tradable: false, unit: "lot worth $1,000 of hospital care"),
+        (key: "research", category: "public", base_price: 1000, available_from: 1925, tradable: false, unit: "lot worth $1,000 of research and development"),
     ],
 )

@@ -211,6 +211,10 @@ pub struct LawEffects {
     /// negative values count as zero): how far religious schools grow outside the Treasury.
     #[serde(default)]
     pub church_privilege: Fixed,
+    /// How much more research the state wants above its base share of revenue
+    /// (`research_priority`); zero without politics.
+    #[serde(default)]
+    pub research_priority: Fixed,
 }
 
 impl Default for LawEffects {
@@ -230,6 +234,7 @@ impl Default for LawEffects {
             colonial_tribute: Fixed::ZERO,
             discrimination: Fixed::ZERO,
             church_privilege: Fixed::ZERO,
+            research_priority: Fixed::ZERO,
         }
     }
 }
@@ -264,6 +269,7 @@ impl HashState for LawEffects {
         self.colonial_tribute.hash_state(h);
         self.discrimination.hash_state(h);
         self.church_privilege.hash_state(h);
+        self.research_priority.hash_state(h);
     }
 }
 
@@ -311,7 +317,7 @@ pub struct Project {
 /// engineers, professionals, servants), upper (managers, capitalists, landowners).
 pub const TAX_CLASSES: usize = 3;
 /// Public investment categories: infrastructure, education, health, urban housing.
-pub const PUBLIC_CATEGORIES: usize = 4;
+pub const PUBLIC_CATEGORIES: usize = 5;
 
 /// The country's treasury rules and last week's accounts. The balance itself is
 /// `Market::treasury`, which may go negative: a deficit accumulates there.

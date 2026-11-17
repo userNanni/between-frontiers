@@ -7,7 +7,6 @@ use std::sync::Arc;
 use laplace_schelling::Fixed;
 use laplace_schelling::schedule::{Access, Cadence, ResourceId, System, TickCtx};
 
-use crate::econ::prof;
 use crate::econ::week::ECON;
 use crate::econ::{Catalogue, Unlocks, milli};
 use crate::economy::BUILDING_GROUPS;
@@ -16,8 +15,10 @@ use crate::research::{EFFECTS, ResearchState, Stage, TechTree};
 
 pub const RESEARCH: ResourceId = ResourceId(11);
 
-/// Research effort a thousand literate engineers and professionals produce in a year.
-pub const POINTS_PER_THOUSAND: Fixed = milli(500);
+/// Research points a lot of research (a thousand dollars of laboratory work at base prices)
+/// makes. Calibrated so that the leader keeps the dates of the frontier
+/// (`docs/research.pt-BR.md`, "Pesquisa que custa").
+pub const POINTS_PER_LOT: Fixed = milli(1);
 /// Share of the effort spent on new science; the rest builds prototypes of what is known.
 const SCIENCE_SHARE: Fixed = milli(700);
 /// How much cheaper it is to learn what the whole world already knows.
@@ -71,19 +72,20 @@ fn ahead(year: i32, history: i32) -> Fixed {
 }
 
 struct CountryFacts {
-    researchers: i64,
+    /// Research the country's laboratories make in a year, in lots, as they are staffed.
+    research: Fixed,
     literacy: Fixed,
     population: i64,
     gdp: Fixed,
 }
 
-fn facts(world: &GameWorld) -> Vec<CountryFacts> {
+fn facts(cat: &Catalogue, world: &GameWorld) -> Vec<CountryFacts> {
     let econ = &world.econ;
     let mut out: Vec<CountryFacts> = econ
         .markets
         .iter()
         .map(|m| CountryFacts {
-            researchers: 0,
+            research: Fixed::ZERO,
             literacy: Fixed::ZERO,
             population: 0,
             gdp: m.gdp_last_year.max(Fixed::ZERO),
@@ -92,7 +94,9 @@ fn facts(world: &GameWorld) -> Vec<CountryFacts> {
     for r in &econ.regions {
         let c = &mut out[r.market as usize];
         let people = r.population();
-        c.researchers += r.pops[prof::ENGINEER].employed + r.pops[prof::PROFESSIONAL].employed;
+        if let Some(lab) = cat.laboratory {
+            c.research += crate::econ::public::yearly_output(cat, r, usize::from(lab));
+        }
         c.literacy += r.literacy * people;
         c.population += people;
     }
@@ -130,7 +134,7 @@ impl System<GameWorld> for Research {
         let mut state = world.research.clone();
         let n = state.stage.len().min(world.econ.markets.len());
         let nt = tree.techs.len();
-        let facts = facts(world);
+        let facts = facts(cat, world);
         let world_gdp: Fixed = facts.iter().map(|f| f.gdp).sum::<Fixed>().max(milli(1));
         let unlocks = Unlocks::new(cat, year, Some(tree), &world.research);
 
@@ -197,11 +201,9 @@ impl System<GameWorld> for Research {
         for c in 0..n {
             let f = &facts[c];
             let boost = Fixed::ONE + state.effects[c][3] * 2;
-            let points = Fixed::from_int(f.researchers).mul_ratio(1, 1000)
-                * f.literacy
-                * POINTS_PER_THOUSAND
-                * boost
-                / 12;
+            // Research is what the laboratories make: engineers at a bench, paid by the state and
+            // the firms, at the country's productivity; not heads counted.
+            let points = f.research * POINTS_PER_LOT * boost / 12;
             state.points[c] = points;
             let stages = state.stage[c].clone();
             let channel = imitation_channel(world.econ.markets.get(c));

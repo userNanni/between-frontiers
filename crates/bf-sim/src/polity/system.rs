@@ -49,6 +49,8 @@ struct Wired {
     collection: usize,
     health: usize,
     education: usize,
+    research_share: usize,
+    research_priority: usize,
     enrolment: usize,
     rent: usize,
     ownership: usize,
@@ -73,6 +75,8 @@ impl Wired {
             collection: e("tax_collection"),
             health: e("health_state_share"),
             education: e("education_state_share"),
+            research_share: e("research_state_share"),
+            research_priority: e("research_priority"),
             enrolment: e("school_enrolment_target"),
             rent: e("landowner_rent"),
             ownership: e("state_ownership"),
@@ -101,7 +105,7 @@ pub struct PoliticsSystem {
     /// Goods of the import-share indicator (consumer and industrial goods that trade).
     manufactures: Vec<usize>,
     /// The `schooling` and `hospital_care` goods.
-    public_goods: [Option<u16>; 2],
+    public_goods: [Option<u16>; 3],
     wired: Wired,
     /// The law group of the forms of government.
     government: Option<usize>,
@@ -146,7 +150,7 @@ impl PoliticsSystem {
         let good = |k: &str| cat.good(k);
         Self {
             kinds: (cat.building("school"), cat.building("hospital")),
-            public_goods: [good("schooling"), good("hospital_care")],
+            public_goods: [good("schooling"), good("hospital_care"), good("research")],
             manufactures,
             shares,
             recruits,
@@ -200,7 +204,11 @@ impl PoliticsSystem {
             if let Some(v) = fx(w.collection) {
                 e.tax_collection = v.min(Fixed::ONE);
             }
-            for (good, i) in self.public_goods.iter().zip([w.education, w.health]) {
+            for (good, i) in self
+                .public_goods
+                .iter()
+                .zip([w.education, w.health, w.research_share])
+            {
                 if let (Some(g), Some(v)) = (good, share(i)) {
                     e.public_share.push((*g, v));
                 }
@@ -225,6 +233,9 @@ impl PoliticsSystem {
             }
             if let Some(v) = fx(w.foreign_investment) {
                 e.foreign_investment = v.max(Fixed::ZERO);
+            }
+            if let Some(v) = fx(w.research_priority) {
+                e.research_priority = v.max(Fixed::ZERO);
             }
             if let Some(v) = share(w.church) {
                 e.church_privilege = v;
