@@ -552,7 +552,7 @@ fn controls(ui: &mut Ui, cx: &mut TabContext<'_>, v: &GovernmentView) {
         let place = cx
             .world
             .and_then(|world| world.states.get(usize::from(w.state).checked_sub(1)?))
-            .map(|s| s.def.name.clone())
+            .map(|s| crate::text::state_name(i18n, &s.def))
             .unwrap_or_default();
         let label = if place.is_empty() {
             building

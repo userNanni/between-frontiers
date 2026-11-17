@@ -89,11 +89,11 @@ fn month(i18n: &I18n, (year, month): (i32, u8)) -> String {
     )
 }
 
-fn state_name(world: &World, state: u16) -> String {
+fn state_name(i18n: &I18n, world: &World, state: u16) -> String {
     world
         .states
         .get(usize::from(state).saturating_sub(1))
-        .map_or_else(|| "—".into(), |s| s.def.name.clone())
+        .map_or_else(|| "—".into(), |s| crate::text::state_name(i18n, &s.def))
 }
 
 fn pyramid_section(
@@ -117,7 +117,7 @@ fn pyramid_section(
     let steps = states.len() + 1;
     let name = match at {
         0 => i18n.tr("population-whole-country"),
-        i => state_name(world, states[i - 1].0),
+        i => state_name(i18n, world, states[i - 1].0),
     };
     ui.horizontal(|ui| {
         let side = bf_ui_kit::tokens::control::HEIGHT_SM;
@@ -173,7 +173,7 @@ fn community_section(ui: &mut Ui, i18n: &I18n, world: &World, view: &PopulationV
     let (place, lines): (String, &[CommunityLine]) = match scope.0 {
         None => (i18n.tr("population-whole-country"), &view.communities),
         Some(s) => (
-            state_name(world, s),
+            state_name(i18n, world, s),
             view.state_communities
                 .iter()
                 .find(|(x, _)| *x == s)
@@ -278,7 +278,7 @@ fn class_section(ui: &mut Ui, i18n: &I18n, world: &World, view: &PopulationView,
     let (place, lines): (String, &[ClassTfr]) = match scope.0 {
         None => (i18n.tr("population-whole-country"), &view.classes),
         Some(s) => (
-            state_name(world, s),
+            state_name(i18n, world, s),
             view.state_classes
                 .iter()
                 .find(|(x, _)| *x == s)

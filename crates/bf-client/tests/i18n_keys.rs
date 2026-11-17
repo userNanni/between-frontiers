@@ -72,3 +72,23 @@ fn every_command_has_a_name_and_a_short_label() {
         }
     }
 }
+
+/// Every state of the map has its name (`state-<KEY>`) in every locale, so no screen falls back
+/// to the map's name, which is in the language of the place or in English.
+#[test]
+fn every_state_has_a_name() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let text = std::fs::read_to_string(root.join("assets/map/provinces.ron")).unwrap();
+    let map: bf_sim::scenario::MapFile = ron::from_str(&text).unwrap();
+    assert!(map.states.len() > 800, "only {} states", map.states.len());
+    for locale in Locale::ALL {
+        let i18n = I18n::load(&root.join("assets/i18n"), locale).unwrap();
+        let missing: Vec<&str> = map
+            .states
+            .iter()
+            .filter(|s| !i18n.has(&format!("state-{}", s.key)))
+            .map(|s| s.key.as_str())
+            .collect();
+        assert!(missing.is_empty(), "{locale} lacks names for: {missing:?}");
+    }
+}
