@@ -66,8 +66,13 @@ diga no PR quanto o `economy-week` subiu, em 10 anos e nos últimos anos do séc
    pop, por planta, por bem ou por par de países em sistema diário ou semanal. Use um buffer por
    estado ou por mercado, um array fixo (`[Fixed; P]`) ou uma matriz plana `n × m` alocada uma vez
    por execução e reaproveitada entre bens.
-3. **`clone` de estrutura grande.** O `compute` lê o mundo por referência; as `Changes` levam só
-   o que muda, não a cópia inteira de um `Market`, de um `CountryWar` ou de uma lista de pops.
+3. **`clone` de estrutura grande que quase não muda.** O `compute` lê o mundo por referência e
+   as `Changes` levam o que muda.
+   - Copiar um `Market` inteiro para mudar três campos é desperdício.
+   - Quando o sistema reescreve todo campo da estrutura toda semana (o `country_week` da guerra
+     com o `CountryWar`), devolvê-la nova é o certo: a cópia é o próprio resultado.
+   - Separe as partes que não mudam (catálogo, tabelas, nomes) e passe-as por referência ou por
+     índice; elas não entram na cópia.
 4. **Mapa onde vetor serve.** Id denso (país, mercado, estado, bem, profissão) indexa `Vec` ou
    matriz plana. `BTreeMap` só para chave esparsa; `HashMap` não entra no estado (a ordem de
    iteração muda o resultado).
@@ -80,7 +85,9 @@ diga no PR quanto o `economy-week` subiu, em 10 anos e nos últimos anos do séc
    - Não expanda a esparsa em matriz densa toda semana. O `dense()` do #113 fazia isso; uma tabela
      de preferência que muda por mês se refaz no mês.
 7. **Lista que só cresce percorrida no tick.** Histórico, coorte por ano de construção, fila nunca
-   podada: o custo por ano não pode crescer com o tempo de jogo. Funda ou pode, ou indexe.
+   podada: o custo por ano não pode crescer com o tempo de jogo. Funda, pode ou indexe.
+   - Vale também para o que o jogador faz crescer, como a fila de encomendas e os pedidos: ponha
+     um teto ou pode.
 8. **Trabalho pesado no `apply`.** O `apply` é serial e a conta vai no `compute`, que é paralelo
    por estado. Exemplo: um `apply` semanal que soma num vetor de mercados × mercados (o
    `trade.add` do #113) é O(n²) serial toda semana. Prefira somar por mercado no `compute` e
@@ -108,6 +115,14 @@ só o efeito da regra.
   use a mediana).
   - O ruído chega a ±7 % com a máquina cheia, e passa disso com os três slots ocupados.
   - Rode as duas medidas no mesmo slot, uma depois da outra (`bf-bench-slot sh -c 'A; B'`).
+  - **`user` de momentos diferentes não se compara.** Duas rodadas de 101 anos do mesmo binário
+    deram 1 785 s e 1 080 s, com carga de 75 na mais lenta. Só vale o par no mesmo slot, um
+    binário depois do outro.
+  - **1 thread ou 2.** O orçamento por sistema é a média por execução em 1 thread. A rodada de 10
+    anos em 1 thread mede o começo do século, e o fim custa cerca de 1,45× o começo por ano. Para
+    o fim do século, compare a parte de cada sistema (custo do sistema sobre a simulação) na
+    rodada de 101 anos em 2 threads contra a base guardada com as mesmas threads. A parte não
+    depende do número de threads do jeito que o tempo depende.
   - Descarte o par se a carga de 1 min (`/proc/loadavg`) passar de **12** em qualquer das duas:
     acima disso há mais threads prontas que núcleos lógicos.
 - **Por sistema:** a tabela que o `bf-bench` imprime e grava no JSON;
@@ -135,6 +150,22 @@ só o efeito da regra.
   e a carga da máquina. `python3 tools/bench/ledger.py show [--branch B]` mostra a tendência de
   CPU por commit e a dispersão dos agregados por década.
 
+## Julgar agregados em 101 anos
+
+Uma mudança de regra muda o mundo. A pergunta é se a mudança sai da faixa que um empurrão
+mínimo já produz. Essa faixa cresce muito ao longo do século: o 2σ do PIB da Itália é de 0,3
+ponto em 1935 e de 33 pontos em 2024.
+
+- **Três amostras não decidem.** Com 3 rodadas, o desvio-padrão estimado erra por até ±50 %; com
+  8, por cerca de ±25 %. Use **pelo menos oito amostras** (`BF_PERTURB_PERMILLE` = ±1, ±2, ±3,
+  ±4) sobre a `main` atual, e não sobre a `main` de quando a branch nasceu.
+- **A faixa sai da base guardada, não de cada thread.** Ela é feita uma vez por commit da `main`
+  que muda a simulação, guardada ao lado da base (`target/baseline/<sha>/`) e registrada no livro
+  de rodadas. Cada PR roda só a própria rodada e compara país a país, por década, com a faixa.
+  Oito rodadas de 101 anos ocupam um slot por cerca de 3 h, uma vez por commit, em vez de 3 h por
+  thread.
+- **Fora da faixa não é erro:** é efeito da regra, e o PR diz qual e por quê.
+
 ## Compilar
 
 - `~/.local/bin/bf-cargo` é o `cargo` com `sccache` (`~/.cache/sccache-bf`). Reaproveita as
@@ -145,3 +176,6 @@ só o efeito da regra.
     worktree leria os dados dela.
 - `bf-build-governor` segura em 4 os `rustc` simultâneos do projeto; os excedentes ficam parados.
   Compile com `-j 2`. Com 8 compilações ao mesmo tempo a máquina fica sem memória.
+- **Teste e clippy em release:** `cargo test --release -j 2` e
+  `cargo clippy --release -j 2 ...`. Os `target/debug` das worktrees chegaram a 20 GB; o build de
+  release já existe para o bench e é reaproveitado.
