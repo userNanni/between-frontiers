@@ -46,7 +46,7 @@ pub enum Side {
 }
 
 /// One clause: what it does, who gives it and who receives it.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Clause {
     pub kind: ClauseKind,
     pub giver: Side,
@@ -60,7 +60,7 @@ pub struct Clause {
 }
 
 /// Limit on armed forces: absolute, or a share of another party's.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ArmsCap {
     pub party: Tag,
     pub category: ArmsCategory,
@@ -79,7 +79,7 @@ pub enum ArmsCategory {
 }
 
 /// What a clause does. The mechanics live here; limits, weights and texts in the catalogue.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ClauseKind {
     // Once, on entry into force.
     /// The states pass from the giver to the receiver (`borders::Transfer`).
@@ -154,7 +154,7 @@ pub enum ClauseKind {
 
 /// Terms of a debt between states, in reference units (the economy's 2011 dollars at 1925 base
 /// prices, as `Money::debt_fx`).
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DebtTerms {
     pub principal: Fixed,
     /// Yearly interest, as a fraction.
@@ -433,6 +433,14 @@ pub struct Weights {
     pub horizon_years: u16,
     /// Yearly decay of the breach memory.
     pub reputation_decay: Fixed,
+    /// Yearly rate that discounts payments to present value.
+    pub discount_rate: Fixed,
+    /// Share of the voters' clout a ratification needs under universal suffrage; the bar falls
+    /// with the franchise (without a vote, the government ratifies alone).
+    pub ratify_share: Fixed,
+    /// Legitimacy (per mille) the proposer pays per mille of clout missing when it ratifies
+    /// below the bar.
+    pub legitimacy_per_missing: Fixed,
 }
 
 impl ClauseCatalogue {
@@ -544,7 +552,7 @@ fn is_concern(key: &str) -> bool {
 // ---------------------------------------------------------------------------------------------
 
 /// An agreement on the table: two sides, the clauses each gives, the term.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Proposal {
     /// Side A proposes; side B answers.
     pub side_a: Vec<Tag>,
@@ -1213,22 +1221,117 @@ impl RecognitionFile {
     }
 }
 
-/// The diplomatic state of the world that is not money: recognition now; agreements in force,
-/// proposals and the memory of breaches as they enter the tick. `GameWorld::treaties`.
+/// The diplomatic state of the world that is not money: recognition, agreements in force,
+/// proposals waiting for the day's answer, the answers given and the memory of breaches.
+/// `GameWorld::treaties`.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TreatyState {
     pub recognition: Recognition,
+    /// Agreements signed in play (the 1925 treaties stay in the data until they are converted
+    /// into agreements by the subject step).
+    #[serde(default)]
+    pub agreements: Vec<Agreement>,
+    /// Proposals made by command, answered on the day.
+    #[serde(default)]
+    pub proposals: Vec<PendingProposal>,
+    /// The last answers, newest last (at most [`ANSWERS_KEPT`]): what the screen shows.
+    #[serde(default)]
+    pub answers: Vec<Answer>,
+    /// Memory of breaches by country (0: clean); decays by `Weights::reputation_decay` a year.
+    #[serde(default)]
+    pub reputation: BTreeMap<u16, Fixed>,
+    #[serde(default)]
+    pub next_id: u32,
+}
+
+/// Answers kept for the screen.
+pub const ANSWERS_KEPT: usize = 64;
+
+/// An agreement in force, signed in play.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Agreement {
+    pub id: u32,
+    pub side_a: Vec<u16>,
+    pub side_b: Vec<u16>,
+    /// The continuous clauses (the one-off ones acted on signature and are in the answer).
+    pub clauses: Vec<Clause>,
+    pub signed: laplace_schelling::Date,
+    pub term_years: Option<u16>,
+    pub notice_years: u16,
+}
+
+/// A proposal made by command, with the proposer's choice to ratify below its threshold.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PendingProposal {
+    pub proposal: Proposal,
+    /// The proposer ratifies even below its threshold, paying legitimacy (owner's decision 5:
+    /// the player may; the AI never sets it).
+    pub ratify_anyway: bool,
+}
+
+/// The answer to a proposal, with its reason.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Answer {
+    pub id: u32,
+    pub date: laplace_schelling::Date,
+    pub side_a: Vec<Tag>,
+    pub side_b: Vec<Tag>,
+    pub outcome: Outcome,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Outcome {
+    /// Signed and in force; the legitimacy the proposer paid to ratify below its threshold.
+    Signed { legitimacy_paid: u16 },
+    /// A party is unknown, or a side is empty.
+    Malformed,
+    /// `clause` would bind two governments that do not recognise each other.
+    NotRecognised {
+        clause: usize,
+        giver: Tag,
+        receiver: Tag,
+    },
+    /// `party` loses on the account: its total, in reference units.
+    Refused { party: Tag, total: Fixed },
+    /// `party`'s interest groups did not ratify: support and required, per mille of clout.
+    NotRatified {
+        party: Tag,
+        support: u16,
+        required: u16,
+    },
 }
 
 impl TreatyState {
     pub fn is_empty(&self) -> bool {
         self.recognition.is_empty()
+            && self.agreements.is_empty()
+            && self.proposals.is_empty()
+            && self.answers.is_empty()
+            && self.reputation.is_empty()
+            && self.next_id == 0
     }
 }
 
 impl HashState for TreatyState {
     fn hash_state(&self, h: &mut StateHasher) {
         self.recognition.hash_state(h);
+        // Agreements, proposals and answers through their canonical encoding: postcard is
+        // deterministic, and none of them is on a hot path.
+        if !(self.agreements.is_empty() && self.proposals.is_empty() && self.answers.is_empty()) {
+            let bytes = laplace_schelling::save::encode_snapshot(&(
+                &self.agreements,
+                &self.proposals,
+                &self.answers,
+            ))
+            .unwrap_or_default();
+            h.write_bytes(&bytes);
+        }
+        h.write_len(self.reputation.len());
+        for (c, r) in &self.reputation {
+            h.write_u16(*c);
+            r.hash_state(h);
+        }
+        h.write_u32(self.next_id);
     }
 }
 

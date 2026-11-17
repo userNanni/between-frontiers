@@ -313,6 +313,13 @@ pub enum GameCommand {
     /// group. The politics system enacts it on the same day; unknown tags and laws, and colonial
     /// laws for a country without colonies, are no-ops.
     SetLaw { tag: String, law: u16 },
+    /// Puts a treaty on the table (`treaty::Proposal`): side A proposes, side B answers on the
+    /// day by the same account the screen shows (`treaty_system`). With `ratify_anyway`, side A
+    /// ratifies even below its bar, paying legitimacy.
+    ProposeTreaty {
+        proposal: crate::treaty::Proposal,
+        ratify_anyway: bool,
+    },
 }
 
 impl Command<GameWorld> for GameCommand {
@@ -384,6 +391,18 @@ impl Command<GameWorld> for GameCommand {
                 if let Some(m) = world.econ.markets.get_mut(ci) {
                     m.money.bank = *bank;
                 }
+            }
+            GameCommand::ProposeTreaty {
+                proposal,
+                ratify_anyway,
+            } => {
+                world
+                    .treaties
+                    .proposals
+                    .push(crate::treaty::PendingProposal {
+                        proposal: proposal.clone(),
+                        ratify_anyway: *ratify_anyway,
+                    });
             }
             GameCommand::SetLaw { tag, law } => {
                 let Some(ci) = world.countries.iter().position(|(_, c)| c.tag == *tag) else {
@@ -469,6 +488,8 @@ pub struct Rules {
     pub politics: Option<Arc<crate::politics::Politics>>,
     /// The community catalogue; without it the population carries no communities.
     pub communities: Option<Arc<crate::demography::communities::CommunityTable>>,
+    /// The clause catalogue of treaties; without it no proposal is answered.
+    pub clauses: Option<Arc<crate::treaty::ClauseCatalogue>>,
 }
 
 pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
@@ -479,8 +500,15 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
         tree,
         politics,
         communities,
+        clauses,
     }) = rules
     {
+        if let Some(c) = &clauses {
+            s.add(crate::treaty_system::TreatySystem {
+                cat: Arc::clone(c),
+                politics: politics.clone(),
+            });
+        }
         if let Some(p) = &politics {
             s.add(crate::polity::PoliticsSystem::new(
                 Arc::clone(p),

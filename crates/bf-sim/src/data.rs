@@ -142,6 +142,7 @@ impl GameData {
             tree: self.tree.clone(),
             politics: self.politics.clone(),
             communities: self.community_table.clone(),
+            clauses: self.clauses.clone().map(Arc::new),
         }
     }
 

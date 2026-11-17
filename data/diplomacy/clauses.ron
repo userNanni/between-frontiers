@@ -143,5 +143,11 @@
         horizon_years: 20,
         // As the default history of the debt (state.pt-BR.md): 10 % a year.
         reputation_decay: "0.100",
+        // DESIGN CHOICE: payments discounted at 5 % a year (about the world rate of the economy).
+        discount_rate: "0.050",
+        // DESIGN CHOICE: a simple majority of the clout under universal suffrage.
+        ratify_share: "0.500",
+        // DESIGN CHOICE: half a point of legitimacy per point of clout missing.
+        legitimacy_per_missing: "0.500",
     ),
 )

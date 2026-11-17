@@ -522,6 +522,38 @@ fecha.
   `on_annex`. A parte B das fronteiras chama as duas na operação.
 - "Não reconhecido" é derivado: `recognised_by_share` (parcela do PIB mundial que reconhece).
 
+### Feito: negociação e ratificação
+
+- **Comando** `GameCommand::ProposeTreaty { proposal, ratify_anyway }`: o lado A propõe; o
+  sistema `treaties` (diário, `treaty_system.rs`) responde no dia. Sem proposta, não faz nada:
+  custo zero e hash intocado.
+- **Ordem da resposta**, cada recusa com o motivo guardado em `GameWorld::treaties.answers` (as
+  64 últimas, para a tela):
+  1. parte desconhecida ou lado vazio (`Malformed`);
+  2. cláusula entre quem não se reconhece (`NotRecognised`, com a cláusula e o par);
+  3. a conta de cada membro do lado B (`evaluate`, a mesma da mesa); total negativo recusa
+     (`Refused`, com o total);
+  4. ratificação em casa, nos dois lados (`NotRatified`, com apoio e barra).
+- **Ratificação** (`treaty_system::ratification`): a postura de cada grupo de interesse soma as
+  preocupações das cláusulas do catálogo; um efeito que os grupos já pesam (tarifa, recrutamento,
+  capital estrangeiro, tributo colonial…) pelo peso do próprio grupo; os dois novos (`sovereignty`,
+  `burden`) igual para todos (escolha de desenho até os grupos ganharem peso próprio em
+  `interest_groups.ron`). Quem dá sente a preocupação como escrita; quem recebe, o contrário.
+  O apoio é a parcela do peso político dos grupos a favor (grupos iguais antes da primeira medida
+  mensal); a barra é `ratify_share` (metade) vezes o sufrágio da lei em vigor: sem voto, o governo
+  ratifica sozinho. Abaixo da barra, o lado B recusa sempre; o lado A só passa com
+  `ratify_anyway`, pagando `legitimacy_per_missing` por ponto que falta (decisão 5: o jogador
+  pode; a IA nunca usa a chave).
+- **Execução:** pagamento move Tesouros (soma igual); dívida cria linhas no livro (repartida
+  entre os pares dador→recebedor); revisão de dívida muda as linhas do credor; reconhecimento
+  concede os pares. As cláusulas contínuas (e as de uma vez cuja frente ainda dorme: fronteira,
+  técnicas) ficam como `Agreement` em vigor.
+- **Testes** (`tests/treaties_play.rs`): porta do reconhecimento e reconhecimento assinado;
+  pagamento que só move dinheiro; recusa pela conta; ratificação recusada e paga em legitimidade;
+  dívida no livro com a soma mundial em zero; salvar e recarregar no meio com o mesmo hash.
+- **Falta, para as próximas partes:** a IA propor (revisão de dívida pelo devedor em aperto,
+  reconhecimento pelo país novo), a quebra e a reputação no tick, e os súditos.
+
 ## 13. Interface: a mesa de negociação
 
 Painel registrado (`PanelId::Treaty`), escondido até ser aberto, teclado primeiro, textos em

@@ -19,4 +19,5 @@ pub mod resources;
 pub mod scenario;
 pub mod sea;
 pub mod treaty;
+pub mod treaty_system;
 pub mod war;
