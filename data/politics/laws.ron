@@ -189,16 +189,20 @@
         // ---- education ----
         (key: "traditional_schooling", group: "education", effects: [
             // Religious schools only.
-            ("school_enrolment_target", 50), ("church_privilege", 300),
+            ("school_enrolment_target", 50), ("secondary_enrolment_target", 20), ("tertiary_enrolment_target", 5),
+            ("church_privilege", 300),
         ]),
         (key: "private_schooling", group: "education", effects: [
-            ("education_state_share", 200), ("school_enrolment_target", 250), ("church_privilege", 150),
+            ("education_state_share", 200), ("school_enrolment_target", 250), ("secondary_enrolment_target", 100),
+            ("tertiary_enrolment_target", 20), ("church_privilege", 150),
         ]),
         (key: "compulsory_primary", group: "education", effects: [
-            ("education_state_share", 700), ("school_enrolment_target", 800),
+            ("education_state_share", 700), ("school_enrolment_target", 800), ("secondary_enrolment_target", 250),
+            ("tertiary_enrolment_target", 50),
         ]),
         (key: "universal_secondary", group: "education", effects: [
-            ("education_state_share", 900), ("school_enrolment_target", 1000),
+            ("education_state_share", 900), ("school_enrolment_target", 1000), ("secondary_enrolment_target", 900),
+            ("tertiary_enrolment_target", 300),
         ]),
 
         // ---- franchise: the share of adults whose vote can change the government ----

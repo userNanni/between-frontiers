@@ -447,5 +447,17 @@
         (key: "informal_trade", group: "services", resource: None, farm: None, informal: true, methods: [
             (key: "street_work", available_from: 1925, inputs: [], outputs: [("services", 1500)], jobs: [("laborer", 1000)]),
         ]),
+        // Appended last: buildings are indexed by their place in this list (`Plant::kind`).
+        // Secondary school: 20 pupils per teacher (middle income, Mingat, Ledoux and
+        // Rakotomalala 2010, pp. 29-30), about 1.8 times the cost of a primary pupil (their
+        // table 6.1). University: 12 students per teacher and laboratories and libraries, about
+        // five times a primary pupil (calibrated within the 2 to 26 of Psacharopoulos, Tan and
+        // Jimenez 1986, table 9, and the OECD's 1.2-1.7). docs/population.pt-BR.md.
+        (key: "secondary_school", group: "services", resource: None, farm: None, public: true, methods: [
+            (key: "secondary_classes", available_from: 1925, inputs: [("paper", 20), ("furniture", 15), ("services", 60)], outputs: [("secondary_schooling", 12000)], jobs: [("professional", 600), ("clerk", 100), ("laborer", 100)]),
+        ]),
+        (key: "university", group: "services", resource: None, farm: None, public: true, methods: [
+            (key: "lecture_halls", available_from: 1925, inputs: [("paper", 20), ("furniture", 20), ("services", 200)], outputs: [("higher_education", 6000)], jobs: [("professional", 500), ("clerk", 150), ("laborer", 150)]),
+        ]),
     ],
 )

@@ -32,6 +32,10 @@ pub struct GameData {
     pub tree: Option<Arc<TechTree>>,
     /// Who lives where, when `data/scenario/1925/communities.ron` exists.
     pub communities: Option<crate::communities::Communities>,
+    /// Schooling of 1925 by unit (`scenario/1925/education.ron`) and the adult literacy
+    /// campaign (`economy/literacy_campaign.ron`), when they exist.
+    pub education_1925: Option<crate::demography::education::EducationFile>,
+    pub literacy_campaign: Option<crate::demography::education::CampaignRules>,
     /// What the simulation reads of them, built once.
     pub community_table: Option<Arc<crate::demography::communities::CommunityTable>>,
     /// Laws, interest groups and movements, when `data/politics/laws.ron` exists.
@@ -86,6 +90,8 @@ impl GameData {
             .transpose()
             .map_err(|e| format!("assets/map/seas.ron: {e}"))?;
         let communities = crate::communities::load(&data, &map)?;
+        let education_1925 = optional(&scenario.join("education.ron"))?;
+        let literacy_campaign = optional(&data.join("economy/literacy_campaign.ron"))?;
         let countries: CountriesFile = read(&scenario.join("countries.ron"))?;
         let politics = if data.join("politics/laws.ron").is_file() {
             Some(
@@ -140,6 +146,8 @@ impl GameData {
                 .as_ref()
                 .map(|c| Arc::new(crate::demography::communities::CommunityTable::new(c))),
             communities,
+            education_1925,
+            literacy_campaign,
             deposits: optional(&scenario.join("deposits.ron"))?,
             land: optional(&scenario.join("land.ron"))?,
             population: optional(&scenario.join("population.ron"))?,

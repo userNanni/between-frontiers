@@ -88,5 +88,11 @@
         (key: "housing", category: "service", base_price: 100, available_from: 1925, tradable: false, unit: "one city dweller housed for a year"),
         (key: "hospital_care", category: "public", base_price: 1000, available_from: 1925, tradable: false, unit: "lot worth $1,000 of hospital care"),
         (key: "research", category: "public", base_price: 1000, available_from: 1925, tradable: false, unit: "lot worth $1,000 of research and development"),
+        // Appended last: goods are indexed by their place in this list, and saves keep per-good
+        // lists (`econ::compat::fit_goods`).
+        // Secondary and higher education: one student taught for a year. Prices are what the
+        // buildings cost to run per student (docs/population.pt-BR.md, "Ensino por coorte").
+        (key: "secondary_schooling", category: "public", base_price: 540, available_from: 1925, tradable: false, unit: "one secondary pupil taught for a year"),
+        (key: "higher_education", category: "public", base_price: 1500, available_from: 1925, tradable: false, unit: "one student in higher education taught for a year"),
     ],
 )

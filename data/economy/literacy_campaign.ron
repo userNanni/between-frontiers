@@ -1,0 +1,22 @@
+// Between Frontiers: the adult literacy campaign, a budget programme (docs/population.pt-BR.md,
+// "Ensino por coorte"). Contract: crates/bf-sim/src/demography/education.rs (CampaignRules).
+//
+// reach: share of the illiterate adults (15-49) the campaign enrols each year. Intensive
+//   national campaigns enrolled 10 to 30 % a year: Mobral had 4.9 million enrolled in 1973 against
+//   about 15 million illiterate adults (Paiva, "Mobral: a falácia dos números", Síntese, c. 1981);
+//   Cuba's single year of total mobilisation (1961) is the exception, not the rule.
+// durable: share of those enrolled who still read years later. Campaigns of the 1960s-80s: half
+//   drop out, half of the rest pass, half of those relapse, about 12.5 %; the programmes of the
+//   1990s: 78 % complete, 56 % pass, 12-60 % keep it (Abadzi 2003, World Bank OED, "Adult
+//   Literacy: A Review of Implementation Experience", executive summary). 20 % sits between.
+// cost: per participant, in years of a primary pupil (`schooling` at its base price): 1/7 to 1/2
+//   (Oxenham and Aoki 2002, in Abadzi 2003, pp. 20-21); Mobral cost Cr$ 30 per enrolled and
+//   approached primary schooling once annualised (Castro 1974, IPEA/INPES doc. 6, pp. 29-30).
+//   With 20 % durable, a lasting new reader costs about 1.5 primary pupil-years.
+(
+    reach: 0.25,
+    durable: 0.20,
+    cost: 0.30,
+    // A campaign is decided for this many years and can be stopped earlier.
+    years: 5,
+)
