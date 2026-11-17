@@ -225,6 +225,15 @@ InterstateDebt                       GameWorld::treaties.debts, em ordem de cria
 - **Revisão:** só por acordo novo com a cláusula `revise_debt`, que o credor dá. A IA credora
   aceita quando o valor de rever passa o valor esperado de manter (seção 10): moratória antes do
   calote vale mais que metade perdida no calote.
+- **Convive com a dívida de mercado, sem misturar.** A dívida anônima de hoje continua sendo o
+  crédito de mercado: títulos comprados pela poupança ociosa do mundo, em `debt_abroad` e
+  `debt_fx` do devedor e `foreign_assets` das famílias dos credores, pagos e cortados pro rata. O
+  livro é só a dívida **de governo a governo** criada por acordo. O devedor vê as duas no orçamento
+  (o juro do livro entra em `Budget::interest`, o principal em `Budget::debt`), o prêmio de risco e o
+  limite de calote somam as duas, e a operação de fronteira mexe em cada uma pela sua regra (a de
+  mercado pela parcela **w**, a do livro pelas funções do livro). A soma mundial fecha com as duas:
+  dinheiro dos Tesouros + fundos + poupança + créditos de mercado − dívida de mercado é igual antes
+  e depois de cada passo, e o livro soma zero (dívida = crédito) em todo instante.
 - **Garantia sobre receita** (`pledge`: alfândega, ferrovias, imposto de consumo, como em Londres
   1921, Dawes e no Haiti): a receita dada em garantia paga o serviço antes de entrar no orçamento.
   Deixa o calote mais difícil e a austeridade mais rápida; é cláusula que o devedor cede (pesa em
@@ -502,6 +511,12 @@ Painel registrado (`PanelId::Treaty`), escondido até ser aberto, teclado primei
 | Capital estrangeiro (proteção) | contrato fora do tick | fase 4 |
 
 ## 15. Decisões para o dono
+
+Aprovadas pelo orquestrador em 2026-11-17: 1, 2 e 7. As 3, 4, 5 e 6 vão ao dono e entram
+**como chave**, com o padrão recomendado: `data/diplomacy/clauses.ron` tem um bloco `policy`
+(`subject_exit`, `recognition_default`, `ratify_below_threshold`, `war_debts_1925`) lido pelas
+regras, e as dívidas de guerra de 1925 ficam num arquivo próprio que a chave liga ou desliga. A
+resposta do dono troca o valor, não o código.
 
 Cada uma com recomendação, teste e custo de manter.
 
