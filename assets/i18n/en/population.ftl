@@ -49,18 +49,25 @@ population-cause-comfort = Comfort { $value }: the share of comfort needs the fa
 population-cause-contraception = Contraception { $value }: what the country uses, as far as the mothers went to school.
 population-why-note = Land hunger also slows births where farms are crowded, but the simulation does not show its share; class, culture and religion are not modelled yet.
 population-roads = Where they came from and went
-population-immigrants = Immigrants here, by origin
-population-emigrants = Emigrants abroad, by destination
+population-immigrants = Communities of foreign origin, with descendants
+population-emigrants = Communities abroad, with descendants
 population-none = None.
 population-waves = Open waves
 population-no-waves = No wave open.
-population-waves-ended = Waves that ended
+population-waves-ended = Waves that ended, by road
 population-push-land = land hunger
 population-push-hunger = hunger
 population-push-poverty = poverty
 population-wave = { $from } → { $to }, since { $since }: { $people }, for { $cause }.
-population-wave-ended = { $from } → { $to }, { $since }–{ $until }: { $people }, for { $cause }; { $end }.
+population-wave-ended = { $from } → { $to }, { $since }–{ $until }: { $people } in { $count ->
+    [one] one wave
+   *[other] { $count } waves
+    }; opened by { $cause }, last closed because { $end }.
 population-end-eased = the pressure eased
 population-end-closed = the door closed
 population-end-full = the destination filled up
 population-end-no-pull = nothing drew them any more
+population-immigrants-note = People here by country of origin. Community: the communities of 1925, everyone who came since and their children. "Since 1925" counts only those who arrived, without children.
+population-emigrants-note = People of this country abroad, counted the same way. "Since 1925" counts only those who left, without children.
+population-with-descendants = Community
+population-arrived = Since 1925

@@ -2,6 +2,8 @@
 //! its rates, why women have the children they have, and where its people came from and went,
 //! copied out of the simulation once a month (`sim::Monthly`).
 
+use std::collections::BTreeMap;
+
 use bf_sim::demography::{AGE_GROUPS, FertilityTerm, TerritoryId};
 use bf_sim::game::GameWorld;
 use laplace_schelling::calendar::Date;
@@ -57,7 +59,10 @@ pub struct Part {
 pub struct Road {
     /// Tag of the other country.
     pub tag: String,
+    /// The community: the 1925 stock, everyone who came since and their children.
     pub people: i64,
+    /// Arrivals since 1925, without children.
+    pub arrived: i64,
 }
 
 /// A wave of the country, in or out.
@@ -69,8 +74,10 @@ pub struct WaveLine {
     pub since: (i32, u8),
     pub cause: Push,
     pub people: i64,
-    /// For an ended wave: when and why.
+    /// For ended waves of one road: when and why the last one ended.
     pub ended: Option<((i32, u8), WaveEnd)>,
+    /// Waves of the road it sums (1 for an open wave).
+    pub count: u32,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -82,11 +89,12 @@ pub struct PopulationView {
     /// By map state id: its name's index is the state, its pyramid.
     pub states: Vec<(u16, [i64; AGE_GROUPS])>,
     pub parts: Vec<Part>,
-    /// People of foreign origin living here, by origin, largest first.
+    /// Communities of foreign origin living here, by origin, largest first.
     pub immigrants: Vec<Road>,
-    /// People from here living abroad, by destination, largest first.
+    /// Communities from here living abroad, by destination, largest first.
     pub emigrants: Vec<Road>,
     pub waves: Vec<WaveLine>,
+    /// Ended waves by road, the latest ended first: first opening to last end, all moved.
     pub ended: Vec<WaveLine>,
 }
 
@@ -162,33 +170,36 @@ pub fn read_country(world: &GameWorld, c: usize, date: Date) -> Option<Populatio
             })
         })
         .collect();
-    let immigrants = d
-        .immigrants_by_origin(c)
-        .into_iter()
-        .take(ROADS)
-        .map(|(o, people)| Road {
-            tag: tag_of(o),
-            people,
-        })
-        .collect();
-    // People from here abroad, by destination country.
-    let mut out_by: std::collections::BTreeMap<usize, i64> = Default::default();
+    // The diaspora by the other country, in and out (moves within the country do not count).
+    let mut in_by: BTreeMap<usize, (i64, i64)> = BTreeMap::new();
+    let mut out_by: BTreeMap<usize, (i64, i64)> = BTreeMap::new();
     for x in &d.diaspora {
         let (o, t) = (x.origin.market(), x.dest.market());
-        if o == c && t != c && x.people > 0 {
-            *out_by.entry(t).or_insert(0) += x.people;
-        }
+        let side = if t == c && o != c {
+            in_by.entry(o)
+        } else if o == c && t != c {
+            out_by.entry(t)
+        } else {
+            continue;
+        };
+        let e = side.or_insert((0, 0));
+        e.0 += x.people;
+        e.1 += x.arrived;
     }
-    let mut emigrants: Vec<(usize, i64)> = out_by.into_iter().collect();
-    emigrants.sort_by_key(|&(t, n)| (-n, t));
-    let emigrants = emigrants
-        .into_iter()
-        .take(ROADS)
-        .map(|(t, people)| Road {
-            tag: tag_of(t),
-            people,
-        })
-        .collect();
+    let roads = |by: BTreeMap<usize, (i64, i64)>| -> Vec<Road> {
+        let mut v: Vec<_> = by.into_iter().filter(|(_, (n, _))| *n > 0).collect();
+        v.sort_by_key(|&(m, (n, _))| (-n, m));
+        v.into_iter()
+            .take(ROADS)
+            .map(|(m, (people, arrived))| Road {
+                tag: tag_of(m),
+                people,
+                arrived,
+            })
+            .collect()
+    };
+    let immigrants = roads(in_by);
+    let emigrants = roads(out_by);
     let ours = |o: TerritoryId, t: TerritoryId| o.market() == c || t.market() == c;
     let waves = d
         .waves
@@ -201,22 +212,50 @@ pub fn read_country(world: &GameWorld, c: usize, date: Date) -> Option<Populatio
             cause: w.cause,
             people: w.people,
             ended: None,
+            count: 1,
         })
         .collect();
-    let ended = d
+    // Ended waves by road (country to country): first opening, last end, everyone they moved.
+    let mut by_road: Vec<((usize, usize), WaveLine, i32)> = Vec::new();
+    for r in d
         .waves_ended
         .iter()
-        .rev()
         .filter(|r| ours(r.wave.origin, r.wave.dest))
+    {
+        let road = (r.wave.origin.market(), r.wave.dest.market());
+        match by_road.iter_mut().find(|(k, _, _)| *k == road) {
+            Some((_, line, until)) => {
+                line.people += r.wave.people;
+                line.count += 1;
+                if r.wave.since < (line.since.0 * 12 + i32::from(line.since.1) - 1) {
+                    line.since = month_of(r.wave.since);
+                    line.cause = r.wave.cause;
+                }
+                if r.until >= *until {
+                    *until = r.until;
+                    line.ended = Some((month_of(r.until), r.end));
+                }
+            }
+            None => by_road.push((
+                road,
+                WaveLine {
+                    from: tag_of(road.0),
+                    to: tag_of(road.1),
+                    since: month_of(r.wave.since),
+                    cause: r.wave.cause,
+                    people: r.wave.people,
+                    ended: Some((month_of(r.until), r.end)),
+                    count: 1,
+                },
+                r.until,
+            )),
+        }
+    }
+    by_road.sort_by_key(|(k, _, until)| (std::cmp::Reverse(*until), *k));
+    let ended = by_road
+        .into_iter()
         .take(ENDED)
-        .map(|r| WaveLine {
-            from: tag_of(r.wave.origin.market()),
-            to: tag_of(r.wave.dest.market()),
-            since: month_of(r.wave.since),
-            cause: r.wave.cause,
-            people: r.wave.people,
-            ended: Some((month_of(r.until), r.end)),
-        })
+        .map(|(_, line, _)| line)
         .collect();
     Some(PopulationView {
         month: (date.year, date.month),

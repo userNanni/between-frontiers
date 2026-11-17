@@ -330,23 +330,57 @@ fn fertility_section(ui: &mut Ui, i18n: &I18n, part: &Part) {
     bf_ui_kit::caption(ui, &i18n.tr("population-why-note"));
 }
 
-fn roads(ui: &mut Ui, i18n: &I18n, head: &str, list: &[Road]) {
+fn roads(ui: &mut Ui, i18n: &I18n, head: &str, note: &str, list: &[Road]) {
     ui.label(
         RichText::new(i18n.tr(head))
             .font(sans_medium(size::BODY))
             .color(color::TEXT),
     );
+    bf_ui_kit::caption(ui, &i18n.tr(note));
     if list.is_empty() {
         bf_ui_kit::muted(ui, &i18n.tr("population-none"));
         return;
     }
-    for r in list {
-        bf_ui_kit::stat_row(
-            ui,
-            &country_name(i18n, &r.tag),
-            &i18n.compact(r.people as f64),
-        );
-    }
+    let num = 96.0;
+    // Room on the right for the scroll bar.
+    let name_w = (ui.available_width() - num * 2.0 - space::SM * 3.0 - space::MD).max(60.0);
+    egui::Grid::new(("population-roads", head))
+        .num_columns(3)
+        .spacing([space::SM, 2.0])
+        .show(ui, |ui| {
+            let cell = |ui: &mut Ui, w: f32, text: String, faint: bool, right: bool| {
+                let layout = if right {
+                    egui::Layout::right_to_left(egui::Align::Center)
+                } else {
+                    egui::Layout::left_to_right(egui::Align::Center)
+                };
+                ui.allocate_ui_with_layout(vec2(w, 0.0), layout, |ui| {
+                    ui.set_min_width(w);
+                    ui.add(
+                        egui::Label::new(
+                            RichText::new(text)
+                                .font(sans(if faint { size::CAPTION } else { size::SMALL }))
+                                .color(if faint {
+                                    color::TEXT_FAINT
+                                } else {
+                                    color::TEXT
+                                }),
+                        )
+                        .truncate(),
+                    );
+                });
+            };
+            cell(ui, name_w, String::new(), true, false);
+            cell(ui, num, i18n.tr("population-with-descendants"), true, true);
+            cell(ui, num, i18n.tr("population-arrived"), true, true);
+            ui.end_row();
+            for r in list {
+                cell(ui, name_w, country_name(i18n, &r.tag), false, false);
+                cell(ui, num, i18n.compact(r.people as f64), false, true);
+                cell(ui, num, i18n.compact(r.arrived as f64), false, true);
+                ui.end_row();
+            }
+        });
 }
 
 fn wave_line(i18n: &I18n, w: &WaveLine) -> String {
@@ -372,6 +406,7 @@ fn wave_line(i18n: &I18n, w: &WaveLine) -> String {
                 WaveEnd::NoPull => "population-end-no-pull",
             };
             args.push(("until", Arg::String(until.to_string())));
+            args.push(("count", Arg::Num(f64::from(w.count))));
             args.push(("end", Arg::String(i18n.tr(end))));
             i18n.tr_args("population-wave-ended", &args)
         }
@@ -380,9 +415,21 @@ fn wave_line(i18n: &I18n, w: &WaveLine) -> String {
 
 fn migration_section(ui: &mut Ui, i18n: &I18n, view: &PopulationView) {
     bf_ui_kit::heading(ui, &i18n.tr("population-roads"));
-    roads(ui, i18n, "population-immigrants", &view.immigrants);
+    roads(
+        ui,
+        i18n,
+        "population-immigrants",
+        "population-immigrants-note",
+        &view.immigrants,
+    );
     ui.add_space(space::XS);
-    roads(ui, i18n, "population-emigrants", &view.emigrants);
+    roads(
+        ui,
+        i18n,
+        "population-emigrants",
+        "population-emigrants-note",
+        &view.emigrants,
+    );
     ui.add_space(space::XS);
     ui.label(
         RichText::new(i18n.tr("population-waves"))

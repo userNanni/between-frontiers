@@ -49,18 +49,25 @@ population-cause-comfort = Conforto { $value }: quanto das necessidades de confo
 population-cause-contraception = Contracepção { $value }: a que o país usa, até onde as mães estudaram.
 population-why-note = A fome de terra também segura os nascimentos onde as roças estão apertadas, mas a simulação não mostra o seu peso; classe, cultura e religião ainda não são modeladas.
 population-roads = De onde vieram e para onde foram
-population-immigrants = Imigrantes aqui, por origem
-population-emigrants = Emigrantes lá fora, por destino
+population-immigrants = Comunidades de origem estrangeira, com descendentes
+population-emigrants = Comunidades no exterior, com descendentes
 population-none = Nenhum.
 population-waves = Ondas abertas
 population-no-waves = Nenhuma onda aberta.
-population-waves-ended = Ondas que acabaram
+population-waves-ended = Ondas que acabaram, por estrada
 population-push-land = fome de terra
 population-push-hunger = fome
 population-push-poverty = pobreza
 population-wave = { $from } → { $to }, desde { $since }: { $people }, por { $cause }.
-population-wave-ended = { $from } → { $to }, { $since }–{ $until }: { $people }, por { $cause }; { $end }.
+population-wave-ended = { $from } → { $to }, { $since }–{ $until }: { $people } em { $count ->
+    [one] uma onda
+   *[other] { $count } ondas
+    }; aberta por { $cause }, fechada por último porque { $end }.
 population-end-eased = a pressão aliviou
 population-end-closed = a porta fechou
 population-end-full = o destino encheu
 population-end-no-pull = nada mais atraía
+population-immigrants-note = Gente aqui por país de origem. Comunidade: as comunidades de 1925, todos os que vieram depois e os filhos deles. "Desde 1925" conta só os que chegaram, sem os filhos.
+population-emigrants-note = Gente deste país lá fora, contada do mesmo jeito. "Desde 1925" conta só os que partiram, sem os filhos.
+population-with-descendants = Comunidade
+population-arrived = Desde 1925
