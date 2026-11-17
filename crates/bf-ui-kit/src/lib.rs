@@ -9,5 +9,5 @@ pub mod theme;
 pub mod tokens;
 
 pub use components::*;
-pub use icons::{Icon, icon, icon_button, paint_icon};
+pub use icons::{Icon, close_button, icon, icon_button, paint_icon};
 pub use theme::install;

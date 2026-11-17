@@ -17,6 +17,8 @@ pub enum Icon {
     Menu,
     /// Three dots: more options.
     More,
+    /// An X: close.
+    Close,
     Shield,
     Chart,
     Globe,
@@ -46,6 +48,7 @@ impl Icon {
             Icon::Plus => include_image!("../../../assets/icons/plus.svg"),
             Icon::Menu => include_image!("../../../assets/icons/menu.svg"),
             Icon::More => include_image!("../../../assets/icons/more.svg"),
+            Icon::Close => include_image!("../../../assets/icons/close.svg"),
             Icon::Shield => include_image!("../../../assets/icons/shield.svg"),
             Icon::Chart => include_image!("../../../assets/icons/chart.svg"),
             Icon::Globe => include_image!("../../../assets/icons/globe.svg"),
@@ -111,6 +114,44 @@ pub fn icon_button(ui: &mut Ui, icon: Icon, side: f32, tip: &str, active: bool) 
         color::TEXT
     };
     paint_icon(ui, icon, rect.shrink(side * 0.24), tint);
+    response
+        .on_hover_cursor(egui::CursorIcon::PointingHand)
+        .on_hover_text(crate::components::tooltip_text(tip))
+}
+
+/// The close button of a window's header: an X with the touch area of a small button, a fill on
+/// hover and the accent around it when focused. `label` ("Close") is what screen readers read;
+/// `tip` ("Close (Esc)") shows on hover.
+pub fn close_button(ui: &mut Ui, label: &str, tip: &str) -> Response {
+    use crate::tokens::{color, control, radius};
+    let side = control::HEIGHT_SM;
+    let (rect, response) = ui.allocate_exact_size(Vec2::splat(side), egui::Sense::click());
+    let name = label.to_owned();
+    response.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, name.clone()));
+    let hovered = response.hovered();
+    let focused = response.has_focus();
+    if hovered || focused {
+        ui.painter().rect(
+            rect,
+            radius::MD,
+            color::SURFACE_HOVER,
+            egui::Stroke::new(
+                1.0,
+                if focused {
+                    color::ACCENT
+                } else {
+                    color::BORDER
+                },
+            ),
+            egui::StrokeKind::Inside,
+        );
+    }
+    let tint = if hovered {
+        color::TEXT
+    } else {
+        color::TEXT_MUTED
+    };
+    paint_icon(ui, Icon::Close, rect.shrink(side * 0.22), tint);
     response
         .on_hover_cursor(egui::CursorIcon::PointingHand)
         .on_hover_text(crate::components::tooltip_text(tip))

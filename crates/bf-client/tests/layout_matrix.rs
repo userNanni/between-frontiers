@@ -62,7 +62,7 @@ fn nodes(h: &Harness<'_, App>) -> Vec<Node> {
             let b = a.bounding_box()?;
             Some(Node {
                 role: a.role(),
-                label: a.label().unwrap_or_default(),
+                label: a.label().or_else(|| a.value()).unwrap_or_default(),
                 rect: Rect::from_min_max(
                     egui::pos2(b.x0 as f32, b.y0 as f32),
                     egui::pos2(b.x1 as f32, b.y1 as f32),
@@ -445,7 +445,7 @@ struct Labels {
     settings: &'static str,
     keys: &'static str,
     done: &'static str,
-    tabs: [&'static str; 3],
+    tabs: [&'static str; 4],
     edit_tiles: &'static str,
     lens_button: &'static str,
     resources: &'static str,
@@ -455,7 +455,12 @@ const PT: Labels = Labels {
     settings: "Configurações",
     keys: "Editar atalhos",
     done: "Concluir",
-    tabs: ["Orçamento", "Moeda e dívida", "Leis"],
+    tabs: [
+        "Orçamento",
+        "Moeda e dívida",
+        "Dívidas entre governos",
+        "Leis",
+    ],
     edit_tiles: "Editar os números do país",
     lens_button: "Modo do mapa:",
     resources: "Recursos",
@@ -465,7 +470,12 @@ const EN: Labels = Labels {
     settings: "Settings",
     keys: "Edit shortcuts",
     done: "Done",
-    tabs: ["Budget", "Money and debt", "Laws"],
+    tabs: [
+        "Budget",
+        "Money and debt",
+        "Debts between governments",
+        "Laws",
+    ],
     edit_tiles: "Edit the country figures",
     lens_button: "Map mode:",
     resources: "Resources",
@@ -607,4 +617,217 @@ fn options_button<'a>(
     } else {
         all.into_iter().next()
     }
+}
+
+/// Thirty debts of Turkey, owed and owed to, with the longest country name of the scenario and
+/// every term switched on: the debts tab holds them at the floor, 720p, 900p and 4K, in both
+/// languages.
+#[test]
+fn the_debts_tab_holds_many_and_long() {
+    use bf_sim::treaty::{Currency, InterstateDebt, Pledge};
+    use laplace_schelling::Fixed;
+    let data = bf_sim::data::GameData::load(&root()).expect("game data");
+    let mut world = data.new_world();
+    let ix = |tag: &str| {
+        world
+            .countries
+            .iter()
+            .position(|(_, c)| c.tag == tag)
+            .unwrap() as u16
+    };
+    let (tur, others) = (
+        ix("TUR"),
+        [ix("YUG"), ix("ITA"), ix("GBR"), ix("FRA"), ix("USA")],
+    );
+    for k in 0..30u32 {
+        let other = others[k as usize % others.len()];
+        let (debtor, creditor) = if k % 2 == 0 {
+            (tur, other)
+        } else {
+            (other, tur)
+        };
+        world.econ.ledger.create(InterstateDebt {
+            id: 0,
+            debtor,
+            creditor,
+            treaty: format!("a_treaty_with_a_very_long_key_for_the_test_{k}"),
+            currency: Currency::Creditor,
+            principal: Fixed::from_int(987_654_321_000),
+            rate: Fixed::from_ratio(55, 1000),
+            annuity: Fixed::from_int(12_345_678_900),
+            years_left: 62,
+            deferrable: Fixed::from_ratio(1, 4),
+            transfer_cap: Some(Fixed::from_ratio(3, 100)),
+            pledge: Some(Pledge::ConsumptionTaxes),
+            contingent: Fixed::from_int(500_000_000_000),
+            arrears: if k % 3 == 0 {
+                Fixed::from_int(1_000_000_000)
+            } else {
+                Fixed::ZERO
+            },
+            suspended_until: if k % 5 == 0 { 1932 } else { 0 },
+        });
+    }
+    let mut session = bf_sim::game::Session::new(
+        world,
+        7,
+        laplace_schelling::calendar::Date::new(1925, 1, 1),
+        1,
+        Some(data.rules()),
+    );
+    session.submit(bf_sim::game::GameCommand::ChoosePlayer { tag: "TUR".into() });
+    let mut failures = Vec::new();
+    for (locale, t) in [("pt-BR", PT), ("en", EN)] {
+        let user =
+            std::env::temp_dir().join(format!("bf-matrix-debts-{locale}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&user);
+        let mut save = saves::create(
+            &user.join("saves"),
+            "Dívidas",
+            7,
+            laplace_schelling::calendar::Date::new(1925, 1, 1),
+        )
+        .unwrap();
+        save.meta.player = Some("TUR".into());
+        std::fs::write(
+            save.dir.join(saves::WORLD_FILE),
+            session.save("test", "debts").unwrap(),
+        )
+        .unwrap();
+        saves::write(&save).unwrap();
+        let mut h = app(user.clone(), locale, egui::vec2(1600.0, 900.0));
+        steps(&mut h);
+        let ctx = h.ctx.clone();
+        h.state_mut().apply(Transition::Game(save), &ctx);
+        steps(&mut h);
+        h.key_press(egui::Key::G);
+        steps(&mut h);
+        click(&mut h, t.tabs[2]);
+        let mut sizes = Vec::new();
+        for (w, hh) in [
+            (960.0, 540.0),
+            (1280.0, 720.0),
+            (1600.0, 900.0),
+            (3840.0, 2160.0),
+        ] {
+            for scale in [100u32, 125, 150] {
+                let ppp = bf_client::ui_scale::pixels_per_point(
+                    bf_client::ui_scale::Choice::Fixed(scale),
+                    (w, hh),
+                    1.0,
+                );
+                sizes.push((w, hh, scale, w / ppp, hh / ppp));
+            }
+        }
+        for (w, hh, scale, lw, lh) in sizes {
+            h.set_size(egui::vec2(lw, lh));
+            steps(&mut h);
+            let case = format!("{locale} {w}×{hh} at {scale} % ({lw}×{lh}) debts");
+            failures.extend(check(&h, &case));
+            failures.extend(no_overlapping_text(&h, &case));
+            failures.extend(close_beside_tabs(
+                &h,
+                &case,
+                if locale == "en" { "Close" } else { "Fechar" },
+            ));
+            if h.query_all(egui_kittest::kittest::by().label_contains("Serbs"))
+                .next()
+                .is_none()
+                && h.query_all(egui_kittest::kittest::by().label_contains("Sérvios"))
+                    .next()
+                    .is_none()
+            {
+                failures.push(format!("{case}: no line of the long-named country"));
+            }
+        }
+        let _ = std::fs::remove_dir_all(&user);
+    }
+    assert!(
+        failures.is_empty(),
+        "{} elements out of place:\n{}",
+        failures.len(),
+        failures.join("\n")
+    );
+}
+
+/// Texts side by side never run into each other: a number that does not fit would. (A cut text
+/// keeps its whole label for screen readers, so the check is on where the texts lie.)
+fn no_overlapping_text(h: &Harness<'_, App>, case: &str) -> Vec<String> {
+    let labels: Vec<Node> = nodes(h)
+        .into_iter()
+        .filter(|n| n.role == egui::accesskit::Role::Label && !n.label.is_empty())
+        .collect();
+    let mut out = Vec::new();
+    // A sum or a count shown narrower than it is wide was cut.
+    let numeric = |t: &str| {
+        t.chars().any(|c| c.is_ascii_digit())
+            && (t.starts_with("US$") || t.starts_with('$') || t.chars().all(|c| c.is_ascii_digit()))
+    };
+    for n in labels.iter().filter(|n| numeric(&n.label)) {
+        let wide = h.ctx.fonts_mut(|f| {
+            f.layout_no_wrap(
+                n.label.clone(),
+                bf_ui_kit::theme::sans(bf_ui_kit::tokens::size::SMALL),
+                egui::Color32::WHITE,
+            )
+            .size()
+            .x
+        });
+        if n.rect.width() + 1.0 < wide {
+            out.push(format!(
+                "{case}: {:?} cut to {:.0} of {:.0} px",
+                n.label,
+                n.rect.width(),
+                wide
+            ));
+        }
+    }
+    for (i, a) in labels.iter().enumerate() {
+        for b in &labels[i + 1..] {
+            let both = a.rect.intersect(b.rect);
+            let same_row = both.height() > a.rect.height().min(b.rect.height()) * 0.5;
+            if same_row && both.width() > 1.0 {
+                out.push(format!(
+                    "{case}: {:?} {:?} runs into {:?} {:?}",
+                    a.label, a.rect, b.label, b.rect
+                ));
+            }
+        }
+    }
+    out
+}
+
+/// The window's close button (an X) sits on the line of its tabs, centred with them, clear of
+/// them and inside the window.
+fn close_beside_tabs(h: &Harness<'_, App>, case: &str, close: &str) -> Vec<String> {
+    let all = nodes(h);
+    let Some(x) = all
+        .iter()
+        .find(|n| n.role == egui::accesskit::Role::Button && n.label == close)
+    else {
+        return vec![format!("{case}: no close button")];
+    };
+    let tabs: Vec<&Node> = all
+        .iter()
+        .filter(|n| n.role == egui::accesskit::Role::RadioButton)
+        .collect();
+    let mut out = Vec::new();
+    if x.rect.width() < 27.0 || x.rect.height() < 27.0 {
+        out.push(format!(
+            "{case}: close button {:?} smaller than a button",
+            x.rect
+        ));
+    }
+    for t in &tabs {
+        if (t.rect.center().y - x.rect.center().y).abs() > 2.0 {
+            out.push(format!(
+                "{case}: close {:?} not on the line of tab {:?} {:?}",
+                x.rect, t.label, t.rect
+            ));
+        }
+        if t.rect.intersects(x.rect) {
+            out.push(format!("{case}: close {:?} over tab {:?}", x.rect, t.label));
+        }
+    }
+    out
 }

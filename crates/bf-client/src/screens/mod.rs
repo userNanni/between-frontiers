@@ -9,6 +9,7 @@ pub mod hud_edit;
 pub mod journal;
 pub mod keys_editor;
 pub mod laws;
+pub mod ledger;
 pub mod lens_panel;
 pub mod liberate;
 pub mod menu;
