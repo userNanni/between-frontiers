@@ -232,7 +232,7 @@ unidade, feita por script (`tools/research/convert_tree.py`), não um ajuste por
   comando com as duas rodadas novas.
 - Custo novo = custo antigo × fator. Depois, a regra da árvore de que toda tecnologia custa pelo
   menos 10 % mais que cada requisito é restaurada subindo o custo onde a conversão a quebrou (20
-  de 168 tecnologias).
+  de 169 tecnologias).
 - O fator da janela de 10 anos: 1,05 em 1935; 2,67 em 1955; 2,71 em 1965; 2,24 em 1975; 1,93 em
   1985; 1,37 em 1995; 1,05 em 2005; 0,94 em 2015; 0,87 em 2025.
 - **A conversão embute na árvore a desaceleração do esforço do modelo depois de 1975.** O fator

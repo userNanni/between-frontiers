@@ -78,7 +78,8 @@ def main():
         print(f"{y}: factor over 10 years {window_factor(reference, new_points, y, 10):.3f}")
     with open(TREE, encoding="utf-8") as fh:
         text = fh.read()
-    block = re.compile(r"\(\s*key:\s*\"(?P<key>[^\"]+)\".*?\n\s*\),", re.S)
+    # A technology block, comments before its key included.
+    block = re.compile(r"\(\s*(?://[^\n]*\n\s*)*key:\s*\"(?P<key>[^\"]+)\".*?\n\s*\),", re.S)
     matches = list(block.finditer(text))
     techs = {}
     for m in matches:
