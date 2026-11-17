@@ -366,7 +366,7 @@ impl SimHandle {
 
 fn write_save(session: &Session, paths: &[&std::path::Path], label: &str) -> Result<(), String> {
     let bytes = session
-        .save(env!("CARGO_PKG_VERSION"), label)
+        .save(crate::saves::GAME_VERSION, label)
         .map_err(|e| e.to_string())?;
     for path in paths {
         if let Some(dir) = path.parent() {

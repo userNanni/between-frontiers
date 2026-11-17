@@ -24,6 +24,7 @@ game-menu-save-named = Save with a name…
 
 points-title = Restore points
 points-summary = { $name }: { $count ->
+    [0] no points
     [one] one point
    *[other] { $count } points
     }, { $manual } out of the rotation · folder { $size } MB
@@ -80,3 +81,15 @@ saves-played-yesterday = yesterday
 saves-last-played-full = Last played on { $date }, { $time }
 saves-size = Space the campaign takes on disk, restore points included.
 saves-size-large = Past the { $limit } MB you set in the settings to be warned about. The game removes nothing on its own: delete old restore points, or raise the warning.
+saves-newer = Saved by a newer version of the game ({ $by }, world format { $found }); this one ({ $this }) reads up to format { $supported }. Update the game to open it, or go back to an older restore point below.
+saves-damaged = The current state does not read: { $error }. The restore points below may still be good: go back to one of them.
+saves-unreadable-short = Does not open in this version
+saves-cause-not-a-save = the file is not a save of this game
+saves-cause-container-newer = the file was written by a newer version of the engine
+saves-cause-truncated = the file is cut short
+saves-cause-checksum = the file is damaged (its checksum does not match)
+saves-cause-wrong-game = the file is a save of another game
+saves-cause-malformed = a part of the file does not decode
+saves-damaged-short = Damaged file
+settings-autosave-cost = Time it takes from the simulation (measured in 2025): { $costs }.
+settings-autosave-cost-one = { $option } ~{ $percent } %

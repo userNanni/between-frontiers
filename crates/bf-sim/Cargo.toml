@@ -12,3 +12,6 @@ laplace-schelling.workspace = true
 serde.workspace = true
 ron.workspace = true
 rayon.workspace = true
+
+[dev-dependencies]
+serde-reflection.workspace = true

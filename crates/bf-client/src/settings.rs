@@ -7,9 +7,9 @@ use serde::{Deserialize, Serialize};
 pub enum Autosave {
     Off,
     Monthly,
+    #[default]
     Quarterly,
     Semiannual,
-    #[default]
     Yearly,
 }
 
@@ -71,7 +71,7 @@ impl Default for Settings {
             ui_stream: None,
             map_labels: true,
             map_relief: true,
-            autosave: Autosave::Yearly,
+            autosave: Autosave::Quarterly,
             autosave_keep: 5,
             point_before_risk: true,
             points_cap: 30,

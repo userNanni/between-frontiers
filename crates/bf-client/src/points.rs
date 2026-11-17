@@ -241,6 +241,11 @@ pub fn last_size(saves: &[Save]) -> Option<u64> {
     })
 }
 
+/// What a monthly automatic point costs, in percent of the time a month of simulation takes:
+/// measured in 2025 (`tests/save_cost.rs`, `docs/saves.pt-BR.md`). Longer intervals cost it
+/// divided by their months.
+pub const MONTHLY_COST_PERCENT: f64 = 5.5;
+
 /// Months between automatic points for `interval`; `None` when off.
 pub fn interval_months(interval: crate::settings::Autosave) -> Option<i32> {
     use crate::settings::Autosave::*;

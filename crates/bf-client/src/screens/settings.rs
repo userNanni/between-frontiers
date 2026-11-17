@@ -235,6 +235,34 @@ fn points_fields(shared: &mut Shared, ui: &mut Ui) {
         shared.settings.autosave = autosave;
         shared.persist_settings();
     }
+    // What each interval costs the simulation, as measured.
+    let costs: Vec<String> =
+        Autosave::ALL
+            .iter()
+            .filter_map(|a| {
+                let months = crate::points::interval_months(*a)?;
+                Some(shared.i18n.tr_args(
+                    "settings-autosave-cost-one",
+                    &[
+                        ("option", Arg::String(shared.tr(a.key()))),
+                        (
+                            "percent",
+                            Arg::String(shared.i18n.decimal(
+                                crate::points::MONTHLY_COST_PERCENT / f64::from(months),
+                                1,
+                            )),
+                        ),
+                    ],
+                ))
+            })
+            .collect();
+    bf_ui_kit::small(
+        ui,
+        &shared.i18n.tr_args(
+            "settings-autosave-cost",
+            &[("costs", Arg::String(costs.join(" · ")))],
+        ),
+    );
 
     let mut changed = false;
     let mut pick = |ui: &mut Ui, label: &str, value: &mut u32, choices: &[u32], unit: &str| {

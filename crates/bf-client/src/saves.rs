@@ -7,6 +7,8 @@ use laplace_schelling::calendar::Date;
 use serde::{Deserialize, Serialize};
 
 pub const FORMAT: u32 = 1;
+/// The game's version and the commit it was built from, written in every save.
+pub const GAME_VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), "+", env!("BF_COMMIT"));
 const META: &str = "campaign.ron";
 /// The engine save (snapshot and command history), next to the campaign file.
 pub const WORLD_FILE: &str = "world.lss";
@@ -133,6 +135,50 @@ pub fn create(saves_dir: &Path, name: &str, seed: u64, start: Date) -> std::io::
     };
     write(&save)?;
     Ok(save)
+}
+
+/// Whether this build can open a campaign's current state.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Readable {
+    /// It reads, or the campaign has no world yet.
+    Yes,
+    /// Written by a newer version of the game.
+    Newer {
+        written_by: String,
+        found: u32,
+        supported: u32,
+    },
+    /// Damaged or not a save of this game: the message id of the cause.
+    Damaged(&'static str),
+}
+
+/// Reads the container of the campaign's `world.lss` (not the world itself) and its format.
+pub fn readable(save: &Save) -> Readable {
+    let Ok(bytes) = std::fs::read(save.dir.join(WORLD_FILE)) else {
+        return Readable::Yes;
+    };
+    match bf_sim::save_format::inspect(&bytes) {
+        Ok(info) if info.readable() => Readable::Yes,
+        Ok(info) => Readable::Newer {
+            written_by: info.game_version,
+            found: info.world_version.unwrap_or(0),
+            supported: bf_sim::save_format::WORLD_VERSION,
+        },
+        Err(e) => Readable::Damaged(damage_key(&e)),
+    }
+}
+
+/// Message id of why a save's container does not read.
+fn damage_key(e: &laplace_schelling::save::SaveError) -> &'static str {
+    use laplace_schelling::save::SaveError::*;
+    match e {
+        NotASave => "saves-cause-not-a-save",
+        UnsupportedVersion { .. } => "saves-cause-container-newer",
+        Truncated => "saves-cause-truncated",
+        ChecksumMismatch => "saves-cause-checksum",
+        WrongGame { .. } => "saves-cause-wrong-game",
+        _ => "saves-cause-malformed",
+    }
 }
 
 /// Gives the campaign another name; its folder stays where it is.

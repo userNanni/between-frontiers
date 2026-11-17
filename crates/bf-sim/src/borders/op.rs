@@ -124,6 +124,18 @@ pub enum Operation {
     },
 }
 
+/// The terms an operation carries, if it carries any.
+pub fn terms_mut(op: &mut Operation) -> Option<&mut Terms> {
+    match op {
+        Operation::Transfer { terms, .. }
+        | Operation::Secede { terms, .. }
+        | Operation::Annex { terms, .. }
+        | Operation::Terms { terms }
+        | Operation::Dissolve { terms, .. } => Some(terms),
+        Operation::Status { .. } => None,
+    }
+}
+
 /// One country born of a dissolution.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Heir {
