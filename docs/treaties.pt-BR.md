@@ -556,13 +556,14 @@ Painel registrado (`PanelId::Treaty`), escondido até ser aberto, teclado primei
 | Comunidades (cláusula de minorias) | entrando nos pops | comunidades |
 | Capital estrangeiro (proteção) | contrato fora do tick | fase 4 |
 
-## 15. Decisões para o dono
+## 15. Decisões (decidido em 2026-11-17)
 
-Aprovadas pelo orquestrador em 2026-11-17: 1, 2 e 7. As 3, 4, 5 e 6 vão ao dono e entram
-**como chave**, com o padrão recomendado: `data/diplomacy/clauses.ron` tem um bloco `policy`
-(`subject_exit`, `recognition_default`, `ratify_below_threshold`, `war_debts_1925`) lido pelas
-regras, e as dívidas de guerra de 1925 ficam num arquivo próprio que a chave liga ou desliga. A
-resposta do dono troca o valor, não o código.
+**Todas decididas em 2026-11-17, como recomendado:** 1, 2 e 7 pelo orquestrador (técnicas); 3,
+4, 5 e 6 pelo dono. As quatro do dono ficam como chave em `data/diplomacy/clauses.ron`, bloco
+`policy`, com os valores decididos: `subject_exit: PressureOverControl`,
+`recognition_default: AllExceptListed`, `ratify_below_threshold: PlayerOnly`,
+`war_debts_1925: true`. Na decisão 6, o efeito no placar de Alemanha, Reino Unido e França fica
+anotado como dependência, não como meta.
 
 Cada uma com recomendação, teste e custo de manter.
 
