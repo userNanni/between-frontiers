@@ -196,7 +196,9 @@ fn class_section(ui: &mut Ui, i18n: &I18n, world: &World, view: &PopulationView,
     let p = ui.painter_at(rect);
     let bar_w = 90.0;
     let tfr_x = rect.right() - bar_w - space::SM;
-    let share_x = tfr_x - 64.0;
+    // The share column is narrow: "100,0 %" fits, and the header of the children column, wider
+    // than its numbers, spreads over the share's empty left side.
+    let share_x = tfr_x - 110.0;
     let max = lines.iter().map(|l| l.tfr).fold(0.0, f64::max).max(0.1);
     let mid = |row: usize| rect.top() + line * row as f32 + line / 2.0;
     for (x, align, key) in [

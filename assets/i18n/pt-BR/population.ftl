@@ -43,6 +43,7 @@ population-term-religion = Religião
 population-hidden = não exposto
 population-by-class = Filhos por mulher por classe: { $place }
 population-class = Classe
+population-class-tfr = Filhos por mulher
 population-class-share = Parcela
 population-by-class-note = Cada classe tem os próprios filhos: a escolaridade das mães, a sobrevivência infantil e a contracepção são as do estado; o conforto e o trabalho fora do campo são os da classe; a fome de terra pesa em todas. O estado se escolhe na pirâmide acima.
 population-by-class-above = na tabela por classe

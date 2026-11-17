@@ -43,6 +43,7 @@ population-term-religion = Religion
 population-hidden = not shown
 population-by-class = Children per woman by class: { $place }
 population-class = Class
+population-class-tfr = Children per woman
 population-class-share = Share
 population-by-class-note = Each class has its own children: the mothers' schooling, child survival and contraception are the state's; comfort and work off the farm are the class's own; land hunger weighs on all. Pick the state in the pyramid above.
 population-by-class-above = in the table by class
