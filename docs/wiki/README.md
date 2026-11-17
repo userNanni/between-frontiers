@@ -30,10 +30,11 @@ Páginas de decisão prontas:
 - [Ensino](decisoes/ensino.md)
 - [População e comunidades](decisoes/populacao-e-comunidades.md)
 - [Pesquisa](decisoes/pesquisa.md)
+- [Economia](decisoes/economia.md)
 - [Diplomacia e influência](decisoes/diplomacia-e-influencia.md)
 - [Saves e interface](decisoes/saves-e-interface.md)
 
-Em preparação: economia, tempo e ordem de cálculo.
+Em preparação: tempo e ordem de cálculo.
 
 ## Como ler uma página de decisão
 
