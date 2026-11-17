@@ -27,7 +27,8 @@ crise).
   americana aos membros temporários do Conselho de Segurança sobe no mandato e cai logo depois, e o
   voto acompanha (Kuziemko e Werker 2006). Na teoria, a boa vontade é a reciprocidade difusa de
   Keohane (1986).
-- **Estado:** no jogo como contrato, fora do tick (#105); no tick, em rascunho (#110).
+- **Estado:** no jogo como contrato, fora do tick (#105); no tick (#110): o mapa por par é
+  recalculado todo mês, a boa vontade decai em janeiro, e as duas entram no save (formato 7).
 - **Onde está o detalhe:** [seção 2](../../influence.pt-BR.md#2-como-é-na-vida-real-e-se-a-diferença-importa),
   [seção 3](../../influence.pt-BR.md#3-os-canais-o-que-a-faz-e-quanto-vale-em-b) e
   [seção 11](../../influence.pt-BR.md#11-conferência-com-a-teoria-pedido-do-dono-na-decisão-1);
@@ -84,8 +85,8 @@ crise).
   quando A é credor de B, e a tela mostra a linha. O teto impede que a influência compre qualquer
   perda: ela faz um país aceitar uma perda pequena por um patrono, nunca qualquer perda. Voto em
   organização, acesso a recurso e lado numa crise entram com as frentes de que dependem.
-- **Estado:** o mapa por par entra no tick em #110 (rascunho); a avaliação de proposta no tick é a
-  etapa 4 dos tratados.
+- **Estado:** o mapa por par entra no tick em #110, com o teto de 250‰ do tamanho da proposta; a
+  avaliação de proposta no tick é a etapa 4 dos tratados.
 - **Onde está o detalhe:** [seção 4](../../influence.pt-BR.md#4-o-retorno-o-que-a-influência-compra).
 
 ### Influência vale por assunto, e a afinidade pesa pouco
@@ -127,8 +128,8 @@ crise).
 - **Como é na vida real:** em 1925 muitos países tinham legação em poucas capitais, e só as
   potências trocavam embaixadas; a rede cresceu com a descolonização e com o orçamento. O custo
   interno é o jogo de dois níveis de Putnam (1988); a diluição, o dilema da aliança de Snyder (1984).
-- **Estado:** decidido; serviço exterior, negociações, rendimento do ato e custo interno em rascunho,
-  fora do tick (#112); rivalidade e diluição desenhadas.
+- **Estado:** decidido; serviço exterior, negociações, rendimento do ato e custo interno como
+  contrato, fora do tick (#112); rivalidade e diluição desenhadas.
 - **Onde está o detalhe:** [seção 12](../../influence.pt-BR.md#12-por-que-não-se-melhora-a-relação-com-todo-mundo-ao-mesmo-tempo-pedido-do-dono-na-decisão-3);
   bloco `service` de `data/diplomacy/influence.ron` no #112.
 
@@ -142,7 +143,7 @@ crise).
   redistribuí-lo sem permissão escrita, e o repositório é público.
 - **Como o jogo funciona por causa disso:** em 1925, Reino Unido e França têm embaixada um no outro;
   Brasil e Argentina, legação; Nova Zelândia e Paraguai, nada (os testes do #112).
-- **Estado:** em rascunho, fora do tick (#112).
+- **Estado:** como contrato, fora do tick (#112).
 - **Onde está o detalhe:** [seção 12](../../influence.pt-BR.md#12-por-que-não-se-melhora-a-relação-com-todo-mundo-ao-mesmo-tempo-pedido-do-dono-na-decisão-3).
 
 ### Favor devido é uma promessa num tratado: ato único ou entrega acumulada
@@ -180,6 +181,26 @@ crise).
 - **Estado:** blocos de 1925 no contrato (#105); telas desenhadas.
 - **Onde está o detalhe:** [seção 5](../../influence.pt-BR.md#5-blocos) e
   [seção 6](../../influence.pt-BR.md#6-o-país-pequeno).
+
+### Quebrar um tratado baixa a boa vontade do traído
+
+- **Decisão:** quando A quebra um tratado com B, a boa vontade de B com A cai uma vez, pelo valor da
+  quebra, e decai com a mesma meia-vida das outras. A memória longa fica na reputação de A, que é
+  dos tratados.
+- **O que o autor pensou:** "Quebrar o tratado é possível, mas tem um preço muito alto." Ele
+  decidiu que a reputação é por país e lembra por muito tempo, que os parceiros de quem rompeu
+  podem denunciar sem custo e que a boa vontade com o traído cai.
+- **Como o jogo funciona por causa disso:** o aliado que não veio perde peso sobre o traído em
+  todos os assuntos, inclusive numa renegociação de dívida, e a lente de influência mostra "quebra
+  em 1938" entre os atos do par. Quem denuncia o feixe de um bloco sai do bloco no mês seguinte,
+  sem regra própria.
+- **Como é na vida real:** depois de Munique (1938), Praga e Moscou deixaram de contar com Paris
+  ([Alianças](aliancas.md#trair-é-possível-e-custa-muito-caro)). A reputação de cumprir é o que
+  pesa na confiança entre Estados (Tomz 2007).
+- **Estado:** decidido; desenhado. Lê o registro de quebras dos tratados; entra quando a quebra
+  existir no tick. Em aberto para o autor: se os parceiros de bloco do traído também perdem boa
+  vontade (proposta: metade).
+- **Onde está o detalhe:** [seção 13b](../../influence.pt-BR.md#13b-quando-um-tratado-é-quebrado-o-que-a-influência-lê-e-escreve).
 
 ## Fontes
 

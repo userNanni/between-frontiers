@@ -107,8 +107,9 @@ citação.
      crise lê como casus belli;
   4. **reputação:** cada quebra pesa na reputação do país, que só decai devagar; quem avalia uma
      proposta futura dele desconta as promessas pela reputação. Quem trai paga na próxima mesa;
-  5. **boa vontade:** a quebra contra B baixa a boa vontade de B com quem quebrou
-     ([Diplomacia e influência](diplomacia-e-influencia.md)).
+  5. **boa vontade:** a quebra contra B baixa a boa vontade de B com quem quebrou, uma vez e com
+     meia-vida de 8 anos; a memória longa fica na reputação
+     ([Diplomacia e influência](diplomacia-e-influencia.md#quebrar-um-tratado-baixa-a-boa-vontade-do-traído)).
 
   Na guerra, o jogador chamado por cláusula recebe uma entrada com prazo e duas saídas, honrar ou
   não honrar, com o preço à vista; é decisão rara, com ponto de restauração.

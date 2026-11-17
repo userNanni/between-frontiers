@@ -170,6 +170,17 @@ impl GameData {
             politics: self.politics.clone(),
             communities: self.community_table.clone(),
             borders: Some(Arc::clone(&self.border_rules)),
+            influence: self.influence.clone().map(|rules| {
+                Arc::new(crate::influence::InfluenceSetup {
+                    rules,
+                    table: self.community_table.clone(),
+                    colonial: self
+                        .politics
+                        .as_ref()
+                        .map(|p| p.groups.iter().map(|g| g.colonial).collect())
+                        .unwrap_or_default(),
+                })
+            }),
         }
     }
 

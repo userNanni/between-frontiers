@@ -113,6 +113,10 @@ pub struct GameWorld {
     /// capital moves (`docs/foreign-capital.pt-BR.md`).
     #[serde(default)]
     pub foreign: crate::foreign_stakes::ForeignState,
+    /// Goodwill between countries and the influence map of the month; empty without the rules of
+    /// influence.
+    #[serde(default)]
+    pub influence: crate::influence::InfluenceState,
 }
 
 impl HashState for GameWorld {
@@ -149,6 +153,11 @@ impl HashState for GameWorld {
             h.section("foreign");
             self.foreign.hash_state(h);
         }
+        // Worlds where nobody holds influence keep their hash.
+        if !self.influence.is_empty() {
+            h.section("influence");
+            self.influence.hash_state(h);
+        }
     }
 }
 
@@ -167,6 +176,7 @@ impl GameWorld {
             politics: crate::polity::PoliticsState::default(),
             borders: crate::borders::BordersState::default(),
             foreign: Default::default(),
+            influence: Default::default(),
             demography: crate::demography::DemographyState::default(),
         }
     }
@@ -419,6 +429,8 @@ pub struct Rules {
     /// Map, catalogue of countries and scenario the border operations read; without them border
     /// commands wait in the queue.
     pub borders: Option<Arc<crate::borders::BorderRules>>,
+    /// Rules of influence (`data/diplomacy/influence.ron`); without them nobody holds any.
+    pub influence: Option<Arc<crate::influence::InfluenceSetup>>,
 }
 
 pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
@@ -430,6 +442,7 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
         politics,
         communities,
         borders,
+        influence,
     }) = rules
     {
         if let Some(p) = &politics {
@@ -461,6 +474,9 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
         }
         s.add(crate::econ::yearly::Yearly { cat, tree });
         // Last in the day: an operation sees the day's results and the next day sees its own.
+        if let Some(setup) = influence {
+            s.add(crate::influence::InfluenceSystem { setup });
+        }
         if let Some(rules) = borders {
             s.add(crate::borders::op::Borders { rules });
         }
@@ -715,7 +731,21 @@ mod tests {
             history: &'a Vec<crate::econ::YearRecord>,
             ledger: &'a crate::treaty::Ledger,
         }
-        /// The world of before the foreign stakes: this build's fields without the last one.
+        /// The world of before the influence state: this build's fields without the last one.
+        #[derive(Serialize)]
+        struct BeforeInfluence<'a> {
+            scenario: &'a String,
+            player: &'a Option<Id<Country>>,
+            countries: &'a Table<Country, CountryState>,
+            census: &'a Vec<CensusRecord>,
+            econ: &'a crate::econ::Economy,
+            research: &'a crate::research::ResearchState,
+            politics: &'a crate::polity::PoliticsState,
+            demography: &'a crate::demography::DemographyState,
+            borders: &'a crate::borders::BordersState,
+            foreign: &'a crate::foreign_stakes::ForeignState,
+        }
+        /// The world of before the foreign stakes: version 6 without its last field.
         #[derive(Serialize)]
         struct BeforeForeign<'a> {
             scenario: &'a String,
@@ -799,9 +829,26 @@ mod tests {
             hash_of(&with_ledger)
         );
         assert_eq!(
-            hash_of(&headed(6, &encode_snapshot(&with_ledger).unwrap())),
+            hash_of(&headed(7, &encode_snapshot(&with_ledger).unwrap())),
             hash_of(&with_ledger)
         );
+        // Version 6, before the influence state: this build's fields without the last one,
+        // behind the header and without it (a version 6 file may have been written either way).
+        let before_influence = encode_snapshot(&BeforeInfluence {
+            scenario: &with_ledger.scenario,
+            player: &with_ledger.player,
+            countries: &with_ledger.countries,
+            census: &with_ledger.census,
+            econ: &with_ledger.econ,
+            research: &with_ledger.research,
+            politics: &with_ledger.politics,
+            demography: &with_ledger.demography,
+            borders: &with_ledger.borders,
+            foreign: &with_ledger.foreign,
+        })
+        .unwrap();
+        assert_eq!(headed(6, &before_influence), with_ledger);
+        assert_eq!(decode_world(&before_influence).unwrap(), with_ledger);
         // Older layouts: the world of then had no ledger.
         let mut world = data.new_world();
         world.econ.ledger = Default::default();

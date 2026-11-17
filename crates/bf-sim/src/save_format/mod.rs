@@ -49,8 +49,9 @@ pub const WORLD_MAGIC: [u8; 4] = *b"BFWD";
 ///    (`Operation::Dissolve`): variants added at the end of their enums, so a version 3 world
 ///    reads as a 4;
 /// 5. research that costs (public works with research, a research priority in the laws);
-/// 6. foreign capital (`GameWorld::foreign`), the last field of the world.
-pub const WORLD_VERSION: u32 = 6;
+/// 6. foreign capital (`GameWorld::foreign`);
+/// 7. the influence state (`GameWorld::influence`), the last field of the world.
+pub const WORLD_VERSION: u32 = 7;
 
 /// Why a snapshot does not read.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -153,13 +154,16 @@ pub fn decode_world(bytes: &[u8]) -> Result<GameWorld, WorldError> {
 pub fn migrate(v: u32, body: &[u8]) -> Result<GameWorld, SaveError> {
     use compat::*;
     Ok(match v {
-        0 => v5_to_v6(v2_to_v5(v1_to_v2(v0_to_v1(decode_snapshot(body)?)))),
-        1 => v5_to_v6(v2_to_v5(v1_to_v2(decode_snapshot(body)?))),
-        2 => v5_to_v6(v2_to_v5(decode_snapshot(body)?)),
+        0 => v6_to_v7(v5_to_v6(v2_to_v5(v1_to_v2(v0_to_v1(decode_snapshot(
+            body,
+        )?))))),
+        1 => v6_to_v7(v5_to_v6(v2_to_v5(v1_to_v2(decode_snapshot(body)?)))),
+        2 => v6_to_v7(v5_to_v6(v2_to_v5(decode_snapshot(body)?))),
         // Version 3 lacks only enum variants added at the end since: its bytes read as 4.
-        3 | 4 => v5_to_v6(v4_to_v5(decode_snapshot(body)?)),
-        5 => v5_to_v6(decode_snapshot(body)?),
-        6 => decode_snapshot(body)?,
+        3 | 4 => v6_to_v7(v5_to_v6(v4_to_v5(decode_snapshot(body)?))),
+        5 => v6_to_v7(v5_to_v6(decode_snapshot(body)?)),
+        6 => v6_to_v7(decode_snapshot(body)?),
+        7 => decode_snapshot(body)?,
         _ => return Err(SaveError::Malformed(format!("unknown world version {v}"))),
     })
 }
@@ -173,7 +177,7 @@ fn decode_legacy(bytes: &[u8]) -> Result<GameWorld, SaveError> {
     if first.is_ok() {
         return first;
     }
-    for v in [5, 4, 2] {
+    for v in [6, 5, 4, 2] {
         if let Ok(w) = migrate(v, bytes) {
             return Ok(w);
         }
@@ -183,7 +187,7 @@ fn decode_legacy(bytes: &[u8]) -> Result<GameWorld, SaveError> {
     let mut padded = bytes.to_vec();
     for k in 1..=8 {
         padded.resize(bytes.len() + k, 0);
-        for v in [WORLD_VERSION, 5, 4, 2] {
+        for v in [WORLD_VERSION, 6, 5, 4, 2] {
             if let Ok(w) = migrate(v, &padded) {
                 return Ok(w);
             }

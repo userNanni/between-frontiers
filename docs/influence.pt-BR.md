@@ -403,6 +403,40 @@ saldo como barra ("1,2 de 2 milhões de t, prazo em 1930").
 **Quanto custa manter:** um tipo de cláusula com dois modos no catálogo dos tratados e um teste
 mensal por promessa em vigor (algumas dezenas).
 
+## 13b. Quando um tratado é quebrado: o que a influência lê e escreve
+
+O dono decidiu em 2026-11-17 que quebrar um tratado é possível e custa caro: reputação por país com
+memória longa, os parceiros de quem rompeu podem denunciar sem custo, e a boa vontade do traído
+cai. O preço de cada parte está com os tratados e a guerra; aqui fica só a parte da influência.
+
+| | O quê | De quem é |
+|---|---|---|
+| **Lê** | o registro de quebras dos tratados (seção 9 deles): data, quem quebrou, quem foi traído, cláusula, valor em unidades de referência | tratados |
+| **Escreve** | um ato negativo de boa vontade do traído com quem quebrou, do valor da quebra sobre o PIB do traído, na mesma escala de um ato positivo de mesmo valor | influência |
+| **Não escreve** | a reputação (é dos tratados e já entra na proposta como "confiança") e o desconto das promessas | tratados |
+| **Muda sozinho** | o bloco: quem denunciou o feixe sai do bloco no mês seguinte, porque o bloco é calculado dos tratados em vigor (seção 5) | nenhuma regra nova |
+
+- **Uma vez, e decai.** O ato negativo entra no mês da quebra e decai com a meia-vida de 8 anos
+  da boa vontade. A memória longa da quebra fica na reputação, não aqui: a boa vontade mede o que o
+  traído sente por quem o traiu, a reputação mede o que todos aprendem.
+- **Dependência não muda com a quebra.** O crédito, o comércio e a proteção continuam o que são
+  até alguém cortá-los; a suspensão recíproca dos tratados é que pode cortá-los, e aí a
+  dependência cai no mês seguinte, pela regra de sempre.
+- **Por assunto.** A boa vontade pesa igual em todos os assuntos (seção 11), então a traição numa
+  aliança também pesa numa renegociação de dívida com o traído.
+- **Ainda para o dono:** se os parceiros do traído no mesmo bloco também perdem boa vontade com
+  quem quebrou (proposta: metade do ato, só para os membros do bloco do traído, e só quando a
+  cláusula quebrada é do feixe do bloco). Sem essa decisão, só o traído perde.
+- **Nomes.** O bloco militar recebe na tela o nome do tipo de aliança do seu feixe, pela
+  nomenclatura do Correlates of War e do ATOP ([wiki, Alianças](wiki/decisoes/aliancas.md)); a
+  regra continua nas cláusulas.
+
+**Como se testa:** uma quebra registrada de A contra B baixa a boa vontade de B com A no mês da
+quebra, e só dela; a influência de A sobre B cai no mapa do mês seguinte; em 8 anos o efeito cai à
+metade; a denúncia do feixe por um membro o tira do bloco no mês seguinte.
+
+**Quanto custa manter:** uma leitura do registro de quebras por mês (poucas linhas por ano).
+
 ## 14. Fontes
 
 - Hirschman, A. O. *National Power and the Structure of Foreign Trade*. University of California

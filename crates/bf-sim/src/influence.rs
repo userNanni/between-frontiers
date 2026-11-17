@@ -769,3 +769,244 @@ pub fn domestic_cost(
     // Average over the law groups of the regime: per mille of full rejection by all who count.
     Fixed::from_ratio(against, total_groups * 1000) * milli(service.domestic_weight)
 }
+
+// In the tick (phase 4, etapa 2)
+// ---------------------------------------------------------------------------------------------
+
+/// The influence state of the world: the goodwill A holds in B (only pairs with an act), and the
+/// map of the month the treaties' valuation reads. Saved; hashed only when not empty, so a world
+/// with no influence (the rules missing, or `proposal_weight` zero and no act) keeps its hash.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct InfluenceState {
+    pub goodwill: BTreeMap<(u16, u16), Goodwill>,
+    /// Worth of A's influence over B by issue, reference units, as of the last 16th.
+    pub map: BTreeMap<(u16, u16), [Fixed; Issue::COUNT]>,
+}
+
+impl InfluenceState {
+    pub fn is_empty(&self) -> bool {
+        self.goodwill.is_empty() && self.map.is_empty()
+    }
+
+    /// The map as the treaties' valuation takes it, with the cap of the rules.
+    pub fn as_map(&self, rules: &InfluenceRules) -> InfluenceMap {
+        InfluenceMap {
+            worth: self.map.clone(),
+            cap: rules.proposal_cap,
+        }
+    }
+}
+
+impl laplace_schelling::hash::HashState for InfluenceState {
+    fn hash_state(&self, h: &mut laplace_schelling::hash::StateHasher) {
+        h.write_len(self.goodwill.len());
+        for ((a, b), g) in &self.goodwill {
+            h.write_u16(*a);
+            h.write_u16(*b);
+            g.0.hash_state(h);
+        }
+        h.write_len(self.map.len());
+        for ((a, b), w) in &self.map {
+            h.write_u16(*a);
+            h.write_u16(*b);
+            w.as_slice().hash_state(h);
+        }
+    }
+}
+
+/// What the influence system reads besides the world.
+#[derive(Clone)]
+pub struct InfluenceSetup {
+    pub rules: InfluenceRules,
+    pub table: Option<std::sync::Arc<CommunityTable>>,
+    /// Law groups that hold only for colonies.
+    pub colonial: Vec<bool>,
+}
+
+/// A dependence channel by name, for the influence window.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum ChannelKind {
+    Credit,
+    Investment,
+    Trade,
+    Protection,
+}
+
+impl ChannelKind {
+    pub const ALL: [ChannelKind; 4] = [
+        ChannelKind::Credit,
+        ChannelKind::Investment,
+        ChannelKind::Trade,
+        ChannelKind::Protection,
+    ];
+}
+
+/// One bar: a channel in one issue.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ChannelLine {
+    pub kind: ChannelKind,
+    /// The channel's value (share of B's GDP), or the front it waits for.
+    pub channel: Channel,
+    /// How much it counts in this issue, per mille (`data/diplomacy/influence.ron`).
+    pub weight: u32,
+    /// `value × weight × affinity factor`, share of B's GDP; zero while dormant.
+    pub part: Fixed,
+}
+
+/// Where A's influence over B in one issue comes from.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct IssueReading {
+    pub issue: Issue,
+    pub channels: [ChannelLine; 4],
+    /// `goodwill × affinity factor`, share of B's GDP (negative after a breach).
+    pub goodwill: Fixed,
+    /// The sum: the influence of A over B in this issue, share of B's GDP.
+    pub influence: Fixed,
+}
+
+/// Everything the influence window shows of A over B.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct PairReading {
+    pub interest: Interest,
+    /// `Issue::ALL` order.
+    pub issues: [IssueReading; Issue::COUNT],
+    /// The term the treaties' valuation takes, reference units, from the map of the last 16th
+    /// (zero for a pair not in it).
+    pub worth: [Fixed; Issue::COUNT],
+}
+
+/// The influence of `a` over `b` (country indices) channel by channel, issue by issue, with the
+/// goodwill held in the world and the given `year` (the date's). The window reads this; the
+/// parts of each issue add up to its influence, a share of B's GDP.
+pub fn channels(
+    world: &GameWorld,
+    setup: &InfluenceSetup,
+    a: usize,
+    b: usize,
+    year: i32,
+) -> PairReading {
+    let rules = &setup.rules;
+    let cultures = setup
+        .table
+        .as_deref()
+        .map(|t| main_cultures(world, t))
+        .unwrap_or_default();
+    let key = (a as u16, b as u16);
+    let i = interest(
+        dependence(world, rules, a, b, year),
+        world
+            .influence
+            .goodwill
+            .get(&key)
+            .copied()
+            .unwrap_or_default(),
+        affinity(
+            world,
+            rules,
+            setup.table.as_deref(),
+            &cultures,
+            &setup.colonial,
+            a,
+            b,
+        ),
+    );
+    let d = i.dependence;
+    let f = i.affinity.factor;
+    let issues = std::array::from_fn(|k| {
+        let issue = Issue::ALL[k];
+        let w = rules.weights(issue);
+        let line = |kind, channel: Channel, weight: u32| ChannelLine {
+            kind,
+            channel,
+            weight,
+            part: channel.value() * milli(weight) * f,
+        };
+        IssueReading {
+            issue,
+            channels: [
+                line(ChannelKind::Credit, d.credit, w.credit),
+                line(ChannelKind::Investment, d.investment, w.investment),
+                line(ChannelKind::Trade, d.trade, w.trade),
+                line(ChannelKind::Protection, d.protection, w.protection),
+            ],
+            goodwill: i.goodwill.0 * f,
+            influence: i.influence[k],
+        }
+    });
+    PairReading {
+        interest: i,
+        issues,
+        worth: world
+            .influence
+            .map
+            .get(&key)
+            .copied()
+            .unwrap_or([Fixed::ZERO; Issue::COUNT]),
+    }
+}
+
+/// The state of the world's influence.
+pub const INFLUENCE: laplace_schelling::schedule::ResourceId =
+    laplace_schelling::schedule::ResourceId(15);
+
+/// Every month on the 16th, after the demography of the 15th: the goodwill loses its yearly share
+/// in January, and the map of the month is built again.
+pub struct InfluenceSystem {
+    pub setup: std::sync::Arc<InfluenceSetup>,
+}
+
+impl laplace_schelling::schedule::System<GameWorld> for InfluenceSystem {
+    type Changes = InfluenceState;
+
+    fn name(&self) -> &'static str {
+        "influence"
+    }
+
+    fn cadence(&self) -> laplace_schelling::schedule::Cadence {
+        laplace_schelling::schedule::Cadence::Monthly { day: 16 }
+    }
+
+    fn access(&self) -> laplace_schelling::schedule::Access {
+        laplace_schelling::schedule::Access::new()
+            .read(crate::econ::week::ECON)
+            .read(crate::polity::POLITY)
+            .read(crate::demography::DEMOGRAPHY)
+            .write(INFLUENCE)
+    }
+
+    fn compute(
+        &self,
+        ctx: &laplace_schelling::schedule::TickCtx,
+        world: &GameWorld,
+    ) -> InfluenceState {
+        let s = &self.setup;
+        let mut goodwill = world.influence.goodwill.clone();
+        if ctx.date.month == 1 {
+            for g in goodwill.values_mut() {
+                g.decay_year(&s.rules);
+            }
+            goodwill.retain(|_, g| g.0 != Fixed::ZERO);
+        }
+        let map = InfluenceMap::build(
+            world,
+            &s.rules,
+            s.table.as_deref(),
+            &s.colonial,
+            &goodwill,
+            ctx.date.year,
+        );
+        InfluenceState {
+            goodwill,
+            map: map.worth,
+        }
+    }
+
+    fn apply(
+        &self,
+        _ctx: &laplace_schelling::schedule::TickCtx,
+        changes: InfluenceState,
+        world: &mut GameWorld,
+    ) {
+        world.influence = changes;
+    }
+}

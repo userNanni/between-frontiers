@@ -148,8 +148,8 @@ pub fn v2_to_v5(w: V2) -> V5 {
 }
 
 /// 5 → 6: no foreign capital had moved; an empty `foreign` stays out of the hash.
-pub fn v5_to_v6(w: V5) -> GameWorld {
-    GameWorld {
+pub fn v5_to_v6(w: V5) -> V6 {
+    V6 {
         scenario: w.scenario,
         player: w.player,
         countries: w.countries,
@@ -160,5 +160,37 @@ pub fn v5_to_v6(w: V5) -> GameWorld {
         demography: w.demography,
         borders: w.borders,
         foreign: Default::default(),
+    }
+}
+
+/// Version 6, foreign capital (`GameWorld::foreign`), before the influence state.
+#[derive(Deserialize)]
+pub struct V6 {
+    scenario: String,
+    player: Option<Id<Country>>,
+    countries: Table<Country, CountryState>,
+    census: Vec<CensusRecord>,
+    econ: crate::econ::Economy,
+    research: crate::research::ResearchState,
+    politics: crate::polity::PoliticsState,
+    demography: crate::demography::DemographyState,
+    borders: crate::borders::BordersState,
+    foreign: crate::foreign_stakes::ForeignState,
+}
+
+/// 6 → 7: the influence state (`GameWorld::influence`), empty, which hashes as nothing.
+pub fn v6_to_v7(w: V6) -> GameWorld {
+    GameWorld {
+        scenario: w.scenario,
+        player: w.player,
+        countries: w.countries,
+        census: w.census,
+        econ: w.econ,
+        research: w.research,
+        politics: w.politics,
+        demography: w.demography,
+        borders: w.borders,
+        foreign: w.foreign,
+        influence: Default::default(),
     }
 }
