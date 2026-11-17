@@ -85,6 +85,7 @@ pub fn main() -> Result<(), String> {
             catalogue: cat.clone(),
             tree: None,
             politics: None,
+            communities: None,
         }),
     );
     let world_supply = |e: &bf_sim::econ::Economy| -> Vec<f64> {

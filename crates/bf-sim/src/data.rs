@@ -30,8 +30,10 @@ pub struct GameData {
     pub diplomacy: Option<DiplomacyFile>,
     /// The technology tree, when `data/research/technologies.ron` exists.
     pub tree: Option<Arc<TechTree>>,
-    /// Who lives where, when `data/scenario/1925/communities.ron` exists. Not in the tick yet.
+    /// Who lives where, when `data/scenario/1925/communities.ron` exists.
     pub communities: Option<crate::communities::Communities>,
+    /// What the simulation reads of them, built once.
+    pub community_table: Option<Arc<crate::demography::communities::CommunityTable>>,
     /// Laws, interest groups and movements, when `data/politics/laws.ron` exists.
     pub politics: Option<Arc<Politics>>,
     /// Laws in force on the start date, when `data/scenario/1925/laws.ron` exists too.
@@ -115,6 +117,9 @@ impl GameData {
             countries,
             map,
             seas,
+            community_table: communities
+                .as_ref()
+                .map(|c| Arc::new(crate::demography::communities::CommunityTable::new(c))),
             communities,
             deposits: optional(&scenario.join("deposits.ron"))?,
             land: optional(&scenario.join("land.ron"))?,
@@ -133,6 +138,7 @@ impl GameData {
             catalogue: Arc::clone(&self.catalogue),
             tree: self.tree.clone(),
             politics: self.politics.clone(),
+            communities: self.community_table.clone(),
         }
     }
 

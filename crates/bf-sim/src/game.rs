@@ -103,6 +103,46 @@ pub struct GameWorld {
     pub demography: crate::demography::DemographyState,
 }
 
+/// The world as saves wrote it before the communities were in the population (2026-11-17):
+/// the same fields, with the demography of then. Postcard is not self-describing, so a field
+/// added at the end of the snapshot does not read as its default; loading tries this layout
+/// when the current one fails.
+#[derive(Deserialize)]
+struct WorldBeforeCommunities {
+    scenario: String,
+    player: Option<Id<Country>>,
+    countries: Table<Country, CountryState>,
+    census: Vec<CensusRecord>,
+    econ: crate::econ::Economy,
+    research: crate::research::ResearchState,
+    politics: crate::polity::PoliticsState,
+    demography: crate::demography::DemographyBeforeCommunities,
+}
+
+impl From<WorldBeforeCommunities> for GameWorld {
+    fn from(w: WorldBeforeCommunities) -> Self {
+        Self {
+            scenario: w.scenario,
+            player: w.player,
+            countries: w.countries,
+            census: w.census,
+            econ: w.econ,
+            research: w.research,
+            politics: w.politics,
+            demography: w.demography.into(),
+        }
+    }
+}
+
+/// Decodes a snapshot of this build, or of a build from before the communities.
+fn decode_world(bytes: &[u8]) -> Result<GameWorld, SaveError> {
+    decode_snapshot::<GameWorld>(bytes).or_else(|now| {
+        decode_snapshot::<WorldBeforeCommunities>(bytes)
+            .map(GameWorld::from)
+            .map_err(|_| now)
+    })
+}
+
 impl HashState for GameWorld {
     fn hash_state(&self, h: &mut StateHasher) {
         h.section("scenario");
@@ -352,6 +392,8 @@ pub struct Rules {
     pub tree: Option<Arc<crate::research::TechTree>>,
     /// Laws, interest groups and movements; without them politics stands still.
     pub politics: Option<Arc<crate::politics::Politics>>,
+    /// The community catalogue; without it the population carries no communities.
+    pub communities: Option<Arc<crate::demography::communities::CommunityTable>>,
 }
 
 pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
@@ -361,6 +403,7 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
         catalogue: cat,
         tree,
         politics,
+        communities,
     }) = rules
     {
         if let Some(p) = &politics {
@@ -376,10 +419,10 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
         s.add(crate::econ::monthly::Labour {
             cat: Arc::clone(&cat),
         });
-        s.add(crate::demography::Demography::new(
-            Arc::clone(&cat),
-            politics,
-        ));
+        s.add(
+            crate::demography::Demography::new(Arc::clone(&cat), politics)
+                .with_communities(communities),
+        );
         s.add(crate::econ::monthly::Investment {
             cat: Arc::clone(&cat),
             tree: tree.clone(),
@@ -497,7 +540,7 @@ impl Session {
     pub fn load(bytes: &[u8], threads: usize, rules: Option<Rules>) -> Result<Self, LoadError> {
         let file: SaveFile<GameCommand> =
             SaveFile::decode(bytes, GAME_ID).map_err(LoadError::Save)?;
-        let world: GameWorld = decode_snapshot(&file.snapshot).map_err(LoadError::Save)?;
+        let world: GameWorld = decode_world(&file.snapshot).map_err(LoadError::Save)?;
         let actual = hash_of(&world);
         if actual != file.header.state_hash {
             return Err(LoadError::HashMismatch {

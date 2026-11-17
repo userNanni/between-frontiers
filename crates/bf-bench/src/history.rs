@@ -106,6 +106,18 @@ pub struct HistoryReport {
     pub migration_pairs: Vec<PairSeries>,
     /// Mass migrations: ended and still open at the last year.
     pub waves: Vec<WaveSeries>,
+    /// People by culture (key) and territory (`TAG/metropole`, `TAG/colonies`) on 1 January of
+    /// each year, from the community rows; cultures with 10,000 people or more.
+    pub cultures: Vec<CultureYear>,
+    /// Size of the community table on 1 January of each year: rows (state × community) and
+    /// cells (rows × profession with people).
+    pub community_rows: Vec<[i64; 2]>,
+}
+
+#[derive(Serialize, Default)]
+pub struct CultureYear {
+    pub year: i32,
+    pub people: std::collections::BTreeMap<String, std::collections::BTreeMap<String, i64>>,
 }
 
 #[derive(Serialize, Default)]
@@ -257,6 +269,8 @@ impl History {
                 states,
                 migration_pairs: Vec::new(),
                 waves: Vec::new(),
+                cultures: Vec::new(),
+                community_rows: Vec::new(),
                 countries: tags
                     .into_iter()
                     .map(|tag| Country {
@@ -370,6 +384,42 @@ impl History {
     }
 
     fn close_year(&mut self, data: &GameData, w: &GameWorld) {
+        if let Some(c) = &data.communities {
+            let mut people: std::collections::BTreeMap<
+                String,
+                std::collections::BTreeMap<String, i64>,
+            > = Default::default();
+            let (mut rows, mut cells) = (0i64, 0i64);
+            for (r, rr) in w.econ.regions.iter().zip(&w.demography.communities) {
+                rows += rr.ids.len() as i64;
+                cells += rr.people.iter().flatten().filter(|&&v| v > 0).count() as i64;
+                let t = format!(
+                    "{}/{}",
+                    w.countries
+                        .iter()
+                        .nth(usize::from(r.market))
+                        .map_or("?", |(_, c)| c.tag.as_str()),
+                    if r.colony { "colonies" } else { "metropole" }
+                );
+                for (id, n) in rr.by_community() {
+                    let culture = &c.cultures[c.communities[id as usize].0 as usize].key;
+                    *people
+                        .entry(culture.clone())
+                        .or_default()
+                        .entry(t.clone())
+                        .or_default() += n;
+                }
+            }
+            for m in people.values_mut() {
+                m.retain(|_, n| *n >= 10_000);
+            }
+            people.retain(|_, m| !m.is_empty());
+            self.report.cultures.push(CultureYear {
+                year: self.year,
+                people,
+            });
+            self.report.community_rows.push([rows, cells]);
+        }
         let dec = stocks(data, w);
         let now = prices(w);
         let rep = &mut self.report;

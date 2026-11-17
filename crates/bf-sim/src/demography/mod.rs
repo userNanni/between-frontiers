@@ -18,6 +18,7 @@ use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
+use self::communities::{CommunityTable, Diffusion, RegionRows};
 use crate::econ::migration::is_urban;
 use crate::econ::public::{CARE_PER_PERSON, PublicKinds, coverage};
 use crate::econ::week::ECON;
@@ -27,6 +28,7 @@ use crate::politics::{Politics, Scope};
 use crate::polity::{POLITY, effects_in_force};
 use crate::research_system::RESEARCH;
 
+pub mod communities;
 pub mod migration;
 pub use migration::{Diaspora, Home, Push, Wave, WaveEnd, WaveRecord};
 
@@ -156,6 +158,12 @@ const F_SCHOOLING: Fixed = milli(570);
 const F_OFF_FARM: Fixed = milli(30);
 const F_COMFORT: Fixed = milli(100);
 const F_CONTRACEPTION: Fixed = milli(170);
+/// Weight of the diffusion of the transition along language families. Centred on the world
+/// mean, it moves no one on average; between a family wholly in transition and one not at all
+/// it is 0.10 of score, about ten years at the median rise of the score where the fall starts
+/// (0.0095 a year; docs, "Cultura e religião na natalidade": Spolaore and Wacziarg 2022 give 7 to
+/// 12 years per standard deviation of linguistic distance).
+pub const F_DIFFUSION: Fixed = milli(100);
 const F_START: Fixed = milli(450);
 const F_END: Fixed = milli(900);
 /// Child deaths before 5 (per mille) at which survival counts as 0 and as 1 in the score.
@@ -208,6 +216,10 @@ pub struct DemographyState {
     pub waves: Vec<Wave>,
     #[serde(default)]
     pub waves_ended: Vec<WaveRecord>,
+    /// People by community and profession, by region (`communities::RegionRows`). Empty in a
+    /// world without communities and in saves from before them (filled on the next month).
+    #[serde(default)]
+    pub communities: Vec<RegionRows>,
 }
 
 /// One term of the fertility score of a territory ([`DemographyState::fertility_breakdown`]).
@@ -239,6 +251,11 @@ pub struct Vital {
     /// hashed, so saves keep their format and are zero until the first month after a load.
     #[serde(skip)]
     pub tfr_by_class: [Fixed; prof::P],
+    /// The diffusion term (`F_DIFFUSION`): its value, the people-weighted mean over the
+    /// region's communities, and the world mean it is centred on. An output like
+    /// `tfr_by_class`: not saved, not hashed.
+    #[serde(skip)]
+    pub diffusion: [Fixed; 2],
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -256,6 +273,38 @@ pub struct Territory {
 
 fn no_culture() -> u16 {
     u16::MAX
+}
+
+/// [`DemographyState`] as saves wrote it before the communities (`game::decode_world`).
+#[derive(Deserialize)]
+pub(crate) struct DemographyBeforeCommunities {
+    ages: Vec<[i64; AGE_GROUPS]>,
+    schooling: Vec<Fixed>,
+    land_1925: Vec<Fixed>,
+    vital: Vec<Vital>,
+    territories: Vec<Territory>,
+    diaspora: Vec<Diaspora>,
+    homes: Vec<Home>,
+    waves: Vec<Wave>,
+    waves_ended: Vec<WaveRecord>,
+}
+
+impl From<DemographyBeforeCommunities> for DemographyState {
+    fn from(d: DemographyBeforeCommunities) -> Self {
+        Self {
+            ages: d.ages,
+            schooling: d.schooling,
+            land_1925: d.land_1925,
+            vital: d.vital,
+            territories: d.territories,
+            diaspora: d.diaspora,
+            homes: d.homes,
+            waves: d.waves,
+            waves_ended: d.waves_ended,
+            // Filled from the 1925 compositions on the next demography month.
+            communities: Vec::new(),
+        }
+    }
 }
 
 impl HashState for Vital {
@@ -296,6 +345,13 @@ impl HashState for DemographyState {
         self.homes.hash_state(h);
         self.waves.hash_state(h);
         self.waves_ended.hash_state(h);
+        // Worlds without communities keep their old hash, and old saves load.
+        if !self.communities.is_empty() {
+            h.write_len(self.communities.len());
+            for c in &self.communities {
+                c.hash_state(h);
+            }
+        }
     }
 }
 
@@ -410,6 +466,7 @@ impl DemographyState {
                 // The terms by territory: `fertility_breakdown`.
                 fertility_terms: [Fixed::ZERO; 5],
                 tfr_by_class: [Fixed::ZERO; prof::P],
+                diffusion: [Fixed::ZERO; 2],
             }
         })
     }
@@ -546,6 +603,10 @@ pub struct FertilityInputs {
     pub comfort: Fixed,
     /// Contraception the country uses, 0–1, as far as the mothers went to school.
     pub contraception: Fixed,
+    /// The diffusion term centred on the world mean: positive where the mother's language
+    /// family is further into the transition than the world, negative where it is behind
+    /// (`communities::Diffusion`). Zero without communities.
+    pub diffusion: Fixed,
 }
 
 /// What moves fertility, in the order of [`FERTILITY_TERMS`]: each value is 0–1, and the
@@ -579,7 +640,8 @@ pub fn fertility(i: &FertilityInputs) -> Fixed {
     let score = values
         .iter()
         .zip(FERTILITY_TERMS)
-        .fold(Fixed::ZERO, |acc, (v, (_, w))| acc + *v * w);
+        .fold(Fixed::ZERO, |acc, (v, (_, w))| acc + *v * w)
+        + i.diffusion * F_DIFFUSION;
     let t = ((score - F_START) / (F_END - F_START)).clamp(Fixed::ZERO, Fixed::ONE);
     let smooth = t * t * (Fixed::from_int(3) - t * 2);
     let floor = TFR_LOW + TFR_WITHOUT_PILL * (Fixed::ONE - i.contraception.min(Fixed::ONE));
@@ -680,9 +742,87 @@ pub struct Demography {
     laws: Option<(Arc<Politics>, usize, usize)>,
     /// Whether each farm of `resources::FARMS` is cropland (not pasture, forest or fishery).
     crop: Vec<bool>,
+    /// The community catalogue; without it the population has no communities.
+    table: Option<Arc<CommunityTable>>,
 }
 
 impl Demography {
+    /// With the communities in the population.
+    pub fn with_communities(mut self, table: Option<Arc<CommunityTable>>) -> Self {
+        self.table = table;
+        self
+    }
+
+    /// Who assimilates into what this January, by territory: the primary culture and the
+    /// majority religion of each (from the rows at the start of the month), the pull of the
+    /// country's religion law, and the assimilation and discrimination its targeted laws put
+    /// on the communities they name. `None` outside January or without communities.
+    fn assimilation_laws(
+        &self,
+        world: &GameWorld,
+        changes: &DemographyChanges,
+    ) -> Option<Vec<communities::AssimilationLaw>> {
+        let table = self.table.as_ref()?;
+        if !changes.regions.iter().any(|m| m.rows.is_some()) {
+            return None;
+        }
+        let econ = &world.econ;
+        let nt = TerritoryId::count(econ.markets.len());
+        let mut cultures: Vec<std::collections::BTreeMap<u16, i64>> = vec![Default::default(); nt];
+        let mut religions: Vec<std::collections::BTreeMap<u16, i64>> = vec![Default::default(); nt];
+        for (r, m) in econ.regions.iter().zip(&changes.regions) {
+            let Some(rr) = &m.rows else { continue };
+            let t = TerritoryId::of(r).index();
+            for (id, n) in rr.by_community() {
+                *cultures[t].entry(table.culture(id)).or_default() += n;
+                *religions[t].entry(table.religion(id)).or_default() += n;
+            }
+        }
+        let largest = |m: &std::collections::BTreeMap<u16, i64>| {
+            m.iter()
+                .max_by(|a, b| a.1.cmp(b.1).then(b.0.cmp(a.0)))
+                .map_or(u16::MAX, |(&k, _)| k)
+        };
+        let effect = |k: &str| crate::politics::effect_index(k);
+        Some(
+            (0..nt)
+                .map(|t| {
+                    let id = TerritoryId::from_index(t);
+                    let country = id.market();
+                    let (church, targeted) = match &self.laws {
+                        Some((p, _, _)) if country < world.politics.laws.len() => {
+                            let all =
+                                effects_in_force(p, &world.politics, country, Scope::Metropole);
+                            let church = effect("church_privilege").map_or(0, |e| all[e]);
+                            let on = effects_in_force(p, &world.politics, country, Scope::Targeted);
+                            let a = effect("assimilation").map_or(1000, |e| i128::from(on[e]));
+                            let d = effect("discrimination").map_or(0, |e| i128::from(on[e]));
+                            let mut targeted = std::collections::BTreeMap::new();
+                            for (_, ids) in
+                                world.politics.targets.get(country).into_iter().flatten()
+                            {
+                                for key in ids {
+                                    if let Some(c) = table.keys.iter().position(|k| k == key) {
+                                        targeted.insert(c as u16, (a, d));
+                                    }
+                                }
+                            }
+                            (church, targeted)
+                        }
+                        _ => (0, Default::default()),
+                    };
+                    let mut law = communities::AssimilationLaw::new(
+                        largest(&cultures[t]),
+                        largest(&religions[t]),
+                        id.colony(),
+                        church,
+                    );
+                    law.targeted = targeted;
+                    law
+                })
+                .collect(),
+        )
+    }
     pub fn new(cat: Arc<Catalogue>, politics: Option<Arc<Politics>>) -> Self {
         let kinds = PublicKinds::new(&cat);
         let laws = politics.map(|p| {
@@ -698,6 +838,7 @@ impl Demography {
             kinds,
             laws,
             crop,
+            table: None,
         }
     }
 
@@ -741,6 +882,11 @@ pub(crate) struct RegionMonth {
     tfr_by_class: [Fixed; prof::P],
     /// This month's births by profession: every pop has its own children.
     births_by_class: [i64; prof::P],
+    /// The region's rows by community, matched to the pops at the start of the month, and
+    /// their births by profession.
+    rows: Option<RegionRows>,
+    births_by_row: Vec<[i64; prof::P]>,
+    diffusion: [Fixed; 2],
     fertility_terms: [Fixed; 5],
     land_then: Fixed,
     people: i64,
@@ -799,6 +945,33 @@ impl System<GameWorld> for Demography {
         let state = &world.demography;
         let year = ctx.date.year;
         let first = state.ages.len() != econ.regions.len();
+        // Communities: last month's rows, or the 1925 rows on the first month and after loading
+        // a save from before them.
+        let rows_now: Option<std::borrow::Cow<[RegionRows]>> = self.table.as_ref().map(|t| {
+            if state.communities.len() == econ.regions.len() {
+                std::borrow::Cow::Borrowed(state.communities.as_slice())
+            } else {
+                std::borrow::Cow::Owned(t.initial_rows(&econ.regions, |id| {
+                    t.catalogue
+                        .states
+                        .get(usize::from(id).wrapping_sub(1))
+                        .map(|m| m.state.clone())
+                }))
+            }
+        });
+        let diffusion = match (&self.table, &rows_now) {
+            (Some(t), Some(rows)) if state.vital.len() == rows.len() => {
+                let tfr: Vec<Fixed> = state.vital.iter().map(|v| v.tfr).collect();
+                Some(Diffusion::new(t, rows, &tfr))
+            }
+            (Some(_), Some(rows)) => Some(Diffusion {
+                people: Vec::new(),
+                moving: Vec::new(),
+                mean: Fixed::ZERO,
+            })
+            .filter(|_| !rows.is_empty()),
+            _ => None,
+        };
         let regions: Vec<RegionMonth> = econ
             .regions
             .par_iter()
@@ -830,18 +1003,22 @@ impl System<GameWorld> for Demography {
                 // Children per woman of every pop at a share `d` of today's development: the
                 // region's child survival, schooling and contraception, the pop's own comfort,
                 // and whether it works off the farm.
-                let class_tfr = |d: Fixed, child_deaths: i64| -> [Fixed; prof::P] {
-                    std::array::from_fn(|pi| {
-                        let p = &r.pops[pi];
-                        fertility(&FertilityInputs {
-                            child_deaths,
-                            schooling: schooling * d,
-                            off_farm: if is_urban(pi) { d } else { Fixed::ZERO },
-                            comfort: p.satisfaction[2] * d,
-                            contraception: contraception * d,
+                let class_tfr_of =
+                    |d: Fixed, child_deaths: i64, diffusion: Fixed| -> [Fixed; prof::P] {
+                        std::array::from_fn(|pi| {
+                            let p = &r.pops[pi];
+                            fertility(&FertilityInputs {
+                                child_deaths,
+                                schooling: schooling * d,
+                                off_farm: if is_urban(pi) { d } else { Fixed::ZERO },
+                                comfort: p.satisfaction[2] * d,
+                                contraception: contraception * d,
+                                diffusion,
+                            })
                         })
-                    })
-                };
+                    };
+                let class_tfr =
+                    |d: Fixed, child_deaths: i64| class_tfr_of(d, child_deaths, Fixed::ZERO);
                 // Mortality and fertility at a share `d` of today's development; the region's
                 // fertility is the mean of its pops'.
                 let rates_at = |d: Fixed| {
@@ -879,8 +1056,51 @@ impl System<GameWorld> for Demography {
                 // The brake falls on every class of the state: braking only those who farm let the
                 // poor of the crowded Asian cities escape it, and India's peasants ended with
                 // fewer children than its labourers (docs, "Natalidade por classe").
+                let brake = |t: Fixed| (t * (Fixed::ONE - lost * LAND_BRAKE)).max(TFR_LOW.min(t));
                 for t in by_class.iter_mut() {
-                    *t = (*t * (Fixed::ONE - lost * LAND_BRAKE)).max(TFR_LOW.min(*t));
+                    *t = brake(*t);
+                }
+                // With communities, every row has its own children: the class's rate moved by
+                // the diffusion of its language family (`communities::Diffusion`).
+                let rows = rows_now
+                    .as_ref()
+                    .map(|all| {
+                        let mut x = all.get(ri).cloned().unwrap_or_default();
+                        x.reconcile(r);
+                        x
+                    })
+                    .filter(|x| !x.ids.is_empty());
+                let mut cells: Vec<[Fixed; prof::P]> = Vec::new();
+                let mut diffusion_shown = [Fixed::ZERO; 2];
+                if let (Some(rr), Some(table), Some(dif)) = (&rows, &self.table, &diffusion) {
+                    let own = state.vital.get(ri).is_some_and(|v| {
+                        v.tfr > Fixed::ZERO && v.tfr <= communities::IN_TRANSITION
+                    });
+                    let values = dif.row_values(table, rr, own);
+                    cells = values
+                        .iter()
+                        .map(|&v| class_tfr_of(Fixed::ONE, rates[0], v - dif.mean).map(brake))
+                        .collect();
+                    let total = rr.total();
+                    if total > 0 {
+                        let mut num = [0i128; prof::P];
+                        let mut den = [0i128; prof::P];
+                        let mut mean = 0i128;
+                        for (k, row) in rr.people.iter().enumerate() {
+                            for p in 0..prof::P {
+                                num[p] += i128::from(cells[k][p].raw()) * i128::from(row[p]);
+                                den[p] += i128::from(row[p]);
+                            }
+                            mean += i128::from(values[k].raw()) * i128::from(rr.row_total(k));
+                        }
+                        for p in 0..prof::P {
+                            if den[p] > 0 {
+                                by_class[p] = Fixed::from_raw((num[p] / den[p]) as i64);
+                            }
+                        }
+                        diffusion_shown =
+                            [Fixed::from_raw((mean / i128::from(total)) as i64), dif.mean];
+                    }
                 }
                 let tfr = mean_by_size(r, &by_class);
                 let fertility_terms = fertility_values(&FertilityInputs {
@@ -889,6 +1109,7 @@ impl System<GameWorld> for Demography {
                     off_farm,
                     comfort,
                     contraception,
+                    diffusion: Fixed::ZERO,
                 });
                 let mut ages = if first {
                     initial_pyramid(people, |d| {
@@ -899,7 +1120,27 @@ impl System<GameWorld> for Demography {
                     rescale(&state.ages[ri], people)
                 };
                 let (births, deaths) = month(&mut ages, &rates, tfr);
-                let births_by_class = split_births(r, births, &by_class);
+                let (births_by_class, births_by_row) = match &rows {
+                    Some(rr) if !cells.is_empty() => {
+                        let weights: Vec<i128> = rr
+                            .people
+                            .iter()
+                            .zip(&cells)
+                            .flat_map(|(row, t)| {
+                                (0..prof::P)
+                                    .map(move |p| i128::from(row[p]) * i128::from(t[p].raw()))
+                            })
+                            .collect();
+                        let flat = communities::apportion(births.max(0), &weights);
+                        let by_row: Vec<[i64; prof::P]> = flat
+                            .chunks(prof::P)
+                            .map(|c| std::array::from_fn(|p| c[p]))
+                            .collect();
+                        let by_class = std::array::from_fn(|p| by_row.iter().map(|b| b[p]).sum());
+                        (by_class, by_row)
+                    }
+                    _ => (split_births(r, births, &by_class), Vec::new()),
+                };
                 let p = &r.pops[prof::PEASANT];
                 let land_total = self.cropland(r);
                 let farmers = r.pops[prof::PEASANT].size + r.pops[prof::FARM_LABORER].size;
@@ -919,6 +1160,9 @@ impl System<GameWorld> for Demography {
                     tfr,
                     tfr_by_class: by_class,
                     births_by_class,
+                    rows,
+                    births_by_row,
+                    diffusion: diffusion_shown,
                     fertility_terms,
                     land_then,
                     people,
@@ -943,9 +1187,18 @@ impl System<GameWorld> for Demography {
         DemographyChanges { regions, plan }
     }
 
-    fn apply(&self, _ctx: &TickCtx, mut changes: DemographyChanges, world: &mut GameWorld) {
+    fn apply(&self, ctx: &TickCtx, mut changes: DemographyChanges, world: &mut GameWorld) {
+        let laws = if ctx.date.month == 1 {
+            self.assimilation_laws(world, &changes)
+        } else {
+            None
+        };
         let state = &mut world.demography;
         let n = world.econ.regions.len();
+        let linked = changes.regions.iter().any(|m| m.rows.is_some());
+        if linked {
+            state.communities.resize(n, RegionRows::default());
+        }
         state.ages.resize(n, [0; AGE_GROUPS]);
         state.schooling.resize(n, Fixed::ZERO);
         state.land_1925.resize(n, Fixed::ZERO);
@@ -965,6 +1218,31 @@ impl System<GameWorld> for Demography {
             shift_migrants(&mut ages, moved);
             let target: i64 = ages.iter().sum();
             distribute(r, target - m.people, moved, &m.births_by_class);
+            if let (Some(mut rr), Some(table)) = (m.rows, &self.table) {
+                // Births to their rows, immigrants to the row of their culture; then deaths,
+                // emigrants and rounding by matching the pops.
+                for (row, b) in rr.people.iter_mut().zip(&m.births_by_row) {
+                    for (v, x) in row.iter_mut().zip(b) {
+                        *v += x;
+                    }
+                }
+                if moved > 0 {
+                    let by = &changes.plan.arrivals[TerritoryId::of(r).index()];
+                    let weights: Vec<i128> = by.iter().map(|e| i128::from(e.1)).collect();
+                    for (&(culture, _), n) in by.iter().zip(communities::apportion(moved, &weights))
+                    {
+                        let id = table
+                            .arrival
+                            .get(usize::from(culture))
+                            .copied()
+                            .unwrap_or(communities::OTHERS);
+                        if id != communities::OTHERS {
+                            rr.add(id, prof::LABORER, n);
+                        }
+                    }
+                }
+                state.communities[ri] = rr;
+            }
             // The pyramid and the pops agree on the total.
             state.ages[ri] = rescale(&ages, r.population());
             state.schooling[ri] = m.schooling;
@@ -984,7 +1262,27 @@ impl System<GameWorld> for Demography {
                 tfr: m.tfr,
                 fertility_terms: m.fertility_terms,
                 tfr_by_class: m.tfr_by_class,
+                diffusion: m.diffusion,
             };
+        }
+        // The rows meet the pops (deaths, emigrants, rounding), and in January people
+        // assimilate; each region on its own, in parallel.
+        if let (true, Some(table)) = (linked, &self.table) {
+            let regions = &world.econ.regions;
+            world
+                .demography
+                .communities
+                .par_iter_mut()
+                .zip(regions.par_iter())
+                .for_each(|(rr, r)| {
+                    rr.reconcile(r);
+                    if let Some(law) = laws
+                        .as_ref()
+                        .and_then(|l| l.get(TerritoryId::of(r).index()))
+                    {
+                        communities::assimilate(table, law, rr);
+                    }
+                });
         }
     }
 }
@@ -1193,6 +1491,7 @@ mod tests {
             off_farm: milli(250),
             comfort: milli(200),
             contraception: Fixed::ZERO,
+            diffusion: Fixed::ZERO,
         });
         let low = fertility(&FertilityInputs {
             child_deaths: mortality(milli(950))[0],
