@@ -493,6 +493,14 @@ dos vizinhos; por isso entra desligado e vai para a fila de equilíbrio com a re
 Mônaco (uns 7 mil trabalhadores em fábricas) fica na faixa parcial; com salário acima do piso,
 o piso não o alcança.
 
+**Achado principal: instabilidade de trajetória.** Um empurrão que em 1930 só move San Marino
+desloca 21 de 81 países em mais de 5 % no PIB de 2025 (Polônia +140 %, Países Baixos −52 %), com
+o PIB mundial no ruído. O modelo amplifica diferenças pequenas país a país sem mudar o agregado:
+é o primeiro item da fila de equilíbrio, antes de ligar qualquer das duas regras. Hipótese, não
+investigada: a realimentação vem de decisões discretas em cascata — nível de fábrica inteiro e
+troca de método quando o lucro cruza um limiar (`best_method`) —, reforçadas pelo investimento,
+que vai para o maior retorno e faz o vencedor ganhar mais, e pela migração, que segue o salário.
+
 **Regra desligada: o emprego acompanha o uso** (`game::Switches::jobs_follow_use`,
 `monthly::LAYOFF_PER_MONTH`). A fábrica contrata de imediato o que o uso pede e demite 15 % do
 excesso por mês (meia-vida de uns quatro meses): retenção de mão de obra, com ajuste do emprego
