@@ -558,6 +558,14 @@ fn stocks(data: &GameData, w: &GameWorld) -> Vec<Stocks> {
     out
 }
 
+/// Employment shares of a metropole (agriculture, industry, services), as the scorecard counts
+/// them; for the diagnostics.
+pub(crate) fn sector_shares(data: &GameData, w: &GameWorld, market: usize) -> [f64; 3] {
+    let s = &stocks(data, w)[market * 2];
+    let total: f64 = s.employment.iter().sum::<f64>().max(1.0);
+    s.employment.map(|e| e / total)
+}
+
 /// Civil servants, clergy and soldiers at work.
 fn state_payroll(r: &Region) -> i64 {
     use bf_sim::econ::prof;

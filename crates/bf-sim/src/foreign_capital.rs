@@ -17,8 +17,9 @@
 //! - [`transfer_rate`]: how much faster a technology spreads in a country where foreign or mixed
 //!   plants use it.
 //! - [`remittance`]: the part of a plant's profit that leaves for the owner's country.
-//! - [`imitation_channel`]: the first, law-only version of the channel that will multiply
-//!   imitation in `research_system` (open trade and capital give exactly 1, today's rule).
+//! - [`imitation_channel`] and [`science_channel`]: how much of the world's know-how and of its
+//!   published science reach a country through its trade and foreign capital laws
+//!   (`research_system`; open trade and capital give exactly 1, the rule without channel).
 //!
 //! The constants are design values, to be calibrated against the scorecard once the flow runs
 //! (the inflow series is `data/history/fdi.csv`).
@@ -350,6 +351,18 @@ pub fn imitation_channel(tariff: Fixed, pull: Fixed) -> Fixed {
     IMITATION_FLOOR + (Fixed::ONE - IMITATION_FLOOR) * trade * capital
 }
 
+/// Share of the published-science spillover no law can close. Journals, conferences and the
+/// open literature crossed even closed borders: a closed country still learns cheaply what the
+/// world already understands; what it loses is the know-how that comes with machines, licences,
+/// technicians and plants. Design value, to calibrate.
+pub const SCIENCE_FLOOR: Fixed = milli(800);
+
+/// The channel for the cheaper science of what the world already knows: the imitation channel
+/// lifted to [`SCIENCE_FLOOR`]. Exactly 1 where the imitation channel is 1.
+pub fn science_channel(imitation: Fixed) -> Fixed {
+    SCIENCE_FLOOR + (Fixed::ONE - SCIENCE_FLOOR) * imitation.clamp(Fixed::ZERO, Fixed::ONE)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -544,5 +557,13 @@ mod tests {
         assert_eq!(autarky, IMITATION_FLOOR);
         let between = imitation_channel(milli(425), Fixed::ONE);
         assert!(between > IMITATION_FLOOR && between < Fixed::ONE);
+    }
+
+    #[test]
+    fn published_science_still_crosses_closed_borders() {
+        assert_eq!(science_channel(Fixed::ONE), Fixed::ONE);
+        let closed = science_channel(IMITATION_FLOOR);
+        assert!(closed >= SCIENCE_FLOOR && closed < Fixed::ONE);
+        assert!(closed > IMITATION_FLOOR * 3);
     }
 }

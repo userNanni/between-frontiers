@@ -416,9 +416,29 @@ canal = piso (livros, engenheiros, visitas)
 #### A imitação com canal, primeira versão (antes da fase 4)
 
 Proposta pelo orquestrador e aceita pelo dono: cortar a imitação de graça já, só com o que existe
-hoje, sem esperar o fluxo de capital. **Não está no tick:** é calibração do mundo inteiro e espera
-vaga de rodada de 100 anos. A função pura está pronta
-(`foreign_capital::imitation_channel`, com testes).
+hoje, sem esperar o fluxo de capital. Ligada no tick pelo PR da imitação com canal; as funções
+são `foreign_capital::imitation_channel` e `foreign_capital::science_channel`.
+
+**As quatro portas.** A primeira medição mostrou que cortar só a imitação não basta: a China
+fechada chegava à mesma técnica industrial pela pesquisa própria, que já recebia de graça o que o
+mundo sabe por três outras portas. As quatro portas por onde o saber de fora entra, em
+`Research::compute`, e o canal de cada uma:
+
+| Porta | Hoje | Com canal | Por quê |
+|---|---|---|---|
+| Ciência do que o mundo já conhece | custo × (1 − 0,75 × parcela que conhece) | parcela × canal da ciência | Ciência publicada atravessa fronteira fechada: revista, congresso, livro. A URSS fechada fez ciência e protótipo de ponta (bomba, foguete, reator); o que ela não fez foi difundir pela indústria civil. Por isso a porta tem piso próprio, alto |
+| Protótipo do que o mundo já faz | custo × (1 − 0,75 × parcela que faz) | parcela × canal | Saber-fazer: vem com máquina, licença, técnico e fábrica |
+| Passagem de protótipo a indústria | taxa × (1 + 2 × parcela que faz) | parcela × canal | Idem |
+| Imitação | (0,3 + alfabetização) × parcela que faz ÷ 60 | × canal | Idem |
+
+```text
+canal da ciência = PISO_CIÊNCIA + (1 − PISO_CIÊNCIA) × canal
+PISO_CIÊNCIA = 0,8 (valor de desenho, a calibrar)
+```
+
+Os dois pisos são parâmetro de desenho, sem número histórico por trás. O teste que separa as
+portas: a URSS fechada chega à ciência e ao protótipo das tecnologias de base sem atraso grande e
+atrasa na indústria e na difusão.
 
 **Hoje** (`research_system.rs`, `Research::compute`, laço "Imitation"), por país `c` e tecnologia
 `t` que ainda não é industrial em `c`:
@@ -427,10 +447,10 @@ vaga de rodada de 100 anos. A função pura está pronta
 progresso por mês = (0,3 + alfabetização_c) × parcela do PIB mundial que faz t ÷ (5 anos × 12)
 ```
 
-**Primeira versão:**
+**O canal:**
 
 ```text
-progresso por mês = (0,3 + alfabetização_c) × parcela do PIB mundial que faz t × canal_c ÷ 60
+imitação por mês = (0,3 + alfabetização_c) × parcela do PIB mundial que faz t × canal_c ÷ 60
 canal_c   = PISO + (1 − PISO) × comércio_c × capital_c
 comércio_c = 1 com tarifa ≤ 25 %; cai em linha reta até 0 com tarifa de 60 %
 capital_c  = PESO_COMÉRCIO + (1 − PESO_COMÉRCIO) × min(1, foreign_investment_c)
@@ -451,8 +471,8 @@ capital triado, 0,84; capital fechado, 0,64; plano com capital fechado, 0,60; au
 piso). Um estágio que hoje se copia em 5 anos leva 6 anos com o capital triado, 8 com o capital
 fechado e 25 em autarquia.
 
-- **Degrada para a regra de hoje.** Com tarifa até 25 % e `foreign_investment` ≥ 1, o canal é
-  exatamente 1 e o progresso é o mesmo número de hoje, sem arredondamento novo (a multiplicação
+- **Degrada para a regra de hoje.** Com tarifa até 25 % e `foreign_investment` ≥ 1, o canal e o
+  canal da ciência são exatamente 1 e o progresso é o mesmo número de hoje, sem arredondamento novo (a multiplicação
   por `Fixed::ONE` é exata). As tarifas protecionistas de 1925 a 1950 (EUA, Europa, Brasil)
   ficam em 25 % e não cortam: o protecionismo comprava máquina de fora, e só a autarquia cortava.
   As datas das tecnologias nos países abertos não mudam por este canal. Mudam só se mudar o
@@ -465,14 +485,11 @@ fechado e 25 em autarquia.
     corta a entrada da técnica, não o uso interno.
   - **Uso sem fabricar** (vacina, antibiótico, pílula). Fica como hoje.
 - **Onde cai no código:**
-  - `polity/system.rs`, `law_effects`: dois campos novos em `econ::state::LawEffects` (`tariff`,
-    `foreign_investment`, neutros 0 e 1, com `serde(default)` e no hash). É o mesmo caminho dos
-    outros efeitos ligados (`politics.pt-BR.md`, "O que a lei faz na economia"). São +2 efeitos
-    ligados e −2 dos que esperam sistema.
-  - `research_system.rs`, `Research::compute`: o canal de cada país, uma vez por mês, antes do
-    laço dos países; no laço "Imitation", multiplicar por `canal[c]`.
-  - O diff fica em torno de 60 linhas, mais os testes. Toca `polity/` e `econ/state.rs`, que são
-    de outros threads, com um campo cada; será dito no PR.
+  - `polity/system.rs`, `law_effects`: `LawEffects::tariff` (do #69) e o campo novo
+    `LawEffects::foreign_investment` (neutro 1, com `serde(default)` e no hash), pelo mesmo
+    caminho dos outros efeitos ligados (`politics.pt-BR.md`, "O que a lei faz na economia").
+  - `research_system.rs`, `Research::compute`: o canal de cada país, uma vez por mês, nas quatro
+    portas acima.
 - **Os dois testes do placar** (rodada de 100 anos, com as leis forçadas por comando em 1925,
   porque a China do cenário fica com `screened_capital` e tarifa protecionista até a política
   mudar):

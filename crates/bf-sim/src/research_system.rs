@@ -42,6 +42,16 @@ pub struct ResearchChanges {
     tech_tfp: Vec<Vec<Fixed>>,
 }
 
+/// Share of today's imitation rate a country keeps through its trade and foreign capital laws
+/// (`foreign_capital::imitation_channel`, `docs/late-industrialization.pt-BR.md`). A market
+/// without politics keeps all of it.
+fn imitation_channel(m: Option<&crate::econ::Market>) -> Fixed {
+    m.map_or(Fixed::ONE, |m| {
+        let laws = &m.laws.effects[0];
+        crate::foreign_capital::imitation_channel(laws.tariff, laws.foreign_investment)
+    })
+}
+
 /// Weight of a stage in productivity and effects.
 fn weight(stage: Stage) -> Fixed {
     match stage {
@@ -172,10 +182,15 @@ impl System<GameWorld> for Research {
                 .all(|&r| stages[r as usize] >= Stage::Science)
                 && c < n
         };
-        let science_cost = |t: usize| -> Fixed {
+        // What the world already makes reaches a country through the channel its laws open
+        // (trade and foreign capital): the cheaper prototypes, the push of foreign industry and
+        // imitation scale with it. Published science crosses closed borders far more easily: its
+        // spillover takes the same channel lifted to a high floor. Fully open, both are one.
+        let science_cost = |t: usize, channel: Fixed| -> Fixed {
             let tech = &tree.techs[t];
             Fixed::from_int(i64::from(tech.cost))
-                * (Fixed::ONE - SPILLOVER * known[t])
+                * (Fixed::ONE
+                    - SPILLOVER * known[t] * crate::foreign_capital::science_channel(channel))
                 * ahead(year, tech.demonstrated - 3)
         };
 
@@ -189,6 +204,7 @@ impl System<GameWorld> for Research {
                 / 12;
             state.points[c] = points;
             let stages = state.stage[c].clone();
+            let channel = imitation_channel(world.econ.markets.get(c));
 
             // New science: the chosen technology, or the cheapest open one.
             let open = |t: usize| stages[t] == Stage::Unknown && requirements_met(c, t, &stages);
@@ -198,10 +214,11 @@ impl System<GameWorld> for Research {
                 .or_else(|| {
                     (0..nt)
                         .filter(|&t| open(t))
-                        .min_by_key(|&t| (science_cost(t), t))
+                        .min_by_key(|&t| (science_cost(t, channel), t))
                 });
             if let Some(t) = target {
-                state.progress[c][t] += points * SCIENCE_SHARE / science_cost(t).max(milli(1));
+                state.progress[c][t] +=
+                    points * SCIENCE_SHARE / science_cost(t, channel).max(milli(1));
             }
 
             // Prototypes of what is understood.
@@ -212,7 +229,7 @@ impl System<GameWorld> for Research {
                     let tech = &tree.techs[t];
                     let cost = Fixed::from_int(i64::from(tech.cost))
                         * PROTOTYPE_COST
-                        * (Fixed::ONE - SPILLOVER * industrial[t])
+                        * (Fixed::ONE - SPILLOVER * industrial[t] * channel)
                         * ahead(year, tech.demonstrated);
                     state.progress[c][t] += each / cost.max(milli(1));
                 }
@@ -253,18 +270,18 @@ impl System<GameWorld> for Research {
                     buyer = buyer.max((f.gdp / world_gdp * 8).clamp(Fixed::ZERO, milli(1500)));
                 }
                 let years = i64::from((tech.industrialized - tech.demonstrated).max(2));
-                let rate = buyer * (Fixed::ONE + industrial[t] * 2)
+                let rate = buyer * (Fixed::ONE + industrial[t] * channel * 2)
                     / (years * 12)
                     / ahead(year, tech.industrialized);
                 state.progress[c][t] += rate;
             }
 
             // Imitation: what is made at scale abroad is copied, a stage at a time, faster where
-            // people read; no own research needed.
+            // people read; no own research needed; through the same channel.
             for t in 0..nt {
                 if stages[t] < Stage::Industrial && industrial[t] > Fixed::ZERO {
-                    state.progress[c][t] +=
-                        (milli(300) + f.literacy) * industrial[t] / (IMITATION_YEARS * 12);
+                    state.progress[c][t] += (milli(300) + f.literacy) * industrial[t] * channel
+                        / (IMITATION_YEARS * 12);
                 }
             }
 
