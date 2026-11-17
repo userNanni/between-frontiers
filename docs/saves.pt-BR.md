@@ -75,11 +75,75 @@ interface depois que o ponto está no disco (registrar, girar a rotação, somar
 | 2025 | 1,8 MB | 8 ms | 7 ms | 143 ms | 5,5 % | 0,3 ms |
 
 O automático mensal custa 5,5 % do tempo de um mês de 1975 em diante; o trimestral, ~1,8 %, e o
-anual, ~0,5 %. O padrão continua anual. Quem quiser pontos mais finos tem o trimestral por menos
-de 2 %. Uma campanha com o teto de 30 pontos ocupa ~55 MB.
+anual, ~0,5 %. O padrão é o **trimestral** (abaixo de 2 %); as Configurações mostram o custo de
+cada opção (`points::MONTHLY_COST_PERCENT`, o mensal medido em 2025, dividido pelos meses do
+intervalo). Uma campanha com o teto de 30 pontos ocupa ~55 MB.
 
 **A interface não trava.** A gravação roda no thread da simulação (`Command::Save`): a interface
 segue desenhando o último snapshot e só lê a resposta (`try_recv`) a cada quadro; o trabalho dela
 depois disso fica abaixo de 1 ms. O que pausa é a simulação, pelo tempo de gravar. A única espera
 na interface é ao voltar a um ponto (salvar rápido, F9, ou "Voltar a este ponto"): ela espera os
 saves na fila e grava o ponto de onde o jogador estava, o que é a troca de tela de qualquer jeito.
+
+## Formato do mundo e migração
+
+O contêiner do save (`laplace_schelling::save`) já tem versão e checksum. O snapshot do mundo,
+dentro dele, é postcard, que não se descreve: um campo novo no `GameWorld`, ou em qualquer parte
+dele, não lê como padrão, e o save antigo deixa de abrir. Por isso o snapshot tem cabeçalho e
+versão (`bf_sim::save_format`):
+
+```
+| "BFWD" | versão: u32 LE | postcard(GameWorld) |
+```
+
+O cabeçalho do contêiner guarda a versão do jogo que gravou (`GAME_VERSION`, versão do pacote e
+commit, como `0.0.1+92093bd4e`), para a mensagem de erro.
+
+| Versão | O que entrou | Struct congelada |
+|---|---|---|
+| 0 | antes das comunidades na população | `compat::V0` |
+| 1 | comunidades | `compat::V1` |
+| 2 | estado das fronteiras (`borders`) | `compat::V2` |
+| 3 | livro de dívidas entre Estados (`Economy::ledger`) | lê como a 4 |
+| 4 | dívida acordada em tratado (`DebtTerm::Agreement`) e dissolução de país (`Operation::Dissolve`) | `compat::V4` (vale para a 3) |
+| 5 | pesquisa que custa (obra pública de pesquisa, prioridade de pesquisa nas leis) | `compat::V5` |
+| 6 | capital estrangeiro (`GameWorld::foreign`, #109); a primeira gravada com cabeçalho | `GameWorld` |
+
+`decode_world` lê a versão e aplica a cadeia até a atual: `v0_to_v1 → v1_to_v2 → v2_to_now`
+(a economia da 2 converte direto para a da 5: `v2_to_v5`), `v4_to_v5` (a 3 lê direto como a 4) e
+`v5_to_v6`
+(`save_format::migrate`). Os saves sem cabeçalho, de antes deste formato, continuam abrindo pelas
+tentativas de antes (da versão mais nova para a mais velha, com a cauda de listas vazias
+completada). Um save de versão mais nova que o jogo não abre: a tela de Campanhas diz qual
+versão gravou e qual o jogo lê. Um save danificado também aparece com explicação.
+
+### A regra, em três linhas
+
+1. Todo PR que muda o que o `GameWorld` grava sobe `save_format::WORLD_VERSION`.
+2. E acrescenta um degrau: a struct da versão anterior congelada em `compat` e a função `vN → vN+1`.
+3. O teste `world_schema` falha enquanto isso não for feito.
+
+### Como acrescentar um campo ao mundo
+
+Qualquer mudança no que o `GameWorld` grava (campo novo, removido, reordenado ou de outro tipo,
+no mundo ou em qualquer parte dele) é uma versão nova:
+
+1. Suba `save_format::WORLD_VERSION`.
+2. Congele o formato que sai em `save_format::compat` como `V<antiga>`. Se a mudança foi numa
+   parte (economia, demografia), congele o formato antigo da parte ao lado dela, como
+   `econ::state::EconomyBeforeLedger`, e use-o na struct congelada.
+3. Escreva `v<antiga>_to_v<nova>` em `compat` e o degrau em `save_format::migrate`.
+4. Acrescente o formato antigo ao teste `game::tests::every_version_loads_with_its_hash`: um
+   mundo de 1925 gravado nele abre com o mesmo hash, com e sem cabeçalho.
+5. Grave o esquema novo: `BF_BLESS=1 cargo test -p bf-sim --test world_schema` escreve
+   `crates/bf-sim/tests/schema/world-v<nova>.txt`. O teste falha enquanto o `GameWorld` não
+   bater com o esquema da versão atual: mudar o mundo sem subir a versão não passa. O esquema de
+   uma versão que já existe nunca é reescrito.
+6. Variante nova **no fim** de um enum não muda os bytes do que já existe: suba a versão e leia a
+   anterior como a nova (`3 | 4 => …` em `migrate`), sem struct congelada. Variante no meio,
+   reordenada ou removida muda os índices: aí é struct congelada e migração.
+7. Um enum novo no mundo aparece no teste do esquema como variantes faltando: acrescente-o à
+   lista `trace!` de `tests/world_schema.rs`.
+
+Dois PRs que sobem a versão ao mesmo tempo colidem no número e no esquema: quem entra depois faz
+rebase, sobe para o número seguinte e regrava o esquema.

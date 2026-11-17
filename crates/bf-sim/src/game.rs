@@ -3,10 +3,15 @@
 //! Phase 0 has no economy yet. The world holds the scenario's countries as the simulation will
 //! see them, the player's choice, and a yearly census of world totals. That is enough to run the
 //! real tick, hash, save and replay path from the first campaign on.
+//!
+//! **Adding a field to `GameWorld` or to anything in it changes the save's format.** Raise
+//! `save_format::WORLD_VERSION`, freeze the old layout in `save_format::compat`, write the
+//! step from it, add it to the test of every version and bless the new schema: the steps are
+//! in [`crate::save_format`] and in `docs/saves.pt-BR.md`.
 
 use laplace_schelling::command::{CommandLog, Issuer, Stamped};
 use laplace_schelling::hash::{HashState, StateHash, StateHasher, hash_of};
-use laplace_schelling::save::{SaveError, SaveFile, SaveHeader, decode_snapshot, encode_snapshot};
+use laplace_schelling::save::{SaveError, SaveFile, SaveHeader};
 use laplace_schelling::schedule::{Access, Cadence, Clock, ResourceId, Schedule, System, TickCtx};
 use laplace_schelling::{Command, Date, Fixed, Id, Simulation, Table};
 use serde::{Deserialize, Serialize};
@@ -108,105 +113,6 @@ pub struct GameWorld {
     /// capital moves (`docs/foreign-capital.pt-BR.md`).
     #[serde(default)]
     pub foreign: crate::foreign_stakes::ForeignState,
-}
-
-/// The world as saves wrote it before the communities were in the population (2026-11-17):
-/// the same fields, with the demography of then. Postcard is not self-describing, so a field
-/// added at the end of the snapshot does not read as its default; loading tries this layout
-/// when the current one fails.
-#[derive(Deserialize)]
-struct WorldBeforeCommunities {
-    scenario: String,
-    player: Option<Id<Country>>,
-    countries: Table<Country, CountryState>,
-    census: Vec<CensusRecord>,
-    econ: crate::econ::state::EconomyBeforeLedger,
-    research: crate::research::ResearchState,
-    politics: crate::polity::PoliticsState,
-    demography: crate::demography::DemographyBeforeCommunities,
-}
-
-impl From<WorldBeforeCommunities> for GameWorld {
-    fn from(w: WorldBeforeCommunities) -> Self {
-        Self {
-            scenario: w.scenario,
-            player: w.player,
-            countries: w.countries,
-            census: w.census,
-            econ: w.econ.into(),
-            research: w.research,
-            politics: w.politics,
-            demography: w.demography.into(),
-            borders: Default::default(),
-            foreign: Default::default(),
-        }
-    }
-}
-
-/// The world as saves wrote it before the ledger of debts between states (2026-11-17): the
-/// economy without its ledger. An empty ledger is out of the hash, so the loaded world keeps
-/// the hash it was saved with.
-#[derive(Deserialize)]
-struct WorldBeforeLedger {
-    scenario: String,
-    player: Option<Id<Country>>,
-    countries: Table<Country, CountryState>,
-    census: Vec<CensusRecord>,
-    econ: crate::econ::state::EconomyBeforeLedger,
-    research: crate::research::ResearchState,
-    politics: crate::polity::PoliticsState,
-    demography: crate::demography::DemographyState,
-    borders: crate::borders::BordersState,
-}
-
-impl From<WorldBeforeLedger> for GameWorld {
-    fn from(w: WorldBeforeLedger) -> Self {
-        Self {
-            scenario: w.scenario,
-            player: w.player,
-            countries: w.countries,
-            census: w.census,
-            econ: w.econ.into(),
-            research: w.research,
-            politics: w.politics,
-            demography: w.demography,
-            borders: w.borders,
-            foreign: Default::default(),
-        }
-    }
-}
-
-/// The world as saves wrote it before research that costs (2026-11-17): markets with four public
-/// works categories and law effects without a research priority (`econ::compat`). At the
-/// default research weight and no priority the world hashes as it did.
-#[derive(Deserialize)]
-struct WorldBeforeResearch {
-    scenario: String,
-    player: Option<Id<Country>>,
-    countries: Table<Country, CountryState>,
-    census: Vec<CensusRecord>,
-    econ: crate::econ::compat::EconomyBeforeResearch,
-    research: crate::research::ResearchState,
-    politics: crate::polity::PoliticsState,
-    demography: crate::demography::DemographyState,
-    borders: crate::borders::BordersState,
-}
-
-impl From<WorldBeforeResearch> for GameWorld {
-    fn from(w: WorldBeforeResearch) -> Self {
-        Self {
-            scenario: w.scenario,
-            player: w.player,
-            countries: w.countries,
-            census: w.census,
-            econ: w.econ.into(),
-            research: w.research,
-            politics: w.politics,
-            demography: w.demography,
-            borders: w.borders,
-            foreign: Default::default(),
-        }
-    }
 }
 
 impl HashState for GameWorld {
@@ -572,11 +478,22 @@ pub struct Session {
     /// [`GameCommand::SwitchCountry`]: session state, not the world's (the simulation never
     /// reads it, so a switch does not change the hash). Rebuilt from the command log on load.
     players: std::collections::BTreeMap<Issuer, String>,
+    /// Keys of the catalogues the rules index by position, written with every save.
+    catalog: Option<crate::save_format::CatalogKeys>,
 }
 
 #[derive(Debug)]
 pub enum LoadError {
     Save(SaveError),
+    /// The save's technologies, goods or buildings no longer match the game's catalogues.
+    Catalog(crate::save_format::CatalogError),
+    /// The world was written in a newer format than this build reads.
+    Newer {
+        found: u32,
+        supported: u32,
+        /// Version of the game that wrote it.
+        written_by: String,
+    },
     /// The snapshot decoded, but its hash is not the one recorded when it was written.
     HashMismatch {
         recorded: StateHash,
@@ -588,6 +505,15 @@ impl std::fmt::Display for LoadError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             LoadError::Save(e) => write!(f, "{e}"),
+            LoadError::Catalog(e) => write!(f, "{e}"),
+            LoadError::Newer {
+                found,
+                supported,
+                written_by,
+            } => write!(
+                f,
+                "written by version {written_by} in world format {found}; this build reads up to {supported}"
+            ),
             LoadError::HashMismatch { recorded, actual } => {
                 write!(
                     f,
@@ -600,44 +526,7 @@ impl std::fmt::Display for LoadError {
 
 impl std::error::Error for LoadError {}
 
-/// Decodes a world snapshot of this build or of an older one. Postcard is not self-describing, so
-/// a field added to the world does not read as its default. Newest layout first, one step back at
-/// a time:
-/// - this build;
-/// - before the ledger of debts between states (`Economy::ledger`): [`WorldBeforeLedger`];
-/// - before the foreign stakes (`foreign`, two empty lists), and before the border state too
-///   (`borders`, a list of empty lists): the same layout, with the missing tail read as empty
-///   lists, one zero byte each;
-/// - before the communities in the population: [`WorldBeforeCommunities`], which also predates
-///   the borders and the ledger.
-pub fn decode_world(bytes: &[u8]) -> Result<GameWorld, SaveError> {
-    let first = decode_snapshot::<GameWorld>(bytes);
-    if first.is_ok() {
-        return first;
-    }
-    if let Ok(w) = decode_snapshot::<WorldBeforeResearch>(bytes) {
-        return Ok(w.into());
-    }
-    if let Ok(w) = decode_snapshot::<WorldBeforeLedger>(bytes) {
-        return Ok(w.into());
-    }
-    let mut padded = bytes.to_vec();
-    for k in 1..=8 {
-        padded.resize(bytes.len() + k, 0);
-        if let Ok(w) = decode_snapshot::<GameWorld>(&padded) {
-            return Ok(w);
-        }
-        if let Ok(w) = decode_snapshot::<WorldBeforeResearch>(&padded) {
-            return Ok(w.into());
-        }
-        if let Ok(w) = decode_snapshot::<WorldBeforeLedger>(&padded) {
-            return Ok(w.into());
-        }
-    }
-    decode_snapshot::<WorldBeforeCommunities>(bytes)
-        .map(GameWorld::from)
-        .or(first)
-}
+pub use crate::save_format::decode_world;
 
 impl Session {
     pub fn new(
@@ -647,10 +536,12 @@ impl Session {
         threads: usize,
         rules: Option<Rules>,
     ) -> Self {
+        let catalog = rules.as_ref().map(crate::save_format::CatalogKeys::of);
         Self {
             sim: Simulation::new(world, seed, start, schedule(threads, rules)),
             earlier: Vec::new(),
             players: Default::default(),
+            catalog,
         }
     }
 
@@ -732,7 +623,7 @@ impl Session {
         header.label = label.to_owned();
         SaveFile {
             header,
-            snapshot: encode_snapshot(self.sim.world())?,
+            snapshot: crate::save_format::encode_world(self.sim.world(), self.catalog.as_ref())?,
             log: self.history(),
         }
         .encode()
@@ -742,7 +633,15 @@ impl Session {
     pub fn load(bytes: &[u8], threads: usize, rules: Option<Rules>) -> Result<Self, LoadError> {
         let file: SaveFile<GameCommand> =
             SaveFile::decode(bytes, GAME_ID).map_err(LoadError::Save)?;
-        let mut world = decode_world(&file.snapshot).map_err(LoadError::Save)?;
+        let (mut world, saved) =
+            crate::save_format::decode(&file.snapshot).map_err(|e| match e {
+                crate::save_format::WorldError::Newer { found, supported } => LoadError::Newer {
+                    found,
+                    supported,
+                    written_by: file.header.game_version.clone(),
+                },
+                crate::save_format::WorldError::Malformed(e) => LoadError::Save(e),
+            })?;
         let actual = hash_of(&world);
         if actual != file.header.state_hash {
             return Err(LoadError::HashMismatch {
@@ -750,10 +649,13 @@ impl Session {
                 actual,
             });
         }
-        // A save from before a good was added runs on with the catalogue's goods.
+        // The world indexes technologies, goods and buildings by position: fit it to today's
+        // catalogues (by key when the save has them) or refuse it here, never in play.
         if let Some(r) = &rules {
-            crate::econ::compat::fit_goods(&mut world.econ, &r.catalogue);
+            crate::save_format::catalog::fit(&mut world, saved.as_ref(), r)
+                .map_err(LoadError::Catalog)?;
         }
+        let catalog = rules.as_ref().map(crate::save_format::CatalogKeys::of);
         let mut sim = Simulation::resume(
             world,
             file.header.seed,
@@ -781,6 +683,7 @@ impl Session {
             sim,
             earlier,
             players,
+            catalog,
         })
     }
 }
@@ -789,12 +692,13 @@ impl Session {
 mod tests {
     use super::*;
     use crate::scenario::Status;
+    use laplace_schelling::save::{decode_snapshot, encode_snapshot};
 
     /// A 1925 world written in every layout the saves had loads in this build with the hash it
     /// was saved with: this build; before the ledger; before the ledger and the border state;
     /// before the communities (and both). The ledger and the border state empty, as they were.
     #[test]
-    fn saves_of_every_layout_load_with_their_hash() {
+    fn every_version_loads_with_its_hash() {
         #[derive(Serialize)]
         struct OldEconomy<'a> {
             regions: &'a Vec<crate::econ::Region>,
@@ -879,6 +783,25 @@ mod tests {
         assert!(!with_ledger.econ.ledger.is_empty());
         let now = decode_world(&encode_snapshot(&with_ledger).unwrap()).unwrap();
         assert_eq!(hash_of(&now), hash_of(&with_ledger));
+        // The same layouts behind the header with their version number go through the chain
+        // of migrations instead of the guesses.
+        let headed = |v: u32, bytes: &[u8]| {
+            let mut b = crate::save_format::WORLD_MAGIC.to_vec();
+            b.extend(v.to_le_bytes());
+            // No catalogue keys.
+            b.extend(0u32.to_le_bytes());
+            b.extend_from_slice(bytes);
+            decode_world(&b).unwrap_or_else(|e| panic!("version {v}: {e}"))
+        };
+        let now_headed = crate::save_format::encode_world(&with_ledger, None).unwrap();
+        assert_eq!(
+            hash_of(&decode_world(&now_headed).unwrap()),
+            hash_of(&with_ledger)
+        );
+        assert_eq!(
+            hash_of(&headed(6, &encode_snapshot(&with_ledger).unwrap())),
+            hash_of(&with_ledger)
+        );
         // Older layouts: the world of then had no ledger.
         let mut world = data.new_world();
         world.econ.ledger = Default::default();
@@ -916,6 +839,7 @@ mod tests {
             borders: &world.borders,
         })
         .unwrap();
+        assert_eq!(headed(5, &before_foreign), world);
         assert_eq!(check(before_foreign, "before the foreign stakes"), world);
         // Before research that costs (the main after the ledger): markets with four public
         // works categories and no research priority.
@@ -937,6 +861,9 @@ mod tests {
             borders: &world.borders,
         })
         .unwrap();
+        // Versions 3 and 4 (4 only added enum variants at the end) wrote this layout.
+        assert_eq!(headed(3, &before_research), world);
+        assert_eq!(headed(4, &before_research), world);
         assert_eq!(check(before_research, "before research that costs"), world);
         // Before the ledger (the main after the borders).
         let before_ledger = encode_snapshot(&WithBorders {
@@ -951,6 +878,7 @@ mod tests {
             borders: &world.borders,
         })
         .unwrap();
+        assert_eq!(headed(2, &before_ledger), world);
         assert_eq!(check(before_ledger, "before the ledger"), world);
         // Before the border state too (the main after the communities).
         let before_borders = encode_snapshot(&NoBorders {
@@ -964,6 +892,7 @@ mod tests {
             demography: &world.demography,
         })
         .unwrap();
+        assert_eq!(headed(1, &before_borders), world);
         assert_eq!(check(before_borders, "before the borders"), world);
         // Before the communities: the demography without them, refilled on the next month.
         let d = &world.demography;
@@ -988,10 +917,14 @@ mod tests {
             },
         })
         .unwrap();
-        let loaded = decode_world(&before_communities).expect("before the communities");
-        assert!(loaded.demography.communities.is_empty());
-        assert_eq!(loaded.econ, world.econ);
-        assert_eq!(loaded.demography.ages, world.demography.ages);
+        for loaded in [
+            decode_world(&before_communities).expect("before the communities"),
+            headed(0, &before_communities),
+        ] {
+            assert!(loaded.demography.communities.is_empty());
+            assert_eq!(loaded.econ, world.econ);
+            assert_eq!(loaded.demography.ages, world.demography.ages);
+        }
     }
 
     fn def(tag: &str, population: u64) -> CountryDef {

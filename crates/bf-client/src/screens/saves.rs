@@ -88,6 +88,10 @@ pub struct State {
     sizes: Vec<u64>,
     /// "Play another country" was picked in a campaign's menu: the country choice opens.
     play_other: Option<Box<saves::Save>>,
+    /// Whether this build opens each campaign, in list order.
+    readable: Vec<saves::Readable>,
+    /// The selected campaign does not read: focus goes to its restore points once.
+    focus_points: bool,
 }
 
 impl State {
@@ -124,6 +128,8 @@ impl State {
             confirm_point_delete: false,
             sizes: sizes(shared),
             play_other: None,
+            readable: shared.saves.iter().map(saves::readable).collect(),
+            focus_points: false,
         }
     }
 
@@ -134,6 +140,9 @@ impl State {
             self.confirm_delete = false;
             self.renaming = None;
             self.points_of = None;
+            self.focus_points = i
+                .and_then(|i| self.readable.get(i))
+                .is_some_and(|r| *r != saves::Readable::Yes);
         }
         self.creating = false;
     }
@@ -148,6 +157,39 @@ impl State {
         self.point = (!self.points.is_empty()).then_some(0);
         self.renaming_point = None;
         self.confirm_point_delete = false;
+    }
+}
+
+/// This build opens campaign `i`'s current state.
+fn opens(state: &State, i: usize) -> bool {
+    state
+        .readable
+        .get(i)
+        .is_none_or(|r| *r == saves::Readable::Yes)
+}
+
+/// Why the campaign does not open in this build.
+fn unreadable(shared: &Shared, r: &saves::Readable) -> Option<String> {
+    match r {
+        saves::Readable::Yes => None,
+        saves::Readable::Newer {
+            written_by,
+            found,
+            supported,
+        } => Some(shared.i18n.tr_args(
+            "saves-newer",
+            &[
+                ("by", Arg::String(written_by.clone())),
+                ("found", Arg::Num(f64::from(*found))),
+                ("supported", Arg::Num(f64::from(*supported))),
+                ("this", Arg::Str(saves::GAME_VERSION)),
+            ],
+        )),
+        saves::Readable::Damaged(cause) => Some(
+            shared
+                .i18n
+                .tr_args("saves-damaged", &[("error", Arg::String(shared.tr(cause)))]),
+        ),
     }
 }
 
@@ -322,13 +364,26 @@ fn campaigns(
             },
         );
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            let load = Button::primary(&shared.tr("saves-load"))
-                .enabled(selected.is_some())
-                .show(ui);
-            if (load.clicked() || keys::single(ui, "saves.load", 'L', load.rect))
-                && let Some(s) = selected.clone()
+            let reads = state.selected.is_none_or(|i| opens(state, i));
+            // A campaign that does not read: the main action goes back to its selected restore
+            // point, when it has one.
+            let to_point = !reads && state.point.is_some() && !state.creating;
+            let label = if to_point {
+                "points-load"
+            } else {
+                "saves-load"
+            };
+            let can = selected.is_some() && (reads || to_point);
+            let load = Button::primary(&shared.tr(label)).enabled(can).show(ui);
+            if can
+                && (load.clicked() || keys::single(ui, "saves.load", 'L', load.rect))
+                && let Some(mut s) = selected.clone()
             {
-                *out = Some(open(s));
+                *out = if to_point {
+                    go_back(state, shared, &mut s)
+                } else {
+                    Some(open(s))
+                };
             }
         });
     });
@@ -356,7 +411,7 @@ fn campaigns(
                     state.select(Some(i));
                     state.menu = None;
                 }
-                if picked.open {
+                if picked.open && opens(state, i) {
                     *out = Some(open(save.clone()));
                 }
             }
@@ -414,6 +469,7 @@ fn campaigns(
                     }
                     shared.refresh_saves();
                     state.sizes = sizes(shared);
+                    state.readable = shared.saves.iter().map(saves::readable).collect();
                     state.selected = (!shared.saves.is_empty()).then_some(0);
                     state.points_of = None;
                     state.confirm_delete = false;
@@ -635,14 +691,34 @@ fn card(
             .color(color::TEXT),
         false,
     );
-    text_in(
-        ui,
-        half(left, false),
-        RichText::new(subtitle)
-            .font(theme::sans(size::SMALL))
-            .color(color::TEXT_MUTED),
-        false,
-    );
+    // A campaign this build cannot open says so in place of its date; why, on hover and
+    // beside, over its restore points.
+    match state.readable.get(i).and_then(|r| unreadable(shared, r)) {
+        Some(why) => {
+            text_in(
+                ui,
+                half(left, false),
+                RichText::new(shared.tr(match state.readable.get(i) {
+                    Some(saves::Readable::Damaged(_)) => "saves-damaged-short",
+                    _ => "saves-unreadable-short",
+                }))
+                .font(theme::sans(size::SMALL))
+                .color(color::DANGER),
+                false,
+            )
+            .on_hover_text(why);
+        }
+        None => {
+            text_in(
+                ui,
+                half(left, false),
+                RichText::new(subtitle)
+                    .font(theme::sans(size::SMALL))
+                    .color(color::TEXT_MUTED),
+                false,
+            );
+        }
+    }
     let (day, h, m) = saves::local_time(save.meta.last_played);
     let full = shared.i18n.tr_args(
         "saves-last-played-full",
@@ -894,6 +970,13 @@ fn points_panel(
         ],
     );
     bf_ui_kit::muted(ui, &summary);
+    if let Some(why) = state
+        .selected
+        .and_then(|i| state.readable.get(i))
+        .and_then(|r| unreadable(shared, r))
+    {
+        bf_ui_kit::error_text(ui, &why);
+    }
     if bytes > u64::from(shared.settings.warn_mb) * 1_000_000 {
         bf_ui_kit::error_text(
             ui,
@@ -1010,6 +1093,11 @@ fn points_panel(
             return;
         }
         let back = Button::primary(&shared.tr("points-load")).show(ui);
+        // A campaign that does not read: the keyboard starts on its restore points.
+        if state.focus_points {
+            back.request_focus();
+            state.focus_points = false;
+        }
         if back.clicked() || keys::single(ui, "saves.point_load", 'V', back.rect) {
             *out = go_back(state, shared, &mut save);
         }

@@ -2060,7 +2060,15 @@ fn restore_points() {
         h.state_mut().apply(Transition::Saves, &ctx);
         h.run_steps(4);
         shot(&mut h, &format!("103-campaign-points-{tag}"));
-        h.get_by_label("…").click();
+        let options = if locale == "en" {
+            "Campaign options"
+        } else {
+            "Opções da campanha"
+        };
+        h.get_all(egui_kittest::kittest::by().label_contains(options))
+            .next()
+            .expect("options button")
+            .click();
         h.run_steps(3);
         shot(&mut h, &format!("104-campaign-menu-{tag}"));
         h.key_press(egui::Key::Escape);
@@ -2288,6 +2296,87 @@ fn campaign_cards() {
             .click();
         h.run_steps(3);
         shot(&mut h, &format!("107-campaign-menu-{tag}-v2"));
+    }
+    let _ = std::fs::remove_dir_all(&user);
+}
+/// The campaigns screen with a campaign written by a newer version of the game and one whose
+/// file is damaged: each says why it does not open, and cannot be loaded.
+#[test]
+#[ignore = "needs a GPU (or software Vulkan) and the generated map; run with --ignored"]
+fn unreadable_campaigns() {
+    use laplace_schelling::calendar::Date;
+    use laplace_schelling::save::SaveFile;
+    let user = std::env::temp_dir().join(format!("bf-shots-unreadable-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&user);
+    let session = advanced_session(Date::new(1925, 2, 1));
+    for (locale, size, tag) in [
+        ("pt-BR", egui::vec2(1600.0, 900.0), "pt"),
+        ("en", egui::vec2(1280.0, 720.0), "en-1280"),
+    ] {
+        let home = user.join(tag);
+        write_campaign(&home, &session, "Brasil", "BRA", &[]);
+        // A newer world format: the same save with the next version in the world's header.
+        let newer = write_campaign(&home, &session, "Do futuro", "BRA", &[]);
+        let path = newer.dir.join(saves::WORLD_FILE);
+        let mut file: SaveFile<bf_sim::game::GameCommand> =
+            SaveFile::decode(&std::fs::read(&path).unwrap(), bf_sim::game::GAME_ID).unwrap();
+        file.header.game_version = "0.2.0+f00dcafe1".into();
+        let next = bf_sim::save_format::WORLD_VERSION + 1;
+        file.snapshot[4..8].copy_from_slice(&next.to_le_bytes());
+        std::fs::write(&path, file.encode().unwrap()).unwrap();
+        // A damaged file: one byte flipped; its restore point is whole.
+        let damaged = write_campaign(&home, &session, "Danificada", "BRA", &[]);
+        let path = damaged.dir.join(saves::WORLD_FILE);
+        std::fs::create_dir_all(bf_client::points::dir(&damaged)).unwrap();
+        std::fs::copy(&path, bf_client::points::save_path(&damaged, "p1")).unwrap();
+        bf_client::points::record(
+            &damaged,
+            bf_client::points::Point {
+                id: "p1".into(),
+                kind: bf_client::points::Kind::Auto,
+                name: None,
+                date: session.clock().date,
+                written: saves::now(),
+                bytes: 0,
+            },
+        )
+        .unwrap();
+        let mut bytes = std::fs::read(&path).unwrap();
+        let mid = bytes.len() / 2;
+        bytes[mid] ^= 0xFF;
+        std::fs::write(&path, bytes).unwrap();
+        assert!(matches!(
+            saves::readable(&newer),
+            saves::Readable::Newer { found, .. } if found == next
+        ));
+        assert!(matches!(
+            saves::readable(&damaged),
+            saves::Readable::Damaged(_)
+        ));
+
+        let mut h = harness_sized(home.clone(), locale, size);
+        let ctx = h.ctx.clone();
+        h.state_mut().shared.refresh_saves();
+        h.state_mut().apply(Transition::Saves, &ctx);
+        h.run_steps(4);
+        shot(&mut h, &format!("105-campaigns-unreadable-{tag}"));
+        // The damaged one selected: no load, and why beside, above its restore points.
+        h.get(
+            egui_kittest::kittest::by()
+                .role(egui::accesskit::Role::Button)
+                .label("Danificada"),
+        )
+        .click();
+        h.run_steps(3);
+        shot(&mut h, &format!("105-campaigns-damaged-{tag}"));
+        h.get(
+            egui_kittest::kittest::by()
+                .role(egui::accesskit::Role::Button)
+                .label("Do futuro"),
+        )
+        .click();
+        h.run_steps(3);
+        shot(&mut h, &format!("105-campaigns-newer-{tag}"));
     }
     let _ = std::fs::remove_dir_all(&user);
 }

@@ -24,6 +24,7 @@ game-menu-save-named = Salvar com nome…
 
 points-title = Pontos de restauração
 points-summary = { $name }: { $count ->
+    [0] nenhum ponto
     [one] um ponto
    *[other] { $count } pontos
     }, { $manual } fora da rotação · pasta { $size } MB
@@ -80,3 +81,15 @@ saves-played-yesterday = ontem
 saves-last-played-full = Jogada pela última vez em { $date }, às { $time }
 saves-size = Espaço que a campanha ocupa no disco, com os pontos de restauração.
 saves-size-large = Passou dos { $limit } MB que você definiu nas configurações para ser avisado. O jogo não apaga nada sozinho: apague pontos de restauração antigos ou suba o aviso.
+saves-newer = Gravada por uma versão mais nova do jogo ({ $by }, formato do mundo { $found }); esta ({ $this }) lê até o formato { $supported }. Atualize o jogo para abri-la, ou volte a um ponto de restauração mais antigo, abaixo.
+saves-damaged = O estado atual não lê: { $error }. Os pontos de restauração abaixo podem estar bons: volte a um deles.
+saves-unreadable-short = Não abre nesta versão
+saves-cause-not-a-save = o arquivo não é um save deste jogo
+saves-cause-container-newer = o arquivo foi gravado por uma versão mais nova do motor
+saves-cause-truncated = o arquivo está cortado
+saves-cause-checksum = o arquivo está danificado (a soma de verificação não bate)
+saves-cause-wrong-game = o arquivo é save de outro jogo
+saves-cause-malformed = uma parte do arquivo não decodifica
+saves-damaged-short = Arquivo danificado
+settings-autosave-cost = Tempo que tira da simulação (medido em 2025): { $costs }.
+settings-autosave-cost-one = { $option } ~{ $percent } %
