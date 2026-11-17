@@ -2,7 +2,7 @@
 //! governments (`treaty::Ledger`), owed and owed to, copied out of the simulation once a month.
 
 use bf_sim::game::GameWorld;
-use bf_sim::treaty::{Currency, InterstateDebt, Pledge};
+use bf_sim::treaty::{Currency, InterstateDebt, Obligation, Pledge};
 use laplace_schelling::calendar::Date;
 
 /// Where a line stands.
@@ -14,7 +14,7 @@ pub enum Standing {
     Arrears,
     /// Suspended by a moratorium.
     Moratorium,
-    /// Repudiated. Reserved: the ledger does not record a repudiation yet.
+    /// Repudiated by the debtor: written off at once, kept for the record.
     Broken,
 }
 
@@ -52,7 +52,8 @@ pub struct Line {
     pub arrears: f64,
     pub suspended_until: i32,
     pub standing: Standing,
-    /// Service paid since it was signed; `None` until the ledger keeps it.
+    /// Service paid since it was signed (since the start date for the lines of 1925),
+    /// reference units; `None` where the ledger does not keep it.
     pub paid: Option<f64>,
 }
 
@@ -71,7 +72,9 @@ impl LedgerView {
 }
 
 fn standing(d: &InterstateDebt, year: i32) -> Standing {
-    if d.suspended_until >= year {
+    if matches!(d.status, Obligation::Repudiated { .. }) {
+        Standing::Broken
+    } else if d.suspended_until >= year {
         Standing::Moratorium
     } else if d.arrears > laplace_schelling::Fixed::ZERO {
         Standing::Arrears
@@ -100,6 +103,15 @@ pub fn read(world: &GameWorld, tag: Option<&str>, date: Date) -> Option<LedgerVi
         .ledger
         .debts
         .iter()
+        // A line paid off leaves the tab; a repudiated one stays, as broken.
+        .chain(
+            world
+                .econ
+                .ledger
+                .closed
+                .iter()
+                .filter(|d| matches!(d.status, Obligation::Repudiated { .. })),
+        )
         .filter(|d| usize::from(d.debtor) == c || usize::from(d.creditor) == c)
         .map(|d| {
             let owed_by_us = usize::from(d.debtor) == c;
@@ -120,7 +132,7 @@ pub fn read(world: &GameWorld, tag: Option<&str>, date: Date) -> Option<LedgerVi
                 arrears: f(d.arrears),
                 suspended_until: d.suspended_until,
                 standing: standing(d, date.year),
-                paid: None,
+                paid: world.econ.ledger.record.then(|| f(d.paid)),
             }
         })
         .collect();

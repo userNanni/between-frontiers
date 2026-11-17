@@ -18,7 +18,9 @@ use laplace_schelling::Fixed;
 use crate::borders::op::{DebtTerm, Operation, Terms};
 use crate::game::GameWorld;
 use crate::scenario::Tag;
-use crate::treaty::{Clause, ClauseCatalogue, ClauseKind, DebtTerms, Proposal, Side};
+use crate::treaty::{
+    Agreement, AgreementStatus, Clause, ClauseCatalogue, ClauseKind, DebtTerms, Proposal, Side,
+};
 
 /// What a signed treaty does, before it is put in motion.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -31,6 +33,8 @@ pub struct Settlement {
     pub revisions: Vec<(Tag, String, DebtTerms)>,
     /// The clauses that hold while the agreement is in force.
     pub kept: Vec<Clause>,
+    /// The record of the agreement (`TreatyState::agreements`), written by [`queue`].
+    pub agreement: Option<Agreement>,
 }
 
 /// The parties a side names. A side may name a country the same treaty creates
@@ -167,6 +171,17 @@ pub fn settle(cat: &ClauseCatalogue, proposal: &Proposal, key: &str) -> Result<S
             _ => out.kept.push(cl.clone()),
         }
     }
+    out.agreement = Some(Agreement {
+        id: 0,
+        key: key.into(),
+        side_a: proposal.side_a.clone(),
+        side_b: proposal.side_b.clone(),
+        signed: 0,
+        term_years: proposal.term_years,
+        notice_years: proposal.notice_years,
+        kept: out.kept.clone(),
+        status: AgreementStatus::InForce,
+    });
     if !debts.is_empty() {
         out.ops.push(Operation::Terms {
             terms: Terms {
@@ -180,8 +195,9 @@ pub fn settle(cat: &ClauseCatalogue, proposal: &Proposal, key: &str) -> Result<S
 
 /// Puts a settlement in motion: the operations join the border queue (run at the end of the
 /// day, each checked before anything moves); payments and revisions act now. Money moves
-/// between treasuries only, so the world's sum does not change.
-pub fn queue(world: &mut GameWorld, s: &Settlement, year: i32) {
+/// between treasuries only, so the world's sum does not change. The agreement is recorded in
+/// `GameWorld::treaties.agreements`, signed in `year`; returns its id.
+pub fn queue(world: &mut GameWorld, s: &Settlement, year: i32) -> Option<u32> {
     world.borders.pending.extend(s.ops.iter().cloned());
     let index = |w: &GameWorld, t: &str| w.countries.iter().position(|(_, c)| c.tag == t);
     for (from, to, amount) in &s.payments {
@@ -197,6 +213,7 @@ pub fn queue(world: &mut GameWorld, s: &Settlement, year: i32) {
         let Some(c) = index(world, creditor) else {
             continue;
         };
+        let record = world.econ.ledger.record;
         for d in world
             .econ
             .ledger
@@ -212,8 +229,17 @@ pub fn queue(world: &mut GameWorld, s: &Settlement, year: i32) {
             }
             // A revision may forgive, never add: the principal only falls.
             if terms.principal < d.principal {
-                d.principal = terms.principal.max(Fixed::ZERO);
+                let to = terms.principal.max(Fixed::ZERO);
+                if record {
+                    d.written_off += d.principal - to;
+                }
+                d.principal = to;
             }
         }
     }
+    // The record, with what holds while in force.
+    s.agreement.clone().map(|mut a| {
+        a.signed = year;
+        world.treaties.sign(a)
+    })
 }

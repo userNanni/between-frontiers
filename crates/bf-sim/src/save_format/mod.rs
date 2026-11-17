@@ -57,11 +57,13 @@ pub const WORLD_MAGIC: [u8; 4] = *b"BFWD";
 /// 11. schooling by cohort and level (`GameWorld::education`), the last field of the world;
 /// 14. capital that crosses borders: the works paid from abroad and the reinvested earnings
 ///     (`ForeignState::building`, `retained`);
-/// 15. the orders of forces (`CountryWar::queue`, `Formation::raised`).
+/// 15. the orders of forces (`CountryWar::queue`, `Formation::raised`);
+/// 16. the record of each line of the ledger (`paid`, `written_off`, `status`, closed lines in
+///     `Ledger::closed`) and the agreements signed in play (`TreatyState::agreements`).
 ///
 /// Versions 12 and 13 were held for the orders and the independence PRs; 14 landed first, so
 /// the orders came after it, and 12 and 13 were never written.
-pub const WORLD_VERSION: u32 = 15;
+pub const WORLD_VERSION: u32 = 16;
 
 /// Why a snapshot does not read.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -188,11 +190,12 @@ pub fn migrate(v: u32, body: &[u8]) -> Result<GameWorld, SaveError> {
         9 => v10_to_v11(v9_to_v10(decode_snapshot(body)?)),
         10 => v10_to_v11(decode_snapshot(body)?),
         11 => decode_snapshot(body)?,
-        14 => return Ok(v14_to_v15(decode_snapshot(body)?)),
-        15 => return decode_snapshot(body),
+        14 => return Ok(v15_to_v16(v14_to_v15(decode_snapshot(body)?))),
+        15 => return Ok(v15_to_v16(decode_snapshot(body)?)),
+        16 => return decode_snapshot(body),
         _ => return Err(SaveError::Malformed(format!("unknown world version {v}"))),
     };
-    Ok(v14_to_v15(v11_to_v14(v11)))
+    Ok(v15_to_v16(v14_to_v15(v11_to_v14(v11))))
 }
 
 /// A snapshot written before the header: the version is not written, so the layouts are tried

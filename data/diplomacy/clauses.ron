@@ -135,6 +135,8 @@
         recognition_default: AllExceptListed,
         ratify_below_threshold: PlayerOnly,
         war_debts_1925: true,
+        // Off while it is judged (rule of 2026-11-17): the record of each line of the ledger.
+        ledger_record: false,
     ),
     weights: (
         // DESIGN CHOICE: one point of sovereignty is worth 1 % of the giver's yearly GDP.

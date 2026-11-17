@@ -978,23 +978,12 @@ fn apply_terms(world: &mut GameWorld, terms: &Terms) {
                 if let (Some(a), Some(b)) = (tag_ix(world, debtor), tag_ix(world, creditor))
                     && a != b
                 {
-                    world.econ.ledger.create(crate::treaty::InterstateDebt {
-                        id: 0,
-                        debtor: a as u16,
-                        creditor: b as u16,
-                        treaty: treaty.clone(),
-                        currency: terms.currency,
-                        principal: terms.principal,
-                        rate: terms.rate,
-                        annuity: terms.annuity,
-                        years_left: terms.years,
-                        deferrable: terms.deferrable,
-                        transfer_cap: terms.transfer_cap,
-                        pledge: terms.pledge,
-                        contingent: terms.contingent,
-                        arrears: Fixed::ZERO,
-                        suspended_until: 0,
-                    });
+                    world.econ.ledger.create(crate::treaty::InterstateDebt::new(
+                        a as u16,
+                        b as u16,
+                        treaty.clone(),
+                        terms,
+                    ));
                 }
                 continue;
             }

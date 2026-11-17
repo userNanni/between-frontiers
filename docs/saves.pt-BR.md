@@ -113,13 +113,18 @@ commit, como `0.0.1+92093bd4e`), para a mensagem de erro.
 | 9 | forças armadas (`GameWorld::war`, #115), vazias com as forças desligadas | `compat::V9` (economia `EconomyBeforeTrade`) |
 | 10 | comércio com parceiro: `Economy::trade` (`econ::trade::TradeState`: número de países, valor exportado por par no ano corrente e no último ano, preferências por comprador e grupo), último campo do `Economy`, #113. Vazio e fora do hash enquanto a chave `trade_by_pair` estiver desligada | `compat::V10` |
 | 11 | ensino por coorte e nível (`GameWorld::education`); vazio na migração. Com a regra `schooling` desligada continua vazio; ligada, a demografia monta no mês seguinte | `compat::V11` |
-| 12 e 13 | reservadas: encomendas e independência | — |
-| 14 | capital que cruza fronteira: obras pagas de fora e lucro reinvestido (`ForeignState::building`, `retained`, #117). Vazios enquanto a chave `foreign_flow` estiver desligada | `GameWorld` |
+| 12 e 13 | nunca gravadas | — |
+| 14 | capital que cruza fronteira: obras pagas de fora e lucro reinvestido (`ForeignState::building`, `retained`, #117). Vazios enquanto a chave `foreign_flow` estiver desligada | `compat::V14` |
+| 15 | encomendas das forças (`CountryWar::queue`, `Formation::raised`, #151) | `compat::V15` |
+| 16 | registro de cada linha do livro de dívidas (`paid`, `written_off`, `status`; a linha encerrada vai para `Ledger::closed`) e os acordos assinados em jogo (`TreatyState::agreements`). Sem registro enquanto a chave `ledger_record` estiver desligada | `GameWorld` |
 
 `decode_world` lê a versão e aplica a cadeia até a atual: `v0_to_v1 → v1_to_v2 → v2_to_now`
 (a economia da 2 converte direto para a da 5: `v2_to_v5`), `v4_to_v5` (a 3 lê direto como a 4) e
-`v5_to_v6`, `v6_to_v7`, `v7_to_v8`, `v8_to_v9`, `v9_to_v10`, `v10_to_v11` e `v11_to_v14` (o comércio por par começa vazio; com a chave
-ligada, se preenche na primeira semana; o ensino também começa vazio)
+`v5_to_v6`, `v6_to_v7`, `v7_to_v8`, `v8_to_v9`, `v9_to_v10`, `v10_to_v11`, `v11_to_v14`, `v14_to_v15` e `v15_to_v16` (o comércio por par começa vazio; com a chave
+ligada, se preenche na primeira semana; o ensino também começa vazio). Da 5 à 15 o livro de
+dívidas é lido no formato de antes do registro das linhas (`treaty::LedgerBeforeObligations`,
+por `deserialize_with`), com toda linha aberta e nada pago, e o estado dos tratados da 8 à 15
+só com o reconhecimento
 (`save_format::migrate`). Os saves sem cabeçalho, de antes deste formato, continuam abrindo pelas
 tentativas de antes (da versão mais nova para a mais velha, com a cauda de listas vazias
 completada). Um save de versão mais nova que o jogo não abre: a tela de Campanhas diz qual
