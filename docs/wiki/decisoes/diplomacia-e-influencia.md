@@ -179,7 +179,7 @@ crise).
 - **Como é na vida real:** o pequeno escolhe o patrono que ameaça menos e cobra caro quando dois o
   disputam: a Iugoslávia, o Egito dos anos 1950, a Índia não alinhada (Walt 1987; Fox 1959).
 - **Estado:** blocos de 1925 no contrato (#105). O bloco é lido só das cláusulas em vigor, com o
-  rótulo do tipo de aliança (#BLOCPR): um par sozinho é aliança, o bloco sem líder precisa de três
+  rótulo do tipo de aliança (#132, rascunho): um par sozinho é aliança, o bloco sem líder precisa de três
   países ligados entre si (a Pequena Entente, sim; a rede de pactos da França, não). Os limiares
   esperam a decisão do autor. Entrar e sair em Agendas esperam a proposta no tick dos tratados;
   telas desenhadas.
