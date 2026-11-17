@@ -142,6 +142,14 @@ Indonésia (0,25, 1985), Itália (0,23, 1995). Antes de 1955 uma perturbação t
 se espalhou e a faixa sai zero: ela subestima o ruído do começo do século, em que uma mudança de
 regra já move os números.
 
+Antes de 1955 a faixa é zero, e `compare` usa um piso de 0,01 na razão (`--floor`). E uma
+perturbação de um dólar mede a sensibilidade a um empurrão mínimo, não a uma mudança de regra ou
+de dado: a primeira mudança comparada com ela (aço do estaleiro naval, `fix/naval-steel`) tirou
+185 células dos 20 maiores da faixa, 105 para melhor e 80 para pior, e levou o PIB do Egito de 2025
+de 0,42 para 0,20 do real, enquanto as três rodadas perturbadas dão 0,42. A faixa separa ruído de
+efeito, mas um efeito grande longe do que a mudança toca ainda pede causa, ou uma faixa medida com
+perturbação maior.
+
 Critério para PR que muda a simulação: os agregados e as grandezas que a mudança mira, e nenhuma
 célula dos 20 maiores fora da faixa (2 desvios) para pior sem causa nomeada. Duas rodadas que
 diferem por uma regra que não toca um país mudaram até 251 de 746 células de metrópole em mais

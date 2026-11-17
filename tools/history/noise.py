@@ -134,7 +134,9 @@ def compare(args):
         if k not in base or k not in new:
             continue
         d = new[k] - base[k]
-        sd = max(s["sd"], 1e-9)
+        # Before a perturbation this small spreads (the first decades) the spread is zero: the
+        # floor keeps a rule change from reading as millions of deviations there.
+        sd = max(s["sd"], args.floor)
         if abs(d) <= args.sigmas * sd:
             continue
         kind = k.split("|")[0]
@@ -174,6 +176,7 @@ def main():
     c.add_argument("--base", required=True)
     c.add_argument("--new", required=True)
     c.add_argument("--sigmas", type=float, default=2.0)
+    c.add_argument("--floor", type=float, default=0.01, help="smallest spread used, in ratio units")
     c.add_argument("--largest-only", action="store_true", help="list only the 20 largest units' cells")
     args = ap.parse_args()
     band(args) if args.cmd == "band" else compare(args)
