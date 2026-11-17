@@ -2151,4 +2151,46 @@ fn borders_and_switching_country() {
         h.run_steps(4);
         shot(&mut h, names[3]);
     }
+    // The panel scrolls to its last line at 1280 × 720 and with the interface at 125 %.
+    for (name, size, scale) in [
+        (
+            "74-libertar-1280",
+            egui::vec2(1280.0, 720.0),
+            "ui_scale: 100",
+        ),
+        (
+            "75-libertar-escala-125",
+            egui::vec2(1600.0, 900.0),
+            "ui_scale: 125",
+        ),
+    ] {
+        let mut h = harness_scaled(user.join(name), "pt-BR", size, scale);
+        let ctx = h.ctx.clone();
+        h.state_mut().apply(Transition::Game(save.clone()), &ctx);
+        h.run_steps(6);
+        let moscow = {
+            let app = h.state();
+            let world = app.shared.world.as_ref().unwrap();
+            let (x, y) = bf_client::world::project(&world.map.meta, 37.6, 55.75).unwrap();
+            // In points: at 125 % the screen holds fewer of them than pixels.
+            let rect = h.ctx.content_rect();
+            app.shared
+                .map_view
+                .as_ref()
+                .unwrap()
+                .camera
+                .unwrap()
+                .to_screen(rect, egui::pos2(x, y))
+        };
+        h.hover_at(moscow);
+        h.run_steps(1);
+        h.drag_at(moscow);
+        h.run_steps(1);
+        h.drop_at(moscow);
+        h.run_steps(4);
+        h.get(egui_kittest::kittest::By::new().label_contains("Sai negociando"))
+            .scroll_to_me();
+        h.run_steps(4);
+        shot(&mut h, name);
+    }
 }
