@@ -426,11 +426,19 @@
         (key: "hospital", group: "services", resource: None, farm: None, public: true, methods: [
             (key: "general_hospital", available_from: 1925, inputs: [("medicines", 1500), ("services", 300)], outputs: [("hospital_care", 8000)], jobs: [("professional", 300), ("clerk", 150), ("skilled_worker", 100), ("laborer", 400)]),
         ]),
-        // University and research institute: engineers and scientists at the bench. Built as a
-        // public work; the treasury pays the share the law says and the firms' fund the rest
-        // (docs/research.pt-BR.md, "Pesquisa que custa").
+        // University and research institute: engineers and scientists at the bench, with their
+        // instruments and support. Built as a public work; the treasury pays the share the law
+        // says and the firms' fund the rest (docs/research.pt-BR.md, "Pesquisa que custa").
+        // Quantities at productivity 1, like every building (a plant's inputs and output grow
+        // with the productivity of the place, and so does the market wage). Instruments,
+        // materials and services: the part of R&D that is not pay was 33-61 % of gross R&D in
+        // 2021 (personnel 38.6-66.5 % in Eurostat rd_e_gerdcost for Japan, Korea, Poland,
+        // Germany, Spain, Italy; median about 44 % not pay), so 0.79 of the staff's pay, which
+        // is about $8.4 M a level a year at productivity 1 (job weight 2.64 x about $61 a week
+        // per unit of productivity in 1926 and 1955 in the model): 6,600 lots of $1,000. Output:
+        // pay plus instruments, so that the bill (output at the price of research) is the cost.
         (key: "laboratory", group: "services", resource: None, farm: None, public: true, methods: [
-            (key: "research_institute", available_from: 1925, inputs: [("paper", 30), ("electrical_equipment", 30), ("services", 200)], outputs: [("research", 8000)], jobs: [("engineer", 450), ("professional", 350), ("clerk", 100), ("laborer", 100)]),
+            (key: "research_institute", available_from: 1925, inputs: [("electrical_equipment", 2800), ("machinery", 1200), ("tools", 650), ("chemicals", 800), ("paper", 160), ("services", 1100)], outputs: [("research", 15000)], jobs: [("engineer", 450), ("professional", 350), ("clerk", 100), ("laborer", 100)]),
         ]),
         // Urban self-employment: street trade, domestic service, small workshops. Nobody builds
         // it: each month it takes the town's labourers that no plant employs, and shrinks as plants

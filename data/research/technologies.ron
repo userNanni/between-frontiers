@@ -48,7 +48,7 @@
     // head-count research within a year. It is above the source because a laboratory buys a
     // researcher at the same price all century while his real cost rose
     // (docs/research.pt-BR.md, "Por que o calibrado passa da fonte").
-    harder_per_year_bp: 350,
+    harder_per_year_bp: 35,
     technologies: [
         (
             key: "tractor",

@@ -18,7 +18,12 @@ pub const RESEARCH: ResourceId = ResourceId(11);
 /// Research points a year of a thousand literate researchers at the bench makes, before the
 /// duplication of effort. Calibrated so that the leader keeps the dates of the frontier
 /// (`docs/research.pt-BR.md`, "Pesquisa que custa").
-pub const POINTS_PER_EFFORT: Fixed = milli(26_800);
+pub const POINTS_PER_EFFORT: Fixed = milli(42_900);
+
+/// Share of R&D spending that is not pay (instruments, materials, services): what a laboratory
+/// short of its inputs loses at most. Median of the 2021 shares in Eurostat `rd_e_gerdcost`
+/// (personnel 38.6-66.5 % in six countries; `data/economy/buildings.ron`, "laboratory").
+const INSTRUMENT_SHARE: Fixed = milli(440);
 
 /// `effort^(3/4)`: doubling the researchers less than doubles the ideas, because they step on
 /// each other's toes (the duplication of the idea production function, `λ = 3/4` in the
@@ -109,11 +114,19 @@ fn facts(cat: &Catalogue, world: &GameWorld) -> Vec<CountryFacts> {
         // Only the metropole's laboratories count: a colony does not research.
         if let Some(lab) = cat.laboratory.filter(|_| !r.colony) {
             let workers = cat.buildings[usize::from(lab)].methods[0].workers;
+            // A researcher without instruments researches less, by the share of R&D that is
+            // not pay; never nothing (`INSTRUMENT_SHARE`).
             c.research += r
                 .plants
                 .iter()
                 .filter(|p| p.kind == lab)
-                .map(|p| (Fixed::from_int(p.levels * workers) * p.staffing).to_int_floor())
+                .map(|p| {
+                    let missing = Fixed::ONE - p.input_ratio.clamp(Fixed::ZERO, Fixed::ONE);
+                    (Fixed::from_int(p.levels * workers)
+                        * p.staffing
+                        * (Fixed::ONE - INSTRUMENT_SHARE * missing))
+                        .to_int_floor()
+                })
                 .sum::<i64>();
         }
         c.literacy += r.literacy * people;
@@ -155,6 +168,16 @@ impl System<GameWorld> for Research {
         let nt = tree.techs.len();
         let facts = facts(cat, world);
         let world_gdp: Fixed = facts.iter().map(|f| f.gdp).sum::<Fixed>().max(milli(1));
+        // The yardstick of a researcher's quality: the wage of the best-paid economy among those
+        // with at least 1 % of world output (a microstate does not set it).
+        let wages = crate::econ::monthly::market_wages(&world.econ);
+        let world_wage = wages
+            .iter()
+            .zip(&facts)
+            .filter(|(_, f)| f.gdp * 100 >= world_gdp)
+            .map(|(w, _)| *w)
+            .max()
+            .unwrap_or(Fixed::ZERO);
         let unlocks = Unlocks::new(cat, year, Some(tree), &world.research);
 
         // Share of world GDP at or past each stage, by technology.
@@ -221,9 +244,18 @@ impl System<GameWorld> for Research {
             let f = &facts[c];
             let boost = Fixed::ONE + state.effects[c][3] * 2;
             // Research is the researchers the laboratories employ, which the state and the firms
-            // pay for (spending over the skilled wage, as Bloom et al. measure research effort),
-            // not every engineer in the country; literate ones research better.
-            let effort = Fixed::from_ratio(f.research, 1000) * f.literacy;
+            // pay for, counted by quality: each at his country's wage over the best-paid large
+            // economy's, at most one (R&D spending deflated by a common wage is a
+            // quality-adjusted number of researchers, Bloom et al. 2020, p. 1113). Not every
+            // engineer in the country: a poor country's cheap researcher counts for what he
+            // costs.
+            let quality = if world_wage > Fixed::ZERO {
+                (wages.get(c).copied().unwrap_or(Fixed::ZERO) / world_wage)
+                    .clamp(Fixed::ZERO, Fixed::ONE)
+            } else {
+                Fixed::ONE
+            };
+            let effort = Fixed::from_ratio(f.research, 1000) * quality;
             let points = duplicated(effort) * POINTS_PER_EFFORT * boost / 12;
             state.points[c] = points;
             let stages = state.stage[c].clone();

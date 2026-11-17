@@ -590,22 +590,20 @@ fn research_candidates(
         return 0;
     };
     let (firms, state) = research_target(cat, econ, mi, frontier(unlocks, mi));
-    let want = (firms + state) / cat.goods[good as usize].base_price;
+    let _ = good;
+    // A researcher costs what the country pays an engineer this month, plus his instruments at
+    // today's prices: a rich country pays dear, a poor one cheap (`research_level_cost`).
+    let cost = research_level_cost(cat, econ, mi, kind);
+    if cost <= Fixed::ZERO {
+        return 0;
+    }
+    let want = (firms + state) / cost;
     let mut have = Fixed::ZERO;
-    let mut per_level_sum = Fixed::ZERO;
-    let mut n = 0i64;
     let bench: i64 = cat.buildings[kind].methods[0].workers;
     for &ri in regions {
         let r = &econ.regions[ri];
         if r.colony {
             continue;
-        }
-        let per_level = level_output(cat, r, kind, 0);
-        let q = queued(ri, kind);
-        have += yearly_output(cat, r, kind) + per_level * q;
-        if per_level > Fixed::ZERO {
-            per_level_sum += per_level;
-            n += 1;
         }
         let levels = r
             .plants
@@ -613,19 +611,55 @@ fn research_candidates(
             .filter(|p| p.kind as usize == kind)
             .map(|p| p.levels)
             .sum::<i64>()
-            + q;
+            + queued(ri, kind);
+        have += Fixed::from_int(levels);
         let free = super::workers(r.pops[prof::ENGINEER].size + r.pops[prof::PROFESSIONAL].size)
             - levels * bench;
-        if free > 0 && per_level > Fixed::ZERO {
+        if free > 0 {
             cands[RESEARCH].push((Fixed::from_int(free), ri, kind, 0, Fixed::from_int(bench)));
         }
     }
     let gap = want - have;
-    if gap <= Fixed::ZERO || n == 0 {
+    if gap <= Fixed::ZERO {
         return 0;
     }
-    let mean = per_level_sum / n;
-    ((gap / mean.max(milli(1))).to_int_floor() + 1).clamp(0, MAX_PUBLIC_BUILDS as i64) as usize
+    (gap.to_int_floor() + 1).clamp(0, MAX_PUBLIC_BUILDS as i64) as usize
+}
+
+/// What a level of laboratory costs market `mi` in a year at today's prices: its staff at the
+/// country's market wage (weighted by profession, as plants pay) and its instruments at market
+/// prices.
+pub fn research_level_cost(cat: &Catalogue, econ: &Economy, mi: usize, kind: usize) -> Fixed {
+    let m = &econ.markets[mi];
+    let method = &cat.buildings[kind].methods[0];
+    let wage = super::monthly::market_wages(econ)
+        .get(mi)
+        .copied()
+        .unwrap_or(Fixed::ZERO);
+    // The instruments, like any plant's inputs, scale with the productivity of the place:
+    // the population-weighted mean over the metropole.
+    let b = &cat.buildings[kind];
+    let (mut weighted, mut people) = (Fixed::ZERO, 0i64);
+    for r in econ
+        .regions
+        .iter()
+        .filter(|r| r.market as usize == mi && !r.colony)
+    {
+        weighted += super::plant_tfp(r, m, b) * r.population();
+        people += r.population();
+    }
+    let tfp = if people > 0 {
+        weighted / people
+    } else {
+        Fixed::ONE
+    };
+    let instruments: Fixed = method
+        .inputs
+        .iter()
+        .map(|(g, q)| *q * m.price[*g as usize])
+        .sum::<Fixed>()
+        * tfp;
+    (wage * method.job_weight + instruments) * 52
 }
 
 /// Bounds of the fiscal correction.
