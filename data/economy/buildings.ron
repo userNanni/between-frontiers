@@ -356,12 +356,21 @@
             (key: "arsenal", available_from: 1925, inputs: [("aluminium", 400), ("engines", 500), ("electrical_equipment", 80)], outputs: [("military_aircraft", 10500)], jobs: [("laborer", 500), ("skilled_worker", 350), ("engineer", 40), ("clerk", 50), ("manager", 15), ("capitalist", 5)]),
             (key: "mass_production", available_from: 1935, inputs: [("aluminium", 400), ("engines", 500), ("electrical_equipment", 80), ("machinery", 8), ("electricity", 5000)], outputs: [("military_aircraft", 26250)], jobs: [("laborer", 300), ("skilled_worker", 420), ("engineer", 80), ("clerk", 70), ("manager", 20), ("capitalist", 5)]),
         ]),
+        // Capital of a level relative to a coal-fired level: overnight cost per kW (EIA, "Capital
+        // Cost and Performance Characteristic Estimates for Utility Scale Electric Power
+        // Generating Technologies", February 2020, Table 2, 2019 $/kW: ultra-supercritical coal
+        // 3,676; combined cycle 2x2x1 958; advanced nuclear AP1000 6,041; hydroelectric 5,316;
+        // public domain) over a typical capacity factor (coal 0.65, gas combined cycle 0.55,
+        // nuclear 0.90, hydro 0.40; the order of the U.S. fleet's in EIA, Electric Power Monthly,
+        // Table 6.07), times the electricity of a level. An oil-fired steam plant is costed as the
+        // coal one, with no row of its own in the study. The nuclear share that politics capped
+        // after 1979 is not aimed at (docs/economy.pt-BR.md, "Capital por método").
         (key: "power_plant", group: "energy", resource: None, farm: None, methods: [
-            (key: "coal_fired", available_from: 1925, inputs: [("coal", 60000)], outputs: [("electricity", 120000)], jobs: [("laborer", 200), ("skilled_worker", 200), ("engineer", 40), ("clerk", 20), ("manager", 10), ("capitalist", 5)]),
-            (key: "oil_fired", available_from: 1925, inputs: [("fuel", 35000)], outputs: [("electricity", 130000)], jobs: [("laborer", 200), ("skilled_worker", 200), ("engineer", 40), ("clerk", 20), ("manager", 10), ("capitalist", 5)]),
-            (key: "gas_fired", available_from: 1950, inputs: [("natural_gas", 45000)], outputs: [("electricity", 150000)], jobs: [("laborer", 200), ("skilled_worker", 200), ("engineer", 40), ("clerk", 20), ("manager", 10), ("capitalist", 5)]),
-            (key: "hydroelectric", available_from: 1925, inputs: [("machinery", 3)], outputs: [("electricity", 150000)], jobs: [("skilled_worker", 150), ("engineer", 40), ("clerk", 15), ("manager", 8), ("capitalist", 5)]),
-            (key: "nuclear", available_from: 1956, inputs: [("nuclear_fuel", 3000), ("electronic_components", 20)], outputs: [("electricity", 400000)], jobs: [("skilled_worker", 250), ("engineer", 150), ("clerk", 30), ("manager", 15), ("capitalist", 5)]),
+            (key: "coal_fired", available_from: 1925, inputs: [("coal", 60000)], outputs: [("electricity", 120000)], jobs: [("laborer", 200), ("skilled_worker", 200), ("engineer", 40), ("clerk", 20), ("manager", 10), ("capitalist", 5)], capital: Some(1.0)),
+            (key: "oil_fired", available_from: 1925, inputs: [("fuel", 35000)], outputs: [("electricity", 130000)], jobs: [("laborer", 200), ("skilled_worker", 200), ("engineer", 40), ("clerk", 20), ("manager", 10), ("capitalist", 5)], capital: Some(1.083)),
+            (key: "gas_fired", available_from: 1950, inputs: [("natural_gas", 45000)], outputs: [("electricity", 150000)], jobs: [("laborer", 200), ("skilled_worker", 200), ("engineer", 40), ("clerk", 20), ("manager", 10), ("capitalist", 5)], capital: Some(0.385)),
+            (key: "hydroelectric", available_from: 1925, inputs: [("machinery", 3)], outputs: [("electricity", 150000)], jobs: [("skilled_worker", 150), ("engineer", 40), ("clerk", 15), ("manager", 8), ("capitalist", 5)], capital: Some(2.94)),
+            (key: "nuclear", available_from: 1956, inputs: [("nuclear_fuel", 3000), ("electronic_components", 20)], outputs: [("electricity", 400000)], jobs: [("skilled_worker", 250), ("engineer", 150), ("clerk", 30), ("manager", 15), ("capitalist", 5)], capital: Some(3.96)),
         ]),
         // Steam railways and ships of 1925 burned some oil: 11 % of U.S. Class I railway fuel by
         // energy (fuel oil 3,114 M gal against 131.5 M short tons of bituminous coal; Historical
