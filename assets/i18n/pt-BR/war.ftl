@@ -78,3 +78,54 @@ unit-missile_submarine = Submarinos lança-mísseis
 unit-nuclear_warhead = Ogivas nucleares
 unit-satellite = Satélites
 unit-missile_defense = Defesa antimíssil
+
+# Encomendas de forças, na aba Forças.
+orders-title = Encomendas
+orders-rule = As encomendas são pagas na ordem da fila, depois de manter abastecidas as forças que já existem; quando o orçamento militar não basta, elas esperam.
+orders-room = Sobra do orçamento militar nesta semana, depois de abastecer as forças: { $room }
+orders-none = Nenhuma encomenda.
+orders-generation = { $unit }, geração { $generation }
+orders-colonial-unit = { $unit } (colonial)
+orders-delivered = { $done } de { $ordered } entregues
+orders-raising = { $share } dos homens já se apresentaram; o treino vem depois
+orders-building = { $share } do equipamento construído; entram inteiros, no fim
+orders-weeks = entregue { $weeks } semanas depois da encomenda, prevista para { $month } de { $year }
+orders-waiting = { $count ->
+    [one] Esperando folga no orçamento militar há { $weeks } semana
+   *[other] Esperando folga no orçamento militar há { $weeks } semanas
+}
+orders-cancel = Cancelar
+orders-cancel-explain = O que foi construído vai para o depósito; os homens já chamados ficam.
+orders-cancel-yes = Cancelar a encomenda
+orders-keep = Manter
+orders-new = Nova encomenda
+orders-nothing = Nada a encomendar ainda.
+orders-pick = Escolha um tipo para ver quanto custa.
+orders-count = Elementos
+orders-count-tip = Elementos: mil homens em terra, um navio, um avião, uma arma
+orders-amount-men = { $men } homens
+orders-amount-ships = { $count ->
+    [one] { $n } navio
+   *[other] { $n } navios
+}
+orders-amount-aircraft = { $count ->
+    [one] { $n } avião
+   *[other] { $n } aviões
+}
+orders-amount-weapons = { $count ->
+    [one] { $n } arma
+   *[other] { $n } armas
+}
+orders-colonial = Recrutada nas colônias
+orders-cost-build = Para construir, aos preços desta semana
+orders-cost-yearly = Todo ano, depois de pronta
+orders-cost-yearly-share = { $money } ({ $share } do orçamento militar)
+orders-lead = Até entrar em serviço
+orders-lead-land = { $weeks } semanas para os homens se apresentarem, depois { $training } de treino
+orders-lead-build = { $weeks } semanas no estaleiro ou na linha
+orders-confirm = Encomenda grande: { $unit }, { $amount }. Custa { $build } para construir e { $yearly } todo ano depois.
+orders-confirm-yes = Fazer a encomenda
+orders-confirm-no = Voltar
+orders-place = Encomendar
+
+orders-yearly-parts = Por ano: { $pay } de soldo e { $upkeep } de manutenção e desgaste; fica enquanto a força existir.

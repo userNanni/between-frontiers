@@ -2784,3 +2784,105 @@ fn influence_and_bloc_lenses() {
     }
     let _ = std::fs::remove_dir_all(&user);
 }
+
+/// Orders of forces (phase 5, slice A2): Britain two months after ordering a battleship, four
+/// destroyers and six thousand infantry: the queue with what each delivered, a battleship picked
+/// with what it costs to build and every year after, the large order's second click and a
+/// cancellation asked. Portuguese at 1600 × 900, English at 1280 × 720; copies in
+/// `target/screenshots/war/`.
+#[test]
+#[ignore = "needs a GPU (or software Vulkan) and the generated map; run with --ignored"]
+fn force_orders() {
+    use bf_sim::game::GameCommand;
+    use laplace_schelling::calendar::Date;
+    // SAFETY: the screenshot tests run one at a time (`RUST_TEST_THREADS=1`).
+    unsafe { std::env::set_var("BF_FORCES", "1") };
+    let user = std::env::temp_dir().join(format!("bf-shots-orders-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&user);
+    let mut session = advanced_session_of("GBR", Date::new(1925, 1, 2));
+    for (unit, elements) in [("battleship", 1), ("destroyer", 4), ("infantry", 6)] {
+        session.submit(GameCommand::OrderForces {
+            tag: "GBR".into(),
+            unit: unit.into(),
+            elements,
+            colonial: false,
+        });
+    }
+    while session.clock().date < Date::new(1925, 3, 2) {
+        session.sim.step();
+    }
+    let save = write_campaign(&user, &session, "Encomendas", "GBR", &[]);
+    let war_dir = root().join("target/screenshots/war");
+    std::fs::create_dir_all(&war_dir).unwrap();
+    let keep = |name: &str| {
+        let from = out_dir().join(format!("{name}.png"));
+        std::fs::copy(&from, war_dir.join(format!("{name}.png"))).unwrap();
+    };
+    for (locale, size, tag) in [
+        ("pt-BR", egui::vec2(1600.0, 900.0), "pt"),
+        ("en", egui::vec2(1280.0, 720.0), "en-1280"),
+    ] {
+        let en = locale == "en";
+        let mut h = harness_sized(user.join(locale), locale, size);
+        let ctx = h.ctx.clone();
+        h.state_mut().apply(Transition::Game(save.clone()), &ctx);
+        h.run_steps(4);
+        h.key_press(egui::Key::G);
+        h.run_steps(4);
+        h.get_by_label(if en { "Forces" } else { "Forças" }).click();
+        h.run_steps(4);
+        let title = if en { "Orders" } else { "Encomendas" };
+        h.get_by_label(title).scroll_to_me();
+        h.run_steps(4);
+        let name = format!("140-orders-queue-{tag}");
+        shot(&mut h, &name);
+        keep(&name);
+        let ship = || {
+            egui_kittest::kittest::by()
+                .role(egui::accesskit::Role::Button)
+                .label(if en { "Battleships" } else { "Encouraçados" })
+        };
+        h.query_all(ship())
+            .next()
+            .expect("the battleship button")
+            .scroll_to_me();
+        h.run_steps(4);
+        h.query_all(ship()).next().unwrap().click();
+        h.run_steps(4);
+        h.get_by_label(if en { "Order" } else { "Encomendar" })
+            .scroll_to_me();
+        h.run_steps(4);
+        let name = format!("141-orders-battleship-{tag}");
+        shot(&mut h, &name);
+        keep(&name);
+        h.get_by_label(if en { "Order" } else { "Encomendar" })
+            .click();
+        h.run_steps(4);
+        h.get_by_label(if en {
+            "Place the order"
+        } else {
+            "Fazer a encomenda"
+        })
+        .scroll_to_me();
+        h.run_steps(4);
+        let name = format!("142-orders-confirm-{tag}");
+        shot(&mut h, &name);
+        keep(&name);
+        let cancel = || egui_kittest::kittest::by().label(if en { "Cancel" } else { "Cancelar" });
+        h.get_all(cancel()).next().expect("cancel").scroll_to_me();
+        h.run_steps(4);
+        h.get_all(cancel()).next().unwrap().click();
+        h.run_steps(4);
+        h.get_by_label(if en {
+            "Cancel the order"
+        } else {
+            "Cancelar a encomenda"
+        })
+        .scroll_to_me();
+        h.run_steps(4);
+        let name = format!("143-orders-cancel-{tag}");
+        shot(&mut h, &name);
+        keep(&name);
+    }
+    let _ = std::fs::remove_dir_all(&user);
+}
