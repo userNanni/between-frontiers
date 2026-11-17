@@ -823,6 +823,128 @@ pub struct InfluenceSetup {
     pub colonial: Vec<bool>,
 }
 
+/// A dependence channel by name, for the influence window.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum ChannelKind {
+    Credit,
+    Investment,
+    Trade,
+    Protection,
+}
+
+impl ChannelKind {
+    pub const ALL: [ChannelKind; 4] = [
+        ChannelKind::Credit,
+        ChannelKind::Investment,
+        ChannelKind::Trade,
+        ChannelKind::Protection,
+    ];
+}
+
+/// One bar: a channel in one issue.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ChannelLine {
+    pub kind: ChannelKind,
+    /// The channel's value (share of B's GDP), or the front it waits for.
+    pub channel: Channel,
+    /// How much it counts in this issue, per mille (`data/diplomacy/influence.ron`).
+    pub weight: u32,
+    /// `value × weight × affinity factor`, share of B's GDP; zero while dormant.
+    pub part: Fixed,
+}
+
+/// Where A's influence over B in one issue comes from.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct IssueReading {
+    pub issue: Issue,
+    pub channels: [ChannelLine; 4],
+    /// `goodwill × affinity factor`, share of B's GDP (negative after a breach).
+    pub goodwill: Fixed,
+    /// The sum: the influence of A over B in this issue, share of B's GDP.
+    pub influence: Fixed,
+}
+
+/// Everything the influence window shows of A over B.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct PairReading {
+    pub interest: Interest,
+    /// `Issue::ALL` order.
+    pub issues: [IssueReading; Issue::COUNT],
+    /// The term the treaties' valuation takes, reference units, from the map of the last 16th
+    /// (zero for a pair not in it).
+    pub worth: [Fixed; Issue::COUNT],
+}
+
+/// The influence of `a` over `b` (country indices) channel by channel, issue by issue, with the
+/// goodwill held in the world and the given `year` (the date's). The window reads this; the
+/// parts of each issue add up to its influence, a share of B's GDP.
+pub fn channels(
+    world: &GameWorld,
+    setup: &InfluenceSetup,
+    a: usize,
+    b: usize,
+    year: i32,
+) -> PairReading {
+    let rules = &setup.rules;
+    let cultures = setup
+        .table
+        .as_deref()
+        .map(|t| main_cultures(world, t))
+        .unwrap_or_default();
+    let key = (a as u16, b as u16);
+    let i = interest(
+        dependence(world, rules, a, b, year),
+        world
+            .influence
+            .goodwill
+            .get(&key)
+            .copied()
+            .unwrap_or_default(),
+        affinity(
+            world,
+            rules,
+            setup.table.as_deref(),
+            &cultures,
+            &setup.colonial,
+            a,
+            b,
+        ),
+    );
+    let d = i.dependence;
+    let f = i.affinity.factor;
+    let issues = std::array::from_fn(|k| {
+        let issue = Issue::ALL[k];
+        let w = rules.weights(issue);
+        let line = |kind, channel: Channel, weight: u32| ChannelLine {
+            kind,
+            channel,
+            weight,
+            part: channel.value() * milli(weight) * f,
+        };
+        IssueReading {
+            issue,
+            channels: [
+                line(ChannelKind::Credit, d.credit, w.credit),
+                line(ChannelKind::Investment, d.investment, w.investment),
+                line(ChannelKind::Trade, d.trade, w.trade),
+                line(ChannelKind::Protection, d.protection, w.protection),
+            ],
+            goodwill: i.goodwill.0 * f,
+            influence: i.influence[k],
+        }
+    });
+    PairReading {
+        interest: i,
+        issues,
+        worth: world
+            .influence
+            .map
+            .get(&key)
+            .copied()
+            .unwrap_or([Fixed::ZERO; Issue::COUNT]),
+    }
+}
+
 /// The state of the world's influence.
 pub const INFLUENCE: laplace_schelling::schedule::ResourceId =
     laplace_schelling::schedule::ResourceId(15);

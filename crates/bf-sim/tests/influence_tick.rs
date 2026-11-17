@@ -73,3 +73,34 @@ fn a_save_from_before_the_influence_state_loads() {
     assert!(back.influence.is_empty());
     assert_eq!(back, world);
 }
+
+/// The window's reading: each issue's bars add up to its influence; dormant channels stay
+/// dormant with their front, and the worth is the map's.
+#[test]
+fn the_reading_of_a_pair_adds_up_and_names_the_dormant_fronts() {
+    use bf_sim::influence::{Channel, ChannelKind, InfluenceSetup, channels};
+    let s = run(Some(1000));
+    let world = s.world();
+    let (&(a, b), worth) = world.influence.map.iter().next().expect("a war-debt pair");
+    let rules = data().rules();
+    let setup: &InfluenceSetup = rules.influence.as_deref().unwrap();
+    let r = channels(world, setup, usize::from(a), usize::from(b), 1925);
+    assert_eq!(&r.worth, worth);
+    for issue in &r.issues {
+        let sum: laplace_schelling::Fixed = issue
+            .channels
+            .iter()
+            .map(|c| c.part)
+            .sum::<laplace_schelling::Fixed>()
+            + issue.goodwill;
+        let gap = (sum - issue.influence).abs();
+        assert!(gap <= laplace_schelling::Fixed::from_raw(4), "{issue:?}");
+        for c in &issue.channels {
+            match c.kind {
+                ChannelKind::Credit => assert!(matches!(c.channel, Channel::Live(_))),
+                _ => assert!(matches!(c.channel, Channel::Dormant(_))),
+            }
+        }
+    }
+    assert!(r.issues[0].channels[0].part > laplace_schelling::Fixed::ZERO);
+}
