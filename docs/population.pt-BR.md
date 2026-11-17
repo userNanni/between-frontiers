@@ -267,49 +267,56 @@ adulto e alta exponencial com a idade), construída para isso, não copiada de t
 Filhos por mulher (TFR), distribuídos pelas idades de 15 a 49 num perfil fixo (8, 23, 25, 20,
 14, 8 e 2 %):
 
-    nota  = 0,25 × sobrevivência + 0,55 × escolaridade + 0,10 × fora do campo
+    nota  = 0,30 × sobrevivência + 0,57 × escolaridade + 0,03 × fora do campo
           + 0,10 × conforto + 0,17 × contracepção
     T     = suave((nota − 0,45) / (0,90 − 0,45))           (suave(t) = 3t² − 2t³)
     piso  = 1,75 + 0,5 × (1 − contracepção)
-    TFR   = piso + (6,5 − piso) × (1 − T)
+    TFR   = (piso + (6,5 − piso) × (1 − T)) × (1 − 0,5 × fome de terra)
 
 - **Sobrevivência:** a chance de passar dos 5 anos na mortalidade do mês, de 50 % (0) a 98 % (1).
   Os filhos morrem menos, as famílias querem menos filhos; o atraso entre as duas quedas sai da
   escolaridade.
 - **Escolaridade das mães:** a alfabetização do estado seguida com atraso de 20 anos (240 meses):
   a menina na escola hoje é mãe daqui a uma geração.
-- **Fora do campo:** parcela da população fora das profissões rurais (`urban_share`).
+- **Fora do campo:** parcela da população fora das profissões rurais (`urban_share`), com peso
+  pequeno (0,03). A literatura põe a escola das mães e a sobrevivência infantil como causas
+  sustentadas da queda; a urbanização por trabalho informal, sem escola e sem saúde, não derruba a
+  fecundidade (com peso 0,10 ela derrubava a do Brasil e da África cedo demais depois do #69).
 - **Contracepção:** o efeito `fertility` das tecnologias (a pílula) vezes o alcance,
   0,25 + 0,75 × max(escolaridade, cobertura hospitalar): o planejamento familiar chegou pela
   escola e pela rede de saúde (médicos descalços na China, postos na Indonésia e em Bangladesh).
-- **Fome de terra (freio preventivo), desligado:** a regra existe (`LAND_BRAKE`, a fecundidade
-  cai quando a terra por lavrador do estado fica abaixo da de 1925), mas com peso zero. O teto de
-  terra da economia é a lavoura de 1925, não a terra arável; sem fronteira agrícola todo país que
-  cresce "fica sem terra", o Brasil e a Argentina também, e o freio derrubou o mundo de 2025 para
-  5,5 bilhões. Volta quando o teto for a terra potencial. Sem ela a transição para em 2,25 filhos (abstinência,
-  coito interrompido, casamento tardio); com ela, em 1,75.
+  Sem contracepção a transição para em 2,25 filhos (abstinência, coito interrompido, casamento
+  tardio); com ela, em 1,75.
+- **Fome de terra (freio preventivo):** a lavoura que cada lavrador tem, aberta e ainda por abrir
+  na fronteira agrícola (`Region::land` + `Region::frontier`, níveis por mil camponeses e
+  assalariados rurais). Onde ela está abaixo de 20 níveis por mil **e** abaixo da do próprio estado
+  em 1925, a fecundidade cai na proporção do que se perdeu, até a metade. Em 1925: Brasil 140,
+  Argentina 126, Austrália 329, Itália 11, Japão 6, Índia 5, China 4, Egito 0,8. Brasil, Argentina e
+  África têm terra para abrir e não freiam; a Ásia rural freia quando os lavradores crescem. Uma
+  medida só absoluta frearia o Nilo irrigado já em 1925, quando a fecundidade era 6,5; uma só
+  relativa a 1925, sem fronteira, freava todo país que crescia (o mundo de 2025 caía a 5,5 bilhões).
 - **Decomposição:** `DemographyState::fertility_breakdown(econ, mercado, colônia)` dá, por
   território, cada termo com valor, peso e contribuição (`FertilityTerm`), para a tela mostrar
-  "por que nascem tantos aqui". Os termos são a lista `FERTILITY_TERMS`: termo novo entra como
-  mais uma linha ali.
+  "por que nascem tantos aqui"; o `--history-out` grava os termos por território e ano
+  (`fertility_terms`). Os termos são a lista `FERTILITY_TERMS`: termo novo entra como mais uma
+  linha ali.
 
 ### Migração entre países
 
 Código: `crates/bf-sim/src/demography/migration.rs`. Unidade: território (metrópole ou colônias de
-um país). Tudo roda no mês da demografia, em três camadas: o fluxo contínuo, a corrente da
-diáspora e as ondas.
+um país, `TerritoryId`). Tudo roda no mês da demografia, em três camadas: o fluxo contínuo, a
+corrente da diáspora e as ondas.
 
 **Atração** de um destino `j` sobre a gente de `i`:
 
-    atração = brecha × distância × vagas × corrente × família × lei de imigração de j
+    atração = brecha × distância × vagas × corrente × família × lei de imigração de j (até 1000)
     brecha  = min(1, max(renda, terra) + rede)
 
 - **Renda:** PIB por habitante do país a preços-base, repartido entre metrópole e colônias pela
   renda monetária por habitante. Começa a puxar a 1,5 vez a renda da origem; cheia a 4,5 vezes.
-- **Terra:** teto de terra do território (níveis de fazenda) por mil lavradores (camponeses e
-  assalariados rurais). Puxa a partir de 2 vezes a terra por lavrador da origem, cheia a 6 vezes,
-  se o destino não for mais pobre que 0,3 da renda da origem: as fronteiras da Argentina, dos EUA,
-  do Canadá, da Austrália.
+- **Terra:** lavoura aberta e por abrir por mil lavradores. Puxa a partir de 2 vezes a da origem,
+  cheia a 22 vezes, se o destino não for mais pobre que 0,2 da renda da origem: as fronteiras das
+  Américas e da Austrália.
 - **Rede:** a diáspora puxa sozinha (cartas, passagem paga, emprego esperando): até 0,5 de
   brecha, para destino com pelo menos 0,20 da renda da origem. É o que leva italiano e português
   a um Brasil mais pobre que a Itália e que Portugal.
@@ -318,8 +325,7 @@ diáspora e as ondas.
 - **Corrente:** 0,2 numa estrada sem ninguém do outro lado; sobe até ×4 quando a diáspora chega
   a 5 % da população da **origem** (quantas famílias têm alguém naquela estrada). Sem rede, pouca
   gente vai (teoria das redes de migração); com ela, a estrada se mantém. Medida contra a origem,
-  a rede não nasce sozinha do fluxo contínuo de um país enorme (a China não "funda" uma corrente
-  para a Alemanha com algumas dezenas de milhares).
+  a rede não nasce sozinha do fluxo contínuo de um país enorme.
 - **Minorias com estrada própria** (`DemographyState::homes`): uma cultura que vive fora da pátria
   e não é a maior do seu território de origem (levantinos nas colônias francesas, armênios e
   ucranianos na URSS, galegos e catalães na Espanha, guzerates e punjabis na Índia) tem o próprio
@@ -334,43 +340,46 @@ diáspora e as ondas.
 de emigração (até 1000) e o empurrão do desemprego no campo (1 + parcela ociosa). Em cada
 estrada fica quem pode pagar a passagem: 1 − (1 − própria) × (1 − pré-paga) × (1 − paga pela lei),
 com a própria = 0,05 + 0,95 × alfabetização², a pré-paga = diáspora da estrada contra 5 % da
-origem (parentes e contratadores mandavam a passagem) e a paga pela lei abaixo. Os emigrantes se repartem pelos destinos pela atração
-vezes a população; nenhum destino recebe mais de 4 por mil ao ano.
+origem (parentes e contratadores mandavam a passagem) e a paga pela lei abaixo. Os emigrantes se
+repartem pelos destinos pela atração vezes a população; nenhum destino recebe do fluxo contínuo
+mais de 2 500 por milhão ao ano (o Brasil e os EUA receberam perto de 2 400 e 2 600 nos anos 1920).
 
 **Ondas.** A pressão de saída de uma origem soma a parcela ociosa do campo, a fome (1 − necessidades
 básicas atendidas) e metade da melhor atração. Quando passa de 0,6 e a origem não tem onda, abre
 uma para o destino de maior atração × tamanho (relativo à origem), entre os que têm atração de
-0,25 ou mais, porta aberta e vagas (operários empregados ≥ 0,5). Por mês a onda leva até 3 por mil
-ao ano da origem, vezes a força da pressão, quem pode pagar e a atração; o destino recebe de ondas
-no máximo 8 por mil ao ano. A onda fecha, com motivo registrado, quando:
+0,25 ou mais, porta aberta, vagas (operários empregados ≥ 0,5) e estrada aberta: pioneiros
+(diáspora de pelo menos 0,3 da corrente cheia) ou um programa dos dois governos. Por mês a onda
+leva até 1 por mil ao ano da origem, vezes a força da pressão, quem pode pagar e a atração; o
+destino recebe de ondas no máximo 3 por mil ao ano. A onda fecha, com motivo registrado, quando:
 
 | Motivo (`WaveEnd`) | Condição |
 |---|---|
-| `DoorClosed` | a lei de imigração do destino ou a de emigração da origem cai abaixo de 500 ‰ |
+| `DoorClosed` | a lei de imigração do destino ou a de emigração da origem cai abaixo de 1000 ‰ (cota, emigração regulada) |
 | `PressureEased` | a pressão cai abaixo de 0,35 |
 | `Full` | as vagas do destino caem abaixo de 0,5 |
 | `NoPull` | a atração cai abaixo de 0,125 |
 
-A onda só abre numa estrada já aberta: com pioneiros (diáspora de pelo menos 0,1 da corrente
-cheia) ou com passagem paga por lei. O motivo da abertura (`Push`) é o maior termo da pressão: terra (`Land`), fome (`Hunger`) ou
-renda lá fora (`Poverty`). `DemographyState::waves` guarda as abertas e `waves_ended` as
-fechadas; o placar lista as maiores ("Ondas de migração").
+O motivo da abertura (`Push`) é o maior termo da pressão: terra (`Land`), fome (`Hunger`) ou renda
+lá fora (`Poverty`). `DemographyState::waves` guarda as abertas e `waves_ended` as fechadas; o
+placar lista as maiores ("Ondas de migração").
 
 **Passagem paga pela lei.** Valor da lei acima de 1000 é a parcela da passagem que o Estado paga
 (`subsidy`): `subsidized_immigration` (2000, destino) e `sponsored_emigration` (2000, origem).
-O subsídio do destino só paga quem vem de origem com emigração livre ou patrocinada
+O subsídio do destino só paga a passagem de quem vem de origem com emigração livre ou patrocinada
 (`regulated_emigration`, 700, a Itália de 1925: o rei proibiu a emigração subsidiada para o
-Brasil). O patrocínio da origem só vale para destino que também subsidia, e só para a metrópole
-(um programa de colonização dos dois governos: o Japão e o Brasil a partir de 1925); ele recruta
-como 0,3 de uma corrente cheia. A passagem paga encurta a distância na mesma proporção. Em 1925:
-o Brasil subsidia (lavoura paulista), o Japão patrocina, a Itália regula (fontes em
+Brasil); não recruta ninguém nem encurta a distância (a distância também é notícia e contato, que
+uma passagem não traz). Um programa de colonização dos dois governos (a origem patrocina e o
+destino subsidia, só para a metrópole: o Japão e o Brasil a partir de 1925) recruta como 0,05 de uma
+corrente cheia, abre estrada para onda e encurta a distância pela metade. Em 1925: o Brasil
+subsidia (lavoura paulista), o Japão patrocina, a Itália regula (fontes em
 `data/scenario/1925/laws.ron`); a referência dá a cota brasileira de 1934.
 
-**Porta.** Cotas (300 ‰) fecham a porta para ondas, não para o fluxo contínuo, que passa reduzido.
-Quando a porta de um destino fecha, a onda termina com `DoorClosed` e a próxima abre para o melhor
-destino aberto: é o desvio de destino (EUA fecham → Brasil e Argentina). As leis vêm do estado
-político (`Demography::migration_laws`, efeitos `immigration` e `emigration`); quando a política
-mudar as leis no meio da partida, as ondas reagem no mês seguinte.
+**Porta.** Cotas (300 ‰) e emigração regulada fecham a porta para ondas, não para o fluxo contínuo,
+que passa reduzido. Quando a porta de um destino fecha, a onda termina com `DoorClosed` e a próxima
+abre para o melhor destino aberto: é o desvio de destino (EUA fecham → Brasil e Argentina). As leis
+vêm do estado político (`Demography::migration_laws`, efeitos `immigration` e `emigration`); quando
+a política muda as leis (o `nativism` fecha, o `immigration_reform` abre), as ondas reagem no mês
+seguinte.
 
 **Diáspora.** `DemographyState::diaspora`: pessoas por origem, destino e cultura (`Diaspora`), com
 `people` (chegados e descendentes, crescendo com nascimentos e mortes do destino) e `arrived`
@@ -406,14 +415,22 @@ cidades (na proporção da população urbana dos estados). Na pirâmide, idades
   profissão. A diáspora guarda origem e cultura até as comunidades entrarem nos pops.
 - **Exclusão racial e refugiados.** A exclusão racial é lei dirigida e não pesa enquanto o
   migrante não carrega comunidade; não há refugiado (sem guerra).
-- **Fronteira agrícola.** O freio por fome de terra espera o teto de terra arável (thread da
-  economia).
+- **Ensino e saúde coloniais.** As colônias se alfabetizam no ritmo da metrópole (colônias
+  britânicas 0,79 em 1985, real 0,57) e recebem o remédio e a pílula com a força da metrópole,
+  porque os efeitos de pesquisa são por mercado e a colônia divide o mercado (expectativa de vida
+  78 em 1985 contra 54 reais). Daí a transição cedo demais depois de 1975 na Ásia do Sul e na
+  África (placar em `history.pt-BR.md`, "Placar com a demografia"). É entrada da economia e da
+  política (trabalho de ensino e orçamento coloniais), não parâmetro da demografia; a demografia
+  se recalibra depois que ele entrar.
+- **Pioneiro.** A fronteira agrícola (#77) só abre pela fazenda comercial; o lavrador que abre terra
+  para si (e com ela o freio por fome de terra fora da Ásia) vem com o efeito `frontier_access`.
 - **Planejamento familiar como lei.** Hoje a causa é a rede de saúde; quando a política tiver
   quem peça, vira lei (programa voluntário, programa de Estado, limite coercitivo como o filho
   único).
 - **Datas das leis de migração.** As mudanças da referência (o fim do subsídio paulista por volta
   de 1930, a cota brasileira de 1934, a restrição fascista de 1927, a guerra civil espanhola) só
-  acontecem se um movimento da política as fizer; na rodada, o Brasil subsidia até 1994.
+  acontecem se um movimento da política as fizer; na rodada de 100 anos o `nativism` tira o
+  subsídio brasileiro em 1976 e põe cotas em 1981, e os EUA não saem das cotas de 1924.
 - **Ondas de minorias.** As minorias têm fluxo contínuo próprio, não ondas.
 - **Natalidade por classe (próximo PR).** Hoje os nascimentos do estado vão às profissões na
   proporção do tamanho (`distribute`). Desenho: cada pop com o seu TFR, pelos mesmos termos
