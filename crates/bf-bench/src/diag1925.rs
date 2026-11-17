@@ -546,6 +546,289 @@ pub fn main() -> Result<(), String> {
         }
         return Ok(());
     }
+    // Colonies against poor sovereigns: plant value added per head split into market jobs per
+    // head, the catalogue's value added per job (the plant mix), base productivity and
+    // technology, every 10 years.
+    if std::env::var_os("BF_DIAG_COLONIES").is_some() {
+        let units: [(&str, bool); 17] = [
+            ("GBR", true),
+            ("FRA", true),
+            ("POR", true),
+            ("USA", true),
+            ("BEL", true),
+            ("NLD", true),
+            ("JAP", true),
+            ("RAJ", false),
+            ("EGY", false),
+            ("BRA", false),
+            ("CHN", false),
+            ("TUR", false),
+            ("SIA", false),
+            ("GBR", false),
+            ("NLD", false),
+            ("ESP", false),
+            ("ESP", true),
+        ];
+        let last: i32 = std::env::var("BF_DIAG_UNTIL")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(2025);
+        let mut y = 1926;
+        while y <= last + 1 {
+            s.sim.run_until(Date::new(y, 1, 2));
+            force(&mut s, &forced, y);
+            let e = &s.world().econ;
+            println!("{}:", y - 1);
+            for (tag, colony) in units {
+                let Some(mi) = tags.iter().position(|t| *t == tag) else {
+                    continue;
+                };
+                let m = &e.markets[mi];
+                let (mut va, mut v0, mut vb, mut w, mut pop, mut t0) =
+                    (0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+                for r in e
+                    .regions
+                    .iter()
+                    .filter(|r| r.market as usize == mi && r.colony == colony)
+                {
+                    pop += r.population() as f64;
+                    t0 += r.tfp_start.to_f64_lossy() * r.population() as f64;
+                    for p in &r.plants {
+                        let b = &cat.buildings[p.kind as usize];
+                        let me = &b.methods[p.method as usize];
+                        let run = p.levels as f64
+                            * p.staffing.to_f64_lossy()
+                            * p.utilization.to_f64_lossy();
+                        let at1 =
+                            me.value_added(|g| cat.goods[g].base_price).to_f64_lossy() * run * 52.0;
+                        v0 += at1;
+                        vb += at1 * r.tfp_for(b).to_f64_lossy();
+                        va += at1 * plant_tfp(r, m, b).to_f64_lossy();
+                        w += me.workers as f64 * p.levels as f64 * p.staffing.to_f64_lossy();
+                    }
+                }
+                if std::env::var_os("BF_DIAG_MIX").is_some() {
+                    let mut by: std::collections::BTreeMap<String, (f64, f64)> = Default::default();
+                    for r in e
+                        .regions
+                        .iter()
+                        .filter(|r| r.market as usize == mi && r.colony == colony)
+                    {
+                        for p in &r.plants {
+                            let b = &cat.buildings[p.kind as usize];
+                            let me = &b.methods[p.method as usize];
+                            let st = p.levels as f64 * p.staffing.to_f64_lossy();
+                            let x = by.entry(b.key.clone()).or_default();
+                            x.0 += me.workers as f64 * st;
+                            x.1 += me.value_added(|g| cat.goods[g].base_price).to_f64_lossy()
+                                * st
+                                * p.utilization.to_f64_lossy()
+                                * 52.0;
+                        }
+                    }
+                    let mut v: Vec<_> = by.into_iter().collect();
+                    v.sort_by(|a, b| b.1.1.total_cmp(&a.1.1));
+                    let line: Vec<String> = v
+                        .iter()
+                        .take(8)
+                        .map(|(k, (w2, x))| {
+                            format!(
+                                "{k} va {:.0}% jobs {:.0}% @1 {:.0}",
+                                x / v0.max(1.0) * 100.0,
+                                w2 / w.max(1.0) * 100.0,
+                                x / w2.max(1.0)
+                            )
+                        })
+                        .collect();
+                    println!("    {}", line.join("; "));
+                }
+                if std::env::var_os("BF_DIAG_USE").is_some() && tag == "NLD" {
+                    // Kinds with the most levels: levels, utilization, staffing, input ratio,
+                    // share of levels on the newest method the block runs, losing weeks.
+                    let mut by: std::collections::BTreeMap<String, [f64; 6]> = Default::default();
+                    for r in e
+                        .regions
+                        .iter()
+                        .filter(|r| r.market as usize == mi && r.colony == colony)
+                    {
+                        for p in &r.plants {
+                            let b = &cat.buildings[p.kind as usize];
+                            if b.public || b.informal {
+                                continue;
+                            }
+                            let l = p.levels as f64;
+                            let x = by.entry(b.key.clone()).or_default();
+                            x[0] += l;
+                            x[1] += l * p.utilization.to_f64_lossy();
+                            x[2] += l * p.staffing.to_f64_lossy();
+                            x[3] += l * p.input_ratio.to_f64_lossy();
+                            x[4] += l * f64::from(p.method);
+                            x[5] += l * f64::from(p.losing_weeks);
+                        }
+                    }
+                    let mut v: Vec<_> = by.into_iter().collect();
+                    v.sort_by(|a, b| b.1[0].total_cmp(&a.1[0]));
+                    for (k, x) in v.iter().take(12) {
+                        let l = x[0].max(1.0);
+                        println!(
+                            "    use {k:<22} levels {:>8.0} util {:.2} staff {:.2} inputs {:.2} method {:.1} losing {:.1}",
+                            x[0],
+                            x[1] / l,
+                            x[2] / l,
+                            x[3] / l,
+                            x[4] / l,
+                            x[5] / l
+                        );
+                    }
+                }
+                if std::env::var_os("BF_DIAG_SITES").is_some() && tag == "NLD" && !colony {
+                    use bf_sim::econ::{monthly, prof, workers};
+                    let cat: &bf_sim::econ::Catalogue = &cat;
+                    let w = s.world();
+                    let tree = data.tree.as_deref();
+                    let unlocks = bf_sim::econ::Unlocks::new(cat, y - 1, tree, &w.research);
+                    let national =
+                        bf_sim::econ::local::national(cat, tree, &w.research, e.markets.len());
+                    let wage = monthly::market_wages(e)[mi];
+                    let rs: Vec<_> = e
+                        .regions
+                        .iter()
+                        .filter(|r| r.market as usize == mi && !r.colony)
+                        .collect();
+                    let idle: i64 = rs
+                        .iter()
+                        .map(|r| {
+                            let i =
+                                |pi: usize| (workers(r.pops[pi].size) - r.pops[pi].employed).max(0);
+                            let inf: i64 = cat.informal.map_or(0, |k| {
+                                r.plants
+                                    .iter()
+                                    .filter(|p| p.kind == k)
+                                    .map(|p| {
+                                        p.levels * cat.buildings[k as usize].methods[0].workers
+                                    })
+                                    .sum()
+                            });
+                            i(prof::PEASANT) + i(prof::LABORER) + inf
+                        })
+                        .sum();
+                    println!(
+                        "    sites NLD: idle hands {:.2} M, hurdle {:.3}, wage/wk {:.0}, pool {:.1}% of GDP",
+                        idle as f64 / 1e6,
+                        monthly::hurdle(m).to_f64_lossy(),
+                        wage.to_f64_lossy(),
+                        m.pool.to_f64_lossy() / m.gdp_last_year.to_f64_lossy().max(1.0) * 100.0
+                    );
+                    let r = rs.iter().max_by_key(|r| r.population()).unwrap();
+                    let view = bf_sim::econ::local::View::last_week(cat, m, r, &national[mi]);
+                    for key in [
+                        "machinery_plant",
+                        "pharmaceutical_plant",
+                        "electronics_plant",
+                        "construction_sector",
+                        "chemical_plant",
+                        "steel_mill",
+                    ] {
+                        let Some(kind) = cat.building(key) else {
+                            continue;
+                        };
+                        let b = &cat.buildings[kind];
+                        let (mut used, mut built) = (0.0, 0.0);
+                        for r2 in &rs {
+                            for p in r2.plants.iter().filter(|p| p.kind as usize == kind) {
+                                used += p.levels as f64 * p.utilization.to_f64_lossy();
+                                built += p.levels as f64;
+                            }
+                        }
+                        let tfp = bf_sim::econ::plant_tfp(r, m, b);
+                        let best = monthly::best_method(
+                            cat,
+                            kind,
+                            &unlocks,
+                            (mi, false),
+                            &view.price,
+                            &view.buy,
+                            tfp,
+                            wage,
+                        );
+                        let line = match best {
+                            Some((mt, profit)) => {
+                                let cap = monthly::level_capital(cat, kind, 0, tfp);
+                                let me = &b.methods[mt as usize];
+                                let worst = me
+                                    .inputs
+                                    .iter()
+                                    .map(|(g, _)| {
+                                        (
+                                            view.buy[*g as usize].to_f64_lossy(),
+                                            (m.price[*g as usize]
+                                                / cat.goods[*g as usize].base_price)
+                                                .to_f64_lossy(),
+                                            cat.goods[*g as usize].key.clone(),
+                                        )
+                                    })
+                                    .min_by(|a, b| a.0.total_cmp(&b.0));
+                                let out = me.outputs.first().map_or(0.0, |(g, _)| {
+                                    (m.price[*g as usize] / cat.goods[*g as usize].base_price)
+                                        .to_f64_lossy()
+                                });
+                                format!(
+                                    "method {mt} return {:.3} (va {:.0} wages {:.0}/wk per level) out price x{out:.2}, scarcest input {:?}",
+                                    (profit * 52
+                                        / cap.max(laplace_schelling::Fixed::from_ratio(1, 1000)))
+                                    .to_f64_lossy(),
+                                    (me.value_added(|g| view.price[g]) * tfp).to_f64_lossy(),
+                                    (wage * me.workers).to_f64_lossy(),
+                                    worst
+                                )
+                            }
+                            None => "no method (inputs short or locked)".to_string(),
+                        };
+                        println!(
+                            "    site {key:<22} levels {built:>6.0} use {:.2} {line}",
+                            used / built.max(1.0)
+                        );
+                    }
+                }
+                if !colony {
+                    let w = s.world();
+                    let st = w.research.stages(mi, false).cloned().unwrap_or_default();
+                    let ind = st
+                        .iter()
+                        .filter(|x| **x >= bf_sim::research::Stage::Industrial)
+                        .count();
+                    let dif = st
+                        .iter()
+                        .filter(|x| **x >= bf_sim::research::Stage::Diffused)
+                        .count();
+                    let col = w.research.stages(mi, true).map_or(0, |c| {
+                        c.iter()
+                            .filter(|x| **x >= bf_sim::research::Stage::Industrial)
+                            .count()
+                    });
+                    println!(
+                        "    research {tag}: points/month {:.2}, industrial {ind}, diffused {dif}, colonies industrial {col}",
+                        w.research.points.get(mi).map_or(0.0, |p| p.to_f64_lossy())
+                    );
+                }
+                let wages = bf_sim::econ::monthly::block_wages(e)[mi];
+                println!(
+                    "  {tag}{} wage/yr {:>6.0} (metropole {:>6.0}) va/head {:>6.0} jobs/head {:>5.1}% va/job@1 {:>6.0} base {:.2} (1925 {:.2}) tech {:.2}",
+                    if colony { "/col" } else { "    " },
+                    wages[usize::from(colony)].to_f64_lossy() * 52.0,
+                    wages[0].to_f64_lossy() * 52.0,
+                    va / pop.max(1.0),
+                    w / pop.max(1.0) * 100.0,
+                    v0 / w.max(1.0),
+                    vb / v0.max(1.0),
+                    t0 / pop.max(1.0),
+                    va / vb.max(1.0)
+                );
+            }
+            y += 10;
+        }
+        return Ok(());
+    }
     // Productivity by decade for a few countries: base (regions) and technology (by group).
     if std::env::var_os("BF_DIAG_TFP").is_some() {
         let groups = bf_sim::economy::BUILDING_GROUPS;

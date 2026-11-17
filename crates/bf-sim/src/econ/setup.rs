@@ -1074,6 +1074,7 @@ pub fn build(cat: &Catalogue, inp: &Inputs) -> Economy {
             gdp_running: Fixed::ZERO,
             gdp_last_year: fx(target_gdp),
             tech_tfp: Vec::new(),
+            colony_tech_tfp: Vec::new(),
             gov_workers: 0,
             queue: Vec::new(),
             laws: Default::default(),

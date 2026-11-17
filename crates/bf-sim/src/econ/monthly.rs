@@ -365,11 +365,12 @@ pub fn level_capital(cat: &Catalogue, kind: usize, method: usize, tfp: Fixed) ->
     base_value_added(cat, kind, method) * tfp * (52 * CAPITAL_YEARS)
 }
 
-/// Average weekly pay of a worker in each market: what a method that needs fewer hands saves.
-pub fn market_wages(econ: &crate::econ::Economy) -> Vec<Fixed> {
-    let mut pay = vec![Fixed::ZERO; econ.markets.len()];
-    let mut hands = vec![0i64; econ.markets.len()];
+/// Pay and hands of the employed workers in each block of each market, `[metropole, colonies]`.
+fn wage_sums(econ: &crate::econ::Economy) -> Vec<([Fixed; 2], [i64; 2])> {
+    let mut out = vec![([Fixed::ZERO; 2], [0i64; 2]); econ.markets.len()];
     for r in &econ.regions {
+        let (pay, hands) = &mut out[r.market as usize];
+        let bi = usize::from(r.colony);
         for (pi, p) in r.pops.iter().enumerate() {
             if matches!(
                 pi,
@@ -382,13 +383,38 @@ pub fn market_wages(econ: &crate::econ::Economy) -> Vec<Fixed> {
             {
                 continue;
             }
-            pay[r.market as usize] += p.income;
-            hands[r.market as usize] += p.employed;
+            pay[bi] += p.income;
+            hands[bi] += p.employed;
         }
     }
-    pay.iter()
-        .zip(hands)
-        .map(|(p, h)| if h > 0 { *p / h } else { Fixed::ZERO })
+    out
+}
+
+fn average(pay: Fixed, hands: i64) -> Fixed {
+    if hands > 0 { pay / hands } else { Fixed::ZERO }
+}
+
+/// Average weekly pay of a worker in each market, metropole and colonies together: what a
+/// method that needs fewer hands saves, and what the state pays its servants by.
+pub fn market_wages(econ: &crate::econ::Economy) -> Vec<Fixed> {
+    wage_sums(econ)
+        .iter()
+        .map(|(p, h)| average(p[0] + p[1], h[0] + h[1]))
+        .collect()
+}
+
+/// Average weekly pay of a worker in each block of each market, `[metropole, colonies]`; a block
+/// with nobody employed takes the market's average. Read only by diagnostics for now: pricing a
+/// colony's labour at its own wage in the choice of method and investment sends the country's
+/// fund to the colonies, which history did not see, and waits for the foreign capital rules
+/// (`docs/economy.pt-BR.md`, "Colônias: salário e técnica").
+pub fn block_wages(econ: &crate::econ::Economy) -> Vec<[Fixed; 2]> {
+    wage_sums(econ)
+        .iter()
+        .map(|(p, h)| {
+            let all = average(p[0] + p[1], h[0] + h[1]);
+            [0, 1].map(|b| if h[b] > 0 { p[b] / h[b] } else { all })
+        })
         .collect()
 }
 
@@ -400,7 +426,7 @@ pub fn best_method(
     cat: &Catalogue,
     kind: usize,
     unlocks: &Unlocks<'_>,
-    country: usize,
+    (country, colony): (usize, bool),
     price: &[Fixed],
     buy: &[Fixed],
     tfp: Fixed,
@@ -409,7 +435,7 @@ pub fn best_method(
     let b = &cat.buildings[kind];
     let mut best: Option<(u8, Fixed)> = None;
     for (mi, m) in b.methods.iter().enumerate() {
-        if !unlocks.method(cat, country, kind, mi) {
+        if !unlocks.method(cat, country, colony, kind, mi) {
             continue;
         }
         // A method whose inputs the market cannot supply is not an option.
@@ -521,19 +547,22 @@ impl System<GameWorld> for Investment {
         // Utilization of each building across its market: nobody adds levels of a kind the
         // market already leaves idle. Levels under construction count as idle.
         let nk = cat.buildings.len();
-        let mut used = vec![vec![Fixed::ZERO; nk]; econ.markets.len()];
-        let mut built = vec![vec![Fixed::ZERO; nk]; econ.markets.len()];
+        // Measured in the block (metropole or colonies) the plant would go to: a colony's plants,
+        // on the methods its own stage allows, neither hold back nor push the metropole's.
+        let block = |r: &crate::econ::Region| r.market as usize * 2 + usize::from(r.colony);
+        let mut used = vec![vec![Fixed::ZERO; nk]; econ.markets.len() * 2];
+        let mut built = vec![vec![Fixed::ZERO; nk]; econ.markets.len() * 2];
         for r in &econ.regions {
             for p in &r.plants {
                 let levels = Fixed::from_int(p.levels);
-                used[r.market as usize][p.kind as usize] += levels * p.utilization;
-                built[r.market as usize][p.kind as usize] += levels;
+                used[block(r)][p.kind as usize] += levels * p.utilization;
+                built[block(r)][p.kind as usize] += levels;
             }
         }
         let mut queued: Vec<Vec<(u16, i64)>> = vec![Vec::new(); econ.regions.len()];
-        for (mi, m) in econ.markets.iter().enumerate() {
+        for m in &econ.markets {
             for p in &m.queue {
-                built[mi][p.kind as usize] += Fixed::ONE;
+                built[block(&econ.regions[p.region as usize])][p.kind as usize] += Fixed::ONE;
                 let q = &mut queued[p.region as usize];
                 match q.iter_mut().find(|(k, _)| *k == p.kind) {
                     Some(e) => e.1 += 1,
@@ -592,7 +621,7 @@ impl System<GameWorld> for Investment {
                     let busy_here = match local {
                         Some(_) => current
                             .is_none_or(|p| p.levels <= 0 || p.utilization >= BUSY_UTILIZATION),
-                        None => busy[r.market as usize][kind],
+                        None => busy[block(r)][kind],
                     };
                     if !busy_here {
                         continue;
@@ -623,7 +652,7 @@ impl System<GameWorld> for Investment {
                         cat,
                         kind,
                         &unlocks,
-                        r.market as usize,
+                        (r.market as usize, r.colony),
                         &view.price,
                         &view.buy,
                         plant_tfp(r, m, b),

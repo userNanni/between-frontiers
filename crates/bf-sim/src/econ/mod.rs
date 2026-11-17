@@ -179,10 +179,17 @@ impl<'a> Unlocks<'a> {
         }
     }
 
-    /// Whether `country` may build `building` with `method`.
-    pub fn method(&self, cat: &Catalogue, country: usize, building: usize, method: usize) -> bool {
+    /// Whether `country` (its colonies, if `colony`) may build `building` with `method`.
+    pub fn method(
+        &self,
+        cat: &Catalogue,
+        country: usize,
+        colony: bool,
+        building: usize,
+        method: usize,
+    ) -> bool {
         match self.tech {
-            Some((t, r)) => r.can_build(t, country, building, method),
+            Some((t, r)) => r.can_build(t, country, colony, building, method),
             None => cat.buildings[building].methods[method].available_from <= self.year,
         }
     }
@@ -191,7 +198,7 @@ impl<'a> Unlocks<'a> {
 /// Productivity of a plant of building `b` in region `r` of market `m`.
 pub fn plant_tfp(r: &Region, m: &Market, b: &Building) -> Fixed {
     r.tfp_for(b)
-        * m.tech_tfp
+        * m.tech(r.colony)
             .get(usize::from(b.group_ix))
             .copied()
             .unwrap_or(Fixed::ONE)

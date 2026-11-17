@@ -295,7 +295,7 @@ fn market_works(
         }
         let Some(method) = (0..b.methods.len())
             .rev()
-            .find(|&mi2| unlocks.method(cat, mi, kind, mi2))
+            .find(|&mi2| unlocks.method(cat, mi, false, kind, mi2))
         else {
             continue;
         };

@@ -68,7 +68,7 @@ inteiro. As duas se calculam na hora da operação, do estado salvo, sem sorteio
 | Pedidos de lei pendentes, registro de mudanças | `pending`, `changes` | intocados; o registro de fronteiras é próprio |
 | Contexto de imposto | `PoliticsState::taxes` | país novo copia; refeito no mês |
 | Lugares de personagem | `leaders`, `MovementState::leader` | vazios até a fase 7 |
-| Pesquisa | `ResearchState::stage`, `progress`, `focus`, `points`, `effects` | país novo herda (decisão 6); `firsts` é mundial e não muda |
+| Pesquisa | `ResearchState::stage`, `progress`, `focus`, `points`, `effects`, `colony_stage`, `colony_progress` | país novo herda (decisão 6; de colônias, o estágio colonial); `firsts` é mundial e não muda |
 | Linha de país | `GameWorld::countries` (`CountryState`) | etiqueta nova; os números de 1925 do cenário ficam zerados |
 | Escolha do jogador | `GameWorld::player` | decisão 4 |
 | Série anual | `Economy::history` (`YearRecord` por mercado) | intocada; o país novo começa a sua no ano seguinte |
@@ -312,7 +312,10 @@ Propostas, aguardando o dono. A parte B só começa depois da resposta.
    a Protótipo, salvo as técnicas usadas por plantas que existem nos seus estados**, que ficam no
    estágio do antigo dono (a técnica vai com a fábrica e com a escola, não com a bandeira). Copiar
    tudo faria a Índia de 1947 industrializar o que só a Grã-Bretanha fazia. Teste: país novo sem
-   planta química não constrói química no dia seguinte. Custo: uma regra de cópia.
+   planta química não constrói química no dia seguinte. Custo: uma regra de cópia. Desde o
+   estágio colonial (`research.pt-BR.md`, "Colônias"), a secessão de colônias parte de
+   `ResearchState::stages(antigo dono, true)`, que já é o que a colônia usava, e aplica o teto por
+   cima.
 
 ## 7. O que a interface vai precisar ler
 

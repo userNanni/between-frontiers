@@ -271,8 +271,8 @@ pub(crate) fn plant_run<'c>(
 /// Grain smallholders bring to market: a sixth of what they eat, rising to half as farming
 /// technology (seed, fertilizer, machines) improves. The region's own catch-up in productivity
 /// (institutions, schooling) does not make a smallholder's plot yield more.
-pub fn peasant_surplus(m: &Market, staple: Fixed) -> Fixed {
-    let agri = m.tech_tfp.first().copied().unwrap_or(Fixed::ONE);
+pub fn peasant_surplus(m: &Market, colony: bool, staple: Fixed) -> Fixed {
+    let agri = m.farm_tech(colony);
     let gain = (agri - Fixed::ONE).clamp(Fixed::ZERO, Fixed::ONE);
     staple * (milli(160) + gain * milli(340))
 }
@@ -295,7 +295,7 @@ pub fn short_of_land(cat: &Catalogue, r: &Region, m: &Market) -> bool {
 
 /// Staples the jobless would grow with land enough, and what the free open land can grow.
 fn subsistence_and_land(cat: &Catalogue, r: &Region, m: &Market) -> (Fixed, Fixed) {
-    let agri = m.tech_tfp.first().copied().unwrap_or(Fixed::ONE);
+    let agri = m.farm_tech(r.colony);
     let gain = Fixed::ONE + (agri - Fixed::ONE).max(Fixed::ZERO) * milli(500);
     let wanted = r.subsistence.mul_ratio(unemployed_people(r), 1000) * gain;
     if cat.staple_farms.is_empty() {
@@ -363,7 +363,7 @@ fn region_orders(
     }
     let staple = subsistence_food(cat, r, m);
     if let Some(grain) = cat.grain {
-        supply[grain as usize] += peasant_surplus(m, staple);
+        supply[grain as usize] += peasant_surplus(m, r.colony, staple);
     }
     let total = r.population().max(1);
     let mixes = NeedMixes::new(cat, &view.price, exists);
@@ -575,7 +575,7 @@ fn settle_region(
     // Smallholders sell what they grow beyond their own table.
     let staple = subsistence_food(cat, r, m);
     if let Some(grain) = cat.grain {
-        let surplus = peasant_surplus(m, staple);
+        let surplus = peasant_surplus(m, r.colony, staple);
         let sold = surplus * v.sell[grain as usize] * v.price[grain as usize];
         wages[prof::PEASANT] += sold;
         gdp += sold;

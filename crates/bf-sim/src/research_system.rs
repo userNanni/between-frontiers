@@ -40,6 +40,7 @@ pub struct Research {
 pub struct ResearchChanges {
     state: ResearchState,
     tech_tfp: Vec<Vec<Fixed>>,
+    colony_tech_tfp: Vec<Vec<Fixed>>,
 }
 
 /// Share of today's imitation rate a country keeps through its trade and foreign capital laws
@@ -71,10 +72,16 @@ fn ahead(year: i32, history: i32) -> Fixed {
 }
 
 struct CountryFacts {
+    /// Engineers and professionals at work in the metropole: colonies do no research.
     researchers: i64,
+    /// Literacy of the metropole, which weighs its researchers.
+    home_literacy: Fixed,
     literacy: Fixed,
     population: i64,
     gdp: Fixed,
+    /// Literacy and people of the colonies alone.
+    colony_literacy: Fixed,
+    colony_population: i64,
 }
 
 fn facts(world: &GameWorld) -> Vec<CountryFacts> {
@@ -84,21 +91,37 @@ fn facts(world: &GameWorld) -> Vec<CountryFacts> {
         .iter()
         .map(|m| CountryFacts {
             researchers: 0,
+            home_literacy: Fixed::ZERO,
             literacy: Fixed::ZERO,
             population: 0,
             gdp: m.gdp_last_year.max(Fixed::ZERO),
+            colony_literacy: Fixed::ZERO,
+            colony_population: 0,
         })
         .collect();
     for r in &econ.regions {
         let c = &mut out[r.market as usize];
         let people = r.population();
-        c.researchers += r.pops[prof::ENGINEER].employed + r.pops[prof::PROFESSIONAL].employed;
         c.literacy += r.literacy * people;
         c.population += people;
+        if r.colony {
+            c.colony_literacy += r.literacy * people;
+            c.colony_population += people;
+        } else {
+            c.researchers += r.pops[prof::ENGINEER].employed + r.pops[prof::PROFESSIONAL].employed;
+            c.home_literacy += r.literacy * people;
+        }
     }
     for c in &mut out {
         if c.population > 0 {
             c.literacy = c.literacy / c.population;
+        }
+        let home = c.population - c.colony_population;
+        if home > 0 {
+            c.home_literacy = c.home_literacy / home;
+        }
+        if c.colony_population > 0 {
+            c.colony_literacy = c.colony_literacy / c.colony_population;
         }
     }
     out
@@ -198,7 +221,7 @@ impl System<GameWorld> for Research {
             let f = &facts[c];
             let boost = Fixed::ONE + state.effects[c][3] * 2;
             let points = Fixed::from_int(f.researchers).mul_ratio(1, 1000)
-                * f.literacy
+                * f.home_literacy
                 * POINTS_PER_THOUSAND
                 * boost
                 / 12;
@@ -308,6 +331,18 @@ impl System<GameWorld> for Research {
             }
         }
 
+        for (c, f) in facts.iter().enumerate().take(n) {
+            colony_step(
+                &mut state,
+                c,
+                f,
+                &world.research.stage[c],
+                &industrial,
+                &diffused,
+                imitation_channel(world.econ.markets.get(c)),
+            );
+        }
+
         // Effects, as a share of what the whole tree can give.
         let mut totals = [Fixed::ZERO; 5];
         for tech in &tree.techs {
@@ -349,36 +384,183 @@ impl System<GameWorld> for Research {
             .map(|(_, c)| c.tag.as_str())
             .collect();
         let tech_tfp = (0..n)
-            .map(|c| {
-                BUILDING_GROUPS
-                    .iter()
-                    .map(|group| {
-                        let mut now = Fixed::ONE;
-                        let mut start = Fixed::ONE;
-                        for (t, tech) in tree.techs.iter().enumerate() {
-                            for (g, v) in &tech.productivity {
-                                if g == group {
-                                    let gain = Fixed::from_ratio(i64::from(*v), 1000);
-                                    now *= Fixed::ONE + gain * weight(state.stage[c][t]);
-                                    let s0 = tags
-                                        .get(c)
-                                        .map_or(Stage::Unknown, |tag| tree.start_stage(t, tag));
-                                    start *= Fixed::ONE + gain * weight(s0);
-                                }
-                            }
-                        }
-                        now / start
-                    })
-                    .collect()
+            .map(|c| group_tfp(tree, tags.get(c).copied(), &state.stage[c]))
+            .collect();
+        let colony_tech_tfp = (0..n)
+            .map(|c| match state.colony_stage.get(c) {
+                Some(stage) if facts[c].colony_population > 0 => {
+                    group_tfp(tree, tags.get(c).copied(), stage)
+                }
+                _ => Vec::new(),
             })
             .collect();
-        ResearchChanges { state, tech_tfp }
+        ResearchChanges {
+            state,
+            tech_tfp,
+            colony_tech_tfp,
+        }
     }
 
     fn apply(&self, _ctx: &TickCtx, changes: ResearchChanges, world: &mut GameWorld) {
         world.research = changes.state;
-        for (m, tfp) in world.econ.markets.iter_mut().zip(changes.tech_tfp) {
+        for ((m, tfp), colony) in world
+            .econ
+            .markets
+            .iter_mut()
+            .zip(changes.tech_tfp)
+            .zip(changes.colony_tech_tfp)
+        {
             m.tech_tfp = tfp;
+            m.colony_tech_tfp = colony;
         }
+    }
+}
+
+/// Productivity from technology by building group for the stages `stage`, relative to where the
+/// country `tag` stood in 1925.
+fn group_tfp(tree: &TechTree, tag: Option<&str>, stage: &[Stage]) -> Vec<Fixed> {
+    BUILDING_GROUPS
+        .iter()
+        .map(|group| {
+            let mut now = Fixed::ONE;
+            let mut start = Fixed::ONE;
+            for (t, tech) in tree.techs.iter().enumerate() {
+                for (g, v) in &tech.productivity {
+                    if g == group {
+                        let gain = Fixed::from_ratio(i64::from(*v), 1000);
+                        now *= Fixed::ONE + gain * weight(stage[t]);
+                        let s0 = tag.map_or(Stage::Unknown, |tag| tree.start_stage(t, tag));
+                        start *= Fixed::ONE + gain * weight(s0);
+                    }
+                }
+            }
+            now / start
+        })
+        .collect()
+}
+
+/// A month of the colonies of country `c`. They do no research of their own: what their
+/// metropole (`metropole`, its stages at the start of the month) makes at scale reaches them by
+/// the same imitation as anywhere, at the colonies' literacy and through the country's channel,
+/// in one step (the firm brings the know-how; nobody there builds the science or the prototype);
+/// then it spreads there as it spreads anywhere. A laboratory in a colony adds nothing here.
+fn colony_step(
+    state: &mut ResearchState,
+    c: usize,
+    f: &CountryFacts,
+    metropole: &[Stage],
+    industrial: &[Fixed],
+    diffused: &[Fixed],
+    channel: Fixed,
+) {
+    if f.colony_population == 0 || c >= state.colony_stage.len() {
+        return;
+    }
+    let lit = f.colony_literacy;
+    let (stages, progress) = (&mut state.colony_stage[c], &mut state.colony_progress[c]);
+    for t in 0..stages.len() {
+        let p = &mut progress[t];
+        if stages[t] < Stage::Industrial && metropole[t] >= Stage::Industrial {
+            *p += (milli(300) + lit) * industrial[t] * channel / (IMITATION_YEARS * 12);
+            if *p >= Fixed::ONE {
+                stages[t] = Stage::Industrial;
+                *p = Fixed::ZERO;
+            }
+        } else if stages[t] == Stage::Industrial {
+            *p += (milli(500) + lit) * (Fixed::ONE + diffused[t]) / (DIFFUSION_YEARS * 12);
+            if *p >= Fixed::ONE {
+                stages[t] = Stage::Diffused;
+                *p = Fixed::ZERO;
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn colonies(literacy: i64) -> CountryFacts {
+        CountryFacts {
+            researchers: 0,
+            home_literacy: milli(literacy),
+            literacy: milli(literacy),
+            population: 1_000,
+            gdp: Fixed::ONE,
+            colony_literacy: milli(literacy),
+            colony_population: 1_000,
+        }
+    }
+
+    fn state(stage: Stage) -> ResearchState {
+        ResearchState {
+            colony_stage: vec![vec![stage]],
+            colony_progress: vec![vec![Fixed::ZERO]],
+            ..Default::default()
+        }
+    }
+
+    /// Months until the colonies of a metropole that makes the technology take it up.
+    fn months_to_industry(literacy: i64) -> i64 {
+        let mut s = state(Stage::Unknown);
+        let f = colonies(literacy);
+        for month in 1..=1_200 {
+            colony_step(
+                &mut s,
+                0,
+                &f,
+                &[Stage::Industrial],
+                &[milli(500)],
+                &[Fixed::ZERO],
+                Fixed::ONE,
+            );
+            if s.colony_stage[0][0] == Stage::Industrial {
+                return month;
+            }
+        }
+        i64::MAX
+    }
+
+    #[test]
+    fn colonies_take_up_what_the_metropole_makes_later_where_few_read() {
+        let lettered = months_to_industry(800);
+        let unlettered = months_to_industry(100);
+        // (0.3 + literacy) × half the world × 1 / 5 years: about nine years.
+        assert!((105..=115).contains(&lettered), "{lettered}");
+        assert!(unlettered > lettered * 2, "{unlettered} vs {lettered}");
+    }
+
+    #[test]
+    fn colonies_never_run_ahead_of_their_metropole() {
+        let mut s = state(Stage::Unknown);
+        for _ in 0..1_200 {
+            colony_step(
+                &mut s,
+                0,
+                &colonies(900),
+                &[Stage::Prototype],
+                &[Fixed::ONE],
+                &[Fixed::ONE],
+                Fixed::ONE,
+            );
+        }
+        assert_eq!(s.colony_stage[0][0], Stage::Unknown);
+    }
+
+    #[test]
+    fn a_country_without_colonies_keeps_its_colony_stages() {
+        let mut s = state(Stage::Unknown);
+        let mut f = colonies(900);
+        f.colony_population = 0;
+        colony_step(
+            &mut s,
+            0,
+            &f,
+            &[Stage::Industrial],
+            &[Fixed::ONE],
+            &[Fixed::ONE],
+            Fixed::ONE,
+        );
+        assert_eq!(s.colony_progress[0][0], Fixed::ZERO);
     }
 }

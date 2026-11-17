@@ -62,6 +62,37 @@ país), até a IA da fase 6.
   a da região; a convergência da produtividade de base entre regiões (instituições, escola)
   continua. A subsistência ganha metade do ganho agrícola (Revolução Verde).
 
+## Colônias
+
+A colônia não pesquisa nem tem laboratório: ela recebe a técnica da metrópole pelo uso, com
+atraso, e não inteira. Cada mercado guarda, ao lado do estágio do país, o estágio de cada
+tecnologia nas suas colônias (`ResearchState::colony_stage`, `research_system::colony_step`):
+
+- **Chegada:** o que a metrópole já faz em escala chega à colônia pela mesma regra de imitação
+  de qualquer país — (0,3 + alfabetização da colônia) × parcela do PIB mundial que já faz × canal
+  do país (`foreign_capital::imitation_channel`) / 5 anos —, num passo só, direto ao estágio
+  industrial: a firma traz o saber, ninguém ali faz a ciência nem o protótipo. Com metade do mundo
+  fazendo, uma colônia de 80 % de alfabetização leva cerca de 9 anos; uma de 10 %, mais que o
+  dobro.
+- **Difusão:** dali em diante, a regra de difusão de qualquer país, com a alfabetização da
+  colônia.
+- **Nunca à frente da metrópole:** a colônia só imita o que a metrópole já faz em escala.
+- **O que o estágio colonial decide:** os métodos que as plantas da colônia podem usar (troca
+  anual e investimento: `ResearchState::can_build` com o bloco) e a produtividade por grupo de
+  edifícios nas colônias (`Market::colony_tech_tfp`, relativa ao estágio de 1925 do país, como a da
+  metrópole), inclusive o ganho agrícola dos camponeses.
+- **O que continua do país:** os efeitos (mortalidade, fecundidade, alfabetização, que já chegam
+  pelo uso), a rede elétrica nacional e o método da infraestrutura pública (`public.rs`).
+- **Pesquisa que custa:** os laboratórios das colônias não somam esforço; a colônia ganha técnica
+  só por esta imitação.
+- **Colônia que vira país** (`borders.pt-BR.md`, decisão 6): o ponto de leitura é
+  `ResearchState::stages(país, true)`, o estágio colonial, com o teto da decisão 6 por cima.
+
+Antes, a colônia tinha o estágio da metrópole: construía os métodos dela (um centro comercial
+colonial britânico fazia 17,6 mil dólares de valor adicionado por emprego, a produtividade 1,
+contra 12,3 mil na Turquia) e ganhava toda a produtividade técnica dela. Medida e efeito:
+`economy.pt-BR.md`, "Colônias: salário e técnica".
+
 ## Calibração
 
 O benchmark de 100 anos compara o ano em que cada tecnologia chega ao protótipo e à indústria com os

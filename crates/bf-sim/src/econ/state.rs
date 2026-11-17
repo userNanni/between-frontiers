@@ -134,6 +134,10 @@ pub struct Market {
     /// Productivity from technology by building group, relative to 1925; empty means 1.
     #[serde(default)]
     pub tech_tfp: Vec<Fixed>,
+    /// The same for the country's colonies, from the stages they have taken up
+    /// (`ResearchState::colony_stage`); empty means the metropole's.
+    #[serde(default)]
+    pub colony_tech_tfp: Vec<Fixed>,
     /// Workers on the state payroll (civil servants, clergy, soldiers), counted monthly.
     pub gov_workers: i64,
     /// Works waiting for construction points, oldest first.
@@ -285,6 +289,7 @@ impl Market {
             gdp_running: Fixed::ZERO,
             gdp_last_year: Fixed::ZERO,
             tech_tfp: Vec::new(),
+            colony_tech_tfp: Vec::new(),
             gov_workers: 0,
             queue: Vec::new(),
             budget: Budget::default(),
@@ -515,6 +520,22 @@ impl HashState for Region {
     }
 }
 
+impl Market {
+    /// Productivity from technology by building group in the metropole, or in the colonies.
+    pub fn tech(&self, colony: bool) -> &[Fixed] {
+        if colony && !self.colony_tech_tfp.is_empty() {
+            &self.colony_tech_tfp
+        } else {
+            &self.tech_tfp
+        }
+    }
+
+    /// Farming technology where `colony` says, relative to 1925.
+    pub fn farm_tech(&self, colony: bool) -> Fixed {
+        self.tech(colony).first().copied().unwrap_or(Fixed::ONE)
+    }
+}
+
 impl HashState for Market {
     fn hash_state(&self, h: &mut StateHasher) {
         for v in [
@@ -539,6 +560,7 @@ impl HashState for Market {
         }
         h.write_i64(self.gov_workers);
         self.tech_tfp.hash_state(h);
+        self.colony_tech_tfp.hash_state(h);
         self.queue.hash_state(h);
         self.budget.hash_state(h);
         h.write_u8(self.laws.migration as u8);

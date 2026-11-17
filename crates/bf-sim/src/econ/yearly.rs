@@ -92,7 +92,7 @@ impl System<GameWorld> for Yearly {
                             cat,
                             p.kind as usize,
                             &unlocks,
-                            r.market as usize,
+                            (r.market as usize, r.colony),
                             &view.price,
                             &view.buy,
                             tfp,

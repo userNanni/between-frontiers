@@ -419,6 +419,14 @@ pub struct ResearchState {
     /// Strength of each of [`EFFECTS`] by country, 0–1 of what the whole tree gives.
     #[serde(default)]
     pub effects: Vec<[Fixed; 5]>,
+    /// Where each country's colonies stand on every technology. A colony does no research: it
+    /// takes up what its metropole makes at scale by imitation, then spreads it, at its own
+    /// literacy (`research_system`, `docs/research.pt-BR.md`, "Colônias"). Empty: the colonies
+    /// stand where the country stands (tools that build a state by hand).
+    #[serde(default)]
+    pub colony_stage: Vec<Vec<Stage>>,
+    #[serde(default)]
+    pub colony_progress: Vec<Vec<Fixed>>,
 }
 
 impl ResearchState {
@@ -446,9 +454,19 @@ impl ResearchState {
             focus: vec![None; n],
             points: vec![Fixed::ZERO; n],
             effects: vec![[Fixed::ZERO; 5]; n],
+            colony_stage: stage.clone(),
+            colony_progress: vec![vec![Fixed::ZERO; tree.techs.len()]; n],
             stage,
             firsts,
         }
+    }
+
+    /// Stages of `country`'s metropole, or of its colonies.
+    pub fn stages(&self, country: usize, colony: bool) -> Option<&Vec<Stage>> {
+        if colony && let Some(c) = self.colony_stage.get(country) {
+            return Some(c);
+        }
+        self.stage.get(country)
     }
 
     /// Whether `country` may build with `method` of `building`.
@@ -456,6 +474,7 @@ impl ResearchState {
         &self,
         tree: &TechTree,
         country: usize,
+        colony: bool,
         building: usize,
         method: usize,
     ) -> bool {
@@ -468,8 +487,7 @@ impl ResearchState {
         {
             None => true,
             Some(t) => self
-                .stage
-                .get(country)
+                .stages(country, colony)
                 .is_none_or(|c| c[t as usize] >= Stage::Industrial),
         }
     }
@@ -515,5 +533,7 @@ impl HashState for ResearchState {
                 v.hash_state(h);
             }
         }
+        self.colony_stage.hash_state(h);
+        self.colony_progress.hash_state(h);
     }
 }
