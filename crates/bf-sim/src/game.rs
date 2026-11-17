@@ -134,6 +134,7 @@ impl From<WorldBeforeCommunities> for GameWorld {
             research: w.research,
             politics: w.politics,
             demography: w.demography.into(),
+            treaties: Default::default(),
         }
     }
 }
@@ -164,16 +165,48 @@ impl From<WorldBeforeLedger> for GameWorld {
             research: w.research,
             politics: w.politics,
             demography: w.demography,
+            treaties: Default::default(),
+        }
+    }
+}
+
+/// The world as saves wrote it before the treaty state (recognition, 2026-11-17). An empty
+/// treaty state is out of the hash, so the loaded world keeps its hash.
+#[derive(Deserialize)]
+struct WorldBeforeTreaties {
+    scenario: String,
+    player: Option<Id<Country>>,
+    countries: Table<Country, CountryState>,
+    census: Vec<CensusRecord>,
+    econ: crate::econ::Economy,
+    research: crate::research::ResearchState,
+    politics: crate::polity::PoliticsState,
+    demography: crate::demography::DemographyState,
+}
+
+impl From<WorldBeforeTreaties> for GameWorld {
+    fn from(w: WorldBeforeTreaties) -> Self {
+        Self {
+            scenario: w.scenario,
+            player: w.player,
+            countries: w.countries,
+            census: w.census,
+            econ: w.econ,
+            research: w.research,
+            politics: w.politics,
+            demography: w.demography,
+            treaties: Default::default(),
         }
     }
 }
 
 /// Decodes a snapshot of this build, or of an older one: newest layout first, one step back
-/// at a time (before the ledger, before the communities).
+/// at a time (before the treaty state, before the ledger, before the communities).
 fn decode_world(bytes: &[u8]) -> Result<GameWorld, SaveError> {
     decode_snapshot::<GameWorld>(bytes).or_else(|now| {
-        decode_snapshot::<WorldBeforeLedger>(bytes)
+        decode_snapshot::<WorldBeforeTreaties>(bytes)
             .map(GameWorld::from)
+            .or_else(|_| decode_snapshot::<WorldBeforeLedger>(bytes).map(GameWorld::from))
             .or_else(|_| decode_snapshot::<WorldBeforeCommunities>(bytes).map(GameWorld::from))
             .map_err(|_| now)
     })
@@ -614,6 +647,42 @@ mod tests {
     use super::*;
     use crate::scenario::Status;
 
+    /// A world written before the treaty state (with the ledger) loads with its hash.
+    #[test]
+    fn a_save_from_before_the_treaty_state_loads_with_its_hash() {
+        #[derive(Serialize)]
+        struct OldWorld<'a> {
+            scenario: &'a String,
+            player: &'a Option<Id<Country>>,
+            countries: &'a Table<Country, CountryState>,
+            census: &'a Vec<CensusRecord>,
+            econ: &'a crate::econ::Economy,
+            research: &'a crate::research::ResearchState,
+            politics: &'a crate::polity::PoliticsState,
+            demography: &'a crate::demography::DemographyState,
+        }
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let data = crate::data::GameData::load(&root).unwrap();
+        let mut world = data.new_world();
+        assert!(!world.treaties.is_empty());
+        world.treaties = Default::default();
+        let bytes = encode_snapshot(&OldWorld {
+            scenario: &world.scenario,
+            player: &world.player,
+            countries: &world.countries,
+            census: &world.census,
+            econ: &world.econ,
+            research: &world.research,
+            politics: &world.politics,
+            demography: &world.demography,
+        })
+        .unwrap();
+        assert!(decode_snapshot::<GameWorld>(&bytes).is_err());
+        let loaded = decode_world(&bytes).unwrap();
+        assert_eq!(hash_of(&loaded), hash_of(&world));
+        assert_eq!(loaded, world);
+    }
+
     /// The 1925 world written as the `main` before the ledger wrote it (the economy without its
     /// ledger) loads in this build with the same hash.
     #[test]
@@ -639,8 +708,9 @@ mod tests {
         let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
         let data = crate::data::GameData::load(&root).unwrap();
         let mut world = data.new_world();
-        // The main had no ledger: a world of then is this one with the ledger empty.
+        // The main had no ledger nor treaty state: a world of then is this one with both empty.
         world.econ.ledger = Default::default();
+        world.treaties = Default::default();
         let old = OldWorld {
             scenario: &world.scenario,
             player: &world.player,
@@ -666,6 +736,7 @@ mod tests {
         assert_eq!(loaded, world);
         // And this build's own snapshot still reads first.
         let mut with_ledger = data.new_world();
+        with_ledger.treaties = Default::default();
         assert!(!with_ledger.econ.ledger.is_empty());
         let now = decode_world(&encode_snapshot(&with_ledger).unwrap()).unwrap();
         assert_eq!(hash_of(&now), hash_of(&with_ledger));
