@@ -5,13 +5,14 @@ run. When the rule that makes research points changes (head count before, labora
 after, docs/research.pt-BR.md, "Pesquisa que custa"), the tree has to be rewritten in the new
 unit, or every date moves. This script does that from two 100-year runs with the same tree:
 
-    factor(Y) = sum of the leader's points from 1925 to Y in the new run
-              / the same in the reference run
+    factor = sum of the leader's points over the technology's own window in the new run
+           / the same in the reference run
 
-where the leader of a year is the country with the most points that year. Each technology's
-cost becomes cost x factor(its historical breakthrough year); technologies of 1925 keep theirs.
-The factor comes from cumulative sums, so it moves smoothly from year to year, without steps by
-era. When the factor falls (the new unit's effort slows down against the old one), a
+where the leader of a year is the country with the most points that year, and the window of a
+technology runs from the historical year of its latest requirement to its own historical year,
+held to 5-15 years: a technology is paid with the research of the years before it, not with
+the stock since 1925. Each technology's cost becomes cost x its factor; technologies of 1925
+keep theirs. When the factor falls (the new unit's effort slows down against the old one), a
 technology could end up cheaper than one of its requirements; the tree's rule that every
 technology costs at least 10 % more than each requirement is then restored by raising it, in
 the order of the requirements, and the script says how many it raised. Run it again when
@@ -48,34 +49,27 @@ def leader_points(path):
     return out
 
 
-def factors(reference, new):
-    years = sorted(set(reference) & set(new))
-    out, cum_ref, cum_new = {}, 0.0, 0.0
-    for y in years:
-        cum_ref += reference[y]
-        cum_new += new[y]
-        if cum_ref > 0 and cum_new > 0:
-            out[y] = cum_new / cum_ref
-    return out
+WINDOW = (5, 15)
 
 
-def factor_at(f, year):
-    if year in f:
-        return f[year]
-    known = sorted(f)
-    if year < known[0]:
-        return f[known[0]]
-    return f[known[-1]]
+def window_factor(reference, new, year, years):
+    """Leader's points in the `years` before `year` (inclusive), new over reference. Years past
+    the end of the runs use the last window the runs have."""
+    last = max(set(reference) & set(new))
+    end = min(year, last)
+    span = range(end - years + 1, end + 1)
+    ref = sum(reference.get(y, 0.0) for y in span)
+    nw = sum(new.get(y, 0.0) for y in span)
+    return nw / ref if ref > 0 and nw > 0 else 1.0
 
 
 def main():
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     if len(args) != 2:
         sys.exit(__doc__)
-    f = factors(leader_points(args[0]), leader_points(args[1]))
-    for y in range(1930, 2026, 5):
-        if y in f:
-            print(f"{y}: factor {f[y]:.3f}")
+    reference, new_points = leader_points(args[0]), leader_points(args[1])
+    for y in range(1935, 2026, 10):
+        print(f"{y}: factor over 10 years {window_factor(reference, new_points, y, 10):.3f}")
     with open(TREE, encoding="utf-8") as fh:
         text = fh.read()
     block = re.compile(r"\(\s*key:\s*\"(?P<key>[^\"]+)\".*?\n\s*\),", re.S)
@@ -88,8 +82,17 @@ def main():
         cost = int(re.search(r"cost:\s*(\d+)", body).group(1))
         req = re.search(r"requires:\s*\[([^\]]*)\]", body)
         requires = re.findall(r"\"([^\"]+)\"", req.group(1)) if req else []
-        new = max(1, round(cost * factor_at(f, year))) if era > 0 else cost
-        techs[m.group("key")] = {"era": era, "cost": new, "requires": requires}
+        techs[m.group("key")] = {"era": era, "cost": cost, "year": year, "requires": requires}
+    windows = []
+    for t in techs.values():
+        if t["era"] == 0:
+            continue
+        latest = max((techs[r]["year"] for r in t["requires"]), default=t["year"] - 10)
+        years = min(max(t["year"] - latest, WINDOW[0]), WINDOW[1])
+        windows.append(years)
+        factor = window_factor(reference, new_points, t["year"], years)
+        t["cost"] = max(1, round(t["cost"] * factor))
+    print(f"windows: {min(windows)}-{max(windows)} years, mean {sum(windows) / len(windows):.1f}")
     # Every technology at least 10 % above each requirement, requirements first.
     raised, done = 0, set()
 
