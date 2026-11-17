@@ -1,0 +1,30 @@
+# The influence window.
+
+cmd-window-influence = Influence
+    .short = Influence
+influence-title = Influence
+influence-side-over = Over whom we weigh
+influence-side-on = Who weighs on us
+influence-off = Influence is not simulated in this campaign.
+influence-none = No influence either way yet: it comes from credit and goodwill today.
+influence-basis-over = Our influence over each country, issue by issue, as a share of that country's GDP; the largest issue on the right.
+influence-basis-on = Each country's influence over us, issue by issue, as a share of our GDP; the largest issue on the right.
+influence-issue-money = Money
+influence-issue-trade = Trade
+influence-issue-territory = Territory
+influence-issue-security = Security
+influence-issue-sovereignty = Sovereignty
+influence-channel-credit = credit
+influence-channel-investment = investment
+influence-channel-trade = trade
+influence-channel-protection = protection
+influence-pair = { $a } over { $b }
+influence-affinity = Close regime: { $regime } of the laws alike · people of the same culture: { $people } · factor { $factor }
+influence-channel-line = { $channel }: { $part } (weight { $weight } %)
+influence-channel-dormant = { $channel }: not measured yet; { $front }
+influence-goodwill = goodwill: { $part }
+influence-front-foreign-capital = comes with foreign capital crossing borders
+influence-front-bilateral-trade = comes with trade by partner
+influence-front-war = comes with forces and war
+influence-front-unknown = not measured yet
+influence-note = Values of this month of the game. A proposal's term reads the map of the last 16th, so the two may differ by up to a month.

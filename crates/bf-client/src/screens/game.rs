@@ -29,6 +29,8 @@ pub struct State {
     government: Option<super::government::Window>,
     /// The journal window while it is open.
     journal: Option<super::journal::Window>,
+    /// The influence window while it is open.
+    influence: Option<super::influence::Window>,
     /// What the side panel shows folded.
     fold: super::outliner::Fold,
     /// Arranging the HUD.
@@ -118,6 +120,7 @@ impl State {
             research_open: false,
             government: None,
             journal: None,
+            influence: None,
             fold: super::outliner::Fold::default(),
             edit: super::hud_edit::Edit::default(),
             lens_open: false,
@@ -584,6 +587,7 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
         state.research_open = !state.research_open;
         state.government = None;
         state.journal = None;
+        state.influence = None;
     }
     if bar_out.open_government {
         toggle_government(state);
@@ -760,6 +764,27 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
         }
     }
 
+    // Influence window.
+    if state.influence.is_some()
+        && !state.research_open
+        && state.government.is_none()
+        && state.journal.is_none()
+    {
+        let mut place = shared.hud.layout.window("influence");
+        let res = super::influence::show(
+            ui,
+            rect,
+            &shared.i18n,
+            snap.influence.as_deref(),
+            state.influence.as_mut().expect("influence open"),
+            &mut place,
+        );
+        keep_window_place(shared, "influence", place, res.place_done);
+        if res.close {
+            state.influence = None;
+        }
+    }
+
     // Journal window.
     if state.journal.is_some() && !state.research_open && state.government.is_none() {
         let pinned = state.save.meta.pinned.clone();
@@ -792,6 +817,7 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
         if let Some(screen) = res.open {
             use super::government::{Tab, Window};
             state.journal = None;
+            state.influence = None;
             let tab = match screen {
                 crate::journal::Screen::Budget => Some(Tab::Budget),
                 crate::journal::Screen::Money => Some(Tab::Money),
@@ -810,6 +836,7 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
         }
         if res.close {
             state.journal = None;
+            state.influence = None;
         }
     }
 
@@ -892,12 +919,16 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
             state.research_open = !state.research_open;
             state.government = None;
             state.journal = None;
+            state.influence = None;
         }
         if fired(id::GOVERNMENT) {
             toggle_government(state);
         }
         if fired(id::JOURNAL) {
             toggle_journal(state);
+        }
+        if fired(id::INFLUENCE) {
+            toggle_influence(state);
         }
         for (cmd, tab) in [
             (id::TAB_BUDGET, Tab::Budget),
@@ -908,6 +939,7 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
             if fired(cmd) {
                 state.research_open = false;
                 state.journal = None;
+                state.influence = None;
                 state.government.get_or_insert_with(Default::default).tab = tab;
             }
         }
@@ -938,8 +970,9 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
                 state.research_open = false;
             } else if state.government.is_some() {
                 state.government = None;
-            } else if state.journal.is_some() {
+            } else if state.journal.is_some() || state.influence.is_some() {
                 state.journal = None;
+                state.influence = None;
             } else if state.selected.is_some() {
                 state.selected = None;
             } else {
@@ -1138,6 +1171,18 @@ fn toggle_government(state: &mut State) {
     };
     state.research_open = false;
     state.journal = None;
+    state.influence = None;
+}
+
+/// Opens the influence window, or closes it; the other windows give way.
+fn toggle_influence(state: &mut State) {
+    state.influence = match state.influence {
+        Some(_) => None,
+        None => Some(super::influence::Window::default()),
+    };
+    state.research_open = false;
+    state.government = None;
+    state.journal = None;
 }
 
 /// Opens the journal on its first entry, or closes it; the other windows give way.
@@ -1146,6 +1191,7 @@ fn toggle_journal(state: &mut State) {
         Some(_) => None,
         None => Some(super::journal::Window::default()),
     };
+    state.influence = None;
     state.research_open = false;
     state.government = None;
 }
@@ -1158,6 +1204,7 @@ pub fn toggle_hud_edit(state: &mut State) {
     if state.edit.on {
         state.government = None;
         state.journal = None;
+        state.influence = None;
         state.research_open = false;
     }
 }
@@ -1189,7 +1236,10 @@ fn hud_sizes(
     let mut out = std::collections::BTreeMap::new();
     let editing = state.edit.on;
     // The windows and the research screen cover the map.
-    let window = state.government.is_some() || state.journal.is_some() || state.research_open;
+    let window = state.government.is_some()
+        || state.journal.is_some()
+        || state.influence.is_some()
+        || state.research_open;
     if player.is_some() {
         out.insert(
             PanelId::Country,
@@ -1264,6 +1314,7 @@ fn open_from_tile(state: &mut State, open: super::tiles::Open) {
             state.research_open = true;
             state.government = None;
             state.journal = None;
+            state.influence = None;
             return;
         }
         Open::Journal => {
@@ -1278,6 +1329,7 @@ fn open_from_tile(state: &mut State, open: super::tiles::Open) {
         ..Window::default()
     });
     state.journal = None;
+    state.influence = None;
     state.research_open = false;
 }
 

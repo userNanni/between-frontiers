@@ -4,6 +4,7 @@ pub mod app;
 pub mod flags;
 pub mod government;
 pub mod hud;
+pub mod influence_view;
 pub mod journal;
 pub mod keys;
 pub mod laws_view;

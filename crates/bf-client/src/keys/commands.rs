@@ -304,6 +304,7 @@ pub mod id {
     pub const KEYS: &str = "system.keys";
 
     pub const POPULATION: &str = "window.population";
+    pub const INFLUENCE: &str = "window.influence";
     pub const UI_SCALE_UP: &str = "system.ui_scale_up";
     pub const UI_SCALE_DOWN: &str = "system.ui_scale_down";
     pub const UI_STREAM: &str = "system.ui_stream";
@@ -374,6 +375,7 @@ fn builtin() -> Vec<CommandDef> {
         CommandDef::new(MENU, Windows).keys([k(F10)]).hint('N'),
         CommandDef::new(JOURNAL, Windows).keys([k(KeyJ)]).hint('J'),
         CommandDef::new(POPULATION, Windows).keys([k(KeyY)]),
+        CommandDef::new(INFLUENCE, Windows).keys([k(KeyI).shift()]),
         CommandDef::new(OUTLINER, Windows).keys([k(KeyO)]).hint('O'),
         CommandDef::new(OUTLINER_WORKS, Windows).hint('6'),
         CommandDef::new(OUTLINER_RESEARCH, Windows).hint('7'),
