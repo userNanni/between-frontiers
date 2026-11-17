@@ -7,7 +7,7 @@ use std::sync::OnceLock;
 
 use bf_sim::data::GameData;
 use bf_sim::game::{GameWorld, Session};
-use bf_sim::influence::{self, BlocKind, Channel, Goodwill};
+use bf_sim::influence::{self, BlocKind, Channel, Goodwill, Issue};
 use laplace_schelling::{Date, Fixed};
 
 fn data() -> &'static GameData {
@@ -94,14 +94,14 @@ fn credit_is_live_and_the_rest_dormant() {
         .first()
         .expect("the 1925 ledger has lines");
     let (a, b) = (usize::from(d.creditor), usize::from(d.debtor));
-    let dep = influence::dependence(w, rules, a, b);
+    let dep = influence::dependence(w, rules, a, b, 1925);
     assert!(matches!(dep.credit, Channel::Live(v) if v > Fixed::ZERO));
     assert!(matches!(dep.trade, Channel::Dormant(_)));
     assert!(matches!(dep.investment, Channel::Dormant(_)));
     assert!(matches!(dep.protection, Channel::Dormant(_)));
-    assert!(dep.total > Fixed::ZERO);
+    assert!(dep.by_issue[0] > Fixed::ZERO);
     // The other way round, the creditor owes nothing it is not recorded to owe.
-    assert!(influence::dependence(w, rules, b, a).credit.value() >= Fixed::ZERO);
+    assert!(influence::dependence(w, rules, b, a, 1925).credit.value() >= Fixed::ZERO);
 }
 
 #[test]
@@ -138,13 +138,13 @@ fn influence_follows_credit_and_goodwill() {
     let debt = w.econ.ledger.debts.first().unwrap();
     let (a, b) = (usize::from(debt.creditor), usize::from(debt.debtor));
     let aff = influence::affinity(w, rules, table, &cultures, &col, a, b);
-    let dep = influence::dependence(w, rules, a, b);
+    let dep = influence::dependence(w, rules, a, b, 1925);
     let without = influence::interest(dep, Goodwill::default(), aff);
     let mut g = Goodwill::default();
     g.add(Fixed::from_raw(10));
     let with = influence::interest(dep, g, aff);
-    assert!(without.influence > Fixed::ZERO);
-    assert!(with.influence > without.influence);
+    assert!(without.influence[0] > Fixed::ZERO);
+    assert!(with.influence[0] > without.influence[0]);
 }
 
 #[test]
@@ -158,16 +158,38 @@ fn the_map_holds_the_ledger_pairs_and_caps_the_term() {
         d.community_table.as_deref(),
         &colonial(),
         &Default::default(),
+        1925,
     );
     let debt = w.econ.ledger.debts.first().unwrap();
     let worth = map.worth[&(debt.creditor, debt.debtor)];
-    assert!(worth > Fixed::ZERO);
+    assert!(worth[0] > Fixed::ZERO);
+    // Credit weighs more in money than in security (influence by issue).
+    assert!(worth[0] > worth[3]);
     let small = Fixed::from_int(1);
-    assert!(map.proposal_term(debt.creditor, debt.debtor, small) <= small);
+    assert!(map.proposal_term(debt.creditor, debt.debtor, Issue::Money, small) <= small);
     // A pair with no channel and no goodwill is not in the map: its term is zero.
     let (bra, arg) = (ix("BRA") as u16, ix("ARG") as u16);
     assert_eq!(
-        map.proposal_term(bra, arg, Fixed::from_int(1_000_000)),
+        map.proposal_term(bra, arg, Issue::Money, Fixed::from_int(1_000_000)),
         Fixed::ZERO
     );
+}
+
+/// Vulnerability: the same debt weighs more on a debtor who owes nobody else.
+#[test]
+fn credit_is_vulnerability_not_size() {
+    let mut w = world().clone();
+    let rules = data().influence.as_ref().unwrap();
+    let debt = w.econ.ledger.debts[0].clone();
+    let (a, b) = (usize::from(debt.creditor), usize::from(debt.debtor));
+    let alone = influence::dependence(&w, rules, a, b, 1925).credit.value();
+    // B owes as much again to a third creditor: A's share halves, and so on.
+    let mut other = debt.clone();
+    other.creditor = if debt.creditor == 0 { 1 } else { 0 };
+    if other.creditor == debt.debtor {
+        other.creditor = 2;
+    }
+    w.econ.ledger.create(other);
+    let shared = influence::dependence(&w, rules, a, b, 1925).credit.value();
+    assert!(shared < alone, "{shared:?} {alone:?}");
 }

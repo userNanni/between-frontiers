@@ -26,17 +26,46 @@ use crate::diplomacy::{DiplomacyFile, OrganizationKind, TreatyKind};
 use crate::game::GameWorld;
 use crate::scenario::{CountriesFile, Status, Tag};
 
+/// What a proposal is about: its dominant term in the treaties' valuation. Influence counts by
+/// issue (Baldwin 1979): a creditor weighs in a debt, a protector in an alliance.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+pub enum Issue {
+    Money,
+    Trade,
+    Territory,
+    Security,
+    Sovereignty,
+}
+
+impl Issue {
+    pub const ALL: [Issue; 5] = [
+        Issue::Money,
+        Issue::Trade,
+        Issue::Territory,
+        Issue::Security,
+        Issue::Sovereignty,
+    ];
+    pub const COUNT: usize = 5;
+}
+
+/// How much each dependence channel counts in one issue, per mille.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct IssueWeights {
+    pub issue: Issue,
+    pub credit: u32,
+    pub investment: u32,
+    pub trade: u32,
+    pub protection: u32,
+}
+
 /// The rules of `data/diplomacy/influence.ron`. Design values, to balance after phase 6.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct InfluenceRules {
-    /// Weight of each dependence channel, per mille.
-    pub credit_weight: u32,
-    pub investment_weight: u32,
-    pub trade_weight: u32,
-    pub protection_weight: u32,
+    /// The weights of the channels in each issue; every issue once.
+    pub issues: Vec<IssueWeights>,
     /// Share of goodwill kept from one year to the next, per mille (917: half in 8 years).
     pub goodwill_yearly_retention: u32,
-    /// Affinity factor between these two, per mille (500 and 1500).
+    /// Affinity factor between these two, per mille (800 and 1200: weak, Walt 1987).
     pub affinity_floor: u32,
     pub affinity_ceiling: u32,
     /// Weights of regime and people inside the affinity, per mille.
@@ -51,6 +80,22 @@ pub struct InfluenceRules {
     /// country accept a small loss for a patron, never any loss.
     pub proposal_cap: u32,
     pub source: String,
+}
+
+impl InfluenceRules {
+    fn weights(&self, issue: Issue) -> IssueWeights {
+        self.issues
+            .iter()
+            .find(|w| w.issue == issue)
+            .copied()
+            .unwrap_or(IssueWeights {
+                issue,
+                credit: 0,
+                investment: 0,
+                trade: 0,
+                protection: 0,
+            })
+    }
 }
 
 /// A dependence channel: its value, or the front it waits for.
@@ -82,8 +127,8 @@ pub struct Dependence {
     pub trade: Channel,
     /// Defence, bases and troops of A in B.
     pub protection: Channel,
-    /// Weighted sum.
-    pub total: Fixed,
+    /// The weighted sum in each issue (`Issue::ALL` order).
+    pub by_issue: [Fixed; Issue::COUNT],
 }
 
 /// B's GDP of the last full year, or the running one in the first year.
@@ -109,29 +154,48 @@ fn milli(n: u32) -> Fixed {
     Fixed::from_raw(i64::from(n))
 }
 
-/// Dependence of `b` on `a` (country indices).
-pub fn dependence(world: &GameWorld, rules: &InfluenceRules, a: usize, b: usize) -> Dependence {
-    let owed: Fixed = world
-        .econ
-        .ledger
+/// Dependence of `b` on `a` (country indices) in `year`: each channel is the flow over B's GDP
+/// times A's share of that channel in B (Keohane and Nye: vulnerability, what cannot be replaced).
+/// Credit: B's debt to A in the ledger, times A's share of B's foreign creditors (the ledger and
+/// the bond market; the market counts only while B is not shut out of it after a default).
+pub fn dependence(
+    world: &GameWorld,
+    rules: &InfluenceRules,
+    a: usize,
+    b: usize,
+    year: i32,
+) -> Dependence {
+    let ledger = &world.econ.ledger;
+    let owed: Fixed = ledger
         .debts
         .iter()
         .filter(|d| usize::from(d.debtor) == b && usize::from(d.creditor) == a)
         .map(|d| d.principal + d.arrears)
         .sum();
-    let credit = share(owed, gdp(world, b));
-    let d = Dependence {
+    let market = world.econ.markets.get(b).map_or(Fixed::ZERO, |m| {
+        if m.money.excluded_until > year {
+            Fixed::ZERO
+        } else {
+            m.money.debt_abroad + m.money.debt_fx
+        }
+    });
+    let creditors = ledger.owed_by(b as u16) + market;
+    let credit = share(owed, gdp(world, b)) * share(owed, creditors);
+    let mut d = Dependence {
         credit: Channel::Live(credit),
         investment: Channel::Dormant("foreign-capital"),
         trade: Channel::Dormant("bilateral-trade"),
         protection: Channel::Dormant("war"),
-        total: Fixed::ZERO,
+        by_issue: [Fixed::ZERO; Issue::COUNT],
     };
-    let total = d.credit.value() * milli(rules.credit_weight)
-        + d.investment.value() * milli(rules.investment_weight)
-        + d.trade.value() * milli(rules.trade_weight)
-        + d.protection.value() * milli(rules.protection_weight);
-    Dependence { total, ..d }
+    for (k, issue) in Issue::ALL.into_iter().enumerate() {
+        let w = rules.weights(issue);
+        d.by_issue[k] = d.credit.value() * milli(w.credit)
+            + d.investment.value() * milli(w.investment)
+            + d.trade.value() * milli(w.trade)
+            + d.protection.value() * milli(w.protection);
+    }
+    d
 }
 
 /// What A did for B, as a share of B's GDP, kept with a yearly loss.
@@ -266,8 +330,8 @@ pub struct Interest {
     pub dependence: Dependence,
     pub goodwill: Goodwill,
     pub affinity: Affinity,
-    /// `(dependence + goodwill) × affinity factor`, share of B's GDP.
-    pub influence: Fixed,
+    /// `(dependence + goodwill) × affinity factor` in each issue, share of B's GDP.
+    pub influence: [Fixed; Issue::COUNT],
 }
 
 /// Interest of `a` in `b`, with the goodwill A holds there.
@@ -276,14 +340,16 @@ pub fn interest(dependence: Dependence, goodwill: Goodwill, affinity: Affinity) 
         dependence,
         goodwill,
         affinity,
-        influence: (dependence.total + goodwill.0) * affinity.factor,
+        influence: std::array::from_fn(|k| (dependence.by_issue[k] + goodwill.0) * affinity.factor),
     }
 }
 
-/// What A's influence over B is worth in reference units, before the cap (`influence × B's GDP ×
-/// proposal_weight`). Zero without influence.
-pub fn worth(rules: &InfluenceRules, interest: &Interest, b_gdp: Fixed) -> Fixed {
-    interest.influence.max(Fixed::ZERO) * b_gdp * milli(rules.proposal_weight)
+/// What A's influence over B is worth in reference units in each issue, before the cap
+/// (`influence × B's GDP × proposal_weight`). Zero without influence.
+pub fn worth(rules: &InfluenceRules, interest: &Interest, b_gdp: Fixed) -> [Fixed; Issue::COUNT] {
+    interest
+        .influence
+        .map(|i| i.max(Fixed::ZERO) * b_gdp * milli(rules.proposal_weight))
 }
 
 /// The influence of every country over every other, ready for the treaties' valuation: (A, B) →
@@ -292,7 +358,8 @@ pub fn worth(rules: &InfluenceRules, interest: &Interest, b_gdp: Fixed) -> Fixed
 /// valuation reads it and never computes influence itself.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct InfluenceMap {
-    pub worth: BTreeMap<(u16, u16), Fixed>,
+    /// Worth by issue (`Issue::ALL` order).
+    pub worth: BTreeMap<(u16, u16), [Fixed; Issue::COUNT]>,
     /// The cap, per mille of the proposal's size (`InfluenceRules::proposal_cap`).
     pub cap: u32,
 }
@@ -305,6 +372,7 @@ impl InfluenceMap {
         table: Option<&CommunityTable>,
         colonial: &[bool],
         goodwill: &BTreeMap<(u16, u16), Goodwill>,
+        year: i32,
     ) -> Self {
         let cultures = table.map(|t| main_cultures(world, t)).unwrap_or_default();
         let mut pairs: BTreeSet<(u16, u16)> = world
@@ -322,12 +390,12 @@ impl InfluenceMap {
                 continue;
             }
             let i = interest(
-                dependence(world, rules, ai, bi),
+                dependence(world, rules, ai, bi, year),
                 goodwill.get(&(a, b)).copied().unwrap_or_default(),
                 affinity(world, rules, table, &cultures, colonial, ai, bi),
             );
             let w = self::worth(rules, &i, gdp(world, bi));
-            if w > Fixed::ZERO {
+            if w.iter().any(|v| *v > Fixed::ZERO) {
                 worth.insert((a, b), w);
             }
         }
@@ -338,11 +406,13 @@ impl InfluenceMap {
     }
 
     /// The term `Influence` of a proposal of `a` that `b` weighs (`docs/influence.pt-BR.md`,
-    /// section 4): the worth of A's influence over B, at most `cap` of `size`, the proposal's size
+    /// section 4): the worth of A's influence over B in the proposal's `issue` (its dominant term),
+    /// at most `cap` of `size`, the proposal's size
     /// in reference units (the sum of the absolute values of B's other lines). A line of the
     /// proposal, not of a clause.
-    pub fn proposal_term(&self, a: u16, b: u16, size: Fixed) -> Fixed {
-        let w = self.worth.get(&(a, b)).copied().unwrap_or(Fixed::ZERO);
+    pub fn proposal_term(&self, a: u16, b: u16, issue: Issue, size: Fixed) -> Fixed {
+        let k = Issue::ALL.iter().position(|i| *i == issue).unwrap_or(0);
+        let w = self.worth.get(&(a, b)).map_or(Fixed::ZERO, |w| w[k]);
         w.min(size.abs() * milli(self.cap))
     }
 }
@@ -440,13 +510,19 @@ mod tests {
 
     fn rules() -> InfluenceRules {
         InfluenceRules {
-            credit_weight: 1000,
-            investment_weight: 1000,
-            trade_weight: 1000,
-            protection_weight: 1000,
+            issues: Issue::ALL
+                .into_iter()
+                .map(|issue| IssueWeights {
+                    issue,
+                    credit: 1000,
+                    investment: 1000,
+                    trade: 1000,
+                    protection: 1000,
+                })
+                .collect(),
             goodwill_yearly_retention: 917,
-            affinity_floor: 500,
-            affinity_ceiling: 1500,
+            affinity_floor: 800,
+            affinity_ceiling: 1200,
             regime_weight: 500,
             people_weight: 500,
             people_full: 200,
@@ -462,17 +538,22 @@ mod tests {
             worth: BTreeMap::new(),
             cap: 250,
         };
-        m.worth.insert((1, 2), Fixed::from_int(100));
-        // Large proposal: the whole worth; small one: a quarter of its size; no influence: zero.
+        let mut w = [Fixed::ZERO; Issue::COUNT];
+        w[0] = Fixed::from_int(100);
+        m.worth.insert((1, 2), w);
+        // Large proposal: the whole worth; small one: a quarter of its size; another issue or no
+        // influence: zero.
+        let big = Fixed::from_int(1000);
         assert_eq!(
-            m.proposal_term(1, 2, Fixed::from_int(1000)),
+            m.proposal_term(1, 2, Issue::Money, big),
             Fixed::from_int(100)
         );
         assert_eq!(
-            m.proposal_term(1, 2, Fixed::from_int(40)),
+            m.proposal_term(1, 2, Issue::Money, Fixed::from_int(40)),
             Fixed::from_int(10)
         );
-        assert_eq!(m.proposal_term(2, 1, Fixed::from_int(1000)), Fixed::ZERO);
+        assert_eq!(m.proposal_term(1, 2, Issue::Security, big), Fixed::ZERO);
+        assert_eq!(m.proposal_term(2, 1, Issue::Money, big), Fixed::ZERO);
     }
 
     #[test]
@@ -493,7 +574,7 @@ mod tests {
             investment: Channel::Dormant("foreign-capital"),
             trade: Channel::Dormant("bilateral-trade"),
             protection: Channel::Dormant("war"),
-            total: Fixed::from_raw(100),
+            by_issue: [Fixed::from_raw(100); Issue::COUNT],
         };
         let a = Affinity {
             regime: Fixed::ONE,
@@ -501,7 +582,7 @@ mod tests {
             factor: Fixed::from_raw(1500),
         };
         let i = interest(d, Goodwill(Fixed::from_raw(20)), a);
-        assert_eq!(i.influence, Fixed::from_raw(180));
+        assert_eq!(i.influence[0], Fixed::from_raw(180));
         assert_eq!(d.investment.value(), Fixed::ZERO);
     }
 }
