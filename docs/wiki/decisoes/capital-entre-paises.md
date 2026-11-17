@@ -69,31 +69,45 @@ o resultado ([Princípios](../principios.md#não-forçar-o-resultado-histórico-
 - **Estado:** decidido (C5); entra no passo 4.
 - **Onde está o detalhe:** [seção 5, decisão 5](../../foreign-capital.pt-BR.md#5-decisões-do-dono).
 
-### As fábricas da metrópole na independência: em decisão
+### As fábricas da metrópole na independência ficam como capital estrangeiro
 
-- **Decisão:** **em decisão com o autor (C6).** Hoje, na independência, as fábricas da colônia passam
-  inteiras ao país novo, sem indenização e sem nenhum resto de propriedade da metrópole.
-- **O que o autor pensou:** ele não quis decidir a regra antes do estudo: "Veja como isso aconteceu
-  na história; ela vai nos revelar quais fluxos são possíveis."
-- **O que o estudo achou** (PR #118, seção 7):
-  - na independência negociada, o dono estrangeiro ficou de 5 a 30 anos, e a tomada veio depois de
-    uma ruptura política, quase nunca na data da independência (Índia, Indonésia, Congo, Birmânia,
-    Malásia);
-  - na guerra com muitos colonos, a terra caiu em menos de um ano e a mina e o petróleo demoraram
-    mais (Argélia);
-  - a garantia do tratado tinha prazo, e o conflito veio quando ela venceu (Zimbábue, Filipinas);
-  - quase toda estatização terminou num acordo de soma fixa, abaixo do pedido e pago em parcelas;
-  - a metrópole conseguiu o acordo com pressão (tarifas, ajuda, dinheiro bloqueado, boicote).
-- **O que está proposto ao autor:**
-  1. acordo sem cláusula: a ex-metrópole fica com os níveis privados não agrícolas, menos a parte
-     dos donos locais; o que vem depois sai das leis do país novo;
-  2. acordo com a cláusula de fábricas coloniais: a parte que fica, o prazo da garantia e o prazo de
-     tratamento igual ao nacional; com parte zero e dívida no mesmo acordo, o país novo compra as
-     fábricas;
-  3. revolta sem acordo: a camada nasce sem garantia, e o país novo estatiza pelas próprias leis; a
-     alternativa é a revolta não deixar camada;
-  4. terra agrícola fica fora das camadas, com quem mora na região.
-- **Como é na vida real:** os casos do estudo, com fonte, estão no PR #118.
-- **Estado:** em decisão.
-- **Onde está o detalhe:** [seção 2, "As fábricas das colônias"](../../foreign-capital.pt-BR.md#as-fábricas-das-colônias)
-  e a seção 7 do mesmo documento, que entra com o #118.
+- **Decisão (C6, 2026-11-17):** na independência, a fábrica da metrópole não passa ao país novo no
+  dia; vira capital estrangeiro, e o que acontece depois sai das leis e dos acordos do país novo.
+  - **Acordo sem cláusula:** a ex-metrópole fica com as fábricas privadas não agrícolas, menos a
+    parte dos donos locais, como camada estrangeira, sem garantia.
+  - **Acordo com a cláusula de fábricas coloniais** (`ColonialPlants`): o acordo fixa a parte que
+    fica com a ex-metrópole, o prazo da garantia contra estatização e o prazo em que o capital dela é
+    tratado como nacional. Com parte zero e uma dívida no mesmo acordo, o país novo compra as
+    fábricas ou indeniza.
+  - **Revolta sem acordo:** a fábrica e a mina também viram camada, sem garantia, e o país novo
+    decide pelas suas leis. Com o capital fechado ou a economia planificada, estatiza na hora, sem
+    pagamento, com memória de expropriação e prêmio de risco.
+  - **Terra agrícola:** sempre fora das camadas; fica com quem mora na região.
+  - **Indenização posterior:** um tratado com dívida entre o país que estatizou e o antigo dono
+    reduz o prêmio de risco na proporção do que foi **de fato pago**. A dívida pode ser renegociada
+    pela revisão de dívida e pode não ser cumprida.
+- **O que o autor pensou:** ele não quis decidir antes do estudo: "Veja como isso aconteceu na
+  história; ela vai nos revelar quais fluxos são possíveis." Com o estudo na mão, aceitou as cinco
+  partes. Lembrou ainda que a indenização precisa poder ser renegociada e que um tratado pode não
+  ser cumprido.
+- **Como o jogo funciona por causa disso:** a Índia que sai por acordo continua com as fábricas
+  britânicas, que remetem lucro para Londres até uma lei indiana mudar isso. Uma colônia que sai por
+  revolta e nasce com a economia planificada toma as fábricas no primeiro dia e paga com a memória
+  de expropriação: o capital de fora cobra prêmio de risco por anos. Uma indenização acertada e
+  paga em parcelas baixa esse prêmio aos poucos; uma moratória congela a queda; um perdão reduz a
+  dívida, mas não conta como pago.
+- **O preço de não cumprir:** a quebra custa pela regra geral dos tratados (registro, suspensão
+  recíproca, causa, reputação; ver [Tratados e acordos](tratados-e-acordos.md#quebrar-é-possível-e-paga-na-próxima-mesa)).
+  No capital, custa também o veto: a ex-metrópole pode fechar o capital entre os dois sem quebrar
+  nada, por suspensão recíproca. E a memória de expropriação volta a pesar na parte não paga.
+  Estatizar dentro do prazo da garantia é expropriação sem pagamento mais quebra da garantia.
+- **Como é na vida real:** em 16 independências estudadas (Índia, Indonésia, Argélia, Congo,
+  Quênia, Zimbábue e outras), o dono estrangeiro ficou de 5 a 30 anos. A estatização veio com uma
+  ruptura política posterior, não na data da independência. A terra caiu rápido; a mina, devagar (o
+  petróleo argelino ficou francês por 8,6 anos). Quase toda estatização terminou num acordo de soma
+  fixa, abaixo do pedido e pago em parcelas: a Indonésia acertou em 1966 uma soma paga em 30
+  parcelas a 1 %.
+- **Estado:** decidido; regra desenhada para o passo 4 do capital (estatização e contrato).
+- **Onde está o detalhe:** [`foreign-capital.pt-BR.md`, seção 5](../../foreign-capital.pt-BR.md#5-decisões-do-dono)
+  e seção 7, "As fábricas da metrópole na independência" (com o PR #118);
+  [seção 2, "As fábricas das colônias"](../../foreign-capital.pt-BR.md#as-fábricas-das-colônias).
