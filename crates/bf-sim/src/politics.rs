@@ -294,7 +294,12 @@ pub const EFFECTS: [EffectKind; 40] = [
         System::Budget,
         Some("econ::public"),
     ),
-    effect("research_priority", Add, System::Budget, Some("econ::public")),
+    effect(
+        "research_priority",
+        Add,
+        System::Budget,
+        Some("econ::public"),
+    ),
 ];
 
 pub fn effect_index(key: &str) -> Option<usize> {

@@ -300,10 +300,37 @@ fn spending(
     (fd, invested)
 }
 
-/// Schools and hospitals the state runs, added to `fd`: enrolment follows literacy, hospital
-/// care income. Returns their value at base prices.
+/// Research a block bought in a week of 1925, in lots: the firms' part on the economy outside
+/// the farms, times how close to the frontier the block is (its income against the richest
+/// in 1925, about the United States' $10,000 a head at 2011 prices: before the first month the
+/// research state is not there to count technologies, `public::frontier`); the state's part
+/// on its revenue (the goods it buys are two fifths of it).
+/// `RESEARCH_OFF_FARM_1925` is design: total R&D was about 0.6 % of national income in the
+/// United States of the late 1930s and a tenth of a percent in Britain (Bernal 1939,
+/// `docs/research.pt-BR.md`), almost all of it industrial.
+const RESEARCH_OFF_FARM_1925: f64 = 0.003;
+
+fn research_1925(gdp_week: f64, agr: f64, gdp_per_capita: f64) -> f64 {
+    let frontier = (gdp_per_capita / 10_000.0).clamp(0.05, 1.0);
+    let state =
+        gdp_week * STATE_GOODS_SHARE / 0.4 * super::public::STATE_RESEARCH_SHARE.to_f64_lossy();
+    (gdp_week * (1.0 - agr) * RESEARCH_OFF_FARM_1925 * frontier + state) / 1000.0
+}
+
+/// Schools, hospitals and laboratories the state runs, added to `fd`: enrolment follows
+/// literacy, hospital care income, research the economy outside the farms. Returns their value
+/// at base prices.
 fn public_services(cat: &Catalogue, b: &Block, fd: &mut [f64]) -> f64 {
     let mut value = 0.0;
+    if let Some(g) = cat.research {
+        let q = research_1925(
+            b.population as f64 * b.gdp_per_capita / 52.0,
+            b.agr,
+            b.gdp_per_capita,
+        );
+        fd[g as usize] += q;
+        value += q * cat.goods[g as usize].base_price.to_f64_lossy();
+    }
     for (key, per_person, cover) in [
         (
             "schooling",
@@ -569,6 +596,9 @@ pub fn build(cat: &Catalogue, inp: &Inputs) -> Economy {
                     final_demand[g as usize] +=
                         population as f64 * per_person.to_f64_lossy() * cover / 52.0;
                 }
+            }
+            if let Some(g) = cat.research {
+                final_demand[g as usize] += research_1925(gdp_week, agr, gdppc);
             }
             for &(g, per_mille) in &cat.upkeep_basket {
                 final_demand[g as usize] +=

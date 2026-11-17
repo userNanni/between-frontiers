@@ -15,10 +15,10 @@ use crate::research::{EFFECTS, ResearchState, Stage, TechTree};
 
 pub const RESEARCH: ResourceId = ResourceId(11);
 
-/// Research points a lot of research (a thousand dollars of laboratory work at base prices)
-/// makes. Calibrated so that the leader keeps the dates of the frontier
+/// Research points a million lots of research (a thousand dollars of laboratory work at base
+/// prices each) make. Calibrated so that the leader keeps the dates of the frontier
 /// (`docs/research.pt-BR.md`, "Pesquisa que custa").
-pub const POINTS_PER_LOT: Fixed = milli(1);
+pub const POINTS_PER_MILLION_LOTS: i64 = 185;
 /// Share of the effort spent on new science; the rest builds prototypes of what is known.
 const SCIENCE_SHARE: Fixed = milli(700);
 /// How much cheaper it is to learn what the whole world already knows.
@@ -203,7 +203,7 @@ impl System<GameWorld> for Research {
             let boost = Fixed::ONE + state.effects[c][3] * 2;
             // Research is what the laboratories make: engineers at a bench, paid by the state and
             // the firms, at the country's productivity; not heads counted.
-            let points = f.research * POINTS_PER_LOT * boost / 12;
+            let points = f.research.mul_ratio(POINTS_PER_MILLION_LOTS, 1_000_000) * boost / 12;
             state.points[c] = points;
             let stages = state.stage[c].clone();
             let channel = imitation_channel(world.econ.markets.get(c));

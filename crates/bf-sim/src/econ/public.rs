@@ -326,7 +326,8 @@ fn market_works(
             cands[INFRASTRUCTURE].push((score, ri, kind, method as u8, Fixed::ZERO));
         }
     }
-    let research_levels = research_candidates(cat, econ, kinds, mi, regions, &queued, &mut cands);
+    let research_levels =
+        research_candidates(cat, econ, kinds, mi, regions, unlocks, &queued, &mut cands);
     let weights: Vec<i64> = (0..PUBLIC_CATEGORIES)
         .map(|c| {
             if cands[c].is_empty() {
@@ -484,11 +485,43 @@ pub fn colonial_purse(econ: &Economy, m: &Market, regions: &[usize]) -> Colonial
 /// the law's `research_priority` (`docs/research.pt-BR.md`, "Pesquisa que custa").
 pub const STATE_RESEARCH_SHARE: Fixed = milli(10);
 
+/// How close a country's industry is to the world's: of the technologies someone makes at
+/// scale, the share it makes too. Firms at the frontier must invent; firms far behind copy.
+/// One without a technology tree.
+pub fn frontier(unlocks: &super::Unlocks<'_>, mi: usize) -> Fixed {
+    let Some((_, research)) = unlocks.tech else {
+        return Fixed::ONE;
+    };
+    let Some(mine) = research.stage.get(mi) else {
+        return Fixed::ONE;
+    };
+    let industrial = crate::research::Stage::Industrial;
+    let (mut world, mut here) = (0i64, 0i64);
+    for (t, firsts) in research.firsts.iter().enumerate() {
+        if firsts[industrial as usize] != 0 || mine.get(t).is_some_and(|s| *s >= industrial) {
+            world += 1;
+            if mine.get(t).is_some_and(|s| *s >= industrial) {
+                here += 1;
+            }
+        }
+    }
+    if world == 0 {
+        Fixed::ONE
+    } else {
+        Fixed::from_ratio(here, world)
+    }
+}
+
 /// Research a country wants in a year, in value at base prices: what its firms want (the value
-/// each building group adds times the group's research intensity) and what its state wants
-/// (revenue times `STATE_RESEARCH_SHARE`, times one plus the law's priority, times the player's
-/// weight against the default).
-pub fn research_target(cat: &Catalogue, econ: &Economy, mi: usize) -> (Fixed, Fixed) {
+/// each building group adds times the group's research intensity, times how close it is to
+/// the frontier) and what its state wants (revenue times `STATE_RESEARCH_SHARE`, times one plus
+/// the law's priority, times the player's weight against the default).
+pub fn research_target(
+    cat: &Catalogue,
+    econ: &Economy,
+    mi: usize,
+    frontier: Fixed,
+) -> (Fixed, Fixed) {
     let m = &econ.markets[mi];
     let mut firms = Fixed::ZERO;
     for r in econ.regions.iter().filter(|r| r.market as usize == mi) {
@@ -508,6 +541,7 @@ pub fn research_target(cat: &Catalogue, econ: &Economy, mi: usize) -> (Fixed, Fi
                 * k;
         }
     }
+    let firms = firms * frontier;
     let laws = &m.laws.effects[0];
     let weight = Fixed::from_ratio(
         i64::from(m.budget.priority[RESEARCH]),
@@ -541,13 +575,14 @@ fn research_candidates(
     kinds: &PublicKinds,
     mi: usize,
     regions: &[usize],
+    unlocks: &super::Unlocks<'_>,
     queued: &dyn Fn(usize, usize) -> i64,
     cands: &mut [Vec<Candidate>; PUBLIC_CATEGORIES],
 ) -> usize {
     let (Some(kind), Some(good)) = (kinds.laboratory, cat.research) else {
         return 0;
     };
-    let (firms, state) = research_target(cat, econ, mi);
+    let (firms, state) = research_target(cat, econ, mi, frontier(unlocks, mi));
     let want = (firms + state) / cat.goods[good as usize].base_price;
     let mut have = Fixed::ZERO;
     let mut per_level_sum = Fixed::ZERO;
