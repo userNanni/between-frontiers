@@ -511,7 +511,9 @@ pub struct Assimilated {
 /// primary culture passes a share to (primary culture, same religion), and every community whose
 /// religion is not the majority's passes a share to (same culture, majority religion):
 ///
-///     a = rate × law × (1 − discrimination) × (1 − share in the state)² × family
+/// ```text
+/// a = rate × law × (1 − discrimination) × (1 − share in the state)² × family
+/// ```
 ///
 /// Rates and factors per mille or per million; integer arithmetic.
 pub fn assimilate(
