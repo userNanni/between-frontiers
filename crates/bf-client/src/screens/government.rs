@@ -6,7 +6,6 @@
 use bf_i18n::I18n;
 use bf_sim::game::GameCommand;
 use bf_ui_kit::tokens::space;
-use bf_ui_kit::{Button, ButtonSize};
 use egui::{Rect, Ui, Vec2};
 
 use super::region;
@@ -180,11 +179,9 @@ pub fn show(
             let tips = Tab::ALL.map(|t| Tip::Command(t.command()));
             keys::segmented(ui, tab, &options, &tips);
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                let close = Button::ghost(&i18n.tr("gov-close"))
-                    .size(ButtonSize::Small)
-                    .show(ui);
-                let close =
-                    close.on_hover_text(keys::tip(ui.ctx(), &i18n.tr("gov-close"), id::BACK));
+                let label = i18n.tr("gov-close");
+                let tip = keys::tip(ui.ctx(), &label, id::BACK);
+                let close = bf_ui_kit::close_button(ui, &label, &tip);
                 if close.clicked() || keys::single(ui, "gov.close", 'X', close.rect) {
                     out.close = true;
                 }

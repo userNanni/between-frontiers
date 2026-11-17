@@ -246,9 +246,9 @@ pub fn show(
         ui.horizontal(|ui| {
             bf_ui_kit::title(ui, &i18n.tr("journal-title"));
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                let close = Button::ghost(&i18n.tr("gov-close"))
-                    .size(ButtonSize::Small)
-                    .show(ui);
+                let label = i18n.tr("gov-close");
+                let tip = keys::tip(ui.ctx(), &label, crate::keys::id::BACK);
+                let close = bf_ui_kit::close_button(ui, &label, &tip);
                 if close.clicked() || keys::single(ui, "journal.close", 'X', close.rect) {
                     out.close = true;
                 }

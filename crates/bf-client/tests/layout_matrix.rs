@@ -725,6 +725,11 @@ fn the_debts_tab_holds_many_and_long() {
             let case = format!("{locale} {w}×{hh} at {scale} % ({lw}×{lh}) debts");
             failures.extend(check(&h, &case));
             failures.extend(no_overlapping_text(&h, &case));
+            failures.extend(close_beside_tabs(
+                &h,
+                &case,
+                if locale == "en" { "Close" } else { "Fechar" },
+            ));
             if h.query_all(egui_kittest::kittest::by().label_contains("Serbs"))
                 .next()
                 .is_none()
@@ -787,6 +792,41 @@ fn no_overlapping_text(h: &Harness<'_, App>, case: &str) -> Vec<String> {
                     a.label, a.rect, b.label, b.rect
                 ));
             }
+        }
+    }
+    out
+}
+
+/// The window's close button (an X) sits on the line of its tabs, centred with them, clear of
+/// them and inside the window.
+fn close_beside_tabs(h: &Harness<'_, App>, case: &str, close: &str) -> Vec<String> {
+    let all = nodes(h);
+    let Some(x) = all
+        .iter()
+        .find(|n| n.role == egui::accesskit::Role::Button && n.label == close)
+    else {
+        return vec![format!("{case}: no close button")];
+    };
+    let tabs: Vec<&Node> = all
+        .iter()
+        .filter(|n| n.role == egui::accesskit::Role::RadioButton)
+        .collect();
+    let mut out = Vec::new();
+    if x.rect.width() < 27.0 || x.rect.height() < 27.0 {
+        out.push(format!(
+            "{case}: close button {:?} smaller than a button",
+            x.rect
+        ));
+    }
+    for t in &tabs {
+        if (t.rect.center().y - x.rect.center().y).abs() > 2.0 {
+            out.push(format!(
+                "{case}: close {:?} not on the line of tab {:?} {:?}",
+                x.rect, t.label, t.rect
+            ));
+        }
+        if t.rect.intersects(x.rect) {
+            out.push(format!("{case}: close {:?} over tab {:?}", x.rect, t.label));
         }
     }
     out

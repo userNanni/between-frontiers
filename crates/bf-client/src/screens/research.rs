@@ -309,9 +309,9 @@ pub fn show(
             ),
         );
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            let close = Button::ghost(&i18n.tr("research-close"))
-                .size(ButtonSize::Small)
-                .show(ui);
+            let label = i18n.tr("research-close");
+            let tip = keys::tip(ui.ctx(), &label, crate::keys::id::BACK);
+            let close = bf_ui_kit::close_button(ui, &label, &tip);
             if close.clicked() || keys::single(ui, "research.close", 'X', close.rect) {
                 out.close = true;
             }

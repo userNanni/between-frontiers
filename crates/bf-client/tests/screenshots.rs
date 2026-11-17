@@ -2452,6 +2452,17 @@ fn debts_tab() {
             h.run_steps(3);
             shot(&mut h, &format!("111-debts-{name}-selected"));
         }
+        // The other windows' X, beside the government's.
+        if name == "gbr-pt" {
+            h.key_press(egui::Key::G);
+            h.key_press(egui::Key::J);
+            h.run_steps(3);
+            shot(&mut h, "112-close-x-agendas-pt");
+            h.key_press(egui::Key::J);
+            h.key_press(egui::Key::R);
+            h.run_steps(4);
+            shot(&mut h, "113-close-x-research-pt");
+        }
     }
     let _ = std::fs::remove_dir_all(&user);
 }
