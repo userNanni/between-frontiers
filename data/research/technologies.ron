@@ -39,6 +39,13 @@
 // 1925 start: era-0 technologies have a default stage and the countries that differ; later ones
 // are unknown, except those already understood (science) somewhere in 1925.
 (
+    // Ideas get harder to find: on top of the costs below, a technology costs this much more,
+    // in basis points a year, for each year after 1925 its breakthrough came. The costs below
+    // already grow about 4.75 % a year with the historical year (fit over the 143 technologies
+    // after 1925); research productivity in the United States fell 5.1 % a year since the 1930s
+    // (Bloom, Jones, Van Reenen and Webb 2020, AER 110(4), p. 1110). Source value: the
+    // difference, 35 basis points (docs/research.pt-BR.md, "Pesquisa que custa").
+    harder_per_year_bp: 35,
     technologies: [
         (
             key: "tractor",

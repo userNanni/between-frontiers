@@ -185,7 +185,7 @@ impl TreeLayout {
                 .techs
                 .iter()
                 .filter(|t| usize::from(t.level) == l)
-                .map(|t| t.cost)
+                .map(|t| t.research_cost)
                 .collect();
             costs.sort_unstable();
             level_cost.push(costs.get(costs.len() / 2).copied().unwrap_or(0));
@@ -988,7 +988,7 @@ fn tooltip(
             "research-cost",
             &[
                 ("n", Arg::String((tech.level + 1).to_string())),
-                ("cost", Arg::String(tech.cost.to_string())),
+                ("cost", Arg::String(tech.research_cost.to_string())),
             ],
         ))
         .font(sans(12.5)),

@@ -211,7 +211,7 @@ impl System<GameWorld> for Research {
         // spillover takes the same channel lifted to a high floor. Fully open, both are one.
         let science_cost = |t: usize, channel: Fixed| -> Fixed {
             let tech = &tree.techs[t];
-            Fixed::from_int(i64::from(tech.cost))
+            Fixed::from_int(i64::from(tech.research_cost))
                 * (Fixed::ONE
                     - SPILLOVER * known[t] * crate::foreign_capital::science_channel(channel))
                 * ahead(year, tech.demonstrated - 3)
@@ -250,7 +250,7 @@ impl System<GameWorld> for Research {
                 let each = points * (Fixed::ONE - SCIENCE_SHARE) / at_science.len() as i64;
                 for &t in &at_science {
                     let tech = &tree.techs[t];
-                    let cost = Fixed::from_int(i64::from(tech.cost))
+                    let cost = Fixed::from_int(i64::from(tech.research_cost))
                         * PROTOTYPE_COST
                         * (Fixed::ONE - SPILLOVER * industrial[t] * channel)
                         * ahead(year, tech.demonstrated);
