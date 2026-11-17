@@ -87,6 +87,11 @@ pub struct CountryMoney {
     pub debt: f64,
     pub bank_share: f64,
     pub fx_share: f64,
+    /// Debt to other governments by treaty and claims on them, over GDP (`treaty::Ledger`).
+    #[serde(default)]
+    pub treaty_owed: f64,
+    #[serde(default)]
+    pub treaty_claims: f64,
     pub defaults: u16,
 }
 
@@ -428,6 +433,8 @@ fn snapshot(data: &GameData, s: &Session, ms: f64, log: &mut InflationLog) -> De
                 debt: debt / g,
                 bank_share: money.debt_bank.to_f64_lossy() / debt.max(1.0),
                 fx_share: money.debt_fx_local().to_f64_lossy() / debt.max(1.0),
+                treaty_owed: e.ledger.owed_by(c as u16).to_f64_lossy() / g,
+                treaty_claims: e.ledger.claims_of(c as u16).to_f64_lossy() / g,
                 defaults: money.defaults,
             })
         })
@@ -666,7 +673,7 @@ fn run(
                 );
                 for c in &snap.countries {
                     println!(
-                        "        {}: inflation {:>6.1}%  rate {:>5.1}%  bonds {:>5.1}%  debt {:>4.0}% of GDP (bank {:>3.0}%, foreign currency {:>3.0}%)  defaults {}",
+                        "        {}: inflation {:>6.1}%  rate {:>5.1}%  bonds {:>5.1}%  debt {:>4.0}% of GDP (bank {:>3.0}%, foreign currency {:>3.0}%)  defaults {}  treaty debt {:>3.0}%, claims {:>3.0}%",
                         c.tag,
                         c.inflation,
                         c.policy_rate,
@@ -674,7 +681,9 @@ fn run(
                         c.debt * 100.0,
                         c.bank_share * 100.0,
                         c.fx_share * 100.0,
-                        c.defaults
+                        c.defaults,
+                        c.treaty_owed * 100.0,
+                        c.treaty_claims * 100.0
                     );
                 }
                 if std::env::var_os("BF_TECH").is_some() {

@@ -459,3 +459,44 @@ fn the_world_has_community_rows() {
     assert_eq!(w.demography.communities.len(), w.econ.regions.len());
     assert!(Totals::of(&w).community_people > 0);
 }
+
+/// Annexing a debtor of the ledger of debts between governments: the annexer takes its debts; a
+/// debt to the annexer itself disappears from both sides; every total still holds (`run`).
+#[test]
+fn annexation_carries_the_ledger() {
+    let mut w = world();
+    let (ger, fra, gbr) = (
+        ix(&w, "GER") as u16,
+        ix(&w, "FRA") as u16,
+        ix(&w, "GBR") as u16,
+    );
+    let to_gbr = w
+        .econ
+        .ledger
+        .debts
+        .iter()
+        .find(|d| d.debtor == ger && d.creditor == gbr)
+        .unwrap()
+        .principal;
+    run(
+        &mut w,
+        vec![Operation::Annex {
+            from: "GER".into(),
+            into: "FRA".into(),
+            colony: false,
+            terms: Terms::default(),
+        }],
+    );
+    let l = &w.econ.ledger;
+    assert_eq!(l.owed_by(ger), Fixed::ZERO);
+    assert_eq!(
+        l.claims_of(fra),
+        Fixed::ZERO,
+        "France no longer owes itself"
+    );
+    assert!(
+        l.debts
+            .iter()
+            .any(|d| d.debtor == fra && d.creditor == gbr && d.principal == to_gbr)
+    );
+}

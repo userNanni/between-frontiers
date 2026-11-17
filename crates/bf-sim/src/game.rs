@@ -116,7 +116,7 @@ struct WorldBeforeCommunities {
     player: Option<Id<Country>>,
     countries: Table<Country, CountryState>,
     census: Vec<CensusRecord>,
-    econ: crate::econ::Economy,
+    econ: crate::econ::state::EconomyBeforeLedger,
     research: crate::research::ResearchState,
     politics: crate::polity::PoliticsState,
     demography: crate::demography::DemographyBeforeCommunities,
@@ -129,11 +129,43 @@ impl From<WorldBeforeCommunities> for GameWorld {
             player: w.player,
             countries: w.countries,
             census: w.census,
-            econ: w.econ,
+            econ: w.econ.into(),
             research: w.research,
             politics: w.politics,
             demography: w.demography.into(),
             borders: Default::default(),
+        }
+    }
+}
+
+/// The world as saves wrote it before the ledger of debts between states (2026-11-17): the
+/// economy without its ledger. An empty ledger is out of the hash, so the loaded world keeps
+/// the hash it was saved with.
+#[derive(Deserialize)]
+struct WorldBeforeLedger {
+    scenario: String,
+    player: Option<Id<Country>>,
+    countries: Table<Country, CountryState>,
+    census: Vec<CensusRecord>,
+    econ: crate::econ::state::EconomyBeforeLedger,
+    research: crate::research::ResearchState,
+    politics: crate::polity::PoliticsState,
+    demography: crate::demography::DemographyState,
+    borders: crate::borders::BordersState,
+}
+
+impl From<WorldBeforeLedger> for GameWorld {
+    fn from(w: WorldBeforeLedger) -> Self {
+        Self {
+            scenario: w.scenario,
+            player: w.player,
+            countries: w.countries,
+            census: w.census,
+            econ: w.econ.into(),
+            research: w.research,
+            politics: w.politics,
+            demography: w.demography,
+            borders: w.borders,
         }
     }
 }
@@ -514,21 +546,30 @@ impl std::fmt::Display for LoadError {
 impl std::error::Error for LoadError {}
 
 /// Decodes a world snapshot of this build or of an older one. Postcard is not self-describing, so
-/// a field added at the end of the world does not read as its default:
-/// - a snapshot from before the border state (`borders`, a list of empty lists) ends early: it is
-///   read with the missing tail as empty lists, one zero byte each;
-/// - a snapshot from before the communities in the population has another demography: it is
-///   read in that layout ([`WorldBeforeCommunities`]), which also predates the borders.
+/// a field added to the world does not read as its default. Newest layout first, one step back at
+/// a time:
+/// - this build;
+/// - before the ledger of debts between states (`Economy::ledger`): [`WorldBeforeLedger`];
+/// - before the border state too (`borders`, a list of empty lists): the same layout, with the
+///   missing tail read as empty lists, one zero byte each;
+/// - before the communities in the population: [`WorldBeforeCommunities`], which also predates
+///   the borders and the ledger.
 pub fn decode_world(bytes: &[u8]) -> Result<GameWorld, SaveError> {
     let first = decode_snapshot::<GameWorld>(bytes);
     if first.is_ok() {
         return first;
+    }
+    if let Ok(w) = decode_snapshot::<WorldBeforeLedger>(bytes) {
+        return Ok(w.into());
     }
     let mut padded = bytes.to_vec();
     for k in 1..=8 {
         padded.resize(bytes.len() + k, 0);
         if let Ok(w) = decode_snapshot::<GameWorld>(&padded) {
             return Ok(w);
+        }
+        if let Ok(w) = decode_snapshot::<WorldBeforeLedger>(&padded) {
+            return Ok(w.into());
         }
     }
     decode_snapshot::<WorldBeforeCommunities>(bytes)
@@ -635,6 +676,135 @@ impl Session {
 mod tests {
     use super::*;
     use crate::scenario::Status;
+
+    /// A 1925 world written in every layout the saves had loads in this build with the hash it
+    /// was saved with: this build; before the ledger; before the ledger and the border state;
+    /// before the communities (and both). The ledger and the border state empty, as they were.
+    #[test]
+    fn saves_of_every_layout_load_with_their_hash() {
+        #[derive(Serialize)]
+        struct OldEconomy<'a> {
+            regions: &'a Vec<crate::econ::Region>,
+            markets: &'a Vec<crate::econ::Market>,
+            world_price: &'a Vec<laplace_schelling::Fixed>,
+            history: &'a Vec<crate::econ::YearRecord>,
+        }
+        /// `DemographyState` without `communities` (its last field).
+        #[derive(Serialize)]
+        struct OldDemography<'a> {
+            ages: &'a Vec<[i64; crate::demography::AGE_GROUPS]>,
+            schooling: &'a Vec<laplace_schelling::Fixed>,
+            land_1925: &'a Vec<laplace_schelling::Fixed>,
+            vital: &'a Vec<crate::demography::Vital>,
+            territories: &'a Vec<crate::demography::Territory>,
+            diaspora: &'a Vec<crate::demography::migration::Diaspora>,
+            homes: &'a Vec<crate::demography::migration::Home>,
+            waves: &'a Vec<crate::demography::migration::Wave>,
+            waves_ended: &'a Vec<crate::demography::migration::WaveRecord>,
+        }
+        #[derive(Serialize)]
+        struct WithBorders<'a, D: Serialize> {
+            scenario: &'a String,
+            player: &'a Option<Id<Country>>,
+            countries: &'a Table<Country, CountryState>,
+            census: &'a Vec<CensusRecord>,
+            econ: OldEconomy<'a>,
+            research: &'a crate::research::ResearchState,
+            politics: &'a crate::polity::PoliticsState,
+            demography: D,
+            borders: &'a crate::borders::BordersState,
+        }
+        #[derive(Serialize)]
+        struct NoBorders<'a, D: Serialize> {
+            scenario: &'a String,
+            player: &'a Option<Id<Country>>,
+            countries: &'a Table<Country, CountryState>,
+            census: &'a Vec<CensusRecord>,
+            econ: OldEconomy<'a>,
+            research: &'a crate::research::ResearchState,
+            politics: &'a crate::polity::PoliticsState,
+            demography: D,
+        }
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let data = crate::data::GameData::load(&root).unwrap();
+        // This build, with the 1925 ledger.
+        let with_ledger = data.new_world();
+        assert!(!with_ledger.econ.ledger.is_empty());
+        let now = decode_world(&encode_snapshot(&with_ledger).unwrap()).unwrap();
+        assert_eq!(hash_of(&now), hash_of(&with_ledger));
+        // Older layouts: the world of then had no ledger.
+        let mut world = data.new_world();
+        world.econ.ledger = Default::default();
+        let econ = || OldEconomy {
+            regions: &world.econ.regions,
+            markets: &world.econ.markets,
+            world_price: &world.econ.world_price,
+            history: &world.econ.history,
+        };
+        let check = |bytes: Vec<u8>, what: &str| {
+            assert!(
+                decode_snapshot::<GameWorld>(&bytes).is_err(),
+                "{what}: the layout really differs"
+            );
+            let loaded = decode_world(&bytes).unwrap_or_else(|e| panic!("{what}: {e}"));
+            assert_eq!(hash_of(&loaded), hash_of(&world), "{what}");
+            loaded
+        };
+        // Before the ledger (the main after the borders).
+        let before_ledger = encode_snapshot(&WithBorders {
+            scenario: &world.scenario,
+            player: &world.player,
+            countries: &world.countries,
+            census: &world.census,
+            econ: econ(),
+            research: &world.research,
+            politics: &world.politics,
+            demography: &world.demography,
+            borders: &world.borders,
+        })
+        .unwrap();
+        assert_eq!(check(before_ledger, "before the ledger"), world);
+        // Before the border state too (the main after the communities).
+        let before_borders = encode_snapshot(&NoBorders {
+            scenario: &world.scenario,
+            player: &world.player,
+            countries: &world.countries,
+            census: &world.census,
+            econ: econ(),
+            research: &world.research,
+            politics: &world.politics,
+            demography: &world.demography,
+        })
+        .unwrap();
+        assert_eq!(check(before_borders, "before the borders"), world);
+        // Before the communities: the demography without them, refilled on the next month.
+        let d = &world.demography;
+        let before_communities = encode_snapshot(&NoBorders {
+            scenario: &world.scenario,
+            player: &world.player,
+            countries: &world.countries,
+            census: &world.census,
+            econ: econ(),
+            research: &world.research,
+            politics: &world.politics,
+            demography: OldDemography {
+                ages: &d.ages,
+                schooling: &d.schooling,
+                land_1925: &d.land_1925,
+                vital: &d.vital,
+                territories: &d.territories,
+                diaspora: &d.diaspora,
+                homes: &d.homes,
+                waves: &d.waves,
+                waves_ended: &d.waves_ended,
+            },
+        })
+        .unwrap();
+        let loaded = decode_world(&before_communities).expect("before the communities");
+        assert!(loaded.demography.communities.is_empty());
+        assert_eq!(loaded.econ, world.econ);
+        assert_eq!(loaded.demography.ages, world.demography.ages);
+    }
 
     fn def(tag: &str, population: u64) -> CountryDef {
         CountryDef {

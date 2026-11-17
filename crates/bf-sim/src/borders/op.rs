@@ -1048,6 +1048,9 @@ fn execute(
                 }
             }
             world.borders.subjects[f] = None;
+            // Debts between governments: the annexer owes and is owed what the annexed was; a
+            // line between the two disappears from both sides (`treaty::Ledger::on_annex`).
+            world.econ.ledger.on_annex(f as u16, t as u16);
             apply_terms(world, terms);
             repatriated = demography(world, rules, &old, date);
             ended = Some(f as u16);

@@ -23,6 +23,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use laplace_schelling::Fixed;
+use laplace_schelling::hash::{HashState, StateHasher};
 use serde::{Deserialize, Serialize};
 
 use crate::scenario::{SubjectKind, Tag};
@@ -180,6 +181,7 @@ pub struct DebtTerms {
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[repr(u8)]
 pub enum Currency {
     /// Gold value: reference units (as `Money::debt_fx`).
     #[default]
@@ -192,6 +194,7 @@ pub enum Currency {
 
 /// Revenue pledged to the service before it reaches the budget.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[repr(u8)]
 pub enum Pledge {
     Customs,
     ConsumptionTaxes,
@@ -334,7 +337,7 @@ impl Front {
 
 /// The fronts live in this build. Grows as each front enters the tick; a clause reads it to
 /// know whether it acts ([`ClauseCatalogue::dormant`]).
-pub const LIVE_FRONTS: &[Front] = &[Front::Politics];
+pub const LIVE_FRONTS: &[Front] = &[Front::Politics, Front::Ledger];
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ClauseCatalogue {
@@ -772,7 +775,7 @@ pub fn evaluate(
 
 /// One debt between two governments. It is at once the debtor's debt and the creditor's claim:
 /// every change touches it once, so the two never differ.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct InterstateDebt {
     pub id: u32,
     /// Country indices (the scenario order, stable).
@@ -799,10 +802,41 @@ pub struct InterstateDebt {
 }
 
 /// The ledger: `GameWorld::treaties.debts` once in the tick.
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Ledger {
     pub debts: Vec<InterstateDebt>,
     pub next_id: u32,
+    /// Year of the last service: on a new year the lines lose a year of their term.
+    #[serde(default)]
+    pub year: i32,
+}
+
+impl HashState for InterstateDebt {
+    fn hash_state(&self, h: &mut StateHasher) {
+        h.write_u32(self.id);
+        h.write_u16(self.debtor);
+        h.write_u16(self.creditor);
+        h.write_str(&self.treaty);
+        h.write_u8(self.currency as u8);
+        self.principal.hash_state(h);
+        self.rate.hash_state(h);
+        self.annuity.hash_state(h);
+        h.write_u16(self.years_left);
+        self.deferrable.hash_state(h);
+        self.transfer_cap.hash_state(h);
+        h.write_u8(self.pledge.map_or(0, |p| p as u8 + 1));
+        self.contingent.hash_state(h);
+        self.arrears.hash_state(h);
+        h.write_i64(i64::from(self.suspended_until));
+    }
+}
+
+impl HashState for Ledger {
+    fn hash_state(&self, h: &mut StateHasher) {
+        self.debts.hash_state(h);
+        h.write_u32(self.next_id);
+        h.write_i64(i64::from(self.year));
+    }
 }
 
 /// One week's service of one line: paid (moved between treasuries) and deferred to arrears.
@@ -845,35 +879,45 @@ impl Ledger {
     }
 
     /// One week of service, out of the treasuries (indexed by country) into the creditors'.
-    /// `revenue_week` caps the service where the line has a transfer cap; what passes the cap
-    /// goes to arrears. A gold debt loses `world_inflation` a year; a debt in the debtor's
-    /// currency loses the debtor's inflation. Money only moves between treasuries: their sum does
-    /// not change.
+    /// `exchange` is each debtor's real exchange rate over parity (1: at parity): a weak currency
+    /// makes the same payment cost more of the treasury, as `Money::debt_fx_local` does, and the
+    /// creditor receives what left the debtor (the market's foreign debt works the same way).
+    /// `revenue_week` caps the service where the line has a transfer cap; interest that passes
+    /// the cap goes to arrears. A gold debt loses `world_inflation` a year (fractions, not
+    /// percent); a debt in the debtor's currency loses the debtor's inflation. Money only moves
+    /// between treasuries: their sum does not change.
     pub fn service_week(
         &mut self,
         treasuries: &mut [Fixed],
         revenue_week: &[Fixed],
+        exchange: &[Fixed],
         inflation: &[Fixed],
         world_inflation: Fixed,
         year: i32,
     ) -> Vec<Service> {
         let mut out = Vec::with_capacity(self.debts.len());
         let weekly = |x: Fixed| x.mul_ratio(1, 52);
+        let new_year = self.year != 0 && year > self.year;
+        self.year = year;
         for d in &mut self.debts {
+            if new_year {
+                d.years_left = d.years_left.saturating_sub(1);
+            }
             let mut s = Service::default();
             if d.suspended_until < year && d.years_left > 0 {
                 let interest = weekly(d.principal * d.rate);
-                let scheduled = weekly(d.annuity).max(interest);
+                let scheduled = weekly(d.annuity).max(interest).min(d.principal + interest);
                 let due = scheduled + d.arrears.mul_ratio(1, 52);
+                let ex = exchange[d.debtor as usize].max(Fixed::EPSILON);
                 let cap = d
                     .transfer_cap
-                    .map(|c| revenue_week[d.debtor as usize] * c)
+                    .map(|c| (revenue_week[d.debtor as usize] * c).mul_div(Fixed::ONE, ex))
                     .unwrap_or(Fixed::MAX);
                 let paid = due.min(cap).max(Fixed::ZERO);
-                s.paid = paid;
+                s.paid = paid * ex;
                 s.deferred = due - paid;
-                treasuries[d.debtor as usize] -= paid;
-                treasuries[d.creditor as usize] += paid;
+                treasuries[d.debtor as usize] -= s.paid;
+                treasuries[d.creditor as usize] += s.paid;
                 // The schedule first (interest, then principal), then the arrears. Interest not
                 // paid goes to arrears; amortization not paid stays in the principal.
                 let on_schedule = paid.min(scheduled);
@@ -891,6 +935,19 @@ impl Ledger {
             out.push(s);
         }
         out
+    }
+
+    /// Yearly service `debtor` owes on its lines in force, reference units (for the default
+    /// limit of `econ::money`).
+    pub fn yearly_service(&self, debtor: u16, year: i32) -> Fixed {
+        self.debts
+            .iter()
+            .filter(|d| d.debtor == debtor && d.suspended_until < year && d.years_left > 0)
+            .map(|d| {
+                let interest = d.principal * d.rate;
+                d.annuity.max(interest).min(d.principal + interest) + d.arrears
+            })
+            .sum()
     }
 
     /// Default of `debtor`: `share` of every line it owes is written off. Returns the loss of
@@ -1298,6 +1355,7 @@ mod tests {
             l.service_week(
                 &mut treasuries,
                 &revenue,
+                &[Fixed::ONE; 3],
                 &inflation,
                 Fixed::from_ratio(2, 100),
                 1925 + week / 52,
@@ -1325,6 +1383,7 @@ mod tests {
         let s = l.service_week(
             &mut tr,
             &[Fixed::from_int(10); 2],
+            &[Fixed::ONE; 3],
             &[Fixed::ZERO; 2],
             Fixed::ZERO,
             1931,
@@ -1334,6 +1393,7 @@ mod tests {
         let s = l.service_week(
             &mut tr,
             &[Fixed::from_int(10); 2],
+            &[Fixed::ONE; 3],
             &[Fixed::ZERO; 2],
             Fixed::ZERO,
             1932,
@@ -1353,6 +1413,7 @@ mod tests {
             l.service_week(
                 &mut tr,
                 &[Fixed::ZERO; 2],
+                &[Fixed::ONE; 3],
                 &[Fixed::from_ratio(50, 100), Fixed::ZERO],
                 Fixed::ZERO,
                 1925,

@@ -445,6 +445,33 @@ pub struct Economy {
     pub markets: Vec<Market>,
     pub world_price: Vec<Fixed>,
     pub history: Vec<YearRecord>,
+    /// Debts between governments by treaty (`treaty.rs`): named debtor and creditor, served in
+    /// the weekly money step. Empty in worlds without treaties.
+    #[serde(default)]
+    pub ledger: crate::treaty::Ledger,
+}
+
+/// The economy as saves wrote it before the ledger of debts between states (2026-11-17).
+/// Postcard is not self-describing: loading an older save tries this layout
+/// (`game::decode_world`).
+#[derive(Deserialize)]
+pub(crate) struct EconomyBeforeLedger {
+    regions: Vec<Region>,
+    markets: Vec<Market>,
+    world_price: Vec<Fixed>,
+    history: Vec<YearRecord>,
+}
+
+impl From<EconomyBeforeLedger> for Economy {
+    fn from(e: EconomyBeforeLedger) -> Self {
+        Self {
+            regions: e.regions,
+            markets: e.markets,
+            world_price: e.world_price,
+            history: e.history,
+            ledger: Default::default(),
+        }
+    }
 }
 
 impl HashState for Pop {
@@ -571,6 +598,11 @@ impl HashState for Economy {
         self.world_price.hash_state(h);
         h.section("history");
         self.history.hash_state(h);
+        // Worlds without debts between governments keep their hash.
+        if !self.ledger.is_empty() {
+            h.section("ledger");
+            self.ledger.hash_state(h);
+        }
     }
 }
 
