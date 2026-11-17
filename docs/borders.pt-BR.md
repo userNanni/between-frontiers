@@ -593,6 +593,63 @@ Duas marcas na **mobilização** da unidade (apoio × recrutas ÷ população), 
 - **Depois do súdito.** O domínio pode romper pela mesma regra, com o movimento medido nas suas
   leis (o súdito já é país), por uma operação `Status` com suserano vazio.
 
+### O custo internacional de segurar colônia (acréscimo do dono à I4)
+
+O dono lembrou que depois da Segunda Guerra ter colônias foi ficando menos aceitável, e que hoje é
+motivo de descrédito, e pediu que isso fosse conferido. A conferência sustenta a ideia, com duas
+partes de origem diferente:
+
+| Período | O que pesou | Fonte |
+|---|---|---|
+| 1945 | A Carta da ONU traz a autodeterminação (art. 1(2)) e, para os territórios não autônomos, o dever de relatar e o interesse dos habitantes acima de tudo (art. 73). Pedia relatório, não independência | [Carta](https://en.wikisource.org/wiki/Charter_of_the_United_Nations), [cap. XI](https://en.wikipedia.org/wiki/Chapter_XI_of_the_United_Nations_Charter) |
+| 1948–1956 | As superpotências impõem custo material em casos pontuais: os EUA ameaçam suspender o Plano Marshall à Holanda pela Indonésia (1948–49); em Suez, os EUA pressionam a libra e negam petróleo até a retirada, e a URSS ameaça | [Operação Kraai](https://en.wikipedia.org/wiki/Operation_Kraai), [Suez](https://en.wikipedia.org/wiki/Suez_Crisis) |
+| 1960 em diante | A ONU cresce de 51 membros (1945) para 99 (fim de 1960, 17 admitidos naquele ano, 16 africanos) e 127 (1970). A Resolução 1514 passa por 89–0–9 (abstenções: Austrália, Bélgica, República Dominicana, França, Portugal, Espanha, África do Sul, Reino Unido, EUA); o comitê de descolonização nasce em 1961 (res. 1654) | [1514](https://en.wikipedia.org/wiki/Declaration_on_the_Granting_of_Independence_to_Colonial_Countries_and_Peoples), [ampliação da ONU](https://en.wikipedia.org/wiki/Enlargement_of_the_United_Nations), [Comitê dos 24](https://en.wikipedia.org/wiki/Special_Committee_on_Decolonization) |
+| 1963–1974 | Portugal isolado na Assembleia, mas a res. 180 do Conselho (1963) só pede que não se vendam armas, com França, Reino Unido e EUA abstendo; aliados da OTAN continuam vendendo. A Rodésia leva as primeiras sanções obrigatórias da ONU (res. 232, 1966; 253, 1968), furadas pela África do Sul e por Portugal | [res. 180](https://en.wikipedia.org/wiki/United_Nations_Security_Council_Resolution_180), [guerra colonial](https://en.wikipedia.org/wiki/Portuguese_Colonial_War), [res. 232](https://en.wikipedia.org/wiki/United_Nations_Security_Council_Resolution_232), [UDI](https://en.wikipedia.org/wiki/Rhodesia%27s_Unilateral_Declaration_of_Independence) |
+| hoje | Chagos, sem consentimento local: parecer da Corte Internacional de 2019 e a res. 73/295 (116–6–56). O acordo Reino Unido–Maurício foi assinado em 2025 mas não está em vigor. Malvinas (99,8 % no referendo de 2013) e Gibraltar (1967) ficam por consentimento local; continuam na lista do comitê, com custo concentrado no país que reivindica | [Chagos](https://en.wikipedia.org/wiki/Chagos_Archipelago_sovereignty_dispute), [73/295](https://en.wikipedia.org/wiki/United_Nations_General_Assembly_Resolution_73/295), [Malvinas 2013](https://en.wikipedia.org/wiki/2013_Falkland_Islands_sovereignty_referendum), [Gibraltar 1967](https://en.wikipedia.org/wiki/Gibraltar_sovereignty_referendum,_1967) |
+
+- **Correção ao que se costuma dizer:** não há fonte aberta para uma maioria afro-asiática absoluta
+  em 1960; os 43 coautores afro-asiáticos da 1514 eram 43 de 99. A maioria anticolonial somava os
+  afro-asiáticos, a América Latina e o bloco soviético.
+- **Superpotência ou maioria?** As duas, com papéis diferentes. O custo **material** que forçou
+  recuo veio das superpotências, quando elas quiseram (Indonésia, Suez). O custo de **reputação**
+  cresceu com a maioria da ONU, isolou Portugal e a Rodésia, mas sem as potências e sem fechar os
+  vizinhos custou pouco em dinheiro. Strang (1991) acha que o ritmo da descolonização varia com o
+  tempo histórico e quase nada com a idade da colônia, e liga isso à potência hegemônica, ao
+  discurso anticolonial e à difusão dentro e entre impérios
+  ([resumo](https://academic.oup.com/isq/article-abstract/35/4/429/1797453)): sustenta o contágio,
+  mas não mede o efeito do número de Estados.
+- **Consentimento local reduz muito o descrédito** (Malvinas, Gibraltar); o que sobra é do país
+  que reivindica.
+
+**Como entra no jogo, sem data.** A conta da I4 ganha a linha **custo internacional**, medida no
+mês, em duas partes que já existem no jogo:
+
+1. **Postura anticolonial de cada país** (0 a 1000‰), de coisas que o mundo sabe: nasceu de uma
+   independência (o registro de mudanças de fronteira), não tem colônias, as leis coloniais que
+   tem, e a afinidade com os que nasceram de independência. Valores de desenho em
+   `data/borders/rules.ron`.
+2. **Reputação:** a cada ano que a metrópole segura uma colônia com movimento ativo, perde boa
+   vontade com cada país anticolonial, na proporção da postura dele, do peso dele (a parte do PIB
+   mundial) e da mobilização da colônia. Com teto. A soma cresce sozinha à medida que nascem países
+   novos: a onda acelera sem roteiro.
+3. **Custo material:** não é um termo novo. É a influência que os anticoloniais já têm sobre a
+   metrópole (crédito, comércio, investimento): quem depende de um credor anticolonial sente a
+   pressão no assunto Dinheiro, como a Holanda em 1949 e o Reino Unido em 1956. Por isso a
+   superpotência pesa muito mais do que o seu voto, sem peso especial na regra: pesa pelo tamanho
+   e pelo que os outros lhe devem.
+4. **Consentimento:** a colônia sem movimento de independência (apoio baixo) não gera custo; é o
+   caso das Malvinas e de Gibraltar. A reivindicação de um vizinho (Argentina, Espanha, Maurício) é
+   outro mecanismo, o do revisionismo.
+
+- **Pesos (valor de desenho, a equilibrar depois da fase 6):** a reputação pelo PIB de cada país
+  anticolonial, com teto por ano; o custo material só pela influência que já existe. A pesquisa
+  sugeriu que uma superpotência vale de 8 a 10 vezes uma potência média no efeito material; o peso
+  pelo PIB e pela dependência já dá essa ordem sem número próprio.
+- **Efeitos:** a linha entra na conta da resposta da metrópole (I4); a perda de boa vontade entra
+  na avaliação de proposta dos tratados com esses países, pelo mapa de influência; fica pronta para
+  sanção e embargo quando a IA da fase 6 existir. A tela da metrópole mostra "custo internacional"
+  na conta, com os maiores países que o pagam.
+
 ### O que lê e o que chama
 
 | Lê | De quem |
@@ -613,6 +670,12 @@ Duas marcas na **mobilização** da unidade (apoio × recrutas ÷ população), 
 
 ### Como se testa
 
+- **A onda tem de acelerar sozinha.** Na rodada sem história, a taxa de independências por década
+  sobe depois das primeiras, porque cada país novo é anticolonial e aumenta o custo de quem ainda
+  segura colônia. **Regra quebrada:** o custo internacional mudar com a data e não com o número e o
+  peso dos países anticoloniais; ou, num teste controlado (a mesma colônia, o mesmo movimento), a
+  metrópole não conceder mais cedo quando há mais países anticoloniais; ou uma colônia sem movimento
+  gerar custo.
 - **Rodada de 100 anos com a história desligada** (`--borders-history` fora): quantas
   independências acontecem, por década, por acordo e por revolta, e quais. Nenhuma data forçada:
   o placar compara a onda com a referência de `data/history/borders.ron` (1945–1975) como

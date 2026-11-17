@@ -134,13 +134,21 @@ condição, ou o jogador libertando o próprio território.
   governo próprio, solta como domínio, solta independente por acordo, ou recusa. Se recusa e a
   mobilização passa a marca da **revolta**, a colônia se separa sem acordo. A IA da metrópole
   responde por conta medida: o custo de segurar contra o valor da colônia.
-- **O que o autor pensou:** aceitou as cinco recomendações (I1 a I5) como estavam.
+- **O que o autor pensou:** aceitou as cinco recomendações (I1 a I5) e acrescentou à resposta da
+  metrópole: "no pós-Segunda Guerra foi ficando menos aceitável ter colônias, e ter colônias hoje
+  é também um motivo de descrédito mundial". Conferido: o custo material veio das superpotências
+  quando quiseram (Indonésia em 1949, Suez em 1956), e o de reputação cresceu com a maioria da ONU
+  (a Resolução 1514 de 1960, o isolamento de Portugal e da Rodésia). Hoje, a colônia mantida por
+  consentimento local quase não custa; Chagos, sem consentimento, custa.
 - **Como o jogo funciona por causa disso:** a Índia e a Gâmbia não sobem juntas; cada colônia tem
   o seu movimento, que nomeia a condição que o segura. Conceder governo próprio (a lei
   `trusteeship`) tira a causa e ganha tempo, porque o apoio só decai devagar. Por acordo, o tratado
   de independência leva as cláusulas da mesa (fábricas, dívida, base); por revolta, nasce sem o
   reconhecimento da metrópole e as fábricas seguem a regra da revolta. O jogador recebe a exigência
-  em Agendas, com as quatro saídas, o preço à vista e ponto de restauração.
+  em Agendas, com as quatro saídas, o preço à vista e ponto de restauração. A conta mostra a linha
+  "custo internacional": boa vontade perdida com os países anticoloniais, pesada pelo tamanho
+  deles, mais a pressão de quem tem influência sobre a metrópole. Sem data: o custo cresce porque
+  cada país novo é anticolonial, e a onda acelera sozinha.
 - **Como é na vida real:** a pressão cresce por décadas (o Congresso indiano de 1885 à
   independência de 1947); as metrópoles concedem aos poucos (as leis indianas de 1919 e 1935, a
   lei-quadro francesa de 1956, o domínio); a recusa leva à guerra (Indochina, Indonésia, Argélia,
