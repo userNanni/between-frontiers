@@ -42,7 +42,13 @@ fn laws_open_and_close_the_imitation_channel() {
     };
 
     // The trade law's tariff reaches the economy as it is declared.
-    for c in 0..w.politics.laws.len() {
+    for (c, m) in w
+        .econ
+        .markets
+        .iter()
+        .enumerate()
+        .take(w.politics.laws.len())
+    {
         let want = match key(c, trade).as_str() {
             "free_trade" => 20,
             "revenue_tariffs" => 100,
@@ -50,7 +56,7 @@ fn laws_open_and_close_the_imitation_channel() {
             "autarky" => 600,
             other => panic!("unknown trade law {other}"),
         };
-        assert_eq!(w.econ.markets[c].laws.effects[0].tariff, milli(want));
+        assert_eq!(m.laws.effects[0].tariff, milli(want));
     }
 
     // Open trade and capital with a market economy: today's rate, exactly.
@@ -78,12 +84,10 @@ fn laws_open_and_close_the_imitation_channel() {
     // Closing the open country by command: capital closed, then a planned economy behind
     // autarky, which leaves only the floor.
     let tag = w.countries.iter().nth(open).unwrap().1.tag.clone();
-    for law in ["closed_capital"] {
-        s.submit(GameCommand::SetLaw {
-            tag: tag.clone(),
-            law: p.law(law).unwrap() as u16,
-        });
-    }
+    s.submit(GameCommand::SetLaw {
+        tag: tag.clone(),
+        law: p.law("closed_capital").unwrap() as u16,
+    });
     s.sim.run_until(Date::new(1925, 1, 3));
     let e = &s.world().econ.markets[open].laws.effects[0];
     assert_eq!(e.foreign_investment, milli(100));
