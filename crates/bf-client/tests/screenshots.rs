@@ -1835,10 +1835,30 @@ fn population_panel() {
             h.get_by_label(classes).scroll_to_me();
             h.run_steps(4);
             shot(&mut h, &format!("{n}-population-{name}-classes-{tag}"));
+            // Communities, of the whole country and then of the state the pyramid shows.
+            let communities = if locale == "pt-BR" {
+                "Comunidades:"
+            } else {
+                "Communities:"
+            };
+            let scroll_to_communities = |h: &mut egui_kittest::Harness<'_, bf_client::App>| {
+                h.get_all(egui_kittest::kittest::by().label_contains(communities))
+                    .next()
+                    .expect("communities heading")
+                    .scroll_to_me();
+                h.run_steps(4);
+            };
+            scroll_to_communities(&mut h);
+            shot(&mut h, &format!("{n}-population-{name}-communities-{tag}"));
             if *state {
                 h.get_by_label("›").click();
                 h.run_steps(3);
                 shot(&mut h, &format!("{n}-population-{name}-state-{tag}"));
+                scroll_to_communities(&mut h);
+                shot(
+                    &mut h,
+                    &format!("{n}-population-{name}-state-communities-{tag}"),
+                );
             }
             h.get_by_label(bottom).scroll_to_me();
             h.run_steps(4);

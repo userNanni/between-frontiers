@@ -9,7 +9,9 @@ use bf_ui_kit::tokens::{color, size, space};
 use egui::{Align2, Rect, RichText, Sense, Ui, vec2};
 
 use crate::keys;
-use crate::population::{ClassTfr, Part, PopulationView, Push, Road, WaveEnd, WaveLine};
+use crate::population::{
+    ClassTfr, CommunityLine, Part, PopulationView, Push, Road, WaveEnd, WaveLine,
+};
 use crate::text::country_name;
 use crate::world::World;
 
@@ -67,6 +69,7 @@ fn body(ui: &mut Ui, i18n: &I18n, world: &World, view: &PopulationView, scope: &
 
     pyramid_section(ui, i18n, world, view, scope);
     class_section(ui, i18n, world, view, *scope);
+    community_section(ui, i18n, world, view, *scope);
     bf_ui_kit::divider(ui);
     for part in &view.parts {
         rates_section(ui, i18n, part, view.parts.len() > 1);
@@ -162,6 +165,110 @@ fn pyramid_section(
     };
     pyramid(ui, i18n, ages);
     bf_ui_kit::caption(ui, &i18n.tr("population-no-sexes"));
+}
+
+/// Who lives here: the largest communities (culture and religion) of the country or of the state
+/// the pyramid shows, with their share and people.
+fn community_section(ui: &mut Ui, i18n: &I18n, world: &World, view: &PopulationView, scope: Scope) {
+    let (place, lines): (String, &[CommunityLine]) = match scope.0 {
+        None => (i18n.tr("population-whole-country"), &view.communities),
+        Some(s) => (
+            state_name(world, s),
+            view.state_communities
+                .iter()
+                .find(|(x, _)| *x == s)
+                .map_or(&[][..], |(_, l)| l),
+        ),
+    };
+    ui.add_space(space::XS);
+    ui.label(
+        RichText::new(i18n.tr_args("population-communities", &[("place", Arg::String(place))]))
+            .font(sans_medium(size::BODY))
+            .color(color::TEXT),
+    );
+    if lines.is_empty() {
+        bf_ui_kit::muted(ui, &i18n.tr("population-communities-wait"));
+        return;
+    }
+    let width = ui.available_width() - space::MD;
+    let line = 16.0;
+    let (rect, _) =
+        ui.allocate_exact_size(vec2(width, line * (lines.len() + 1) as f32), Sense::hover());
+    let p = ui.painter_at(rect);
+    let bar_w = 70.0;
+    let people_x = rect.right() - bar_w - space::SM;
+    let share_x = people_x - 76.0;
+    let mid = |row: usize| rect.top() + line * row as f32 + line / 2.0;
+    for (x, align, key) in [
+        (rect.left(), Align2::LEFT_CENTER, "population-community"),
+        (share_x, Align2::RIGHT_CENTER, "population-class-share"),
+        (people_x, Align2::RIGHT_CENTER, "population-people"),
+    ] {
+        p.text(
+            egui::pos2(x, mid(0)),
+            align,
+            i18n.tr(key),
+            sans(size::CAPTION),
+            color::TEXT_FAINT,
+        );
+    }
+    let max = lines.iter().map(|l| l.share).fold(0.0, f64::max).max(0.001);
+    for (row, l) in lines.iter().enumerate() {
+        let y = mid(row + 1);
+        let name = match &l.keys {
+            Some((culture, religion)) => i18n.tr_args(
+                "community",
+                &[
+                    (
+                        "culture",
+                        Arg::String(i18n.tr(&format!("culture-{culture}"))),
+                    ),
+                    (
+                        "religion",
+                        Arg::String(i18n.tr(&format!("religion-{religion}"))),
+                    ),
+                ],
+            ),
+            None => i18n.tr("population-communities-rest"),
+        };
+        // The name gives way to the numbers.
+        let name_rect = Rect::from_min_max(
+            egui::pos2(rect.left(), y - line / 2.0),
+            egui::pos2(share_x - 52.0, y + line / 2.0),
+        );
+        ui.painter_at(name_rect).text(
+            egui::pos2(rect.left(), y),
+            Align2::LEFT_CENTER,
+            name,
+            sans(size::SMALL),
+            if l.keys.is_some() {
+                color::TEXT
+            } else {
+                color::TEXT_MUTED
+            },
+        );
+        p.text(
+            egui::pos2(share_x, y),
+            Align2::RIGHT_CENTER,
+            format!("{} %", i18n.decimal(l.share * 100.0, 1)),
+            sans_medium(size::SMALL),
+            color::TEXT,
+        );
+        p.text(
+            egui::pos2(people_x, y),
+            Align2::RIGHT_CENTER,
+            i18n.compact(l.people as f64),
+            sans(size::SMALL),
+            color::TEXT_MUTED,
+        );
+        let len = (bar_w * (l.share / max) as f32).max(1.0);
+        p.rect_filled(
+            Rect::from_min_size(egui::pos2(people_x + space::SM, y - 4.0), vec2(len, 8.0)),
+            1.0,
+            color::ACCENT,
+        );
+    }
+    bf_ui_kit::caption(ui, &i18n.tr("population-communities-note"));
 }
 
 /// Children per woman of each profession, of the country or of the state the pyramid shows.
@@ -385,8 +492,7 @@ fn fertility_section(ui: &mut Ui, i18n: &I18n, part: &Part) {
             for (key, why) in [
                 ("population-term-land", "population-hidden"),
                 ("population-term-class", "population-by-class-above"),
-                ("population-term-culture", "population-not-modelled"),
-                ("population-term-religion", "population-not-modelled"),
+                ("population-term-religion", "population-no-net-measure"),
             ] {
                 let faint = |ui: &mut Ui, s: String| {
                     ui.label(

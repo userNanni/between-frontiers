@@ -405,6 +405,7 @@ impl DemographyState {
     ) -> Vec<FertilityTerm> {
         let mut sum = [0i128; 5];
         let mut people = 0i128;
+        let mut diffusion = [0i128; 2];
         for (r, v) in econ.regions.iter().zip(&self.vital) {
             if r.market != market || r.colony != colony {
                 continue;
@@ -414,11 +415,14 @@ impl DemographyState {
             for (s, x) in sum.iter_mut().zip(v.fertility_terms) {
                 *s += i128::from(x.raw()) * n;
             }
+            for (s, x) in diffusion.iter_mut().zip(v.diffusion) {
+                *s += i128::from(x.raw()) * n;
+            }
         }
         if people == 0 {
             return Vec::new();
         }
-        FERTILITY_TERMS
+        let mut out: Vec<FertilityTerm> = FERTILITY_TERMS
             .iter()
             .zip(sum)
             .map(|(&(key, weight), s)| {
@@ -430,7 +434,19 @@ impl DemographyState {
                     contribution: value * weight,
                 }
             })
-            .collect()
+            .collect();
+        // Diffusion, with the communities: its contribution is centred on the world mean.
+        if self.communities.iter().any(|c| !c.ids.is_empty()) {
+            let value = Fixed::from_raw((diffusion[0] / people) as i64);
+            let mean = Fixed::from_raw((diffusion[1] / people) as i64);
+            out.push(FertilityTerm {
+                key: "diffusion",
+                value,
+                weight: F_DIFFUSION,
+                contribution: (value - mean) * F_DIFFUSION,
+            });
+        }
+        out
     }
 
     pub fn is_empty(&self) -> bool {

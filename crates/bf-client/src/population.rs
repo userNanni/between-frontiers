@@ -4,6 +4,7 @@
 
 use std::collections::BTreeMap;
 
+use bf_sim::demography::communities::CommunityTable;
 use bf_sim::demography::{AGE_GROUPS, FertilityTerm, TerritoryId};
 use bf_sim::econ::prof;
 use bf_sim::game::GameWorld;
@@ -84,6 +85,57 @@ impl ClassSum {
     }
 }
 
+/// Communities listed by name in the composition; the rest are summed.
+pub const COMMUNITIES: usize = 8;
+
+/// One community of a composition: its culture and religion keys, people and share.
+#[derive(Clone, Debug, PartialEq)]
+pub struct CommunityLine {
+    /// `None` for everyone not listed by name.
+    pub keys: Option<(String, String)>,
+    pub people: i64,
+    pub share: f64,
+}
+
+/// The `COMMUNITIES` largest communities of `by` (people by community id), largest first,
+/// then everyone else in one line.
+fn composition(table: &CommunityTable, by: &BTreeMap<u16, i64>) -> Vec<CommunityLine> {
+    let total: i64 = by.values().sum();
+    if total <= 0 {
+        return Vec::new();
+    }
+    let mut v: Vec<(u16, i64)> = by
+        .iter()
+        .map(|(&k, &n)| (k, n))
+        .filter(|e| e.1 > 0)
+        .collect();
+    v.sort_by_key(|&(id, n)| (-n, id));
+    let rest: i64 = v.iter().skip(COMMUNITIES).map(|e| e.1).sum();
+    let mut out: Vec<CommunityLine> = v
+        .iter()
+        .take(COMMUNITIES)
+        .map(|&(id, n)| {
+            let (cu, re) = table.catalogue.communities[id as usize];
+            CommunityLine {
+                keys: Some((
+                    table.catalogue.cultures[cu as usize].key.clone(),
+                    table.catalogue.religions[re as usize].key.clone(),
+                )),
+                people: n,
+                share: n as f64 / total as f64,
+            }
+        })
+        .collect();
+    if rest > 0 {
+        out.push(CommunityLine {
+            keys: None,
+            people: rest,
+            share: rest as f64 / total as f64,
+        });
+    }
+    out
+}
+
 /// The metropole or the colonies of the country.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Part {
@@ -131,6 +183,9 @@ pub struct PopulationView {
     /// from before the rates by class.
     pub classes: Vec<ClassTfr>,
     pub state_classes: Vec<(u16, Vec<ClassTfr>)>,
+    /// People by community, of the country and by map state id; empty without communities.
+    pub communities: Vec<CommunityLine>,
+    pub state_communities: Vec<(u16, Vec<CommunityLine>)>,
     pub parts: Vec<Part>,
     /// Communities of foreign origin living here, by origin, largest first.
     pub immigrants: Vec<Road>,
@@ -146,14 +201,24 @@ fn month_of(m: i32) -> (i32, u8) {
 }
 
 /// Reads the player's country; `None` without a player or before the first demography month.
-pub fn read(world: &GameWorld, date: Date) -> Option<PopulationView> {
+/// `table` names the communities; without it the composition is empty.
+pub fn read(
+    world: &GameWorld,
+    date: Date,
+    table: Option<&CommunityTable>,
+) -> Option<PopulationView> {
     let tag = world.player_tag()?;
     let c = world.countries.iter().position(|(_, c)| c.tag == tag)?;
-    read_country(world, c, date)
+    read_country(world, c, date, table)
 }
 
 /// Reads country `c` (index in the simulation's order).
-pub fn read_country(world: &GameWorld, c: usize, date: Date) -> Option<PopulationView> {
+pub fn read_country(
+    world: &GameWorld,
+    c: usize,
+    date: Date,
+    table: Option<&CommunityTable>,
+) -> Option<PopulationView> {
     let d = &world.demography;
     let econ = &world.econ;
     if d.ages.is_empty() {
@@ -195,6 +260,29 @@ pub fn read_country(world: &GameWorld, c: usize, date: Date) -> Option<Populatio
         by_state.entry(r.state).or_default().add(r, &v.tfr_by_class);
     }
     let classes = country.lines();
+    let (communities, state_communities) = match table {
+        Some(t) if d.communities.len() == econ.regions.len() => {
+            let mut all: BTreeMap<u16, i64> = BTreeMap::new();
+            let mut by_state: BTreeMap<u16, BTreeMap<u16, i64>> = BTreeMap::new();
+            for (r, rr) in econ.regions.iter().zip(&d.communities) {
+                if usize::from(r.market) != c {
+                    continue;
+                }
+                for (id, n) in rr.by_community() {
+                    *all.entry(id).or_default() += n;
+                    *by_state.entry(r.state).or_default().entry(id).or_default() += n;
+                }
+            }
+            (
+                composition(t, &all),
+                by_state
+                    .iter()
+                    .map(|(&s, m)| (s, composition(t, m)))
+                    .collect(),
+            )
+        }
+        _ => (Vec::new(), Vec::new()),
+    };
     let state_classes = by_state.into_iter().map(|(s, c)| (s, c.lines())).collect();
     let parts = [false, true]
         .into_iter()
@@ -318,6 +406,8 @@ pub fn read_country(world: &GameWorld, c: usize, date: Date) -> Option<Populatio
         states,
         classes,
         state_classes,
+        communities,
+        state_communities,
         parts,
         immigrants,
         emigrants,
