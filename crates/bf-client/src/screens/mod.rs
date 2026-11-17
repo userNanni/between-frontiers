@@ -14,6 +14,7 @@ pub mod menu;
 pub mod money;
 pub mod outliner;
 pub mod pick;
+pub mod population;
 pub mod research;
 pub mod saves;
 pub mod sea_lens;

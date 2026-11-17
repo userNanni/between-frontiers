@@ -37,6 +37,8 @@ pub struct State {
     sea: super::sea_lens::SeaView,
     /// The overview, folded into a button for want of room, is open.
     overview_open: bool,
+    /// The state whose pyramid the population panel shows.
+    population: super::population::Scope,
     research_camera: Option<super::research::TreeCamera>,
     /// Month the live map lenses were last coloured for.
     live_month: Option<(i32, u8)>,
@@ -99,6 +101,7 @@ impl State {
             lens_open: false,
             sea: super::sea_lens::SeaView::default(),
             overview_open: false,
+            population: Default::default(),
             research_camera: None,
             live_month: None,
             live_figures: None,
@@ -424,6 +427,10 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
     if bar_out.open_journal {
         toggle_journal(state);
     }
+    if bar_out.open_population && !state.edit.on {
+        toggle_population(state, shared, rect);
+        shared.persist_hud();
+    }
     if let Some(screen) = bar_out.open {
         open_from_tile(state, screen);
     }
@@ -448,6 +455,16 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
                 .auto_shrink([false, false])
                 .show(ui, |ui| country_panel::show(shared, ui, country));
         });
+    }
+
+    // The player's population, read once a month.
+    if let Some(r) = place(PanelId::Population) {
+        match (&snap.population, &shared.world) {
+            (Some(view), Some(world)) => {
+                super::population::show(ui, r, &shared.i18n, world, view, &mut state.population)
+            }
+            _ => super::frame(ui, r, "population"),
+        }
     }
 
     // The folded overview, open over the HUD; a click elsewhere folds it.
@@ -640,6 +657,10 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
         {
             let lens = super::lens_panel::mode_lens(mode, view.lens);
             super::lens_panel::choose(view, world, lens, snap.date.year);
+        }
+        if keys::fired(&ctx, id::POPULATION) {
+            toggle_population(state, shared, ctx.content_rect());
+            changed = true;
         }
         for (p, cmd) in PanelId::ALL.into_iter().zip(id::HUD_PANELS) {
             if keys::fired(&ctx, cmd) {
@@ -846,6 +867,22 @@ pub fn toggle_hud_edit(state: &mut State) {
     }
 }
 
+/// Opens or closes the population panel; opened on a screen too narrow for it beside the
+/// country panel, it takes the country panel's place.
+fn toggle_population(state: &mut State, shared: &mut Shared, screen: Rect) {
+    let open = shared.hud.layout.place(PanelId::Population).visible;
+    let crowded = state.selected.is_some() && screen.width() < super::population::SIDE_BY_SIDE;
+    if crowded && open {
+        // Hidden behind the country panel: show it instead of closing it.
+        state.selected = None;
+        return;
+    }
+    if crowded {
+        state.selected = None;
+    }
+    crate::hud::toggle_panel(&mut shared.hud, PanelId::Population);
+}
+
 /// The size each panel of the HUD asks for now; a panel not on screen asks for none.
 fn hud_sizes(
     state: &State,
@@ -885,6 +922,18 @@ fn hud_sizes(
     }
     if editing || !(window || state.research_open) {
         out.insert(PanelId::Outliner, super::outliner::size(ctx, &state.fold));
+    }
+    // On a narrow screen the country panel, while a country is picked, takes the place.
+    let crowded =
+        screen.width() < super::population::SIDE_BY_SIDE && state.selected.is_some() && !editing;
+    if player.is_some() && (editing || !window) && !crowded {
+        out.insert(
+            PanelId::Population,
+            egui::vec2(
+                super::population::WIDTH,
+                (screen.height() - top_bar::LEFT_BOTTOM - crate::hud::GAP * 2.0).max(240.0),
+            ),
+        );
     }
     if state.selected.is_some() || (editing && player.is_some()) {
         out.insert(

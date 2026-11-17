@@ -1,0 +1,73 @@
+# Painel de população do HUD.
+
+cmd-window-population = População
+    .short = População
+cmd-hud-toggle-population = HUD: mostrar ou esconder o painel de população
+    .short = HUD pop.
+hud-panel-population = População
+bar-population-panel = População
+
+population-title = População
+population-subtitle = { $country }, em { $month }
+population-month = { $month } de { $year }
+population-pyramid = Pirâmide etária
+population-whole-country = País inteiro
+population-no-sexes = Uma barra por faixa: o modelo ainda não separa homens e mulheres.
+population-rates = Taxas
+population-rates-metropole = Taxas: metrópole
+population-rates-colonies = Taxas: colônias
+population-people = Habitantes
+population-life = Expectativa de vida
+population-years = { $n } anos
+population-tfr = Filhos por mulher
+population-births = Natalidade
+population-deaths = Mortalidade
+population-migration = Migração líquida
+population-rates-when = Último mês, em taxa anual por mil; a simulação não guarda o ano fechado.
+population-why = Por que nascem tantos ou tão poucos
+population-why-lead = { $tfr } filhos por mulher. Índice da transição { $score }: quanto maior, menos filhos.
+population-no-data = Sem números antes do primeiro mês.
+population-term = Causa
+population-value = Valor
+population-weight = Peso
+population-contribution = Efeito
+population-term-child-survival = Sobrevivência infantil
+population-term-schooling = Escolaridade das mães
+population-term-off-farm = Trabalho fora do campo
+population-term-comfort = Conforto
+population-term-contraception = Contracepção
+population-term-land = Fome de terra
+population-term-class = Classe
+population-term-culture = Cultura
+population-term-religion = Religião
+population-hidden = não exposto
+population-not-modelled = ainda não modelado
+population-cause-child-survival = Sobrevivência infantil { $value }: morrem menos crianças antes dos cinco anos, nascem menos para repor.
+population-cause-schooling = Escolaridade das mães { $value }: a alfabetização de há uma geração.
+population-cause-off-farm = Trabalho fora do campo { $value }: na cidade o filho custa em vez de ajudar.
+population-cause-comfort = Conforto { $value }: quanto das necessidades de conforto as famílias atendem.
+population-cause-contraception = Contracepção { $value }: a que o país usa, até onde as mães estudaram.
+population-why-note = A fome de terra também segura os nascimentos onde as roças estão apertadas, mas a simulação não mostra o seu peso; classe, cultura e religião ainda não são modeladas.
+population-roads = De onde vieram e para onde foram
+population-immigrants = Comunidades de origem estrangeira, com descendentes
+population-emigrants = Comunidades no exterior, com descendentes
+population-none = Nenhum.
+population-waves = Ondas abertas
+population-no-waves = Nenhuma onda aberta.
+population-waves-ended = Ondas que acabaram, por estrada
+population-push-land = fome de terra
+population-push-hunger = fome
+population-push-poverty = pobreza
+population-wave = { $from } → { $to }, desde { $since }: { $people }, por { $cause }.
+population-wave-ended = { $from } → { $to }, { $since }–{ $until }: { $people } em { $count ->
+    [one] uma onda
+   *[other] { $count } ondas
+    }; aberta por { $cause }, fechada por último porque { $end }.
+population-end-eased = a pressão aliviou
+population-end-closed = a porta fechou
+population-end-full = o destino encheu
+population-end-no-pull = nada mais atraía
+population-immigrants-note = Gente aqui por país de origem. Comunidade: as comunidades de 1925, todos os que vieram depois e os filhos deles. "Desde 1925" conta só os que chegaram, sem os filhos.
+population-emigrants-note = Gente deste país lá fora, contada do mesmo jeito. "Desde 1925" conta só os que partiram, sem os filhos.
+population-with-descendants = Comunidade
+population-arrived = Desde 1925

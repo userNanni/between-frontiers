@@ -48,6 +48,9 @@ pub struct Snapshot {
     /// The player's journal, read on the first snapshot and then once a month; `None` without
     /// a player, an economy or the rules.
     pub journal: Option<Arc<crate::journal::Journal>>,
+    /// The player's population: pyramid, rates, fertility terms, migration; read on the first
+    /// snapshot and then once a month.
+    pub population: Option<Arc<crate::population::PopulationView>>,
 }
 
 /// The player's research, copied out of the world for the interface.
@@ -136,11 +139,24 @@ fn journal_of(
     }
 }
 
+/// The month's population view, read again only when the month changed since `last`.
+fn population_of(
+    session: &Session,
+    last: &Option<Arc<crate::population::PopulationView>>,
+) -> Option<Arc<crate::population::PopulationView>> {
+    let date = session.clock().date;
+    match last {
+        Some(p) if p.month == (date.year, date.month) => Some(Arc::clone(p)),
+        _ => crate::population::read(session.world(), date).map(Arc::new),
+    }
+}
+
 /// What a snapshot carries that is read once a month.
 #[derive(Clone, Default)]
 struct Monthly {
     figures: Option<Arc<LiveFigures>>,
     journal: Option<Arc<Journal>>,
+    population: Option<Arc<crate::population::PopulationView>>,
 }
 
 impl Monthly {
@@ -148,6 +164,7 @@ impl Monthly {
         Self {
             figures: figures_of(session, &last.figures),
             journal: journal_of(session, rules, &last.journal),
+            population: population_of(session, &last.population),
         }
     }
 }
@@ -170,6 +187,7 @@ fn snapshot_of(
         local: Arc::new(local_view(session)),
         figures: monthly.figures,
         journal: monthly.journal,
+        population: monthly.population,
         government: crate::government::read(session.world(), session.clock().date).map(Arc::new),
         laws: crate::laws_view::Live::read(session.world()).map(Arc::new),
     }

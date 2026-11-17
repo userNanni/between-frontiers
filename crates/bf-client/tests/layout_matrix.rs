@@ -138,14 +138,25 @@ fn check(h: &Harness<'_, App>, case: &str) -> Vec<String> {
 
 /// The HUD's panels never cover each other.
 fn check_hud(h: &Harness<'_, App>, case: &str) -> Vec<String> {
-    const HUD: [&str; 4] = ["country-figures", "time", "overview", "country-panel"];
+    check_hud_with(h, case, &["country-figures", "time", "country-panel"])
+}
+
+/// [`check_hud`] wanting the panels `want` on screen.
+fn check_hud_with(h: &Harness<'_, App>, case: &str, want: &[&str]) -> Vec<String> {
+    const HUD: [&str; 5] = [
+        "country-figures",
+        "time",
+        "overview",
+        "country-panel",
+        "population",
+    ];
     let frames: Vec<Node> = nodes(h)
         .into_iter()
         .filter(|n| n.role == egui::accesskit::Role::Window && HUD.contains(&n.label.as_str()))
         .collect();
     let mut out = Vec::new();
-    for want in ["country-figures", "time", "country-panel"] {
-        if !frames.iter().any(|f| f.label == want) {
+    for want in want {
+        if !frames.iter().any(|f| f.label == *want) {
             out.push(format!("{case}: no {want} on screen"));
         }
     }
@@ -263,6 +274,24 @@ fn every_screen_fits_every_supported_logical_size() {
             open_country(&mut h);
             failures.extend(check(&h, &format!("{case} map with country")));
             failures.extend(check_hud(&h, &format!("{case} map with country")));
+            h.key_press(egui::Key::Y);
+            steps(&mut h);
+            failures.extend(check(&h, &format!("{case} population")));
+            // Side by side where both fit; else the population panel takes the country
+            // panel's place.
+            let want: &[&str] = if w < bf_client::screens::population::SIDE_BY_SIDE {
+                &["country-figures", "time", "population"]
+            } else {
+                &["country-figures", "time", "country-panel", "population"]
+            };
+            failures.extend(check_hud_with(&h, &format!("{case} population"), want));
+            h.key_press(egui::Key::Y);
+            steps(&mut h);
+            if nodes(&h).iter().any(|n| n.label == "population") {
+                failures.push(format!("{case}: population panel did not close"));
+            }
+            // The country panel again, as Escape below expects.
+            open_country(&mut h);
             h.key_press(egui::Key::Escape);
             steps(&mut h);
             h.key_press(egui::Key::G);

@@ -10,6 +10,7 @@ pub mod laws_view;
 pub mod live;
 pub mod map;
 pub mod paths;
+pub mod population;
 pub mod saves;
 pub mod screens;
 pub mod settings;

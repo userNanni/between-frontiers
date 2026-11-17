@@ -1,0 +1,73 @@
+# Population panel of the HUD.
+
+cmd-window-population = Population
+    .short = Population
+cmd-hud-toggle-population = HUD: show or hide the population panel
+    .short = HUD people
+hud-panel-population = Population
+bar-population-panel = Population
+
+population-title = Population
+population-subtitle = { $country }, as of { $month }
+population-month = { $month } { $year }
+population-pyramid = Age pyramid
+population-whole-country = Whole country
+population-no-sexes = One bar per age group: the model does not yet split men and women.
+population-rates = Rates
+population-rates-metropole = Rates: metropole
+population-rates-colonies = Rates: colonies
+population-people = People
+population-life = Life expectancy
+population-years = { $n } years
+population-tfr = Children per woman
+population-births = Births
+population-deaths = Deaths
+population-migration = Net migration
+population-rates-when = Last month, as a yearly rate per thousand; the simulation does not keep the closed year.
+population-why = Why so many or so few are born
+population-why-lead = { $tfr } children per woman. Transition score { $score }: the higher, the fewer children.
+population-no-data = No figures before the first month.
+population-term = Cause
+population-value = Value
+population-weight = Weight
+population-contribution = Effect
+population-term-child-survival = Child survival
+population-term-schooling = Mothers' schooling
+population-term-off-farm = Work off the farm
+population-term-comfort = Comfort
+population-term-contraception = Contraception
+population-term-land = Land hunger
+population-term-class = Class
+population-term-culture = Culture
+population-term-religion = Religion
+population-hidden = not shown
+population-not-modelled = not modelled yet
+population-cause-child-survival = Child survival { $value }: fewer children die before five, fewer are born to replace them.
+population-cause-schooling = Mothers' schooling { $value }: the literacy of a generation ago.
+population-cause-off-farm = Work off the farm { $value }: in town a child costs instead of helping.
+population-cause-comfort = Comfort { $value }: the share of comfort needs the families meet.
+population-cause-contraception = Contraception { $value }: what the country uses, as far as the mothers went to school.
+population-why-note = Land hunger also slows births where farms are crowded, but the simulation does not show its share; class, culture and religion are not modelled yet.
+population-roads = Where they came from and went
+population-immigrants = Communities of foreign origin, with descendants
+population-emigrants = Communities abroad, with descendants
+population-none = None.
+population-waves = Open waves
+population-no-waves = No wave open.
+population-waves-ended = Waves that ended, by road
+population-push-land = land hunger
+population-push-hunger = hunger
+population-push-poverty = poverty
+population-wave = { $from } → { $to }, since { $since }: { $people }, for { $cause }.
+population-wave-ended = { $from } → { $to }, { $since }–{ $until }: { $people } in { $count ->
+    [one] one wave
+   *[other] { $count } waves
+    }; opened by { $cause }, last closed because { $end }.
+population-end-eased = the pressure eased
+population-end-closed = the door closed
+population-end-full = the destination filled up
+population-end-no-pull = nothing drew them any more
+population-immigrants-note = People here by country of origin. Community: the communities of 1925, everyone who came since and their children. "Since 1925" counts only those who arrived, without children.
+population-emigrants-note = People of this country abroad, counted the same way. "Since 1925" counts only those who left, without children.
+population-with-descendants = Community
+population-arrived = Since 1925

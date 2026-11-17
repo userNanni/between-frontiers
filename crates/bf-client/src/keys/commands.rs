@@ -254,12 +254,13 @@ pub mod id {
     pub const JOURNAL_GO: &str = "journal.open_screen";
     pub const HUD_EDIT: &str = "hud.edit";
     /// Show or hide each HUD panel, in the order of `hud::PanelId::ALL`.
-    pub const HUD_PANELS: [&str; 5] = [
+    pub const HUD_PANELS: [&str; 6] = [
         "hud.toggle_country",
         "hud.toggle_time",
         "hud.toggle_map_modes",
         "hud.toggle_country_panel",
         "hud.toggle_outliner",
+        "hud.toggle_population",
     ];
     /// HUD presets, in the order of `hud::Preset::CHOICES`.
     pub const HUD_PRESETS: [&str; 3] = [
@@ -295,6 +296,7 @@ pub mod id {
     pub const SAVE: &str = "system.save";
     pub const SETTINGS: &str = "system.settings";
     pub const KEYS: &str = "system.keys";
+    pub const POPULATION: &str = "window.population";
     pub const UI_SCALE_UP: &str = "system.ui_scale_up";
     pub const UI_SCALE_DOWN: &str = "system.ui_scale_down";
     pub const UI_STREAM: &str = "system.ui_stream";
@@ -364,6 +366,7 @@ fn builtin() -> Vec<CommandDef> {
         CommandDef::new(COUNTRY, Windows).keys([k(KeyC)]).hint('C'),
         CommandDef::new(MENU, Windows).keys([k(F10)]).hint('N'),
         CommandDef::new(JOURNAL, Windows).keys([k(KeyJ)]).hint('J'),
+        CommandDef::new(POPULATION, Windows).keys([k(KeyY)]),
         CommandDef::new(OUTLINER, Windows).keys([k(KeyO)]).hint('O'),
         CommandDef::new(OUTLINER_WORKS, Windows).hint('6'),
         CommandDef::new(OUTLINER_RESEARCH, Windows).hint('7'),
@@ -408,10 +411,10 @@ fn builtin() -> Vec<CommandDef> {
     ]);
     for (i, (cmd, hint)) in HUD_PANELS
         .into_iter()
-        .zip(['C', 'T', 'M', 'P', 'O'])
+        .zip(['C', 'T', 'M', 'P', 'O', '0'])
         .enumerate()
     {
-        let digit = [Digit1, Digit2, Digit3, Digit4, Digit5][i];
+        let digit = [Digit1, Digit2, Digit3, Digit4, Digit5, Digit6][i];
         out.push(
             CommandDef::new(cmd, Windows)
                 .keys([k(digit).ctrl()])

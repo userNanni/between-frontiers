@@ -36,16 +36,20 @@ pub enum PanelId {
     MapModes,
     /// The panel of the country clicked on the map.
     CountryPanel,
+    /// The player's population: pyramid, rates, why so many or so few are born, migration.
+    /// Hidden until opened.
+    Population,
 }
 
 impl PanelId {
     /// Placement order: fixed panels first, the ones that shrink to fit last.
-    pub const ALL: [PanelId; 5] = [
+    pub const ALL: [PanelId; 6] = [
         PanelId::Country,
         PanelId::Time,
         PanelId::MapModes,
         PanelId::CountryPanel,
         PanelId::Outliner,
+        PanelId::Population,
     ];
 
     /// Key in the layout file.
@@ -56,6 +60,7 @@ impl PanelId {
             PanelId::Outliner => "overview",
             PanelId::MapModes => "map-modes",
             PanelId::CountryPanel => "country-panel",
+            PanelId::Population => "population",
         }
     }
 
@@ -71,6 +76,7 @@ impl PanelId {
             PanelId::Outliner => "hud-panel-overview",
             PanelId::MapModes => "hud-panel-map-modes",
             PanelId::CountryPanel => "hud-panel-country-panel",
+            PanelId::Population => "hud-panel-population",
         }
     }
 
@@ -93,6 +99,7 @@ impl PanelId {
         match self {
             PanelId::Outliner => Some(72.0),
             PanelId::CountryPanel => Some(240.0),
+            PanelId::Population => Some(240.0),
             _ => None,
         }
     }
@@ -269,6 +276,11 @@ fn default_place(p: PanelId) -> Placement {
         PanelId::Outliner => Placement::at(Anchor::TopLeft, GAP, LEFT_BOTTOM),
         PanelId::MapModes => Placement::at(Anchor::BottomLeft, GAP, -GAP),
         PanelId::CountryPanel => Placement::at(Anchor::TopRight, -16.0, RIGHT_BOTTOM),
+        // Beside the overview, hidden until the player opens it.
+        PanelId::Population => Placement {
+            visible: false,
+            ..Placement::at(Anchor::TopLeft, GAP * 2.0 + 300.0, LEFT_BOTTOM)
+        },
     }
 }
 
