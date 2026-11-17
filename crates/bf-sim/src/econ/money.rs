@@ -1010,6 +1010,87 @@ mod tests {
         }
     }
 
+    fn reparation(debtor: u16, creditor: u16, principal: i64) -> crate::treaty::InterstateDebt {
+        crate::treaty::InterstateDebt {
+            id: 0,
+            debtor,
+            creditor,
+            treaty: "t".into(),
+            currency: crate::treaty::Currency::Reference,
+            principal: Fixed::from_int(principal),
+            rate: Fixed::from_ratio(5, 100),
+            annuity: Fixed::from_int(principal / 20),
+            years_left: 30,
+            deferrable: Fixed::ZERO,
+            transfer_cap: None,
+            pledge: None,
+            contingent: Fixed::ZERO,
+            arrears: Fixed::ZERO,
+            suspended_until: 0,
+        }
+    }
+
+    #[test]
+    fn treaty_debt_moves_money_between_treasuries_and_is_cut_in_a_default() {
+        let mut econ = Economy {
+            markets: vec![market(1_000_000), market(2_000_000)],
+            ..Economy::default()
+        };
+        econ.ledger.create(reparation(0, 1, 500_000));
+        let w = World {
+            inflation: Fixed::from_int(2),
+            rate: Fixed::from_int(4),
+            income: Fixed::ONE,
+        };
+        let cash = |e: &Economy| e.markets.iter().map(|m| m.treasury).sum::<Fixed>();
+        let before = cash(&econ);
+        for week in 0..52 {
+            treaty_service(&mut econ, &[Fixed::ZERO; 2], &w, 1926 + week / 52);
+        }
+        // The service left the debtor and reached the creditor; nothing was created.
+        assert_eq!(cash(&econ), before);
+        assert!(econ.markets[0].treasury < econ.markets[1].treasury);
+        assert!(econ.markets[0].budget.interest > Fixed::ZERO);
+        // The debt shows in the debtor's stock, the claim is the same number.
+        assert!(econ.markets[0].budget.debt > econ.markets[0].money.total_debt());
+        assert_eq!(econ.ledger.owed_by(0), econ.ledger.claims_of(1));
+        // A default writes off the same share of the treaty debt.
+        let owed = econ.ledger.owed_by(0);
+        treaty_service(&mut econ, &[HAIRCUT, Fixed::ZERO], &w, 1927);
+        assert!(econ.ledger.owed_by(0) < owed * (Fixed::ONE - HAIRCUT) + Fixed::ONE);
+        assert_eq!(cash(&econ), before);
+    }
+
+    #[test]
+    fn the_treaty_service_counts_in_the_default_limit() {
+        // The same market, with and without a heavy treaty service: only the second defaults.
+        let plan = |m: &mut Market| {
+            home_step(
+                m,
+                calm(),
+                Fixed::ZERO,
+                Fixed::ONE,
+                &World {
+                    inflation: Fixed::from_int(2),
+                    rate: Fixed::from_int(4),
+                    income: Fixed::ONE,
+                },
+                1950,
+                Fixed::ZERO,
+            )
+        };
+        let mut free = market(1_000_000);
+        let p = plan(&mut free);
+        let (_, _, cut) = settle_week(&mut free, &p, 1950, (Fixed::ZERO, Fixed::ZERO));
+        assert_eq!(cut, Fixed::ZERO);
+        let mut bound = market(1_000_000);
+        let p = plan(&mut bound);
+        let yearly_revenue = bound.budget.revenue_avg * 52;
+        let (_, _, cut) = settle_week(&mut bound, &p, 1950, (yearly_revenue, yearly_revenue));
+        assert!(cut > Fixed::ZERO);
+        assert_eq!(bound.money.defaults, 1);
+    }
+
     #[test]
     fn a_weekly_rate_in_percent() {
         assert_eq!(weekly(Fixed::from_int(5200), pct(100)), Fixed::from_int(10));
