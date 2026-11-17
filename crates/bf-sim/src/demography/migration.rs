@@ -50,7 +50,7 @@ const WAVE_MIN_CHAIN: Fixed = milli(300);
 
 /// A colonization programme of both governments recruits like a chain of this strength (share
 /// of a full chain): agents in the villages, not a diaspora's letters.
-const PROGRAMME_CHAIN: Fixed = milli(300);
+const PROGRAMME_CHAIN: Fixed = milli(150);
 
 /// Market (country) of a territory index.
 fn market(t: usize) -> usize {
@@ -512,8 +512,12 @@ pub(super) fn plan(
         (total, cause)
     };
     let open_door = |i: usize, j: usize| laws[market(j)].0 >= DOOR && laws[market(i)].1 >= DOOR;
+    // A road is open to a wave with pioneers on it, or with a programme of both governments
+    // (the origin sponsoring, the destination subsidizing). A destination's subsidy alone pays
+    // tickets but does not send waves.
     let road_open = |i: usize, j: usize| {
-        paid(laws, i, j) > Fixed::ZERO || chain_share(&lands, &abroad, i, j) >= WAVE_MIN_CHAIN
+        let programme = !colony(j) && laws[market(j)].0 > 1000 && sponsored(laws, i) > Fixed::ZERO;
+        programme || chain_share(&lands, &abroad, i, j) >= WAVE_MIN_CHAIN
     };
     let mut wave_in = vec![0i64; nt];
     let mut wave_flows: Vec<(usize, i64)> = Vec::new(); // index into out.waves
@@ -782,16 +786,15 @@ fn pull(
         Fixed::ZERO
     };
     // Emigration a programme organizes works as a chain: the recruiter is the network. A
-    // destination's subsidy alone pays the ticket (`afford`, the distance) but recruits no one.
+    // destination's subsidy alone pays the ticket (`afford`) but recruits no one.
     // A colonization programme needs both governments: the origin sponsoring and the
     // destination subsidizing (Japan and Brazil from 1925). Sponsorship alone pays the ticket.
-    let sponsored = if !colony(j) && laws[market(j)].0 > 1000 {
-        sponsored(laws, i) * PROGRAMME_CHAIN
+    let programme = if !colony(j) && laws[market(j)].0 > 1000 {
+        sponsored(laws, i)
     } else {
         Fixed::ZERO
     };
-    let paid = paid(laws, i, j);
-    let chain_share = chain_share.max(sponsored);
+    let chain_share = chain_share.max(programme * PROGRAMME_CHAIN);
     let network = if ratio >= NETWORK_MIN_RATIO {
         chain_share * NETWORK
     } else {
@@ -802,7 +805,6 @@ fn pull(
         return Fixed::ZERO;
     }
     let (ti, tj) = (&territories[i], &territories[j]);
-    // A paid passage makes the distance cheaper in proportion.
     let dlat = (ti.lat - tj.lat) * milli(111_200); // km
     let mut dlon = (ti.lon - tj.lon).abs();
     if dlon > Fixed::from_int(180) {
@@ -811,7 +813,10 @@ fn pull(
     let dlon = dlon * milli(111_200) * ((cos[i] + cos[j]) / 2);
     let d2 = (dlat * dlat + dlon * dlon) / (DISTANCE_KM * DISTANCE_KM);
     let distance = Fixed::ONE / (Fixed::ONE + d2);
-    let distance = distance + (Fixed::ONE - distance) * paid;
+    // A programme of the origin (agents, ships, land bought abroad) makes the distance cheaper;
+    // a ticket the destination pays does not bring the news and the contacts the distance
+    // stands for.
+    let distance = distance + (Fixed::ONE - distance) * programme;
     let mut link = 1;
     if ti.family != u8::MAX && ti.family == tj.family {
         link *= SAME_FAMILY;
