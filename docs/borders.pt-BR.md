@@ -521,3 +521,184 @@ No bench (`--borders-history`), três linhas da referência viram outras operaç
 
 Com isso, as 260 linhas aplicam sem recusa. O teste `the_whole_reference_applies_and_conserves`
 aplica a referência inteira sobre o mundo de 1925, sem simular, e confere as somas a cada linha.
+
+## 11. Parte C: independência por movimento (desenho; decisões I1 a I5 tomadas em 2026-11-17)
+
+O primeiro gatilho de mudança de fronteira com causa medida (seção 2, "De onde vem a mudança"):
+o movimento `independence` da política (fase 3) passa de um limiar numa colônia, a metrópole cede
+ou recusa, e a operação de fronteira acontece, por acordo ou por revolta. Hoje o movimento cresce e
+nunca vence (`politics.pt-BR.md`, "pedem fronteira e guerra"); esta parte fecha essa ponta.
+
+### Como é na vida real, e se a diferença importa
+
+- **A pressão cresce por décadas, não num dia.** O Congresso Nacional Indiano nasce em 1885 e a
+  independência vem em 1947; na Costa do Ouro, o movimento de massa de Nkrumah vai de 1949 a 1957.
+  O jogo já tem isso: o apoio do movimento sobe `growth × pressão` por ano e cai pela meia-vida de
+  60 anos sem causa (`data/politics/movements.ron`). **Importa:** o limiar tem de ler o estoque
+  acumulado (a mobilização), não a pressão do mês.
+- **A metrópole concede aos poucos antes de soltar.** O Reino Unido deu à Índia as leis de 1919 e
+  1935 (conselhos eleitos, autonomia nas províncias) antes da partilha; a França passou da União
+  Francesa (1946) à lei-quadro de 1956 (sufrágio universal e conselhos nos territórios), à
+  Comunidade de 1958 e às independências de 1960. Os domínios brancos passaram por governo
+  responsável e domínio antes do Estatuto de Westminster (1931). **Importa, e o jogo já tem a
+  peça:** a lei `trusteeship` do grupo `colonial_rule` dá `colonial_self_rule` 500, acima do teto
+  400 da causa do movimento; conceder a lei tira a causa, e o apoio só decai devagar. A concessão
+  ganha tempo, não apaga o movimento. O degrau intermediário de fronteira é o **súdito** (domínio,
+  protetorado, Estado associado): a operação `Secede` com suserano.
+- **Guerra quando a metrópole recusa.** Indochina (1946–1954), Indonésia (1945–1949), Argélia
+  (1954–1962), as colônias portuguesas (1961–1974). Recusar adia e encarece; quase nunca impede
+  por muito tempo depois de 1945, e o custo da guerra colonial cai sobre a metrópole (em Portugal,
+  derrubou o regime em 1974). **Importa:** sem a guerra (fase 5), a revolta não pode ser uma
+  batalha; ela é o fim medido da recusa (decisão I3).
+- **Não é coorte, é onda com causa.** As independências se concentram de 1945 a 1975 porque a
+  causa se acumula (alfabetização de uma elite, discriminação, exclusão do governo) e porque as
+  metrópoles saem enfraquecidas da guerra. O teste pergunta se a onda aparece sem data forçada.
+
+### A unidade que se separa
+
+Hoje o movimento é um só por país, sobre todas as suas colônias juntas (`Among::Colonies`). Para
+separar território, o jogo precisa saber **qual** colônia: a unidade é o **candidato** de
+`data/borders/candidates.ron` cujo núcleo são regiões coloniais de um só dono (a Nigéria dentro do
+Império Britânico), mais o país súdito, que já é país (o Raj, o Iraque).
+
+- **Decisão I1 (onde mora o movimento).** Recomendação: o movimento de independência passa a ser
+  medido **por unidade**, com a mesma causa medida na gente da unidade (alfabetização,
+  discriminação, governo próprio). Um estado novo por unidade colonial: apoio, pressão e condição
+  mais fraca, no `GameWorld` (degrau de versão do save). O movimento por país continua sendo a
+  soma, para a legitimidade da metrópole. Alternativa: manter um movimento por país e, no limiar,
+  separar a unidade de maior mobilização; mais barato, mas a Índia e a Gâmbia sobem juntas.
+- **Fora de candidato:** regiões coloniais sem candidato que as contenha seguem a regra da seção 3
+  (país genérico), agrupadas pelo estado.
+
+### O que acontece no limiar
+
+Duas marcas na **mobilização** da unidade (apoio × recrutas ÷ população), lidas no mês:
+
+| Marca | O que abre |
+|---|---|
+| **Exigência** (`demand`) | a metrópole responde: concede governo próprio (a lei `trusteeship`), solta como súdito (domínio ou Estado associado), solta independente por acordo, ou recusa |
+| **Revolta** (`revolt`), acima da exigência | se a metrópole recusou e a mobilização continuou subindo: a unidade se separa sem acordo |
+
+- **Quem responde.** A IA da metrópole (até a fase 6, por regra medida, decisão I4); o jogador
+  recebe uma decisão rara em Agendas, com as quatro saídas, o preço de cada uma à vista e ponto de
+  restauração antes, como "Libertar território".
+- **Por acordo** (cede): um tratado de independência com cláusulas, pela ponte do
+  `treaty_exec`: `ReleaseCountry` (com o feixe de súdito, quando sai como domínio), reconhecimento
+  pela metrópole, e as cláusulas que a mesa puser: `ColonialPlants` (C6b), `Debt` (a dívida da
+  independência, decisão 1), base militar. Sem cláusula de fábricas, vale C6a.
+- **Por revolta** (recusa): `Secede` sem acordo e sem reconhecimento da metrópole. As fábricas
+  seguem C6c (camada sem garantia, estatização na hora se o país nasce com capital fechado); a
+  terra, C6d. A metrópole ganha a causa e a perda de legitimidade do movimento sem resposta.
+  Quando a guerra existir (fase 5), a revolta vira guerra colonial, e o resultado da paz decide.
+- **Depois do súdito.** O domínio pode romper pela mesma regra, com o movimento medido nas suas
+  leis (o súdito já é país), por uma operação `Status` com suserano vazio.
+
+### O custo internacional de segurar colônia (acréscimo do dono à I4)
+
+O dono lembrou que depois da Segunda Guerra ter colônias foi ficando menos aceitável, e que hoje é
+motivo de descrédito, e pediu que isso fosse conferido. A conferência sustenta a ideia, com duas
+partes de origem diferente:
+
+| Período | O que pesou | Fonte |
+|---|---|---|
+| 1945 | A Carta da ONU traz a autodeterminação (art. 1(2)) e, para os territórios não autônomos, o dever de relatar e o interesse dos habitantes acima de tudo (art. 73). Pedia relatório, não independência | [Carta](https://en.wikisource.org/wiki/Charter_of_the_United_Nations), [cap. XI](https://en.wikipedia.org/wiki/Chapter_XI_of_the_United_Nations_Charter) |
+| 1948–1956 | As superpotências impõem custo material em casos pontuais: os EUA ameaçam suspender o Plano Marshall à Holanda pela Indonésia (1948–49); em Suez, os EUA pressionam a libra e negam petróleo até a retirada, e a URSS ameaça | [Operação Kraai](https://en.wikipedia.org/wiki/Operation_Kraai), [Suez](https://en.wikipedia.org/wiki/Suez_Crisis) |
+| 1960 em diante | A ONU cresce de 51 membros (1945) para 99 (fim de 1960, 17 admitidos naquele ano, 16 africanos) e 127 (1970). A Resolução 1514 passa por 89–0–9 (abstenções: Austrália, Bélgica, República Dominicana, França, Portugal, Espanha, África do Sul, Reino Unido, EUA); o comitê de descolonização nasce em 1961 (res. 1654) | [1514](https://en.wikipedia.org/wiki/Declaration_on_the_Granting_of_Independence_to_Colonial_Countries_and_Peoples), [ampliação da ONU](https://en.wikipedia.org/wiki/Enlargement_of_the_United_Nations), [Comitê dos 24](https://en.wikipedia.org/wiki/Special_Committee_on_Decolonization) |
+| 1963–1974 | Portugal isolado na Assembleia, mas a res. 180 do Conselho (1963) só pede que não se vendam armas, com França, Reino Unido e EUA abstendo; aliados da OTAN continuam vendendo. A Rodésia leva as primeiras sanções obrigatórias da ONU (res. 232, 1966; 253, 1968), furadas pela África do Sul e por Portugal | [res. 180](https://en.wikipedia.org/wiki/United_Nations_Security_Council_Resolution_180), [guerra colonial](https://en.wikipedia.org/wiki/Portuguese_Colonial_War), [res. 232](https://en.wikipedia.org/wiki/United_Nations_Security_Council_Resolution_232), [UDI](https://en.wikipedia.org/wiki/Rhodesia%27s_Unilateral_Declaration_of_Independence) |
+| hoje | Chagos, sem consentimento local: parecer da Corte Internacional de 2019 e a res. 73/295 (116–6–56). O acordo Reino Unido–Maurício foi assinado em 2025 mas não está em vigor. Malvinas (99,8 % no referendo de 2013) e Gibraltar (1967) ficam por consentimento local; continuam na lista do comitê, com custo concentrado no país que reivindica | [Chagos](https://en.wikipedia.org/wiki/Chagos_Archipelago_sovereignty_dispute), [73/295](https://en.wikipedia.org/wiki/United_Nations_General_Assembly_Resolution_73/295), [Malvinas 2013](https://en.wikipedia.org/wiki/2013_Falkland_Islands_sovereignty_referendum), [Gibraltar 1967](https://en.wikipedia.org/wiki/Gibraltar_sovereignty_referendum,_1967) |
+
+- **Correção ao que se costuma dizer:** não há fonte aberta para uma maioria afro-asiática absoluta
+  em 1960; os 43 coautores afro-asiáticos da 1514 eram 43 de 99. A maioria anticolonial somava os
+  afro-asiáticos, a América Latina e o bloco soviético.
+- **Superpotência ou maioria?** As duas, com papéis diferentes. O custo **material** que forçou
+  recuo veio das superpotências, quando elas quiseram (Indonésia, Suez). O custo de **reputação**
+  cresceu com a maioria da ONU, isolou Portugal e a Rodésia, mas sem as potências e sem fechar os
+  vizinhos custou pouco em dinheiro. Strang (1991) acha que o ritmo da descolonização varia com o
+  tempo histórico e quase nada com a idade da colônia, e liga isso à potência hegemônica, ao
+  discurso anticolonial e à difusão dentro e entre impérios
+  ([resumo](https://academic.oup.com/isq/article-abstract/35/4/429/1797453)): sustenta o contágio,
+  mas não mede o efeito do número de Estados.
+- **Consentimento local reduz muito o descrédito** (Malvinas, Gibraltar); o que sobra é do país
+  que reivindica.
+
+**Como entra no jogo, sem data.** A conta da I4 ganha a linha **custo internacional**, medida no
+mês, em duas partes que já existem no jogo:
+
+1. **Postura anticolonial de cada país** (0 a 1000‰), de coisas que o mundo sabe: nasceu de uma
+   independência (o registro de mudanças de fronteira), não tem colônias, as leis coloniais que
+   tem, e a afinidade com os que nasceram de independência. Valores de desenho em
+   `data/borders/rules.ron`.
+2. **Reputação:** a cada ano que a metrópole segura uma colônia com movimento ativo, perde boa
+   vontade com cada país anticolonial, na proporção da postura dele, do peso dele (a parte do PIB
+   mundial) e da mobilização da colônia. Com teto. A soma cresce sozinha à medida que nascem países
+   novos: a onda acelera sem roteiro.
+3. **Custo material:** não é um termo novo. É a influência que os anticoloniais já têm sobre a
+   metrópole (crédito, comércio, investimento): quem depende de um credor anticolonial sente a
+   pressão no assunto Dinheiro, como a Holanda em 1949 e o Reino Unido em 1956. Por isso a
+   superpotência pesa muito mais do que o seu voto, sem peso especial na regra: pesa pelo tamanho
+   e pelo que os outros lhe devem.
+4. **Consentimento:** a colônia sem movimento de independência (apoio baixo) não gera custo; é o
+   caso das Malvinas e de Gibraltar. A reivindicação de um vizinho (Argentina, Espanha, Maurício) é
+   outro mecanismo, o do revisionismo.
+
+- **Pesos (valor de desenho, a equilibrar depois da fase 6):** a reputação pelo PIB de cada país
+  anticolonial, com teto por ano; o custo material só pela influência que já existe. A pesquisa
+  sugeriu que uma superpotência vale de 8 a 10 vezes uma potência média no efeito material; o peso
+  pelo PIB e pela dependência já dá essa ordem sem número próprio.
+- **Efeitos:** a linha entra na conta da resposta da metrópole (I4); a perda de boa vontade entra
+  na avaliação de proposta dos tratados com esses países, pelo mapa de influência; fica pronta para
+  sanção e embargo quando a IA da fase 6 existir. A tela da metrópole mostra "custo internacional"
+  na conta, com os maiores países que o pagam.
+
+### O que lê e o que chama
+
+| Lê | De quem |
+|---|---|
+| apoio e pressão do movimento `independence` por unidade | política (I1 muda o estado) |
+| população e profissões das regiões da unidade | demografia |
+| leis coloniais do dono e a resposta | política |
+| candidatos | `candidates.ron` (seção 3) |
+
+| Chama | Onde |
+|---|---|
+| `Operation::Secede` (com ou sem suserano), `Operation::Status` | fronteiras (parte B) |
+| tratado de independência | uma `Proposal` com `ReleaseCountry` (e `Debt`, quando houver), por `treaty_exec::settle` e `queue` (no `main` desde o #104) |
+| reconhecimento do país novo pelos signatários | `Recognition::on_new_country` (PR do reconhecimento, tratados) |
+| `ColonialPlants` (C6b) | PR das cláusulas novas (tratados) |
+| camada das fábricas na independência | `foreign_stakes` (C6a a C6c) |
+| a lei `trusteeship` como concessão | comando de lei da política |
+
+### Como se testa
+
+- **A onda tem de acelerar sozinha.** Na rodada sem história, a taxa de independências por década
+  sobe depois das primeiras, porque cada país novo é anticolonial e aumenta o custo de quem ainda
+  segura colônia. **Regra quebrada:** o custo internacional mudar com a data e não com o número e o
+  peso dos países anticoloniais; ou, num teste controlado (a mesma colônia, o mesmo movimento), a
+  metrópole não conceder mais cedo quando há mais países anticoloniais; ou uma colônia sem movimento
+  gerar custo.
+- **Rodada de 100 anos com a história desligada** (`--borders-history` fora): quantas
+  independências acontecem, por década, por acordo e por revolta, e quais. Nenhuma data forçada:
+  o placar compara a onda com a referência de `data/history/borders.ron` (1945–1975) como
+  dependência anotada, nunca como meta. Se a onda não vier, a pergunta é qual condição da causa
+  segurou, que o movimento já nomeia (`weakest`).
+- Uma unidade com a causa forçada passa a exigência e a metrópole responde no mês; com a recusa
+  e a mobilização acima da revolta, a unidade se separa; conceder `trusteeship` tira a causa e o
+  apoio passa a cair.
+- Conservação (população, dinheiro, dívida, plantas) antes e depois de cada separação, como na
+  parte B; determinismo de 100 anos com troca de threads; save antigo carregando; CPU de 10 anos.
+
+**Quanto custa:** um teste mensal por unidade colonial (cerca de cem), e uma operação de fronteira
+por independência.
+
+### Decisões do dono (decididas em 2026-11-17: as cinco como recomendado)
+
+| Código | Pergunta | Decidido | Alternativa recusada |
+|---|---|---|---|
+| I1 | Onde mora o movimento | por unidade colonial (candidato), somado no país | um por país; separa a unidade mais mobilizada |
+| I2 | As marcas | exigência e revolta na mobilização da unidade, valores de desenho no `data/borders/rules.ron`, a equilibrar depois da fase 6 | só uma marca (revolta) e nenhuma negociação |
+| I3 | Revolta antes da guerra | a revolta separa a unidade sem acordo quando a recusa continua, até a fase 5 trazer a guerra colonial | revolta dormente até a fase 5; até lá, só independência por acordo |
+| I4 | Como a IA da metrópole responde | por conta medida: o custo de segurar (legitimidade perdida pelo movimento sem resposta, a fração do orçamento em repressão) contra o valor da colônia (receita colonial, fábricas, colonos); concede o degrau mais barato que tira a causa | sempre concede na exigência (onda limpa, sem guerra) |
+| I5 | O degrau do domínio | soltar como súdito é uma das saídas, com o feixe `dominion` ou `associated` | só independência plena |
+
+As fábricas (C6a a C6e), a dívida (decisão 1) e o reconhecimento já estão decididos; esta parte só
+os chama.
