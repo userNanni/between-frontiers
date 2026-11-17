@@ -91,12 +91,52 @@ por mês.
 
 ### Efeitos
 
-- **Alfabetização:** a velocidade anual da fase 1 é multiplicada por 0,6 + 0,8 × cobertura escolar
-  (metade das crianças na escola mantém a velocidade antiga).
+- **Alfabetização:** a velocidade anual da fase 1 é multiplicada por 0,3 + 0,9 × cobertura escolar
+  (sem escola, 30 % da velocidade; com todas as crianças na escola, 120 %). Sem escola pouca gente
+  aprende a ler: a Índia, com um décimo das crianças na escola, foi de 10 % para 17 % de
+  alfabetizados entre 1925 e 1950; o Brasil, com um terço, de 37 % para 48 % (UNESCO 1957). Antes
+  desta regra eram 0,6 + 0,8 × cobertura, e a Índia chegava a 39 % em 1955.
+- **Escola de missão:** nas colônias, a matrícula conta também a escola religiosa, que não passa
+  pelo Tesouro (igrejas, subvenção e taxa escolar): 0,4 × `church_privilege` da lei de religião da
+  metrópole (a missão segue a bandeira; o privilégio negativo conta zero). Igreja oficial (Reino
+  Unido, 0,5) dá 0,20; separação (França, 0,1) dá 0,04. Frankema (2012): matrícula bruta de 19 %
+  na África britânica em 1938, 95 % dela em missões, contra 6 % na francesa. O país soberano tem a
+  escola religiosa dentro da própria cobertura.
 - **Mortalidade:** a cobertura hospitalar sobe o teto de saúde e o alcance do remédio
   (`population.pt-BR.md`, "Demografia").
 - **1925:** as escolas começam com cobertura igual à alfabetização do país (5 % a 95 %); os
   hospitais, com renda per capita / US$ 15 mil (2 % a 50 %).
+
+## Orçamento colonial
+
+Metrópole e colônias dividem o mercado e o Tesouro, mas não a obra de serviço público. A doutrina
+da colônia que se paga sozinha (Reino Unido; na França, a lei de 13 de abril de 1900) punha escola
+e saúde da colônia na conta do imposto colonial: em 1925 a França gastava 524 francos por
+habitante, a África Ocidental e Equatorial 25; a educação levava 20 % do gasto francês e 3,6 % do
+colonial (Cogneau, Dupraz e Mesplé-Somps 2018). Antes desta regra, a fila preenchia primeiro a
+maior lacuna do país, que estava sempre na colônia: em 1975 as colônias britânicas tinham 98 %
+de cobertura hospitalar pagos pela metrópole, e a Grã-Bretanha perdia hospital para elas.
+
+- **A bolsa colonial** (`public::colonial_purse`): a parte das colônias na base do imposto de
+  renda (renda dos pops × alíquota da classe × arrecadação da lei, por região) é a parte do
+  dinheiro de obra de cada categoria que vai para elas; o resto fica na metrópole.
+- **O que chega ao nativo:** da parte colonial, sai o que a lei colonial manda para a metrópole
+  (`colonial_tribute`) e o que serve ao colonizador (`discrimination` da lei colonial):
+  `(1 − tributo) × (1 − discriminação)`. Governo indireto (0,2 e 0,3) deixa 56 %; tutela
+  (0,1 e 0,15), 77 %; governo de companhia (0,4 e 0,5), 30 %. O que sobra fica no Tesouro.
+- **Que categorias:** toda categoria cuja obra é serviço público, isto é, cujo prédio faz um bem
+  público (`public::public_service`: o primeiro produto está em `Catalogue::public_goods`, o bem
+  que o Estado compra e paga pelas leis). Hoje são educação e saúde. **Categoria nova entra sem
+  código:** se o prédio dela produz um bem da categoria `public`, a obra na colônia sai da bolsa
+  colonial; se não (infraestrutura, moradia), sai do dinheiro do país inteiro.
+- **Cada bolsa anda sozinha:** quando a colonial acaba, as regiões coloniais esperam o mês
+  seguinte e a metrópole continua com a sua, e vice-versa.
+- **Fica de fora:** o custeio (o salário de professores e médicos) ainda sai do Tesouro único; o
+  fundo de desenvolvimento do pós-guerra (Colonial Development and Welfare Act de 1945, £120
+  milhões; FIDES de 1946, 18 % para programas sociais) só existiria como mudança de lei colonial
+  (a tutela baixa o tributo e a discriminação). Quando a colônia vira país (`borders.pt-BR.md`),
+  ela leva os prédios que tem e passa a ter o Tesouro inteiro: o ponto de leitura é a bolsa, que
+  deixa de existir.
 
 ## Migração interna e moradia urbana
 
