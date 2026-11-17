@@ -371,6 +371,57 @@ fn every_screen_fits_every_supported_logical_size() {
                 steps(&mut h);
             }
         }
+        // Restore points: a quick save, the in-game menu, the dialog to save with a name; then
+        // the campaigns screen with the campaign's points and its "…" menu.
+        h.state_mut().shared.hud = bf_client::hud::Hud::new(bf_client::hud::Layout::default());
+        h.set_size(egui::vec2(1600.0, 900.0));
+        steps(&mut h);
+        h.key_press(egui::Key::F5);
+        let quick = user.join("saves/matriz/points/quick.ron");
+        let started = std::time::Instant::now();
+        while !quick.is_file() && started.elapsed().as_secs() < 60 {
+            std::thread::sleep(std::time::Duration::from_millis(20));
+            h.run_steps(1);
+        }
+        assert!(quick.is_file(), "the quick save wrote no point");
+        for (w, hh) in SIZES {
+            h.set_size(egui::vec2(w, hh));
+            steps(&mut h);
+            let case = format!("{locale} {w}×{hh}");
+            h.key_press(egui::Key::F10);
+            steps(&mut h);
+            failures.extend(check(&h, &format!("{case} game menu")));
+            h.key_press(egui::Key::Escape);
+            steps(&mut h);
+            h.key_press_modifiers(
+                egui::Modifiers::COMMAND | egui::Modifiers::SHIFT,
+                egui::Key::S,
+            );
+            steps(&mut h);
+            failures.extend(check(&h, &format!("{case} save with a name")));
+            if !nodes(&h).iter().any(|n| n.label == "save-named") {
+                failures.push(format!("{case}: no dialog to save with a name"));
+            }
+            h.key_press(egui::Key::Escape);
+            steps(&mut h);
+        }
+        let ctx = h.ctx.clone();
+        h.state_mut().shared.refresh_saves();
+        h.state_mut().apply(Transition::Saves, &ctx);
+        steps(&mut h);
+        for (w, hh) in SIZES {
+            h.set_size(egui::vec2(w, hh));
+            steps(&mut h);
+            let case = format!("{locale} {w}×{hh}");
+            failures.extend(check(&h, &format!("{case} campaigns")));
+            click(&mut h, "…");
+            failures.extend(check(&h, &format!("{case} campaign menu")));
+            if !nodes(&h).iter().any(|n| n.label == "campaign-menu") {
+                failures.push(format!("{case}: no campaign menu"));
+            }
+            h.key_press(egui::Key::Escape);
+            steps(&mut h);
+        }
         let _ = std::fs::remove_dir_all(&user);
     }
     assert!(

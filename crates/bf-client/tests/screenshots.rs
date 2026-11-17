@@ -1847,3 +1847,125 @@ fn population_panel() {
     }
     let _ = std::fs::remove_dir_all(&user);
 }
+
+/// Restore points: the settings, the in-game menu with the quick save, the dialog to save with
+/// a name, and the campaigns screen with a campaign's points and its "…" menu; in Portuguese at
+/// 1600 × 900 and in English at 1280 × 720.
+#[test]
+#[ignore = "needs a GPU (or software Vulkan) and the generated map; run with --ignored"]
+fn restore_points() {
+    use laplace_schelling::calendar::Date;
+    let user = std::env::temp_dir().join(format!("bf-shots-points-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&user);
+    let session = advanced_session(Date::new(1925, 3, 1));
+    for (locale, size, tag, name) in [
+        ("pt-BR", egui::vec2(1600.0, 900.0), "pt", "Antes da reforma"),
+        (
+            "en",
+            egui::vec2(1280.0, 720.0),
+            "en-1280",
+            "Before the reform",
+        ),
+    ] {
+        let home = user.join(tag);
+        let save = write_campaign(&home, &session, "Brasil", "BRA", &[]);
+        let mut h = harness_sized(home.clone(), locale, size);
+        let ctx = h.ctx.clone();
+        // A campaign with every kind of point.
+        h.state_mut().apply(Transition::Game(save.clone()), &ctx);
+        h.run_steps(4);
+        let points_dir = save.dir.join("points");
+        let count = |n: usize, h: &mut Harness<'_, App>| {
+            let started = std::time::Instant::now();
+            loop {
+                let have = std::fs::read_dir(&points_dir)
+                    .map(|d| {
+                        d.filter_map(Result::ok)
+                            .filter(|e| e.path().extension().is_some_and(|x| x == "ron"))
+                            .count()
+                    })
+                    .unwrap_or(0);
+                if have >= n || started.elapsed().as_secs() > 120 {
+                    return;
+                }
+                std::thread::sleep(std::time::Duration::from_millis(20));
+                h.run_steps(1);
+            }
+        };
+        h.key_press(egui::Key::F5);
+        count(1, &mut h);
+        // Two months with a monthly point each.
+        h.state_mut().shared.settings.autosave = bf_client::settings::Autosave::Monthly;
+        h.key_press(egui::Key::Space);
+        count(3, &mut h);
+        h.key_press(egui::Key::Space);
+        h.run_steps(4);
+        {
+            let app = h.state_mut();
+            if let Screen::Game(g) = &mut app.screen {
+                g.restore_point_before(&app.shared, bf_client::points::Reason::Law);
+            }
+        }
+        count(4, &mut h);
+        h.key_press(egui::Key::F10);
+        h.run_steps(4);
+        shot(&mut h, &format!("101-game-menu-points-{tag}"));
+        h.key_press(egui::Key::Escape);
+        h.run_steps(2);
+        h.key_press_modifiers(
+            egui::Modifiers::COMMAND | egui::Modifiers::SHIFT,
+            egui::Key::S,
+        );
+        h.run_steps(4);
+        let field = h
+            .get_all(egui_kittest::kittest::by().role(egui::accesskit::Role::TextInput))
+            .next()
+            .expect("name field");
+        field.focus();
+        h.run_steps(1);
+        h.event(egui::Event::Key {
+            key: egui::Key::A,
+            physical_key: None,
+            pressed: true,
+            repeat: false,
+            modifiers: egui::Modifiers::COMMAND,
+        });
+        h.event(egui::Event::Text(name.into()));
+        h.run_steps(3);
+        shot(&mut h, &format!("102-save-named-{tag}"));
+        h.key_press(egui::Key::Enter);
+        count(5, &mut h);
+        h.run_steps(4);
+        // Quick load: back to March, with where the player was kept as a point.
+        h.key_press(egui::Key::F9);
+        h.run_steps(6);
+        match &h.state().screen {
+            Screen::Game(g) => assert_eq!(g.snapshot().date, Date::new(1925, 3, 1)),
+            _ => panic!("quick load left the campaign"),
+        }
+        count(6, &mut h);
+
+        // The campaigns screen: the points, then the campaign's menu.
+        h.state_mut().shared.refresh_saves();
+        h.state_mut().apply(Transition::Saves, &ctx);
+        h.run_steps(4);
+        shot(&mut h, &format!("103-campaign-points-{tag}"));
+        h.get_by_label("…").click();
+        h.run_steps(3);
+        shot(&mut h, &format!("104-campaign-menu-{tag}"));
+        h.key_press(egui::Key::Escape);
+        h.run_steps(2);
+
+        // The settings, with what a point costs from the save just written.
+        h.state_mut().apply(Transition::Settings, &ctx);
+        h.run_steps(4);
+        shot(&mut h, &format!("100-settings-points-{tag}"));
+        h.get_all(egui_kittest::kittest::by().label_contains("MB · "))
+            .next()
+            .expect("cost line")
+            .scroll_to_me();
+        h.run_steps(4);
+        shot(&mut h, &format!("100-settings-points-cost-{tag}"));
+    }
+    let _ = std::fs::remove_dir_all(&user);
+}

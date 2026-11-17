@@ -928,7 +928,7 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
     if state.menu_open {
         ui.painter()
             .rect_filled(rect, 0, Color32::from_black_alpha(140));
-        let panel = Rect::from_center_size(rect.center(), egui::vec2(360.0, 440.0));
+        let panel = Rect::from_center_size(rect.center(), egui::vec2(360.0, 400.0));
         keys::cover(ui, rect);
         super::frame(ui, panel, "game-menu");
         ui.interact(

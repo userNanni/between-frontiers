@@ -1,6 +1,6 @@
 //! Campaigns: load, rename or delete a saved campaign and its restore points, or create one.
 //!
-//! The list of campaigns on the left, each with a "⋯" menu (rename, delete, open the folder;
+//! The list of campaigns on the left, each with a "…" menu (rename, delete, open the folder;
 //! other systems add their entries to [`MenuItem`]); on the right, the restore points of the
 //! selected campaign, or the form for a new one.
 
@@ -16,7 +16,7 @@ use crate::points::{self, Kind, Point};
 use crate::saves::{self, civil_date};
 use crate::text::{country_name, date_long};
 
-/// Entries of a campaign's "⋯" menu, in order. Ids are stable (`saves.menu.<id>`, Fluent
+/// Entries of a campaign's "…" menu, in order. Ids are stable (`saves.menu.<id>`, Fluent
 /// `saves-menu-<id>`); "play_other" is reserved for playing the campaign as another country.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum MenuItem {
@@ -61,7 +61,7 @@ pub struct State {
     confirm_delete: bool,
     /// The right side shows the new campaign form.
     creating: bool,
-    /// The campaign whose "⋯" menu is open.
+    /// The campaign whose "…" menu is open.
     menu: Option<usize>,
     /// The campaign's new name, while it is being renamed.
     renaming: Option<String>,
@@ -253,7 +253,7 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
         });
     });
 
-    // The open "⋯" menu, over the rest.
+    // The open "…" menu, over the rest.
     if let Some(i) = state.menu {
         campaign_menu(state, shared, ui, rect, i);
     }
@@ -270,7 +270,7 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
     out
 }
 
-/// Where each campaign's "⋯" button sits, for the menu to open under it.
+/// Where each campaign's "…" button sits, for the menu to open under it.
 fn menu_button_id(i: usize) -> egui::Id {
     egui::Id::unique(("saves-menu-button", i))
 }
@@ -341,7 +341,7 @@ fn campaigns(
                     &(i + 1).to_string(),
                     row.rect,
                 );
-                // The "⋯" menu, at the bottom right of the row; the folder size beside it.
+                // The "…" menu, at the bottom right of the row; the folder size beside it.
                 let dots = Rect::from_min_size(
                     egui::pos2(
                         row.rect.right() - space::LG - 28.0,
@@ -362,7 +362,7 @@ fn campaigns(
                     },
                 );
                 let menu = ui
-                    .put(dots, egui::Button::new("⋯").frame(state.menu == Some(i)))
+                    .put(dots, egui::Button::new("…").frame(state.menu == Some(i)))
                     .on_hover_text(shared.tr("saves-menu"));
                 ui.ctx()
                     .data_mut(|d| d.insert_temp(menu_button_id(i), menu.rect));
@@ -458,7 +458,7 @@ fn campaigns(
     }
 }
 
-/// The "⋯" menu of campaign `i`, under its button.
+/// The "…" menu of campaign `i`, under its button.
 fn campaign_menu(state: &mut State, shared: &mut Shared, ui: &mut Ui, screen: Rect, i: usize) {
     let Some(save) = shared.saves.get(i).cloned() else {
         state.menu = None;

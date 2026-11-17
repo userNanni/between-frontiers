@@ -26,7 +26,7 @@ points-title = Restore points
 points-summary = { $name }: { $count ->
     [one] one point
    *[other] { $count } points
-    }, { $manual } kept by hand · folder { $size } MB
+    }, { $manual } out of the rotation · folder { $size } MB
 points-empty = No restore point yet. The autosave, a quick save (F5) or “Save with a name” make them.
 points-kind-auto = Automatic
 points-kind-quick = Quick save

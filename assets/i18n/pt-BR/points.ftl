@@ -26,7 +26,7 @@ points-title = Pontos de restauração
 points-summary = { $name }: { $count ->
     [one] um ponto
    *[other] { $count } pontos
-    }, { $manual } guardados à mão · pasta { $size } MB
+    }, { $manual } fora da rotação · pasta { $size } MB
 points-empty = Nenhum ponto de restauração ainda. O salvamento automático, o salvar rápido (F5) e o "Salvar com nome" criam pontos.
 points-kind-auto = Automático
 points-kind-quick = Salvar rápido
