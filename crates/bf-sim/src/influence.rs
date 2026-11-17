@@ -79,6 +79,8 @@ pub struct InfluenceRules {
     /// Most the term may add to a proposal, per mille of the proposal's size: influence makes a
     /// country accept a small loss for a patron, never any loss.
     pub proposal_cap: u32,
+    /// The foreign service: missions, teams, the cost at home.
+    pub service: ServiceRules,
     pub source: String,
 }
 
@@ -528,6 +530,14 @@ mod tests {
             people_full: 200,
             proposal_weight: 1000,
             proposal_cap: 250,
+            service: ServiceRules {
+                great_powers: 7,
+                missions_per_team: 10,
+                without_mission: 500,
+                efficiency_gain: 1000,
+                domestic_weight: 200,
+                stance_unit: 500,
+            },
             source: String::new(),
         }
     }
@@ -585,4 +595,177 @@ mod tests {
         assert_eq!(i.influence[0], Fixed::from_raw(180));
         assert_eq!(d.investment.value(), Fixed::ZERO);
     }
+}
+
+// ---------------------------------------------------------------------------------------------
+// The limits of diplomacy (`docs/influence.pt-BR.md`, section 12; decisions 4 to 6 of section 13)
+// ---------------------------------------------------------------------------------------------
+
+/// The foreign service's rules, in `data/diplomacy/influence.ron`. Design values.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ServiceRules {
+    /// The largest economies that count as great powers for the missions of 1925.
+    pub great_powers: usize,
+    /// Missions abroad one negotiating team serves.
+    pub missions_per_team: u32,
+    /// Share of goodwill an act yields without a mission in the receiver, per mille.
+    pub without_mission: u32,
+    /// How much administrative efficiency (the research effect `research`: computers, the
+    /// internet) adds to the teams, per mille at full effect.
+    pub efficiency_gain: u32,
+    /// Legitimacy a rapprochement costs at full rejection by every group that counts, per mille.
+    pub domestic_weight: u32,
+    /// The stance of a group that counts as full rejection (the politics' stance unit).
+    pub stance_unit: i64,
+}
+
+/// A diplomatic mission between two countries.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+pub enum Mission {
+    Legation,
+    Embassy,
+}
+
+/// The missions of 1925 by rule (the Correlates of War data may not be redistributed): great
+/// powers hold embassies with each other and legations in every other sovereign capital; the
+/// others hold legations with their land neighbours, their overlord and the great powers. Pairs
+/// are (lower index, higher index).
+pub fn missions_1925(
+    world: &GameWorld,
+    service: &ServiceRules,
+    borders: &crate::borders::BorderRules,
+) -> BTreeMap<(u16, u16), Mission> {
+    let n = world.countries.len();
+    let held: Vec<bool> = (0..n)
+        .map(|c| {
+            world
+                .econ
+                .regions
+                .iter()
+                .any(|r| usize::from(r.market) == c)
+        })
+        .collect();
+    let mut by_gdp: Vec<usize> = (0..n).filter(|&c| held[c]).collect();
+    by_gdp.sort_by(|&a, &b| gdp(world, b).cmp(&gdp(world, a)).then(a.cmp(&b)));
+    let great: BTreeSet<usize> = by_gdp.iter().take(service.great_powers).copied().collect();
+    let sovereign = |c: usize| held[c] && borders.overlord_of(world, c).is_none();
+    let mut out = BTreeMap::new();
+    let mut put = |a: usize, b: usize, m: Mission| {
+        if a == b {
+            return;
+        }
+        let key = (a.min(b) as u16, a.max(b) as u16);
+        let e = out.entry(key).or_insert(m);
+        *e = (*e).max(m);
+    };
+    for &g in &great {
+        for (c, _) in held.iter().enumerate().filter(|(c, h)| **h && *c != g) {
+            if great.contains(&c) {
+                put(g, c, Mission::Embassy);
+            } else if sovereign(c) {
+                put(g, c, Mission::Legation);
+            }
+        }
+    }
+    // Land neighbours, from the map's state borders.
+    let by_state: BTreeMap<u16, usize> = world
+        .econ
+        .regions
+        .iter()
+        .map(|r| (r.state, usize::from(r.market)))
+        .collect();
+    for r in &world.econ.regions {
+        let a = usize::from(r.market);
+        for s in borders.neighbours.get(&r.state).into_iter().flatten() {
+            if let Some(&b) = by_state.get(s) {
+                put(a, b, Mission::Legation);
+            }
+        }
+    }
+    for c in 0..n {
+        if let Some(o) = borders.overlord_of(world, c) {
+            put(c, o, Mission::Legation);
+        }
+    }
+    out
+}
+
+/// Missions country `c` holds abroad.
+pub fn missions_of(missions: &BTreeMap<(u16, u16), Mission>, c: u16) -> usize {
+    missions.keys().filter(|(a, b)| *a == c || *b == c).count()
+}
+
+/// Negotiations `c` can hold at once (decision 5): one team per `missions_per_team` missions
+/// abroad, at least one, more with administrative efficiency (the research effect `research`).
+pub fn negotiation_slots(
+    world: &GameWorld,
+    service: &ServiceRules,
+    missions: &BTreeMap<(u16, u16), Mission>,
+    c: usize,
+) -> u16 {
+    let teams =
+        1 + missions_of(missions, c as u16) as i64 / i64::from(service.missions_per_team.max(1));
+    // `effects` holds, by country, the strength of each research effect, 0–1; index 3 is
+    // `research` (`research::EFFECTS`).
+    let effect = world.research.effects.get(c).map_or(Fixed::ZERO, |e| e[3]);
+    let gain = Fixed::ONE + effect * milli(service.efficiency_gain);
+    (Fixed::from_int(teams) * gain)
+        .to_int_floor()
+        .clamp(1, i64::from(u16::MAX)) as u16
+}
+
+/// Share of goodwill an act of `a` toward `b` yields (decision 4): whole with a mission, less
+/// without.
+pub fn act_yield(
+    missions: &BTreeMap<(u16, u16), Mission>,
+    service: &ServiceRules,
+    a: u16,
+    b: u16,
+) -> Fixed {
+    if missions.contains_key(&(a.min(b), a.max(b))) {
+        Fixed::ONE
+    } else {
+        milli(service.without_mission)
+    }
+}
+
+/// What a rapprochement of `a` with `b` costs `a` at home, in legitimacy per mille (decision 6):
+/// for each law of `b`'s regime, how much the interest groups of `a` that count (by clout) would
+/// oppose adopting it, the same stances the politics measures for laws (Putnam 1988).
+pub fn domestic_cost(
+    world: &GameWorld,
+    politics: &crate::politics::Politics,
+    service: &ServiceRules,
+    a: usize,
+    b: usize,
+) -> Fixed {
+    let s = &world.politics;
+    let (Some(la), Some(lb), Some(clout)) = (s.laws.get(a), s.laws.get(b), s.clout.get(a)) else {
+        return Fixed::ZERO;
+    };
+    let unit = service.stance_unit.max(1);
+    let (mut against, mut groups) = (0i64, 0i64);
+    for (g, (x, y)) in la.iter().zip(lb).enumerate() {
+        let (Some(x), Some(y)) = (x, y) else { continue };
+        if politics.groups.get(g).is_some_and(|gr| gr.colonial) || x == y {
+            continue;
+        }
+        groups += 1;
+        let st = crate::polity::stances(politics, s, a, usize::from(*y));
+        for (ig, stance) in st.iter().enumerate() {
+            let w = i64::from(clout.get(ig).copied().unwrap_or(0));
+            let rejection = (-stance.total).clamp(0, unit) * 1000 / unit;
+            against += w * rejection / 1000;
+        }
+    }
+    let total_groups = la
+        .iter()
+        .zip(lb)
+        .filter(|(x, y)| x.is_some() && y.is_some())
+        .count() as i64;
+    if total_groups == 0 || groups == 0 {
+        return Fixed::ZERO;
+    }
+    // Average over the law groups of the regime: per mille of full rejection by all who count.
+    Fixed::from_ratio(against, total_groups * 1000) * milli(service.domestic_weight)
 }

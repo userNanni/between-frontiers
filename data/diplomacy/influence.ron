@@ -36,5 +36,18 @@
     // The term never adds more than this share of the proposal's size: a patron's influence makes
     // a country accept a small loss, never any loss.
     proposal_cap: 250,
+    // The foreign service (section 12): missions of 1925 by rule (the Correlates of War data may
+    // not be redistributed), teams for simultaneous negotiations, an act without a mission yields
+    // half, and administrative efficiency (computers) adds up to as many teams again.
+    // Rapprochement with a regime the groups that count reject costs up to 200 per mille of
+    // legitimacy (the politics' stance unit is 500).
+    service: (
+        great_powers: 7,
+        missions_per_team: 10,
+        without_mission: 500,
+        efficiency_gain: 1000,
+        domestic_weight: 200,
+        stance_unit: 500,
+    ),
     source: "docs/influence.pt-BR.md, sections 3, 4 and 11; Hirschman 1945; Keohane and Nye 1977; Baldwin 1979; Walt 1987; Kuziemko and Werker 2006",
 )

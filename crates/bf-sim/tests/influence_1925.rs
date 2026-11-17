@@ -193,3 +193,48 @@ fn credit_is_vulnerability_not_size() {
     let shared = influence::dependence(&w, rules, a, b, 1925).credit.value();
     assert!(shared < alone, "{shared:?} {alone:?}");
 }
+
+#[test]
+fn the_missions_of_1925_by_rule() {
+    use influence::Mission;
+    let w = world();
+    let d = data();
+    let service = &d.influence.as_ref().unwrap().service;
+    let m = influence::missions_1925(w, service, &d.border_rules);
+    let pair = |a: &str, b: &str| {
+        let (a, b) = (ix(a) as u16, ix(b) as u16);
+        m.get(&(a.min(b), a.max(b))).copied()
+    };
+    assert_eq!(pair("GBR", "FRA"), Some(Mission::Embassy));
+    assert_eq!(pair("GBR", "NZL"), Some(Mission::Legation), "overlord");
+    assert_eq!(pair("BRA", "ARG"), Some(Mission::Legation), "neighbours");
+    assert_eq!(pair("NZL", "PRY"), None, "far apart and small");
+    // A great power serves more negotiations at once than a small country.
+    let slots = |t: &str| influence::negotiation_slots(w, service, &m, ix(t));
+    assert!(
+        slots("GBR") > slots("LUX"),
+        "{} {}",
+        slots("GBR"),
+        slots("LUX")
+    );
+    assert!(slots("LUX") >= 1);
+    // Without a mission an act yields less.
+    let (nzl, pry) = (ix("NZL") as u16, ix("PRY") as u16);
+    assert!(influence::act_yield(&m, service, nzl, pry) < Fixed::ONE);
+}
+
+#[test]
+fn rapprochement_with_an_opposite_regime_costs_more_at_home() {
+    let w = world();
+    let d = data();
+    let p = d.politics.as_ref().unwrap();
+    let service = &d.influence.as_ref().unwrap().service;
+    let cost = |a: &str, b: &str| influence::domestic_cost(w, p, service, ix(a), ix(b));
+    assert!(
+        cost("USA", "SOV") > cost("USA", "CAN"),
+        "{:?} {:?}",
+        cost("USA", "SOV"),
+        cost("USA", "CAN")
+    );
+    assert_eq!(cost("USA", "USA"), Fixed::ZERO);
+}
