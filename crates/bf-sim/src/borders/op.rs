@@ -1182,3 +1182,45 @@ pub fn tables_agree(world: &GameWorld) -> bool {
                 && p.legitimacy.len() == n))
         && (world.borders.subjects.is_empty() || world.borders.subjects.len() == n)
 }
+
+/// Who holds every map state, for the interface: read again when a border operation ran.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct OwnersView {
+    /// Operations run so far (`BordersState::changes`): the view's version.
+    pub changes: usize,
+    /// Country tags in the simulation's order.
+    pub tags: Vec<String>,
+    /// (owner index or `u16::MAX`, colony) by map state, index = state id − 1.
+    pub owners: Vec<(u16, bool)>,
+    /// Overlord of every country, by index.
+    pub overlords: Vec<Option<u16>>,
+}
+
+impl OwnersView {
+    pub fn read(world: &GameWorld, rules: &BorderRules) -> Self {
+        let n = rules
+            .map
+            .states
+            .iter()
+            .map(|s| usize::from(s.id))
+            .max()
+            .unwrap_or(0);
+        let mut owners = vec![(u16::MAX, false); n];
+        for r in &world.econ.regions {
+            if let Some(o) = usize::from(r.state)
+                .checked_sub(1)
+                .and_then(|i| owners.get_mut(i))
+            {
+                *o = (r.market, r.colony);
+            }
+        }
+        Self {
+            changes: world.borders.changes.len(),
+            tags: world.countries.iter().map(|(_, c)| c.tag.clone()).collect(),
+            owners,
+            overlords: (0..world.countries.len())
+                .map(|c| rules.overlord_of(world, c).map(|o| o as u16))
+                .collect(),
+        }
+    }
+}

@@ -39,8 +39,8 @@ pub struct Live {
 
 impl Live {
     /// The player's politics; `None` without a player or without the politics data.
-    pub fn read(world: &GameWorld) -> Option<Self> {
-        let tag = world.player_tag()?;
+    pub fn read(world: &GameWorld, tag: Option<&str>) -> Option<Self> {
+        let tag = tag?;
         let c = world.countries.iter().position(|(_, c)| c.tag == tag)?;
         let p = &world.politics;
         if c >= p.laws.len() {

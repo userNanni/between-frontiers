@@ -8,9 +8,28 @@ use crate::app::Shared;
 use crate::text::{country_name, difficulty_key, economy_source, money, money_exact, status_line};
 use crate::world::Source;
 
-pub fn show(shared: &Shared, ui: &mut Ui, country: usize) {
+/// What the player asked for in the panel.
+pub enum Action {
+    /// Play this country from now on.
+    Switch(String),
+    /// Free one of the player's states (`StateDef::key`), independent or as a subject.
+    Liberate {
+        by: String,
+        state: String,
+        subject: bool,
+    },
+}
+
+/// `player`: the played country; `selected_state`: the state clicked last.
+pub fn show(
+    shared: &Shared,
+    ui: &mut Ui,
+    country: usize,
+    player: Option<usize>,
+    selected_state: Option<usize>,
+) -> Option<Action> {
     let (Some(world), i18n) = (&shared.world, &shared.i18n) else {
-        return;
+        return None;
     };
     let c = &world.countries[country];
     // The simulation's figures in a campaign, the 1925 scenario's when choosing a country.
@@ -131,4 +150,70 @@ pub fn show(shared: &Shared, ui: &mut Ui, country: usize) {
     for line in economy_source(i18n, table.source) {
         bf_ui_kit::small(ui, &line);
     }
+    borders(shared, ui, country, player, selected_state)
+}
+
+/// Play another country, or free a state of one's own (`docs/borders.pt-BR.md`, decisions 3
+/// and 4). Only in a campaign: the scenario has no player yet.
+fn borders(
+    shared: &Shared,
+    ui: &mut Ui,
+    country: usize,
+    player: Option<usize>,
+    selected_state: Option<usize>,
+) -> Option<Action> {
+    use crate::keys::{self, commands::id};
+    use bf_ui_kit::{Button, ButtonSize};
+    let (world, i18n) = (shared.world.as_ref()?, &shared.i18n);
+    world.live.as_ref()?;
+    let player = player?;
+    let c = &world.countries[country];
+    if c.states.is_empty() && c.colonial_states.is_empty() {
+        return None;
+    }
+    bf_ui_kit::divider(ui);
+    bf_ui_kit::caption(ui, &i18n.tr("borders-title"));
+    let mut out = None;
+    if country != player {
+        let label = i18n.tr_args(
+            "borders-switch",
+            &[("country", Arg::String(country_name(i18n, c.tag())))],
+        );
+        let detail = i18n.tr("borders-switch-detail");
+        let b = Button::secondary(&label)
+            .detail(Some(&detail))
+            .size(ButtonSize::Small)
+            .show(ui);
+        let b = b.on_hover_text(keys::tip(ui.ctx(), &label, id::SWITCH_COUNTRY));
+        if keys::pressed(ui, id::SWITCH_COUNTRY, &b) || keys::fired(ui.ctx(), id::SWITCH_COUNTRY) {
+            out = Some(Action::Switch(c.tag().to_owned()));
+        }
+        return out;
+    }
+    let mine = selected_state
+        .and_then(|s| world.states.get(s))
+        .filter(|s| s.owner == Some(player));
+    let held = c.states.len() + c.colonial_states.len();
+    let Some(st) = mine.filter(|_| held > 1) else {
+        bf_ui_kit::small(ui, &i18n.tr("borders-select-state"));
+        return None;
+    };
+    let name = st.def.name.clone();
+    for (cmd, key, subject) in [
+        (id::LIBERATE, "borders-liberate", false),
+        (id::LIBERATE_SUBJECT, "borders-liberate-subject", true),
+    ] {
+        let label = i18n.tr_args(key, &[("state", Arg::String(name.clone()))]);
+        let b = Button::secondary(&label).size(ButtonSize::Small).show(ui);
+        let b = b.on_hover_text(keys::tip(ui.ctx(), &label, cmd));
+        if keys::pressed(ui, cmd, &b) || keys::fired(ui.ctx(), cmd) {
+            out = Some(Action::Liberate {
+                by: c.tag().to_owned(),
+                state: st.def.key.clone(),
+                subject,
+            });
+        }
+    }
+    bf_ui_kit::small(ui, &i18n.tr("borders-liberate-detail"));
+    out
 }

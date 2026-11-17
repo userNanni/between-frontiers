@@ -153,6 +153,22 @@ impl MapData {
         }
     }
 
+    /// Owners, colonies, colours, borders and labels again, after the owners of the world
+    /// changed (a border operation).
+    pub fn rebuild_owners(&mut self, world: &World) {
+        for p in &world.provinces {
+            let i = p.def.id as usize;
+            self.owner_of[i] = p.owner.map_or(0, |c| c as u16 + 1);
+            self.colony_of[i] = p.def.colony;
+        }
+        self.palette = political_palette(world);
+        let (fw, fh, fields) = distance_fields(self.width, self.height, &self.ids, &self.owner_of);
+        self.field_width = fw;
+        self.field_height = fh;
+        self.fields = fields;
+        self.labels = place_labels(world, self.width, self.height, &self.ids, &self.owner_of);
+    }
+
     pub fn id_at(&self, texel: Pos2) -> u16 {
         if texel.x < 0.0 || texel.y < 0.0 {
             return 0;

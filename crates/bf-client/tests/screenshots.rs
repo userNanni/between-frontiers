@@ -1999,3 +1999,149 @@ fn restore_points() {
     }
     let _ = std::fs::remove_dir_all(&user);
 }
+
+/// Borders (`docs/borders.pt-BR.md`): the Soviet Union frees Ukraine and Germany annexes Austria;
+/// the map follows the owners; the player frees a state of its own, then switches to Ukraine
+/// with the keyboard.
+#[test]
+#[ignore = "needs a GPU (or software Vulkan) and the generated map; run with --ignored"]
+fn borders_and_switching_country() {
+    use bf_sim::borders::{Operation, Terms};
+    use bf_sim::game::GameCommand;
+    let user = std::env::temp_dir().join(format!("bf-shots-borders-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&user);
+    let ukraine: Vec<String> = [
+        "05", "09", "12", "14", "18", "23", "35", "48", "51", "53", "59", "63", "65", "68", "71",
+        "74", "KYIV",
+    ]
+    .iter()
+    .map(|s| format!("UKR-{s}"))
+    .collect();
+    let mut session =
+        advanced_session_of("SOV", laplace_schelling::calendar::Date::new(1925, 1, 5));
+    session.submit(GameCommand::Liberate {
+        by: "SOV".into(),
+        states: ukraine,
+        tag: Some("UKR".into()),
+        subject: false,
+    });
+    session.submit(GameCommand::Borders {
+        op: Operation::Annex {
+            from: "AUT".into(),
+            into: "GER".into(),
+            colony: false,
+            terms: Terms::default(),
+        },
+    });
+    while session.clock().date < laplace_schelling::calendar::Date::new(1925, 2, 2) {
+        session.sim.step();
+    }
+    assert_eq!(
+        session.world().borders.changes.len(),
+        2,
+        "{:?}",
+        session.world().borders.refused
+    );
+    let save = write_campaign(&user, &session, "Fronteiras", "SOV", &[]);
+    for (locale, names) in [
+        (
+            "pt-BR",
+            [
+                "70-fronteiras-mapa",
+                "71-libertar-estado",
+                "72-trocar-de-pais",
+                "73-jogando-ucrania",
+            ],
+        ),
+        (
+            "en",
+            [
+                "70-borders-map-en",
+                "71-free-state-en",
+                "72-switch-country-en",
+                "73-playing-ukraine-en",
+            ],
+        ),
+    ] {
+        let mut h = harness_sized(user.join(locale), locale, egui::vec2(1600.0, 900.0));
+        let ctx = h.ctx.clone();
+        h.state_mut().apply(Transition::Game(save.clone()), &ctx);
+        h.run_steps(6);
+        let at = |h: &mut Harness<'_, App>, lon: f64, lat: f64| -> egui::Pos2 {
+            let app = h.state();
+            let world = app.shared.world.as_ref().unwrap();
+            let (x, y) = bf_client::world::project(&world.map.meta, lon, lat).unwrap();
+            let rect = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(1600.0, 900.0));
+            app.shared
+                .map_view
+                .as_ref()
+                .unwrap()
+                .camera
+                .unwrap()
+                .to_screen(rect, egui::pos2(x, y))
+        };
+        {
+            let app = h.state_mut();
+            let meta = app.shared.world.as_ref().unwrap().map.meta.clone();
+            let (x, y) = bf_client::world::project(&meta, 30.0, 51.0).unwrap();
+            let view = app.shared.map_view.as_mut().unwrap();
+            view.camera.as_mut().unwrap().look_at(egui::pos2(x, y), 3.0);
+        }
+        h.run_steps(4);
+        {
+            let world = h.state().shared.world.as_ref().unwrap();
+            let ukr = world
+                .countries
+                .iter()
+                .position(|c| c.tag() == "UKR")
+                .expect("Ukraine on the map");
+            assert!(world.countries[ukr].states.len() >= 17);
+            let aut = world
+                .countries
+                .iter()
+                .position(|c| c.tag() == "AUT")
+                .unwrap();
+            assert!(world.countries[aut].states.is_empty());
+        }
+        shot(&mut h, names[0]);
+        // A state of the player's own (Moscow): free it.
+        let moscow = at(&mut h, 37.6, 55.75);
+        h.hover_at(moscow);
+        h.run_steps(1);
+        h.drag_at(moscow);
+        h.run_steps(1);
+        h.drop_at(moscow);
+        h.run_steps(4);
+        shot(&mut h, names[1]);
+        // Ukraine: play it, by the key.
+        let kyiv = at(&mut h, 30.52, 50.45);
+        h.hover_at(kyiv);
+        h.run_steps(1);
+        h.drag_at(kyiv);
+        h.run_steps(1);
+        h.drop_at(kyiv);
+        h.run_steps(4);
+        shot(&mut h, names[2]);
+        h.key_press_modifiers(egui::Modifiers::SHIFT, egui::Key::P);
+        h.run_steps(4);
+        let started = std::time::Instant::now();
+        while started.elapsed().as_secs() < 10 {
+            let player = match &h.state().screen {
+                Screen::Game(g) => g.snapshot().player,
+                _ => None,
+            };
+            if player.as_deref() == Some("UKR") {
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(50));
+            h.run_steps(1);
+        }
+        let player = match &h.state().screen {
+            Screen::Game(g) => g.snapshot().player,
+            _ => None,
+        };
+        assert_eq!(player.as_deref(), Some("UKR"));
+        h.run_steps(4);
+        shot(&mut h, names[3]);
+    }
+}

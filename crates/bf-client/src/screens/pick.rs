@@ -152,7 +152,9 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
         region(ui, body, |ui| {
             egui::ScrollArea::vertical()
                 .auto_shrink([false, false])
-                .show(ui, |ui| country_panel::show(shared, ui, country));
+                .show(ui, |ui| {
+                    country_panel::show(shared, ui, country, None, None);
+                });
         });
         bf_ui_kit::paint_rule(ui, side, side.bottom() - FOOTER_H + space::SM);
         let footer = Rect::from_min_max(

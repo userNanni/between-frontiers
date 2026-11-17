@@ -127,8 +127,8 @@ impl GovernmentView {
 }
 
 /// Reads the player's country; `None` without a player or an economy.
-pub fn read(world: &GameWorld, date: Date) -> Option<GovernmentView> {
-    let tag = world.player_tag()?;
+pub fn read(world: &GameWorld, tag: Option<&str>, date: Date) -> Option<GovernmentView> {
+    let tag = tag?;
     let ci = world.countries.iter().position(|(_, c)| c.tag == tag)?;
     let m = world.econ.markets.get(ci)?;
     let mut class_income = [0.0; TAX_CLASSES];

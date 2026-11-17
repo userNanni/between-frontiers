@@ -20,6 +20,8 @@ pub struct State {
     save: Save,
     sim: SimHandle,
     selected: Option<usize>,
+    /// The state clicked last (index into `World::states`): what "free a state" frees.
+    selected_state: Option<usize>,
     menu_open: bool,
     rules: bf_sim::game::Rules,
     research_open: bool,
@@ -117,6 +119,7 @@ impl State {
             research_camera: None,
             live_month: None,
             live_figures: None,
+            selected_state: None,
         };
         if !path.is_file() {
             state.sim.save(path, state.save.meta.name.clone())?;
@@ -382,6 +385,25 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
         }
         state.live_month = Some(month);
     }
+    // Border changes: owners, new countries, the map's colours and borders, the flags.
+    if let (Some(owners), Some(world)) = (&snap.owners, &mut shared.world)
+        && world.apply_owners(owners)
+    {
+        if let Some(map) = &mut shared.map {
+            map.rebuild_owners(world);
+            if let Some(view) = &mut shared.map_view {
+                view.set_palette(map.palette.clone());
+            }
+        }
+        world.live = state
+            .live_figures
+            .as_deref()
+            .map(|f| crate::world::FigureTable::live(&world.countries, f))
+            .or(world.live.take());
+        shared.flags =
+            crate::flags::Flags::load(ui.ctx(), &shared.paths.assets.join("flags"), world);
+        shared.map_gpu_dirty = true;
+    }
     // Where the HUD's panels go: the player's layout resolved for this screen and the sizes the
     // panels ask for; worked out again only when one of them changes.
     let sizes = hud_sizes(state, shared, ui.ctx(), rect, player);
@@ -418,6 +440,7 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
             }
         } else if let Some(id) = response.clicked_province {
             state.selected = world.provinces[id as usize - 1].owner;
+            state.selected_state = world.provinces[id as usize - 1].state;
         }
         if let (Some(layer), Some(texture), Some(camera)) = (&sea_layer, &sea_texture, view.camera)
             && !state.research_open
@@ -578,11 +601,36 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
             ui.make_persistent_id("game-side"),
             Sense::click_and_drag(),
         );
+        let mut action = None;
         region(ui, side.shrink(space::XL), |ui| {
             egui::ScrollArea::vertical()
                 .auto_shrink([false, false])
-                .show(ui, |ui| country_panel::show(shared, ui, country));
+                .show(ui, |ui| {
+                    action = country_panel::show(shared, ui, country, player, state.selected_state);
+                });
         });
+        match action {
+            Some(country_panel::Action::Switch(tag)) => {
+                state.save.meta.player = Some(tag.clone());
+                state
+                    .sim
+                    .send(Command::Issue(GameCommand::SwitchCountry { tag }));
+            }
+            Some(country_panel::Action::Liberate {
+                by,
+                state: key,
+                subject,
+            }) => {
+                state.sim.send(Command::Issue(GameCommand::Liberate {
+                    by,
+                    states: vec![key],
+                    tag: None,
+                    subject,
+                }));
+                state.selected_state = None;
+            }
+            None => {}
+        }
     }
 
     // The player's population, read once a month.

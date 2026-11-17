@@ -247,6 +247,34 @@ pub struct World {
     /// Live from the simulation: share of the demand for transport and power met in each state
     /// (index into [`World::states`]), `-1` where unknown. Empty outside a game.
     pub live_local: std::sync::Arc<Vec<[f32; 2]>>,
+    /// Border changes of the simulation already applied to the owners (`apply_owners`).
+    pub owners_seen: usize,
+    /// Countries that may be born (`data/borders/candidates.ron`); empty when the file is missing.
+    pub candidates: Vec<bf_sim::borders::Candidate>,
+}
+
+/// A country born during the game: the catalogue's colour, capital and flag; a grey one with no
+/// capital for a country history did not make.
+fn new_country_def(tag: &str, candidates: &[bf_sim::borders::Candidate]) -> CountryDef {
+    let c = candidates.iter().find(|c| c.tag == tag);
+    CountryDef {
+        tag: tag.to_owned(),
+        color: c.map_or((150, 150, 140), |c| c.color),
+        status: Status::Sovereign,
+        government: c
+            .and_then(|c| c.government.clone())
+            .unwrap_or_else(|| "presidential_republic".into()),
+        capital_lon_lat: c.map_or((0.0, 0.0), |c| c.capital_lon_lat),
+        population: 0,
+        gdp_per_capita: 0,
+        source: String::new(),
+        literacy: None,
+        life_expectancy: None,
+        urbanization: None,
+        social_source: String::new(),
+        colonies: None,
+        flag: c.and_then(|c| c.flag.clone()).map(|f| format!("{f}.png")),
+    }
 }
 
 #[derive(Debug)]
@@ -307,7 +335,7 @@ impl World {
                 .filter(|&i| states.get(i).is_some_and(|s| s.def.id == p.def.state));
         }
 
-        let mut countries: Vec<Country> = file
+        let countries: Vec<Country> = file
             .countries
             .iter()
             .map(|def| Country {
@@ -323,7 +351,44 @@ impl World {
                 capital_province: None,
             })
             .collect();
-        for p in &provinces {
+        let scenario = FigureTable::scenario(&file.countries);
+        let deposits = vec![Vec::new(); states.len()];
+        let land = vec![None; states.len()];
+        let mut world = Self {
+            start,
+            deposits,
+            land,
+            scenario,
+            live: None,
+            countries,
+            provinces,
+            states,
+            map,
+            live_local: std::sync::Arc::default(),
+            owners_seen: 0,
+            candidates: Vec::new(),
+        };
+        world.index_countries();
+        world
+    }
+
+    /// Each country's provinces, states, areas, overlord and subjects, from the owners of the
+    /// provinces and states.
+    fn index_countries(&mut self) {
+        let index_of =
+            |countries: &[Country], tag: &str| countries.iter().position(|c| c.def.tag == tag);
+        for c in &mut self.countries {
+            c.provinces.clear();
+            c.colonial_provinces.clear();
+            c.states.clear();
+            c.colonial_states.clear();
+            c.area_km2 = 0.0;
+            c.colonial_area_km2 = 0.0;
+            c.overlord = None;
+            c.subjects.clear();
+        }
+        let countries = &mut self.countries;
+        for p in &self.provinces {
             if let Some(o) = p.owner {
                 let c = &mut countries[o];
                 if p.def.colony {
@@ -335,7 +400,7 @@ impl World {
                 }
             }
         }
-        for (i, st) in states.iter().enumerate() {
+        for (i, st) in self.states.iter().enumerate() {
             if let Some(o) = st.owner {
                 if st.def.colony {
                     countries[o].colonial_states.push(i);
@@ -346,27 +411,63 @@ impl World {
         }
         for i in 0..countries.len() {
             if let Status::Subject { overlord, .. } = &countries[i].def.status
-                && let Some(o) = index_of(overlord)
+                && let Some(o) = index_of(countries, overlord)
             {
                 countries[i].overlord = Some(o);
                 countries[o].subjects.push(i);
             }
         }
-        let scenario = FigureTable::scenario(&file.countries);
-        let deposits = vec![Vec::new(); states.len()];
-        let land = vec![None; states.len()];
-        Self {
-            start,
-            deposits,
-            land,
-            scenario,
-            live: None,
-            countries,
-            provinces,
-            states,
-            map,
-            live_local: std::sync::Arc::default(),
+    }
+
+    /// The owners the simulation reports after border changes: countries born since the start
+    /// join the list (their definition from the catalogue of possible countries, or a plain one),
+    /// and every state and province takes its owner and status. `false` when nothing changed.
+    pub fn apply_owners(&mut self, view: &bf_sim::borders::op::OwnersView) -> bool {
+        if view.changes == self.owners_seen {
+            return false;
         }
+        self.owners_seen = view.changes;
+        for tag in view.tags.iter().skip(self.countries.len()) {
+            self.countries.push(Country {
+                def: new_country_def(tag, &self.candidates),
+                provinces: Vec::new(),
+                colonial_provinces: Vec::new(),
+                states: Vec::new(),
+                colonial_states: Vec::new(),
+                area_km2: 0.0,
+                colonial_area_km2: 0.0,
+                overlord: None,
+                subjects: Vec::new(),
+                capital_province: None,
+            });
+        }
+        // Every figure table keeps a row per country; the new ones count as empty until the next
+        // monthly reading.
+        let n = self.countries.len();
+        for table in std::iter::once(&mut self.scenario).chain(self.live.as_mut()) {
+            table.countries.resize(n, Figures::default());
+        }
+        for (st, &(owner, colony)) in self.states.iter_mut().zip(&view.owners) {
+            st.owner = (owner != u16::MAX).then_some(usize::from(owner));
+            st.def.colony = colony;
+        }
+        for p in &mut self.provinces {
+            if let Some(s) = p.state.and_then(|s| self.states.get(s)) {
+                p.owner = s.owner;
+                p.def.colony = s.def.colony;
+            }
+        }
+        for (c, overlord) in self.countries.iter_mut().zip(&view.overlords) {
+            c.def.status = match overlord {
+                Some(o) => Status::Subject {
+                    overlord: view.tags[usize::from(*o)].clone(),
+                    kind: bf_sim::scenario::SubjectKind::Protectorate,
+                },
+                None => Status::Sovereign,
+            };
+        }
+        self.index_countries();
+        true
     }
 
     /// The figures on screen: the simulation's in a campaign, the scenario's elsewhere.

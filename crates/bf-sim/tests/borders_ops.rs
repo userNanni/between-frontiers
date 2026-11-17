@@ -382,6 +382,7 @@ fn campaign(threads: usize, save: bool) -> (laplace_schelling::hash::StateHash, 
         threads,
         Some(d.rules()),
     );
+    ses.submit(GameCommand::ChoosePlayer { tag: "BRA".into() });
     ses.submit(GameCommand::Liberate {
         by: "BRA".into(),
         states: s(&["BRA-SP"]),
