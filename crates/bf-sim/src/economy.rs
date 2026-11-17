@@ -167,4 +167,8 @@ pub struct GroupPurchases {
     /// Transport bought per unit of output value at base prices, per mille (0: none).
     #[serde(default)]
     pub freight: i64,
+    /// Research and development the group's firms want, per mille of the value it adds
+    /// (0: none). Paid out of the investment pool (`docs/research.pt-BR.md`).
+    #[serde(default)]
+    pub research: i64,
 }

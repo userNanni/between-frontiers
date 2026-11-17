@@ -210,13 +210,17 @@ fn dates_fall_inside_the_era() {
 fn costs_grow_with_the_era() {
     let data = GameData::load(&root()).unwrap();
     let tree = tree(&data);
+    // In the research points of laboratories that cost (`tools/research/convert_tree.py`,
+    // `docs/research.pt-BR.md`, "A árvore na unidade nova"): the head-count ranges times the
+    // conversion factor of each technology's own window (about 1.0 in 1935, 2.7 in 1955–65,
+    // 0.9 in 2025).
     let ranges = [
         (20, 60),
-        (60, 150),
-        (150, 450),
-        (400, 1050),
+        (55, 320),
+        (200, 1250),
         (1000, 2500),
-        (2500, 6000),
+        (2000, 5500),
+        (3200, 9300),
     ];
     for t in &tree.techs {
         let (lo, hi) = ranges[usize::from(t.era)];
@@ -328,8 +332,12 @@ fn levels_are_filled_and_ask_for_more_research() {
         assert!(!costs.is_empty(), "level {l} is empty");
         costs.sort_unstable();
         let median = costs[costs.len() / 2];
+        // In the unit of laboratories that cost, the leader's research slows down after 1975
+        // against the head count the tree was first written in (the firms' fixed research
+        // intensity), and the conversion carries that into the tree: a later level may ask up to
+        // 15 % less than the one before (`docs/research.pt-BR.md`, "A árvore na unidade nova").
         assert!(
-            median >= previous,
+            median * 100 >= previous * 85,
             "level {l}: median cost {median} below the level before ({previous})"
         );
         previous = median;

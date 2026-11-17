@@ -39,9 +39,10 @@ gov-spending = Spending per year
 gov-spending-total = Total spending
 gov-spend-0 = Payroll
 gov-spend-1 = Purchases
-gov-spend-2 = Schools and hospitals
+gov-spend-2 = Schools, hospitals and research
 gov-spend-3 = Public works
 gov-spend-4 = Interest
+gov-spend-research = …of which research
 gov-tip-payroll =
     { $workers } civil servants, clergy and soldiers, paid { $pay } of the country's average wage times their profession's weight.
     An obligation: paid even with the treasury in the red.
@@ -49,7 +50,8 @@ gov-tip-goods =
     What the state buys, at base prices: services 30%; transport 10%; paper 10%; medicine 10%; small arms 10%; ammunition 10%; warships 10%; artillery 5%; military aircraft 5%.
     This week's rule, per year: average revenue { $revenue } + the deficit the debt rule allows { $room } − payroll, schools and hospitals, works and interest { $committed } = { $planned }.
     At least 60% of the payroll: { $floor }. { $kept } of the plan is kept (cut with negative cash or interest above 10% of revenue) = { $total }.
-gov-tip-services = The state buys everything schools and hospitals produce; it becomes the pay of teachers, doctors and staff.
+gov-tip-services = The state buys everything schools, hospitals and laboratories produce; it becomes the pay of teachers, doctors and staff.
+gov-tip-research = Laboratories: the treasury pays { $state } a year ({ $share } of the cost, by the ownership law) and the firms pay { $firms } out of their fund; { $gdp } in all. How much to research comes from the value industry adds and from state revenue times the weight of "Research" among public works.
 gov-tip-works = Construction points paid to the public works in the queue as they arrive.
 gov-tip-interest =
     Interest on debt held privately and abroad ({ $cost } a year on { $debt } of debt).
@@ -84,6 +86,7 @@ gov-cat-0 = Infrastructure ({ $share })
 gov-cat-1 = Education ({ $share })
 gov-cat-2 = Health ({ $share })
 gov-cat-3 = Urban housing ({ $share })
+gov-cat-4 = Research ({ $share })
 gov-tip-priority =
     Weight { $weight } of { $sum } = { $share } of the money for new works (default: { $default }).
     In the queue: { $works } works of this kind, { $done } of their points delivered.

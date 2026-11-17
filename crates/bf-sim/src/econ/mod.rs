@@ -4,6 +4,7 @@
 //! See `docs/economy.pt-BR.md` ("Modelo") for the rules and their calibration.
 
 pub mod catalogue;
+pub(crate) mod compat;
 pub mod construction;
 pub mod local;
 pub mod migration;

@@ -29,7 +29,8 @@ pub const INFRASTRUCTURE: usize = 0;
 pub const EDUCATION: usize = 1;
 pub const HEALTH: usize = 2;
 pub const HOUSING: usize = 3;
-pub const DEFAULT_PRIORITY: [u8; PUBLIC_CATEGORIES] = [3, 2, 2, 3];
+pub const RESEARCH: usize = 4;
+pub const DEFAULT_PRIORITY: [u8; PUBLIC_CATEGORIES] = [3, 2, 2, 3, 2];
 /// Highest weight a category takes.
 pub const MAX_PRIORITY: u8 = 10;
 
@@ -132,6 +133,7 @@ pub struct PublicKinds {
     pub school: Option<usize>,
     pub hospital: Option<usize>,
     pub housing: Option<usize>,
+    pub laboratory: Option<usize>,
     /// Infrastructure the state builds when its output is scarce.
     pub infrastructure: Vec<usize>,
     pub construction: Option<u16>,
@@ -143,6 +145,7 @@ impl PublicKinds {
             school: cat.building("school"),
             hospital: cat.building("hospital"),
             housing: cat.building("urban_housing"),
+            laboratory: cat.building("laboratory"),
             infrastructure: ["railway", "road_transport", "power_plant"]
                 .iter()
                 .filter_map(|k| cat.building(k))
@@ -323,6 +326,8 @@ fn market_works(
             cands[INFRASTRUCTURE].push((score, ri, kind, method as u8, Fixed::ZERO));
         }
     }
+    let research_levels =
+        research_candidates(cat, econ, kinds, mi, regions, unlocks, &queued, &mut cands);
     let weights: Vec<i64> = (0..PUBLIC_CATEGORIES)
         .map(|c| {
             if cands[c].is_empty() {
@@ -360,6 +365,8 @@ fn market_works(
         // gaps first, one level at a time.
         let cap = if c == INFRASTRUCTURE {
             (regions.len() / 4).max(1)
+        } else if c == RESEARCH {
+            research_levels
         } else {
             MAX_PUBLIC_BUILDS
         };
@@ -472,6 +479,192 @@ pub fn colonial_purse(econ: &Economy, m: &Market, regions: &[usize]) -> Colonial
     let natives = ((Fixed::ONE - law.colonial_tribute) * (Fixed::ONE - law.discrimination))
         .clamp(Fixed::ZERO, Fixed::ONE);
     ColonialPurse { share, natives }
+}
+
+/// Share of its revenue the state wants spent on research at the default priority, before
+/// the law's `research_priority` (`docs/research.pt-BR.md`, "Pesquisa que custa").
+pub const STATE_RESEARCH_SHARE: Fixed = milli(10);
+
+/// How close a country's industry is to the world's: of the technologies someone makes at
+/// scale, the share it makes too. Firms at the frontier must invent; firms far behind copy.
+/// One without a technology tree.
+pub fn frontier(unlocks: &super::Unlocks<'_>, mi: usize) -> Fixed {
+    let Some((_, research)) = unlocks.tech else {
+        return Fixed::ONE;
+    };
+    let Some(mine) = research.stage.get(mi) else {
+        return Fixed::ONE;
+    };
+    let industrial = crate::research::Stage::Industrial;
+    let (mut world, mut here) = (0i64, 0i64);
+    for (t, firsts) in research.firsts.iter().enumerate() {
+        if firsts[industrial as usize] != 0 || mine.get(t).is_some_and(|s| *s >= industrial) {
+            world += 1;
+            if mine.get(t).is_some_and(|s| *s >= industrial) {
+                here += 1;
+            }
+        }
+    }
+    if world == 0 {
+        Fixed::ONE
+    } else {
+        Fixed::from_ratio(here, world)
+    }
+}
+
+/// Research a country wants in a year, in value at base prices: what its firms want (the value
+/// each building group adds times the group's research intensity, times how close it is to
+/// the frontier) and what its state wants (revenue times `STATE_RESEARCH_SHARE`, times one plus
+/// the law's priority, times the player's weight against the default).
+pub fn research_target(
+    cat: &Catalogue,
+    econ: &Economy,
+    mi: usize,
+    frontier: Fixed,
+) -> (Fixed, Fixed) {
+    let m = &econ.markets[mi];
+    let mut firms = Fixed::ZERO;
+    // Colonies do not research: their firms' research and their laboratories are the
+    // metropole's business, and the colony gets technique by imitation.
+    for r in econ
+        .regions
+        .iter()
+        .filter(|r| r.market as usize == mi && !r.colony)
+    {
+        for p in &r.plants {
+            let b = &cat.buildings[p.kind as usize];
+            let Some(&k) = cat.research_intensity.get(usize::from(b.group_ix)) else {
+                continue;
+            };
+            if k <= Fixed::ZERO || p.levels <= 0 {
+                continue;
+            }
+            firms += super::monthly::base_value_added(cat, p.kind as usize, p.method as usize)
+                * super::plant_tfp(r, m, b)
+                * p.levels
+                * p.staffing
+                * 52
+                * k;
+        }
+    }
+    let firms = firms * frontier;
+    let laws = &m.laws.effects[0];
+    let weight = Fixed::from_ratio(
+        i64::from(m.budget.priority[RESEARCH]),
+        i64::from(DEFAULT_PRIORITY[RESEARCH].max(1)),
+    );
+    let state = m.budget.revenue_avg.max(Fixed::ZERO)
+        * 52
+        * STATE_RESEARCH_SHARE
+        * (Fixed::ONE + laws.research_priority)
+        * weight;
+    (firms, state)
+}
+
+/// What the country paid for research last week: the treasury's part and the firms' (out of
+/// the investment pool), as `econ::week` charges them.
+pub fn research_spending(cat: &Catalogue, m: &Market) -> (Fixed, Fixed) {
+    research_spending_of(m, cat.research)
+}
+
+/// [`research_spending`] with the research good's index (`Catalogue::research`).
+pub fn research_spending_of(m: &Market, research: Option<u16>) -> (Fixed, Fixed) {
+    let Some(g) = research.map(usize::from) else {
+        return (Fixed::ZERO, Fixed::ZERO);
+    };
+    let cost = m.supply[g] * m.sell_ratio[g] * m.price[g];
+    let state = cost * m.laws.effects[0].public_share(g) * pay_share(m);
+    (state, cost - state)
+}
+
+/// Laboratories to start: the levels that close the gap between the research the country wants
+/// and what its laboratories make, placed where engineers and professionals live and are not
+/// yet at a bench. Returns the most levels to start.
+#[allow(clippy::too_many_arguments)]
+fn research_candidates(
+    cat: &Catalogue,
+    econ: &Economy,
+    kinds: &PublicKinds,
+    mi: usize,
+    regions: &[usize],
+    unlocks: &super::Unlocks<'_>,
+    queued: &dyn Fn(usize, usize) -> i64,
+    cands: &mut [Vec<Candidate>; PUBLIC_CATEGORIES],
+) -> usize {
+    let (Some(kind), Some(good)) = (kinds.laboratory, cat.research) else {
+        return 0;
+    };
+    let (firms, state) = research_target(cat, econ, mi, frontier(unlocks, mi));
+    let _ = good;
+    // A researcher costs what the country pays an engineer this month, plus his instruments at
+    // today's prices: a rich country pays dear, a poor one cheap (`research_level_cost`).
+    let cost = research_level_cost(cat, econ, mi, kind);
+    if cost <= Fixed::ZERO {
+        return 0;
+    }
+    let want = (firms + state) / cost;
+    let mut have = Fixed::ZERO;
+    let bench: i64 = cat.buildings[kind].methods[0].workers;
+    for &ri in regions {
+        let r = &econ.regions[ri];
+        if r.colony {
+            continue;
+        }
+        let levels = r
+            .plants
+            .iter()
+            .filter(|p| p.kind as usize == kind)
+            .map(|p| p.levels)
+            .sum::<i64>()
+            + queued(ri, kind);
+        have += Fixed::from_int(levels);
+        let free = super::workers(r.pops[prof::ENGINEER].size + r.pops[prof::PROFESSIONAL].size)
+            - levels * bench;
+        if free > 0 {
+            cands[RESEARCH].push((Fixed::from_int(free), ri, kind, 0, Fixed::from_int(bench)));
+        }
+    }
+    let gap = want - have;
+    if gap <= Fixed::ZERO {
+        return 0;
+    }
+    (gap.to_int_floor() + 1).clamp(0, MAX_PUBLIC_BUILDS as i64) as usize
+}
+
+/// What a level of laboratory costs market `mi` in a year at today's prices: its staff at the
+/// country's market wage (weighted by profession, as plants pay) and its instruments at market
+/// prices.
+pub fn research_level_cost(cat: &Catalogue, econ: &Economy, mi: usize, kind: usize) -> Fixed {
+    let m = &econ.markets[mi];
+    let method = &cat.buildings[kind].methods[0];
+    let wage = super::monthly::market_wages(econ)
+        .get(mi)
+        .copied()
+        .unwrap_or(Fixed::ZERO);
+    // The instruments, like any plant's inputs, scale with the productivity of the place:
+    // the population-weighted mean over the metropole.
+    let b = &cat.buildings[kind];
+    let (mut weighted, mut people) = (Fixed::ZERO, 0i64);
+    for r in econ
+        .regions
+        .iter()
+        .filter(|r| r.market as usize == mi && !r.colony)
+    {
+        weighted += super::plant_tfp(r, m, b) * r.population();
+        people += r.population();
+    }
+    let tfp = if people > 0 {
+        weighted / people
+    } else {
+        Fixed::ONE
+    };
+    let instruments: Fixed = method
+        .inputs
+        .iter()
+        .map(|(g, q)| *q * m.price[*g as usize])
+        .sum::<Fixed>()
+        * tfp;
+    (wage * method.job_weight + instruments) * 52
 }
 
 /// Bounds of the fiscal correction.

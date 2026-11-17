@@ -100,6 +100,8 @@ fn best_yearly_output(cat: &Catalogue, kind: usize) -> f64 {
 
 struct Block {
     market: usize,
+    /// The colonies of `market`: no laboratories there, a colony does not research.
+    colony: bool,
     regions: Vec<usize>,
     sizes: Vec<i64>,
     urban: Vec<f64>,
@@ -300,10 +302,37 @@ fn spending(
     (fd, invested)
 }
 
-/// Schools and hospitals the state runs, added to `fd`: enrolment follows literacy, hospital
-/// care income. Returns their value at base prices.
+/// Research a block bought in a week of 1925, in lots: the firms' part on the economy outside
+/// the farms, times how close to the frontier the block is (its income against the richest
+/// in 1925, about the United States' $10,000 a head at 2011 prices: before the first month the
+/// research state is not there to count technologies, `public::frontier`); the state's part
+/// on its revenue (the goods it buys are two fifths of it).
+/// `RESEARCH_OFF_FARM_1925` is design: total R&D was about 0.6 % of national income in the
+/// United States of the late 1930s and a tenth of a percent in Britain (Bernal 1939,
+/// `docs/research.pt-BR.md`), almost all of it industrial.
+const RESEARCH_OFF_FARM_1925: f64 = 0.003;
+
+fn research_1925(gdp_week: f64, agr: f64, gdp_per_capita: f64) -> f64 {
+    let frontier = (gdp_per_capita / 10_000.0).clamp(0.05, 1.0);
+    let state =
+        gdp_week * STATE_GOODS_SHARE / 0.4 * super::public::STATE_RESEARCH_SHARE.to_f64_lossy();
+    (gdp_week * (1.0 - agr) * RESEARCH_OFF_FARM_1925 * frontier + state) / 1000.0
+}
+
+/// Schools, hospitals and laboratories the state runs, added to `fd`: enrolment follows
+/// literacy, hospital care income, research the economy outside the farms. Returns their value
+/// at base prices.
 fn public_services(cat: &Catalogue, b: &Block, fd: &mut [f64]) -> f64 {
     let mut value = 0.0;
+    if let Some(g) = cat.research.filter(|_| !b.colony) {
+        let q = research_1925(
+            b.population as f64 * b.gdp_per_capita / 52.0,
+            b.agr,
+            b.gdp_per_capita,
+        );
+        fd[g as usize] += q;
+        value += q * cat.goods[g as usize].base_price.to_f64_lossy();
+    }
     for (key, per_person, cover) in [
         (
             "schooling",
@@ -570,6 +599,9 @@ pub fn build(cat: &Catalogue, inp: &Inputs) -> Economy {
                         population as f64 * per_person.to_f64_lossy() * cover / 52.0;
                 }
             }
+            if let Some(g) = cat.research.filter(|_| !colony) {
+                final_demand[g as usize] += research_1925(gdp_week, agr, gdppc);
+            }
             for &(g, per_mille) in &cat.upkeep_basket {
                 final_demand[g as usize] +=
                     gdp_week * INVESTMENT_SHARE * (per_mille as f64 / 1000.0) / base_f[g as usize];
@@ -631,6 +663,7 @@ pub fn build(cat: &Catalogue, inp: &Inputs) -> Economy {
             let state_workers =
                 total_workers * STATE_SHARE.iter().map(|s| s.1 as f64).sum::<f64>() / 1000.0;
             blocks.push(Block {
+                colony,
                 market_workers: (total_workers * (1.0 - jobless) * WORKER_ROOM)
                     .min(total_workers * TOWN_ROOM - state_workers),
                 // As `week::subsistence_food` grows it: nine tenths of a full ration.

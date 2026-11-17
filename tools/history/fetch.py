@@ -2,8 +2,8 @@
 modern-border countries, to data/history/. The raw files stay in data/raw/history/ (gitignored).
 
 Run from the repository root: python3 tools/history/fetch.py [--offline] [--only NAME]
-`--offline` rebuilds data/history/ from the raw files already downloaded; `--only fdi` downloads
-and rebuilds only that file (the names are the build_* steps in `main`).
+`--offline` rebuilds data/history/ from the raw files already downloaded; `--only fdi` (or `rd`)
+downloads and rebuilds only that file (the names are the build_* steps in `main`).
 
 Every source, its licence and its attribution are listed in data/history/SOURCES.md; this script
 is the only way numbers enter data/history/.
@@ -73,6 +73,10 @@ FDI = {
     "fdi_outflow_usd": "BM.KLT.DINV.CD.WD",
     "fdi_inflow_gdp": "BX.KLT.DINV.WD.GD.ZS",
 }
+# Research and development expenditure (% of GDP), World Bank WDI from the UNESCO Institute for
+# Statistics, from 1996.
+RD = {"rd_gdp": "GB.XPD.RSDV.GD.ZS"}
+ONLY = {"fdi": FDI, "rd": RD}
 
 
 def fetch(url, path, tries=4):
@@ -112,6 +116,7 @@ def download():
         fetch(OWID_META.format(slug) + ("&" + query if query else ""), os.path.join(RAW, f"production_{name}.metadata.json"))
     download_wdi(WDI)
     download_wdi(FDI)
+    download_wdi(RD)
 
 
 def owid_rows(slug):
@@ -403,16 +408,25 @@ def build_fdi():
     )
 
 
+def build_rd():
+    write(
+        "rd.csv",
+        ["iso3", "year", "series", "value"],
+        wdi_rows(RD),
+        "Research and development expenditure (% of GDP): World Bank WDI after the UNESCO Institute for Statistics, CC BY 4.0. See SOURCES.md.",
+    )
+
+
 def main():
     if "--only" in sys.argv:
         only = sys.argv[sys.argv.index("--only") + 1]
-        if only != "fdi":
-            sys.exit(f"--only: unknown file {only!r} (known: fdi)")
+        if only not in ONLY:
+            sys.exit(f"--only: unknown file {only!r} (known: {', '.join(ONLY)})")
         if "--offline" not in sys.argv:
-            download_wdi(FDI)
+            download_wdi(ONLY[only])
         if not os.path.exists(os.path.join(RAW, "population.csv")):
             fetch(OWID.format("population"), os.path.join(RAW, "population.csv"))
-        build_fdi()
+        {"fdi": build_fdi, "rd": build_rd}[only]()
         return
     if "--offline" not in sys.argv:
         download()
@@ -437,6 +451,7 @@ def main():
     build_production()
     build_wdi()
     build_fdi()
+    build_rd()
 
 
 if __name__ == "__main__":

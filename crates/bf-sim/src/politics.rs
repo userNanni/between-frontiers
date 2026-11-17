@@ -157,7 +157,7 @@ const fn effect(
 use Combine::{Add, Cap, Multiply};
 
 /// Every effect a law may declare, per mille.
-pub const EFFECTS: [EffectKind; 38] = [
+pub const EFFECTS: [EffectKind; 40] = [
     // Share of the open migration flows let through (the `MigrationLaw` reach).
     effect(
         "migration_within_state",
@@ -284,6 +284,21 @@ pub const EFFECTS: [EffectKind; 38] = [
         Multiply,
         System::Income,
         Some("econ::monthly::pioneers"),
+    ),
+    // Share of research and development the treasury pays (the firms' fund pays the rest), and
+    // how much more research the state wants above its base share of revenue
+    // (`docs/research.pt-BR.md`, "Pesquisa que custa").
+    effect(
+        "research_state_share",
+        Add,
+        System::Budget,
+        Some("econ::public"),
+    ),
+    effect(
+        "research_priority",
+        Add,
+        System::Budget,
+        Some("econ::public"),
     ),
 ];
 

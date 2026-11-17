@@ -84,6 +84,7 @@ good-construction = Construção
 good-schooling = Ensino
 good-housing = Moradia urbana
 good-hospital_care = Atendimento hospitalar
+good-research = Pesquisa e desenvolvimento
 
 ## Mercados
 good-category-staple_food = Alimentos básicos
@@ -184,6 +185,7 @@ building-telecom_exchange = Central de telecomunicações
 building-construction_sector = Construção civil
 building-school = Escola
 building-hospital = Hospital
+building-laboratory = Laboratório
 building-informal_trade = Comércio informal
 building-urban_housing = Moradia urbana
 
@@ -288,6 +290,7 @@ method-hand_construction = Construção manual
 method-mechanized_construction = Construção mecanizada
 method-classroom = Sala de aula
 method-general_hospital = Hospital geral
+method-research_institute = Instituto de pesquisa
 method-tenements = Cortiços e conjuntos
 
 ## Profissões

@@ -121,8 +121,14 @@ pub struct Catalogue {
     pub forest_farm: Option<u8>,
     /// The urban self-employment building, if the catalogue has one.
     pub informal: Option<u16>,
-    /// Goods the state buys whole (category `public`: schools, hospitals).
+    /// Goods the state buys whole (category `public`: schools, hospitals, research).
     pub public_goods: Vec<GoodIx>,
+    /// Research and development, and what each building group's firms want of it, as a share
+    /// of the value the group adds (`economy::BUILDING_GROUPS` order).
+    pub research: Option<GoodIx>,
+    pub research_intensity: Vec<Fixed>,
+    /// The building that makes research.
+    pub laboratory: Option<u16>,
     /// What the state and the investment pool buy, per mille ([`PurchasesFile`]).
     pub state_basket: Vec<(GoodIx, i64)>,
     pub upkeep_basket: Vec<(GoodIx, i64)>,
@@ -354,6 +360,15 @@ impl Catalogue {
             staple_need,
             local: goods_where(&|g| g.local),
             public_goods: goods_where(&|g| g.category == "public"),
+            research: gx("research").ok(),
+            laboratory: bs
+                .iter()
+                .position(|b: &Building| b.key == "laboratory")
+                .map(|i| i as u16),
+            research_intensity: crate::economy::BUILDING_GROUPS
+                .iter()
+                .map(|k| group_of(k).map(|g| Fixed::from_ratio(g.research, 1000)))
+                .collect::<Result<_, _>>()?,
             state_basket: basket(&purchases.state)?,
             upkeep_basket: basket(&purchases.upkeep)?,
             goods,

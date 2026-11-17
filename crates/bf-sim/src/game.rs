@@ -170,6 +170,38 @@ impl From<WorldBeforeLedger> for GameWorld {
     }
 }
 
+/// The world as saves wrote it before research that costs (2026-11-17): markets with four public
+/// works categories and law effects without a research priority (`econ::compat`). At the
+/// default research weight and no priority the world hashes as it did.
+#[derive(Deserialize)]
+struct WorldBeforeResearch {
+    scenario: String,
+    player: Option<Id<Country>>,
+    countries: Table<Country, CountryState>,
+    census: Vec<CensusRecord>,
+    econ: crate::econ::compat::EconomyBeforeResearch,
+    research: crate::research::ResearchState,
+    politics: crate::polity::PoliticsState,
+    demography: crate::demography::DemographyState,
+    borders: crate::borders::BordersState,
+}
+
+impl From<WorldBeforeResearch> for GameWorld {
+    fn from(w: WorldBeforeResearch) -> Self {
+        Self {
+            scenario: w.scenario,
+            player: w.player,
+            countries: w.countries,
+            census: w.census,
+            econ: w.econ.into(),
+            research: w.research,
+            politics: w.politics,
+            demography: w.demography,
+            borders: w.borders,
+        }
+    }
+}
+
 impl HashState for GameWorld {
     fn hash_state(&self, h: &mut StateHasher) {
         h.section("scenario");
@@ -569,6 +601,9 @@ pub fn decode_world(bytes: &[u8]) -> Result<GameWorld, SaveError> {
     if first.is_ok() {
         return first;
     }
+    if let Ok(w) = decode_snapshot::<WorldBeforeResearch>(bytes) {
+        return Ok(w.into());
+    }
     if let Ok(w) = decode_snapshot::<WorldBeforeLedger>(bytes) {
         return Ok(w.into());
     }
@@ -577,6 +612,9 @@ pub fn decode_world(bytes: &[u8]) -> Result<GameWorld, SaveError> {
         padded.resize(bytes.len() + k, 0);
         if let Ok(w) = decode_snapshot::<GameWorld>(&padded) {
             return Ok(w);
+        }
+        if let Ok(w) = decode_snapshot::<WorldBeforeResearch>(&padded) {
+            return Ok(w.into());
         }
         if let Ok(w) = decode_snapshot::<WorldBeforeLedger>(&padded) {
             return Ok(w.into());
@@ -690,13 +728,17 @@ impl Session {
     pub fn load(bytes: &[u8], threads: usize, rules: Option<Rules>) -> Result<Self, LoadError> {
         let file: SaveFile<GameCommand> =
             SaveFile::decode(bytes, GAME_ID).map_err(LoadError::Save)?;
-        let world = decode_world(&file.snapshot).map_err(LoadError::Save)?;
+        let mut world = decode_world(&file.snapshot).map_err(LoadError::Save)?;
         let actual = hash_of(&world);
         if actual != file.header.state_hash {
             return Err(LoadError::HashMismatch {
                 recorded: file.header.state_hash,
                 actual,
             });
+        }
+        // A save from before a good was added runs on with the catalogue's goods.
+        if let Some(r) = &rules {
+            crate::econ::compat::fit_goods(&mut world.econ, &r.catalogue);
         }
         let mut sim = Simulation::resume(
             world,
@@ -742,9 +784,30 @@ mod tests {
         #[derive(Serialize)]
         struct OldEconomy<'a> {
             regions: &'a Vec<crate::econ::Region>,
-            markets: &'a Vec<crate::econ::Market>,
+            markets: &'a Vec<crate::econ::compat::MarketBeforeResearch>,
             world_price: &'a Vec<laplace_schelling::Fixed>,
             history: &'a Vec<crate::econ::YearRecord>,
+        }
+        /// The economy of before research that costs: the ledger, markets of then.
+        #[derive(Serialize)]
+        struct EconomyWithLedger<'a> {
+            regions: &'a Vec<crate::econ::Region>,
+            markets: &'a Vec<crate::econ::compat::MarketBeforeResearch>,
+            world_price: &'a Vec<laplace_schelling::Fixed>,
+            history: &'a Vec<crate::econ::YearRecord>,
+            ledger: &'a crate::treaty::Ledger,
+        }
+        #[derive(Serialize)]
+        struct BeforeResearch<'a> {
+            scenario: &'a String,
+            player: &'a Option<Id<Country>>,
+            countries: &'a Table<Country, CountryState>,
+            census: &'a Vec<CensusRecord>,
+            econ: EconomyWithLedger<'a>,
+            research: &'a crate::research::ResearchState,
+            politics: &'a crate::polity::PoliticsState,
+            demography: &'a crate::demography::DemographyState,
+            borders: &'a crate::borders::BordersState,
         }
         /// `DemographyState` without `communities` (its last field).
         #[derive(Serialize)]
@@ -792,9 +855,15 @@ mod tests {
         // Older layouts: the world of then had no ledger.
         let mut world = data.new_world();
         world.econ.ledger = Default::default();
+        let old_markets: Vec<_> = world
+            .econ
+            .markets
+            .iter()
+            .map(crate::econ::compat::MarketBeforeResearch::of)
+            .collect();
         let econ = || OldEconomy {
             regions: &world.econ.regions,
-            markets: &world.econ.markets,
+            markets: &old_markets,
             world_price: &world.econ.world_price,
             history: &world.econ.history,
         };
@@ -807,6 +876,27 @@ mod tests {
             assert_eq!(hash_of(&loaded), hash_of(&world), "{what}");
             loaded
         };
+        // Before research that costs (the main after the ledger): markets with four public
+        // works categories and no research priority.
+        let before_research = encode_snapshot(&BeforeResearch {
+            scenario: &world.scenario,
+            player: &world.player,
+            countries: &world.countries,
+            census: &world.census,
+            econ: EconomyWithLedger {
+                regions: &world.econ.regions,
+                markets: &old_markets,
+                world_price: &world.econ.world_price,
+                history: &world.econ.history,
+                ledger: &world.econ.ledger,
+            },
+            research: &world.research,
+            politics: &world.politics,
+            demography: &world.demography,
+            borders: &world.borders,
+        })
+        .unwrap();
+        assert_eq!(check(before_research, "before research that costs"), world);
         // Before the ledger (the main after the borders).
         let before_ledger = encode_snapshot(&WithBorders {
             scenario: &world.scenario,
@@ -948,7 +1038,7 @@ mod tests {
         });
         s.submit(GameCommand::SetPublicPriority {
             tag: "ARG".into(),
-            weights: [0, 9, 99, 1],
+            weights: [0, 9, 99, 1, 4],
         });
         s.submit(GameCommand::SetMigrationLaw {
             tag: "ARG".into(),
@@ -975,7 +1065,7 @@ mod tests {
         );
         assert_eq!(
             s.world().econ.markets[1].budget.priority,
-            [0, 9, public::MAX_PRIORITY, 1]
+            [0, 9, public::MAX_PRIORITY, 1, 4]
         );
         assert_eq!(
             s.world().econ.markets[1].laws.migration,

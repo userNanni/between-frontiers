@@ -7,7 +7,6 @@ use std::sync::Arc;
 use laplace_schelling::Fixed;
 use laplace_schelling::schedule::{Access, Cadence, ResourceId, System, TickCtx};
 
-use crate::econ::prof;
 use crate::econ::week::ECON;
 use crate::econ::{Catalogue, Unlocks, milli};
 use crate::economy::BUILDING_GROUPS;
@@ -16,8 +15,27 @@ use crate::research::{EFFECTS, ResearchState, Stage, TechTree};
 
 pub const RESEARCH: ResourceId = ResourceId(11);
 
-/// Research effort a thousand literate engineers and professionals produce in a year.
-pub const POINTS_PER_THOUSAND: Fixed = milli(500);
+/// Research points a year of a thousand literate researchers at the bench makes, before the
+/// duplication of effort. Calibrated so that the leader keeps the dates of the frontier
+/// (`docs/research.pt-BR.md`, "Pesquisa que custa").
+pub const POINTS_PER_EFFORT: Fixed = milli(42_900);
+
+/// Share of R&D spending that is not pay (instruments, materials, services): what a laboratory
+/// short of its inputs loses at most. Median of the 2021 shares in Eurostat `rd_e_gerdcost`
+/// (personnel 38.6-66.5 % in six countries; `data/economy/buildings.ron`, "laboratory").
+const INSTRUMENT_SHARE: Fixed = milli(440);
+
+/// `effort^(3/4)`: doubling the researchers less than doubles the ideas, because they step on
+/// each other's toes (the duplication of the idea production function, `λ = 3/4` in the
+/// robustness case of Bloom, Jones, Van Reenen and Webb 2020).
+fn duplicated(effort: Fixed) -> Fixed {
+    let sqrt = |x: Fixed| -> Fixed {
+        let raw = u128::try_from(x.raw().max(0)).unwrap_or(0) * 1000;
+        Fixed::from_raw(i64::try_from(raw.isqrt()).unwrap_or(i64::MAX))
+    };
+    let root = sqrt(effort);
+    root * sqrt(root)
+}
 /// Share of the effort spent on new science; the rest builds prototypes of what is known.
 const SCIENCE_SHARE: Fixed = milli(700);
 /// How much cheaper it is to learn what the whole world already knows.
@@ -71,19 +89,20 @@ fn ahead(year: i32, history: i32) -> Fixed {
 }
 
 struct CountryFacts {
-    researchers: i64,
+    /// Researchers at the country's laboratories, as they are staffed.
+    research: i64,
     literacy: Fixed,
     population: i64,
     gdp: Fixed,
 }
 
-fn facts(world: &GameWorld) -> Vec<CountryFacts> {
+fn facts(cat: &Catalogue, world: &GameWorld) -> Vec<CountryFacts> {
     let econ = &world.econ;
     let mut out: Vec<CountryFacts> = econ
         .markets
         .iter()
         .map(|m| CountryFacts {
-            researchers: 0,
+            research: 0,
             literacy: Fixed::ZERO,
             population: 0,
             gdp: m.gdp_last_year.max(Fixed::ZERO),
@@ -92,7 +111,24 @@ fn facts(world: &GameWorld) -> Vec<CountryFacts> {
     for r in &econ.regions {
         let c = &mut out[r.market as usize];
         let people = r.population();
-        c.researchers += r.pops[prof::ENGINEER].employed + r.pops[prof::PROFESSIONAL].employed;
+        // Only the metropole's laboratories count: a colony does not research.
+        if let Some(lab) = cat.laboratory.filter(|_| !r.colony) {
+            let workers = cat.buildings[usize::from(lab)].methods[0].workers;
+            // A researcher without instruments researches less, by the share of R&D that is
+            // not pay; never nothing (`INSTRUMENT_SHARE`).
+            c.research += r
+                .plants
+                .iter()
+                .filter(|p| p.kind == lab)
+                .map(|p| {
+                    let missing = Fixed::ONE - p.input_ratio.clamp(Fixed::ZERO, Fixed::ONE);
+                    (Fixed::from_int(p.levels * workers)
+                        * p.staffing
+                        * (Fixed::ONE - INSTRUMENT_SHARE * missing))
+                        .to_int_floor()
+                })
+                .sum::<i64>();
+        }
         c.literacy += r.literacy * people;
         c.population += people;
     }
@@ -130,8 +166,18 @@ impl System<GameWorld> for Research {
         let mut state = world.research.clone();
         let n = state.stage.len().min(world.econ.markets.len());
         let nt = tree.techs.len();
-        let facts = facts(world);
+        let facts = facts(cat, world);
         let world_gdp: Fixed = facts.iter().map(|f| f.gdp).sum::<Fixed>().max(milli(1));
+        // The yardstick of a researcher's quality: the wage of the best-paid economy among those
+        // with at least 1 % of world output (a microstate does not set it).
+        let wages = crate::econ::monthly::market_wages(&world.econ);
+        let world_wage = wages
+            .iter()
+            .zip(&facts)
+            .filter(|(_, f)| f.gdp * 100 >= world_gdp)
+            .map(|(w, _)| *w)
+            .max()
+            .unwrap_or(Fixed::ZERO);
         let unlocks = Unlocks::new(cat, year, Some(tree), &world.research);
 
         // Share of world GDP at or past each stage, by technology.
@@ -197,11 +243,20 @@ impl System<GameWorld> for Research {
         for c in 0..n {
             let f = &facts[c];
             let boost = Fixed::ONE + state.effects[c][3] * 2;
-            let points = Fixed::from_int(f.researchers).mul_ratio(1, 1000)
-                * f.literacy
-                * POINTS_PER_THOUSAND
-                * boost
-                / 12;
+            // Research is the researchers the laboratories employ, which the state and the firms
+            // pay for, counted by quality: each at his country's wage over the best-paid large
+            // economy's, at most one (R&D spending deflated by a common wage is a
+            // quality-adjusted number of researchers, Bloom et al. 2020, p. 1113). Not every
+            // engineer in the country: a poor country's cheap researcher counts for what he
+            // costs.
+            let quality = if world_wage > Fixed::ZERO {
+                (wages.get(c).copied().unwrap_or(Fixed::ZERO) / world_wage)
+                    .clamp(Fixed::ZERO, Fixed::ONE)
+            } else {
+                Fixed::ONE
+            };
+            let effort = Fixed::from_ratio(f.research, 1000) * quality;
+            let points = duplicated(effort) * POINTS_PER_EFFORT * boost / 12;
             state.points[c] = points;
             let stages = state.stage[c].clone();
             let channel = imitation_channel(world.econ.markets.get(c));

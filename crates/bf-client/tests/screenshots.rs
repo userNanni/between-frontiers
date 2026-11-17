@@ -1685,6 +1685,86 @@ fn budget_revenue_sources() {
     let _ = std::fs::remove_dir_all(&user);
 }
 
+/// Research in the budget: the laboratories' bill (the treasury's legal share, the firms' fund
+/// pays the rest) and the public works category "Research" whose weight the player sets; the
+/// United States, three months into 1925.
+#[test]
+#[ignore = "needs a GPU (or software Vulkan) and the generated map; run with --ignored"]
+fn budget_research() {
+    let user = std::env::temp_dir().join(format!("bf-shots-research-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&user);
+    let data = bf_sim::data::GameData::load(&root()).expect("game data");
+    let mut session = bf_sim::game::Session::new(
+        data.new_world(),
+        7,
+        laplace_schelling::calendar::Date::new(1925, 1, 1),
+        2,
+        Some(data.rules()),
+    );
+    session.submit(bf_sim::game::GameCommand::ChoosePlayer { tag: "USA".into() });
+    while session.clock().date < laplace_schelling::calendar::Date::new(1925, 4, 1) {
+        session.sim.step();
+    }
+    let usa = write_campaign(&user, &session, "EUA 1925", "USA", &[]);
+    for (locale, size, tab, line, category, name) in [
+        (
+            "pt-BR",
+            egui::vec2(1600.0, 900.0),
+            "Orçamento",
+            "…dos quais pesquisa",
+            "Pesquisa",
+            "90-orcamento-pesquisa",
+        ),
+        (
+            "en",
+            egui::vec2(1280.0, 720.0),
+            "Budget",
+            "…of which research",
+            "Research",
+            "91-budget-research-en-1280",
+        ),
+    ] {
+        let mut h = harness_sized(user.join(locale), locale, size);
+        let ctx = h.ctx.clone();
+        h.state_mut().apply(Transition::Game(usa.clone()), &ctx);
+        h.run_steps(4);
+        h.key_press(egui::Key::G);
+        h.run_steps(4);
+        h.get_by_label(tab).click();
+        h.run_steps(4);
+        let view = match &h.state().screen {
+            Screen::Game(g) => g.snapshot().government.expect("budget"),
+            _ => panic!("not in a campaign"),
+        };
+        println!(
+            "{locale}: research state {:.0} firms {:.0} share {:.2}",
+            view.research[0], view.research[1], view.research_state_share
+        );
+        assert!(view.research[0] > 0.0 && view.research[1] > 0.0, "both pay");
+        let hover = |h: &mut Harness<'_, App>, label: &str| {
+            let r = h
+                .get_all(egui_kittest::kittest::by().label_contains(label))
+                .next()
+                .unwrap_or_else(|| panic!("{label} in the budget"))
+                .rect();
+            h.hover_at(r.center());
+            h.run_steps(8);
+        };
+        hover(&mut h, line);
+        shot(&mut h, name);
+        // The works list's own label: the top bar has a "Research (R)" button too.
+        let r = h
+            .get_all(egui_kittest::kittest::by().label_contains(&format!("{category} (")))
+            .last()
+            .expect("the research category among the public works")
+            .rect();
+        h.hover_at(r.center());
+        h.run_steps(8);
+        shot(&mut h, &format!("{name}-categoria"));
+    }
+    let _ = std::fs::remove_dir_all(&user);
+}
+
 /// The sea lens: the zones with their ice and names, the Mediterranean with Suez and Gibraltar,
 /// the Baltic, and the route Bombay–Kent (London's state has no port in the graph) with Suez open and closed in the preview; in
 /// Portuguese at 1600 × 900 and in English at 1280 × 720.

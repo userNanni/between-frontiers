@@ -211,6 +211,10 @@ pub struct LawEffects {
     /// negative values count as zero): how far religious schools grow outside the Treasury.
     #[serde(default)]
     pub church_privilege: Fixed,
+    /// How much more research the state wants above its base share of revenue
+    /// (`research_priority`); zero without politics.
+    #[serde(default)]
+    pub research_priority: Fixed,
 }
 
 impl Default for LawEffects {
@@ -230,6 +234,7 @@ impl Default for LawEffects {
             colonial_tribute: Fixed::ZERO,
             discrimination: Fixed::ZERO,
             church_privilege: Fixed::ZERO,
+            research_priority: Fixed::ZERO,
         }
     }
 }
@@ -264,6 +269,10 @@ impl HashState for LawEffects {
         self.colonial_tribute.hash_state(h);
         self.discrimination.hash_state(h);
         self.church_privilege.hash_state(h);
+        // Effects from before research had a priority keep their hash.
+        if self.research_priority != Fixed::ZERO {
+            self.research_priority.hash_state(h);
+        }
     }
 }
 
@@ -311,7 +320,7 @@ pub struct Project {
 /// engineers, professionals, servants), upper (managers, capitalists, landowners).
 pub const TAX_CLASSES: usize = 3;
 /// Public investment categories: infrastructure, education, health, urban housing.
-pub const PUBLIC_CATEGORIES: usize = 4;
+pub const PUBLIC_CATEGORIES: usize = 5;
 
 /// The country's treasury rules and last week's accounts. The balance itself is
 /// `Market::treasury`, which may go negative: a deficit accumulates there.
@@ -397,8 +406,15 @@ impl HashState for Budget {
         }
         self.tax_auto.hash_state(h);
         self.adjust.hash_state(h);
-        for p in &self.priority {
+        // The fifth category (research) came later: at its default weight, a budget keeps the
+        // hash it had with four (`econ::compat`).
+        for p in &self.priority[..4] {
             h.write_u8(*p);
+        }
+        if self.priority[super::public::RESEARCH]
+            != super::public::DEFAULT_PRIORITY[super::public::RESEARCH]
+        {
+            h.write_u8(self.priority[super::public::RESEARCH]);
         }
         for v in [
             self.revenue,
@@ -457,7 +473,7 @@ pub struct Economy {
 #[derive(Deserialize)]
 pub(crate) struct EconomyBeforeLedger {
     regions: Vec<Region>,
-    markets: Vec<Market>,
+    markets: Vec<super::compat::MarketBeforeResearch>,
     world_price: Vec<Fixed>,
     history: Vec<YearRecord>,
 }
@@ -466,7 +482,7 @@ impl From<EconomyBeforeLedger> for Economy {
     fn from(e: EconomyBeforeLedger) -> Self {
         Self {
             regions: e.regions,
-            markets: e.markets,
+            markets: e.markets.into_iter().map(Market::from).collect(),
             world_price: e.world_price,
             history: e.history,
             ledger: Default::default(),

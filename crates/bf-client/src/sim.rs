@@ -244,6 +244,7 @@ fn snapshot_of(
     speed: u8,
     hash: String,
     monthly: Monthly,
+    rules: &Rules,
 ) -> Snapshot {
     Snapshot {
         date: session.clock().date,
@@ -263,6 +264,7 @@ fn snapshot_of(
             session.world(),
             session.player(),
             session.clock().date,
+            rules.as_ref().and_then(|r| r.catalogue.research),
         )
         .map(Arc::new),
         laws: crate::laws_view::Live::read(session.world(), session.player()).map(Arc::new),
@@ -305,6 +307,7 @@ impl SimHandle {
             2,
             hash,
             monthly.clone(),
+            &rules,
         )));
         let (tx, rx) = channel();
         let shared = Arc::clone(&snapshot);
@@ -507,6 +510,7 @@ fn run(
                 ctl.speed,
                 hash.clone(),
                 monthly.clone(),
+                &rules,
             );
             *shared.lock().unwrap_or_else(|e| e.into_inner()) = snap;
             repaint();

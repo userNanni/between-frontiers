@@ -33,6 +33,12 @@
     // unit of output value at base prices, per mille. Bulk (ore, grain, steel) costs more to
     // move than its value suggests; services and power pay none (power moves by wire, and the
     // wire is the grid).
+    // `research`: research and development the group's firms want, per mille of the value it
+    // adds, paid out of the investment pool (docs/research.pt-BR.md, "Pesquisa que custa").
+    // Scale: business-funded R&D in the United States was 0.58 % of GDP in 1953 and 1.08 % in
+    // 1980 (NSF 25-326, table 1), almost all of it in manufacturing; the split between groups
+    // is design, by how much of each group's technique is new (chemicals, electrical goods,
+    // machines and aircraft against textiles and food), to calibrate on the scorecard.
     groups: [
         (
             group: "agriculture",
@@ -49,6 +55,8 @@
                 ("explosives", 100),
             ],
             freight: 60,
+            // Geology and mining engineering: little.
+            research: 2,
         ),
         (
             group: "heavy_industry",
@@ -60,6 +68,8 @@
                 ("tools", 80),
             ],
             freight: 40,
+            // Chemicals, electrical goods, machines, motors, vehicles: the research industries.
+            research: 20,
         ),
         (
             group: "light_industry",
@@ -71,6 +81,8 @@
                 ("tools", 80),
             ],
             freight: 25,
+            // Textiles, food, paper, furniture: mostly mature technique; drugs and appliances raise it.
+            research: 5,
         ),
         (
             group: "energy",
@@ -81,6 +93,8 @@
                 ("machinery", 150),
                 ("electrical_equipment", 150),
             ],
+            // Power plants and the grid.
+            research: 5,
         ),
         (
             group: "infrastructure",
@@ -112,6 +126,8 @@
                 ("tools", 80),
             ],
             freight: 25,
+            // Arms, aircraft and warships: the most research per unit of output.
+            research: 40,
         ),
     ],
 )

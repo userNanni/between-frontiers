@@ -39,9 +39,10 @@ gov-spending = Despesa por ano
 gov-spending-total = Despesa total
 gov-spend-0 = Funcionalismo
 gov-spend-1 = Compras
-gov-spend-2 = Escolas e hospitais
+gov-spend-2 = Escolas, hospitais e pesquisa
 gov-spend-3 = Obra pública
 gov-spend-4 = Juros
+gov-spend-research = …dos quais pesquisa
 gov-tip-payroll =
     { $workers } servidores, clérigos e soldados, pagos a { $pay } do salário médio do país vezes o peso da profissão.
     É obrigação: paga mesmo com o caixa no vermelho.
@@ -49,7 +50,8 @@ gov-tip-goods =
     O que o Estado compra, a preço-base: serviços 30 %; transporte 10 %; papel 10 %; remédios 10 %; armas leves 10 %; munição 10 %; navios de guerra 10 %; artilharia 5 %; aviões militares 5 %.
     Regra da semana, por ano: receita média { $revenue } + déficit que a regra da dívida permite { $room } − folha, escolas e hospitais, obras e juros { $committed } = { $planned }.
     No mínimo 60 % da folha: { $floor }. Fica { $kept } do plano (corte com caixa negativo ou juros acima de 10 % da receita) = { $total }.
-gov-tip-services = O Estado compra tudo o que escolas e hospitais produzem; vira salário de professores, médicos e funcionários.
+gov-tip-services = O Estado compra tudo o que escolas, hospitais e laboratórios produzem; vira salário de professores, médicos e funcionários.
+gov-tip-research = Laboratórios: o Tesouro paga { $state } por ano ({ $share } do custo, pela lei de propriedade) e as empresas pagam { $firms } do fundo delas; ao todo { $gdp }. Quanto pesquisar sai do valor que a indústria adiciona e da receita do Estado vezes o peso de "Pesquisa" nas obras públicas.
 gov-tip-works = Pontos de construção pagos às obras públicas da fila, conforme chegam.
 gov-tip-interest =
     Juros da dívida em mãos privadas e no exterior ({ $cost } ao ano sobre { $debt } de dívida).
@@ -84,6 +86,7 @@ gov-cat-0 = Infraestrutura ({ $share })
 gov-cat-1 = Educação ({ $share })
 gov-cat-2 = Saúde ({ $share })
 gov-cat-3 = Moradia urbana ({ $share })
+gov-cat-4 = Pesquisa ({ $share })
 gov-tip-priority =
     Peso { $weight } de { $sum } = { $share } do dinheiro de obra nova (padrão: { $default }).
     Na fila: { $works } obras desta categoria, { $done } dos pontos entregues.

@@ -89,6 +89,9 @@ pub struct Country {
     pub debt: Vec<f64>,
     /// Consumer price inflation over the year, percent.
     pub inflation: Vec<f64>,
+    /// Research points made over the year (`ResearchState::points`, summed over the months):
+    /// the effort the technology tree is written in (`tools/research/convert_tree.py`).
+    pub research_points: Vec<f64>,
 }
 
 #[derive(Serialize)]
@@ -189,6 +192,8 @@ pub struct History {
     /// By territory and profession: people summed over the months, and children per woman
     /// times people.
     class: Vec<[[f64; 2]; bf_sim::econ::prof::P]>,
+    /// By market: research points of the months so far this year.
+    points: Vec<f64>,
     /// The same by region.
     region_vital: Vec<[f64; 6]>,
     /// The 1925 territory of every region: the unit of every territory series, whatever the
@@ -262,6 +267,7 @@ impl History {
             vital: vec![[0.0; 6]; TerritoryId::count(markets)],
             terms: vec![[0.0; 5]; TerritoryId::count(markets)],
             class: vec![[[0.0; 2]; bf_sim::econ::prof::P]; TerritoryId::count(markets)],
+            points: vec![0.0; markets],
             region_vital: vec![[0.0; 6]; w.econ.regions.len()],
             unit: w.econ.regions.iter().map(TerritoryId::of).collect(),
             arrived: arrived(w),
@@ -314,6 +320,7 @@ impl History {
             let m = &w.econ.markets[mi];
             self.revenue.push(0.0);
             self.spending.push(0.0);
+            self.points.push(0.0);
             self.price_jan
                 .push((m.money.price_level.to_f64_lossy(), m.money.redenominations));
             self.report.countries.push(Country {
@@ -322,6 +329,7 @@ impl History {
                 spending: vec![0.0; years],
                 debt: vec![0.0; years],
                 inflation: vec![0.0; years],
+                research_points: vec![0.0; years],
             });
         }
     }
@@ -384,6 +392,9 @@ impl History {
     }
 
     fn month(&mut self, w: &GameWorld) {
+        for (acc, p) in self.points.iter_mut().zip(&w.research.points) {
+            *acc += p.to_f64_lossy();
+        }
         for (ri, (r, v)) in w.econ.regions.iter().zip(&w.demography.vital).enumerate() {
             let t = self.unit[ri].index();
             let n = r.population() as f64;
@@ -551,7 +562,10 @@ impl History {
             let (p1, r1) = now[mi];
             let cut = 1000f64.powi(i32::from(r1) - i32::from(r0));
             c.inflation.push((p1 * cut / p0.max(1e-12) - 1.0) * 100.0);
+            c.research_points
+                .push(self.points.get(mi).copied().unwrap_or(0.0));
         }
+        self.points.iter_mut().for_each(|x| *x = 0.0);
         self.jan = dec;
         self.region_jan = regions.iter().map(|r| r.population() as f64).collect();
         self.price_jan = now;
