@@ -641,6 +641,7 @@ mod tests {
             markets: Vec::new(),
             world_price: Vec::new(),
             history: Vec::new(),
+            ledger: Default::default(),
         };
         // No colonial law: a quarter of the tax base, all of it for the natives.
         let p = colonial_purse(&econ, &m, &[0, 1]);

@@ -257,6 +257,7 @@ fn ten_years_of_service_conserve_money_and_debt() {
         ledger.service_week(
             &mut treasuries,
             &revenue,
+            &vec![Fixed::ONE; n],
             &inflation,
             Fixed::from_ratio(2, 100),
             1925 + week / 52,

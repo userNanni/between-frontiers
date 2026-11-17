@@ -1091,6 +1091,7 @@ pub fn build(cat: &Catalogue, inp: &Inputs) -> Economy {
         markets,
         world_price: base,
         history: Vec::new(),
+        ledger: Default::default(),
     }
 }
 
