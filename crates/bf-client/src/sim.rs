@@ -144,12 +144,16 @@ fn journal_of(
 /// The month's population view, read again only when the month changed since `last`.
 fn population_of(
     session: &Session,
+    rules: &Rules,
     last: &Option<Arc<crate::population::PopulationView>>,
 ) -> Option<Arc<crate::population::PopulationView>> {
     let date = session.clock().date;
     match last {
         Some(p) if p.month == (date.year, date.month) => Some(Arc::clone(p)),
-        _ => crate::population::read(session.world(), date).map(Arc::new),
+        _ => {
+            let table = rules.as_ref().and_then(|r| r.communities.as_deref());
+            crate::population::read(session.world(), date, table).map(Arc::new)
+        }
     }
 }
 
@@ -166,7 +170,7 @@ impl Monthly {
         Self {
             figures: figures_of(session, &last.figures),
             journal: journal_of(session, rules, &last.journal),
-            population: population_of(session, &last.population),
+            population: population_of(session, rules, &last.population),
         }
     }
 }

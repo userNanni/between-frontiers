@@ -224,6 +224,9 @@ struct Land {
 pub(super) struct Plan {
     /// Net migrants by region (immigrants positive).
     pub moves: Vec<i64>,
+    /// Arrivals of the month by destination territory and culture (index of the scenario's
+    /// cultures; `u16::MAX` when unknown), sorted by culture: who the immigrants are.
+    pub arrivals: Vec<Vec<(u16, i64)>>,
     pub diaspora: Vec<Diaspora>,
     pub waves: Vec<Wave>,
     pub ended: Vec<WaveRecord>,
@@ -354,6 +357,7 @@ pub(super) fn plan(
     let nt = TerritoryId::count(econ.markets.len());
     let mut out = Plan {
         moves: vec![0i64; regions.len()],
+        arrivals: vec![Vec::new(); nt],
         diaspora: state.diaspora.clone(),
         waves: Vec::new(),
         ended: Vec::new(),
@@ -671,6 +675,16 @@ pub(super) fn plan(
                 culture,
             ))
             .or_insert(0) += n;
+    }
+    for (&(_, j, culture), &n) in &arrivals {
+        let by = &mut out.arrivals[j.index()];
+        match by.iter_mut().find(|(c, _)| *c == culture) {
+            Some(e) => e.1 += n,
+            None => by.push((culture, n)),
+        }
+    }
+    for by in &mut out.arrivals {
+        by.sort_unstable();
     }
     for ((i, j, culture), n) in arrivals {
         match out

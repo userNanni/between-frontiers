@@ -1801,13 +1801,14 @@ fn population_panel() {
             false,
         ),
     ];
-    for (locale, size, tag, bottom, classes) in [
+    for (locale, size, tag, bottom, classes, scale) in [
         (
             "pt-BR",
             egui::vec2(1600.0, 900.0),
             "pt",
             "Ondas abertas",
             "Filhos por mulher por classe: País inteiro",
+            "ui_scale: 100",
         ),
         (
             "en",
@@ -1815,10 +1816,19 @@ fn population_panel() {
             "en-1280",
             "Open waves",
             "Children per woman by class: Whole country",
+            "ui_scale: 100",
+        ),
+        (
+            "pt-BR",
+            egui::vec2(1280.0, 720.0),
+            "pt-1280-125",
+            "Ondas abertas",
+            "Filhos por mulher por classe: País inteiro",
+            "ui_scale: 125",
         ),
     ] {
         for (i, (save, name, state)) in saves.iter().enumerate() {
-            let mut h = harness_sized(user.join(format!("{tag}-{name}")), locale, size);
+            let mut h = harness_scaled(user.join(format!("{tag}-{name}")), locale, size, scale);
             let ctx = h.ctx.clone();
             h.state_mut().apply(Transition::Game(save.clone()), &ctx);
             h.run_steps(4);
@@ -1835,10 +1845,30 @@ fn population_panel() {
             h.get_by_label(classes).scroll_to_me();
             h.run_steps(4);
             shot(&mut h, &format!("{n}-population-{name}-classes-{tag}"));
+            // Communities, of the whole country and then of the state the pyramid shows.
+            let communities = if locale == "pt-BR" {
+                "Comunidades:"
+            } else {
+                "Communities:"
+            };
+            let scroll_to_communities = |h: &mut egui_kittest::Harness<'_, bf_client::App>| {
+                h.get_all(egui_kittest::kittest::by().label_contains(communities))
+                    .next()
+                    .expect("communities heading")
+                    .scroll_to_me();
+                h.run_steps(4);
+            };
+            scroll_to_communities(&mut h);
+            shot(&mut h, &format!("{n}-population-{name}-communities-{tag}"));
             if *state {
                 h.get_by_label("›").click();
                 h.run_steps(3);
                 shot(&mut h, &format!("{n}-population-{name}-state-{tag}"));
+                scroll_to_communities(&mut h);
+                shot(
+                    &mut h,
+                    &format!("{n}-population-{name}-state-communities-{tag}"),
+                );
             }
             h.get_by_label(bottom).scroll_to_me();
             h.run_steps(4);
