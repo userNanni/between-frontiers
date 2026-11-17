@@ -388,6 +388,8 @@ fn wave_line(i18n: &I18n, w: &WaveLine) -> String {
         Push::Land => "population-push-land",
         Push::Hunger => "population-push-hunger",
         Push::Poverty => "population-push-poverty",
+        Push::Frontier => "population-push-frontier",
+        Push::Chain => "population-push-chain",
     };
     let mut args = vec![
         ("from", Arg::String(country_name(i18n, &w.from))),
