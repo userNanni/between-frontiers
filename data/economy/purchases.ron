@@ -56,7 +56,7 @@
             ],
             freight: 60,
             // Geology and mining engineering: little.
-            research: 5,
+            research: 2,
         ),
         (
             group: "heavy_industry",
@@ -69,7 +69,7 @@
             ],
             freight: 40,
             // Chemicals, electrical goods, machines, motors, vehicles: the research industries.
-            research: 40,
+            research: 20,
         ),
         (
             group: "light_industry",
@@ -82,7 +82,7 @@
             ],
             freight: 25,
             // Textiles, food, paper, furniture: mostly mature technique; drugs and appliances raise it.
-            research: 10,
+            research: 5,
         ),
         (
             group: "energy",
@@ -94,7 +94,7 @@
                 ("electrical_equipment", 150),
             ],
             // Power plants and the grid.
-            research: 10,
+            research: 5,
         ),
         (
             group: "infrastructure",
@@ -127,7 +127,7 @@
             ],
             freight: 25,
             // Arms, aircraft and warships: the most research per unit of output.
-            research: 80,
+            research: 40,
         ),
     ],
 )

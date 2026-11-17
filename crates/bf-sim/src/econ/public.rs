@@ -524,7 +524,13 @@ pub fn research_target(
 ) -> (Fixed, Fixed) {
     let m = &econ.markets[mi];
     let mut firms = Fixed::ZERO;
-    for r in econ.regions.iter().filter(|r| r.market as usize == mi) {
+    // Colonies do not research: their firms' research and their laboratories are the
+    // metropole's business, and the colony gets technique by imitation.
+    for r in econ
+        .regions
+        .iter()
+        .filter(|r| r.market as usize == mi && !r.colony)
+    {
         for p in &r.plants {
             let b = &cat.buildings[p.kind as usize];
             let Some(&k) = cat.research_intensity.get(usize::from(b.group_ix)) else {
@@ -591,6 +597,9 @@ fn research_candidates(
     let bench: i64 = cat.buildings[kind].methods[0].workers;
     for &ri in regions {
         let r = &econ.regions[ri];
+        if r.colony {
+            continue;
+        }
         let per_level = level_output(cat, r, kind, 0);
         let q = queued(ri, kind);
         have += yearly_output(cat, r, kind) + per_level * q;

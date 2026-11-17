@@ -15,10 +15,22 @@ use crate::research::{EFFECTS, ResearchState, Stage, TechTree};
 
 pub const RESEARCH: ResourceId = ResourceId(11);
 
-/// Research points a million lots of research (a thousand dollars of laboratory work at base
-/// prices each) make. Calibrated so that the leader keeps the dates of the frontier
+/// Research points a year of a thousand literate researchers at the bench makes, before the
+/// duplication of effort. Calibrated so that the leader keeps the dates of the frontier
 /// (`docs/research.pt-BR.md`, "Pesquisa que custa").
-pub const POINTS_PER_MILLION_LOTS: i64 = 185;
+pub const POINTS_PER_EFFORT: Fixed = milli(26_800);
+
+/// `effort^(3/4)`: doubling the researchers less than doubles the ideas, because they step on
+/// each other's toes (the duplication of the idea production function, `λ = 3/4` in the
+/// robustness case of Bloom, Jones, Van Reenen and Webb 2020).
+fn duplicated(effort: Fixed) -> Fixed {
+    let sqrt = |x: Fixed| -> Fixed {
+        let raw = u128::try_from(x.raw().max(0)).unwrap_or(0) * 1000;
+        Fixed::from_raw(i64::try_from(raw.isqrt()).unwrap_or(i64::MAX))
+    };
+    let root = sqrt(effort);
+    root * sqrt(root)
+}
 /// Share of the effort spent on new science; the rest builds prototypes of what is known.
 const SCIENCE_SHARE: Fixed = milli(700);
 /// How much cheaper it is to learn what the whole world already knows.
@@ -72,8 +84,8 @@ fn ahead(year: i32, history: i32) -> Fixed {
 }
 
 struct CountryFacts {
-    /// Research the country's laboratories make in a year, in lots, as they are staffed.
-    research: Fixed,
+    /// Researchers at the country's laboratories, as they are staffed.
+    research: i64,
     literacy: Fixed,
     population: i64,
     gdp: Fixed,
@@ -85,7 +97,7 @@ fn facts(cat: &Catalogue, world: &GameWorld) -> Vec<CountryFacts> {
         .markets
         .iter()
         .map(|m| CountryFacts {
-            research: Fixed::ZERO,
+            research: 0,
             literacy: Fixed::ZERO,
             population: 0,
             gdp: m.gdp_last_year.max(Fixed::ZERO),
@@ -94,8 +106,15 @@ fn facts(cat: &Catalogue, world: &GameWorld) -> Vec<CountryFacts> {
     for r in &econ.regions {
         let c = &mut out[r.market as usize];
         let people = r.population();
-        if let Some(lab) = cat.laboratory {
-            c.research += crate::econ::public::yearly_output(cat, r, usize::from(lab));
+        // Only the metropole's laboratories count: a colony does not research.
+        if let Some(lab) = cat.laboratory.filter(|_| !r.colony) {
+            let workers = cat.buildings[usize::from(lab)].methods[0].workers;
+            c.research += r
+                .plants
+                .iter()
+                .filter(|p| p.kind == lab)
+                .map(|p| (Fixed::from_int(p.levels * workers) * p.staffing).to_int_floor())
+                .sum::<i64>();
         }
         c.literacy += r.literacy * people;
         c.population += people;
@@ -201,9 +220,11 @@ impl System<GameWorld> for Research {
         for c in 0..n {
             let f = &facts[c];
             let boost = Fixed::ONE + state.effects[c][3] * 2;
-            // Research is what the laboratories make: engineers at a bench, paid by the state and
-            // the firms, at the country's productivity; not heads counted.
-            let points = f.research.mul_ratio(POINTS_PER_MILLION_LOTS, 1_000_000) * boost / 12;
+            // Research is the researchers the laboratories employ, which the state and the firms
+            // pay for (spending over the skilled wage, as Bloom et al. measure research effort),
+            // not every engineer in the country; literate ones research better.
+            let effort = Fixed::from_ratio(f.research, 1000) * f.literacy;
+            let points = duplicated(effort) * POINTS_PER_EFFORT * boost / 12;
             state.points[c] = points;
             let stages = state.stage[c].clone();
             let channel = imitation_channel(world.econ.markets.get(c));
