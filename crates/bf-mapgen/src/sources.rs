@@ -30,8 +30,19 @@ pub const ADMIN0: Source = Source {
     blake3: "315631c01405c147d8efde108e7c82279143a8413036cce6cb6b776119cb7439",
 };
 
+/// Release of the marine polygons.
+pub const MARINE_VERSION: &str = "5.1.0";
+
 /// Natural Earth release the hashes above belong to.
 pub const NATURAL_EARTH_VERSION: &str = "5.1.1";
+
+/// Natural Earth 1:10m marine polygons: oceans, seas, gulfs, bays and straits, with names.
+/// Version [`MARINE_VERSION`], as its `VERSION.txt` says.
+pub const MARINE: Source = Source {
+    stem: "ne_10m_geography_marine_polys",
+    url: "https://naciscdn.org/naturalearth/10m/physical/ne_10m_geography_marine_polys.zip",
+    blake3: "5ad0125cbe8d5a79d3a13a8614e0b46888d0896c788a9a2ca84210f670b65a19",
+};
 
 /// Natural Earth 1:50m shaded relief raster (10800×5400, 8-bit, equirectangular).
 pub const SHADED_RELIEF: Source = Source {
