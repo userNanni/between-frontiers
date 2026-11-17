@@ -16,6 +16,8 @@ pub enum Lens {
     Farm(usize),
     /// Goods made and used in the state, live from the simulation: index into [`LOCAL_GOODS`].
     Local(usize),
+    /// Sea zones, straits, ice and routes over a quieted political map (`map::sea`).
+    Sea,
 }
 
 /// Goods the infrastructure lens shows, in the simulation's `Catalogue::local` order (catalogue
@@ -106,7 +108,7 @@ pub fn ramp_color(key: &str, size: u8) -> [u8; 4] {
 /// Colour of one state in the lens, `None` meaning "nothing here".
 pub fn state_color(world: &World, state: usize, lens: Lens, year: i32) -> Option<[u8; 4]> {
     match lens {
-        Lens::Political => None,
+        Lens::Political | Lens::Sea => None,
         Lens::Resource(i) => {
             let key = RESOURCES[i];
             let size = world.deposits[state]
@@ -143,6 +145,15 @@ pub fn state_color(world: &World, state: usize, lens: Lens, year: i32) -> Option
 pub fn palette(world: &World, lens: Lens, year: i32) -> Vec<[u8; 4]> {
     let mut out = super::political_palette(world);
     if lens == Lens::Political {
+        return out;
+    }
+    if lens == Lens::Sea {
+        // The land stays political, faded, so the sea reads first.
+        for c in &mut out {
+            for v in c.iter_mut().take(3) {
+                *v = ((*v as u16 + 2 * 150) / 3) as u8;
+            }
+        }
         return out;
     }
     let mut by_state = vec![None; world.states.len()];

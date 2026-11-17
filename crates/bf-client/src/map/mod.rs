@@ -3,6 +3,7 @@
 
 pub mod gpu;
 pub mod lens;
+pub mod sea;
 
 use std::collections::BTreeSet;
 use std::path::Path;

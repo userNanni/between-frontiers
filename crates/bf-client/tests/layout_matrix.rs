@@ -168,6 +168,15 @@ fn open_country(h: &mut Harness<'_, App>) {
     steps(h);
 }
 
+/// Sets the map's lens.
+fn set_lens(h: &mut Harness<'_, App>, lens: bf_client::map::lens::Lens) {
+    let app = h.state_mut();
+    if let (Some(view), Some(world)) = (&mut app.shared.map_view, &app.shared.world) {
+        bf_client::screens::lens_panel::choose(view, world, lens, 1925);
+    }
+    steps(h);
+}
+
 fn steps(h: &mut Harness<'_, App>) {
     h.run_steps(4);
 }
@@ -290,6 +299,22 @@ fn every_screen_fits_every_supported_logical_size() {
             failures.extend(check(&h, &format!("{case} lens picker")));
             h.key_press(egui::Key::Escape);
             steps(&mut h);
+            // The sea lens, with the route Bombay–Kent and Suez closed in the preview.
+            set_lens(&mut h, bf_client::map::lens::Lens::Sea);
+            failures.extend(check(&h, &format!("{case} sea lens")));
+            if let Screen::Game(g) = &mut h.state_mut().screen {
+                let v = g.sea_view_mut();
+                v.from = Some(358);
+                v.to = Some(276);
+                v.closed.insert(11);
+                v.focus = Some(0);
+            }
+            steps(&mut h);
+            failures.extend(check(&h, &format!("{case} sea route")));
+            if let Screen::Game(g) = &mut h.state_mut().screen {
+                g.sea_view_mut().clear();
+            }
+            set_lens(&mut h, bf_client::map::lens::Lens::Political);
         }
         // The streaming preset, and the middle band on wide screens.
         for (layout, name) in [

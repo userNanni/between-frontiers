@@ -240,6 +240,7 @@ pub mod id {
     pub const MODE_CLIMATE: &str = "map.mode_climate";
     pub const MODE_FARMS: &str = "map.mode_farms";
     pub const MODE_INFRASTRUCTURE: &str = "map.mode_infrastructure";
+    pub const MODE_SEA: &str = "map.mode_sea";
     pub const GOVERNMENT: &str = "window.government";
     pub const RESEARCH: &str = "window.research";
     pub const COUNTRY: &str = "window.country";
@@ -274,12 +275,13 @@ pub mod id {
     pub const LENS_PICKER: &str = "map.lens_picker";
     pub const LENS_KEEP_OPEN: &str = "map.lens_keep_open";
     /// The map modes, in the order of the picker.
-    pub const MODES: [&str; 5] = [
+    pub const MODES: [&str; 6] = [
         MODE_POLITICAL,
         MODE_RESOURCES,
         MODE_CLIMATE,
         MODE_FARMS,
         MODE_INFRASTRUCTURE,
+        MODE_SEA,
     ];
     pub const TAB_BUDGET: &str = "gov.tab_budget";
     pub const TAB_MONEY: &str = "gov.tab_money";
@@ -337,14 +339,21 @@ fn builtin() -> Vec<CommandDef> {
         (MODE_CLIMATE, Digit3),
         (MODE_FARMS, Digit4),
         (MODE_INFRASTRUCTURE, Digit5),
+        (MODE_SEA, Digit6),
     ]
     .into_iter()
     .enumerate()
     {
+        // The sea lens takes 9: 6 to 8 are the overview's sections, often on screen with it.
+        let hint = if i == 5 {
+            '9'
+        } else {
+            (b'1' + i as u8) as char
+        };
         out.push(
             CommandDef::new(cmd, Map)
                 .keys([k(digit).shift()])
-                .hint((b'1' + i as u8) as char),
+                .hint(hint),
         );
     }
     out.extend([
