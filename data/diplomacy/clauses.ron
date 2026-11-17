@@ -9,7 +9,7 @@
 //   the giver, -3 to 3, on the effects of politics::EFFECTS plus `sovereignty` and `burden`) are
 //   DESIGN CHOICES, to be balanced after phase 6. `source` names the historical cases the clause
 //   stands for, not the numbers.
-// - `policy`: the owner's switches (decisions 3 to 6 of the design), at the recommended values.
+// - `policy`: the owner's switches (decisions 3 to 6 of the design), as decided on 2026-11-17.
 (
     clauses: [
         (key: "cede_states", once: true, needs: [Borders], sovereignty: 0,
