@@ -17,7 +17,7 @@ Princípios, os de sempre (`architecture.pt-BR.md`): causa visível, pouco sorte
 O índice de país é o mesmo em toda parte: a ordem do cenário, que é o índice de
 `GameWorld::countries`, de `econ.markets`, de `politics.*` e de `research.*`. `Region::market`
 aponta para ele; `Region::colony` separa metrópole e colônias do mesmo mercado. A demografia nova
-(PR #54) acrescenta o **território** `market * 2 + colony`.
+(PR #54) acrescenta o **território** (`demography::TerritoryId`: metrópole ou colônias de um mercado).
 
 Daí a primeira regra: **o índice de país é estável.** País novo entra no fim de todas as tabelas;
 país que morre fica no lugar, sem estados (lápide), e pode renascer com a mesma etiqueta (os
@@ -79,24 +79,29 @@ inteiro. As duas se calculam na hora da operação, do estado salvo, sem sorteio
 ### A demografia do PR #54
 
 Ela guarda por estado (pirâmide, escolaridade), o que vai junto sem trabalho, e por **território**
-(`market * 2 + colony`), o que precisa de regra:
+(`demography::TerritoryId`: metrópole ou colônias de um mercado, com `new(market, colony)`,
+`of(&Region)`, `market()`, `colony()` e `count(markets)`; a operação usa só esse tipo, nunca a
+aritmética do índice), o que precisa de regra:
 
 - `territories` (fatos fixos: latitude, longitude, família linguística, cultura principal): ganha
-  duas entradas por país novo e é recalculada para os territórios que mudaram (a função
-  `demography::territories` já calcula do mapa e das comunidades; basta chamá-la de novo).
+  as entradas do país novo (`TerritoryId::count` cresce com os mercados) e é recalculada para os
+  territórios que mudaram (`demography::territories` já calcula do mapa e das comunidades).
 - `vital` por território: o país novo começa com os números do território de onde saiu.
-- `diaspora` (`origin`, `dest`, cultura, pessoas): a diáspora cuja origem era o território que se
-  dividiu passa a ter como origem o herdeiro que tem mais gente da cultura dela (comunidades por
-  estado); a que tinha o território como destino segue as pessoas, que moram em estados: reparte
-  pela parcela da cultura dela em cada herdeiro. Ninguém some (teste de conservação).
-- `homes` (`territory_1925`): é a origem de 1925 e não muda; vira índice de unidade de 1925, não de
-  território atual.
-- `waves` abertas que saem de ou vão para o território: terminam com um motivo novo
+- `diaspora` é guardada por (território de origem, território de destino, cultura), não por estado.
+  - **Como destino:** a parcela que vai para o novo dono é a da **população urbana** dos estados
+    que mudam sobre a do território, que é onde a demografia põe os imigrantes (regra proposta pelo
+    thread da demografia).
+  - **Como origem:** a mesma regra, pela população urbana e rural da cultura nos estados movidos
+    (comunidades por estado); sem gente da cultura nos estados movidos, a origem não muda.
+  - Repartição em `Fixed`, resto de arredondamento com o antigo dono: ninguém some (teste de
+    conservação das pessoas na diáspora).
+- `homes` (minorias com rota própria por território) se refazem das comunidades dos estados
+  movidos, para os dois donos.
+- `waves` abertas que saem de ou vão para o território: terminam com uma variante nova
   (`WaveEnd::Border`) e reabrem no ciclo seguinte se a pressão continuar.
 - As leis `immigration` e `emigration` lidas em `Demography::migration_laws` já são por país.
 
-Pedido ao PR #54: guardar o território como par `(market, colony)` em vez de inteiro somado, ou
-expor uma função `territory(market, colony)`, para a operação não depender da aritmética.
+A parte B é escrita contra essa API, sem depender do tipo enquanto o #54 não entra na `main`.
 
 ### O cliente
 
@@ -277,6 +282,8 @@ Mudança menor que um estado fica de fora e anotada (`partial`).
   threads e depois de salvar e recarregar no meio.
 
 ## 6. Decisões para o dono
+
+Propostas, aguardando o dono. A parte B só começa depois da resposta.
 
 1. **Dívida do país novo.** Recomendação: **colônia que se emancipa nasce sem dívida pública**
    (o modelo põe as contas coloniais no Tesouro da metrópole, que fica com a dívida inteira e perde
