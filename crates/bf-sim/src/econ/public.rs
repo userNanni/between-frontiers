@@ -564,7 +564,12 @@ pub fn research_target(
 /// What the country paid for research last week: the treasury's part and the firms' (out of
 /// the investment pool), as `econ::week` charges them.
 pub fn research_spending(cat: &Catalogue, m: &Market) -> (Fixed, Fixed) {
-    let Some(g) = cat.research.map(usize::from) else {
+    research_spending_of(m, cat.research)
+}
+
+/// [`research_spending`] with the research good's index (`Catalogue::research`).
+pub fn research_spending_of(m: &Market, research: Option<u16>) -> (Fixed, Fixed) {
+    let Some(g) = research.map(usize::from) else {
         return (Fixed::ZERO, Fixed::ZERO);
     };
     let cost = m.supply[g] * m.sell_ratio[g] * m.price[g];

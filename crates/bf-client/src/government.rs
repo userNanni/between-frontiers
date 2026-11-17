@@ -45,6 +45,10 @@ pub struct GovernmentView {
     pub works: Vec<Work>,
     /// The terms of this week's purchases rule.
     pub goods_rule: GoodsRule,
+    /// Last week's research and development: what the treasury paid (inside public services)
+    /// and what the firms' fund paid, and the treasury's legal share (`research_state_share`).
+    pub research: [f64; 2],
+    pub research_state_share: f64,
 }
 
 /// The budget rule that sets the state's purchases (`econ::public::goods_budget`), term by
@@ -127,7 +131,12 @@ impl GovernmentView {
 }
 
 /// Reads the player's country; `None` without a player or an economy.
-pub fn read(world: &GameWorld, tag: Option<&str>, date: Date) -> Option<GovernmentView> {
+pub fn read(
+    world: &GameWorld,
+    tag: Option<&str>,
+    date: Date,
+    research: Option<u16>,
+) -> Option<GovernmentView> {
     let tag = tag?;
     let ci = world.countries.iter().position(|(_, c)| c.tag == tag)?;
     let m = world.econ.markets.get(ci)?;
@@ -172,6 +181,12 @@ pub fn read(world: &GameWorld, tag: Option<&str>, date: Date) -> Option<Governme
         class_people,
         subordinate: m.money.subordinate(date.year),
         works,
+        research: {
+            let (state, firms) = bf_sim::econ::public::research_spending_of(m, research);
+            [f(state), f(firms)]
+        },
+        research_state_share: research
+            .map_or(0.0, |g| f(m.laws.effects[0].public_share(usize::from(g)))),
         goods_rule: {
             use bf_sim::econ::public::{GOODS_PER_PAYROLL, austerity, goods_budget};
             let b = &m.budget;
@@ -211,6 +226,8 @@ mod tests {
             subordinate: false,
             works: Vec::new(),
             goods_rule: GoodsRule::default(),
+            research: [0.0; 2],
+            research_state_share: 0.0,
         }
     }
 

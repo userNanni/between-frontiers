@@ -119,6 +119,49 @@ vezes a alfabetização. Uma China pobre e fechada, com a maior população, pes
 Estados Unidos (115 tecnologias no estágio de ciência em 1985, contra 108). Agora pesquisa é
 gasto, com causa à vista: quem paga, quanto custa um pesquisador e onde está a bancada.
 
+### O que não fechou (declarado)
+
+Entrou abaixo do limiar combinado, por decisão do orquestrador (funcionalidade antes de
+equilíbrio; equilíbrio fino depois da fase 6). Medido sobre a base `d5570d0` contra o branch antes
+do rebase sobre `22d67de`; uma rodada no head rebaseado confere que a tabela não mudou de sinal.
+
+**Datas da fronteira**, branch menos base, por década do ano histórico da tecnologia (101 anos):
+
+| Década | Média (anos) | Fora de ±1 ano |
+|---|---|---|
+| 1930 | −0,08 | 0 de 37 |
+| 1940 | −0,40 | 7 de 25 |
+| 1950 | −0,51 | 4 de 47 |
+| 1960 | +0,91 | 8 de 33 |
+| 1970 | **+1,81** | 13 de 32 |
+| 1980 | **+2,80** | 7 de 15 |
+| 1990 | **+2,07** | 11 de 27 |
+| 2000 | +1,25 | 8 de 20 |
+| 2010 | +1,15 | 7 de 26 |
+| 2020 | +0,80 | 2 de 5 |
+
+- A **solar de usina** não chega à indústria até 2025 (protótipo em 2018, contra 1997 na base).
+- Piores casos: ciclo combinado +10 anos, GPS +9 no protótipo e +7 na indústria, robô industrial
+  +6, drone armado +6, bateria de rede +6, bomba atômica na indústria +5.
+- **1985:** o **Japão empata** com a China e a Índia no estágio de ciência (82 tecnologias pós-1925
+  cada) e passa por uma só no protótipo (67 contra 66). EUA, URSS, Alemanha, Reino Unido e França
+  ficam à frente.
+- **Seguidores** chegam a 1985 com 14 a 24 tecnologias a menos no estágio de ciência que na base:
+  Reino Unido −17, URSS −20, Japão −18, China −24, Índia −20, Brasil −19.
+- **Pessoal de P&D dos EUA** 31 % (1955) e 49 % (1975) abaixo do real; **custo por pesquisador**
+  31 % e 37 % acima (NSF 77-310, tabelas B-5 e B-10; dólares de 2011 pelo deflator do PIB).
+- **Eletricidade e gás piores** (`noise.py compare`, faixa de reembaralhamento): eletricidade de 1955
+  de 0,97 para 1,20 do real (+6,8 desvios), de 1985 de 0,93 para 0,82 (−5,2), de 1995 de 0,88 para
+  0,82 (−6,1); gás de 1985 de 0,46 para 0,42 (−4,1). Carvão de 1955 e 1995 piores, de 1965 melhor.
+- Melhor: o PIB mundial por habitante mais perto do real em todas as décadas de 1945 a 2005 (1985:
+  1,284 → 1,145 do real, −8,0 desvios); ranking de 1955, 1985 e 2025 igual ou melhor.
+
+**Causa conhecida.** A árvore convertida muda as datas, e as datas mudam o esforço: menos
+tecnologia difundida nos seguidores, menos PIB e menos efeito de computador. Por isso o fator
+medido com a árvore antiga fica alto para a árvore nova nos anos 1975–1995. **Remédio:** rodar de
+novo o script de conversão (abaixo) quando a fase 5 puser o P&D federal da guerra fria, ou antes, se
+o dono pedir.
+
 ### A regra
 
 - **Laboratório:** prédio público (`laboratory`, grupo de serviços) com engenheiros e
@@ -178,6 +221,15 @@ unidade, feita por script (`tools/research/convert_tree.py`), não um ajuste por
   pesquisa dos anos antes dela, não com o estoque desde 1925. Uma primeira passada com o fator
   cumulativo errou nas duas pontas, pelo mesmo motivo: barateou os anos 1950 e encareceu os
   anos 2000.
+- A árvore deste PR saiu deste comando, com as duas rodadas de 101 anos (semente 7, 2 threads,
+  base `d5570d0` e branch com a árvore antiga):
+
+  ```
+  python3 tools/research/convert_tree.py c-base-history.json c-old-history.json --write
+  ```
+
+  Cada histórico é o `--history-out` de `bf-bench --game --years 101`; a reconversão é o mesmo
+  comando com as duas rodadas novas.
 - Custo novo = custo antigo × fator. Depois, a regra da árvore de que toda tecnologia custa pelo
   menos 10 % mais que cada requisito é restaurada subindo o custo onde a conversão a quebrou (20
   de 168 tecnologias).
@@ -194,6 +246,11 @@ unidade, feita por script (`tools/research/convert_tree.py`), não um ajuste por
   comparação é conferência, não parâmetro.
 
 ### Dependências anotadas
+
+- **Salário americano alto:** o custo por pesquisador nos EUA sai acima do real porque o PIB por
+  habitante americano do modelo é alto; o salário de mercado acompanha.
+- **Computação como método:** o efeito global de computador e internet sobre os pontos fica até a
+  seção "Depois: computação como método".
 
 - **Pessoal de P&D dos EUA abaixo do real.** Com a regra de custo, o modelo emprega cerca de 31 %
   menos cientistas e engenheiros que o real em 1955 e 42 % menos em 1975 (real: 249 mil em 1955,

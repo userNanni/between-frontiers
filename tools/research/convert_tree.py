@@ -20,6 +20,12 @@ research changes again (the federal R&D of the Cold War, phase 5).
 
     python3 tools/research/convert_tree.py REFERENCE_HISTORY.json NEW_HISTORY.json [--write]
 
+The tree in the repository came from (2026-11-17; both runs `bf-bench --game --years 101
+--threads 2 --history-out ...`, seed 7, on d5570d0; the second with laboratories that cost and the
+head-count tree):
+
+    python3 tools/research/convert_tree.py c-base-history.json c-old-history.json --write
+
 The histories are `bf-bench --game --history-out` files of the same seed, both with the tree
 as it stands. Without `--write` it only prints the factors and the new cost ranges by era.
 """

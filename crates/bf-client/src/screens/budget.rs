@@ -269,6 +269,26 @@ fn accounts(ui: &mut Ui, i18n: &I18n, v: &GovernmentView) {
             .share(if total > 0.0 { amount / total } else { 0.0 })
             .bar(if k == 4 { color::DANGER } else { color::ACCENT })
             .show(ui);
+        // Research: the treasury's part is inside public services; the firms pay the rest out of
+        // their fund. The law sets the treasury's share; the weight of "Research" among the public
+        // works sets how much research the state wants.
+        let [state, firms] = v.research;
+        if k == 2 && state + firms > 0.0 {
+            let value = money(i18n, state * WEEKS);
+            let tip = i18n.tr_args(
+                "gov-tip-research",
+                &[
+                    ("state", arg(money(i18n, state * WEEKS))),
+                    ("firms", arg(money(i18n, firms * WEEKS))),
+                    ("share", arg(pct(i18n, v.research_state_share * 100.0, 0))),
+                    ("gdp", arg(of_gdp(i18n, (state + firms) * WEEKS, gdp))),
+                ],
+            );
+            Account::new(&i18n.tr("gov-spend-research"), &value, &tip)
+                .share(if total > 0.0 { state / total } else { 0.0 })
+                .bar(color::ACCENT)
+                .show(ui);
+        }
     }
     let value = with_gdp(i18n, money(i18n, total * WEEKS), total * WEEKS, gdp);
     let tip = i18n.tr_args(
