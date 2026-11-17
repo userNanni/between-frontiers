@@ -169,6 +169,10 @@ ponto em 1935 e de 33 pontos em 2024.
   de rodadas. Cada PR roda só a própria rodada e compara país a país, por década, com a faixa.
   Oito rodadas de 101 anos ocupam um slot por cerca de 3 h, uma vez por commit, em vez de 3 h por
   thread.
+- **Como:** `tools/bench/band.sh [commit]` faz as oito amostras ao lado da base (em
+  `target/baseline/<sha>/band/p±N/`), uma vez por sha. `tools/bench/band.py <base> <nova>/history.json`
+  compara território a território, por década, com a média ± 2σ da base e das amostras, e
+  resume quantos ficam fora por série. Por acaso, cerca de 5 % ficam fora a 2σ.
 - **Fora da faixa não é erro:** é efeito da regra, e o PR diz qual e por quê.
 
 ## Compilar
