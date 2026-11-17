@@ -321,3 +321,47 @@ impl CandidatesFile {
         }
     }
 }
+
+/// What a change of owner must neither create nor destroy, summed over the world: the
+/// conservation check of every operation (`docs/borders.pt-BR.md`, "Conservação"). Debt in
+/// foreign currency is in reference units, so a split never depends on an exchange rate.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Totals {
+    pub people: i64,
+    /// Savings of the pops.
+    pub savings: laplace_schelling::Fixed,
+    /// Investment pools of the markets.
+    pub pool: laplace_schelling::Fixed,
+    pub treasury: laplace_schelling::Fixed,
+    /// Public debt by holder: at home, at the central bank, abroad in local currency, and in
+    /// foreign currency (reference units).
+    pub debt: [laplace_schelling::Fixed; 4],
+    /// What savers lent to other states.
+    pub foreign_assets: laplace_schelling::Fixed,
+}
+
+impl Totals {
+    pub fn of(world: &crate::game::GameWorld) -> Self {
+        let mut t = Self::default();
+        for r in &world.econ.regions {
+            for p in &r.pops {
+                t.people += p.size;
+                t.savings += p.savings;
+            }
+        }
+        for m in &world.econ.markets {
+            let y = &m.money;
+            t.pool += m.pool;
+            t.treasury += m.treasury;
+            for (d, v) in
+                t.debt
+                    .iter_mut()
+                    .zip([y.debt_home, y.debt_bank, y.debt_abroad, y.debt_fx])
+            {
+                *d += v;
+            }
+            t.foreign_assets += y.foreign_assets;
+        }
+        t
+    }
+}
