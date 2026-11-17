@@ -2380,3 +2380,72 @@ fn unreadable_campaigns() {
     }
     let _ = std::fs::remove_dir_all(&user);
 }
+
+/// The debts between governments tab: Britain in 1925 (it owes the United States and is owed
+/// by Germany), in Portuguese at 1600 × 900 and in English at 1280 × 720, and Germany (owes four
+/// governments) at the floor of 960 × 540.
+#[test]
+#[ignore = "needs a GPU (or software Vulkan) and the generated map; run with --ignored"]
+fn debts_tab() {
+    use laplace_schelling::calendar::Date;
+    let user = std::env::temp_dir().join(format!("bf-shots-debts-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&user);
+    for (tag, locale, size, name, row) in [
+        (
+            "GBR",
+            "pt-BR",
+            egui::vec2(1600.0, 900.0),
+            "gbr-pt",
+            "Alemanha",
+        ),
+        (
+            "GBR",
+            "en",
+            egui::vec2(1280.0, 720.0),
+            "gbr-en-1280",
+            "United States",
+        ),
+        (
+            "GER",
+            "pt-BR",
+            egui::vec2(960.0, 540.0),
+            "ger-pt-960",
+            "França",
+        ),
+    ] {
+        let session = advanced_session_of(tag, Date::new(1925, 3, 1));
+        let home = user.join(name);
+        let save = write_campaign(&home, &session, "Dívidas", tag, &[]);
+        let mut h = harness_sized(home.clone(), locale, size);
+        let ctx = h.ctx.clone();
+        h.state_mut().apply(Transition::Game(save), &ctx);
+        h.run_steps(4);
+        h.key_press(egui::Key::G);
+        h.run_steps(3);
+        let tab = if locale == "en" {
+            "Debts between governments"
+        } else {
+            "Dívidas entre governos"
+        };
+        h.get_all(egui_kittest::kittest::by().label(tab))
+            .next()
+            .expect("debts tab")
+            .click();
+        h.run_steps(4);
+        shot(&mut h, &format!("110-debts-{name}"));
+        // Another line selected.
+        if let Some(r) = h
+            .query_all(
+                egui_kittest::kittest::by()
+                    .role(egui::accesskit::Role::Button)
+                    .label(row),
+            )
+            .next()
+        {
+            r.click();
+            h.run_steps(3);
+            shot(&mut h, &format!("111-debts-{name}-selected"));
+        }
+    }
+    let _ = std::fs::remove_dir_all(&user);
+}

@@ -637,7 +637,7 @@ fn the_debts_tab_holds_many_and_long() {
     };
     let (tur, others) = (
         ix("TUR"),
-        [ix("YUG"), ix("RNY"), ix("GBR"), ix("FRA"), ix("USA")],
+        [ix("YUG"), ix("ITA"), ix("GBR"), ix("FRA"), ix("USA")],
     );
     for k in 0..30u32 {
         let other = others[k as usize % others.len()];
