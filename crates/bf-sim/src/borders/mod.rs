@@ -342,6 +342,8 @@ pub struct Totals {
     pub debt: [laplace_schelling::Fixed; 4],
     /// What savers lent to other states.
     pub foreign_assets: laplace_schelling::Fixed,
+    /// People in the community rows of the population (`DemographyState::communities`).
+    pub community_people: i64,
     /// People abroad (the diaspora) and those of them who arrived since the start.
     pub diaspora: i64,
     pub arrived: i64,
@@ -360,6 +362,7 @@ impl Totals {
             }
             t.levels += r.plants.iter().map(|p| p.levels).sum::<i64>();
         }
+        t.community_people = world.demography.communities.iter().map(|r| r.total()).sum();
         for d in &world.demography.diaspora {
             t.diaspora += d.people;
             t.arrived += d.arrived;

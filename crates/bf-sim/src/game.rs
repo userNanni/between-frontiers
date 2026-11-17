@@ -138,7 +138,6 @@ impl From<WorldBeforeCommunities> for GameWorld {
     }
 }
 
-
 impl HashState for GameWorld {
     fn hash_state(&self, h: &mut StateHasher) {
         h.section("scenario");

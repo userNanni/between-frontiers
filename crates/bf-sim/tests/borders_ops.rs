@@ -23,6 +23,7 @@ fn data() -> &'static GameData {
 
 /// The world after a month of running, so that pops have incomes and the books are not zero.
 fn world() -> GameWorld {
+    // A month in, the community rows are filled (the demography runs on the 15th).
     static WORLD: OnceLock<GameWorld> = OnceLock::new();
     WORLD
         .get_or_init(|| {
@@ -57,8 +58,25 @@ fn s(v: &[&str]) -> Vec<String> {
 }
 
 /// Runs `ops` on the world directly (no tick in between) and checks the conservation.
+/// Per region: the community rows' people by profession minus the pops of that profession. The
+/// rows go with their state untouched, so whatever this was before an operation it stays.
+fn community_gap(w: &GameWorld) -> Vec<[i64; bf_sim::econ::prof::P]> {
+    w.demography
+        .communities
+        .iter()
+        .zip(&w.econ.regions)
+        .map(|(rows, r)| {
+            std::array::from_fn(|p| {
+                rows.people.iter().map(|row| row[p]).sum::<i64>() - r.pops[p].size
+            })
+        })
+        .collect()
+}
+
 fn run(w: &mut GameWorld, ops: Vec<Operation>) {
     let before = Totals::of(w);
+    let rows = w.demography.communities.clone();
+    let gap = community_gap(w);
     let done = w.borders.changes.len();
     w.borders.pending = ops;
     op::run_pending(w, &data().border_rules, Date::new(1925, 2, 1));
@@ -69,6 +87,12 @@ fn run(w: &mut GameWorld, ops: Vec<Operation>) {
         after.arrived += c.repatriated.1;
     }
     assert_eq!(after, before, "totals changed");
+    assert_eq!(w.demography.communities, rows, "community rows changed");
+    assert_eq!(
+        community_gap(w),
+        gap,
+        "community rows no longer match the pops"
+    );
     assert!(op::tables_agree(w), "per-country tables disagree");
 }
 
@@ -426,4 +450,12 @@ fn no_operation_keeps_the_hash_of_a_world_without_the_border_system() {
     with.sim.run_until(Date::new(1925, 7, 1));
     without.sim.run_until(Date::new(1925, 7, 1));
     assert_eq!(with.state_hash(), without.state_hash());
+}
+
+/// The month's world has community rows to carry.
+#[test]
+fn the_world_has_community_rows() {
+    let w = world();
+    assert_eq!(w.demography.communities.len(), w.econ.regions.len());
+    assert!(Totals::of(&w).community_people > 0);
 }
