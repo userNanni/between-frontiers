@@ -1,0 +1,236 @@
+//! Armed forces in the world (phase 5, slice A): the formations of every country, saved and
+//! hashed, in peace. They hold men taken from the pops (`econ::monthly::Labour` hires toward
+//! [`WarState::soldiers`]) and equipment bought by the state (`econ::week` buys
+//! [`CountryWar::orders`] before the rest of the state's basket). Reasoning in
+//! `docs/war.pt-BR.md`, "Forças em paz".
+
+use laplace_schelling::Fixed;
+use laplace_schelling::hash::{HashState, StateHasher};
+use laplace_schelling::schedule::ResourceId;
+use serde::{Deserialize, Serialize};
+
+use super::catalogue::{Domain, Military};
+use super::forces::{ForcesFile, Station};
+use crate::scenario::CountryDef;
+
+/// The forces of every country (`GameWorld::war`).
+pub const WAR: ResourceId = ResourceId(16);
+
+/// How the forces sit in peace (`data/military/peace.ron`).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct PeaceRules {
+    pub soldiers: SoldierRule,
+    pub peace_size: PeaceSize,
+    /// Scale the size in peace by the `conscription` effect in force over the one of 1925.
+    pub law_scaling: bool,
+    /// Weeks to make good the equipment a formation lacks.
+    pub replace_weeks: u32,
+    /// Years in which the whole of a force moves to a newer generation of equipment when the
+    /// country can make it and the budget has room: a share of the elements each week.
+    pub modernize_years: u32,
+    /// Multiplies what the forces consume in peace (training ammunition, fuel, spares, depots);
+    /// 1 keeps the catalogue (`docs/war.pt-BR.md`, "Forças em paz").
+    pub upkeep_scale: Fixed,
+    /// (country, men under arms per mille of the men of service age), in place of 1925's.
+    #[serde(default)]
+    pub share_override: Vec<(String, u32)>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum SoldierRule {
+    /// The pops hold the men of the formations.
+    Forces,
+    /// The rule from before the forces: this many per mille of the population are soldiers, and
+    /// the state buys arms by its fixed basket. The forces are not loaded.
+    PopulationShare(u32),
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum PeaceSize {
+    /// Each country keeps the share of its men of service age it had under arms in 1925.
+    ShareOfServiceAge,
+    /// The numbers of 1925, unchanged.
+    Fixed1925,
+}
+
+/// One body of the same unit type and generation.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Formation {
+    /// Index in [`Military::types`].
+    pub unit: u16,
+    pub generation: u8,
+    /// Elements: thousands of men on land, ships at sea, aircraft in the air.
+    pub elements: Fixed,
+    /// Stationed in the colonies.
+    pub colonial: bool,
+    /// Reservists called up; they go back to the reserve on demobilization.
+    pub called_up: bool,
+    /// Equipment held, by good.
+    pub equipment: Vec<(u16, Fixed)>,
+    /// Training completed, 0 to 1.
+    pub training: Fixed,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CountryWar {
+    pub formations: Vec<Formation>,
+    /// Trained men out of service.
+    pub reserve: u64,
+    /// Men under arms on land over the men of service age, measured the first January the
+    /// pyramid exists (zero before), or taken from `share_override`.
+    pub peace_share: Fixed,
+    /// The `conscription` effect in force when the share was measured, per mille.
+    pub law_then: i32,
+    pub mobilized: bool,
+    /// Military goods the state buys this week, by good: what the forces consume and what makes
+    /// good their equipment. Paid before the rest of the state's goods.
+    pub orders: Vec<(u16, Fixed)>,
+    /// Of `orders`, the part that goes to the equipment (the rest is consumed).
+    pub repair: Vec<(u16, Fixed)>,
+    /// Of `orders`, equipment bought above what the formations need: the rest of the military
+    /// budget once the needs and the modernization are paid. It goes to the depot.
+    pub upgrade: Vec<(u16, Fixed)>,
+    /// The war reserve: equipment held in store, by good. Formations that lack equipment draw on
+    /// it first (reservists called up, a newer generation, the wear); it wears like the rest.
+    pub depot: Vec<(u16, Fixed)>,
+}
+
+/// The forces of the world. Empty when the forces are not loaded: the economy then runs the
+/// rule from before them.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct WarState {
+    /// By market (country) index.
+    pub countries: Vec<CountryWar>,
+    /// Soldiers (workers) each region holds, by region index; set every month.
+    pub soldiers: Vec<i64>,
+}
+
+impl WarState {
+    pub fn is_empty(&self) -> bool {
+        self.countries.is_empty()
+    }
+
+    /// The forces of `forces.ron` for the countries of the scenario, in market order, fully
+    /// equipped and trained. Reserve rows go to [`CountryWar::reserve`].
+    pub fn initial(military: &Military, forces: &ForcesFile, countries: &[CountryDef]) -> Self {
+        let countries = countries
+            .iter()
+            .map(|c| {
+                let mut cw = CountryWar::default();
+                let Some(f) = forces.country(&c.tag) else {
+                    return cw;
+                };
+                for row in &f.rows {
+                    let Some(ty) = military.unit(&row.unit) else {
+                        continue;
+                    };
+                    if row.reserve {
+                        cw.reserve += row.count;
+                        continue;
+                    }
+                    let elements = match military.types[ty as usize].domain {
+                        Domain::Land => Fixed::from_ratio(row.count as i64, 1000),
+                        _ => Fixed::from_int(row.count as i64),
+                    };
+                    let spec = military.spec(ty, 0);
+                    cw.formations.push(Formation {
+                        unit: ty,
+                        generation: 0,
+                        elements,
+                        colonial: row.station == Station::Colonies,
+                        called_up: false,
+                        equipment: spec
+                            .equipment
+                            .iter()
+                            .map(|(g, q)| (*g, *q * elements))
+                            .collect(),
+                        training: Fixed::ONE,
+                    });
+                }
+                cw
+            })
+            .collect();
+        Self {
+            countries,
+            soldiers: Vec::new(),
+        }
+    }
+
+    /// Military goods ordered this week by country `market`; `None` without forces, which keeps
+    /// the state's fixed basket.
+    pub fn orders(&self, market: usize) -> Option<&[(u16, Fixed)]> {
+        if self.is_empty() {
+            return None;
+        }
+        Some(
+            self.countries
+                .get(market)
+                .map_or(&[][..], |c| &c.orders[..]),
+        )
+    }
+
+    /// Soldiers (workers) region `region` should hold; `None` without forces.
+    pub fn soldiers(&self, region: usize) -> Option<i64> {
+        if self.is_empty() {
+            return None;
+        }
+        Some(self.soldiers.get(region).copied().unwrap_or(0))
+    }
+}
+
+/// Men in a formation: elements times the men per element of its generation.
+pub fn men(military: &Military, f: &Formation) -> i64 {
+    let spec = military.spec(f.unit, f.generation as usize);
+    (f.elements * spec.men as i64).to_int_round()
+}
+
+impl HashState for Formation {
+    fn hash_state(&self, h: &mut StateHasher) {
+        h.write_u16(self.unit);
+        h.write_u8(self.generation);
+        self.elements.hash_state(h);
+        self.colonial.hash_state(h);
+        self.called_up.hash_state(h);
+        h.write_len(self.equipment.len());
+        for (g, q) in &self.equipment {
+            h.write_u16(*g);
+            q.hash_state(h);
+        }
+        self.training.hash_state(h);
+    }
+}
+
+fn hash_goods(h: &mut StateHasher, list: &[(u16, Fixed)]) {
+    h.write_len(list.len());
+    for (g, q) in list {
+        h.write_u16(*g);
+        q.hash_state(h);
+    }
+}
+
+impl HashState for CountryWar {
+    fn hash_state(&self, h: &mut StateHasher) {
+        h.write_len(self.formations.len());
+        for f in &self.formations {
+            f.hash_state(h);
+        }
+        h.write_u64(self.reserve);
+        self.peace_share.hash_state(h);
+        h.write_i64(i64::from(self.law_then));
+        self.mobilized.hash_state(h);
+        hash_goods(h, &self.orders);
+        hash_goods(h, &self.repair);
+        hash_goods(h, &self.upgrade);
+        hash_goods(h, &self.depot);
+    }
+}
+
+impl HashState for WarState {
+    fn hash_state(&self, h: &mut StateHasher) {
+        h.write_len(self.countries.len());
+        for c in &self.countries {
+            c.hash_state(h);
+        }
+        h.write_i64_slice(&self.soldiers);
+    }
+}

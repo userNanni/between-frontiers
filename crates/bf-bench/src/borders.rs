@@ -25,8 +25,7 @@ pub fn on() -> bool {
 fn reference() -> &'static BordersFile {
     static FILE: OnceLock<BordersFile> = OnceLock::new();
     FILE.get_or_init(|| {
-        let path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../../data/history/borders.ron");
+        let path = crate::data_root::root().join("data/history/borders.ron");
         let text = std::fs::read_to_string(&path).expect("data/history/borders.ron");
         ron::from_str(&text).expect("data/history/borders.ron")
     })

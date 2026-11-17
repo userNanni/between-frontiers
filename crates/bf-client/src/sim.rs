@@ -60,6 +60,8 @@ pub struct Snapshot {
     /// The ways the player's country can free land (the decision "Libertar território"), read
     /// once a month and when the borders or the player change.
     pub liberation: Option<Arc<LiberationView>>,
+    /// The player's armed forces, read once a month; `None` without forces.
+    pub forces: Option<Arc<crate::forces_view::ForcesView>>,
 }
 
 /// What the decision to free land shows.
@@ -179,6 +181,7 @@ fn journal_of(
                 catalogue: &r.catalogue,
                 tree: r.tree.as_deref(),
                 politics: r.politics.as_deref(),
+                military: r.war.as_ref().map(|(m, _)| m.as_ref()),
             };
             crate::journal::read(session.world(), session.player(), date, rules).map(Arc::new)
         }
@@ -238,6 +241,22 @@ fn influence_of(
     }
 }
 
+/// The month's forces of the player, read again only when the month changed since `last`.
+fn forces_of(
+    session: &Session,
+    rules: &Rules,
+    last: &Option<Arc<crate::forces_view::ForcesView>>,
+) -> Option<Arc<crate::forces_view::ForcesView>> {
+    let date = session.clock().date;
+    match last {
+        Some(f) if f.month == (date.year, date.month) => Some(Arc::clone(f)),
+        _ => {
+            let (mil, _) = rules.as_ref()?.war.as_ref()?;
+            crate::forces_view::read(session.world(), date, mil).map(Arc::new)
+        }
+    }
+}
+
 /// What a snapshot carries that is read once a month, or when it changed.
 #[derive(Clone, Default)]
 struct Monthly {
@@ -248,6 +267,7 @@ struct Monthly {
     influence: Option<Arc<crate::influence_view::InfluenceView>>,
     owners: Option<Arc<bf_sim::borders::op::OwnersView>>,
     liberation: Option<Arc<LiberationView>>,
+    forces: Option<Arc<crate::forces_view::ForcesView>>,
 }
 
 /// The owners, read again only when a border operation ran since `last`.
@@ -279,6 +299,7 @@ impl Monthly {
             influence: influence_of(session, rules, &last.influence),
             owners: owners_of(session, rules, &last.owners),
             liberation: liberation_of(session, rules, &last.liberation),
+            forces: forces_of(session, rules, &last.forces),
         }
     }
 }
@@ -307,6 +328,7 @@ fn snapshot_of(
         influence: monthly.influence,
         owners: monthly.owners,
         liberation: monthly.liberation,
+        forces: monthly.forces,
         government: crate::government::read(
             session.world(),
             session.player(),

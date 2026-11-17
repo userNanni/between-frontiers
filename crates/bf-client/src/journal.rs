@@ -167,6 +167,10 @@ pub enum Kind {
     PendingLaw(u16),
     /// The law changes of the campaign.
     LawChanges,
+    /// The armed forces, and the decision to mobilize them.
+    Forces {
+        mobilized: bool,
+    },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -201,6 +205,7 @@ impl Kind {
                     .map_or_else(|| l.to_string(), |k| k.key.clone())
             ),
             Kind::LawChanges => "law-changes".into(),
+            Kind::Forces { .. } => "forces".into(),
         }
     }
 }
@@ -233,6 +238,7 @@ pub enum Screen {
     Money,
     Laws,
     Research,
+    Forces,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -323,6 +329,8 @@ pub struct Rules<'a> {
     pub catalogue: &'a Catalogue,
     pub tree: Option<&'a TechTree>,
     pub politics: Option<&'a Politics>,
+    /// The unit catalogue, when the forces run.
+    pub military: Option<&'a bf_sim::war::Military>,
 }
 
 fn f(x: Fixed) -> f64 {
@@ -347,6 +355,9 @@ pub fn read_country(world: &GameWorld, c: usize, date: Date, rules: Rules<'_>) -
     fiscal_entries(m, WorksBudget::read(m, rules.catalogue), date, &mut entries);
     if let Some(p) = rules.politics {
         politics_entries(world, c, p, &mut entries);
+    }
+    if let Some(mil) = rules.military {
+        forces_entry(world, c, mil, &mut entries);
     }
     for e in &mut entries {
         e.id = e.kind.id(rules.politics);
@@ -862,6 +873,73 @@ fn debt_room_left(m: &Market) -> Option<f64> {
     clean.money.bond_rate = m.money.bond_rate;
     let full = f(deficit_room(&clean));
     (full > 0.0).then(|| (f(deficit_room(m)) / full).clamp(0.0, 1.0))
+}
+
+/// The armed forces: an agenda with one decision, to mobilize or to send the reserve home.
+/// Mobilizing is gradual: the reserve reports over the weeks of the rule, and the entry shows
+/// how much of it has.
+fn forces_entry(world: &GameWorld, c: usize, mil: &bf_sim::war::Military, out: &mut Vec<Entry>) {
+    let Some(cw) = world.war.countries.get(c) else {
+        return;
+    };
+    let in_service: i64 = cw
+        .formations
+        .iter()
+        .filter(|f| !f.called_up)
+        .map(|f| bf_sim::war::men(mil, f))
+        .sum();
+    let called: i64 = cw
+        .formations
+        .iter()
+        .filter(|f| f.called_up)
+        .map(|f| bf_sim::war::men(mil, f))
+        .sum();
+    if in_service + called == 0 && cw.reserve == 0 {
+        return;
+    }
+    let reserve = cw.reserve as i64;
+    let (tone, title) = if cw.mobilized {
+        (Tone::Warning, "journal-forces-mobilizing-title")
+    } else {
+        (Tone::Neutral, "journal-forces-title")
+    };
+    let mut e = entry(
+        Kind::Forces {
+            mobilized: cw.mobilized,
+        },
+        tone,
+        label(title),
+        label("journal-forces-cause").value(
+            "weeks",
+            Value::Count(i64::from(mil.rules.reserve.call_up_weeks)),
+        ),
+        Screen::Forces,
+    );
+    e.forces.push(Force {
+        label: label("journal-force-in-service"),
+        value: Some(Value::Count(in_service)),
+        helps: true,
+    });
+    e.forces.push(Force {
+        label: label("journal-force-reserve"),
+        value: Some(Value::Count(reserve)),
+        helps: true,
+    });
+    if cw.mobilized || called > 0 {
+        e.forces.push(Force {
+            label: label("journal-force-reported"),
+            value: Some(Value::Count(called)),
+            helps: true,
+        });
+        let total = (called + reserve).max(1);
+        e.progress = Some((
+            called as f32 / total as f32,
+            label("journal-forces-progress")
+                .value("reported", Value::Count(called))
+                .value("total", Value::Count(called + reserve)),
+        ));
+    }
+    out.push(e);
 }
 
 fn fiscal_entries(m: &Market, works: Option<WorksBudget>, date: Date, out: &mut Vec<Entry>) {

@@ -326,6 +326,17 @@ pub struct RulesFile {
     pub doctrine: DoctrineRule,
     pub nuclear: NuclearRule,
     pub reserve: ReserveRule,
+    /// The catalogue counts these goods in lots of 1925 dollars; the economy prices them in
+    /// 2011 dollars. Their quantities in `units.ron` are multiplied by `factor` on load (and
+    /// their weight per lot and the reference fire follow), so a unit costs what it did.
+    #[serde(default)]
+    pub dollars_1925: Option<Dollars1925>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Dollars1925 {
+    pub factor: Fixed,
+    pub goods: Vec<String>,
 }
 
 /// Calling up the reserve.
@@ -480,6 +491,9 @@ pub struct Rules {
     pub tonnes_per_unit: Vec<Option<Fixed>>,
     /// Value of one unit of each good in lots of US$ 1,000 (base price ÷ 1,000).
     pub lots_per_unit: Vec<Fixed>,
+    /// Per good index: units of today's dollars in one of the catalogue's 1925 lots
+    /// (`dollars_1925`), one for the rest. Weight and fire are per 1925 lot.
+    pub lot_factor: Vec<Fixed>,
     pub maintenance: Fixed,
     pub combat_ammunition: Fixed,
     pub moving_fuel: Fixed,
@@ -551,12 +565,12 @@ impl Military {
     /// Resolves and checks the two files. Every problem is reported, not just the first.
     pub fn build(
         units: &UnitsFile,
-        rules: &RulesFile,
+        rules_file: &RulesFile,
         cat: &Catalogue,
         tree: &TechTree,
     ) -> Result<Self, Vec<String>> {
         let mut errors = Vec::new();
-        let rules = resolve_rules(rules, cat, &mut errors);
+        let rules = resolve_rules(rules_file, cat, &mut errors);
         let mut types: Vec<UnitType> = Vec::new();
         for def in &units.types {
             if types.iter().any(|t| t.key == def.key) {
@@ -564,6 +578,30 @@ impl Military {
             }
             if let Some(t) = resolve_type(def, cat, tree, &rules, &mut errors) {
                 types.push(t);
+            }
+        }
+        let mut rules = rules;
+        if let (Some(d), Some(r)) = (&rules_file.dollars_1925, rules.as_mut()) {
+            let mut scaled = vec![false; cat.goods.len()];
+            for key in &d.goods {
+                match cat.good(key) {
+                    Some(g) => scaled[g as usize] = true,
+                    None => errors.push(format!("rules: dollars_1925: unknown good {key}")),
+                }
+            }
+            for t in &mut types {
+                for s in &mut t.generations {
+                    for (g, q) in s.equipment.iter_mut().chain(s.upkeep.iter_mut()) {
+                        if scaled[*g as usize] {
+                            *q *= d.factor;
+                        }
+                    }
+                }
+            }
+            for (g, f) in r.lot_factor.iter_mut().enumerate() {
+                if scaled[g] {
+                    *f = d.factor;
+                }
             }
         }
         if errors.is_empty() {
@@ -853,6 +891,7 @@ fn resolve_rules(file: &RulesFile, cat: &Catalogue, errors: &mut Vec<String>) ->
         reference_fire: file.reference_fire,
         tonnes_per_unit,
         lots_per_unit: cat.goods.iter().map(|g| g.base_price / 1000).collect(),
+        lot_factor: vec![Fixed::ONE; cat.goods.len()],
         maintenance: per_mille(file.maintenance_per_mille),
         combat_ammunition: file.combat_ammunition,
         moving_fuel: file.moving_fuel,

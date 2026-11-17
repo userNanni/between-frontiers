@@ -76,7 +76,11 @@ FDI = {
 # Research and development expenditure (% of GDP), World Bank WDI from the UNESCO Institute for
 # Statistics, from 1996.
 RD = {"rd_gdp": "GB.XPD.RSDV.GD.ZS"}
-ONLY = {"fdi": FDI, "rd": RD}
+# Military expenditure (% of GDP), World Bank WDI after the SIPRI Military Expenditure Database,
+# from 1960. Under SIPRI's own terms, not checked yet (the site did not answer): kept local, in
+# data/raw/history/military_local.csv, never in data/history/ (SOURCES.md, "Left out").
+MILITARY = {"military_gdp": "MS.MIL.XPND.GD.ZS"}
+ONLY = {"fdi": FDI, "rd": RD, "military": MILITARY}
 
 
 def fetch(url, path, tries=4):
@@ -417,6 +421,19 @@ def build_rd():
     )
 
 
+def build_military():
+    """Local only: written to data/raw/history/, which git ignores (see MILITARY)."""
+    rows = wdi_rows(MILITARY)
+    path = os.path.join(RAW, "military_local.csv")
+    with open(path, "w", newline="", encoding="utf-8") as f:
+        f.write("# Military expenditure (% of GDP): World Bank WDI after SIPRI. SIPRI terms, not checked: do not commit.\n")
+        w = csv.writer(f, lineterminator="\n")
+        w.writerow(["iso3", "year", "series", "value"])
+        for row in sorted(rows):
+            w.writerow(row)
+    print("wrote", os.path.relpath(path, ROOT), len(rows), "rows (local only)")
+
+
 def main():
     if "--only" in sys.argv:
         only = sys.argv[sys.argv.index("--only") + 1]
@@ -426,7 +443,7 @@ def main():
             download_wdi(ONLY[only])
         if not os.path.exists(os.path.join(RAW, "population.csv")):
             fetch(OWID.format("population"), os.path.join(RAW, "population.csv"))
-        {"fdi": build_fdi, "rd": build_rd}[only]()
+        {"fdi": build_fdi, "rd": build_rd, "military": build_military}[only]()
         return
     if "--offline" not in sys.argv:
         download()

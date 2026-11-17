@@ -21,6 +21,7 @@ Atalhos do perfil padrão; todos se mudam no editor de atalhos (Configurações 
 | Banco central: histórico, autônomo ou subordinado | `SetCentralBank` | Governo → Moeda e dívida | G, M | no jogo |
 | Propor uma lei | `SetLaw` | Governo → Leis: escolher a lei e "Propor" | G, L; Ctrl+Enter propõe | no jogo |
 | Libertar território | `Liberate` | Agendas → Decisões → "Libertar território", com confirmação | J abre as Agendas | no jogo (#96) |
+| Mobilizar e desmobilizar a reserva | `Mobilize` | Agendas → "Forças armadas em paz" → "Mobilizar a reserva…" (ou desmobilizar), com confirmação e ponto de restauração; a aba Forças do governo (T) mostra os reservistas que se apresentam | J abre as Agendas | em revisão (#115) |
 
 Exceção: `Borders` (operação de fronteira) não é do jogador. Vem de tratados, da paz, de testes e
 de ferramentas; o jogador liberta a própria terra com `Liberate`.
@@ -89,4 +90,4 @@ como já faz com os impostos.
 - **Bolsa colonial:** o que as colônias pagam e recebem da metrópole (`colonial_purse`).
 - **Câmbio:** a moeda deriva para a paridade enfraquecida pelo prêmio de risco (`exchange_target`). Não há âncora nem câmbio fixo escolhido (regime internacional na fase 4).
 - **Recorte de zeros:** a moeda perde oito zeros quando o índice de preços passa do limite (`REDENOMINATION`).
-- **Forças em paz** (#115, em revisão): o efetivo de terra segue, todo janeiro, a fração de 1925 dos homens em idade de serviço, ajustada pela lei de conscrição. As encomendas têm teto na parte militar das compras do Estado.
+- **Forças em paz** (#115, entra desligado; ligar é o PR seguinte): o efetivo de terra segue, todo janeiro, a fração de 1925 dos homens em idade de serviço, ajustada pela lei de conscrição. As encomendas têm teto na parte militar das compras do Estado.

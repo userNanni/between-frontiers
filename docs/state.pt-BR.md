@@ -52,7 +52,8 @@ dívida total; `Budget::interest`, o juro da semana.
     paliativo, ver `politics.pt-BR.md`, "Crise fiscal"). A
     mesma parcela vale para a parte do Estado em escolas e hospitais; o resto o usuário paga. É o
     que impede o caixa negativo de crescer sem fim quando a lei de tributação segura o imposto.
-  - **Compras** (armas, papel, transporte, remédios): a regra de orçamento gasta a receita mais o
+  - **Compras** (armas, papel, transporte, remédios; com as forças carregadas, as armas são o
+    pedido das formações, até a parte militar da cesta: `war.pt-BR.md`, "Forças em paz"): a regra de orçamento gasta a receita mais o
     déficit que a regra da dívida permite, menos folha, serviços públicos, obras e juros; no mínimo
     60 % da folha. Tudo isso é cortado quando o caixa fica negativo (na proporção do buraco) e
     quando os juros passam de 10 % da receita (ponto a ponto), até 1/4. Mais 10 % por semana do

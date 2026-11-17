@@ -1,0 +1,33 @@
+// Between Frontiers: armed forces in peace (phase 5, slice A). Contract:
+// crates/bf-sim/src/war/state.rs (PeaceRules); reasoning in docs/war.pt-BR.md, "Forças em paz".
+// Licence: CC BY-SA 4.0.
+//
+// Owner's decisions 1 and 2 (2026-11-17), kept swappable here so that a "no" costs little:
+// - `soldiers: Forces` puts in the pops the men of the formations of
+//   data/scenario/1925/forces.ron; `PopulationShare(n)` goes back to the old rule, n per mille
+//   of the population as soldiers and the state's fixed basket of arms.
+// - `peace_size: ShareOfServiceAge` keeps each country's men under arms at the share of its men
+//   of service age it had in 1925, scaled by the `conscription` effect of the law in force over
+//   the one of 1925 when `law_scaling` is on; `Fixed1925` keeps the 1925 numbers.
+// - `share_override`: a country's share of its men of service age under arms, per mille, in
+//   place of the one measured in 1925.
+#![enable(implicit_some)]
+(
+    // Off until the PR that switches the forces on, judged by the aggregates on its own;
+    // `BF_FORCES=1` (bench, screenshots) or `GameData::enable_forces` (tests) turn them on.
+    soldiers: PopulationShare(10),
+    peace_size: ShareOfServiceAge,
+    law_scaling: true,
+    // Weeks to make good the equipment a formation lacks (design parameter).
+    replace_weeks: 26,
+    // Years for a force to move to a newer generation of equipment once the country makes it
+    // (Industrial stage at home, or the technology diffused somewhere: bought abroad). Design
+    // parameter: armies re-equip over a decade or so, unit by unit, not all at once.
+    modernize_years: 10,
+    // Multiplies the forces' consumption in peace (not the wear of their equipment). 1: the
+    // catalogue as written. The rest of the military budget is spent anyway (equipment beyond
+    // the needs), so a larger scale only moves money from that to training ammunition, which
+    // the 1925 arms industry does not make enough of (docs/war.pt-BR.md, "Forças em paz").
+    upkeep_scale: "1",
+    share_override: [],
+)

@@ -76,7 +76,12 @@ fn move_people(pops: &mut [(i64, i64)], from: usize, to: usize, workers_moved: i
     pops[to].0 += people;
 }
 
-fn labour_region(cat: &Catalogue, r: &Region, moves: &super::migration::Moves) -> LabourChange {
+fn labour_region(
+    cat: &Catalogue,
+    r: &Region,
+    moves: &super::migration::Moves,
+    soldiers: Option<i64>,
+) -> LabourChange {
     let mut required = [0i64; P];
     // Self-employment is sized below, from the labourers the plants leave idle.
     for p in r.plants.iter().filter(|p| Some(p.kind) != cat.informal) {
@@ -93,7 +98,19 @@ fn labour_region(cat: &Catalogue, r: &Region, moves: &super::migration::Moves) -
     let total: i64 = pops.iter().map(|p| p.0).sum();
     for (pi, per_mille) in STATE_SHARE {
         let target = total * per_mille / 1000;
+        // With forces, the soldiers are their men, hired and sent home (`war::place_soldiers`).
+        let target = match (pi, soldiers) {
+            (prof::SOLDIER, Some(men)) => {
+                (Fixed::from_int(men) / super::WORKER_SHARE).to_int_round()
+            }
+            _ => target,
+        };
         let gap = target - pops[pi].0;
+        if gap < 0 && pi == prof::SOLDIER && soldiers.is_some() {
+            let n = (-gap / 10).max(1).min(pops[pi].0);
+            pops[pi].0 -= n;
+            pops[prof::PEASANT].0 += n;
+        }
         if gap > 0 {
             let src = if pops[prof::PEASANT].0 > gap {
                 prof::PEASANT
@@ -248,7 +265,7 @@ impl System<GameWorld> for Labour {
         Cadence::Monthly { day: 1 }
     }
     fn access(&self) -> Access {
-        Access::new().read(ECON).write(ECON)
+        Access::new().read(ECON).read(crate::war::WAR).write(ECON)
     }
     fn compute(&self, _ctx: &TickCtx, world: &GameWorld) -> Vec<LabourChange> {
         let moves = super::migration::plan(&self.cat, &world.econ);
@@ -257,8 +274,9 @@ impl System<GameWorld> for Labour {
             .regions
             .par_iter()
             .zip(moves.par_iter())
-            .map(|(r, mv)| {
-                let mut c = labour_region(&self.cat, r, mv);
+            .enumerate()
+            .map(|(ri, (r, mv))| {
+                let mut c = labour_region(&self.cat, r, mv, world.war.soldiers(ri));
                 c.pioneers = pioneers(&self.cat, r, &world.econ.markets[r.market as usize]);
                 c
             })

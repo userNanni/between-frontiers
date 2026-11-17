@@ -138,7 +138,10 @@ impl Military {
     pub fn tonnes(&self, goods: &[(GoodIx, Fixed)]) -> Fixed {
         goods
             .iter()
-            .filter_map(|(g, q)| self.rules.tonnes_per_unit[*g as usize].map(|t| *q * t))
+            .filter_map(|(g, q)| {
+                self.rules.tonnes_per_unit[*g as usize]
+                    .map(|t| *q * t / self.rules.lot_factor[*g as usize])
+            })
             .sum()
     }
 
@@ -153,7 +156,9 @@ impl Military {
     /// Land fire of the equipment held: each good times its `fire_per_unit`.
     pub fn land_fire(&self, held: &[(GoodIx, Fixed)]) -> Fixed {
         held.iter()
-            .map(|(g, q)| *q * self.rules.fire_per_unit[*g as usize])
+            .map(|(g, q)| {
+                *q * self.rules.fire_per_unit[*g as usize] / self.rules.lot_factor[*g as usize]
+            })
             .sum()
     }
 
@@ -1069,6 +1074,7 @@ pub(crate) mod tests {
             reference_fire: Fixed::from_int(100),
             tonnes_per_unit: vec![Some(Fixed::ONE); 4],
             lots_per_unit: vec![Fixed::ONE; 4],
+            lot_factor: vec![Fixed::ONE; 4],
             maintenance: pm(2),
             combat_ammunition: Fixed::from_int(10),
             moving_fuel: Fixed::from_int(3),

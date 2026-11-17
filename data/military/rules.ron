@@ -210,4 +210,18 @@
     // The reserve reports in four weeks, at seven tenths of full training (a reservist keeps
     // part of what he learned; design parameter).
     reserve: (call_up_weeks: 4, training: 700),
+
+    // units.ron counts these goods in lots of 1925 dollars; the economy prices them in 2011
+    // dollars (data/economy/goods.ron, "lot worth $1,000"). Factor: CPI-U of the BLS, 1925 to
+    // 2011, the one docs/economy.pt-BR.md uses for the price of a car. Their quantities are
+    // multiplied by it on load; their weight per lot and their fire per lot are divided by it,
+    // so the logistics and the combat do not change.
+    dollars_1925: Some((
+        factor: "12.85",
+        goods: [
+            "small_arms", "ammunition", "artillery", "armored_vehicles", "warships",
+            "military_aircraft", "automobiles", "tools", "machinery", "engines", "ships",
+            "electrical_equipment", "electronic_components", "clothes", "medicines",
+        ],
+    )),
 )

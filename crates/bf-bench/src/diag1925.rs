@@ -5,8 +5,6 @@
 //! the money that stayed in stocks (pool, treasury, savings), and the 1925 output of the goods
 //! `industry.ron` gives against what the plants made.
 
-use std::path::PathBuf;
-
 use bf_sim::data::GameData;
 use bf_sim::econ::{Economy, plant_tfp};
 use bf_sim::game::Session;
@@ -46,7 +44,7 @@ fn stocks(e: &Economy) -> (f64, f64, f64) {
 }
 
 pub fn main() -> Result<(), String> {
-    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let root = crate::data_root::root();
     let data = GameData::load(&root)?;
     let cat = data.catalogue.clone();
     let world = data.new_world();

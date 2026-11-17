@@ -67,10 +67,12 @@ fn with_the_weight_the_map_holds_only_the_war_debt_pairs() {
 fn a_save_from_before_the_influence_state_loads() {
     use laplace_schelling::save::encode_snapshot;
     let mut world = data().new_world();
-    // A save of then had no treaty state either (the last field; empty, one byte).
+    // A save of then had no treaty state and no forces either (the last fields; empty, one byte
+    // and two empty lists).
     world.treaties = Default::default();
+    world.war = Default::default();
     let bytes = encode_snapshot(&world).unwrap();
-    let old = &bytes[..bytes.len() - 3];
+    let old = &bytes[..bytes.len() - 3 - 2];
     let back = bf_sim::save_format::decode_world(old).unwrap();
     assert!(back.influence.is_empty());
     assert_eq!(back, world);

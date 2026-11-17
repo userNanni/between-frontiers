@@ -140,7 +140,7 @@ impl GameData {
         );
         border_rules.recognition = clauses.as_ref().map(|c| c.policy.recognition_default);
         let border_rules = Arc::new(border_rules);
-        Ok(Self {
+        let mut data = Self {
             border_rules,
             war,
             tree,
@@ -166,7 +166,21 @@ impl GameData {
             clauses,
             war_debts: optional(&scenario.join("war_debts.ron"))?,
             recognition: optional(&scenario.join("recognition.ron"))?,
-        })
+        };
+        // `BF_FORCES=1` switches the forces on over `peace.ron` (bench runs and screenshots;
+        // tests call `enable_forces`).
+        if std::env::var("BF_FORCES").is_ok_and(|v| v == "1") {
+            data.enable_forces();
+        }
+        Ok(data)
+    }
+
+    /// Switches the forces in peace on (`soldiers: Forces`), whatever `peace.ron` says. They
+    /// ship off until their own PR switches them on (`docs/war.pt-BR.md`, "Chave").
+    pub fn enable_forces(&mut self) {
+        if let Some(p) = self.war.as_mut().and_then(|w| w.peace.as_mut()) {
+            p.soldiers = crate::war::SoldierRule::Forces;
+        }
     }
 
     /// The rules the schedule runs with.
@@ -188,7 +202,17 @@ impl GameData {
                         .unwrap_or_default(),
                 })
             }),
+            war: self.war_rules(),
         }
+    }
+
+    /// The unit catalogue and the rules in peace, when the forces are loaded (`peace.ron`
+    /// with `soldiers: Forces` and the 1925 forces).
+    fn war_rules(&self) -> Option<(Arc<crate::war::Military>, Arc<crate::war::PeaceRules>)> {
+        let w = self.war.as_ref()?;
+        let peace = w.peace.as_ref()?;
+        (peace.soldiers == crate::war::SoldierRule::Forces && w.forces_1925.is_some())
+            .then(|| (Arc::new(w.military.clone()), Arc::new(peace.clone())))
     }
 
     /// The world on the start date, economy included.
@@ -237,6 +261,12 @@ impl GameData {
         // Recognition withheld on the start date (owner's decision 4).
         if let (Some(cat), Some(rec)) = (&self.clauses, &self.recognition) {
             world.treaties.recognition = rec.start(&self.countries, &cat.policy);
+        }
+        if let (Some(w), Some(_)) = (&self.war, self.war_rules()) {
+            let forces = w.forces_1925.as_ref().expect("checked by war_rules");
+            world.war =
+                crate::war::WarState::initial(&w.military, forces, &self.countries.countries);
+            crate::war::station_soldiers(&w.military, &mut world);
         }
         world
     }
