@@ -740,6 +740,33 @@ fn the_debts_tab_holds_many_and_long() {
                 failures.push(format!("{case}: no line of the long-named country"));
             }
         }
+        // The influence window: the thirty debts are credit, so the lists fill.
+        h.key_press(egui::Key::Escape);
+        steps(&mut h);
+        h.key_press_modifiers(egui::Modifiers::SHIFT, egui::Key::I);
+        steps(&mut h);
+        for side in [
+            None,
+            Some(if locale == "en" {
+                "Who weighs on us"
+            } else {
+                "Quem pesa sobre nós"
+            }),
+        ] {
+            if let Some(label) = side {
+                click(&mut h, label);
+            }
+            for (w, hh) in [(960.0, 540.0), (1280.0, 720.0), (3840.0, 2160.0)] {
+                h.set_size(egui::vec2(w, hh));
+                steps(&mut h);
+                let case = format!("{locale} {w}×{hh} influence {side:?}");
+                failures.extend(check(&h, &case));
+                failures.extend(no_overlapping_text(&h, &case));
+                if !nodes(&h).iter().any(|n| n.label == "influence") {
+                    failures.push(format!("{case}: no influence window"));
+                }
+            }
+        }
         let _ = std::fs::remove_dir_all(&user);
     }
     assert!(
@@ -812,7 +839,7 @@ fn close_beside_tabs(h: &Harness<'_, App>, case: &str, close: &str) -> Vec<Strin
         .filter(|n| n.role == egui::accesskit::Role::RadioButton)
         .collect();
     let mut out = Vec::new();
-    if x.rect.width() < 27.0 || x.rect.height() < 27.0 {
+    if x.rect.width() < 31.0 || x.rect.height() < 31.0 {
         out.push(format!(
             "{case}: close button {:?} smaller than a button",
             x.rect
