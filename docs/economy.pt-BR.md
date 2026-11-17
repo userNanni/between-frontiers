@@ -409,6 +409,38 @@ Na `main` em d5570d0 o gás mundial fica em 0,36 do real em 2025 (0,46 em 1985).
   nuclear (5 924 níveis, nenhum a carvão, óleo ou gás): o método se escolhia por lucro por nível, e o
   nível nuclear faz três vezes a eletricidade de um a gás com o mesmo pessoal, sem pagar o capital a
   mais que custa.
+## Capital por método
+
+Um nível custa `CAPITAL_YEARS` (3) anos do valor que adiciona (`monthly::level_capital`), o que
+iguala o capital por dólar de todos os métodos: uma usina nuclear, que faz três vezes a eletricidade
+de uma a gás com o mesmo pessoal, ganhava a escolha por lucro por nível sem pagar o capital a mais
+que custa, e em 2020 toda a eletricidade do mundo era nuclear.
+
+**A regra.** Um prédio pode declarar, em todos os métodos (`capital: Some(x)` em `buildings.ron`), o
+capital de um nível relativo a um nível do seu primeiro método (que vale 1); a carga recusa a
+declaração parcial. Onde há declaração, a escolha de método pesa o lucro do nível sobre esse capital
+(`monthly::method_score`) e a obra nova e a troca de método o pagam (`monthly::method_capital`). Onde
+não há, nada muda: com nenhum prédio declarando, a rodada de 10 anos dá o hash da `main`.
+
+**As usinas (testado e guardado).** Os valores pelo custo de capital por kW (EIA, *Capital Cost and
+Performance Characteristic Estimates for Utility Scale Electric Power Generating Technologies*,
+fevereiro de 2020, Tabela 2, dólares de 2019 por kW: carvão ultrassupercrítico 3 676, ciclo
+combinado 958, nuclear AP1000 6 041, hidrelétrica 5 316) sobre um fator de capacidade típico (0,65;
+0,55; 0,90; 0,40), vezes a eletricidade de um nível: carvão 1, óleo 1,08, gás 0,385,
+hidrelétrica 2,94, nuclear 3,96. Rodada de 101 anos sobre a `main` em 40ca61c:
+
+| Razão simulado/real | 1955 | 1985 | 2025 |
+|---|---|---|---|
+| Gás, sem → com | 0,59 → 0,89 | 0,46 → 1,62 | 0,38 → 1,59 |
+| Carvão, sem → com | 0,85 → 1,04 | 0,52 → 0,57 | 0,40 → 0,42 |
+
+Em 2020 a eletricidade do mundo passa de toda nuclear para toda a gás (15 073 níveis; nenhum a
+carvão, óleo, hidrelétrica ou nuclear). A escolha de método é de canto: cada usina toma o melhor
+método, o preço do gás não sobe porque os campos acompanham a demanda, e o modelo não tem o que
+mantém a mistura real: preço regional do combustível (o carvão é barato perto da mina e caro longe
+dela), a idade da usina que já existe e o despacho (a térmica a gás cobre o pico, o carvão e a
+nuclear a base). Os valores ficam na branch `feat/method-capital-power` até uma dessas peças
+existir; a parcela nuclear que a política travou depois de 1979 não é meta.
 
 ## Ordem de trabalho do mercado
 
