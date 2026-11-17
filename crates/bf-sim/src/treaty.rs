@@ -337,7 +337,7 @@ impl Front {
 
 /// The fronts live in this build. Grows as each front enters the tick; a clause reads it to
 /// know whether it acts ([`ClauseCatalogue::dormant`]).
-pub const LIVE_FRONTS: &[Front] = &[Front::Politics];
+pub const LIVE_FRONTS: &[Front] = &[Front::Politics, Front::Ledger];
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ClauseCatalogue {
