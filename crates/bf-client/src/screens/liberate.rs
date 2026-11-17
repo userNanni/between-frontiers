@@ -227,29 +227,34 @@ fn consequences(
             i18n.tr("liberate-debt-stays")
         },
     );
-    bf_ui_kit::small(
-        ui,
-        &i18n.tr_args(
-            "liberate-states",
-            &[(
-                "names",
-                Arg::String(
-                    o.states
-                        .iter()
-                        .map(|k| {
-                            world
-                                .and_then(|w| w.states.iter().find(|s| s.def.key == *k))
-                                .map_or_else(
-                                    || k.clone(),
-                                    |s| crate::text::state_name(i18n, &s.def),
-                                )
-                        })
-                        .collect::<Vec<_>>()
-                        .join(", "),
-                ),
-            )],
-        ),
-    );
+    // The state list says something only when it is not the country itself under the map's
+    // name of 1925 (Belarus is the state BLR, "Belorussiya").
+    let whole = o.states.len() == 1 && o.tag.as_deref() == Some(o.states[0].as_str());
+    if !whole {
+        bf_ui_kit::small(
+            ui,
+            &i18n.tr_args(
+                "liberate-states",
+                &[(
+                    "names",
+                    Arg::String(
+                        o.states
+                            .iter()
+                            .map(|k| {
+                                world
+                                    .and_then(|w| w.states.iter().find(|s| s.def.key == *k))
+                                    .map_or_else(
+                                        || k.clone(),
+                                        |s| crate::text::state_name(i18n, &s.def),
+                                    )
+                            })
+                            .collect::<Vec<_>>()
+                            .join(", "),
+                    ),
+                )],
+            ),
+        );
+    }
     if subject
         && let Some(b) = world
             .and_then(|w| w.clauses.as_ref())
