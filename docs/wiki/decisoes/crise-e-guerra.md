@@ -38,8 +38,13 @@ termo a termo.
   indústria.
 - **Como é na vida real:** cada geração de equipamento custa mais, e o gasto militar em paz fica de
   2 a 5 % do PIB nas potências (a faixa citada em `war.pt-BR.md`).
-- **Estado:** em revisão (#115; o código está no ramo, o documento ainda descreve a fatia anterior).
-- **Onde está o detalhe:** [`war.pt-BR.md`, "Tipos e gerações"](../../war.pt-BR.md#tipos-e-gerações).
+- **Estado:** em revisão (#115). A sobra passa uma parcela do efetivo por semana à geração
+  seguinte (o efetivo inteiro em 10 anos, valor de desenho), quando o país faz a tecnologia ou
+  pode comprá-la fora; o que ainda sobra vai para a reserva de guerra, em depósito, de onde os
+  reservistas chamados e a geração nova tiram o equipamento antes de qualquer compra. O teto inteiro é gasto, como antes: na rodada de 101 anos o PIB e a dívida ficam dentro
+  do ruído da `main`. A aba "Forças" mostra uma linha por geração.
+- **Onde está o detalhe:** [`war.pt-BR.md`, "Tipos e gerações"](../../war.pt-BR.md#tipos-e-gerações)
+  e "Forças em paz" (compras do Estado).
 
 ### Mobilizar é gradual e decisão de Agendas
 

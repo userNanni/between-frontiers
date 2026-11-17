@@ -814,6 +814,13 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
         for id in res.toggle_pin {
             state.toggle_pin(shared, &id, now);
         }
+        if let (Some(on), Some(tag)) = (res.mobilize, state.save.meta.player.clone()) {
+            // Mobilizing moves men out of work for months: a point to come back to first.
+            state.restore_point_before(shared, Reason::War);
+            state
+                .sim
+                .send(Command::Issue(GameCommand::Mobilize { tag, on }));
+        }
         if let Some(screen) = res.open {
             use super::government::{Tab, Window};
             state.journal = None;
@@ -822,6 +829,7 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
                 crate::journal::Screen::Budget => Some(Tab::Budget),
                 crate::journal::Screen::Money => Some(Tab::Money),
                 crate::journal::Screen::Laws => Some(Tab::Laws),
+                crate::journal::Screen::Forces => Some(Tab::Forces),
                 crate::journal::Screen::Research => None,
             };
             match tab {
@@ -935,6 +943,7 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
             (id::TAB_MONEY, Tab::Money),
             (id::TAB_LAWS, Tab::Laws),
             (id::TAB_LEDGER, Tab::Ledger),
+            (id::TAB_FORCES, Tab::Forces),
         ] {
             if fired(cmd) {
                 state.research_open = false;

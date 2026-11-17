@@ -708,6 +708,7 @@ fn outliner_and_journal() {
         catalogue: &rules.catalogue,
         tree: rules.tree.as_deref(),
         politics: rules.politics.as_deref(),
+        military: rules.war.as_ref().map(|(m, _)| m.as_ref()),
     };
     let date = session.clock().date;
     let world = session.world();
@@ -2516,6 +2517,111 @@ fn influence_window() {
             h.run_steps(4);
             shot(&mut h, &format!("121-influence-on-{name}"));
         }
+    }
+    let _ = std::fs::remove_dir_all(&user);
+}
+
+/// The armed forces (phase 5, slice A): the government's forces tab of Britain in peace, and the
+/// journal's agenda with the decision to mobilize, asked and confirmed in two steps; then the
+/// mobilization under way, with the reservists who reported. Portuguese at 1600 × 900, English
+/// at 1280 × 720. Shots also go to `target/screenshots/war/`.
+#[test]
+#[ignore = "needs a GPU (or software Vulkan) and the generated map; run with --ignored"]
+fn armed_forces() {
+    use laplace_schelling::calendar::Date;
+    // The forces ship off; the session and the client read them on through `BF_FORCES`.
+    // SAFETY: the screenshot tests run one at a time (`RUST_TEST_THREADS=1`), and no other
+    // thread reads the environment while this one writes it.
+    unsafe { std::env::set_var("BF_FORCES", "1") };
+    let user = std::env::temp_dir().join(format!("bf-shots-forces-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&user);
+    let peace = advanced_session_of("GBR", Date::new(1926, 2, 1));
+    let mut called = advanced_session_of("GBR", Date::new(1926, 2, 1));
+    called.submit(bf_sim::game::GameCommand::Mobilize {
+        tag: "GBR".into(),
+        on: true,
+    });
+    while called.clock().date < Date::new(1926, 3, 2) {
+        called.sim.step();
+    }
+    let fra = write_campaign(&user, &peace, "Reino Unido 1926", "GBR", &[]);
+    let fra_called = write_campaign(&user, &called, "Reino Unido mobilizando", "GBR", &[]);
+    let war_dir = root().join("target/screenshots/war");
+    std::fs::create_dir_all(&war_dir).unwrap();
+    let keep = |name: &str| {
+        let from = out_dir().join(format!("{name}.png"));
+        std::fs::copy(&from, war_dir.join(format!("{name}.png"))).unwrap();
+    };
+    for (locale, size, tab, agendas, ask, confirm, tag) in [
+        (
+            "pt-BR",
+            egui::vec2(1600.0, 900.0),
+            "Forças",
+            "Forças armadas em paz",
+            "Mobilizar a reserva…",
+            "Confirmar a mobilização",
+            "pt",
+        ),
+        (
+            "en",
+            egui::vec2(1280.0, 720.0),
+            "Forces",
+            "Armed forces in peace",
+            "Mobilize the reserve…",
+            "Confirm the mobilization",
+            "en-1280",
+        ),
+    ] {
+        let mut h = harness_sized(user.join(locale), locale, size);
+        let ctx = h.ctx.clone();
+        h.state_mut().apply(Transition::Game(fra.clone()), &ctx);
+        h.run_steps(4);
+        h.key_press(egui::Key::G);
+        h.run_steps(4);
+        h.key_press(egui::Key::F);
+        h.run_steps(4);
+        if !matches!(&h.state().screen, Screen::Game(g)
+            if g.government_tab() == Some(bf_client::screens::government::Tab::Forces))
+        {
+            h.get_by_label(tab).click();
+            h.run_steps(4);
+        }
+        let name = format!("100-forces-tab-{tag}");
+        shot(&mut h, &name);
+        keep(&name);
+        // The journal: the forces' agenda and its decision, asked and then waiting to confirm.
+        h.key_press(egui::Key::G);
+        h.run_steps(2);
+        h.key_press(egui::Key::J);
+        h.run_steps(4);
+        h.get_by_label(agendas).scroll_to_me();
+        h.run_steps(4);
+        h.get_by_label(agendas).click();
+        h.run_steps(4);
+        let name = format!("101-forces-agenda-{tag}");
+        shot(&mut h, &name);
+        keep(&name);
+        h.get_by_label(ask).scroll_to_me();
+        h.run_steps(4);
+        h.get_by_label(ask).click();
+        h.run_steps(4);
+        h.get_by_label(confirm);
+        let name = format!("102-forces-agenda-confirm-{tag}");
+        shot(&mut h, &name);
+        keep(&name);
+        // A month into the mobilization: the reservists who reported, in the tab.
+        let mut h = harness_sized(user.join(format!("{locale}-called")), locale, size);
+        let ctx = h.ctx.clone();
+        h.state_mut()
+            .apply(Transition::Game(fra_called.clone()), &ctx);
+        h.run_steps(4);
+        h.key_press(egui::Key::G);
+        h.run_steps(4);
+        h.get_by_label(tab).click();
+        h.run_steps(4);
+        let name = format!("103-forces-mobilizing-{tag}");
+        shot(&mut h, &name);
+        keep(&name);
     }
     let _ = std::fs::remove_dir_all(&user);
 }

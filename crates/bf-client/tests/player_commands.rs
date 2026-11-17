@@ -68,6 +68,11 @@ const PLAYER: &[Surface] = &[
         command: id::JOURNAL,
         files: &["screens/game.rs", "screens/journal.rs"],
     },
+    Surface {
+        variant: "Mobilize",
+        command: id::JOURNAL,
+        files: &["screens/game.rs", "screens/journal.rs"],
+    },
 ];
 
 /// Variants the player does not give from a screen with a key, and why.

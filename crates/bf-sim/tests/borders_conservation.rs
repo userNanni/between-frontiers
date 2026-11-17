@@ -53,11 +53,13 @@ fn a_save_from_before_the_border_state_loads() {
     use laplace_schelling::save::encode_snapshot;
     let data = GameData::load(&root()).unwrap();
     let mut world = data.new_world();
-    // A save of then had no treaty state either (the last field; empty, one byte).
+    // A save of then had no treaty state and no forces either (the last fields; empty, one byte
+    // and two empty lists).
     world.treaties = Default::default();
+    world.war = Default::default();
     let bytes = encode_snapshot(&world).unwrap();
     // An empty border state is four empty lists, one byte each, near the end of the snapshot.
-    let old = &bytes[..bytes.len() - 5];
+    let old = &bytes[..bytes.len() - 5 - 2];
     let back = bf_sim::game::decode_world(old).unwrap();
     assert!(back.borders.is_empty());
     assert_eq!(back, world);

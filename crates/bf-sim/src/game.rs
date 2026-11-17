@@ -121,6 +121,10 @@ pub struct GameWorld {
     /// empty without the treaty data.
     #[serde(default)]
     pub treaties: crate::treaty::TreatyState,
+    /// Armed forces of every country; empty without the military data (`docs/war.pt-BR.md`,
+    /// "Forças em paz").
+    #[serde(default)]
+    pub war: crate::war::WarState,
 }
 
 impl HashState for GameWorld {
@@ -167,6 +171,11 @@ impl HashState for GameWorld {
             h.section("treaties");
             self.treaties.hash_state(h);
         }
+        // Worlds without forces keep their hash.
+        if !self.war.is_empty() {
+            h.section("war");
+            self.war.hash_state(h);
+        }
     }
 }
 
@@ -188,6 +197,7 @@ impl GameWorld {
             influence: Default::default(),
             demography: crate::demography::DemographyState::default(),
             treaties: Default::default(),
+            war: crate::war::WarState::default(),
         }
     }
 
@@ -210,6 +220,9 @@ impl GameWorld {
 pub enum GameCommand {
     /// Takes control of a country; an unknown tag is a no-op.
     ChoosePlayer { tag: String },
+    /// Calls up the country's reserve (`on`) or sends it home; the forces system carries it out
+    /// over the weeks of `reserve.call_up_weeks`.
+    Mobilize { tag: String, on: bool },
     /// Points the country's research at a technology (index in the tree), or back to choosing
     /// by itself with `None`. Unknown tags and indices are no-ops.
     SetResearch { tag: String, tech: Option<u16> },
@@ -333,6 +346,14 @@ impl Command<GameWorld> for GameCommand {
                     m.money.bank = *bank;
                 }
             }
+            GameCommand::Mobilize { tag, on } => {
+                let Some(ci) = world.countries.iter().position(|(_, c)| c.tag == *tag) else {
+                    return;
+                };
+                if let Some(c) = world.war.countries.get_mut(ci) {
+                    c.mobilized = *on;
+                }
+            }
             GameCommand::SetLaw { tag, law } => {
                 let Some(ci) = world.countries.iter().position(|(_, c)| c.tag == *tag) else {
                     return;
@@ -441,6 +462,8 @@ pub struct Rules {
     pub borders: Option<Arc<crate::borders::BorderRules>>,
     /// Rules of influence (`data/diplomacy/influence.ron`); without them nobody holds any.
     pub influence: Option<Arc<crate::influence::InfluenceSetup>>,
+    /// The unit catalogue and how the forces sit in peace; without them no forces run.
+    pub war: Option<(Arc<crate::war::Military>, Arc<crate::war::PeaceRules>)>,
 }
 
 pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
@@ -453,6 +476,7 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
         communities,
         borders,
         influence,
+        war,
     }) = rules
     {
         if let Some(p) = &politics {
@@ -460,6 +484,14 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
                 Arc::clone(p),
                 Arc::clone(&cat),
             ));
+        }
+        if let Some((military, peace)) = war {
+            s.add(crate::war::Forces {
+                cat: Arc::clone(&cat),
+                military,
+                peace,
+                politics: politics.clone(),
+            });
         }
         s.add(crate::econ::week::Week {
             cat: Arc::clone(&cat),
@@ -717,6 +749,7 @@ impl Session {
 #[cfg(test)]
 mod tests {
     use super::*;
+
     use crate::scenario::Status;
     use laplace_schelling::save::{decode_snapshot, encode_snapshot};
 
@@ -768,6 +801,22 @@ mod tests {
             demography: &'a crate::demography::DemographyState,
             borders: &'a crate::borders::BordersState,
         }
+        /// The world of before the forces (version 8): this build's fields without the last one.
+        #[derive(Serialize)]
+        struct BeforeForces<'a> {
+            scenario: &'a String,
+            player: &'a Option<Id<Country>>,
+            countries: &'a Table<Country, CountryState>,
+            census: &'a Vec<CensusRecord>,
+            econ: &'a crate::econ::Economy,
+            research: &'a crate::research::ResearchState,
+            politics: &'a crate::polity::PoliticsState,
+            demography: &'a crate::demography::DemographyState,
+            borders: &'a crate::borders::BordersState,
+            foreign: &'a crate::foreign_stakes::ForeignState,
+            influence: &'a crate::influence::InfluenceState,
+            treaties: &'a crate::treaty::TreatyState,
+        }
         #[derive(Serialize)]
         struct BeforeResearch<'a> {
             scenario: &'a String,
@@ -817,10 +866,12 @@ mod tests {
             demography: D,
         }
         let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-        let data = crate::data::GameData::load(&root).unwrap();
-        // This build, with the 1925 ledger.
+        let mut data = crate::data::GameData::load(&root).unwrap();
+        data.enable_forces();
+        // This build, with the 1925 ledger and forces.
         let with_ledger = data.new_world();
         assert!(!with_ledger.econ.ledger.is_empty());
+        assert!(!with_ledger.war.is_empty());
         let now = decode_world(&encode_snapshot(&with_ledger).unwrap()).unwrap();
         assert_eq!(hash_of(&now), hash_of(&with_ledger));
         // The same layouts behind the header with their version number go through the chain
@@ -839,10 +890,34 @@ mod tests {
             hash_of(&with_ledger)
         );
         assert_eq!(
-            hash_of(&headed(8, &encode_snapshot(&with_ledger).unwrap())),
+            hash_of(&headed(9, &encode_snapshot(&with_ledger).unwrap())),
             hash_of(&with_ledger)
         );
-        // Version 7, before the treaty state: this build's fields without the last one.
+        // Version 8, before the forces: no forces then.
+        let mut no_forces = data.new_world();
+        no_forces.war = Default::default();
+        assert!(!no_forces.treaties.is_empty());
+        let before_forces = encode_snapshot(&BeforeForces {
+            scenario: &no_forces.scenario,
+            player: &no_forces.player,
+            countries: &no_forces.countries,
+            census: &no_forces.census,
+            econ: &no_forces.econ,
+            research: &no_forces.research,
+            politics: &no_forces.politics,
+            demography: &no_forces.demography,
+            borders: &no_forces.borders,
+            foreign: &no_forces.foreign,
+            influence: &no_forces.influence,
+            treaties: &no_forces.treaties,
+        })
+        .unwrap();
+        assert!(decode_snapshot::<GameWorld>(&before_forces).is_err());
+        assert_eq!(headed(8, &before_forces), no_forces);
+        let loaded = decode_world(&before_forces).expect("before the forces");
+        assert_eq!(hash_of(&loaded), hash_of(&no_forces));
+        assert_eq!(loaded, no_forces);
+        // Version 7, before the treaty state: no forces and no treaties then.
         #[derive(Serialize)]
         struct BeforeTreaties<'a> {
             scenario: &'a String,
@@ -857,51 +932,50 @@ mod tests {
             foreign: &'a crate::foreign_stakes::ForeignState,
             influence: &'a crate::influence::InfluenceState,
         }
-        assert!(!with_ledger.treaties.is_empty());
-        // The worlds of before had no treaty state.
-        let with_ledger = {
-            let mut w = with_ledger;
+        let no_forces = {
+            let mut w = no_forces;
             w.treaties = Default::default();
             w
         };
         let before_treaties = encode_snapshot(&BeforeTreaties {
-            scenario: &with_ledger.scenario,
-            player: &with_ledger.player,
-            countries: &with_ledger.countries,
-            census: &with_ledger.census,
-            econ: &with_ledger.econ,
-            research: &with_ledger.research,
-            politics: &with_ledger.politics,
-            demography: &with_ledger.demography,
-            borders: &with_ledger.borders,
-            foreign: &with_ledger.foreign,
-            influence: &with_ledger.influence,
+            scenario: &no_forces.scenario,
+            player: &no_forces.player,
+            countries: &no_forces.countries,
+            census: &no_forces.census,
+            econ: &no_forces.econ,
+            research: &no_forces.research,
+            politics: &no_forces.politics,
+            demography: &no_forces.demography,
+            borders: &no_forces.borders,
+            foreign: &no_forces.foreign,
+            influence: &no_forces.influence,
         })
         .unwrap();
         let loaded = headed(7, &before_treaties);
-        assert_eq!(hash_of(&loaded), hash_of(&with_ledger));
-        assert_eq!(loaded, with_ledger);
+        assert_eq!(hash_of(&loaded), hash_of(&no_forces));
+        assert_eq!(loaded, no_forces);
         // Version 6, before the influence state: this build's fields without the last one,
         // behind the header and without it (a version 6 file may have been written either way).
         let before_influence = encode_snapshot(&BeforeInfluence {
-            scenario: &with_ledger.scenario,
-            player: &with_ledger.player,
-            countries: &with_ledger.countries,
-            census: &with_ledger.census,
-            econ: &with_ledger.econ,
-            research: &with_ledger.research,
-            politics: &with_ledger.politics,
-            demography: &with_ledger.demography,
-            borders: &with_ledger.borders,
-            foreign: &with_ledger.foreign,
+            scenario: &no_forces.scenario,
+            player: &no_forces.player,
+            countries: &no_forces.countries,
+            census: &no_forces.census,
+            econ: &no_forces.econ,
+            research: &no_forces.research,
+            politics: &no_forces.politics,
+            demography: &no_forces.demography,
+            borders: &no_forces.borders,
+            foreign: &no_forces.foreign,
         })
         .unwrap();
-        assert_eq!(headed(6, &before_influence), with_ledger);
-        assert_eq!(decode_world(&before_influence).unwrap(), with_ledger);
-        // Older layouts: the world of then had no ledger nor treaty state.
+        assert_eq!(headed(6, &before_influence), no_forces);
+        assert_eq!(decode_world(&before_influence).unwrap(), no_forces);
+        // Older layouts: the world of then had no ledger, no treaty state and no forces.
         let mut world = data.new_world();
         world.econ.ledger = Default::default();
         world.treaties = Default::default();
+        world.war = Default::default();
         let old_markets: Vec<_> = world
             .econ
             .markets

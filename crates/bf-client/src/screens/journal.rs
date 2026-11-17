@@ -27,6 +27,8 @@ pub struct Window {
     pub picked: Option<String>,
     /// The decision to free land, while it is open.
     pub liberate: Liberate,
+    /// A decision clicked once and waiting for its confirmation (the entry id).
+    pub confirm: Option<String>,
 }
 
 /// The id the decision "Libertar território" takes in `Window::picked`.
@@ -51,6 +53,8 @@ pub struct Response {
     pub open: Option<crate::journal::Screen>,
     /// The player confirmed freeing land: (states, the catalogue's tag, as a subject).
     pub liberate: Option<(Vec<String>, Option<String>, bool)>,
+    /// The player confirmed mobilizing (`true`) or sending the reserve home (`false`).
+    pub mobilize: Option<bool>,
 }
 
 /// Formats a value.
@@ -115,11 +119,16 @@ fn group_key(kind: &Kind) -> &'static str {
         Kind::Research => "journal-group-research",
         Kind::Fiscal(_) => "journal-group-fiscal",
         Kind::Movement(_) | Kind::PendingLaw(_) | Kind::LawChanges => "journal-group-politics",
+        Kind::Forces { .. } => "journal-group-forces",
     }
 }
 
 /// Agendas first: entries with a condition and a consequence. Then what is only followed.
-const AGENDAS: [&str; 2] = ["journal-group-politics", "journal-group-fiscal"];
+const AGENDAS: [&str; 3] = [
+    "journal-group-politics",
+    "journal-group-fiscal",
+    "journal-group-forces",
+];
 const FOLLOWED: [&str; 2] = ["journal-group-works", "journal-group-research"];
 
 fn is_agenda(kind: &Kind) -> bool {
@@ -353,6 +362,7 @@ pub fn show(
                 .show(ui, |ui| {
                     ui.set_max_width(detail.width() - SCROLL_GUTTER);
                     entry_detail(ui, i18n, world, picked, pinned, &mut out);
+                    decision(ui, i18n, picked, &mut window.confirm, &mut out);
                 });
         });
     });
@@ -525,6 +535,54 @@ fn section(ui: &mut Ui, i18n: &I18n, key: &str) {
     bf_ui_kit::caption(ui, &i18n.tr(key));
 }
 
+/// The decision of an agenda, in two steps: the first click asks, the second confirms. Only
+/// the forces' entry has one today (mobilize, or send the reserve home).
+fn decision(ui: &mut Ui, i18n: &I18n, e: &Entry, confirm: &mut Option<String>, out: &mut Response) {
+    let Kind::Forces { mobilized } = e.kind else {
+        return;
+    };
+    bf_ui_kit::gap(ui, space::SM);
+    bf_ui_kit::heading(ui, &i18n.tr("journal-decision"));
+    let (ask, sure, explain) = if mobilized {
+        (
+            "journal-demobilize",
+            "journal-demobilize-confirm",
+            "journal-demobilize-explain",
+        )
+    } else {
+        (
+            "journal-mobilize",
+            "journal-mobilize-confirm",
+            "journal-mobilize-explain",
+        )
+    };
+    bf_ui_kit::small(ui, &i18n.tr(explain));
+    if confirm.as_deref() == Some(e.id.as_str()) {
+        ui.horizontal(|ui| {
+            let yes = Button::primary(&i18n.tr(sure))
+                .size(ButtonSize::Small)
+                .show(ui);
+            if yes.clicked() || keys::single(ui, "journal.decision.yes", 'Y', yes.rect) {
+                out.mobilize = Some(!mobilized);
+                *confirm = None;
+            }
+            let no = Button::ghost(&i18n.tr("journal-decision-cancel"))
+                .size(ButtonSize::Small)
+                .show(ui);
+            if no.clicked() || keys::single(ui, "journal.decision.no", 'N', no.rect) {
+                *confirm = None;
+            }
+        });
+    } else {
+        let first = Button::secondary(&i18n.tr(ask))
+            .size(ButtonSize::Small)
+            .show(ui);
+        if first.clicked() || keys::single(ui, "journal.decision", 'D', first.rect) {
+            *confirm = Some(e.id.clone());
+        }
+    }
+}
+
 fn entry_detail(
     ui: &mut Ui,
     i18n: &I18n,
@@ -557,6 +615,7 @@ fn entry_detail(
             crate::journal::Screen::Money => "journal-open-money",
             crate::journal::Screen::Laws => "journal-open-laws",
             crate::journal::Screen::Research => "journal-open-research",
+            crate::journal::Screen::Forces => "journal-open-forces",
         };
         let open = Button::ghost(&i18n.tr(go)).size(ButtonSize::Small).show(ui);
         let open = open.on_hover_text(keys::tip(ui.ctx(), &i18n.tr(go), id::JOURNAL_GO));

@@ -617,6 +617,106 @@ trabalhos.
   qualitativa: a frente estática nasce da defesa em terreno preparado e do suprimento por
   ferrovia, não de uma regra de "trincheira".
 
+## Forças em paz (no tick, fatia A)
+
+O passo 1 da lista abaixo, e parte dos passos 2 e 3, já rodam. Código em `war/state.rs` e
+`war/system.rs`; regras trocáveis em `data/military/peace.ron`.
+
+**Estado salvo.** `GameWorld::war` guarda as formações de cada país: tipo, geração, elementos,
+equipamento que tem, treino, colonial ou não, e se é de reservistas chamados. Guarda também a
+reserva, a parcela do exército de paz e os pedidos da semana. O estado sai de `forces.ron` na
+partida. Um save de antes das forças carrega: o `world.war` é o último campo, e o snapshot mais
+curto é completado com listas vazias (`game::decode_world`). Sem forças, o estado não entra no hash.
+
+**Sistema `forces`** (semanal, segunda-feira, antes da economia):
+1. credita o que o Estado comprou na semana anterior ao equipamento que falta, a cada formação
+   pelo quanto lhe falta;
+2. sobe o treino e desgasta o equipamento;
+3. chama a reserva ou a manda para casa;
+4. uma vez por ano, ajusta o exército de paz;
+5. grava os pedidos da semana;
+6. no começo do mês, reparte os soldados pelas regiões.
+
+| Peça | Como é na vida real | No jogo | Muda a simulação? |
+|---|---|---|---|
+| Soldados nos pops | o exército tira homens do trabalho; quem sai do serviço volta à profissão | os soldados de cada região são os homens das formações (decisão 1), repartidos pela população: os coloniais nas colônias, o resto na metrópole. O `Labour` contrata e devolve um décimo da diferença por mês, como já fazia com os servidores | sim: em 1926 o mundo tem 6,3 milhões de soldados trabalhando, contra 8,0 milhões pela regra antiga de 1 % da população |
+| Tamanho em paz | muda devagar, por lei e por orçamento | cada janeiro, os homens em serviço em terra seguem a parcela de 1925 sobre os homens em idade de serviço da metrópole, vezes a razão do efeito da lei de conscrição sobre o de 1925 (decisão 2); trocável em `peace.ron` | sim, devagar: a população cresce, o exército acompanha |
+| Treino | por coorte de recrutas; o treino se acumula durante o serviço | sobe 1/semanas-de-treino do tipo por semana até o completo; recruta novo entra sem treino e dilui a média da formação | só no combate (fatia C); a tela mostra o estoque |
+| Mobilização | a reserva se apresenta em dias ou semanas, por classe, e sai do trabalho | comando (`Mobilize`, decisão de Agenda com dois passos): a cada semana se apresenta um quarto do que resta, no mínimo mil homens; os reservistas chegam com 70 % de treino e sem equipamento, que é comprado aos poucos. Desmobilizar devolve todos de uma vez | sim: tira homens do trabalho enquanto dura |
+| Reposição de equipamento | gradual, pela produção e pelo orçamento | a falta de cada formação é comprada em 26 semanas (`replace_weeks`) | sim: é demanda à indústria bélica |
+| Reserva de guerra | estoque em depósito (fuzis, munição, peças) do qual a mobilização tira o equipamento dos reservistas | o que sobra do teto vai ao depósito; quem falta equipamento saca dele primeiro | sim: a mobilização equipa os reservistas em semanas, não em meses |
+| Troca de geração | unidade a unidade, ao longo de uma década ou mais, quando a indústria (ou o fornecedor estrangeiro) entrega | uma parcela do efetivo por semana, em `modernize_years` anos, enquanto a sobra do teto paga; a aba mostra cada geração em sua linha | sim: o fogo vem do equipamento |
+| Desgaste | contínuo | 2 por mil do valor por semana, cerca de um décimo por ano | sim: é o que a compra repõe |
+
+**Compras do Estado.** As cinco linhas militares da cesta do Estado (40 % dos bens) dão lugar ao
+pedido das formações, e o teto do orçamento militar fica o de antes: a parte da cesta que era
+militar, sobre o orçamento de bens que a lei dá. A parte civil (60 %) recebe o mesmo dinheiro de
+antes. Dentro do teto, em ordem:
+1. **Necessidade:** o consumo do catálogo vezes `upkeep_scale`, mais a reposição do que falta a
+   cada formação (em `replace_weeks`). Passando do teto, tudo é cortado igual.
+2. **Modernização:** com sobra, uma parcela de cada formação passa por semana à geração seguinte
+   do tipo, em `modernize_years` anos para o efetivo inteiro (10, valor de desenho). Isso só vale
+   quando o país faz a tecnologia da geração (estágio industrial) ou ela já se difundiu em algum
+   lugar e pode ser comprada fora. Os homens que passam levam o equipamento e o treino. O que falta
+   da geração nova entra como reposição nas semanas seguintes, e a passagem para quando a sobra não
+   paga essa reposição.
+3. **Reserva de guerra:** o que ainda sobra compra bens militares na proporção da cesta militar
+   de antes (armas leves, munição, artilharia, navios, aviões) e vai para o depósito do país.
+   As formações a que falta equipamento sacam dele antes de qualquer compra: os reservistas
+   chamados, a parte do efetivo que passou à geração nova e o desgaste da semana. O depósito se
+   gasta como o resto (2 por mil por semana) e aparece na aba Forças. As formações ficam no máximo
+   com a dotação; antes do depósito, a infantaria britânica chegava a 12 vezes a dotação em um ano.
+
+   **Por que na proporção da cesta, e não do equipamento das formações.** A indústria bélica de
+   1925 está dimensionada para a cesta. Pelo valor do equipamento, a sobra iria quase toda para
+   navios, porque as frotas valem mais que os exércitos, e pediria aos estaleiros o dobro do que
+   fazem. Só 44 % do pedido de navios seria comprado, e o resto do dinheiro ficaria parado: na
+   primeira rodada assim, os bens militares ficaram 26 % abaixo da `main`, e a dívida das grandes
+   economias saiu da faixa.
+
+O teto inteiro é gasto, como antes das forças: a demanda à indústria bélica e o orçamento ficam no
+nível da `main`, agora com o que as forças de fato usam.
+
+Dois acertos de unidade e de calibração:
+- **Dólares de 1925.** O catálogo conta o equipamento em lotes de dólares de 1925, e a economia
+  dá preço em dólares de 2011. As quantidades dos bens vendidos por lote são multiplicadas na carga
+  pelo fator do CPI-U (12,85, o mesmo que `economy.pt-BR.md` usa para o automóvel); o peso e o fogo
+  por lote são divididos pelo mesmo fator, então o combate e a logística não mudam.
+- **`upkeep_scale` = 1.** Multiplica só o consumo em paz (munição de treino, combustível,
+  peças), não o desgaste do equipamento, e fica no catálogo como escrito. O consumo de 1926 é cerca
+  de 0,4 % do PIB do mundo, e o resto do teto vai para equipamento. Uma escala maior só trocaria
+  equipamento por munição de treino, que a indústria de 1925 não faz em quantidade bastante.
+
+**Rodada de 101 anos sem guerra** (`90fba4f`, sem guerra, contra a mesma partida com a chave
+neutra). Os bens militares do mundo ficam no nível de antes em 1935 e 1975 (+0,5 % e +1,7 %), e
+11,6 % acima em 2024. O PIB mundial fica dentro da faixa de reembaralhamento em 1935 e 2024 e sai
+dela em 1975 (+3,2 %, contra 2σ de 2,5 %). A dívida de 5 a 6 das dez maiores economias sai da
+faixa a cada data, nos dois sentidos, como já saía antes do depósito. A faixa por país tem só três
+amostras, então é estreita demais para julgar um país sozinho. O nível alto de 1975 em diante é o
+da cesta do Estado, não destas forças. Na vida real o gasto militar em paz das potências fica de
+2 a 5 % do PIB, pago e equipamento juntos; recalibrar o teto é do equilíbrio fino, depois da
+fase 6.
+
+**Dependência anotada: o tamanho do orçamento militar.** O teto é a parte militar da cesta do
+Estado, uma parcela fixa do orçamento de bens, e por isso cresce com o Estado ao longo do século
+(7,5 % do PIB mundial em bens militares em 2024). Na vida real, o gasto militar em paz acompanha a
+ameaça percebida e a lei de cada país: subiu na corrida armamentista dos anos 1930 e na Guerra
+Fria e caiu depois de 1991. A ameaça percebida é da IA estratégica (fase 6), e a lei é o orçamento
+de cada país (`politics`). Até lá o teto fica o herdado, sem calibrar. A série real para o placar
+é a do SIPRI, via Banco Mundial (`MS.MIL.XPND.GD.ZS`, de 1960). Ela está em `fetch.py --only
+military`, só local, porque os termos do SIPRI ainda não foram lidos (`data/history/SOURCES.md`,
+"Left out").
+
+**Chave: as forças entram desligadas.** Decisão de 2026-11-17: regra que muda o hash de todos os
+países entra desligada, e ligá-la é um PR pequeno, julgado sozinho pelos agregados. O `peace.ron`
+traz `soldiers: PopulationShare(10)`: as forças não carregam e a partida é a de antes, com o mesmo
+hash da `main`. Elas ligam com `BF_FORCES=1` (bench e prints) ou `GameData::enable_forces`
+(testes).
+
+O PR que liga as forças precisa de:
+- uma faixa com pelo menos oito amostras de reembaralhamento sobre a `main` atual;
+- a origem do PIB a mais de 1975 (+3,2 % com o depósito, +0,5 % sem ele).
+
 ## O que falta para ligar ao tick
 
 O contrato, os dados e as funções estão prontos e testados. Nada roda ainda. Quando a fase 5

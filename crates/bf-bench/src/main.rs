@@ -7,6 +7,7 @@
 //! hash differs. The world is a synthetic toy until the game's systems exist.
 
 mod borders;
+mod data_root;
 mod diag;
 mod diag1925;
 mod game;
@@ -40,6 +41,10 @@ Usage: bf-bench [options]
                         comma-separated list (default: 1 January of the middle year)
   --borders-history     with --game: apply data/history/borders.ron on its dates, only to
                         exercise the border operations (off by default; not the reference run)
+
+Environment:
+  BF_DATA_ROOT=DIR      read the data from DIR instead of the checkout the binary was built
+                        from; every run prints the root and a hash of its data/
 ";
 
 struct Options {

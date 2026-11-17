@@ -320,7 +320,7 @@ fn politics_report(data: &GameData, s: &Session) -> Option<PoliticsReport> {
 }
 
 fn root() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
+    crate::data_root::root()
 }
 
 fn new_session(data: &GameData, seed: u64, threads: usize) -> Session {

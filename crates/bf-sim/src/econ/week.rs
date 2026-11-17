@@ -45,10 +45,20 @@ fn upkeep_orders(cat: &Catalogue, m: &Market) -> Vec<(GoodIx, Fixed)> {
     basket_orders(cat.upkeep_basket.iter(), money, &m.price)
 }
 
-/// What the state buys this week with its goods budget.
-fn state_orders(cat: &Catalogue, m: &Market, exists: &[bool]) -> Vec<(GoodIx, Fixed)> {
+/// What the state buys this week with its goods budget. With forces (`military`), their orders
+/// come first and the rest buys the civilian part of the basket, its weights renormalized
+/// (`docs/war.pt-BR.md`, "Forças em paz").
+fn state_orders(
+    cat: &Catalogue,
+    m: &Market,
+    exists: &[bool],
+    military: Option<&[(GoodIx, Fixed)]>,
+) -> Vec<(GoodIx, Fixed)> {
     let goods = cat.state_basket.iter().filter(|(g, _)| exists[*g as usize]);
-    basket_orders(goods, public::goods_budget(m), &m.price)
+    let Some(military) = military else {
+        return basket_orders(goods, public::goods_budget(m), &m.price);
+    };
+    crate::war::state_purchases(cat, goods, military, public::goods_budget(m), &m.price)
 }
 
 /// Construction goods are bought over about two months: an eighth of what is left each week,
@@ -402,6 +412,7 @@ fn region_orders(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn clear_market(
     cat: &Catalogue,
     mut m: Market,
@@ -410,11 +421,12 @@ fn clear_market(
     trade: &[Fixed],
     exists: &[bool],
     upkeep: &[(GoodIx, Fixed)],
+    military: Option<&[(GoodIx, Fixed)]>,
 ) -> (Market, Vec<(GoodIx, Fixed)>) {
     let g = cat.goods.len();
     // The state's own purchases and construction join the demand.
     let mut demand = demand.to_vec();
-    let orders = state_orders(cat, &m, exists);
+    let orders = state_orders(cat, &m, exists, military);
     for (gi, q) in &orders {
         demand[*gi as usize] += *q;
     }
@@ -667,7 +679,7 @@ impl System<GameWorld> for Week {
     }
 
     fn access(&self) -> Access {
-        Access::new().read(ECON).write(ECON)
+        Access::new().read(ECON).read(crate::war::WAR).write(ECON)
     }
 
     fn compute(&self, ctx: &TickCtx, world: &GameWorld) -> WeekChanges {
@@ -749,7 +761,8 @@ impl System<GameWorld> for Week {
             .enumerate()
             .map(|(mi, m)| {
                 let (d, s, t) = (&demand[mi], &supply[mi], &trade[mi]);
-                clear_market(cat, m.clone(), d, s, t, exists, &upkeep[mi])
+                let military = world.war.orders(mi);
+                clear_market(cat, m.clone(), d, s, t, exists, &upkeep[mi], military)
             })
             .unzip();
         super::local::finish(

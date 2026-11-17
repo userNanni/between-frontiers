@@ -87,6 +87,15 @@ pub struct Country {
     pub taxes: Vec<f64>,
     pub spending: Vec<f64>,
     pub debt: Vec<f64>,
+    /// Of the spending: the payroll, the goods, and the military goods among them (the forces'
+    /// orders, or the military part of the state's basket without forces). Shares of GDP.
+    pub payroll: Vec<f64>,
+    pub goods: Vec<f64>,
+    pub military_goods: Vec<f64>,
+    /// Treasury at the year's end, share of GDP.
+    pub treasury: Vec<f64>,
+    /// Soldiers at work on 1 January (workers, metropole and colonies).
+    pub soldiers: Vec<i64>,
     /// Consumer price inflation over the year, percent.
     pub inflation: Vec<f64>,
     /// Research points made over the year (`ResearchState::points`, summed over the months):
@@ -183,6 +192,8 @@ pub struct History {
     production: Vec<Vec<f64>>,
     revenue: Vec<f64>,
     spending: Vec<f64>,
+    /// Payroll, goods and military goods spent over the year, by market.
+    outlays: Vec<[f64; 3]>,
     price_jan: Vec<(f64, u16)>,
     /// By territory: people summed over the months, and births, deaths, migration, life
     /// expectancy and fertility times people.
@@ -263,6 +274,7 @@ impl History {
             production: vec![vec![0.0; GOODS.len()]; TerritoryId::count(markets)],
             revenue: vec![0.0; markets],
             spending: vec![0.0; markets],
+            outlays: vec![[0.0; 3]; markets],
             price_jan: prices(w),
             vital: vec![[0.0; 6]; TerritoryId::count(markets)],
             terms: vec![[0.0; 5]; TerritoryId::count(markets)],
@@ -321,6 +333,7 @@ impl History {
             self.revenue.push(0.0);
             self.spending.push(0.0);
             self.points.push(0.0);
+            self.outlays.push([0.0; 3]);
             self.price_jan
                 .push((m.money.price_level.to_f64_lossy(), m.money.redenominations));
             self.report.countries.push(Country {
@@ -328,6 +341,11 @@ impl History {
                 taxes: vec![0.0; years],
                 spending: vec![0.0; years],
                 debt: vec![0.0; years],
+                payroll: vec![0.0; years],
+                goods: vec![0.0; years],
+                military_goods: vec![0.0; years],
+                treasury: vec![0.0; years],
+                soldiers: vec![0; years],
                 inflation: vec![0.0; years],
                 research_points: vec![0.0; years],
             });
@@ -388,6 +406,28 @@ impl History {
             self.revenue[mi] += b.revenue.to_f64_lossy();
             self.spending[mi] +=
                 (b.payroll + b.goods + b.services + b.works + b.interest).to_f64_lossy();
+            let military = match w.war.orders(mi) {
+                Some(orders) => orders
+                    .iter()
+                    .map(|(g, q)| {
+                        (*q * m.buy_ratio[*g as usize] * m.price[*g as usize]).to_f64_lossy()
+                    })
+                    .sum(),
+                None => {
+                    let cat = &data.catalogue;
+                    let share: i64 = cat
+                        .state_basket
+                        .iter()
+                        .filter(|(g, _)| cat.goods[*g as usize].category == "military")
+                        .map(|(_, w)| *w)
+                        .sum();
+                    b.goods.to_f64_lossy() * share as f64 / 1000.0
+                }
+            };
+            let o = &mut self.outlays[mi];
+            o[0] += b.payroll.to_f64_lossy();
+            o[1] += b.goods.to_f64_lossy();
+            o[2] += military;
         }
     }
 
@@ -558,6 +598,19 @@ impl History {
             c.taxes.push(self.revenue[mi] / g);
             c.spending.push(self.spending[mi] / g);
             c.debt.push(m.money.total_debt().to_f64_lossy() / g);
+            let o = self.outlays[mi];
+            c.payroll.push(o[0] / g);
+            c.goods.push(o[1] / g);
+            c.military_goods.push(o[2] / g);
+            c.treasury.push(m.treasury.to_f64_lossy() / g);
+            c.soldiers.push(
+                w.econ
+                    .regions
+                    .iter()
+                    .filter(|r| r.market as usize == mi)
+                    .map(|r| bf_sim::econ::workers(r.pops[bf_sim::econ::prof::SOLDIER].size))
+                    .sum(),
+            );
             let (p0, r0) = self.price_jan[mi];
             let (p1, r1) = now[mi];
             let cut = 1000f64.powi(i32::from(r1) - i32::from(r0));
@@ -575,6 +628,7 @@ impl History {
             .for_each(|row| row.iter_mut().for_each(|x| *x = 0.0));
         self.revenue.iter_mut().for_each(|x| *x = 0.0);
         self.spending.iter_mut().for_each(|x| *x = 0.0);
+        self.outlays.iter_mut().for_each(|x| *x = [0.0; 3]);
         self.vital.iter_mut().for_each(|v| *v = [0.0; 6]);
         self.terms.iter_mut().for_each(|v| *v = [0.0; 5]);
         self.class

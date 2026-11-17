@@ -2,6 +2,7 @@
 
 pub mod app;
 pub mod flags;
+pub mod forces_view;
 pub mod government;
 pub mod hud;
 pub mod influence_view;

@@ -1,13 +1,11 @@
 //! `--diag`: the 1925 economy before the first tick and after a few weeks, for calibration.
 
-use std::path::PathBuf;
-
 use bf_sim::data::GameData;
 use bf_sim::game::Session;
 use laplace_schelling::{Date, Fixed};
 
 pub fn main() -> Result<(), String> {
-    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let root = crate::data_root::root();
     let data = GameData::load(&root)?;
     let cat = data.catalogue.clone();
     let world = data.new_world();
@@ -88,6 +86,7 @@ pub fn main() -> Result<(), String> {
             communities: None,
             borders: None,
             influence: None,
+            war: None,
         }),
     );
     let world_supply = |e: &bf_sim::econ::Economy| -> Vec<f64> {

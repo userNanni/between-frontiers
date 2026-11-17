@@ -27,10 +27,11 @@ pub enum Tab {
     Laws,
     /// Debts between governments.
     Ledger,
+    Forces,
 }
 
 impl Tab {
-    pub const ALL: [Tab; 4] = [Tab::Budget, Tab::Money, Tab::Ledger, Tab::Laws];
+    pub const ALL: [Tab; 5] = [Tab::Budget, Tab::Money, Tab::Ledger, Tab::Laws, Tab::Forces];
 
     /// The command that opens the window on this tab.
     pub fn command(self) -> &'static str {
@@ -39,6 +40,7 @@ impl Tab {
             Tab::Money => id::TAB_MONEY,
             Tab::Laws => id::TAB_LAWS,
             Tab::Ledger => id::TAB_LEDGER,
+            Tab::Forces => id::TAB_FORCES,
         }
     }
 
@@ -48,6 +50,7 @@ impl Tab {
             Tab::Money => "gov-tab-money",
             Tab::Laws => "gov-tab-laws",
             Tab::Ledger => "gov-tab-ledger",
+            Tab::Forces => "gov-tab-forces",
         }
     }
 }
@@ -215,6 +218,7 @@ pub fn show(
                     Tab::Money => super::money::show(ui, &mut cx),
                     Tab::Laws => super::laws::show(ui, &mut cx),
                     Tab::Ledger => super::ledger::show(ui, &mut cx),
+                    Tab::Forces => super::forces::show(ui, &mut cx),
                 }
             });
     });

@@ -212,8 +212,8 @@ pub struct V7 {
 }
 
 /// 7 → 8: the treaty state (recognition between states); empty, it stays out of the hash.
-pub fn v7_to_v8(w: V7) -> GameWorld {
-    GameWorld {
+pub fn v7_to_v8(w: V7) -> V8 {
+    V8 {
         scenario: w.scenario,
         player: w.player,
         countries: w.countries,
@@ -226,5 +226,41 @@ pub fn v7_to_v8(w: V7) -> GameWorld {
         foreign: w.foreign,
         influence: w.influence,
         treaties: Default::default(),
+    }
+}
+
+/// Version 8: the treaty state (#145), before the forces.
+#[derive(Deserialize)]
+pub struct V8 {
+    scenario: String,
+    player: Option<Id<Country>>,
+    countries: Table<Country, CountryState>,
+    census: Vec<CensusRecord>,
+    econ: crate::econ::Economy,
+    research: crate::research::ResearchState,
+    politics: crate::polity::PoliticsState,
+    demography: crate::demography::DemographyState,
+    borders: crate::borders::BordersState,
+    foreign: crate::foreign_stakes::ForeignState,
+    influence: crate::influence::InfluenceState,
+    treaties: crate::treaty::TreatyState,
+}
+
+/// 8 → 9: the armed forces (`GameWorld::war`), empty: a world without forces hashes as before.
+pub fn v8_to_v9(w: V8) -> GameWorld {
+    GameWorld {
+        scenario: w.scenario,
+        player: w.player,
+        countries: w.countries,
+        census: w.census,
+        econ: w.econ,
+        research: w.research,
+        politics: w.politics,
+        demography: w.demography,
+        borders: w.borders,
+        foreign: w.foreign,
+        influence: w.influence,
+        treaties: w.treaties,
+        war: Default::default(),
     }
 }
