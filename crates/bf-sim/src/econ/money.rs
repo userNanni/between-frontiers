@@ -455,21 +455,23 @@ pub fn fx_share(m: &Market, income: Fixed, world: &World) -> Fixed {
 }
 
 /// Risk premium on the country's debt, in points.
-fn premium(m: &Market, gdp: Fixed, idle_home: Fixed) -> Fixed {
+/// `treaty_debt`: what the country owes other governments (`treaty::Ledger`), in local units; it
+/// weighs as debt in foreign currency held abroad.
+fn premium(m: &Market, gdp: Fixed, idle_home: Fixed, treaty_debt: Fixed) -> Fixed {
     let money = &m.money;
-    let debt = money.total_debt();
+    let debt = money.total_debt() + treaty_debt;
     let ratio = if gdp > Fixed::ZERO {
         debt / gdp
     } else {
         Fixed::ZERO
     };
     let abroad = if debt > Fixed::ZERO {
-        (money.debt_abroad + money.debt_fx_local()) / debt
+        (money.debt_abroad + money.debt_fx_local() + treaty_debt) / debt
     } else {
         Fixed::ZERO
     };
     let fx_ratio = if gdp > Fixed::ZERO {
-        money.debt_fx_local() / gdp
+        (money.debt_fx_local() + treaty_debt) / gdp
     } else {
         Fixed::ZERO
     };
@@ -556,6 +558,25 @@ pub fn week(econ: &mut Economy, activity: &[Activity], year: i32) {
         }
     }
     let w = world(&econ.markets, &people);
+    // Debts between governments (`treaty::Ledger`), in local units: they weigh on the premium
+    // and on the default limit as foreign-currency debt does.
+    let treaty_debt: Vec<(Fixed, Fixed)> = if econ.ledger.is_empty() {
+        vec![(Fixed::ZERO, Fixed::ZERO); nm]
+    } else {
+        econ.markets
+            .iter()
+            .enumerate()
+            .map(|(mi, m)| {
+                let ex = m.money.real_exchange();
+                let owed = econ.ledger.owed_by(mi as u16).mul_div(ex, INDEX_BASE);
+                let service = econ
+                    .ledger
+                    .yearly_service(mi as u16, year)
+                    .mul_div(ex, INDEX_BASE);
+                (owed, service)
+            })
+            .collect()
+    };
     let mut plans = Vec::with_capacity(nm);
     for (mi, m) in econ.markets.iter_mut().enumerate() {
         let income = if people[mi] > 0 {
@@ -563,7 +584,15 @@ pub fn week(econ: &mut Economy, activity: &[Activity], year: i32) {
         } else {
             Fixed::ZERO
         };
-        plans.push(home_step(m, activity[mi], idle[mi], income, &w, year));
+        plans.push(home_step(
+            m,
+            activity[mi],
+            idle[mi],
+            income,
+            &w,
+            year,
+            treaty_debt[mi].0,
+        ));
     }
     // Foreign lenders: each market lends part of its idle savings; borrowers get their need
     // pro rata to what can be lent this week.
@@ -583,7 +612,8 @@ pub fn week(econ: &mut Economy, activity: &[Activity], year: i32) {
     let mut lent = Fixed::ZERO;
     let mut paid_abroad = Fixed::ZERO;
     let mut written_off = Fixed::ZERO;
-    for (m, plan) in econ.markets.iter_mut().zip(plans.iter_mut()) {
+    let mut cuts = vec![Fixed::ZERO; nm];
+    for (mi, (m, plan)) in econ.markets.iter_mut().zip(plans.iter_mut()).enumerate() {
         let abroad = if m.money.excluded_until <= year {
             plan.need * granted_share
         } else {
@@ -596,7 +626,8 @@ pub fn week(econ: &mut Economy, activity: &[Activity], year: i32) {
         m.treasury += abroad;
         plan.need -= abroad;
         lent += abroad;
-        let (paid, lost) = settle_week(m, plan, year);
+        let (paid, lost, cut) = settle_week(m, plan, year, treaty_debt[mi]);
+        cuts[mi] = cut;
         paid_abroad += paid;
         written_off += lost;
     }
@@ -637,6 +668,57 @@ pub fn week(econ: &mut Economy, activity: &[Activity], year: i32) {
             p.savings -= idle_savings(p) * take[mi];
         }
     }
+    if !econ.ledger.is_empty() {
+        treaty_service(econ, &cuts, &w, year);
+    }
+}
+
+/// The week of the debts between governments: a default cuts the debtor's lines in the same
+/// proportion as its market debt (each creditor loses its claim), then the service moves from
+/// the debtors' treasuries to the creditors'. The service counts in the debtor's interest bill
+/// and the stock in its debt.
+fn treaty_service(econ: &mut Economy, cuts: &[Fixed], w: &World, year: i32) {
+    for (mi, &cut) in cuts.iter().enumerate() {
+        if cut > Fixed::ZERO {
+            econ.ledger.haircut(mi as u16, cut);
+        }
+    }
+    let n = econ.markets.len();
+    let mut treasuries: Vec<Fixed> = econ.markets.iter().map(|m| m.treasury).collect();
+    let revenue: Vec<Fixed> = econ.markets.iter().map(|m| m.budget.revenue_avg).collect();
+    let exchange: Vec<Fixed> = econ
+        .markets
+        .iter()
+        .map(|m| m.money.real_exchange().mul_div(Fixed::ONE, INDEX_BASE))
+        .collect();
+    let hundred = Fixed::from_int(100);
+    let inflation: Vec<Fixed> = econ
+        .markets
+        .iter()
+        .map(|m| m.money.inflation.mul_div(Fixed::ONE, hundred))
+        .collect();
+    let services = econ.ledger.service_week(
+        &mut treasuries,
+        &revenue,
+        &exchange,
+        &inflation,
+        w.inflation.mul_div(Fixed::ONE, hundred),
+        year,
+    );
+    let mut paid = vec![Fixed::ZERO; n];
+    for (d, s) in econ.ledger.debts.iter().zip(&services) {
+        paid[d.debtor as usize] += s.paid;
+    }
+    econ.ledger.settle();
+    for (mi, m) in econ.markets.iter_mut().enumerate() {
+        m.treasury = treasuries[mi];
+        m.budget.interest += paid[mi];
+        let owed = econ
+            .ledger
+            .owed_by(mi as u16)
+            .mul_div(m.money.real_exchange(), INDEX_BASE);
+        m.budget.debt = m.money.total_debt() + owed;
+    }
 }
 
 /// Prices, the central bank and the bonds sold at home for one market; returns what is left
@@ -648,10 +730,11 @@ fn home_step(
     income: Fixed,
     w: &World,
     year: i32,
+    treaty_debt: Fixed,
 ) -> Plan {
     let gdp = m.gdp_last_year;
     let gdp_week = gdp / 52;
-    let premium = premium(m, gdp, idle);
+    let premium = premium(m, gdp, idle, treaty_debt);
     let subordinate = m.money.subordinate(year);
     let money = &mut m.money;
     // Trends start at the first week's values.
@@ -802,7 +885,16 @@ fn home_step(
 /// After foreign lending: the subordinate bank covers the rest, a surplus repays debt, and a
 /// foreign-currency service past the limit defaults. Returns what was paid to foreign lenders
 /// (interest and principal) and what they lost.
-fn settle_week(m: &mut Market, plan: &Plan, year: i32) -> (Fixed, Fixed) {
+/// `treaty`: what the country owes other governments and its yearly service, local units. Returns
+/// what was paid to foreign holders, what they lost, and the share of the treaty debts a default
+/// writes off (zero without a default).
+fn settle_week(
+    m: &mut Market,
+    plan: &Plan,
+    year: i32,
+    treaty: (Fixed, Fixed),
+) -> (Fixed, Fixed, Fixed) {
+    let (treaty_owed, treaty_service) = treaty;
     let gdp_week = m.gdp_last_year / 52;
     let mut forced = Fixed::ZERO;
     if plan.need > Fixed::ZERO && m.money.subordinate(year) {
@@ -841,12 +933,16 @@ fn settle_week(m: &mut Market, plan: &Plan, year: i32) -> (Fixed, Fixed) {
     let service = m
         .money
         .debt_fx_local()
-        .mul_div(m.money.cost_fx + AMORTIZATION, Fixed::from_int(100));
+        .mul_div(m.money.cost_fx + AMORTIZATION, Fixed::from_int(100))
+        + treaty_service;
     let unpayable =
         yearly_revenue > Fixed::ZERO && percent_of(service, yearly_revenue) > DEFAULT_LIMIT;
     let arrears = m.treasury < -yearly_revenue.mul_ratio(1, 4)
-        && (m.money.debt_fx > Fixed::ZERO || m.money.debt_abroad > Fixed::ZERO);
-    let crushing = m.budget.interest > m.budget.revenue_avg * INTEREST_LIMIT;
+        && (m.money.debt_fx > Fixed::ZERO
+            || m.money.debt_abroad > Fixed::ZERO
+            || treaty_owed > Fixed::ZERO);
+    let crushing = m.budget.interest + treaty_service / 52 > m.budget.revenue_avg * INTEREST_LIMIT;
+    let mut cut = Fixed::ZERO;
     if crushing && m.money.excluded_until - EXCLUSION_YEARS < year {
         // Restructuring of the whole debt held outside the central bank.
         let home = m.money.debt_home * RESTRUCTURING;
@@ -856,6 +952,7 @@ fn settle_week(m: &mut Market, plan: &Plan, year: i32) -> (Fixed, Fixed) {
         m.money.debt_abroad -= abroad;
         m.money.debt_fx -= fx;
         lost = abroad + fx;
+        cut = RESTRUCTURING;
         m.money.defaults += 1;
         m.money.default_history += Fixed::ONE;
         m.money.excluded_until = year + EXCLUSION_YEARS;
@@ -867,12 +964,13 @@ fn settle_week(m: &mut Market, plan: &Plan, year: i32) -> (Fixed, Fixed) {
             m.money.debt_abroad -= abroad;
             lost += abroad;
         }
+        cut = HAIRCUT;
         m.money.defaults += 1;
         m.money.default_history += Fixed::ONE;
         m.money.excluded_until = year + EXCLUSION_YEARS;
     }
     m.budget.debt = m.money.total_debt();
-    (paid, lost)
+    (paid, lost, cut)
 }
 
 /// On January 1st: last year's inflation, the decay of the default history, and the historical
@@ -939,6 +1037,7 @@ mod tests {
             Fixed::from_int(2),
             &w,
             1950,
+            Fixed::ZERO,
         );
         assert!(m.money.debt_home > debt, "home savers bought bonds");
         assert!(plan.from_households > Fixed::ZERO);
@@ -958,8 +1057,16 @@ mod tests {
             income: Fixed::ONE,
         };
         let bank = m.money.debt_bank;
-        let plan = home_step(&mut m, calm(), Fixed::ZERO, Fixed::ONE, &w, 1950);
-        settle_week(&mut m, &plan, 1950);
+        let plan = home_step(
+            &mut m,
+            calm(),
+            Fixed::ZERO,
+            Fixed::ONE,
+            &w,
+            1950,
+            Fixed::ZERO,
+        );
+        settle_week(&mut m, &plan, 1950, (Fixed::ZERO, Fixed::ZERO));
         assert!(m.money.debt_bank > bank + Fixed::from_int(4000));
         assert!(m.money.monetized > Fixed::ZERO);
     }
@@ -984,6 +1091,7 @@ mod tests {
             Fixed::ONE,
             &w,
             1950,
+            Fixed::ZERO,
         );
         assert!(m.money.debt_home < home);
         assert_eq!(m.money.debt_fx, Fixed::from_int(10_000));
@@ -1001,14 +1109,14 @@ mod tests {
             fx_share: Fixed::ZERO,
             abroad_interest: Fixed::ZERO,
         };
-        let (_, lost) = settle_week(&mut m, &plan, 1950);
+        let (_, lost, _) = settle_week(&mut m, &plan, 1950, (Fixed::ZERO, Fixed::ZERO));
         assert_eq!(lost, Fixed::from_int(20_000));
         assert_eq!(m.money.defaults, 1);
         assert_eq!(m.money.excluded_until, 1953);
         // The same debt in the country's own currency, held at home, does not default.
         let mut japan = market(52_000);
         japan.money.debt_home = Fixed::from_int(100_000);
-        let (_, lost) = settle_week(&mut japan, &plan, 1950);
+        let (_, lost, _) = settle_week(&mut japan, &plan, 1950, (Fixed::ZERO, Fixed::ZERO));
         assert_eq!(lost, Fixed::ZERO);
         assert_eq!(japan.money.defaults, 0);
     }
@@ -1027,11 +1135,11 @@ mod tests {
             utilization: Fixed::from_int(90),
             index: Fixed::from_int(100),
         };
-        home_step(&mut m, hot, Fixed::ZERO, Fixed::ONE, &w, 1995);
+        home_step(&mut m, hot, Fixed::ZERO, Fixed::ONE, &w, 1995, Fixed::ZERO);
         assert!(m.money.policy_rate > NEUTRAL_REAL + m.money.inflation);
         // The player's rate wins, and money beyond the rule shows.
         m.money.rate_command = Some(Fixed::ZERO);
-        home_step(&mut m, hot, Fixed::ZERO, Fixed::ONE, &w, 1995);
+        home_step(&mut m, hot, Fixed::ZERO, Fixed::ONE, &w, 1995, Fixed::ZERO);
         assert!(m.budget.beyond_rule > Fixed::ZERO);
         assert_eq!(m.money.policy_rate, Fixed::ZERO);
     }
@@ -1042,12 +1150,22 @@ mod tests {
         // premium, and no default.
         let mut japan = market(52_000);
         japan.money.debt_home = Fixed::from_int(104_000);
-        let jp = premium(&japan, japan.gdp_last_year, Fixed::from_int(156_000));
+        let jp = premium(
+            &japan,
+            japan.gdp_last_year,
+            Fixed::from_int(156_000),
+            Fixed::ZERO,
+        );
         assert!(jp < Fixed::ZERO, "{jp}");
         // Two fifths of GDP in dollars, few savings: dearer, and past the default limit.
         let mut argentina = market(52_000);
         argentina.money.debt_fx = Fixed::from_int(20_800);
-        let ar = premium(&argentina, argentina.gdp_last_year, Fixed::ZERO);
+        let ar = premium(
+            &argentina,
+            argentina.gdp_last_year,
+            Fixed::ZERO,
+            Fixed::ZERO,
+        );
         assert!(ar > jp + pct(20), "{ar} against {jp}");
         let plan = Plan {
             need: Fixed::ZERO,
@@ -1057,12 +1175,17 @@ mod tests {
             fx_share: Fixed::ZERO,
             abroad_interest: Fixed::ZERO,
         };
-        settle_week(&mut japan, &plan, 1990);
-        settle_week(&mut argentina, &plan, 1990);
+        settle_week(&mut japan, &plan, 1990, (Fixed::ZERO, Fixed::ZERO));
+        settle_week(&mut argentina, &plan, 1990, (Fixed::ZERO, Fixed::ZERO));
         assert_eq!(japan.money.defaults, 0);
         assert_eq!(argentina.money.defaults, 1);
         // The default raises the premium for years.
-        let after = premium(&argentina, argentina.gdp_last_year, Fixed::ZERO);
+        let after = premium(
+            &argentina,
+            argentina.gdp_last_year,
+            Fixed::ZERO,
+            Fixed::ZERO,
+        );
         assert!(after > DEFAULT_RISK / 2, "{after}");
     }
 
@@ -1076,7 +1199,15 @@ mod tests {
             rate: NEUTRAL_REAL + TARGET,
             income: Fixed::ONE,
         };
-        let plan = home_step(&mut m, calm(), Fixed::ZERO, Fixed::ONE, &w, 1950);
+        let plan = home_step(
+            &mut m,
+            calm(),
+            Fixed::ZERO,
+            Fixed::ONE,
+            &w,
+            1950,
+            Fixed::ZERO,
+        );
         assert_eq!(m.budget.issued, Fixed::ZERO);
         assert!(m.money.credit > Fixed::ZERO, "its money went to banks");
         assert!(plan.need > Fixed::from_int(5000), "the gap is asked abroad");

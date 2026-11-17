@@ -178,6 +178,13 @@ impl GameData {
         if let (Some(p), Some(laws)) = (&self.politics, &self.laws_1925) {
             world.politics = crate::polity::PoliticsState::initial(p, laws);
         }
+        // Debts between governments on the start date, when the switch of the clause catalogue
+        // is on (owner's decision 6 of docs/treaties.pt-BR.md).
+        if let (Some(cat), Some(debts)) = (&self.clauses, &self.war_debts)
+            && !world.econ.markets.is_empty()
+        {
+            world.econ.ledger = crate::treaty::ledger_1925(debts, &cat.policy, &self.countries);
+        }
         world
     }
 }

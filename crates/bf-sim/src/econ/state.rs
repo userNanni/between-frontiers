@@ -445,6 +445,10 @@ pub struct Economy {
     pub markets: Vec<Market>,
     pub world_price: Vec<Fixed>,
     pub history: Vec<YearRecord>,
+    /// Debts between governments by treaty (`treaty.rs`): named debtor and creditor, served in
+    /// the weekly money step. Empty in worlds without treaties.
+    #[serde(default)]
+    pub ledger: crate::treaty::Ledger,
 }
 
 impl HashState for Pop {
@@ -571,6 +575,11 @@ impl HashState for Economy {
         self.world_price.hash_state(h);
         h.section("history");
         self.history.hash_state(h);
+        // Worlds without debts between governments keep their hash.
+        if !self.ledger.is_empty() {
+            h.section("ledger");
+            self.ledger.hash_state(h);
+        }
     }
 }
 
