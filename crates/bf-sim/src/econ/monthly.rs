@@ -197,9 +197,12 @@ fn labour_region(cat: &Catalogue, r: &Region, moves: &super::migration::Moves) -
     }
 }
 
-/// Land a pioneer clears with his own labour in a year, km² per idle peasant worker
-/// (`docs/economy.pt-BR.md`, "Pioneiros").
-const PIONEER_KM2_PER_WORKER: Fixed = milli(10);
+/// Land a pioneer clears with his own labour in a year, km² per idle peasant worker: 1.5 ha.
+/// Colonist families on the Transamazon cleared about 10 ha every other year in their first
+/// eight years (Walker, Homma, Scatena et al., Revista de Economia e Sociologia Rural 35(2),
+/// pp. 121-122); settlers in northern British Columbia, clearing by hand, 2 to 3.7 acres a year
+/// per farm (1943-45). Two to three workers a family.
+const PIONEER_KM2_PER_WORKER: Fixed = milli(15);
 
 /// Peasants without work or free land clear the state's frontier for their own plot, with
 /// their labour and no capital: as far as the land law lets them keep it (`frontier_access`)
