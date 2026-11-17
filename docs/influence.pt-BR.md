@@ -143,10 +143,9 @@ e o campo `bloc` dos dados só dão o nome.
 - **Nome do tipo na tela:** `alliance_label` dá o rótulo do tratado pela tabela da wiki
   ([Alianças](wiki/decisoes/aliancas.md)): garantia, pacto de defesa, aliança, pacto de não
   agressão, entente.
-- **Decisão para o dono (B1, limiares):** recomendação, os da tabela (bloco sem líder a partir de
-  3; garantia a partir de 2 protegidos; aduaneiro e monetário a partir de 1). Alternativa: todo
-  tratado com feixe de bloco já é bloco, inclusive o par; a tela fica cheia de "blocos" de dois
-  países, que a literatura chama de aliança.
+- **B1, limiares (decidido pelo dono em 2026-11-17, como recomendado):** os da tabela (bloco sem
+  líder a partir de 3; garantia a partir de 2 protegidos; aduaneiro e monetário a partir de 1). A
+  alternativa recusada era todo tratado com feixe de bloco já ser bloco, inclusive o par.
 
 - **O que o membro ganha e cede** é a soma das cláusulas do feixe, na mesma conta de valor dos
   tratados (dinheiro, comércio, segurança, soberania), com a influência do líder como termo a mais.
@@ -505,9 +504,9 @@ petróleo russo depois de 2022
   membro aumenta a ameaça que **terceiros** veem no bloco, na proporção da profundidade das
   obrigações do feixe: aliança militar, muito (os parceiros podem ser arrastados); foro de
   consulta, quase nada (o BRICS). Não mexe na boa vontade entre os parceiros.
-- **Decisão para o dono (T1):** recomendação, o canal de ameaça como acima. Alternativa: a
-  agressão de um membro também custa boa vontade aos parceiros, pela profundidade do feixe; a
-  história do BRICS não mostra esse efeito.
+- **T1 (decidido pelo dono em 2026-11-17, como recomendado):** o custo de associação mora no canal
+  de ameaça, como acima. A alternativa recusada era a agressão de um membro custar boa vontade aos
+  parceiros, efeito que a história do BRICS não mostra.
 
 - **Nomes.** O bloco militar recebe na tela o nome do tipo de aliança do seu feixe, pela
   nomenclatura do Correlates of War e do ATOP ([wiki, Alianças](wiki/decisoes/aliancas.md)); a

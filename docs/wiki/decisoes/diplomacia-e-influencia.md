@@ -180,8 +180,9 @@ crise).
   disputam: a Iugoslávia, o Egito dos anos 1950, a Índia não alinhada (Walt 1987; Fox 1959).
 - **Estado:** blocos de 1925 no contrato (#105). O bloco é lido só das cláusulas em vigor, com o
   rótulo do tipo de aliança (#132, rascunho): um par sozinho é aliança, o bloco sem líder precisa de três
-  países ligados entre si (a Pequena Entente, sim; a rede de pactos da França, não). Os limiares
-  esperam a decisão do autor. Entrar e sair em Agendas esperam a proposta no tick dos tratados;
+  países ligados entre si (a Pequena Entente, sim; a rede de pactos da França, não). O autor
+  aceitou os limiares recomendados: sem líder, a partir de 3; garantia, a partir de 2 protegidos;
+  aduaneiro e monetário, a partir de 1. Entrar e sair em Agendas esperam a proposta no tick dos tratados;
   telas desenhadas.
 - **Onde está o detalhe:** [seção 5](../../influence.pt-BR.md#5-blocos) ("Como o jogo reconhece um bloco nas cláusulas") e
   [seção 6](../../influence.pt-BR.md#6-o-país-pequeno).
@@ -207,8 +208,9 @@ crise).
 - **Estado:** decidido; desenhado. Lê o registro de quebras dos tratados; entra quando a quebra
   existir no tick. Os parceiros de bloco que atenderam o chamado perdem metade do que perde o
   traído; quem também não atendeu, nada (decidido pelo autor, conferido com Munique, a OTAN de
-  2003 e a Liga Árabe de 1979; seção 13b). Em aberto: o custo de associação quando um membro
-  agride por conta própria (o BRICS), proposto no canal de ameaça.
+  2003 e a Liga Árabe de 1979; seção 13b). O custo de associação quando um membro agride por
+  conta própria (o BRICS) não mexe na boa vontade entre parceiros: mora no canal de ameaça, que
+  terceiros leem pela profundidade das obrigações do bloco (decidido pelo autor, T1).
 - **Onde está o detalhe:** [seção 13b](../../influence.pt-BR.md#13b-quando-um-tratado-é-quebrado-o-que-a-influência-lê-e-escreve).
 
 ## Fontes
