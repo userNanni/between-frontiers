@@ -15,7 +15,7 @@ documentos de [`docs/`](../), e cada página daqui aponta para eles.
 |---|---|
 | [Princípios](principios.md) | as regras de desenho que valem para o jogo inteiro |
 | [Estado](estado.md) | as fases 0 a 7: o que já está no jogo e o que falta |
-| Glossário *(em breve)* | os termos do jogo e da literatura |
+| [Glossário](glossario.md) | os termos do jogo e da literatura |
 | [Como manter](como-manter.md) | a regra para atualizar a wiki junto com o código |
 | `decisoes/` | uma página por tema, com as decisões e o efeito de cada uma |
 
