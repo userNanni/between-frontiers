@@ -311,8 +311,7 @@ fn detail(ui: &mut Ui, i18n: &I18n, v: &InfluenceView, p: &Pair, side: Side) {
             let kind = i18n.tr(CHANNEL_KEYS[c.kind.min(3)]);
             match (c.value, c.front) {
                 (Some(_), _) => {
-                    ui.horizontal(|ui| {
-                        ui.add_space(space::LG);
+                    ui.indent(("influence-ch", k, c.kind), |ui| {
                         bf_ui_kit::small(
                             ui,
                             &i18n.tr_args(
@@ -330,43 +329,47 @@ fn detail(ui: &mut Ui, i18n: &I18n, v: &InfluenceView, p: &Pair, side: Side) {
                     });
                 }
                 (None, front) => {
-                    ui.horizontal(|ui| {
-                        ui.add_space(space::LG);
-                        ui.label(
-                            RichText::new(i18n.tr_args(
-                                "influence-channel-dormant",
-                                &[
-                                    ("channel", Arg::String(kind)),
-                                    (
-                                        "front",
-                                        Arg::String(i18n.tr(&format!(
-                                            "influence-front-{}",
-                                            front.unwrap_or("unknown")
-                                        ))),
-                                    ),
-                                ],
-                            ))
-                            .font(sans(size::CAPTION))
-                            .color(color::TEXT_FAINT),
+                    ui.indent(("influence-ch", k, c.kind), |ui| {
+                        ui.add(
+                            egui::Label::new(
+                                RichText::new(i18n.tr_args(
+                                    "influence-channel-dormant",
+                                    &[
+                                        ("channel", Arg::String(kind)),
+                                        (
+                                            "front",
+                                            Arg::String(i18n.tr(&format!(
+                                                "influence-front-{}",
+                                                front.unwrap_or("unknown")
+                                            ))),
+                                        ),
+                                    ],
+                                ))
+                                .font(sans(size::CAPTION))
+                                .color(color::TEXT_FAINT),
+                            )
+                            .wrap(),
                         );
                     });
                 }
             }
         }
         if issue.goodwill != 0.0 {
-            ui.horizontal(|ui| {
-                ui.add_space(space::LG);
-                ui.label(
-                    RichText::new(i18n.tr_args(
-                        "influence-goodwill",
-                        &[("part", Arg::String(pct(i18n, issue.goodwill)))],
-                    ))
-                    .font(sans(size::SMALL))
-                    .color(if issue.goodwill < 0.0 {
-                        color::DANGER
-                    } else {
-                        color::POSITIVE
-                    }),
+            ui.indent(("influence-gw", k), |ui| {
+                ui.add(
+                    egui::Label::new(
+                        RichText::new(i18n.tr_args(
+                            "influence-goodwill",
+                            &[("part", Arg::String(pct(i18n, issue.goodwill)))],
+                        ))
+                        .font(sans(size::SMALL))
+                        .color(if issue.goodwill < 0.0 {
+                            color::DANGER
+                        } else {
+                            color::POSITIVE
+                        }),
+                    )
+                    .wrap(),
                 );
             });
         }

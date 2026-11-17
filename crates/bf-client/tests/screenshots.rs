@@ -2466,3 +2466,56 @@ fn debts_tab() {
     }
     let _ = std::fs::remove_dir_all(&user);
 }
+
+/// The influence window: Britain in 1925 (Germany owes it, it owes the United States), both
+/// sides, in Portuguese at 1600 × 900 and in English at 1280 × 720, and at the floor.
+#[test]
+#[ignore = "needs a GPU (or software Vulkan) and the generated map; run with --ignored"]
+fn influence_window() {
+    use laplace_schelling::calendar::Date;
+    let user = std::env::temp_dir().join(format!("bf-shots-influence-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&user);
+    let session = advanced_session_of("GBR", Date::new(1925, 3, 1));
+    for (locale, size, name, other) in [
+        (
+            "pt-BR",
+            egui::vec2(1600.0, 900.0),
+            "pt",
+            "Quem pesa sobre nós",
+        ),
+        (
+            "en",
+            egui::vec2(1280.0, 720.0),
+            "en-1280",
+            "Who weighs on us",
+        ),
+        (
+            "pt-BR",
+            egui::vec2(960.0, 540.0),
+            "pt-960",
+            "Quem pesa sobre nós",
+        ),
+    ] {
+        let home = user.join(name);
+        let save = write_campaign(&home, &session, "Influência", "GBR", &[]);
+        let mut h = harness_sized(home.clone(), locale, size);
+        let ctx = h.ctx.clone();
+        h.state_mut().apply(Transition::Game(save), &ctx);
+        h.run_steps(4);
+        h.key_press_modifiers(egui::Modifiers::SHIFT, egui::Key::I);
+        h.run_steps(4);
+        shot(&mut h, &format!("120-influence-over-{name}"));
+        let clicked = match h.query_all(egui_kittest::kittest::by().label(other)).next() {
+            Some(b) => {
+                b.click();
+                true
+            }
+            None => false,
+        };
+        if clicked {
+            h.run_steps(4);
+            shot(&mut h, &format!("121-influence-on-{name}"));
+        }
+    }
+    let _ = std::fs::remove_dir_all(&user);
+}
