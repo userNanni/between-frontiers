@@ -376,38 +376,6 @@ impl DemographyState {
             .collect()
     }
 
-    /// Children per woman of each profession in a territory (`market`, `colony`) and how many
-    /// people the profession has there, weighted by the size of each pop; `None` before the
-    /// first month or in a save from before the rates by class.
-    pub fn class_rates(
-        &self,
-        econ: &Economy,
-        market: u16,
-        colony: bool,
-    ) -> Option<[(Fixed, i64); prof::P]> {
-        let mut sum = [0i128; prof::P];
-        let mut people = [0i64; prof::P];
-        for (r, v) in econ.regions.iter().zip(&self.vital) {
-            if r.market != market || r.colony != colony || v.tfr_by_class == [Fixed::ZERO; prof::P] {
-                continue;
-            }
-            for (pi, p) in r.pops.iter().enumerate() {
-                sum[pi] += i128::from(v.tfr_by_class[pi].raw()) * i128::from(p.size);
-                people[pi] += p.size;
-            }
-        }
-        (people.iter().sum::<i64>() > 0).then(|| {
-            std::array::from_fn(|pi| {
-                let tfr = if people[pi] > 0 {
-                    Fixed::from_raw((sum[pi] / i128::from(people[pi])) as i64)
-                } else {
-                    Fixed::ZERO
-                };
-                (tfr, people[pi])
-            })
-        })
-    }
-
     pub fn is_empty(&self) -> bool {
         self.territories.is_empty() && self.ages.is_empty()
     }
@@ -711,8 +679,6 @@ pub struct Demography {
     laws: Option<(Arc<Politics>, usize, usize)>,
     /// Whether each farm of `resources::FARMS` is cropland (not pasture, forest or fishery).
     crop: Vec<bool>,
-    // EXPERIMENT (removed before the PR): land hunger brakes every pop, as before.
-    brake_all: bool,
 }
 
 impl Demography {
@@ -731,14 +697,7 @@ impl Demography {
             kinds,
             laws,
             crop,
-            brake_all: std::env::var("BF_EXP_BRAKE_ALL").is_ok(),
         }
-    }
-
-    /// Whether land hunger brakes the fertility of profession `pi`: the families who farm
-    /// (peasants and farm labourers, the farmers of the land measure).
-    fn land_brake_on(&self, pi: usize) -> bool {
-        self.brake_all || matches!(pi, prof::PEASANT | prof::FARM_LABORER)
     }
 
     /// Cropland a region has and could still clear, in farm levels: open cropland and the
@@ -916,11 +875,11 @@ impl System<GameWorld> for Demography {
                 } else {
                     Fixed::ZERO
                 };
-                // The brake falls on the families who farm (`land_brake_on`).
-                for (pi, t) in by_class.iter_mut().enumerate() {
-                    if self.land_brake_on(pi) {
-                        *t = (*t * (Fixed::ONE - lost * LAND_BRAKE)).max(TFR_LOW.min(*t));
-                    }
+                // The brake falls on every class of the state: braking only those who farm let the
+                // poor of the crowded Asian cities escape it, and India's peasants ended with
+                // fewer children than its labourers (docs, "Natalidade por classe").
+                for t in by_class.iter_mut() {
+                    *t = (*t * (Fixed::ONE - lost * LAND_BRAKE)).max(TFR_LOW.min(*t));
                 }
                 let tfr = mean_by_size(r, &by_class);
                 let fertility_terms = fertility_values(&FertilityInputs {
@@ -1131,6 +1090,57 @@ fn distribute(r: &mut Region, change: i64, moved: i64, births: &[i64; prof::P]) 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn region_of(sizes: [i64; prof::P]) -> Region {
+        let mut pops = crate::econ::state::empty_pops();
+        for (p, n) in pops.iter_mut().zip(sizes) {
+            p.size = n;
+        }
+        Region {
+            market: 0,
+            colony: false,
+            pops,
+            plants: Vec::new(),
+            literacy: Fixed::ZERO,
+            deposits: Vec::new(),
+            land: Vec::new(),
+            frontier: Vec::new(),
+            wild_km2: [0; 2],
+            cleared_km2: [0; 2],
+            pioneer_km2: Fixed::ZERO,
+            subsistence: Fixed::ZERO,
+            tfp: Fixed::ONE,
+            tfp_start: Fixed::ONE,
+            state: 0,
+            neighbours: Vec::new(),
+            local: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn each_class_has_its_own_children() {
+        let mut sizes = [0; prof::P];
+        sizes[prof::PEASANT] = 600_000;
+        sizes[prof::LABORER] = 300_000;
+        sizes[prof::PROFESSIONAL] = 100_000;
+        let mut r = region_of(sizes);
+        let mut tfr = [Fixed::from_int(2); prof::P];
+        tfr[prof::PEASANT] = Fixed::from_int(6);
+        tfr[prof::LABORER] = Fixed::from_int(4);
+        // The region's rate is the mean of its pops' weighted by size.
+        assert_eq!(mean_by_size(&r, &tfr), milli(5000));
+        let births = split_births(&r, 10_001, &tfr);
+        assert_eq!(births.iter().sum::<i64>(), 10_001);
+        // Peasants are 60 % of the women with 6 children: 3.6 of every 5 births.
+        assert!((births[prof::PEASANT] - 7_200).abs() <= 1);
+        assert_eq!(births[prof::LABORER], 2_400);
+        assert_eq!(births[prof::PROFESSIONAL], 400);
+        // Births go to their own pop, deaths in proportion to size.
+        distribute(&mut r, 10_001 - 5_000, 0, &births);
+        assert_eq!(r.population(), 1_005_001);
+        assert_eq!(r.pops[prof::LABORER].size, 300_000 + 2_400 - 1_500);
+        assert_eq!(r.pops[prof::PROFESSIONAL].size, 100_000 + 400 - 500);
+    }
 
     #[test]
     fn mortality_falls_and_life_rises_with_health() {

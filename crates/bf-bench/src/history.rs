@@ -135,12 +135,13 @@ pub struct StateSeries {
     pub colony: bool,
     pub population: Vec<i64>,
     pub gdp: Vec<f64>,
-    /// Births, deaths and net migration per thousand, and life expectancy: the year's monthly
-    /// rates weighted by population.
+    /// Births, deaths and net migration per thousand, life expectancy and children per woman:
+    /// the year's monthly rates weighted by population.
     pub births: Vec<f64>,
     pub deaths: Vec<f64>,
     pub migration: Vec<f64>,
     pub life_expectancy: Vec<f64>,
+    pub fertility: Vec<f64>,
 }
 
 /// Stocks seen on 1 January, by territory.
@@ -407,6 +408,7 @@ impl History {
             st.deaths.push(mean(2));
             st.migration.push(mean(3));
             st.life_expectancy.push(mean(4));
+            st.fertility.push(mean(5));
         }
         for (mi, m) in w.econ.markets.iter().enumerate() {
             let gdp = m.gdp_running.to_f64_lossy();
