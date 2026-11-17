@@ -1,6 +1,6 @@
 # Capital entre países: o fundo que investe fora (fase 4)
 
-Estado: desenho, para o dono decidir. O estudo e a conta do retorno estão em
+Estado: desenho; decisões 1 a 5 tomadas pelo dono em 2026-11-17, a 6 espera o estudo (seção 5). O estudo e a conta do retorno estão em
 `late-industrialization.pt-BR.md` (parte 2). O contrato puro está em
 `crates/bf-sim/src/foreign_capital.rs`, fora do tick. Este documento diz como ele entra no tick:
 em que passo do agendador, o que o save guarda, como se testa e o que o dono decide.
@@ -141,6 +141,19 @@ efeito no câmbio fica para quando entrar o balanço de pagamentos (decisão 4).
 
 ## 5. Decisões do dono
 
+Decididas em 2026-11-17:
+
+| | Decisão | O que vale |
+|---|---|---|
+| C1 | Camadas fora da planta | sim, como na seção 2 |
+| C2 | Estoque de 1925 | zero agora; **semear depois**, num PR de dados, quando houver fonte utilizável. Candidato para os EUA: Lewis (1938). Reino Unido e França ficam como dependência anotada |
+| C3 | Veto nos dois sentidos | sim, `SetCapitalEmbargo` |
+| C4 | Câmbio | remessa sem efeito no câmbio agora; o efeito entra com o balanço de pagamentos |
+| C5 | Técnica pela planta estrangeira | sim, como **efeito de primeira ordem** ("isso é muito importante para o processo de globalização"): a tela do país mostra quanto da difusão vem de fábrica estrangeira, e a direção é testada contra `fdi.csv` |
+| C6 | Fábricas da colônia na independência | **aberta**: o dono pediu ver como aconteceu na história antes da regra ("a história irá nos revelar quais os fluxos possíveis"). Estudo na seção 7 |
+
+O texto abaixo é o que foi levado ao dono, com a recomendação de cada uma.
+
 1. **Camadas fora da planta, por lugar, tipo, dono e ano.**
    - **Recomendação:** sim, como na seção 2.
    - **Teste:** a passagem ao sócio no fim do prazo e a estatização parcial dão os números do
@@ -182,12 +195,26 @@ efeito no câmbio fica para quando entrar o balanço de pagamentos (decisão 4).
    - **Custo:** um país que recebe muito capital não valoriza a moeda por isso até lá; fica
      anotado.
 5. **Técnica pela planta estrangeira, já neste passo.**
-   - **Recomendação:** sim. O termo `transfer_rate` já existe e é pequeno.
-   - **Teste:** com 20 % dos níveis de um grupo em mãos estrangeiras, a difusão anda 1,2 vez mais
-     rápido; com a exigência de entrega ao sócio, 1,4 vez.
-   - **Custo:** uma leitura das camadas por mês no sistema de pesquisa.
+   - **Recomendação levada:** sim, com o termo `transfer_rate`, que já existe.
+   - **Decidido (C5): efeito de primeira ordem.** Isso muda três coisas:
+     - **Na tela do país:** a aba de pesquisa mostra, por grupo de técnica, a difusão do mês
+       repartida em três partes: a do canal de imitação sem fábrica estrangeira, a parte que vem
+       das fábricas estrangeiras e a parte que vem da entrega de técnica ao sócio. Mostra também a
+       parcela estrangeira dos níveis desse grupo no país.
+     - **No contrato:** `FOREIGN_SPILLOVER` e `PARTNER_SPILLOVER` deixam de ser valores de desenho
+       fixos e passam a ser calibrados na rodada de direção do passo 5, como o resto do canal.
+     - **Na direção:** os tigres (Coreia, Taiwan, Singapura) e a China depois de 1978 devem ganhar
+       técnica mais depressa à medida que o investimento direto recebido sobe em `fdi.csv`. Os
+       mesmos países com as portas fechadas por `BF_LAWS` servem de contraprova: a mesma
+       trajetória sem as fábricas estrangeiras precisa ficar visivelmente atrás.
+   - **Teste de unidade:** com 20 % dos níveis de um grupo em mãos estrangeiras, a difusão anda
+     1,2 vez mais rápido; com a exigência de entrega ao sócio, 1,4 vez (valores de desenho, até a
+     calibração).
+   - **Custo:** uma leitura das camadas por mês no sistema de pesquisa, e três números a mais por
+     grupo no que a tela lê.
 6. **A independência e as fábricas da ex-metrópole** (seção 2, "As fábricas das colônias").
-   - **Recomendação:** na independência, os níveis privados das fábricas não agrícolas da região
+   Aberta: a regra abaixo foi a primeira proposta, e o estudo da seção 7 a substitui.
+   - **Recomendação levada:** na independência, os níveis privados das fábricas não agrícolas da região
      viram camada da ex-metrópole, sem contrato, menos a parte dos donos locais. Essa parte é a
      fração do dividendo que, no último ano, ficou com os capitalistas da própria região. É a
      segunda saída da seção 2, e não pede marcar nada desde 1925.
