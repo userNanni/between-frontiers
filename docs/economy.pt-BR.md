@@ -208,6 +208,28 @@ investimento por acaso). Três regras faltavam para o crescimento não disparar:
   pela mesma energia. 1925: combustível 0,65 do real (era 0,30), petróleo bruto 92 contra 146 Mt
   (*Mineral Resources of the United States 1925*), carvão 1 269 contra 1 205 Mt.
 
+## Fronteira agrícola
+
+O teto de cada lavoura num estado era a lavoura cultivada em 1925 (HYDE 3.3): o Amazonas tinha 47 km²
+de lavoura e 1,7 milhão de km² de floresta, e não podia abrir nenhum. Agora:
+
+- **Terra aberta e potencial** (`Region::land` e `Region::frontier`). A terra aberta é a de 1925,
+  como antes. A potencial é o pasto e a floresta do estado vezes a aptidão que o cenário já dá a
+  cada lavoura (`land.ron`), dividida pela terra de um nível; nada por país.
+- **Abrir terra é obra** (`monthly::Investment`). Uma fazenda que já ocupa toda a terra aberta pode
+  abrir um nível na fronteira: custa o nível e outro tanto em obra (desmate e preparo), em pontos
+  da fila de construção. O pasto e a floresta que restam no estado (`Region::wild_km2`) diminuem na
+  proporção de cada um, a pecuária e a exploração florestal do estado ficam com a parte da terra
+  delas que sobrou, e o convertido fica em `Region::cleared_km2`.
+- **Só abre onde vende:** a decisão é a do investimento, com o tipo cheio e retorno acima da taxa
+  mínima. O camponês sem emprego continua plantando só na terra aberta e livre.
+
+Primeira rodada: 125 mil km² abertos até 1955 (Índia, China, Japão e colônias, Brasil 11 mil),
+quase nada depois; cereais 2 157 contra 2 835 Mt em 2015. A fronteira para quando a comida para
+de faltar: a produtividade agrícola cresce e a população simulada fica abaixo da real. Abertos: o
+pioneiro que desmata para si (o camponês sem terra que abre a própria roça), que foi a maior
+parte da fronteira histórica no Brasil e na África.
+
 ## Ordem de trabalho do mercado
 
 1. Preço por estado e por mercado nacional: oferta e demanda fecham semanalmente, com preço sensível à escassez.

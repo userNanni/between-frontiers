@@ -43,23 +43,8 @@ fn deposit_factor(resource: &str) -> f64 {
     }
 }
 
-/// Land a farm level works, km² of cropland (pasture for ranches, forest for forestry).
-/// Set from 1925 yields: a level of a grain farm harvests 6,000 t at 1.2 t/ha on 50 km²;
-/// perennial and garden crops make far more per hectare.
 fn land_per_level(farm: &str) -> f64 {
-    match farm {
-        "livestock_ranch" => 600.0,
-        "forestry" => 150.0,
-        "dairy_farm" => 80.0,
-        "rice_paddy" => 25.0,
-        "cotton_plantation" => 17.0,
-        "coffee_plantation" | "tea_plantation" | "cocoa_plantation" | "rubber_plantation"
-        | "tobacco_plantation" => 8.0,
-        "fiber_plantation" => 7.0,
-        "sugarcane_plantation" | "sugar_beet_farm" => 4.0,
-        "fruit_plantation" | "vineyard" => 3.0,
-        _ => 50.0,
-    }
+    crate::resources::land_per_level(farm) as f64
 }
 
 /// The first guess of a block's spending, before its own accounts replace it (`ROUNDS`): shares
@@ -399,7 +384,10 @@ pub fn build(cat: &Catalogue, inp: &Inputs) -> Economy {
             deposits.push((res as u8, dep.discovered, ceiling.max(1)));
         }
         let mut land = Vec::new();
+        let mut frontier = Vec::new();
+        let mut wild_km2 = [0i64; 2];
         if let Some(l) = land_of(&s.key) {
+            wild_km2 = [l.pasture_km2 as i64, l.forest_km2 as i64];
             for (farm, suit) in &l.farms {
                 let Some(fi) = FARMS.iter().position(|f| f == farm) else {
                     continue;
@@ -421,6 +409,14 @@ pub fn build(cat: &Catalogue, inp: &Inputs) -> Economy {
                 if ceiling > 0 {
                     land.push((fi as u8, ceiling));
                 }
+                // Pasture and forest suited to the crop can be cleared for it.
+                if crate::resources::on_cropland(farm) {
+                    let wild = f64::from(l.pasture_km2) + f64::from(l.forest_km2);
+                    let more = (wild * f64::from(*suit) / land_per_level(farm)) as i64;
+                    if more > 0 {
+                        frontier.push((fi as u8, more));
+                    }
+                }
             }
         }
         regions.push(Region {
@@ -431,6 +427,9 @@ pub fn build(cat: &Catalogue, inp: &Inputs) -> Economy {
             literacy: Fixed::ZERO,
             deposits,
             land,
+            frontier,
+            wild_km2,
+            cleared_km2: [0; 2],
             subsistence: Fixed::ZERO,
             tfp: Fixed::ONE,
             tfp_start: Fixed::ONE,

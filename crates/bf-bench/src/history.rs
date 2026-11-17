@@ -58,6 +58,8 @@ pub struct Territory {
     /// Informal workers, as the ILO counts them: urban self-employment
     /// (`BuildingDef::informal`) and the smallholders who work their own plot.
     pub informal: Vec<f64>,
+    /// Pasture and forest turned into cropland since 1925, km², on 1 January.
+    pub cleared_km2: Vec<[f64; 2]>,
     /// Yearly production by good (`GOODS`), in the catalogue's units.
     pub production: Vec<Vec<f64>>,
 }
@@ -105,6 +107,7 @@ struct Stocks {
     non_farm: f64,
     employment: [f64; 3],
     informal: f64,
+    cleared: [f64; 2],
 }
 
 /// The year's running sums, by territory (`market * 2 + colony`) and by market.
@@ -327,6 +330,7 @@ impl History {
                     (a.employment[k] + b.employment[k]) / 2.0
                 }));
                 ter.informal.push((a.informal + b.informal) / 2.0);
+                ter.cleared_km2.push(a.cleared);
                 ter.production.push(self.production[t].clone());
             }
             let c = &mut rep.countries[mi];
@@ -370,6 +374,9 @@ fn stocks(data: &GameData, w: &GameWorld) -> Vec<Stocks> {
         s.population += pop;
         s.literate += r.literacy.to_f64_lossy() * pop;
         s.non_farm += r.urban_share().to_f64_lossy() * pop;
+        for (c, v) in s.cleared.iter_mut().zip(r.cleared_km2) {
+            *c += v as f64;
+        }
         for p in &r.plants {
             let b = &cat.buildings[p.kind as usize];
             let m = &b.methods[p.method as usize];

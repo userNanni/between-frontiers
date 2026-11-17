@@ -409,6 +409,8 @@ pub struct Build {
     goods: Vec<(u16, Fixed)>,
     points: Fixed,
     cost: Fixed,
+    /// The farm (`FARMS` index) whose land this level clears from pasture or forest.
+    clears: Option<u8>,
 }
 
 pub struct InvestmentChanges {
@@ -497,6 +499,47 @@ pub fn best_method(
 }
 
 const BUSY_UTILIZATION: Fixed = milli(900);
+
+/// Clearing for a crop costs as much again as the farm level that will work the land.
+const CLEARING: Fixed = Fixed::ONE;
+
+/// Opens a level of `farm` on pasture and forest, in proportion to what is left of each: the
+/// level moves from the frontier to the open land, and the ranches and forestry of the state
+/// keep the share of their land that is left.
+fn clear_land(cat: &Catalogue, r: &mut Region, farm: u8) {
+    let Some(f) = r.frontier.iter_mut().find(|f| f.0 == farm && f.1 > 0) else {
+        return;
+    };
+    f.1 -= 1;
+    match r.land.iter_mut().find(|l| l.0 == farm) {
+        Some(l) => l.1 += 1,
+        None => r.land.push((farm, 1)),
+    }
+    let km2 = cat.farm_km2.get(usize::from(farm)).copied().unwrap_or(0);
+    let wild = r.wild_km2[0] + r.wild_km2[1];
+    if wild <= 0 || km2 <= 0 {
+        return;
+    }
+    let from_pasture = (km2 * r.wild_km2[0] / wild).min(r.wild_km2[0]);
+    let from_forest = (km2 - from_pasture).min(r.wild_km2[1]);
+    for (i, (taken, kind)) in [
+        (from_pasture, cat.pasture_farm),
+        (from_forest, cat.forest_farm),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let before = r.wild_km2[i];
+        r.wild_km2[i] -= taken;
+        r.cleared_km2[i] += taken;
+        if let Some(k) = kind
+            && let Some(l) = r.land.iter_mut().find(|l| l.0 == k)
+            && before > 0
+        {
+            l.1 = l.1 * r.wild_km2[i] / before;
+        }
+    }
+}
 
 /// Money of the pool already promised: construction goods still to buy and the private works
 /// in the queue.
@@ -640,7 +683,11 @@ impl System<GameWorld> for Investment {
                     } else {
                         i64::MAX
                     };
-                    if existing >= ceiling {
+                    // A farm on all its open land can clear pasture or forest suited to its crop.
+                    let clears = b.farm.filter(|&farm| {
+                        existing >= ceiling && r.frontier.iter().any(|f| f.0 == farm && f.1 > 0)
+                    });
+                    if existing >= ceiling && clears.is_none() {
                         continue;
                     }
                     let Some((method, profit)) = best_method(
@@ -658,10 +705,18 @@ impl System<GameWorld> for Investment {
                     if cat.buildings[kind].methods[method as usize].workers > idle {
                         continue;
                     }
-                    let cost = level_capital(cat, kind, 0, plant_tfp(r, m, b));
-                    if cost <= Fixed::ZERO {
+                    let level = level_capital(cat, kind, 0, plant_tfp(r, m, b));
+                    if level <= Fixed::ZERO {
                         continue;
                     }
+                    // Clearing is work: as much again as the farm level, all of it building
+                    // work, in construction points.
+                    let clearing = if clears.is_some() {
+                        level * CLEARING
+                    } else {
+                        Fixed::ZERO
+                    };
+                    let cost = level + clearing;
                     let ret = profit * 52 / cost;
                     if ret < hurdle(m) {
                         continue;
@@ -676,13 +731,16 @@ impl System<GameWorld> for Investment {
                             if let Some(cg) = construction
                                 && work
                             {
-                                points +=
-                                    cost.mul_ratio(share, 1000) / cat.goods[cg as usize].base_price;
+                                points += level.mul_ratio(share, 1000)
+                                    / cat.goods[cg as usize].base_price;
                                 return None;
                             }
-                            Some((g, cost.mul_ratio(share, 1000) / m.price[g as usize]))
+                            Some((g, level.mul_ratio(share, 1000) / m.price[g as usize]))
                         })
                         .collect();
+                    if let Some(cg) = construction {
+                        points += clearing / cat.goods[cg as usize].base_price;
+                    }
                     out.push((
                         ret,
                         Build {
@@ -692,6 +750,7 @@ impl System<GameWorld> for Investment {
                             goods,
                             points,
                             cost,
+                            clears,
                         },
                     ));
                 }
@@ -743,6 +802,9 @@ impl System<GameWorld> for Investment {
             p.losing_weeks = 0;
         }
         for b in changes.builds {
+            if let Some(farm) = b.clears {
+                clear_land(&self.cat, &mut econ.regions[b.region], farm);
+            }
             let market = econ.regions[b.region].market as usize;
             for (g, q) in b.goods {
                 econ.markets[market].construction[g as usize] += q;
