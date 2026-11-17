@@ -1,6 +1,6 @@
 # Influência, blocos e o país pequeno (fase 4)
 
-Estado: desenho decidido em 2026-11-17 (seções 9 e 14); contrato fora do tick em andamento (#105). Fica entre os tratados (`treaties.pt-BR.md`:
+Estado: desenho decidido em 2026-11-17 (seções 9 e 13); contrato fora do tick em andamento (#105). Fica entre os tratados (`treaties.pt-BR.md`:
 cláusulas, livro de dívida, avaliação de proposta) e a IA estratégica da fase 6
 (`history-rails.pt-BR.md`: interesses medidos). Princípios de sempre: causa visível, nada sorteado,
 determinismo, e **sem retorno mensurável não entra**.
@@ -186,8 +186,8 @@ pela escolha**. O que pode querer e conseguir, com a conta aberta:
 ## 9. Decisões do dono (decididas em 2026-11-17)
 
 O dono disse sim às seis, como recomendadas. Ele pediu ainda duas coisas: conferir a decisão 1
-contra a teoria (seção 12) e pensar o limite real da diplomacia que os jogos representam com
-diplomatas (seção 13). As decisões que sobraram dos dois estudos estão na seção 14.
+contra a teoria (seção 11) e pensar o limite real da diplomacia que os jogos representam com
+diplomatas (seção 12). As decisões que sobraram dos dois estudos estão na seção 13.
 
 1. **Influência em duas partes, dependência sem memória e boa vontade com meia-vida.**
    Recomendação: sim, com meia-vida de 8 anos para a boa vontade. É como a vida real se comporta
@@ -233,7 +233,7 @@ diplomatas (seção 13). As decisões que sobraram dos dois estudos estão na se
    recarregar), CPU de 10 anos contra a `main`, e o teste de neutralidade (sem ato, hash da `main`).
 3. **Tela:** lentes de influência e de blocos, painel de leitura, decisões de bloco em Agendas.
 
-## 12. Conferência com a teoria (pedido do dono na decisão 1)
+## 11. Conferência com a teoria (pedido do dono na decisão 1)
 
 O dono perguntou se é assim que a diplomacia funciona, já que jogos do gênero somam "opinião" e
 "favor devido". O que a literatura diz, e o que muda no desenho:
@@ -278,7 +278,7 @@ O dono perguntou se é assim que a diplomacia funciona, já que jogos do gênero
 dependente quanto um pequeno preso a um só credor. Sem o assunto, emprestar a um país compraria a
 aliança dele. Os dois erros dariam uma diplomacia que não se reconhece.
 
-## 13. Por que não se melhora a relação com todo mundo ao mesmo tempo (pedido do dono na decisão 3)
+## 12. Por que não se melhora a relação com todo mundo ao mesmo tempo (pedido do dono na decisão 3)
 
 Os jogos do gênero limitam a diplomacia com uma contagem de diplomatas. O dono pediu o limite real
 por trás disso. Não há cópia de mecânica aqui: são cinco limites medidos, cada um com o seu custo.
@@ -330,7 +330,7 @@ não custa nada por dentro.
 uma linha do orçamento; as equipes são um contador por país; os outros três limites são termos da
 avaliação que já existe.
 
-## 14. Decisões que sobraram dos dois estudos
+## 13. Decisões que sobraram dos dois estudos
 
 Propostas, aguardando o dono.
 
@@ -353,13 +353,13 @@ Propostas, aguardando o dono.
    tabela por par e uma linha de orçamento.
 5. **Limites de quantidade:** negociações simultâneas pelo tamanho do serviço, com a eficiência
    administrativa (informática) multiplicando; rivalidade e cláusulas exclusivas; diluição da
-   promessa de defesa. Recomendação: sim, os três. Teste: os da seção 13. Custo: um contador por
+   promessa de defesa. Recomendação: sim, os três. Teste: os da seção 12. Custo: um contador por
    país e dois termos da avaliação.
 6. **Custo interno da aproximação** pela postura dos grupos sobre a distância de regime, na
    máquina da ratificação. Recomendação: sim. Teste: a mesma aproximação custa legitimidade numa
    república com grupos contra e não custa numa autocracia alinhada. Custo: um termo na ratificação.
 
-## 11. Fontes
+## 14. Fontes
 
 - Hirschman, A. O. *National Power and the Structure of Foreign Trade*. University of California
   Press, 1945. Dependência comercial assimétrica como poder; o caso alemão nos Bálcãs.
