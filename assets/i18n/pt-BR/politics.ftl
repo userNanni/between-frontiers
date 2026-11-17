@@ -298,6 +298,7 @@ law-effect-state_media = Mídia estatal
 law-effect-conscription = Convocação militar
 law-effect-colonial_tribute = Tributo colonial
 law-effect-colonial_self_rule = Autogoverno colonial
+law-effect-frontier_access = Acesso dos colonos à fronteira
 
 ## Indicadores
 
