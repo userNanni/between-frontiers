@@ -6,7 +6,8 @@ Run from the repository root:
     python3 -I tools/flags/fetch.py            # render assets/flags/<TAG>.png from the pinned revisions
     python3 -I tools/flags/fetch.py --pin      # record the current revision of every file (sha1 column)
 
-Every row of `tools/flags/flags_1925.csv` names a Commons file and the SHA-1 of the revision that
+Every row of `tools/flags/flags_1925.csv` (the scenario) and `tools/flags/flags_new.csv` (the
+countries that may be born later) names a Commons file and the SHA-1 of the revision that
 was reviewed. The script looks that exact revision up in the file history, so a later edit on
 Commons never changes the output silently: a missing revision is an error until someone reviews
 the new one and pins it again. Licences are checked on every run; only public domain, CC0, CC BY
@@ -43,7 +44,7 @@ USER_AGENT = (
 )
 WIDTH, HEIGHT = 192, 128
 ROOT = Path(__file__).resolve().parents[2]
-CSV_PATH = ROOT / "tools" / "flags" / "flags_1925.csv"
+LISTS = ROOT / "tools" / "flags"
 OUT_DIR = ROOT / "assets" / "flags"
 FIELDS = ["tag", "commons_file", "sha1", "render", "description", "note"]
 
@@ -169,16 +170,27 @@ def render(svg_path: Path, png_path: Path, oxipng: str | None) -> None:
         subprocess.run([oxipng, "-q", "-o", "max", "--strip", "all", str(png_path)], check=True)
 
 
+def list_paths() -> list[Path]:
+    """Every list: `flags_1925.csv` (the scenario) first, then the others (`flags_new.csv`, the
+    countries born after 1925, data/borders/candidates.ron) in name order."""
+    paths = sorted(LISTS.glob("flags_*.csv"))
+    return sorted(paths, key=lambda p: p.name != "flags_1925.csv")
+
+
 def read_rows() -> list[dict]:
-    with CSV_PATH.open(newline="", encoding="utf-8") as handle:
-        return list(csv.DictReader(handle))
+    rows = []
+    for path in list_paths():
+        with path.open(newline="", encoding="utf-8") as handle:
+            rows += [{**row, "_list": path} for row in csv.DictReader(handle)]
+    return rows
 
 
 def write_rows(rows: list[dict]) -> None:
-    with CSV_PATH.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=FIELDS, lineterminator="\n")
-        writer.writeheader()
-        writer.writerows(rows)
+    for path in list_paths():
+        with path.open("w", newline="", encoding="utf-8") as handle:
+            writer = csv.DictWriter(handle, fieldnames=FIELDS, lineterminator="\n", extrasaction="ignore")
+            writer.writeheader()
+            writer.writerows(r for r in rows if r["_list"] == path)
 
 
 def md_cell(text: str) -> str:
@@ -189,9 +201,11 @@ def write_attribution(records: list[dict]) -> None:
     lines = [
         "# Flag attribution",
         "",
-        "Flags on 1 January 1925 for the countries of the 1925 scenario, rendered to 192x128 PNG",
-        "from SVG files on Wikimedia Commons by `tools/flags/fetch.py` (list in",
-        "`tools/flags/flags_1925.csv`, which pins the reviewed revision of each file by SHA-1).",
+        "Flags on 1 January 1925 for the countries of the 1925 scenario, and the flags at birth of the",
+        "countries that may be born later (`data/borders/candidates.ron`), rendered to 192x128 PNG",
+        "from SVG files on Wikimedia Commons by `tools/flags/fetch.py` (lists in",
+        "`tools/flags/flags_1925.csv` and `tools/flags/flags_new.csv`, which pin the reviewed",
+        "revision of each file by SHA-1).",
         "Most designs are in the public domain; the drawings below under CC BY or CC BY-SA are used",
         "under those licences, and the rendered PNGs ship under CC BY-SA 4.0 with the rest of the",
         "game art. Rows marked `fit` keep their own proportions; all others are stretched to 3:2.",
@@ -213,7 +227,7 @@ def write_attribution(records: list[dict]) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--pin", action="store_true", help="record the current revision SHA-1 of every file")
-    parser.add_argument("--only", nargs="*", help="process only these tags")
+    parser.add_argument("--only", nargs="*", help="render only these tags (the attribution still covers every list)")
     parser.add_argument("--oxipng", default=shutil.which("oxipng"), help="path to oxipng (optional)")
     parser.add_argument("--keep-svg", type=Path, help="also keep the downloaded SVGs in this directory")
     args = parser.parse_args()
@@ -225,8 +239,6 @@ def main() -> int:
     records, rejected = [], []
     with tempfile.TemporaryDirectory(prefix="bf-flags-") as scratch:
         for row in rows:
-            if args.only and row["tag"] not in args.only:
-                continue
             revisions, meta = file_history(row["commons_file"])
             licence, licence_url = licence_of(meta)
             if not LICENCE_OK.match(licence):
@@ -234,12 +246,15 @@ def main() -> int:
                 continue
             if args.pin:
                 row["sha1"] = revisions[0]["sha1"]
-            wanted = [rev for rev in revisions if rev["sha1"] == row["sha1"]]
+            wanted = [rev for rev in revisions if rev.get("sha1") == row["sha1"]]
             if not wanted:
                 raise SystemExit(
                     f"{row['tag']}: pinned revision {row['sha1'] or '(none)'} of {row['commons_file']} "
                     "is not in the file history; review the current file and run with --pin"
                 )
+            records.append({**row, "licence": licence, "licence_url": licence_url, "author": author_of(meta)})
+            if args.only and row["tag"] not in args.only:
+                continue
             data = http_get(wanted[0]["url"])
             if hashlib.sha1(data).hexdigest() != row["sha1"]:
                 raise SystemExit(f"{row['tag']}: downloaded bytes do not match the pinned SHA-1")
@@ -249,7 +264,6 @@ def main() -> int:
             svg_path = Path(scratch) / f"{row['tag']}.svg"
             svg_path.write_text(frame_svg(data.decode("utf-8-sig"), row["render"]), encoding="utf-8")
             render(svg_path, OUT_DIR / f"{row['tag']}.png", args.oxipng)
-            records.append({**row, "licence": licence, "licence_url": licence_url, "author": author_of(meta)})
             print(f"{row['tag']}: {row['commons_file']} [{licence}]", file=sys.stderr)
             time.sleep(0.2)  # be gentle with the API
 
@@ -258,8 +272,7 @@ def main() -> int:
         return 1
     if args.pin:
         write_rows(rows)
-    if not args.only:
-        write_attribution(records)
+    write_attribution(records)
     return 0
 
 

@@ -38,6 +38,9 @@ pub struct GameData {
     pub laws_1925: Option<LawsInForce>,
     /// Units, combat rules and the 1925 forces (phase 5; not simulated yet).
     pub war: Option<crate::war::War>,
+    /// Countries that may be born after 1925, when `data/borders/candidates.ron` exists (border
+    /// changes; not simulated yet).
+    pub candidates: Option<crate::borders::CandidatesFile>,
 }
 
 fn read<T: serde::de::DeserializeOwned>(path: &Path) -> Result<T, String> {
@@ -113,6 +116,7 @@ impl GameData {
             population: optional(&scenario.join("population.ron"))?,
             industry: optional(&scenario.join("industry.ron"))?,
             diplomacy: optional(&scenario.join("diplomacy.ron"))?,
+            candidates: optional(&data.join("borders/candidates.ron"))?,
         })
     }
 
