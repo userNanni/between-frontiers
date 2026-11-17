@@ -387,6 +387,29 @@ está perto do real), em "Aberto". Os 10 % das compras do Estado em navio de gue
 iguais para todo país e em tempo de paz, são provisórios até as forças de
 `data/scenario/1925/forces.ron` e a guerra ditarem a frota (fase 5).
 
+## Gás
+
+Na `main` em d5570d0 o gás mundial fica em 0,36 do real em 2025 (0,46 em 1985). Medido com
+`BF_DIAG_ENERGY=2020`: o gás sobra (oferta 1,5 contra demanda 0,9 bilhão de mil m³ por ano, preço a
+0,63 da base), porque sai junto do petróleo e quase ninguém o queima fora o aquecimento das casas
+(80 a 87 % nos países ricos). Duas causas, uma por PR:
+
+- **Calor de indústria (este PR).** Forno de cimento, caldeira de papel e alto-forno só tinham
+  método a carvão; a indústria só usava gás como matéria-prima (química, plásticos, fertilizante) e
+  no vidro float. Três métodos da história, ao mesmo calor do carvão que trocam (carvão 7,0 MWh/t,
+  gás 10 MWh por mil m³, os poderes caloríficos do placar), para o mercado escolher pelo preço:
+  forno seco a gás (com o pré-aquecedor de 1960), vapor a gás no papel (com os gasodutos) e
+  redução direta do minério pelo gás, fundido no forno elétrico (tecnologia nova
+  `direct_reduction`, Midrex 1969/1971, sem ganho de produtividade próprio para não mexer nas
+  somas calibradas da árvore). Em 2020 a indústria passa de 17 % para 34 % do gás usado (papel 13 %,
+  cimento 6 %; a redução direta quase não pega) e o consumo mundial sobe cerca de 20 %. A produção
+  quase não muda (2025: 0,36 → 0,38 do real; carvão 0,44 → 0,41), porque a oferta ainda passa da
+  demanda.
+- **Geração elétrica (capital por método, PR próprio).** Em 2020 toda a eletricidade do mundo é
+  nuclear (5 924 níveis, nenhum a carvão, óleo ou gás): o método se escolhia por lucro por nível, e o
+  nível nuclear faz três vezes a eletricidade de um a gás com o mesmo pessoal, sem pagar o capital a
+  mais que custa.
+
 ## Ordem de trabalho do mercado
 
 1. Preço por estado e por mercado nacional: oferta e demanda fecham semanalmente, com preço sensível à escassez.

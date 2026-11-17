@@ -400,7 +400,7 @@
             demonstrated: 1925,
             industrialized: 1931,
             cost: 100,
-            methods: ["gas_field.rotary_drilling"],
+            methods: ["gas_field.rotary_drilling", "paper_mill.gas_heated"],
             productivity: [("extraction", 126), ("energy", 107)],
         ),
         (
@@ -881,7 +881,7 @@
             demonstrated: 1951,
             industrialized: 1960,
             cost: 175,
-            methods: ["cement_plant.dry_kiln"],
+            methods: ["cement_plant.dry_kiln", "cement_plant.dry_kiln_gas"],
             productivity: [("heavy_industry", 58), ("infrastructure", 50)],
         ),
         (
@@ -1148,6 +1148,20 @@
                 "sugar_beet_farm.green_revolution",
             ],
             productivity: [("agriculture", 350)],
+        ),
+        (
+            // Gas-based direct reduction of iron (Midrex plant, Portland, Oregon, 1969; first
+            // commercial plants 1971). Its gain is the method's own: no productivity of its own,
+            // so the calibrated sums per group stay as they are.
+            key: "direct_reduction",
+            field: "materials",
+            era: 3,
+            requires: ["basic_oxygen_steel", "gas_pipelines"],
+            demonstrated: 1969,
+            industrialized: 1971,
+            cost: 420,
+            methods: ["steel_mill.direct_reduction"],
+            productivity: [],
         ),
         (
             key: "drip_irrigation",
