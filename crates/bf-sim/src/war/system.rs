@@ -358,7 +358,7 @@ impl Forces {
             .cat
             .state_basket
             .iter()
-            .filter(|(g, _)| self.cat.goods[*g as usize].category == "military")
+            .filter(|(g, _)| self.cat.military[*g as usize])
             .map(|(_, w)| *w)
             .sum();
         let room = crate::econ::public::goods_budget(m)
@@ -419,7 +419,7 @@ impl Forces {
                     .cat
                     .state_basket
                     .iter()
-                    .filter(|(g, _)| self.cat.goods[*g as usize].category == "military")
+                    .filter(|(g, _)| self.cat.military[*g as usize])
                     .filter(|(g, _)| m.price[*g as usize].is_positive())
                     .copied()
                     .collect();
@@ -578,7 +578,7 @@ pub fn state_purchases<'a>(
     let mut out: Vec<(u16, Fixed)> = Vec::new();
     let mut civil_money = Fixed::ZERO;
     for &(g, w) in basket {
-        if cat.goods[g as usize].category == "military" {
+        if cat.military.get(g as usize).copied().unwrap_or(false) {
             continue;
         }
         let money = budget.mul_ratio(w, 1000);
