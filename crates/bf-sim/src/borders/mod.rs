@@ -10,6 +10,10 @@
 //! Dates are ISO strings, `YYYY-MM-DD`. Names live in `assets/i18n/*/countries.ftl`
 //! (`country-<TAG>`, `.article`, `country-<TAG>-capital`), as for the 1925 countries.
 
+pub mod op;
+
+pub use op::{BorderRules, BordersState, Operation, Terms};
+
 use std::collections::{BTreeMap, BTreeSet};
 
 use serde::{Deserialize, Serialize};
@@ -319,5 +323,64 @@ impl CandidatesFile {
         } else {
             Err(errors)
         }
+    }
+}
+
+/// What a change of owner must neither create nor destroy, summed over the world: the
+/// conservation check of every operation (`docs/borders.pt-BR.md`, "Conservação"). Debt in
+/// foreign currency is in reference units, so a split never depends on an exchange rate.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Totals {
+    pub people: i64,
+    /// Savings of the pops.
+    pub savings: laplace_schelling::Fixed,
+    /// Investment pools of the markets.
+    pub pool: laplace_schelling::Fixed,
+    pub treasury: laplace_schelling::Fixed,
+    /// Public debt by holder: at home, at the central bank, abroad in local currency, and in
+    /// foreign currency (reference units).
+    pub debt: [laplace_schelling::Fixed; 4],
+    /// What savers lent to other states.
+    pub foreign_assets: laplace_schelling::Fixed,
+    /// People in the community rows of the population (`DemographyState::communities`).
+    pub community_people: i64,
+    /// People abroad (the diaspora) and those of them who arrived since the start.
+    pub diaspora: i64,
+    pub arrived: i64,
+    /// Plant levels, and levels under construction.
+    pub levels: i64,
+    pub works: usize,
+}
+
+impl Totals {
+    pub fn of(world: &crate::game::GameWorld) -> Self {
+        let mut t = Self::default();
+        for r in &world.econ.regions {
+            for p in &r.pops {
+                t.people += p.size;
+                t.savings += p.savings;
+            }
+            t.levels += r.plants.iter().map(|p| p.levels).sum::<i64>();
+        }
+        t.community_people = world.demography.communities.iter().map(|r| r.total()).sum();
+        for d in &world.demography.diaspora {
+            t.diaspora += d.people;
+            t.arrived += d.arrived;
+        }
+        for m in &world.econ.markets {
+            let y = &m.money;
+            t.pool += m.pool;
+            t.treasury += m.treasury;
+            for (d, v) in
+                t.debt
+                    .iter_mut()
+                    .zip([y.debt_home, y.debt_bank, y.debt_abroad, y.debt_fx])
+            {
+                *d += v;
+            }
+            t.foreign_assets += y.foreign_assets;
+            t.works += m.queue.len();
+        }
+        t
     }
 }

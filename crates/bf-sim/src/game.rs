@@ -101,6 +101,9 @@ pub struct GameWorld {
     /// Age pyramids, vital rates and migration links; empty without an economy.
     #[serde(default)]
     pub demography: crate::demography::DemographyState,
+    /// Border operations queued and run, and the subjects' overlords once one ran.
+    #[serde(default)]
+    pub borders: crate::borders::BordersState,
 }
 
 /// The world as saves wrote it before the communities were in the population (2026-11-17):
@@ -130,17 +133,9 @@ impl From<WorldBeforeCommunities> for GameWorld {
             research: w.research,
             politics: w.politics,
             demography: w.demography.into(),
+            borders: Default::default(),
         }
     }
-}
-
-/// Decodes a snapshot of this build, or of a build from before the communities.
-fn decode_world(bytes: &[u8]) -> Result<GameWorld, SaveError> {
-    decode_snapshot::<GameWorld>(bytes).or_else(|now| {
-        decode_snapshot::<WorldBeforeCommunities>(bytes)
-            .map(GameWorld::from)
-            .map_err(|_| now)
-    })
 }
 
 impl HashState for GameWorld {
@@ -167,6 +162,11 @@ impl HashState for GameWorld {
             h.section("demography");
             self.demography.hash_state(h);
         }
+        // Worlds where no border operation ever ran keep their hash.
+        if !self.borders.is_empty() {
+            h.section("borders");
+            self.borders.hash_state(h);
+        }
     }
 }
 
@@ -183,6 +183,7 @@ impl GameWorld {
             econ: crate::econ::Economy::default(),
             research: crate::research::ResearchState::default(),
             politics: crate::polity::PoliticsState::default(),
+            borders: crate::borders::BordersState::default(),
             demography: crate::demography::DemographyState::default(),
         }
     }
@@ -238,6 +239,20 @@ pub enum GameCommand {
     /// group. The politics system enacts it on the same day; unknown tags and laws, and colonial
     /// laws for a country without colonies, are no-ops.
     SetLaw { tag: String, law: u16 },
+    /// A border operation (`borders::op`): run at the end of the day by the `borders` system,
+    /// refused there with a reason when it does not apply. Issued by tests, tools and, later,
+    /// treaties and peace; a player only frees its own land ([`GameCommand::Liberate`]).
+    Borders { op: crate::borders::Operation },
+    /// Country `by` frees some of its states as a new country (the catalogue's tag when the
+    /// states are its core, `tag` when given, a generic one otherwise), independent or its subject.
+    /// Who may issue it for `by` is the session's business: the simulation checks only that the
+    /// states are `by`'s and that `by` keeps at least one.
+    Liberate {
+        by: String,
+        states: Vec<String>,
+        tag: Option<String>,
+        subject: bool,
+    },
 }
 
 impl Command<GameWorld> for GameCommand {
@@ -318,6 +333,24 @@ impl Command<GameWorld> for GameCommand {
                     world.politics.request(ci as u16, *law);
                 }
             }
+            GameCommand::Borders { op } => world.borders.pending.push(op.clone()),
+            GameCommand::Liberate {
+                by,
+                states,
+                tag,
+                subject,
+            } => world
+                .borders
+                .pending
+                .push(crate::borders::Operation::Secede {
+                    from: by.clone(),
+                    states: states.clone(),
+                    tag: tag.clone().unwrap_or_default(),
+                    overlord: subject.then(|| by.clone()),
+                    // Freeing one's own land: the old owner signs the creation.
+                    signatories: vec![by.clone()],
+                    terms: Default::default(),
+                }),
             GameCommand::SetPublicPriority { tag, weights } => {
                 let Some(ci) = world.countries.iter().position(|(_, c)| c.tag == *tag) else {
                     return;
@@ -394,6 +427,9 @@ pub struct Rules {
     pub politics: Option<Arc<crate::politics::Politics>>,
     /// The community catalogue; without it the population carries no communities.
     pub communities: Option<Arc<crate::demography::communities::CommunityTable>>,
+    /// Map, catalogue of countries and scenario the border operations read; without them border
+    /// commands wait in the queue.
+    pub borders: Option<Arc<crate::borders::BorderRules>>,
 }
 
 pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
@@ -404,6 +440,7 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
         tree,
         politics,
         communities,
+        borders,
     }) = rules
     {
         if let Some(p) = &politics {
@@ -434,6 +471,10 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
             });
         }
         s.add(crate::econ::yearly::Yearly { cat, tree });
+        // Last in the day: an operation sees the day's results and the next day sees its own.
+        if let Some(rules) = borders {
+            s.add(crate::borders::op::Borders { rules });
+        }
     }
     s
 }
@@ -471,6 +512,29 @@ impl std::fmt::Display for LoadError {
 }
 
 impl std::error::Error for LoadError {}
+
+/// Decodes a world snapshot of this build or of an older one. Postcard is not self-describing, so
+/// a field added at the end of the world does not read as its default:
+/// - a snapshot from before the border state (`borders`, a list of empty lists) ends early: it is
+///   read with the missing tail as empty lists, one zero byte each;
+/// - a snapshot from before the communities in the population has another demography: it is
+///   read in that layout ([`WorldBeforeCommunities`]), which also predates the borders.
+pub fn decode_world(bytes: &[u8]) -> Result<GameWorld, SaveError> {
+    let first = decode_snapshot::<GameWorld>(bytes);
+    if first.is_ok() {
+        return first;
+    }
+    let mut padded = bytes.to_vec();
+    for k in 1..=8 {
+        padded.resize(bytes.len() + k, 0);
+        if let Ok(w) = decode_snapshot::<GameWorld>(&padded) {
+            return Ok(w);
+        }
+    }
+    decode_snapshot::<WorldBeforeCommunities>(bytes)
+        .map(GameWorld::from)
+        .or(first)
+}
 
 impl Session {
     pub fn new(
@@ -540,7 +604,7 @@ impl Session {
     pub fn load(bytes: &[u8], threads: usize, rules: Option<Rules>) -> Result<Self, LoadError> {
         let file: SaveFile<GameCommand> =
             SaveFile::decode(bytes, GAME_ID).map_err(LoadError::Save)?;
-        let world: GameWorld = decode_world(&file.snapshot).map_err(LoadError::Save)?;
+        let world = decode_world(&file.snapshot).map_err(LoadError::Save)?;
         let actual = hash_of(&world);
         if actual != file.header.state_hash {
             return Err(LoadError::HashMismatch {

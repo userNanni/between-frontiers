@@ -373,3 +373,46 @@ Para o thread de interface, sem tela nova aqui:
   para o diário e para a lente "fronteiras" (mapa de 1925 contra o de agora);
 - o movimento de independência por unidade colonial (parte C): apoio, pressão, a condição mais
   fraca, e o limite que dispara a secessão.
+
+## 8. Implementação (parte B)
+
+Código em `crates/bf-sim/src/borders/op.rs`; testes em `crates/bf-sim/tests/borders_ops.rs` e
+`borders_conservation.rs`.
+
+- **Comandos.** `GameCommand::Borders { op }` enfileira qualquer operação (testes, ferramentas e,
+  depois, tratados e paz). `GameCommand::Liberate { by, states, tag, subject }` é o do jogador:
+  `by` liberta estados seus como país independente ou súdito seu. Quem pode emitir o comando por
+  `by` é assunto da sessão (decisão 4); a simulação confere só que os estados são de `by` e que
+  `by` fica com pelo menos um.
+- **Sistema `borders`**, diário e último do dia. Sem pedido pendente, não faz nada. Com pedido, a
+  operação é conferida inteira antes de qualquer mudança; recusada, entra em
+  `GameWorld::borders.refused` com o motivo e nada muda.
+- **Operações:** `Transfer`, `Secede` (com `overlord` opcional), `Annex`, `Status` e `Terms` (só
+  os termos, para um acordo sem território). Cada uma aceita `Terms { debt, techniques }`.
+- **Etiqueta do país libertado** sem etiqueta dada: a do catálogo cujo núcleo tem mais da metade
+  da população dos estados; senão `X00`, `X01`… (`op::tag_for`).
+- **Leis do país novo:** as do antigo dono sem as coloniais; o modelo do catálogo
+  (`Candidate::laws`) fica para quando o catálogo tiver modelos. Quem recebe a primeira colônia
+  ganha as leis coloniais de quem a cedeu.
+- **Pesos:** **w** é a renda da semana dos pops dos estados que saem sobre a do país; **p**, a
+  população.
+- **Demografia:** a diáspora reparte como na seção 1. Quem estava no exterior e passou a morar no
+  próprio país (origem e destino viraram o mesmo território) volta para casa e é contado em
+  `ChangeRecord::repatriated`. As ondas abertas dos territórios mudados terminam com
+  `WaveEnd::Border`, e os fatos dos territórios são recalculados.
+- **Súditos:** `BorderRules::overlord_of(world, país)` lê o suserano. Até a primeira operação ele
+  vem do cenário; depois, de `GameWorld::borders.subjects`. A operação `Status` só registra a
+  mudança. Quem decide quando o súdito sai é a regra dos tratados, por negociação cláusula a
+  cláusula ou por denúncia, que só vale quando a pressão de saída passa o controle do suserano
+  (decisão do dono de 2026-11-17).
+- **Reconhecimento** (decisão do dono de 2026-11-17): o país novo nasce reconhecido só por quem
+  assinou a criação dele. `Secede` leva a lista `signatories`, e ao libertar o próprio território
+  o antigo dono é o signatário. Os pares que não se reconhecem ficam com os tratados.
+- **Hash:** o estado de fronteiras só entra no hash depois da primeira operação ou recusa. Teste:
+  meio ano com e sem o sistema dá o mesmo hash.
+- **Conservação** (`borders::Totals`): pessoas, poupança, fundo, Tesouro, as quatro dívidas de
+  mercado, créditos no exterior, diáspora (mais os repatriados), níveis de planta e obras na fila.
+  Igualdade exata antes e depois de cada operação nos testes.
+- **Save antigo:** o postcard não aceita campo faltando no fim; `game::decode_world` completa com estado vazio o snapshot escrito antes do campo `borders` (teste).
+- **Determinismo:** campanha com libertação, anexação e independência dá o mesmo hash com 1 e 2
+  threads e com save e load no meio.

@@ -48,6 +48,8 @@ pub struct GameData {
     pub clauses: Option<crate::treaty::ClauseCatalogue>,
     /// Debts between governments on the start date, when `war_debts.ron` exists.
     pub war_debts: Option<crate::treaty::WarDebtsFile>,
+    /// What the border operations read (map, communities, catalogue, the 1925 subjects).
+    pub border_rules: Arc<crate::borders::BorderRules>,
 }
 
 fn read<T: serde::de::DeserializeOwned>(path: &Path) -> Result<T, String> {
@@ -108,10 +110,27 @@ impl GameData {
             _ => None,
         };
         let war = crate::war::load(&data, &catalogue, tree.as_deref(), &countries)?;
+        let candidates: Option<crate::borders::CandidatesFile> =
+            optional(&data.join("borders/candidates.ron"))?;
+        let politics = politics.map(Arc::new);
+        let border_rules = Arc::new(crate::borders::BorderRules::new(
+            Arc::new(map.clone()),
+            communities.clone().map(Arc::new),
+            candidates
+                .clone()
+                .unwrap_or(crate::borders::CandidatesFile {
+                    countries: Vec::new(),
+                }),
+            &countries,
+            tree.clone(),
+            politics.as_deref(),
+            laplace_schelling::Date::new(1925, 1, 1),
+        ));
         Ok(Self {
+            border_rules,
             war,
             tree,
-            politics: politics.map(Arc::new),
+            politics,
             laws_1925,
             catalogue: Arc::new(catalogue),
             countries,
@@ -126,7 +145,7 @@ impl GameData {
             population: optional(&scenario.join("population.ron"))?,
             industry: optional(&scenario.join("industry.ron"))?,
             diplomacy: optional(&scenario.join("diplomacy.ron"))?,
-            candidates: optional(&data.join("borders/candidates.ron"))?,
+            candidates,
             clauses: optional(&data.join("diplomacy/clauses.ron"))?,
             war_debts: optional(&scenario.join("war_debts.ron"))?,
         })
@@ -139,6 +158,7 @@ impl GameData {
             tree: self.tree.clone(),
             politics: self.politics.clone(),
             communities: self.community_table.clone(),
+            borders: Some(Arc::clone(&self.border_rules)),
         }
     }
 
