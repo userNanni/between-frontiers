@@ -521,3 +521,119 @@ No bench (`--borders-history`), três linhas da referência viram outras operaç
 
 Com isso, as 260 linhas aplicam sem recusa. O teste `the_whole_reference_applies_and_conserves`
 aplica a referência inteira sobre o mundo de 1925, sem simular, e confere as somas a cada linha.
+
+## 11. Parte C: independência por movimento (desenho)
+
+O primeiro gatilho de mudança de fronteira com causa medida (seção 2, "De onde vem a mudança"):
+o movimento `independence` da política (fase 3) passa de um limiar numa colônia, a metrópole cede
+ou recusa, e a operação de fronteira acontece, por acordo ou por revolta. Hoje o movimento cresce e
+nunca vence (`politics.pt-BR.md`, "pedem fronteira e guerra"); esta parte fecha essa ponta.
+
+### Como é na vida real, e se a diferença importa
+
+- **A pressão cresce por décadas, não num dia.** O Congresso Nacional Indiano nasce em 1885 e a
+  independência vem em 1947; na Costa do Ouro, o movimento de massa de Nkrumah vai de 1949 a 1957.
+  O jogo já tem isso: o apoio do movimento sobe `growth × pressão` por ano e cai pela meia-vida de
+  60 anos sem causa (`data/politics/movements.ron`). **Importa:** o limiar tem de ler o estoque
+  acumulado (a mobilização), não a pressão do mês.
+- **A metrópole concede aos poucos antes de soltar.** O Reino Unido deu à Índia as leis de 1919 e
+  1935 (conselhos eleitos, autonomia nas províncias) antes da partilha; a França passou da União
+  Francesa (1946) à lei-quadro de 1956 (sufrágio universal e conselhos nos territórios), à
+  Comunidade de 1958 e às independências de 1960. Os domínios brancos passaram por governo
+  responsável e domínio antes do Estatuto de Westminster (1931). **Importa, e o jogo já tem a
+  peça:** a lei `trusteeship` do grupo `colonial_rule` dá `colonial_self_rule` 500, acima do teto
+  400 da causa do movimento; conceder a lei tira a causa, e o apoio só decai devagar. A concessão
+  ganha tempo, não apaga o movimento. O degrau intermediário de fronteira é o **súdito** (domínio,
+  protetorado, Estado associado): a operação `Secede` com suserano.
+- **Guerra quando a metrópole recusa.** Indochina (1946–1954), Indonésia (1945–1949), Argélia
+  (1954–1962), as colônias portuguesas (1961–1974). Recusar adia e encarece; quase nunca impede
+  por muito tempo depois de 1945, e o custo da guerra colonial cai sobre a metrópole (em Portugal,
+  derrubou o regime em 1974). **Importa:** sem a guerra (fase 5), a revolta não pode ser uma
+  batalha; ela é o fim medido da recusa (decisão I3).
+- **Não é coorte, é onda com causa.** As independências se concentram de 1945 a 1975 porque a
+  causa se acumula (alfabetização de uma elite, discriminação, exclusão do governo) e porque as
+  metrópoles saem enfraquecidas da guerra. O teste pergunta se a onda aparece sem data forçada.
+
+### A unidade que se separa
+
+Hoje o movimento é um só por país, sobre todas as suas colônias juntas (`Among::Colonies`). Para
+separar território, o jogo precisa saber **qual** colônia: a unidade é o **candidato** de
+`data/borders/candidates.ron` cujo núcleo são regiões coloniais de um só dono (a Nigéria dentro do
+Império Britânico), mais o país súdito, que já é país (o Raj, o Iraque).
+
+- **Decisão I1 (onde mora o movimento).** Recomendação: o movimento de independência passa a ser
+  medido **por unidade**, com a mesma causa medida na gente da unidade (alfabetização,
+  discriminação, governo próprio). Um estado novo por unidade colonial: apoio, pressão e condição
+  mais fraca, no `GameWorld` (degrau de versão do save). O movimento por país continua sendo a
+  soma, para a legitimidade da metrópole. Alternativa: manter um movimento por país e, no limiar,
+  separar a unidade de maior mobilização; mais barato, mas a Índia e a Gâmbia sobem juntas.
+- **Fora de candidato:** regiões coloniais sem candidato que as contenha seguem a regra da seção 3
+  (país genérico), agrupadas pelo estado.
+
+### O que acontece no limiar
+
+Duas marcas na **mobilização** da unidade (apoio × recrutas ÷ população), lidas no mês:
+
+| Marca | O que abre |
+|---|---|
+| **Exigência** (`demand`) | a metrópole responde: concede governo próprio (a lei `trusteeship`), solta como súdito (domínio ou Estado associado), solta independente por acordo, ou recusa |
+| **Revolta** (`revolt`), acima da exigência | se a metrópole recusou e a mobilização continuou subindo: a unidade se separa sem acordo |
+
+- **Quem responde.** A IA da metrópole (até a fase 6, por regra medida, decisão I4); o jogador
+  recebe uma decisão rara em Agendas, com as quatro saídas, o preço de cada uma à vista e ponto de
+  restauração antes, como "Libertar território".
+- **Por acordo** (cede): um tratado de independência com cláusulas, pela ponte do
+  `treaty_exec`: `ReleaseCountry` (com o feixe de súdito, quando sai como domínio), reconhecimento
+  pela metrópole, e as cláusulas que a mesa puser: `ColonialPlants` (C6b), `Debt` (a dívida da
+  independência, decisão 1), base militar. Sem cláusula de fábricas, vale C6a.
+- **Por revolta** (recusa): `Secede` sem acordo e sem reconhecimento da metrópole. As fábricas
+  seguem C6c (camada sem garantia, estatização na hora se o país nasce com capital fechado); a
+  terra, C6d. A metrópole ganha a causa e a perda de legitimidade do movimento sem resposta.
+  Quando a guerra existir (fase 5), a revolta vira guerra colonial, e o resultado da paz decide.
+- **Depois do súdito.** O domínio pode romper pela mesma regra, com o movimento medido nas suas
+  leis (o súdito já é país), por uma operação `Status` com suserano vazio.
+
+### O que lê e o que chama
+
+| Lê | De quem |
+|---|---|
+| apoio e pressão do movimento `independence` por unidade | política (I1 muda o estado) |
+| população e profissões das regiões da unidade | demografia |
+| leis coloniais do dono e a resposta | política |
+| candidatos | `candidates.ron` (seção 3) |
+
+| Chama | Onde |
+|---|---|
+| `Operation::Secede` (com ou sem suserano), `Operation::Status` | fronteiras (parte B) |
+| tratado de independência e reconhecimento | `treaty_exec::settle` e `queue` (tratados) |
+| camada das fábricas na independência | `foreign_stakes` (C6a a C6c) |
+| a lei `trusteeship` como concessão | comando de lei da política |
+
+### Como se testa
+
+- **Rodada de 100 anos com a história desligada** (`--borders-history` fora): quantas
+  independências acontecem, por década, por acordo e por revolta, e quais. Nenhuma data forçada:
+  o placar compara a onda com a referência de `data/history/borders.ron` (1945–1975) como
+  dependência anotada, nunca como meta. Se a onda não vier, a pergunta é qual condição da causa
+  segurou, que o movimento já nomeia (`weakest`).
+- Uma unidade com a causa forçada passa a exigência e a metrópole responde no mês; com a recusa
+  e a mobilização acima da revolta, a unidade se separa; conceder `trusteeship` tira a causa e o
+  apoio passa a cair.
+- Conservação (população, dinheiro, dívida, plantas) antes e depois de cada separação, como na
+  parte B; determinismo de 100 anos com troca de threads; save antigo carregando; CPU de 10 anos.
+
+**Quanto custa:** um teste mensal por unidade colonial (cerca de cem), e uma operação de fronteira
+por independência.
+
+### Decisões para o dono
+
+| Código | Pergunta | Recomendação | Alternativa |
+|---|---|---|---|
+| I1 | Onde mora o movimento | por unidade colonial (candidato), somado no país | um por país; separa a unidade mais mobilizada |
+| I2 | As marcas | exigência e revolta na mobilização da unidade, valores de desenho no `data/borders/rules.ron`, a equilibrar depois da fase 6 | só uma marca (revolta) e nenhuma negociação |
+| I3 | Revolta antes da guerra | a revolta separa a unidade sem acordo quando a recusa continua, até a fase 5 trazer a guerra colonial | revolta dormente até a fase 5; até lá, só independência por acordo |
+| I4 | Como a IA da metrópole responde | por conta medida: o custo de segurar (legitimidade perdida pelo movimento sem resposta, a fração do orçamento em repressão) contra o valor da colônia (receita colonial, fábricas, colonos); concede o degrau mais barato que tira a causa | sempre concede na exigência (onda limpa, sem guerra) |
+| I5 | O degrau do domínio | soltar como súdito é uma das saídas, com o feixe `dominion` ou `associated` | só independência plena |
+
+As fábricas (C6a a C6e), a dívida (decisão 1) e o reconhecimento já estão decididos; esta parte só
+os chama.
