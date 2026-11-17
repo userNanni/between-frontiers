@@ -19,10 +19,10 @@ cada uma está em [`architecture.pt-BR.md`, "Fases"](../architecture.pt-BR.md#fa
 
 | Frente | No jogo | Em rascunho ou desenhado |
 |---|---|---|
-| Fronteiras | operações no tick: transferir, separar, anexar, dissolver (#95, #102); trocar de país e libertar território no cliente (#96, #108) | fábricas da colônia na independência: em estudo |
+| Fronteiras | operações no tick: transferir, separar, anexar, dissolver (#95, #102); trocar de país e libertar território no cliente (#96, #108) | fábricas da metrópole na independência: decididas, desenhadas |
 | Tratados | tratados como cláusulas, os de 1925 convertidos (#92, #93); livro de dívidas no passo semanal (#101); cláusula vira operação de fronteira (#104) | proposta e avaliação no tick (etapa 4 dos tratados); cláusula de promessa: desenhada |
 | Influência e blocos | desenho decidido (#103); contrato fora do tick (#105) | influência no tick (#110) e serviço exterior (#112), rascunhos |
-| Capital entre países | contrato fora do tick (#70); capital por método (#111) | capital entre países no tick (#109), rascunho |
+| Capital entre países | contrato fora do tick (#70); camadas no save (#109); capital por método (#111) | fluxo mensal e remessa (#117), rascunho; fábricas da metrópole na independência decididas (estudo no #118) |
 | Comércio com parceiro | — | rascunho (#113) |
 
 ## Interface e saves
