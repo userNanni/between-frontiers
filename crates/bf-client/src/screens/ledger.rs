@@ -99,9 +99,10 @@ fn tables(ui: &mut Ui, cx: &mut TabContext<'_>, v: &LedgerView) {
         if lines.is_empty() {
             bf_ui_kit::muted(ui, &cx.i18n.tr("ledger-nothing"));
         } else {
-            header(ui, cx.i18n);
+            let w = widths(ui, cx.i18n);
+            header(ui, cx.i18n, &w);
             for l in &lines {
-                row(ui, cx, l);
+                row(ui, cx, l, &w);
             }
             totals(ui, cx.i18n, &lines);
         }
@@ -109,41 +110,86 @@ fn tables(ui: &mut Ui, cx: &mut TabContext<'_>, v: &LedgerView) {
     }
 }
 
-/// Columns: country, balance, annuity, years left, standing.
-fn columns(r: Rect) -> [Rect; 5] {
-    let w = r.width();
-    let x = |f: f32| r.left() + w * f;
-    let col = |a: f32, b: f32| {
-        Rect::from_min_max(
-            egui::pos2(x(a) + 2.0, r.top()),
-            egui::pos2(x(b) - 4.0, r.bottom()),
-        )
-    };
-    [
-        col(0.0, 0.32),
-        col(0.32, 0.52),
-        col(0.52, 0.70),
-        col(0.70, 0.78),
-        col(0.78, 1.0),
-    ]
+/// Widths of the number columns, reserved by the longest text they can hold in this language
+/// (a twelve-digit sum, three-digit years, the headers): a number is never cut.
+struct Widths {
+    money: f32,
+    years: f32,
 }
 
-fn header(ui: &mut Ui, i18n: &I18n) {
+const DOT: f32 = 14.0;
+const GAP: f32 = 10.0;
+
+fn widths(ui: &Ui, i18n: &I18n) -> Widths {
+    let w = |t: String, size: f32| {
+        ui.painter()
+            .layout_no_wrap(t, sans(size), color::TEXT)
+            .size()
+            .x
+    };
+    let money = [999_999_999_999.0, 99_999_999_999.0, 999_999_999.0]
+        .into_iter()
+        .map(|x| w(money_short(i18n, x), size::SMALL))
+        .chain(
+            ["ledger-col-balance", "ledger-col-annuity"]
+                .into_iter()
+                .map(|k| w(i18n.tr(k), size::CAPTION)),
+        )
+        .fold(0.0, f32::max);
+    let years = w("999".into(), size::SMALL).max(w(i18n.tr("ledger-col-years"), size::CAPTION));
+    Widths {
+        money: money.ceil() + 2.0,
+        years: years.ceil() + 2.0,
+    }
+}
+
+/// Columns, from the right: standing (a dot), years, annuity, balance; the country takes the
+/// rest and is the only text that may be cut.
+fn columns(r: Rect, w: &Widths) -> [Rect; 5] {
+    let mut right = r.right();
+    let mut take = |width: f32| {
+        let c = Rect::from_min_max(
+            egui::pos2(right - width, r.top()),
+            egui::pos2(right, r.bottom()),
+        );
+        right -= width + GAP;
+        c
+    };
+    let dot = take(DOT);
+    let years = take(w.years);
+    let annuity = take(w.money);
+    let balance = take(w.money);
+    let country = Rect::from_min_max(r.min, egui::pos2(right.max(r.left() + 40.0), r.bottom()));
+    [country, balance, annuity, years, dot]
+}
+
+/// A number, whole: never cut, right-aligned in its reserved column.
+fn number(ui: &mut Ui, rect: Rect, text: RichText) {
+    ui.scope_builder(
+        egui::UiBuilder::new()
+            .max_rect(rect)
+            .layout(egui::Layout::right_to_left(egui::Align::Center)),
+        |ui| {
+            ui.add(egui::Label::new(text).extend());
+        },
+    );
+}
+
+fn header(ui: &mut Ui, i18n: &I18n, w: &Widths) {
     let (r, _) = ui.allocate_exact_size(vec2(ui.available_width(), 20.0), Sense::hover());
     let faint = |k: &str| {
         RichText::new(i18n.tr(k))
             .font(sans(size::CAPTION))
             .color(color::TEXT_FAINT)
     };
-    let c = columns(r.shrink2(vec2(space::SM, 0.0)));
+    let c = columns(r.shrink2(vec2(space::SM, 0.0)), w);
     cell(ui, c[0], faint("ledger-col-country"), false);
-    cell(ui, c[1], faint("ledger-col-balance"), true);
-    cell(ui, c[2], faint("ledger-col-annuity"), true);
-    cell(ui, c[3], faint("ledger-col-years"), true);
-    cell(ui, c[4], faint("ledger-col-standing"), false);
+    number(ui, c[1], faint("ledger-col-balance"));
+    number(ui, c[2], faint("ledger-col-annuity"));
+    number(ui, c[3], faint("ledger-col-years"));
 }
 
-fn row(ui: &mut Ui, cx: &mut TabContext<'_>, l: &Line) {
+fn row(ui: &mut Ui, cx: &mut TabContext<'_>, l: &Line, w: &Widths) {
     let i18n = cx.i18n;
     let selected = cx.ledger.selected == Some(l.id);
     let (r, resp) = ui.allocate_exact_size(vec2(ui.available_width(), ROW), Sense::click());
@@ -161,20 +207,21 @@ fn row(ui: &mut Ui, cx: &mut TabContext<'_>, l: &Line) {
         );
     }
     let text = |s: String| RichText::new(s).font(sans(size::SMALL)).color(color::TEXT);
-    let c = columns(r.shrink2(vec2(space::SM, 0.0)));
+    let c = columns(r.shrink2(vec2(space::SM, 0.0)), w);
     cell(ui, c[0], text(name), false);
-    // The table's sums short, never cut; the detail has them whole.
-    cell(ui, c[1], text(money_short(i18n, l.principal)), true);
-    cell(ui, c[2], text(money_short(i18n, l.annuity)), true);
-    cell(ui, c[3], text(l.years_left.to_string()), true);
-    cell(
-        ui,
+    // The table's sums short ("US$ 673 mi"), whole; the detail has them in full.
+    number(ui, c[1], text(money_short(i18n, l.principal)));
+    number(ui, c[2], text(money_short(i18n, l.annuity)));
+    number(ui, c[3], text(l.years_left.to_string()));
+    // The standing as a coloured dot; its name on hover and in the detail.
+    let dot = ui.interact(
         c[4],
-        RichText::new(i18n.tr(l.standing.key()))
-            .font(sans(size::SMALL))
-            .color(standing_color(l.standing)),
-        false,
+        ui.make_persistent_id(("ledger-dot", l.id)),
+        Sense::hover(),
     );
+    ui.painter()
+        .circle_filled(c[4].center(), 4.5, standing_color(l.standing));
+    dot.on_hover_text(i18n.tr(l.standing.key()));
     let typed = keys::item(
         ui,
         'Z',

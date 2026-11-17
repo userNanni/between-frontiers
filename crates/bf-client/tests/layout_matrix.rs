@@ -703,16 +703,28 @@ fn the_debts_tab_holds_many_and_long() {
         h.key_press(egui::Key::G);
         steps(&mut h);
         click(&mut h, t.tabs[2]);
+        let mut sizes = Vec::new();
         for (w, hh) in [
             (960.0, 540.0),
             (1280.0, 720.0),
             (1600.0, 900.0),
             (3840.0, 2160.0),
         ] {
-            h.set_size(egui::vec2(w, hh));
+            for scale in [100u32, 125, 150] {
+                let ppp = bf_client::ui_scale::pixels_per_point(
+                    bf_client::ui_scale::Choice::Fixed(scale),
+                    (w, hh),
+                    1.0,
+                );
+                sizes.push((w, hh, scale, w / ppp, hh / ppp));
+            }
+        }
+        for (w, hh, scale, lw, lh) in sizes {
+            h.set_size(egui::vec2(lw, lh));
             steps(&mut h);
-            let case = format!("{locale} {w}×{hh} debts");
+            let case = format!("{locale} {w}×{hh} at {scale} % ({lw}×{lh}) debts");
             failures.extend(check(&h, &case));
+            failures.extend(no_overlapping_text(&h, &case));
             if h.query_all(egui_kittest::kittest::by().label_contains("Serbs"))
                 .next()
                 .is_none()
@@ -731,4 +743,56 @@ fn the_debts_tab_holds_many_and_long() {
         failures.len(),
         failures.join("\n")
     );
+}
+
+/// Texts side by side never run into each other: a number that does not fit would. (A cut text
+/// keeps its whole label for screen readers, so the check is on where the texts lie.)
+fn no_overlapping_text(h: &Harness<'_, App>, case: &str) -> Vec<String> {
+    let labels: Vec<Node> = nodes(h)
+        .into_iter()
+        .filter(|n| n.role == egui::accesskit::Role::Label && !n.label.is_empty())
+        .collect();
+    let mut out = Vec::new();
+    // A sum or a count shown narrower than it is wide was cut.
+    let numeric = |t: &str| {
+        t.chars().any(|c| c.is_ascii_digit())
+            && (t.starts_with("US$") || t.starts_with('$') || t.chars().all(|c| c.is_ascii_digit()))
+    };
+    if std::env::var_os("BF_DEBUG_LABELS").is_some() {
+        for n in nodes(h).iter().filter(|n| n.label.chars().any(|c| c.is_ascii_digit())) {
+            eprintln!("{case}: {:?} {:?} {:?}", n.role, n.label, n.rect);
+        }
+    }
+    for n in labels.iter().filter(|n| numeric(&n.label)) {
+        let wide = h.ctx.fonts_mut(|f| {
+            f.layout_no_wrap(
+                n.label.clone(),
+                bf_ui_kit::theme::sans(bf_ui_kit::tokens::size::SMALL),
+                egui::Color32::WHITE,
+            )
+            .size()
+            .x
+        });
+        if n.rect.width() + 1.0 < wide {
+            out.push(format!(
+                "{case}: {:?} cut to {:.0} of {:.0} px",
+                n.label,
+                n.rect.width(),
+                wide
+            ));
+        }
+    }
+    for (i, a) in labels.iter().enumerate() {
+        for b in &labels[i + 1..] {
+            let both = a.rect.intersect(b.rect);
+            let same_row = both.height() > a.rect.height().min(b.rect.height()) * 0.5;
+            if same_row && both.width() > 1.0 {
+                out.push(format!(
+                    "{case}: {:?} {:?} runs into {:?} {:?}",
+                    a.label, a.rect, b.label, b.rect
+                ));
+            }
+        }
+    }
+    out
 }
