@@ -56,6 +56,9 @@ struct Wired {
     tariff: usize,
     frontier: usize,
     foreign_investment: usize,
+    tribute: usize,
+    discrimination: usize,
+    church: usize,
     franchise: usize,
     repression: usize,
 }
@@ -77,6 +80,9 @@ impl Wired {
             tariff: e("tariff"),
             frontier: e("frontier_access"),
             foreign_investment: e("foreign_investment"),
+            tribute: e("colonial_tribute"),
+            discrimination: e("discrimination"),
+            church: e("church_privilege"),
             franchise: e("franchise"),
             repression: e("repression"),
         }
@@ -219,6 +225,13 @@ impl PoliticsSystem {
             }
             if let Some(v) = fx(w.foreign_investment) {
                 e.foreign_investment = v.max(Fixed::ZERO);
+            }
+            if let Some(v) = share(w.church) {
+                e.church_privilege = v;
+            }
+            if scope == Scope::Colonies {
+                e.colonial_tribute = share(w.tribute).unwrap_or(Fixed::ZERO);
+                e.discrimination = share(w.discrimination).unwrap_or(Fixed::ZERO);
             }
             e
         })

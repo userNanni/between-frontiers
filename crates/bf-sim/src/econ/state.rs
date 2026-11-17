@@ -200,6 +200,17 @@ pub struct LawEffects {
     /// closed); one without politics.
     #[serde(default = "one")]
     pub foreign_investment: Fixed,
+    /// Colonies only: share of colonial revenue sent to the metropole (`colonial_tribute`) and
+    /// share of what the colonial state spends on schools and hospitals that serves the
+    /// colonizers instead of the natives (`discrimination` of the colonial rule).
+    #[serde(default)]
+    pub colonial_tribute: Fixed,
+    #[serde(default)]
+    pub discrimination: Fixed,
+    /// Public money and legal room of the established religion, 0–1 (`church_privilege`;
+    /// negative values count as zero): how far religious schools grow outside the Treasury.
+    #[serde(default)]
+    pub church_privilege: Fixed,
 }
 
 impl Default for LawEffects {
@@ -216,6 +227,9 @@ impl Default for LawEffects {
             tariff: Fixed::ZERO,
             frontier_access: Fixed::ONE,
             foreign_investment: Fixed::ONE,
+            colonial_tribute: Fixed::ZERO,
+            discrimination: Fixed::ZERO,
+            church_privilege: Fixed::ZERO,
         }
     }
 }
@@ -247,6 +261,9 @@ impl HashState for LawEffects {
         self.tariff.hash_state(h);
         self.frontier_access.hash_state(h);
         self.foreign_investment.hash_state(h);
+        self.colonial_tribute.hash_state(h);
+        self.discrimination.hash_state(h);
+        self.church_privilege.hash_state(h);
     }
 }
 

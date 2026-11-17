@@ -336,12 +336,24 @@ fn market_works(
     if total == 0 {
         return Vec::new();
     }
+    let colonial = colonial_purse(econ, m, regions);
     let mut out = Vec::new();
     for c in 0..PUBLIC_CATEGORIES {
         if weights[c] == 0 {
             continue;
         }
         let mut money = budget.mul_ratio(weights[c], total);
+        // Schools and hospitals in the colonies come out of the colony's own revenue, less
+        // what the colonial law sends home and what serves the colonizers; the metropole's
+        // revenue stays at home (`docs/state.pt-BR.md`, "Orçamento colonial").
+        let services = c == EDUCATION || c == HEALTH;
+        let mut colony_money = if services {
+            let m_col = money * colonial.share;
+            money -= m_col;
+            m_col * colonial.natives
+        } else {
+            Fixed::ZERO
+        };
         let list = &mut cands[c];
         // Infrastructure: a few levels where the score is highest; services: fill the largest
         // gaps first, one level at a time.
@@ -370,10 +382,28 @@ fn market_works(
             let tfp = super::plant_tfp(r, &econ.markets[r.market as usize], &cat.buildings[kind]);
             let points = level_points(cat, kind, cg, tfp);
             let cost = points * price;
-            if points <= Fixed::ZERO || cost > money {
+            let purse = if services && r.colony {
+                &mut colony_money
+            } else {
+                &mut money
+            };
+            if points <= Fixed::ZERO {
                 break;
             }
-            money -= cost;
+            if cost > *purse {
+                if !services {
+                    break;
+                }
+                // This purse is spent: its regions wait, the other purse goes on.
+                let colony = r.colony;
+                for x in list.iter_mut() {
+                    if econ.regions[x.1].colony == colony {
+                        x.0 = Fixed::ZERO;
+                    }
+                }
+                continue;
+            }
+            *purse -= cost;
             out.push(Project {
                 region: ri as u32,
                 kind: kind as u16,
@@ -391,6 +421,45 @@ fn market_works(
         }
     }
     out
+}
+
+/// How a country's public works money divides between metropole and colonies.
+pub struct ColonialPurse {
+    /// Colonies' share of the income tax base (incomes × class rates × collection).
+    pub share: Fixed,
+    /// Of the colonies' part, the share left for the natives' schools and hospitals: what the
+    /// colonial law neither sends home (`colonial_tribute`) nor spends on the colonizers
+    /// (`discrimination`).
+    pub natives: Fixed,
+}
+
+/// The colonial purse of market `m` over its `regions`. Zero share without colonies.
+pub fn colonial_purse(econ: &Economy, m: &Market, regions: &[usize]) -> ColonialPurse {
+    let (mut all, mut col) = (Fixed::ZERO, Fixed::ZERO);
+    for &ri in regions {
+        let r = &econ.regions[ri];
+        let collection = m.laws.of(r).tax_collection;
+        let base: Fixed = r
+            .pops
+            .iter()
+            .enumerate()
+            .map(|(p, pop)| pop.income * m.budget.tax_rates[CLASS_OF[p]])
+            .sum::<Fixed>()
+            * collection;
+        all += base;
+        if r.colony {
+            col += base;
+        }
+    }
+    let share = if all > Fixed::ZERO {
+        fill(col, all)
+    } else {
+        Fixed::ZERO
+    };
+    let law = &m.laws.effects[1];
+    let natives = ((Fixed::ONE - law.colonial_tribute) * (Fixed::ONE - law.discrimination))
+        .clamp(Fixed::ZERO, Fixed::ONE);
+    ColonialPurse { share, natives }
 }
 
 /// Bounds of the fiscal correction.

@@ -124,8 +124,11 @@ const H_MODERN: Fixed = milli(700);
 const H_MODERN_COMFORT: Fixed = milli(250);
 const H_MODERN_CARE: Fixed = milli(130);
 /// Share of the medicine a country uses that reaches a state with no hospitals and no schools
-/// (mass campaigns: vaccines, DDT, antibiotics); the rest follows care or schooling.
-const MEDICINE_REACH: Fixed = milli(350);
+/// (mass campaigns: vaccines, DDT, penicillin for yaws, at cents a head); the rest follows care
+/// or schooling. Preston (1975): income explains 10 to 25 % of the gain in life expectancy
+/// between the 1930s and the 1960s; India went from 32 to 51 years between 1941 and 1975 with
+/// a sixth of its women literate and 0.5 hospital beds per thousand.
+const MEDICINE_REACH: Fixed = milli(550);
 /// Strength of the medicine the richest countries already used in 1925 (vaccination, sanitation,
 /// antisepsis): it is part of the living standard in [`health`], so only what comes after it
 /// counts as modern medicine.
@@ -162,10 +165,21 @@ const Q5_LOW: i64 = 20;
 /// health service; the rest arrives with whichever of the two the state has more of: family
 /// planning came through clinics and health posts as much as through schools (barefoot doctors
 /// in China, Indonesia, Bangladesh).
-const CONTRACEPTION_REACH: Fixed = milli(250);
+const CONTRACEPTION_REACH: Fixed = milli(50);
 /// Months for the mothers' schooling to close the gap with today's literacy: girls at school
 /// now are mothers in 15 to 20 years.
 const SCHOOLING_MONTHS: i64 = 240;
+/// Girls go to school after boys where schooling is scarce: women's literacy is
+/// `literacy × (1 − GIRLS_GAP × (1 − literacy))`. Census literacy, total and women (World Bank
+/// WDI, SE.ADT.LITR.ZS and .FE.ZS): India 1991 48 and 34 %, Egypt 1986 44 and 31 %, Algeria 1987
+/// 50 and 36 %, Nigeria 1991 56 and 44 %, Turkey 1990 79 and 69 % (a gap of 0.5 to 0.65); Mexico
+/// 1990 88 and 85 % and Brazil 1980 75 and 73 % have less.
+const GIRLS_GAP: Fixed = milli(500);
+
+/// Literacy of the women of a region whose literacy is `l`.
+pub fn women_literacy(l: Fixed) -> Fixed {
+    l * (Fixed::ONE - GIRLS_GAP * (Fixed::ONE - l))
+}
 
 /// Age pyramid and migration links of every state, saved and hashed.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -173,7 +187,7 @@ pub struct DemographyState {
     /// People in each age group, by region. Rescaled every month to the region's population
     /// (which other systems move: internal migration). Empty before the first month.
     pub ages: Vec<[i64; AGE_GROUPS]>,
-    /// Literacy of the mothers: the region's literacy followed with a lag of a generation.
+    /// Literacy of the mothers: the women's literacy of the region followed with a lag of a generation.
     pub schooling: Vec<Fixed>,
     /// Land per farmer of each region in its first month, the measure of land hunger.
     #[serde(default)]
@@ -780,9 +794,10 @@ impl System<GameWorld> for Demography {
             .enumerate()
             .map(|(ri, r)| {
                 let people = r.population();
+                let women = women_literacy(r.literacy);
                 let schooling = match state.schooling.get(ri) {
-                    Some(&s) if !first => s + (r.literacy - s).mul_ratio(1, SCHOOLING_MONTHS),
-                    _ => r.literacy,
+                    Some(&s) if !first => s + (women - s).mul_ratio(1, SCHOOLING_MONTHS),
+                    _ => women,
                 };
                 let care = coverage(&self.cat, r, self.kinds.hospital, CARE_PER_PERSON);
                 let (medicine, contraception) =

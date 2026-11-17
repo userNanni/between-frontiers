@@ -24,10 +24,18 @@ const CLOSE_WITH_SCHOOLING: Fixed = milli(500);
 
 /// A plant switches when another method earns this much more.
 const SWITCH_MARGIN: Fixed = milli(1100);
-/// Literacy speed with no schools, and the gain at full enrolment: half the children in
-/// school leaves the phase 1 speed unchanged.
-const SCHOOL_BASE: Fixed = milli(600);
-const SCHOOL_GAIN: Fixed = milli(800);
+/// Literacy speed with no schools, and the gain at full enrolment (the phase 1 speed is 1).
+/// Without a school, few learn to read (adult
+/// classes, a literate relative): India with a tenth of its children in school went from 10 to
+/// 17 % literate between 1925 and 1950, Brazil with a third from 37 to 48 % (UNESCO 1957).
+const SCHOOL_BASE: Fixed = milli(100);
+const SCHOOL_GAIN: Fixed = milli(1000);
+/// Enrolment that mission schools reach in the colonies outside the Treasury, at full
+/// `church_privilege` of the metropole's religion law (missions follow the flag), paid by the
+/// churches, grants and fees. Sovereign countries' church schools are in their own coverage. British Africa (established church)
+/// had 19 % of children in school in 1938, 95 % of them in missions; French Africa (separation)
+/// 6 % (Frankema 2012).
+pub const RELIGIOUS_SCHOOLS: Fixed = milli(400);
 
 pub struct Yearly {
     pub cat: Arc<Catalogue>,
@@ -130,13 +138,20 @@ impl System<GameWorld> for Yearly {
                     .get(r.market as usize)
                     .map_or(Fixed::ONE, |e| Fixed::ONE + e[2] * milli(300));
                 // Schooling beyond what the education law asks for does not count.
-                let schools =
-                    super::public::coverage(cat, r, school, super::public::PUPILS_PER_PERSON).min(
-                        world.econ.markets[r.market as usize]
-                            .laws
-                            .of(r)
-                            .enrolment_target,
-                    );
+                let laws = &world.econ.markets[r.market as usize].laws;
+                let religious = if r.colony {
+                    RELIGIOUS_SCHOOLS * laws.effects[0].church_privilege
+                } else {
+                    Fixed::ZERO
+                };
+                let schools = (super::public::coverage(
+                    cat,
+                    r,
+                    school,
+                    super::public::PUPILS_PER_PERSON,
+                ) + religious)
+                    .min(laws.of(r).enrolment_target)
+                    .min(Fixed::ONE);
                 let reach = if school.is_some() {
                     SCHOOL_BASE + schools * SCHOOL_GAIN
                 } else {
