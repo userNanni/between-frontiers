@@ -407,5 +407,6 @@ Código em `crates/bf-sim/src/borders/op.rs`; testes em `crates/bf-sim/tests/bor
 - **Conservação** (`borders::Totals`): pessoas, poupança, fundo, Tesouro, as quatro dívidas de
   mercado, créditos no exterior, diáspora (mais os repatriados), níveis de planta e obras na fila.
   Igualdade exata antes e depois de cada operação nos testes.
+- **Save antigo:** o postcard não aceita campo faltando no fim; `game::decode_world` completa com estado vazio o snapshot escrito antes do campo `borders` (teste).
 - **Determinismo:** campanha com libertação, anexação e independência dá o mesmo hash com 1 e 2
   threads e com save e load no meio.

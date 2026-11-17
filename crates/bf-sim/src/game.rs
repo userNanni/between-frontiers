@@ -133,18 +133,11 @@ impl From<WorldBeforeCommunities> for GameWorld {
             research: w.research,
             politics: w.politics,
             demography: w.demography.into(),
+            borders: Default::default(),
         }
     }
 }
 
-/// Decodes a snapshot of this build, or of a build from before the communities.
-fn decode_world(bytes: &[u8]) -> Result<GameWorld, SaveError> {
-    decode_snapshot::<GameWorld>(bytes).or_else(|now| {
-        decode_snapshot::<WorldBeforeCommunities>(bytes)
-            .map(GameWorld::from)
-            .map_err(|_| now)
-    })
-}
 
 impl HashState for GameWorld {
     fn hash_state(&self, h: &mut StateHasher) {
@@ -519,6 +512,29 @@ impl std::fmt::Display for LoadError {
 
 impl std::error::Error for LoadError {}
 
+/// Decodes a world snapshot of this build or of an older one. Postcard is not self-describing, so
+/// a field added at the end of the world does not read as its default:
+/// - a snapshot from before the border state (`borders`, a list of empty lists) ends early: it is
+///   read with the missing tail as empty lists, one zero byte each;
+/// - a snapshot from before the communities in the population has another demography: it is
+///   read in that layout ([`WorldBeforeCommunities`]), which also predates the borders.
+pub fn decode_world(bytes: &[u8]) -> Result<GameWorld, SaveError> {
+    let first = decode_snapshot::<GameWorld>(bytes);
+    if first.is_ok() {
+        return first;
+    }
+    let mut padded = bytes.to_vec();
+    for k in 1..=8 {
+        padded.resize(bytes.len() + k, 0);
+        if let Ok(w) = decode_snapshot::<GameWorld>(&padded) {
+            return Ok(w);
+        }
+    }
+    decode_snapshot::<WorldBeforeCommunities>(bytes)
+        .map(GameWorld::from)
+        .or(first)
+}
+
 impl Session {
     pub fn new(
         world: GameWorld,
@@ -587,7 +603,7 @@ impl Session {
     pub fn load(bytes: &[u8], threads: usize, rules: Option<Rules>) -> Result<Self, LoadError> {
         let file: SaveFile<GameCommand> =
             SaveFile::decode(bytes, GAME_ID).map_err(LoadError::Save)?;
-        let world: GameWorld = decode_world(&file.snapshot).map_err(LoadError::Save)?;
+        let world = decode_world(&file.snapshot).map_err(LoadError::Save)?;
         let actual = hash_of(&world);
         if actual != file.header.state_hash {
             return Err(LoadError::HashMismatch {

@@ -391,7 +391,13 @@ fn a_campaign_with_operations_is_deterministic() {
     assert_eq!(one, loaded, "saved and loaded in the middle");
     assert_eq!(w.borders.changes.len(), 3, "{:?}", w.borders.refused);
     assert!(op::tables_agree(&w));
-    assert!(w.econ.regions.iter().flat_map(|r| &r.pops).all(|p| p.size >= 0));
+    assert!(
+        w.econ
+            .regions
+            .iter()
+            .flat_map(|r| &r.pops)
+            .all(|p| p.size >= 0)
+    );
 }
 
 #[test]
