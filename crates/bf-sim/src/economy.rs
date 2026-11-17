@@ -117,6 +117,12 @@ pub struct MethodDef {
     pub outputs: Vec<(String, f32)>,
     /// Workers per level, by profession.
     pub jobs: Vec<(String, u32)>,
+    /// Capital of a level relative to a level of the building's first method, where the
+    /// building declares it for every method (and 1 for the first). Without it a level costs
+    /// `CAPITAL_YEARS` of the value it adds, as every building did before
+    /// (docs/economy.pt-BR.md, "Capital por método").
+    #[serde(default)]
+    pub capital: Option<f32>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

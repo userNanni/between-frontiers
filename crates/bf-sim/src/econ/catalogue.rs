@@ -41,6 +41,10 @@ pub struct Method {
     pub output_value: Fixed,
     /// The jobs weighted by `WAGE_WEIGHT`: the wage bill is shared in these proportions.
     pub job_weight: Fixed,
+    /// Capital of a level relative to a level of the building's first method, when the
+    /// building declares it (`MethodDef::capital`): the choice of method weighs the return on
+    /// it, and building or switching to the method pays it.
+    pub capital: Option<Fixed>,
 }
 
 impl Method {
@@ -208,7 +212,35 @@ impl Catalogue {
                     jobs,
                     freight: Fixed::ZERO,
                     output_value: Fixed::ZERO,
+                    capital: m.capital.map(fx),
                 });
+            }
+            // Capital is declared for every method of a building or for none, relative to the
+            // first: a choice between a priced method and an unpriced one would mean nothing.
+            let declared = methods.iter().filter(|m| m.capital.is_some()).count();
+            if declared != 0 && declared != methods.len() {
+                return Err(CatalogueError(format!(
+                    "{}: capital declared for {declared} of {} methods",
+                    b.key,
+                    methods.len()
+                )));
+            }
+            if let Some(first) = methods.first().and_then(|m| m.capital)
+                && first != Fixed::ONE
+            {
+                return Err(CatalogueError(format!(
+                    "{}: the first method's capital is the unit, 1",
+                    b.key
+                )));
+            }
+            if methods
+                .iter()
+                .any(|m| m.capital.is_some_and(|c| c <= Fixed::ZERO))
+            {
+                return Err(CatalogueError(format!(
+                    "{}: capital must be positive",
+                    b.key
+                )));
             }
             bs.push(Building {
                 key: b.key.clone(),

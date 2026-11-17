@@ -100,7 +100,13 @@ impl System<GameWorld> for Yearly {
                         ) {
                             Some((mi, profit))
                                 if mi != p.method
-                                    && profit > current.max(Fixed::ZERO) * SWITCH_MARGIN =>
+                                    && super::monthly::method_score(
+                                        &b.methods[mi as usize],
+                                        profit,
+                                    ) > super::monthly::method_score(
+                                        &b.methods[p.method as usize],
+                                        current.max(Fixed::ZERO),
+                                    ) * SWITCH_MARGIN =>
                             {
                                 Some((mi, profit - current))
                             }
@@ -353,7 +359,7 @@ fn paid_switches(
             for &(g, share, work) in &bd.construction {
                 if !work {
                     let money =
-                        (super::monthly::level_capital(cat, p.kind as usize, new as usize, tfp)
+                        (super::monthly::method_capital(cat, p.kind as usize, new as usize, tfp)
                             * p.levels)
                             .mul_ratio(share, 1000);
                     orders[mi].push((g, money / m.price[g as usize]));
@@ -373,7 +379,7 @@ fn switch_cost(cat: &Catalogue, kind: usize, method: u8, tfp: Fixed) -> Fixed {
         .filter(|(_, _, work)| !work)
         .map(|(_, share, _)| *share)
         .sum();
-    super::monthly::level_capital(cat, kind, method as usize, tfp).mul_ratio(equipment, 1000)
+    super::monthly::method_capital(cat, kind, method as usize, tfp).mul_ratio(equipment, 1000)
 }
 
 /// The methods the plants of `r` run next year, from the switches they want (`candidates`, new
