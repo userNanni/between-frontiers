@@ -186,6 +186,11 @@
             (key: "blast_furnace_open_hearth", available_from: 1925, inputs: [("iron_ore", 60000), ("coal", 50000)], outputs: [("steel", 30000)], jobs: [("laborer", 600), ("skilled_worker", 250), ("engineer", 30), ("clerk", 40), ("manager", 15), ("capitalist", 5)]),
             (key: "basic_oxygen", available_from: 1955, inputs: [("iron_ore", 70000), ("coal", 40000), ("chemicals", 200)], outputs: [("steel", 50000)], jobs: [("laborer", 350), ("skilled_worker", 330), ("engineer", 60), ("clerk", 60), ("manager", 20), ("capitalist", 5)]),
             (key: "electric_arc", available_from: 1925, inputs: [("iron_ore", 30000), ("electricity", 25000), ("ferroalloys", 400)], outputs: [("steel", 30000)], jobs: [("laborer", 350), ("skilled_worker", 330), ("engineer", 60), ("clerk", 60), ("manager", 20), ("capitalist", 5)]),
+            // Iron ore reduced by natural gas (Midrex, 1969) and melted in an arc furnace: about
+            // 10.4 GJ of gas, 1.5 t of pellets and 0.67 MWh a tonne of steel (Midrex Technologies,
+            // "DRI products and applications", and IEA, "Iron and Steel Technology Roadmap" 2020,
+            // public reports); gas at 10 MWh per 1,000 m³, as in the scorecard.
+            (key: "direct_reduction", available_from: 1970, inputs: [("iron_ore", 45000), ("natural_gas", 8700), ("electricity", 20000), ("ferroalloys", 400)], outputs: [("steel", 30000)], jobs: [("laborer", 350), ("skilled_worker", 330), ("engineer", 60), ("clerk", 60), ("manager", 20), ("capitalist", 5)]),
         ]),
         (key: "aluminium_smelter", group: "heavy_industry", resource: None, farm: None, methods: [
             (key: "hall_heroult", available_from: 1925, inputs: [("bauxite", 8000), ("electricity", 35000), ("coal", 1500), ("chemicals", 150)], outputs: [("aluminium", 2000)], jobs: [("laborer", 600), ("skilled_worker", 250), ("engineer", 30), ("clerk", 40), ("manager", 15), ("capitalist", 5)]),
@@ -219,6 +224,10 @@
         (key: "cement_plant", group: "heavy_industry", resource: None, farm: None, methods: [
             (key: "wet_kiln", available_from: 1925, inputs: [("coal", 30000)], outputs: [("cement", 120000)], jobs: [("laborer", 600), ("skilled_worker", 250), ("engineer", 30), ("clerk", 40), ("manager", 15), ("capitalist", 5)]),
             (key: "dry_kiln", available_from: 1960, inputs: [("coal", 18000), ("electricity", 8000)], outputs: [("cement", 200000)], jobs: [("laborer", 350), ("skilled_worker", 330), ("engineer", 60), ("clerk", 60), ("manager", 20), ("capitalist", 5)]),
+            // The same kiln fired with natural gas, at the same heat: 18,000 t of coal at
+            // 7.0 MWh/t are 12,600 thousand m³ at 10 MWh (the scorecard's heating values).
+            // The market chooses between them by price.
+            (key: "dry_kiln_gas", available_from: 1960, inputs: [("natural_gas", 12600), ("electricity", 8000)], outputs: [("cement", 200000)], jobs: [("laborer", 350), ("skilled_worker", 330), ("engineer", 60), ("clerk", 60), ("manager", 20), ("capitalist", 5)]),
         ]),
         (key: "rare_earth_refinery", group: "heavy_industry", resource: None, farm: None, methods: [
             (key: "solvent_extraction", available_from: 1955, inputs: [("rare_earth_ore", 300), ("chemicals", 2000), ("electricity", 5000)], outputs: [("electronic_components", 15200)], jobs: [("laborer", 350), ("skilled_worker", 330), ("engineer", 60), ("clerk", 60), ("manager", 20), ("capitalist", 5)]),
@@ -240,6 +249,9 @@
         ]),
         (key: "paper_mill", group: "light_industry", resource: None, farm: None, methods: [
             (key: "wood_pulp", available_from: 1925, inputs: [("timber", 30000), ("chemicals", 500), ("coal", 3000)], outputs: [("paper", 8746.15)], jobs: [("laborer", 750), ("skilled_worker", 150), ("clerk", 40), ("manager", 10), ("capitalist", 5)]),
+            // Steam for the pulp and the dryers raised with piped gas, at the same heat (3,000 t of
+            // coal are 2,100 thousand m³), once long pipelines reach the mills.
+            (key: "gas_heated", available_from: 1931, inputs: [("timber", 30000), ("chemicals", 500), ("natural_gas", 2100)], outputs: [("paper", 8746.15)], jobs: [("laborer", 750), ("skilled_worker", 150), ("clerk", 40), ("manager", 10), ("capitalist", 5)]),
         ]),
         (key: "textile_mill", group: "light_industry", resource: None, farm: None, methods: [
             (key: "power_loom", available_from: 1925, inputs: [("cotton", 800), ("wool", 150), ("plant_fibers", 100), ("coal", 1500)], outputs: [("textiles", 1712.08)], jobs: [("laborer", 750), ("skilled_worker", 150), ("clerk", 40), ("manager", 10), ("capitalist", 5)]),
