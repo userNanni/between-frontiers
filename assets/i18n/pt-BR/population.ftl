@@ -58,6 +58,8 @@ population-waves-ended = Ondas que acabaram, por estrada
 population-push-land = fome de terra
 population-push-hunger = fome
 population-push-poverty = pobreza
+population-push-frontier = terra para abrir lá fora
+population-push-chain = parentes que já estão lá
 population-wave = { $from } → { $to }, desde { $since }: { $people }, por { $cause }.
 population-wave-ended = { $from } → { $to }, { $since }–{ $until }: { $people } em { $count ->
     [one] uma onda

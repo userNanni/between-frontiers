@@ -58,6 +58,8 @@ population-waves-ended = Waves that ended, by road
 population-push-land = land hunger
 population-push-hunger = hunger
 population-push-poverty = poverty
+population-push-frontier = land to clear abroad
+population-push-chain = relatives already there
 population-wave = { $from } → { $to }, since { $since }: { $people }, for { $cause }.
 population-wave-ended = { $from } → { $to }, { $since }–{ $until }: { $people } in { $count ->
     [one] one wave

@@ -335,7 +335,9 @@ corrente da diáspora e as ondas.
   renda monetária por habitante. Começa a puxar a 1,5 vez a renda da origem; cheia a 4,5 vezes.
 - **Terra:** lavoura aberta e por abrir por mil lavradores. Puxa a partir de 2 vezes a da origem,
   cheia a 22 vezes, se o destino não for mais pobre que 0,2 da renda da origem: as fronteiras das
-  Américas e da Austrália.
+  Américas e da Austrália. Só puxa a parcela da origem que vive da terra (camponeses e
+  assalariados rurais): um país de operários manda poucos colonos. Sem isso a Alemanha
+  industrial mandava ondas "por pobreza" para o Brasil, 0,23 da renda dela, pela terra do Brasil.
 - **Rede:** a diáspora puxa sozinha (cartas, passagem paga, emprego esperando): até 0,5 de
   brecha, para destino com pelo menos 0,20 da renda da origem. É o que leva italiano e português
   a um Brasil mais pobre que a Itália e que Portugal.
@@ -378,8 +380,9 @@ destino recebe de ondas no máximo 3 por mil ao ano. A onda fecha, com motivo re
 | `Full` | as vagas do destino caem abaixo de 0,5 |
 | `NoPull` | a atração cai abaixo de 0,125 |
 
-O motivo da abertura (`Push`) é o maior termo da pressão: terra (`Land`), fome (`Hunger`) ou renda
-lá fora (`Poverty`). `DemographyState::waves` guarda as abertas e `waves_ended` as fechadas; o
+O motivo da abertura (`Push`) é o maior termo da pressão: falta de terra em casa (`Land`, os
+camponeses ociosos), fome (`Hunger`) ou o que atrai na melhor estrada, separado pela parte que
+mais pesa nela: renda (`Poverty`), terra para abrir (`Frontier`) ou a diáspora (`Chain`). `DemographyState::waves` guarda as abertas e `waves_ended` as fechadas; o
 placar lista as maiores ("Ondas de migração").
 
 **Passagem paga pela lei.** Valor da lei acima de 1000 é a parcela da passagem que o Estado paga

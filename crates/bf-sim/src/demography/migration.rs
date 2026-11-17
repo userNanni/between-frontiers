@@ -136,6 +136,10 @@ pub enum Push {
     Hunger,
     /// Income several times higher abroad.
     Poverty,
+    /// Land to clear abroad, for the people who work the land at home.
+    Frontier,
+    /// Relatives and neighbours already abroad (the diaspora on the road).
+    Chain,
 }
 
 /// Why a wave ended.
@@ -211,6 +215,9 @@ struct Land {
     natural: i64,
     /// Land ceiling in farm levels per thousand farmers.
     land: Fixed,
+    /// Share of the people who work the land (peasants and farm labourers): only they answer
+    /// the pull of land abroad.
+    farm_share: Fixed,
 }
 
 /// The month's migration.
@@ -374,6 +381,7 @@ pub(super) fn plan(
     let mut flows: Vec<(usize, usize, u16, i64)> = Vec::new();
     let mut inflow = vec![0i64; nt];
     let mut best_pull = vec![Fixed::ZERO; nt];
+    let mut draw = vec![Push::Poverty; nt];
     let mut pulls_of: Vec<Vec<(usize, Fixed)>> = vec![Vec::new(); nt];
     for i in 0..nt {
         if lands[i].people <= 0 {
@@ -390,6 +398,21 @@ pub(super) fn plan(
             .unwrap_or(Fixed::ZERO)
             .min(Fixed::ONE);
         best_pull[i] = best;
+        // What pulls on the best road: income, land or the diaspora.
+        if let Some(&(j, _)) = pulls
+            .iter()
+            .max_by(|a, b| a.1.cmp(&b.1).then(b.0.cmp(&a.0)))
+        {
+            let (income, land, network) =
+                gap_parts(&lands, laws, i, j, chain_share(&lands, &abroad, i, j));
+            draw[i] = if network > income.max(land) {
+                Push::Chain
+            } else if land > income {
+                Push::Frontier
+            } else {
+                Push::Poverty
+            };
+        }
         let (_, emi) = laws[market(i)];
         let push = Fixed::ONE + lands[i].idle;
         // Would-be emigrants of the month, before the passage; each road keeps those who can
@@ -504,7 +527,7 @@ pub(super) fn plan(
         let terms = [
             (l.idle * PRESSURE_LAND, Push::Land),
             (l.hunger * PRESSURE_HUNGER, Push::Hunger),
-            (best_pull[i] * PRESSURE_PULL, Push::Poverty),
+            (best_pull[i] * PRESSURE_PULL, draw[i]),
         ];
         let total = terms.iter().map(|(v, _)| *v).sum();
         let cause = terms
@@ -741,6 +764,11 @@ fn lands(world: &GameWorld, regions: &[RegionMonth], nt: usize) -> Vec<Land> {
                 } else {
                     Fixed::ZERO
                 },
+                farm_share: if n > 0 {
+                    Fixed::from_ratio(land[t].1.min(n), n)
+                } else {
+                    Fixed::ZERO
+                },
             };
             if n <= 0 {
                 return out;
@@ -767,6 +795,42 @@ fn lands(world: &GameWorld, regions: &[RegionMonth], nt: usize) -> Vec<Land> {
 
 /// Pull of destination `j` on the people of `i`: income gap × distance × jobs × language ×
 /// diaspora × the destination's immigration law.
+/// The three parts of the gap that pulls the people of `i` to `j`: income several times
+/// higher, land to clear (for the share of the people who farm), and the network of the
+/// diaspora (`chain_share`, with the programme of both governments if there is one).
+fn gap_parts(
+    lands: &[Land],
+    laws: &[(i64, i64)],
+    i: usize,
+    j: usize,
+    chain_share: Fixed,
+) -> (Fixed, Fixed, Fixed) {
+    let (a, b) = (&lands[i], &lands[j]);
+    if a.income_per_head <= Fixed::ZERO {
+        return (Fixed::ZERO, Fixed::ZERO, Fixed::ZERO);
+    }
+    let ratio = b.income_per_head / a.income_per_head;
+    let income = ((ratio - GAP_START) / GAP_FULL).clamp(Fixed::ZERO, Fixed::ONE);
+    // Land pulls those who work the land: a country of factory workers sends few settlers.
+    let land = if ratio >= LAND_MIN_RATIO && a.land > Fixed::ZERO {
+        ((b.land / a.land - LAND_START) / LAND_FULL).clamp(Fixed::ZERO, Fixed::ONE) * a.farm_share
+    } else {
+        Fixed::ZERO
+    };
+    let programme = if !colony(j) && laws[market(j)].0 > 1000 {
+        sponsored(laws, i)
+    } else {
+        Fixed::ZERO
+    };
+    let chain_share = chain_share.max(programme * PROGRAMME_CHAIN);
+    let network = if ratio >= NETWORK_MIN_RATIO {
+        chain_share * NETWORK
+    } else {
+        Fixed::ZERO
+    };
+    (income, land, network)
+}
+
 fn pull(
     lands: &[Land],
     territories: &[Territory],
@@ -780,13 +844,7 @@ fn pull(
     if i == j || a.people <= 0 || b.people <= 0 || a.income_per_head <= Fixed::ZERO {
         return Fixed::ZERO;
     }
-    let ratio = b.income_per_head / a.income_per_head;
-    let income = ((ratio - GAP_START) / GAP_FULL).clamp(Fixed::ZERO, Fixed::ONE);
-    let land = if ratio >= LAND_MIN_RATIO && a.land > Fixed::ZERO {
-        ((b.land / a.land - LAND_START) / LAND_FULL).clamp(Fixed::ZERO, Fixed::ONE)
-    } else {
-        Fixed::ZERO
-    };
+    let (income, land, network) = gap_parts(lands, laws, i, j, chain_share);
     // Emigration a programme organizes works as a chain: the recruiter is the network. A
     // destination's subsidy alone pays the ticket (`afford`) but recruits no one.
     // A colonization programme needs both governments: the origin sponsoring and the
@@ -797,11 +855,6 @@ fn pull(
         Fixed::ZERO
     };
     let chain_share = chain_share.max(programme * PROGRAMME_CHAIN);
-    let network = if ratio >= NETWORK_MIN_RATIO {
-        chain_share * NETWORK
-    } else {
-        Fixed::ZERO
-    };
     let gap = (income.max(land) + network).min(Fixed::ONE);
     if gap <= Fixed::ZERO {
         return Fixed::ZERO;
