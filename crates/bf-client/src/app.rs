@@ -34,12 +34,27 @@ pub struct Shared {
     /// and its overlay on the GPU.
     pub sea: Option<Result<std::sync::Arc<crate::map::sea::SeaLayer>, String>>,
     pub sea_texture: Option<Vec<(egui::TextureHandle, egui::Rect)>>,
+    /// The map's owners changed (a border operation): the GPU side is built again next frame.
+    pub map_gpu_dirty: bool,
     toast: Option<(String, f64)>,
 }
 
 impl Shared {
     pub fn tr(&self, id: &str) -> String {
         self.i18n.tr(id)
+    }
+
+    /// The map's owners, colours, borders and flags again, after the world's owners changed.
+    pub fn rebuild_map(&mut self, ctx: &egui::Context) {
+        let Some(world) = &self.world else { return };
+        if let Some(map) = &mut self.map {
+            map.rebuild_owners(world);
+            if let Some(view) = &mut self.map_view {
+                view.set_palette(map.palette.clone());
+            }
+        }
+        self.flags = crate::flags::Flags::load(ctx, &self.paths.assets.join("flags"), world);
+        self.map_gpu_dirty = true;
     }
 
     pub fn refresh_saves(&mut self) {
@@ -150,6 +165,9 @@ pub enum Transition {
     Saves,
     /// Choose the country of a new campaign.
     Pick(Save),
+    /// Choose another country to play in a saved campaign (the campaigns' "⋯" menu, or the game
+    /// when the player's country no longer exists).
+    SwitchCountry(Save),
     Game(Save),
     Quit,
 }
@@ -191,6 +209,7 @@ impl App {
             scale_trial: None,
             sea: None,
             sea_texture: None,
+            map_gpu_dirty: false,
             toast: None,
         };
         shared.refresh_saves();
@@ -230,8 +249,16 @@ impl App {
             view.selected_owner = None;
         }
         // Outside a campaign the scenario's figures stand; a campaign reads its own again.
+        let owners_changed = shared
+            .world
+            .as_ref()
+            .is_some_and(|w| w.owners_seen != 0 || w.countries.len() != w.scenario_countries);
         if let Some(world) = &mut shared.world {
             world.clear_live();
+            world.reset_owners();
+        }
+        if owners_changed {
+            shared.rebuild_map(ctx);
         }
         self.screen = match transition {
             Transition::Menu => {
@@ -247,6 +274,11 @@ impl App {
                 Screen::Saves(screens::saves::State::new(shared))
             }
             Transition::Pick(save) => Screen::Pick(screens::pick::State::new(save)),
+            Transition::SwitchCountry(save) => {
+                let state = screens::pick::State::switching(save, shared);
+                shared.rebuild_map(ctx);
+                Screen::Pick(state)
+            }
             Transition::Game(save) => match screens::game::State::new(shared, save, ctx) {
                 Ok(state) => Screen::Game(Box::new(state)),
                 Err(e) => {
@@ -332,6 +364,12 @@ fn load_world(paths: &Paths) -> Result<(World, MapData), String> {
     let deposits = read_optional(&scenario.join("deposits.ron"));
     let land = read_optional(&scenario.join("land.ron"));
     world.attach_resources(deposits, land);
+    world.candidates = read_optional::<bf_sim::borders::CandidatesFile>(
+        &paths.data.join("borders/candidates.ron"),
+    )
+    .map(|f| f.countries)
+    .unwrap_or_default();
+    world.clauses = read_optional(&paths.data.join("diplomacy/clauses.ron"));
     let relief = crate::map::Relief::load(&map_dir.join("relief.png"))
         .unwrap_or_else(crate::map::Relief::flat);
     let map = MapData::build(&world, w, h, ids, relief);
@@ -339,8 +377,14 @@ fn load_world(paths: &Paths) -> Result<(World, MapData), String> {
 }
 
 impl eframe::App for App {
-    fn ui(&mut self, ui: &mut Ui, _frame: &mut eframe::Frame) {
+    fn ui(&mut self, ui: &mut Ui, frame: &mut eframe::Frame) {
         apply_scale(ui.ctx(), self.shared.scale_choice());
+        if std::mem::take(&mut self.shared.map_gpu_dirty)
+            && let (Some(rs), Some(map)) = (frame.wgpu_render_state(), &self.shared.map)
+        {
+            let gpu = MapGpu::new(&rs.device, &rs.queue, rs.target_format, map);
+            rs.renderer.write().callback_resources.insert(gpu);
+        }
         let screen = ui.max_rect();
         ui.painter()
             .rect_filled(screen, 0, bf_ui_kit::tokens::color::BACKDROP);

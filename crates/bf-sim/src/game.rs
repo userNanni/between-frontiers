@@ -271,6 +271,11 @@ pub enum GameCommand {
     /// group. The politics system enacts it on the same day; unknown tags and laws, and colonial
     /// laws for a country without colonies, are no-ops.
     SetLaw { tag: String, law: u16 },
+    /// The issuer plays `tag` from now on (any time, any country of the world: the one born of
+    /// its own revolt, a subject it set free, an heir). Session state: the world does not change
+    /// and the hash neither; the command is in the log so that a save and a replay know who
+    /// played what and when. An unknown tag is refused by the session.
+    SwitchCountry { tag: String },
     /// A border operation (`borders::op`): run at the end of the day by the `borders` system,
     /// refused there with a reason when it does not apply. Issued by tests, tools and, later,
     /// treaties and peace; a player only frees its own land ([`GameCommand::Liberate`]).
@@ -365,6 +370,7 @@ impl Command<GameWorld> for GameCommand {
                     world.politics.request(ci as u16, *law);
                 }
             }
+            GameCommand::SwitchCountry { .. } => {}
             GameCommand::Borders { op } => world.borders.pending.push(op.clone()),
             GameCommand::Liberate {
                 by,
@@ -517,6 +523,10 @@ pub type GameSim = Simulation<GameWorld, GameCommand>;
 pub struct Session {
     pub sim: GameSim,
     earlier: Vec<Stamped<GameCommand>>,
+    /// The country each issuer plays, by [`GameCommand::ChoosePlayer`] and
+    /// [`GameCommand::SwitchCountry`]: session state, not the world's (the simulation never
+    /// reads it, so a switch does not change the hash). Rebuilt from the command log on load.
+    players: std::collections::BTreeMap<Issuer, String>,
 }
 
 #[derive(Debug)]
@@ -588,6 +598,7 @@ impl Session {
         Self {
             sim: Simulation::new(world, seed, start, schedule(threads, rules)),
             earlier: Vec::new(),
+            players: Default::default(),
         }
     }
 
@@ -603,8 +614,42 @@ impl Session {
         hash_of(self.sim.world())
     }
 
+    /// Issues `command` for the local player. Freeing land is refused (dropped) unless the
+    /// land is the player's own country (decision 3 of `docs/borders.pt-BR.md`); the simulation
+    /// itself only checks that the states are `by`'s.
     pub fn submit(&mut self, command: GameCommand) {
-        self.sim.submit(PLAYER, command);
+        self.submit_as(PLAYER, command);
+    }
+
+    /// Issues `command` for `issuer` (a player slot of a multiplayer server).
+    pub fn submit_as(&mut self, issuer: Issuer, command: GameCommand) {
+        match &command {
+            GameCommand::Liberate { by, .. } if self.player_of(issuer) != Some(by.as_str()) => {
+                return;
+            }
+            GameCommand::ChoosePlayer { tag } | GameCommand::SwitchCountry { tag } => {
+                if self.world().country_by_tag(tag).is_none() {
+                    return;
+                }
+                self.players.insert(issuer, tag.clone());
+            }
+            _ => {}
+        }
+        self.sim.submit(issuer, command);
+    }
+
+    /// The country the local player plays now.
+    pub fn player(&self) -> Option<&str> {
+        self.player_of(PLAYER)
+    }
+
+    /// The country `issuer` plays now; for a save older than the switch, the world's choice.
+    pub fn player_of(&self, issuer: Issuer) -> Option<&str> {
+        self.players.get(&issuer).map(String::as_str).or_else(|| {
+            (issuer == PLAYER)
+                .then(|| self.world().player_tag())
+                .flatten()
+        })
     }
 
     /// Every command applied in this campaign, oldest first.
@@ -668,7 +713,19 @@ impl Session {
             .filter(|e| e.tick < file.header.clock.tick)
             .cloned()
             .collect();
-        Ok(Self { sim, earlier })
+        let mut players = std::collections::BTreeMap::new();
+        for e in file.log.entries() {
+            if let GameCommand::ChoosePlayer { tag } | GameCommand::SwitchCountry { tag } =
+                &e.command
+            {
+                players.insert(e.issuer, tag.clone());
+            }
+        }
+        Ok(Self {
+            sim,
+            earlier,
+            players,
+        })
     }
 }
 

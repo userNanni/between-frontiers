@@ -1999,3 +1999,159 @@ fn restore_points() {
     }
     let _ = std::fs::remove_dir_all(&user);
 }
+
+/// Borders (`docs/borders.pt-BR.md`): the Soviet Union freed Ukraine and Germany annexed Austria;
+/// the map follows the owners. Freeing land is a decision in the journal window, confirmed in a
+/// step of its own; playing another country is on the campaigns screen, behind "⋯".
+#[test]
+#[ignore = "needs a GPU (or software Vulkan) and the generated map; run with --ignored"]
+fn borders_and_switching_country() {
+    use bf_sim::borders::{Operation, Terms};
+    use bf_sim::game::GameCommand;
+    let user = std::env::temp_dir().join(format!("bf-shots-borders-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&user);
+    let ukraine: Vec<String> = [
+        "05", "09", "12", "14", "18", "23", "35", "48", "51", "53", "59", "63", "65", "68", "71",
+        "74", "KYIV",
+    ]
+    .iter()
+    .map(|s| format!("UKR-{s}"))
+    .collect();
+    let mut session =
+        advanced_session_of("SOV", laplace_schelling::calendar::Date::new(1925, 1, 5));
+    session.submit(GameCommand::Liberate {
+        by: "SOV".into(),
+        states: ukraine,
+        tag: Some("UKR".into()),
+        subject: false,
+    });
+    session.submit(GameCommand::Borders {
+        op: Operation::Annex {
+            from: "AUT".into(),
+            into: "GER".into(),
+            colony: false,
+            terms: Terms::default(),
+        },
+    });
+    while session.clock().date < laplace_schelling::calendar::Date::new(1925, 2, 2) {
+        session.sim.step();
+    }
+    assert_eq!(session.world().borders.changes.len(), 2);
+    for (locale, suffix, size) in [
+        ("pt-BR", "", egui::vec2(1600.0, 900.0)),
+        ("en", "-en", egui::vec2(1280.0, 720.0)),
+    ] {
+        let dir = user.join(locale);
+        let save = write_campaign(&dir, &session, "Fronteiras", "SOV", &[]);
+        let mut h = harness_sized(dir.clone(), locale, size);
+        let tr = |h: &Harness<'_, App>, key: &str| h.state().shared.i18n.tr(key);
+        let ctx = h.ctx.clone();
+        h.state_mut().apply(Transition::Game(save.clone()), &ctx);
+        h.run_steps(6);
+        {
+            let app = h.state_mut();
+            let meta = app.shared.world.as_ref().unwrap().map.meta.clone();
+            let (x, y) = bf_client::world::project(&meta, 30.0, 51.0).unwrap();
+            let view = app.shared.map_view.as_mut().unwrap();
+            view.camera.as_mut().unwrap().look_at(egui::pos2(x, y), 3.0);
+        }
+        h.run_steps(4);
+        {
+            let world = h.state().shared.world.as_ref().unwrap();
+            let ukr = world
+                .countries
+                .iter()
+                .position(|c| c.tag() == "UKR")
+                .unwrap();
+            assert!(world.countries[ukr].states.len() >= 17);
+        }
+        shot(&mut h, &format!("70-fronteiras-mapa{suffix}"));
+
+        // The journal window: the decisions, below the agendas.
+        h.key_press(egui::Key::J);
+        h.run_steps(4);
+        h.get_by_label(&tr(&h, "liberate-title")).click();
+        h.run_steps(4);
+        shot(&mut h, &format!("71-decisao-libertar{suffix}"));
+        // Belarus, as a subject.
+        let blr = bf_client::text::country_name(&h.state().shared.i18n, "BLR");
+        h.get(egui_kittest::kittest::By::new().label_contains(&blr))
+            .click();
+        h.run_steps(2);
+        h.get_by_label(&tr(&h, "liberate-subject")).click();
+        h.run_steps(4);
+        shot(&mut h, &format!("72-decisao-consequencias{suffix}"));
+        h.get_by_label(&tr(&h, "liberate-review")).click();
+        h.run_steps(4);
+        shot(&mut h, &format!("73-decisao-confirmar{suffix}"));
+        h.get_by_label(&tr(&h, "liberate-yes")).click();
+        run_until(&mut h, 20, |s| {
+            s.owners
+                .as_ref()
+                .is_some_and(|o| o.tags.iter().any(|t| t == "BLR"))
+        });
+        h.run_steps(4);
+        {
+            let world = h.state().shared.world.as_ref().unwrap();
+            let blr = world
+                .countries
+                .iter()
+                .position(|c| c.tag() == "BLR")
+                .expect("Belarus");
+            assert!(!world.countries[blr].states.is_empty());
+            let sov = world
+                .countries
+                .iter()
+                .position(|c| c.tag() == "SOV")
+                .unwrap();
+            assert_eq!(world.countries[blr].overlord, Some(sov));
+        }
+
+        // Out to the campaigns: "⋯ → play another country", Ukraine, and back in as Ukraine.
+        let ctx = h.ctx.clone();
+        h.state_mut().apply(Transition::Saves, &ctx);
+        h.run_steps(4);
+        h.get_by_label("…").click();
+        h.run_steps(3);
+        shot(&mut h, &format!("74-campanhas-mais{suffix}"));
+        h.get_by_label(&tr(&h, "saves-menu-play-other")).click();
+        h.run_steps(6);
+        let kyiv = {
+            let app = h.state();
+            let world = app.shared.world.as_ref().unwrap();
+            let (x, y) = bf_client::world::project(&world.map.meta, 30.52, 50.45).unwrap();
+            let rect = h.ctx.content_rect();
+            app.shared
+                .map_view
+                .as_ref()
+                .unwrap()
+                .camera
+                .unwrap()
+                .to_screen(rect, egui::pos2(x, y))
+        };
+        h.hover_at(kyiv);
+        h.run_steps(1);
+        h.drag_at(kyiv);
+        h.run_steps(1);
+        h.drop_at(kyiv);
+        h.run_steps(4);
+        shot(&mut h, &format!("75-escolher-outro-pais{suffix}"));
+        h.get_by_label(&tr(&h, "pick-switch")).click();
+        h.run_steps(4);
+        assert!(matches!(h.state().screen, Screen::Saves(_)));
+        let save = saves::list(&dir.join("saves"))
+            .into_iter()
+            .find(|s| s.meta.name == "Fronteiras")
+            .unwrap();
+        assert_eq!(save.meta.player.as_deref(), Some("UKR"));
+        let ctx = h.ctx.clone();
+        h.state_mut().apply(Transition::Game(save), &ctx);
+        h.run_steps(8);
+        let player = match &h.state().screen {
+            Screen::Game(g) => g.snapshot().player,
+            _ => None,
+        };
+        assert_eq!(player.as_deref(), Some("UKR"));
+        shot(&mut h, &format!("76-jogando-ucrania{suffix}"));
+    }
+}

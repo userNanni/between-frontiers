@@ -79,7 +79,14 @@ impl State {
         let rules = Some(data.rules());
         let session = if path.is_file() {
             let bytes = std::fs::read(&path).map_err(|e| e.to_string())?;
-            Session::load(&bytes, 0, rules.clone()).map_err(|e| e.to_string())?
+            let mut session = Session::load(&bytes, 0, rules.clone()).map_err(|e| e.to_string())?;
+            // Another country chosen on the campaigns screen ("⋯ → Jogar com outro país").
+            if let Some(tag) = &save.meta.player
+                && session.player() != Some(tag.as_str())
+            {
+                session.submit(GameCommand::SwitchCountry { tag: tag.clone() });
+            }
+            session
         } else {
             let mut session = Session::new(
                 data.new_world(),
@@ -382,6 +389,32 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
         }
         state.live_month = Some(month);
     }
+    // Border changes: owners, new countries, the map's colours and borders, the flags.
+    if let (Some(owners), Some(world)) = (&snap.owners, &mut shared.world)
+        && world.apply_owners(owners)
+    {
+        world.live = state
+            .live_figures
+            .as_deref()
+            .map(|f| crate::world::FigureTable::live(&world.countries, f))
+            .or(world.live.take());
+        shared.rebuild_map(ui.ctx());
+        // Annexed, or beaten by a revolt: the choice of another country is needed now, not
+        // offered (decision 4 of `docs/borders.pt-BR.md`).
+        let gone = shared.world.as_ref().is_some_and(|w| {
+            state.save.meta.player.as_ref().is_some_and(|tag| {
+                w.countries
+                    .iter()
+                    .find(|c| c.tag() == tag)
+                    .is_some_and(|c| c.states.is_empty() && c.colonial_states.is_empty())
+            })
+        });
+        if gone {
+            state.write(shared, now, false);
+            shared.toast(shared.tr("game-country-gone"), now);
+            return Some(Transition::SwitchCountry(state.save.clone()));
+        }
+    }
     // Where the HUD's panels go: the player's layout resolved for this screen and the sizes the
     // panels ask for; worked out again only when one of them changes.
     let sizes = hud_sizes(state, shared, ui.ctx(), rect, player);
@@ -459,13 +492,13 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
                 response.hovered_province,
                 ui.input(|i| i.pointer.hover_pos()),
             )
-            && let Some((state_name, owner)) = world.place_name(id)
+            && let Some((state_name, owner)) = world.place_name(i18n, id)
         {
             let owner = owner.map(names).unwrap_or_else(|| i18n.tr("map-unowned"));
             let extra = world.provinces[id as usize - 1].state.and_then(|s| {
                 super::lens_panel::tooltip_line(i18n, world, s, view.lens, snap.date.year)
             });
-            paint_tip(ui, pos, state_name, &owner, extra.as_deref());
+            paint_tip(ui, pos, &state_name, &owner, extra.as_deref());
         }
         // The government and journal windows cover the map; the mode picker would show
         // through.
@@ -733,10 +766,21 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
             &shared.i18n,
             shared.world.as_ref(),
             snap.journal.as_deref(),
+            snap.liberation.as_deref(),
             &pinned,
             state.journal.as_mut().expect("journal open"),
             &mut journal_place,
         );
+        if let (Some((states, tag, subject)), Some(by)) = (res.liberate, snap.player.clone()) {
+            // Freeing land cannot be undone in the game: a point to go back to first.
+            state.restore_point_before(shared, Reason::Liberate);
+            state.sim.send(Command::Issue(GameCommand::Liberate {
+                by,
+                states,
+                tag,
+                subject,
+            }));
+        }
         keep_window_place(shared, "journal", journal_place, res.place_done);
         for id in res.toggle_pin {
             state.toggle_pin(shared, &id, now);
@@ -1363,7 +1407,10 @@ fn overview(
         state.research_open = true;
     }
     if let Some(picked) = res.open_journal {
-        state.journal = Some(super::journal::Window { picked });
+        state.journal = Some(super::journal::Window {
+            picked,
+            ..Default::default()
+        });
     }
     if let Some(id) = res.unpin {
         state.toggle_pin(shared, &id, now);

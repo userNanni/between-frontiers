@@ -19,6 +19,9 @@ const FOOTER_H: f32 = 96.0;
 pub struct State {
     save: Save,
     selected: Option<usize>,
+    /// Choosing another country in a saved campaign: the map shows the save's borders, and the
+    /// choice is written to the campaign instead of starting one.
+    switching: bool,
 }
 
 impl State {
@@ -26,6 +29,26 @@ impl State {
         Self {
             save,
             selected: None,
+            switching: false,
+        }
+    }
+
+    /// Another country for a saved campaign: reads the borders of the save into the world, so
+    /// that every country that exists there can be chosen.
+    pub fn switching(save: Save, shared: &mut Shared) -> Self {
+        let path = save.dir.join(saves::WORLD_FILE);
+        if let (Ok(bytes), Some(world)) = (std::fs::read(&path), shared.world.as_mut())
+            && let Ok(session) = bf_sim::game::Session::load(&bytes, 1, None)
+        {
+            world.apply_owners(&owners_of(session.world(), world));
+            // The save's own figures, not 1925's: a country born in the campaign has people.
+            world.live = crate::live::read(session.world(), session.clock().date)
+                .map(|f| crate::world::FigureTable::live(&world.countries, &f));
+        }
+        Self {
+            save,
+            selected: None,
+            switching: true,
         }
     }
 
@@ -70,7 +93,7 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
     if let (Some(id), Some(pos)) = (
         response.hovered_province,
         ui.input(|i| i.pointer.hover_pos()),
-    ) && let Some((state_name, owner)) = world.place_name(id)
+    ) && let Some((state_name, owner)) = world.place_name(&shared.i18n, id)
     {
         let owner = owner
             .map(names)
@@ -78,7 +101,7 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
         let extra = world.provinces[id as usize - 1].state.and_then(|s| {
             super::lens_panel::tooltip_line(&shared.i18n, world, s, view.lens, world.start.year)
         });
-        paint_tip(ui, pos, state_name, &owner, extra.as_deref());
+        paint_tip(ui, pos, &state_name, &owner, extra.as_deref());
     }
     let size = super::lens_panel::size(ui.ctx(), view.lens, rect.height() * 0.6);
     let origin = egui::pos2(rect.left() + 12.0, rect.bottom() - 12.0 - size.y);
@@ -114,8 +137,13 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
     region(ui, banner.shrink2(egui::vec2(space::XL, space::MD)), |ui| {
         ui.vertical_centered(|ui| {
             ui.spacing_mut().item_spacing.y = 2.0;
-            bf_ui_kit::heading(ui, &shared.i18n.tr("pick-title"));
-            bf_ui_kit::small(ui, &shared.i18n.tr("pick-hint"));
+            let (title, hint) = if state.switching {
+                ("pick-switch-title", "pick-switch-hint")
+            } else {
+                ("pick-title", "pick-hint")
+            };
+            bf_ui_kit::heading(ui, &shared.i18n.tr(title));
+            bf_ui_kit::small(ui, &shared.i18n.tr(hint));
         });
     });
 
@@ -152,7 +180,9 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
         region(ui, body, |ui| {
             egui::ScrollArea::vertical()
                 .auto_shrink([false, false])
-                .show(ui, |ui| country_panel::show(shared, ui, country));
+                .show(ui, |ui| {
+                    country_panel::show(shared, ui, country);
+                });
         });
         bf_ui_kit::paint_rule(ui, side, side.bottom() - FOOTER_H + space::SM);
         let footer = Rect::from_min_max(
@@ -163,7 +193,12 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
             egui::pos2(side.right() - space::XL, side.bottom() - space::LG),
         );
         region(ui, footer, |ui| {
-            if Button::primary(&shared.i18n.tr("pick-start"))
+            let label = if state.switching {
+                "pick-switch"
+            } else {
+                "pick-start"
+            };
+            if Button::primary(&shared.i18n.tr(label))
                 .size(ButtonSize::Large)
                 .width(f32::INFINITY)
                 .show(ui)
@@ -176,6 +211,9 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
                 state.save.meta.player = tag;
                 state.save.meta.last_played = saves::now();
                 match saves::write(&state.save) {
+                    // A new country for a saved campaign goes back to the campaigns: the game
+                    // takes it when the campaign opens.
+                    Ok(()) if state.switching => out = Some(Transition::Saves),
                     Ok(()) => out = Some(Transition::Game(state.save.clone())),
                     Err(e) => {
                         let now = ui.input(|i| i.time);
@@ -244,5 +282,40 @@ pub fn paint_tip(ui: &Ui, pointer: egui::Pos2, title: &str, detail: &str, extra:
     painter.galley(r.min + egui::vec2(10.0, 9.0 + th), d, color::TEXT_MUTED);
     if let Some(e) = e {
         painter.galley(r.min + egui::vec2(10.0, 12.0 + th + dh), e, color::ACCENT);
+    }
+}
+
+/// The owners of a saved world, read without the rules: the subjects of the scenario stand
+/// until a border operation ran.
+fn owners_of(
+    w: &bf_sim::game::GameWorld,
+    client: &crate::world::World,
+) -> bf_sim::borders::op::OwnersView {
+    let n = client.states.len();
+    let mut owners = vec![(u16::MAX, false); n];
+    let mut people = vec![0i64; n];
+    for r in &w.econ.regions {
+        if let Some(i) = usize::from(r.state).checked_sub(1).filter(|&i| i < n) {
+            owners[i] = (r.market, r.colony);
+            people[i] = r.population();
+        }
+    }
+    let tags: Vec<String> = w.countries.iter().map(|(_, c)| c.tag.clone()).collect();
+    let overlords = (0..tags.len())
+        .map(|c| match w.borders.subjects.get(c) {
+            Some(s) if !w.borders.subjects.is_empty() => s.as_ref().map(|s| s.overlord),
+            _ => client
+                .countries
+                .get(c)
+                .and_then(|k| k.overlord)
+                .map(|o| o as u16),
+        })
+        .collect();
+    bf_sim::borders::op::OwnersView {
+        changes: w.borders.changes.len(),
+        tags,
+        owners,
+        overlords,
+        people,
     }
 }

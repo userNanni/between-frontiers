@@ -204,10 +204,11 @@ fn month_of(m: i32) -> (i32, u8) {
 /// `table` names the communities; without it the composition is empty.
 pub fn read(
     world: &GameWorld,
+    tag: Option<&str>,
     date: Date,
     table: Option<&CommunityTable>,
 ) -> Option<PopulationView> {
-    let tag = world.player_tag()?;
+    let tag = tag?;
     let c = world.countries.iter().position(|(_, c)| c.tag == tag)?;
     read_country(world, c, date, table)
 }

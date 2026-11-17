@@ -51,6 +51,46 @@ pub struct Snapshot {
     /// The player's population: pyramid, rates, fertility terms, migration; read on the first
     /// snapshot and then once a month.
     pub population: Option<Arc<crate::population::PopulationView>>,
+    /// Who holds every state, read again when a border operation ran; `None` without the rules.
+    pub owners: Option<Arc<bf_sim::borders::op::OwnersView>>,
+    /// The ways the player's country can free land (the decision "Libertar território"), read
+    /// once a month and when the borders or the player change.
+    pub liberation: Option<Arc<LiberationView>>,
+}
+
+/// What the decision to free land shows.
+#[derive(Clone, Debug, PartialEq)]
+pub struct LiberationView {
+    pub tag: String,
+    pub month: (i32, u8),
+    pub changes: usize,
+    pub options: Vec<bf_sim::borders::op::LiberationOption>,
+}
+
+fn liberation_of(
+    session: &Session,
+    rules: &Rules,
+    last: &Option<Arc<LiberationView>>,
+) -> Option<Arc<LiberationView>> {
+    let tag = session.player()?;
+    let date = session.clock().date;
+    let w = session.world();
+    let changes = w.borders.changes.len();
+    if let Some(l) = last
+        && l.tag == tag
+        && l.month == (date.year, date.month)
+        && l.changes == changes
+    {
+        return Some(Arc::clone(l));
+    }
+    let b = rules.as_ref()?.borders.as_ref()?;
+    let c = w.countries.iter().position(|(_, c)| c.tag == tag)?;
+    Some(Arc::new(LiberationView {
+        tag: tag.to_owned(),
+        month: (date.year, date.month),
+        changes,
+        options: bf_sim::borders::op::liberation_options(w, b, c),
+    }))
 }
 
 /// The player's research, copied out of the world for the interface.
@@ -68,7 +108,7 @@ pub struct ResearchView {
 
 fn research_view(session: &Session) -> Option<ResearchView> {
     let w = session.world();
-    let tag = w.player_tag()?;
+    let tag = session.player()?;
     let c = w.countries.iter().position(|(_, c)| c.tag == tag)?;
     let r = &w.research;
     Some(ResearchView {
@@ -136,7 +176,7 @@ fn journal_of(
                 tree: r.tree.as_deref(),
                 politics: r.politics.as_deref(),
             };
-            crate::journal::read(session.world(), date, rules).map(Arc::new)
+            crate::journal::read(session.world(), session.player(), date, rules).map(Arc::new)
         }
     }
 }
@@ -152,17 +192,38 @@ fn population_of(
         Some(p) if p.month == (date.year, date.month) => Some(Arc::clone(p)),
         _ => {
             let table = rules.as_ref().and_then(|r| r.communities.as_deref());
-            crate::population::read(session.world(), date, table).map(Arc::new)
+            crate::population::read(session.world(), session.player(), date, table).map(Arc::new)
         }
     }
 }
 
-/// What a snapshot carries that is read once a month.
+/// What a snapshot carries that is read once a month, or when it changed.
 #[derive(Clone, Default)]
 struct Monthly {
     figures: Option<Arc<LiveFigures>>,
     journal: Option<Arc<Journal>>,
     population: Option<Arc<crate::population::PopulationView>>,
+    owners: Option<Arc<bf_sim::borders::op::OwnersView>>,
+    liberation: Option<Arc<LiberationView>>,
+}
+
+/// The owners, read again only when a border operation ran since `last`.
+fn owners_of(
+    session: &Session,
+    rules: &Rules,
+    last: &Option<Arc<bf_sim::borders::op::OwnersView>>,
+) -> Option<Arc<bf_sim::borders::op::OwnersView>> {
+    let changes = session.world().borders.changes.len();
+    match last {
+        Some(o) if o.changes == changes => Some(Arc::clone(o)),
+        _ => {
+            let b = rules.as_ref()?.borders.as_ref()?;
+            Some(Arc::new(bf_sim::borders::op::OwnersView::read(
+                session.world(),
+                b,
+            )))
+        }
+    }
 }
 
 impl Monthly {
@@ -171,6 +232,8 @@ impl Monthly {
             figures: figures_of(session, &last.figures),
             journal: journal_of(session, rules, &last.journal),
             population: population_of(session, rules, &last.population),
+            owners: owners_of(session, rules, &last.owners),
+            liberation: liberation_of(session, rules, &last.liberation),
         }
     }
 }
@@ -188,14 +251,21 @@ fn snapshot_of(
         paused,
         speed,
         hash,
-        player: session.world().player_tag().map(str::to_owned),
+        player: session.player().map(str::to_owned),
         research: research_view(session),
         local: Arc::new(local_view(session)),
         figures: monthly.figures,
         journal: monthly.journal,
         population: monthly.population,
-        government: crate::government::read(session.world(), session.clock().date).map(Arc::new),
-        laws: crate::laws_view::Live::read(session.world()).map(Arc::new),
+        owners: monthly.owners,
+        liberation: monthly.liberation,
+        government: crate::government::read(
+            session.world(),
+            session.player(),
+            session.clock().date,
+        )
+        .map(Arc::new),
+        laws: crate::laws_view::Live::read(session.world(), session.player()).map(Arc::new),
     }
 }
 
@@ -312,6 +382,8 @@ struct Control {
     speed: u8,
     /// A command changed what the interface shows.
     changed: bool,
+    /// The played country changed: the monthly views are read again now.
+    reread: bool,
 }
 
 /// Applies one command.
@@ -326,7 +398,16 @@ fn apply(session: &mut Session, ctl: &mut Control, command: Command) {
             ctl.changed = true;
         }
         // Applies at the start of the next tick and enters the history then.
-        Command::Issue(c) => session.submit(c),
+        Command::Issue(c) => {
+            if matches!(
+                c,
+                GameCommand::SwitchCountry { .. } | GameCommand::ChoosePlayer { .. }
+            ) {
+                ctl.reread = true;
+                ctl.changed = true;
+            }
+            session.submit(c)
+        }
         Command::Save {
             path,
             copies,
@@ -364,6 +445,7 @@ fn run(
         paused: true,
         speed: 2,
         changed: false,
+        reread: false,
     };
     // The hash shown, and the tick it belongs to: computed only when a snapshot shows a new
     // one (on pause, and on the first of the month).
@@ -414,6 +496,9 @@ fn run(
             if (ctl.paused || month_turned) && tick != hash_tick {
                 hash = short(&session.state_hash());
                 hash_tick = tick;
+            }
+            if std::mem::take(&mut ctl.reread) {
+                monthly = Monthly::default();
             }
             monthly = Monthly::read(&session, &rules, &monthly);
             let snap = snapshot_of(

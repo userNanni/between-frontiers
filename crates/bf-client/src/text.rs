@@ -23,6 +23,16 @@ pub fn country_name(i18n: &I18n, tag: &str) -> String {
     i18n.tr(&format!("country-{tag}"))
 }
 
+/// A state's name in the interface language (`state-<KEY>` in `states.ftl`), or the map's.
+pub fn state_name(i18n: &I18n, def: &bf_sim::scenario::StateDef) -> String {
+    let id = format!("state-{}", def.key);
+    if i18n.has(&id) {
+        i18n.tr(&id)
+    } else {
+        def.name.clone()
+    }
+}
+
 pub fn country_article(i18n: &I18n, tag: &str) -> String {
     i18n.attr(&format!("country-{tag}"), "article")
         .unwrap_or_default()

@@ -10,6 +10,7 @@ pub mod journal;
 pub mod keys_editor;
 pub mod laws;
 pub mod lens_panel;
+pub mod liberate;
 pub mod menu;
 pub mod money;
 pub mod outliner;

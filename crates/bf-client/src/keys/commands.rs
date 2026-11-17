@@ -299,6 +299,7 @@ pub mod id {
     pub const SAVE_NAMED: &str = "campaign.save_named";
     pub const SETTINGS: &str = "system.settings";
     pub const KEYS: &str = "system.keys";
+
     pub const POPULATION: &str = "window.population";
     pub const UI_SCALE_UP: &str = "system.ui_scale_up";
     pub const UI_SCALE_DOWN: &str = "system.ui_scale_down";

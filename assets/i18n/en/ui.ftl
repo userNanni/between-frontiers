@@ -79,6 +79,10 @@ pick-hint = Click a country on the map. Drag to pan, use the mouse wheel to zoom
 pick-back = Back to campaigns
 pick-start = Start campaign
 pick-none = No country selected
+pick-switch-title = Play another country
+pick-switch-hint = Click any country that exists in this campaign. The campaign goes on where it stopped, with the country you choose.
+pick-switch = Play this country
+game-country-gone = Your country no longer exists. Choose another to go on with the campaign.
 
 ## Country panel
 
@@ -103,6 +107,35 @@ stat-area = Area
 stat-area-value = { $value } km²
 stat-states = States
 stat-subjects = Subjects
+borders-subject-detail = As a subject it yields { $gives } and receives { $receives }. It leaves by negotiation or by denunciation, once the pressure to leave passes the overlord's control.
+decisions-title = Decisions
+decisions-hint = Rare and hard to undo: each asks for confirmation.
+liberate-title = Free territory
+liberate-intro = A part of your country becomes a country of its own, independent or your subject. The decision stands for good: only a treaty or a war brings the land back.
+liberate-none = There is no land your country can free without being left with no state.
+liberate-choose = What
+liberate-choose-hint = A country of the catalogue whose land is yours, or a single state.
+liberate-option-detail = { $states ->
+        [one] 1 state
+       *[other] { $states } states
+    } · { $people } people
+liberate-how = How
+liberate-independent = Independent
+liberate-subject = Your subject
+liberate-review = Review the decision
+liberate-pick-first = Choose on the left what to free to see what leaves your country.
+liberate-leaves = What leaves your country
+liberate-people = People
+liberate-plants = Plant and farm levels
+liberate-fund = Share of the investment fund
+liberate-debt = Public debt that goes with it
+liberate-debt-stays = none: the debt stays with your treasury
+liberate-states = States: { $names }.
+liberate-confirm = Free { $name } as an independent country?
+liberate-confirm-subject = Free { $name } as your subject?
+liberate-final = The new country is born recognized by whoever signs its creation: your country.
+liberate-yes = Confirm the liberation
+liberate-no = Back
 stat-rank-population = #{ $rank } in the world by population
 stat-rank-gdp = #{ $rank } economy in the world
 stat-difficulty = Difficulty
@@ -209,6 +242,7 @@ source-live-gdp-year = GDP of { $year }, the last full year.
 source-live-gdp-calibration = No full year of play yet: the GDP calibrated in 1925 stands.
 hud-gdp-split = Metropole and colonies trade in the same market: its GDP is split between them by people's income, and in the first year as in the scenario.
 hud-life-scenario = 1925 figure: the simulation does not compute life expectancy yet.
+hud-life-inherited = A country born in the game: that of its states' 1925 owners, weighted by the people of each.
 hud-quality-life-scenario = Health uses the 1925 life expectancy, which the simulation does not compute yet.
 
 ## Map modes

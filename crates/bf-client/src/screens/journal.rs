@@ -25,6 +25,20 @@ const SCROLL_GUTTER: f32 = 16.0;
 #[derive(Clone, Debug, Default)]
 pub struct Window {
     pub picked: Option<String>,
+    /// The decision to free land, while it is open.
+    pub liberate: Liberate,
+}
+
+/// The id the decision "Libertar território" takes in `Window::picked`.
+pub const LIBERATE: &str = "decision:liberate";
+
+/// The decision to free land: the option picked (index into the view's options), independent
+/// or subject, and whether the player is at the confirmation step.
+#[derive(Clone, Debug, Default)]
+pub struct Liberate {
+    pub option: Option<usize>,
+    pub subject: bool,
+    pub confirming: bool,
 }
 
 #[derive(Default)]
@@ -35,6 +49,8 @@ pub struct Response {
     /// Entry ids whose pin was toggled.
     pub toggle_pin: Vec<String>,
     pub open: Option<crate::journal::Screen>,
+    /// The player confirmed freeing land: (states, the catalogue's tag, as a subject).
+    pub liberate: Option<(Vec<String>, Option<String>, bool)>,
 }
 
 /// Formats a value.
@@ -212,6 +228,7 @@ pub fn show(
     i18n: &I18n,
     world: Option<&World>,
     journal: Option<&Journal>,
+    liberation: Option<&crate::sim::LiberationView>,
     pinned: &[String],
     window: &mut Window,
     place: &mut crate::hud::WindowPlace,
@@ -238,12 +255,38 @@ pub fn show(
             });
         });
         bf_ui_kit::divider(ui);
+        // A decision takes the whole window: it is rare, and it asks for attention.
+        if window.picked.as_deref() == Some(LIBERATE) {
+            let back = Button::ghost(&format!("←  {}", i18n.tr("journal-agendas")))
+                .size(ButtonSize::Small)
+                .show(ui);
+            if back.clicked() || keys::single(ui, "journal.decision.back", 'B', back.rect) {
+                window.picked = None;
+                window.liberate = Liberate::default();
+                return;
+            }
+            super::liberate::show(ui, i18n, world, liberation, &mut window.liberate, &mut out);
+            return;
+        }
+        let decisions = |ui: &mut Ui, window: &mut Window| {
+            bf_ui_kit::heading(ui, &i18n.tr("decisions-title"));
+            bf_ui_kit::small(ui, &i18n.tr("decisions-hint"));
+            let b = Button::secondary(&i18n.tr("liberate-title"))
+                .size(ButtonSize::Small)
+                .show(ui);
+            if b.clicked() || keys::single(ui, "journal.decision.liberate", 'D', b.rect) {
+                window.picked = Some(LIBERATE.to_owned());
+                window.liberate = Liberate::default();
+            }
+        };
         let Some(journal) = journal else {
             bf_ui_kit::muted(ui, &i18n.tr("journal-not-ready"));
             return;
         };
         if journal.entries.is_empty() {
             bf_ui_kit::muted(ui, &i18n.tr("journal-empty"));
+            bf_ui_kit::gap(ui, space::LG);
+            decisions(ui, window);
             return;
         }
         let picked = window
@@ -267,6 +310,8 @@ pub fn show(
                 .auto_shrink([false, false])
                 .show(ui, |ui| {
                     ui.set_max_width(LIST_W - SCROLL_GUTTER);
+                    decisions(ui, window);
+                    bf_ui_kit::gap(ui, space::SM);
                     bf_ui_kit::heading(ui, &i18n.tr("journal-agendas"));
                     if !journal.entries.iter().any(|e| is_agenda(&e.kind)) {
                         bf_ui_kit::small(ui, &i18n.tr("journal-agendas-none"));

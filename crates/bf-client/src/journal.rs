@@ -330,8 +330,8 @@ fn f(x: Fixed) -> f64 {
 }
 
 /// Reads the player's journal; `None` without a player or an economy.
-pub fn read(world: &GameWorld, date: Date, rules: Rules<'_>) -> Option<Journal> {
-    let tag = world.player_tag()?;
+pub fn read(world: &GameWorld, tag: Option<&str>, date: Date, rules: Rules<'_>) -> Option<Journal> {
+    let tag = tag?;
     let c = world.countries.iter().position(|(_, c)| c.tag == tag)?;
     read_country(world, c, date, rules)
 }
