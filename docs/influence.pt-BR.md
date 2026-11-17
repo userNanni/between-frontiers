@@ -455,15 +455,67 @@ cai. O preço de cada parte está com os tratados e a guerra; aqui fica só a pa
   dependência cai no mês seguinte, pela regra de sempre.
 - **Por assunto.** A boa vontade pesa igual em todos os assuntos (seção 11), então a traição numa
   aliança também pesa numa renegociação de dívida com o traído.
-- **Ainda para o dono:** se os parceiros do traído no mesmo bloco também perdem boa vontade com
-  quem quebrou (proposta: metade do ato, só para os membros do bloco do traído, e só quando a
-  cláusula quebrada é do feixe do bloco). Sem essa decisão, só o traído perde.
+- **Os parceiros que atenderam o chamado (decidido pelo dono em 2026-11-17).** Quando a cláusula
+  quebrada é do feixe de um bloco, os outros membros do bloco que **atenderam** o mesmo chamado
+  perdem boa vontade com quem não atendeu, **metade** do que perde o traído direto. Quem também não
+  atendeu não perde nada. Na frase do dono: "se eu atendi o chamado e o outro país não". O
+  registro de quebras dos tratados precisa dizer, por chamado, quem atendeu.
+
+#### Conferência com a história (pedido do dono)
+
+| Caso | O que houve | O que diz da regra |
+|---|---|---|
+| Itália, 1914–1915 | A Tríplice Aliança era defensiva. A Itália declarou neutralidade em agosto de 1914, alegando que a Áustria-Hungria era a agressora; em maio de 1915 rompeu a aliança e atacou a Áustria; à Alemanha só declarou guerra em agosto de 1916 ([Italy in WWI](https://en.wikipedia.org/wiki/Italy_in_World_War_I), [Triple Alliance](https://en.wikipedia.org/wiki/Triple_Alliance_(1882))) | A neutralidade de 1914 **não é quebra** pela regra do jogo (o aliado só entra quando a cláusula prevê); a de 1915 é, e quem a sofreu foi a Áustria. A Alemanha, em vez de se ressentir, mandou Bülow a Roma para comprar a Itália com o Trentino ([Bülow](https://en.wikipedia.org/wiki/Bernhard_von_B%C3%BClow)): o interesse pesou mais que o ressentimento, o que a conta da IA já faz sem regra própria |
+| Munique, 1938 | A França não honrou o tratado com a Tchecoslováquia; a URSS, que tinha pacto com Praga condicionado à França agir primeiro, "sentiu-se traída" e menos de um ano depois assinou o pacto com a Alemanha. A Polônia, que não atendeu e ainda tomou Teschen, não se ressentiu de nada ([Munich Agreement](https://en.wikipedia.org/wiki/Munich_Agreement)) | **Sustenta a direção da regra:** o parceiro disposto a atender perdeu a confiança em quem não atendeu, e quem também não atendeu ficou de fora. A reação foi rápida e virou realinhamento, mais do que rancor que decai |
+| OTAN, fevereiro de 2003 | A Turquia pediu consulta pelo artigo 4; França, Alemanha e Bélgica bloquearam o planejamento no Conselho; o Comitê de Planejamento de Defesa, sem a França, aprovou em 16 de fevereiro ([CRS RS21510](https://www.everycrsreport.com/reports/RS21510.html)). O artigo 5 não estava em jogo: ninguém atacou a Turquia | Quase quebra. O ressentimento veio dos EUA, parceiro que apoiou o pedido, e foi seletivo: "punish France, ignore Germany, forgive Russia". Em 2007 a relação com a França estava "markedly improved" ([Brookings](https://www.brookings.edu/articles/punish-france-ignore-germany-forgive-russia-no-longer-fits/)), e a França voltou ao comando integrado em 2009 ([France and NATO](https://en.wikipedia.org/wiki/France_and_NATO)): recuperação de 4 a 6 anos, com troca de governo |
+| Egito e a Liga Árabe, 1979–1989 | Depois da paz em separado com Israel, a Liga suspendeu o Egito em 1979 e levou a sede para Túnis; a maioria reatou em 1987, a readmissão veio em 1989 e a sede voltou ao Cairo em 1990 ([Arab League](https://en.wikipedia.org/wiki/Arab_League), [cúpula de 1978](https://en.wikipedia.org/wiki/1978_Arab_League_summit)) | O bloco que manteve a posição puniu o membro que saiu dela, e a punição durou 8 a 10 anos: **bate com a meia-vida de 8 anos**. Não achei texto que a enquadre como quebra do tratado de defesa de 1950; foi decisão política da Liga |
+| Romênia, 1968 | A Romênia recusou participar da invasão da Tchecoslováquia; o Pacto de Varsóvia era defensivo e a invasão não cabia nele. A URSS tolerou, com relação fria até 1989 ([Romania–Soviet Union relations](https://en.wikipedia.org/wiki/Romania%E2%80%93Soviet_Union_relations)) | **Não é quebra**, e a regra não dispara: é o teste de que recusar uma ação que a cláusula não prevê não custa boa vontade. A frieza longa é desconfiança de regime, não ato que decai |
+
+**O que a conferência diz.**
+- **A direção da regra se sustenta:** quem atendeu se ressente de quem não atendeu (a URSS em 1938,
+  os EUA em 2003, a Liga em 1979), e quem também falhou não (a Polônia em 1938).
+- **A medida "metade" não aparece na história como número:** a intensidade variou com o interesse
+  de cada parceiro (os EUA puniram a França e pouparam a Alemanha). Metade fica como valor de
+  desenho, a equilibrar depois da fase 6; o interesse entra pela conta da IA, não por esta regra.
+- **A meia-vida de 8 anos** bate com o Egito (8 a 10 anos) e é lenta para a OTAN de 2003 (4 a 6
+  anos, com troca de governo). Fica como está; troca de governo apagar parte da boa vontade é
+  pergunta para a fase 6.
+- **O efeito sobre todos os outros** (quem não estava no chamado) é reputação, não boa vontade:
+  Gibler (2008, "The Costs of Reneging") e Crescenzi et al. (2012) acham que quem descumpre forma
+  menos alianças depois, com qualquer parceiro. Isso já é a reputação dos tratados (seção 11 deste
+  documento; seção 9 deles), e a influência não duplica.
+- **Romênia e Itália em 1914 são testes de não disparo:** recusa fora do que a cláusula prevê não é
+  quebra.
+
+#### Outro mecanismo: o custo de associação quando um membro agride por conta própria
+
+O exemplo do dono foi o BRICS com a Crimeia e a guerra da Ucrânia. Não é traição de pacto: o
+BRICS é foro informal, sem secretaria e sem obrigação mútua; só o Novo Banco de Desenvolvimento e o
+arranjo de reservas têm tratado ([BRICS](https://en.wikipedia.org/wiki/BRICS)). Na resolução
+68/262 da Assembleia Geral (março de 2014), Brasil, Índia, China e África do Sul se abstiveram
+([68/262](https://en.wikipedia.org/wiki/United_Nations_General_Assembly_Resolution_68/262)); na
+ES-11/1 (março de 2022), o Brasil votou a favor e os outros três se abstiveram
+([ES-11/1](https://en.wikipedia.org/wiki/United_Nations_General_Assembly_Resolution_ES-11/1)); o
+grupo decidiu ampliar-se em agosto de 2023, com os novos membros a partir de janeiro de 2024. Os
+parceiros não perderam boa vontade com a Rússia de modo visível: a Índia aumentou a compra de
+petróleo russo depois de 2022
+([India–Russia relations](https://en.wikipedia.org/wiki/India%E2%80%93Russia_relations)).
+
+- **Onde mora (proposta):** no **canal de ameaça**, dormente até as fases 5 e 6. A agressão de um
+  membro aumenta a ameaça que **terceiros** veem no bloco, na proporção da profundidade das
+  obrigações do feixe: aliança militar, muito (os parceiros podem ser arrastados); foro de
+  consulta, quase nada (o BRICS). Não mexe na boa vontade entre os parceiros.
+- **Decisão para o dono (T1):** recomendação, o canal de ameaça como acima. Alternativa: a
+  agressão de um membro também custa boa vontade aos parceiros, pela profundidade do feixe; a
+  história do BRICS não mostra esse efeito.
+
 - **Nomes.** O bloco militar recebe na tela o nome do tipo de aliança do seu feixe, pela
   nomenclatura do Correlates of War e do ATOP ([wiki, Alianças](wiki/decisoes/aliancas.md)); a
   regra continua nas cláusulas.
 
 **Como se testa:** uma quebra registrada de A contra B baixa a boa vontade de B com A no mês da
-quebra, e só dela; a influência de A sobre B cai no mapa do mês seguinte; em 8 anos o efeito cai à
+quebra; um parceiro de bloco de B que atendeu o mesmo chamado perde metade, e um que também não
+atendeu, nada; uma recusa fora do que a cláusula prevê (a Romênia em 1968) não muda nada; a influência de A sobre B cai no mapa do mês seguinte; em 8 anos o efeito cai à
 metade; a denúncia do feixe por um membro o tira do bloco no mês seguinte.
 
 **Quanto custa manter:** uma leitura do registro de quebras por mês (poucas linhas por ano).

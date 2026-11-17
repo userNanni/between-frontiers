@@ -190,10 +190,13 @@ crise).
 
 - **Decisão:** quando A quebra um tratado com B, a boa vontade de B com A cai uma vez, pelo valor da
   quebra, e decai com a mesma meia-vida das outras. A memória longa fica na reputação de A, que é
-  dos tratados.
+  dos tratados. Os outros membros do bloco que atenderam o mesmo chamado perdem metade disso; quem
+  também não atendeu não perde nada.
 - **O que o autor pensou:** "Quebrar o tratado é possível, mas tem um preço muito alto." Ele
   decidiu que a reputação é por país e lembra por muito tempo, que os parceiros de quem rompeu
-  podem denunciar sem custo e que a boa vontade com o traído cai.
+  podem denunciar sem custo e que a boa vontade com o traído cai. Sobre os parceiros: "se eu
+  atendi o chamado e o outro país não", perco boa vontade com ele; e pediu que a regra fosse
+  conferida com a história.
 - **Como o jogo funciona por causa disso:** o aliado que não veio perde peso sobre o traído em
   todos os assuntos, inclusive numa renegociação de dívida, e a lente de influência mostra "quebra
   em 1938" entre os atos do par. Quem denuncia o feixe de um bloco sai do bloco no mês seguinte,
@@ -202,8 +205,10 @@ crise).
   ([Alianças](aliancas.md#trair-é-possível-e-custa-muito-caro)). A reputação de cumprir é o que
   pesa na confiança entre Estados (Tomz 2007).
 - **Estado:** decidido; desenhado. Lê o registro de quebras dos tratados; entra quando a quebra
-  existir no tick. Em aberto para o autor: se os parceiros de bloco do traído também perdem boa
-  vontade (proposta: metade).
+  existir no tick. Os parceiros de bloco que atenderam o chamado perdem metade do que perde o
+  traído; quem também não atendeu, nada (decidido pelo autor, conferido com Munique, a OTAN de
+  2003 e a Liga Árabe de 1979; seção 13b). Em aberto: o custo de associação quando um membro
+  agride por conta própria (o BRICS), proposto no canal de ameaça.
 - **Onde está o detalhe:** [seção 13b](../../influence.pt-BR.md#13b-quando-um-tratado-é-quebrado-o-que-a-influência-lê-e-escreve).
 
 ## Fontes
