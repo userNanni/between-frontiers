@@ -10,6 +10,10 @@
 //! Dates are ISO strings, `YYYY-MM-DD`. Names live in `assets/i18n/*/countries.ftl`
 //! (`country-<TAG>`, `.article`, `country-<TAG>-capital`), as for the 1925 countries.
 
+pub mod op;
+
+pub use op::{BorderRules, BordersState, Operation, Terms};
+
 use std::collections::{BTreeMap, BTreeSet};
 
 use serde::{Deserialize, Serialize};
@@ -338,6 +342,12 @@ pub struct Totals {
     pub debt: [laplace_schelling::Fixed; 4],
     /// What savers lent to other states.
     pub foreign_assets: laplace_schelling::Fixed,
+    /// People abroad (the diaspora) and those of them who arrived since the start.
+    pub diaspora: i64,
+    pub arrived: i64,
+    /// Plant levels, and levels under construction.
+    pub levels: i64,
+    pub works: usize,
 }
 
 impl Totals {
@@ -348,6 +358,11 @@ impl Totals {
                 t.people += p.size;
                 t.savings += p.savings;
             }
+            t.levels += r.plants.iter().map(|p| p.levels).sum::<i64>();
+        }
+        for d in &world.demography.diaspora {
+            t.diaspora += d.people;
+            t.arrived += d.arrived;
         }
         for m in &world.econ.markets {
             let y = &m.money;
@@ -361,6 +376,7 @@ impl Totals {
                 *d += v;
             }
             t.foreign_assets += y.foreign_assets;
+            t.works += m.queue.len();
         }
         t
     }

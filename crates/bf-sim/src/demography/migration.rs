@@ -152,6 +152,8 @@ pub enum WaveEnd {
     Full,
     /// Income at the destination no longer pays the move.
     NoPull,
+    /// The origin or the destination changed owner (`borders::op`).
+    Border,
 }
 
 /// A mass migration from one territory to another, open while the pressure lasts.

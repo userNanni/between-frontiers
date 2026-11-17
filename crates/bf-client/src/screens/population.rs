@@ -601,6 +601,7 @@ fn wave_line(i18n: &I18n, w: &WaveLine) -> String {
                 WaveEnd::DoorClosed => "population-end-closed",
                 WaveEnd::Full => "population-end-full",
                 WaveEnd::NoPull => "population-end-no-pull",
+                WaveEnd::Border => "population-end-border",
             };
             args.push(("until", Arg::String(until.to_string())));
             args.push(("count", Arg::Num(f64::from(w.count))));

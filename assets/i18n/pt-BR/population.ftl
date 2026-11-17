@@ -86,6 +86,7 @@ population-end-eased = a pressão aliviou
 population-end-closed = a porta fechou
 population-end-full = o destino encheu
 population-end-no-pull = nada mais atraía
+population-end-border = a fronteira mudou
 population-immigrants-note = Gente aqui por país de origem. Comunidade: as comunidades de 1925, todos os que vieram depois e os filhos deles. "Desde 1925" conta só os que chegaram, sem os filhos.
 population-emigrants-note = Gente deste país lá fora, contada do mesmo jeito. "Desde 1925" conta só os que partiram, sem os filhos.
 population-with-descendants = Comunidade

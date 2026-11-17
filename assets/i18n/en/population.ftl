@@ -86,6 +86,7 @@ population-end-eased = the pressure eased
 population-end-closed = the door closed
 population-end-full = the destination filled up
 population-end-no-pull = nothing drew them any more
+population-end-border = the border changed
 population-immigrants-note = People here by country of origin. Community: the communities of 1925, everyone who came since and their children. "Since 1925" counts only those who arrived, without children.
 population-emigrants-note = People of this country abroad, counted the same way. "Since 1925" counts only those who left, without children.
 population-with-descendants = Community
