@@ -29,6 +29,7 @@ use crate::polity::{POLITY, effects_in_force};
 use crate::research_system::RESEARCH;
 
 pub mod communities;
+pub mod education;
 pub mod migration;
 pub use migration::{Diaspora, Home, Push, Wave, WaveEnd, WaveRecord};
 
