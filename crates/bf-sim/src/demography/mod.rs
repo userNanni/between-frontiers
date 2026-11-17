@@ -93,8 +93,10 @@ const TFR_HIGH: Fixed = milli(6500);
 const TFR_LOW: Fixed = milli(1750);
 const TFR_WITHOUT_PILL: Fixed = milli(500);
 /// Share of fertility lost when the land per farmer has fallen to nothing from the state's own
-/// of 1925; in proportion before that.
-const LAND_BRAKE: Fixed = milli(500);
+/// of 1925; in proportion before that. Zero until the land ceiling is the arable land and not
+/// the cropland of 1925: without a farming frontier every growing country "runs out of land",
+/// Brazil and Argentina too, and the brake punished the missing frontier, not land hunger.
+const LAND_BRAKE: Fixed = milli(0);
 /// Weights of the transition score and where the transition starts and ends.
 const F_SURVIVAL: Fixed = milli(250);
 const F_SCHOOLING: Fixed = milli(550);

@@ -280,8 +280,13 @@ Filhos por mulher (TFR), distribuídos pelas idades de 15 a 49 num perfil fixo (
   a menina na escola hoje é mãe daqui a uma geração.
 - **Fora do campo:** parcela da população fora das profissões rurais (`urban_share`).
 - **Contracepção:** o efeito `fertility` das tecnologias (a pílula) vezes o alcance,
-  0,25 + 0,75 × escolaridade: os programas de planejamento familiar levaram a contracepção a
-  mães sem escola (Bangladesh), mas menos. Sem ela a transição para em 2,25 filhos (abstinência,
+  0,25 + 0,75 × max(escolaridade, cobertura hospitalar): o planejamento familiar chegou pela
+  escola e pela rede de saúde (médicos descalços na China, postos na Indonésia e em Bangladesh).
+- **Fome de terra (freio preventivo), desligado:** a regra existe (`LAND_BRAKE`, a fecundidade
+  cai quando a terra por lavrador do estado fica abaixo da de 1925), mas com peso zero. O teto de
+  terra da economia é a lavoura de 1925, não a terra arável; sem fronteira agrícola todo país que
+  cresce "fica sem terra", o Brasil e a Argentina também, e o freio derrubou o mundo de 2025 para
+  5,5 bilhões. Volta quando o teto for a terra potencial. Sem ela a transição para em 2,25 filhos (abstinência,
   coito interrompido, casamento tardio); com ela, em 1,75.
 - **Decomposição:** `DemographyState::fertility_breakdown(econ, mercado, colônia)` dá, por
   território, cada termo com valor, peso e contribuição (`FertilityTerm`), para a tela mostrar
@@ -306,20 +311,30 @@ diáspora e as ondas.
   se o destino não for mais pobre que 0,3 da renda da origem: as fronteiras da Argentina, dos EUA,
   do Canadá, da Austrália.
 - **Rede:** a diáspora puxa sozinha (cartas, passagem paga, emprego esperando): até 0,5 de
-  brecha, para destino com pelo menos 0,25 da renda da origem. É o que leva italiano a um Brasil
-  mais pobre que a Itália.
+  brecha, para destino com pelo menos 0,20 da renda da origem. É o que leva italiano e português
+  a um Brasil mais pobre que a Itália e que Portugal.
 - **Distância:** 1 / (1 + (d / 8 000 km)²) entre os centros de população.
 - **Vagas:** parcela dos operários do destino com emprego, à quarta potência.
-- **Corrente:** 0,2 numa estrada sem ninguém do outro lado; sobe até ×4 quando a diáspora da
-  origem chega a 5 % da população do destino. Sem rede, pouca gente vai (teoria das redes de
-  migração); com ela, a estrada se mantém.
+- **Corrente:** 0,2 numa estrada sem ninguém do outro lado; sobe até ×4 quando a diáspora chega
+  a 5 % da população da **origem** (quantas famílias têm alguém naquela estrada). Sem rede, pouca
+  gente vai (teoria das redes de migração); com ela, a estrada se mantém. Medida contra a origem,
+  a rede não nasce sozinha do fluxo contínuo de um país enorme (a China não "funda" uma corrente
+  para a Alemanha com algumas dezenas de milhares).
+- **Minorias com estrada própria** (`DemographyState::homes`): uma cultura que vive fora da pátria
+  e não é a maior do seu território de origem (levantinos nas colônias francesas, armênios e
+  ucranianos na URSS, galegos e catalães na Espanha, guzerates e punjabis na Índia) tem o próprio
+  fluxo contínuo, tirado da sua gente na origem (a de 1925, escalada pela população do
+  território), com a corrente medida contra ela. Os 41 mil sírio-libaneses do Brasil em 1925 são
+  0,06 % das colônias francesas, mas 1,8 % dos levantinos delas.
 - **Família:** × 2 na mesma família linguística (a maior do território). Metrópole e colônias
   não têm bônus próprio (`SAME_EMPIRE` = 1): com ele, Bélgica, Holanda e Portugal ficavam no teto
   de imigração por 60 anos.
 
 **Fluxo contínuo.** Sai por ano até 3 por mil da população, vezes a melhor atração (até 1), a lei
-de emigração, quem pode pagar a passagem (0,05 + 0,95 × alfabetização²) e o empurrão do
-desemprego no campo (1 + parcela ociosa). Os emigrantes se repartem pelos destinos pela atração
+de emigração (até 1000) e o empurrão do desemprego no campo (1 + parcela ociosa). Em cada
+estrada fica quem pode pagar a passagem: 1 − (1 − própria) × (1 − pré-paga) × (1 − paga pela lei),
+com a própria = 0,05 + 0,95 × alfabetização², a pré-paga = diáspora da estrada contra 5 % da
+origem (parentes e contratadores mandavam a passagem) e a paga pela lei abaixo. Os emigrantes se repartem pelos destinos pela atração
 vezes a população; nenhum destino recebe mais de 4 por mil ao ano.
 
 **Ondas.** A pressão de saída de uma origem soma a parcela ociosa do campo, a fome (1 − necessidades
@@ -336,9 +351,20 @@ no máximo 8 por mil ao ano. A onda fecha, com motivo registrado, quando:
 | `Full` | as vagas do destino caem abaixo de 0,5 |
 | `NoPull` | a atração cai abaixo de 0,125 |
 
-O motivo da abertura (`Push`) é o maior termo da pressão: terra (`Land`), fome (`Hunger`) ou
+A onda só abre numa estrada já aberta: com pioneiros (diáspora de pelo menos 0,1 da corrente
+cheia) ou com passagem paga por lei. O motivo da abertura (`Push`) é o maior termo da pressão: terra (`Land`), fome (`Hunger`) ou
 renda lá fora (`Poverty`). `DemographyState::waves` guarda as abertas e `waves_ended` as
 fechadas; o placar lista as maiores ("Ondas de migração").
+
+**Passagem paga pela lei.** Valor da lei acima de 1000 é a parcela da passagem que o Estado paga
+(`subsidy`): `subsidized_immigration` (2000, destino) e `sponsored_emigration` (2000, origem).
+O subsídio do destino só paga quem vem de origem com emigração livre ou patrocinada
+(`regulated_emigration`, 700, a Itália de 1925: o rei proibiu a emigração subsidiada para o
+Brasil). O patrocínio da origem só vale para destino que também subsidia, e só para a metrópole
+(um programa de colonização dos dois governos: o Japão e o Brasil a partir de 1925); ele recruta
+como 0,3 de uma corrente cheia. A passagem paga encurta a distância na mesma proporção. Em 1925:
+o Brasil subsidia (lavoura paulista), o Japão patrocina, a Itália regula (fontes em
+`data/scenario/1925/laws.ron`); a referência dá a cota brasileira de 1934.
 
 **Porta.** Cotas (300 ‰) fecham a porta para ondas, não para o fluxo contínuo, que passa reduzido.
 Quando a porta de um destino fecha, a onda termina com `DoorClosed` e a próxima abre para o melhor
@@ -380,8 +406,15 @@ cidades (na proporção da população urbana dos estados). Na pirâmide, idades
   profissão. A diáspora guarda origem e cultura até as comunidades entrarem nos pops.
 - **Exclusão racial e refugiados.** A exclusão racial é lei dirigida e não pesa enquanto o
   migrante não carrega comunidade; não há refugiado (sem guerra).
-- **Subsídio à imigração** (passagens pagas por São Paulo, emigração japonesa incentivada pelo
-  governo): não é lei do catálogo.
+- **Fronteira agrícola.** O freio por fome de terra espera o teto de terra arável (thread da
+  economia).
+- **Planejamento familiar como lei.** Hoje a causa é a rede de saúde; quando a política tiver
+  quem peça, vira lei (programa voluntário, programa de Estado, limite coercitivo como o filho
+  único).
+- **Datas das leis de migração.** As mudanças da referência (o fim do subsídio paulista por volta
+  de 1930, a cota brasileira de 1934, a restrição fascista de 1927, a guerra civil espanhola) só
+  acontecem se um movimento da política as fizer; na rodada, o Brasil subsidia até 1994.
+- **Ondas de minorias.** As minorias têm fluxo contínuo próprio, não ondas.
 - **Natalidade por classe (próximo PR).** Hoje os nascimentos do estado vão às profissões na
   proporção do tamanho (`distribute`). Desenho: cada pop com o seu TFR, pelos mesmos termos
   regionais (sobrevivência, escolaridade, contracepção) mais o conforto da própria pop
