@@ -22,6 +22,9 @@ pub struct State {
     /// Choosing another country in a saved campaign: the map shows the save's borders, and the
     /// choice is written to the campaign instead of starting one.
     switching: bool,
+    /// The list of countries, to choose by keyboard, while it is open; and what is typed in it.
+    finding: bool,
+    query: String,
 }
 
 impl State {
@@ -30,6 +33,8 @@ impl State {
             save,
             selected: None,
             switching: false,
+            finding: false,
+            query: String::new(),
         }
     }
 
@@ -49,6 +54,8 @@ impl State {
             save,
             selected: None,
             switching: true,
+            finding: false,
+            query: String::new(),
         }
     }
 
@@ -153,13 +160,98 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
         egui::vec2(240.0, 40.0),
     );
     region(ui, back, |ui| {
-        if Button::secondary(&format!("←  {}", shared.i18n.tr("pick-back")))
-            .show(ui)
-            .clicked()
-        {
-            out = Some(Transition::Saves);
-        }
+        ui.horizontal(|ui| {
+            if Button::secondary(&format!("←  {}", shared.i18n.tr("pick-back")))
+                .show(ui)
+                .clicked()
+            {
+                out = Some(Transition::Saves);
+            }
+            let label = shared.i18n.tr("pick-find");
+            let find = Button::secondary(&label).show(ui);
+            let find = find.on_hover_text(crate::keys::tip(
+                ui.ctx(),
+                &label,
+                crate::keys::id::PICK_FIND,
+            ));
+            if crate::keys::pressed(ui, crate::keys::id::PICK_FIND, &find) {
+                state.finding = !state.finding;
+                state.query.clear();
+            }
+        });
     });
+    if crate::keys::fired(ui.ctx(), crate::keys::id::PICK_FIND) {
+        state.finding = !state.finding;
+        state.query.clear();
+    }
+
+    // The list of countries, to choose by keyboard: type part of a name or the tag, Enter takes
+    // the first; each line has its key tip.
+    if state.finding {
+        let list = Rect::from_min_size(
+            back.left_bottom() + egui::vec2(0.0, space::SM),
+            egui::vec2(
+                320.0f32.min(rect.width() - 2.0 * space::LG),
+                (rect.height() * 0.55).min(480.0),
+            ),
+        );
+        super::frame(ui, list, "pick-countries");
+        crate::keys::cover(ui, list);
+        let owners: std::collections::BTreeSet<usize> =
+            world.provinces.iter().filter_map(|p| p.owner).collect();
+        let q = state.query.trim().to_lowercase();
+        let mut found: Vec<(usize, String)> = owners
+            .iter()
+            .map(|&c| (c, names(c)))
+            .filter(|(c, name)| {
+                q.is_empty()
+                    || name.to_lowercase().contains(&q)
+                    || world.countries[*c].tag().to_lowercase() == q
+            })
+            .collect();
+        found.sort_by(|a, b| a.1.cmp(&b.1));
+        region(ui, list.shrink(space::MD), |ui| {
+            ui.spacing_mut().item_spacing.y = space::XS;
+            let field = bf_ui_kit::text_field(ui, &mut state.query, ui.available_width());
+            if !field.has_focus() && !field.lost_focus() {
+                field.request_focus();
+            }
+            let enter = field.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter));
+            if enter && let Some((c, _)) = found.first() {
+                state.selected = Some(*c);
+                state.finding = false;
+            }
+            bf_ui_kit::caption(
+                ui,
+                &shared.i18n.tr_args(
+                    "pick-find-count",
+                    &[("n", bf_i18n::Arg::Num(found.len() as f64))],
+                ),
+            );
+            egui::ScrollArea::vertical()
+                .id_salt("pick-countries")
+                .auto_shrink([false, false])
+                .show(ui, |ui| {
+                    for (k, (c, name)) in found.iter().enumerate() {
+                        let row = ui.add(
+                            egui::Button::selectable(state.selected == Some(*c), name.as_str())
+                                .truncate(),
+                        );
+                        let typed = crate::keys::item(
+                            ui,
+                            'Z',
+                            format!("pick.country.{}", world.countries[*c].tag()),
+                            &(k + 1).to_string(),
+                            row.rect,
+                        );
+                        if row.clicked() || typed {
+                            state.selected = Some(*c);
+                            state.finding = false;
+                        }
+                    }
+                });
+        });
+    }
 
     // Sidebar
     if let Some(country) = state.selected {
@@ -198,12 +290,11 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
             } else {
                 "pick-start"
             };
-            if Button::primary(&shared.i18n.tr(label))
+            let start = Button::primary(&shared.i18n.tr(label))
                 .size(ButtonSize::Large)
                 .width(f32::INFINITY)
-                .show(ui)
-                .clicked()
-            {
+                .show(ui);
+            if start.clicked() || crate::keys::single(ui, "pick.start", 'S', start.rect) {
                 let tag = shared
                     .world
                     .as_ref()
@@ -229,7 +320,9 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
     }
 
     if crate::keys::fired(ui.ctx(), crate::keys::id::BACK) {
-        if state.selected.is_some() {
+        if state.finding {
+            state.finding = false;
+        } else if state.selected.is_some() {
             state.selected = None;
         } else {
             out = Some(Transition::Saves);

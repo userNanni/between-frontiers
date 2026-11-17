@@ -348,3 +348,12 @@ laws-balance-minority = Most of the clout is against. Once laws go through a pas
 laws-balance-majority = Most of the clout backs this change.
 laws-effects-inert = The effects of laws do not act on the economy yet: the change moves the law in force and the groups' stances, not the country's figures.
 laws-migration-in-budget = The internal migration the simulation uses today is set by the migration law, in the Budget tab.
+
+cmd-system-pick-find = Find a country by name
+    .short = Find country
+pick-find = Find a country
+pick-find-count = { $n ->
+    [0] no country
+    [one] one country
+   *[other] { $n } countries
+    }

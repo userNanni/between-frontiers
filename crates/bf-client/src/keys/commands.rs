@@ -294,6 +294,7 @@ pub mod id {
     pub const RESEARCH_NEXT_ERA: &str = "research.next_era";
     pub const RESEARCH_CLEAR_FOCUS: &str = "research.clear_focus";
     pub const BACK: &str = "system.back";
+    pub const PICK_FIND: &str = "system.pick_find";
     pub const SAVE: &str = "system.save";
     pub const QUICK_SAVE: &str = "campaign.quick_save";
     pub const QUICK_LOAD: &str = "campaign.quick_load";
@@ -408,6 +409,9 @@ fn builtin() -> Vec<CommandDef> {
             .keys([k(Delete)])
             .hint('K'),
         CommandDef::new(BACK, System).keys([k(Escape)]),
+        CommandDef::new(PICK_FIND, System)
+            .keys([k(KeyF).ctrl()])
+            .hint('F'),
         CommandDef::new(SAVE, System)
             .keys([k(KeyS).ctrl()])
             .hint('S'),

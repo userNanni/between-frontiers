@@ -360,3 +360,12 @@ laws-balance-minority = A maior parte da força é contra. Quando a tramitação
 laws-balance-majority = A maior parte da força apoia esta troca.
 laws-effects-inert = Os efeitos das leis ainda não agem na economia: a troca muda a lei em vigor e a posição dos grupos, não os números do país.
 laws-migration-in-budget = A migração interna que a simulação usa hoje se ajusta na lei de migração, na aba Orçamento.
+
+cmd-system-pick-find = Procurar país pelo nome
+    .short = Procurar país
+pick-find = Procurar país
+pick-find-count = { $n ->
+    [0] nenhum país
+    [one] um país
+   *[other] { $n } países
+    }

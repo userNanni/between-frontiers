@@ -19,6 +19,11 @@ struct Surface {
 
 const PLAYER: &[Surface] = &[
     Surface {
+        variant: "ChoosePlayer",
+        command: id::PICK_FIND,
+        files: &["screens/game.rs"],
+    },
+    Surface {
         variant: "SetResearch",
         command: id::RESEARCH,
         files: &["screens/research.rs", "screens/game.rs"],
@@ -66,17 +71,10 @@ const PLAYER: &[Surface] = &[
 ];
 
 /// Variants the player does not give from a screen with a key, and why.
-const EXCEPTIONS: &[(&str, &str)] = &[
-    (
-        "Borders",
-        "issued by treaties, peace, tests and tools; the player frees its land with Liberate",
-    ),
-    (
-        "ChoosePlayer",
-        "the country is chosen on the country choice screen (a click on the map and its button), \
-         before the campaign's keys exist; a keyboard route there is still missing",
-    ),
-];
+const EXCEPTIONS: &[(&str, &str)] = &[(
+    "Borders",
+    "issued by treaties, peace, tests and tools; the player frees its land with Liberate",
+)];
 
 fn variants() -> BTreeSet<String> {
     let mut tracer = Tracer::new(TracerConfig::default());
