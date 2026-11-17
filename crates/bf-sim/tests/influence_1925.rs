@@ -82,6 +82,53 @@ fn the_blocs_of_1925() {
     );
 }
 
+/// Blocs are read from the clauses: a pair alone is an alliance, the French web of pacts is not one
+/// bloc, and the label of each pact follows its clauses.
+#[test]
+fn blocs_come_from_the_clauses() {
+    let d = data();
+    let dip = d.diplomacy.as_ref().unwrap();
+    let blocs = influence::blocs_on(dip, &d.countries, "1925-01-01");
+    let military: Vec<_> = blocs
+        .iter()
+        .filter(|b| b.kind == BlocKind::Military)
+        .collect();
+    // Only the Little Entente: the Estonian-Latvian pact is a pair, and France's pacts with
+    // Poland, Belgium and Czechoslovakia do not tie those three to each other.
+    assert_eq!(military.len(), 1, "{military:?}");
+    assert_eq!(military[0].key, "little_entente");
+    assert_eq!(military[0].leader, None);
+    let label = |key: &str| {
+        let t = dip.treaties.iter().find(|t| t.key == key).unwrap();
+        influence::alliance_label(&t.clauses)
+    };
+    assert_eq!(
+        label("cze_yug_alliance"),
+        Some(influence::AllianceLabel::DefencePact)
+    );
+    assert_eq!(
+        label("estonian_latvian_alliance"),
+        Some(influence::AllianceLabel::DefencePact)
+    );
+    assert_eq!(label("belgium_luxembourg_union"), None);
+    let cow = |key: &str| {
+        let t = dip.treaties.iter().find(|t| t.key == key).unwrap();
+        influence::cow_type(&t.clauses)
+    };
+    assert_eq!(cow("cze_yug_alliance"), Some(influence::CowType::I));
+    assert_eq!(cow("belgium_luxembourg_union"), None);
+    // A member who leaves: without the Yugoslav-Romanian treaty the triangle is gone, and so is
+    // the bloc (a denunciation takes the member out when the treaty ends).
+    let without = dip
+        .treaties_on("1925-01-01")
+        .filter(|t| t.key != "rom_yug_alliance");
+    let after = influence::blocs_from(without, Vec::new(), Vec::new());
+    assert!(after.iter().all(|b| b.key != "little_entente"));
+    // The Latin Union ends on 1927-01-01.
+    let later = influence::blocs_on(dip, &d.countries, "1927-06-01");
+    assert!(later.iter().all(|b| b.key != "latin_monetary_union"));
+}
+
 #[test]
 fn credit_is_live_and_the_rest_dormant() {
     let w = world();
@@ -237,4 +284,51 @@ fn rapprochement_with_an_opposite_regime_costs_more_at_home() {
         cost("USA", "CAN")
     );
     assert_eq!(cost("USA", "USA"), Fixed::ZERO);
+}
+
+/// The "Blocs" lens: countries by index, the treaties that tie each member, and the date the bloc
+/// as it stands came to be (the Little Entente closes with the Romanian-Yugoslav treaty).
+#[test]
+fn bloc_views_for_the_map() {
+    let d = data();
+    let w = world();
+    let views = influence::bloc_views(
+        d.diplomacy.as_ref().unwrap(),
+        &d.border_rules,
+        w,
+        Date::new(1925, 1, 1),
+    );
+    let le = views.iter().find(|b| b.key == "little_entente").unwrap();
+    assert_eq!(le.leader, None);
+    assert_eq!(le.since, Date::new(1921, 6, 7));
+    let members: Vec<usize> = le.members.iter().map(|m| usize::from(m.country)).collect();
+    assert_eq!(members, [ix("CZE"), ix("ROM"), ix("YUG")]);
+    let cze = &le.members[0];
+    assert_eq!(cze.since, Date::new(1920, 8, 14));
+    assert_eq!(cze.treaties, ["cze_rom_alliance", "cze_yug_alliance"]);
+    let gbr = views.iter().find(|b| b.key == "subjects:GBR").unwrap();
+    assert_eq!(gbr.leader, Some(ix("GBR") as u16));
+    assert!(
+        gbr.members
+            .iter()
+            .any(|m| usize::from(m.country) == ix("NZL"))
+    );
+}
+
+/// The "Influence" lens: one pass gives, for each country, what `channels` gives pair by pair.
+#[test]
+fn influence_over_and_on_match_the_pair_reading() {
+    let d = data();
+    let w = world();
+    let rules = d.rules();
+    let setup = rules.influence.as_deref().unwrap();
+    let debt = w.econ.ledger.debts.first().unwrap();
+    let (a, b) = (usize::from(debt.creditor), usize::from(debt.debtor));
+    let over = influence::influence_over(w, setup, a, 1925);
+    let (_, v) = over.iter().find(|(x, _)| usize::from(*x) == b).unwrap();
+    let pair = influence::channels(w, setup, a, b, 1925);
+    assert_eq!(*v, pair.interest.influence);
+    let on = influence::influence_on(w, setup, b, 1925);
+    assert!(on.iter().any(|(x, u)| usize::from(*x) == a && u == v));
+    assert!(v[Issue::Money as usize] > Fixed::ZERO);
 }

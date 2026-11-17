@@ -178,18 +178,26 @@ crise).
   do próprio país; a tela mostra "o que o país quer".
 - **Como é na vida real:** o pequeno escolhe o patrono que ameaça menos e cobra caro quando dois o
   disputam: a Iugoslávia, o Egito dos anos 1950, a Índia não alinhada (Walt 1987; Fox 1959).
-- **Estado:** blocos de 1925 no contrato (#105); telas desenhadas.
-- **Onde está o detalhe:** [seção 5](../../influence.pt-BR.md#5-blocos) e
+- **Estado:** blocos de 1925 no contrato (#105). O bloco é lido só das cláusulas em vigor, com o
+  rótulo do tipo de aliança (#132, rascunho): um par sozinho é aliança, o bloco sem líder precisa de três
+  países ligados entre si (a Pequena Entente, sim; a rede de pactos da França, não). O autor
+  aceitou os limiares recomendados: sem líder, a partir de 3; garantia, a partir de 2 protegidos;
+  aduaneiro e monetário, a partir de 1. Entrar e sair em Agendas esperam a proposta no tick dos tratados;
+  telas desenhadas.
+- **Onde está o detalhe:** [seção 5](../../influence.pt-BR.md#5-blocos) ("Como o jogo reconhece um bloco nas cláusulas") e
   [seção 6](../../influence.pt-BR.md#6-o-país-pequeno).
 
 ### Quebrar um tratado baixa a boa vontade do traído
 
 - **Decisão:** quando A quebra um tratado com B, a boa vontade de B com A cai uma vez, pelo valor da
   quebra, e decai com a mesma meia-vida das outras. A memória longa fica na reputação de A, que é
-  dos tratados.
+  dos tratados. Os outros membros do bloco que atenderam o mesmo chamado perdem metade disso; quem
+  também não atendeu não perde nada.
 - **O que o autor pensou:** "Quebrar o tratado é possível, mas tem um preço muito alto." Ele
   decidiu que a reputação é por país e lembra por muito tempo, que os parceiros de quem rompeu
-  podem denunciar sem custo e que a boa vontade com o traído cai.
+  podem denunciar sem custo e que a boa vontade com o traído cai. Sobre os parceiros: "se eu
+  atendi o chamado e o outro país não", perco boa vontade com ele; e pediu que a regra fosse
+  conferida com a história.
 - **Como o jogo funciona por causa disso:** o aliado que não veio perde peso sobre o traído em
   todos os assuntos, inclusive numa renegociação de dívida, e a lente de influência mostra "quebra
   em 1938" entre os atos do par. Quem denuncia o feixe de um bloco sai do bloco no mês seguinte,
@@ -198,8 +206,11 @@ crise).
   ([Alianças](aliancas.md#trair-é-possível-e-custa-muito-caro)). A reputação de cumprir é o que
   pesa na confiança entre Estados (Tomz 2007).
 - **Estado:** decidido; desenhado. Lê o registro de quebras dos tratados; entra quando a quebra
-  existir no tick. Em aberto para o autor: se os parceiros de bloco do traído também perdem boa
-  vontade (proposta: metade).
+  existir no tick. Os parceiros de bloco que atenderam o chamado perdem metade do que perde o
+  traído; quem também não atendeu, nada (decidido pelo autor, conferido com Munique, a OTAN de
+  2003 e a Liga Árabe de 1979; seção 13b). O custo de associação quando um membro agride por
+  conta própria (o BRICS) não mexe na boa vontade entre parceiros: mora no canal de ameaça, que
+  terceiros leem pela profundidade das obrigações do bloco (decidido pelo autor, T1).
 - **Onde está o detalhe:** [seção 13b](../../influence.pt-BR.md#13b-quando-um-tratado-é-quebrado-o-que-a-influência-lê-e-escreve).
 
 ## Fontes

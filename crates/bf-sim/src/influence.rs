@@ -22,7 +22,7 @@ use laplace_schelling::Fixed;
 use serde::{Deserialize, Serialize};
 
 use crate::demography::communities::CommunityTable;
-use crate::diplomacy::{DiplomacyFile, OrganizationKind, TreatyKind};
+use crate::diplomacy::{DiplomacyFile, OrganizationKind};
 use crate::game::GameWorld;
 use crate::scenario::{CountriesFile, Status, Tag};
 
@@ -435,7 +435,7 @@ pub enum BlocKind {
 /// A bloc on a date: a label over treaties with the same bundle and, often, a leader.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Bloc {
-    /// The organization's key, the customs treaty's leader, or `subjects:<overlord>`.
+    /// The organization's key, `<kind>:<leader>`, `<kind>:<members>`, or `subjects:<overlord>`.
     pub key: String,
     pub kind: BlocKind,
     pub leader: Option<Tag>,
@@ -443,64 +443,435 @@ pub struct Bloc {
     pub members: Vec<Tag>,
 }
 
-/// The blocs on `date` (ISO), from the scenario's data.
-pub fn blocs_on(diplomacy: &DiplomacyFile, countries: &CountriesFile, date: &str) -> Vec<Bloc> {
+/// The name a treaty's clauses give it on the screen, after the Correlates of War and ATOP
+/// (`docs/wiki/decisoes/aliancas.md`). A label computed from the clauses; the rule stays in them.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum AllianceLabel {
+    /// Defence of one side only, or a guarantee of a border.
+    Guarantee,
+    /// Mutual defence alone (COW I; ATOP defence).
+    DefencePact,
+    /// Mutual defence and more: consultation, bases, troops, passage, foreign policy.
+    Alliance,
+    /// Non-aggression without defence (COW IIb).
+    NonAggressionPact,
+    /// Consultation alone (COW III; ATOP consultation).
+    Entente,
+}
+
+/// The alliance label of a treaty's clauses, or `None` when it promises nothing of security.
+pub fn alliance_label(clauses: &[crate::treaty::Clause]) -> Option<AllianceLabel> {
+    use crate::treaty::{ClauseKind as K, Side};
+    let has = |f: &dyn Fn(&K) -> bool| clauses.iter().any(|c| f(&c.kind));
+    let mutual_defence = clauses
+        .iter()
+        .any(|c| matches!(c.kind, K::Defence) && c.giver == Side::All);
+    let one_sided = has(&|k| matches!(k, K::Defence | K::BorderGuarantee));
+    let more = has(&|k| {
+        matches!(
+            k,
+            K::Consultation | K::Base { .. } | K::TroopsQuota | K::Passage | K::ForeignPolicy
+        )
+    });
+    Some(if mutual_defence && more {
+        AllianceLabel::Alliance
+    } else if mutual_defence {
+        AllianceLabel::DefencePact
+    } else if one_sided {
+        AllianceLabel::Guarantee
+    } else if has(&|k| matches!(k, K::NonAggression)) {
+        AllianceLabel::NonAggressionPact
+    } else if has(&|k| matches!(k, K::Consultation)) {
+        AllianceLabel::Entente
+    } else {
+        return None;
+    })
+}
+
+/// The Correlates of War type (Formal Alliances v4.1), from the strongest obligation: defence is
+/// type I, neutrality IIa, non-aggression IIb, consultation alone III. Offence without defence has
+/// no COW type (ATOP calls it an offensive pact). Neutrality enters the clause catalogue with the
+/// treaties' negotiation; until then IIa is not produced.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum CowType {
+    I,
+    IIa,
+    IIb,
+    III,
+}
+
+/// The COW type of a treaty's clauses, or `None`.
+pub fn cow_type(clauses: &[crate::treaty::Clause]) -> Option<CowType> {
+    use crate::treaty::ClauseKind as K;
+    let has = |f: &dyn Fn(&K) -> bool| clauses.iter().any(|c| f(&c.kind));
+    if has(&|k| matches!(k, K::Defence | K::BorderGuarantee)) {
+        Some(CowType::I)
+    } else if has(&|k| matches!(k, K::NonAggression)) {
+        Some(CowType::IIb)
+    } else if has(&|k| matches!(k, K::Consultation)) {
+        Some(CowType::III)
+    } else {
+        None
+    }
+}
+
+/// What bundle ties a treaty into a bloc, and its leader (the senior side), if any.
+fn bundle_of(t: &crate::diplomacy::Treaty) -> Option<(BlocKind, bool)> {
+    use crate::treaty::{ClauseKind as K, Side};
+    let any = |f: &dyn Fn(&K) -> bool| t.clauses.iter().any(|c| f(&c.kind));
+    if any(&|k| matches!(k, K::CustomsUnion | K::TariffPreference { .. })) {
+        Some((BlocKind::Customs, true))
+    } else if any(&|k| matches!(k, K::CurrencyPeg | K::MonetaryUnion)) {
+        Some((BlocKind::Monetary, !any(&|k| matches!(k, K::MonetaryUnion))))
+    } else if t
+        .clauses
+        .iter()
+        .any(|c| matches!(c.kind, K::Defence) && c.giver == Side::All)
+    {
+        Some((BlocKind::Military, false))
+    } else if any(&|k| matches!(k, K::Defence | K::BorderGuarantee)) {
+        Some((BlocKind::Military, true))
+    } else {
+        None
+    }
+}
+
+/// The maximal cliques of an undirected graph, each sorted (Bron–Kerbosch with a pivot, in
+/// `BTreeSet` order for determinism).
+fn cliques(adj: &BTreeMap<Tag, BTreeSet<Tag>>) -> Vec<Vec<Tag>> {
+    fn go(
+        adj: &BTreeMap<Tag, BTreeSet<Tag>>,
+        r: Vec<Tag>,
+        mut p: BTreeSet<Tag>,
+        mut x: BTreeSet<Tag>,
+        out: &mut Vec<Vec<Tag>>,
+    ) {
+        if p.is_empty() && x.is_empty() {
+            let mut r = r;
+            r.sort();
+            out.push(r);
+            return;
+        }
+        let empty = BTreeSet::new();
+        let pivot = p.iter().chain(&x).next().cloned().unwrap_or_default();
+        let np = adj.get(&pivot).unwrap_or(&empty);
+        let candidates: Vec<Tag> = p.difference(np).cloned().collect();
+        for v in candidates {
+            let nv = adj.get(&v).unwrap_or(&empty);
+            let mut r2 = r.clone();
+            r2.push(v.clone());
+            go(
+                adj,
+                r2,
+                p.intersection(nv).cloned().collect(),
+                x.intersection(nv).cloned().collect(),
+                out,
+            );
+            p.remove(&v);
+            x.insert(v);
+        }
+    }
     let mut out = Vec::new();
-    for o in &diplomacy.organizations {
-        let kind = match o.kind {
-            OrganizationKind::Alliance => BlocKind::Military,
-            OrganizationKind::Monetary => BlocKind::Monetary,
-            OrganizationKind::Global | OrganizationKind::Regional => continue,
+    go(
+        adj,
+        Vec::new(),
+        adj.keys().cloned().collect(),
+        BTreeSet::new(),
+        &mut out,
+    );
+    out
+}
+
+/// The blocs over a set of treaties in force (`docs/influence.pt-BR.md`, section 5): a label
+/// read only from the clauses, never a structure of its own.
+///
+/// - **With a leader** (the senior side of customs, a currency peg, a one-sided defence or
+///   guarantee): the leader and everyone tied to it by that bundle. Customs and money make a
+///   bloc from one member; defence from two (one guarantee alone is a guarantee).
+/// - **Without a leader** (mutual defence, a monetary union): the countries all tied to each
+///   other by the bundle (maximal cliques), from three. A pair alone is an alliance, not a bloc:
+///   the Little Entente is a bloc, the Estonian–Latvian pact of 1923 an alliance.
+/// - **Subjects:** an overlord and its subjects, given as (overlord, subject) pairs.
+/// - A bloc whose treaties all name the same organization takes its key (`little_entente`);
+///   an organization of kind `Monetary` without treaties in the clause form is a bloc by its
+///   members (the Latin Union, dormant until 1927).
+pub fn blocs_from<'a>(
+    treaties: impl IntoIterator<Item = &'a crate::diplomacy::Treaty>,
+    monetary_orgs: impl IntoIterator<Item = (String, Vec<Tag>)>,
+    subjects: impl IntoIterator<Item = (Tag, Tag)>,
+) -> Vec<Bloc> {
+    let mut led: BTreeMap<(BlocKind, Tag), BTreeSet<Tag>> = BTreeMap::new();
+    let mut even: BTreeMap<BlocKind, BTreeMap<Tag, BTreeSet<Tag>>> = BTreeMap::new();
+    let mut org_of: BTreeMap<(Tag, Tag), BTreeSet<Option<String>>> = BTreeMap::new();
+    for t in treaties {
+        let Some((kind, with_leader)) = bundle_of(t) else {
+            continue;
         };
-        let mut members: Vec<Tag> = diplomacy
-            .members_on(&o.key, date)
-            .into_iter()
-            .map(|m| m.tag.clone())
-            .collect();
-        members.sort();
-        if members.len() >= 2 {
+        match (with_leader, t.senior.first()) {
+            (true, Some(leader)) => {
+                led.entry((kind, leader.clone()))
+                    .or_default()
+                    .extend(t.parties.iter().filter(|p| *p != leader).cloned());
+            }
+            _ => {
+                let g = even.entry(kind).or_default();
+                for a in &t.parties {
+                    for b in &t.parties {
+                        if a != b {
+                            g.entry(a.clone()).or_default().insert(b.clone());
+                            org_of
+                                .entry((a.clone(), b.clone()))
+                                .or_default()
+                                .insert(t.bloc.clone());
+                        }
+                    }
+                }
+            }
+        }
+    }
+    let mut out = Vec::new();
+    for ((kind, leader), members) in led {
+        let least = if kind == BlocKind::Military { 2 } else { 1 };
+        if members.len() < least {
+            continue;
+        }
+        let prefix = match kind {
+            BlocKind::Customs => "customs",
+            BlocKind::Monetary => "monetary",
+            BlocKind::Military => "military",
+            BlocKind::Subjects => "subjects",
+        };
+        let mut all: Vec<Tag> = members.into_iter().collect();
+        all.push(leader.clone());
+        all.sort();
+        out.push(Bloc {
+            key: format!("{prefix}:{leader}"),
+            kind,
+            leader: Some(leader),
+            members: all,
+        });
+    }
+    for (kind, adj) in even {
+        for members in cliques(&adj) {
+            if members.len() < 3 {
+                continue;
+            }
+            let mut orgs = BTreeSet::new();
+            for a in &members {
+                for b in &members {
+                    if a != b {
+                        orgs.extend(org_of.get(&(a.clone(), b.clone())).into_iter().flatten());
+                    }
+                }
+            }
+            let key = match orgs.iter().collect::<Vec<_>>().as_slice() {
+                [Some(o)] => o.clone(),
+                _ => format!("{:?}:{}", kind, members.join("-")).to_lowercase(),
+            };
             out.push(Bloc {
-                key: o.key.clone(),
+                key,
                 kind,
                 leader: None,
                 members,
             });
         }
     }
-    let mut customs: BTreeMap<Tag, BTreeSet<Tag>> = BTreeMap::new();
-    for t in diplomacy
-        .treaties_on(date)
-        .filter(|t| t.kind == TreatyKind::CustomsUnion)
-    {
-        if let Some(leader) = t.senior.first() {
-            customs
-                .entry(leader.clone())
-                .or_default()
-                .extend(t.parties.iter().cloned());
+    for (key, mut members) in monetary_orgs {
+        members.sort();
+        if members.len() >= 2 && out.iter().all(|b| b.key != key) {
+            out.push(Bloc {
+                key,
+                kind: BlocKind::Monetary,
+                leader: None,
+                members,
+            });
         }
     }
-    for (leader, members) in customs {
-        out.push(Bloc {
-            key: format!("customs:{leader}"),
-            kind: BlocKind::Customs,
-            leader: Some(leader),
-            members: members.into_iter().collect(),
-        });
+    let mut by_overlord: BTreeMap<Tag, BTreeSet<Tag>> = BTreeMap::new();
+    for (overlord, subject) in subjects {
+        let e = by_overlord.entry(overlord.clone()).or_default();
+        e.insert(overlord);
+        e.insert(subject);
     }
-    let mut subjects: BTreeMap<Tag, BTreeSet<Tag>> = BTreeMap::new();
-    for c in &countries.countries {
-        if let Status::Subject { overlord, .. } = &c.status {
-            let e = subjects.entry(overlord.clone()).or_default();
-            e.insert(overlord.clone());
-            e.insert(c.tag.clone());
-        }
-    }
-    for (leader, members) in subjects {
+    for (leader, members) in by_overlord {
         out.push(Bloc {
             key: format!("subjects:{leader}"),
             kind: BlocKind::Subjects,
             leader: Some(leader),
             members: members.into_iter().collect(),
+        });
+    }
+    out
+}
+
+/// The blocs on `date` (ISO), from the scenario's data: [`blocs_from`] over the treaties in force
+/// that day.
+pub fn blocs_on(diplomacy: &DiplomacyFile, countries: &CountriesFile, date: &str) -> Vec<Bloc> {
+    let monetary = diplomacy
+        .organizations
+        .iter()
+        .filter(|o| o.kind == OrganizationKind::Monetary)
+        .map(|o| {
+            let m = diplomacy
+                .members_on(&o.key, date)
+                .into_iter()
+                .map(|m| m.tag.clone())
+                .collect();
+            (o.key.clone(), m)
+        });
+    let subjects = countries.countries.iter().filter_map(|c| match &c.status {
+        Status::Subject { overlord, .. } => Some((overlord.clone(), c.tag.clone())),
+        _ => None,
+    });
+    blocs_from(diplomacy.treaties_on(date), monetary, subjects)
+}
+
+fn iso(d: laplace_schelling::Date) -> String {
+    format!("{:04}-{:02}-{:02}", d.year, d.month, d.day)
+}
+
+fn parse_iso(s: &str) -> Option<laplace_schelling::Date> {
+    let mut it = s.splitn(3, '-');
+    let y = it.next()?.parse().ok()?;
+    let m = it.next()?.parse().ok()?;
+    let d = it.next()?.get(..2)?.parse().ok()?;
+    Some(laplace_schelling::Date::new(y, m, d))
+}
+
+/// One member of a bloc, as the "Blocs" lens shows it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct BlocMember {
+    /// Country index.
+    pub country: u16,
+    /// When its first treaty with another member of the bloc came into force (for a subject,
+    /// since when it is one; for a monetary organization, the founding).
+    pub since: laplace_schelling::Date,
+    /// Keys of the treaties in force that tie it to the other members (`treaty-<key>`).
+    pub treaties: Vec<String>,
+}
+
+/// A bloc for the map: a stable key (`bloc-<key>` in the Fluent files, the same from month to
+/// month while the bloc keeps its members and leader), the members by index and the dates.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct BlocView {
+    pub key: String,
+    pub kind: BlocKind,
+    pub leader: Option<u16>,
+    pub members: Vec<BlocMember>,
+    /// When the bloc as it stands came to be: the last link of a bloc without a leader (the
+    /// Little Entente in June 1921), the first of a bloc with one.
+    pub since: laplace_schelling::Date,
+}
+
+/// The blocs on `date` with the world's countries and subjects: [`blocs_from`] over the treaties
+/// in force, the subjects of the world (after border changes), countries by index. Until the
+/// treaties keep the agreements in the world, the treaties come from the scenario's data; the
+/// return type stays when they do.
+pub fn bloc_views(
+    diplomacy: &DiplomacyFile,
+    borders: &crate::borders::BorderRules,
+    world: &GameWorld,
+    date: laplace_schelling::Date,
+) -> Vec<BlocView> {
+    let day = iso(date);
+    let index: BTreeMap<&str, u16> = world
+        .countries
+        .iter()
+        .enumerate()
+        .map(|(i, (_, c))| (c.tag.as_str(), i as u16))
+        .collect();
+    let tag = |i: usize| world.countries.iter().nth(i).map(|(_, c)| c.tag.clone());
+    let subject_of = |c: usize| {
+        let list = if world.borders.subjects.is_empty() {
+            &borders.subjects
+        } else {
+            &world.borders.subjects
+        };
+        list.get(c).and_then(|s| s.clone())
+    };
+    let subjects: Vec<(Tag, Tag)> = (0..world.countries.len())
+        .filter_map(|c| {
+            let s = subject_of(c)?;
+            Some((tag(usize::from(s.overlord))?, tag(c)?))
+        })
+        .collect();
+    let monetary: Vec<(String, Vec<Tag>)> = diplomacy
+        .organizations
+        .iter()
+        .filter(|o| o.kind == OrganizationKind::Monetary)
+        .map(|o| {
+            let m = diplomacy
+                .members_on(&o.key, &day)
+                .into_iter()
+                .map(|m| m.tag.clone())
+                .collect();
+            (o.key.clone(), m)
+        })
+        .collect();
+    let in_force: Vec<&crate::diplomacy::Treaty> = diplomacy.treaties_on(&day).collect();
+    let blocs = blocs_from(in_force.iter().copied(), monetary, subjects);
+    let mut out = Vec::new();
+    for b in blocs {
+        let ix = |t: &Tag| index.get(t.as_str()).copied();
+        let founded = diplomacy
+            .organizations
+            .iter()
+            .find(|o| o.key == b.key)
+            .and_then(|o| parse_iso(&o.founded));
+        let ties = |a: &Tag, other: &Tag| {
+            in_force
+                .iter()
+                .filter(|t| bundle_of(t).is_some_and(|(k, _)| k == b.kind))
+                .filter(|t| t.parties.contains(a) && t.parties.contains(other))
+                .copied()
+                .collect::<Vec<_>>()
+        };
+        let mut members = Vec::new();
+        let mut pair_starts = Vec::new();
+        for m in &b.members {
+            let Some(country) = ix(m) else { continue };
+            let mut treaties = BTreeSet::new();
+            let mut since: Option<laplace_schelling::Date> = None;
+            if b.kind == BlocKind::Subjects {
+                since = subject_of(usize::from(country)).map(|s| s.since);
+            }
+            for other in b.members.iter().filter(|o| *o != m) {
+                let linking = ties(m, other);
+                let first = linking.iter().filter_map(|t| parse_iso(&t.in_force)).min();
+                if m < other {
+                    pair_starts.extend(first);
+                }
+                for t in linking {
+                    treaties.insert(t.key.clone());
+                }
+                since = match (since, first) {
+                    (Some(a), Some(f)) => Some(a.min(f)),
+                    (a, f) => a.or(f),
+                };
+            }
+            members.push(BlocMember {
+                country,
+                since: since.or(founded).unwrap_or(date),
+                treaties: treaties.into_iter().collect(),
+            });
+        }
+        let since = if b.leader.is_none() && !pair_starts.is_empty() {
+            pair_starts.iter().copied().max().unwrap_or(date)
+        } else {
+            members
+                .iter()
+                .filter(|m| Some(m.country) != b.leader.as_ref().and_then(ix))
+                .map(|m| m.since)
+                .min()
+                .or(founded)
+                .unwrap_or(date)
+        };
+        out.push(BlocView {
+            key: b.key.clone(),
+            kind: b.kind,
+            leader: b.leader.as_ref().and_then(ix),
+            members,
+            since,
         });
     }
     out
@@ -943,6 +1314,102 @@ pub fn channels(
             .copied()
             .unwrap_or([Fixed::ZERO; Issue::COUNT]),
     }
+}
+
+/// Influence of `a` over `b` in each issue, share of B's GDP, with the cultures computed once.
+fn influence_pair(
+    world: &GameWorld,
+    setup: &InfluenceSetup,
+    cultures: &[Option<u16>],
+    a: usize,
+    b: usize,
+    year: i32,
+) -> [Fixed; Issue::COUNT] {
+    let rules = &setup.rules;
+    interest(
+        dependence(world, rules, a, b, year),
+        world
+            .influence
+            .goodwill
+            .get(&(a as u16, b as u16))
+            .copied()
+            .unwrap_or_default(),
+        affinity(
+            world,
+            rules,
+            setup.table.as_deref(),
+            cultures,
+            &setup.colonial,
+            a,
+            b,
+        ),
+    )
+    .influence
+}
+
+/// The pairs that can hold influence today: a creditor over its debtor in the ledger, and every
+/// pair with goodwill recorded. Every other pair is zero (the other channels are dormant).
+fn live_pairs(world: &GameWorld) -> BTreeSet<(u16, u16)> {
+    let mut pairs: BTreeSet<(u16, u16)> = world
+        .econ
+        .ledger
+        .debts
+        .iter()
+        .map(|d| (d.creditor, d.debtor))
+        .collect();
+    pairs.extend(world.influence.goodwill.keys().copied());
+    pairs.retain(|(a, b)| a != b);
+    pairs
+}
+
+/// For the "Influence" lens: the influence of `a` over every country that holds any, by issue,
+/// share of each one's GDP. Countries left out are zero. One pass for the whole map (the cultures
+/// once), so a monthly call costs about one `channels`.
+pub fn influence_over(
+    world: &GameWorld,
+    setup: &InfluenceSetup,
+    a: usize,
+    year: i32,
+) -> Vec<(u16, [Fixed; Issue::COUNT])> {
+    let cultures = setup
+        .table
+        .as_deref()
+        .map(|t| main_cultures(world, t))
+        .unwrap_or_default();
+    live_pairs(world)
+        .into_iter()
+        .filter(|(x, _)| usize::from(*x) == a)
+        .map(|(_, b)| {
+            (
+                b,
+                influence_pair(world, setup, &cultures, a, usize::from(b), year),
+            )
+        })
+        .collect()
+}
+
+/// The other way: the influence of every country that holds any over `b`.
+pub fn influence_on(
+    world: &GameWorld,
+    setup: &InfluenceSetup,
+    b: usize,
+    year: i32,
+) -> Vec<(u16, [Fixed; Issue::COUNT])> {
+    let cultures = setup
+        .table
+        .as_deref()
+        .map(|t| main_cultures(world, t))
+        .unwrap_or_default();
+    live_pairs(world)
+        .into_iter()
+        .filter(|(_, y)| usize::from(*y) == b)
+        .map(|(a, _)| {
+            (
+                a,
+                influence_pair(world, setup, &cultures, usize::from(a), b, year),
+            )
+        })
+        .collect()
 }
 
 /// The state of the world's influence.
