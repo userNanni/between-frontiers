@@ -202,22 +202,89 @@ discriminação e a concentração dela. Quem assimila sai da contagem e entra n
 milhão em 1925 para ~0,2 milhão em 2000; imigrantes italianos na Argentina majoritariamente
 `argentine` em 1960; catalães e flamengos estáveis; afro-americanos não assimilam até a lei mudar.
 
-## O que fica para quando ligar na simulação
+## Comunidades na simulação
 
-- **A linha demográfica**: riqueza, alfabetização, pirâmide etária e atitudes por estado ×
-  comunidade × profissão; a repartição das profissões do estado entre as comunidades (a elite
-  ocupa mais `landowner`, `capitalist`, `manager`, `civil_servant`).
-- **Discriminação por país** (D da assimilação e fator da renda), que depende das leis da fase 3.
-- **A relevância que muda**: lei nova que mira um grupo, movimento que nasce, promoção a linha
-  herdando a média de "outras minorias" e rebaixamento com a histerese.
-- **Migração por comunidade**: hoje a migração interna move gente sem identidade.
-- **`population.ron`** com a população real de cada estado: o ranking nacional usa a aproximação
-  da economia, que subestima as cidades grandes.
-- **Relevância por estado ou região**: hoje ela vale para o país (metrópole ou colônias). Russos
-  como elite de colonos na Ásia Central e no Cazaquistão não cabem nisso, porque são a maioria da
-  União; ficaram sem marca.
-- **Revisar** a estimativa religiosa da URSS, as culturas agregadas da África e da China, e as
-  regras de raça como cultura.
+Código: `crates/bf-sim/src/demography/communities.rs`, no sistema `demography` (todo dia 15).
+Estado salvo: `DemographyState::communities`, uma `RegionRows` por estado.
+
+**A linha demográfica.** A economia continua com um pop por profissão; as comunidades são uma
+camada por cima: cada estado tem linhas (comunidade), cada linha tem gente por profissão. As
+linhas são as da regra decidida (decisão 1) sobre as composições de 1925, mais "outras minorias",
+que guarda quem é cada um (`others`: gente por comunidade). Na partida, cada profissão do estado
+se reparte entre as linhas na proporção das parcelas: toda comunidade em toda profissão igual,
+porque não há dado de quem trabalha em quê (a elite em `landowner`, `capitalist`, `manager` fica
+para quando houver fonte).
+
+**Conservação.** Depois de cada mês da demografia, as linhas de cada profissão somam o pop dela,
+exatamente (`RegionRows::reconcile`, maior resto; teste `communities_in_pops`). Entre dois meses a
+economia move gente entre profissões e estados, e as linhas acompanham no mês seguinte.
+
+**O mês.**
+
+- **Nascimentos por linha:** cada célula (linha × profissão) tem o TFR da sua classe com o termo
+  de difusão da sua língua; os nascimentos do estado (pirâmide, como antes) se repartem pelas
+  células na proporção gente × TFR, e cada célula recebe os seus.
+- **Pirâmide:** continua por estado; todas as linhas têm a mesma estrutura de idade.
+- **Chegadas internacionais:** os imigrantes do mês, por cultura (a diáspora já registra a
+  cultura), entram como operários na linha da comunidade da cultura, ou em "outras minorias" com
+  a sua identidade quando o estado não tem linha para ela. A comunidade de chegada de uma cultura
+  é a sua mais numerosa de 1925 (a diáspora não registra religião).
+- **Mortes, emigrantes e migração interna (regra provisória):** a linha encontra o pop no fim do
+  mês. A profissão que perdeu gente perde em proporção às suas linhas; a que ganhou recebe na
+  composição do estado inteiro. Quem muda de profissão ou de estado ainda não leva a sua
+  comunidade: a migração interna por comunidade fica para o PR seguinte (cerca de 300 a 500
+  linhas em `econ/migration`).
+
+**Assimilação (decisão 3), em janeiro.** Para cada comunidade do estado, sobre os números do
+começo do ano:
+
+    cultura:  a = 1,5 % × L × (1 − D) × (1 − s)² × F   →  (cultura principal do território, mesma religião)
+    religião: a = 0,2 % × Lr × (1 − D) × (1 − s)² × Fr  →  (mesma cultura, religião da maioria)
+
+- **Cultura principal e religião da maioria:** as maiores do território (metrópole e colônias à
+  parte), lidas das linhas.
+- **L e D:** das leis com alvo do país (`PoliticsState::targets`): `assimilation` (por mil) e
+  `discrimination` (por mil) das leis em vigor com `Scope::Targeted`, para as comunidades que
+  elas nomeiam. Nos dados de 1925 os alvos ainda estão vazios (a fonte diz em palavras quem cada
+  lei atinge, `data/scenario/1925/laws.ron`): até um PR de dados preenchê-los, L = 1 e D = 0 para
+  todos.
+- **Lr:** da lei de religião, pelo efeito `church_privilege`: religião de Estado imposta (900 ou
+  mais) 1,5; igreja estabelecida que tolera as outras (500) 1; separação ou menos 0,5.
+- **s:** parcela da comunidade no estado. **F:** mesma família linguística (ou de religião) 1,
+  outra 0,5.
+- **Colônias:** sem assimilação cultural, salvo lei com alvo que a empurre (L > 1); a
+  religiosa corre.
+- **Destino que não existe:** se o par (cultura principal, religião) não está no catálogo, a
+  gente fica (registrado como bloqueado).
+
+**Difusão na fecundidade.** O termo do desenho ("Cultura e religião na natalidade"), com peso 0,10
+e **centrado na média mundial do mês**: valor da linha = parcela da sua família linguística, fora
+do estado, que vivia no mês anterior em estado com TFR 10 % abaixo de 6,5; entra na nota como
+0,10 × (valor − média mundial). Assim ninguém se move na média e não foi preciso mexer em
+`F_START`. A tela de População mostra o valor e a contribuição na decomposição.
+
+**Save.** O snapshot é postcard, que não descreve a si mesmo: o save de antes das comunidades lê
+pelo formato antigo (`game::decode_world`) e as linhas vazias não entram no hash, então o hash
+gravado confere; as linhas nascem da composição de 1925 no mês seguinte, escaladas aos pops de
+então.
+
+**Quando um estado muda de dono** (operações de fronteira): as linhas vão com o estado,
+inalteradas, porque as pessoas não mudam; a cultura principal e a religião da maioria do novo
+território, e a relevância, são lidas do novo dono na conta de janeiro.
+
+**O que fica para depois:**
+
+- Migração interna por comunidade (regra provisória acima).
+- A relevância que muda: promoção a linha (herdando a gente de "outras minorias") e rebaixamento
+  com a histerese de 97 %; hoje as linhas são as de 1925 e quem chega de cultura sem linha fica em
+  "outras minorias".
+- Os alvos das leis em `laws.ron` (D e L por comunidade).
+- Riqueza, alfabetização e atitudes por linha; profissões repartidas por comunidade com fonte.
+- `population.ron` com a população real de cada estado (o ranking nacional usa a aproximação da
+  economia).
+- Relevância por estado ou região (russos na Ásia Central).
+- Revisar a estimativa religiosa da URSS, as culturas agregadas da África e da China, e as regras
+  de raça como cultura.
 
 ## Demografia
 
