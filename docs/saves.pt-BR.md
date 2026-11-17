@@ -70,9 +70,13 @@ interface depois que o ponto está no disco (registrar, girar a rotação, somar
 
 | Ano | Tamanho | Gravar | Carregar | Um mês | Automático mensal / mês | Interface |
 |---|---|---|---|---|---|---|
-| 1925 | 1,2 MB | 6 ms | 5 ms | 171 ms | 3,4 % | 0,3 ms |
-| 1975 | | | | | | |
-| 2025 | | | | | | |
+| 1925 | 1,2 MB | 5 ms | 4 ms | 153 ms | 3,3 % | 0,3 ms |
+| 1975 | 1,7 MB | 7 ms | 6 ms | 130 ms | 5,5 % | 0,3 ms |
+| 2025 | 1,8 MB | 8 ms | 7 ms | 143 ms | 5,5 % | 0,3 ms |
+
+O automático mensal custa 5,5 % do tempo de um mês de 1975 em diante; o trimestral, ~1,8 %, e o
+anual, ~0,5 %. O padrão continua anual. Quem quiser pontos mais finos tem o trimestral por menos
+de 2 %. Uma campanha com o teto de 30 pontos ocupa ~55 MB.
 
 **A interface não trava.** A gravação roda no thread da simulação (`Command::Save`): a interface
 segue desenhando o último snapshot e só lê a resposta (`try_recv`) a cada quadro; o trabalho dela
