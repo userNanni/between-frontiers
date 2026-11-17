@@ -605,7 +605,9 @@ Duas marcas na **mobilização** da unidade (apoio × recrutas ÷ população), 
 | Chama | Onde |
 |---|---|
 | `Operation::Secede` (com ou sem suserano), `Operation::Status` | fronteiras (parte B) |
-| tratado de independência e reconhecimento | `treaty_exec::settle` e `queue` (tratados) |
+| tratado de independência | uma `Proposal` com `ReleaseCountry` (e `Debt`, quando houver), por `treaty_exec::settle` e `queue` (no `main` desde o #104) |
+| reconhecimento do país novo pelos signatários | `Recognition::on_new_country` (PR do reconhecimento, tratados) |
+| `ColonialPlants` (C6b) | PR das cláusulas novas (tratados) |
 | camada das fábricas na independência | `foreign_stakes` (C6a a C6c) |
 | a lei `trusteeship` como concessão | comando de lei da política |
 
