@@ -213,6 +213,43 @@ unidade, feita por script (`tools/research/convert_tree.py`), não um ajuste por
   Mundial, `GB.XPD.RSDV.GD.ZS`, CC BY 4.0). A série da OECD (MSTI, desde 1981) não entrou porque
   a licença não foi confirmada.
 
+## Depois: computação como método
+
+Desenho do dono (2026-11-17), para depois da fase 6. Não está no código.
+
+- **A ideia:** o computador, e depois a IA, é ganho de **eficiência**, não de capacidade. Um país
+  sem computador consegue pesquisar, mas com perda enorme de escala: a dinâmica dos fluidos foi
+  feita à mão, com cálculos muito complexos e demorados. A IA, do mesmo jeito, diminui o tempo de
+  fazer tudo.
+- **A forma:** métodos nos prédios que pensam (laboratório, universidade e, na administração do
+  Estado, a repartição), cada um consumindo os bens correspondentes:
+  - cálculo manual;
+  - computador central (`computers`);
+  - microcomputador e rede (`computers`, `telecommunications`);
+  - IA (computação em nuvem, eletricidade).
+
+  O método novo rende mais por pesquisador e por servidor. Quem não tem o bem fica no método
+  antigo, mais lento, sem ser travado.
+- **O que substituiria no código de hoje:** o efeito global `research` das tecnologias
+  (`EFFECTS[3]`: computador eletrônico 80, educação superior de massa 60, computador pessoal 60,
+  comutação de pacotes 40, web 120, sequenciamento genético 20, nuvem 30, aprendizado profundo
+  60, modelos de linguagem 80, ensino a distância 10, por mil no estágio difundido). Hoje ele
+  multiplica os pontos de todo pesquisador do país por até cerca de 2,1
+  (`research_system`, `boost = 1 + 2 × efeito`), sem comprar nenhum computador. Como método,
+  o ganho passa a depender do bem comprado e do preço dele, e a administração do Estado ganha o
+  mesmo tipo de eficiência (folha menor para o mesmo serviço).
+- **O que precisaria medir antes:**
+  - o ganho de produtividade de pesquisa e de administração por método, com fonte (horas de
+    cálculo à mão contra máquina; produtividade do setor público com informática);
+  - o consumo de bens por pesquisador em cada método (quanto computador e rede um laboratório
+    compra), para a demanda nova não criar falta crônica;
+  - a conversão da árvore de novo (`tools/research/convert_tree.py`), porque o esforço do líder
+    muda de unidade outra vez;
+  - o crescimento da alfabetização nos ajustes de custo: hoje a qualidade do pesquisador vem do
+    salário relativo, e a alfabetização só entra pela produtividade de base. Se a escola de massa
+    mudar o custo de formar um pesquisador, isso entra no custo do nível de laboratório, não num
+    multiplicador de pontos.
+
 ## A árvore de 1925 a 2025
 
 168 tecnologias em 12 campos e 6 eras (`data/research/technologies.ron`). Regras que os testes de
