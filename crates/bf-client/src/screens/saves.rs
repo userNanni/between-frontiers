@@ -8,13 +8,13 @@ use bf_i18n::Arg;
 use bf_ui_kit::theme;
 use bf_ui_kit::tokens::{color, control, radius, size, space};
 use bf_ui_kit::{Button, ButtonSize, ListRow};
-use egui::{Color32, Rect, RichText, Ui};
+use egui::{Rect, RichText, Ui};
 
 use super::{backdrop_map, region};
 use crate::app::{Shared, Transition};
 use crate::keys;
 use crate::points::{self, Kind, Point};
-use crate::saves::{self, civil_date};
+use crate::saves;
 use crate::text::{country_name, date_long};
 
 /// Entries of a campaign's "…" menu, in order. Ids are stable (`saves.menu.<id>`, Fluent
@@ -440,15 +440,86 @@ struct Picked {
 
 /// A label confined to `rect`, cut with an ellipsis when it does not fit (the whole text then
 /// shows on hover and to screen readers).
-fn text_in(ui: &mut Ui, rect: Rect, text: RichText, right: bool) {
+fn text_in(ui: &mut Ui, rect: Rect, text: RichText, right: bool) -> egui::Response {
     let layout = if right {
         egui::Layout::right_to_left(egui::Align::Center)
     } else {
         egui::Layout::left_to_right(egui::Align::Center)
     };
     ui.scope_builder(egui::UiBuilder::new().max_rect(rect).layout(layout), |ui| {
-        ui.add(egui::Label::new(text).truncate());
-    });
+        ui.add(egui::Label::new(text).truncate())
+    })
+    .inner
+}
+
+/// "fev. 1925": the game's month, short.
+fn month_year(shared: &Shared, d: laplace_schelling::calendar::Date) -> String {
+    shared.i18n.tr_args(
+        "date-month-year",
+        &[
+            (
+                "month",
+                Arg::String(shared.tr(&format!("month-short-{}", d.month))),
+            ),
+            ("year", Arg::String(d.year.to_string())),
+        ],
+    )
+}
+
+/// When a campaign was last played, short: "hoje, 11:40", "ontem" or "17 nov. 2026".
+fn played_short(shared: &Shared, secs: u64) -> String {
+    let (day, h, m) = saves::local_time(secs);
+    let (today, _, _) = saves::local_time(saves::now());
+    let (yesterday, _, _) = saves::local_time(saves::now().saturating_sub(86_400));
+    if day == today {
+        shared.i18n.tr_args(
+            "saves-played-today",
+            &[("time", Arg::String(format!("{h:02}:{m:02}")))],
+        )
+    } else if day == yesterday {
+        shared.tr("saves-played-yesterday")
+    } else {
+        short_date(shared, day)
+    }
+}
+
+fn short_date(shared: &Shared, d: laplace_schelling::calendar::Date) -> String {
+    shared.i18n.tr_args(
+        "date-short",
+        &[
+            ("day", Arg::String(d.day.to_string())),
+            (
+                "month",
+                Arg::String(shared.tr(&format!("month-short-{}", d.month))),
+            ),
+            ("year", Arg::String(d.year.to_string())),
+        ],
+    )
+}
+
+/// Width of the card's right column: its longest possible text in this language (any short
+/// date, "today, 23:59", "yesterday", a folder of four-digit MB).
+fn right_column(ui: &Ui, shared: &Shared) -> f32 {
+    let font = theme::sans(size::SMALL);
+    let width = |t: String| {
+        ui.painter()
+            .layout_no_wrap(t, font.clone(), color::TEXT)
+            .size()
+            .x
+    };
+    let mut texts: Vec<String> = (1..=12)
+        .map(|m| short_date(shared, laplace_schelling::calendar::Date::new(2026, m, 28)))
+        .collect();
+    texts.push(shared.i18n.tr_args(
+        "saves-played-today",
+        &[("time", Arg::String("23:59".into()))],
+    ));
+    texts.push(shared.tr("saves-played-yesterday"));
+    texts.push(format!(
+        "{} MB",
+        super::game::mb(&shared.i18n, 9_999_900_000)
+    ));
+    texts.into_iter().map(width).fold(0.0, f32::max) + 2.0
 }
 
 /// One campaign: flag, name, country and date on the left; when it was played and how much it
@@ -492,36 +563,36 @@ fn card(
         egui::pos2(inner.right() - side / 2.0, rect.center().y),
         egui::Vec2::splat(side),
     );
-    // Flag or colour mark.
-    let flag = save
-        .meta
-        .player
-        .as_ref()
-        .and_then(|tag| shared.flags.get(tag))
-        .map(|t| t.id());
+    // The flag, or the game's stand-in: the country's colour with its tag.
     let mark = Rect::from_min_size(
         egui::pos2(inner.left(), rect.center().y - 10.0),
         egui::vec2(30.0, 20.0),
     );
-    match flag {
-        Some(tex) => {
-            ui.painter().image(
-                tex,
-                mark,
-                Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)),
-                Color32::WHITE,
-            );
-        }
-        None => {
-            ui.painter().rect_filled(
-                mark.shrink2(egui::vec2(6.0, 1.0)),
-                radius::SM,
-                color::BORDER_STRONG,
-            );
+    let country = save.meta.player.as_ref().and_then(|tag| {
+        shared
+            .world
+            .as_ref()
+            .and_then(|w| w.countries.iter().find(|c| c.tag() == tag))
+    });
+    match (country, &save.meta.player) {
+        (Some(c), _) => crate::flags::paint_flag(ui, mark, &shared.flags, c, color::BORDER_STRONG),
+        (None, tag) => {
+            ui.painter()
+                .rect_filled(mark, radius::SM, color::SURFACE_SUNKEN);
+            if let Some(tag) = tag {
+                ui.painter().text(
+                    mark.center(),
+                    egui::Align2::CENTER_CENTER,
+                    tag,
+                    theme::serif(9.0),
+                    color::TEXT_MUTED,
+                );
+            }
         }
     }
-    // The right column: when it was played, and the folder's size.
-    let right_w = (inner.width() * 0.3).clamp(96.0, 220.0);
+    // The right column, as wide as its longest possible text in this language: a date is never
+    // cut.
+    let right_w = right_column(ui, shared).min(inner.width() * 0.45);
     let right = Rect::from_min_max(
         egui::pos2(button.left() - space::MD - right_w, inner.top()),
         egui::pos2(button.left() - space::MD, inner.bottom()),
@@ -541,11 +612,12 @@ fn card(
             )
         }
     };
+    // The game's date first, short, so that only the country's name is ever cut.
     let subtitle = match &save.meta.player {
         Some(tag) => format!(
             "{} · {}",
-            country_name(&shared.i18n, tag),
-            date_long(&shared.i18n, save.meta.date)
+            month_year(shared, save.meta.date),
+            country_name(&shared.i18n, tag)
         ),
         None => shared.tr("saves-country-pending"),
     };
@@ -565,34 +637,46 @@ fn card(
             .color(color::TEXT_MUTED),
         false,
     );
-    let played = shared.i18n.tr_args(
-        "saves-last-played",
-        &[(
-            "when",
-            Arg::String(date_long(&shared.i18n, civil_date(save.meta.last_played))),
-        )],
+    let (day, h, m) = saves::local_time(save.meta.last_played);
+    let full = shared.i18n.tr_args(
+        "saves-last-played-full",
+        &[
+            ("date", Arg::String(date_long(&shared.i18n, day))),
+            ("time", Arg::String(format!("{h:02}:{m:02}"))),
+        ],
     );
     text_in(
         ui,
         half(right, true),
-        RichText::new(played)
+        RichText::new(played_short(shared, save.meta.last_played))
             .font(theme::sans(size::SMALL))
             .color(color::TEXT_FAINT),
         true,
-    );
+    )
+    .on_hover_text(full);
     let size_bytes = state.sizes.get(i).copied().unwrap_or(0);
+    let large = size_bytes > warn;
+    let size_tip = if large {
+        shared.i18n.tr_args(
+            "saves-size-large",
+            &[("limit", Arg::String(shared.settings.warn_mb.to_string()))],
+        )
+    } else {
+        shared.tr("saves-size")
+    };
     text_in(
         ui,
         half(right, false),
         RichText::new(format!("{} MB", super::game::mb(&shared.i18n, size_bytes)))
             .font(theme::sans(size::SMALL))
-            .color(if size_bytes > warn {
+            .color(if large {
                 color::DANGER
             } else {
                 color::TEXT_FAINT
             }),
         true,
-    );
+    )
+    .on_hover_text(size_tip);
 
     let typed = keys::item(
         ui,
