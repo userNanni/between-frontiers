@@ -13,6 +13,9 @@ The game is free and open source, and will stay that way.
 Design stage. There is no playable build yet. The architecture proposal is in
 [docs/architecture.pt-BR.md](docs/architecture.pt-BR.md) (Portuguese).
 
+The game wiki, in Brazilian Portuguese, explains the author's design decisions and what they
+change for the player: [docs/wiki](docs/wiki/README.md).
+
 ## Goals
 
 - An economic and demographic simulation as fine-grained as performance allows.

@@ -64,6 +64,13 @@ Brasil.
 - Ao fechar uma fase, atualize a linha de desempenho de `docs/benchmarks.pt-BR.md` com a medição
   de 100 anos.
 
+## Wiki
+
+- `docs/wiki/` explica as decisões do autor e o efeito para o jogador. PR que implementa ou muda
+  uma decisão do autor atualiza a página da wiki no mesmo PR (decisão, estado, link); decisão nova
+  entra quando o autor decide, não quando o código chega. Regras e molde em
+  `docs/wiki/como-manter.md`.
+
 ## Commits e PRs
 
 - Commit no formato `tipo(escopo): resumo` (`feat(sim)`, `fix(client)`, `perf(engine)`,
