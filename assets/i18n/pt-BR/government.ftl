@@ -84,6 +84,7 @@ gov-cat-0 = Infraestrutura ({ $share })
 gov-cat-1 = Educação ({ $share })
 gov-cat-2 = Saúde ({ $share })
 gov-cat-3 = Moradia urbana ({ $share })
+gov-cat-4 = Pesquisa ({ $share })
 gov-tip-priority =
     Peso { $weight } de { $sum } = { $share } do dinheiro de obra nova (padrão: { $default }).
     Na fila: { $works } obras desta categoria, { $done } dos pontos entregues.

@@ -948,7 +948,7 @@ mod tests {
         });
         s.submit(GameCommand::SetPublicPriority {
             tag: "ARG".into(),
-            weights: [0, 9, 99, 1],
+            weights: [0, 9, 99, 1, 4],
         });
         s.submit(GameCommand::SetMigrationLaw {
             tag: "ARG".into(),
@@ -975,7 +975,7 @@ mod tests {
         );
         assert_eq!(
             s.world().econ.markets[1].budget.priority,
-            [0, 9, public::MAX_PRIORITY, 1]
+            [0, 9, public::MAX_PRIORITY, 1, 4]
         );
         assert_eq!(
             s.world().econ.markets[1].laws.migration,

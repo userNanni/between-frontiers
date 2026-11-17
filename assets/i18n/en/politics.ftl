@@ -299,6 +299,8 @@ law-effect-conscription = Conscription
 law-effect-colonial_tribute = Colonial tribute
 law-effect-colonial_self_rule = Colonial self-rule
 law-effect-frontier_access = Access of settlers to the frontier
+law-effect-research_state_share = State share of research
+law-effect-research_priority = State priority for research
 
 ## Indicators
 

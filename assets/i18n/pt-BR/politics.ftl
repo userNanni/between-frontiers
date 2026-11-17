@@ -299,6 +299,8 @@ law-effect-conscription = Convocação militar
 law-effect-colonial_tribute = Tributo colonial
 law-effect-colonial_self_rule = Autogoverno colonial
 law-effect-frontier_access = Acesso dos colonos à fronteira
+law-effect-research_state_share = Parcela do Estado na pesquisa
+law-effect-research_priority = Prioridade do Estado para a pesquisa
 
 ## Indicadores
 

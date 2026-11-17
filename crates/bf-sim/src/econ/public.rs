@@ -569,6 +569,7 @@ pub fn research_spending(cat: &Catalogue, m: &Market) -> (Fixed, Fixed) {
 /// Laboratories to start: the levels that close the gap between the research the country wants
 /// and what its laboratories make, placed where engineers and professionals live and are not
 /// yet at a bench. Returns the most levels to start.
+#[allow(clippy::too_many_arguments)]
 fn research_candidates(
     cat: &Catalogue,
     econ: &Economy,

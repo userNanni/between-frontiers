@@ -98,6 +98,7 @@ pub fn category(key: &str) -> usize {
         "school" => 1,
         "hospital" => 2,
         "urban_housing" => 3,
+        "laboratory" => 4,
         _ => 0,
     }
 }

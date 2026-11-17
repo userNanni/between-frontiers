@@ -84,6 +84,7 @@ gov-cat-0 = Infrastructure ({ $share })
 gov-cat-1 = Education ({ $share })
 gov-cat-2 = Health ({ $share })
 gov-cat-3 = Urban housing ({ $share })
+gov-cat-4 = Research ({ $share })
 gov-tip-priority =
     Weight { $weight } of { $sum } = { $share } of the money for new works (default: { $default }).
     In the queue: { $works } works of this kind, { $done } of their points delivered.
