@@ -8,7 +8,7 @@ use laplace_schelling::Fixed;
 use laplace_schelling::hash::{HashState, StateHasher};
 use serde::{Deserialize, Serialize};
 
-use super::{RegionMonth, Territory};
+use super::{RegionMonth, Territory, TerritoryId};
 use crate::econ::milli;
 use crate::game::GameWorld;
 
@@ -19,7 +19,7 @@ const GAP_FULL: Fixed = milli(3000);
 /// Most of a territory's people who emigrate in a year in the steady flow, at the full pull.
 const EMIGRATION_RATE: i64 = 3; // per mille a year
 /// Most immigrants a territory takes in a year from the steady flow, per mille of its people.
-const IMMIGRATION_CAP: i64 = 4;
+const IMMIGRATION_CAP: i64 = 3;
 /// Distance at which the pull halves, in km.
 const DISTANCE_KM: i64 = 8000;
 /// Pull multiplier within a language family and within an empire. The empire gets none: at 2,
@@ -46,11 +46,21 @@ const NETWORK_MIN_RATIO: Fixed = milli(200);
 /// there (`WAVE_MIN_CHAIN` of the full chain, 0.5 % of the origin's people) or a passage a law
 /// pays. Mass migrations follow the few who went first.
 const WAVE_MIN_PULL: Fixed = milli(250);
-const WAVE_MIN_CHAIN: Fixed = milli(100);
+const WAVE_MIN_CHAIN: Fixed = milli(300);
 
 /// A colonization programme of both governments recruits like a chain of this strength (share
 /// of a full chain): agents in the villages, not a diaspora's letters.
 const PROGRAMME_CHAIN: Fixed = milli(300);
+
+/// Market (country) of a territory index.
+fn market(t: usize) -> usize {
+    TerritoryId::from_index(t).market()
+}
+
+/// Whether a territory index is a country's colonies.
+fn colony(t: usize) -> bool {
+    TerritoryId::from_index(t).colony()
+}
 
 /// Prepaid passage: a diaspora of `PREPAID_SHARE` per mille of the origin's people, on a
 /// road, pays the ticket for everyone who takes it (relatives and labour contractors sent
@@ -64,8 +74,9 @@ const CHAIN: i64 = 3;
 const STRANGER: Fixed = milli(200);
 const CHAIN_SHARE: i64 = 50;
 
-/// A law lets a wave through at or above this, per mille of the open flow (quotas do not).
-const DOOR: i64 = 500;
+/// A law lets a wave through at or above this, per mille of the open flow: open or paid. Quotas
+/// and regulated emigration shut the door to mass waves.
+const DOOR: i64 = 1000;
 /// Pressure to leave at which a wave opens, and below which it ends.
 const WAVE_OPEN: Fixed = milli(600);
 const WAVE_CLOSE: Fixed = milli(350);
@@ -76,8 +87,8 @@ const PRESSURE_PULL: Fixed = milli(500);
 /// Emigrants of a wave, per mille of the origin a year, at full pressure; most a destination
 /// takes from waves, per mille of its people a year; least share of its labourers in jobs
 /// for a destination to stay open.
-const WAVE_RATE: i64 = 3;
-const WAVE_CAP: i64 = 5;
+const WAVE_RATE: i64 = 1;
+const WAVE_CAP: i64 = 3;
 const WAVE_JOBS: Fixed = milli(500);
 
 /// People of one origin living in one destination, by culture: the descendants of who was
@@ -85,8 +96,8 @@ const WAVE_JOBS: Fixed = milli(500);
 /// each entry becomes the community `culture` in the destination.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Diaspora {
-    pub origin: u16,
-    pub dest: u16,
+    pub origin: TerritoryId,
+    pub dest: TerritoryId,
     /// Index into the scenario's cultures; `u16::MAX` when the origin has no culture data.
     pub culture: u16,
     pub people: i64,
@@ -100,7 +111,7 @@ pub struct Diaspora {
 /// territory.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Home {
-    pub origin: u16,
+    pub origin: TerritoryId,
     pub culture: u16,
     pub people_1925: i64,
     pub territory_1925: i64,
@@ -140,8 +151,8 @@ pub enum WaveEnd {
 /// A mass migration from one territory to another, open while the pressure lasts.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Wave {
-    pub origin: u16,
-    pub dest: u16,
+    pub origin: TerritoryId,
+    pub dest: TerritoryId,
     /// Months since year 0 (`year * 12 + month - 1`) when it opened.
     pub since: i32,
     pub cause: Push,
@@ -215,16 +226,13 @@ fn stock(
     diaspora: &[Diaspora],
     territories: &[Territory],
     nt: usize,
-) -> std::collections::BTreeMap<(u16, u16), i64> {
+) -> std::collections::BTreeMap<(TerritoryId, TerritoryId), i64> {
     let mut out = std::collections::BTreeMap::new();
     for d in diaspora {
         let main = territories
-            .get(usize::from(d.origin))
+            .get(d.origin.index())
             .map_or(u16::MAX, |t| t.culture);
-        if usize::from(d.origin) < nt
-            && usize::from(d.dest) < nt
-            && (d.culture == main || main == u16::MAX)
-        {
+        if d.origin.index() < nt && d.dest.index() < nt && (d.culture == main || main == u16::MAX) {
             *out.entry((d.origin, d.dest)).or_insert(0) += d.people;
         }
     }
@@ -235,11 +243,14 @@ fn stock(
 /// `CHAIN_SHARE` of the origin's people (how many families there have someone on that road).
 fn chain_share(
     lands: &[Land],
-    abroad: &std::collections::BTreeMap<(u16, u16), i64>,
+    abroad: &std::collections::BTreeMap<(TerritoryId, TerritoryId), i64>,
     i: usize,
     j: usize,
 ) -> Fixed {
-    let there = abroad.get(&(i as u16, j as u16)).copied().unwrap_or(0);
+    let there = abroad
+        .get(&(TerritoryId::from_index(i), TerritoryId::from_index(j)))
+        .copied()
+        .unwrap_or(0);
     share_of(there, lands[i].people)
 }
 
@@ -260,9 +271,9 @@ fn subsidy(law: i64) -> Fixed {
 /// emigration law at least open: Italy forbade subsidized emigration to Brazil in 1902). Both
 /// pay for the metropole only: a colony's subjects were not the programmes' people.
 fn paid(laws: &[(i64, i64)], i: usize, j: usize) -> Fixed {
-    let (_, emi) = laws[i / 2];
-    let destination = if j.is_multiple_of(2) {
-        subsidy(laws[j / 2].0)
+    let (_, emi) = laws[market(i)];
+    let destination = if !colony(j) {
+        subsidy(laws[market(j)].0)
     } else {
         Fixed::ZERO
     };
@@ -283,8 +294,8 @@ fn paid(laws: &[(i64, i64)], i: usize, j: usize) -> Fixed {
 /// Share of the passage the origin's sponsored emigration pays: a programme for the
 /// metropole's own people, not for colonial subjects.
 fn sponsored(laws: &[(i64, i64)], i: usize) -> Fixed {
-    if i.is_multiple_of(2) {
-        subsidy(laws[i / 2].1)
+    if !colony(i) {
+        subsidy(laws[market(i)].1)
     } else {
         Fixed::ZERO
     }
@@ -294,12 +305,15 @@ fn sponsored(laws: &[(i64, i64)], i: usize) -> Fixed {
 /// that road prepays, and those whose ticket a law pays.
 fn afford(
     lands: &[Land],
-    abroad: &std::collections::BTreeMap<(u16, u16), i64>,
+    abroad: &std::collections::BTreeMap<(TerritoryId, TerritoryId), i64>,
     laws: &[(i64, i64)],
     i: usize,
     j: usize,
 ) -> Fixed {
-    let there = abroad.get(&(i as u16, j as u16)).copied().unwrap_or(0);
+    let there = abroad
+        .get(&(TerritoryId::from_index(i), TerritoryId::from_index(j)))
+        .copied()
+        .unwrap_or(0);
     afford_from(lands, laws, i, j, there, lands[i].people)
 }
 
@@ -328,7 +342,7 @@ pub(super) fn plan(
 ) -> Plan {
     let econ = &world.econ;
     let state = &world.demography;
-    let nt = econ.markets.len() * 2;
+    let nt = TerritoryId::count(econ.markets.len());
     let mut out = Plan {
         moves: vec![0i64; regions.len()],
         diaspora: state.diaspora.clone(),
@@ -374,7 +388,7 @@ pub(super) fn plan(
             .unwrap_or(Fixed::ZERO)
             .min(Fixed::ONE);
         best_pull[i] = best;
-        let (_, emi) = laws[i / 2];
+        let (_, emi) = laws[market(i)];
         let push = Fixed::ONE + lands[i].idle;
         // Would-be emigrants of the month, before the passage; each road keeps those who can
         // pay for it.
@@ -404,7 +418,8 @@ pub(super) fn plan(
     }
     // Minorities with a road of their own: the same steady flow from their own people, with
     // the chain measured against them.
-    let mut minority: std::collections::BTreeMap<(u16, u16), Vec<(u16, i64)>> = Default::default();
+    let mut minority: std::collections::BTreeMap<(TerritoryId, u16), Vec<(TerritoryId, i64)>> =
+        Default::default();
     for d in &state.diaspora {
         minority
             .entry((d.origin, d.culture))
@@ -412,7 +427,7 @@ pub(super) fn plan(
             .push((d.dest, d.people));
     }
     for h in &state.homes {
-        let i = usize::from(h.origin);
+        let i = h.origin.index();
         if i >= nt || lands[i].people <= 0 || h.territory_1925 <= 0 {
             continue;
         }
@@ -424,7 +439,7 @@ pub(super) fn plan(
         let pulls: Vec<(usize, Fixed, i64)> = roads
             .iter()
             .map(|&(j, there)| {
-                let j = usize::from(j);
+                let j = j.index();
                 let p = pull(
                     &lands,
                     &state.territories,
@@ -444,7 +459,7 @@ pub(super) fn plan(
             .max()
             .unwrap_or(Fixed::ZERO)
             .min(Fixed::ONE);
-        let (_, emi) = laws[i / 2];
+        let (_, emi) = laws[market(i)];
         let emigrants = (Fixed::from_int(pool) * best * (Fixed::ONE + lands[i].idle))
             .mul_ratio(EMIGRATION_RATE * emi.min(1000), 1000 * 1000 * 12)
             .to_int_floor();
@@ -496,7 +511,7 @@ pub(super) fn plan(
             .map_or(Push::Poverty, |(_, c)| *c);
         (total, cause)
     };
-    let open_door = |i: usize, j: usize| laws[j / 2].0 >= DOOR && laws[i / 2].1 >= DOOR;
+    let open_door = |i: usize, j: usize| laws[market(j)].0 >= DOOR && laws[market(i)].1 >= DOOR;
     let road_open = |i: usize, j: usize| {
         paid(laws, i, j) > Fixed::ZERO || chain_share(&lands, &abroad, i, j) >= WAVE_MIN_CHAIN
     };
@@ -504,7 +519,7 @@ pub(super) fn plan(
     let mut wave_flows: Vec<(usize, i64)> = Vec::new(); // index into out.waves
     let mut has_wave = vec![false; nt];
     for w in &state.waves {
-        let (i, j) = (usize::from(w.origin), usize::from(w.dest));
+        let (i, j) = (w.origin.index(), w.dest.index());
         if i >= nt || j >= nt {
             continue;
         }
@@ -560,8 +575,8 @@ pub(super) fn plan(
             .map(|&(j, _)| j);
         if let Some(j) = dest {
             out.waves.push(Wave {
-                origin: i as u16,
-                dest: j as u16,
+                origin: TerritoryId::from_index(i),
+                dest: TerritoryId::from_index(j),
                 since: now,
                 cause,
                 people: 0,
@@ -569,7 +584,7 @@ pub(super) fn plan(
         }
     }
     for (k, w) in out.waves.iter().enumerate() {
-        let (i, j) = (usize::from(w.origin), usize::from(w.dest));
+        let (i, j) = (w.origin.index(), w.dest.index());
         let (p, _) = pressure(i);
         let strength = ((p - WAVE_CLOSE) / (WAVE_OPEN - WAVE_CLOSE)).clamp(Fixed::ZERO, Fixed::ONE);
         let paying = afford(&lands, &abroad, laws, i, j);
@@ -585,7 +600,7 @@ pub(super) fn plan(
     let wave_cap: Vec<i64> = lands.iter().map(|l| l.people * WAVE_CAP / 12_000).collect();
     for (k, n) in wave_flows {
         let w = &mut out.waves[k];
-        let (i, j) = (usize::from(w.origin), usize::from(w.dest));
+        let (i, j) = (w.origin.index(), w.dest.index());
         let n = if wave_in[j] > wave_cap[j] {
             (i128::from(n) * i128::from(wave_cap[j]) / i128::from(wave_in[j])) as i64
         } else {
@@ -598,7 +613,7 @@ pub(super) fn plan(
     // Diaspora: grows with the destination's births and deaths, and with the arrivals, who
     // take the cultures already on that road (or the origin's own).
     for d in &mut out.diaspora {
-        let l = &lands[usize::from(d.dest).min(nt - 1)];
+        let l = &lands[d.dest.index().min(nt - 1)];
         if l.people > 0 {
             d.people +=
                 (i128::from(d.people) * i128::from(l.natural) / i128::from(l.people)) as i64;
@@ -607,7 +622,8 @@ pub(super) fn plan(
     // Arrivals join the diaspora of their culture on that road: the origin's main culture,
     // or the minority that took its own road.
     let mut net = vec![0i64; nt];
-    let mut arrivals: std::collections::BTreeMap<(u16, u16, u16), i64> = Default::default();
+    let mut arrivals: std::collections::BTreeMap<(TerritoryId, TerritoryId, u16), i64> =
+        Default::default();
     for &(i, j, c, n) in &moved {
         if n <= 0 {
             continue;
@@ -619,7 +635,13 @@ pub(super) fn plan(
         } else {
             c
         };
-        *arrivals.entry((i as u16, j as u16, culture)).or_insert(0) += n;
+        *arrivals
+            .entry((
+                TerritoryId::from_index(i),
+                TerritoryId::from_index(j),
+                culture,
+            ))
+            .or_insert(0) += n;
     }
     for ((i, j, culture), n) in arrivals {
         match out
@@ -646,12 +668,12 @@ pub(super) fn plan(
     let mut people = vec![0i64; nt];
     let mut town = vec![0i64; nt];
     for (r, m) in econ.regions.iter().zip(regions) {
-        let t = usize::from(r.market) * 2 + usize::from(r.colony);
+        let t = TerritoryId::of(r).index();
         people[t] += m.people;
         town[t] += m.urban;
     }
     for (ri, (r, m)) in econ.regions.iter().zip(regions).enumerate() {
-        let t = usize::from(r.market) * 2 + usize::from(r.colony);
+        let t = TerritoryId::of(r).index();
         let n = net[t];
         out.moves[ri] = if n < 0 && people[t] > 0 {
             (i128::from(n) * i128::from(m.people) / i128::from(people[t])) as i64
@@ -679,7 +701,7 @@ fn lands(world: &GameWorld, regions: &[RegionMonth], nt: usize) -> Vec<Land> {
     let mut market_people = vec![0i64; econ.markets.len()];
     let mut market_income = vec![Fixed::ZERO; econ.markets.len()];
     for (r, m) in econ.regions.iter().zip(regions) {
-        let t = usize::from(r.market) * 2 + usize::from(r.colony);
+        let t = TerritoryId::of(r).index();
         people[t] += m.people;
         income[t] += m.income;
         literate[t] += m.literacy_people;
@@ -698,7 +720,7 @@ fn lands(world: &GameWorld, regions: &[RegionMonth], nt: usize) -> Vec<Land> {
     // metropole and colonies by money income per head.
     (0..nt)
         .map(|t| {
-            let mi = t / 2;
+            let mi = market(t);
             let n = people[t];
             let mut out = Land {
                 people: n,
@@ -763,7 +785,7 @@ fn pull(
     // destination's subsidy alone pays the ticket (`afford`, the distance) but recruits no one.
     // A colonization programme needs both governments: the origin sponsoring and the
     // destination subsidizing (Japan and Brazil from 1925). Sponsorship alone pays the ticket.
-    let sponsored = if j.is_multiple_of(2) && laws[j / 2].0 > 1000 {
+    let sponsored = if !colony(j) && laws[market(j)].0 > 1000 {
         sponsored(laws, i) * PROGRAMME_CHAIN
     } else {
         Fixed::ZERO
@@ -794,12 +816,12 @@ fn pull(
     if ti.family != u8::MAX && ti.family == tj.family {
         link *= SAME_FAMILY;
     }
-    if i / 2 == j / 2 {
+    if market(i) == market(j) {
         link *= SAME_EMPIRE;
     }
     let chain = STRANGER + (Fixed::from_int(1 + CHAIN) - STRANGER) * chain_share;
     // Above the open flow the law pays the passage (in `afford` and the distance), not more pull.
-    let (imm, _) = laws[j / 2];
+    let (imm, _) = laws[market(j)];
     (gap * distance * b.jobs * chain * link).mul_ratio(imm.min(1000), 1000)
 }
 
@@ -827,11 +849,11 @@ pub fn initial_diaspora(
     communities: &crate::communities::Communities,
 ) -> Start {
     use std::collections::{BTreeMap, BTreeSet};
-    let nt = econ.markets.len() * 2;
+    let nt = TerritoryId::count(econ.markets.len());
     let nc = communities.cultures.len();
     let mut territory_of_state = BTreeMap::new();
     for r in &econ.regions {
-        territory_of_state.insert(r.state, usize::from(r.market) * 2 + usize::from(r.colony));
+        territory_of_state.insert(r.state, TerritoryId::of(r).index());
     }
     // Every state: its territory, its people by culture, and the territories it touches by land.
     struct Row {
@@ -844,7 +866,7 @@ pub fn initial_diaspora(
     // A culture is native to a territory where it is the largest in some state.
     let mut native = vec![vec![false; nt]; nc];
     for r in &econ.regions {
-        let t = usize::from(r.market) * 2 + usize::from(r.colony);
+        let t = TerritoryId::of(r).index();
         let Some(def) = map.states.iter().find(|d| d.id == r.state) else {
             continue;
         };
@@ -917,8 +939,8 @@ pub fn initial_diaspora(
         .into_iter()
         .filter(|(_, v)| *v >= 1000.0)
         .map(|((o, d, c), v)| Diaspora {
-            origin: o as u16,
-            dest: d as u16,
+            origin: TerritoryId::from_index(o),
+            dest: TerritoryId::from_index(d),
             culture: c as u16,
             people: v.round() as i64,
             arrived: 0,
@@ -942,7 +964,7 @@ pub fn initial_diaspora(
         .collect();
     let mut homes: Vec<Home> = Vec::new();
     for d in &diaspora {
-        let (o, c) = (usize::from(d.origin), usize::from(d.culture));
+        let (o, c) = (d.origin.index(), usize::from(d.culture));
         if c != main[o]
             && !homes
                 .iter()

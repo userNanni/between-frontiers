@@ -31,6 +31,53 @@ pub use migration::{Diaspora, Home, Push, Wave, WaveEnd, WaveRecord};
 
 pub const DEMOGRAPHY: ResourceId = ResourceId(13);
 
+/// A country's metropole or its colonies: the unit of migration between countries and of the
+/// history series. The one place that knows how a territory maps to a market and back.
+#[derive(
+    Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
+)]
+#[serde(transparent)]
+pub struct TerritoryId(pub u16);
+
+impl TerritoryId {
+    pub const fn new(market: u16, colony: bool) -> Self {
+        Self(market * 2 + colony as u16)
+    }
+
+    /// The territory of a region.
+    pub fn of(r: &Region) -> Self {
+        Self::new(r.market, r.colony)
+    }
+
+    /// From a dense index (`0..count`).
+    pub fn from_index(i: usize) -> Self {
+        Self(i as u16)
+    }
+
+    pub const fn index(self) -> usize {
+        self.0 as usize
+    }
+
+    pub const fn market(self) -> usize {
+        (self.0 / 2) as usize
+    }
+
+    pub const fn colony(self) -> bool {
+        self.0 % 2 == 1
+    }
+
+    /// Territories of `markets` markets.
+    pub const fn count(markets: usize) -> usize {
+        markets * 2
+    }
+}
+
+impl HashState for TerritoryId {
+    fn hash_state(&self, h: &mut StateHasher) {
+        self.0.hash_state(h);
+    }
+}
+
 /// Five-year age groups: 0–4, 5–9, …, 75–79 and 80 and over.
 pub const AGE_GROUPS: usize = 17;
 /// First and last group of the mothers (15–19 to 45–49).
@@ -257,7 +304,7 @@ impl DemographyState {
     pub fn immigrants_by_origin(&self, country: usize) -> Vec<(usize, i64)> {
         let mut by = std::collections::BTreeMap::new();
         for d in &self.diaspora {
-            let (o, t) = (usize::from(d.origin) / 2, usize::from(d.dest) / 2);
+            let (o, t) = (d.origin.market(), d.dest.market());
             if t == country && o != country && d.people > 0 {
                 *by.entry(o).or_insert(0i64) += d.people;
             }
@@ -350,7 +397,7 @@ pub fn territories(
     map: &crate::scenario::MapFile,
     communities: Option<&crate::communities::Communities>,
 ) -> Vec<Territory> {
-    let n = econ.markets.len() * 2;
+    let n = TerritoryId::count(econ.markets.len());
     // (people, Σ lat × people, Σ lon × people) and people by language family.
     let mut acc = vec![(0f64, 0f64, 0f64); n];
     let families = crate::communities::CULTURE_FAMILIES.len();
@@ -365,7 +412,7 @@ pub fn territories(
     };
     let (top, bottom) = (miller(meta.lat_top), miller(meta.lat_bottom));
     for r in &econ.regions {
-        let t = usize::from(r.market) * 2 + usize::from(r.colony);
+        let t = TerritoryId::of(r).index();
         let Some(def) = map.states.iter().find(|d| d.id == r.state) else {
             continue;
         };

@@ -5,6 +5,7 @@
 use std::path::PathBuf;
 
 use bf_sim::data::GameData;
+use bf_sim::demography::TerritoryId;
 use bf_sim::demography::migration::initial_diaspora;
 
 fn root() -> PathBuf {
@@ -19,9 +20,9 @@ fn diaspora_of_1925() {
     let start = initial_diaspora(&world.econ, &data.map, c);
     let (diaspora, ambiguous) = (start.diaspora, start.ambiguous);
     let tags: Vec<String> = world.countries.iter().map(|(_, c)| c.tag.clone()).collect();
-    let name = |t: u16| {
-        let part = if t % 2 == 1 { "/colonies" } else { "" };
-        format!("{}{part}", tags[usize::from(t / 2)])
+    let name = |t: TerritoryId| {
+        let part = if t.colony() { "/colonies" } else { "" };
+        format!("{}{part}", tags[t.market()])
     };
     let total: i64 = diaspora.iter().map(|d| d.people).sum();
     println!(
@@ -40,7 +41,7 @@ fn diaspora_of_1925() {
             c.cultures[usize::from(d.culture)].key
         );
     }
-    let bra = tags.iter().position(|t| t == "BRA").unwrap() as u16 * 2;
+    let bra = TerritoryId::new(tags.iter().position(|t| t == "BRA").unwrap() as u16, false);
     println!("in Brazil:");
     for d in diaspora.iter().filter(|d| d.dest == bra) {
         println!(
