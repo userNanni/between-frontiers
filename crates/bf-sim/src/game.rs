@@ -113,7 +113,7 @@ struct WorldBeforeCommunities {
     player: Option<Id<Country>>,
     countries: Table<Country, CountryState>,
     census: Vec<CensusRecord>,
-    econ: crate::econ::Economy,
+    econ: crate::econ::state::EconomyBeforeLedger,
     research: crate::research::ResearchState,
     politics: crate::polity::PoliticsState,
     demography: crate::demography::DemographyBeforeCommunities,
@@ -126,7 +126,7 @@ impl From<WorldBeforeCommunities> for GameWorld {
             player: w.player,
             countries: w.countries,
             census: w.census,
-            econ: w.econ,
+            econ: w.econ.into(),
             research: w.research,
             politics: w.politics,
             demography: w.demography.into(),
@@ -134,11 +134,43 @@ impl From<WorldBeforeCommunities> for GameWorld {
     }
 }
 
-/// Decodes a snapshot of this build, or of a build from before the communities.
+/// The world as saves wrote it before the ledger of debts between states (2026-11-17): the
+/// economy without its ledger. An empty ledger is out of the hash, so the loaded world keeps
+/// the hash it was saved with.
+#[derive(Deserialize)]
+struct WorldBeforeLedger {
+    scenario: String,
+    player: Option<Id<Country>>,
+    countries: Table<Country, CountryState>,
+    census: Vec<CensusRecord>,
+    econ: crate::econ::state::EconomyBeforeLedger,
+    research: crate::research::ResearchState,
+    politics: crate::polity::PoliticsState,
+    demography: crate::demography::DemographyState,
+}
+
+impl From<WorldBeforeLedger> for GameWorld {
+    fn from(w: WorldBeforeLedger) -> Self {
+        Self {
+            scenario: w.scenario,
+            player: w.player,
+            countries: w.countries,
+            census: w.census,
+            econ: w.econ.into(),
+            research: w.research,
+            politics: w.politics,
+            demography: w.demography,
+        }
+    }
+}
+
+/// Decodes a snapshot of this build, or of an older one: newest layout first, one step back
+/// at a time (before the ledger, before the communities).
 fn decode_world(bytes: &[u8]) -> Result<GameWorld, SaveError> {
     decode_snapshot::<GameWorld>(bytes).or_else(|now| {
-        decode_snapshot::<WorldBeforeCommunities>(bytes)
+        decode_snapshot::<WorldBeforeLedger>(bytes)
             .map(GameWorld::from)
+            .or_else(|_| decode_snapshot::<WorldBeforeCommunities>(bytes).map(GameWorld::from))
             .map_err(|_| now)
     })
 }
@@ -571,6 +603,65 @@ impl Session {
 mod tests {
     use super::*;
     use crate::scenario::Status;
+
+    /// The 1925 world written as the `main` before the ledger wrote it (the economy without its
+    /// ledger) loads in this build with the same hash.
+    #[test]
+    fn a_save_from_before_the_ledger_loads_with_its_hash() {
+        #[derive(Serialize)]
+        struct OldEconomy<'a> {
+            regions: &'a Vec<crate::econ::Region>,
+            markets: &'a Vec<crate::econ::Market>,
+            world_price: &'a Vec<laplace_schelling::Fixed>,
+            history: &'a Vec<crate::econ::YearRecord>,
+        }
+        #[derive(Serialize)]
+        struct OldWorld<'a> {
+            scenario: &'a String,
+            player: &'a Option<Id<Country>>,
+            countries: &'a Table<Country, CountryState>,
+            census: &'a Vec<CensusRecord>,
+            econ: OldEconomy<'a>,
+            research: &'a crate::research::ResearchState,
+            politics: &'a crate::polity::PoliticsState,
+            demography: &'a crate::demography::DemographyState,
+        }
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let data = crate::data::GameData::load(&root).unwrap();
+        let mut world = data.new_world();
+        // The main had no ledger: a world of then is this one with the ledger empty.
+        world.econ.ledger = Default::default();
+        let old = OldWorld {
+            scenario: &world.scenario,
+            player: &world.player,
+            countries: &world.countries,
+            census: &world.census,
+            econ: OldEconomy {
+                regions: &world.econ.regions,
+                markets: &world.econ.markets,
+                world_price: &world.econ.world_price,
+                history: &world.econ.history,
+            },
+            research: &world.research,
+            politics: &world.politics,
+            demography: &world.demography,
+        };
+        let bytes = encode_snapshot(&old).unwrap();
+        assert!(
+            decode_snapshot::<GameWorld>(&bytes).is_err(),
+            "the layout really changed"
+        );
+        let loaded = decode_world(&bytes).unwrap();
+        assert_eq!(hash_of(&loaded), hash_of(&world));
+        assert_eq!(loaded, world);
+        // And this build's own snapshot still reads first.
+        let mut with_ledger = data.new_world();
+        assert!(!with_ledger.econ.ledger.is_empty());
+        let now = decode_world(&encode_snapshot(&with_ledger).unwrap()).unwrap();
+        assert_eq!(hash_of(&now), hash_of(&with_ledger));
+        with_ledger.econ.ledger = Default::default();
+        assert_ne!(hash_of(&now), hash_of(&with_ledger));
+    }
 
     fn def(tag: &str, population: u64) -> CountryDef {
         CountryDef {
