@@ -191,14 +191,30 @@ efeito no câmbio fica para quando entrar o balanço de pagamentos (decisão 4).
      viram camada da ex-metrópole, sem contrato, menos a parte dos donos locais. Essa parte é a
      fração do dividendo que, no último ano, ficou com os capitalistas da própria região. É a
      segunda saída da seção 2, e não pede marcar nada desde 1925.
+   - **O acordo de independência pode mudar o padrão** (com o thread dos tratados). Hoje
+     `treaty_exec` já cria país novo por acordo (`ReleaseCountry`, que vira `borders::Secede`) e
+     põe no livro a dívida com que o país nasce (`Debt`, `DebtTerm::Agreement`). Entra uma
+     cláusula nova, `ColonialPlants { kept }`, executada logo depois do território, como a dívida:
+     - **sem a cláusula, num acordo:** vale a regra padrão acima;
+     - **`kept` = 1:** tudo fica com a ex-metrópole, inclusive a parte dos donos locais;
+     - **`kept` entre 0 e 1:** a ex-metrópole guarda essa parte da regra padrão;
+     - **`kept` = 0 com uma cláusula `Debt` no mesmo acordo:** nada fica com a ex-metrópole; o país
+       novo compra as fábricas e a indenização vai para o livro de dívida, com os termos do acordo;
+     - **independência por revolta, sem acordo** (a operação de fronteira sem tratado): nenhuma
+       camada, como hoje. As fábricas passam inteiras ao país novo e não há indenização. Isso não
+       conta como estatização, porque não havia camada para tomar. Enquanto a ex-metrópole não
+       reconhecer o país novo, a regra do reconhecimento já barra o capital entre os dois.
    - **Teste:**
      - uma colônia sem capitalistas próprios sai da independência com camada da ex-metrópole em
        todas as fábricas privadas;
      - a remessa começa na semana seguinte;
      - estatizar em seguida gera a memória e o prêmio de risco;
-     - antes de qualquer independência, o hash é o da `main`.
-   - **Custo:** uma regra na operação de fronteira e a leitura do dividendo por região, que hoje
-     não é guardado. Fica para o passo 4, junto com a estatização. A alternativa é deixar como
+     - antes de qualquer independência, o hash é o da `main`;
+     - com o acordo, `kept` = 1 dá a camada inteira, e `kept` = 0 com dívida não dá camada e põe a
+       linha no livro, de valor igual ao das fábricas pela regra padrão;
+     - a mesma independência por revolta não deixa camada nem dívida.
+   - **Custo:** uma regra na operação de fronteira, a leitura do dividendo por região (que hoje
+     não é guardado) e uma cláusula a mais no catálogo dos tratados, sem tipo de tratado novo. Fica para o passo 4, junto com a estatização. A alternativa é deixar como
      hoje, com tudo passando ao país novo; aí o ciclo de remessa e estatização dos anos 1950 a
      1970 não aparece.
 
