@@ -55,8 +55,18 @@ pub struct Region {
     pub literacy: Fixed,
     /// Deposits: resource index, discovery year, ceiling in levels of the base method.
     pub deposits: Vec<(u8, i32, i64)>,
-    /// Land: farm index, ceiling in levels.
+    /// Land: farm index, ceiling in levels. For crops, the land open to the plough.
     pub land: Vec<(u8, i64)>,
+    /// Crop levels that pasture and forest suited to the crop could still give, once cleared:
+    /// farm index, levels (`monthly::Investment` opens them as works).
+    #[serde(default)]
+    pub frontier: Vec<(u8, i64)>,
+    /// Pasture and forest left, km².
+    #[serde(default)]
+    pub wild_km2: [i64; 2],
+    /// Pasture and forest turned into cropland since 1925, km².
+    #[serde(default)]
+    pub cleared_km2: [i64; 2],
     /// Staple food the unemployed grow for themselves, per 1,000 people per week, in tonnes.
     pub subsistence: Fixed,
     /// Labour productivity: scales a plant's inputs and outputs per worker. Calibrated in
@@ -449,6 +459,17 @@ impl HashState for Region {
         for (f, c) in &self.land {
             h.write_u8(*f);
             h.write_i64(*c);
+        }
+        // Worlds without a frontier keep their hash.
+        if !self.frontier.is_empty() {
+            h.write_len(self.frontier.len());
+            for (f, c) in &self.frontier {
+                h.write_u8(*f);
+                h.write_i64(*c);
+            }
+            for v in self.wild_km2.iter().chain(&self.cleared_km2) {
+                h.write_i64(*v);
+            }
         }
         self.subsistence.hash_state(h);
         self.tfp.hash_state(h);

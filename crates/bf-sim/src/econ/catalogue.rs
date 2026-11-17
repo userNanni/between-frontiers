@@ -114,6 +114,11 @@ pub struct Catalogue {
     /// Farms that grow a staple, as (farm index, building, staples a level of its first method
     /// grows in a week): the land smallholders can till when the farms leave it free.
     pub staple_farms: Vec<(u8, u16, Fixed)>,
+    /// Land a level of each farm (`FARMS` index) works, km² (`resources::land_per_level`).
+    pub farm_km2: Vec<i64>,
+    /// The ranch and the forestry farms (`FARMS` index), whose land clearing takes.
+    pub pasture_farm: Option<u8>,
+    pub forest_farm: Option<u8>,
     /// The urban self-employment building, if the catalogue has one.
     pub informal: Option<u16>,
     /// Goods the state buys whole (category `public`: schools, hospitals).
@@ -333,6 +338,15 @@ impl Catalogue {
             .collect();
         let informal = bs.iter().position(|b| b.informal).map(|k| k as u16);
         Ok(Self {
+            farm_km2: FARMS
+                .iter()
+                .map(|f| crate::resources::land_per_level(f))
+                .collect(),
+            pasture_farm: FARMS
+                .iter()
+                .position(|f| *f == "livestock_ranch")
+                .map(|i| i as u8),
+            forest_farm: FARMS.iter().position(|f| *f == "forestry").map(|i| i as u8),
             informal,
             staple_farms,
             grain: gx("grain").ok(),

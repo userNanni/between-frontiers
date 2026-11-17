@@ -122,3 +122,27 @@ pub struct StateLand {
     /// Farm kinds the state's climate and soils allow, with a suitability from 0 to 1.
     pub farms: Vec<(String, f32)>,
 }
+
+/// Land a farm level works, km² of cropland (pasture for ranches, forest for forestry). Set from
+/// 1925 yields: a level of a grain farm harvests 6,000 t at 1.2 t/ha on 50 km²; perennial and
+/// garden crops make far more per hectare.
+pub fn land_per_level(farm: &str) -> i64 {
+    match farm {
+        "livestock_ranch" => 600,
+        "forestry" => 150,
+        "dairy_farm" => 80,
+        "rice_paddy" => 25,
+        "cotton_plantation" => 17,
+        "coffee_plantation" | "tea_plantation" | "cocoa_plantation" | "rubber_plantation"
+        | "tobacco_plantation" => 8,
+        "fiber_plantation" => 7,
+        "sugarcane_plantation" | "sugar_beet_farm" => 4,
+        "fruit_plantation" | "vineyard" => 3,
+        _ => 50,
+    }
+}
+
+/// Farms that work pasture or forest, or the sea, rather than cropland: they open no frontier.
+pub fn on_cropland(farm: &str) -> bool {
+    !matches!(farm, "livestock_ranch" | "forestry" | "fishery")
+}
