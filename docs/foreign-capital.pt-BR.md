@@ -1,7 +1,7 @@
 # Capital entre países: o fundo que investe fora (fase 4)
 
-Estado: desenho; decisões 1 a 5 tomadas pelo dono em 2026-11-17, a 6 espera o estudo (seção 5). O estudo e a conta do retorno estão em
-`late-industrialization.pt-BR.md` (parte 2). O contrato puro está em
+Estado: desenho; decisões C1 a C6 tomadas pelo dono em 2026-11-17 (seção 5). O estudo e a conta
+do retorno estão em `late-industrialization.pt-BR.md` (parte 2). O contrato puro está em
 `crates/bf-sim/src/foreign_capital.rs`, fora do tick. Este documento diz como ele entra no tick:
 em que passo do agendador, o que o save guarda, como se testa e o que o dono decide.
 
@@ -150,7 +150,7 @@ Decididas em 2026-11-17:
 | C3 | Veto nos dois sentidos | sim, `SetCapitalEmbargo` |
 | C4 | Câmbio | remessa sem efeito no câmbio agora; o efeito entra com o balanço de pagamentos |
 | C5 | Técnica pela planta estrangeira | sim, como **efeito de primeira ordem** ("isso é muito importante para o processo de globalização"): a tela do país mostra quanto da difusão vem de fábrica estrangeira, e a direção é testada contra `fdi.csv` |
-| C6 | Fábricas da colônia na independência | **aberta**: o dono pediu ver como aconteceu na história antes da regra ("a história irá nos revelar quais os fluxos possíveis"). O estudo e o padrão proposto estão na seção 7 |
+| C6 | Fábricas da colônia na independência | decidida em 2026-11-17: **sim às cinco partes** do padrão da seção 7 (C6a acordo sem cláusula; C6b cláusula `ColonialPlants`; C6c revolta; C6d terra fora da camada; C6e indenização posterior, que pode ser renegociada e pode não ser cumprida) |
 
 O texto abaixo é o que foi levado ao dono, com a recomendação de cada uma.
 
@@ -332,32 +332,97 @@ de (h) a (m).
 | k | a lei de capital ganha a parcela máxima do estrangeiro; ao mudar, as camadas acima dela são vendidas pelo valor | leis de contrato, passo 4 |
 | l, m | (l) fica fora por ser raro; (m) é (d) depois de (f) | — |
 
-### Padrão proposto, por situação
+### Padrão, por situação (decidido: C6a a C6e)
 
-1. **Independência por acordo, sem cláusula:** como na regra da decisão 6. A ex-metrópole fica
+1. **C6a. Independência por acordo, sem cláusula:** como na regra da decisão 6. A ex-metrópole fica
    com os níveis privados não agrícolas, menos a parte dos donos locais, sem prazo e sem garantia.
    O que vem depois sai das leis do país novo: fechar o capital ou planificar a economia estatiza
    pela regra de (c) ou (d). Isso dá a regularidade 1 sem impor uma data.
-2. **Independência por acordo, com a cláusula `ColonialPlants`:**
+2. **C6b. Independência por acordo, com a cláusula `ColonialPlants`:**
    - `kept`: a parte da ex-metrópole, de 0 a 1;
    - `guarantee_years`: o prazo da garantia (e);
    - `parity_years`: o prazo da paridade (e);
    - com `kept` = 0, uma cláusula `Debt` no mesmo acordo faz a compra (b) ou a indenização (g).
-3. **Independência por revolta, sem acordo.** Aqui a história muda a proposta anterior, que era
-   "nenhuma camada".
+3. **C6c. Independência por revolta, sem acordo.** Aqui a história mudou a proposta anterior, que
+   era "nenhuma camada".
    - **Fábricas e minas:** a camada nasce como no acordo, mas sem garantia. A propriedade não some
      na data; quem a toma é o país novo, pelas suas leis. Se ele nasce com o capital fechado ou a
      economia planificada, estatiza na hora, sem pagamento, com memória e prêmio de risco (d).
    - **Terra:** sai da camada (regularidade 2). Fica com os donos locais da região, e a saída
      deles depende das comunidades (f).
-   - **Alternativa para o dono:** manter a proposta anterior, em que a revolta não deixa camada nem
-     dívida. É mais simples, mas apaga os casos da Fria e do petróleo argelino.
-4. **Terra agrícola, em qualquer situação:** fora das camadas. O dono é quem mora na região (o
+4. **C6d. Terra agrícola, em qualquer situação:** fora das camadas. O dono é quem mora na região (o
    colono, no jogo um proprietário local). A compra financiada pela metrópole (b) entra como
    cláusula `Debt` do acordo quando a saída dos colonos (f) existir.
-5. **Acordo de indenização posterior:** um tratado com cláusula `Debt` entre o país que estatizou e
-   o antigo dono reduz o prêmio de risco na proporção do que foi pago (regularidade 5). A pressão da
-   regularidade 6 é o veto (C3) e, depois, a influência.
+5. **C6e. Acordo de indenização posterior:** um tratado com cláusula `Debt` entre o país que
+   estatizou e o antigo dono reduz o prêmio de risco na proporção do que foi **de fato pago**
+   (regularidade 5). A pressão da regularidade 6 é o veto (C3) e, depois, a influência.
+
+### Renegociar e não cumprir (C6e)
+
+O dono lembrou que a dívida de indenização precisa poder ser renegociada e que os tratados podem
+não ser cumpridos. As duas coisas já têm regra geral no thread dos tratados, que é o dono do livro
+de dívida e de `clauses.ron` (`treaties.pt-BR.md`, seção 6, graus de calote, e seção 9). Aqui elas
+só ganham o que é próprio do capital.
+
+**Renegociar.** A indenização é uma linha do livro de dívida como qualquer outra. A revisão que o
+`treaty_exec` já executa (`revise_debt`: prazo, juro, parte adiável, perdão parcial; só o credor dá)
+vale para ela sem regra nova.
+- **O prêmio de risco lê o pago, não o prometido.** Cada estatização na memória guarda o valor
+  tomado e quanto já foi pago por ela. A parte do prêmio que cai é `pago / tomado`. Uma moratória
+  congela a queda. O perdão parcial reduz a dívida, mas não conta como pago: o prêmio da parte
+  perdoada fica.
+- Isso repete o caso da Indonésia: o acordo de 1966 fixou uma soma abaixo do pedido, paga em 30
+  parcelas a 1 %. O capital olha o que entra, não o tratado.
+
+**Não cumprir.** Qualquer das partes pode deixar de cumprir. A quebra é o teste mensal falhar,
+como na seção 9 dos tratados, e custa pela regra geral:
+- registro no acordo;
+- suspensão recíproca: o lado prejudicado pode suspender o que dava em troca;
+- causa medida pelo valor da cláusula quebrada;
+- reputação do país que quebrou, que sobe com cada quebra e cai 10 % ao ano.
+
+No capital, a quebra custa também:
+
+| Quem quebra | Como | Custo próprio do capital |
+|---|---|---|
+| país novo | para de pagar a indenização (atraso, calote parcial, repúdio) | a memória de expropriação volta a pesar na parte não paga; a ex-metrópole pode aplicar o veto (C3) sem quebrar nada, por suspensão recíproca |
+| país novo | estatiza dentro de `guarantee_years` | expropriação sem pagamento com memória e prêmio cheios, mais quebra da garantia (causa e reputação) |
+| ex-metrópole | não respeita a paridade (veta o país novo ou cobra o prêmio da lei de um fundo que devia ser tratado como nacional) | quebra da paridade: causa e reputação; o país novo pode suspender a garantia e a indenização em troca, sem quebrar |
+
+**A IA decide pela mesma conta dos tratados:** quebra quando o valor de quebrar passa o custo
+medido (causa, reputação, suspensão recíproca e, aqui, o prêmio de risco que o próprio país
+passará a pagar ao capital de todos). A tela mostra a conta à vítima.
+
+**Testes de jogo:**
+1. **Renegociação.** O país estatiza 100 de capital da ex-metrópole e assina uma indenização de 60
+   em 10 parcelas. Depois de pagar 30, o prêmio de risco é o de 70 % tomados sem pagar.
+   - O credor dá moratória de 3 anos: o prêmio não cai nesses 3 anos e não é quebra.
+   - O credor perdoa 20: a dívida fica em 10, e o prêmio continua sendo o de 70 %.
+   - Pagos os 10 restantes, o prêmio é o de 60 % tomados sem pagar, decaindo pela meia-vida
+     como sempre.
+2. **Calote na indenização.** O mesmo país para de pagar:
+   - a linha vai para atraso e depois para calote, pela regra do livro;
+   - cada parcela não paga é quebra com a ex-metrópole;
+   - a reputação dele sobe pelo valor não pago;
+   - a ex-metrópole ganha causa e pode vetar o capital entre os dois sem quebra própria.
+3. **Estatização dentro da garantia.** Independência com `guarantee_years` = 10; o país novo fecha
+   o capital no ano 6:
+   - as camadas viram do Estado sem pagamento;
+   - a memória e o prêmio são cheios;
+   - a garantia quebra: causa e reputação.
+   - No ano 11, o mesmo ato é só estatização, sem quebra de tratado.
+4. **Paridade não cumprida.** Com `parity_years` = 20, a ex-metrópole veta o país novo no ano 5:
+   - é quebra da paridade, com causa do país novo e reputação da ex-metrópole;
+   - o país novo pode suspender a indenização em troca sem que isso conte como quebra.
+5. **Sem quebra, nada muda.** Um acordo cumprido até o fim não deixa registro de quebra, e o prêmio
+   segue só a memória das estatizações e o que foi pago.
+
+**Do lado dos tratados** (o thread dos tratados, a combinar com ele):
+- a cláusula `ColonialPlants` e seus campos;
+- o teste mensal da garantia e da paridade;
+- o campo "pago" ligando a linha de indenização à estatização da memória.
+
+O livro, a revisão, os graus de calote, a reputação e a suspensão recíproca já são dele.
 
 ### Testes
 
