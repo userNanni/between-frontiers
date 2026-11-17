@@ -195,6 +195,20 @@ investimento por acaso). Três regras faltavam para o crescimento não disparar:
   pede capital, técnica ou um Estado que planeje; isso fica para o capital estrangeiro e o regime
   (fases 4 e 7). A tarifa da lei de comércio em vigor já chega à economia (`LawEffects::tariff`).
 
+### Informal dos países ricos: serviços sem teto, testado e retirado
+
+Com a demografia (#54), o informal dos ricos caiu sozinho (Alemanha 8 % contra 4 % da OIT, França
+9 % contra 3 %), mas Itália e Espanha seguem em 26 % (8 e 4 % na OIT). Foi testado deixar os
+serviços sem o teto do plano de consumo (`SPARE_CEILING`): o que o teto deixa de fora iria para a
+necessidade de serviços, em vez de ir ao fundo de investimento. Rodada de 100 anos contra a `main`
+em fc887b3: informal dos EUA 18 → 28 %, Alemanha 8 → 12 %, França 9 → 16 %, Itália 26 → 31 %; PIB
+mundial de 2025 115,5 → 103,7 tri; crescimento por habitante de 1991–2008 +1,4 → +1,3 %; ranking
+do PIB por habitante de 2022 0,50 → 0,48. Duas causas da piora: o informal vende o mesmo bem
+(`services`) que o comércio formal, então a demanda nova também o enche e ele não encolhe; e o
+dinheiro que ia ao fundo e construía planta formal passou a ir para consumo. Desenho candidato,
+para depois: o informal produz um bem próprio, mais barato, que os pobres compram e que os ricos
+trocam pelo formal quando a renda sobe (substituição pelo preço, não pelo teto).
+
 ## 1925: eletricidade e petróleo
 
 - **Eletricidade.** Antes de pôr as usinas, o setup passa as plantas de cada país para o método
