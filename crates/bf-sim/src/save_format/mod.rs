@@ -54,8 +54,12 @@ pub const WORLD_MAGIC: [u8; 4] = *b"BFWD";
 /// 8. the treaty state (`GameWorld::treaties`: recognition between states);
 /// 9. the armed forces (`GameWorld::war`);
 /// 10. trade by pair (`Economy::trade`), the last field of the economy;
-/// 11. schooling by cohort and level (`GameWorld::education`), the last field of the world.
-pub const WORLD_VERSION: u32 = 11;
+/// 11. schooling by cohort and level (`GameWorld::education`), the last field of the world;
+/// 14. capital that crosses borders: the works paid from abroad and the reinvested earnings
+///     (`ForeignState::building`, `retained`).
+///
+/// Versions 12 and 13 are taken by the orders and independence PRs.
+pub const WORLD_VERSION: u32 = 14;
 
 /// Why a snapshot does not read.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -157,7 +161,7 @@ pub fn decode_world(bytes: &[u8]) -> Result<GameWorld, WorldError> {
 /// Reads the world of version `v` and steps it up to the current version.
 pub fn migrate(v: u32, body: &[u8]) -> Result<GameWorld, SaveError> {
     use compat::*;
-    Ok(match v {
+    let v11: V11 = match v {
         0 => v10_to_v11(v9_to_v10(v8_to_v9(v7_to_v8(v6_to_v7(v5_to_v6(v2_to_v5(
             v1_to_v2(v0_to_v1(decode_snapshot(body)?)),
         ))))))),
@@ -182,8 +186,10 @@ pub fn migrate(v: u32, body: &[u8]) -> Result<GameWorld, SaveError> {
         9 => v10_to_v11(v9_to_v10(decode_snapshot(body)?)),
         10 => v10_to_v11(decode_snapshot(body)?),
         11 => decode_snapshot(body)?,
+        14 => return decode_snapshot(body),
         _ => return Err(SaveError::Malformed(format!("unknown world version {v}"))),
-    })
+    };
+    Ok(v11_to_v14(v11))
 }
 
 /// A snapshot written before the header: the version is not written, so the layouts are tried

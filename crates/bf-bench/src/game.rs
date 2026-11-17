@@ -759,6 +759,7 @@ fn run(
                         c.treaty_claims * 100.0
                     );
                 }
+                foreign_report(session.world());
                 if std::env::var_os("BF_TECH").is_some() {
                     let w = session.world();
                     let mut e = [0.0f64; 5];
@@ -1004,6 +1005,22 @@ pub fn main(
             if ok { "OK" } else { "FAILED" }
         );
     }
+    {
+        let h: Vec<f64> = bf_sim::econ::monthly::ABROAD_HELD
+            .iter()
+            .map(|a| a.load(std::sync::atomic::Ordering::Relaxed) as f64)
+            .collect();
+        let pct = |x: f64| 100.0 * x / h[1].max(1.0);
+        println!(
+            "abroad: offered {:.0} bn, placed {:.0} bn; placed at sites full by idle hands {:.1}%, by the host's room {:.1}%; left unbuilt by hands {:.1}%, by room {:.1}%",
+            h[0] / 1e9,
+            h[1] / 1e9,
+            pct(h[2]),
+            pct(h[3]),
+            pct(h[4]),
+            pct(h[5])
+        );
+    }
     println!("final hash {}", report.final_hash);
     std::fs::write(
         out,
@@ -1106,4 +1123,59 @@ pub fn rules(data: &GameData) -> bf_sim::game::Rules {
         bf_sim::game::Switches::parse(&std::env::var("BF_RULES").unwrap_or_default())
             .unwrap_or_else(|e| panic!("BF_RULES: {e}")),
     )
+}
+
+/// Foreign stakes: levels owned abroad, the largest hosts (share of their private levels) and the
+/// largest owners (`docs/foreign-capital.pt-BR.md`).
+fn foreign_report(w: &bf_sim::game::GameWorld) {
+    let f = &w.foreign;
+    let nm = w.econ.markets.len();
+    let tag = |mi: usize| {
+        w.countries
+            .iter()
+            .nth(mi)
+            .map_or_else(|| format!("#{mi}"), |c| c.1.tag.to_string())
+    };
+    let mut hosted = vec![0i64; nm];
+    let mut owned = vec![0i64; nm];
+    for s in f.stakes() {
+        hosted[w.econ.regions[s.region as usize].market as usize] += s.levels;
+        owned[s.owner as usize] += s.levels;
+    }
+    let mut levels = vec![0i64; nm];
+    for r in &w.econ.regions {
+        for p in &r.plants {
+            levels[r.market as usize] += p.levels;
+        }
+    }
+    let total: i64 = hosted.iter().sum();
+    let all: i64 = levels.iter().sum();
+    let top = |v: &[i64], share: bool| {
+        let mut ix: Vec<usize> = (0..nm).filter(|&i| v[i] > 0).collect();
+        ix.sort_by(|a, b| v[*b].cmp(&v[*a]).then(a.cmp(b)));
+        ix.iter()
+            .take(6)
+            .map(|&i| {
+                if share {
+                    format!(
+                        "{} {} ({:.1}%)",
+                        tag(i),
+                        v[i],
+                        100.0 * v[i] as f64 / levels[i].max(1) as f64
+                    )
+                } else {
+                    format!("{} {}", tag(i), v[i])
+                }
+            })
+            .collect::<Vec<_>>()
+            .join(", ")
+    };
+    println!(
+        "      foreign: {} levels ({:.2}% of all), {} building; hosts {}; owners {}",
+        total,
+        100.0 * total as f64 / all.max(1) as f64,
+        f.building_count(),
+        top(&hosted, true),
+        top(&owned, false)
+    );
 }

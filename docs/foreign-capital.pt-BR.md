@@ -250,7 +250,7 @@ O texto abaixo é o que foi levado ao dono, com a recomendação de cada uma.
 1. Este desenho, em rascunho.
 2. Estado e camadas no save, sem fluxo, com hash igual ao da `main` (`foreign_stakes`, neste mesmo
    PR, assumindo a decisão 1).
-3. Fluxo mensal e remessa semanal, com os testes de conservação.
+3. Fluxo mensal e remessa semanal, com os testes de conservação (seção 8).
 4. Contrato, estatização e técnica.
 5. Canal de influência e rodadas de direção (China e Índia).
 
@@ -522,3 +522,105 @@ página bloqueou o acesso.
 - a devolução em massa em Uganda nos anos 1990;
 - a indenização belga de 1974 no Congo (só numa compilação sem autor);
 - o dia de fevereiro de 1971 no petróleo argelino e a lei francesa 70-632 (só em trecho).
+
+## 8. O fluxo no tick (passo 3)
+
+O que entrou, e onde cada parte do desenho ficou para depois.
+
+- **Investimento mensal** (`econ::monthly::abroad`, no fim de `economy-investment`):
+  - **Sobra para fora:** o fundo só manda para fora o que sobrou depois de esgotar a lista de casa.
+    Se o teto de obras do mês (`MAX_BUILDS`) parou a lista de casa, a sobra para fora é zero: o
+    fundo tem obra esperando em casa para o mês seguinte. Sem essa regra, a primeira rodada punha
+    China e Índia entre os maiores donos de fábrica no exterior, só porque o teto deixava dinheiro
+    parado no fundo deles.
+  - **Lugares:** os tipos de edifício que o país de origem roda cheios (sem fazenda, serviço
+    público nem trabalho informal), com o método da maior planta dele, nos 4 estados de cada país
+    aberto com mais mãos ociosas. A mina respeita a jazida.
+  - **Mãos para ocupar a fábrica:** o lugar só entra com as mãos ociosas do estado (camponeses,
+    trabalhadores sem emprego e informais), menos as que as obras já na fila vão contratar
+    quando terminarem. A fila chegava a se acumular em estados pequenos demais para ocupá-la.
+  - **Salário com piso:** o retorno esperado usa o salário de mercado do país quando há leitura
+    (pelo menos 10 mil empregados, `WAGE_READING_HANDS`). Sem leitura, usa o menor salário entre
+    os países que têm uma (`site_wages`). Os microestados liam salário perto de zero, o que dava
+    custo de trabalho zero e retorno máximo.
+  - **Segunda trava, o teto de absorção:** um país recebe por ano no máximo 10 % do PIB do ano
+    anterior (`MAX_INFLOW`), contando o reinvestido. O valor é o percentil 90 de `fdi.csv`.
+    A primeira trava, a das mãos, tira a causa; esta segura o que sobra.
+  - **Quantos lugares:** cada fundo olha os 8 tipos que o país mais tem entre os que roda cheios
+    (`ABROAD_KINDS`); as firmas vão para fora nos ramos que lideram em casa. Os lugares que não
+    batem o retorno de casa saem antes da repartição. Isso limita o custo de CPU.
+  - **Repartição:** `foreign_capital::allocate`, contra o retorno mínimo da origem (`hurdle`).
+    Cada lugar recebe os níveis inteiros que o dinheiro paga, e as mãos ociosas de cada estado
+    se gastam na ordem dos fundos. As sobras pequenas vão, um nível por vez, aos lugares de maior
+    peso.
+  - **Pagamento:** o fundo da origem paga ao fundo do país de destino o custo do nível no ato. A
+    obra entra na fila do país de destino e é paga por ele à medida que os construtores entregam.
+    A obra paga de fora fica em `ForeignState::building` e vira camada quando termina.
+- **Remessa semanal** (`econ::week::settle_region`): a parte estrangeira do lucro positivo de
+  cada planta (`ForeignState::owners_in`, já descontado o que o contrato passou ao sócio) não
+  entra na divisão de casa.
+  - **Parcela remetida:** 60 % vão para o fundo do dono.
+  - **Parcela reinvestida:** 40 % ficam no fundo do país de destino, como crédito do dono
+    (`ForeignState::retained`, `foreign_capital::REINVESTED`).
+  - O resto do lucro se divide como em casa. O prejuízo fica no país de destino, como manda
+    `foreign_capital::remittance`. O PIB continua do país de destino.
+- **O lucro reinvestido** (pedido do orquestrador: "lucro reinvestido no destino é parte grande do
+  investimento direto").
+  - **Como é na vida real:** cerca de um terço do lucro do investimento direto no mundo foi
+    reinvestido em 2005–2011, e 49 % nas economias em desenvolvimento em 2011 (UNCTAD, *World
+    Investment Report 2013*, fig. I.30, https://unctad.org/system/files/official-document/wir2013_en.pdf).
+    Nas filiais de empresas americanas, foi de 0,55 a 0,66 em 2000–2003 (BEA, *Survey of Current
+    Business*: setembro de 2002, tabela 6, https://apps.bea.gov/scb/pdf/2002/09September/0902USDIA.pdf;
+    setembro de 2006, tabela 7, https://apps.bea.gov/scb/pdf/2006/09September/0906_USDIA_WEB.pdf).
+    O valor de desenho é 0,40, dentro dessa faixa.
+  - **A parcela varia com choques:** cai para cerca de 20 % numa crise (2008) e fica negativa
+    numa anistia fiscal à repatriação: −48 % das filiais americanas em 2018 (BEA, *Survey*, agosto
+    de 2019, https://apps.bea.gov/scb/2019/08-august/pdf/0819-direct-investment-positions.pdf).
+    Isso fica para o equilíbrio.
+  - **A diferença importa:** sem ela, a filial nunca cresce com o próprio lucro, e o país de destino
+    vê sair todo mês um lucro que na vida real em boa parte ficava lá.
+  - **Como entra no jogo:**
+    - o crédito reinvestido paga primeiro, no mês seguinte, níveis inteiros nos lugares desse país
+      que batem o retorno de casa do dono, sem transferência, porque o dinheiro já está no fundo de
+      lá;
+    - o que não acha obra volta para casa aos poucos, 8,3 % ao mês (`RETAINED_RELEASE`), cerca de
+      um ano;
+    - enquanto espera, o dinheiro está no fundo do país de destino, que pode usá-lo nas suas
+      obras, como um depósito.
+  - **Fonte para a China:** não achei.
+- **Coerência com as plantas:**
+  - fechamento por prejuízo (mensal) e depreciação (anual) chamam `plant_shrank`;
+  - a operação de fronteira chama `border_changed`.
+- **Ficou para depois:**
+  - **Abertura pela lei:** sai de `foreign_investment` (`Openness::from_pull`). Fechada no valor
+    da lei fechada ou abaixo; acima disso, dono estrangeiro pode ter a planta inteira, sem prazo
+    nem transferência. Prazo, parcela do sócio e transferência entram com as leis de contrato
+    (empresa mista, zonas de exportação), no passo 4.
+  - **Produtividade:** a planta estrangeira roda com a produtividade do país de destino. A técnica
+    do dono chega com a decisão C5, no passo 4.
+  - **Relação e diáspora:** zero até a influência entrar no tick. O frete é a tarifa da origem.
+  - **Veto** `SetCapitalEmbargo` (C3): passo 4.
+  - **Reconhecimento:** ainda não é estado do mundo (os tratados não estão no tick). É dependência
+    anotada.
+- **Testes** (`tests/foreign_flow.rs`):
+  - um mês de investimento move dinheiro só entre fundos: a soma mundial dos fundos é a mesma
+    antes e depois, e algum fundo perde enquanto outro ganha;
+  - toda obra paga de fora está na fila do país de destino, e nenhuma camada passa da planta;
+  - uma semana com uma camada inteira põe 60 % do lucro da planta no fundo do dono e 40 % no
+    crédito dele no país de destino. O que o dono ganha é o que o resto do mundo deixa de ter
+    (fundos, tesouros e poupança), com diferença de no máximo um milésimo, que vem do
+    arredondamento;
+  - com a lei fechada em todos os países por três anos, o estado estrangeiro fica vazio e, por
+    isso, fora do hash.
+- **Primeira olhada** (10 anos, semente 7, sem calibrar; decisão de 2026-11-17: funcionalidade
+  antes de equilíbrio):
+  - em 1935, 16,3 mil níveis estrangeiros, 2,4 % de todos (com a parcela reinvestida; eram 2,1 %
+    sem ela);
+  - maiores donos: EUA, Alemanha, China e Itália;
+  - maiores destinos: Portugal (17 % dos níveis de lá), Espanha, China, Holanda, Raj e Turquia;
+  - tem coisa fora do lugar: a Alemanha como grande dona nos anos 30, e Portugal e Irlanda como
+    destinos acima da Argentina. Isso fica anotado como dependência, não como meta: o estoque de
+    1925 está zerado (C2), e relação, diáspora e técnica do dono ainda são zero. O passo 5
+    julga pela conservação, pela direção (o capital vai de onde sobra, com técnica alta, para
+    onde o salário é baixo e a porta está aberta) e pelos agregados contra `fdi.csv`, sem
+    calibrar país por país (o equilíbrio fino vem depois da fase 6).

@@ -521,11 +521,15 @@ pub struct Switches {
     /// The wage floor of a small market (`econ::monthly::MIN_HANDS_FOR_A_WAGE`): a market with
     /// too few plant workers to have a wage of its own reads the lowest of the others.
     pub small_market_wage_floor: bool,
+    /// Capital crosses borders (`econ::monthly::abroad`, docs/foreign-capital.pt-BR.md): the
+    /// funds build abroad with what they have left at home; the stakes and the weekly
+    /// remittance follow from what they build.
+    pub foreign_flow: bool,
 }
 
 impl Switches {
     /// The switches named in a comma-separated list (`trade_by_pair`,
-    /// `jobs_follow_use`, `small_market_wage_floor`), on; unknown names are
+    /// `jobs_follow_use`, `small_market_wage_floor`, `foreign_flow`), on; unknown names are
     /// refused.
     pub fn parse(names: &str) -> Result<Self, String> {
         let mut s = Self::default();
@@ -534,6 +538,7 @@ impl Switches {
                 "trade_by_pair" => s.trade_by_pair = true,
                 "jobs_follow_use" => s.jobs_follow_use = true,
                 "small_market_wage_floor" => s.small_market_wage_floor = true,
+                "foreign_flow" => s.foreign_flow = true,
                 other => return Err(format!("unknown rule switch {other}")),
             }
         }
@@ -591,6 +596,7 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
             cat: Arc::clone(&cat),
             tree: tree.clone(),
             wage_floor: switches.small_market_wage_floor,
+            foreign_flow: switches.foreign_flow,
         });
         if let Some(tree) = &tree {
             s.add(crate::research_system::Research {
@@ -872,6 +878,36 @@ mod tests {
             history: &'a Vec<crate::econ::YearRecord>,
             ledger: &'a crate::treaty::Ledger,
         }
+        /// The foreign state of versions 6 to 11, before the works paid from abroad.
+        #[derive(Serialize)]
+        struct ForeignWithoutWorks {
+            stakes: Vec<crate::foreign_stakes::Stake>,
+            expropriations: Vec<crate::foreign_stakes::Expropriation>,
+        }
+        fn foreign_then(w: &GameWorld) -> ForeignWithoutWorks {
+            ForeignWithoutWorks {
+                stakes: w.foreign.stakes().collect(),
+                expropriations: w.foreign.expropriations.clone(),
+            }
+        }
+        /// Version 11: schooling by cohort, before capital crossed borders.
+        #[derive(Serialize)]
+        struct BeforeWorksAbroad<'a> {
+            scenario: &'a String,
+            player: &'a Option<Id<Country>>,
+            countries: &'a Table<Country, CountryState>,
+            census: &'a Vec<CensusRecord>,
+            econ: &'a crate::econ::Economy,
+            research: &'a crate::research::ResearchState,
+            politics: &'a crate::polity::PoliticsState,
+            demography: &'a crate::demography::DemographyState,
+            borders: &'a crate::borders::BordersState,
+            foreign: ForeignWithoutWorks,
+            influence: &'a crate::influence::InfluenceState,
+            treaties: &'a crate::treaty::TreatyState,
+            war: &'a crate::war::WarState,
+            education: &'a crate::demography::education::EducationState,
+        }
         /// Version 9: this build's world with the economy of before trade by pair.
         #[derive(Serialize)]
         struct BeforeTrade<'a> {
@@ -884,7 +920,7 @@ mod tests {
             politics: &'a crate::polity::PoliticsState,
             demography: &'a crate::demography::DemographyState,
             borders: &'a crate::borders::BordersState,
-            foreign: &'a crate::foreign_stakes::ForeignState,
+            foreign: ForeignWithoutWorks,
             influence: &'a crate::influence::InfluenceState,
             treaties: &'a crate::treaty::TreatyState,
             war: &'a crate::war::WarState,
@@ -901,7 +937,7 @@ mod tests {
             politics: &'a crate::polity::PoliticsState,
             demography: &'a crate::demography::DemographyState,
             borders: &'a crate::borders::BordersState,
-            foreign: &'a crate::foreign_stakes::ForeignState,
+            foreign: ForeignWithoutWorks,
             influence: &'a crate::influence::InfluenceState,
         }
         /// The world of before the influence state: version 7 without its last field.
@@ -916,7 +952,7 @@ mod tests {
             politics: &'a crate::polity::PoliticsState,
             demography: &'a crate::demography::DemographyState,
             borders: &'a crate::borders::BordersState,
-            foreign: &'a crate::foreign_stakes::ForeignState,
+            foreign: ForeignWithoutWorks,
         }
         /// The world of before the foreign stakes: version 6 without its last field.
         #[derive(Serialize)]
@@ -943,7 +979,7 @@ mod tests {
             politics: &'a crate::polity::PoliticsState,
             demography: &'a crate::demography::DemographyState,
             borders: &'a crate::borders::BordersState,
-            foreign: &'a crate::foreign_stakes::ForeignState,
+            foreign: ForeignWithoutWorks,
             influence: &'a crate::influence::InfluenceState,
             treaties: &'a crate::treaty::TreatyState,
         }
@@ -1020,9 +1056,29 @@ mod tests {
             hash_of(&with_ledger)
         );
         assert_eq!(
-            hash_of(&headed(11, &encode_snapshot(&with_ledger).unwrap())),
+            hash_of(&headed(14, &encode_snapshot(&with_ledger).unwrap())),
             hash_of(&with_ledger)
         );
+        // Version 11, schooling by cohort, before the works paid from abroad and the reinvested
+        // earnings.
+        let before_works = encode_snapshot(&BeforeWorksAbroad {
+            scenario: &with_ledger.scenario,
+            player: &with_ledger.player,
+            countries: &with_ledger.countries,
+            census: &with_ledger.census,
+            econ: &with_ledger.econ,
+            research: &with_ledger.research,
+            politics: &with_ledger.politics,
+            demography: &with_ledger.demography,
+            borders: &with_ledger.borders,
+            foreign: foreign_then(&with_ledger),
+            influence: &with_ledger.influence,
+            treaties: &with_ledger.treaties,
+            war: &with_ledger.war,
+            education: &with_ledger.education,
+        })
+        .unwrap();
+        assert_eq!(headed(11, &before_works), with_ledger);
         fn no_trade(w: &GameWorld) -> EconomyNoTrade<'_> {
             EconomyNoTrade {
                 regions: &w.econ.regions,
@@ -1043,7 +1099,7 @@ mod tests {
             politics: &with_ledger.politics,
             demography: &with_ledger.demography,
             borders: &with_ledger.borders,
-            foreign: &with_ledger.foreign,
+            foreign: foreign_then(&with_ledger),
             influence: &with_ledger.influence,
             treaties: &with_ledger.treaties,
             war: &with_ledger.war,
@@ -1063,7 +1119,7 @@ mod tests {
             politics: &'a crate::polity::PoliticsState,
             demography: &'a crate::demography::DemographyState,
             borders: &'a crate::borders::BordersState,
-            foreign: &'a crate::foreign_stakes::ForeignState,
+            foreign: ForeignWithoutWorks,
             influence: &'a crate::influence::InfluenceState,
             treaties: &'a crate::treaty::TreatyState,
             war: &'a crate::war::WarState,
@@ -1080,7 +1136,7 @@ mod tests {
             politics: &no_schooling.politics,
             demography: &no_schooling.demography,
             borders: &no_schooling.borders,
-            foreign: &no_schooling.foreign,
+            foreign: foreign_then(&no_schooling),
             influence: &no_schooling.influence,
             treaties: &no_schooling.treaties,
             war: &no_schooling.war,
@@ -1102,7 +1158,7 @@ mod tests {
             politics: &no_forces.politics,
             demography: &no_forces.demography,
             borders: &no_forces.borders,
-            foreign: &no_forces.foreign,
+            foreign: foreign_then(&no_forces),
             influence: &no_forces.influence,
             treaties: &no_forces.treaties,
         })
@@ -1128,7 +1184,7 @@ mod tests {
             politics: &no_forces.politics,
             demography: &no_forces.demography,
             borders: &no_forces.borders,
-            foreign: &no_forces.foreign,
+            foreign: foreign_then(&no_forces),
             influence: &no_forces.influence,
         })
         .unwrap();
@@ -1147,7 +1203,7 @@ mod tests {
             politics: &no_forces.politics,
             demography: &no_forces.demography,
             borders: &no_forces.borders,
-            foreign: &no_forces.foreign,
+            foreign: foreign_then(&no_forces),
         })
         .unwrap();
         assert_eq!(headed(6, &before_influence), no_forces);
