@@ -170,6 +170,38 @@ impl From<WorldBeforeLedger> for GameWorld {
     }
 }
 
+/// The world as saves wrote it before research that costs (2026-11-17): markets with four public
+/// works categories and law effects without a research priority (`econ::compat`). At the
+/// default research weight and no priority the world hashes as it did.
+#[derive(Deserialize)]
+struct WorldBeforeResearch {
+    scenario: String,
+    player: Option<Id<Country>>,
+    countries: Table<Country, CountryState>,
+    census: Vec<CensusRecord>,
+    econ: crate::econ::compat::EconomyBeforeResearch,
+    research: crate::research::ResearchState,
+    politics: crate::polity::PoliticsState,
+    demography: crate::demography::DemographyState,
+    borders: crate::borders::BordersState,
+}
+
+impl From<WorldBeforeResearch> for GameWorld {
+    fn from(w: WorldBeforeResearch) -> Self {
+        Self {
+            scenario: w.scenario,
+            player: w.player,
+            countries: w.countries,
+            census: w.census,
+            econ: w.econ.into(),
+            research: w.research,
+            politics: w.politics,
+            demography: w.demography,
+            borders: w.borders,
+        }
+    }
+}
+
 impl HashState for GameWorld {
     fn hash_state(&self, h: &mut StateHasher) {
         h.section("scenario");
@@ -569,6 +601,9 @@ pub fn decode_world(bytes: &[u8]) -> Result<GameWorld, SaveError> {
     if first.is_ok() {
         return first;
     }
+    if let Ok(w) = decode_snapshot::<WorldBeforeResearch>(bytes) {
+        return Ok(w.into());
+    }
     if let Ok(w) = decode_snapshot::<WorldBeforeLedger>(bytes) {
         return Ok(w.into());
     }
@@ -577,6 +612,9 @@ pub fn decode_world(bytes: &[u8]) -> Result<GameWorld, SaveError> {
         padded.resize(bytes.len() + k, 0);
         if let Ok(w) = decode_snapshot::<GameWorld>(&padded) {
             return Ok(w);
+        }
+        if let Ok(w) = decode_snapshot::<WorldBeforeResearch>(&padded) {
+            return Ok(w.into());
         }
         if let Ok(w) = decode_snapshot::<WorldBeforeLedger>(&padded) {
             return Ok(w.into());
@@ -690,13 +728,17 @@ impl Session {
     pub fn load(bytes: &[u8], threads: usize, rules: Option<Rules>) -> Result<Self, LoadError> {
         let file: SaveFile<GameCommand> =
             SaveFile::decode(bytes, GAME_ID).map_err(LoadError::Save)?;
-        let world = decode_world(&file.snapshot).map_err(LoadError::Save)?;
+        let mut world = decode_world(&file.snapshot).map_err(LoadError::Save)?;
         let actual = hash_of(&world);
         if actual != file.header.state_hash {
             return Err(LoadError::HashMismatch {
                 recorded: file.header.state_hash,
                 actual,
             });
+        }
+        // A save from before a good was added runs on with the catalogue's goods.
+        if let Some(r) = &rules {
+            crate::econ::compat::fit_goods(&mut world.econ, &r.catalogue);
         }
         let mut sim = Simulation::resume(
             world,
