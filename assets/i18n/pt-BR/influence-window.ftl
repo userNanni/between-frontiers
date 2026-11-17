@@ -1,0 +1,30 @@
+# A janela de influência.
+
+cmd-window-influence = Influência
+    .short = Influência
+influence-title = Influência
+influence-side-over = Sobre quem pesamos
+influence-side-on = Quem pesa sobre nós
+influence-off = A influência não é simulada nesta campanha.
+influence-none = Nenhuma influência em nenhum sentido ainda: hoje ela vem do crédito e da boa vontade.
+influence-basis-over = Nossa influência sobre cada país, assunto por assunto, como fração do PIB daquele país; o maior assunto à direita.
+influence-basis-on = A influência de cada país sobre nós, assunto por assunto, como fração do nosso PIB; o maior assunto à direita.
+influence-issue-money = Dinheiro
+influence-issue-trade = Comércio
+influence-issue-territory = Território
+influence-issue-security = Segurança
+influence-issue-sovereignty = Soberania
+influence-channel-credit = crédito
+influence-channel-investment = investimento
+influence-channel-trade = comércio
+influence-channel-protection = proteção
+influence-pair = { $a } sobre { $b }
+influence-affinity = Regime próximo: { $regime } das leis iguais · povo da mesma cultura: { $people } · fator { $factor }
+influence-channel-line = { $channel }: { $part } (peso { $weight } %)
+influence-channel-dormant = { $channel }: ainda não medido; { $front }
+influence-goodwill = boa vontade: { $part }
+influence-front-foreign-capital = chega com o capital estrangeiro cruzando fronteiras
+influence-front-bilateral-trade = chega com o comércio por parceiro
+influence-front-war = chega com forças e guerra
+influence-front-unknown = ainda não medido
+influence-note = Valores deste mês do jogo. O termo de uma proposta lê o mapa do último dia 16, então os dois podem diferir em até um mês.

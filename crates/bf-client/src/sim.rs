@@ -53,6 +53,8 @@ pub struct Snapshot {
     pub population: Option<Arc<crate::population::PopulationView>>,
     /// The player's debts between governments, read once a month.
     pub ledger: Option<Arc<crate::ledger_view::LedgerView>>,
+    /// The influence around the player, read once a month; `None` without influence rules.
+    pub influence: Option<Arc<crate::influence_view::InfluenceView>>,
     /// Who holds every state, read again when a border operation ran; `None` without the rules.
     pub owners: Option<Arc<bf_sim::borders::op::OwnersView>>,
     /// The ways the player's country can free land (the decision "Libertar território"), read
@@ -214,6 +216,28 @@ fn ledger_of(
     }
 }
 
+fn influence_of(
+    session: &Session,
+    rules: &Rules,
+    last: &Option<Arc<crate::influence_view::InfluenceView>>,
+) -> Option<Arc<crate::influence_view::InfluenceView>> {
+    let date = session.clock().date;
+    match last {
+        Some(v)
+            if v.month == (date.year, date.month) && Some(v.tag.as_str()) == session.player() =>
+        {
+            Some(Arc::clone(v))
+        }
+        _ => crate::influence_view::read(
+            session.world(),
+            rules.as_ref().and_then(|r| r.influence.as_deref()),
+            session.player(),
+            date,
+        )
+        .map(Arc::new),
+    }
+}
+
 /// What a snapshot carries that is read once a month, or when it changed.
 #[derive(Clone, Default)]
 struct Monthly {
@@ -221,6 +245,7 @@ struct Monthly {
     journal: Option<Arc<Journal>>,
     population: Option<Arc<crate::population::PopulationView>>,
     ledger: Option<Arc<crate::ledger_view::LedgerView>>,
+    influence: Option<Arc<crate::influence_view::InfluenceView>>,
     owners: Option<Arc<bf_sim::borders::op::OwnersView>>,
     liberation: Option<Arc<LiberationView>>,
 }
@@ -251,6 +276,7 @@ impl Monthly {
             journal: journal_of(session, rules, &last.journal),
             population: population_of(session, rules, &last.population),
             ledger: ledger_of(session, &last.ledger),
+            influence: influence_of(session, rules, &last.influence),
             owners: owners_of(session, rules, &last.owners),
             liberation: liberation_of(session, rules, &last.liberation),
         }
@@ -278,6 +304,7 @@ fn snapshot_of(
         journal: monthly.journal,
         population: monthly.population,
         ledger: monthly.ledger,
+        influence: monthly.influence,
         owners: monthly.owners,
         liberation: monthly.liberation,
         government: crate::government::read(

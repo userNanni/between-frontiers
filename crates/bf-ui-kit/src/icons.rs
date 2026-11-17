@@ -17,8 +17,6 @@ pub enum Icon {
     Menu,
     /// Three dots: more options.
     More,
-    /// An X: close.
-    Close,
     Shield,
     Chart,
     Globe,
@@ -48,7 +46,6 @@ impl Icon {
             Icon::Plus => include_image!("../../../assets/icons/plus.svg"),
             Icon::Menu => include_image!("../../../assets/icons/menu.svg"),
             Icon::More => include_image!("../../../assets/icons/more.svg"),
-            Icon::Close => include_image!("../../../assets/icons/close.svg"),
             Icon::Shield => include_image!("../../../assets/icons/shield.svg"),
             Icon::Chart => include_image!("../../../assets/icons/chart.svg"),
             Icon::Globe => include_image!("../../../assets/icons/globe.svg"),
@@ -119,13 +116,14 @@ pub fn icon_button(ui: &mut Ui, icon: Icon, side: f32, tip: &str, active: bool) 
         .on_hover_text(crate::components::tooltip_text(tip))
 }
 
-/// The close button of a window's header: an X with the touch area of a small button, a fill on
-/// hover and the accent around it when focused. `label` ("Close") is what screen readers read;
-/// `tip` ("Close (Esc)") shows on hover.
+/// The close button of a window's header: an X drawn 16 px wide in a 32 px square, the size of
+/// the header's other buttons, with a fill on hover and on focus (the accent around it when
+/// focused). `label` ("Close") is what screen readers read; `tip` ("Close (Esc)") shows on hover.
 pub fn close_button(ui: &mut Ui, label: &str, tip: &str) -> Response {
-    use crate::tokens::{color, control, radius};
-    let side = control::HEIGHT_SM;
-    let (rect, response) = ui.allocate_exact_size(Vec2::splat(side), egui::Sense::click());
+    use crate::tokens::{color, radius};
+    const SIDE: f32 = 32.0;
+    const MARK: f32 = 16.0;
+    let (rect, response) = ui.allocate_exact_size(Vec2::splat(SIDE), egui::Sense::click());
     let name = label.to_owned();
     response.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, name.clone()));
     let hovered = response.hovered();
@@ -146,12 +144,21 @@ pub fn close_button(ui: &mut Ui, label: &str, tip: &str) -> Response {
             egui::StrokeKind::Inside,
         );
     }
-    let tint = if hovered {
-        color::TEXT
-    } else {
-        color::TEXT_MUTED
-    };
-    paint_icon(ui, Icon::Close, rect.shrink(side * 0.22), tint);
+    // Two strokes, not a glyph: the same weight at every scale.
+    let c = rect.center();
+    let h = MARK / 2.0;
+    let stroke = egui::Stroke::new(
+        2.0,
+        if hovered || focused {
+            color::TEXT
+        } else {
+            color::TEXT_MUTED
+        },
+    );
+    ui.painter()
+        .line_segment([c + Vec2::new(-h, -h), c + Vec2::new(h, h)], stroke);
+    ui.painter()
+        .line_segment([c + Vec2::new(h, -h), c + Vec2::new(-h, h)], stroke);
     response
         .on_hover_cursor(egui::CursorIcon::PointingHand)
         .on_hover_text(crate::components::tooltip_text(tip))
