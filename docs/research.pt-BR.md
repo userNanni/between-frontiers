@@ -44,9 +44,10 @@ país), até a IA da fase 6.
 
 ## Como a simulação aplica
 
-- **Esforço:** engenheiros e profissionais empregados, vezes a alfabetização, vezes o efeito
-  `research` (computador, internet). 70 % vai para a ciência em foco (ou a mais barata aberta) e
-  30 % para protótipos do que já é ciência.
+- **Esforço:** os pesquisadores que os laboratórios empregam, vezes a alfabetização, elevados a
+  3/4, vezes o efeito `research` (computador, internet). 70 % vai para a ciência em foco (ou a
+  mais barata aberta) e 30 % para protótipos do que já é ciência. De onde sai o laboratório e
+  quem o paga: "Pesquisa que custa", abaixo.
 - **Custo:** cai até 75 % com a parcela do PIB mundial que já sabe; dobra a cada cinco anos de
   adiantamento sobre a história (`ahead`), o que segura o líder perto das datas reais.
 - **Imitação:** o que já é feito em escala lá fora se copia, um estágio por vez, sem pesquisa
@@ -110,6 +111,113 @@ grandes de 1930–1979 (indústria pesada +20 a +42 % por década) também segue
 eletrônico já estão na árvore. Por isso ela não foi mexida: o crescimento mundial lento depois de
 1991 não vem da fronteira, e sim de os países pobres não saírem do campo (`history.pt-BR.md`,
 "Convergência e campo"), que é o que cresceu no mundo real depois de 1991.
+
+## Pesquisa que custa
+
+Até aqui o esforço era cabeça contada: engenheiros e profissionais empregados em qualquer lugar,
+vezes a alfabetização. Uma China pobre e fechada, com a maior população, pesquisava mais que os
+Estados Unidos (115 tecnologias no estágio de ciência em 1985, contra 108). Agora pesquisa é
+gasto, com causa à vista.
+
+### A regra
+
+- **Laboratório:** prédio público (`laboratory`, grupo de serviços), com engenheiros e
+  profissionais na bancada. Faz o bem público `research`. O esforço do país é o número de
+  pesquisadores empregados nos laboratórios da metrópole, vezes a alfabetização.
+- **Duplicação:** pontos ∝ esforço^(3/4). Dobrar os pesquisadores não dobra as ideias, porque
+  eles pisam nos pés uns dos outros. O expoente é o caso de robustez de Bloom, Jones, Van Reenen
+  e Webb (2020, *AER* 110(4), pp. 1115–1116 e tabela A1 do apêndice): λ = 3/4, com a ressalva dos autores de que não há
+  consenso sobre o valor.
+- **Quanto se quer** (`public::research_target`, valor anual a preço-base):
+  - **Empresas:** o valor adicionado de cada grupo de edifícios × a intensidade do grupo
+    (`purchases.ron`, campo `research`, com a razão em cada linha) × o quanto o país está perto
+    da fronteira (`public::frontier`: das tecnologias que alguém faz em escala, a parcela que o
+    país também faz). Empresa na fronteira tem de inventar; empresa longe dela copia.
+  - **Estado:** a receita × `STATE_RESEARCH_SHARE` (1 %) × (1 + `research_priority`, efeito
+    das leis `state_capitalism` e `planned_economy`) × o peso que o jogador dá à categoria
+    "Pesquisa" na aba Orçamento, contra o peso padrão.
+- **Quem paga:** o Estado compra tudo o que o laboratório faz, como na escola e no hospital. O
+  Tesouro paga a parte da lei (`research_state_share`, grupo `ownership`: de 25 % no
+  `laissez_faire` a 95 % no `planned_economy`) e o fundo das empresas paga o resto
+  (`public::research_spending`, que a tela de Pesquisa pode mostrar).
+- **Onde se constrói:** quinta categoria de obra pública, "Pesquisa", com peso do jogador como as
+  outras. O laboratório vai aonde há engenheiros e profissionais que ainda não estão numa
+  bancada. Sem engenheiro, o laboratório fica vazio e não rende.
+- **Colônia não pesquisa.** Não tem laboratório (nem no setup de 1925), nem entra na meta, nem
+  soma pontos. A técnica chega à colônia pela imitação.
+- **Ideias mais difíceis de achar:** cada tecnologia custa `(1 + g)^(ano histórico − 1925)`
+  vezes o custo do arquivo (`technologies.ron`, `harder_per_year_bp`; `Tech::research_cost`).
+  O custo do arquivo continua sendo o da árvore e dos testes de requisito.
+
+### A taxa `g`: 350 pontos-base ao ano, calibrado (fonte: 35)
+
+- **O que a fonte dá.** A produtividade da pesquisa nos EUA caiu 5,1 % ao ano desde os anos
+  1930, e o esforço cresceu 23 vezes, 4,3 % ao ano (Bloom et al. 2020, p. 1110). Os custos do
+  arquivo já crescem 4,75 % ao ano com o ano histórico (ajuste sobre as 143 tecnologias depois
+  de 1925). A diferença dá 35 pontos-base.
+- **O que se mediu com a fonte.** Com 35, a fronteira de 51 anos sai 1,9 ano adiantada em média
+  contra a contagem de cabeças. O adiantamento é de 4 a 5 anos nas tecnologias dos anos 1950 e
+  1960.
+- **O que se usa: 350, calibrado.** É o valor que leva as datas de volta a ±1 ano da `main`; o
+  da fonte fica ao lado. Com ele, o custo da árvore cresce cerca de 8 % ao ano. Isso **não** é
+  o que Bloom mede: compensa o defeito abaixo.
+
+### Por que o calibrado passa da fonte: o custo do pesquisador
+
+Medido nos EUA do modelo, em dólares de 2011 a preço-base:
+
+| | 1926 | 1955 | 1975 |
+|---|---|---|---|
+| Cientistas e engenheiros nos laboratórios | 56 mil | 380 mil | 1,03 milhão |
+| Produto do laboratório por pesquisador | US$ 59 mil | US$ 59 mil | US$ 59 mil |
+| Insumos do laboratório por pesquisador | US$ 0,3 mil | US$ 0,3 mil | US$ 0,3 mil |
+| Salário do engenheiro | US$ 78 mil | US$ 169 mil | US$ 268 mil |
+
+Real (NSF, *National Patterns of R&D Resources 1953–1977*, NSF 77-310, tabelas B-5 e B-10):
+gasto total de P&D ÷ cientistas e engenheiros em P&D, em tempo integral equivalente.
+
+| | 1954 | 1975 |
+|---|---|---|
+| Gasto de P&D, US$ milhões de 1972 | 9 456 | 27 158 |
+| Cientistas e engenheiros em P&D | 237,1 mil | 533,7 mil |
+| Custo por pesquisador, dólares de 1972 | 39,9 mil | 50,9 mil |
+| O mesmo em dólares de 2011 (deflator implícito do PIB, FRED `GDPDEF`: 22,126 em 1972, 91,478 em 2011) | 165 mil | 210 mil |
+
+- **O salário não é o defeito.** O engenheiro do modelo ganha mais à medida que a
+  produtividade sobe.
+- **O defeito é o preço do pesquisador.** A meta é em valor a preço-base, e o laboratório
+  entrega o mesmo valor por pesquisador o século todo. Um dólar de pesquisa compra sempre o mesmo
+  número de pesquisadores, enquanto no real o custo por pesquisador sobe 28 % de 1954 a 1975 e
+  já é quase três vezes o do modelo em 1955.
+- **O tamanho do defeito:**
+  - O modelo emprega cerca de 1,5 vez o pessoal real em 1955 e 2,9 vezes em 1975, com gasto das
+    empresas perto do real (0,92 % do PIB em 1955 contra 0,58 % em 1953; 1,00 % em 1975 contra
+    1,08 % em 1980, NSF 25-326).
+  - De 1955 a 1975, o pessoal do modelo cresce 4,1 vezes contra 2,25 no real: cerca de 3 % ao
+    ano a mais, que é o tamanho de `g` acima da fonte.
+- **Conserto provável (não feito aqui):** o laboratório consumir instrumentos, material e
+  pessoal de apoio por pesquisador, crescendo com a era. A meta passaria a ser em dinheiro ao
+  custo de hoje (salário mais instrumentos). "Ideias mais difíceis de achar" ficaria visível
+  como custo, e `g` poderia voltar para perto da fonte.
+
+### Dependências anotadas
+
+- **A parte do Estado fica em 0,1–0,2 % do PIB.** O P&D federal americano de 0,71 % do PIB em
+  1953 e 1,86 % em 1964 (NSF 25-326) foi defesa e espaço: depende da guerra fria (fase 5), não é
+  meta desta regra.
+- **Tecnologias de programa estatal e militar.** Centrífuga de gás, satélite de comunicação e
+  robô industrial chegam 5 a 8 anos antes da `main` com `g` calibrado. Pedem prioridade de Estado
+  com casus belli ou corrida (fase 5), não custo ajustado à mão.
+- **1925:** a pesquisa inicial sai de 0,3 % do produto fora do campo, vezes a proximidade da
+  fronteira medida pela renda contra a americana (o estado da pesquisa ainda não existe no
+  setup). Bernal (1939) dá cerca de 0,6 % da renda nacional nos EUA do fim dos anos 1930 e um
+  décimo de por cento na Grã-Bretanha. O modelo emprega 56 mil pesquisadores nos EUA de 1926;
+  os laboratórios industriais tinham 6 320 cientistas e engenheiros em 1927 (Mowery 1995,
+  tabela 5.1), e a pesquisa universitária e do governo não tem série aberta. O nível de partida
+  é alto, e o mesmo conserto do custo do pesquisador o corrige.
+- **Série de referência:** P&D sobre o PIB por país desde 1996, `data/history/rd.csv` (Banco
+  Mundial, `GB.XPD.RSDV.GD.ZS`, CC BY 4.0). A série da OECD (MSTI, desde 1981) não entrou
+  porque a licença não foi confirmada.
 
 ## A árvore de 1925 a 2025
 
