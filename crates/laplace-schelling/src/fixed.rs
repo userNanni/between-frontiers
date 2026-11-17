@@ -94,6 +94,7 @@ impl Fixed {
     pub const MIN: Self = Self(-i64::MAX);
 
     /// From the raw count of thousandths. `i64::MIN` is clamped to [`Fixed::MIN`].
+    #[inline]
     pub const fn from_raw(raw: i64) -> Self {
         if raw == i64::MIN {
             Self::MIN
@@ -103,10 +104,12 @@ impl Fixed {
     }
 
     /// The raw count of thousandths.
+    #[inline]
     pub const fn raw(self) -> i64 {
         self.0
     }
 
+    #[inline]
     const fn from_wide(value: i128) -> Option<Self> {
         if value > i64::MAX as i128 || value < -(i64::MAX as i128) {
             None
@@ -115,6 +118,7 @@ impl Fixed {
         }
     }
 
+    #[inline]
     const fn saturate_wide(value: i128) -> Self {
         if value > i64::MAX as i128 {
             Self::MAX
@@ -126,11 +130,13 @@ impl Fixed {
     }
 
     /// From a whole number, `None` when it does not fit.
+    #[inline]
     pub const fn checked_from_int(n: i64) -> Option<Self> {
         Self::from_wide(n as i128 * Self::SCALE as i128)
     }
 
     /// From a whole number, saturating.
+    #[inline]
     pub const fn from_int(n: i64) -> Self {
         Self::saturate_wide(n as i128 * Self::SCALE as i128)
     }
@@ -139,37 +145,44 @@ impl Fixed {
     ///
     /// # Panics
     /// When `den` is zero.
+    #[inline]
     pub const fn from_ratio(num: i64, den: i64) -> Self {
         assert!(den != 0, "Fixed::from_ratio with a zero denominator");
         Self::saturate_wide(div_round(num as i128 * Self::SCALE as i128, den as i128))
     }
 
     /// Integer part, rounded toward zero.
+    #[inline]
     pub const fn to_int_trunc(self) -> i64 {
         self.0 / Self::SCALE
     }
 
     /// Integer part, rounded toward negative infinity.
+    #[inline]
     pub const fn to_int_floor(self) -> i64 {
         self.0.div_euclid(Self::SCALE)
     }
 
     /// Nearest integer, ties away from zero.
+    #[inline]
     pub const fn to_int_round(self) -> i64 {
         div_round(self.0 as i128, Self::SCALE as i128) as i64
     }
 
     /// `self + rhs`, `None` on overflow.
+    #[inline]
     pub const fn checked_add(self, rhs: Self) -> Option<Self> {
         Self::from_wide(self.0 as i128 + rhs.0 as i128)
     }
 
     /// `self - rhs`, `None` on overflow.
+    #[inline]
     pub const fn checked_sub(self, rhs: Self) -> Option<Self> {
         Self::from_wide(self.0 as i128 - rhs.0 as i128)
     }
 
     /// `self * rhs`, rounded, `None` on overflow.
+    #[inline]
     pub const fn checked_mul(self, rhs: Self) -> Option<Self> {
         Self::from_wide(div_round(
             self.0 as i128 * rhs.0 as i128,
@@ -178,6 +191,7 @@ impl Fixed {
     }
 
     /// `self / rhs`, rounded, `None` on overflow or a zero divisor.
+    #[inline]
     pub const fn checked_div(self, rhs: Self) -> Option<Self> {
         if rhs.0 == 0 {
             return None;
@@ -189,16 +203,19 @@ impl Fixed {
     }
 
     /// `self + rhs`, saturating.
+    #[inline]
     pub const fn saturating_add(self, rhs: Self) -> Self {
         Self::saturate_wide(self.0 as i128 + rhs.0 as i128)
     }
 
     /// `self - rhs`, saturating.
+    #[inline]
     pub const fn saturating_sub(self, rhs: Self) -> Self {
         Self::saturate_wide(self.0 as i128 - rhs.0 as i128)
     }
 
     /// `self * rhs`, rounded, saturating.
+    #[inline]
     pub const fn saturating_mul(self, rhs: Self) -> Self {
         Self::saturate_wide(div_round(
             self.0 as i128 * rhs.0 as i128,
@@ -208,6 +225,7 @@ impl Fixed {
 
     /// `self / rhs`, rounded, saturating. A zero divisor gives `MAX` or `MIN` by the sign of
     /// `self`, and zero for `0 / 0`.
+    #[inline]
     pub const fn saturating_div(self, rhs: Self) -> Self {
         if rhs.0 == 0 {
             return if self.0 > 0 {
@@ -225,6 +243,7 @@ impl Fixed {
     }
 
     /// `self * mul / div` with a single rounding, `None` on overflow or a zero divisor.
+    #[inline]
     pub const fn checked_mul_div(self, mul: Self, div: Self) -> Option<Self> {
         if div.0 == 0 {
             return None;
@@ -236,12 +255,14 @@ impl Fixed {
     ///
     /// # Panics
     /// When `div` is zero.
+    #[inline]
     pub const fn mul_div(self, mul: Self, div: Self) -> Self {
         assert!(div.0 != 0, "Fixed::mul_div with a zero divisor");
         Self::saturate_wide(div_round(self.0 as i128 * mul.0 as i128, div.0 as i128))
     }
 
     /// `self * num / den` for an exact integer ratio, `None` on overflow or `den == 0`.
+    #[inline]
     pub const fn checked_mul_ratio(self, num: i64, den: i64) -> Option<Self> {
         if den == 0 {
             return None;
@@ -254,27 +275,32 @@ impl Fixed {
     ///
     /// # Panics
     /// When `den` is zero.
+    #[inline]
     pub const fn mul_ratio(self, num: i64, den: i64) -> Self {
         assert!(den != 0, "Fixed::mul_ratio with a zero denominator");
         Self::saturate_wide(div_round(self.0 as i128 * num as i128, den as i128))
     }
 
     /// Absolute value (never overflows: the range is symmetric).
+    #[inline]
     pub const fn abs(self) -> Self {
         Self(self.0.abs())
     }
 
     /// `-1`, `0` or `1` as a `Fixed`.
+    #[inline]
     pub const fn signum(self) -> Self {
         Self(self.0.signum() * Self::SCALE)
     }
 
     /// Whether the value is below zero.
+    #[inline]
     pub const fn is_negative(self) -> bool {
         self.0 < 0
     }
 
     /// Whether the value is above zero.
+    #[inline]
     pub const fn is_positive(self) -> bool {
         self.0 > 0
     }
@@ -304,6 +330,7 @@ impl Fixed {
 
 impl Add for Fixed {
     type Output = Self;
+    #[inline]
     fn add(self, rhs: Self) -> Self {
         self.saturating_add(rhs)
     }
@@ -311,6 +338,7 @@ impl Add for Fixed {
 
 impl Sub for Fixed {
     type Output = Self;
+    #[inline]
     fn sub(self, rhs: Self) -> Self {
         self.saturating_sub(rhs)
     }
@@ -318,6 +346,7 @@ impl Sub for Fixed {
 
 impl Mul for Fixed {
     type Output = Self;
+    #[inline]
     fn mul(self, rhs: Self) -> Self {
         self.saturating_mul(rhs)
     }
@@ -327,6 +356,7 @@ impl Mul for Fixed {
 /// On a zero divisor.
 impl Div for Fixed {
     type Output = Self;
+    #[inline]
     fn div(self, rhs: Self) -> Self {
         assert!(rhs.0 != 0, "attempt to divide a Fixed by zero");
         self.saturating_div(rhs)
@@ -336,6 +366,7 @@ impl Div for Fixed {
 /// Scales by a whole number, saturating.
 impl Mul<i64> for Fixed {
     type Output = Self;
+    #[inline]
     fn mul(self, rhs: i64) -> Self {
         Self::saturate_wide(self.0 as i128 * rhs as i128)
     }
@@ -347,6 +378,7 @@ impl Mul<i64> for Fixed {
 /// On a zero divisor.
 impl Div<i64> for Fixed {
     type Output = Self;
+    #[inline]
     fn div(self, rhs: i64) -> Self {
         assert!(rhs != 0, "attempt to divide a Fixed by zero");
         Self::saturate_wide(div_round(self.0 as i128, rhs as i128))
@@ -355,30 +387,35 @@ impl Div<i64> for Fixed {
 
 impl Neg for Fixed {
     type Output = Self;
+    #[inline]
     fn neg(self) -> Self {
         Self(-self.0)
     }
 }
 
 impl AddAssign for Fixed {
+    #[inline]
     fn add_assign(&mut self, rhs: Self) {
         *self = *self + rhs;
     }
 }
 
 impl SubAssign for Fixed {
+    #[inline]
     fn sub_assign(&mut self, rhs: Self) {
         *self = *self - rhs;
     }
 }
 
 impl MulAssign for Fixed {
+    #[inline]
     fn mul_assign(&mut self, rhs: Self) {
         *self = *self * rhs;
     }
 }
 
 impl DivAssign for Fixed {
+    #[inline]
     fn div_assign(&mut self, rhs: Self) {
         *self = *self / rhs;
     }
