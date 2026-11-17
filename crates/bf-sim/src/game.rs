@@ -104,6 +104,10 @@ pub struct GameWorld {
     /// Border operations queued and run, and the subjects' overlords once one ran.
     #[serde(default)]
     pub borders: crate::borders::BordersState,
+    /// Plants built by foreign funds, by cohort, and the expropriations; empty until foreign
+    /// capital moves (`docs/foreign-capital.pt-BR.md`).
+    #[serde(default)]
+    pub foreign: crate::foreign_stakes::ForeignState,
 }
 
 /// The world as saves wrote it before the communities were in the population (2026-11-17):
@@ -134,6 +138,7 @@ impl From<WorldBeforeCommunities> for GameWorld {
             politics: w.politics,
             demography: w.demography.into(),
             borders: Default::default(),
+            foreign: Default::default(),
         }
     }
 }
@@ -166,6 +171,7 @@ impl From<WorldBeforeLedger> for GameWorld {
             politics: w.politics,
             demography: w.demography,
             borders: w.borders,
+            foreign: Default::default(),
         }
     }
 }
@@ -198,6 +204,7 @@ impl From<WorldBeforeResearch> for GameWorld {
             politics: w.politics,
             demography: w.demography,
             borders: w.borders,
+            foreign: Default::default(),
         }
     }
 }
@@ -231,6 +238,11 @@ impl HashState for GameWorld {
             h.section("borders");
             self.borders.hash_state(h);
         }
+        // Worlds where no foreign capital ever moved keep their hash.
+        if !self.foreign.is_empty() {
+            h.section("foreign");
+            self.foreign.hash_state(h);
+        }
     }
 }
 
@@ -248,6 +260,7 @@ impl GameWorld {
             research: crate::research::ResearchState::default(),
             politics: crate::polity::PoliticsState::default(),
             borders: crate::borders::BordersState::default(),
+            foreign: Default::default(),
             demography: crate::demography::DemographyState::default(),
         }
     }
@@ -592,8 +605,9 @@ impl std::error::Error for LoadError {}
 /// a time:
 /// - this build;
 /// - before the ledger of debts between states (`Economy::ledger`): [`WorldBeforeLedger`];
-/// - before the border state too (`borders`, a list of empty lists): the same layout, with the
-///   missing tail read as empty lists, one zero byte each;
+/// - before the foreign stakes (`foreign`, two empty lists), and before the border state too
+///   (`borders`, a list of empty lists): the same layout, with the missing tail read as empty
+///   lists, one zero byte each;
 /// - before the communities in the population: [`WorldBeforeCommunities`], which also predates
 ///   the borders and the ledger.
 pub fn decode_world(bytes: &[u8]) -> Result<GameWorld, SaveError> {
@@ -797,6 +811,19 @@ mod tests {
             history: &'a Vec<crate::econ::YearRecord>,
             ledger: &'a crate::treaty::Ledger,
         }
+        /// The world of before the foreign stakes: this build's fields without the last one.
+        #[derive(Serialize)]
+        struct BeforeForeign<'a> {
+            scenario: &'a String,
+            player: &'a Option<Id<Country>>,
+            countries: &'a Table<Country, CountryState>,
+            census: &'a Vec<CensusRecord>,
+            econ: &'a crate::econ::Economy,
+            research: &'a crate::research::ResearchState,
+            politics: &'a crate::polity::PoliticsState,
+            demography: &'a crate::demography::DemographyState,
+            borders: &'a crate::borders::BordersState,
+        }
         #[derive(Serialize)]
         struct BeforeResearch<'a> {
             scenario: &'a String,
@@ -876,6 +903,20 @@ mod tests {
             assert_eq!(hash_of(&loaded), hash_of(&world), "{what}");
             loaded
         };
+        // Before the foreign stakes (the main after research that costs).
+        let before_foreign = encode_snapshot(&BeforeForeign {
+            scenario: &world.scenario,
+            player: &world.player,
+            countries: &world.countries,
+            census: &world.census,
+            econ: &world.econ,
+            research: &world.research,
+            politics: &world.politics,
+            demography: &world.demography,
+            borders: &world.borders,
+        })
+        .unwrap();
+        assert_eq!(check(before_foreign, "before the foreign stakes"), world);
         // Before research that costs (the main after the ledger): markets with four public
         // works categories and no research priority.
         let before_research = encode_snapshot(&BeforeResearch {
