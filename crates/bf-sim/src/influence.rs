@@ -47,6 +47,9 @@ pub struct InfluenceRules {
     /// What A's influence over B is worth in a proposal of A that B weighs, per mille of
     /// `influence × B's GDP` (the term `Influence` of the treaties' valuation).
     pub proposal_weight: u32,
+    /// Most the term may add to a proposal, per mille of the proposal's size: influence makes a
+    /// country accept a small loss for a patron, never any loss.
+    pub proposal_cap: u32,
     pub source: String,
 }
 
@@ -277,11 +280,71 @@ pub fn interest(dependence: Dependence, goodwill: Goodwill, affinity: Affinity) 
     }
 }
 
-/// The term `Influence` of the treaties' valuation (`docs/influence.pt-BR.md`, section 4): what B
-/// adds, in reference units, to a proposal of A for A's influence over it. Zero without influence,
-/// so a world where nobody acts keeps its outcome.
-pub fn proposal_term(rules: &InfluenceRules, interest: &Interest, b_gdp: Fixed) -> Fixed {
+/// What A's influence over B is worth in reference units, before the cap (`influence × B's GDP ×
+/// proposal_weight`). Zero without influence.
+pub fn worth(rules: &InfluenceRules, interest: &Interest, b_gdp: Fixed) -> Fixed {
     interest.influence.max(Fixed::ZERO) * b_gdp * milli(rules.proposal_weight)
+}
+
+/// The influence of every country over every other, ready for the treaties' valuation: (A, B) →
+/// worth of A's influence over B in reference units. Only pairs with a live channel or goodwill
+/// are in it; a missing pair is zero. Built once a month in the tick (phase 4, etapa 2); the
+/// valuation reads it and never computes influence itself.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct InfluenceMap {
+    pub worth: BTreeMap<(u16, u16), Fixed>,
+    /// The cap, per mille of the proposal's size (`InfluenceRules::proposal_cap`).
+    pub cap: u32,
+}
+
+impl InfluenceMap {
+    /// Every pair with debt in the ledger or goodwill recorded, A over B.
+    pub fn build(
+        world: &GameWorld,
+        rules: &InfluenceRules,
+        table: Option<&CommunityTable>,
+        colonial: &[bool],
+        goodwill: &BTreeMap<(u16, u16), Goodwill>,
+    ) -> Self {
+        let cultures = table.map(|t| main_cultures(world, t)).unwrap_or_default();
+        let mut pairs: BTreeSet<(u16, u16)> = world
+            .econ
+            .ledger
+            .debts
+            .iter()
+            .map(|d| (d.creditor, d.debtor))
+            .collect();
+        pairs.extend(goodwill.keys().copied());
+        let mut worth = BTreeMap::new();
+        for (a, b) in pairs {
+            let (ai, bi) = (usize::from(a), usize::from(b));
+            if ai == bi || bi >= world.econ.markets.len() {
+                continue;
+            }
+            let i = interest(
+                dependence(world, rules, ai, bi),
+                goodwill.get(&(a, b)).copied().unwrap_or_default(),
+                affinity(world, rules, table, &cultures, colonial, ai, bi),
+            );
+            let w = self::worth(rules, &i, gdp(world, bi));
+            if w > Fixed::ZERO {
+                worth.insert((a, b), w);
+            }
+        }
+        Self {
+            worth,
+            cap: rules.proposal_cap,
+        }
+    }
+
+    /// The term `Influence` of a proposal of `a` that `b` weighs (`docs/influence.pt-BR.md`,
+    /// section 4): the worth of A's influence over B, at most `cap` of `size`, the proposal's size
+    /// in reference units (the sum of the absolute values of B's other lines). A line of the
+    /// proposal, not of a clause.
+    pub fn proposal_term(&self, a: u16, b: u16, size: Fixed) -> Fixed {
+        let w = self.worth.get(&(a, b)).copied().unwrap_or(Fixed::ZERO);
+        w.min(size.abs() * milli(self.cap))
+    }
 }
 
 /// What ties a bloc together (`docs/influence.pt-BR.md`, section 5).
@@ -388,8 +451,28 @@ mod tests {
             people_weight: 500,
             people_full: 200,
             proposal_weight: 1000,
+            proposal_cap: 250,
             source: String::new(),
         }
+    }
+
+    #[test]
+    fn the_term_is_capped_by_the_proposal() {
+        let mut m = InfluenceMap {
+            worth: BTreeMap::new(),
+            cap: 250,
+        };
+        m.worth.insert((1, 2), Fixed::from_int(100));
+        // Large proposal: the whole worth; small one: a quarter of its size; no influence: zero.
+        assert_eq!(
+            m.proposal_term(1, 2, Fixed::from_int(1000)),
+            Fixed::from_int(100)
+        );
+        assert_eq!(
+            m.proposal_term(1, 2, Fixed::from_int(40)),
+            Fixed::from_int(10)
+        );
+        assert_eq!(m.proposal_term(2, 1, Fixed::from_int(1000)), Fixed::ZERO);
     }
 
     #[test]

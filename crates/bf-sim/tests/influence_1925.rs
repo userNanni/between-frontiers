@@ -146,3 +146,28 @@ fn influence_follows_credit_and_goodwill() {
     assert!(without.influence > Fixed::ZERO);
     assert!(with.influence > without.influence);
 }
+
+#[test]
+fn the_map_holds_the_ledger_pairs_and_caps_the_term() {
+    let w = world();
+    let d = data();
+    let rules = d.influence.as_ref().unwrap();
+    let map = influence::InfluenceMap::build(
+        w,
+        rules,
+        d.community_table.as_deref(),
+        &colonial(),
+        &Default::default(),
+    );
+    let debt = w.econ.ledger.debts.first().unwrap();
+    let worth = map.worth[&(debt.creditor, debt.debtor)];
+    assert!(worth > Fixed::ZERO);
+    let small = Fixed::from_int(1);
+    assert!(map.proposal_term(debt.creditor, debt.debtor, small) <= small);
+    // A pair with no channel and no goodwill is not in the map: its term is zero.
+    let (bra, arg) = (ix("BRA") as u16, ix("ARG") as u16);
+    assert_eq!(
+        map.proposal_term(bra, arg, Fixed::from_int(1_000_000)),
+        Fixed::ZERO
+    );
+}

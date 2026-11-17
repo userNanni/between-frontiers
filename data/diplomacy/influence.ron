@@ -23,5 +23,8 @@
     people_full: 200,
     // In a proposal of A that B weighs, A's influence over B adds influence × B's GDP × this.
     proposal_weight: 1000,
+    // The term never adds more than this share of the proposal's size: a patron's influence makes
+    // a country accept a small loss, never any loss.
+    proposal_cap: 250,
     source: "docs/influence.pt-BR.md, sections 2 and 3; Hirschman 1945; Kuziemko and Werker 2006",
 )
