@@ -44,6 +44,7 @@ OWID_CHARTS = {
     "births": "crude-birth-rate",
     "deaths": "crude-death-rate",
     "life_expectancy": "life-expectancy",
+    "fertility": "children-per-woman-un",
 }
 # Physical production: output file -> (chart, query, column, unit). Chart views of OWID.
 PRODUCTION = {
@@ -208,6 +209,21 @@ def build_vital():
             for (c, y), v in rows.items()
         ],
         "Births and deaths per 1,000 (UN WPP 2024, 1950-) and life expectancy at birth (Riley; Zijdeman et al.; HMD; UN WPP), via Our World in Data. See SOURCES.md.",
+    )
+
+
+def build_fertility():
+    """Children per woman (UN WPP 2024 estimates, 1950-)."""
+    rows = [
+        (code, year, round(float(r["fertility_rate__sex_all__age_all__variant_estimates"]), 3))
+        for code, year, r in owid_rows("children-per-woman-un")
+        if r.get("fertility_rate__sex_all__age_all__variant_estimates")
+    ]
+    write(
+        "fertility.csv",
+        ["iso3", "year", "fertility"],
+        rows,
+        "Total fertility rate, children per woman (UN WPP 2024, estimates, 1950-), via Our World in Data. See SOURCES.md.",
     )
 
 
@@ -416,6 +432,7 @@ def main():
         "Adult literacy rate, Our World in Data (UNESCO, van Zanden et al., World Bank). See SOURCES.md.",
     )
     build_vital()
+    build_fertility()
     build_immigration()
     build_production()
     build_wdi()

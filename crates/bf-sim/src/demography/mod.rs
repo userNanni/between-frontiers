@@ -20,6 +20,7 @@ use std::sync::Arc;
 
 use crate::econ::public::{CARE_PER_PERSON, PublicKinds, coverage};
 use crate::econ::week::ECON;
+use crate::econ::migration::is_urban;
 use crate::econ::{Catalogue, Economy, Region, milli, prof, workers};
 use crate::game::GameWorld;
 use crate::politics::{Politics, Scope};
@@ -232,6 +233,10 @@ pub struct Vital {
     /// Values of [`FERTILITY_TERMS`] this month.
     #[serde(default)]
     pub fertility_terms: [Fixed; 5],
+    /// Children per woman of each profession (`prof`), at its own comfort and work; `tfr` is
+    /// their mean weighted by the size of each pop. Zero in saves from before it existed.
+    #[serde(default)]
+    pub tfr_by_class: [Fixed; prof::P],
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -263,6 +268,7 @@ impl HashState for Vital {
             v.hash_state(h);
         }
         self.fertility_terms.as_slice().hash_state(h);
+        self.tfr_by_class.as_slice().hash_state(h);
     }
 }
 
@@ -370,6 +376,38 @@ impl DemographyState {
             .collect()
     }
 
+    /// Children per woman of each profession in a territory (`market`, `colony`) and how many
+    /// people the profession has there, weighted by the size of each pop; `None` before the
+    /// first month or in a save from before the rates by class.
+    pub fn class_rates(
+        &self,
+        econ: &Economy,
+        market: u16,
+        colony: bool,
+    ) -> Option<[(Fixed, i64); prof::P]> {
+        let mut sum = [0i128; prof::P];
+        let mut people = [0i64; prof::P];
+        for (r, v) in econ.regions.iter().zip(&self.vital) {
+            if r.market != market || r.colony != colony || v.tfr_by_class == [Fixed::ZERO; prof::P] {
+                continue;
+            }
+            for (pi, p) in r.pops.iter().enumerate() {
+                sum[pi] += i128::from(v.tfr_by_class[pi].raw()) * i128::from(p.size);
+                people[pi] += p.size;
+            }
+        }
+        (people.iter().sum::<i64>() > 0).then(|| {
+            std::array::from_fn(|pi| {
+                let tfr = if people[pi] > 0 {
+                    Fixed::from_raw((sum[pi] / i128::from(people[pi])) as i64)
+                } else {
+                    Fixed::ZERO
+                };
+                (tfr, people[pi])
+            })
+        })
+    }
+
     pub fn is_empty(&self) -> bool {
         self.territories.is_empty() && self.ages.is_empty()
     }
@@ -402,6 +440,7 @@ impl DemographyState {
                 tfr: f(sum[4]),
                 // The terms by territory: `fertility_breakdown`.
                 fertility_terms: [Fixed::ZERO; 5],
+                tfr_by_class: [Fixed::ZERO; prof::P],
             }
         })
     }
@@ -672,6 +711,8 @@ pub struct Demography {
     laws: Option<(Arc<Politics>, usize, usize)>,
     /// Whether each farm of `resources::FARMS` is cropland (not pasture, forest or fishery).
     crop: Vec<bool>,
+    // EXPERIMENT (removed before the PR): land hunger brakes every pop, as before.
+    brake_all: bool,
 }
 
 impl Demography {
@@ -690,7 +731,14 @@ impl Demography {
             kinds,
             laws,
             crop,
+            brake_all: std::env::var("BF_EXP_BRAKE_ALL").is_ok(),
         }
+    }
+
+    /// Whether land hunger brakes the fertility of profession `pi`: the families who farm
+    /// (peasants and farm labourers, the farmers of the land measure).
+    fn land_brake_on(&self, pi: usize) -> bool {
+        self.brake_all || matches!(pi, prof::PEASANT | prof::FARM_LABORER)
     }
 
     /// Cropland a region has and could still clear, in farm levels: open cropland and the
@@ -730,6 +778,9 @@ pub(crate) struct RegionMonth {
     deaths: i64,
     life: Fixed,
     tfr: Fixed,
+    tfr_by_class: [Fixed; prof::P],
+    /// This month's births by profession: every pop has its own children.
+    births_by_class: [i64; prof::P],
     fertility_terms: [Fixed; 5],
     land_then: Fixed,
     people: i64,
@@ -816,7 +867,23 @@ impl System<GameWorld> for Demography {
                 let comfort = average(r, 2);
                 let food = average(r, 0);
                 let off_farm = r.urban_share();
-                // Mortality and fertility at a share `d` of today's development.
+                // Children per woman of every pop at a share `d` of today's development: the
+                // region's child survival, schooling and contraception, the pop's own comfort,
+                // and whether it works off the farm.
+                let class_tfr = |d: Fixed, child_deaths: i64| -> [Fixed; prof::P] {
+                    std::array::from_fn(|pi| {
+                        let p = &r.pops[pi];
+                        fertility(&FertilityInputs {
+                            child_deaths,
+                            schooling: schooling * d,
+                            off_farm: if is_urban(pi) { d } else { Fixed::ZERO },
+                            comfort: p.satisfaction[2] * d,
+                            contraception: contraception * d,
+                        })
+                    })
+                };
+                // Mortality and fertility at a share `d` of today's development; the region's
+                // fertility is the mean of its pops'.
                 let rates_at = |d: Fixed| {
                     let h = health(&HealthInputs {
                         comfort: comfort * d,
@@ -826,16 +893,11 @@ impl System<GameWorld> for Demography {
                         medicine: medicine * d,
                     });
                     let rates = mortality(h);
-                    let tfr = fertility(&FertilityInputs {
-                        child_deaths: rates[0],
-                        schooling: schooling * d,
-                        off_farm: off_farm * d,
-                        comfort: comfort * d,
-                        contraception: contraception * d,
-                    });
-                    (h, rates, tfr)
+                    let by_class = class_tfr(d, rates[0]);
+                    (h, rates, mean_by_size(r, &by_class))
                 };
-                let (h, rates, tfr) = rates_at(Fixed::ONE);
+                let (h, rates, _) = rates_at(Fixed::ONE);
+                let mut by_class = class_tfr(Fixed::ONE, rates[0]);
                 // Land hunger: as the land per farmer falls below the state's own of 1925, sons
                 // wait for land to marry and families stop earlier (the preventive check).
                 let land_total = self.cropland(r);
@@ -854,7 +916,13 @@ impl System<GameWorld> for Demography {
                 } else {
                     Fixed::ZERO
                 };
-                let tfr = (tfr * (Fixed::ONE - lost * LAND_BRAKE)).max(TFR_LOW.min(tfr));
+                // The brake falls on the families who farm (`land_brake_on`).
+                for (pi, t) in by_class.iter_mut().enumerate() {
+                    if self.land_brake_on(pi) {
+                        *t = (*t * (Fixed::ONE - lost * LAND_BRAKE)).max(TFR_LOW.min(*t));
+                    }
+                }
+                let tfr = mean_by_size(r, &by_class);
                 let fertility_terms = fertility_values(&FertilityInputs {
                     child_deaths: rates[0],
                     schooling,
@@ -871,6 +939,7 @@ impl System<GameWorld> for Demography {
                     rescale(&state.ages[ri], people)
                 };
                 let (births, deaths) = month(&mut ages, &rates, tfr);
+                let births_by_class = split_births(r, births, &by_class);
                 let p = &r.pops[prof::PEASANT];
                 let land_total = self.cropland(r);
                 let farmers = r.pops[prof::PEASANT].size + r.pops[prof::FARM_LABORER].size;
@@ -888,6 +957,8 @@ impl System<GameWorld> for Demography {
                     deaths,
                     life: life_expectancy(h),
                     tfr,
+                    tfr_by_class: by_class,
+                    births_by_class,
                     fertility_terms,
                     land_then,
                     people,
@@ -933,7 +1004,7 @@ impl System<GameWorld> for Demography {
             let moved = changes.plan.moves[ri];
             shift_migrants(&mut ages, moved);
             let target: i64 = ages.iter().sum();
-            distribute(r, target - m.people, moved);
+            distribute(r, target - m.people, moved, &m.births_by_class);
             // The pyramid and the pops agree on the total.
             state.ages[ri] = rescale(&ages, r.population());
             state.schooling[ri] = m.schooling;
@@ -952,6 +1023,7 @@ impl System<GameWorld> for Demography {
                 life: m.life,
                 tfr: m.tfr,
                 fertility_terms: m.fertility_terms,
+                tfr_by_class: m.tfr_by_class,
             };
         }
     }
@@ -976,15 +1048,53 @@ fn shift_migrants(ages: &mut [i64; AGE_GROUPS], moved: i64) {
     ages[5] = (ages[5] + left).max(0);
 }
 
-/// Applies a region's net change to its pops: births and deaths in proportion to every
-/// profession; emigrants leave the land and the labourers, immigrants arrive as labourers.
-fn distribute(r: &mut Region, change: i64, moved: i64) {
-    let natural = change - moved;
+/// Mean of `by_class` weighted by the size of each pop of `r`.
+fn mean_by_size(r: &Region, by_class: &[Fixed; prof::P]) -> Fixed {
     let total = r.population();
-    if total > 0 && natural != 0 {
+    if total <= 0 {
+        return by_class[prof::PEASANT];
+    }
+    let sum: i128 = r
+        .pops
+        .iter()
+        .zip(by_class)
+        .map(|(p, t)| i128::from(t.raw()) * i128::from(p.size))
+        .sum();
+    Fixed::from_raw((sum / i128::from(total)) as i64)
+}
+
+/// A region's births by profession: each pop's share of the women times its own children per
+/// woman (every pop has the region's age structure). The rounding goes to the pop with most.
+fn split_births(r: &Region, births: i64, by_class: &[Fixed; prof::P]) -> [i64; prof::P] {
+    let mut out = [0i64; prof::P];
+    let weight: [i128; prof::P] =
+        std::array::from_fn(|pi| i128::from(r.pops[pi].size) * i128::from(by_class[pi].raw()));
+    let total: i128 = weight.iter().sum();
+    if total <= 0 || births <= 0 {
+        return out;
+    }
+    for (o, w) in out.iter_mut().zip(weight) {
+        *o = (i128::from(births) * w / total) as i64;
+    }
+    let left = births - out.iter().sum::<i64>();
+    let big = (0..prof::P).max_by_key(|&i| (weight[i], std::cmp::Reverse(i))).unwrap_or(0);
+    out[big] += left;
+    out
+}
+
+/// Applies a region's net change to its pops: each pop gets its own births (`births`) and loses
+/// deaths in proportion to its size; emigrants leave the land and the labourers, immigrants
+/// arrive as labourers.
+fn distribute(r: &mut Region, change: i64, moved: i64, births: &[i64; prof::P]) {
+    let natural = change - moved;
+    let born: i64 = births.iter().sum();
+    // Deaths, with the rounding of the pyramid's rescale.
+    let died = born - natural;
+    let total = r.population();
+    if total > 0 && (natural != 0 || born != 0) {
         let mut left = natural;
-        for p in r.pops.iter_mut() {
-            let d = (i128::from(natural) * i128::from(p.size) / i128::from(total)) as i64;
+        for (p, b) in r.pops.iter_mut().zip(births) {
+            let d = *b - (i128::from(died) * i128::from(p.size) / i128::from(total)) as i64;
             p.size = (p.size + d).max(0);
             left -= d;
         }
