@@ -46,7 +46,7 @@ pub enum Side {
 }
 
 /// One clause: what it does, who gives it and who receives it.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Clause {
     pub kind: ClauseKind,
     pub giver: Side,
@@ -60,7 +60,7 @@ pub struct Clause {
 }
 
 /// Limit on armed forces: absolute, or a share of another party's.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ArmsCap {
     pub party: Tag,
     pub category: ArmsCategory,
@@ -79,7 +79,7 @@ pub enum ArmsCategory {
 }
 
 /// What a clause does. The mechanics live here; limits, weights and texts in the catalogue.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ClauseKind {
     // Once, on entry into force.
     /// The states pass from the giver to the receiver (`borders::Transfer`).
@@ -154,7 +154,7 @@ pub enum ClauseKind {
 
 /// Terms of a debt between states, in reference units (the economy's 2011 dollars at 1925 base
 /// prices, as `Money::debt_fx`).
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DebtTerms {
     pub principal: Fixed,
     /// Yearly interest, as a fraction.
@@ -337,7 +337,7 @@ impl Front {
 
 /// The fronts live in this build. Grows as each front enters the tick; a clause reads it to
 /// know whether it acts ([`ClauseCatalogue::dormant`]).
-pub const LIVE_FRONTS: &[Front] = &[Front::Politics, Front::Ledger];
+pub const LIVE_FRONTS: &[Front] = &[Front::Politics, Front::Ledger, Front::Borders];
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ClauseCatalogue {
@@ -544,7 +544,7 @@ fn is_concern(key: &str) -> bool {
 // ---------------------------------------------------------------------------------------------
 
 /// An agreement on the table: two sides, the clauses each gives, the term.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Proposal {
     /// Side A proposes; side B answers.
     pub side_a: Vec<Tag>,

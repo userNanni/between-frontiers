@@ -30,12 +30,24 @@ pub const BORDERS: ResourceId = ResourceId(14);
 
 /// Public debt that changes debtor by agreement (decision 1 of `docs/borders.pt-BR.md`): `to`
 /// takes over `amount` (reference units) of the public debt of `from`, from every holder in
-/// proportion. Debt an agreement creates between states (a reparation, the price of a
-/// recognition) belongs to the named ledger of the treaties (`docs/treaties.pt-BR.md`) and joins
-/// this list as its own variant when that ledger exists.
+/// proportion ([`DebtTerm::Market`]). Debt an agreement creates between states (a reparation,
+/// the price of a recognition, the debt a new country is born with) goes to the named ledger of
+/// the treaties ([`DebtTerm::Agreement`], `docs/treaties.pt-BR.md`), resolved when the operation
+/// runs, so that a country born by the same operation can owe or be owed.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DebtTerm {
-    Market { from: Tag, to: Tag, amount: Fixed },
+    Market {
+        from: Tag,
+        to: Tag,
+        amount: Fixed,
+    },
+    /// A new line of the ledger (`Economy::ledger`): `debtor` owes `creditor` under `treaty`.
+    Agreement {
+        debtor: Tag,
+        creditor: Tag,
+        treaty: String,
+        terms: crate::treaty::DebtTerms,
+    },
 }
 
 /// A technique carried by people and papers (decision 6): the winner of a peace taking scientists
@@ -358,17 +370,34 @@ fn regions_of(
 fn check_terms(world: &GameWorld, rules: &BorderRules, terms: &Terms) -> Result<(), String> {
     let known = |t: &str| tag_ix(world, t).ok_or_else(|| format!("unknown tag {t}"));
     for d in &terms.debt {
-        let DebtTerm::Market {
-            from: a,
-            to: b,
-            amount,
-        } = d;
-        let amount = *amount;
-        if known(a)? == known(b)? {
-            return Err("a debt term needs two countries".into());
-        }
-        if amount <= Fixed::ZERO {
-            return Err("a debt term needs a positive amount".into());
+        match d {
+            DebtTerm::Market {
+                from: a,
+                to: b,
+                amount,
+            } => {
+                if known(a)? == known(b)? {
+                    return Err("a debt term needs two countries".into());
+                }
+                if *amount <= Fixed::ZERO {
+                    return Err("a debt term needs a positive amount".into());
+                }
+            }
+            // The parties may be born by the operation that carries the term: checked when it
+            // runs, where an unknown tag drops the line (nothing is created on one side only).
+            DebtTerm::Agreement {
+                debtor,
+                creditor,
+                terms,
+                ..
+            } => {
+                if debtor == creditor {
+                    return Err("a debt term needs two countries".into());
+                }
+                if terms.principal <= Fixed::ZERO || terms.years == 0 {
+                    return Err("a debt term needs a principal and a term".into());
+                }
+            }
         }
     }
     let techs = rules.tree.as_ref().map_or(0, |t| t.techs.len());
@@ -917,7 +946,38 @@ fn demography(
 /// Runs the debt and technique terms.
 fn apply_terms(world: &mut GameWorld, terms: &Terms) {
     for d in &terms.debt {
-        let DebtTerm::Market { from, to, amount } = d;
+        let (from, to, amount) = match d {
+            DebtTerm::Market { from, to, amount } => (from, to, amount),
+            DebtTerm::Agreement {
+                debtor,
+                creditor,
+                treaty,
+                terms,
+            } => {
+                if let (Some(a), Some(b)) = (tag_ix(world, debtor), tag_ix(world, creditor))
+                    && a != b
+                {
+                    world.econ.ledger.create(crate::treaty::InterstateDebt {
+                        id: 0,
+                        debtor: a as u16,
+                        creditor: b as u16,
+                        treaty: treaty.clone(),
+                        currency: terms.currency,
+                        principal: terms.principal,
+                        rate: terms.rate,
+                        annuity: terms.annuity,
+                        years_left: terms.years,
+                        deferrable: terms.deferrable,
+                        transfer_cap: terms.transfer_cap,
+                        pledge: terms.pledge,
+                        contingent: terms.contingent,
+                        arrears: Fixed::ZERO,
+                        suspended_until: 0,
+                    });
+                }
+                continue;
+            }
+        };
         let (Some(a), Some(b)) = (tag_ix(world, from), tag_ix(world, to)) else {
             continue;
         };
