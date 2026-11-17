@@ -111,6 +111,12 @@ fn blocs_come_from_the_clauses() {
         Some(influence::AllianceLabel::DefencePact)
     );
     assert_eq!(label("belgium_luxembourg_union"), None);
+    let cow = |key: &str| {
+        let t = dip.treaties.iter().find(|t| t.key == key).unwrap();
+        influence::cow_type(&t.clauses)
+    };
+    assert_eq!(cow("cze_yug_alliance"), Some(influence::CowType::I));
+    assert_eq!(cow("belgium_luxembourg_union"), None);
     // A member who leaves: without the Yugoslav-Romanian treaty the triangle is gone, and so is
     // the bloc (a denunciation takes the member out when the treaty ends).
     let without = dip
