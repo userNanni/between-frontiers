@@ -77,6 +77,19 @@ const fn div_round(n: i128, d: i128) -> i128 {
     }
 }
 
+/// Rounds `n / SCALE` to nearest, ties away from zero: [`div_round`] by the scale, in 64 bits,
+/// where the constant divisor turns into a multiplication. `n` must not be `i64::MIN`.
+#[inline]
+const fn div_round_scale(n: i64) -> i64 {
+    let quotient = n / Fixed::SCALE;
+    let remainder = n % Fixed::SCALE;
+    if remainder.unsigned_abs() * 2 >= Fixed::SCALE as u64 {
+        if n < 0 { quotient - 1 } else { quotient + 1 }
+    } else {
+        quotient
+    }
+}
+
 impl Fixed {
     /// Number of raw units in 1.
     pub const SCALE: i64 = 1_000;
@@ -217,6 +230,13 @@ impl Fixed {
     /// `self * rhs`, rounded, saturating.
     #[inline]
     pub const fn saturating_mul(self, rhs: Self) -> Self {
+        // Almost every product fits in 64 bits: multiply and round there. The same integers and
+        // the same rounding as the wide path below (`i64::MIN` goes there too).
+        if let Some(p) = self.0.checked_mul(rhs.0)
+            && p != i64::MIN
+        {
+            return Self(div_round_scale(p));
+        }
         Self::saturate_wide(div_round(
             self.0 as i128 * rhs.0 as i128,
             Self::SCALE as i128,
@@ -599,7 +619,7 @@ impl<'de> Deserialize<'de> for Fixed {
 
 #[cfg(test)]
 mod tests {
-    use super::{Fixed, ParseFixedError, div_round};
+    use super::{Fixed, ParseFixedError, div_round, div_round_scale};
     use crate::rng::Rng;
 
     const MAX: i128 = i64::MAX as i128;
@@ -813,6 +833,50 @@ mod tests {
             let d = (i128::from(rng.next_u64() as i64) >> (rng.next_u64() % 64)).max(1);
             assert_eq!(div_round(n, d), wide(n, d), "{n} / {d}");
             assert_eq!(div_round(n, -d), wide(n, -d), "{n} / -{d}");
+        }
+    }
+
+    /// The 64-bit product path of `*` against the 128-bit model: every pair of edge values
+    /// (around zero, the rounding ties, the square root of the range where the product stops
+    /// fitting in 64 bits, and the ends), then random pairs over every magnitude.
+    #[test]
+    fn multiplication_fast_path_matches_the_wide_model() {
+        fn model(a: i64, b: i64) -> Fixed {
+            clamp(div_round(a as i128 * b as i128, Fixed::SCALE as i128))
+        }
+        let root = 3_037_000_499i64; // floor(sqrt(i64::MAX))
+        let mut edges = vec![i64::MAX, -i64::MAX, i64::MAX / 1000, -(i64::MAX / 1000)];
+        for base in [0, 500, 1000, 1500, 2500, root, i64::MAX / 2, i64::MAX / 3] {
+            for d in -3..=3 {
+                if let Some(v) = base.checked_add(d) {
+                    edges.push(v);
+                    edges.push(-v);
+                }
+            }
+        }
+        edges.retain(|&v| v != i64::MIN);
+        for &a in &edges {
+            for &b in &edges {
+                let got = Fixed::from_raw(a) * Fixed::from_raw(b);
+                assert_eq!(got, model(a, b), "{a} * {b}");
+            }
+        }
+        // Exhaustive over the rounding: every remainder of a product by the scale.
+        for p in -5_000i64..=5_000 {
+            assert_eq!(
+                div_round_scale(p) as i128,
+                div_round(p as i128, Fixed::SCALE as i128),
+                "{p}"
+            );
+        }
+        let mut rng = Rng::from_seed(11);
+        for _ in 0..1_000_000 {
+            let (a, b) = (sample(&mut rng), sample(&mut rng));
+            assert_eq!(
+                Fixed::from_raw(a) * Fixed::from_raw(b),
+                model(a, b),
+                "{a} * {b}"
+            );
         }
     }
 }
