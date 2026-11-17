@@ -614,6 +614,108 @@ fn controls(ui: &mut Ui, cx: &mut TabContext<'_>, v: &GovernmentView) {
             MigrationLaw::Restricted => "gov-migration-restricted-tip",
         }),
     );
+    campaign(ui, cx, v);
+}
+
+/// The adult literacy campaign, a budget programme: what it would cost and teach, or how it
+/// goes; starting and stopping it take a confirmation step.
+fn campaign(ui: &mut Ui, cx: &mut TabContext<'_>, v: &GovernmentView) {
+    let Some(c) = v.campaign else { return };
+    let i18n = cx.i18n;
+    bf_ui_kit::gap(ui, space::SM);
+    bf_ui_kit::heading(ui, &i18n.tr("gov-campaign"));
+    let gdp = v.gdp_last_year;
+    let running = c.years_left > 0;
+    if running {
+        bf_ui_kit::body(
+            ui,
+            &i18n.tr_args(
+                "gov-campaign-running",
+                &[
+                    ("years", arg(c.years_left.to_string())),
+                    ("taught", arg(i18n.compact(c.taught_last_year as f64))),
+                    (
+                        "cost",
+                        arg(with_gdp(
+                            i18n,
+                            money(i18n, c.cost_last_month * 12.0),
+                            c.cost_last_month * 12.0,
+                            gdp,
+                        )),
+                    ),
+                ],
+            ),
+        );
+    } else {
+        bf_ui_kit::body(
+            ui,
+            &i18n.tr_args(
+                "gov-campaign-offer",
+                &[
+                    ("illiterate", arg(i18n.compact(c.illiterate as f64))),
+                    ("enrolled", arg(i18n.compact(c.enrolled_per_year as f64))),
+                    ("readers", arg(i18n.compact(c.readers_per_year as f64))),
+                    (
+                        "cost",
+                        arg(with_gdp(
+                            i18n,
+                            money(i18n, c.cost_per_year),
+                            c.cost_per_year,
+                            gdp,
+                        )),
+                    ),
+                ],
+            ),
+        );
+    }
+    bf_ui_kit::small(ui, &i18n.tr("gov-campaign-note"));
+    let (ask, key) = if running {
+        ("gov-campaign-stop", "gov.campaign.stop")
+    } else {
+        ("gov-campaign-start", "gov.campaign.start")
+    };
+    if !cx.drafts.campaign_confirm {
+        let b = ui.button(i18n.tr(ask));
+        let typed = keys::item(
+            ui,
+            'L',
+            key.into(),
+            if running { "stop" } else { "start" },
+            b.rect,
+        );
+        if b.clicked() || typed {
+            cx.drafts.campaign_confirm = true;
+        }
+        return;
+    }
+    // Confirmation step.
+    bf_ui_kit::body(
+        ui,
+        &i18n.tr_args(
+            if running {
+                "gov-campaign-confirm-stop"
+            } else {
+                "gov-campaign-confirm-start"
+            },
+            &[("cost", arg(money(i18n, c.cost_per_year)))],
+        ),
+    );
+    ui.horizontal(|ui| {
+        let yes = ui.button(i18n.tr("gov-campaign-yes"));
+        let yes_typed = keys::item(ui, 'L', "gov.campaign.yes".into(), "yes", yes.rect);
+        let no = ui.button(i18n.tr("gov-campaign-no"));
+        let no_typed = keys::item(ui, 'L', "gov.campaign.no".into(), "no", no.rect);
+        if yes.clicked() || yes_typed {
+            cx.commands.push(GameCommand::LiteracyCampaign {
+                tag: cx.tag.to_owned(),
+                on: !running,
+            });
+            cx.drafts.campaign_confirm = false;
+        }
+        if no.clicked() || no_typed {
+            cx.drafts.campaign_confirm = false;
+        }
+    });
 }
 
 /// Says that changes made while paused apply when the game runs.

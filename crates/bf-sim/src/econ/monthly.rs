@@ -32,6 +32,55 @@ const PROMOTIONS: [(usize, usize, i64, bool); 12] = [
     (prof::CAPITALIST, prof::MANAGER, 20, false),
     (prof::LANDOWNER, prof::PEASANT, 10, false),
 ];
+/// Schooling a profession asks of who enters it, with schooling by cohort: 0 primary, 1
+/// secondary, 2 tertiary; `None` for professions that ask none.
+pub const SCHOOLING_ASKED: [Option<usize>; P] = {
+    let mut a = [None; P];
+    a[prof::SKILLED] = Some(0);
+    a[prof::CLERK] = Some(0);
+    a[prof::CIVIL_SERVANT] = Some(0);
+    a[prof::MANAGER] = Some(1);
+    a[prof::ENGINEER] = Some(2);
+    a[prof::PROFESSIONAL] = Some(2);
+    a
+};
+
+/// Workers of a region with at least each level of schooling who do not yet work in a
+/// profession that asks for it, given `qualified`, the share of those 15–64 with at least
+/// primary, secondary and tertiary (`demography::education`).
+pub fn graduates_free(pops: &[(i64, i64)], qualified: [Fixed; 3]) -> [i64; 3] {
+    let total: i64 = pops.iter().map(|p| p.0).sum();
+    std::array::from_fn(|l| {
+        let pool = (Fixed::from_int(workers(total)) * qualified[l]).to_int_floor();
+        let taken: i64 = pops
+            .iter()
+            .enumerate()
+            .filter(|(pi, _)| SCHOOLING_ASKED[*pi].is_some_and(|a| a >= l))
+            .map(|(_, p)| workers(p.0))
+            .sum();
+        (pool - taken).max(0)
+    })
+}
+
+/// Open jobs of each profession that wait for graduates: jobs the plants offer beyond the
+/// workers the profession has, in professions whose level of schooling has no free graduates
+/// left in the region. What the screen shows as "missing graduates".
+pub fn graduates_missing(cat: &Catalogue, r: &Region, qualified: [Fixed; 3]) -> [i64; P] {
+    let mut required = [0i64; P];
+    for p in r.plants.iter().filter(|p| Some(p.kind) != cat.informal) {
+        let m = &cat.buildings[p.kind as usize].methods[p.method as usize];
+        for (pi, n) in &m.jobs {
+            required[*pi as usize] += *n * p.levels;
+        }
+    }
+    let pops: Vec<(i64, i64)> = r.pops.iter().map(|p| (p.size, 0)).collect();
+    let free = graduates_free(&pops, qualified);
+    std::array::from_fn(|pi| match SCHOOLING_ASKED[pi] {
+        Some(l) if free[l] == 0 => (required[pi] - workers(pops[pi].0)).max(0),
+        _ => 0,
+    })
+}
+
 /// Workers in urban self-employment in market `market` (`BuildingDef::informal`).
 pub fn informal_jobs(cat: &Catalogue, econ: &super::Economy, market: usize) -> i64 {
     let Some(k) = cat.informal else { return 0 };
@@ -81,6 +130,7 @@ fn labour_region(
     r: &Region,
     moves: &super::migration::Moves,
     soldiers: Option<i64>,
+    qualified: Option<[Fixed; 3]>,
 ) -> LabourChange {
     let mut required = [0i64; P];
     // Self-employment is sized below, from the labourers the plants leave idle.
@@ -130,8 +180,15 @@ fn labour_region(
             continue;
         }
         let mut n = gap * per_mille / 1000;
-        if needs_letters {
-            n = (Fixed::from_int(n) * literacy).to_int_floor();
+        match (qualified, SCHOOLING_ASKED[to]) {
+            // With schooling by cohort: no more than the graduates of the level still free.
+            (Some(q), Some(l)) => n = n.min(graduates_free(&pops, q)[l]),
+            (Some(_), None) => {}
+            (None, _) => {
+                if needs_letters {
+                    n = (Fixed::from_int(n) * literacy).to_int_floor();
+                }
+            }
         }
         let available = workers(pops[from].0) - required[from].min(workers(pops[from].0));
         move_people(&mut pops, from, to, n.min(available).max(0));
@@ -265,7 +322,11 @@ impl System<GameWorld> for Labour {
         Cadence::Monthly { day: 1 }
     }
     fn access(&self) -> Access {
-        Access::new().read(ECON).read(crate::war::WAR).write(ECON)
+        Access::new()
+            .read(ECON)
+            .read(crate::war::WAR)
+            .write(ECON)
+            .read(crate::demography::DEMOGRAPHY)
     }
     fn compute(&self, _ctx: &TickCtx, world: &GameWorld) -> Vec<LabourChange> {
         let moves = super::migration::plan(&self.cat, &world.econ);
@@ -276,7 +337,8 @@ impl System<GameWorld> for Labour {
             .zip(moves.par_iter())
             .enumerate()
             .map(|(ri, (r, mv))| {
-                let mut c = labour_region(&self.cat, r, mv, world.war.soldiers(ri));
+                let qualified = crate::demography::education::qualified(world, ri);
+                let mut c = labour_region(&self.cat, r, mv, world.war.soldiers(ri), qualified);
                 c.pioneers = pioneers(&self.cat, r, &world.econ.markets[r.market as usize]);
                 c
             })
@@ -535,7 +597,10 @@ impl System<GameWorld> for Investment {
         Cadence::Monthly { day: 8 }
     }
     fn access(&self) -> Access {
-        Access::new().read(ECON).write(ECON)
+        Access::new()
+            .read(ECON)
+            .write(ECON)
+            .read(crate::demography::DEMOGRAPHY)
     }
     fn compute(&self, ctx: &TickCtx, world: &GameWorld) -> InvestmentChanges {
         let cat = &*self.cat;
@@ -758,7 +823,13 @@ impl System<GameWorld> for Investment {
             }
             leftover.push(budget);
         }
-        let public = super::public::public_works(cat, econ, &unlocks);
+        let schools: Option<Vec<[i64; 3]>> = (world.education.regions.len() == econ.regions.len())
+            .then(|| {
+                (0..econ.regions.len())
+                    .map(|ri| crate::demography::education::places_needed(world, ri))
+                    .collect()
+            });
+        let public = super::public::public_works(cat, econ, &unlocks, schools.as_deref());
         InvestmentChanges {
             builds,
             leftover,

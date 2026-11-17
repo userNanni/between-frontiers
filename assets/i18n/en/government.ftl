@@ -190,3 +190,14 @@ gov-foreign-assets = Bonds of other countries
 gov-tip-foreign-assets = What the country's savers lent to other states.
 gov-waiting = The accounts show once the first day has passed.
 gov-no-player = No country to govern in this campaign.
+
+gov-campaign = Adult literacy campaign
+gov-campaign-offer = { $illiterate } adults aged 15 to 49 cannot read. A five-year campaign enrols { $enrolled } a year, and { $readers } of them keep reading for good. It costs { $cost } a year.
+gov-campaign-running = Under way, { $years } years left. At the last school year, { $taught } adults learned to read. It costs { $cost } a year.
+gov-campaign-note = Half drop out, half of those who stay pass, and some forget without practice (Abadzi 2003). It takes effect at the next school year, in January.
+gov-campaign-start = Start a campaign…
+gov-campaign-stop = Stop the campaign…
+gov-campaign-confirm-start = Start the campaign? It costs { $cost } a year for five years.
+gov-campaign-confirm-stop = Stop the campaign? Those who learned keep reading.
+gov-campaign-yes = Confirm
+gov-campaign-no = Cancel

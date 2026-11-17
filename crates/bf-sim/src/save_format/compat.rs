@@ -286,8 +286,8 @@ pub struct V9 {
 /// 9 → 10: trade by pair (`econ::trade::TradeState`) starts empty and stays out of the hash;
 /// with the switch on it fills in the first week (the preferences start at the cost of
 /// arrival).
-pub fn v9_to_v10(w: V9) -> GameWorld {
-    GameWorld {
+pub fn v9_to_v10(w: V9) -> V10 {
+    V10 {
         scenario: w.scenario,
         player: w.player,
         countries: w.countries,
@@ -301,5 +301,45 @@ pub fn v9_to_v10(w: V9) -> GameWorld {
         influence: w.influence,
         treaties: w.treaties,
         war: w.war,
+    }
+}
+
+/// Version 10: trade by pair (`Economy::trade`, #113), before schooling by cohort.
+#[derive(Deserialize)]
+pub struct V10 {
+    scenario: String,
+    player: Option<Id<Country>>,
+    countries: Table<Country, CountryState>,
+    census: Vec<CensusRecord>,
+    econ: crate::econ::Economy,
+    research: crate::research::ResearchState,
+    politics: crate::polity::PoliticsState,
+    demography: crate::demography::DemographyState,
+    borders: crate::borders::BordersState,
+    foreign: crate::foreign_stakes::ForeignState,
+    influence: crate::influence::InfluenceState,
+    treaties: crate::treaty::TreatyState,
+    war: crate::war::WarState,
+}
+
+/// 10 → 11: schooling by cohort and level (`GameWorld::education`), empty. With the rule
+/// `schooling` off it stays empty; on, the demography builds it from 1925's data and the
+/// state's literacy at its next month. An empty schooling hashes as nothing.
+pub fn v10_to_v11(w: V10) -> GameWorld {
+    GameWorld {
+        scenario: w.scenario,
+        player: w.player,
+        countries: w.countries,
+        census: w.census,
+        econ: w.econ,
+        research: w.research,
+        politics: w.politics,
+        demography: w.demography,
+        borders: w.borders,
+        foreign: w.foreign,
+        influence: w.influence,
+        treaties: w.treaties,
+        war: w.war,
+        education: Default::default(),
     }
 }

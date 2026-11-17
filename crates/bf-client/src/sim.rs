@@ -199,7 +199,9 @@ fn population_of(
         Some(p) if p.month == (date.year, date.month) => Some(Arc::clone(p)),
         _ => {
             let table = rules.as_ref().and_then(|r| r.communities.as_deref());
-            crate::population::read(session.world(), session.player(), date, table).map(Arc::new)
+            let cat = rules.as_ref().map(|r| &*r.catalogue);
+            crate::population::read(session.world(), session.player(), date, table, cat)
+                .map(Arc::new)
         }
     }
 }
@@ -334,6 +336,15 @@ fn snapshot_of(
             session.player(),
             session.clock().date,
             rules.as_ref().and_then(|r| r.catalogue.research),
+            rules.as_ref().and_then(|r| {
+                let price = r
+                    .catalogue
+                    .goods
+                    .iter()
+                    .find(|g| g.key == "schooling")
+                    .map_or(0.0, |g| g.base_price.to_f64_lossy());
+                r.education.as_deref().map(|e| (e, price))
+            }),
         )
         .map(Arc::new),
         laws: crate::laws_view::Live::read(session.world(), session.player()).map(Arc::new),

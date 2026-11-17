@@ -67,6 +67,9 @@ pub struct Drafts {
     pub migration: Option<MigrationLaw>,
     pub rate: Option<Option<u16>>,
     pub bank: Option<CentralBank>,
+    /// The player is at the confirmation step of starting or stopping the literacy campaign.
+    /// Survives the ticks: a confirmation is not a draft.
+    pub campaign_confirm: bool,
 }
 
 impl Drafts {
@@ -75,6 +78,7 @@ impl Drafts {
         if self.tick != tick {
             *self = Self {
                 tick,
+                campaign_confirm: self.campaign_confirm,
                 ..Self::default()
             };
         }
@@ -164,7 +168,10 @@ pub fn show(
     out.place_done |= moved;
     // A later tick carries what the player changed.
     if snap.tick > window.drafts.tick {
-        window.drafts = Drafts::default();
+        window.drafts = Drafts {
+            campaign_confirm: window.drafts.campaign_confirm,
+            ..Drafts::default()
+        };
     }
     let Window {
         tab,

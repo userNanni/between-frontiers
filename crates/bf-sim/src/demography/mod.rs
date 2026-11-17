@@ -761,9 +761,166 @@ pub struct Demography {
     crop: Vec<bool>,
     /// The community catalogue; without it the population has no communities.
     table: Option<Arc<CommunityTable>>,
+    /// Schooling of 1925, the literacy campaign and the school buildings; without them literacy
+    /// follows the economy's yearly rule.
+    education: Option<Arc<education::EducationRules>>,
+    /// Base price of the good `schooling` (a primary pupil-year), resolved at load: the
+    /// literacy campaign's cost.
+    schooling_price: Fixed,
 }
 
 impl Demography {
+    /// With schooling by cohort and level.
+    pub fn with_education(mut self, rules: Option<Arc<education::EducationRules>>) -> Self {
+        self.education = rules;
+        self
+    }
+
+    /// One school year of every region, in January (and the start's schooling the first time):
+    /// places from the school buildings, targets from the education law (primary as the
+    /// economy reads it, with mission schools in the colonies; secondary and tertiary from the
+    /// law's effects), the country's campaign.
+    fn school_year(&self, world: &GameWorld, month: u8) -> Option<Vec<education::Schooling>> {
+        use education::{SCHOOL_LEVELS, WHOLE};
+        let rules = self.education.as_ref()?;
+        if !rules.enabled && world.education.regions.is_empty() {
+            return None;
+        }
+        let econ = &world.econ;
+        let state = &world.demography;
+        if state.ages.len() != econ.regions.len() {
+            return None;
+        }
+        let start = world.education.regions.len() != econ.regions.len();
+        let index = [
+            crate::politics::effect_index("secondary_enrolment_target"),
+            crate::politics::effect_index("tertiary_enrolment_target"),
+        ];
+        let targets: Vec<[u32; 2]> = (0..econ.markets.len())
+            .map(|c| match &self.laws {
+                Some((p, _, _)) if c < world.politics.laws.len() => {
+                    let e = effects_in_force(p, &world.politics, c, Scope::Metropole);
+                    index.map(|i| i.map_or(WHOLE, |i| (e[i].max(0) as u32 * 10).min(WHOLE)))
+                }
+                _ => [WHOLE, WHOLE],
+            })
+            .collect();
+        // GDP per head of each country last year (dollars of 2011, the economy's base prices).
+        let mut people = vec![0i64; econ.markets.len()];
+        for r in &econ.regions {
+            people[usize::from(r.market)] += r.population();
+        }
+        let gdp_per_head: Vec<i64> = econ
+            .markets
+            .iter()
+            .zip(&people)
+            .map(|(m, &n)| {
+                // In the first year there is no last year: this year's so far, annualised
+                // (the demography runs on the 15th).
+                let gdp = if m.gdp_last_year > Fixed::ZERO {
+                    m.gdp_last_year
+                } else {
+                    m.gdp_running
+                        .mul_ratio(365, i64::from(month.max(1) - 1) * 30 + 15)
+                };
+                if n > 0 { (gdp / n).to_int_floor() } else { 0 }
+            })
+            .collect();
+        let tag = |m: u16| {
+            world
+                .countries
+                .iter()
+                .nth(usize::from(m))
+                .map(|(_, c)| c.tag.clone())
+                .unwrap_or_default()
+        };
+        Some(
+            econ.regions
+                .par_iter()
+                .enumerate()
+                .map(|(ri, r)| {
+                    let ages = &state.ages[ri];
+                    if start {
+                        let path = rules
+                            .start
+                            .path(&tag(r.market), r.colony)
+                            .unwrap_or_default();
+                        let attained = rules
+                            .start
+                            .units
+                            .iter()
+                            .find(|u| u.tag == tag(r.market) && u.colonies == r.colony)
+                            .map(|u| {
+                                let (_, p, s, t) = u.attainment_15_64;
+                                let per = |v: f32| (f64::from(v) * 100.0).round() as u32;
+                                [per(p + s + t), per(s + t), per(t)]
+                            });
+                        let lit = (r.literacy.raw().clamp(0, 1000) * 10) as u32;
+                        let mut s = education::initial(ages, &path, attained, lit);
+                        let asked = education::demand(gdp_per_head[usize::from(r.market)]);
+                        s.gap = std::array::from_fn(|l| {
+                            asked[l]
+                                .saturating_sub(u32::from(s.enrolment[l]))
+                                .min(education::WHOLE) as u16
+                        });
+                        return s;
+                    }
+                    let mut s = world.education.regions[ri].clone();
+                    let laws = &econ.markets[usize::from(r.market)].laws;
+                    let religious = if r.colony {
+                        crate::econ::yearly::RELIGIOUS_SCHOOLS
+                            * laws.effects[0].church_privilege.max(Fixed::ZERO)
+                    } else {
+                        Fixed::ZERO
+                    };
+                    let places: [u32; SCHOOL_LEVELS] = std::array::from_fn(|l| {
+                        let pupils: i64 =
+                            education::ENROLS[l].clone().map(|g| ages[g].max(0)).sum();
+                        let offered = rules.kinds[l].map_or(Fixed::ZERO, |k| {
+                            crate::econ::public::yearly_output(&self.cat, r, k)
+                        });
+                        let mut share = if pupils > 0 {
+                            (offered / pupils).min(Fixed::ONE)
+                        } else {
+                            Fixed::ZERO
+                        };
+                        // Mission schools in the colonies are a floor: the start's enrolment
+                        // already counts them.
+                        if l == 0 {
+                            share = share.max(religious).min(Fixed::ONE);
+                        }
+                        (share.raw().clamp(0, 1000) * 10) as u32
+                    });
+                    // What the state builds toward: the law's target, or what families ask for
+                    // at the country's income, whichever is higher.
+                    let law_primary =
+                        (laws.of(r).enrolment_target.raw().clamp(0, 1000) * 10) as u32;
+                    let [law_secondary, law_tertiary] = targets[usize::from(r.market)];
+                    let asked = education::demand(gdp_per_head[usize::from(r.market)]);
+                    let primary = law_primary.max(asked[0]);
+                    let secondary = law_secondary.max(asked[1]);
+                    let tertiary = law_tertiary.max(asked[2]);
+                    let campaign = world
+                        .education
+                        .campaigns
+                        .get(usize::from(r.market))
+                        .is_some_and(|&y| y > 0);
+                    s.year(
+                        ages,
+                        &education::SchoolYear {
+                            places,
+                            asked,
+                            target: [primary, secondary, tertiary],
+                            campaign: if campaign { rules.campaign.yearly() } else { 0 },
+                            informal: u32::from(s.informal),
+                        },
+                    );
+                    s
+                })
+                .collect(),
+        )
+    }
+
     /// With the communities in the population.
     pub fn with_communities(mut self, table: Option<Arc<CommunityTable>>) -> Self {
         self.table = table;
@@ -851,11 +1008,17 @@ impl Demography {
             .map(|f| !matches!(*f, "livestock_ranch" | "forestry" | "fishery"))
             .collect();
         Self {
-            cat,
             kinds,
             laws,
             crop,
+            schooling_price: cat
+                .goods
+                .iter()
+                .find(|g| g.key == "schooling")
+                .map_or(Fixed::ZERO, |g| g.base_price),
+            cat,
             table: None,
+            education: None,
         }
     }
 
@@ -925,6 +1088,8 @@ pub(crate) struct RegionMonth {
 pub struct DemographyChanges {
     regions: Vec<RegionMonth>,
     plan: migration::Plan,
+    /// January: every region's new school year.
+    schooling: Option<Vec<education::Schooling>>,
 }
 
 fn average(r: &Region, tier: usize) -> Fixed {
@@ -994,9 +1159,20 @@ impl System<GameWorld> for Demography {
             .enumerate()
             .map(|(ri, r)| {
                 let people = r.population();
+                // The mothers' schooling: with schooling by cohort, the literacy of the women of
+                // 15–49 now (no lag: the cohort is the lag); without it, the state's literacy
+                // followed with a generation's delay.
+                let cohort = world.education.regions.get(ri).filter(|_| !first).map(|s| {
+                    let lit = s.literacy_of(&state.ages[ri], 3..=9);
+                    women_literacy(Fixed::from_ratio(
+                        i64::from(lit),
+                        i64::from(education::WHOLE),
+                    ))
+                });
                 let women = women_literacy(r.literacy);
-                let schooling = match state.schooling.get(ri) {
-                    Some(&s) if !first => s + (women - s).mul_ratio(1, SCHOOLING_MONTHS),
+                let schooling = match (cohort, state.schooling.get(ri)) {
+                    (Some(c), _) => c,
+                    (None, Some(&s)) if !first => s + (women - s).mul_ratio(1, SCHOOLING_MONTHS),
                     _ => women,
                 };
                 let care = coverage(&self.cat, r, self.kinds.hospital, CARE_PER_PERSON);
@@ -1200,7 +1376,17 @@ impl System<GameWorld> for Demography {
             .collect();
         let now = ctx.date.year * 12 + i32::from(ctx.date.month) - 1;
         let plan = migration::plan(world, &regions, &laws, now);
-        DemographyChanges { regions, plan }
+        let schooling =
+            if ctx.date.month == 1 || world.education.regions.len() != econ.regions.len() {
+                self.school_year(world, ctx.date.month)
+            } else {
+                None
+            };
+        DemographyChanges {
+            regions,
+            plan,
+            schooling,
+        }
     }
 
     fn apply(&self, ctx: &TickCtx, mut changes: DemographyChanges, world: &mut GameWorld) {
@@ -1299,6 +1485,113 @@ impl System<GameWorld> for Demography {
                         communities::assimilate(table, law, rr);
                     }
                 });
+        }
+        self.apply_schooling(ctx, changes.schooling, world);
+    }
+}
+
+impl Demography {
+    /// The school year (January): the new schooling, the literacy it gives every state, and the
+    /// campaigns' countdown. Every month: what each running campaign costs the treasury.
+    fn apply_schooling(
+        &self,
+        ctx: &TickCtx,
+        schooling: Option<Vec<education::Schooling>>,
+        world: &mut GameWorld,
+    ) {
+        let Some(rules) = &self.education else { return };
+        let markets = world.econ.markets.len();
+        let ed = &mut world.education;
+        ed.campaigns.resize(markets, 0);
+        ed.campaign_cost.resize(markets, Fixed::ZERO);
+        for y in ed.campaigns.iter_mut() {
+            if *y == education::CAMPAIGN_STARTS {
+                *y = rules.campaign.years.min(200) as u8;
+            }
+        }
+        if let Some(new) = schooling {
+            let january = ctx.date.month == 1 && !ed.regions.is_empty();
+            let start = ed.regions.is_empty();
+            ed.regions = new;
+            // The start's schools: every level gets the places its enrolment of the start fills
+            // (the economy of 1925 sized primary schools by literacy and had no secondary
+            // schools or universities as buildings).
+            if start {
+                for ((r, s), ages) in world
+                    .econ
+                    .regions
+                    .iter_mut()
+                    .zip(&ed.regions)
+                    .zip(&world.demography.ages)
+                {
+                    for (l, kind) in rules.kinds.iter().enumerate() {
+                        let Some(kind) = *kind else { continue };
+                        let pupils: i64 =
+                            education::ENROLS[l].clone().map(|g| ages[g].max(0)).sum();
+                        let want = Fixed::from_int(
+                            pupils * i64::from(s.enrolment[l]) / i64::from(education::WHOLE),
+                        );
+                        let have = crate::econ::public::yearly_output(&self.cat, r, kind);
+                        let per = crate::econ::public::level_output(&self.cat, r, kind, 0);
+                        if want > have && per > Fixed::ZERO {
+                            let add = ((want - have) / per).to_int_floor() + 1;
+                            r.plant_mut(kind as u16).levels += add;
+                        }
+                    }
+                }
+            }
+            for ((r, s), ages) in world
+                .econ
+                .regions
+                .iter_mut()
+                .zip(&ed.regions)
+                .zip(&world.demography.ages)
+            {
+                r.literacy =
+                    Fixed::from_ratio(i64::from(s.literacy(ages)), i64::from(education::WHOLE));
+            }
+            if january {
+                for y in ed.campaigns.iter_mut() {
+                    *y = y.saturating_sub(1);
+                }
+            }
+        }
+        // Cost: a year's participants (the illiterate 15–49 the campaign reaches) at a share of
+        // a primary pupil-year each, paid a twelfth a month.
+        let price = self.schooling_price;
+        let mut illiterate = vec![0i64; markets];
+        for ((r, s), ages) in world
+            .econ
+            .regions
+            .iter()
+            .zip(&ed.regions)
+            .zip(&world.demography.ages)
+        {
+            let m = usize::from(r.market);
+            if ed.campaigns.get(m).is_some_and(|&y| y > 0) {
+                for row in &s.people(ages)[education::ADULT..=9] {
+                    illiterate[m] += row[0];
+                }
+            }
+        }
+        let reach = Fixed::from_ratio(
+            (f64::from(rules.campaign.reach) * 1000.0).round() as i64,
+            1000,
+        );
+        let per = Fixed::from_ratio(
+            (f64::from(rules.campaign.cost) * 1000.0).round() as i64,
+            1000,
+        );
+        for (m, n) in illiterate.into_iter().enumerate() {
+            let cost = if n > 0 {
+                (reach * per * price * n) / 12
+            } else {
+                Fixed::ZERO
+            };
+            ed.campaign_cost[m] = cost;
+            if cost > Fixed::ZERO {
+                world.econ.markets[m].treasury -= cost;
+            }
         }
     }
 }

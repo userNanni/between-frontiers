@@ -12,8 +12,9 @@ na hora. Ela sobe primeiro a quantidade de gente na escola, e a escolaridade vem
 ### A escola anda por coorte, e o jogador vê a matrícula antes do resultado
 
 - **Decisão:** o jogo guarda, por estado e por grupo de idade, o nível mais alto que cada um
-  alcançou, e a matrícula de cada nível. A matrícula anda devagar até as vagas e a meta da lei; a
-  coorte leva para a vida adulta o que estudou nos últimos anos.
+  alcançou, e a matrícula de cada nível. A matrícula anda devagar até as vagas (da escola pública
+  ou das escolas que as famílias pagam); a coorte leva para a vida adulta o que estudou nos
+  últimos anos.
 - **O que o autor pensou:** ele aceitou a alfabetização anual, porque a escola anda por ano letivo,
   mas pediu ver primeiro quanta gente está na escola. Perguntou também o que conta como alfabetizado
   e se havia níveis. Sobre o pacote de decisões, disse: "Concordo com as decisões, por enquanto." O
@@ -24,8 +25,8 @@ na hora. Ela sobe primeiro a quantidade de gente na escola, e a escolaridade vem
   O painel de população mostra a pirâmide por nível, os alunos e os formandos que faltam.
 - **Como é na vida real:** a escola nova enche em um a três anos, porque as famílias demoram; quem
   termina o fundamental hoje estudou nos anos anteriores.
-- **Estado:** dados e contrato no jogo (#106); a escola no tick e o painel estão num ramo ainda sem
-  PR (`feat/schooling-sim`).
+- **Estado:** no jogo: dados e contrato (#106), a escola no tick e o painel (PR da simulação do
+  ensino).
 - **Onde está o detalhe:** [`population.pt-BR.md`, "Ensino por coorte"](../../population.pt-BR.md#ensino-por-coorte);
   `crates/bf-sim/src/demography/education.rs`.
 
@@ -52,7 +53,8 @@ na hora. Ela sobe primeiro a quantidade de gente na escola, e a escolaridade vem
   fundamental, e a universidade mais ainda; o jogador escolhe a lei e paga a obra.
 - **Como é na vida real:** as fontes do custo por aluno (Banco Mundial, OCDE, Psacharopoulos) estão
   no documento.
-- **Estado:** dados no jogo (#106); obra pública por nível no ramo sem PR.
+- **Estado:** no jogo (#106 e PR da simulação do ensino): as obras públicas de educação disputam
+  os três níveis pelo dinheiro que falta a cada um.
 - **Onde está o detalhe:** [`population.pt-BR.md`, "Ensino por coorte"](../../population.pt-BR.md#ensino-por-coorte);
   `data/politics/laws.ron`.
 
@@ -65,8 +67,9 @@ na hora. Ela sobe primeiro a quantidade de gente na escola, e a escolaridade vem
   e perda: metade evade, parte regride. Ela aumenta "lê sem escola", não o fundamental.
 - **Como é na vida real:** Cuba em 1961, a liquidação do analfabetismo soviética, o Mobral; a perda
   vem de Abadzi (2003).
-- **Estado:** regra e dado no jogo (#106, `data/economy/literacy_campaign.ron`); o comando e a tela
-  no ramo sem PR.
+- **Estado:** no jogo: regra e dado (#106, `data/economy/literacy_campaign.ron`), o comando e a aba
+  de orçamento com confirmação (PR da simulação do ensino). O efeito chega no ano letivo
+  seguinte, em janeiro.
 - **Onde está o detalhe:** [`population.pt-BR.md`, "Ensino por coorte"](../../population.pt-BR.md#ensino-por-coorte).
 
 ### 1925 nasce dos 60 anos de escola anteriores
@@ -79,3 +82,22 @@ na hora. Ela sobe primeiro a quantidade de gente na escola, e a escolaridade vem
 - **Como é na vida real:** Lee e Lee (2016), 111 países de 1870 a 2010, também a referência do placar.
 - **Estado:** no jogo (#106).
 - **Onde está o detalhe:** `data/scenario/1925/education.ron`; `data/history/education.csv`.
+
+### A escola segue a renda do país, e a lei acelera
+
+- **Decisão:** além das escolas que o Estado constrói, as famílias põem os filhos em escolas de
+  igreja, comunitárias e particulares (que não são prédios do jogo) na medida da renda do país:
+  a matrícula anda até o maior entre as vagas públicas e o que se pede naquela renda. Cada estado
+  começa abaixo dessa curva o quanto estava em 1925, e a distância fecha devagar. O Estado
+  constrói até o maior entre a meta da lei e o pedido pela renda.
+- **O que o autor pensou:** decisão técnica da coordenação, a confirmar com o autor. Sem ela, só o
+  Estado abria escola, as metas das leis de 1925 são baixas, e a alfabetização do mundo ficava
+  parada em 36 % até 2025 (a referência dá 82 % em 2015).
+- **Como o jogo funciona por causa disso:** um país que enriquece escolariza os filhos mesmo sem lei
+  nova; a lei de ensino obrigatório põe a escola acima do que a renda pediria. Profissões que pedem
+  estudo (engenheiro e profissional liberal pedem superior) só crescem com formados: a tela mostra
+  "faltam formados".
+- **Como é na vida real:** a matrícula sobe com a renda em todos os países (Lee e Lee contra
+  Maddison, 1950–2010, 111 países); a curva e a distância estão no documento.
+- **Estado:** no jogo (PR da simulação do ensino).
+- **Onde está o detalhe:** [`population.pt-BR.md`, "Ensino por coorte"](../../population.pt-BR.md#ensino-por-coorte).

@@ -52,9 +52,10 @@ pub const WORLD_MAGIC: [u8; 4] = *b"BFWD";
 /// 6. foreign capital (`GameWorld::foreign`);
 /// 7. the influence state (`GameWorld::influence`);
 /// 8. the treaty state (`GameWorld::treaties`: recognition between states);
-/// 9. the armed forces (`GameWorld::war`), the last field of the world;
-/// 10. trade by pair (`Economy::trade`), the last field of the economy.
-pub const WORLD_VERSION: u32 = 10;
+/// 9. the armed forces (`GameWorld::war`);
+/// 10. trade by pair (`Economy::trade`), the last field of the economy;
+/// 11. schooling by cohort and level (`GameWorld::education`), the last field of the world.
+pub const WORLD_VERSION: u32 = 11;
 
 /// Why a snapshot does not read.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -157,27 +158,30 @@ pub fn decode_world(bytes: &[u8]) -> Result<GameWorld, WorldError> {
 pub fn migrate(v: u32, body: &[u8]) -> Result<GameWorld, SaveError> {
     use compat::*;
     Ok(match v {
-        0 => v9_to_v10(v8_to_v9(v7_to_v8(v6_to_v7(v5_to_v6(v2_to_v5(v1_to_v2(
-            v0_to_v1(decode_snapshot(body)?),
+        0 => v10_to_v11(v9_to_v10(v8_to_v9(v7_to_v8(v6_to_v7(v5_to_v6(v2_to_v5(
+            v1_to_v2(v0_to_v1(decode_snapshot(body)?)),
         ))))))),
-        1 => v9_to_v10(v8_to_v9(v7_to_v8(v6_to_v7(v5_to_v6(v2_to_v5(v1_to_v2(
+        1 => v10_to_v11(v9_to_v10(v8_to_v9(v7_to_v8(v6_to_v7(v5_to_v6(v2_to_v5(
+            v1_to_v2(decode_snapshot(body)?),
+        ))))))),
+        2 => v10_to_v11(v9_to_v10(v8_to_v9(v7_to_v8(v6_to_v7(v5_to_v6(v2_to_v5(
             decode_snapshot(body)?,
         ))))))),
-        2 => v9_to_v10(v8_to_v9(v7_to_v8(v6_to_v7(v5_to_v6(v2_to_v5(
-            decode_snapshot(body)?,
-        )))))),
         // Version 3 lacks only enum variants added at the end since: its bytes read as 4.
-        3 | 4 => v9_to_v10(v8_to_v9(v7_to_v8(v6_to_v7(v5_to_v6(v4_to_v5(
+        3 | 4 => v10_to_v11(v9_to_v10(v8_to_v9(v7_to_v8(v6_to_v7(v5_to_v6(v4_to_v5(
+            decode_snapshot(body)?,
+        ))))))),
+        5 => v10_to_v11(v9_to_v10(v8_to_v9(v7_to_v8(v6_to_v7(v5_to_v6(
             decode_snapshot(body)?,
         )))))),
-        5 => v9_to_v10(v8_to_v9(v7_to_v8(v6_to_v7(v5_to_v6(decode_snapshot(
+        6 => v10_to_v11(v9_to_v10(v8_to_v9(v7_to_v8(v6_to_v7(decode_snapshot(
             body,
         )?))))),
-        6 => v9_to_v10(v8_to_v9(v7_to_v8(v6_to_v7(decode_snapshot(body)?)))),
-        7 => v9_to_v10(v8_to_v9(v7_to_v8(decode_snapshot(body)?))),
-        8 => v9_to_v10(v8_to_v9(decode_snapshot(body)?)),
-        9 => v9_to_v10(decode_snapshot(body)?),
-        10 => decode_snapshot(body)?,
+        7 => v10_to_v11(v9_to_v10(v8_to_v9(v7_to_v8(decode_snapshot(body)?)))),
+        8 => v10_to_v11(v9_to_v10(v8_to_v9(decode_snapshot(body)?))),
+        9 => v10_to_v11(v9_to_v10(decode_snapshot(body)?)),
+        10 => v10_to_v11(decode_snapshot(body)?),
+        11 => decode_snapshot(body)?,
         _ => return Err(SaveError::Malformed(format!("unknown world version {v}"))),
     })
 }

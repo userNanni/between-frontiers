@@ -93,6 +93,10 @@ impl EducationFile {
     }
 }
 
+/// Mark a command leaves in `EducationState::campaigns` for a campaign just decided; the
+/// demography replaces it with the campaign's years.
+pub const CAMPAIGN_STARTS: u8 = u8::MAX;
+
 /// `data/economy/literacy_campaign.ron`: the adult literacy campaign, a budget programme.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct CampaignRules {
@@ -126,6 +130,15 @@ pub struct Schooling {
     pub cohort: [u16; SCHOOL_LEVELS],
     /// Adults (15–49) without schooling taught to read by a literacy campaign this year.
     pub campaign: i64,
+    /// Share of the children who do not reach school but learn to read anyway, found at the
+    /// start to meet the state's literacy, per ten thousand.
+    pub informal: u16,
+    /// Enrolment the education law aims at for each level, per ten thousand of its ages: what
+    /// public works build schools toward.
+    pub target: [u16; SCHOOL_LEVELS],
+    /// How far below what families ask for at its income ([`demand`]) the state's enrolment was
+    /// at the start, per ten thousand; it closes by [`GAP_CLOSES`] a year.
+    pub gap: [u16; SCHOOL_LEVELS],
 }
 
 impl HashState for Schooling {
@@ -137,6 +150,9 @@ impl HashState for Schooling {
         self.enrolment.as_slice().hash_state(h);
         self.cohort.as_slice().hash_state(h);
         self.campaign.hash_state(h);
+        self.informal.hash_state(h);
+        self.target.as_slice().hash_state(h);
+        self.gap.as_slice().hash_state(h);
     }
 }
 
@@ -145,6 +161,10 @@ impl HashState for Schooling {
 #[derive(Clone, Copy, Debug, Default)]
 pub struct SchoolYear {
     pub places: [u32; SCHOOL_LEVELS],
+    /// What families ask for at the country's income ([`demand`]): schools of churches,
+    /// communities and private owners, which are not buildings of the economy, open where
+    /// families pay; enrolment reaches it less the state's own gap.
+    pub asked: [u32; SCHOOL_LEVELS],
     pub target: [u32; SCHOOL_LEVELS],
     /// Share of the illiterate adults (15–49) a literacy campaign teaches this year, per ten
     /// thousand; zero without one.
@@ -152,6 +172,43 @@ pub struct SchoolYear {
     /// Share of the children who do not reach school but learn to read anyway (a literate
     /// parent, the church), per ten thousand.
     pub informal: u32,
+}
+
+/// Enrolment families ask for at a country's income: a logistic in the log of GDP per head
+/// fitted to Lee and Lee (2016) against Maddison (2023), 1950–2010, 111 countries, 1,361
+/// country-years (root mean square error 0.18 for primary and secondary, 0.13 for tertiary;
+/// `docs/population.pt-BR.md`, "Ensino por coorte"), tabulated at GDP per head of 500 to 64,000
+/// dollars of 2011 (doubling), per ten thousand of each level's ages; linear in between, flat
+/// outside. Integer, so that every platform gets the same.
+const DEMAND_GDP: [i64; 8] = [500, 1_000, 2_000, 4_000, 8_000, 16_000, 32_000, 64_000];
+const DEMAND: [[u32; 8]; SCHOOL_LEVELS] = [
+    [2_931, 4_635, 6_429, 7_895, 8_866, 9_422, 9_714, 9_861],
+    [375, 807, 1_654, 3_089, 5_021, 6_946, 8_369, 9_205],
+    [46, 113, 276, 654, 1_453, 2_847, 4_632, 6_192],
+];
+
+/// Share of a state's gap below [`demand`] that closes each year, per ten thousand: the curve
+/// was fitted to 1950–2010, and the countries of 1925 sat below it (calibrated: 3 % a year
+/// halves the gap in 23 years; docs).
+pub const GAP_CLOSES: u32 = 300;
+
+/// [`DEMAND`] of each level at GDP per head `gdp` (dollars of 2011).
+pub fn demand(gdp: i64) -> [u32; SCHOOL_LEVELS] {
+    std::array::from_fn(|l| {
+        let t = &DEMAND[l];
+        if gdp <= DEMAND_GDP[0] {
+            return t[0];
+        }
+        for k in 0..DEMAND_GDP.len() - 1 {
+            let (lo, hi) = (DEMAND_GDP[k], DEMAND_GDP[k + 1]);
+            if gdp < hi {
+                let f = (gdp - lo) * 1000 / (hi - lo);
+                return (i64::from(t[k]) + (i64::from(t[k + 1]) - i64::from(t[k])) * f / 1000)
+                    as u32;
+            }
+        }
+        t[t.len() - 1]
+    })
 }
 
 /// Share of the gap between enrolment and what places and law allow that closes in a year:
@@ -177,10 +234,15 @@ impl Schooling {
         if self.levels.len() != AGE_GROUPS {
             self.levels = vec![[0; STORED]; AGE_GROUPS];
         }
-        // Enrolment: secondary cannot exceed those who finished primary, tertiary those who
-        // finished secondary.
+        self.target = std::array::from_fn(|l| y.target[l].min(WHOLE) as u16);
+        // Enrolment follows the places (the law's target is what the state builds toward, not a
+        // cap on families who already send their children); secondary cannot exceed those who
+        // finished primary, tertiary those who finished secondary.
         for l in 0..SCHOOL_LEVELS {
-            let mut allow = y.places[l].min(y.target[l]).min(WHOLE);
+            // The state's distance below what its income asks for closes a little each year.
+            self.gap[l] = (u32::from(self.gap[l]) * (WHOLE - GAP_CLOSES) / WHOLE) as u16;
+            let private = y.asked[l].saturating_sub(u32::from(self.gap[l]));
+            let mut allow = y.places[l].max(private).min(WHOLE);
             if l > 0 {
                 let finished = Self::at_least(&self.levels[FINISHED_AT[l - 1]], level_of(l - 1));
                 allow = allow.min(finished);
@@ -238,6 +300,17 @@ impl Schooling {
     /// literacy of the history series and of 1925's data.
     pub fn literacy(&self, ages: &[i64; AGE_GROUPS]) -> u32 {
         self.weighted(ages, ADULT..=AGE_GROUPS - 1, |g| {
+            u64::from(Self::at_least(g, Level::ReadsNoSchool))
+        }) as u32
+    }
+
+    /// Share of the people of `groups` who read, per ten thousand.
+    pub fn literacy_of(
+        &self,
+        ages: &[i64; AGE_GROUPS],
+        groups: std::ops::RangeInclusive<usize>,
+    ) -> u32 {
+        self.weighted(ages, groups, |g| {
             u64::from(Self::at_least(g, Level::ReadsNoSchool))
         }) as u32
     }
@@ -377,7 +450,8 @@ pub fn initial(
             s.year(
                 ages,
                 &SchoolYear {
-                    places: [WHOLE; SCHOOL_LEVELS],
+                    places: target,
+                    asked: [0; SCHOOL_LEVELS],
                     target,
                     campaign: 0,
                     informal,
@@ -393,20 +467,180 @@ pub fn initial(
     };
     let (mut lo, mut hi) = (0u32, WHOLE);
     let mut best = grow(0);
-    if best.literacy(ages) >= literacy {
-        return best;
-    }
-    while hi - lo > 1 {
-        let mid = (lo + hi) / 2;
-        let s = grow(mid);
-        if s.literacy(ages) < literacy {
-            lo = mid;
-        } else {
-            hi = mid;
-            best = s;
+    let mut informal = 0;
+    if best.literacy(ages) < literacy {
+        best = grow(WHOLE);
+        informal = WHOLE;
+        while hi - lo > 1 {
+            let mid = (lo + hi) / 2;
+            let s = grow(mid);
+            if s.literacy(ages) < literacy {
+                lo = mid;
+            } else {
+                hi = mid;
+                best = s;
+                informal = mid;
+            }
         }
     }
+    best.informal = informal as u16;
     best
+}
+
+/// Schooling of every state and the adult literacy campaigns, saved and hashed
+/// (`GameWorld::education`). Empty before the first January of a world with schooling data and
+/// in saves from before it.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct EducationState {
+    /// By region (`Economy::regions`).
+    pub regions: Vec<Schooling>,
+    /// By country (market): years left of its adult literacy campaign, 0 without one.
+    pub campaigns: Vec<u8>,
+    /// By country: what its campaign cost last month (base prices), for the budget screen.
+    pub campaign_cost: Vec<laplace_schelling::Fixed>,
+}
+
+impl EducationState {
+    pub fn is_empty(&self) -> bool {
+        self.regions.is_empty() && self.campaigns.iter().all(|&c| c == 0)
+    }
+}
+
+impl HashState for EducationState {
+    fn hash_state(&self, h: &mut StateHasher) {
+        h.write_len(self.regions.len());
+        for r in &self.regions {
+            r.hash_state(h);
+        }
+        self.campaigns.as_slice().hash_state(h);
+        self.campaign_cost.hash_state(h);
+    }
+}
+
+/// What the simulation reads to run the schools: the start and the campaign's rules, and the
+/// school building of each level (`school`, `secondary_school`, `university`).
+#[derive(Debug)]
+pub struct EducationRules {
+    /// The rule's switch (`data/rules.ron`). Off, a new campaign has no schooling; a world that
+    /// already has it (a save from a campaign with the rule on) keeps it.
+    pub enabled: bool,
+    pub start: EducationFile,
+    pub campaign: CampaignRules,
+    pub kinds: [Option<usize>; SCHOOL_LEVELS],
+}
+
+/// Human capital of a region for the other systems (research, productivity): mean years of
+/// schooling of those 25–64 and their share with tertiary schooling (0–1). `None` before the
+/// schooling exists.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct HumanCapital {
+    pub mean_years: f64,
+    pub tertiary: f64,
+}
+
+/// Places each school level of a region needs to reach its law's target: target × the ages it
+/// enrols, in pupils. Zero before the schooling exists.
+pub fn places_needed(world: &crate::game::GameWorld, ri: usize) -> [i64; SCHOOL_LEVELS] {
+    let (Some(s), Some(ages)) = (
+        world.education.regions.get(ri),
+        world.demography.ages.get(ri),
+    ) else {
+        return [0; SCHOOL_LEVELS];
+    };
+    std::array::from_fn(|l| {
+        let n: i64 = ENROLS[l].clone().map(|g| ages[g].max(0)).sum();
+        n * i64::from(s.target[l]) / i64::from(WHOLE)
+    })
+}
+
+/// Share of those 15–64 of region `ri` with at least primary, secondary and tertiary
+/// schooling, for the labour market; `None` before the schooling exists.
+pub fn qualified(
+    world: &crate::game::GameWorld,
+    ri: usize,
+) -> Option<[laplace_schelling::Fixed; 3]> {
+    let s = world.education.regions.get(ri)?;
+    let ages = world.demography.ages.get(ri)?;
+    let share = |k: usize| {
+        s.weighted(ages, ADULT..=12, |g| {
+            g[k..].iter().map(|&v| u64::from(v)).sum::<u64>()
+        })
+    };
+    Some(std::array::from_fn(|l| {
+        laplace_schelling::Fixed::from_ratio(share(l + 1) as i64, i64::from(WHOLE))
+    }))
+}
+
+/// What a country's adult literacy campaign is or would be, for the budget screen.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct CampaignOutlook {
+    /// Years left; 0 without a campaign.
+    pub years_left: u8,
+    /// Adults 15–49 who cannot read, today.
+    pub illiterate: i64,
+    /// Adults it enrols in a year, and those of them who will still read years later.
+    pub enrolled_per_year: i64,
+    pub readers_per_year: i64,
+    /// What it costs a year at base prices, and what it cost last month while running.
+    pub cost_per_year: f64,
+    pub cost_last_month: f64,
+    /// Adults taught to read at the last school year.
+    pub taught_last_year: i64,
+}
+
+/// [`CampaignOutlook`] of country `country` (market index); `None` before schooling exists.
+pub fn campaign_outlook(
+    world: &crate::game::GameWorld,
+    rules: &EducationRules,
+    price_of_schooling: f64,
+    country: usize,
+) -> Option<CampaignOutlook> {
+    if world.education.regions.len() != world.econ.regions.len() {
+        return None;
+    }
+    let mut out = CampaignOutlook {
+        years_left: world.education.campaigns.get(country).copied().unwrap_or(0),
+        cost_last_month: world
+            .education
+            .campaign_cost
+            .get(country)
+            .map_or(0.0, |c| c.to_f64_lossy()),
+        ..Default::default()
+    };
+    if out.years_left == CAMPAIGN_STARTS {
+        out.years_left = rules.campaign.years.min(200) as u8;
+    }
+    for ((r, s), ages) in world
+        .econ
+        .regions
+        .iter()
+        .zip(&world.education.regions)
+        .zip(&world.demography.ages)
+    {
+        if usize::from(r.market) != country {
+            continue;
+        }
+        for row in &s.people(ages)[ADULT..=9] {
+            out.illiterate += row[0];
+        }
+        out.taught_last_year += s.campaign;
+    }
+    let n = out.illiterate as f64;
+    out.enrolled_per_year = (n * f64::from(rules.campaign.reach)) as i64;
+    out.readers_per_year = (n * f64::from(rules.campaign.reach * rules.campaign.durable)) as i64;
+    out.cost_per_year =
+        n * f64::from(rules.campaign.reach) * f64::from(rules.campaign.cost) * price_of_schooling;
+    Some(out)
+}
+
+/// [`HumanCapital`] of region `ri` of the world.
+pub fn human_capital(world: &crate::game::GameWorld, ri: usize) -> Option<HumanCapital> {
+    let s = world.education.regions.get(ri)?;
+    let ages = world.demography.ages.get(ri)?;
+    Some(HumanCapital {
+        mean_years: s.mean_years(ages),
+        tertiary: f64::from(s.tertiary(ages)) / f64::from(WHOLE),
+    })
 }
 
 fn level_of(l: usize) -> Level {
@@ -482,6 +716,7 @@ mod tests {
         let ages = pyramid();
         let y = SchoolYear {
             places: [WHOLE; 3],
+            asked: [0; 3],
             target: [8_000, 2_000, 500],
             campaign: 0,
             informal: 500,
@@ -500,6 +735,7 @@ mod tests {
         let ages = pyramid();
         let little = SchoolYear {
             places: [2_000, 200, 50],
+            asked: [0; 3],
             target: [WHOLE; 3],
             campaign: 0,
             informal: 300,
@@ -512,6 +748,7 @@ mod tests {
         // Twice the primary places.
         let more = SchoolYear {
             places: [4_000, 200, 50],
+            asked: [0; 3],
             ..little
         };
         s.year(&ages, &more);
@@ -562,6 +799,7 @@ mod tests {
         let ages = pyramid();
         let y = SchoolYear {
             places: [2_000, 200, 50],
+            asked: [0; 3],
             target: [WHOLE; 3],
             campaign: 0,
             informal: 300,
