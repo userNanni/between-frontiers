@@ -349,7 +349,10 @@ impl History {
             for (k, x) in v.fertility_terms.iter().enumerate() {
                 self.terms[t][k] += x.to_f64_lossy() * n;
             }
-            for (acc, (p, x)) in self.class[t].iter_mut().zip(r.pops.iter().zip(v.tfr_by_class)) {
+            for (acc, (p, x)) in self.class[t]
+                .iter_mut()
+                .zip(r.pops.iter().zip(v.tfr_by_class))
+            {
                 let n = p.size as f64;
                 acc[0] += n;
                 acc[1] += x.to_f64_lossy() * n;

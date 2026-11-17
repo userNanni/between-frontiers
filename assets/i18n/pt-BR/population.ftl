@@ -42,6 +42,7 @@ population-term-culture = Cultura
 population-term-religion = Religião
 population-hidden = não exposto
 population-by-class = Filhos por mulher por classe: { $place }
+population-by-class-wait = Aparece no dia 15, quando a simulação fizer a conta do mês: o número não vai no save.
 population-class = Classe
 population-class-tfr = Filhos por mulher
 population-class-share = Parcela

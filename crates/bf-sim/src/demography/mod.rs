@@ -18,9 +18,9 @@ use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
+use crate::econ::migration::is_urban;
 use crate::econ::public::{CARE_PER_PERSON, PublicKinds, coverage};
 use crate::econ::week::ECON;
-use crate::econ::migration::is_urban;
 use crate::econ::{Catalogue, Economy, Region, milli, prof, workers};
 use crate::game::GameWorld;
 use crate::politics::{Politics, Scope};
@@ -1037,7 +1037,9 @@ fn split_births(r: &Region, births: i64, by_class: &[Fixed; prof::P]) -> [i64; p
         *o = (i128::from(births) * w / total) as i64;
     }
     let left = births - out.iter().sum::<i64>();
-    let big = (0..prof::P).max_by_key(|&i| (weight[i], std::cmp::Reverse(i))).unwrap_or(0);
+    let big = (0..prof::P)
+        .max_by_key(|&i| (weight[i], std::cmp::Reverse(i)))
+        .unwrap_or(0);
     out[big] += left;
     out
 }

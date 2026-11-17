@@ -183,16 +183,14 @@ fn class_section(ui: &mut Ui, i18n: &I18n, world: &World, view: &PopulationView,
             .color(color::TEXT),
     );
     if lines.is_empty() {
-        bf_ui_kit::muted(ui, &i18n.tr("population-no-data"));
+        bf_ui_kit::muted(ui, &i18n.tr("population-by-class-wait"));
         return;
     }
     // One painted row per class: name, share, children per woman and a bar for the gradient.
     let width = ui.available_width() - space::MD;
     let line = 16.0;
-    let (rect, _) = ui.allocate_exact_size(
-        vec2(width, line * (lines.len() + 1) as f32),
-        Sense::hover(),
-    );
+    let (rect, _) =
+        ui.allocate_exact_size(vec2(width, line * (lines.len() + 1) as f32), Sense::hover());
     let p = ui.painter_at(rect);
     let bar_w = 90.0;
     let tfr_x = rect.right() - bar_w - space::SM;
@@ -216,7 +214,10 @@ fn class_section(ui: &mut Ui, i18n: &I18n, world: &World, view: &PopulationView,
     }
     for (row, l) in lines.iter().enumerate() {
         let y = mid(row + 1);
-        let key = bf_sim::economy::PROFESSIONS.get(l.prof).copied().unwrap_or("?");
+        let key = bf_sim::economy::PROFESSIONS
+            .get(l.prof)
+            .copied()
+            .unwrap_or("?");
         p.text(
             egui::pos2(rect.left(), y),
             Align2::LEFT_CENTER,

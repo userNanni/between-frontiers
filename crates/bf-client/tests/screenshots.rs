@@ -1822,6 +1822,11 @@ fn population_panel() {
             let ctx = h.ctx.clone();
             h.state_mut().apply(Transition::Game(save.clone()), &ctx);
             h.run_steps(4);
+            // Children per woman by class is an output kept out of the save: it is back on the
+            // 15th, at the first demography month after the load.
+            run_until(&mut h, 120, |s| {
+                s.population.as_ref().is_some_and(|p| !p.classes.is_empty())
+            });
             h.key_press(egui::Key::Y);
             h.run_steps(4);
             let n = 90 + i * 2;
