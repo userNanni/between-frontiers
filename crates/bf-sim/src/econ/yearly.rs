@@ -40,6 +40,8 @@ pub const RELIGIOUS_SCHOOLS: Fixed = milli(400);
 pub struct Yearly {
     pub cat: Arc<Catalogue>,
     pub tree: Option<Arc<crate::research::TechTree>>,
+    /// `game::Switches::small_market_wage_floor`.
+    pub wage_floor: bool,
 }
 
 pub struct YearlyChanges {
@@ -67,7 +69,7 @@ impl System<GameWorld> for Yearly {
         let econ = &world.econ;
         let year = ctx.date.year;
         let unlocks = Unlocks::new(cat, year, self.tree.as_deref(), &world.research);
-        let wages = super::monthly::market_wages(econ);
+        let wages = super::monthly::market_wages(econ, self.wage_floor);
         let national = super::local::national(
             cat,
             self.tree.as_deref(),

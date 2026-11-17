@@ -76,6 +76,8 @@ pub struct Week {
     /// Trade by pair (`game::Switches::trade_by_pair`); off, the world pool shares trade pro
     /// rata and the trade state stays empty.
     pub by_pair: bool,
+    /// `game::Switches::small_market_wage_floor`.
+    pub wage_floor: bool,
 }
 
 /// What a pop wants to buy this week.
@@ -942,7 +944,7 @@ impl System<GameWorld> for Week {
             &national,
         );
         let local = cleared.regions;
-        let wages = super::monthly::market_wages(econ);
+        let wages = super::monthly::market_wages(econ, self.wage_floor);
         let regions: Vec<RegionSettlement> = econ
             .regions
             .par_iter()
