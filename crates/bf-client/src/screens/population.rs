@@ -185,7 +185,8 @@ fn community_section(ui: &mut Ui, i18n: &I18n, world: &World, view: &PopulationV
         RichText::new(i18n.tr_args("population-communities", &[("place", Arg::String(place))]))
             .font(sans_medium(size::BODY))
             .color(color::TEXT),
-    );
+    )
+    .on_hover_text(i18n.tr("population-communities-note"));
     if lines.is_empty() {
         bf_ui_kit::muted(ui, &i18n.tr("population-communities-wait"));
         return;
@@ -195,9 +196,10 @@ fn community_section(ui: &mut Ui, i18n: &I18n, world: &World, view: &PopulationV
     let (rect, _) =
         ui.allocate_exact_size(vec2(width, line * (lines.len() + 1) as f32), Sense::hover());
     let p = ui.painter_at(rect);
-    let bar_w = 70.0;
+    // Fixed columns, right-aligned: the bar, people ("53,0 milhões" fits in 92) and share.
+    let bar_w = 56.0;
     let people_x = rect.right() - bar_w - space::SM;
-    let share_x = people_x - 76.0;
+    let share_x = people_x - 92.0 - space::SM;
     let mid = |row: usize| rect.top() + line * row as f32 + line / 2.0;
     for (x, align, key) in [
         (rect.left(), Align2::LEFT_CENTER, "population-community"),
@@ -234,7 +236,7 @@ fn community_section(ui: &mut Ui, i18n: &I18n, world: &World, view: &PopulationV
         // The name gives way to the numbers.
         let name_rect = Rect::from_min_max(
             egui::pos2(rect.left(), y - line / 2.0),
-            egui::pos2(share_x - 52.0, y + line / 2.0),
+            egui::pos2(share_x - 48.0 - space::SM, y + line / 2.0),
         );
         ui.painter_at(name_rect).text(
             egui::pos2(rect.left(), y),
@@ -268,7 +270,7 @@ fn community_section(ui: &mut Ui, i18n: &I18n, world: &World, view: &PopulationV
             color::ACCENT,
         );
     }
-    bf_ui_kit::caption(ui, &i18n.tr("population-communities-note"));
+    bf_ui_kit::small(ui, &i18n.tr("population-communities-short"));
 }
 
 /// Children per woman of each profession, of the country or of the state the pyramid shows.
@@ -288,7 +290,8 @@ fn class_section(ui: &mut Ui, i18n: &I18n, world: &World, view: &PopulationView,
         RichText::new(i18n.tr_args("population-by-class", &[("place", Arg::String(place))]))
             .font(sans_medium(size::BODY))
             .color(color::TEXT),
-    );
+    )
+    .on_hover_text(i18n.tr("population-by-class-note"));
     if lines.is_empty() {
         bf_ui_kit::muted(ui, &i18n.tr("population-by-class-wait"));
         return;
@@ -353,7 +356,7 @@ fn class_section(ui: &mut Ui, i18n: &I18n, world: &World, view: &PopulationView,
             color::ACCENT,
         );
     }
-    bf_ui_kit::caption(ui, &i18n.tr("population-by-class-note"));
+    bf_ui_kit::small(ui, &i18n.tr("population-by-class-short"));
 }
 
 /// One bar per five-year group, the oldest on top, with its share of the people.
