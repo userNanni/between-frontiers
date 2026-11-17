@@ -333,7 +333,13 @@ fn campaigns(
         });
     });
     ui.add_space(space::SM);
-    let list_h = (list_rect.bottom() - ui.cursor().top() - space::XL - 56.0).max(CARD_H);
+    // Room below the list only while it holds something: renaming, confirming, an error.
+    let below = if state.renaming.is_some() || state.confirm_delete || state.error.is_some() {
+        56.0
+    } else {
+        0.0
+    };
+    let list_h = (list_rect.bottom() - ui.cursor().top() - space::XL - below).max(CARD_H);
     let warn = u64::from(shared.settings.warn_mb) * 1_000_000;
     egui::ScrollArea::vertical()
         .id_salt("campaigns")

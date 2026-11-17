@@ -553,19 +553,16 @@ fn the_campaigns_screen_holds_long_and_many() {
                 failures.extend(check(&h, &format!("{case} campaigns")));
                 // The menu of the first campaign, then of the last one (scrolled to it).
                 for which in [0usize, 19] {
-                    let buttons: Vec<_> = h
-                        .query_all(
-                            egui_kittest::kittest::by()
-                                .label_contains(MENU_LABEL[usize::from(locale == "en")]),
-                        )
-                        .collect();
-                    let Some(b) = buttons.get(if which == 0 { 0 } else { buttons.len() - 1 })
-                    else {
+                    let label = MENU_LABEL[usize::from(locale == "en")];
+                    let Some(b) = options_button(&h, label, which != 0) else {
                         failures.push(format!("{case}: no options button"));
                         continue;
                     };
                     b.scroll_to_me();
-                    b.click();
+                    steps(&mut h);
+                    if let Some(b) = options_button(&h, label, which != 0) {
+                        b.click();
+                    }
                     steps(&mut h);
                     failures.extend(check(&h, &format!("{case} menu of campaign {which}")));
                     let screen = h.ctx.content_rect();
@@ -573,7 +570,10 @@ fn the_campaigns_screen_holds_long_and_many() {
                         Some(m) if !screen.contains_rect(m.rect) => failures
                             .push(format!("{case}: the menu {:?} leaves the window", m.rect)),
                         Some(_) => {}
-                        None => failures.push(format!("{case}: no campaign menu")),
+                        None => {
+                            failures.push(format!("{case}: no campaign menu"));
+                            continue;
+                        }
                     }
                     h.key_press(egui::Key::Escape);
                     steps(&mut h);
@@ -592,3 +592,19 @@ fn the_campaigns_screen_holds_long_and_many() {
 
 /// Name of the options button of a campaign, per language.
 const MENU_LABEL: [&str; 2] = ["Opções da campanha", "Campaign options"];
+
+/// The options button of the first campaign, or of the last.
+fn options_button<'a>(
+    h: &'a Harness<'_, App>,
+    label: &'a str,
+    last: bool,
+) -> Option<egui_kittest::Node<'a>> {
+    let mut all: Vec<_> = h
+        .query_all(egui_kittest::kittest::by().label_contains(label))
+        .collect();
+    if last {
+        all.pop()
+    } else {
+        all.into_iter().next()
+    }
+}

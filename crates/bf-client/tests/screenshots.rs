@@ -2255,7 +2255,6 @@ fn campaign_cards() {
             .set_len(1_234_000_000)
             .unwrap();
         write_campaign(home, &session, "União Soviética", "SOV", &[]);
-        write_campaign(home, &session, "Sem bandeira", "ZZZ", &[]);
     };
     let menu_label = |locale: &str| {
         if locale == "en" {
