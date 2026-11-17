@@ -368,9 +368,15 @@ só ganham o que é próprio do capital.
 `treaty_exec` já executa (`revise_debt`: prazo, juro, parte adiável, perdão parcial; só o credor dá)
 vale para ela sem regra nova.
 - **O prêmio de risco lê o pago, não o prometido.** Cada estatização na memória guarda o valor
-  tomado e quanto já foi pago por ela. A parte do prêmio que cai é `pago / tomado`. Uma moratória
-  congela a queda. O perdão parcial reduz a dívida, mas não conta como pago: o prêmio da parte
-  perdoada fica.
+  tomado. O livro guarda, em cada linha, o que foi de fato pago (`paid`) e o que uma revisão
+  perdoou (`forgiven`), ao lado do que falta (`principal`) e do atraso (`arrears`). Isso vem do
+  thread dos tratados, com o degrau de save.
+  - A parte do prêmio que cai é `pago / tomado`, com o pago lido da linha da indenização entre os
+    dois países.
+  - Uma moratória congela a queda, porque não há pagamento.
+  - O perdão parcial reduz a dívida mas não soma ao pago: o prêmio da parte perdoada fica.
+  - Os tratados dão também `treaty::indemnity_paid_share` = `paid / (paid + principal + arrears +
+    forgiven)`, a parcela paga do que foi acordado, que a tela mostra.
 - Isso repete o caso da Indonésia: o acordo de 1966 fixou uma soma abaixo do pedido, paga em 30
   parcelas a 1 %. O capital olha o que entra, não o tratado.
 
@@ -387,7 +393,8 @@ No capital, a quebra custa também:
 |---|---|---|
 | país novo | para de pagar a indenização (atraso, calote parcial, repúdio) | a memória de expropriação volta a pesar na parte não paga; a ex-metrópole pode aplicar o veto (C3) sem quebrar nada, por suspensão recíproca |
 | país novo | estatiza dentro de `guarantee_years` | expropriação sem pagamento com memória e prêmio cheios, mais quebra da garantia (causa e reputação) |
-| ex-metrópole | não respeita a paridade (veta o país novo ou cobra o prêmio da lei de um fundo que devia ser tratado como nacional) | quebra da paridade: causa e reputação; o país novo pode suspender a garantia e a indenização em troca, sem quebrar |
+| país novo | veta o fundo da ex-metrópole, ou o dilui à força, dentro de `parity_years` (ver abaixo) | quebra da paridade: causa e reputação; a ex-metrópole pode vetar o capital entre os dois sem quebrar, por suspensão recíproca |
+| ex-metrópole | com paridade recíproca (como a do acordo Laurel-Langley de 1955 nas Filipinas), não trata o fundo do país novo como nacional | quebra da paridade dela: causa e reputação; o país novo pode suspender a garantia e a indenização em troca, sem quebrar |
 
 **A IA decide pela mesma conta dos tratados:** quebra quando o valor de quebrar passa o custo
 medido (causa, reputação, suspensão recíproca e, aqui, o prêmio de risco que o próprio país
@@ -411,18 +418,48 @@ passará a pagar ao capital de todos). A tela mostra a conta à vítima.
    - a memória e o prêmio são cheios;
    - a garantia quebra: causa e reputação.
    - No ano 11, o mesmo ato é só estatização, sem quebra de tratado.
-4. **Paridade não cumprida.** Com `parity_years` = 20, a ex-metrópole veta o país novo no ano 5:
-   - é quebra da paridade, com causa do país novo e reputação da ex-metrópole;
-   - o país novo pode suspender a indenização em troca sem que isso conte como quebra.
+4. **Paridade não cumprida.** Com `parity_years` = 20:
+   - se o país novo filtra a lei de capital no ano 5, o fundo da ex-metrópole continua com a
+     porta aberta e não há quebra;
+   - se o país novo veta a ex-metrópole no ano 5, é quebra da paridade, com causa da ex-metrópole,
+     reputação do país novo e o direito dela de vetar de volta sem quebrar;
+   - com a paridade recíproca, se a ex-metrópole veta o país novo no ano 5, é quebra dela, e o
+     país novo pode suspender a indenização sem que isso conte como quebra.
 5. **Sem quebra, nada muda.** Um acordo cumprido até o fim não deixa registro de quebra, e o prêmio
    segue só a memória das estatizações e o que foi pago.
 
-**Do lado dos tratados** (o thread dos tratados, a combinar com ele):
-- a cláusula `ColonialPlants` e seus campos;
-- o teste mensal da garantia e da paridade;
-- o campo "pago" ligando a linha de indenização à estatização da memória.
+**Como entra no catálogo dos tratados** (combinado com o thread dos tratados):
+- **`ColonialPlants { kept, guarantee_years, parity_years }` é de execução única.** Reparte a
+  propriedade das fábricas logo depois do território, no mesmo lote da `Debt` em `treaty_exec`.
+  Na assinatura, ela gera duas cláusulas contínuas com fim, uma para cada teste:
+  - **a garantia é a `capital_protection` que já existe:** o país novo dá, a ex-metrópole recebe,
+    com `until` = assinatura + `guarantee_years`. O teste mensal dela é "expropriação sem pagamento
+    = quebra", e é aí que cai estatizar dentro do prazo;
+  - **a paridade é a cláusula nova `capital_parity`:** o país novo dá, a ex-metrópole recebe, com
+    `until` = assinatura + `parity_years`. Com a paridade recíproca, cada lado dá uma.
+- **O que é "tratado como nacional"** é o que o sistema de capital mede para o teste mensal da
+  `capital_parity`. Enquanto a cláusula vigora, o fundo de quem recebe deve ter, no país de quem
+  dá:
+  - **a porta aberta:** `Openness::OPEN` para esse dono, qualquer que seja a lei de capital em
+    vigor. Não entra o prêmio da lei, e não há parcela máxima, prazo nem transferência;
+  - **nenhum veto:** nenhum `SetCapitalEmbargo` de quem dá contra quem recebe;
+  - **nenhuma diluição forçada:** as camadas desse dono ficam fora da venda obrigatória quando a
+    lei baixa a parcela máxima (desfecho k).
 
-O livro, a revisão, os graus de calote, a reputação e a suspensão recíproca já são dele.
+  O sistema de capital publica, a cada mês, uma função `parity_kept(world, giver, receiver) ->
+  bool` com essas três condições. O teste da cláusula a lê, e a quebra passa pela regra única
+  (`treaty::breach`, com preço pelo tamanho da obrigação). Enquanto a cláusula vigora, o próprio
+  sistema de capital já aplica a porta aberta a esse dono. Por isso a quebra só acontece por ato
+  de quem dá: o veto, ou uma diluição que não isenta esse dono.
+- **Custo próprio do capital:** a memória de expropriação e o veto (C3) são aplicados por este
+  sistema, lendo o registro de quebra.
+- **Ordem:** as duas cláusulas entram no PR das cláusulas novas (promessa, embargo,
+  `ColonialPlants`), depois do PR da negociação e da quebra, que traz `breach` e `reputation`. Até a
+  estatização e a lei de capital estarem no tick, elas nascem dormentes (`front: ForeignCapital`).
+  Os testes de jogo 1 a 4 são escritos nesse PR, contra o contrato deste sistema no `main`.
+
+O livro, a revisão, os graus de calote, a reputação e a suspensão recíproca já são do thread dos
+tratados.
 
 ### Testes
 
