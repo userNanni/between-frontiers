@@ -5,8 +5,9 @@ A demografia (nascimentos, mortes, idade e migração entre países) roda na sim
 
 ## Comunidades de 1925
 
-Estado: contrato e dados, **sem ligação com a simulação**. Os parâmetros abaixo são **proposta
-para o dono decidir** (decisões em aberto 1 a 3 de `architecture.pt-BR.md`).
+Estado: contrato e dados, ainda **sem ligação com a simulação**. Os parâmetros abaixo são
+**regra**: o dono decidiu as três decisões (1 a 3 de `architecture.pt-BR.md`) em 2026-11-17,
+como estavam propostas. A ligação com a simulação vem no PR seguinte.
 
 - Contrato: `crates/bf-sim/src/communities.rs` (listas, composição por estado, regra ABC).
 - Dados: `data/culture/cultures.ron`, `data/culture/religions.ron`,
@@ -107,13 +108,13 @@ Principais, por região (a citação completa e o que cada uma deu estão nos ar
 | América do Norte | Censo dos EUA de 1920 (língua materna por estado), Religious Bodies 1926 (católicos, judeus e SUD por estado), Census Working Paper 56 (raça), Canadá 1921 (origem e religião por província), Terra Nova 1921 |
 | América Latina | México 1921 e 1930, Guatemala 1921, Cuba 1919, Argentina 1914, Chile 1920, Brasil 1920 (estrangeiros) e 1940 (cor e religião), Peru 1940 projetado, censos coloniais do Caribe de 1921 |
 
-## Quais comunidades viram linha (proposta: decisão 1)
+## Quais comunidades viram linha (decisão 1, regra)
 
-Implementado em `Communities::rows` com `RowRule::PROPOSED`.
+Implementado em `Communities::rows` com `RowRule::PROPOSED` (o nome ficou; os valores são os decididos).
 
 **Importância = parcela × relevância**, relevância = 1 + soma dos pesos dos fatores.
 
-| Fator | Peso proposto | Por quê |
+| Fator | Peso | Por quê |
 |---|---:|---|
 | Elite | 3 | Uma elite de 5 % (brancos na Rodésia, europeus nas Índias Holandesas) tem de pesar como um grupo de 20 %: é quem tem terra, capital e Estado |
 | Status legal | 2 | Perseguido ou privilegiado é alvo de lei; a doutrina pede que conte como mandar |
@@ -139,7 +140,7 @@ Resultado com os dados de 1925 (`cargo test -p bf-sim --test communities_1925 --
 
 | Variante | Linhas por estado (média) | Estados no teto | Linhas da tabela | Pessoas em "outras minorias" |
 |---|---:|---:|---:|---:|
-| **Proposta** (corte 95 %, teto 8, piso nacional 2 %) | **3,23** | 37 | **45 630** | 2,3 % |
+| **Regra** (corte 95 %, teto 8, piso nacional 2 %) | **3,23** | 37 | **45 630** | 2,3 % |
 | Corte 90 % | 2,73 | 12 | 40 326 | 4,2 % |
 | Corte 98 % | 3,84 | 81 | 51 636 | 1,1 % |
 | Teto 6 | 3,12 | 124 | 44 395 | 2,7 % |
@@ -165,7 +166,7 @@ como se toda comunidade ocupasse toda profissão. Máximo por estado: 9 × 13 = 
   porque uma elite de 5 % precisa pesar como um grupo de 20 % para passar o corte num estado onde
   a maioria tem 80 %.
 
-## Assimilação (proposta: decisão 3, sem código)
+## Assimilação (decisão 3, regra; ainda sem código)
 
 Assimilação é fluxo explícito entre comunidades, calculado uma vez por ano, nunca efeito do
 agrupamento. Duas regras separadas, porque mudar de língua e mudar de religião têm ritmos
@@ -176,7 +177,7 @@ para (cultura primária do país, *r*):
 
     a = a₀ × L × (1 − D) × (1 − s)² × F
 
-| Termo | Proposta | Leitura |
+| Termo | Valor | Leitura |
 |---|---|---|
 | a₀ (taxa base) | 1,5 % ao ano | Em uma geração (30 anos) e sem resistência, 36 % mudam de língua; em 75 anos, 68 %, a ordem do que se viu com imigrantes europeus nos EUA e na Argentina entre 1900 e 1970 |
 | L (lei) | exclusão 0; pluralismo 0,5; neutra 1; assimilação forçada 1,5 | Segregação impede (Jim Crow não assimila afro-americanos); escola só na língua oficial acelera (bretões na França) e, na fase 3, gera radicalismo |
@@ -483,8 +484,8 @@ cidades (na proporção da população urbana dos estados). Na pirâmide, idades
 
 ### Cultura e religião na natalidade (desenho, sem código)
 
-Estado: desenho para o dono decidir junto com as decisões 1 a 3 (`architecture.pt-BR.md`). Nada
-disto roda: os termos só entram quando as comunidades estiverem nos pops. Regra: cultura entra
+Estado: desenho; as decisões 1 a 3 foram tomadas em 2026-11-17 e o termo de difusão entra com a
+ligação das comunidades (peso de partida 0,10, a calibrar). Nada disto roda ainda: os termos só entram quando as comunidades estiverem nos pops. Regra: cultura entra
 como **difusão** da transição, nunca como "a cultura X tem mais filhos"; religião só com efeito
 medido **líquido de escolaridade e renda**. Efeito sem essa medição não entra.
 
