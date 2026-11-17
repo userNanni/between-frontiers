@@ -67,7 +67,7 @@ citação.
   cláusulas.
 - **Estado:** cláusulas `defence`, `non_aggression`, `consultation`, `border_guarantee`, `base`,
   `troops_quota` e `passage` no catálogo (#93), assináveis e **dormentes** até a guerra rodar.
-  Neutralidade e ofensa: em desenho, sem cláusula ainda. O rótulo do tipo na tela: desenhado.
+  Neutralidade e ofensa: desenhadas no ramo da crise, ainda sem cláusula no catálogo. O rótulo do tipo na tela: desenhado.
 - **Onde está o detalhe:** [`treaties.pt-BR.md`, seção 4](../../treaties.pt-BR.md#4-catálogo-de-cláusulas)
   e [seção 12](../../treaties.pt-BR.md#12-dados-de-1925-no-formato-novo) (os tipos de 1925 viram
   cláusulas); [`influence.pt-BR.md`, seção 5](../../influence.pt-BR.md#5-blocos) (blocos);
@@ -89,9 +89,8 @@ citação.
   condição de defesa; ainda assim a Itália ficou fora da guerra até junho de 1940
   ([Pacto de Aço, Wikipedia](https://en.wikipedia.org/wiki/Pact_of_Steel)). Os dois casos são
   testes de jogo: o primeiro pela cláusula, o segundo pelo preço de não cumprir.
-- **Estado:** decidido; em desenho no ramo da crise e declaração (fase 5, fatia B). A primeira
-  versão do desenho da fatia B propunha que o aliado chamado sempre entrasse; a decisão do autor
-  substitui isso.
+- **Estado:** decidido (W4); desenhado no ramo da crise e declaração (fase 5, fatia B), com os
+  testes da Itália de 1914 e do Pacto de Aço. Ver [Crise e guerra](crise-e-guerra.md#quem-entra-e-por-qual-cláusula).
 - **Onde está o detalhe:** [`war.pt-BR.md`, "Como começa e como acaba"](../../war.pt-BR.md#como-começa-e-como-acaba);
   a seção "Crise e declaração" entra no mesmo documento com a fatia B.
 
@@ -111,12 +110,17 @@ citação.
   5. **boa vontade:** a quebra contra B baixa a boa vontade de B com quem quebrou
      ([Diplomacia e influência](diplomacia-e-influencia.md)).
 
+  Na guerra, o jogador chamado por cláusula recebe uma entrada com prazo e duas saídas, honrar ou
+  não honrar, com o preço à vista; é decisão rara, com ponto de restauração.
+
   A IA quebra só quando o valor de quebrar passa esse custo, e a tela mostra a conta ao jogador
   que é a vítima, para a traição não vir sem causa visível.
 - **O que ainda está em desenho:** o preço próprio da traição numa guerra (quanto pesa a mais do
   que uma tarifa acima do teto, o efeito na legitimidade em casa, e se os outros aliados do traidor
   revisam os acordos). Os threads da guerra e dos tratados estão fechando isso.
-- **Como é na vida real:** a reputação de cumprir é o que pesa na confiança entre Estados (Tomz
+- **Como é na vida real:** o caso de referência do preço é Munique (1938): a França não honrou o
+  tratado com a Tchecoslováquia, Moscou concluiu que não podia contar com o Ocidente e os pequenos
+  aliados viram que o tratado não os protegia. A reputação de cumprir é o que pesa na confiança entre Estados (Tomz
   2007, sobre a dívida soberana); a suspensão recíproca é a regra geral do direito dos tratados
   (Convenção de Viena de 1969, art. 60).
 - **Estado:** regra geral da quebra desenhada e decidida; preço específico da traição na guerra em
@@ -149,3 +153,4 @@ citação.
 - Snyder, G. H. "The Security Dilemma in Alliance Politics". *World Politics* 36(4), 1984.
 - Tomz, M. *Reputation and International Cooperation*. Princeton University Press, 2007.
 - Pacto de Aço (1939): <https://en.wikipedia.org/wiki/Pact_of_Steel> (fatos; CC BY-SA 4.0).
+- Acordo de Munique (1938): <https://en.wikipedia.org/wiki/Munich_Agreement> (fatos; CC BY-SA 4.0).
