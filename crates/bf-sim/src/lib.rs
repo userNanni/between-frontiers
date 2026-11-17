@@ -8,6 +8,7 @@ pub mod diplomacy;
 pub mod econ;
 pub mod economy;
 pub mod foreign_capital;
+pub mod foreign_stakes;
 pub mod game;
 pub mod indicators;
 pub mod influence;

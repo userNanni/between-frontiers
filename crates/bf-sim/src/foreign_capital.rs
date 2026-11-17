@@ -2,7 +2,7 @@
 //! what a law or an expropriation does to the next flow. Design and sources in
 //! `docs/late-industrialization.pt-BR.md`.
 //!
-//! Nothing here is scheduled or saved. These are pure functions in fixed point, with every
+//! Nothing here is scheduled or saved (the stakes it applies to are in `foreign_stakes`). These are pure functions in fixed point, with every
 //! return split into named terms, so that the screen can show why a fund invests where it does:
 //!
 //! - [`site_return`]: the yearly return a fund expects from a level built abroad, term by term
@@ -276,7 +276,7 @@ pub fn expropriation_premium(history: &[Expropriation]) -> Fixed {
 }
 
 /// How a mixed plant passes to the local partner.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum Handover {
     /// The foreign owner keeps its share.
     Never,
