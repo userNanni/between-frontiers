@@ -120,11 +120,13 @@ fn check(h: &Harness<'_, App>, case: &str) -> Vec<String> {
                 n.role, n.label, f.label, f.rect
             ));
         }
-        // Down: on the screen, unless an area that scrolls holds it.
+        // Down: on the screen, unless an area that scrolls holds it (below its top, or
+        // scrolled past above it).
         if r.top() < screen.top() - tol || r.bottom() > screen.bottom() + tol {
-            let scrolled = scrolls
-                .iter()
-                .any(|s| s.right() >= r.right() - tol && s.top() <= r.top() + tol);
+            let scrolled = scrolls.iter().any(|s| {
+                s.right() >= r.right() - tol
+                    && (s.top() <= r.top() + tol || r.bottom() <= s.top() + tol)
+            });
             if !scrolled {
                 out.push(format!(
                     "{case}: {:?} {:?} {r:?} off the screen down",
