@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Noise band of the scorecard, and comparisons that flag only what leaves it.
 
-The model is sensitive: a change that does not touch a country still moves its trajectory. Runs
-that differ only by a perturbation with no economic weight (`BF_PERTURB=K`, K dollars more in
-every investment pool in 1925) measure how far that sensitivity alone moves each number.
+The model is sensitive: a change that does not touch a country still moves its trajectory. Two
+bands measure it. Runs that differ only by K dollars more in every investment pool in 1925
+(`BF_PERTURB=K`) give the minimal band: the model is deterministic but sensitive. Runs whose pools
+are N per mille larger or smaller (`BF_PERTURB_PERMILLE=N`, N about 10) give the reshuffling band:
+how far any real change moves each country. `compare` judges by the reshuffling band by default.
 
     noise.py band --runs p0/scorecard.json p1/scorecard.json p2/scorecard.json --out band.json
     noise.py compare --band band.json --base base/scorecard.json --new branch/scorecard.json
@@ -172,7 +174,11 @@ def main():
     b.add_argument("--out", required=True)
     b.add_argument("--top", type=int, default=15)
     c = sub.add_parser("compare")
-    c.add_argument("--band", required=True)
+    c.add_argument(
+        "--band",
+        default="target/noise/band-reshuffle.json",
+        help="the band to judge by; by default the reshuffling one (BF_PERTURB_PERMILLE)",
+    )
     c.add_argument("--base", required=True)
     c.add_argument("--new", required=True)
     c.add_argument("--sigmas", type=float, default=2.0)

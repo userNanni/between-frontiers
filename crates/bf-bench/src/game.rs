@@ -329,6 +329,16 @@ fn new_session(data: &GameData, seed: u64, threads: usize) -> Session {
             m.pool += laplace_schelling::Fixed::from_int(k);
         }
     }
+    // `BF_PERTURB_PERMILLE=N`: every pool N per mille larger (or smaller), a nudge the size of
+    // a real change of rule or data: the reshuffling band.
+    if let Some(n) = std::env::var("BF_PERTURB_PERMILLE")
+        .ok()
+        .and_then(|v| v.parse::<i64>().ok())
+    {
+        for m in &mut world.econ.markets {
+            m.pool = m.pool.mul_ratio(1000 + n, 1000);
+        }
+    }
     Session::new(
         world,
         seed,

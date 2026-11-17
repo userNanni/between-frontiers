@@ -105,55 +105,71 @@ comparam 2022 dos dois lados.
 ### Faixa de ruído
 
 O modelo é sensível: uma mudança que não toca um país ainda move a trajetória dele. Antes de
-julgar uma branch país a país, compare com a faixa que essa sensibilidade sozinha produz.
+julgar uma branch país a país, compare com a faixa que essa sensibilidade sozinha produz. Há duas:
 
-    # três rodadas que diferem só por K dólares a mais no fundo de cada país em 1925
-    for k in 0 1 2; do
-      BF_PERTURB=$k target/release/bf-bench --game --years 101 --history-out target/noise/p$k/history.json
-      python3 tools/history/scorecard.py --sim target/noise/p$k/history.json --out target/noise/p$k
+- **Mínima** (`BF_PERTURB=K`): K dólares a mais no fundo de investimento de cada país em 1º de
+  janeiro de 1925, quantia sem peso econômico. Diz que o modelo é determinístico mas sensível.
+- **De reembaralhamento** (`BF_PERTURB_PERMILLE=N`, N perto de 10): o fundo de cada país N por mil
+  maior ou menor em 1925. Diz quanto uma mudança real qualquer desloca cada país; é a que o
+  `compare` usa por padrão.
+
+A semente do `bf-bench` não serve: a simulação do jogo não sorteia nada.
+
+    for n in 10 -10 15; do
+      BF_PERTURB_PERMILLE=$n target/release/bf-bench --game --years 101 \
+          --history-out target/noise/pm$n/history.json
+      python3 tools/history/scorecard.py --sim target/noise/pm$n/history.json --out target/noise/pm$n
     done
-    python3 tools/history/noise.py band --runs target/noise/p{0,1,2}/scorecard.json --out target/noise/band.json
+    python3 tools/history/noise.py band --runs target/noise/pm{10,-10,15}/scorecard.json \
+        --out target/noise/band-reshuffle.json
     # uma branch contra a base: só o que sai de 2 desvios, e se ficou mais perto ou mais longe do real
-    python3 tools/history/noise.py compare --band target/noise/band.json \
-        --base base/scorecard.json --new branch/scorecard.json --largest-only
+    python3 tools/history/noise.py compare --base base/scorecard.json --new branch/scorecard.json \
+        --largest-only
 
-A semente do `bf-bench` não serve para isso: a simulação do jogo não sorteia nada.
-`BF_PERTURB=K` soma K dólares, quantia sem peso econômico, ao fundo de investimento de cada país em
-1º de janeiro de 1925 (`crates/bf-bench/src/game.rs`). A faixa é o desvio-padrão, entre as rodadas,
-da razão simulado/real de cada célula (unidade × década × população, PIB, PIB por habitante) e dos
-agregados (mundo, ranking, parcela das regiões no PIB mundial, produção mundial).
+A faixa é o desvio-padrão, entre as rodadas, da razão simulado/real de cada célula (unidade ×
+década × população, PIB, PIB por habitante) e dos agregados (mundo, ranking, parcela das regiões no
+PIB mundial, produção mundial). As duas faixas da `main` em d5570d0 (desvio-padrão do PIB por
+habitante, razão):
 
-Faixa da `main` em d5570d0 (três rodadas, K = 0, 1, 2; desvio-padrão da razão):
-
-| Década | PIB pc: mediana | PIB pc: p90 | PIB pc dos 20 maiores: p90 | PIB: p90 | População: p90 |
+| Década | Mínima: mediana | Mínima: p90 | Reembaralhamento: mediana | Reembaralhamento: p90 | Reembaralhamento: p90 dos 20 maiores |
 |---|---|---|---|---|---|
-| 1955 | 0,007 | 0,043 | 0,019 | 0,047 | 0,000 |
-| 1975 | 0,020 | 0,058 | 0,036 | 0,068 | 0,002 |
-| 1985 | 0,017 | 0,093 | 0,064 | 0,118 | 0,005 |
-| 1995 | 0,023 | 0,140 | 0,060 | 0,163 | 0,007 |
-| 2005 | 0,020 | 0,122 | 0,056 | 0,123 | 0,013 |
-| 2025 | 0,020 | 0,074 | 0,046 | 0,090 | 0,029 |
+| 1955 | 0,007 | 0,043 | 0,024 | 0,068 | 0,081 |
+| 1975 | 0,020 | 0,058 | 0,039 | 0,116 | 0,088 |
+| 1985 | 0,017 | 0,093 | 0,034 | 0,120 | 0,119 |
+| 1995 | 0,023 | 0,140 | 0,043 | 0,245 | 0,187 |
+| 2005 | 0,020 | 0,122 | 0,032 | 0,200 | 0,200 |
+| 2015 | 0,019 | 0,091 | 0,030 | 0,163 | 0,217 |
+| 2025 | 0,020 | 0,074 | 0,029 | 0,135 | 0,204 |
 
-Os agregados são estáveis: ranking do PIB por habitante ±0,003, PIB mundial ±0,02, produção
-mundial de energia ±0,01 a 0,06. Os menos estáveis, com o maior desvio do PIB por habitante e a
-década em que ele passa de 0,10: Etiópia (0,57, desde 1975), Argentina (0,47, 1985), metrópole
-holandesa (0,46, 1985), Congo Belga (0,35, 1995), Danzig (0,34, 1965), Afeganistão (0,30, 1975),
-Indonésia (0,25, 1985), Itália (0,23, 1995). Antes de 1955 uma perturbação tão pequena ainda não
-se espalhou e a faixa sai zero: ela subestima o ruído do começo do século, em que uma mudança de
-regra já move os números.
+Os agregados são estáveis nas duas: ranking do PIB por habitante ±0,013 (2025), PIB mundial ±0,02,
+produção mundial de energia ±0,01 a 0,04. Por país, a faixa de reembaralhamento passa de 0,15 entre
+os 20 maiores a partir de 1995: depois de 1990 o modelo amplifica empurrões pequenos em alguns
+países, um defeito com tarefa própria. Antes de 1945 a faixa é quase zero e o `compare` usa um piso
+de 0,01 (`--floor`).
 
-Antes de 1955 a faixa é zero, e `compare` usa um piso de 0,01 na razão (`--floor`). E uma
-perturbação de um dólar mede a sensibilidade a um empurrão mínimo, não a uma mudança de regra ou
-de dado: a primeira mudança comparada com ela (aço do estaleiro naval, `fix/naval-steel`) tirou
-185 células dos 20 maiores da faixa, 105 para melhor e 80 para pior, e levou o PIB do Egito de 2025
-de 0,42 para 0,20 do real, enquanto as três rodadas perturbadas dão 0,42. A faixa separa ruído de
-efeito, mas um efeito grande longe do que a mudança toca ainda pede causa, ou uma faixa medida com
-perturbação maior.
+**Os menos estáveis** (faixa de reembaralhamento; maior desvio, grandeza e década; e a década em que
+o PIB por habitante passa de 0,10). Dependências anotadas, sem conserto aqui:
+
+| Unidade | Maior desvio | Desde |
+|---|---|---|
+| Congo Belga | PIB pc 3,9 (2005) | 1965 |
+| Metrópole holandesa | PIB 0,77 (2025); população 0,16 (2015) | 1995 |
+| Afeganistão | PIB 0,58 (1995) | 1975 |
+| Metrópole belga | PIB 0,57 (2025) | 1995 |
+| Itália | PIB 0,48 (2025) | 1985 |
+| Filipinas (colônias americanas) | PIB pc 0,47 (1985) | 1975 |
+| Austrália | PIB pc 0,43 (2025) | 1985 |
+| Indonésia | PIB 0,39 (2005); população 0,10 (2025) | 1965 |
+| Colônias espanholas | PIB 0,37 (1965) | 1965 |
+| Egito | PIB pc 0,33 (1995) | 1975 |
+| Danzig | PIB pc 0,32 (1995) | 1955 |
+
+Na faixa mínima também se destacam a Etiópia (PIB pc 0,57, desde 1975) e a Argentina (0,47, desde
+1985). O Egito é estável sob um dólar e cai à metade com o aço naval do #87 (PIB 2025: 0,42 → 0,20),
+dentro do que a faixa de reembaralhamento admite para ele.
 
 Critério para PR que muda a simulação: os agregados e as grandezas que a mudança mira, e nenhuma
-célula dos 20 maiores fora da faixa (2 desvios) para pior sem causa nomeada. Duas rodadas que
-diferem por uma regra que não toca um país mudaram até 251 de 746 células de metrópole em mais
-de 0,05: julgar país a país sem a faixa confunde ruído com efeito.
+célula dos 20 maiores fora da faixa de reembaralhamento (2 desvios) para pior sem causa nomeada.
 
 ### O que não é a mesma coisa dos dois lados
 
