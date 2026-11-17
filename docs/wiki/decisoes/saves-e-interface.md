@@ -93,3 +93,14 @@ em [`saves.pt-BR.md`](../../saves.pt-BR.md) e nos PRs do cliente.
 - **Estado:** no jogo (#56, #58, #59, #63).
 - **Onde está o detalhe:** [`architecture.pt-BR.md`, "Cliente em Linux e Windows"](../../architecture.pt-BR.md#cliente-em-linux-e-windows)
   e os PRs citados.
+
+### Um X fecha a janela
+
+- **Decisão:** as janelas fecham por um botão X no canto, não por um botão com o texto "Fechar". É
+  um componente só, usado em todas as janelas, com a dica "Fechar (Esc)".
+- **O que o autor pensou:** o autor pediu o X no lugar de "Fechar".
+- **Como o jogo funciona por causa disso:** Governo, Agendas e Pesquisa têm o X na linha das abas,
+  do tamanho de um botão pequeno; Esc fecha do mesmo jeito. O "fechar" da rota marítima continua
+  como texto, porque ali é a ação de fechar um estreito, não a janela.
+- **Estado:** no jogo (#134).
+- **Onde está o detalhe:** PR #134; `bf_ui_kit::close_button`.

@@ -39,6 +39,8 @@ versionado com cadeia de migração e chaves do catálogo, e o salvamento autom�
 
 ## O que vem depois
 
-- Equilíbrio fino, depois da fase 6 ([Princípios](principios.md#funcionalidade-antes-de-equilíbrio)).
+- Depois da fase 6, nesta ordem ([Princípios](principios.md#otimizar-antes-de-calibrar)):
+  1. rodadas de otimização e simplificação do código, para desempenho;
+  2. calibração (equilíbrio fino), cujas rodadas servem também de teste de desempenho.
 - Referência gerada dos dados de `data/` (bens, prédios, tecnologias, leis, cláusulas), por script.
 - Guias de como jogar, depois da primeira versão estável.
