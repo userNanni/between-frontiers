@@ -49,6 +49,26 @@ detalhe está em [`economy.pt-BR.md`](../../economy.pt-BR.md) e em
   num ramo à parte.
 - **Onde está o detalhe:** [`economy.pt-BR.md`, "Capital por método"](../../economy.pt-BR.md#capital-por-método).
 
+### O que era regra do Estado passa para a mão do jogador
+
+- **Decisão (2026-11-17):** dez regras do Estado viram decisão do jogador, com a regra de hoje como
+  padrão ("regra histórica") e a opção de fixar o valor, como já acontece com os impostos: tamanho
+  da folha, salário público, compras do Estado e a parte militar, excedente e reserva do Tesouro,
+  teto de déficit, calote e reestruturação, câmbio, fila de obras públicas, dívida interna ou
+  externa, e construir tropas de propósito (D1 a D9 e D13).
+- **O que o autor pensou:** ele leu a lista do que o país decidia sozinho e escolheu o que passa ao
+  jogador, com notas: o clero nem sempre é folha do governo, depende da lei de religião e Estado; a
+  fila de obras é "uma lista de prioridades que o jogador define e em que pode ordenar tudo"; o
+  mercado decide quem compra a dívida, e o jogador escolhe onde emite; o calote é decisão rara, em
+  Agendas; o câmbio entra com o padrão-ouro; o efetivo de paz continua pela lei.
+- **Como o jogo funciona por causa disso:** quem não mexe joga com a regra histórica; quem quer
+  governar a fundo fixa a folha, o déficit ou a ordem das obras no Orçamento, e a regra deixa de
+  valer para aquele item. Continuam por regra a correção fiscal, o recorte de zeros da moeda e a
+  bolsa colonial.
+- **Estado:** decidido; simulação e telas a fazer (o câmbio espera o padrão-ouro da fase 4).
+- **Onde está o detalhe:** [O que o jogador decide](../o-que-o-jogador-decide.md), seção "O que o
+  autor decidiu", que entra com o PR #137.
+
 ### Sem industrialização por regra
 
 - **Decisão:** o jogo não constrói por regra o que o país importa. Industrializar pede capital,

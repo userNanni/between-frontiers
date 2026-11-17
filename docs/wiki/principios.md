@@ -8,7 +8,7 @@ causa visível, pouco sorteio, cada fase jogável sozinha) estão em
 ## Funcionalidade antes de equilíbrio
 
 **Decisão (2026-11-17):** as fases 4 a 6 (diplomacia, guerra, IA estratégica) vêm primeiro; o
-equilíbrio fino fica para depois da fase 6.
+equilíbrio fino fica para depois da fase 6 e da otimização (abaixo).
 
 **O que o autor pensou:** "Melhor andar mais rápido em funcionalidade e equilibrar depois: talvez
 seja a falta de alguma funcionalidade que desequilibrou o jogo." A coordenação tinha proposto
@@ -20,6 +20,20 @@ existiam, e cada ajuste reembaralhava as trajetórias dos países.
 teste de 100 anos continua rodando para avisar quando algo quebra (determinismo, mundo sem
 colapsar), não como meta fina. O desequilíbrio que aparece vira dependência anotada com o número,
 à espera do sistema que falta.
+
+## Otimizar antes de calibrar
+
+**Decisão (2026-11-17):** depois da fase 6 e antes da calibração vêm rodadas de otimização e
+simplificação do código. A ordem fica: funcionalidade até a fase 6, depois desempenho, depois
+calibração.
+
+**O que o autor pensou:** "Para calibrar, vai ser preciso rodar muitas vezes e observar. Antes
+disso, vale otimizar o código e ver o que dá para simplificar e melhorar em desempenho: as rodadas
+de calibração já ganham com isso e servem também como mais testes de desempenho."
+
+**O que muda no jogo:** o jogador não vê a ordem, mas sente o efeito: um ano de simulação mais
+rápido. As rodadas de 100 anos da calibração passam a medir também o custo de cada sistema, como o
+benchmark noturno já faz ([`benchmarks.pt-BR.md`](../benchmarks.pt-BR.md)).
 
 ## Gradual como na vida real, mas não tanto assim
 
