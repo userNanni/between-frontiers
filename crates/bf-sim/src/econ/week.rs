@@ -178,15 +178,17 @@ fn need_mix(
 /// same for every pop that sees those prices, so it is worked out once per state and week.
 pub(crate) struct NeedMixes {
     mixes: Vec<(Vec<(GoodIx, Fixed)>, Fixed)>,
+    /// Goods across all mixes: the most orders a pop can place, so its list is allocated once.
+    goods: usize,
 }
 
 impl NeedMixes {
     pub(crate) fn new(cat: &Catalogue, prices: &[Fixed], exists: &[bool]) -> Self {
-        Self {
-            mixes: (0..cat.needs.len())
-                .map(|i| need_mix(cat, i, prices, exists))
-                .collect(),
-        }
+        let mixes: Vec<_> = (0..cat.needs.len())
+            .map(|i| need_mix(cat, i, prices, exists))
+            .collect();
+        let goods = mixes.iter().map(|(mix, _)| mix.len()).sum();
+        Self { mixes, goods }
     }
 }
 
@@ -246,7 +248,7 @@ pub(crate) fn plan_pop(
     } else {
         Fixed::ZERO
     };
-    let mut orders: Vec<(GoodIx, Fixed)> = Vec::new();
+    let mut orders: Vec<(GoodIx, Fixed)> = Vec::with_capacity(mixes.goods);
     let mut tier_planned = [Fixed::ZERO; 4];
     for (i, (qty, mix, cost)) in need_cost.iter().enumerate() {
         let t = (cat.needs[i].tier - 1) as usize;
