@@ -465,6 +465,9 @@ pub struct Economy {
     /// the weekly money step. Empty in worlds without treaties.
     #[serde(default)]
     pub ledger: crate::treaty::Ledger,
+    /// Trade by pair of countries (`econ::trade::TradeState`). Empty until the first week.
+    #[serde(default)]
+    pub trade: super::trade::TradeState,
 }
 
 /// The economy as saves wrote it before the ledger of debts between states (2026-11-17).
@@ -486,6 +489,7 @@ impl From<EconomyBeforeLedger> for Economy {
             world_price: e.world_price,
             history: e.history,
             ledger: Default::default(),
+            trade: Default::default(),
         }
     }
 }
@@ -618,6 +622,11 @@ impl HashState for Economy {
         if !self.ledger.is_empty() {
             h.section("ledger");
             self.ledger.hash_state(h);
+        }
+        // Saves from before trade by pair load with it empty and keep their hash.
+        if !self.trade.is_empty() {
+            h.section("trade");
+            self.trade.hash_state(h);
         }
     }
 }

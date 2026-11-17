@@ -105,6 +105,15 @@ pub struct Need {
 #[derive(Clone, Debug, Default)]
 pub struct Catalogue {
     pub goods: Vec<Good>,
+    /// Freight of each good over the reference distance of an international haul
+    /// (`TradeDef::reference_km`), as a share of its value: its producers' group freight
+    /// (`purchases.ron`).
+    pub good_freight: Vec<Fixed>,
+    /// Building group of the first building that makes each good: trading networks and the
+    /// preferences of trade are by group (`econ::trade`). `None` for goods nobody makes.
+    pub good_group: Vec<Option<u8>>,
+    /// Trade with a partner (`PurchasesFile::trade`).
+    pub trade: crate::economy::TradeDef,
     pub buildings: Vec<Building>,
     pub needs: Vec<Need>,
     /// Goods that clear state by state, in catalogue order.
@@ -403,6 +412,35 @@ impl Catalogue {
                 .collect::<Result<_, _>>()?,
             state_basket: basket(&purchases.state)?,
             upkeep_basket: basket(&purchases.upkeep)?,
+            good_group: {
+                let mut group = vec![None; goods.len()];
+                for b in &bs {
+                    for m in &b.methods {
+                        for (g, _) in &m.outputs {
+                            group[*g as usize].get_or_insert(b.group_ix);
+                        }
+                    }
+                }
+                group
+            },
+            good_freight: {
+                // The highest freight among the groups whose buildings make the good.
+                let mut per_mille = vec![0i64; goods.len()];
+                for b in &bs {
+                    let f = group_of(&b.group)?.freight;
+                    for m in &b.methods {
+                        for (g, _) in &m.outputs {
+                            let e = &mut per_mille[*g as usize];
+                            *e = (*e).max(f);
+                        }
+                    }
+                }
+                per_mille
+                    .into_iter()
+                    .map(|p| Fixed::from_ratio(p, 1000))
+                    .collect()
+            },
+            trade: purchases.trade.clone(),
             goods,
             buildings: bs,
             needs: ns,

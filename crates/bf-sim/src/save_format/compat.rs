@@ -108,7 +108,7 @@ pub struct V5 {
     player: Option<Id<Country>>,
     countries: Table<Country, CountryState>,
     census: Vec<CensusRecord>,
-    econ: crate::econ::Economy,
+    econ: crate::econ::compat::EconomyBeforeTrade,
     research: crate::research::ResearchState,
     politics: crate::polity::PoliticsState,
     demography: crate::demography::DemographyState,
@@ -170,12 +170,28 @@ pub struct V6 {
     player: Option<Id<Country>>,
     countries: Table<Country, CountryState>,
     census: Vec<CensusRecord>,
-    econ: crate::econ::Economy,
+    econ: crate::econ::compat::EconomyBeforeTrade,
     research: crate::research::ResearchState,
     politics: crate::polity::PoliticsState,
     demography: crate::demography::DemographyState,
     borders: crate::borders::BordersState,
     foreign: crate::foreign_stakes::ForeignState,
+}
+
+/// Version 7, the influence state (`GameWorld::influence`), before trade by pair.
+#[derive(Deserialize)]
+pub struct V7 {
+    scenario: String,
+    player: Option<Id<Country>>,
+    countries: Table<Country, CountryState>,
+    census: Vec<CensusRecord>,
+    econ: crate::econ::compat::EconomyBeforeTrade,
+    research: crate::research::ResearchState,
+    politics: crate::polity::PoliticsState,
+    demography: crate::demography::DemographyState,
+    borders: crate::borders::BordersState,
+    foreign: crate::foreign_stakes::ForeignState,
+    influence: crate::influence::InfluenceState,
 }
 
 /// 6 → 7: the influence state (`GameWorld::influence`), empty, which hashes as nothing.
@@ -193,22 +209,6 @@ pub fn v6_to_v7(w: V6) -> V7 {
         foreign: w.foreign,
         influence: Default::default(),
     }
-}
-
-/// Version 7: the world with the influence state (#110), before the treaty state.
-#[derive(Deserialize)]
-pub struct V7 {
-    scenario: String,
-    player: Option<Id<Country>>,
-    countries: Table<Country, CountryState>,
-    census: Vec<CensusRecord>,
-    econ: crate::econ::Economy,
-    research: crate::research::ResearchState,
-    politics: crate::polity::PoliticsState,
-    demography: crate::demography::DemographyState,
-    borders: crate::borders::BordersState,
-    foreign: crate::foreign_stakes::ForeignState,
-    influence: crate::influence::InfluenceState,
 }
 
 /// 7 → 8: the treaty state (recognition between states); empty, it stays out of the hash.
@@ -236,7 +236,7 @@ pub struct V8 {
     player: Option<Id<Country>>,
     countries: Table<Country, CountryState>,
     census: Vec<CensusRecord>,
-    econ: crate::econ::Economy,
+    econ: crate::econ::compat::EconomyBeforeTrade,
     research: crate::research::ResearchState,
     politics: crate::polity::PoliticsState,
     demography: crate::demography::DemographyState,
@@ -247,8 +247,8 @@ pub struct V8 {
 }
 
 /// 8 → 9: the armed forces (`GameWorld::war`), empty: a world without forces hashes as before.
-pub fn v8_to_v9(w: V8) -> GameWorld {
-    GameWorld {
+pub fn v8_to_v9(w: V8) -> V9 {
+    V9 {
         scenario: w.scenario,
         player: w.player,
         countries: w.countries,
@@ -262,5 +262,44 @@ pub fn v8_to_v9(w: V8) -> GameWorld {
         influence: w.influence,
         treaties: w.treaties,
         war: Default::default(),
+    }
+}
+
+/// Version 9, the armed forces (`GameWorld::war`, #115), before trade by pair.
+#[derive(Deserialize)]
+pub struct V9 {
+    scenario: String,
+    player: Option<Id<Country>>,
+    countries: Table<Country, CountryState>,
+    census: Vec<CensusRecord>,
+    econ: crate::econ::compat::EconomyBeforeTrade,
+    research: crate::research::ResearchState,
+    politics: crate::polity::PoliticsState,
+    demography: crate::demography::DemographyState,
+    borders: crate::borders::BordersState,
+    foreign: crate::foreign_stakes::ForeignState,
+    influence: crate::influence::InfluenceState,
+    treaties: crate::treaty::TreatyState,
+    war: crate::war::WarState,
+}
+
+/// 9 → 10: trade by pair (`econ::trade::TradeState`) starts empty and stays out of the hash;
+/// with the switch on it fills in the first week (the preferences start at the cost of
+/// arrival).
+pub fn v9_to_v10(w: V9) -> GameWorld {
+    GameWorld {
+        scenario: w.scenario,
+        player: w.player,
+        countries: w.countries,
+        census: w.census,
+        econ: w.econ.into(),
+        research: w.research,
+        politics: w.politics,
+        demography: w.demography,
+        borders: w.borders,
+        foreign: w.foreign,
+        influence: w.influence,
+        treaties: w.treaties,
+        war: w.war,
     }
 }

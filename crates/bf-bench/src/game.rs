@@ -353,7 +353,7 @@ fn new_session(data: &GameData, seed: u64, threads: usize) -> Session {
         seed,
         Date::new(1925, 1, 1),
         threads,
-        Some(data.rules()),
+        Some(rules(data)),
     )
 }
 
@@ -909,7 +909,7 @@ pub fn main(
             .map_err(|e| e.to_string())?,
         };
         let reloaded =
-            Session::load(&bytes, threads, Some(data.rules())).map_err(|e| e.to_string())?;
+            Session::load(&bytes, threads, Some(rules(&data))).map_err(|e| e.to_string())?;
         let resumed = run(&data, reloaded, end, false, None, &mut []);
         let ok = resumed.session.state_hash() == main.session.state_hash();
         reloads.push((at, bytes.len(), ok));
@@ -1089,4 +1089,13 @@ fn print_timings(t: &[TechTiming]) {
             );
         }
     }
+}
+
+/// The game's rules, with the switches named in `BF_RULES` (comma-separated, as
+/// `game::Switches::parse` reads them) on.
+pub fn rules(data: &GameData) -> bf_sim::game::Rules {
+    data.rules_with(
+        bf_sim::game::Switches::parse(&std::env::var("BF_RULES").unwrap_or_default())
+            .unwrap_or_else(|e| panic!("BF_RULES: {e}")),
+    )
 }

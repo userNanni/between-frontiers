@@ -89,13 +89,42 @@ pub fn main() -> Result<(), String> {
         .iter()
         .map(|(k, _, _)| cat.good(k).map(usize::from))
         .collect();
-    let mut s = Session::new(world, 1, Date::new(1925, 1, 1), 0, Some(data.rules()));
+    let mut s = Session::new(
+        world,
+        1,
+        Date::new(1925, 1, 1),
+        0,
+        Some(crate::game::rules(&data)),
+    );
     // Counterfactual laws held all century: `BF_LAWS="CHN=planned_economy+closed_capital+autarky"`
     // (several entries separated by `;`); `CHN@1980=...` holds them from that year on, over the
     // earlier ones of the same group. Applied on the first day and every 1 January after, so
     // that no movement undoes them.
     let forced = forced_laws(&data)?;
     force(&mut s, &forced, 1925);
+    // World trade over world GDP every ten years (data/history/trade_openness.csv): exports
+    // plus imports at base prices, a week in July times 52, over the GDP of the last year.
+    if std::env::var_os("BF_DIAG_TRADE").is_some() {
+        let mut y = 1925;
+        while y <= 2025 {
+            s.sim.run_until(Date::new(y, 7, 2));
+            let e = &s.world().econ;
+            let mut traded = 0.0;
+            let mut gdp = 0.0;
+            for m in &e.markets {
+                for (g, n) in m.net_import.iter().enumerate() {
+                    traded += n.to_f64_lossy().abs() * cat.goods[g].base_price.to_f64_lossy();
+                }
+                gdp += m.gdp_last_year.to_f64_lossy();
+            }
+            println!(
+                "{y} trade: {:.1} % of world GDP",
+                traded * 52.0 / gdp.max(1.0) * 100.0
+            );
+            y += 10;
+        }
+        return Ok(());
+    }
     // Power plants by method every ten years, as a share of the electricity they can make.
     if std::env::var_os("BF_DIAG_POWER").is_some()
         && let Some(k) = cat.building("power_plant")

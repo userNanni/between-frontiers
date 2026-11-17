@@ -1125,6 +1125,7 @@ pub fn build(cat: &Catalogue, inp: &Inputs) -> Economy {
         world_price: base,
         history: Vec::new(),
         ledger: Default::default(),
+        trade: Default::default(),
     }
 }
 
@@ -1362,7 +1363,7 @@ fn solve_levels(
             };
             // Farm goods feed their own block first, as far as its land goes: most food was
             // eaten in the country that grew it, and the weekly world market reaches only part
-            // of a surplus (`week::TRADE_REACH`). Mines keep the world shares of 1925.
+            // of a surplus (`PurchasesFile::trade`, `reach`). Mines keep the world shares of 1925.
             let mut home = 0.0;
             if raw_producers[g]
                 .iter()

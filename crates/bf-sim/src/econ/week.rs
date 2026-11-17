@@ -22,7 +22,8 @@ const PRICES: PriceBand = PriceBand {
     ceiling: milli(4000),
 };
 /// Share of a market's surplus offered abroad, and of its shortage sought abroad, each week:
-/// below 1 so that local prices still carry part of the signal (distance, ports, habits).
+/// below 1 so that local prices still carry part of the signal (distance, ports, habits). The
+/// world pool's (trade by pair switched off); trade by pair reads `PurchasesFile::trade`.
 const TRADE_REACH: Fixed = milli(850);
 /// Share of the investment pool spent each week on upkeep and housing (`Catalogue::upkeep_basket`).
 pub(crate) const UPKEEP_SHARE: Fixed = milli(30);
@@ -70,6 +71,11 @@ fn construction_this_week(left: Fixed) -> Fixed {
 pub struct Week {
     pub cat: Arc<Catalogue>,
     pub tree: Option<Arc<crate::research::TechTree>>,
+    /// Distances for the freight of trade (`econ::trade::Geography`).
+    pub geo: Option<Arc<super::trade::Geography>>,
+    /// Trade by pair (`game::Switches::trade_by_pair`); off, the world pool shares trade pro
+    /// rata and the trade state stays empty.
+    pub by_pair: bool,
 }
 
 /// What a pop wants to buy this week.
@@ -119,6 +125,10 @@ pub struct WeekChanges {
     local: Vec<Vec<super::state::LocalGood>>,
     /// What each market's pool ordered for upkeep.
     upkeep: Vec<Vec<(GoodIx, Fixed)>>,
+    /// Exports by pair this week at base prices, seller × markets + buyer.
+    trade_value: Vec<Fixed>,
+    /// The preferences of trade after a month of inertia, in the first week of a month.
+    trade_pref: Option<Vec<Vec<(u16, u16)>>>,
 }
 
 /// Cost-weighted choice among the goods that meet a need: shares fall with the square of the
@@ -667,6 +677,168 @@ fn settle_region(
     }
 }
 
+/// The world pool (trade by pair switched off): each market offers part of its surplus and
+/// seeks part of its shortage; what is traded is the smaller side, shared pro rata.
+fn world_pool(cat: &Catalogue, supply: &[Vec<Fixed>], demand: &[Vec<Fixed>]) -> Vec<Vec<Fixed>> {
+    let g = cat.goods.len();
+    let nm = supply.len();
+    let mut trade = vec![vec![Fixed::ZERO; g]; nm];
+    for gi in 0..g {
+        if !cat.goods[gi].tradable {
+            continue;
+        }
+        let mut offered = Fixed::ZERO;
+        let mut sought = Fixed::ZERO;
+        for mi in 0..nm {
+            let gap = supply[mi][gi] - demand[mi][gi];
+            if gap > Fixed::ZERO {
+                offered += gap * TRADE_REACH;
+            } else {
+                sought -= gap * TRADE_REACH;
+            }
+        }
+        let traded = offered.min(sought);
+        if traded <= Fixed::ZERO {
+            continue;
+        }
+        for mi in 0..nm {
+            let gap = supply[mi][gi] - demand[mi][gi];
+            trade[mi][gi] = if gap > Fixed::ZERO {
+                -(gap * TRADE_REACH * traded / offered)
+            } else {
+                -gap * TRADE_REACH * traded / sought
+            };
+        }
+    }
+    trade
+}
+
+/// What trade by pair hands the week: the trade of each market by good, the exports by pair
+/// at base prices (seller × markets + buyer) and the month's preferences in its first week.
+type PairTrade = (Vec<Vec<Fixed>>, Vec<Fixed>, Option<Vec<Vec<(u16, u16)>>>);
+
+impl Week {
+    /// Trade by pair (`econ::trade`, docs/trade.pt-BR.md): each market offers part of its
+    /// surplus and seeks part of its shortage, and every buyer splits what it seeks among the
+    /// sellers by what they offer and how much it leans toward each.
+    fn trade_by_pair(
+        &self,
+        ctx: &TickCtx,
+        world: &GameWorld,
+        supply: &[Vec<Fixed>],
+        demand: &[Vec<Fixed>],
+    ) -> PairTrade {
+        let cat = &*self.cat;
+        let econ = &world.econ;
+        let g = cat.goods.len();
+        let nm = econ.markets.len();
+        let reach = Fixed::from_f64_lossy(f64::from(cat.trade.reach));
+        let mut trade = vec![vec![Fixed::ZERO; g]; nm];
+        let mut trade_value = vec![Fixed::ZERO; nm * nm];
+        // Preferences move once a month, in its first week, part of the way toward the cost
+        // of arrival (`econ::trade::step`); the clearing uses the month's.
+        let geo = self.geo.as_deref();
+        let groups = crate::economy::BUILDING_GROUPS.len();
+        let date = ctx.date.to_string();
+        let trade_pref = (ctx.date.day <= 7 || econ.trade.pref.is_empty()).then(|| {
+            let trade_ix = crate::research::EFFECTS
+                .iter()
+                .position(|e| *e == "trade")
+                .unwrap_or(0);
+            let effect: Vec<Fixed> = (0..nm)
+                .map(|c| {
+                    world
+                        .research
+                        .effects
+                        .get(c)
+                        .map_or(Fixed::ZERO, |e| e[trade_ix])
+                })
+                .collect();
+            let gdp: Vec<Fixed> = econ.markets.iter().map(|m| m.gdp_last_year).collect();
+            let transport: Vec<Fixed> = econ
+                .markets
+                .iter()
+                .map(|m| {
+                    cat.freight.map_or(Fixed::ONE, |f| {
+                        m.price[f as usize] / cat.goods[f as usize].base_price
+                    })
+                })
+                .collect();
+            let factors = super::trade::FreightFactors::of(&effect, &gdp, &transport);
+            let eq = super::trade::equilibrium(cat, geo, &econ.markets, &factors, &date);
+            let lambda = Fixed::from_f64_lossy(f64::from(cat.trade.monthly_step));
+            super::trade::step(&econ.trade.pref, &eq, lambda)
+        });
+        let pref_table = super::trade::dense(trade_pref.as_deref().unwrap_or(&econ.trade.pref), nm);
+        for gi in 0..g {
+            if !cat.goods[gi].tradable {
+                continue;
+            }
+            let (mut sellers, mut offered, mut buyers, mut sought) =
+                (Vec::new(), Vec::new(), Vec::new(), Vec::new());
+            for mi in 0..nm {
+                let gap = supply[mi][gi] - demand[mi][gi];
+                if gap > Fixed::ZERO {
+                    sellers.push(mi);
+                    offered.push(gap * reach);
+                } else if gap < Fixed::ZERO {
+                    buyers.push(mi);
+                    sought.push(-gap * reach);
+                }
+            }
+            if sellers.is_empty() || buyers.is_empty() {
+                continue;
+            }
+            // How much each buyer leans toward each seller: the month's preference in the
+            // good's group; a buyer with none toward any seller of the good leans equally.
+            let base = cat.goods[gi].base_price;
+            let k = cat.good_group[gi].map(usize::from);
+            let mut pref: Vec<Vec<Fixed>> = sellers
+                .iter()
+                .map(|&sm| {
+                    buyers
+                        .iter()
+                        .map(|&bm| {
+                            // A closed pair trades nothing from the week it closes.
+                            if geo.is_some_and(|g| g.closed(sm, bm, &date)) {
+                                return Fixed::ZERO;
+                            }
+                            k.and_then(|k| pref_table.get(bm * groups + k))
+                                .map_or(Fixed::ONE, |row| row[sm])
+                        })
+                        .collect()
+                })
+                .collect();
+            for b in 0..buyers.len() {
+                if pref.iter().all(|row| row[b] <= Fixed::ZERO) {
+                    for (s, row) in pref.iter_mut().enumerate() {
+                        if !geo.is_some_and(|g| g.closed(sellers[s], buyers[b], &date)) {
+                            row[b] = Fixed::ONE;
+                        }
+                    }
+                }
+            }
+            super::trade::normalize(&mut pref);
+            let flow = super::trade::clear_good(&offered, &sought, |s, b| pref[s][b]);
+            let (exports, imports) = super::trade::totals(&flow, buyers.len());
+            for (s, row) in flow.iter().enumerate() {
+                for (b, q) in row.iter().enumerate() {
+                    if *q > Fixed::ZERO {
+                        trade_value[sellers[s] * nm + buyers[b]] += *q * base;
+                    }
+                }
+            }
+            for (k, &mi) in sellers.iter().enumerate() {
+                trade[mi][gi] = -exports[k];
+            }
+            for (k, &mi) in buyers.iter().enumerate() {
+                trade[mi][gi] = imports[k];
+            }
+        }
+        (trade, trade_value, trade_pref)
+    }
+}
+
 impl System<GameWorld> for Week {
     type Changes = WeekChanges;
 
@@ -679,7 +851,11 @@ impl System<GameWorld> for Week {
     }
 
     fn access(&self) -> Access {
-        Access::new().read(ECON).read(crate::war::WAR).write(ECON)
+        Access::new()
+            .read(ECON)
+            .read(crate::war::WAR)
+            .write(ECON)
+            .read(crate::research_system::RESEARCH)
     }
 
     fn compute(&self, ctx: &TickCtx, world: &GameWorld) -> WeekChanges {
@@ -723,37 +899,12 @@ impl System<GameWorld> for Week {
                 supply[mi][lg] += cleared.leftover[ri][li] - o.supply[lg];
             }
         }
-        // The world pool: each market offers part of its surplus and seeks part of its shortage;
-        // what is traded is the smaller side, shared pro rata.
-        let nm = econ.markets.len();
-        let mut trade = vec![vec![Fixed::ZERO; g]; nm];
-        for gi in 0..g {
-            if !cat.goods[gi].tradable {
-                continue;
-            }
-            let mut offered = Fixed::ZERO;
-            let mut sought = Fixed::ZERO;
-            for mi in 0..nm {
-                let gap = supply[mi][gi] - demand[mi][gi];
-                if gap > Fixed::ZERO {
-                    offered += gap * TRADE_REACH;
-                } else {
-                    sought -= gap * TRADE_REACH;
-                }
-            }
-            let traded = offered.min(sought);
-            if traded <= Fixed::ZERO {
-                continue;
-            }
-            for mi in 0..nm {
-                let gap = supply[mi][gi] - demand[mi][gi];
-                trade[mi][gi] = if gap > Fixed::ZERO {
-                    -(gap * TRADE_REACH * traded / offered)
-                } else {
-                    -gap * TRADE_REACH * traded / sought
-                };
-            }
-        }
+        // Trade between markets: by pair when switched on, else the world pool.
+        let (trade, trade_value, trade_pref) = if self.by_pair {
+            self.trade_by_pair(ctx, world, &supply, &demand)
+        } else {
+            (world_pool(cat, &supply, &demand), Vec::new(), None)
+        };
         let upkeep: Vec<_> = econ.markets.iter().map(|m| upkeep_orders(cat, m)).collect();
         let (mut markets, state_orders): (Vec<Market>, Vec<_>) = econ
             .markets
@@ -811,12 +962,27 @@ impl System<GameWorld> for Week {
             world_price,
             local,
             upkeep,
+            trade_value,
+            trade_pref,
         }
     }
 
     fn apply(&self, ctx: &TickCtx, changes: WeekChanges, world: &mut GameWorld) {
         let cat = &*self.cat;
         let econ = &mut world.econ;
+        // Off, the trade state stays empty and out of the world's hash.
+        if self.by_pair {
+            let nm = econ.markets.len();
+            econ.trade.fit(nm);
+            if let Some(p) = changes.trade_pref {
+                econ.trade.pref = p;
+            }
+            for (k, v) in changes.trade_value.iter().enumerate() {
+                if *v > Fixed::ZERO {
+                    econ.trade.add(k / nm, k % nm, *v);
+                }
+            }
+        }
         let mut markets = changes.markets;
         // Trade margins: importers collected more than exporters were paid. Each market keeps
         // its balance, minus its share of the world total, so no money is created.

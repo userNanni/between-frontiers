@@ -96,6 +96,7 @@ impl From<EconomyBeforeResearch> for Economy {
             world_price: e.world_price,
             history: e.history,
             ledger: e.ledger,
+            trade: Default::default(),
         }
     }
 }
@@ -266,5 +267,55 @@ impl MarketBeforeResearch {
             },
             money: m.money.clone(),
         }
+    }
+}
+
+/// The economy as saves wrote it before trade by pair (2026-11-17): the same fields without the
+/// trade state, which loads empty and fills in the first week.
+#[derive(Deserialize)]
+pub(crate) struct EconomyBeforeTrade {
+    regions: Vec<Region>,
+    markets: Vec<Market>,
+    world_price: Vec<Fixed>,
+    history: Vec<YearRecord>,
+    ledger: crate::treaty::Ledger,
+}
+
+impl From<EconomyBeforeTrade> for Economy {
+    fn from(e: EconomyBeforeTrade) -> Self {
+        Self {
+            regions: e.regions,
+            markets: e.markets,
+            world_price: e.world_price,
+            history: e.history,
+            ledger: e.ledger,
+            trade: Default::default(),
+        }
+    }
+}
+
+impl From<Economy> for EconomyBeforeTrade {
+    fn from(e: Economy) -> Self {
+        Self {
+            regions: e.regions,
+            markets: e.markets,
+            world_price: e.world_price,
+            history: e.history,
+            ledger: e.ledger,
+        }
+    }
+}
+
+/// The steps from before research that costs and from before the ledger land on the economy of
+/// version 5 and 6, which had no trade by pair.
+impl From<EconomyBeforeResearch> for EconomyBeforeTrade {
+    fn from(e: EconomyBeforeResearch) -> Self {
+        Economy::from(e).into()
+    }
+}
+
+impl From<super::state::EconomyBeforeLedger> for EconomyBeforeTrade {
+    fn from(e: super::state::EconomyBeforeLedger) -> Self {
+        Economy::from(e).into()
     }
 }

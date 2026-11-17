@@ -1,0 +1,61 @@
+//! Trade by pair behind its switch (`game::Switches::trade_by_pair`, docs/trade.pt-BR.md): off,
+//! the trade state stays empty and the world keeps the hash of the world pool; on, a short run
+//! fills it, so the path switched on keeps compiling and running in the main.
+
+use std::path::PathBuf;
+use std::sync::OnceLock;
+
+use bf_sim::data::GameData;
+use bf_sim::game::{Session, Switches};
+use laplace_schelling::{Date, Fixed};
+
+fn data() -> &'static GameData {
+    static DATA: OnceLock<GameData> = OnceLock::new();
+    DATA.get_or_init(|| {
+        GameData::load(&PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")).unwrap()
+    })
+}
+
+fn run(switches: Switches) -> Session {
+    let d = data();
+    let rules = d.rules_with(switches);
+    let mut s = Session::new(d.new_world(), 1925, Date::new(1925, 1, 1), 2, Some(rules));
+    s.sim.run_until(Date::new(1925, 3, 1));
+    s
+}
+
+#[test]
+fn off_by_default_the_trade_state_stays_empty() {
+    let rules = data().rules();
+    assert_eq!(rules.switches, Switches::default());
+    assert!(
+        rules.trade.is_none(),
+        "switched off, the distances are not built"
+    );
+    let s = run(Switches::default());
+    assert!(s.world().econ.trade.is_empty());
+}
+
+#[test]
+fn switched_on_a_short_run_trades_by_pair() {
+    let on = run(Switches {
+        trade_by_pair: true,
+    });
+    let t = &on.world().econ.trade;
+    assert!(!t.is_empty());
+    assert!(!t.pref.is_empty(), "the month's preferences are set");
+    let pairs = t.year.iter().filter(|v| **v > Fixed::ZERO).count();
+    assert!(pairs > 50, "only {pairs} pairs traded in two months");
+    assert_ne!(
+        on.state_hash(),
+        run(Switches::default()).state_hash(),
+        "the switch changes the world"
+    );
+}
+
+#[test]
+fn switches_parse_by_name() {
+    assert_eq!(Switches::parse("").unwrap(), Switches::default());
+    assert!(Switches::parse(" trade_by_pair ").unwrap().trade_by_pair);
+    assert!(Switches::parse("no_such_rule").is_err());
+}
