@@ -90,7 +90,7 @@ pub fn text(i18n: &I18n, world: Option<&World>, l: &Label) -> String {
                 Arg::Key(id) => i18n.tr(id),
                 Arg::State(id) => world
                     .and_then(|w| w.states.get(usize::from(*id).checked_sub(1)?))
-                    .map(|s| s.def.name.clone())
+                    .map(|s| crate::text::state_name(i18n, &s.def))
                     .unwrap_or_else(|| "—".into()),
                 Arg::Date(d) => date_long(i18n, *d),
             };

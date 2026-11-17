@@ -89,11 +89,11 @@ fn state_center(world: &World, state: u16) -> Option<Pos2> {
     Some(Pos2::new(s.def.center.0, s.def.center.1))
 }
 
-fn state_name(world: &World, state: u16) -> String {
+fn state_name(i18n: &I18n, world: &World, state: u16) -> String {
     world
         .states
         .get(usize::from(state).saturating_sub(1))
-        .map_or_else(|| "—".into(), |s| s.def.name.clone())
+        .map_or_else(|| "—".into(), |s| crate::text::state_name(i18n, &s.def))
 }
 
 /// Who controls a passage now, and why: its holders by treaty, or the owners of its shores.
@@ -444,19 +444,19 @@ fn route_panel(
             ui,
             &i18n.tr_args(
                 "sea-route-no-port",
-                &[("state", Arg::String(state_name(src.world, s)))],
+                &[("state", Arg::String(state_name(src.i18n, src.world, s)))],
             ),
         );
     }
     if let Some(a) = view.from {
         let to = view
             .to
-            .map_or_else(|| "…".into(), |b| state_name(src.world, b));
+            .map_or_else(|| "…".into(), |b| state_name(src.i18n, src.world, b));
         ui.label(
             egui::RichText::new(i18n.tr_args(
                 "sea-route-from-to",
                 &[
-                    ("from", Arg::String(state_name(src.world, a))),
+                    ("from", Arg::String(state_name(src.i18n, src.world, a))),
                     ("to", Arg::String(to)),
                 ],
             ))
