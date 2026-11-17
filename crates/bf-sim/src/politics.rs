@@ -157,7 +157,7 @@ const fn effect(
 use Combine::{Add, Cap, Multiply};
 
 /// Every effect a law may declare, per mille.
-pub const EFFECTS: [EffectKind; 40] = [
+pub const EFFECTS: [EffectKind; 42] = [
     // Share of the open migration flows let through (the `MigrationLaw` reach).
     effect(
         "migration_within_state",
