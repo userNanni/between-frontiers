@@ -333,3 +333,637 @@ country-AUS-capital = Melbourne
 country-NZL = Nova Zelândia
     .article = a
 country-NZL-capital = Wellington
+
+### Países que podem nascer depois de 1925 (data/borders/candidates.ron).
+
+country-VAT = Vaticano
+    .article = o
+country-VAT-capital = Vaticano
+
+country-MCK = Manchukuo
+    .article = o
+country-MCK-capital = Hsinking
+
+country-SAU = Arábia Saudita
+    .article = a
+country-SAU-capital = Riade
+
+country-IRN = Irã
+    .article = o
+country-IRN-capital = Teerã
+
+country-HTY = República do Hatay
+    .article = a
+country-HTY-capital = Antáquia
+
+country-SLK = República Eslovaca
+    .article = a
+country-SLK-capital = Bratislava
+
+country-THA = Tailândia
+    .article = a
+country-THA-capital = Bangcoc
+
+country-MJG = Mengjiang
+    .article = o
+country-MJG-capital = Zhangjiakou
+
+country-RNG = Governo nacionalista de Nanquim
+    .article = o
+country-RNG-capital = Nanquim
+
+country-NDH = Estado Independente da Croácia
+    .article = o
+country-NDH-capital = Zagreb
+
+country-MMRX = Estado da Birmânia
+    .article = o
+country-MMRX-capital = Rangum
+
+country-RSI = República Social Italiana
+    .article = a
+country-RSI-capital = Salò
+
+country-PHLX = Segunda República das Filipinas
+    .article = a
+country-PHLX-capital = Manila
+
+country-LBN = Líbano
+    .article = o
+country-LBN-capital = Beirute
+
+country-VNMX = Império do Vietnã
+    .article = o
+country-VNMX-capital = Huế
+
+country-KHMX = Reino do Kampuchea
+    .article = o
+country-KHMX-capital = Phnom Penh
+
+country-IDN = Indonésia
+    .article = a
+country-IDN-capital = Jacarta
+
+country-VNM = Vietnã
+    .article = o
+country-VNM-capital = Hanói
+
+country-LAOX = Lao Issara
+    .article = o
+country-LAOX-capital = Vientiane
+
+country-AZG = Governo Popular do Azerbaijão
+    .article = o
+country-AZG-capital = Tabriz
+
+country-SYR = Síria
+    .article = a
+country-SYR-capital = Damasco
+
+country-JOR = Jordânia
+    .article = a
+country-JOR-capital = Amã
+
+country-PHL = Filipinas
+    .article = as
+country-PHL-capital = Manila
+
+country-PAK = Paquistão
+    .article = o
+country-PAK-capital = Carachi
+
+country-IND = Índia
+    .article = a
+country-IND-capital = Nova Deli
+
+country-FTT = Território Livre de Trieste
+    .article = o
+country-FTT-capital = Trieste
+
+country-MMR = Myanmar
+    .article = o
+country-MMR-capital = Rangum
+
+country-LKA = Sri Lanka
+    .article = o
+country-LKA-capital = Colombo
+
+country-ISR = Israel
+    .article = {""}
+country-ISR-capital = Jerusalém
+
+country-KOR = Coreia do Sul
+    .article = a
+country-KOR-capital = Seul
+
+country-PRK = Coreia do Norte
+    .article = a
+country-PRK-capital = Pyongyang
+
+country-DDR = Alemanha Oriental
+    .article = a
+country-DDR-capital = Berlim Leste
+
+country-TWN = Taiwan
+    .article = {""}
+country-TWN-capital = Taipé
+
+country-LBY = Líbia
+    .article = a
+country-LBY-capital = Trípoli
+
+country-RNY = Federação da Rodésia e Niassalândia
+    .article = a
+country-RNY-capital = Salisbury
+
+country-LAO = Laos
+    .article = o
+country-LAO-capital = Vientiane
+
+country-KHM = Camboja
+    .article = o
+country-KHM-capital = Phnom Penh
+
+country-RVN = Vietnã do Sul
+    .article = o
+country-RVN-capital = Saigon
+
+country-SDN = Sudão
+    .article = o
+country-SDN-capital = Cartum
+
+country-MAR = Marrocos
+    .article = o
+country-MAR-capital = Rabat
+
+country-TUN = Tunísia
+    .article = a
+country-TUN-capital = Tunes
+
+country-GHA = Gana
+    .article = {""}
+country-GHA-capital = Acra
+
+country-UAR = República Árabe Unida
+    .article = a
+country-UAR-capital = Cairo
+
+country-GIN = Guiné
+    .article = a
+country-GIN-capital = Conacri
+
+country-MLF = Federação do Mali
+    .article = a
+country-MLF-capital = Dacar
+
+country-CMR = Camarões
+    .article = {""}
+country-CMR-capital = Iaundé
+
+country-TGO = Togo
+    .article = o
+country-TGO-capital = Lomé
+
+country-MDG = Madagascar
+    .article = {""}
+country-MDG-capital = Antananarivo
+
+country-SML = Somalilândia
+    .article = a
+country-SML-capital = Hargeisa
+
+country-COD = República Democrática do Congo
+    .article = a
+country-COD-capital = Léopoldville
+
+country-SOM = Somália
+    .article = a
+country-SOM-capital = Mogadíscio
+
+country-KAT = Estado do Catanga
+    .article = o
+country-KAT-capital = Lubumbashi
+
+country-BEN = Benim
+    .article = o
+country-BEN-capital = Porto Novo
+
+country-NER = Níger
+    .article = o
+country-NER-capital = Niamei
+
+country-BFA = Burquina Fasso
+    .article = o
+country-BFA-capital = Uagadugu
+
+country-CIV = Costa do Marfim
+    .article = a
+country-CIV-capital = Abidjã
+
+country-TCD = Chade
+    .article = o
+country-TCD-capital = Jamena
+
+country-CAF = República Centro-Africana
+    .article = a
+country-CAF-capital = Bangui
+
+country-COG = República do Congo
+    .article = a
+country-COG-capital = Brazavile
+
+country-CYP = Chipre
+    .article = {""}
+country-CYP-capital = Nicósia
+
+country-GAB = Gabão
+    .article = o
+country-GAB-capital = Libreville
+
+country-SEN = Senegal
+    .article = o
+country-SEN-capital = Dacar
+
+country-MLI = Mali
+    .article = o
+country-MLI-capital = Bamaco
+
+country-NGA = Nigéria
+    .article = a
+country-NGA-capital = Lagos
+
+country-MRT = Mauritânia
+    .article = a
+country-MRT-capital = Nouakchott
+
+country-WSM = Samoa
+    .article = {""}
+country-WSM-capital = Apia
+
+country-BDI = Burundi
+    .article = o
+country-BDI-capital = Bujumbura
+
+country-RWA = Ruanda
+    .article = {""}
+country-RWA-capital = Quigali
+
+country-DZA = Argélia
+    .article = a
+country-DZA-capital = Argel
+
+country-JAM = Jamaica
+    .article = a
+country-JAM-capital = Kingston
+
+country-TTO = Trindade e Tobago
+    .article = {""}
+country-TTO-capital = Port of Spain
+
+country-UGA = Uganda
+    .article = {""}
+country-UGA-capital = Campala
+
+country-MYS = Malásia
+    .article = a
+country-MYS-capital = Kuala Lumpur
+
+country-ZAN = Sultanato de Zanzibar
+    .article = o
+country-ZAN-capital = Zanzibar
+
+country-KEN = Quênia
+    .article = o
+country-KEN-capital = Nairóbi
+
+country-TZA = Tanzânia
+    .article = a
+country-TZA-capital = Dar es Salaam
+
+country-MWI = Malawi
+    .article = o
+country-MWI-capital = Zomba
+
+country-MLT = Malta
+    .article = {""}
+country-MLT-capital = Valeta
+
+country-ZMB = Zâmbia
+    .article = a
+country-ZMB-capital = Lusaca
+
+country-GMB = Gâmbia
+    .article = a
+country-GMB-capital = Banjul
+
+country-MDV = Maldivas
+    .article = as
+country-MDV-capital = Malé
+
+country-SGP = Singapura
+    .article = {""}
+country-SGP-capital = Singapura
+
+country-RHO = Rodésia
+    .article = a
+country-RHO-capital = Salisbury
+
+country-GUY = Guiana
+    .article = a
+country-GUY-capital = Georgetown
+
+country-BWA = Botswana
+    .article = o
+country-BWA-capital = Gaborone
+
+country-LSO = Lesoto
+    .article = o
+country-LSO-capital = Maseru
+
+country-BRB = Barbados
+    .article = {""}
+country-BRB-capital = Bridgetown
+
+country-BIA = Biafra
+    .article = {""}
+country-BIA-capital = Enugu
+
+country-YMD = Iêmen do Sul
+    .article = o
+country-YMD-capital = Adem
+
+country-NRU = Nauru
+    .article = {""}
+country-NRU-capital = Iarém
+
+country-MUS = Maurício
+    .article = {""}
+country-MUS-capital = Porto Luís
+
+country-SWZ = Essuatíni
+    .article = {""}
+country-SWZ-capital = Mebabane
+
+country-GNQ = Guiné Equatorial
+    .article = a
+country-GNQ-capital = Santa Isabel
+
+country-TON = Tonga
+    .article = {""}
+country-TON-capital = Nucualofa
+
+country-FJI = Fiji
+    .article = {""}
+country-FJI-capital = Suva
+
+country-BGD = Bangladesh
+    .article = o
+country-BGD-capital = Daca
+
+country-SLE = Serra Leoa
+    .article = a
+country-SLE-capital = Freetown
+
+country-BHR = Bahrein
+    .article = o
+country-BHR-capital = Manama
+
+country-QAT = Catar
+    .article = o
+country-QAT-capital = Doha
+
+country-ARE = Emirados Árabes Unidos
+    .article = os
+country-ARE-capital = Abu Dhabi
+
+country-BHS = Bahamas
+    .article = as
+country-BHS-capital = Nassau
+
+country-GNB = Guiné-Bissau
+    .article = a
+country-GNB-capital = Bissau
+
+country-GRD = Granada
+    .article = {""}
+country-GRD-capital = São Jorge
+
+country-MOZ = Moçambique
+    .article = {""}
+country-MOZ-capital = Lourenço Marques
+
+country-CPV = Cabo Verde
+    .article = {""}
+country-CPV-capital = Praia
+
+country-COM = Comores
+    .article = {""}
+country-COM-capital = Moroni
+
+country-STP = São Tomé e Príncipe
+    .article = {""}
+country-STP-capital = São Tomé
+
+country-PNG = Papua-Nova Guiné
+    .article = a
+country-PNG-capital = Porto Moresby
+
+country-AGO = Angola
+    .article = {""}
+country-AGO-capital = Luanda
+
+country-SUR = Suriname
+    .article = o
+country-SUR-capital = Paramaribo
+
+country-TLS = Timor-Leste
+    .article = {""}
+country-TLS-capital = Díli
+
+country-ESH = República Árabe Saarauí Democrática
+    .article = a
+country-ESH-capital = El Aiune
+
+country-SYC = Seicheles
+    .article = as
+country-SYC-capital = Vitória
+
+country-DJI = Djibuti
+    .article = o
+country-DJI-capital = Djibuti
+
+country-SLB = Ilhas Salomão
+    .article = as
+country-SLB-capital = Honiara
+
+country-TVL = Tuvalu
+    .article = {""}
+country-TVL-capital = Funafuti
+
+country-DMA = Dominica
+    .article = a
+country-DMA-capital = Roseau
+
+country-LCA = Santa Lúcia
+    .article = {""}
+country-LCA-capital = Castries
+
+country-KIR = Kiribati
+    .article = {""}
+country-KIR-capital = Taraua do Sul
+
+country-VCT = São Vicente e Granadinas
+    .article = {""}
+country-VCT-capital = Kingstown
+
+country-ZWE = Zimbabwe
+    .article = o
+country-ZWE-capital = Salisbury
+
+country-VUT = Vanuatu
+    .article = {""}
+country-VUT-capital = Porto Vila
+
+country-BLZ = Belize
+    .article = {""}
+country-BLZ-capital = Belmopan
+
+country-ATG = Antígua e Barbuda
+    .article = {""}
+country-ATG-capital = São João
+
+country-KNA = São Cristóvão e Neves
+    .article = {""}
+country-KNA-capital = Basseterre
+
+country-BRN = Brunei
+    .article = o
+country-BRN-capital = Bandar Seri Begawan
+
+country-MHL = Ilhas Marshall
+    .article = as
+country-MHL-capital = Majuro
+
+country-FSM = Estados Federados da Micronésia
+    .article = os
+country-FSM-capital = Kolonia
+
+country-PSE = Palestina
+    .article = a
+country-PSE-capital = Ramala
+
+country-NAM = Namíbia
+    .article = a
+country-NAM-capital = Vinduque
+
+country-ICH = República Chechena da Ichkeria
+    .article = a
+country-ICH-capital = Grózni
+
+country-HRV = Croácia
+    .article = a
+country-HRV-capital = Zagreb
+
+country-SVN = Eslovênia
+    .article = a
+country-SVN-capital = Liubliana
+
+country-UKR = Ucrânia
+    .article = a
+country-UKR-capital = Kiev
+
+country-BLR = Bielorrússia
+    .article = a
+country-BLR-capital = Minsk
+
+country-MDA = Moldávia
+    .article = a
+country-MDA-capital = Quixinau
+
+country-KGZ = Quirguistão
+    .article = o
+country-KGZ-capital = Bisqueque
+
+country-UZB = Uzbequistão
+    .article = o
+country-UZB-capital = Tasquente
+
+country-MKD = Macedônia do Norte
+    .article = a
+country-MKD-capital = Escópia
+
+country-TJK = Tadjiquistão
+    .article = o
+country-TJK-capital = Duxambé
+
+country-ARM = Armênia
+    .article = a
+country-ARM-capital = Erevã
+
+country-AZE = Azerbaijão
+    .article = o
+country-AZE-capital = Bacu
+
+country-TKM = Turquemenistão
+    .article = o
+country-TKM-capital = Asgabade
+
+country-PMR = Transnístria
+    .article = a
+country-PMR-capital = Tiraspol
+
+country-KAZ = Cazaquistão
+    .article = o
+country-KAZ-capital = Almati
+
+country-GEO = Geórgia
+    .article = a
+country-GEO-capital = Tiblíssi
+
+country-RUS = Rússia
+    .article = a
+country-RUS-capital = Moscou
+
+country-BIH = Bósnia e Herzegovina
+    .article = a
+country-BIH-capital = Sarajevo
+
+country-SCG = Sérvia e Montenegro
+    .article = a
+country-SCG-capital = Belgrado
+
+country-ABH = Abecásia
+    .article = a
+country-ABH-capital = Sucumi
+
+country-CZR = Tchéquia
+    .article = a
+country-CZR-capital = Praga
+
+country-SVK = Eslováquia
+    .article = a
+country-SVK-capital = Bratislava
+
+country-ERI = Eritreia
+    .article = a
+country-ERI-capital = Asmara
+
+country-PLW = Palau
+    .article = {""}
+country-PLW-capital = Koror
+
+country-MNE = Montenegro
+    .article = {""}
+country-MNE-capital = Podgoritza
+
+country-SRB = Sérvia
+    .article = a
+country-SRB-capital = Belgrado
+
+country-XKX = Kosovo
+    .article = o
+country-XKX-capital = Pristina
+
+country-SSD = Sudão do Sul
+    .article = o
+country-SSD-capital = Juba
