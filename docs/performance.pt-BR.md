@@ -145,6 +145,11 @@ só o efeito da regra.
   `~/Projects/between-frontiers/target/baseline/<sha>/`, com `bf-bench`, `game.json`,
   `history.json`, `hash.txt`, `cpu.txt` e `systems.txt`. Só roda se ainda não existe, com
   `flock` por sha: dois threads que pedem o mesmo commit esperam um pelo outro.
+- **Saída cedo:** a cada década a rodada confere que o mundo tem gente e produto; com
+  `BF_BAND=<base>/game.json[:PCT]` confere também a população e o PIB mundiais contra a base, a
+  ±PCT % (padrão 50), e sai com código 3 na primeira década fora. A faixa larga pega mundo
+  quebrado (uma regra que zera o PIB em 1935), não o efeito de uma regra; para isso, a seção de
+  agregados abaixo.
 - **Livro de rodadas:** `~/Projects/between-frontiers/target/runs/ledger.jsonl`, uma linha por
   rodada longa. Tem commit, ramo, hash, threads, CPU, CPU por sistema, PIB e população por década
   e a carga da máquina. `python3 tools/bench/ledger.py show [--branch B]` mostra a tendência de

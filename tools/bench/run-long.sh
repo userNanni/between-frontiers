@@ -8,7 +8,9 @@
 # "fail <código>"), e acrescenta uma linha a ~/Projects/between-frontiers/target/runs/ledger.jsonl.
 # Rode por `bf-bench-slot` e numa unidade `systemd-run --user`; a tarefa em segundo plano de um
 # agente morre em 30 min. COMMIT e BRANCH no ambiente dizem o que o binário é; sem eles, vêm do
-# git do diretório atual.
+# git do diretório atual. BF_BAND=BASE.json[:PCT] faz a rodada sair cedo (código 3) quando a
+# população ou o PIB mundiais de uma década fogem PCT % (padrão 50) da base, por exemplo
+# BF_BAND=$(tools/bench/baseline.sh)/game.json.
 set -u
 export PATH=$HOME/.cargo/bin:$HOME/.local/bin:$PATH
 out=$1; bin=$2; shift 2

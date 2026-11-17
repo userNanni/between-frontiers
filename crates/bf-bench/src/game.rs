@@ -513,6 +513,71 @@ struct Run {
     ticks: u64,
 }
 
+/// Invariants checked at every decade of the main run, so that a broken rule stops the run in
+/// its first years instead of after the century:
+///
+/// - the world keeps people and output;
+/// - with `BF_BAND=BASE.json[:PCT]` (a `game.json` of the base, e.g. the stored baseline of
+///   `tools/bench/baseline.sh`), world population and GDP stay within PCT % (default 50) of the
+///   base in the same year. The band is wide on purpose: it catches a world gone wrong, not
+///   the effect of a rule.
+fn check_decade(snap: &Decade) -> Result<(), String> {
+    if snap.population <= 0 || snap.gdp <= 0 {
+        return Err(format!(
+            "{}: the world is empty (population {}, GDP {})",
+            snap.year, snap.population, snap.gdp
+        ));
+    }
+    let Some((base, pct)) = band() else {
+        return Ok(());
+    };
+    let Some(b) = base.iter().find(|b| b.0 == snap.year) else {
+        return Ok(());
+    };
+    for (what, now, then) in [("population", snap.population, b.1), ("GDP", snap.gdp, b.2)] {
+        let off = (now as f64 / then.max(1) as f64 - 1.0) * 100.0;
+        if off.abs() > *pct {
+            return Err(format!(
+                "{}: world {what} {now} is {off:+.0} % from the base ({then}), beyond ±{pct:.0} % (BF_BAND)",
+                snap.year
+            ));
+        }
+    }
+    Ok(())
+}
+
+/// `BF_BAND`: (year, population, GDP) of the base decades and the tolerance in percent.
+type Band = (Vec<(i32, i64, i64)>, f64);
+
+fn band() -> Option<&'static Band> {
+    static BAND: std::sync::OnceLock<Option<Band>> = std::sync::OnceLock::new();
+    BAND.get_or_init(|| {
+        let spec = std::env::var("BF_BAND").ok()?;
+        let (path, pct) = match spec.rsplit_once(':') {
+            Some((p, n)) if n.parse::<f64>().is_ok() => (p.to_owned(), n.parse().unwrap()),
+            _ => (spec.clone(), 50.0),
+        };
+        let text =
+            std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("BF_BAND: {path}: {e}"));
+        let json: serde_json::Value =
+            serde_json::from_str(&text).unwrap_or_else(|e| panic!("BF_BAND: {path}: {e}"));
+        let decades = json["decades"]
+            .as_array()
+            .unwrap_or_else(|| panic!("BF_BAND: {path} has no decades"))
+            .iter()
+            .filter_map(|d| {
+                Some((
+                    d["year"].as_i64()? as i32,
+                    d["population"].as_i64()?,
+                    d["gdp"].as_i64()?,
+                ))
+            })
+            .collect();
+        Some((decades, pct))
+    })
+    .as_ref()
+}
+
 fn run(
     data: &GameData,
     mut session: Session,
@@ -756,6 +821,11 @@ fn run(
                         e[3] / total,
                         e[4] / total
                     );
+                }
+                if let Err(e) = check_decade(&snap) {
+                    // Out early: the rest of the century would be spent on a broken world.
+                    eprintln!("bf-bench --game: {e}");
+                    std::process::exit(3);
                 }
                 decades.push(snap);
                 since = 0.0;
