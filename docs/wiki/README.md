@@ -25,10 +25,11 @@ Páginas de decisão prontas:
 - [Fronteiras e países](decisoes/fronteiras-e-paises.md)
 - [Tratados e acordos](decisoes/tratados-e-acordos.md)
 - [Crise e guerra](decisoes/crise-e-guerra.md)
+- [Comércio](decisoes/comercio.md)
 - [Diplomacia e influência](decisoes/diplomacia-e-influencia.md)
 - [Saves e interface](decisoes/saves-e-interface.md)
 
-Em preparação: comércio, capital entre
+Em preparação: capital entre
 países, população e comunidades, ensino, pesquisa, economia, tempo e ordem de cálculo.
 
 ## Como ler uma página de decisão

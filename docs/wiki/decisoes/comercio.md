@@ -1,0 +1,98 @@
+# Comércio
+
+Quem vende o quê a quem, por quanto chega, e o que acontece quando a rota fecha. O desenho completo
+está em `docs/trade.pt-BR.md`, que entra com o PR #113.
+
+Hoje o comércio mundial é um *pool* por bem: cada país vende ao mundo, não a outro país. A Argentina
+vende trigo ao mundo, não à Grã-Bretanha. A fase 4 troca isso por **comércio com parceiro**: o par
+de países passa a existir, com frete, tarifa e preferência.
+
+## Decisões
+
+### Quem compra reparte entre fornecedores pelo custo de chegada
+
+- **Decisão:** toda semana, cada importador reparte o que procura entre os vendedores pelo custo de
+  chegada (preço de quem vende, frete da rota e tarifa de quem compra), de forma suave: o mais
+  barato leva mais, não leva tudo.
+- **O que o autor pensou:** recomendação aceita (T1).
+- **Como o jogo funciona por causa disso:** o país que baixa a tarifa para um parceiro passa a
+  comprar mais dele, sem deixar de comprar dos outros. A tela de parceiros mostra os principais
+  parceiros por país e por bem e a conta do custo de chegada de cada par.
+- **Como é na vida real:** ninguém compra só do mais barato; a parte de cada fornecedor cai com o
+  custo de chegada (a elasticidade entre origens; Head e Mayer 2014).
+- **Estado:** em rascunho (#113).
+
+- **Onde está o detalhe:** `trade.pt-BR.md`, seções 2 e 3 (no #113).
+### O frete segue a rota e cai com a técnica e a logística
+
+- **Decisão:** o frete é pela rota marítima entre os portos, mais o trecho por terra até o porto, e
+  cai com a técnica de transporte e com a infraestrutura de cada lado.
+- **O que o autor pensou:** "Considere o que pode baixar o custo, como o avanço da navegação e do
+  transporte e da logística em geral."
+- **Como o jogo funciona por causa disso:** o trecho marítimo barateia com a técnica difundida no
+  mundo (o contêiner e o superpetroleiro servem ao exportador pobre também, porque o frete de navio
+  é um mercado mundial). O trecho por terra e o porto dependem de cada país: ferrovia, rodovia e
+  porto próprios. Quando um estreito fecha, a rota muda e o frete sobe.
+- **Como é na vida real:** o contêiner barateou o frete depois de 1960; com Suez fechado (1956–57,
+  1967–75), o navio ia pelo Cabo.
+- **Estado:** em rascunho (#113); as tecnologias que ainda não têm efeito no comércio (navio a
+  diesel, graneleiro, ferrovia) entram quando a árvore os ganhar.
+
+- **Onde está o detalhe:** `trade.pt-BR.md`, seção 10 (no #113).
+### O parceiro tem inércia, mas a inércia não segura comércio impedido
+
+- **Decisão:** a preferência por um parceiro anda só uma parte do caminho por mês (meia-vida de
+  cerca de quatro meses). Embargo, sanção, guerra, bloqueio, não reconhecimento e estreito fechado
+  sem alternativa fecham o par na mesma semana; reabrir volta devagar.
+- **O que o autor pensou:** aceitou a inércia e lembrou "os casos que impedem o comércio, como os
+  embargos".
+- **Como o jogo funciona por causa disso:** com Suez fechado por cinco meses, o comprador europeu
+  paga o frete mais caro pelo Cabo e quase volta ao que era quando o canal reabre, em vez de trocar
+  de fornecedor na semana. Um embargo corta na hora; enquanto dura, a rede comercial se desfaz, e
+  depois volta aos poucos, como o comércio depois de uma guerra.
+- **Como é na vida real:** contrato, rede e costume seguram o fornecedor; a elasticidade de longo
+  prazo é em média o dobro da de curto (Gallaway, McDaniel e Rivera 2003).
+- **Estado:** inércia em rascunho (#113); embargo e sanção dormentes até as cláusulas e a guerra
+  existirem.
+
+- **Onde está o detalhe:** `trade.pt-BR.md`, seções 4 e 11 (no #113).
+### Quem promete entrega tem de arcar
+
+- **Decisão:** a promessa de entrega acumulada ("vendo X de Y até tal data") sai da oferta do
+  vendedor antes do mercado interno dele. Falta em casa, e só quebra se a produção não der. A
+  cláusula guarda um modo (dura ou branda) para o jogador escolher mais tarde.
+- **O que o autor pensou:** "Quem promete tem de arcar com o que prometeu. Talvez mais tarde dê
+  para escolher isso."
+- **Como o jogo funciona por causa disso:** o país que prometeu trigo a um parceiro entrega mesmo
+  com o preço do pão subindo em casa. O entregue soma no tratado, e a barra mostra o saldo e o prazo.
+- **Como é na vida real:** o trigo e o petróleo soviéticos entregues à Alemanha em 1939–41; o
+  *clearing* alemão com os Bálcãs nos anos 1930 (Hirschman 1945).
+- **Estado:** em rascunho (#113); a cláusula está desenhada
+  ([Diplomacia e influência](diplomacia-e-influencia.md#favor-devido-é-uma-promessa-num-tratado-ato-único-ou-entrega-acumulada)).
+
+- **Onde está o detalhe:** `trade.pt-BR.md`, seção 5 (no #113).
+### Tarifa e preferência no custo; receita e preço de chegada depois
+
+- **Decisão:** o primeiro PR põe a tarifa e a preferência dos tratados no custo de chegada; a
+  receita da tarifa e o preço de chegada no mercado interno vêm no segundo.
+- **O que o autor pensou:** ordem dos PRs recomendada pela coordenação e aceita (T3).
+- **Como o jogo funciona por causa disso:** preferência imperial, porta aberta dos mandatos e união
+  aduaneira passam a mudar quem compra de quem; o efeito no Tesouro chega depois.
+- **Como é na vida real:** a preferência imperial de Ottawa (1932), a área da libra, a CEE (1957).
+- **Estado:** em rascunho (#113).
+
+- **Onde está o detalhe:** `trade.pt-BR.md`, seção 9, T3 (no #113).
+### O comércio liga o canal de influência
+
+- **Decisão:** com o comércio por par, o canal de comércio da influência deixa de ser dormente. Não
+  se estima o comércio bilateral para preencher o canal antes disso.
+- **Estado:** desenhado; ver [Diplomacia e influência](diplomacia-e-influencia.md#canais-que-ainda-não-existem-ficam-dormentes).
+
+## Fontes
+
+- Gallaway, M. P.; McDaniel, C. A.; Rivera, S. A. "Short-run and long-run industry-level estimates of
+  U.S. Armington elasticities". *North American Journal of Economics and Finance* 14 (1), 2003.
+- Head, K.; Mayer, T. "Gravity equations: workhorse, toolkit, and cookbook". *Handbook of
+  International Economics*, vol. 4, 2014.
+- Hirschman, A. O. *National Power and the Structure of Foreign Trade*. University of California
+  Press, 1945.
