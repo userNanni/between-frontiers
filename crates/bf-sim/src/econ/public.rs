@@ -336,12 +336,25 @@ fn market_works(
     if total == 0 {
         return Vec::new();
     }
+    let colonial = colonial_purse(econ, m, regions);
     let mut out = Vec::new();
     for c in 0..PUBLIC_CATEGORIES {
         if weights[c] == 0 {
             continue;
         }
         let mut money = budget.mul_ratio(weights[c], total);
+        // Public services in the colonies (schools, hospitals: any category whose buildings
+        // make a public good) come out of the colony's own revenue, less what the colonial law
+        // sends home and what serves the colonizers; the metropole's revenue stays at home
+        // (`docs/state.pt-BR.md`, "Orçamento colonial").
+        let services = cands[c].iter().any(|x| public_service(cat, x.2));
+        let mut colony_money = if services {
+            let m_col = money * colonial.share;
+            money -= m_col;
+            m_col * colonial.natives
+        } else {
+            Fixed::ZERO
+        };
         let list = &mut cands[c];
         // Infrastructure: a few levels where the score is highest; services: fill the largest
         // gaps first, one level at a time.
@@ -370,10 +383,28 @@ fn market_works(
             let tfp = super::plant_tfp(r, &econ.markets[r.market as usize], &cat.buildings[kind]);
             let points = level_points(cat, kind, cg, tfp);
             let cost = points * price;
-            if points <= Fixed::ZERO || cost > money {
+            let purse = if services && r.colony {
+                &mut colony_money
+            } else {
+                &mut money
+            };
+            if points <= Fixed::ZERO {
                 break;
             }
-            money -= cost;
+            if cost > *purse {
+                if !services {
+                    break;
+                }
+                // This purse is spent: its regions wait, the other purse goes on.
+                let colony = r.colony;
+                for x in list.iter_mut() {
+                    if econ.regions[x.1].colony == colony {
+                        x.0 = Fixed::ZERO;
+                    }
+                }
+                continue;
+            }
+            *purse -= cost;
             out.push(Project {
                 region: ri as u32,
                 kind: kind as u16,
@@ -391,6 +422,56 @@ fn market_works(
         }
     }
     out
+}
+
+/// Whether `kind` is a public service: its first output is a public good (`Catalogue::
+/// public_goods`), which the state buys and pays by the laws. Its works in the colonies come out
+/// of the colonial purse.
+pub fn public_service(cat: &Catalogue, kind: usize) -> bool {
+    cat.buildings[kind].methods.first().is_some_and(|m| {
+        m.outputs
+            .first()
+            .is_some_and(|(g, _)| cat.public_goods.contains(g))
+    })
+}
+
+/// How a country's public works money divides between metropole and colonies.
+pub struct ColonialPurse {
+    /// Colonies' share of the income tax base (incomes × class rates × collection).
+    pub share: Fixed,
+    /// Of the colonies' part, the share left for the natives' schools and hospitals: what the
+    /// colonial law neither sends home (`colonial_tribute`) nor spends on the colonizers
+    /// (`discrimination`).
+    pub natives: Fixed,
+}
+
+/// The colonial purse of market `m` over its `regions`. Zero share without colonies.
+pub fn colonial_purse(econ: &Economy, m: &Market, regions: &[usize]) -> ColonialPurse {
+    let (mut all, mut col) = (Fixed::ZERO, Fixed::ZERO);
+    for &ri in regions {
+        let r = &econ.regions[ri];
+        let collection = m.laws.of(r).tax_collection;
+        let base: Fixed = r
+            .pops
+            .iter()
+            .enumerate()
+            .map(|(p, pop)| pop.income * m.budget.tax_rates[CLASS_OF[p]])
+            .sum::<Fixed>()
+            * collection;
+        all += base;
+        if r.colony {
+            col += base;
+        }
+    }
+    let share = if all > Fixed::ZERO {
+        fill(col, all)
+    } else {
+        Fixed::ZERO
+    };
+    let law = &m.laws.effects[1];
+    let natives = ((Fixed::ONE - law.colonial_tribute) * (Fixed::ONE - law.discrimination))
+        .clamp(Fixed::ZERO, Fixed::ONE);
+    ColonialPurse { share, natives }
 }
 
 /// Bounds of the fiscal correction.
@@ -525,5 +606,52 @@ mod tests {
         assert_eq!(pay_share(&m), milli(500));
         m.treasury = Fixed::from_int(-10_000);
         assert_eq!(pay_share(&m), PAY_FLOOR);
+    }
+
+    fn region(colony: bool, income: i64) -> Region {
+        let mut pops = super::super::state::empty_pops();
+        pops[prof::PEASANT].income = Fixed::from_int(income);
+        Region {
+            market: 0,
+            colony,
+            pops,
+            plants: Vec::new(),
+            literacy: Fixed::ZERO,
+            deposits: Vec::new(),
+            land: Vec::new(),
+            frontier: Vec::new(),
+            wild_km2: [0; 2],
+            cleared_km2: [0; 2],
+            pioneer_km2: Fixed::ZERO,
+            subsistence: Fixed::ZERO,
+            tfp: Fixed::ONE,
+            tfp_start: Fixed::ONE,
+            state: 0,
+            neighbours: Vec::new(),
+            local: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn colonies_pay_for_their_own_schools_less_what_the_law_takes() {
+        let mut m = Market::empty(0);
+        m.budget.tax_rates = [milli(100); TAX_CLASSES];
+        let econ = Economy {
+            regions: vec![region(false, 300), region(true, 100)],
+            markets: Vec::new(),
+            world_price: Vec::new(),
+            history: Vec::new(),
+        };
+        // No colonial law: a quarter of the tax base, all of it for the natives.
+        let p = colonial_purse(&econ, &m, &[0, 1]);
+        assert_eq!(p.share, milli(250));
+        assert_eq!(p.natives, Fixed::ONE);
+        // Indirect rule: a fifth sent home, 30 % for the colonizers.
+        m.laws.effects[1].colonial_tribute = milli(200);
+        m.laws.effects[1].discrimination = milli(300);
+        let p = colonial_purse(&econ, &m, &[0, 1]);
+        assert_eq!(p.natives, milli(560));
+        // Without colonies, nothing.
+        assert_eq!(colonial_purse(&econ, &m, &[0]).share, Fixed::ZERO);
     }
 }

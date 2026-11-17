@@ -512,6 +512,63 @@ de 1985, a nota da Índia ficaria perto de 0,60 em vez de 0,70, e a fecundidade 
 (real 4,3) em vez de 2,9. A China vai no sentido oposto (alfabetização e saúde abaixo do real) e
 fica na medida pelo freio da fome de terra.
 
+### Serviços nas colônias e nos pobres (`fix/colonial-services`)
+
+Rodada de 101 anos contra a `main` 1628772, semente 1925, 2 threads. O diagnóstico acima tinha
+três causas; a branch troca cada uma por uma regra com causa visível (`state.pt-BR.md`,
+"Orçamento colonial" e "Efeitos"; `population.pt-BR.md`, "Mortalidade" e "Fecundidade"):
+
+- escola e hospital da colônia saem da bolsa colonial, não do Tesouro inteiro: a cobertura
+  hospitalar das colônias britânicas de 1975 cai de 0,98 para 0,28 e a da Grã-Bretanha de 1955 sobe
+  de 0,40 para 0,82;
+- alfabetização presa à escola (30 % da velocidade sem escola), escola de missão nas colônias pela
+  lei de religião da metrópole e escolaridade das mães pela alfabetização das mulheres;
+- campanha de massa com mais alcance sem rede (0,55) e contracepção quase sem alcance sem escola nem
+  rede de saúde (0,05).
+
+| Ano | População `main` | branch | real | erro log pop | erro PIB pc |
+|---|---|---|---|---|---|
+| 1955 | 3,11 | 3,09 | 2,74 | 0,18 → 0,18 | 0,61 → 0,60 |
+| 1975 | 4,27 | 4,41 | 4,07 | 0,26 → 0,27 | 0,80 → 0,80 |
+| 1995 | 5,14 | 5,98 | 5,76 | 0,42 → 0,36 | 1,05 → 1,00 |
+| 2025 | 5,80 | 8,02 | 8,23 | 0,66 → 0,52 | 1,09 → 1,08 |
+
+| Unidade | Ano | Alfabetização `main` → branch / real | Vida | Filhos por mulher (real: ONU WPP) |
+|---|---|---|---|---|
+| Colônias britânicas | 1955 | 0,45 → 0,39 / 0,28 | 48 → 43 / 44 | 6,2 → 6,3 / 6,4 |
+| Colônias britânicas | 1975 | 0,69 → 0,56 / 0,48 | 70 → 59 / 52 | 2,3 → 5,4 / 6,3 |
+| Colônias britânicas | 1995 | 0,85 → 0,73 / 0,65 | 82 → 82 / 54 | 1,8 → 1,9 / 5,4 |
+| Colônias francesas | 1975 | 0,68 → 0,40 / — | 64 → 54 / 51 | 3,2 → 6,1 / 6,4 |
+| Colônias francesas | 1995 | 0,85 → 0,57 / 0,61 | 82 → 72 / 62 | 1,8 → 4,0 / 4,5 |
+| Índia (RAJ) | 1975 | 0,57 → 0,44 / 0,37 | 53 → 52 / 51 | 4,1 → 5,1 / 5,5 |
+| Índia (RAJ) | 1995 | 0,70 → 0,60 / 0,52 | 66 → 64 / 60 | 2,5 → 3,4 / 3,9 |
+| Egito | 1975 | 0,58 → 0,42 / 0,38 | 54 → 50 / 52 | 4,6 → 5,6 / 5,8 |
+| Egito | 1995 | 0,72 → 0,54 / 0,54 | 70 → 64 / 65 | 2,0 → 4,7 / 3,8 |
+
+População de 2025 sobre a real: colônias britânicas 0,34 → 0,46; francesas 0,48 → 0,87; Índia
+0,60 → 0,81; Egito 0,41 → 0,61; Brasil 0,63 → 1,01; México 0,48 → 0,68; China 1,08 → 1,40.
+
+**O que ficou de fora e por quê.**
+
+- **Colônias britânicas depois de 1985.** Elas continuam colônia até 2025 e estão 2,3 vezes mais
+  ricas por habitante que o real em 1975 (salário de metrópole na colônia,
+  `monthly::market_wages`): a bolsa colonial cresce com essa renda e compra hospital (vida 82 em
+  1995 contra 54). É dependência da economia colonial e da descolonização, não meta deste
+  trabalho.
+- **Egito depois de 1995.** A transição acelera quando a escola chega (filhos por mulher 2,5 em
+  2005 contra 3,3).
+- **China.** Fica em 1,40 porque a política do filho único e a campanha de alfabetização foram
+  regime, não renda; continua dependência anotada.
+- **Alfabetização dos soberanos que o jogo não deixa construir escola.** Turquia, Mongólia, Albânia
+  e Arábia constroem pouca escola porque a obra pública só usa o caixa acima da reserva. O viés
+  médio da alfabetização em 1995 vai de −0,00 para −0,15 (o erro médio de 1955 cai de 0,11 para
+  0,08). O Estado pobre real pagava escola com o orçamento corrente (países menos desenvolvidos,
+  educação a 2,3 % do PNB em 1960 e 3,9 % em 1974); essa regra fica para o plano de melhoria.
+- **Convergência de produtividade.** Ela usa a alfabetização ao quadrado, e o grupo
+  "convergência" do placar sobe de 0,96 para 1,09 (Turquia 0,33 → 0,12 do PIB por habitante real
+  em 2015, México 0,63 → 0,46). Em compensação, o PIB por habitante mundial de 2025 fica em US$ 14,9
+  mil contra 16,6 mil reais (era 19,3 mil) e a correlação de posto sobe de 0,49 para 0,53.
+
 ### O que guerra e fome tirariam
 
 O modelo não tem guerra nem fome. A Segunda Guerra matou de 60 a 75 milhões de pessoas, das quais

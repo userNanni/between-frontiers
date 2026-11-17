@@ -246,7 +246,7 @@ adulto e alta exponencial com a idade), construída para isso, não copiada de t
 
     antes   = 0,38 × conforto + 0,35 × escolaridade − 0,05 − 0,25 × (1 − comida)
     teto    = 0,70 + 0,25 × conforto + 0,13 × hospitais
-    alcance = 0,35 + 0,65 × max(hospitais, escolaridade)
+    alcance = 0,55 + 0,45 × max(hospitais, escolaridade)
     remédio = clamp((efeito "mortality" da pesquisa − 0,20) / (0,80 − 0,20)) × alcance
     h       = antes + (teto − antes) × remédio
 
@@ -256,8 +256,17 @@ adulto e alta exponencial com a idade), construída para isso, não copiada de t
   países ricos já tinham em 1925 (vacina, saneamento) está no "antes"; só o que vem depois conta
   como remédio, e ele chega inteiro com 80 % da árvore (antibióticos, vacinas e inseticidas são a
   maior parte).
-- **Alcance:** a campanha de massa leva um terço do remédio a quem não tem hospital nem escola
-  (DDT no Ceilão de 1946); o resto vem com hospitais ou com mães que leem.
+- **Alcance:** a campanha de massa leva mais da metade do remédio a quem não tem hospital nem
+  escola, a centavos por pessoa: vacina contra varíola a 1–2 centavos a dose, penicilina contra
+  a bouba em mais de 50 milhões de pessoas entre 1952 e 1964, DDT no Ceilão de 1946. O resto vem
+  com hospitais ou com mães que leem. Preston (1975): a renda explica de 10 % a 25 % do ganho de
+  expectativa de vida entre os anos 1930 e 1960; a Índia foi de 32 para 51 anos entre 1941 e 1975
+  com um sexto das mulheres alfabetizadas e 0,5 leito por mil. Antes desta regra o alcance sem rede era
+  um terço, e com a escola das mães na medida real a Índia ficava em 44 anos em 1975.
+- **A ordem histórica:** a mortalidade cai primeiro (campanha, sem escola) e a fecundidade décadas
+  depois (escola das mães e contracepção). Defasagem real: 15 a 20 anos no Ceilão, 30 a 35 no
+  México e na África subsaariana, cerca de 40 na Índia; a fecundidade subsaariana chegou a subir
+  (6,6 em 1960, 6,8 em 1975–80) enquanto a mortalidade caía. É isso que faz a população explodir.
 - Substitui a fórmula da fase 1 (natalidade e mortalidade em função linear da alfabetização,
   pisos de 7 e 6 por mil, remédio por calendário de 1935 a 1970 e mortalidade × hospitais). Sem
   dados de pesquisa (ferramentas e testes) o remédio ainda segue esse calendário.
@@ -276,15 +285,25 @@ Filhos por mulher (TFR), distribuídos pelas idades de 15 a 49 num perfil fixo (
 - **Sobrevivência:** a chance de passar dos 5 anos na mortalidade do mês, de 50 % (0) a 98 % (1).
   Os filhos morrem menos, as famílias querem menos filhos; o atraso entre as duas quedas sai da
   escolaridade.
-- **Escolaridade das mães:** a alfabetização do estado seguida com atraso de 20 anos (240 meses):
-  a menina na escola hoje é mãe daqui a uma geração.
+- **Escolaridade das mães:** a alfabetização das mulheres do estado seguida com atraso de 20 anos
+  (240 meses): a menina na escola hoje é mãe daqui a uma geração. Onde pouca gente lê, a menina vai
+  à escola depois do menino: alfabetização das mulheres = alfabetização × (1 − 0,5 × (1 −
+  alfabetização)) (`women_literacy`). Censos (Banco Mundial, WDI `SE.ADT.LITR.ZS` e `.FE.ZS`):
+  Índia 1991, 48 % e 34 %; Egito 1986, 44 % e 31 %; Argélia 1987, 50 % e 36 %; Nigéria 1991, 56 % e
+  44 %; Turquia 1990, 79 % e 69 % (lacuna de 0,5 a 0,65). México e Brasil têm menos (88 % e 85 %;
+  75 % e 73 %): ali a regra põe as mães um pouco abaixo do real.
 - **Fora do campo:** parcela da população fora das profissões rurais (`urban_share`), com peso
   pequeno (0,03). A literatura põe a escola das mães e a sobrevivência infantil como causas
   sustentadas da queda; a urbanização por trabalho informal, sem escola e sem saúde, não derruba a
   fecundidade (com peso 0,10 ela derrubava a do Brasil e da África cedo demais depois do #69).
 - **Contracepção:** o efeito `fertility` das tecnologias (a pílula) vezes o alcance,
-  0,25 + 0,75 × max(escolaridade, cobertura hospitalar): o planejamento familiar chegou pela
-  escola e pela rede de saúde (médicos descalços na China, postos na Indonésia e em Bangladesh).
+  0,05 + 0,95 × max(escolaridade, cobertura hospitalar): o planejamento familiar chegou pela
+  escola e pela rede de saúde (médicos descalços na China, postos na Indonésia e em Bangladesh), e
+  quase não chega a quem não tem nenhuma das duas. Uso de método moderno (Banco Mundial,
+  `SP.DYN.CONM.ZS`): África subsaariana 11 % em 1990 e 16 % em 2000; Índia 9,5 % em 1971 e 28 % em
+  1981; Bangladesh, pobre e sem escola, abaixo de 10 % em meados dos anos 1970 e 45 % em 1993–94,
+  com agentes de saúde de porta em porta. Antes desta regra o piso era 0,25, e a Índia de 1975 chegava a
+  0,47.
   Sem contracepção a transição para em 2,25 filhos (abstinência, coito interrompido, casamento
   tardio); com ela, em 1,75.
 - **Fome de terra (freio preventivo):** a lavoura que cada lavrador tem, aberta e ainda por abrir
