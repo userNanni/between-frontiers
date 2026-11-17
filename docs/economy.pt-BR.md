@@ -420,7 +420,7 @@ que custa, e em 2020 toda a eletricidade do mundo era nuclear.
 capital de um nível relativo a um nível do seu primeiro método (que vale 1); a carga recusa a
 declaração parcial. Onde há declaração, a escolha de método pesa o lucro do nível sobre esse capital
 (`monthly::method_score`) e a obra nova e a troca de método o pagam (`monthly::method_capital`). Onde
-não há, nada muda: com nenhum prédio declarando, a rodada de 10 anos dá o hash da `main`.
+não há, nada muda: com nenhum prédio declarando, a rodada de 101 anos dá o hash final da `main`.
 
 **As usinas (testado e guardado).** Os valores pelo custo de capital por kW (EIA, *Capital Cost and
 Performance Characteristic Estimates for Utility Scale Electric Power Generating Technologies*,
