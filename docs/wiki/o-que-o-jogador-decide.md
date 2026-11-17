@@ -11,7 +11,7 @@ Atalhos do perfil padrão; todos se mudam no editor de atalhos (Configurações 
 
 | Decisão | Comando | Onde fica | Atalho | Estado |
 |---|---|---|---|---|
-| Escolher o país da campanha | `ChoosePlayer` | Tela de escolha de país: clique no mapa e "Começar" | sem atalho ainda (lacuna) | no jogo (#8) |
+| Escolher o país da campanha | `ChoosePlayer` | Tela de escolha de país: clique no mapa, ou "Procurar país" (lista com busca pelo nome ou pela sigla), e "Começar" | Ctrl+F abre a lista; Enter escolhe o primeiro; S começa | no jogo (#8; teclado neste PR) |
 | Jogar com outro país | `SwitchCountry` | Campanhas → "…" da campanha → "Jogar com outro país" | Shift+F10 abre o "…"; J escolhe | no jogo (#96, #108) |
 | Pesquisa: foco | `SetResearch` | Pesquisa: clique numa tecnologia; "Limpar foco" | R abre; Delete limpa o foco | no jogo |
 | Impostos por classe, ou regra automática | `SetTaxRates` | Governo → Orçamento | G abre; B a aba | no jogo |
@@ -51,6 +51,29 @@ de ferramentas; o jogador liberta a própria terra com `Liberate`.
 
 Estas decisões o país toma sozinho, por uma regra, sem alavanca do jogador. Se alguma virar decisão
 do jogador, é o autor quem decide.
+
+### O que o autor decidiu (2026-11-17)
+
+O autor leu esta lista e decidiu o que passa para a mão do jogador. Em cada uma, a regra de hoje
+continua como padrão ("Regra histórica"), e o jogador pode fixar o valor ("Fixado pelo governo"),
+como já faz com os impostos.
+
+| | Vira decisão do jogador | Nota do autor | Simulação | Tela |
+|---|---|---|---|---|
+| D1 | Tamanho da folha | O clero nem sempre é folha do governo: depende da lei de religião e Estado. | thread do ensino | Orçamento |
+| D2 | Salário público | | thread do ensino | Orçamento |
+| D3 | Compras do Estado e a parte militar | | thread do ensino | Orçamento |
+| D4 | Excedente e reserva do Tesouro | | thread do ensino | Orçamento |
+| D5 | Teto de déficit | | thread do ensino | Orçamento |
+| D6 | Calote e reestruturação | Decisão rara, em Agendas. | thread do ensino | Agendas |
+| D7 | Câmbio | Quando o padrão-ouro entrar. | fase 4 | Moeda e dívida |
+| D8 | Fila de obras públicas | "Uma lista de prioridades que o jogador define e em que pode ordenar tudo." | thread do ensino | Orçamento |
+| D9 | Dívida interna ou externa | O mercado decide quem compra; o jogador escolhe onde emite. | thread do ensino | Moeda e dívida |
+| D13 | Construir tropas de propósito | O efetivo de paz continua pela lei. | thread da guerra | Forças |
+
+**Ficam por regra:** a correção fiscal, o recorte de zeros e a bolsa colonial.
+
+### A lista de regras de hoje
 
 - **Tamanho da folha do Estado:** servidores, soldados e clero são uma fração fixa da população: 1,2 %, 1 % e 0,5 % (`econ::monthly::STATE_SHARE`). O Estado não contrata nem demite.
 - **Salário público:** o salário privado médio vezes o peso da profissão vezes 0,7 (`econ::public::PUBLIC_PAY`).

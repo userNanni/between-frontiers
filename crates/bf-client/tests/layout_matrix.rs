@@ -831,3 +831,56 @@ fn close_beside_tabs(h: &Harness<'_, App>, case: &str, close: &str) -> Vec<Strin
     }
     out
 }
+
+/// The country choice by keyboard: Ctrl+F opens the list of countries, typing filters it, Enter
+/// takes the first; the list and the sidebar fit every size.
+#[test]
+fn the_country_is_chosen_by_keyboard() {
+    let mut failures = Vec::new();
+    for locale in ["pt-BR", "en"] {
+        let user =
+            std::env::temp_dir().join(format!("bf-matrix-pick-{locale}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&user);
+        let save = saves::create(
+            &user.join("saves"),
+            "Escolha",
+            7,
+            laplace_schelling::calendar::Date::new(1925, 1, 1),
+        )
+        .unwrap();
+        let mut h = app(user.clone(), locale, egui::vec2(1600.0, 900.0));
+        steps(&mut h);
+        let ctx = h.ctx.clone();
+        h.state_mut().apply(Transition::Pick(save), &ctx);
+        steps(&mut h);
+        h.key_press_modifiers(egui::Modifiers::COMMAND, egui::Key::F);
+        steps(&mut h);
+        for (w, hh) in SIZES {
+            h.set_size(egui::vec2(w, hh));
+            steps(&mut h);
+            let case = format!("{locale} {w}×{hh} country list");
+            failures.extend(check(&h, &case));
+            if !nodes(&h).iter().any(|n| n.label == "pick-countries") {
+                failures.push(format!("{case}: no list of countries"));
+            }
+        }
+        h.set_size(egui::vec2(1280.0, 720.0));
+        h.event(egui::Event::Text("BRA".into()));
+        steps(&mut h);
+        h.key_press(egui::Key::Enter);
+        steps(&mut h);
+        let start = if locale == "en" {
+            "Start campaign"
+        } else {
+            "Começar campanha"
+        };
+        if h.query_all(egui_kittest::kittest::by().label_contains(start))
+            .next()
+            .is_none()
+        {
+            failures.push(format!("{locale}: Enter did not choose Brazil"));
+        }
+        let _ = std::fs::remove_dir_all(&user);
+    }
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
