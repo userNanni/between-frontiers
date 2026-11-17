@@ -1,0 +1,69 @@
+# O que o jogador decide
+
+Cada decisão de um país que o jogador pode tomar, com o comando da simulação, onde fica na tela e o
+atalho. O teste `crates/bf-client/tests/player_commands.rs` garante que nenhum comando de jogador
+novo chega sem tela e sem atalho: comando novo em `GameCommand` falha nele até ter os dois, ou até
+entrar na lista de exceções com a razão. Quando esta tabela muda, o teste muda junto.
+
+Atalhos do perfil padrão; todos se mudam no editor de atalhos (Configurações → Editar atalhos).
+
+## No jogo
+
+| Decisão | Comando | Onde fica | Atalho | Estado |
+|---|---|---|---|---|
+| Escolher o país da campanha | `ChoosePlayer` | Tela de escolha de país: clique no mapa e "Começar" | sem atalho ainda (lacuna) | no jogo (#8) |
+| Jogar com outro país | `SwitchCountry` | Campanhas → "…" da campanha → "Jogar com outro país" | Shift+F10 abre o "…"; J escolhe | no jogo (#96, #108) |
+| Pesquisa: foco | `SetResearch` | Pesquisa: clique numa tecnologia; "Limpar foco" | R abre; Delete limpa o foco | no jogo |
+| Impostos por classe, ou regra automática | `SetTaxRates` | Governo → Orçamento | G abre; B a aba | no jogo |
+| Prioridades das obras públicas | `SetPublicPriority` | Governo → Orçamento | G, B | no jogo |
+| Lei de migração | `SetMigrationLaw` | Governo → Orçamento | G, B | no jogo |
+| Taxa de juros do banco central, ou regra automática | `SetPolicyRate` | Governo → Moeda e dívida | G abre; M a aba | no jogo |
+| Banco central: histórico, autônomo ou subordinado | `SetCentralBank` | Governo → Moeda e dívida | G, M | no jogo |
+| Propor uma lei | `SetLaw` | Governo → Leis: escolher a lei e "Propor" | G, L; Ctrl+Enter propõe | no jogo |
+| Libertar território | `Liberate` | Agendas → Decisões → "Libertar território", com confirmação | J abre as Agendas | no jogo (#96) |
+
+Exceção: `Borders` (operação de fronteira) não é do jogador. Vem de tratados, da paz, de testes e
+de ferramentas; o jogador liberta a própria terra com `Liberate`.
+
+## Em PR
+
+| Decisão | Comando | Onde fica | Estado |
+|---|---|---|---|
+| Mobilizar e desmobilizar | `Mobilize { on }` | Agendas, decisão em dois passos, com ponto de restauração antes (motivo "guerra") | em revisão (#115) |
+| Campanha de alfabetização | (do PR do ensino) | a definir com o thread do ensino | em rascunho |
+
+## Desenhadas, sem comando ainda
+
+| Decisão | Onde deve ficar | Depende de |
+|---|---|---|
+| Propor um tratado | mesa de negociação em Agendas | etapa 4 dos tratados (proposta por comando) |
+| Assinar ou recusar um tratado proposto | Agendas | idem |
+| Renegociar uma dívida | Governo → Dívidas entre governos → "Renegociar" (hoje desligado) | mesa de negociação |
+| Denunciar um tratado | Agendas | denúncia no tick |
+| Honrar ou não um pacto de defesa | Agendas, decisão com ponto de restauração | registro de quebras |
+| Exigir e declarar guerra | Agendas, com ponto de restauração (motivo "guerra") | fase 5 |
+| Responder a um movimento de independência | Agendas | parte C das fronteiras (#133) |
+| Entrar e sair de um bloco | Agendas | blocos como rótulo sobre tratados (#132) e proposta no tick |
+| Vetar capital estrangeiro e impor embargo | Governo | fluxo de capital (#117) e comércio por par (#113) |
+| Abrir missão diplomática | Agendas | serviço exterior (#112) |
+
+## O que o país decide por regra
+
+Estas decisões o país toma sozinho, por uma regra, sem alavanca do jogador. Se alguma virar decisão
+do jogador, é o autor quem decide.
+
+- **Tamanho da folha do Estado:** servidores, soldados e clero são uma fração fixa da população: 1,2 %, 1 % e 0,5 % (`econ::monthly::STATE_SHARE`). O Estado não contrata nem demite.
+- **Salário público:** o salário privado médio vezes o peso da profissão vezes 0,7 (`econ::public::PUBLIC_PAY`).
+- **Compras do Estado** (armas, papel, transporte): a receita mais o déficit que a regra da dívida permite, menos a folha, os serviços, as obras e os juros. O piso é 60 % da folha (`GOODS_PER_PAYROLL`), cortado quando o Tesouro não conseguiu tomar emprestado ou quando os juros pesam (`goods_budget`, `austerity`, piso de 25 %).
+- **Gastar o excedente:** acima do dobro da reserva, o Tesouro gasta um décimo do excesso por semana (`SURPLUS_SPENDING`). Se a dívida passar de 60 % do PIB, ele paga dívida com esse excesso em vez de gastar (`money::REPAY_SHARE`, `REPAY_ABOVE`).
+- **Reserva do Tesouro:** 13 semanas de receita antes de começar obras (`RESERVE_WEEKS`). Abaixo de 8 semanas, paga a folha em atraso, até o piso de 10 % (`PAY_RESERVE_WEEKS`, `PAY_FLOOR`).
+- **Quanto se endivida:** o déficit que a regra da dívida permite por semana e o crédito para obras por mês (`money::deficit_room`, `borrowing_room`).
+- **Com quem se endivida:** os títulos são comprados pela poupança ociosa de casa, pelo fundo de investimento e pela poupança ociosa de fora, em frações fixas por semana (`HOME_ABSORB`, `POOL_ABSORB`, `FOREIGN_ABSORB`). A parte em moeda estrangeira cresce para países pobres, com inflação ou com calote (`fx_share`).
+- **Calote e reestruturação:** se o serviço em moeda estrangeira passa de 30 % da receita, ou se o Tesouro deve um quarto da receita do ano que não conseguiu tomar enquanto deve fora, metade da dívida externa é perdoada e o país fica três anos fora do crédito externo. Se os juros tomam demais da receita, o Estado reestrutura a dívida (`money.rs`).
+- **Correção fiscal:** com os impostos na regra automática, a taxa sobe um degrau quando os juros passam de 12 % da receita e dois quando passam de um quarto, e desce com pouca dívida e caixa folgado (`yearly_taxes`). O que os tetos da lei de impostos cortam vira imposto sobre o consumo, até o teto (`cap_taxes`, `INDIRECT_CEILING`).
+- **Quais obras públicas fazer:** a infraestrutura onde o produto é escasso (preço acima de 110 % do de referência), até 200 obras (`public_works`). As prioridades por categoria são do jogador; a escolha de cada obra é da regra.
+- **Pesquisa paga pelo Estado:** a meta de gasto em pesquisa e a parte do Tesouro (`research_target`, `STATE_RESEARCH_SHARE`). A prioridade de pesquisa vem das leis.
+- **Bolsa colonial:** o que as colônias pagam e recebem da metrópole (`colonial_purse`).
+- **Câmbio:** a moeda deriva para a paridade enfraquecida pelo prêmio de risco (`exchange_target`). Não há âncora nem câmbio fixo escolhido (regime internacional na fase 4).
+- **Recorte de zeros:** a moeda perde oito zeros quando o índice de preços passa do limite (`REDENOMINATION`).
+- **Forças em paz** (#115, em revisão): o efetivo de terra segue, todo janeiro, a fração de 1925 dos homens em idade de serviço, ajustada pela lei de conscrição. As encomendas têm teto na parte militar das compras do Estado.
