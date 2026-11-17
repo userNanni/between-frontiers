@@ -100,9 +100,6 @@ pub struct TechnologiesFile {
     pub technologies: Vec<TechnologyDef>,
 }
 
-    u32::try_from(u64::from(cost) * factor / 1_000_000).unwrap_or(u32::MAX)
-}
-
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TechnologyDef {
     pub key: String,
