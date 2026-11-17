@@ -192,8 +192,7 @@ fn population_of(
         Some(p) if p.month == (date.year, date.month) => Some(Arc::clone(p)),
         _ => {
             let table = rules.as_ref().and_then(|r| r.communities.as_deref());
-            crate::population::read(session.world(), session.player(), date, table)
-                .map(Arc::new)
+            crate::population::read(session.world(), session.player(), date, table).map(Arc::new)
         }
     }
 }
