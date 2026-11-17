@@ -61,6 +61,8 @@ pub struct LabourChange {
     staffing: Vec<Fixed>,
     /// Levels of urban self-employment the town's jobless labourers fill this month.
     informal: Option<i64>,
+    /// Pioneers: land cleared toward the next level, and the levels they open this month.
+    pioneers: (Fixed, Option<(u8, i64)>),
 }
 
 fn move_people(pops: &mut [(i64, i64)], from: usize, to: usize, workers_moved: i64) {
@@ -191,7 +193,47 @@ fn labour_region(cat: &Catalogue, r: &Region, moves: &super::migration::Moves) -
         pops,
         staffing,
         informal,
+        pioneers: (r.pioneer_km2, None),
     }
+}
+
+/// Land a pioneer clears with his own labour in a year, km² per idle peasant worker
+/// (`docs/economy.pt-BR.md`, "Pioneiros").
+const PIONEER_KM2_PER_WORKER: Fixed = milli(10);
+
+/// Peasants without work or free land clear the state's frontier for their own plot, with
+/// their labour and no capital: as far as the land law lets them keep it (`frontier_access`)
+/// and as far as transport reaches the place. Returns the land cleared toward the next level
+/// and the levels opened, of the staple farm with the most frontier.
+pub fn pioneers(cat: &Catalogue, r: &Region, m: &super::Market) -> (Fixed, Option<(u8, i64)>) {
+    let Some(farm) = r
+        .frontier
+        .iter()
+        .filter(|f| f.1 > 0 && cat.staple_farms.iter().any(|s| s.0 == f.0))
+        .max_by_key(|f| (f.1, std::cmp::Reverse(f.0)))
+        .map(|f| f.0)
+    else {
+        return (r.pioneer_km2, None);
+    };
+    let km2 = cat.farm_km2.get(usize::from(farm)).copied().unwrap_or(0);
+    if km2 <= 0 || !super::week::short_of_land(cat, r, m) {
+        return (r.pioneer_km2, None);
+    }
+    let p = &r.pops[prof::PEASANT];
+    let idle = (workers(p.size) - p.employed).max(0);
+    let reach = cat
+        .freight
+        .and_then(|g| cat.local.iter().position(|&l| l == g))
+        .and_then(|li| r.local.get(li))
+        .map_or(Fixed::ONE, |l| l.buy);
+    let cleared = PIONEER_KM2_PER_WORKER.mul_ratio(idle, 12) * m.laws.of(r).frontier_access * reach;
+    let total = r.pioneer_km2 + cleared;
+    let open = r.frontier.iter().find(|f| f.0 == farm).map_or(0, |f| f.1);
+    let levels = (total / km2).to_int_floor().min(open);
+    (
+        total - Fixed::from_int(levels * km2),
+        Some((farm, levels)).filter(|x| x.1 > 0),
+    )
 }
 
 impl System<GameWorld> for Labour {
@@ -212,7 +254,11 @@ impl System<GameWorld> for Labour {
             .regions
             .par_iter()
             .zip(moves.par_iter())
-            .map(|(r, m)| labour_region(&self.cat, r, m))
+            .map(|(r, mv)| {
+                let mut c = labour_region(&self.cat, r, mv);
+                c.pioneers = pioneers(&self.cat, r, &world.econ.markets[r.market as usize]);
+                c
+            })
             .collect()
     }
     fn apply(&self, _ctx: &TickCtx, changes: Vec<LabourChange>, world: &mut GameWorld) {
@@ -231,6 +277,12 @@ impl System<GameWorld> for Labour {
             }
             for (plant, s) in r.plants.iter_mut().zip(c.staffing) {
                 plant.staffing = s;
+            }
+            r.pioneer_km2 = c.pioneers.0;
+            if let Some((farm, levels)) = c.pioneers.1 {
+                for _ in 0..levels {
+                    clear_land(&self.cat, r, farm);
+                }
             }
             if let (Some(k), Some(levels)) = (self.cat.informal, c.informal)
                 && (levels > 0 || r.plants.iter().any(|p| p.kind == k))

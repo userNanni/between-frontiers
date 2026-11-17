@@ -157,7 +157,7 @@ const fn effect(
 use Combine::{Add, Cap, Multiply};
 
 /// Every effect a law may declare, per mille.
-pub const EFFECTS: [EffectKind; 37] = [
+pub const EFFECTS: [EffectKind; 38] = [
     // Share of the open migration flows let through (the `MigrationLaw` reach).
     effect(
         "migration_within_state",
@@ -277,6 +277,14 @@ pub const EFFECTS: [EffectKind; 37] = [
     // the colonized.
     effect("colonial_tribute", Add, System::Colonies, None),
     effect("colonial_self_rule", Add, System::Colonies, None),
+    // Share of the pioneer's clearing the land law lets him keep: free settlement on public
+    // land is full; estates that claim the frontier leave the settler little.
+    effect(
+        "frontier_access",
+        Multiply,
+        System::Income,
+        Some("econ::monthly::pioneers"),
+    ),
 ];
 
 pub fn effect_index(key: &str) -> Option<usize> {
