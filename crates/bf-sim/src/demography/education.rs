@@ -48,6 +48,51 @@ pub const WORKING: std::ops::RangeInclusive<usize> = 5..=12;
 /// durations; Barro and Lee use each country's own). Reading without school counts 1.
 pub const YEARS: [u32; STORED] = [1, 6, 12, 16];
 
+/// `data/scenario/1925/education.ron`: the schooling of 1925 by unit (country, metropole or
+/// colonies), generated from Lee and Lee (2016) by `tools/education/build.py`.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct EducationFile {
+    pub first_year: i32,
+    pub step: i32,
+    pub units: Vec<EducationUnit>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct EducationUnit {
+    pub tag: String,
+    pub colonies: bool,
+    /// Share of the unit's 1925 population in countries with data (0 for an estimate).
+    pub coverage: f32,
+    /// (primary, secondary, tertiary) enrolment ratios, %, every `step` years from
+    /// `first_year` to 1925.
+    pub enrolment: Vec<(f32, f32, f32)>,
+    /// Shares of those 15–64 with no schooling, primary, secondary and tertiary as the highest
+    /// level attained, %, in 1925 (checks the start; the simulation grows its own).
+    pub attainment_15_64: (f32, f32, f32, f32),
+    /// Modern countries the means are over (iso3).
+    pub countries: String,
+    /// How the unit was estimated when none of its countries has data.
+    #[serde(default)]
+    pub estimate: Option<String>,
+}
+
+impl EducationFile {
+    /// The unit's enrolment path, per ten thousand of each level's ages.
+    pub fn path(&self, tag: &str, colonies: bool) -> Option<Vec<[u32; SCHOOL_LEVELS]>> {
+        let u = self
+            .units
+            .iter()
+            .find(|u| u.tag == tag && u.colonies == colonies)?;
+        let per = |v: f32| (f64::from(v) * 100.0).round().clamp(0.0, f64::from(WHOLE)) as u32;
+        Some(
+            u.enrolment
+                .iter()
+                .map(|&(p, s, t)| [per(p), per(s), per(t)])
+                .collect(),
+        )
+    }
+}
+
 /// A state's schooling, saved and hashed.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Schooling {
@@ -235,27 +280,31 @@ impl Schooling {
     }
 }
 
-/// Years of the past the schooling of the start is grown over, and the share of its enrolment
-/// the start had at their beginning (the same device as the start's pyramid).
-const PAST_YEARS: u32 = 60;
-const PAST_ENROLMENT: u32 = 3_000;
-
-/// The schooling of a state at the start: sixty years of schools whose enrolment rose from
-/// `PAST_ENROLMENT` of the start's to the start's (`enrolment`, per ten thousand of each
-/// level's ages), on the start's pyramid, with the share of children who learn to read without
-/// school found so that the literacy of those 15 and over is `literacy` (per ten thousand).
-/// When schools alone already give more, the informal share is zero and literacy comes out
-/// higher.
+/// The schooling of a state at the start: its schools' enrolment of the past, `path` (per ten
+/// thousand of each level's ages, every five years up to the start), lived year by year on the
+/// start's pyramid, with the share of children who learn to read without school found so that
+/// the literacy of those 15 and over is `literacy` (per ten thousand). When schools alone
+/// already give more, the informal share is zero and literacy comes out higher.
 pub fn initial(
     ages: &[i64; AGE_GROUPS],
-    enrolment: [u32; SCHOOL_LEVELS],
+    path: &[[u32; SCHOOL_LEVELS]],
     literacy: u32,
 ) -> Schooling {
+    let years = (path.len().max(1) as u32 - 1) * 5;
+    let at = |y: u32| -> [u32; SCHOOL_LEVELS] {
+        if path.is_empty() {
+            return [0; SCHOOL_LEVELS];
+        }
+        let i = ((y / 5) as usize).min(path.len() - 1);
+        let j = (i + 1).min(path.len() - 1);
+        let f = y % 5;
+        std::array::from_fn(|l| (path[i][l] * (5 - f) + path[j][l] * f) / 5)
+    };
+    let enrolment = at(years);
     let grow = |informal: u32| -> Schooling {
         let mut s = Schooling::default();
-        for y in 0..=PAST_YEARS {
-            let f = PAST_ENROLMENT + (WHOLE - PAST_ENROLMENT) * y / PAST_YEARS;
-            let target: [u32; SCHOOL_LEVELS] = std::array::from_fn(|l| enrolment[l] * f / WHOLE);
+        for y in 0..=years {
+            let target = at(y);
             s.year(
                 ages,
                 &SchoolYear {
@@ -425,12 +474,15 @@ mod tests {
     #[test]
     fn the_start_matches_its_literacy_and_the_young_read_more() {
         let ages = pyramid();
-        let s = initial(&ages, [3_000, 500, 100], 4_000);
+        let path: Vec<[u32; 3]> = (0..13)
+            .map(|i| [1_000 + 160 * i, 100 + 30 * i, 20 + 7 * i])
+            .collect();
+        let s = initial(&ages, &path, 4_000);
         let lit = s.literacy(&ages);
         assert!((3_950..=4_100).contains(&lit), "{lit}");
         let reads = |g: usize| Schooling::at_least(&s.levels[g], Level::ReadsNoSchool);
         assert!(reads(3) > reads(12), "15–19 read more than 60–64");
-        assert_eq!(s.enrolment, [3_000, 500, 100]);
+        assert_eq!(s.enrolment, [2_920, 460, 104]);
     }
 
     #[test]
