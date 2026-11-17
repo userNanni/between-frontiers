@@ -20,8 +20,6 @@ pub struct State {
     save: Save,
     sim: SimHandle,
     selected: Option<usize>,
-    /// The state clicked last (index into `World::states`): what "free a state" frees.
-    selected_state: Option<usize>,
     menu_open: bool,
     rules: bf_sim::game::Rules,
     research_open: bool,
@@ -81,7 +79,14 @@ impl State {
         let rules = Some(data.rules());
         let session = if path.is_file() {
             let bytes = std::fs::read(&path).map_err(|e| e.to_string())?;
-            Session::load(&bytes, 0, rules.clone()).map_err(|e| e.to_string())?
+            let mut session = Session::load(&bytes, 0, rules.clone()).map_err(|e| e.to_string())?;
+            // Another country chosen on the campaigns screen ("⋯ → Jogar com outro país").
+            if let Some(tag) = &save.meta.player
+                && session.player() != Some(tag.as_str())
+            {
+                session.submit(GameCommand::SwitchCountry { tag: tag.clone() });
+            }
+            session
         } else {
             let mut session = Session::new(
                 data.new_world(),
@@ -119,7 +124,6 @@ impl State {
             research_camera: None,
             live_month: None,
             live_figures: None,
-            selected_state: None,
         };
         if !path.is_file() {
             state.sim.save(path, state.save.meta.name.clone())?;
@@ -389,20 +393,27 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
     if let (Some(owners), Some(world)) = (&snap.owners, &mut shared.world)
         && world.apply_owners(owners)
     {
-        if let Some(map) = &mut shared.map {
-            map.rebuild_owners(world);
-            if let Some(view) = &mut shared.map_view {
-                view.set_palette(map.palette.clone());
-            }
-        }
         world.live = state
             .live_figures
             .as_deref()
             .map(|f| crate::world::FigureTable::live(&world.countries, f))
             .or(world.live.take());
-        shared.flags =
-            crate::flags::Flags::load(ui.ctx(), &shared.paths.assets.join("flags"), world);
-        shared.map_gpu_dirty = true;
+        shared.rebuild_map(ui.ctx());
+        // Annexed, or beaten by a revolt: the choice of another country is needed now, not
+        // offered (decision 4 of `docs/borders.pt-BR.md`).
+        let gone = shared.world.as_ref().is_some_and(|w| {
+            state.save.meta.player.as_ref().is_some_and(|tag| {
+                w.countries
+                    .iter()
+                    .find(|c| c.tag() == tag)
+                    .is_some_and(|c| c.states.is_empty() && c.colonial_states.is_empty())
+            })
+        });
+        if gone {
+            state.write(shared, now, false);
+            shared.toast(shared.tr("game-country-gone"), now);
+            return Some(Transition::SwitchCountry(state.save.clone()));
+        }
     }
     // Where the HUD's panels go: the player's layout resolved for this screen and the sizes the
     // panels ask for; worked out again only when one of them changes.
@@ -440,7 +451,6 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
             }
         } else if let Some(id) = response.clicked_province {
             state.selected = world.provinces[id as usize - 1].owner;
-            state.selected_state = world.provinces[id as usize - 1].state;
         }
         if let (Some(layer), Some(texture), Some(camera)) = (&sea_layer, &sea_texture, view.camera)
             && !state.research_open
@@ -601,36 +611,11 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
             ui.make_persistent_id("game-side"),
             Sense::click_and_drag(),
         );
-        let mut action = None;
         region(ui, side.shrink(space::XL), |ui| {
             egui::ScrollArea::vertical()
                 .auto_shrink([false, false])
-                .show(ui, |ui| {
-                    action = country_panel::show(shared, ui, country, player, state.selected_state);
-                });
+                .show(ui, |ui| country_panel::show(shared, ui, country));
         });
-        match action {
-            Some(country_panel::Action::Switch(tag)) => {
-                state.save.meta.player = Some(tag.clone());
-                state
-                    .sim
-                    .send(Command::Issue(GameCommand::SwitchCountry { tag }));
-            }
-            Some(country_panel::Action::Liberate {
-                by,
-                state: key,
-                subject,
-            }) => {
-                state.sim.send(Command::Issue(GameCommand::Liberate {
-                    by,
-                    states: vec![key],
-                    tag: None,
-                    subject,
-                }));
-                state.selected_state = None;
-            }
-            None => {}
-        }
     }
 
     // The player's population, read once a month.
@@ -781,10 +766,19 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
             &shared.i18n,
             shared.world.as_ref(),
             snap.journal.as_deref(),
+            snap.liberation.as_deref(),
             &pinned,
             state.journal.as_mut().expect("journal open"),
             &mut journal_place,
         );
+        if let (Some((states, tag, subject)), Some(by)) = (res.liberate, snap.player.clone()) {
+            state.sim.send(Command::Issue(GameCommand::Liberate {
+                by,
+                states,
+                tag,
+                subject,
+            }));
+        }
         keep_window_place(shared, "journal", journal_place, res.place_done);
         for id in res.toggle_pin {
             state.toggle_pin(shared, &id, now);
@@ -1411,7 +1405,10 @@ fn overview(
         state.research_open = true;
     }
     if let Some(picked) = res.open_journal {
-        state.journal = Some(super::journal::Window { picked });
+        state.journal = Some(super::journal::Window {
+            picked,
+            ..Default::default()
+        });
     }
     if let Some(id) = res.unpin {
         state.toggle_pin(shared, &id, now);

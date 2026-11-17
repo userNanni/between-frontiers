@@ -299,9 +299,7 @@ pub mod id {
     pub const SAVE_NAMED: &str = "campaign.save_named";
     pub const SETTINGS: &str = "system.settings";
     pub const KEYS: &str = "system.keys";
-    pub const SWITCH_COUNTRY: &str = "country.switch";
-    pub const LIBERATE: &str = "country.liberate";
-    pub const LIBERATE_SUBJECT: &str = "country.liberate_subject";
+
     pub const POPULATION: &str = "window.population";
     pub const UI_SCALE_UP: &str = "system.ui_scale_up";
     pub const UI_SCALE_DOWN: &str = "system.ui_scale_down";
@@ -419,15 +417,6 @@ fn builtin() -> Vec<CommandDef> {
         CommandDef::new(KEYS, System)
             .keys([k(KeyK).ctrl()])
             .hint('K'),
-        CommandDef::new(SWITCH_COUNTRY, Government)
-            .keys([k(KeyP).shift()])
-            .hint('W'),
-        CommandDef::new(LIBERATE, Government)
-            .keys([k(KeyF).shift()])
-            .hint('X'),
-        CommandDef::new(LIBERATE_SUBJECT, Government)
-            .keys([k(KeyU).shift()])
-            .hint('V'),
     ]);
     for (i, (cmd, hint)) in HUD_PANELS
         .into_iter()

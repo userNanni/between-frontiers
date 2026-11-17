@@ -253,6 +253,8 @@ pub struct World {
     pub candidates: Vec<bf_sim::borders::Candidate>,
     /// Countries of the scenario; those after them were born in the game.
     pub scenario_countries: usize,
+    /// Status of every country of the scenario, to undo a campaign's border changes.
+    scenario_status: Vec<Status>,
     /// The clause catalogue of treaties (`data/diplomacy/clauses.ron`): what a subject yields.
     pub clauses: Option<bf_sim::treaty::ClauseCatalogue>,
 }
@@ -372,11 +374,64 @@ impl World {
             owners_seen: 0,
             candidates: Vec::new(),
             scenario_countries: 0,
+            scenario_status: Vec::new(),
             clauses: None,
         };
         world.scenario_countries = world.countries.len();
+        world.scenario_status = world
+            .countries
+            .iter()
+            .map(|c| c.def.status.clone())
+            .collect();
         world.index_countries();
         world
+    }
+
+    /// Back to the scenario's owners: a campaign's border changes leave with it.
+    pub fn reset_owners(&mut self) {
+        if self.owners_seen == 0 && self.countries.len() == self.scenario_countries {
+            return;
+        }
+        self.countries.truncate(self.scenario_countries);
+        for (c, s) in self.countries.iter_mut().zip(&self.scenario_status) {
+            c.def.status = s.clone();
+        }
+        let index_of = |tag: &str| self.countries.iter().position(|c| c.def.tag == tag);
+        let originals: Vec<(Option<usize>, bool)> = self
+            .states
+            .iter()
+            .map(|st| {
+                self.map
+                    .states
+                    .iter()
+                    .find(|d| d.id == st.def.id)
+                    .map_or((None, st.def.colony), |d| (index_of(&d.owner), d.colony))
+            })
+            .collect();
+        for (st, (owner, colony)) in self.states.iter_mut().zip(originals) {
+            st.owner = owner;
+            st.def.colony = colony;
+        }
+        let provinces: Vec<(Option<usize>, bool)> = self
+            .provinces
+            .iter()
+            .map(|p| {
+                self.map
+                    .provinces
+                    .iter()
+                    .find(|d| d.id == p.def.id)
+                    .map_or((p.owner, p.def.colony), |d| (index_of(&d.owner), d.colony))
+            })
+            .collect();
+        for (p, (owner, colony)) in self.provinces.iter_mut().zip(provinces) {
+            p.owner = owner;
+            p.def.colony = colony;
+        }
+        for table in std::iter::once(&mut self.scenario).chain(self.live.as_mut()) {
+            table.countries.truncate(self.scenario_countries);
+        }
+        self.owners_seen = 0;
+        self.index_countries();
     }
 
     /// A country born in the game has no 1925 figures of its own: its life expectancy (the

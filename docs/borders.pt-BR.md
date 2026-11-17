@@ -417,6 +417,31 @@ Código em `crates/bf-sim/src/borders/op.rs`; testes em `crates/bf-sim/tests/bor
 - **Determinismo:** campanha com libertação, anexação e independência dá o mesmo hash com 1 e 2
   threads e com save e load no meio.
 
+### Onde ficam as ações (decisão do dono de 2026-11-17)
+
+Libertar território e jogar com outro país não são decisões comuns. Um fluxo de um toque ocupa
+espaço na tela e deixa o jogador fazer isso sem querer. Por isso:
+
+- **O painel do país só informa.** Mostra os súditos, mas não tem botão de fronteira.
+- **Libertar território é uma decisão da janela de Agendas (J)**, seção "Decisões" no topo da
+  lista (`bf-client/src/screens/liberate.rs`).
+  - O jogador escolhe o que libertar: um país do catálogo cujo território é dele (só a parte que
+    ele tem) ou um estado só. Escolhe também se sai independente ou súdito.
+  - Antes de confirmar, vê o que sai do país: pessoas, níveis de fábricas e fazendas, parte do
+    fundo, dívida que vai junto. Como súdito, vê também o que o país novo cede e recebe pelo
+    feixe de cláusulas.
+  - A confirmação é um passo próprio ("Revisar a decisão", depois "Confirmar a libertação"). Tudo
+    tem dica de tecla e texto nos dois idiomas.
+  - As opções e os números vêm de `borders::op::liberation_options` e `borders::op::preview`,
+    lidos na thread da simulação uma vez por mês e quando as fronteiras ou o jogador mudam.
+- **Jogar com outro país fica fora do jogo em andamento**, na tela de Campanhas: menu "…" da
+  campanha → "Jogar com outro país".
+  - Abre a escolha de país (`screens::pick::State::switching`) com as fronteiras e os números do
+    próprio save, e grava a escolha na campanha.
+  - Ao abrir a campanha, o jogo emite `GameCommand::SwitchCountry` se a escolha difere da sessão.
+- **Quando é necessária, a escolha aparece sozinha.** Se o país do jogador deixa de existir
+  (anexado, ou derrotado por uma revolta), o jogo salva e abre a mesma escolha.
+
 ## 9. Rodada de 100 anos com a história aplicada por data (só para exercitar as operações)
 
 `bf-bench --game --borders-history` aplica `data/history/borders.ron` nas datas reais. É desligada

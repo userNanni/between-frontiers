@@ -44,6 +44,19 @@ impl Shared {
         self.i18n.tr(id)
     }
 
+    /// The map's owners, colours, borders and flags again, after the world's owners changed.
+    pub fn rebuild_map(&mut self, ctx: &egui::Context) {
+        let Some(world) = &self.world else { return };
+        if let Some(map) = &mut self.map {
+            map.rebuild_owners(world);
+            if let Some(view) = &mut self.map_view {
+                view.set_palette(map.palette.clone());
+            }
+        }
+        self.flags = crate::flags::Flags::load(ctx, &self.paths.assets.join("flags"), world);
+        self.map_gpu_dirty = true;
+    }
+
     pub fn refresh_saves(&mut self) {
         self.saves = saves::list(&self.paths.saves());
     }
@@ -152,6 +165,9 @@ pub enum Transition {
     Saves,
     /// Choose the country of a new campaign.
     Pick(Save),
+    /// Choose another country to play in a saved campaign (the campaigns' "⋯" menu, or the game
+    /// when the player's country no longer exists).
+    SwitchCountry(Save),
     Game(Save),
     Quit,
 }
@@ -233,8 +249,16 @@ impl App {
             view.selected_owner = None;
         }
         // Outside a campaign the scenario's figures stand; a campaign reads its own again.
+        let owners_changed = shared
+            .world
+            .as_ref()
+            .is_some_and(|w| w.owners_seen != 0 || w.countries.len() != w.scenario_countries);
         if let Some(world) = &mut shared.world {
             world.clear_live();
+            world.reset_owners();
+        }
+        if owners_changed {
+            shared.rebuild_map(ctx);
         }
         self.screen = match transition {
             Transition::Menu => {
@@ -250,6 +274,11 @@ impl App {
                 Screen::Saves(screens::saves::State::new(shared))
             }
             Transition::Pick(save) => Screen::Pick(screens::pick::State::new(save)),
+            Transition::SwitchCountry(save) => {
+                let state = screens::pick::State::switching(save, shared);
+                shared.rebuild_map(ctx);
+                Screen::Pick(state)
+            }
             Transition::Game(save) => match screens::game::State::new(shared, save, ctx) {
                 Ok(state) => Screen::Game(Box::new(state)),
                 Err(e) => {

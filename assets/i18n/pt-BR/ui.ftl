@@ -88,6 +88,12 @@ pick-hint = Clique num país no mapa. Arraste para mover, use a roda do mouse pa
 pick-back = Voltar às campanhas
 pick-start = Começar campanha
 pick-none = Nenhum país selecionado
+pick-switch-title = Jogar com outro país
+pick-switch-hint = Clique em qualquer país que exista nesta campanha. A campanha continua de onde parou, com o país escolhido.
+pick-switch = Jogar com este país
+saves-more = Mais ações desta campanha
+saves-switch = Jogar com outro país
+game-country-gone = O seu país deixou de existir. Escolha outro para continuar a campanha.
 
 ## Painel do país
 
@@ -115,14 +121,35 @@ stat-area = Área
 stat-area-value = { $value } km²
 stat-states = Estados
 stat-subjects = Súditos
-borders-title = Fronteiras
-borders-switch = Jogar com { $country }
-borders-switch-detail = O jogo continua; este país passa a ser o seu.
-borders-liberate = Libertar { $state }
-borders-liberate-subject = Libertar { $state } como súdito
-borders-liberate-detail = Leva a sua gente, as fábricas e parte do fundo de investimento; a dívida fica com o seu Tesouro.
 borders-subject-detail = Como súdito, cede { $gives } e recebe { $receives }. Sai negociando ou por denúncia, quando a pressão de saída passa o controle do suserano.
-borders-select-state = Clique num estado seu para libertá-lo.
+decisions-title = Decisões
+decisions-hint = Raras e difíceis de desfazer: cada uma pede confirmação.
+liberate-title = Libertar território
+liberate-intro = Um pedaço do seu país vira país próprio, independente ou súdito seu. A decisão vale para sempre: só um tratado ou uma guerra devolvem o território.
+liberate-none = Não há território que o seu país possa libertar sem ficar sem nenhum estado.
+liberate-choose = O quê
+liberate-choose-hint = Um país do catálogo cujo território é seu, ou um estado só.
+liberate-option-detail = { $states ->
+        [one] 1 estado
+       *[other] { $states } estados
+    } · { $people } pessoas
+liberate-how = Como
+liberate-independent = Independente
+liberate-subject = Súdito seu
+liberate-review = Revisar a decisão
+liberate-pick-first = Escolha à esquerda o que libertar para ver o que sai do seu país.
+liberate-leaves = O que sai do seu país
+liberate-people = Pessoas
+liberate-plants = Níveis de fábricas e fazendas
+liberate-fund = Parte do fundo de investimento
+liberate-debt = Dívida pública que vai junto
+liberate-debt-stays = nenhuma: a dívida fica com o seu Tesouro
+liberate-states = Estados: { $names }.
+liberate-confirm = Libertar { $name } como país independente?
+liberate-confirm-subject = Libertar { $name } como súdito seu?
+liberate-final = O país novo nasce reconhecido por quem assina a criação dele: o seu país.
+liberate-yes = Confirmar a libertação
+liberate-no = Voltar
 stat-rank-population = { $rank }º do mundo em população
 stat-rank-gdp = { $rank }ª economia do mundo
 stat-difficulty = Dificuldade

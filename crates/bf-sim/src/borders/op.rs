@@ -1226,3 +1226,135 @@ impl OwnersView {
         }
     }
 }
+
+/// What freeing `states` of country `from` would move (`docs/borders.pt-BR.md`, the decision
+/// "Libertar território"): read by the interface before the player confirms.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Preview {
+    pub people: i64,
+    /// Plant levels in the states.
+    pub levels: i64,
+    /// Share of the country's investment fund that goes with them (**w**), and the amount.
+    pub fund_share: Fixed,
+    pub fund: Fixed,
+    /// Public debt that leaves with the metropole states (a colony is born without debt).
+    pub debt: Fixed,
+    /// The country's people and plant levels now, for the shares.
+    pub people_total: i64,
+    pub levels_total: i64,
+}
+
+/// [`Preview`] of freeing `states` (map state keys) of `from`; `None` when the operation would
+/// be refused (a state not held, all of them).
+pub fn preview(
+    world: &GameWorld,
+    rules: &BorderRules,
+    from: usize,
+    states: &[String],
+) -> Option<Preview> {
+    let rs = regions_of(rules, world, from, states).ok()?;
+    if rs.len() == held(world)[from] {
+        return None;
+    }
+    let (w, _) = weights(world, from, &rs);
+    let metro: Vec<usize> = rs
+        .iter()
+        .copied()
+        .filter(|&r| !world.econ.regions[r].colony)
+        .collect();
+    let (w_metro, _) = weights(world, from, &metro);
+    let m = &world.econ.markets[from];
+    let y = &m.money;
+    let mut p = Preview {
+        fund_share: w,
+        fund: m.pool * w,
+        debt: (y.debt_home + y.debt_bank + y.debt_abroad + y.debt_fx) * w_metro,
+        ..Preview::default()
+    };
+    for (i, r) in world.econ.regions.iter().enumerate() {
+        if usize::from(r.market) != from {
+            continue;
+        }
+        let levels: i64 = r.plants.iter().map(|p| p.levels).sum();
+        p.people_total += r.population();
+        p.levels_total += levels;
+        if rs.binary_search(&i).is_ok() {
+            p.people += r.population();
+            p.levels += levels;
+        }
+    }
+    Some(p)
+}
+
+/// One way the player's country can free land: a country of the catalogue whose core it holds
+/// (in part), or one state of its own.
+#[derive(Clone, Debug, PartialEq)]
+pub struct LiberationOption {
+    /// The catalogue's tag; `None` for a single state (the tag is chosen when it is freed).
+    pub tag: Option<String>,
+    pub states: Vec<String>,
+    pub preview: Preview,
+}
+
+/// Every way `from` can free land, catalogue countries first (by people), then its states (by
+/// key).
+pub fn liberation_options(
+    world: &GameWorld,
+    rules: &BorderRules,
+    from: usize,
+) -> Vec<LiberationOption> {
+    let holds = held(world);
+    let key_of: BTreeMap<u16, &str> = rules
+        .state_ids
+        .iter()
+        .map(|(k, &id)| (id, k.as_str()))
+        .collect();
+    let mine: BTreeSet<&str> = world
+        .econ
+        .regions
+        .iter()
+        .filter(|r| usize::from(r.market) == from)
+        .filter_map(|r| key_of.get(&r.state).copied())
+        .collect();
+    let mut out: Vec<LiberationOption> = rules
+        .candidates
+        .countries
+        .iter()
+        .filter(|c| c.rename_of.is_none())
+        .filter(|c| tag_ix(world, &c.tag).is_none_or(|i| holds[i] == 0))
+        .filter_map(|c| {
+            let states: Vec<String> = c
+                .states
+                .iter()
+                .filter(|s| mine.contains(s.as_str()))
+                .cloned()
+                .collect();
+            if states.is_empty() {
+                return None;
+            }
+            let preview = preview(world, rules, from, &states)?;
+            Some(LiberationOption {
+                tag: Some(c.tag.clone()),
+                states,
+                preview,
+            })
+        })
+        .collect();
+    out.sort_by(|a, b| {
+        b.preview
+            .people
+            .cmp(&a.preview.people)
+            .then_with(|| a.tag.cmp(&b.tag))
+    });
+    for s in &mine {
+        let states = vec![(*s).to_owned()];
+        if let Some(preview) = preview(world, rules, from, &states) {
+            out.push(LiberationOption {
+                tag: None,
+                states,
+                preview,
+            });
+        }
+    }
+    out
+}

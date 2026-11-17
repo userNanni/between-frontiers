@@ -79,6 +79,12 @@ pick-hint = Click a country on the map. Drag to pan, use the mouse wheel to zoom
 pick-back = Back to campaigns
 pick-start = Start campaign
 pick-none = No country selected
+pick-switch-title = Play another country
+pick-switch-hint = Click any country that exists in this campaign. The campaign goes on where it stopped, with the country you choose.
+pick-switch = Play this country
+saves-more = More actions for this campaign
+saves-switch = Play another country
+game-country-gone = Your country no longer exists. Choose another to go on with the campaign.
 
 ## Country panel
 
@@ -103,14 +109,35 @@ stat-area = Area
 stat-area-value = { $value } km²
 stat-states = States
 stat-subjects = Subjects
-borders-title = Borders
-borders-switch = Play { $country }
-borders-switch-detail = You keep the game; this country is yours from now on.
-borders-liberate = Free { $state }
-borders-liberate-subject = Free { $state } as a subject
-borders-liberate-detail = It takes its people, its plants and a share of the investment fund; the debt stays with your treasury.
 borders-subject-detail = As a subject it yields { $gives } and receives { $receives }. It leaves by negotiation or by denunciation, once the pressure to leave passes the overlord's control.
-borders-select-state = Click one of your states to free it.
+decisions-title = Decisions
+decisions-hint = Rare and hard to undo: each asks for confirmation.
+liberate-title = Free territory
+liberate-intro = A part of your country becomes a country of its own, independent or your subject. The decision stands for good: only a treaty or a war brings the land back.
+liberate-none = There is no land your country can free without being left with no state.
+liberate-choose = What
+liberate-choose-hint = A country of the catalogue whose land is yours, or a single state.
+liberate-option-detail = { $states ->
+        [one] 1 state
+       *[other] { $states } states
+    } · { $people } people
+liberate-how = How
+liberate-independent = Independent
+liberate-subject = Your subject
+liberate-review = Review the decision
+liberate-pick-first = Choose on the left what to free to see what leaves your country.
+liberate-leaves = What leaves your country
+liberate-people = People
+liberate-plants = Plant and farm levels
+liberate-fund = Share of the investment fund
+liberate-debt = Public debt that goes with it
+liberate-debt-stays = none: the debt stays with your treasury
+liberate-states = States: { $names }.
+liberate-confirm = Free { $name } as an independent country?
+liberate-confirm-subject = Free { $name } as your subject?
+liberate-final = The new country is born recognized by whoever signs its creation: your country.
+liberate-yes = Confirm the liberation
+liberate-no = Back
 stat-rank-population = #{ $rank } in the world by population
 stat-rank-gdp = #{ $rank } economy in the world
 stat-difficulty = Difficulty

@@ -53,6 +53,44 @@ pub struct Snapshot {
     pub population: Option<Arc<crate::population::PopulationView>>,
     /// Who holds every state, read again when a border operation ran; `None` without the rules.
     pub owners: Option<Arc<bf_sim::borders::op::OwnersView>>,
+    /// The ways the player's country can free land (the decision "Libertar território"), read
+    /// once a month and when the borders or the player change.
+    pub liberation: Option<Arc<LiberationView>>,
+}
+
+/// What the decision to free land shows.
+#[derive(Clone, Debug, PartialEq)]
+pub struct LiberationView {
+    pub tag: String,
+    pub month: (i32, u8),
+    pub changes: usize,
+    pub options: Vec<bf_sim::borders::op::LiberationOption>,
+}
+
+fn liberation_of(
+    session: &Session,
+    rules: &Rules,
+    last: &Option<Arc<LiberationView>>,
+) -> Option<Arc<LiberationView>> {
+    let tag = session.player()?;
+    let date = session.clock().date;
+    let w = session.world();
+    let changes = w.borders.changes.len();
+    if let Some(l) = last
+        && l.tag == tag
+        && l.month == (date.year, date.month)
+        && l.changes == changes
+    {
+        return Some(Arc::clone(l));
+    }
+    let b = rules.as_ref()?.borders.as_ref()?;
+    let c = w.countries.iter().position(|(_, c)| c.tag == tag)?;
+    Some(Arc::new(LiberationView {
+        tag: tag.to_owned(),
+        month: (date.year, date.month),
+        changes,
+        options: bf_sim::borders::op::liberation_options(w, b, c),
+    }))
 }
 
 /// The player's research, copied out of the world for the interface.
@@ -167,6 +205,7 @@ struct Monthly {
     journal: Option<Arc<Journal>>,
     population: Option<Arc<crate::population::PopulationView>>,
     owners: Option<Arc<bf_sim::borders::op::OwnersView>>,
+    liberation: Option<Arc<LiberationView>>,
 }
 
 /// The owners, read again only when a border operation ran since `last`.
@@ -195,6 +234,7 @@ impl Monthly {
             journal: journal_of(session, rules, &last.journal),
             population: population_of(session, rules, &last.population),
             owners: owners_of(session, rules, &last.owners),
+            liberation: liberation_of(session, rules, &last.liberation),
         }
     }
 }
@@ -219,6 +259,7 @@ fn snapshot_of(
         journal: monthly.journal,
         population: monthly.population,
         owners: monthly.owners,
+        liberation: monthly.liberation,
         government: crate::government::read(
             session.world(),
             session.player(),
