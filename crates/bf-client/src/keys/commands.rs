@@ -297,6 +297,7 @@ pub mod id {
     pub const QUICK_SAVE: &str = "campaign.quick_save";
     pub const QUICK_LOAD: &str = "campaign.quick_load";
     pub const SAVE_NAMED: &str = "campaign.save_named";
+    pub const CAMPAIGN_MENU: &str = "campaign.menu";
     pub const SETTINGS: &str = "system.settings";
     pub const KEYS: &str = "system.keys";
 
@@ -408,6 +409,9 @@ fn builtin() -> Vec<CommandDef> {
             .hint('S'),
         CommandDef::new(QUICK_SAVE, System).keys([k(F5)]).hint('V'),
         CommandDef::new(QUICK_LOAD, System).keys([k(F9)]).hint('L'),
+        CommandDef::new(CAMPAIGN_MENU, System)
+            .keys([k(F10).shift()])
+            .hint('O'),
         CommandDef::new(SAVE_NAMED, System)
             .keys([k(KeyS).ctrl().shift()])
             .hint('N'),

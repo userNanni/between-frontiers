@@ -2235,3 +2235,59 @@ fn borders_and_switching_country() {
         shot(&mut h, &format!("76-jogando-ucrania{suffix}"));
     }
 }
+
+/// The campaign cards and their menu after the redesign: menu closed and open, a 60-character
+/// name with a folder past a thousand MB at the floor of 960 × 540, and 1280 × 720 at 125 %.
+#[test]
+#[ignore = "needs a GPU (or software Vulkan) and the generated map; run with --ignored"]
+fn campaign_cards() {
+    use laplace_schelling::calendar::Date;
+    let user = std::env::temp_dir().join(format!("bf-shots-cards-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&user);
+    let session = advanced_session(Date::new(1925, 2, 1));
+    let long = "Campanha com um nome bem comprido para testar onde ele corta";
+    let fill = |home: &std::path::Path| {
+        write_campaign(home, &session, "Brasil", "BRA", &[]);
+        write_campaign(home, &session, "Iugoslávia", "YUG", &[]);
+        let big = write_campaign(home, &session, long, "YUG", &[]);
+        std::fs::File::create(big.dir.join("filler.bin"))
+            .unwrap()
+            .set_len(1_234_000_000)
+            .unwrap();
+        write_campaign(home, &session, "União Soviética", "SOV", &[]);
+    };
+    let menu_label = |locale: &str| {
+        if locale == "en" {
+            "Campaign options"
+        } else {
+            "Opções da campanha"
+        }
+    };
+    for (locale, size, tag, scale) in [
+        ("pt-BR", egui::vec2(1600.0, 900.0), "pt", "ui_scale: 100"),
+        ("en", egui::vec2(1280.0, 720.0), "en-1280", "ui_scale: 100"),
+        ("pt-BR", egui::vec2(960.0, 540.0), "pt-960", "ui_scale: 100"),
+        (
+            "pt-BR",
+            egui::vec2(1280.0, 720.0),
+            "pt-1280-125",
+            "ui_scale: 125",
+        ),
+    ] {
+        let home = user.join(tag);
+        fill(&home);
+        let mut h = harness_scaled(home.clone(), locale, size, scale);
+        let ctx = h.ctx.clone();
+        h.state_mut().shared.refresh_saves();
+        h.state_mut().apply(Transition::Saves, &ctx);
+        h.run_steps(4);
+        shot(&mut h, &format!("106-campaigns-{tag}-v2"));
+        h.get_all(egui_kittest::kittest::by().label_contains(menu_label(locale)))
+            .next()
+            .expect("options button")
+            .click();
+        h.run_steps(3);
+        shot(&mut h, &format!("107-campaign-menu-{tag}-v2"));
+    }
+    let _ = std::fs::remove_dir_all(&user);
+}

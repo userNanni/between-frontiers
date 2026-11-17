@@ -5,15 +5,16 @@
 //! selected campaign, or the form for a new one.
 
 use bf_i18n::Arg;
-use bf_ui_kit::tokens::{color, space};
+use bf_ui_kit::theme;
+use bf_ui_kit::tokens::{color, control, radius, size, space};
 use bf_ui_kit::{Button, ButtonSize, ListRow};
-use egui::{Color32, Rect, Ui};
+use egui::{Rect, RichText, Ui};
 
 use super::{backdrop_map, region};
 use crate::app::{Shared, Transition};
 use crate::keys;
 use crate::points::{self, Kind, Point};
-use crate::saves::{self, civil_date};
+use crate::saves;
 use crate::text::{country_name, date_long};
 
 /// Entries of a campaign's "…" menu, in order. Ids are stable (`saves.menu.<id>`, Fluent
@@ -28,11 +29,12 @@ pub enum MenuItem {
 }
 
 impl MenuItem {
+    /// In the menu's order; the destructive one last, apart.
     pub const ALL: [MenuItem; 4] = [
         MenuItem::PlayOther,
         MenuItem::Rename,
-        MenuItem::Delete,
         MenuItem::OpenFolder,
+        MenuItem::Delete,
     ];
 
     pub fn id(self) -> &'static str {
@@ -297,7 +299,47 @@ fn campaigns(
     list_rect: Rect,
     out: &mut Option<Transition>,
 ) {
-    let list_h = list_rect.height() - space::XL * 2.0 - 64.0;
+    // The list's head: its title, and the main action on the selected campaign, where the
+    // campaign menu (opening down from a card) never covers it.
+    let selected = state.selected.and_then(|i| shared.saves.get(i)).cloned();
+    ui.horizontal(|ui| {
+        let load_w = 150.0f32.min(ui.available_width() * 0.4);
+        ui.allocate_ui_with_layout(
+            egui::vec2(
+                ui.available_width() - load_w - space::SM,
+                control::HEIGHT_MD,
+            ),
+            egui::Layout::left_to_right(egui::Align::Center),
+            |ui| {
+                ui.add(
+                    egui::Label::new(
+                        RichText::new(shared.tr("saves-list-title"))
+                            .font(theme::serif_medium(size::HEADING))
+                            .color(color::TEXT),
+                    )
+                    .truncate(),
+                );
+            },
+        );
+        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+            let load = Button::primary(&shared.tr("saves-load"))
+                .enabled(selected.is_some())
+                .show(ui);
+            if (load.clicked() || keys::single(ui, "saves.load", 'L', load.rect))
+                && let Some(s) = selected.clone()
+            {
+                *out = Some(open(s));
+            }
+        });
+    });
+    ui.add_space(space::SM);
+    // Room below the list only while it holds something: renaming, confirming, an error.
+    let below = if state.renaming.is_some() || state.confirm_delete || state.error.is_some() {
+        56.0
+    } else {
+        0.0
+    };
+    let list_h = (list_rect.bottom() - ui.cursor().top() - space::XL - below).max(CARD_H);
     let warn = u64::from(shared.settings.warn_mb) * 1_000_000;
     egui::ScrollArea::vertical()
         .id_salt("campaigns")
@@ -306,89 +348,15 @@ fn campaigns(
         .show(ui, |ui| {
             ui.spacing_mut().item_spacing.y = space::SM;
             for (i, save) in shared.saves.iter().enumerate() {
-                let (subtitle, mark) = match &save.meta.player {
-                    Some(tag) => {
-                        let color = shared
-                            .world
-                            .as_ref()
-                            .and_then(|w| w.countries.iter().find(|c| c.tag() == tag))
-                            .map(|c| {
-                                let (r, g, b) = c.def.color;
-                                Color32::from_rgb(r, g, b)
-                            });
-                        (
-                            format!(
-                                "{} · {}",
-                                country_name(&shared.i18n, tag),
-                                date_long(&shared.i18n, save.meta.date)
-                            ),
-                            color,
-                        )
-                    }
-                    None => (shared.tr("saves-country-pending"), None),
-                };
-                let trailing = shared.i18n.tr_args(
-                    "saves-last-played",
-                    &[(
-                        "when",
-                        Arg::String(date_long(&shared.i18n, civil_date(save.meta.last_played))),
-                    )],
-                );
-                let image = save
-                    .meta
-                    .player
-                    .as_ref()
-                    .and_then(|tag| shared.flags.get(tag))
-                    .map(|t| t.id());
-                let row = ListRow {
-                    image,
-                    title: &save.meta.name,
-                    subtitle: &subtitle,
-                    trailing: &trailing,
-                    mark: Some(mark.unwrap_or(color::BORDER_STRONG)),
-                    selected: state.selected == Some(i),
-                }
-                .show(ui);
-                let typed = keys::item(
-                    ui,
-                    'Z',
-                    format!("saves.campaign.{}", i + 1),
-                    &(i + 1).to_string(),
-                    row.rect,
-                );
-                // The "…" menu, at the bottom right of the row; the folder size beside it.
-                let dots = Rect::from_min_size(
-                    egui::pos2(
-                        row.rect.right() - space::LG - 28.0,
-                        row.rect.bottom() - 30.0,
-                    ),
-                    egui::vec2(28.0, 24.0),
-                );
-                let size = state.sizes.get(i).copied().unwrap_or(0);
-                ui.painter().text(
-                    egui::pos2(dots.left() - space::SM, dots.center().y),
-                    egui::Align2::RIGHT_CENTER,
-                    format!("{} MB", super::game::mb(&shared.i18n, size)),
-                    bf_ui_kit::theme::sans(bf_ui_kit::tokens::size::CAPTION),
-                    if size > warn {
-                        color::DANGER
-                    } else {
-                        color::TEXT_FAINT
-                    },
-                );
-                let menu = ui
-                    .put(dots, egui::Button::new("…").frame(state.menu == Some(i)))
-                    .on_hover_text(shared.tr("saves-menu"));
-                ui.ctx()
-                    .data_mut(|d| d.insert_temp(menu_button_id(i), menu.rect));
-                if menu.clicked() {
+                let picked = card(state, shared, ui, i, save, warn);
+                if picked.menu {
                     state.select(Some(i));
                     state.menu = if state.menu == Some(i) { None } else { Some(i) };
-                } else if row.clicked() || typed {
+                } else if picked.select {
                     state.select(Some(i));
                     state.menu = None;
                 }
-                if row.double_clicked() {
+                if picked.open {
                     *out = Some(open(save.clone()));
                 }
             }
@@ -428,14 +396,6 @@ fn campaigns(
             }
             return;
         }
-        let load = Button::primary(&shared.tr("saves-load"))
-            .enabled(selected.is_some())
-            .show(ui);
-        if (load.clicked() || keys::single(ui, "saves.load", 'L', load.rect))
-            && let Some(s) = selected.clone()
-        {
-            *out = Some(open(s));
-        }
         if state.confirm_delete
             && let Some(s) = &selected
         {
@@ -473,7 +433,348 @@ fn campaigns(
     }
 }
 
-/// The "…" menu of campaign `i`, under its button.
+/// Height of a campaign's card.
+const CARD_H: f32 = 72.0;
+
+/// What a click on a card asked for.
+#[derive(Default)]
+struct Picked {
+    select: bool,
+    open: bool,
+    menu: bool,
+}
+
+/// A label confined to `rect`, cut with an ellipsis when it does not fit (the whole text then
+/// shows on hover and to screen readers).
+fn text_in(ui: &mut Ui, rect: Rect, text: RichText, right: bool) -> egui::Response {
+    let layout = if right {
+        egui::Layout::right_to_left(egui::Align::Center)
+    } else {
+        egui::Layout::left_to_right(egui::Align::Center)
+    };
+    ui.scope_builder(egui::UiBuilder::new().max_rect(rect).layout(layout), |ui| {
+        ui.add(egui::Label::new(text).truncate())
+    })
+    .inner
+}
+
+/// "fev. 1925": the game's month, short.
+fn month_year(shared: &Shared, d: laplace_schelling::calendar::Date) -> String {
+    shared.i18n.tr_args(
+        "date-month-year",
+        &[
+            (
+                "month",
+                Arg::String(shared.tr(&format!("month-short-{}", d.month))),
+            ),
+            ("year", Arg::String(d.year.to_string())),
+        ],
+    )
+}
+
+/// When a campaign was last played, short: "hoje, 11:40", "ontem" or "17 nov. 2026".
+fn played_short(shared: &Shared, secs: u64) -> String {
+    let (day, h, m) = saves::local_time(secs);
+    let (today, _, _) = saves::local_time(saves::now());
+    let (yesterday, _, _) = saves::local_time(saves::now().saturating_sub(86_400));
+    if day == today {
+        shared.i18n.tr_args(
+            "saves-played-today",
+            &[("time", Arg::String(format!("{h:02}:{m:02}")))],
+        )
+    } else if day == yesterday {
+        shared.tr("saves-played-yesterday")
+    } else {
+        short_date(shared, day)
+    }
+}
+
+fn short_date(shared: &Shared, d: laplace_schelling::calendar::Date) -> String {
+    shared.i18n.tr_args(
+        "date-short",
+        &[
+            ("day", Arg::String(d.day.to_string())),
+            (
+                "month",
+                Arg::String(shared.tr(&format!("month-short-{}", d.month))),
+            ),
+            ("year", Arg::String(d.year.to_string())),
+        ],
+    )
+}
+
+/// Width of the card's right column: its longest possible text in this language (any short
+/// date, "today, 23:59", "yesterday", a folder of four-digit MB).
+fn right_column(ui: &Ui, shared: &Shared) -> f32 {
+    let font = theme::sans(size::SMALL);
+    let width = |t: String| {
+        ui.painter()
+            .layout_no_wrap(t, font.clone(), color::TEXT)
+            .size()
+            .x
+    };
+    let mut texts: Vec<String> = (1..=12)
+        .map(|m| short_date(shared, laplace_schelling::calendar::Date::new(2026, m, 28)))
+        .collect();
+    texts.push(shared.i18n.tr_args(
+        "saves-played-today",
+        &[("time", Arg::String("23:59".into()))],
+    ));
+    texts.push(shared.tr("saves-played-yesterday"));
+    texts.push(format!(
+        "{} MB",
+        super::game::mb(&shared.i18n, 9_999_900_000)
+    ));
+    texts.into_iter().map(width).fold(0.0, f32::max) + 2.0
+}
+
+/// One campaign: flag, name, country and date on the left; when it was played and how much it
+/// takes on the right; and its options button inside the card's right edge.
+fn card(
+    state: &State,
+    shared: &Shared,
+    ui: &mut Ui,
+    i: usize,
+    save: &saves::Save,
+    warn: u64,
+) -> Picked {
+    let selected = state.selected == Some(i);
+    let (rect, response) = ui.allocate_exact_size(
+        egui::vec2(ui.available_width(), CARD_H),
+        egui::Sense::click(),
+    );
+    let name = save.meta.name.clone();
+    response.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, &name));
+    let fill = if selected {
+        color::ACCENT_SOFT
+    } else if response.hovered() {
+        color::SURFACE_HOVER
+    } else {
+        color::SURFACE_RAISED
+    };
+    let stroke = if selected {
+        egui::Stroke::new(1.0, color::ACCENT.gamma_multiply(0.7))
+    } else if response.has_focus() {
+        egui::Stroke::new(1.0, color::ACCENT)
+    } else {
+        egui::Stroke::new(1.0, color::BORDER)
+    };
+    ui.painter()
+        .rect(rect, radius::MD, fill, stroke, egui::StrokeKind::Inside);
+    let inner = rect.shrink2(egui::vec2(space::MD, space::SM));
+
+    // The options button, centred on the card's right edge, inside it.
+    let side = control::HEIGHT_MD;
+    let button = Rect::from_center_size(
+        egui::pos2(inner.right() - side / 2.0, rect.center().y),
+        egui::Vec2::splat(side),
+    );
+    // The flag, or the game's stand-in: the country's colour with its tag.
+    let mark = Rect::from_min_size(
+        egui::pos2(inner.left(), rect.center().y - 10.0),
+        egui::vec2(30.0, 20.0),
+    );
+    let country = save.meta.player.as_ref().and_then(|tag| {
+        shared
+            .world
+            .as_ref()
+            .and_then(|w| w.countries.iter().find(|c| c.tag() == tag))
+    });
+    match (country, &save.meta.player) {
+        (Some(c), _) => crate::flags::paint_flag(ui, mark, &shared.flags, c, color::BORDER_STRONG),
+        (None, tag) => {
+            ui.painter()
+                .rect_filled(mark, radius::SM, color::SURFACE_SUNKEN);
+            if let Some(tag) = tag {
+                ui.painter().text(
+                    mark.center(),
+                    egui::Align2::CENTER_CENTER,
+                    tag,
+                    theme::serif(9.0),
+                    color::TEXT_MUTED,
+                );
+            }
+        }
+    }
+    // The right column, as wide as its longest possible text in this language: a date is never
+    // cut.
+    let right_w = right_column(ui, shared).min(inner.width() * 0.45);
+    let right = Rect::from_min_max(
+        egui::pos2(button.left() - space::MD - right_w, inner.top()),
+        egui::pos2(button.left() - space::MD, inner.bottom()),
+    );
+    let left = Rect::from_min_max(
+        egui::pos2(mark.right() + space::MD, inner.top()),
+        egui::pos2(right.left() - space::MD, inner.bottom()),
+    );
+    let half = |r: Rect, top: bool| {
+        let mid = r.center().y;
+        if top {
+            Rect::from_min_max(egui::pos2(r.left(), mid - 22.0), egui::pos2(r.right(), mid))
+        } else {
+            Rect::from_min_max(
+                egui::pos2(r.left(), mid + 1.0),
+                egui::pos2(r.right(), mid + 21.0),
+            )
+        }
+    };
+    // The game's date first, short, so that only the country's name is ever cut.
+    let subtitle = match &save.meta.player {
+        Some(tag) => format!(
+            "{} · {}",
+            month_year(shared, save.meta.date),
+            country_name(&shared.i18n, tag)
+        ),
+        None => shared.tr("saves-country-pending"),
+    };
+    text_in(
+        ui,
+        half(left, true),
+        RichText::new(&save.meta.name)
+            .font(theme::sans_semibold(size::BODY))
+            .color(color::TEXT),
+        false,
+    );
+    text_in(
+        ui,
+        half(left, false),
+        RichText::new(subtitle)
+            .font(theme::sans(size::SMALL))
+            .color(color::TEXT_MUTED),
+        false,
+    );
+    let (day, h, m) = saves::local_time(save.meta.last_played);
+    let full = shared.i18n.tr_args(
+        "saves-last-played-full",
+        &[
+            ("date", Arg::String(date_long(&shared.i18n, day))),
+            ("time", Arg::String(format!("{h:02}:{m:02}"))),
+        ],
+    );
+    text_in(
+        ui,
+        half(right, true),
+        RichText::new(played_short(shared, save.meta.last_played))
+            .font(theme::sans(size::SMALL))
+            .color(color::TEXT_FAINT),
+        true,
+    )
+    .on_hover_text(full);
+    let size_bytes = state.sizes.get(i).copied().unwrap_or(0);
+    let large = size_bytes > warn;
+    let size_tip = if large {
+        shared.i18n.tr_args(
+            "saves-size-large",
+            &[("limit", Arg::String(shared.settings.warn_mb.to_string()))],
+        )
+    } else {
+        shared.tr("saves-size")
+    };
+    text_in(
+        ui,
+        half(right, false),
+        RichText::new(format!("{} MB", super::game::mb(&shared.i18n, size_bytes)))
+            .font(theme::sans(size::SMALL))
+            .color(if large {
+                color::DANGER
+            } else {
+                color::TEXT_FAINT
+            }),
+        true,
+    )
+    .on_hover_text(size_tip);
+
+    let typed = keys::item(
+        ui,
+        'Z',
+        format!("saves.campaign.{}", i + 1),
+        &(i + 1).to_string(),
+        rect,
+    );
+    let mut out = Picked::default();
+    // The options button: a real icon button, with its key on the selected card.
+    let tip = shared.tr("saves-menu");
+    let menu = ui
+        .scope_builder(egui::UiBuilder::new().max_rect(button), |ui| {
+            bf_ui_kit::icon_button(
+                ui,
+                bf_ui_kit::Icon::More,
+                side,
+                &keys::tip(ui.ctx(), &tip, keys::id::CAMPAIGN_MENU),
+                state.menu == Some(i),
+            )
+        })
+        .inner;
+    ui.ctx()
+        .data_mut(|d| d.insert_temp(menu_button_id(i), menu.rect));
+    out.menu = if selected {
+        keys::pressed(ui, keys::id::CAMPAIGN_MENU, &menu)
+    } else {
+        menu.clicked()
+    };
+    out.select = !out.menu && (response.clicked() || typed);
+    out.open = !out.menu && response.double_clicked();
+    out
+}
+
+/// One entry of the campaign menu: its label on the left, its key on the right.
+fn menu_entry(ui: &mut Ui, label: &str, letter: char, danger: bool, id: &str) -> bool {
+    let w = ui.available_width();
+    let (rect, response) =
+        ui.allocate_exact_size(egui::vec2(w, control::HEIGHT_MD), egui::Sense::click());
+    let text = label.to_owned();
+    response.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, &text));
+    if response.hovered() || response.has_focus() {
+        ui.painter().rect_filled(
+            rect,
+            radius::SM,
+            if danger {
+                color::DANGER_SOFT
+            } else {
+                color::SURFACE_HOVER
+            },
+        );
+    }
+    let inner = rect.shrink2(egui::vec2(space::MD, 0.0));
+    let key_w = 22.0;
+    let key = Rect::from_center_size(
+        egui::pos2(inner.right() - key_w / 2.0, rect.center().y),
+        egui::vec2(key_w, 20.0),
+    );
+    ui.painter().rect(
+        key,
+        radius::SM,
+        color::SURFACE_SUNKEN,
+        egui::Stroke::new(1.0, color::BORDER),
+        egui::StrokeKind::Inside,
+    );
+    ui.painter().text(
+        key.center(),
+        egui::Align2::CENTER_CENTER,
+        letter,
+        theme::sans_medium(size::CAPTION),
+        color::TEXT_MUTED,
+    );
+    text_in(
+        ui,
+        Rect::from_min_max(
+            inner.min,
+            egui::pos2(key.left() - space::SM, inner.bottom()),
+        ),
+        RichText::new(label)
+            .font(theme::sans_medium(size::BODY))
+            .color(if danger { color::DANGER } else { color::TEXT }),
+        false,
+    );
+    let typed = keys::single(ui, id, letter, rect);
+    response
+        .on_hover_cursor(egui::CursorIcon::PointingHand)
+        .clicked()
+        || typed
+}
+
+/// The menu of campaign `i`: anchored to its button, right edges aligned, opening down, or up
+/// when there is no room below; always inside the window.
 fn campaign_menu(state: &mut State, shared: &mut Shared, ui: &mut Ui, screen: Rect, i: usize) {
     let Some(save) = shared.saves.get(i).cloned() else {
         state.menu = None;
@@ -483,15 +784,29 @@ fn campaign_menu(state: &mut State, shared: &mut Shared, ui: &mut Ui, screen: Re
         .ctx()
         .data(|d| d.get_temp::<Rect>(menu_button_id(i)))
         .unwrap_or(Rect::from_center_size(screen.center(), egui::Vec2::ZERO));
-    let w = 240.0;
-    let h = MenuItem::ALL.len() as f32 * 40.0 + space::MD * 2.0;
-    let mut r = Rect::from_min_size(
-        egui::pos2(anchor.right() - w, anchor.bottom() + 4.0),
+    let items: Vec<MenuItem> = MenuItem::ALL
+        .into_iter()
+        // A campaign whose country is not chosen yet has no other country to switch to.
+        .filter(|item| *item != MenuItem::PlayOther || save.meta.player.is_some())
+        .collect();
+    let w = 280.0f32.min(screen.width() - space::LG * 2.0);
+    let rule = space::MD;
+    let h = items.len() as f32 * (control::HEIGHT_MD + 2.0) + rule + space::SM * 2.0;
+    let room = screen.shrink(space::SM);
+    let below = Rect::from_min_size(
+        egui::pos2(anchor.right() - w, anchor.bottom() + space::XS),
         egui::vec2(w, h),
     );
-    if r.bottom() > screen.bottom() - space::SM {
-        r = r.translate(egui::vec2(0.0, anchor.top() - 4.0 - r.bottom()));
-    }
+    let mut r = if below.bottom() <= room.bottom() {
+        below
+    } else {
+        below.translate(egui::vec2(0.0, anchor.top() - space::XS - below.bottom()))
+    };
+    // Kept inside the window, whatever the anchor.
+    r = r.translate(egui::vec2(
+        (room.left() - r.left()).max(0.0) - (r.right() - room.right()).max(0.0),
+        (room.top() - r.top()).max(0.0) - (r.bottom() - room.bottom()).max(0.0),
+    ));
     // A click outside closes it.
     let outside = ui.interact(
         screen,
@@ -501,17 +816,29 @@ fn campaign_menu(state: &mut State, shared: &mut Shared, ui: &mut Ui, screen: Re
     keys::cover(ui, screen);
     super::frame(ui, r, "campaign-menu");
     let mut close = outside.clicked();
-    region(ui, r.shrink(space::MD), |ui| {
-        ui.spacing_mut().item_spacing.y = space::XS;
-        for item in MenuItem::ALL {
-            // A campaign whose country is not chosen yet has no other country to switch to.
-            if item == MenuItem::PlayOther && save.meta.player.is_none() {
-                continue;
+    region(ui, r.shrink(space::SM), |ui| {
+        ui.spacing_mut().item_spacing.y = 2.0;
+        for item in items {
+            let danger = item == MenuItem::Delete;
+            if danger {
+                // The destructive action apart, below a rule.
+                let (line, _) = ui.allocate_exact_size(
+                    egui::vec2(ui.available_width(), rule),
+                    egui::Sense::hover(),
+                );
+                ui.painter().hline(
+                    line.x_range(),
+                    line.center().y,
+                    egui::Stroke::new(1.0, color::BORDER),
+                );
             }
-            let b = Button::ghost(&shared.tr(item.label()))
-                .width(f32::INFINITY)
-                .show(ui);
-            if b.clicked() || keys::single(ui, item.id(), item.letter(), b.rect) {
+            if menu_entry(
+                ui,
+                &shared.tr(item.label()),
+                item.letter(),
+                danger,
+                item.id(),
+            ) {
                 close = true;
                 match item {
                     MenuItem::PlayOther => state.play_other = Some(Box::new(save.clone())),

@@ -120,11 +120,13 @@ fn check(h: &Harness<'_, App>, case: &str) -> Vec<String> {
                 n.role, n.label, f.label, f.rect
             ));
         }
-        // Down: on the screen, unless an area that scrolls holds it.
+        // Down: on the screen, unless an area that scrolls holds it (below its top, or
+        // scrolled past above it).
         if r.top() < screen.top() - tol || r.bottom() > screen.bottom() + tol {
-            let scrolled = scrolls
-                .iter()
-                .any(|s| s.right() >= r.right() - tol && s.top() <= r.top() + tol);
+            let scrolled = scrolls.iter().any(|s| {
+                s.right() >= r.right() - tol
+                    && (s.top() <= r.top() + tol || r.bottom() <= s.top() + tol)
+            });
             if !scrolled {
                 out.push(format!(
                     "{case}: {:?} {:?} {r:?} off the screen down",
@@ -414,7 +416,13 @@ fn every_screen_fits_every_supported_logical_size() {
             steps(&mut h);
             let case = format!("{locale} {w}×{hh}");
             failures.extend(check(&h, &format!("{case} campaigns")));
-            click(&mut h, "…");
+            h.get_all(
+                egui_kittest::kittest::by().label_contains(MENU_LABEL[usize::from(locale == "en")]),
+            )
+            .next()
+            .expect("options button")
+            .click();
+            steps(&mut h);
             failures.extend(check(&h, &format!("{case} campaign menu")));
             if !nodes(&h).iter().any(|n| n.label == "campaign-menu") {
                 failures.push(format!("{case}: no campaign menu"));
@@ -462,3 +470,141 @@ const EN: Labels = Labels {
     lens_button: "Map mode:",
     resources: "Resources",
 };
+
+/// A name of 60 characters.
+const LONG_NAME: &str = "Campanha com um nome bem comprido para testar onde ele corta";
+
+/// Twenty campaigns (one with a 60-character name, one whose folder passes a thousand MB, the
+/// longest country name and a long date) and thirty restore points with long names.
+fn crowded_saves(user: &std::path::Path) {
+    use bf_client::points::{self, Kind, Point};
+    assert_eq!(LONG_NAME.chars().count(), 60);
+    let dir = user.join("saves");
+    let date = laplace_schelling::calendar::Date::new(1999, 9, 28);
+    for n in 0..20 {
+        let name = if n == 0 {
+            LONG_NAME.to_owned()
+        } else {
+            format!("Campanha {n}")
+        };
+        let mut save = saves::create(&dir, &name, 7, date).unwrap();
+        // The longest country name of the scenario, in both languages.
+        save.meta.player = Some("YUG".into());
+        save.meta.last_played = 1_758_000_000 + n;
+        saves::write(&save).unwrap();
+        if n == 0 {
+            // A folder of more than a thousand MB, without writing them: a sparse file.
+            let big = std::fs::File::create(save.dir.join("world.lss")).unwrap();
+            big.set_len(1_234_000_000).unwrap();
+            for k in 0..30u64 {
+                let id = format!("p{k}");
+                std::fs::create_dir_all(points::dir(&save)).unwrap();
+                std::fs::write(points::save_path(&save, &id), b"x").unwrap();
+                points::record(
+                    &save,
+                    Point {
+                        id,
+                        kind: if k % 3 == 0 { Kind::Manual } else { Kind::Auto },
+                        name: (k % 3 == 0).then(|| format!("{LONG_NAME} {k}")),
+                        date,
+                        written: 1_758_000_000 + k,
+                        bytes: 0,
+                    },
+                )
+                .unwrap();
+            }
+        }
+    }
+}
+
+/// The campaigns screen holds long names, a big folder, twenty campaigns and thirty points at
+/// the floor, 720p, 900p and 4K, with the interface at 100, 125 and 150 %, in both languages;
+/// and the campaign menu stays in the window.
+#[test]
+fn the_campaigns_screen_holds_long_and_many() {
+    let mut failures = Vec::new();
+    for locale in ["pt-BR", "en"] {
+        let user =
+            std::env::temp_dir().join(format!("bf-matrix-crowd-{locale}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&user);
+        crowded_saves(&user);
+        let mut h = app(user.clone(), locale, egui::vec2(1600.0, 900.0));
+        steps(&mut h);
+        let ctx = h.ctx.clone();
+        h.state_mut().shared.refresh_saves();
+        h.state_mut().apply(Transition::Saves, &ctx);
+        steps(&mut h);
+        for (w, hh) in [
+            (960.0, 540.0),
+            (1280.0, 720.0),
+            (1600.0, 900.0),
+            (3840.0, 2160.0),
+        ] {
+            for scale in [100u32, 125, 150] {
+                let ppp = bf_client::ui_scale::pixels_per_point(
+                    bf_client::ui_scale::Choice::Fixed(scale),
+                    (w, hh),
+                    1.0,
+                );
+                let size = egui::vec2(w / ppp, hh / ppp);
+                h.set_size(size);
+                steps(&mut h);
+                let case = format!("{locale} {w}×{hh} at {scale} % ({}×{})", size.x, size.y);
+                failures.extend(check(&h, &format!("{case} campaigns")));
+                // The menu of the first campaign, then of the last one (scrolled to it).
+                for which in [0usize, 19] {
+                    let label = MENU_LABEL[usize::from(locale == "en")];
+                    let Some(b) = options_button(&h, label, which != 0) else {
+                        failures.push(format!("{case}: no options button"));
+                        continue;
+                    };
+                    b.scroll_to_me();
+                    steps(&mut h);
+                    if let Some(b) = options_button(&h, label, which != 0) {
+                        b.click();
+                    }
+                    steps(&mut h);
+                    failures.extend(check(&h, &format!("{case} menu of campaign {which}")));
+                    let screen = h.ctx.content_rect();
+                    match nodes(&h).into_iter().find(|n| n.label == "campaign-menu") {
+                        Some(m) if !screen.contains_rect(m.rect) => failures
+                            .push(format!("{case}: the menu {:?} leaves the window", m.rect)),
+                        Some(_) => {}
+                        None => {
+                            failures.push(format!("{case}: no campaign menu"));
+                            continue;
+                        }
+                    }
+                    h.key_press(egui::Key::Escape);
+                    steps(&mut h);
+                }
+            }
+        }
+        let _ = std::fs::remove_dir_all(&user);
+    }
+    assert!(
+        failures.is_empty(),
+        "{} elements out of place:\n{}",
+        failures.len(),
+        failures.join("\n")
+    );
+}
+
+/// Name of the options button of a campaign, per language.
+const MENU_LABEL: [&str; 2] = ["Opções da campanha", "Campaign options"];
+
+/// The options button of the first campaign, or of the last.
+fn options_button<'a>(
+    h: &'a Harness<'_, App>,
+    label: &'a str,
+    last: bool,
+) -> Option<egui_kittest::Node<'a>> {
+    let mut all: Vec<_> = h
+        .query_all(egui_kittest::kittest::by().label_contains(label))
+        .collect();
+    if last {
+        all.pop()
+    } else {
+        all.into_iter().next()
+    }
+}
