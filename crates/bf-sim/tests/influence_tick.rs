@@ -69,7 +69,7 @@ fn a_save_from_before_the_influence_state_loads() {
     let world = data().new_world();
     let bytes = encode_snapshot(&world).unwrap();
     let old = &bytes[..bytes.len() - 2];
-    let back = bf_sim::game::decode_world(old).unwrap();
+    let back = bf_sim::save_format::decode_world(old).unwrap();
     assert!(back.influence.is_empty());
     assert_eq!(back, world);
 }

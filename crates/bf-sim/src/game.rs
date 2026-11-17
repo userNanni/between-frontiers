@@ -731,7 +731,21 @@ mod tests {
             history: &'a Vec<crate::econ::YearRecord>,
             ledger: &'a crate::treaty::Ledger,
         }
-        /// The world of before the foreign stakes: this build's fields without the last one.
+        /// The world of before the influence state: this build's fields without the last one.
+        #[derive(Serialize)]
+        struct BeforeInfluence<'a> {
+            scenario: &'a String,
+            player: &'a Option<Id<Country>>,
+            countries: &'a Table<Country, CountryState>,
+            census: &'a Vec<CensusRecord>,
+            econ: &'a crate::econ::Economy,
+            research: &'a crate::research::ResearchState,
+            politics: &'a crate::polity::PoliticsState,
+            demography: &'a crate::demography::DemographyState,
+            borders: &'a crate::borders::BordersState,
+            foreign: &'a crate::foreign_stakes::ForeignState,
+        }
+        /// The world of before the foreign stakes: version 6 without its last field.
         #[derive(Serialize)]
         struct BeforeForeign<'a> {
             scenario: &'a String,
@@ -815,9 +829,26 @@ mod tests {
             hash_of(&with_ledger)
         );
         assert_eq!(
-            hash_of(&headed(6, &encode_snapshot(&with_ledger).unwrap())),
+            hash_of(&headed(7, &encode_snapshot(&with_ledger).unwrap())),
             hash_of(&with_ledger)
         );
+        // Version 6, before the influence state: this build's fields without the last one,
+        // behind the header and without it (a version 6 file may have been written either way).
+        let before_influence = encode_snapshot(&BeforeInfluence {
+            scenario: &with_ledger.scenario,
+            player: &with_ledger.player,
+            countries: &with_ledger.countries,
+            census: &with_ledger.census,
+            econ: &with_ledger.econ,
+            research: &with_ledger.research,
+            politics: &with_ledger.politics,
+            demography: &with_ledger.demography,
+            borders: &with_ledger.borders,
+            foreign: &with_ledger.foreign,
+        })
+        .unwrap();
+        assert_eq!(headed(6, &before_influence), with_ledger);
+        assert_eq!(decode_world(&before_influence).unwrap(), with_ledger);
         // Older layouts: the world of then had no ledger.
         let mut world = data.new_world();
         world.econ.ledger = Default::default();
