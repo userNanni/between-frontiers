@@ -17,7 +17,7 @@ detalhe está em [`economy.pt-BR.md`](../../economy.pt-BR.md) e em
   impostos, orçamento e prioridades, e o investidor privado responde ao lucro. Uma fábrica só é
   construída onde o tipo já roda cheio.
 - **Estado:** no jogo (#23, #29); o passo a passo de cada semana está em
-  a página de tempo e ordem de cálculo (em preparação).
+  [Tempo e ordem de cálculo](tempo-e-ordem-de-calculo.md#a-ordem-no-main).
 - **Onde está o detalhe:** [`economy.pt-BR.md`, "Ordem de trabalho do mercado"](../../economy.pt-BR.md#ordem-de-trabalho-do-mercado).
 
 ### Crescer custa: capital, troca de método e desgaste
