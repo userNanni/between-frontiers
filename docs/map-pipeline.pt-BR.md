@@ -481,3 +481,63 @@ Mar Amarelo. Quando o porto contar (fase 4), o gelo pode ir para o porto.
   - o controle segue a margem;
   - o Panamá abre em 1914, e Magalhães tem o Horn atrás.
 - Duas rodadas do gerador dão os mesmos bytes.
+
+## Terreno
+
+`bf-mapgen terrain` grava o terreno de cada estado para o passo de combate em terra. Ele lê a
+`provinces.png` já gravada, então as províncias não mudam:
+
+```bash
+cargo run -p bf-mapgen --release -- terrain   # gera assets/map/terrain.ron (~10 s)
+```
+
+| Medida | Fonte | Licença | Regra |
+|---|---|---|---|
+| Montanha (parcela) e altitude média | NOAA ETOPO5, elevação em grade de 5′ (`ETOPO5.DAT`, 18 MB, int16 big-endian cru, 2160 × 4320 a partir de 90° N e 0° E) | uso e redistribuição livres, como diz o espelho da PacIOOS; o registro da NOAA não abriu | a célula é montanha quando o desvio-padrão da elevação em 3 × 3 células (cerca de 27 km) chega a 100 m; a altitude média é das células de terra do estado |
+| Pântano (parcela) | GLWD v2 (Lehner et al. 2025, doi:10.6084/m9.figshare.28519994), classe dominante onde a área úmida passa de 50 % (`main_class_50pct`, 15″) | CC BY 4.0 | classes que alagam ou são turfa: 8–13, 16–17, 22–31 |
+| Rio grande na fronteira | Natural Earth 5.0.0 1:10m `rivers_lake_centerlines` | domínio público | rio (não lago) de `scalerank` até 5; conta a aresta de fronteira entre dois estados a até 1 pixel do rio, com o nome do rio mais encontrado |
+
+O cenário já tem o resto. A floresta vem de `land.ron` (`forest_km2`, do HYDE). A cidade é
+calculada na carga, a partir da população urbana de `population.ron` (do HYDE 3.3), dividida
+pela densidade urbana de `rules.ron` (22.000 hab/km²). Essa densidade sai de Angel et al., 2010,
+*Persistent Decline in Urban Densities*: anexo IV, média de 30 cidades, 238 hab/ha em 1920 e 207
+em 1930. São cidades grandes, então a parcela urbana tende a sair baixa. Sobre a licença do HYDE,
+vale a nota de `data/scenario/1925/LAND.md` ("Dúvidas"): três textos oficiais divergem (CC BY
+4.0, CC BY 3.0 e CC BY-NC-SA 4.0).
+
+O ETOPO5 e o zip do Natural Earth ficam em `data/raw/`, com hash fixo em `sources.rs`. O zip do
+GLWD v2 tem 925 MB: o gerador confere o hash lendo-o por fluxo e extrai só o
+`main_class_50pct.tif` (84 MB), que depois lê bloco a bloco, sem carregar a grade de 3 gigapixels.
+Depois de gerar, os dois podem ser apagados; a próxima rodada baixa de novo.
+
+**Escolhas e limites.**
+- **Montanha:** o desvio-padrão da elevação mediano é de 275 m nos Alpes, 225 m no Cáucaso, 181 m
+  no Himalaia, 139 m nos Andes, 104 m no Maciço Central, 102 m no Tibete, 96 m nos Cárpatos e 53 m
+  nos Apalaches. Nas planícies e estepes fica entre 0 e 12 m. Antes do ETOPO5 foi testada a
+  rugosidade do relevo sombreado do Natural Earth; ela separa igual, mas depende da direção da luz.
+  O planalto alto e plano (Tibete) não é rugoso, então a altitude média vai à parte: pesa em
+  suprimento e aviação quando a guerra ligar.
+- **Pântano:** as classes do GLWD só "saturadas sazonalmente" (14, 15, 18, 19) ficam de fora. Com
+  elas, os pôlderes holandeses, o vale do Tâmisa e os pampas saíam 70 a 90 % pântano: são solos
+  encharcados de várzea lavrada. Mesmo sem elas, o litoral holandês e flamengo segue alto (Zelândia
+  85 %), porque o GLWD retrata o presente. Isso fica dito como limite.
+- **Rio:** só conta o rio na fronteira entre estados. Rio dentro do estado espera a frente ter
+  posição dentro dele.
+
+**Em uso:** 870 estados; 242 com pelo menos metade de montanha, 114 com um décimo de pântano; 455
+fronteiras em rio grande. O Reno ocupa a fronteira inteira entre Alsácia e Baden.
+
+**Testes.**
+- `cargo test -p bf-mapgen terrain`:
+  - a rugosidade separa montanha de planalto num mundo sintético;
+  - o rio na fronteira é contado com o nome;
+  - as duas medidas são determinísticas;
+  - o `terrain.ron` gravado bate com o mapa.
+- `crates/bf-sim/tests/terrain_1925.rs`:
+  - Alpes, Himalaia e Andes acima de metade montanha;
+  - a planície do norte da Europa, as estepes e os pampas abaixo de 5 %;
+  - o Tibete acima de 4.000 m;
+  - Polésia e Daca com pântano;
+  - Londres com cidade;
+  - o Reno entre Alsácia e Baden.
+- Duas rodadas do gerador dão os mesmos bytes.

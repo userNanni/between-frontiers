@@ -125,11 +125,23 @@ Mais capacidade nunca entrega menos (teste de propriedade).
 
 ### Terreno e clima
 
-O mapa já tem, por estado, a mistura de climas de Köppen e a área de floresta (`land.ron`). A
-regra de `rules.ron` leva cada clima a uma classe de terreno (aberto, floresta, selva, deserto,
-ártico) e a floresta soma à classe floresta; montanha, pântano e cidade pedem dado novo (abaixo). O
-combate usa a mistura do estado: o fator de defesa é a média dos fatores das classes, pesada pela
-parcela de cada uma. Inverno multiplica o consumo e corta a velocidade (`winter`).
+Cada estado tem a sua mistura de terreno, montada por `war::state_terrain`:
+- **cidade:** a população urbana de `population.ron` dividida pela densidade urbana de 1925 em
+  `rules.ron` (22.000 hab/km², de Angel et al. 2010), sobre a área do estado;
+- **montanha e pântano:** de `assets/map/terrain.ron`, gerado pelo `bf-mapgen terrain` a partir do
+  ETOPO5 e do GLWD v2 (`map-pipeline.pt-BR.md`, "Terreno");
+- **floresta:** de `land.ron`;
+- **o resto:** pelos climas de Köppen, que `rules.ron` leva a aberto, selva, deserto ou ártico.
+
+Cada parcela toma o que pede até onde sobrar, nessa ordem. O fator de defesa é a média dos fatores
+das classes, pesada pela parcela de cada uma. Inverno multiplica o consumo e corta a velocidade
+(`winter`).
+
+O **rio grande na fronteira** do segmento soma à defesa: `river_defense` (30 %) vezes a parcela da
+fronteira que corre ao longo do rio (`TerrainFile::river_share`). Só conta o rio na fronteira entre
+estados; o rio dentro do estado espera a frente ter posição dentro dele. A **altitude média** de cada
+estado também fica gravada (o Tibete passa de 5.000 m), para pesar no suprimento e na aviação
+quando a guerra ligar.
 
 ### Frente e segmento: onde se manda e onde se luta
 
@@ -590,8 +602,8 @@ trabalhos.
   substituto), `sonar` (as gerações antissubmarino usam `radar`), `amphibious_warfare` (o
   `transport` não tem geração de desembarque), `airborne_forces` (o `airborne` usa
   `stressed_skin_aircraft`), `aerial_refueling`.
-- **Mapa:** relevo por estado (parcela de montanha, do `relief.png` ou do Natural Earth), pântano e
-  área urbana, para as classes de terreno que faltam; zonas marítimas (decisão 3).
+- **Mapa:** feito. Terreno por estado (`map-pipeline.pt-BR.md`, "Terreno") e zonas marítimas
+  (decisão 3).
 - **Política:** grupo de leis de serviço militar com idade (hoje a idade fica em `rules.ron`);
   movimento de resistência à ocupação.
 
