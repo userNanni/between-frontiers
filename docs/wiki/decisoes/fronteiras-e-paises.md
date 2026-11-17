@@ -45,7 +45,7 @@ condição, ou o jogador libertando o próprio território.
 - **Estado:** regras padrão no jogo (#95); dívida por acordo no jogo pelo livro de dívidas (#101,
   #104).
 - **Onde está o detalhe:** [seção 6, decisão 1](../../borders.pt-BR.md#6-decisões-do-dono-decididas-em-2026-11-17);
-  a página de tratados e acordos (em preparação).
+  [Tratados e acordos](tratados-e-acordos.md#dívida-entre-estados-com-nome-e-calendário).
 
 ### O país novo herda a técnica até o protótipo, e técnica pode ser levada
 

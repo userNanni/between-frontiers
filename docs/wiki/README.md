@@ -23,10 +23,11 @@ Páginas de decisão prontas:
 
 - [Alianças](decisoes/aliancas.md)
 - [Fronteiras e países](decisoes/fronteiras-e-paises.md)
+- [Tratados e acordos](decisoes/tratados-e-acordos.md)
 - [Diplomacia e influência](decisoes/diplomacia-e-influencia.md)
 - [Saves e interface](decisoes/saves-e-interface.md)
 
-Em preparação: tratados e acordos, crise e guerra, comércio, capital entre
+Em preparação: crise e guerra, comércio, capital entre
 países, população e comunidades, ensino, pesquisa, economia, tempo e ordem de cálculo.
 
 ## Como ler uma página de decisão
