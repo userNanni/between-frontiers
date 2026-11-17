@@ -182,13 +182,15 @@ impl System<GameWorld> for Research {
                 .all(|&r| stages[r as usize] >= Stage::Science)
                 && c < n
         };
-        // What the world already knows reaches a country only through the channel its laws
-        // open (trade and foreign capital): the cheaper science and prototypes, the push of
-        // foreign industry and imitation all scale with it. Fully open, it is exactly one.
+        // What the world already makes reaches a country through the channel its laws open
+        // (trade and foreign capital): the cheaper prototypes, the push of foreign industry and
+        // imitation scale with it. Published science crosses closed borders far more easily: its
+        // spillover takes the same channel lifted to a high floor. Fully open, both are one.
         let science_cost = |t: usize, channel: Fixed| -> Fixed {
             let tech = &tree.techs[t];
             Fixed::from_int(i64::from(tech.cost))
-                * (Fixed::ONE - SPILLOVER * known[t] * channel)
+                * (Fixed::ONE
+                    - SPILLOVER * known[t] * crate::foreign_capital::science_channel(channel))
                 * ahead(year, tech.demonstrated - 3)
         };
 

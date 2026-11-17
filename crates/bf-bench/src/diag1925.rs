@@ -93,10 +93,11 @@ pub fn main() -> Result<(), String> {
         .collect();
     let mut s = Session::new(world, 1, Date::new(1925, 1, 1), 0, Some(data.rules()));
     // Counterfactual laws held all century: `BF_LAWS="CHN=planned_economy+closed_capital+autarky"`
-    // (several countries separated by `;`). Applied on the first day and every 1 January after,
-    // so that no movement undoes them.
+    // (several entries separated by `;`); `CHN@1980=...` holds them from that year on, over the
+    // earlier ones of the same group. Applied on the first day and every 1 January after, so
+    // that no movement undoes them.
     let forced = forced_laws(&data)?;
-    force(&mut s, &forced);
+    force(&mut s, &forced, 1925);
     // Energy in a later year: demand by source, prices and the power plants' methods.
     if let Some(year) = std::env::var("BF_DIAG_ENERGY")
         .ok()
@@ -552,7 +553,7 @@ pub fn main() -> Result<(), String> {
         for y in (1935..=2025).step_by(10) {
             for year in (y - 9)..=y {
                 s.sim.run_until(Date::new(year, 1, 2));
-                force(&mut s, &forced);
+                force(&mut s, &forced, year);
             }
             let w = s.world();
             let e = &w.econ;
@@ -577,8 +578,24 @@ pub fn main() -> Result<(), String> {
                     / pop.max(1) as f64;
                 let t = |k: &str| m.tech_tfp.get(gi(k)).map_or(1.0, |x| x.to_f64_lossy());
                 let jobs = crate::history::sector_shares(&data, w, mi);
+                // Technologies after 1925 at each stage or past it: science, prototype,
+                // industry, diffused.
+                let mut at = [0usize; 4];
+                if let Some(tree) = &data.tree {
+                    for (t, tech) in tree.techs.iter().enumerate() {
+                        if tech.era == 0 {
+                            continue;
+                        }
+                        let st = w.research.stage[mi][t] as usize;
+                        for (k, n) in at.iter_mut().enumerate() {
+                            if st > k {
+                                *n += 1;
+                            }
+                        }
+                    }
+                }
                 print!(
-                    " {tag} gdp {:.0} base {:.2} heavy {:.2} serv {:.2} agr {:.2} jobs {:.0}/{:.0}/{:.0} |",
+                    " {tag} gdp {:.0} base {:.2} heavy {:.2} serv {:.2} agr {:.2} jobs {:.0}/{:.0}/{:.0} st {}/{}/{}/{} |",
                     m.gdp_last_year.to_f64_lossy() / pop.max(1) as f64,
                     base,
                     t("heavy_industry"),
@@ -586,7 +603,11 @@ pub fn main() -> Result<(), String> {
                     t("agriculture"),
                     jobs[0] * 100.0,
                     jobs[1] * 100.0,
-                    jobs[2] * 100.0
+                    jobs[2] * 100.0,
+                    at[0],
+                    at[1],
+                    at[2],
+                    at[3]
                 );
             }
             println!();
@@ -618,29 +639,38 @@ pub fn main() -> Result<(), String> {
     Ok(())
 }
 
-/// `BF_LAWS`: (tag, law index) pairs to hold all century.
-fn forced_laws(data: &GameData) -> Result<Vec<(String, u16)>, String> {
+/// `BF_LAWS`: (from year, tag, law index) to hold, in the order given.
+fn forced_laws(data: &GameData) -> Result<Vec<(i32, String, u16)>, String> {
     let Ok(spec) = std::env::var("BF_LAWS") else {
         return Ok(Vec::new());
     };
     let p = data.politics.as_ref().ok_or("BF_LAWS: no politics data")?;
     let mut out = Vec::new();
     for part in spec.split(';').filter(|x| !x.trim().is_empty()) {
-        let (tag, laws) = part
+        let (who, laws) = part
             .split_once('=')
-            .ok_or_else(|| format!("BF_LAWS: {part:?} is not TAG=law+law"))?;
+            .ok_or_else(|| format!("BF_LAWS: {part:?} is not TAG[@year]=law+law"))?;
+        let (tag, from) = match who.split_once('@') {
+            Some((t, y)) => (
+                t,
+                y.trim()
+                    .parse::<i32>()
+                    .map_err(|_| format!("BF_LAWS: bad year in {who:?}"))?,
+            ),
+            None => (who, 1925),
+        };
         for law in laws.split('+') {
             let i = p
                 .law(law.trim())
                 .ok_or_else(|| format!("BF_LAWS: unknown law {law:?}"))?;
-            out.push((tag.trim().to_string(), i as u16));
+            out.push((from, tag.trim().to_string(), i as u16));
         }
     }
     Ok(out)
 }
 
-fn force(s: &mut Session, laws: &[(String, u16)]) {
-    for (tag, law) in laws {
+fn force(s: &mut Session, laws: &[(i32, String, u16)], year: i32) {
+    for (_, tag, law) in laws.iter().filter(|l| l.0 <= year) {
         s.submit(bf_sim::game::GameCommand::SetLaw {
             tag: tag.clone(),
             law: *law,
