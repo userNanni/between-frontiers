@@ -10,7 +10,7 @@ Como um país aprende uma técnica, quanto isso custa e por que saber não basta
 - **Decisão:** cada tecnologia passa, país por país, por ciência, protótipo, industrial e difundida.
   Só no estágio industrial os métodos dela podem ser construídos; a produtividade inteira só chega
   difundida.
-- **O que o autor pensou:** desenho da fase 2, aceito pelo autor.
+- **O que o autor pensou:** desenho técnico da fase 2 (#30).
 - **Como o jogo funciona por causa disso:** sem comprador (o mercado ou o Estado), a tecnologia fica
   parada no protótipo, o vale da morte. Operar e produzir são coisas distintas: depois que algum país
   industrializa um bem, qualquer país compra e usa pelo comércio, mesmo sem saber fazer. Vacina,

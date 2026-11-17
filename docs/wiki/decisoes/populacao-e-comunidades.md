@@ -11,7 +11,7 @@ vai. O detalhe está em [`population.pt-BR.md`](../../population.pt-BR.md) e em
 - **Decisão:** cultura e religião juntas formam uma **comunidade**, que é linha própria da
   população, com gente por profissão. O que se agrupa para poupar cálculo é o local de trabalho, não
   a identidade.
-- **O que o autor pensou:** desenho de arquitetura aceito no início do projeto. A pergunta era o que
+- **O que o autor pensou:** desenho de arquitetura do início do projeto (#2, #3). A pergunta era o que
   o século pede: segregação, expulsão, genocídio, partilha e cidadania diferenciada miram um grupo.
 - **Como o jogo funciona por causa disso:** uma lei pode mirar os judeus da Polônia ou os alemães da
   Tchecoslováquia, e o jogo sabe onde eles estão e em que trabalham. "30 % irlandeses, 40 % católicos"

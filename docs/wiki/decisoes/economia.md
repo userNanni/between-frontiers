@@ -30,7 +30,7 @@ detalhe está em [`economy.pt-BR.md`](../../economy.pt-BR.md) e em
   produz mais; mecanizar não é de graça e só compensa onde o trabalho é caro.
 - **Como é na vida real:** a razão capital-produto e a depreciação das economias reais dão a ordem dos
   números.
-- **Estado:** no jogo (#55 e seguintes).
+- **Estado:** no jogo (#29, #55).
 - **Onde está o detalhe:** [`economy.pt-BR.md`, "Investimento e crescimento"](../../economy.pt-BR.md#investimento-e-crescimento).
 
 ### Capital por método

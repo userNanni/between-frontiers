@@ -12,7 +12,7 @@ equilíbrio fino fica para depois da fase 6.
 
 **O que o autor pensou:** "Melhor andar mais rápido em funcionalidade e equilibrar depois: talvez
 seja a falta de alguma funcionalidade que desequilibrou o jogo." A coordenação tinha proposto
-equilibrar depois da fase 5; ele preferiu depois da fase 6. O motivo, visto nos testes: vários desequilíbrios (colônias ricas
+equilibrar depois da fase 5; ele preferiu depois da fase 6. O que a coordenação tinha medido: vários desequilíbrios (colônias ricas
 demais, a industrialização da China, o pessoal de pesquisa) esbarravam em sistemas que ainda não
 existiam, e cada ajuste reembaralhava as trajetórias dos países.
 
@@ -69,9 +69,9 @@ rápido e salvos à mão, com o custo de cada intervalo à vista. Ver
 **Decisão:** todo número dos dados tem fonte, e a licença vai junto do dado. Dado público pode ser
 usado mesmo com licença não comercial, mas mantém a licença dele.
 
-**O que o autor pensou:** o jogo é público e de código aberto, e o dado precisa poder ser conferido
-e redistribuído. Na licença do HYDE (uso de terra e população histórica) a decisão dele foi marcar
-os arquivos derivados como CC BY-NC-SA, separados do resto, que é CC BY-SA.
+**O que o autor pensou:** a regra é do projeto (`CLAUDE.md`, "Dados"). A decisão do autor aqui foi
+a da licença do HYDE (uso da terra histórica): marcar os arquivos derivados como CC BY-NC-SA,
+separados do resto, que é CC BY-SA.
 
 **O que muda no jogo:** o cenário de 1925 tem um `.md` de fontes por pasta e um bloco de fontes por
 arquivo. Quando o dado não pode ser redistribuído, ele não entra: as missões diplomáticas de 1925
@@ -101,9 +101,9 @@ acontece, com a causa acontece. Ver
 **Decisão:** Victoria 3, Europa Universalis, Civilization e o mod Cold War Era servem só de
 referência de qualidade. Nada deles é copiado: regra, texto, número, mapa ou ícone.
 
-**O que o autor pensou:** ele quer medir o jogo contra o que o gênero já fez, sem tomar o trabalho
-de ninguém. O Cold War Era não tem licença (todos os direitos reservados), então dele só se
-comparam sistemas e ordens de grandeza.
+**O que o autor pensou:** o autor pediu que toda fase feche comparada com o mod Cold War Era. A
+regra de não copiar é do projeto (`CLAUDE.md`, "Dados"): o Cold War Era não tem licença (todos os
+direitos reservados), então dele só se comparam sistemas e ordens de grandeza.
 
 **O que muda no jogo:** toda fase fecha com uma tabela de comparação em
 [`benchmarks.pt-BR.md`](../benchmarks.pt-BR.md). Os nomes do jogo vêm do mundo real e da

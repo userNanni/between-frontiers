@@ -106,10 +106,13 @@ condição, ou o jogador libertando o próprio território.
 - **Decisão:** um catálogo de países possíveis traz os que nasceram de 1925 a 2025, com nome, cor,
   capital, bandeira livre e núcleo de estados. O que a história não produziu vira um país genérico.
 - **O que o autor pensou:** desenho técnico da coordenação.
-- **Como o jogo funciona por causa disso:** se o jogador liberta São Paulo, que não está no
-  catálogo, nasce um país com o nome do estado e uma bandeira genérica desenhada pelo jogo, sem
-  arte de terceiros. Se os estados batem com o núcleo de um país do catálogo, nasce esse país.
-- **Estado:** no jogo (#95, #96).
+- **Como o jogo funciona por causa disso:** se os estados libertados batem com o núcleo de um país
+  do catálogo, nasce esse país. Se não (o jogador liberta São Paulo, que não está no catálogo), nasce
+  um país genérico, com etiqueta `X00`, `X01`… O desenho dá a ele o nome do estado mais populoso e
+  uma bandeira de três faixas desenhada pelo jogo, sem arte de terceiros.
+- **Estado:** catálogo e etiqueta genérica no jogo (#95, #96). O nome pelo estado e a bandeira de
+  três faixas ainda não: hoje o país genérico aparece sem nome traduzido e com a cor do mapa no
+  lugar da bandeira.
 - **Onde está o detalhe:** [seção 3](../../borders.pt-BR.md#3-países-que-ainda-não-existem).
 
 ### Reconhecimento: quem assinou a criação

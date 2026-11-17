@@ -115,6 +115,8 @@ citação.
 
   A IA quebra só quando o valor de quebrar passa esse custo, e a tela mostra a conta ao jogador
   que é a vítima, para a traição não vir sem causa visível.
+- **Regra geral:** não cumprir é possível em qualquer acordo, não só na aliança, e custa pela mesma
+  regra ([Tratados e acordos](tratados-e-acordos.md#toda-dívida-de-acordo-se-renegocia-e-todo-acordo-pode-não-ser-cumprido)).
 - **O que ainda está em desenho:** o preço próprio da traição numa guerra (quanto pesa a mais do
   que uma tarifa acima do teto, o efeito na legitimidade em casa, e se os outros aliados do traidor
   revisam os acordos). Os threads da guerra e dos tratados estão fechando isso.

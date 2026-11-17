@@ -59,7 +59,7 @@ em [`saves.pt-BR.md`](../../saves.pt-BR.md) e nos PRs do cliente.
   estraga o save: ele se realinha pela chave. Campanha gravada numa versão mais nova diz "Não abre
   nesta versão"; arquivo danificado diz "Arquivo danificado"; quando há ponto de restauração, a ação
   principal vira "Voltar a este ponto".
-- **Estado:** em revisão (#114).
+- **Estado:** em revisão, para entrar em breve (#114).
 - **Onde está o detalhe:** PR #114; a seção "Formato do mundo e migração" entra em
   `saves.pt-BR.md` com ele.
 

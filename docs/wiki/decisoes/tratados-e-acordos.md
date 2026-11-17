@@ -139,6 +139,29 @@ cláusulas.
 - **Estado:** desenhado; o preço próprio da traição na guerra, em desenho.
 - **Onde está o detalhe:** [seção 9](../../treaties.pt-BR.md#9-quando-se-quebra).
 
+### Toda dívida de acordo se renegocia, e todo acordo pode não ser cumprido
+
+- **Decisão:** duas regras gerais, que valem para qualquer acordo: a dívida criada por um acordo
+  (reparação, indenização, compra) pode ser renegociada por outro acordo de revisão (prazo, juro,
+  parte adiável, perdão parcial; só o credor concede); e qualquer parte pode deixar de cumprir, com
+  o custo da quebra (registro, suspensão recíproca, causa, reputação).
+- **O que o autor pensou:** o autor lembrou, ao decidir as fábricas da colônia na independência, que
+  a dívida de indenização precisa poder ser renegociada e que um tratado pode não ser cumprido. O
+  thread do capital tratou isso como regra geral dos tratados.
+- **Como o jogo funciona por causa disso:** a reparação alemã pode ser revista como foi na vida real
+  (Dawes, Young, Hoover, Lausanne); uma moratória suspende os pagamentos sem quebra; um país que para
+  de pagar atrasa, dá calote parcial ou repudia, cada grau medido. Quem lê a dívida (o prêmio de
+  risco do capital, por exemplo) olha o que foi pago, não o que foi prometido: o perdão reduz a
+  dívida, mas não conta como pago.
+- **Como é na vida real:** a reparação alemã refeita várias vezes em treze anos; a Indonésia acertou
+  em 1966 a indenização das fábricas holandesas por uma soma abaixo do pedido, paga em 30 parcelas.
+- **Estado:** a revisão de dívida por acordo (`revise_debt`, #104) e o calote ligado ao livro
+  (#101) no jogo; o repúdio e o registro do que foi pago e perdoado por linha, desenhados (PR #118 e
+  seção 5 dos tratados).
+- **Onde está o detalhe:** [seção 5](../../treaties.pt-BR.md#5-dívida-entre-estados) e
+  [seção 9](../../treaties.pt-BR.md#9-quando-se-quebra); o caso do capital em
+  [Capital entre países](capital-entre-paises.md#as-fábricas-da-metrópole-na-independência-ficam-como-capital-estrangeiro).
+
 ### Promessa de ato único e de entrega acumulada
 
 - **Decisão:** um tipo de cláusula de promessa com dois modos: um apoio numa ocasião definida, ou
