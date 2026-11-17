@@ -2,8 +2,9 @@
 //! forces tab and the journal: what is under arms by unit type, how full its equipment is, how
 //! trained it is, the reserve and how much of it has reported.
 
+use bf_sim::econ::Catalogue;
 use bf_sim::game::GameWorld;
-use bf_sim::war::{Domain, Military, men};
+use bf_sim::war::{Domain, Military, PeaceRules, men};
 use laplace_schelling::Fixed;
 use laplace_schelling::calendar::Date;
 
@@ -42,6 +43,10 @@ pub struct ForcesView {
     pub peace_share: f64,
     /// The war reserve in store, at this week's prices, real dollars.
     pub depot: f64,
+    /// The orders of forces and what can be ordered.
+    pub orders: Option<crate::orders_view::OrdersView>,
+    /// Length of the queue when read: a change reads the forces again before the month ends.
+    pub queue_len: usize,
 }
 
 fn f(x: Fixed) -> f64 {
@@ -49,7 +54,13 @@ fn f(x: Fixed) -> f64 {
 }
 
 /// The player's forces; `None` without a player or without forces.
-pub fn read(world: &GameWorld, date: Date, military: &Military) -> Option<ForcesView> {
+pub fn read(
+    world: &GameWorld,
+    date: Date,
+    cat: &Catalogue,
+    military: &Military,
+    peace: &PeaceRules,
+) -> Option<ForcesView> {
     let tag = world.player_tag()?;
     let ci = world.countries.iter().position(|(_, c)| c.tag == tag)?;
     let c = world.war.countries.get(ci)?;
@@ -112,8 +123,11 @@ pub fn read(world: &GameWorld, date: Date, military: &Military) -> Option<Forces
         .iter()
         .map(|(g, q)| f(*q * m.price[*g as usize]))
         .sum();
+    let orders = crate::orders_view::read(world, ci, cat, military, peace);
     Some(ForcesView {
         month: (date.year, date.month),
+        orders,
+        queue_len: c.queue.len(),
         men: rows.iter().map(|r| r.men).sum(),
         called_up: rows.iter().filter(|r| r.called_up).map(|r| r.men).sum(),
         reserve: c.reserve as i64,

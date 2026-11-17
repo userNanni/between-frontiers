@@ -26,15 +26,13 @@ Atalhos do perfil padrão; todos se mudam no editor de atalhos (Configurações 
 Exceção: `Borders` (operação de fronteira) não é do jogador. Vem de tratados, da paz, de testes e
 de ferramentas; o jogador liberta a própria terra com `Liberate`.
 
-Exceção provisória: `OrderForces` e `CancelOrder` (encomenda de forças, fatia A2, rascunho) ainda
-não têm tela. A seção "Encomendas" da aba Forças vem do thread de interface, e a exceção sai com
-ela.
-
 ## Em PR
 
 | Decisão | Comando | Onde fica | Estado |
 |---|---|---|---|
 | Mobilizar e desmobilizar | `Mobilize { on }` | Agendas, decisão em dois passos, com ponto de restauração antes (motivo "guerra") | em revisão (#115) |
+| Encomendar tropas, navios e aviões | `OrderForces` | Governo → Forças → "Nova encomenda": tipo, elementos, colonial; o custo de construir e o de todo ano; a encomenda grande pede um segundo clique | em revisão |
+| Cancelar uma encomenda | `CancelOrder` | Governo → Forças → "Encomendas": "Cancelar" e confirmação; o construído vai ao depósito | em revisão |
 | Campanha de alfabetização | (do PR do ensino) | a definir com o thread do ensino | em rascunho |
 
 ## Desenhadas, sem comando ainda

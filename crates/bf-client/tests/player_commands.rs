@@ -69,6 +69,16 @@ const PLAYER: &[Surface] = &[
         files: &["screens/game.rs", "screens/journal.rs"],
     },
     Surface {
+        variant: "OrderForces",
+        command: id::TAB_FORCES,
+        files: &["screens/forces.rs"],
+    },
+    Surface {
+        variant: "CancelOrder",
+        command: id::TAB_FORCES,
+        files: &["screens/forces.rs"],
+    },
+    Surface {
         variant: "Mobilize",
         command: id::JOURNAL,
         files: &["screens/game.rs", "screens/journal.rs"],
@@ -76,22 +86,10 @@ const PLAYER: &[Surface] = &[
 ];
 
 /// Variants the player does not give from a screen with a key, and why.
-const EXCEPTIONS: &[(&str, &str)] = &[
-    (
-        "Borders",
-        "issued by treaties, peace, tests and tools; the player frees its land with Liberate",
-    ),
-    // Draft of slice A2: the "Encomendas" section of the forces tab comes from the interface
-    // thread on this branch; these two lines leave with it.
-    (
-        "OrderForces",
-        "draft: the orders screen in the forces tab is being made",
-    ),
-    (
-        "CancelOrder",
-        "draft: the orders screen in the forces tab is being made",
-    ),
-];
+const EXCEPTIONS: &[(&str, &str)] = &[(
+    "Borders",
+    "issued by treaties, peace, tests and tools; the player frees its land with Liberate",
+)];
 
 fn variants() -> BTreeSet<String> {
     let mut tracer = Tracer::new(TracerConfig::default());

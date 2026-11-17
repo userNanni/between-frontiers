@@ -88,6 +88,8 @@ pub struct Window {
     pub drafts: Drafts,
     /// The debts tab's selected line.
     pub ledger: super::ledger::LedgerUi,
+    /// The forces tab's order being made and the cancellation being confirmed.
+    pub orders: super::forces::OrdersUi,
 }
 
 /// What a tab gets to draw with.
@@ -106,6 +108,7 @@ pub struct TabContext<'a> {
     pub commands: &'a mut Vec<GameCommand>,
     /// The debts tab's selection.
     pub ledger: &'a mut super::ledger::LedgerUi,
+    pub orders: &'a mut super::forces::OrdersUi,
     /// The principal each 1925 debt was signed with.
     pub signed: &'a crate::ledger_view::Signed,
 }
@@ -170,6 +173,7 @@ pub fn show(
         tab,
         drafts,
         ledger,
+        orders,
     } = window;
     region(ui, rect.shrink(space::XL), |ui| {
         ui.horizontal(|ui| {
@@ -205,6 +209,7 @@ pub fn show(
             tag,
             commands: &mut out.commands,
             ledger,
+            orders,
             signed,
         };
         egui::ScrollArea::vertical()
