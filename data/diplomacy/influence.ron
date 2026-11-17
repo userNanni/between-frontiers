@@ -1,0 +1,40 @@
+// Between Frontiers: rules of influence (phase 4). Contract: crates/bf-sim/src/influence.rs
+// (InfluenceRules); design: docs/influence.pt-BR.md (sections 3, 4, 11 and 13). Licence:
+// CC BY-SA 4.0.
+//
+// DESIGN CHOICES, to balance after phase 6 (the owner's rule: features before balance). Per
+// mille throughout.
+//
+// - Dependence of B on A, channel by channel: the flow over B's GDP times A's share of that
+//   channel in B (vulnerability, Keohane and Nye 1977). Only credit is live; investment, trade and
+//   protection are dormant until their fronts exist.
+// - Influence counts by issue (Baldwin 1979): each issue weighs the channels its own way. The
+//   issue of a proposal is its dominant term in the treaties' valuation. Goodwill counts the same
+//   in every issue.
+// - Goodwill keeps 917 per mille a year: half in 8 years (0.917^8 = 0.50). Aid buys a vote only
+//   while it lasts and a little after (Kuziemko and Werker 2006).
+// - Affinity multiplies, weakly (Walt 1987: alignment follows threat more than ideology): from 800
+//   (opposite regimes, no people in common) to 1200 (same laws, a large community of A's main
+//   culture in B); the people term is full at 20 % of B's people.
+(
+    issues: [
+        // A creditor weighs in money; an investor in money and trade; a protector in security.
+        (issue: Money, credit: 1000, investment: 600, trade: 300, protection: 0),
+        (issue: Trade, credit: 200, investment: 600, trade: 1000, protection: 0),
+        (issue: Territory, credit: 200, investment: 300, trade: 200, protection: 600),
+        (issue: Security, credit: 100, investment: 100, trade: 100, protection: 1000),
+        (issue: Sovereignty, credit: 400, investment: 400, trade: 400, protection: 800),
+    ],
+    goodwill_yearly_retention: 917,
+    affinity_floor: 800,
+    affinity_ceiling: 1200,
+    regime_weight: 500,
+    people_weight: 500,
+    people_full: 200,
+    // In a proposal of A that B weighs, A's influence over B adds influence × B's GDP × this.
+    proposal_weight: 1000,
+    // The term never adds more than this share of the proposal's size: a patron's influence makes
+    // a country accept a small loss, never any loss.
+    proposal_cap: 250,
+    source: "docs/influence.pt-BR.md, sections 3, 4 and 11; Hirschman 1945; Keohane and Nye 1977; Baldwin 1979; Walt 1987; Kuziemko and Werker 2006",
+)

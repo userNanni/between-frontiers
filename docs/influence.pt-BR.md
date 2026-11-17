@@ -331,9 +331,10 @@ não custa nada por dentro.
 uma linha do orçamento; as equipes são um contador por país; os outros três limites são termos da
 avaliação que já existe.
 
-## 13. Decisões que sobraram dos dois estudos
+## 13. Decisões que sobraram dos dois estudos (decididas em 2026-11-17)
 
-Propostas, aguardando o dono.
+O dono disse sim às seis, como recomendadas. Na 2, ele acrescentou que há promessas pagas aos
+poucos ou por acúmulo até um prazo; o desenho da cláusula está na seção 13a.
 
 1. **Dependência como vulnerabilidade:** fluxo vezes a concentração de A no canal (a parte de A no
    total de B), mais forte para quem está fora do mercado de crédito. Recomendação: sim. Teste: o
@@ -359,6 +360,48 @@ Propostas, aguardando o dono.
 6. **Custo interno da aproximação** pela postura dos grupos sobre a distância de regime, na
    máquina da ratificação. Recomendação: sim. Teste: a mesma aproximação custa legitimidade numa
    república com grupos contra e não custa numa autocracia alinhada. Custo: um termo na ratificação.
+
+## 13a. A cláusula de promessa: ato único e entrega acumulada
+
+O favor devido (decisão 2) é uma cláusula de promessa. O catálogo `data/diplomacy/clauses.ron` é do
+thread dos tratados; este é o desenho combinado para ele escrever. A promessa tem dois modos:
+
+| Modo | O que se promete | Como se cumpre | Exemplo |
+|---|---|---|---|
+| **Ato único** | um apoio numa ocasião definida: voto numa votação da organização X, consentimento no próximo acordo de A com C, reconhecimento de D | o ato acontece até o prazo; a cláusula se encerra cumprida | o voto do Egito no Conselho em troca de ajuda; o apoio de um aliado a uma candidatura |
+| **Entrega acumulada** | uma quantidade de um bem (ou de dinheiro, ou de homens) até uma data, de uma vez ou em parcelas | o que foi entregue se soma; a cláusula se encerra cumprida quando o total chega à quantidade | "vendo-te 2 milhões de toneladas de trigo até 1930", o petróleo romeno prometido à Alemanha, os contingentes prometidos ao aliado |
+
+**Campos da entrega acumulada:** bem (chave de `goods.ron`, ou dinheiro, ou homens), quantidade,
+prazo, parcelas opcionais (quanto até cada data intermediária), preço (o de mercado no dia da
+entrega, ou fixo) e **saldo**: quanto já foi entregue. A tela da mesa e o painel do acordo mostram o
+saldo como barra ("1,2 de 2 milhões de t, prazo em 1930").
+
+**O que acontece no vencimento sem cumprir:**
+- **Ato único:** a cláusula vence e conta como quebra, pelo valor que a proposta lhe deu.
+- **Entrega acumulada:** vence com o que faltou. A quebra vale a parte que faltou; o que foi
+  entregue fica pago. Cada parcela vencida sem cumprir já conta como quebra parcial, sem esperar o
+  prazo final.
+- Em todos os casos, a quebra entra no registro e na **reputação** de quem prometeu, pela regra da
+  seção 9 dos tratados (registro, suspensão recíproca, causa, reputação que decai 10 % ao ano). A
+  avaliação de proposta já desconta as promessas futuras pela reputação.
+
+**Dependências declaradas:**
+- **Ato único:** depende das votações de organização (fase 4, quando as organizações entrarem no
+  tick) e da proposta no tick (tratados, etapa 4). Até lá, fica dormente: pode ser assinada, aparece
+  na tela, não tem teste.
+- **Entrega acumulada de bem:** depende do **comércio com parceiro** (o desenho começa agora no
+  thread do aço e do gás). Sem comércio bilateral não há como entregar a um país específico; o modo
+  fica **dormente** até lá. Entrega de dinheiro pode ligar antes, pelo livro de pagamentos dos
+  tratados. Entrega de homens fica com a fase 5.
+
+**Como se testa:**
+- uma promessa de ato único cumprida se encerra sem quebra; vencida, registra a quebra e baixa a
+  reputação;
+- uma entrega acumulada com metade entregue no prazo registra a quebra só pela metade que faltou;
+- uma parcela vencida conta antes do prazo final.
+
+**Quanto custa manter:** um tipo de cláusula com dois modos no catálogo dos tratados e um teste
+mensal por promessa em vigor (algumas dezenas).
 
 ## 14. Fontes
 
