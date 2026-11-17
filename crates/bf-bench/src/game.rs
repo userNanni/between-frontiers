@@ -775,7 +775,18 @@ pub fn main(
     history_out: Option<&str>,
     save_at: &[Date],
 ) -> Result<(), String> {
-    let data = GameData::load(&root())?;
+    let mut data = GameData::load(&root())?;
+    // `BF_INFLUENCE_WEIGHT=N`: the `proposal_weight` of the rules of influence (0 checks that a
+    // world where nobody holds influence keeps the hash of a build without the system).
+    if let (Some(rules), Some(w)) = (
+        data.influence.as_mut(),
+        std::env::var("BF_INFLUENCE_WEIGHT")
+            .ok()
+            .and_then(|v| v.parse::<u32>().ok()),
+    ) {
+        rules.proposal_weight = w;
+    }
+    let data = data;
     let end = Date::new(1925 + years as i32, 1, 1);
     let mid = Date::new(1925 + (years / 2) as i32, 1, 1);
     let save_points = if save_at.is_empty() {

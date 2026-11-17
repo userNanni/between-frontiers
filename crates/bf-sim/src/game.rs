@@ -113,6 +113,10 @@ pub struct GameWorld {
     /// capital moves (`docs/foreign-capital.pt-BR.md`).
     #[serde(default)]
     pub foreign: crate::foreign_stakes::ForeignState,
+    /// Goodwill between countries and the influence map of the month; empty without the rules of
+    /// influence.
+    #[serde(default)]
+    pub influence: crate::influence::InfluenceState,
 }
 
 impl HashState for GameWorld {
@@ -149,6 +153,11 @@ impl HashState for GameWorld {
             h.section("foreign");
             self.foreign.hash_state(h);
         }
+        // Worlds where nobody holds influence keep their hash.
+        if !self.influence.is_empty() {
+            h.section("influence");
+            self.influence.hash_state(h);
+        }
     }
 }
 
@@ -167,6 +176,7 @@ impl GameWorld {
             politics: crate::polity::PoliticsState::default(),
             borders: crate::borders::BordersState::default(),
             foreign: Default::default(),
+            influence: Default::default(),
             demography: crate::demography::DemographyState::default(),
         }
     }
@@ -419,6 +429,8 @@ pub struct Rules {
     /// Map, catalogue of countries and scenario the border operations read; without them border
     /// commands wait in the queue.
     pub borders: Option<Arc<crate::borders::BorderRules>>,
+    /// Rules of influence (`data/diplomacy/influence.ron`); without them nobody holds any.
+    pub influence: Option<Arc<crate::influence::InfluenceSetup>>,
 }
 
 pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
@@ -430,6 +442,7 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
         politics,
         communities,
         borders,
+        influence,
     }) = rules
     {
         if let Some(p) = &politics {
@@ -461,6 +474,9 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
         }
         s.add(crate::econ::yearly::Yearly { cat, tree });
         // Last in the day: an operation sees the day's results and the next day sees its own.
+        if let Some(setup) = influence {
+            s.add(crate::influence::InfluenceSystem { setup });
+        }
         if let Some(rules) = borders {
             s.add(crate::borders::op::Borders { rules });
         }
