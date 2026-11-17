@@ -624,6 +624,14 @@ fn click_card(h: &mut Harness<'_, App>, name: &str) {
 
 /// Runs a new world for Brazil from 1925 to `until` on two threads and returns the session.
 fn advanced_session(until: laplace_schelling::calendar::Date) -> bf_sim::game::Session {
+    advanced_session_of("BRA", until)
+}
+
+/// [`advanced_session`] for the country `tag`.
+fn advanced_session_of(
+    tag: &str,
+    until: laplace_schelling::calendar::Date,
+) -> bf_sim::game::Session {
     let data = bf_sim::data::GameData::load(&root()).expect("game data");
     let mut session = bf_sim::game::Session::new(
         data.new_world(),
@@ -632,7 +640,7 @@ fn advanced_session(until: laplace_schelling::calendar::Date) -> bf_sim::game::S
         2,
         Some(data.rules()),
     );
-    session.submit(bf_sim::game::GameCommand::ChoosePlayer { tag: "BRA".into() });
+    session.submit(bf_sim::game::GameCommand::ChoosePlayer { tag: tag.into() });
     while session.clock().date < until {
         session.sim.step();
     }
@@ -1760,6 +1768,61 @@ fn sea_lens() {
             v.closed.insert(suez);
         });
         shot(&mut h, &format!("84-sea-route-suez-closed-{tag}"));
+    }
+    let _ = std::fs::remove_dir_all(&user);
+}
+
+/// The population panel: Brazil in 1925 and in 1960 (the whole country, then its largest
+/// state), and Italy, a country of emigrants, in 1930; top and bottom of the panel, in
+/// Portuguese at 1600 × 900 and in English at 1280 × 720.
+#[test]
+#[ignore = "needs a GPU (or software Vulkan) and the generated map; run with --ignored"]
+fn population_panel() {
+    use laplace_schelling::calendar::Date;
+    let user = std::env::temp_dir().join(format!("bf-shots-pop-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&user);
+    let bra_1925 = advanced_session(Date::new(1925, 7, 1));
+    let bra_1960 = advanced_session(Date::new(1960, 3, 1));
+    let ita_1930 = advanced_session_of("ITA", Date::new(1930, 3, 1));
+    let saves = [
+        (
+            write_campaign(&user, &bra_1925, "Brasil 1925", "BRA", &[]),
+            "bra-1925",
+            false,
+        ),
+        (
+            write_campaign(&user, &bra_1960, "Brasil 1960", "BRA", &[]),
+            "bra-1960",
+            true,
+        ),
+        (
+            write_campaign(&user, &ita_1930, "Itália 1930", "ITA", &[]),
+            "ita-1930",
+            false,
+        ),
+    ];
+    for (locale, size, tag, bottom) in [
+        ("pt-BR", egui::vec2(1600.0, 900.0), "pt", "Ondas abertas"),
+        ("en", egui::vec2(1280.0, 720.0), "en-1280", "Open waves"),
+    ] {
+        for (i, (save, name, state)) in saves.iter().enumerate() {
+            let mut h = harness_sized(user.join(format!("{tag}-{name}")), locale, size);
+            let ctx = h.ctx.clone();
+            h.state_mut().apply(Transition::Game(save.clone()), &ctx);
+            h.run_steps(4);
+            h.key_press(egui::Key::Y);
+            h.run_steps(4);
+            let n = 90 + i * 2;
+            shot(&mut h, &format!("{n}-population-{name}-{tag}"));
+            if *state {
+                h.get_by_label("›").click();
+                h.run_steps(3);
+                shot(&mut h, &format!("{n}-population-{name}-state-{tag}"));
+            }
+            h.get_by_label(bottom).scroll_to_me();
+            h.run_steps(4);
+            shot(&mut h, &format!("{}-population-{name}-bottom-{tag}", n + 1));
+        }
     }
     let _ = std::fs::remove_dir_all(&user);
 }
