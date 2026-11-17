@@ -157,9 +157,9 @@ pub fn decode_world(bytes: &[u8]) -> Result<GameWorld, WorldError> {
 pub fn migrate(v: u32, body: &[u8]) -> Result<GameWorld, SaveError> {
     use compat::*;
     Ok(match v {
-        0 => v9_to_v10(v8_to_v9(v7_to_v8(v6_to_v7(v5_to_v6(v2_to_v5(v1_to_v2(v0_to_v1(
-            decode_snapshot(body)?,
-        )))))))),
+        0 => v9_to_v10(v8_to_v9(v7_to_v8(v6_to_v7(v5_to_v6(v2_to_v5(v1_to_v2(
+            v0_to_v1(decode_snapshot(body)?),
+        ))))))),
         1 => v9_to_v10(v8_to_v9(v7_to_v8(v6_to_v7(v5_to_v6(v2_to_v5(v1_to_v2(
             decode_snapshot(body)?,
         ))))))),

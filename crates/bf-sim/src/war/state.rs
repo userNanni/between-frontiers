@@ -118,6 +118,8 @@ pub struct ForceOrder {
     pub built: Vec<(u16, Fixed)>,
     /// Of [`CountryWar::orders`], what this order buys this week; credited to `built` next week.
     pub buying: Vec<(u16, Fixed)>,
+    /// Weeks in a row the order got nothing for want of room in the military budget.
+    pub stalled: u32,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -275,6 +277,7 @@ impl HashState for ForceOrder {
         self.delivered.hash_state(h);
         hash_goods(h, &self.built);
         hash_goods(h, &self.buying);
+        h.write_u32(self.stalled);
     }
 }
 

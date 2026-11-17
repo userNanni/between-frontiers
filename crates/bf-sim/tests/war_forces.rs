@@ -302,7 +302,10 @@ fn a_land_order_raises_men_a_class_a_week_and_keeps_them() {
     s.sim.run_until(Date::new(1926, 2, 9));
     let (raised, queue) = ordered(&s, "GBR", "infantry");
     // Four Mondays at 24 / 12 a week.
-    assert!(raised > Fixed::ZERO && raised <= Fixed::from_int(8), "{raised:?}");
+    assert!(
+        raised > Fixed::ZERO && raised <= Fixed::from_int(8),
+        "{raised:?}"
+    );
     assert_eq!(queue, 1);
     let gbr = index(s.world(), "GBR");
     let recruits = s.world().war.countries[gbr]
@@ -310,14 +313,21 @@ fn a_land_order_raises_men_a_class_a_week_and_keeps_them() {
         .iter()
         .find(|f| f.raised)
         .unwrap();
-    assert!(recruits.training < Fixed::from_ratio(1, 2), "recruits report untrained");
+    assert!(
+        recruits.training < Fixed::from_ratio(1, 2),
+        "recruits report untrained"
+    );
     s.sim.run_until(Date::new(1926, 6, 1));
     let (raised, queue) = ordered(&s, "GBR", "infantry");
     assert_eq!(raised, Fixed::from_int(24));
     assert_eq!(queue, 0, "the order is delivered");
     s.sim.run_until(Date::new(1927, 1, 20));
     let (after_january, _) = ordered(&s, "GBR", "infantry");
-    assert_eq!(after_january, Fixed::from_int(24), "January leaves the raised men alone");
+    assert_eq!(
+        after_january,
+        Fixed::from_int(24),
+        "January leaves the raised men alone"
+    );
 }
 
 /// Slice A2: destroyers ordered are built over their build weeks and join whole, not a part
@@ -402,4 +412,50 @@ fn a_cancelled_order_goes_to_the_depot() {
     let c = &s.world().war.countries[gbr];
     assert!(c.queue.is_empty());
     assert!(mil.value_lots(&c.depot) > depot);
+}
+
+/// Slice A2: what the forces screen reads about the orders, computed on demand: the offer of
+/// each type, the room of the budget this week, and how each order is going.
+#[test]
+fn the_orders_view_shows_offers_room_and_progress() {
+    use laplace_schelling::Fixed;
+    let d = data();
+    let (mil, peace) = d.rules().war.unwrap();
+    let mut s = Session::new(
+        d.new_world(),
+        1925,
+        Date::new(1925, 1, 1),
+        2,
+        Some(d.rules()),
+    );
+    s.sim.run_until(Date::new(1926, 1, 12));
+    s.submit(GameCommand::OrderForces {
+        tag: "GBR".into(),
+        unit: "destroyer".into(),
+        elements: 4,
+        colonial: false,
+    });
+    s.sim.run_until(Date::new(1926, 4, 1));
+    let gbr = index(s.world(), "GBR");
+    let v = bf_sim::war::orders_view(s.world(), &d.catalogue, &mil, &peace, gbr).unwrap();
+    assert!(v.room.is_positive() && v.needs.is_positive());
+    assert_eq!(v.spare, v.room - v.needs);
+    let destroyer = mil.unit("destroyer").unwrap();
+    let offer = &v.offers[destroyer as usize];
+    assert_eq!(offer.weeks, 52);
+    assert!(offer.generation.is_some());
+    assert!(offer.equipment.is_positive() && offer.upkeep_year.is_positive());
+    assert!(offer.pay_year.is_positive());
+    let infantry = &v.offers[mil.unit("infantry").unwrap() as usize];
+    assert_eq!(infantry.weeks, 12);
+    assert_eq!(v.queue.len(), 1);
+    let line = &v.queue[0];
+    assert_eq!(line.unit, Some(destroyer));
+    // About eleven of fifty-two weeks built, and paid every week.
+    assert!(
+        line.built > Fixed::from_ratio(1, 10) && line.built < Fixed::from_ratio(4, 10),
+        "{:?}",
+        line.built
+    );
+    assert_eq!(line.stalled, 0);
 }

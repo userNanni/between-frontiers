@@ -388,6 +388,7 @@ impl Command<GameWorld> for GameCommand {
                         delivered: Fixed::ZERO,
                         built: Vec::new(),
                         buying: Vec::new(),
+                        stalled: 0,
                     });
                 }
             }

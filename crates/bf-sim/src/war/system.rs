@@ -93,6 +93,75 @@ fn join(
     }
 }
 
+/// Whether `country` can equip generation `generation` of type `ty`: every technology it needs
+/// made at home (Industrial stage or past it), or diffused somewhere, so it can be bought.
+pub fn can_equip(
+    mil: &Military,
+    world: &GameWorld,
+    country: usize,
+    ty: u16,
+    generation: usize,
+) -> bool {
+    let spec = mil.spec(ty, generation);
+    let r = &world.research;
+    if r.is_empty() {
+        return false;
+    }
+    spec.requires.iter().all(|&t| {
+        let t = t as usize;
+        let home = r.stage.get(country).is_some_and(|s| {
+            s.get(t)
+                .is_some_and(|&st| st >= crate::research::Stage::Industrial)
+        });
+        let abroad = r
+            .firsts
+            .get(t)
+            .is_some_and(|f| f[crate::research::Stage::Diffused as usize] > 0);
+        home || abroad
+    })
+}
+
+/// The newest generation of type `ty` that `country` can equip, if any.
+pub fn newest_generation(mil: &Military, world: &GameWorld, country: usize, ty: u16) -> Option<u8> {
+    let n = mil.types[ty as usize].generations.len();
+    (0..n)
+        .rev()
+        .find(|&g| can_equip(mil, world, country, ty, g))
+        .map(|g| g as u8)
+}
+
+/// A list of (good, quantity), sorted by good.
+pub type Goods = Vec<(u16, Fixed)>;
+
+/// What the forces of `c` need this week: what they consume, and the replacement of what they
+/// lack over `replace_weeks`; the second list is the replacement alone.
+pub fn needs_of(mil: &Military, peace: &PeaceRules, c: &CountryWar) -> (Goods, Goods) {
+    let weeks = i64::from(peace.replace_weeks.max(1));
+    let mut orders: Vec<(u16, Fixed)> = Vec::new();
+    let mut repair: Vec<(u16, Fixed)> = Vec::new();
+    for f in &c.formations {
+        let spec = mil.spec(f.unit, f.generation as usize);
+        for (g, q) in &spec.upkeep {
+            add(&mut orders, *g, *q * f.elements * peace.upkeep_scale);
+        }
+        for (g, per) in &spec.equipment {
+            let have = f
+                .equipment
+                .iter()
+                .find(|(k, _)| k == g)
+                .map_or(Fixed::ZERO, |e| e.1);
+            let lack = (*per * f.elements - have).max(Fixed::ZERO);
+            if lack.is_positive() {
+                add(&mut repair, *g, lack / weeks);
+            }
+        }
+    }
+    for (g, q) in &repair {
+        add(&mut orders, *g, *q);
+    }
+    (orders, repair)
+}
+
 /// Years of age of each group of the demography's pyramid (5-year groups, the last open).
 fn bands(ages: &[i64]) -> Vec<AgeBand> {
     ages.iter()
@@ -159,26 +228,8 @@ impl Forces {
             .sum()
     }
 
-    /// Whether `country` can equip generation `generation` of type `ty`: every technology it needs
-    /// made at home (Industrial stage or past it), or diffused somewhere, so it can be bought.
     fn can_equip(&self, world: &GameWorld, country: usize, ty: u16, generation: usize) -> bool {
-        let spec = self.military.spec(ty, generation);
-        let r = &world.research;
-        if r.is_empty() {
-            return false;
-        }
-        spec.requires.iter().all(|&t| {
-            let t = t as usize;
-            let home = r.stage.get(country).is_some_and(|s| {
-                s.get(t)
-                    .is_some_and(|&st| st >= crate::research::Stage::Industrial)
-            });
-            let abroad = r
-                .firsts
-                .get(t)
-                .is_some_and(|f| f[crate::research::Stage::Diffused as usize] > 0);
-            home || abroad
-        })
+        can_equip(&self.military, world, country, ty, generation)
     }
 
     /// Moves a share of each formation to the next generation it can equip, as far as `money`
@@ -274,13 +325,8 @@ impl Forces {
             .retain(|f| f.elements.is_positive() || f.called_up);
     }
 
-    /// The newest generation of type `ty` the country can equip, if any.
     fn newest(&self, world: &GameWorld, country: usize, ty: u16) -> Option<u8> {
-        let n = self.military.types[ty as usize].generations.len();
-        (0..n)
-            .rev()
-            .find(|&g| self.can_equip(world, country, ty, g))
-            .map(|g| g as u8)
+        newest_generation(&self.military, world, country, ty)
     }
 
     /// Ships, aircraft and strategic forces whose equipment is complete join the forces, with
@@ -330,7 +376,13 @@ impl Forces {
             if o.delivered >= o.ordered {
                 done.push(k);
             }
-            join(c, (ty, generation, colonial, false), n, Fixed::ZERO, equipment);
+            join(
+                c,
+                (ty, generation, colonial, false),
+                n,
+                Fixed::ZERO,
+                equipment,
+            );
         }
         for k in done.into_iter().rev() {
             let o = c.queue.remove(k);
@@ -420,9 +472,8 @@ impl Forces {
             // purchases equip them.
             join(c, key, n, Fixed::ZERO, Vec::new());
         }
-        c.queue.retain(|o| {
-            o.delivered < o.ordered || o.built.iter().any(|(_, q)| q.is_positive())
-        });
+        c.queue
+            .retain(|o| o.delivered < o.ordered || o.built.iter().any(|(_, q)| q.is_positive()));
         money
     }
 
@@ -610,35 +661,27 @@ impl Forces {
         let price = |list: &[(u16, Fixed)]| -> Fixed {
             list.iter().map(|(g, q)| *q * m.price[*g as usize]).sum()
         };
-        let needs = |c: &CountryWar| {
-            let mut orders: Vec<(u16, Fixed)> = Vec::new();
-            let mut repair: Vec<(u16, Fixed)> = Vec::new();
-            for f in &c.formations {
-                let spec = mil.spec(f.unit, f.generation as usize);
-                for (g, q) in &spec.upkeep {
-                    add(&mut orders, *g, *q * f.elements * self.peace.upkeep_scale);
-                }
-                for (g, per) in &spec.equipment {
-                    let have = f
-                        .equipment
-                        .iter()
-                        .find(|(k, _)| k == g)
-                        .map_or(Fixed::ZERO, |e| e.1);
-                    let lack = (*per * f.elements - have).max(Fixed::ZERO);
-                    if lack.is_positive() {
-                        add(&mut repair, *g, lack / weeks);
-                    }
-                }
-            }
-            for (g, q) in &repair {
-                add(&mut orders, *g, *q);
-            }
-            (orders, repair)
-        };
+        let needs = |c: &CountryWar| needs_of(mil, &self.peace, c);
         let (first, _) = needs(&c);
         let mut spare = room - price(&first);
+        let before: Vec<(Fixed, Fixed)> = c
+            .queue
+            .iter()
+            .map(|o| (o.delivered, o.built.iter().map(|(_, q)| *q).sum()))
+            .collect();
         if spare.is_positive() && !c.queue.is_empty() {
             spare = self.place_orders(world, ci, &mut c, spare, &m.price);
+        }
+        // Weeks in a row an order got nothing for want of room in the budget.
+        for (o, (delivered, built)) in c.queue.iter_mut().zip(before) {
+            let got = o.delivered != delivered
+                || !o.buying.is_empty()
+                || o.built.iter().map(|(_, q)| *q).sum::<Fixed>() != built;
+            o.stalled = if got || o.generation.is_none() {
+                0
+            } else {
+                o.stalled + 1
+            };
         }
         if spare.is_positive() && !c.mobilized {
             self.modernize(world, ci, &mut c, spare * weeks, &m.price);
