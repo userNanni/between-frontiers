@@ -20,6 +20,7 @@ pub mod doctrine;
 pub mod forces;
 pub mod ledger;
 pub mod nuclear;
+pub mod terrain;
 
 use std::path::Path;
 
@@ -29,6 +30,7 @@ pub use doctrine::*;
 pub use forces::*;
 pub use ledger::*;
 pub use nuclear::*;
+pub use terrain::*;
 
 use crate::econ::Catalogue;
 use crate::research::TechTree;
@@ -40,6 +42,8 @@ pub struct War {
     pub military: Military,
     /// The forces on the start date, when `data/scenario/1925/forces.ron` exists.
     pub forces_1925: Option<ForcesFile>,
+    /// Terrain of every state, when `assets/map/terrain.ron` exists.
+    pub terrain: Option<TerrainFile>,
 }
 
 fn read<T: serde::de::DeserializeOwned>(path: &Path) -> Result<T, String> {
@@ -73,8 +77,15 @@ pub fn load(
     } else {
         None
     };
+    let terrain_path = data.join("../assets/map/terrain.ron");
+    let terrain = if terrain_path.is_file() {
+        Some(read::<TerrainFile>(&terrain_path)?)
+    } else {
+        None
+    };
     Ok(Some(War {
         military,
         forces_1925,
+        terrain,
     }))
 }

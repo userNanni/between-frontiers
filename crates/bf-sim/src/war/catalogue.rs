@@ -312,6 +312,12 @@ pub struct RulesFile {
     pub speed_km_week: Vec<(Mobility, Fixed)>,
     /// Factor a landing attacker takes on top of the terrain, per mille.
     pub amphibious: u32,
+    /// Bonus to the defender's terrain when the whole border of the segment runs along a big
+    /// river, per mille.
+    pub river_defense: u32,
+    /// People per km² of a town's built-up area, to turn the urban population of a state into
+    /// the urban share of its terrain.
+    pub urban_density_km2: Fixed,
     pub winter: WinterRule,
     pub allocation: AllocationRule,
     pub exhaustion: ExhaustionWeights,
@@ -499,6 +505,8 @@ pub struct Rules {
     /// Per land [`Mobility`].
     pub speed_km_week: [Fixed; 6],
     pub amphibious: Fixed,
+    pub river_defense: Fixed,
+    pub urban_density_km2: Fixed,
     pub winter_upkeep: Fixed,
     pub winter_speed: Fixed,
     pub min_share: Fixed,
@@ -822,6 +830,9 @@ fn resolve_rules(file: &RulesFile, cat: &Catalogue, errors: &mut Vec<String>) ->
     if file.doctrine.down > file.doctrine.up {
         errors.push("rules: doctrine.down above doctrine.up".into());
     }
+    if !file.urban_density_km2.is_positive() {
+        errors.push("rules: urban_density_km2 must be positive".into());
+    }
     if !file.reference_fire.is_positive() {
         errors.push("rules: reference_fire must be positive".into());
     }
@@ -864,6 +875,8 @@ fn resolve_rules(file: &RulesFile, cat: &Catalogue, errors: &mut Vec<String>) ->
         climate_terrain: file.climate_terrain.clone(),
         speed_km_week: speed_km_week.map(|s| s.expect("checked")),
         amphibious: per_mille(file.amphibious),
+        river_defense: per_mille(file.river_defense),
+        urban_density_km2: file.urban_density_km2,
         winter_upkeep: file.winter.upkeep,
         winter_speed: file.winter.speed,
         min_share: per_mille(file.allocation.min_share),
