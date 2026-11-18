@@ -685,6 +685,22 @@ fecha.
   - a chamada de defesa já está na guerra (`AnswerCall`, #184).
 - **Save:** versão 25.
 
+### Feito: os limites de cada parâmetro
+
+- **Onde:** `limits` de cada cláusula em `clauses.ron`, com parâmetro, unidade (`ShareOfGdp`,
+  `ShareOfGdpYearly`, `Fraction`, `Years`), mínimo, máximo e passo. Todos são escolhas de desenho
+  anotadas:
+  - pagamento até 2 PIBs anuais de quem dá;
+  - tributo até 20 % do PIB por ano;
+  - principal da dívida até 3 PIBs, juro de 0 a 15 %, prazo de 1 a 99 anos;
+  - frações (parte adiável, parcela assumida, teto e margem de tarifa) de 0 a 1.
+- **Base do PIB:** a parte em PIB é do lado que dá, somado entre os seus membros, no ano da
+  proposta.
+- **Leitura:** `treaty::params(kind)` dá os parâmetros numéricos de uma cláusula, e
+  `treaty::limit_violations(cat, proposta, pib)` dá os que estão fora do limite. O editor da tela usa
+  as mesmas duas funções.
+- **Na mesa:** a proposta fora do limite fecha como `Failed`, com o motivo, e não é cumprida.
+
 ## 13. Interface: a mesa de negociação, em Agendas
 
 A mesa não é um painel à parte: é uma **decisão rara da janela de Agendas (J)**, como libertar
