@@ -146,6 +146,7 @@ fn the_foreign_share_of_profit_leaves_for_the_owners_fund() {
         tree: rules.tree.clone(),
         geo: None,
         by_pair: false,
+        treaty_tariffs: false,
         wage_floor: false,
         foreign_flow: true,
         fiscal_capacity: false,
