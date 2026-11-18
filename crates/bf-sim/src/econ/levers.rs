@@ -74,6 +74,11 @@ pub const CLERGY_PER_MILLE: (u16, u16) = (0, 15);
 pub const PUBLIC_PAY_MILLE: (u16, u16) = (400, 1500);
 pub const RESERVE_WEEKS: (u16, u16) = (4, 52);
 pub const DEFICIT_CAP_MILLE: (u16, u16) = (0, 100);
+/// D3: the goods budget over the rule's, and the military share of it, per mille. Design values:
+/// a quarter of the rule's purchases (deep austerity) to twice them; no military goods to 80 % of
+/// the goods budget (a war economy's state purchases).
+pub const PURCHASES_MILLE: (u16, u16) = (250, 2000);
+pub const MILITARY_MILLE: (u16, u16) = (0, 800);
 
 /// Share of the excess of servants or clergy over a fixed payroll that leaves each month:
 /// retirements, hiring freezes and lay-offs. Design value (a fortieth a month, about a quarter of
@@ -99,6 +104,8 @@ impl Levers {
         self.public_pay = self.public_pay.map(|v| clamp(PUBLIC_PAY_MILLE, v));
         self.reserve_weeks = self.reserve_weeks.map(|v| clamp(RESERVE_WEEKS, v));
         self.deficit_cap = self.deficit_cap.map(|v| clamp(DEFICIT_CAP_MILLE, v));
+        self.purchases = self.purchases.map(|v| clamp(PURCHASES_MILLE, v));
+        self.military = self.military.map(|v| clamp(MILITARY_MILLE, v));
         self
     }
 
@@ -325,6 +332,54 @@ pub struct LeversView {
 }
 
 /// What the budget screen reads for country `ci`.
+/// The state's purchases (D3) as the budget screen shows them.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct PurchasesView {
+    /// The goods budget over the rule's, per mille (the rule is 1000). Its week's effect is the
+    /// purchases the fixed level saves (positive) or adds against the rule's.
+    pub goods: LeverLine,
+    /// The military share of the goods budget, per mille (the rule is the basket's weight). It
+    /// moves money between civilian and military goods; its week's effect is the change in the
+    /// military ceiling, not in cash.
+    pub military: LeverLine,
+    /// This week's goods budget and military ceiling (`public::military_room`), in real units.
+    pub budget: f64,
+    pub military_room: f64,
+}
+
+/// What the budget screen reads of the state's purchases of country market `m` (D3).
+pub fn purchases_view(m: &Market, cat: &super::catalogue::Catalogue) -> PurchasesView {
+    let l = &m.levers;
+    let f = |v: Fixed| v.raw() as f64 / 1000.0;
+    let mut rule = m.clone();
+    rule.levers.purchases = None;
+    rule.levers.military = None;
+    let budget = f(super::public::goods_budget(m));
+    let room = f(super::public::military_room(m, cat));
+    PurchasesView {
+        goods: LeverLine {
+            rule: 1000.0,
+            fixed: l.purchases.map(f64::from),
+            floor: f64::from(PURCHASES_MILLE.0),
+            ceiling: f64::from(PURCHASES_MILLE.1),
+            week_effect: l
+                .purchases
+                .map(|_| f(super::public::goods_budget(&rule)) - budget),
+        },
+        military: LeverLine {
+            rule: super::public::military_weight(cat) as f64,
+            fixed: l.military.map(f64::from),
+            floor: f64::from(MILITARY_MILLE.0),
+            ceiling: f64::from(MILITARY_MILLE.1),
+            week_effect: l
+                .military
+                .map(|_| room - f(super::public::military_room(&rule, cat))),
+        },
+        budget,
+        military_room: room,
+    }
+}
+
 pub fn view(m: &Market) -> LeversView {
     let l = &m.levers;
     let f = |v: Fixed| v.raw() as f64 / 1000.0;

@@ -41,7 +41,7 @@ pub use nuclear::*;
 pub use state::*;
 pub use system::{
     Forces, add_goods, can_equip, needs_of, newest_generation, place_soldiers, state_purchases,
-    station_soldiers,
+    state_purchases_fixed, station_soldiers,
 };
 pub use terrain::*;
 pub use view::{OrderLine, OrdersView, UnitOffer, orders_view};

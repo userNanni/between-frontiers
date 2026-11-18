@@ -77,6 +77,11 @@ fn levers_back_on_the_rule_keep_the_hash() {
                 tag: "BRA".into(),
                 per_mille: None,
             },
+            GameCommand::SetStatePurchases {
+                tag: "BRA".into(),
+                goods: None,
+                military: None,
+            },
         ],
         until,
     );
@@ -224,4 +229,56 @@ fn the_view_prices_a_week_of_the_fixed_value() {
     );
     assert_eq!(v.reserve_weeks.week_effect, None);
     assert_eq!(v.uncollected, None);
+}
+
+/// D3: purchases at half the rule's buy less; a military share fixed at zero leaves no military
+/// ceiling and gives the civilian goods the whole budget; one fixed high raises the ceiling the
+/// forces read.
+#[test]
+fn fixed_purchases_and_military_share() {
+    let d = data();
+    let until = Date::new(1925, 4, 1);
+    let rule = run(&d, vec![], until);
+    let fixed = run(
+        &d,
+        vec![
+            GameCommand::SetStatePurchases {
+                tag: "BRA".into(),
+                goods: Some(500),
+                military: None,
+            },
+            GameCommand::SetStatePurchases {
+                tag: "ARG".into(),
+                goods: None,
+                military: Some(0),
+            },
+            GameCommand::SetStatePurchases {
+                tag: "MEX".into(),
+                goods: None,
+                military: Some(5000),
+            },
+        ],
+        until,
+    );
+    let cat = &d.catalogue;
+    let (r, f) = (rule.sim.world(), fixed.sim.world());
+    let bra = market(&rule, "BRA");
+    assert!(
+        f.econ.markets[bra].budget.goods < r.econ.markets[bra].budget.goods,
+        "half the purchases"
+    );
+    let v = bf_sim::econ::levers::purchases_view(&f.econ.markets[bra], cat);
+    assert_eq!(v.goods.fixed, Some(500.0));
+    assert!(v.goods.week_effect.unwrap() > 0.0, "buying less keeps cash");
+    let arg = market(&rule, "ARG");
+    let v = bf_sim::econ::levers::purchases_view(&f.econ.markets[arg], cat);
+    assert_eq!(v.military_room, 0.0);
+    assert!(v.budget > 0.0);
+    let mex = market(&rule, "MEX");
+    let v = bf_sim::econ::levers::purchases_view(&f.econ.markets[mex], cat);
+    assert_eq!(v.military.fixed, Some(800.0), "cut to the ceiling");
+    assert!(v.military_room > v.budget * 0.79);
+    assert!(v.military.week_effect.unwrap() > 0.0);
+    let rv = bf_sim::econ::levers::purchases_view(&r.econ.markets[mex], cat);
+    assert!(rv.military.rule > 0.0 && rv.military.fixed.is_none());
 }

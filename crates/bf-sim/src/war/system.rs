@@ -659,9 +659,11 @@ impl Forces {
         // the civilian basket's, as before the forces. It pays first what the forces consume and
         // what makes good their equipment; with room left, part of the force moves to a newer
         // generation, and what is still left buys equipment above the needs.
+        // The military share the government fixed (D3), or the basket's.
+        let share = m.levers.military.map_or(self.military_weight, i64::from);
         let room = crate::econ::public::goods_budget(m)
             .max(Fixed::ZERO)
-            .mul_ratio(self.military_weight, 1000);
+            .mul_ratio(share, 1000);
         let weeks = i64::from(self.peace.replace_weeks.max(1));
         let price = |list: &[(u16, Fixed)]| -> Fixed {
             list.iter().map(|(g, q)| *q * m.price[*g as usize]).sum()
@@ -882,6 +884,37 @@ impl System<GameWorld> for Forces {
 /// over 1,000 of the goods budget; the forces' orders take at most the rest, scaled down together
 /// when they cost more. What they leave stays in the treasury, where the budget rules turn it
 /// into public works and less debt.
+/// [`state_purchases`] with the military share the government fixed (D3): the civilian goods buy
+/// with their weights per million (`econ::public::fixed_basket`), and the forces' orders fit in
+/// `room` (`econ::public::military_room`).
+pub fn state_purchases_fixed(
+    cat: &crate::econ::Catalogue,
+    basket: impl Iterator<Item = (u16, i64)>,
+    military: &[(u16, Fixed)],
+    budget: Fixed,
+    room: Fixed,
+    price: &[Fixed],
+) -> Vec<(u16, Fixed)> {
+    let budget = budget.max(Fixed::ZERO);
+    let mut out: Vec<(u16, Fixed)> = basket
+        .filter(|(g, _)| !cat.military.get(*g as usize).copied().unwrap_or(false))
+        .map(|(g, w)| (g, budget.mul_ratio(w, 1_000_000) / price[g as usize]))
+        .collect();
+    let cost: Fixed = military.iter().map(|(g, q)| *q * price[*g as usize]).sum();
+    let scale = if cost > room && cost.is_positive() {
+        room / cost
+    } else {
+        Fixed::ONE
+    };
+    out.extend(
+        military
+            .iter()
+            .filter(|(g, q)| q.is_positive() && price[*g as usize].is_positive())
+            .map(|(g, q)| (*g, *q * scale)),
+    );
+    out
+}
+
 pub fn state_purchases<'a>(
     cat: &crate::econ::Catalogue,
     basket: impl Iterator<Item = &'a (u16, i64)>,

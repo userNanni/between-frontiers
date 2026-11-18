@@ -131,7 +131,75 @@ pub fn goods_budget(m: &Market) -> Fixed {
         - b.services
         - b.works
         - b.interest;
-    (b.payroll * GOODS_PER_PAYROLL).max(planned) * austerity(m) + surplus * SURPLUS_SPENDING
+    let rule =
+        (b.payroll * GOODS_PER_PAYROLL).max(planned) * austerity(m) + surplus * SURPLUS_SPENDING;
+    // The level of purchases the government fixed over the rule's (D3).
+    match m.levers.purchases {
+        Some(v) => rule.mul_ratio(i64::from(v), 1000),
+        None => rule,
+    }
+}
+
+/// Weight per mille of the military goods in the state's basket: the rule's military share of
+/// the goods budget (`data/economy/purchases.ron`).
+pub fn military_weight(cat: &Catalogue) -> i64 {
+    cat.state_basket
+        .iter()
+        .filter(|(g, _)| cat.military.get(*g as usize).copied().unwrap_or(false))
+        .map(|(_, w)| *w)
+        .sum()
+}
+
+/// The military share of the goods budget, per mille: the one the government fixed (D3), or the
+/// rule's basket weight.
+pub fn military_share(m: &Market, cat: &Catalogue) -> i64 {
+    m.levers
+        .military
+        .map_or_else(|| military_weight(cat), i64::from)
+}
+
+/// The week's military ceiling: the goods budget times the military share (D3). What the forces
+/// read (`docs/war.pt-BR.md`, "Forças em paz"); the civilian basket takes the rest.
+pub fn military_room(m: &Market, cat: &Catalogue) -> Fixed {
+    goods_budget(m)
+        .max(Fixed::ZERO)
+        .mul_ratio(military_share(m, cat), 1000)
+}
+
+/// The state basket's weights, per million, with the military share the government fixed (D3):
+/// the civilian goods share `1000 − share` by their weights, the military goods `share`. `None`
+/// on the rule, where the basket's own weights (per mille) hold.
+pub fn fixed_basket(cat: &Catalogue, m: &Market) -> Option<Vec<(u16, i64)>> {
+    let share = i64::from(m.levers.military?);
+    let military = |g: u16| cat.military.get(g as usize).copied().unwrap_or(false);
+    let (mut civil, mut armed) = (0i64, 0i64);
+    for &(g, w) in &cat.state_basket {
+        if military(g) {
+            armed += w;
+        } else {
+            civil += w;
+        }
+    }
+    Some(
+        cat.state_basket
+            .iter()
+            .map(|&(g, w)| {
+                let (part, total) = if military(g) {
+                    (share, armed)
+                } else {
+                    (1000 - share, civil)
+                };
+                (
+                    g,
+                    if total > 0 {
+                        w * part * 1000 / total
+                    } else {
+                        0
+                    },
+                )
+            })
+            .collect(),
+    )
 }
 
 /// Building indices the state works with.

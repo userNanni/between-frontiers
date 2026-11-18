@@ -365,6 +365,14 @@ pub enum GameCommand {
         tag: String,
         per_mille_gdp: Option<u16>,
     },
+    /// Fixes the state's purchases (D3): `goods`, the goods budget over the rule's, per mille;
+    /// `military`, the military share of it, per mille. Each `None` hands its part back to the
+    /// rule. The forces read the ceiling (`econ::public::military_room`).
+    SetStatePurchases {
+        tag: String,
+        goods: Option<u16>,
+        military: Option<u16>,
+    },
     /// Fixes the order of the country's public works (D8): the points of each week go to them in
     /// this order; works not listed follow, in arrival order. `None` hands the order back to
     /// arrival. Private works keep their places (owner's decision O2).
@@ -600,6 +608,17 @@ impl Command<GameWorld> for GameCommand {
             GameCommand::SetDeficitCap { tag, per_mille_gdp } => {
                 let v = *per_mille_gdp;
                 set_levers(world, tag, |l| l.deficit_cap = v);
+            }
+            GameCommand::SetStatePurchases {
+                tag,
+                goods,
+                military,
+            } => {
+                let (g, mil) = (*goods, *military);
+                set_levers(world, tag, |l| {
+                    l.purchases = g;
+                    l.military = mil;
+                });
             }
             GameCommand::SetWorksOrder { tag, order } => {
                 let Some(ci) = world.countries.iter().position(|(_, c)| c.tag == *tag) else {
