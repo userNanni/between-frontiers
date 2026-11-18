@@ -6,33 +6,38 @@
 //
 // Over this file: `BF_RULES=a,b` when the data load (game, tests, screenshots) and
 // `bf-bench --rule NAME` (repeatable) for a run.
+//
+// In alphabetical order, as `game::Switches`: a new rule goes in its place, not at the end.
 (
-    // Trade by pair (`docs/trade.pt-BR.md`): each buyer splits what it seeks among the sellers by
-    // the cost of arrival. Off: the world pool shares trade pro rata.
-    trade_by_pair: false,
-    // Jobs follow use (`econ::monthly::LAYOFF_PER_MONTH`): a plant that sells less than it could
-    // make lays off part of its crew each month. Off: every level employs its full crew.
-    jobs_follow_use: false,
-    // The wage floor of a small market (`econ::monthly::MIN_HANDS_FOR_A_WAGE`): a market with too
-    // few plant workers to have a wage of its own reads the lowest of the others.
-    small_market_wage_floor: false,
-    // Capital crosses borders (`docs/foreign-capital.pt-BR.md`): the funds build abroad with what
-    // they have left at home; the stakes and the weekly remittance follow from what they build.
-    foreign_flow: false,
-    // Schooling by cohort and level, and the adult literacy campaign
-    // (`docs/population.pt-BR.md`, "Ensino por coorte"). Off: literacy follows the economy's
-    // yearly rule and mothers' schooling the 240-month lag.
-    schooling: false,
     // Armed forces in peace (`docs/war.pt-BR.md`, "Forças em paz"): the soldiers are the men of
     // the formations of `data/scenario/1925/forces.ron`. Off: the old rule of
     // `data/military/peace.ron` (`soldiers`).
     forces: false,
-    // The record of each line of the ledger of debts between governments
-    // (`docs/treaties.pt-BR.md`, "o registro de cada linha"): what was paid and written off, and a
-    // line that ends stays closed in the record. Off: a line that ends leaves the ledger.
-    ledger_record: false,
+    // Capital crosses borders (`docs/foreign-capital.pt-BR.md`): the funds build abroad with what
+    // they have left at home; the stakes and the weekly remittance follow from what they build.
+    foreign_flow: false,
     // Independence by movement (`docs/borders.pt-BR.md`, section 11): colonial units demand an
     // answer, the metropole answers by its measured account, a refusal can end in revolt. Off:
     // colonies only grow their movement.
     independence: false,
+    // The influence's trade and investment channels (`docs/influence.pt-BR.md`, 13c): what B sells
+    // to A and what A owns in B weigh in A's influence over B. Off: both channels stay dormant.
+    influence_ties: false,
+    // Jobs follow use (`econ::monthly::LAYOFF_PER_MONTH`): a plant that sells less than it could
+    // make lays off part of its crew each month. Off: every level employs its full crew.
+    jobs_follow_use: false,
+    // The record of each line of the ledger of debts between governments
+    // (`docs/treaties.pt-BR.md`, "o registro de cada linha"): what was paid and written off, and a
+    // line that ends stays closed in the record. Off: a line that ends leaves the ledger.
+    ledger_record: false,
+    // Schooling by cohort and level, and the adult literacy campaign
+    // (`docs/population.pt-BR.md`, "Ensino por coorte"). Off: literacy follows the economy's
+    // yearly rule and mothers' schooling the 240-month lag.
+    schooling: false,
+    // The wage floor of a small market (`econ::monthly::MIN_HANDS_FOR_A_WAGE`): a market with too
+    // few plant workers to have a wage of its own reads the lowest of the others.
+    small_market_wage_floor: false,
+    // Trade by pair (`docs/trade.pt-BR.md`): each buyer splits what it seeks among the sellers by
+    // the cost of arrival. Off: the world pool shares trade pro rata.
+    trade_by_pair: false,
 )

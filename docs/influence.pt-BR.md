@@ -524,6 +524,60 @@ metade; a denúncia do feixe por um membro o tira do bloco no mês seguinte.
 
 **Quanto custa manter:** uma leitura do registro de quebras por mês (poucas linhas por ano).
 
+## 13c. Os canais de comércio e de investimento ligados (rascunho)
+
+Estado: **rascunho**, sobre o `main` com o comércio por par (#113) e com o commit `owned_shares`
+do #117 (capital estrangeiro), que sai daqui quando o #117 entrar.
+
+**Chave desligada.** Os canais entram atrás de `influence_ties` em `data/rules.ron`
+(`game::Switches`), desligada por padrão. Com ela desligada, os dois ficam dormentes e o hash de
+101 anos é o do `main`. No bench, `--rule influence_ties` liga. Ligar no jogo é um PR pequeno
+separado, julgado pelos agregados.
+
+**O que muda com a chave ligada.** Os dois canais deixam de ser dormentes quando o mundo tem o que
+eles medem:
+
+| Canal | Medida (A sobre B, parcela do PIB de B) | Vivo quando |
+|---|---|---|
+| **Comércio** | `x(B→A)/PIB(B) × x(B→A)/X(B)` − `x(A→B)/PIB(A) × x(A→B)/X(A)`, nunca abaixo de zero | o mundo tem comércio por par (`Economy::trade` não vazio, com `Switches::trade_by_pair` ligada); vazio é "sem dado", e o canal fica dormente |
+| **Investimento** | `posse(A,B) × posse(A,B)/estrangeiro(B)`, com `posse` = valor das plantas de B com dono em A sobre o PIB de B | o sistema tem o catálogo da economia (sempre, no jogo) |
+
+- **A mesma forma do crédito.** Cada canal é o fluxo sobre o PIB de B vezes a parte de A nesse
+  canal em B (vulnerabilidade, Keohane e Nye). O comprador único pesa mais que um entre muitos.
+- **A assimetria é o poder (Hirschman).** No comércio, desconta-se o mesmo de A para B, escalado
+  pelo PIB de A. O lado oposto é o par (B, A), e o canal nunca fica negativo.
+- **Ano lido:** o último ano fechado, a preços de base, como o PIB. No primeiro ano do jogo,
+  antes de algum 1º de janeiro fechar o ano, lê o ano corrente.
+- **Pares no mapa:** os do livro de dívidas e da boa vontade, mais todo par em que A compra de B
+  ou tem planta em B. O ponto fixo de 3 casas zera sozinho o canal abaixo de 1/1000 do PIB, e só
+  entra no mapa o par com valor maior que zero.
+- **Sem estado novo.** Os canais são recalculados todo mês (decisão 1: dependência sem memória),
+  e o save não muda. O mapa do mês, que já é salvo, ganha pares.
+
+**Decisões para o dono (recomendação primeiro):**
+
+1. **Só exportações no canal de comércio, como a tabela da seção 3.** Recomendação: sim. O caso
+   dos Bálcãs nos anos 1930 é o do mercado: o que B deixa de vender se A fechar a porta.
+   Alternativa: somar as importações de B vindas de A (dependência de suprimento). Ela fica para
+   quando a promessa de entrega medir a falta de bem, para não contar duas vezes o mesmo laço.
+2. **Fator de concentração nos dois canais**, igual ao do crédito. Recomendação: sim. Sem ele, um
+   país com dez compradores do mesmo tamanho daria a cada um a influência de um comprador único.
+3. **Pesos por assunto como estão em `influence.ron`** (comércio 1000 no assunto comércio,
+   investimento 600 em dinheiro e em comércio). Recomendação: sim, e equilibrar depois da fase 6,
+   pela regra de funcionalidade antes de equilíbrio.
+
+**Testes e critérios declarados antes de rodar:**
+- **Neutralidade:** com a chave desligada, o hash de 101 anos é o do `main`; com a chave
+  ligada e os pesos de comércio e de investimento em zero, o mapa do mês é o mesmo, par a par.
+- **Unidade:** o canal de comércio é zero com comércio simétrico e cresce com a parte de A nas
+  exportações de B; o de investimento é zero sem planta e vale `posse²/posse` com dono único.
+- **Rodada de 101 anos**, com sinais de regra quebrada: o canal de comércio de A sobre B maior que
+  as exportações de B sobre o PIB de B; um canal vivo num ano sem comércio por par; o mapa acima de
+  5 mil pares; o sistema `influence` acima de 2 ms por mês. Leitura, sem meta: quem tem o maior
+  canal de comércio sobre os domínios britânicos e sobre os Bálcãs em 1930 e em 1938.
+- **No PR que liga a chave:** a rodada de 101 anos com os sinais acima e a CPU de 10 anos contra
+  a base guardada do `main` (`tools/bench/baseline.sh`), intercalados no mesmo slot.
+
 ## 14. Fontes
 
 - Hirschman, A. O. *National Power and the Structure of Foreign Trade*. University of California

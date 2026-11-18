@@ -141,14 +141,19 @@ fn credit_is_live_and_the_rest_dormant() {
         .first()
         .expect("the 1925 ledger has lines");
     let (a, b) = (usize::from(d.creditor), usize::from(d.debtor));
-    let dep = influence::dependence(w, rules, a, b, 1925);
+    let dep = influence::dependence(w, rules, &influence::Ties::default(), a, b, 1925);
     assert!(matches!(dep.credit, Channel::Live(v) if v > Fixed::ZERO));
     assert!(matches!(dep.trade, Channel::Dormant(_)));
     assert!(matches!(dep.investment, Channel::Dormant(_)));
     assert!(matches!(dep.protection, Channel::Dormant(_)));
     assert!(dep.by_issue[0] > Fixed::ZERO);
     // The other way round, the creditor owes nothing it is not recorded to owe.
-    assert!(influence::dependence(w, rules, b, a, 1925).credit.value() >= Fixed::ZERO);
+    assert!(
+        influence::dependence(w, rules, &influence::Ties::default(), b, a, 1925)
+            .credit
+            .value()
+            >= Fixed::ZERO
+    );
 }
 
 #[test]
@@ -185,7 +190,7 @@ fn influence_follows_credit_and_goodwill() {
     let debt = w.econ.ledger.debts.first().unwrap();
     let (a, b) = (usize::from(debt.creditor), usize::from(debt.debtor));
     let aff = influence::affinity(w, rules, table, &cultures, &col, a, b);
-    let dep = influence::dependence(w, rules, a, b, 1925);
+    let dep = influence::dependence(w, rules, &influence::Ties::default(), a, b, 1925);
     let without = influence::interest(dep, Goodwill::default(), aff);
     let mut g = Goodwill::default();
     g.add(Fixed::from_raw(10));
@@ -205,6 +210,7 @@ fn the_map_holds_the_ledger_pairs_and_caps_the_term() {
         d.community_table.as_deref(),
         &colonial(),
         &Default::default(),
+        &influence::Ties::default(),
         1925,
     );
     let debt = w.econ.ledger.debts.first().unwrap();
@@ -229,7 +235,9 @@ fn credit_is_vulnerability_not_size() {
     let rules = data().influence.as_ref().unwrap();
     let debt = w.econ.ledger.debts[0].clone();
     let (a, b) = (usize::from(debt.creditor), usize::from(debt.debtor));
-    let alone = influence::dependence(&w, rules, a, b, 1925).credit.value();
+    let alone = influence::dependence(&w, rules, &influence::Ties::default(), a, b, 1925)
+        .credit
+        .value();
     // B owes as much again to a third creditor: A's share halves, and so on.
     let mut other = debt.clone();
     other.creditor = if debt.creditor == 0 { 1 } else { 0 };
@@ -237,7 +245,9 @@ fn credit_is_vulnerability_not_size() {
         other.creditor = 2;
     }
     w.econ.ledger.create(other);
-    let shared = influence::dependence(&w, rules, a, b, 1925).credit.value();
+    let shared = influence::dependence(&w, rules, &influence::Ties::default(), a, b, 1925)
+        .credit
+        .value();
     assert!(shared < alone, "{shared:?} {alone:?}");
 }
 
@@ -331,4 +341,129 @@ fn influence_over_and_on_match_the_pair_reading() {
     let on = influence::influence_on(w, setup, b, 1925);
     assert!(on.iter().any(|(x, u)| usize::from(*x) == a && u == v));
     assert!(v[Issue::Money as usize] > Fixed::ZERO);
+}
+
+/// B's GDP as the influence reads it (last full year, or the running one in the first year).
+fn gdp_of(w: &GameWorld, c: usize) -> Fixed {
+    let m = &w.econ.markets[c];
+    if m.gdp_last_year > Fixed::ZERO {
+        m.gdp_last_year
+    } else {
+        m.gdp_running
+    }
+}
+
+/// The trade channel (`docs/influence.pt-BR.md`, 13c): B's exports to A over B's GDP times A's
+/// share of them, minus the same of A toward B; zero when the flows are symmetric in weight.
+#[test]
+fn the_trade_channel_is_the_asymmetry_of_the_flows() {
+    let mut w = world().clone();
+    let (a, b, c) = (ix("GER"), ix("YUG"), ix("ITA"));
+    w.econ.trade = Default::default();
+    w.econ.trade.fit(w.econ.markets.len());
+    let gb = gdp_of(&w, b);
+    assert!(gb > Fixed::ZERO);
+    let tenth = gb / Fixed::from_int(10);
+    // Yugoslavia sells a tenth of its GDP, all of it to Germany, and buys nothing back.
+    w.econ.trade.add(b, a, tenth);
+    w.econ.trade.roll_year();
+    let ties = influence::Ties::of(&w, None, 1926);
+    let alone = influence::trade_dependence(&w, &ties, a, b);
+    assert_eq!(alone, Fixed::from_ratio(1, 10));
+    assert_eq!(influence::trade_dependence(&w, &ties, b, a), Fixed::ZERO);
+    // Half of it to Italy instead: Germany's share halves and so does the flow, a quarter.
+    w.econ.trade.year = w.econ.trade.last_year.clone();
+    let n = usize::from(w.econ.trade.n);
+    w.econ.trade.year[b * n + a] = tenth / Fixed::from_int(2);
+    w.econ.trade.year[b * n + c] = tenth / Fixed::from_int(2);
+    w.econ.trade.roll_year();
+    let ties = influence::Ties::of(&w, None, 1926);
+    let shared = influence::trade_dependence(&w, &ties, a, b);
+    assert_eq!(shared, Fixed::from_ratio(1, 40));
+    // The live channel enters the dependence; without trade by pair it is dormant.
+    let rules = data().influence.as_ref().unwrap();
+    let dep = influence::dependence(&w, rules, &ties, a, b, 1926);
+    assert_eq!(dep.trade, Channel::Live(shared));
+    assert!(matches!(dep.investment, Channel::Dormant(_)));
+    let none = influence::dependence(world(), rules, &influence::Ties::default(), a, b, 1926);
+    assert!(matches!(none.trade, Channel::Dormant(_)));
+}
+
+/// The investment channel: what A owns in B over B's GDP, times A's share of B's foreign capital.
+#[test]
+fn the_investment_channel_weighs_the_only_owner_more() {
+    let mut owned = bf_sim::foreign_stakes::OwnedShares {
+        total: vec![Fixed::ZERO; 4],
+        ..Default::default()
+    };
+    let f = Fixed::from_ratio(1, 10);
+    owned.pair.insert((0, 3), f);
+    owned.total[3] = f;
+    assert_eq!(influence::investment_dependence(&owned, 0, 3), f);
+    owned.pair.insert((1, 3), f);
+    owned.total[3] = f + f;
+    assert_eq!(
+        influence::investment_dependence(&owned, 0, 3),
+        f / Fixed::from_int(2)
+    );
+    assert_eq!(influence::investment_dependence(&owned, 2, 3), Fixed::ZERO);
+}
+
+/// Neutrality of the new channels: with their weights at zero the month's map is the map without
+/// them, pair for pair (the bench checks the 10-year hash against the head of #113).
+#[test]
+fn with_zero_weights_the_new_channels_leave_the_map_as_it_was() {
+    let mut w = world().clone();
+    let n = w.econ.markets.len();
+    w.econ.trade = Default::default();
+    w.econ.trade.fit(n);
+    for s in 0..n.min(40) {
+        for b in 0..n.min(40) {
+            if s != b {
+                let v = gdp_of(&w, s) / Fixed::from_int(100);
+                w.econ.trade.add(s, b, v);
+            }
+        }
+    }
+    w.econ.trade.roll_year();
+    let d = data();
+    let mut rules = d.influence.clone().unwrap();
+    for i in &mut rules.issues {
+        i.trade = 0;
+        i.investment = 0;
+    }
+    let build = |ties: &influence::Ties| {
+        influence::InfluenceMap::build(
+            &w,
+            &rules,
+            d.community_table.as_deref(),
+            &colonial(),
+            &Default::default(),
+            ties,
+            1926,
+        )
+    };
+    let with = build(&influence::Ties::of(&w, Some(&d.catalogue), 1926));
+    let without = build(&influence::Ties::default());
+    assert_eq!(with, without);
+}
+
+/// The lens reads every overlord over its subjects, measured or not: Britain over the Raj is in
+/// `influence_over` (zero while its channels are dormant), not left out as "nothing measured".
+#[test]
+fn the_lens_reads_the_overlord_over_its_subjects() {
+    let d = data();
+    let w = world();
+    let rules = d.rules();
+    let setup = rules.influence.as_deref().unwrap();
+    let gbr = ix("GBR");
+    let subjects: Vec<u16> = (0..w.countries.len())
+        .filter(|c| d.border_rules.overlord_of(w, *c) == Some(gbr))
+        .map(|c| c as u16)
+        .collect();
+    assert!(!subjects.is_empty(), "Britain has subjects in 1925");
+    let over = influence::influence_over(w, setup, gbr, 1925);
+    for s in subjects {
+        assert!(over.iter().any(|(b, _)| *b == s), "subject {s} left out");
+    }
 }

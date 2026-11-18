@@ -212,13 +212,18 @@ impl GameData {
     pub fn rules_with(&self, switches: crate::game::Switches) -> crate::game::Rules {
         let influence = self.influence.clone().map(|rules| {
             Arc::new(crate::influence::InfluenceSetup {
-                rules,
+                rules: crate::influence::InfluenceRules {
+                    live_ties: switches.influence_ties,
+                    ..rules
+                },
                 table: self.community_table.clone(),
                 colonial: self
                     .politics
                     .as_ref()
                     .map(|p| p.groups.iter().map(|g| g.colonial).collect())
                     .unwrap_or_default(),
+                catalogue: Some(Arc::clone(&self.catalogue)),
+                borders: Some(Arc::clone(&self.border_rules)),
             })
         });
         let independence = match (&self.independence, &self.politics) {

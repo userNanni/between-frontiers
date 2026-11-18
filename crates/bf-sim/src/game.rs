@@ -586,63 +586,70 @@ pub struct Rules {
 /// values the game starts with are in `data/rules.ron` (`GameData::switches`); a field missing
 /// there is off. `BF_RULES` switches some on over the file when the data load, and
 /// `bf-bench --rule NAME` for a run.
+/// The fields are in alphabetical order (as `NAMES`, `switch_on` and `data/rules.ron`): a new
+/// rule goes in its place, not at the end.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Switches {
-    /// Trade by pair (`econ::trade`, docs/trade.pt-BR.md): each buyer splits what it seeks among
-    /// the sellers by the cost of arrival. Off, the world pool shares trade pro rata.
-    pub trade_by_pair: bool,
-    /// Jobs follow use (`econ::monthly::LAYOFF_PER_MONTH`): a plant that sells less than it
-    /// could make lays off part of its crew each month. Off, every level employs its full crew
-    /// whatever it sells.
-    pub jobs_follow_use: bool,
-    /// The wage floor of a small market (`econ::monthly::MIN_HANDS_FOR_A_WAGE`): a market with
-    /// too few plant workers to have a wage of its own reads the lowest of the others.
-    pub small_market_wage_floor: bool,
+    /// Armed forces in peace (`war`, docs/war.pt-BR.md, "Forças em paz"): the soldiers are the
+    /// men of the formations. Off, the old rule of `data/military/peace.ron` (`soldiers`).
+    pub forces: bool,
     /// Capital crosses borders (`econ::monthly::abroad`, docs/foreign-capital.pt-BR.md): the
     /// funds build abroad with what they have left at home; the stakes and the weekly
     /// remittance follow from what they build.
     pub foreign_flow: bool,
-    /// Schooling by cohort and level and the adult literacy campaign (`demography::education`,
-    /// docs/population.pt-BR.md, "Ensino por coorte"). Off, literacy follows the economy's yearly
-    /// rule; a world that already has schooling keeps it.
-    pub schooling: bool,
-    /// Armed forces in peace (`war`, docs/war.pt-BR.md, "Forças em paz"): the soldiers are the
-    /// men of the formations. Off, the old rule of `data/military/peace.ron` (`soldiers`).
-    pub forces: bool,
+    /// Independence by movement (`borders::independence`, docs/borders.pt-BR.md section 11):
+    /// colonial units demand, the metropole answers by account, a refusal can end in revolt.
+    pub independence: bool,
+    /// The influence's trade and investment channels (`influence::Ties`, docs/influence.pt-BR.md
+    /// 13c) read trade by pair and the foreign stakes. Off, both stay dormant.
+    pub influence_ties: bool,
+    /// Jobs follow use (`econ::monthly::LAYOFF_PER_MONTH`): a plant that sells less than it
+    /// could make lays off part of its crew each month. Off, every level employs its full crew
+    /// whatever it sells.
+    pub jobs_follow_use: bool,
     /// The record of each line of the ledger of debts between governments (`treaty::Ledger`,
     /// docs/treaties.pt-BR.md): what was paid and written off, and a line that ends stays in
     /// `Ledger::closed`. Off, a line that ends leaves the ledger and nothing is recorded.
     pub ledger_record: bool,
-    /// Independence by movement (`borders::independence`, docs/borders.pt-BR.md section 11):
-    /// colonial units demand, the metropole answers by account, a refusal can end in revolt.
-    pub independence: bool,
+    /// Schooling by cohort and level and the adult literacy campaign (`demography::education`,
+    /// docs/population.pt-BR.md, "Ensino por coorte"). Off, literacy follows the economy's yearly
+    /// rule; a world that already has schooling keeps it.
+    pub schooling: bool,
+    /// The wage floor of a small market (`econ::monthly::MIN_HANDS_FOR_A_WAGE`): a market with
+    /// too few plant workers to have a wage of its own reads the lowest of the others.
+    pub small_market_wage_floor: bool,
+    /// Trade by pair (`econ::trade`, docs/trade.pt-BR.md): each buyer splits what it seeks among
+    /// the sellers by the cost of arrival. Off, the world pool shares trade pro rata.
+    pub trade_by_pair: bool,
 }
 
 impl Switches {
     /// The names `switch_on` knows, in the order of the fields.
-    pub const NAMES: [&'static str; 8] = [
-        "trade_by_pair",
-        "jobs_follow_use",
-        "small_market_wage_floor",
-        "foreign_flow",
-        "schooling",
+    pub const NAMES: [&'static str; 9] = [
         "forces",
-        "ledger_record",
+        "foreign_flow",
         "independence",
+        "influence_ties",
+        "jobs_follow_use",
+        "ledger_record",
+        "schooling",
+        "small_market_wage_floor",
+        "trade_by_pair",
     ];
 
     /// Switches one rule on by name; unknown names are refused.
     pub fn switch_on(&mut self, name: &str) -> Result<(), String> {
         match name {
-            "trade_by_pair" => self.trade_by_pair = true,
-            "jobs_follow_use" => self.jobs_follow_use = true,
-            "small_market_wage_floor" => self.small_market_wage_floor = true,
-            "foreign_flow" => self.foreign_flow = true,
-            "schooling" => self.schooling = true,
             "forces" => self.forces = true,
-            "ledger_record" => self.ledger_record = true,
+            "foreign_flow" => self.foreign_flow = true,
             "independence" => self.independence = true,
+            "influence_ties" => self.influence_ties = true,
+            "jobs_follow_use" => self.jobs_follow_use = true,
+            "ledger_record" => self.ledger_record = true,
+            "schooling" => self.schooling = true,
+            "small_market_wage_floor" => self.small_market_wage_floor = true,
+            "trade_by_pair" => self.trade_by_pair = true,
             other => {
                 return Err(format!(
                     "unknown rule switch {other} (known: {})",
