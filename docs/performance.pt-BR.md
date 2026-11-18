@@ -113,6 +113,14 @@ diga no PR quanto o `economy-week` subiu, em 10 anos e nos últimos anos do séc
    - Guarde só os pares acima do piso, numa lista esparsa ordenada por id.
    - Não expanda a esparsa em matriz densa toda semana. O `dense()` do #113 fazia isso; uma tabela
      de preferência que muda por mês se refaz no mês.
+   - Medida do comércio por par (#113 ligado, 2026-11-18): o custo não estava nos pares que
+     comerciam, e sim nas varreduras da matriz inteira. Por bem e por semana, eram montar e
+     normalizar a matriz vendedor × comprador (uma divisão por célula) e, em cada passada, zerar,
+     somar por linha, somar por coluna e acumular, umas 12 varreduras de ~300 mil células. Zerar
+     metade das preferências não baixou o tempo. O que baixa é varrer menos: acumular as somas no
+     mesmo laço que escreve, não zerar o que não se usou e não somar coluna de matriz por linha. A
+     divisão de 128 bits e os pesos zero não eram o custo. Meça com relógio por trecho antes de
+     otimizar: com a máquina carregada, o amostrador de pilha pega poucas amostras.
 7. **Lista que só cresce percorrida no tick.** Histórico, coorte por ano de construção, fila nunca
    podada: o custo por ano não pode crescer com o tempo de jogo. Funda, pode ou indexe.
    - Vale também para o que o jogador faz crescer, como a fila de encomendas e os pedidos: ponha
