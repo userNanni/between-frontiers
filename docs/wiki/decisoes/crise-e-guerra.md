@@ -122,6 +122,74 @@ termo a termo.
 
 ## A guerra
 
+### A guerra em terra primeiro
+
+- **Decisão:** a guerra no tick começa só em terra; mar e ar vêm na fatia seguinte (G1).
+- **O que o autor pensou:** "A terrestre é a mais importante, mar e ar podem vir depois."
+- **Como o jogo funciona por causa disso:** na primeira fatia, a frente, o combate, a ocupação e a
+  paz são de terra; o termo "ar" do combate fica neutro até a fatia C2.
+- **Estado:** decidido (2026-11-18); desenhado.
+- **Onde está o detalhe:** [`war.pt-BR.md`, "A guerra no tick"](../../war.pt-BR.md#a-guerra-no-tick-fatia-c-desenho).
+
+### Objetivo e postura por frente, aberto a mais comando depois
+
+- **Decisão:** o jogador dá a cada frente um objetivo e uma postura (atacar, manter, recuar); as
+  formações se repartem pela regra aberta (G2).
+- **O que o autor pensou:** "Em segundo momento podemos ir pensando em táticas melhores."
+- **Como o jogo funciona por causa disso:** o comando é curto e a conta da repartição fica à vista;
+  o desenho deixa lugar para formações por frente, eixo e reserva numa fatia depois.
+- **Estado:** decidido (2026-11-18); desenhado.
+- **Onde está o detalhe:** [`war.pt-BR.md`, "A guerra no tick"](../../war.pt-BR.md#a-guerra-no-tick-fatia-c-desenho).
+
+### O ocupado paga ao ocupante, com devastação e guarnição
+
+- **Decisão:** o território ocupado produz e paga ao ocupante, numa parcela estudada na vida real;
+  o combate devasta o estado por onde passa; o ocupante paga guarnição para manter o controle, e a
+  guarnição curta tem consequência (G3).
+- **O que o autor pensou:** estudar a França ocupada (custos de ocupação, requisições, trabalho
+  forçado, queda de produção); destruição de capital, infraestrutura e gente; custo de polícia
+  militar em homens e dinheiro.
+- **Como o jogo funciona por causa disso:** ocupar rende, mas menos do que parece e cada vez mais
+  caro: a parcela sobe com o tempo até perto de um terço do PIB (o caso francês de 1943), cai com a
+  guarnição curta e com a resistência, e o território devastado produz menos até a fila de obras
+  reconstruir.
+- **Como é na vida real:** Milward (1970) e Occhino, Oosterlinck e White (2008) para a França;
+  Harrison (1998) para a devastação; Quinlivan (1995) para a guarnição por mil habitantes.
+- **Estado:** decidido (2026-11-18); regra proposta, a confirmar antes de codar.
+- **Onde está o detalhe:** [`war.pt-BR.md`, "Ocupação"](../../war.pt-BR.md#ocupação-o-que-se-extrai-a-devastação-e-a-guarnição-g3-desenho-para-confirmar).
+
+### Quem desiste é o apoio à guerra, não a exaustão
+
+- **Decisão:** a paz e a rendição são decididas pelo apoio à guerra de cada país, feito dos grupos
+  de interesse; a exaustão material fica como insumo e como limite físico (G4). A IA pede paz
+  quando perde o apoio (G5).
+- **O que o autor pensou:** "um país pode estar exausto e ainda batalhar, ou pode nem ter cansado e
+  desistir; a medida é apoio de guerra, como a Alemanha na Primeira Guerra e os Estados Unidos no
+  Vietnã."
+- **Como o jogo funciona por causa disso:** o apoio parte alto para quem foi atacado e mais baixo
+  para quem atacou sem causa; cai com o logaritmo das baixas, a duração, a fome e a alta de preços,
+  o território ocupado e as derrotas; sobe com as vitórias. Censura atrasa a queda mas faz crescer
+  o movimento de mudança de regime. A tela da guerra mostra o apoio termo a termo e grupo a grupo.
+- **Como é na vida real:** Mueller (1973) e Gartner e Segura (1998) para as baixas; Offer (1989)
+  para a fome alemã de 1916–18; Gelpi, Feaver e Reifler (2009) para a expectativa de vitória;
+  Reiter e Stam (2002) para o regime.
+- **Estado:** decidido (2026-11-18); regra proposta, a confirmar antes de codar.
+- **Onde está o detalhe:** [`war.pt-BR.md`, "Apoio à guerra"](../../war.pt-BR.md#apoio-à-guerra-g4-desenho-para-confirmar-antes-de-codar).
+
+### A revolta colonial é guerra, e a colônia vencida é reconquistada
+
+- **Decisão:** a revolta é a proclamação do país novo seguida de guerra com a metrópole; se a
+  colônia perde, a metrópole reconquista o território (G6, e I3 opção A das fronteiras).
+- **O que o autor pensou:** a revolta não ganha regra simplificada antes da guerra; ela nasce na
+  fatia C.
+- **Como o jogo funciona por causa disso:** a independência separa a unidade, como hoje, e a guerra
+  abre entre os dois países; a paz por acordo de independência ou a reconquista decide.
+- **Como é na vida real:** a Indonésia de 1945–49 (a república proclamada, a guerra com a Holanda,
+  a Mesa Redonda).
+- **Estado:** decidido (2026-11-18); desenhado com o thread das fronteiras.
+- **Onde está o detalhe:** [`war.pt-BR.md`, "Guerra colonial"](../../war.pt-BR.md#guerra-colonial-i3-opção-a) e
+  [`borders.pt-BR.md`, seção 11](../../borders.pt-BR.md).
+
 ### Objetivo por frente, e a doutrina como estado do exército
 
 - **Decisão:** o jogador dá objetivo à frente (toda a fronteira contínua com um inimigo); os

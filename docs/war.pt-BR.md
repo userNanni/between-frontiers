@@ -1023,22 +1023,24 @@ No sistema das forças, depois do passo de paz, para cada guerra:
    pirâmide, na faixa de serviço (decisão 7); o equipamento perdido volta como reposição;
 5. **avanço:** o avanço de cada segmento soma; passada a profundidade do estado (raio da área),
    o controle muda para o atacante e a frente se refaz na semana seguinte;
-6. **ocupação:** o estado ocupado produz e paga imposto ao ocupante com eficiência reduzida (C3);
-7. **conta e exaustão:** `WarLedger` soma gente, bens, dinheiro, produção perdida e preços;
-   `exhaustion` dá a exaustão de cada lado, termo a termo.
+6. **ocupação:** o ocupado paga ao ocupante, com guarnição e devastação (G3, abaixo);
+7. **conta, exaustão e apoio:** `WarLedger` soma gente, bens, dinheiro, produção perdida e preços;
+   `exhaustion` dá a exaustão material; o apoio à guerra (G4) decide a paz.
 
 ### Fim
 
-- **Paz negociada:** o lado mais exausto oferece parte da exigência da crise (as cláusulas que
-  ainda estão na mesa). O outro aceita quando continuar vale menos que a oferta: o que ainda pode
-  tomar, menos as semanas de exaustão a mais. O jogador propõe e responde em Agendas.
-- **Rendição:** com a exaustão no limite (C4), o lado aceita a exigência inteira.
-- Nos dois casos a paz é um `treaty::Proposal` que os tratados executam (`settle`, `queue`), e o
-  acordo fica em `agreements` com as cláusulas contínuas (ocupação, limite de armas), testadas
+Quem decide a paz e a rendição é o **apoio à guerra** (G4, abaixo), não a exaustão.
+- **Paz negociada:** o lado cujo apoio cai abaixo do limiar de paz oferece parte da exigência da
+  crise; o outro aceita quando o que ainda pode tomar vale menos que a oferta. O jogador propõe e
+  responde em Agendas.
+- **Rendição:** com o apoio no fundo, o lado aceita a exigência inteira.
+- Nos dois casos a paz é um `treaty::Proposal` executado pela mesa de tratados (`settle`, `queue`),
+  e o acordo fica em `agreements` com as cláusulas contínuas (ocupação, limite de armas), testadas
   todo mês. A guerra termina com o acordo gravado.
-- **Terceiros no meio da guerra:** quando um país entra ou é atacado durante a guerra, as
-  chamadas dos acordos dele seguem a regra W4 (P2: sem resposta, entra; não honrar é comando
-  explícito).
+- **A exaustão material fica** como insumo do apoio (privação, gasto) e como limite físico: sem
+  homens, munição ou combustível, a frente não ataca, por mais apoio que haja.
+- **Terceiros no meio da guerra:** quando um país entra ou é atacado durante a guerra, as chamadas
+  dos acordos dele seguem a regra W4 (P2: sem resposta, entra; não honrar é comando explícito).
 
 ### Guerra colonial (I3, opção A)
 
@@ -1056,14 +1058,15 @@ a revolta é uma **proclamação seguida de guerra**, como a da Indonésia de 19
   pelo dono. O tipo do vínculo (colônia, protetorado) vem de `IndependenceSetup::bond_of`.
 - **Custo e desgaste:** os mesmos da guerra comum. A guerra longa desgasta a metrópole mesmo
   quando ela ganha batalhas: semanas, gasto e preços entram na exaustão.
-- **Fim:** o dono exausto aceita a paz por acordo de independência (reconhecimento e as cláusulas
-  de independência dos tratados); o país novo vencido volta ao dono pela `Union`, executada como
-  tratado.
+- **Fim:** o dono sem apoio à guerra aceita a paz por acordo de independência (reconhecimento e
+  as cláusulas de independência dos tratados); se a colônia perde, **a metrópole reconquista** o
+  território pela `Union`, executada como tratado (G6).
 - **Com `war` desligada,** a revolta segue como hoje (separação sem acordo), sem mudar o hash.
 
 ### Tela (esboço, para o thread de interface depois das decisões)
 
-- **Guerra:** os lados, as semanas de guerra, a exaustão de cada lado termo a termo, a conta.
+- **Guerra:** os lados, as semanas de guerra, o **apoio à guerra** de cada lado termo a termo e
+  grupo a grupo, a exaustão material e a conta.
 - **Frente:** a lista das frentes; por frente, objetivo, postura, elementos engajados e a razão de
   poder decomposta ("número 1,8×, equipamento 0,9×, suprimento 0,6×, terreno 0,7×"); por
   segmento, o avanço.
@@ -1077,16 +1080,105 @@ a revolta é uma **proclamação seguida de guerra**, como a da Indonésia de 19
 Decisão 6: a guerra mundial de 1939, com todos os segmentos ativos, abaixo de 15 % do tick. A
 fatia mede com uma guerra de teste de cinco grandes países, porque a IA não declara.
 
-### Decisões para o dono
+### Decidido pelo dono (G1–G6, 2026-11-18)
 
-| # | Escolha | Recomendado | Alternativa |
-|---|---|---|---|
-| C1 | Escopo | só terra; mar e ar na C2 | as três juntas |
-| C2 | Comando | o jogador dá objetivo e postura por frente; as formações se repartem pela regra aberta (decisão 1) | o jogador também designa formações por frente |
-| C3 | Ocupação | o estado ocupado produz e paga imposto ao ocupante com eficiência de 50 % (valor de desenho); a resistência vira movimento numa fatia depois | o ocupado não produz para ninguém |
-| C4 | Rendição | exaustão de 1.000 ‰; a capital ocupada soma um termo grande | rendição só com a capital e a maior parte da população ocupadas |
-| C5 | IA na guerra | defende; contra-ataca com 1,5 vez o poder do outro no segmento; pede paz quando a sua exaustão passa a do outro; continua sem declarar até a fase 6 | a IA só defende |
-| C6 | Guerra colonial | proclamação seguida de guerra entre dois países (reaproveita o `Secede` e a guerra comum) | guerra antes da separação, com a unidade ainda dentro do dono (mais fiel à Argélia, mas pede um lado sem país e uma regra de insurgência) |
+| # | Decisão | O que o dono disse |
+|---|---|---|
+| G1 | só terra nesta fatia; mar e ar na C2 | "A terrestre é a mais importante, mar e ar podem vir depois." |
+| G2 | objetivo e postura por frente; formações pela regra aberta | "Em segundo momento podemos ir pensando em táticas melhores": o desenho fica aberto a mais comando (formações por frente, eixo, reserva) |
+| G3 | o território ocupado produz e paga ao ocupante, com três acréscimos: a parcela calibrada pela vida real, a devastação e a guarnição | abaixo, "Ocupação" |
+| G4 | **mudou:** a rendição e a paz são decididas pelo apoio à guerra, não pela exaustão | "um país pode estar exausto e ainda batalhar, ou pode nem ter cansado e desistir; a medida é apoio de guerra, como a Alemanha na Primeira Guerra e os Estados Unidos no Vietnã" |
+| G5 | a IA defende e contra-ataca com 1,5 vez o poder; **pede paz quando não tem mais apoio à guerra** | — |
+| G6 | proclamação e guerra entre dois países; **se a colônia perder, a metrópole reconquista** | — |
+
+### Apoio à guerra (G4, desenho para confirmar antes de codar)
+
+Um número por país em guerra, de 0 a 1.000 por mil, feito do apoio de cada **grupo de interesse**
+(`politics`), pesado pela influência do grupo (`clout`). É o que a tela da guerra mostra em
+primeiro lugar, termo a termo e grupo a grupo.
+
+**Ponto de partida, na declaração** (dados, valores de desenho):
+- atacado: 800 (o efeito de união em torno da bandeira; Mueller, 1973);
+- atacante com causa registrada (`casus_belli`): 600; sem causa: 400;
+- guerra colonial: metrópole 550; o país novo começa com a mobilização do movimento.
+- Cada grupo parte daí com o seu viés: o militar acima; os trabalhadores e os camponeses, que dão
+  os soldados, abaixo; os negócios conforme a sua parte na indústria de guerra.
+
+**O que puxa para baixo, toda semana:**
+- **baixas:** pelo logaritmo dos mortos acumulados sobre a população; o apoio cai com o log das
+  baixas acumuladas (Mueller, 1973; Coreia e Vietnã), e mais quando a taxa de baixas sobe
+  (Gartner e Segura, 1998);
+- **duração:** um tanto por ano de guerra;
+- **privação civil:** a parte das necessidades básicas dos pops que não é atendida (comida,
+  aquecimento) e a alta de preços; o inverno do nabo de 1916–17 e as greves de 1918 na Alemanha
+  (Offer, 1989);
+- **território:** a parcela da própria população sob ocupação (depois do primeiro efeito de união);
+- **resultado:** a frente que recua tira apoio, a que avança devolve; a expectativa de vitória pesa
+  mais que o número de mortos (Gelpi, Feaver e Reifler, 2009).
+
+**O que puxa para cima:** vitórias (a frente avança, o inimigo perde território), o fim da
+privação, e uma exigência menor na mesa.
+
+**Regime e censura:** o efeito `censorship` da lei de imprensa e o `franchise` mudam a
+sensibilidade. Com censura, o apoio cai mais devagar, mas a queda abaixo do limiar de colapso faz
+crescer o movimento `regime_change` (fase 3d); é a queda súbita da Rússia de 1917 e da Alemanha de
+1918. Com eleições livres, cai mais depressa e o governo sente antes (Reiter e Stam, 2002).
+
+**Decisão:**
+- abaixo de 300 por mil (limiar de paz), o governo da IA pede paz, oferecendo parte da exigência;
+- abaixo de 100 (colapso), a rendição: aceita a exigência inteira;
+- o jogador vê o apoio e decide. Com o apoio abaixo do limiar de paz, continuar custa
+  legitimidade e faz crescer o movimento contra a guerra. **Recomendado:** no colapso, a
+  rendição é forçada também para o jogador, como a Alemanha em novembro de 1918.
+  **Alternativa:** o jogador nunca é forçado; só paga legitimidade e movimento.
+
+### Ocupação: o que se extrai, a devastação e a guarnição (G3, desenho para confirmar)
+
+**(a) O que o ocupante extrai.** A França ocupada pagou "custos de ocupação" de 400 milhões de
+francos por dia a partir de agosto de 1940, 300 milhões a partir de maio de 1941 e 500 milhões a
+partir de novembro de 1942, além de requisições e do trabalho forçado (o STO mandou cerca de 650
+mil trabalhadores à Alemanha). Somado, o que a Alemanha tirou chegou perto de um terço da renda
+nacional francesa em 1943, e a produção industrial francesa caiu a cerca de metade da de 1938 em
+1944 (Milward, 1970; Occhino, Oosterlinck e White, 2008).
+- **Recomendado:** o ocupante leva uma parcela do PIB do território ocupado, que sobe com o tempo
+  de ocupação de 20 % no primeiro ano até um teto de 33 % (dados), vezes a eficiência da guarnição
+  (c); a produção do ocupado cai pela devastação (b), pelos homens tirados e pela resistência. O
+  "50 %" do desenho anterior fica acima do caso francês.
+- **Alternativa:** parcela fixa (simples, sem curva no tempo).
+
+**(b) Devastação.** O combate que passa por um estado destrói capital, infraestrutura e gente, e o
+estado produz menos depois. A União Soviética perdeu cerca de um quarto do capital reprodutível
+na Segunda Guerra, e a Polônia mais de um terço da riqueza nacional (Harrison, 1998).
+- **Recomendado:** cada semana de combate num segmento destrói uma parcela dos níveis de edifício
+  e do transporte dos dois estados do segmento, proporcional à intensidade (o fogo dos dois lados),
+  com teto, e mata civis por idade, mais nas cidades; a fila de obras reconstrói. É gradual, como
+  a frente que demora.
+- **Alternativa:** um golpe único quando o controle muda.
+- **A terra arrasada** (destruir ao recuar, como a União Soviética em 1941) fica para depois,
+  como ordem de postura.
+
+**(c) Guarnição e polícia militar.** O ocupante precisa de tropa no território para manter o
+controle. A referência é Quinlivan (1995): cerca de 20 homens de segurança por mil habitantes para
+uma população hostil, de 2 a 4 para uma calma. A Alemanha mantinha cerca de 100 mil homens na
+França em 1941, para uns 40 milhões, algo como 2,5 por mil.
+- **Recomendado:** a exigência de guarnição de cada estado ocupado é de 2 por mil da população,
+  subindo até 20 por mil com a resistência (o movimento no estado). O ocupante destaca
+  formações de terra (o tipo `garrison` existe no catálogo) e paga homens e manutenção. Com
+  guarnição abaixo da exigência, a parcela extraída cai na mesma proporção e a resistência cresce;
+  com falta grande, nascem guerrilhas (`irregular`), numa fatia depois.
+- **Alternativa:** um custo fixo de guarnição, sem exigência nem consequência.
+
+**Dado novo:** nenhum arquivo de fonte além destas referências; as parcelas, as taxas e as
+exigências são valores de desenho em `data/military/war.ron`, com as fontes no comentário.
+
+Fontes: Mueller, J. (1973), *War, Presidents and Public Opinion*; Gartner, S. e Segura, G. (1998),
+"War, Casualties, and Public Opinion", *Journal of Conflict Resolution* 42(3); Gelpi, C., Feaver,
+P. e Reifler, J. (2009), *Paying the Human Costs of War*; Reiter, D. e Stam, A. (2002), *Democracies
+at War*; Offer, A. (1989), *The First World War: An Agrarian Interpretation*; Milward, A. (1970),
+*The New Order and the French Economy*; Occhino, F., Oosterlinck, K. e White, E. (2008), "How Much
+Can a Victor Force the Vanquished to Pay?", *Journal of Economic History* 68(1); Harrison, M.
+(1998), *The Economics of World War II*; Quinlivan, J. (1995), "Force Requirements in Stability
+Operations", *Parameters* 25(4).
 
 ## Mar e ar (fatia C2, desenho)
 
