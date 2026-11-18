@@ -124,6 +124,21 @@ const PLAYER: &[Surface] = &[
         files: &["screens/game.rs", "screens/crisis.rs"],
     },
     Surface {
+        variant: "SetWorksOrder",
+        command: id::TAB_WORKS,
+        files: &["screens/works.rs"],
+    },
+    Surface {
+        variant: "AddWork",
+        command: id::TAB_WORKS,
+        files: &["screens/works.rs"],
+    },
+    Surface {
+        variant: "CancelWork",
+        command: id::TAB_WORKS,
+        files: &["screens/works.rs"],
+    },
+    Surface {
         variant: "Mobilize",
         command: id::JOURNAL,
         files: &["screens/game.rs", "screens/journal.rs"],

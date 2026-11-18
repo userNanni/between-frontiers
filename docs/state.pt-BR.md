@@ -425,6 +425,19 @@ Nota do autor: "uma lista de prioridades que o jogador define e em que pode orde
 - **A obra privada fica fora da lista** (decisão do autor de 2026-11-17, O2: "o governo não tem
   acesso a essas decisões"). Ela segue na ordem de chegada; o jogador ordena só as obras públicas.
 
+- **No código (fatia D8):** sem mudar o layout do mercado, a obra é identificada pelo que é,
+  `econ::levers::WorkKey` (estado, prédio, método e custo em pontos); duas obras com a mesma chave
+  são a mesma obra duas vezes e qualquer uma vale pela outra. A ordem fixada e os pedidos ficam em
+  `GameWorld::levers` (versão 19 do save). Toda semana, antes da entrega dos pontos, as obras
+  públicas vão para a ordem fixada nas posições que as públicas já ocupam
+  (`levers::order_queue`); as privadas não mudam de lugar. `AddWork` só registra o pedido: o
+  sistema de investimento, no mês seguinte, confere com `public::buildable_in` (os prédios que o
+  Estado constrói, liberados pela pesquisa e possíveis no estado) e enfileira no custo da regra; o
+  pedido impossível é descartado. `CancelWork` tira a obra na hora. A tela lê
+  `levers::works` (por obra: chave, categoria, progresso, semanas no ritmo da semana passada,
+  gargalo e se a posição é fixada) e `levers::buildable` (por estado, os prédios com o custo de
+  um nível).
+
 ### D9. Dívida interna ou externa
 
 Nota do autor: "o mercado decide quem compra; o jogador escolhe onde emite".

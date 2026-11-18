@@ -615,7 +615,7 @@ pub struct V18 {
     war: crate::war::state::WarStateBeforeCrises,
     education: crate::demography::education::EducationState,
     independence: crate::borders::independence::IndependenceState,
-    levers: crate::econ::levers::LeversState,
+    levers: LeversV18,
 }
 
 /// 18 → 20: crises and wars (`WarState::conflicts`), empty: a world in peace hashes as before.
@@ -636,6 +636,64 @@ pub fn v18_to_v20(w: V18) -> GameWorld {
         war: w.war.into(),
         education: w.education,
         independence: w.independence,
-        levers: w.levers,
+        levers: w.levers.into(),
+    }
+}
+
+/// The budget's levers as versions 18 and 20 saved them, before the order of the public works.
+#[derive(Deserialize)]
+pub struct LeversV18 {
+    countries: Vec<crate::econ::levers::Levers>,
+}
+
+impl From<LeversV18> for crate::econ::levers::LeversState {
+    fn from(l: LeversV18) -> Self {
+        Self {
+            countries: l.countries,
+            ..Default::default()
+        }
+    }
+}
+
+/// Version 20: crises and wars (#157), before the order of the public works.
+#[derive(Deserialize)]
+pub struct V20 {
+    scenario: String,
+    player: Option<Id<Country>>,
+    countries: Table<Country, CountryState>,
+    census: Vec<CensusRecord>,
+    econ: crate::econ::Economy,
+    research: crate::research::ResearchState,
+    politics: crate::polity::PoliticsState,
+    demography: crate::demography::DemographyState,
+    borders: crate::borders::BordersState,
+    foreign: crate::foreign_stakes::ForeignState,
+    influence: crate::influence::InfluenceState,
+    treaties: crate::treaty::TreatyState,
+    war: crate::war::WarState,
+    education: crate::demography::education::EducationState,
+    independence: crate::borders::independence::IndependenceState,
+    levers: LeversV18,
+}
+
+/// 20 → 21: no order fixed for the public works and none asked for; the levers stay.
+pub fn v20_to_v21(w: V20) -> GameWorld {
+    GameWorld {
+        scenario: w.scenario,
+        player: w.player,
+        countries: w.countries,
+        census: w.census,
+        econ: w.econ,
+        research: w.research,
+        politics: w.politics,
+        demography: w.demography,
+        borders: w.borders,
+        foreign: w.foreign,
+        influence: w.influence,
+        treaties: w.treaties,
+        war: w.war,
+        education: w.education,
+        independence: w.independence,
+        levers: w.levers.into(),
     }
 }

@@ -1039,6 +1039,7 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
             (id::TAB_LAWS, Tab::Laws),
             (id::TAB_LEDGER, Tab::Ledger),
             (id::TAB_FORCES, Tab::Forces),
+            (id::TAB_WORKS, Tab::Works),
         ] {
             if fired(cmd) {
                 state.research_open = false;
@@ -1564,7 +1565,11 @@ fn overview(
         &mut state.fold,
     );
     if res.open_budget {
-        state.government = Some(super::government::Window::default());
+        // The side panel's works open the works tab; the full queue is there.
+        state.government = Some(super::government::Window {
+            tab: super::government::Tab::Works,
+            ..Default::default()
+        });
     }
     if res.open_research {
         state.research_open = true;

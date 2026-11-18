@@ -168,6 +168,78 @@ impl PublicKinds {
     }
 }
 
+impl PublicKinds {
+    /// Every building the state builds, with its category (`INFRASTRUCTURE`…`RESEARCH`), each once.
+    pub fn all(&self) -> Vec<(usize, usize)> {
+        let mut out: Vec<(usize, usize)> = Vec::new();
+        let mut add = |k: Option<usize>, c: usize| {
+            if let Some(k) = k
+                && !out.iter().any(|x| x.0 == k)
+            {
+                out.push((k, c));
+            }
+        };
+        for &k in &self.infrastructure {
+            add(Some(k), INFRASTRUCTURE);
+        }
+        add(self.school, EDUCATION);
+        for k in self.schools {
+            add(k, EDUCATION);
+        }
+        add(self.hospital, HEALTH);
+        add(self.housing, HOUSING);
+        add(self.laboratory, RESEARCH);
+        out
+    }
+
+    /// The public category of building `kind`, if the state builds it.
+    pub fn category_of(&self, kind: usize) -> Option<usize> {
+        self.all().into_iter().find(|x| x.0 == kind).map(|x| x.1)
+    }
+}
+
+/// The public works the government of market `mi` may start in region `ri` (D8, `AddWork`): each
+/// building the state builds that research allows here, at its newest allowed method, with what
+/// one level costs in construction points (the rule of the works, `level_points`). The same list
+/// the screen offers and the tick checks a request against.
+pub fn buildable_in(
+    cat: &Catalogue,
+    econ: &Economy,
+    unlocks: &super::Unlocks<'_>,
+    mi: usize,
+    ri: usize,
+) -> Vec<(usize, u8, Fixed)> {
+    let kinds = PublicKinds::new(cat);
+    let Some(cg) = kinds.construction else {
+        return Vec::new();
+    };
+    let Some(r) = econ.regions.get(ri) else {
+        return Vec::new();
+    };
+    if usize::from(r.market) != mi {
+        return Vec::new();
+    }
+    let m = &econ.markets[mi];
+    let mut out = Vec::new();
+    for (kind, _) in kinds.all() {
+        let b = &cat.buildings[kind];
+        let Some(method) = (0..b.methods.len())
+            .rev()
+            .find(|&me| unlocks.method(cat, mi, kind, me))
+        else {
+            continue;
+        };
+        if level_output(cat, r, kind, method) <= Fixed::ZERO {
+            continue;
+        }
+        let points = level_points(cat, kind, cg, super::plant_tfp(r, m, b));
+        if points > Fixed::ZERO {
+            out.push((kind, method as u8, points));
+        }
+    }
+    out
+}
+
 /// Units a level of `kind` makes in a year here, at full staff (first output).
 pub fn level_output(cat: &Catalogue, r: &Region, kind: usize, method: usize) -> Fixed {
     let b = &cat.buildings[kind];
