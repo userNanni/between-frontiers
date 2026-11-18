@@ -284,6 +284,8 @@ fn forces_of(
             .map(Arc::new)
         }
     }
+}
+
 /// The demands, read again on a new month or when the answers changed (an answer just given
 /// takes the demand off the list).
 fn demands_of(
