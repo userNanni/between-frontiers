@@ -240,13 +240,14 @@ impostos.
 
 ### Forma comum
 
-- **Onde se guarda.** Cada alavanca é um `Option` em `Budget` (ou em `Money`, para a dívida).
-  `None` é a regra. `Some(x)` é o valor fixado, cortado ao piso e ao teto do arquivo de dados
-  `data/economy/fiscal_levers.ron`. Piso e teto saem do que países reais fizeram; cada um com fonte.
-- **Hash e save.** Com tudo em `None`, o hash é o do `main`: o campo só entra no hash quando é
-  `Some`, como em `state.rs`. O save congela o `Budget` e o `Money` de antes, como
-  `econ/compat.rs` já faz com `MarketBeforeResearch`, e sobe para a próxima versão livre do mundo
-  (o ensino levou a 11).
+- **Onde se guarda.** Em `GameWorld::levers` (`econ::levers::LeversState`, uma `Levers` por
+  país), último campo do mundo. Cada alavanca é um `Option`: `None` é a regra, `Some(x)` é o valor
+  fixado, cortado ao piso e ao teto. Cada mercado leva uma cópia não salva (`Market::levers`),
+  refeita na carga, para que as funções que leem um mercado só (`goods_budget`, `deficit_room`)
+  vejam as alavancas. Guardar no `Market` obrigaria a congelar o layout antigo do mercado em todas
+  as versões de economia já gravadas.
+- **Hash e save.** Com tudo em `None`, o hash é o do `main`: o estado só entra no hash quando
+  alguma alavanca está fixada. O save sobe para a versão 12 (a migração deixa todos na regra).
 - **Sem chave de regra para a alavanca.** Com tudo em `None` o hash é o do `main`, então a escolha
   do jogador não entra desligada: o seletor aparece sempre. Entram atrás de chave em
   `data/rules.ron` só as mudanças de regra que valem para todos com a alavanca em `None`: o clero
