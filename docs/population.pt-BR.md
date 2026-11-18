@@ -288,7 +288,7 @@ território, e a relevância, são lidas do novo dono na conta de janeiro.
 
 ## Ensino por coorte
 
-Estado: **no jogo, com a regra desligada** (`data/rules.ron`, `schooling: false`; `bf-bench --rule schooling` liga numa rodada). Desligada, o hash é o do `main` e a alfabetização segue a regra anual da economia; um save de campanha feita com a regra ligada continua com o ensino. Ligar é um PR à parte, com a recalibração da natalidade (a rodada com a regra ligada fecha 2025 com 6,74 bi). Contrato e dados no #106; o ano letivo no tick, a tela e a campanha no PR da
+Estado: **no jogo, com a regra desligada** (`schooling: false` em `data/rules.ron`, `game::Switches`; `bf-bench --rule schooling` ou `BF_RULES=schooling` liga). Desligada, o hash é o do `main` e a alfabetização segue a regra anual da economia; um save de campanha feita com a regra ligada continua com o ensino. Ligar é um PR à parte, com a recalibração da natalidade (a rodada com a regra ligada fecha 2025 com 6,74 bi). Contrato e dados no #106; o ano letivo no tick, a tela e a campanha no PR da
 simulação do ensino (`crates/bf-sim/src/demography/education.rs`, no sistema `demography`, no
 mês de janeiro; estado salvo em `GameWorld::education`, versão 11 do mundo). Pedido do dono em 2026-11-17: níveis de
 ensino, quantos estão na escola, e a escola que só vira escolaridade nos anos seguintes.

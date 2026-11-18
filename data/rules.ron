@@ -1,10 +1,30 @@
-// Rules of the game that a PR adds switched off. A rule that changes every country's numbers
-// enters here off, so that the main keeps its hash; switching it on is a PR of its own, judged
-// by the world's aggregates (owner's decision of 2026-11-17, `docs/architecture.pt-BR.md`).
-// `bf-bench --rule NAME` switches one on for a run.
+// Rules of the game that a PR adds switched off (`game::Switches`). A rule that changes every
+// country's numbers enters here off, so that the main keeps its hash; switching it on is a PR of
+// its own, judged by the world's aggregates (owner's decision of 2026-11-17,
+// `docs/wiki/principios.md`, "Regra que muda o mundo inteiro entra desligada"). A field missing
+// here is off; an unknown one is an error.
+//
+// Over this file: `BF_RULES=a,b` when the data load (game, tests, screenshots) and
+// `bf-bench --rule NAME` (repeatable) for a run.
 (
+    // Trade by pair (`docs/trade.pt-BR.md`): each buyer splits what it seeks among the sellers by
+    // the cost of arrival. Off: the world pool shares trade pro rata.
+    trade_by_pair: false,
+    // Jobs follow use (`econ::monthly::LAYOFF_PER_MONTH`): a plant that sells less than it could
+    // make lays off part of its crew each month. Off: every level employs its full crew.
+    jobs_follow_use: false,
+    // The wage floor of a small market (`econ::monthly::MIN_HANDS_FOR_A_WAGE`): a market with too
+    // few plant workers to have a wage of its own reads the lowest of the others.
+    small_market_wage_floor: false,
+    // Capital crosses borders (`docs/foreign-capital.pt-BR.md`): the funds build abroad with what
+    // they have left at home; the stakes and the weekly remittance follow from what they build.
+    foreign_flow: false,
     // Schooling by cohort and level, and the adult literacy campaign
     // (`docs/population.pt-BR.md`, "Ensino por coorte"). Off: literacy follows the economy's
     // yearly rule and mothers' schooling the 240-month lag.
     schooling: false,
+    // Armed forces in peace (`docs/war.pt-BR.md`, "Forças em paz"): the soldiers are the men of
+    // the formations of `data/scenario/1925/forces.ron`. Off: the old rule of
+    // `data/military/peace.ron` (`soldiers`).
+    forces: false,
 )

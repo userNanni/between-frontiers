@@ -13,8 +13,9 @@
 //   place of the one measured in 1925.
 #![enable(implicit_some)]
 (
-    // Off until the PR that switches the forces on, judged by the aggregates on its own;
-    // `BF_FORCES=1` (bench, screenshots) or `GameData::enable_forces` (tests) turn them on.
+    // The rule while the forces are off (`forces` in data/rules.ron, off until the PR that
+    // switches them on, judged by the aggregates on its own; `BF_RULES=forces` or
+    // `bf-bench --rule forces` turn them on for a run, `GameData::enable_forces` in tests).
     soldiers: PopulationShare(10),
     peace_size: ShareOfServiceAge,
     law_scaling: true,

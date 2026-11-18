@@ -859,9 +859,9 @@ pub fn main(
 ) -> Result<(), String> {
     let mut data = GameData::load(&root())?;
     for name in RULES_ON.lock().map_err(|e| e.to_string())?.iter() {
-        if !data.switches.switch_on(name) {
-            return Err(format!("--rule {name}: no such rule in data/rules.ron"));
-        }
+        data.switches
+            .switch_on(name)
+            .map_err(|e| format!("--rule {name}: {e}"))?;
     }
     // `BF_INFLUENCE_WEIGHT=N`: the `proposal_weight` of the rules of influence (0 checks that a
     // world where nobody holds influence keeps the hash of a build without the system).
@@ -1116,13 +1116,9 @@ fn print_timings(t: &[TechTiming]) {
     }
 }
 
-/// The game's rules, with the switches named in `BF_RULES` (comma-separated, as
-/// `game::Switches::parse` reads them) on.
+/// The game's rules, with the switches of `data/rules.ron`, `BF_RULES` and `--rule`.
 pub fn rules(data: &GameData) -> bf_sim::game::Rules {
-    data.rules_with(
-        bf_sim::game::Switches::parse(&std::env::var("BF_RULES").unwrap_or_default())
-            .unwrap_or_else(|e| panic!("BF_RULES: {e}")),
-    )
+    data.rules()
 }
 
 /// Foreign stakes: levels owned abroad, the largest hosts (share of their private levels) and the
