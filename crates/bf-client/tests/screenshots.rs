@@ -2799,7 +2799,7 @@ fn force_orders() {
     use bf_sim::game::GameCommand;
     use laplace_schelling::calendar::Date;
     // SAFETY: the screenshot tests run one at a time (`RUST_TEST_THREADS=1`).
-    unsafe { std::env::set_var("BF_FORCES", "1") };
+    unsafe { std::env::set_var("BF_RULES", "forces") };
     let user = std::env::temp_dir().join(format!("bf-shots-orders-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&user);
     let mut session = advanced_session_of("GBR", Date::new(1925, 1, 2));

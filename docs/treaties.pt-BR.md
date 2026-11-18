@@ -548,7 +548,8 @@ fecha.
 ### Feito: o registro de cada linha e o dos acordos
 
 - **Entra desligado** (regra do dono de 2026-11-17: regra nova entra desligada, com o hash de 101
-  anos igual ao da `main`): `policy.ledger_record` em `data/diplomacy/clauses.ron`, `false`.
+  anos igual ao da `main`): `ledger_record` em `data/rules.ron` (`game::Switches`), `false`; ligue
+  com `BF_RULES=ledger_record` ou `bf-bench --rule ledger_record`.
   Desligado, a linha que acaba sai do livro como antes, nada é registrado, e os campos novos não
   entram no hash da linha. Ligar é um PR pequeno à parte, julgado pelos agregados. Os acordos
   gravados por `queue` não dependem da chave: no jogo de hoje ninguém assina, e o hash só muda

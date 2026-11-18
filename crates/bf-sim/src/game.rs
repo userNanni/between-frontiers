@@ -587,17 +587,22 @@ pub struct Switches {
     /// Armed forces in peace (`war`, docs/war.pt-BR.md, "Forças em paz"): the soldiers are the
     /// men of the formations. Off, the old rule of `data/military/peace.ron` (`soldiers`).
     pub forces: bool,
+    /// The record of each line of the ledger of debts between governments (`treaty::Ledger`,
+    /// docs/treaties.pt-BR.md): what was paid and written off, and a line that ends stays in
+    /// `Ledger::closed`. Off, a line that ends leaves the ledger and nothing is recorded.
+    pub ledger_record: bool,
 }
 
 impl Switches {
     /// The names `switch_on` knows, in the order of the fields.
-    pub const NAMES: [&'static str; 6] = [
+    pub const NAMES: [&'static str; 7] = [
         "trade_by_pair",
         "jobs_follow_use",
         "small_market_wage_floor",
         "foreign_flow",
         "schooling",
         "forces",
+        "ledger_record",
     ];
 
     /// Switches one rule on by name; unknown names are refused.
@@ -609,6 +614,7 @@ impl Switches {
             "foreign_flow" => self.foreign_flow = true,
             "schooling" => self.schooling = true,
             "forces" => self.forces = true,
+            "ledger_record" => self.ledger_record = true,
             other => {
                 return Err(format!(
                     "unknown rule switch {other} (known: {})",

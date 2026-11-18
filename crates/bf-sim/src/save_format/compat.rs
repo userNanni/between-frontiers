@@ -489,7 +489,7 @@ pub struct V15 {
 
 /// 15 → 16: each line of the ledger keeps what was paid and written off and its standing (open
 /// for every line read), closed lines apart; the agreements signed in play (none). Without the
-/// record (`Policy::ledger_record`, off) the world hashes as it did.
+/// record (`Switches::ledger_record`, off) the world hashes as it did.
 pub fn v15_to_v16(w: V15) -> GameWorld {
     GameWorld {
         scenario: w.scenario,

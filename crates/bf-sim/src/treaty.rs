@@ -397,11 +397,6 @@ pub struct Policy {
     pub ratify_below_threshold: RatifyBelow,
     /// The war debts of 1925 (`war_debts.ron`) enter the ledger on the start date.
     pub war_debts_1925: bool,
-    /// Each line keeps what was paid and written off, and a line that ends stays closed in the
-    /// ledger instead of leaving it. Off by default while it is judged (the owner's rule of
-    /// 2026-11-17: a new rule enters off, with the hash of the main).
-    #[serde(default)]
-    pub ledger_record: bool,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -984,9 +979,9 @@ pub struct Ledger {
     /// Year of the last service: on a new year the lines lose a year of their term.
     #[serde(default)]
     pub year: i32,
-    /// The lines keep their record (`Policy::ledger_record`): what was paid and written off,
-    /// and a closed line moves to `closed`. Off, a line that ends leaves the ledger and nothing
-    /// is recorded.
+    /// The lines keep their record (`game::Switches::ledger_record`): what was paid and written
+    /// off, and a closed line moves to `closed`. Off, a line that ends leaves the ledger and
+    /// nothing is recorded.
     #[serde(default)]
     pub record: bool,
     /// Lines that ended (paid off, out of term, repudiated), in order of closing: the record.
@@ -1925,10 +1920,7 @@ pub fn ledger_1925(
     policy: &Policy,
     countries: &crate::scenario::CountriesFile,
 ) -> Ledger {
-    let mut ledger = Ledger {
-        record: policy.ledger_record,
-        ..Default::default()
-    };
+    let mut ledger = Ledger::default();
     if !policy.war_debts_1925 {
         return ledger;
     }

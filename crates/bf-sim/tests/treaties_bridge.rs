@@ -292,3 +292,29 @@ fn what_cannot_be_carried_out_is_refused() {
     };
     assert!(treaty_exec::settle(cat, &p, "x").is_err(), "two receivers");
 }
+
+/// The record of each line follows the rule switch (`data/rules.ron`, off): off, the 1925 lines
+/// carry no record and hash as before; on, they record what is paid from the first week.
+#[test]
+fn the_record_of_the_ledger_follows_its_switch() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let mut on = GameData::load(&root).unwrap();
+    assert!(!on.switches.ledger_record);
+    assert!(!data().new_world().econ.ledger.record);
+    on.switches.switch_on("ledger_record").unwrap();
+    let w = on.new_world();
+    assert!(w.econ.ledger.record);
+    let mut s = Session::new(w, 1925, Date::new(1925, 1, 1), 2, Some(on.rules()));
+    s.sim.run_until(Date::new(1925, 2, 1));
+    let ledger = &s.world().econ.ledger;
+    assert!(ledger.debts.iter().any(|d| d.paid > Fixed::ZERO));
+    // Off, nothing is recorded.
+    assert!(
+        world()
+            .econ
+            .ledger
+            .debts
+            .iter()
+            .all(|d| d.paid == Fixed::ZERO)
+    );
+}
