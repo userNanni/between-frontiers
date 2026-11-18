@@ -66,6 +66,20 @@ em [`saves.pt-BR.md`](../../saves.pt-BR.md) e nos PRs do cliente.
 - **Onde está o detalhe:** [`saves.pt-BR.md`, "Formato do mundo e migração"](../../saves.pt-BR.md#formato-do-mundo-e-migração),
   com a tabela de versões e a regra em três linhas para quem muda o mundo.
 
+### Save por funcionalidade, sem número em série
+
+- **Decisão (2026-11-18, F1):** a migração do save deixa de andar por um número único do mundo
+  inteiro. Cada bloco de estado tem nome e versão próprios, e um PR acrescenta o seu bloco sem
+  tocar em número global nem disputar o número com outro PR.
+- **O que o autor pensou:** aprovou a proposta da coordenação, que tinha medido o custo: em dois
+  dias, cinco PRs (as versões 8, 9, 10, 15 e 17) disputaram o mesmo número e tiveram de renumerar e
+  refazer a cadeia de migração.
+- **Como o jogo funciona por causa disso:** o jogador não vê diferença, e todo save antigo continua
+  abrindo com o mesmo estado. Um save que traz um bloco que o jogo não conhece (de uma versão mais
+  nova) não abre, e a tela diz qual bloco falta.
+- **Estado:** desenho na seção "Save por funcionalidade" de [`saves.pt-BR.md`](../../saves.pt-BR.md), que
+  entra com o PR do código, no ramo `feat/save-sections`.
+
 ### Decisão rara não fica a um toque
 
 - **Decisão:** libertar território é uma decisão na janela de Agendas, com passo de confirmação
