@@ -1384,7 +1384,9 @@ fn hud_sizes(
             ),
         );
     }
-    if state.selected.is_some() || (editing && player.is_some()) {
+    // A window covers the country panel too: it would show through the window's edge. The
+    // selection stays (a demand goes to the country picked), only the panel waits.
+    if (state.selected.is_some() && !window) || (editing && player.is_some()) {
         out.insert(
             PanelId::CountryPanel,
             egui::vec2(
