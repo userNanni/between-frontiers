@@ -75,29 +75,42 @@ pub fn equilibrium(
         })
         .collect();
     let reference = i64::from(cat.trade.reference_km.max(1));
+    // What depends only on the pair, once a month: whether it is closed, the km, the carry and
+    // the tariff (the treaties in force on the date, filtered once).
+    let closed = geo.and_then(|g| g.closed_on(date, n));
+    let relations: Vec<&TariffRelation> = geo.map_or_else(Vec::new, |g| g.relations_on(date));
+    let mut pair: Vec<Option<(i64, Fixed, Fixed)>> = vec![None; n];
     let mut out = vec![vec![Fixed::ZERO; n]; n * groups];
     for b in 0..n {
+        // The tariff is charged on the value with freight: one charged alike on every seller
+        // cancels out; only a treaty's discrimination moves the shares.
+        let own = markets[b]
+            .laws
+            .effects
+            .first()
+            .map_or(Fixed::ZERO, |e| e.tariff);
+        for (s, p) in pair.iter_mut().enumerate() {
+            // A closed pair has no equilibrium: its preference decays (`step`).
+            *p = (s != b && !closed.as_ref().is_some_and(|c| c[s * n + b])).then(|| {
+                let km = i64::from(geo.map_or(0, |g| g.km(s, b)));
+                let tariff = if geo.is_some() {
+                    tariff_by(&relations, b, s, own)
+                } else {
+                    own
+                };
+                (km, factors.of_pair(geo, s, b), tariff)
+            });
+        }
         for k in 0..groups {
             let row = &mut out[b * groups + k];
-            for s in 0..n {
-                // A closed pair has no equilibrium: its preference decays (`step`).
-                if s == b || geo.is_some_and(|g| g.closed(s, b, date)) {
+            for (s, p) in pair.iter().enumerate() {
+                let Some((km, carry, tariff)) = *p else {
                     continue;
-                }
-                let km = geo.map_or(0, |g| g.km(s, b));
-                // The tariff is charged on the value with freight: one charged alike on every
-                // seller cancels out; only a treaty's discrimination moves the shares.
-                let own = markets[b]
-                    .laws
-                    .effects
-                    .first()
-                    .map_or(Fixed::ZERO, |e| e.tariff);
-                let tariff = geo.map_or(own, |g| g.tariff(b, s, own, date));
-                let carry = factors.of_pair(geo, s, b);
+                };
                 row[s] = power(
                     cat,
                     index[s][k]
-                        * (Fixed::ONE + freight[k] * i64::from(km) * carry / reference)
+                        * (Fixed::ONE + freight[k] * km * carry / reference)
                         * (Fixed::ONE + tariff),
                 );
             }
@@ -259,23 +272,31 @@ pub fn clear_good(
     let mut left_want = sought.to_vec();
     // Two passes: the orders as the preferences place them, then what is left of each buyer's
     // demand among the sellers that still have something.
+    let mut asked = vec![vec![Fixed::ZERO; nb]; ns];
+    let (mut weights, mut parts, mut sent) = (
+        vec![Fixed::ZERO; ns],
+        vec![Fixed::ZERO; ns],
+        vec![Fixed::ZERO; nb],
+    );
+    let mut rest = Vec::with_capacity(ns.max(nb));
     for _ in 0..2 {
-        let mut asked = vec![vec![Fixed::ZERO; nb]; ns];
+        for row in asked.iter_mut() {
+            row.fill(Fixed::ZERO);
+        }
         for b in 0..nb {
             if left_want[b] <= Fixed::ZERO {
                 continue;
             }
-            let weights: Vec<Fixed> = (0..ns)
-                .map(|s| {
-                    if left_offer[s] > Fixed::ZERO {
-                        left_offer[s] * preference(s, b).max(Fixed::ZERO)
-                    } else {
-                        Fixed::ZERO
-                    }
-                })
-                .collect();
-            for (s, q) in split_exact(left_want[b], &weights).into_iter().enumerate() {
-                asked[s][b] = q;
+            for (s, w) in weights.iter_mut().enumerate() {
+                *w = if left_offer[s] > Fixed::ZERO {
+                    left_offer[s] * preference(s, b).max(Fixed::ZERO)
+                } else {
+                    Fixed::ZERO
+                };
+            }
+            split_exact_into(left_want[b], &weights, &mut parts, &mut rest);
+            for (s, q) in parts.iter().enumerate() {
+                asked[s][b] = *q;
             }
         }
         for s in 0..ns {
@@ -284,13 +305,13 @@ pub fn clear_good(
                 continue;
             }
             // A seller asked for more than it has cuts every order in proportion.
-            let sent = if requested > left_offer[s] {
-                split_exact(left_offer[s], &asked[s])
+            if requested > left_offer[s] {
+                split_exact_into(left_offer[s], &asked[s], &mut sent, &mut rest);
             } else {
-                asked[s].clone()
-            };
-            for (b, q) in sent.into_iter().enumerate() {
-                flow[s][b] += q;
+                sent.copy_from_slice(&asked[s]);
+            }
+            for (b, q) in sent.iter().enumerate() {
+                flow[s][b] += *q;
             }
         }
         for s in 0..ns {
@@ -305,37 +326,45 @@ pub fn clear_good(
     flow
 }
 
-/// `total` split by `weights` exactly: the floor of each share in raw units, and the units left
-/// to the largest remainders (ties to the lower index), so the parts add up to `total` to the
-/// last unit and never past it.
-fn split_exact(total: Fixed, weights: &[Fixed]) -> Vec<Fixed> {
+/// `total` split by `weights` exactly into `out` (`rest` is scratch): the floor of each share in
+/// raw units, and the units left to the largest remainders (ties to the lower index), so the
+/// parts add up to `total` to the last unit and never past it. Fewer units are left than there
+/// are weights, so only that many of the largest remainders take one: they are selected, not
+/// sorted (the same ones, the order being total).
+fn split_exact_into(
+    total: Fixed,
+    weights: &[Fixed],
+    out: &mut [Fixed],
+    rest: &mut Vec<(i128, usize)>,
+) {
     let sum: i128 = weights.iter().map(|w| i128::from(w.raw().max(0))).sum();
     if total <= Fixed::ZERO || sum <= 0 {
-        return vec![Fixed::ZERO; weights.len()];
+        out.fill(Fixed::ZERO);
+        return;
     }
     let t = i128::from(total.raw());
-    let mut parts: Vec<i128> = Vec::with_capacity(weights.len());
-    let mut rest: Vec<(i128, usize)> = Vec::with_capacity(weights.len());
+    rest.clear();
+    let mut given: i128 = 0;
     for (i, w) in weights.iter().enumerate() {
         let num = t * i128::from(w.raw().max(0));
-        parts.push(num / sum);
+        let part = num / sum;
+        given += part;
+        out[i] = Fixed::from_raw(part as i64);
         rest.push((num % sum, i));
     }
-    let mut left = t - parts.iter().sum::<i128>();
-    rest.sort_by(|a, b| b.0.cmp(&a.0).then(a.1.cmp(&b.1)));
-    for (r, i) in rest {
-        if left <= 0 {
-            break;
-        }
+    let left = (t - given) as usize;
+    if left == 0 {
+        return;
+    }
+    let order = |a: &(i128, usize), b: &(i128, usize)| b.0.cmp(&a.0).then(a.1.cmp(&b.1));
+    if left < rest.len() {
+        rest.select_nth_unstable_by(left - 1, order);
+    }
+    for &(r, i) in &rest[..left.min(rest.len())] {
         if r > 0 {
-            parts[i] += 1;
-            left -= 1;
+            out[i] = Fixed::from_raw(out[i].raw() + 1);
         }
     }
-    parts
-        .into_iter()
-        .map(|p| Fixed::from_raw(p as i64))
-        .collect()
 }
 
 /// Scales each buyer's preferences (`pref[s][b]`) so that its favourite seller has 1: the weights
@@ -359,6 +388,24 @@ pub fn totals(flow: &Flows, buyers: usize) -> (Vec<Fixed>, Vec<Fixed>) {
         .map(|b| flow.iter().map(|row| row[b]).sum())
         .collect();
     (exports, imports)
+}
+
+/// The tariff `buyer` charges on `seller`'s goods under `relations` (those in force), from the
+/// buyer's own `tariff`: a customs union takes it to zero, a preference lowers it by a margin, a
+/// cap holds it under a ceiling, in the order of the treaties.
+fn tariff_by(relations: &[&TariffRelation], buyer: usize, seller: usize, tariff: Fixed) -> Fixed {
+    let mut t = tariff;
+    for r in relations
+        .iter()
+        .filter(|r| r.giver == buyer && r.receiver == seller)
+    {
+        t = match r.rule {
+            TariffRule::Union => Fixed::ZERO,
+            TariffRule::Margin(m) => (t - m).max(Fixed::ZERO),
+            TariffRule::Cap(c) => t.min(c),
+        };
+    }
+    t
 }
 
 /// Effective distance between countries for freight, in km of land haul, fixed for the
@@ -643,19 +690,33 @@ impl Geography {
     /// The tariff `buyer` charges on `seller`'s goods on `date`, from the buyer's own `tariff`
     /// and the treaties between them.
     pub fn tariff(&self, buyer: usize, seller: usize, tariff: Fixed, date: &str) -> Fixed {
-        let mut t = tariff;
-        for r in self.relations.iter().filter(|r| {
-            r.giver == buyer
-                && r.receiver == seller
-                && crate::diplomacy::covers(&r.from, r.until.as_deref(), date)
-        }) {
-            t = match r.rule {
-                TariffRule::Union => Fixed::ZERO,
-                TariffRule::Margin(m) => (t - m).max(Fixed::ZERO),
-                TariffRule::Cap(c) => t.min(c),
-            };
+        tariff_by(&self.relations_on(date), buyer, seller, tariff)
+    }
+
+    /// The tariff relations in force on `date`, in the order of the treaties.
+    fn relations_on(&self, date: &str) -> Vec<&TariffRelation> {
+        self.relations
+            .iter()
+            .filter(|r| crate::diplomacy::covers(&r.from, r.until.as_deref(), date))
+            .collect()
+    }
+
+    /// The pairs among `n` markets closed on `date` (either way), as an `n × n` table, as
+    /// `closed` answers them; `None` when none is.
+    pub fn closed_on(&self, date: &str, n: usize) -> Option<Vec<bool>> {
+        let mut out: Option<Vec<bool>> = None;
+        for c in self
+            .closures
+            .iter()
+            .filter(|c| crate::diplomacy::covers(&c.from, c.until.as_deref(), date))
+        {
+            if c.a < n && c.b < n {
+                let t = out.get_or_insert_with(|| vec![false; n * n]);
+                t[c.a * n + c.b] = true;
+                t[c.b * n + c.a] = true;
+            }
         }
-        t
+        out
     }
 
     /// Effective km from `a` to `b`.

@@ -860,12 +860,19 @@ impl Week {
             super::trade::step(&econ.trade.pref, &eq, lambda)
         });
         let pref_table = super::trade::dense(trade_pref.as_deref().unwrap_or(&econ.trade.pref), nm);
+        // The pairs closed this week, once (the closures compare dates as text).
+        let closed = geo.and_then(|g| g.closed_on(&date, nm));
+        let is_closed = |s: usize, b: usize| closed.as_ref().is_some_and(|c| c[s * nm + b]);
+        let (mut sellers, mut offered, mut buyers, mut sought) =
+            (Vec::new(), Vec::new(), Vec::new(), Vec::new());
         for gi in 0..g {
             if !cat.goods[gi].tradable {
                 continue;
             }
-            let (mut sellers, mut offered, mut buyers, mut sought) =
-                (Vec::new(), Vec::new(), Vec::new(), Vec::new());
+            sellers.clear();
+            offered.clear();
+            buyers.clear();
+            sought.clear();
             for mi in 0..nm {
                 let gap = supply[mi][gi] - demand[mi][gi];
                 if gap > Fixed::ZERO {
@@ -890,7 +897,7 @@ impl Week {
                         .iter()
                         .map(|&bm| {
                             // A closed pair trades nothing from the week it closes.
-                            if geo.is_some_and(|g| g.closed(sm, bm, &date)) {
+                            if is_closed(sm, bm) {
                                 return Fixed::ZERO;
                             }
                             k.and_then(|k| pref_table.get(bm * groups + k))
@@ -902,7 +909,7 @@ impl Week {
             for b in 0..buyers.len() {
                 if pref.iter().all(|row| row[b] <= Fixed::ZERO) {
                     for (s, row) in pref.iter_mut().enumerate() {
-                        if !geo.is_some_and(|g| g.closed(sellers[s], buyers[b], &date)) {
+                        if !is_closed(sellers[s], buyers[b]) {
                             row[b] = Fixed::ONE;
                         }
                     }
