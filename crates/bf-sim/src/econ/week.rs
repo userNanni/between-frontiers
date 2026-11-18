@@ -859,7 +859,9 @@ impl Week {
             let lambda = Fixed::from_f64_lossy(f64::from(cat.trade.monthly_step));
             super::trade::step(&econ.trade.pref, &eq, lambda)
         });
-        let pref_table = super::trade::dense(trade_pref.as_deref().unwrap_or(&econ.trade.pref), nm);
+        let prefs = trade_pref.as_deref().unwrap_or(&econ.trade.pref);
+        let pref_rows = prefs.len();
+        let pref_table = super::trade::dense_flat(prefs, nm);
         // The pairs closed this week, once (the closures compare dates as text).
         let closed = geo.and_then(|g| g.closed_on(&date, nm));
         let is_closed = |s: usize, b: usize| closed.as_ref().is_some_and(|c| c[s * nm + b]);
@@ -900,8 +902,9 @@ impl Week {
                             if is_closed(sm, bm) {
                                 return Fixed::ZERO;
                             }
-                            k.and_then(|k| pref_table.get(bm * groups + k))
-                                .map_or(Fixed::ONE, |row| row[sm])
+                            k.map(|k| bm * groups + k)
+                                .filter(|&row| row < pref_rows)
+                                .map_or(Fixed::ONE, |row| pref_table[row * nm + sm])
                         })
                         .collect()
                 })

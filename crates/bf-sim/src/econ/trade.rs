@@ -174,6 +174,21 @@ pub fn step(old: &[Vec<(u16, u16)>], eq: &[Vec<Fixed>], step: Fixed) -> Vec<Vec<
         .collect()
 }
 
+/// The preferences as one flat table, `(buyer × groups + group) × n + seller`, in shares of the
+/// buyer's favourite: what `dense` gives, in a single allocation.
+pub fn dense_flat(pref: &[Vec<(u16, u16)>], n: usize) -> Vec<Fixed> {
+    let mut out = vec![Fixed::ZERO; pref.len() * n];
+    for (row, list) in pref.iter().enumerate() {
+        for &(s, v) in list {
+            let s = usize::from(s);
+            if s < n {
+                out[row * n + s] = Fixed::from_ratio(i64::from(v), i64::from(u16::MAX));
+            }
+        }
+    }
+    out
+}
+
 /// The preferences as a dense table, `buyer × groups + group`, then by seller, in shares of the
 /// buyer's favourite.
 pub fn dense(pref: &[Vec<(u16, u16)>], n: usize) -> Vec<Vec<Fixed>> {
