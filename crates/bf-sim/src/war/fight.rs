@@ -165,7 +165,8 @@ fn strength(mil: &Military, c: &CountryWar) -> Strength {
 
 /// A week of war on land: segments, combat, advance and control. Pure: reads the world.
 /// The wars a peace signed at the treaties' table this week ends: an agreement signed in the
-/// seven days to `date` between a country of each side.
+/// seven days to `date` between the leaders of the two sides (the one that declared and the one
+/// declared on). An ally's separate peace is for a later slice.
 pub fn peace_signed(world: &GameWorld, date: laplace_schelling::Date) -> Vec<u32> {
     let tag = |m: u16| {
         world
@@ -185,7 +186,10 @@ pub fn peace_signed(world: &GameWorld, date: laplace_schelling::Date) -> Vec<u32
                 matches!(c.outcome, crate::treaty_table::Outcome::Signed(_))
                     && c.date.to_days() >= since
                     && {
-                        let on = |side: &[u16], t: &str| side.iter().any(|&m| tag(m) == Some(t));
+                        // The leaders of the two sides: a separate peace of an ally comes later.
+                        let on = |side: &[u16], t: &str| {
+                            side.first().is_some_and(|&m| tag(m) == Some(t))
+                        };
                         (on(&w.side_a, &c.from) && on(&w.side_b, &c.to))
                             || (on(&w.side_b, &c.from) && on(&w.side_a, &c.to))
                     }

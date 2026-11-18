@@ -1063,17 +1063,23 @@ a revolta é uma **proclamação seguida de guerra**, como a da Indonésia de 19
   território pela `Union`, executada como tratado (G6).
 - **Com `war` desligada,** a revolta segue como hoje (separação sem acordo), sem mudar o hash.
 
-### Tela (esboço, para o thread de interface depois das decisões)
+### Tela (esboço, para o thread de interface)
 
-- **Guerra:** os lados, as semanas de guerra, o **apoio à guerra** de cada lado termo a termo e
-  grupo a grupo, a exaustão material e a conta.
-- **Frente:** a lista das frentes; por frente, objetivo, postura, elementos engajados e a razão de
-  poder decomposta ("número 1,8×, equipamento 0,9×, suprimento 0,6×, terreno 0,7×"); por
-  segmento, o avanço.
-- **Lente no mapa:** controle, ocupação e a linha da frente.
-- **O que o jogador decide durante a guerra:** objetivo e postura por frente; mobilizar e
-  encomendar (já existem); propor ou aceitar a paz, em Agendas, com dois passos e ponto de
-  restauração; responder às chamadas dos aliados.
+Lida do estado que o tick grava, sem refazer a semana:
+- **Guerra:** os lados (`world.war.conflicts.wars`: `side_a`, `side_b`, o líder primeiro), as
+  semanas desde `since`, a exigência em jogo; o apoio à guerra e a conta entram com a parte G4.
+- **Frente, uma por inimigo:** a postura (`fighting.posture(país, inimigo)`, padrão manter) com o
+  comando `SetPosture { tag, enemy, attack }`; as perdas acumuladas (`fighting.losses`, homens);
+  os segmentos da última semana (`fighting.last_week`: estados `from` e `into`, países `a` e `b`,
+  e o `outcome` com `engaged`, os `terms` dos dois lados, número, equipamento, treino,
+  suprimento, terreno e ar, o `power`, as `losses` e o `advance_km`).
+- **Avanço:** `fighting.advance` por segmento, como barra até `depth_km` do estado (metade do lado
+  de um quadrado da sua área), quando o controle muda.
+- **Lente no mapa:** o controle (`fighting.control`: região e ocupante) e a linha da frente (os
+  segmentos da última semana).
+- **Terceiros:** as chamadas dos acordos (fatia B, W4) seguem na tela da crise e no diário.
+- **Paz:** a proposta vai pela mesa de tratados (`ProposeTreaty`); assinada entre os líderes dos
+  dois lados, a guerra acaba, a ocupação entre eles termina e quem fica sem guerra desmobiliza.
 
 ### Custo de CPU
 
