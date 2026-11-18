@@ -941,6 +941,20 @@ pub struct Switches {
 }
 
 impl Switches {
+    /// Rules switched on in `data/rules.ron` by a PR of their own, judged by the world's
+    /// aggregates against the reshuffle band of main (`docs/wiki/principios.md`); every other
+    /// rule ships off.
+    pub const SHIPPED_ON: &'static [&'static str] = &["forces"];
+
+    /// The switches `data/rules.ron` ships with: [`Self::SHIPPED_ON`] on, the rest off.
+    pub fn shipped() -> Self {
+        let mut s = Self::default();
+        for name in Self::SHIPPED_ON {
+            s.switch_on(name).expect("a shipped switch is known");
+        }
+        s
+    }
+
     /// The names `switch_on` knows, in the order of the fields. A slice, not an array: its
     /// length is not part of the type, so two PRs that each add a switch merge without breaking
     /// the build. `tests/trade_by_pair.rs` checks it against the fields and `data/rules.ron`.

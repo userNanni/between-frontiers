@@ -106,7 +106,15 @@ fn a_fixed_order_moves_the_public_works_and_leaves_the_private_ones() {
     );
     // The screen reads the order.
     let lines = levers::works(&d.catalogue, &w.econ.markets[ci], w.levers.order(ci));
-    assert!(lines.iter().all(|l| l.fixed));
+    // The works of the fixed order read as fixed; a work queued after the order was set (the
+    // queue lives on) comes after them, on the rule.
+    assert!(
+        lines
+            .iter()
+            .filter(|l| reversed.contains(&l.key))
+            .all(|l| l.fixed)
+    );
+    assert!(lines.iter().any(|l| l.fixed));
     assert!(
         lines
             .iter()
