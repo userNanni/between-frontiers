@@ -34,6 +34,7 @@ fn schema() -> String {
         bf_sim::scenario::SubjectKind,
         bf_sim::demography::WaveEnd,
         bf_sim::foreign_capital::Handover,
+        bf_sim::econ::levers::SurplusUse,
     );
     let registry = tracer
         .registry()

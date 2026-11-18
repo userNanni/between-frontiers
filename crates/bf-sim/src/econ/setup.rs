@@ -1111,6 +1111,7 @@ pub fn build(cat: &Catalogue, inp: &Inputs) -> Economy {
             queue: Vec::new(),
             laws: Default::default(),
             money: super::money::Money::start(fx(target_gdp)),
+            levers: Default::default(),
             budget: super::state::Budget {
                 revenue_avg: revenue,
                 payroll: fx(payroll),

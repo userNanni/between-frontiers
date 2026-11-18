@@ -153,7 +153,7 @@ const PUBLIC_BORROWING: Fixed = milli(20);
 const BORROWING_RATE_LIMIT: Fixed = pct(150);
 /// Deficit the state runs on purchases, as a share of GDP, while debt is below 150 % of GDP and
 /// the rate below 15 % (the room shrinks linearly to both limits).
-const DEFICIT_TARGET: Fixed = milli(50);
+pub const DEFICIT_TARGET: Fixed = milli(50);
 const DEBT_LIMIT: Fixed = milli(1500);
 /// Savers buy bonds at home at the square of the country's income against twice the world's
 /// (capped at 1), and at least this: thin markets and few banks in poor countries.
@@ -513,7 +513,10 @@ pub fn deficit_room(m: &Market) -> Fixed {
     }
     let debt_room = (Fixed::ONE - m.money.total_debt() / (gdp * DEBT_LIMIT)).max(Fixed::ZERO);
     let rate_room = Fixed::ONE - m.money.bond_rate / BORROWING_RATE_LIMIT;
-    (gdp / 52) * DEFICIT_TARGET * debt_room * rate_room
+    // The deficit target: the rule's, or the cap the government fixed (D5). The brakes of debt
+    // and rates hold either way: the market lends no more because the government wants it.
+    let target = m.levers.deficit_cap().unwrap_or(DEFICIT_TARGET);
+    (gdp / 52) * target * debt_room * rate_room
 }
 
 /// Share of revenue the debt's interest takes (weekly interest over weekly revenue).
@@ -812,8 +815,8 @@ fn home_step(
     money.debt_abroad -= weekly(money.debt_abroad, erosion);
     money.debt_fx -= weekly(money.debt_fx, w.inflation.max(Fixed::ZERO));
     money.credit -= weekly(money.credit, erosion);
-    // The treasury tops its cash up to the reserve.
-    let reserve = m.budget.revenue_avg * super::public::RESERVE_WEEKS;
+    // The treasury tops its cash up to the reserve (the rule's weeks, or the fixed ones, D4).
+    let reserve = m.budget.revenue_avg * m.levers.reserve_weeks();
     let mut need = (reserve - m.treasury).max(Fixed::ZERO);
     // 1. Savers at home: idle household savings, then banks and capitalists (the pool).
     let depth = if w.income > Fixed::ZERO {
@@ -905,9 +908,16 @@ fn settle_week(
     }
     let mut paid = plan.abroad_interest;
     // A surplus pays back foreign-currency debt first, then debt held abroad, then at home.
-    let reserve = m.budget.revenue_avg * super::public::RESERVE_WEEKS;
+    let reserve = m.budget.revenue_avg * m.levers.reserve_weeks();
     let excess = m.treasury - reserve * 2;
-    if excess > Fixed::ZERO && m.money.total_debt() > m.gdp_last_year * REPAY_ABOVE {
+    // The rule repays above 60 % of GDP; a surplus fixed for repaying repays whatever the debt,
+    // and one kept repays nothing (D4).
+    let repays = match m.levers.surplus() {
+        super::levers::SurplusUse::Spend => m.money.total_debt() > m.gdp_last_year * REPAY_ABOVE,
+        super::levers::SurplusUse::Repay => m.money.total_debt() > Fixed::ZERO,
+        super::levers::SurplusUse::Keep => false,
+    };
+    if excess > Fixed::ZERO && repays {
         let mut repay = excess * REPAY_SHARE;
         let fx = repay.min(m.money.debt_fx_local());
         if fx > Fixed::ZERO {

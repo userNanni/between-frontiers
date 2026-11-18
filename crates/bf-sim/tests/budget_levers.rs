@@ -1,0 +1,164 @@
+//! The budget's levers, first slice (`econ::levers`, docs/state.pt-BR.md, "Alavancas do orçamento
+//! e da dívida"): a lever handed back to the rule keeps the world's hash, a fixed one moves its
+//! number the way the design says, and the levers survive a save.
+
+use std::path::PathBuf;
+
+use bf_sim::data::GameData;
+use bf_sim::econ::levers::SurplusUse;
+use bf_sim::econ::prof;
+use bf_sim::game::{GameCommand, Session};
+use laplace_schelling::calendar::Date;
+use laplace_schelling::hash::hash_of;
+
+fn data() -> GameData {
+    GameData::load(&PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")).unwrap()
+}
+
+fn run(d: &GameData, commands: Vec<GameCommand>, until: Date) -> Session {
+    let mut s = Session::new(
+        d.new_world(),
+        1925,
+        Date::new(1925, 1, 1),
+        2,
+        Some(d.rules()),
+    );
+    for c in commands {
+        s.submit(c);
+    }
+    while s.clock().date < until {
+        s.sim.step();
+    }
+    s
+}
+
+fn market(s: &Session, tag: &str) -> usize {
+    s.sim
+        .world()
+        .countries
+        .iter()
+        .position(|(_, c)| c.tag == tag)
+        .unwrap()
+}
+
+fn people(s: &Session, ci: usize, p: usize) -> i64 {
+    s.sim
+        .world()
+        .econ
+        .regions
+        .iter()
+        .filter(|r| usize::from(r.market) == ci)
+        .map(|r| r.pops[p].size)
+        .sum()
+}
+
+#[test]
+fn levers_back_on_the_rule_keep_the_hash() {
+    let d = data();
+    let until = Date::new(1925, 3, 1);
+    let rule = run(&d, vec![], until);
+    let back = run(
+        &d,
+        vec![
+            GameCommand::SetPublicPay {
+                tag: "BRA".into(),
+                per_mille: None,
+            },
+            GameCommand::SetTreasury {
+                tag: "BRA".into(),
+                reserve_weeks: None,
+                surplus: None,
+            },
+            GameCommand::SetDeficitCap {
+                tag: "BRA".into(),
+                per_mille_gdp: None,
+            },
+            GameCommand::SetPayroll {
+                tag: "BRA".into(),
+                per_mille: None,
+            },
+        ],
+        until,
+    );
+    assert!(back.sim.world().levers.is_empty());
+    assert_eq!(rule.state_hash(), back.state_hash());
+}
+
+#[test]
+fn fixed_levers_move_their_numbers() {
+    let d = data();
+    let until = Date::new(1925, 5, 1);
+    let rule = run(&d, vec![], until);
+    let fixed = run(
+        &d,
+        vec![
+            // Brazil pays its servants as much as the private sector; Argentina runs no deficit
+            // for purchases; Mexico halves its servants.
+            GameCommand::SetPublicPay {
+                tag: "BRA".into(),
+                per_mille: Some(1000),
+            },
+            GameCommand::SetDeficitCap {
+                tag: "ARG".into(),
+                per_mille_gdp: Some(0),
+            },
+            GameCommand::SetPayroll {
+                tag: "MEX".into(),
+                per_mille: Some([6, 5]),
+            },
+            GameCommand::SetTreasury {
+                tag: "CHL".into(),
+                reserve_weeks: Some(500),
+                surplus: Some(SurplusUse::Keep),
+            },
+        ],
+        until,
+    );
+    let (r, f) = (rule.sim.world(), fixed.sim.world());
+    let bra = market(&rule, "BRA");
+    assert!(
+        f.econ.markets[bra].budget.payroll > r.econ.markets[bra].budget.payroll,
+        "higher public pay, higher payroll"
+    );
+    let arg = market(&rule, "ARG");
+    assert!(
+        f.econ.markets[arg].budget.goods < r.econ.markets[arg].budget.goods,
+        "no deficit, fewer purchases"
+    );
+    // Mexico: servants fall toward 6 per mille, a fortieth of the excess a month, not at once.
+    let mex = market(&rule, "MEX");
+    let (before, after) = (
+        people(&rule, mex, prof::CIVIL_SERVANT),
+        people(&fixed, mex, prof::CIVIL_SERVANT),
+    );
+    assert!(after < before, "{after} servants, {before} on the rule");
+    assert!(
+        after > before / 2,
+        "the cut is gradual: {after} of {before}"
+    );
+    // Chile's reserve is cut to the ceiling of 52 weeks.
+    let chl = market(&rule, "CHL");
+    assert_eq!(f.econ.markets[chl].levers.reserve_weeks(), 52);
+    assert_ne!(rule.state_hash(), fixed.state_hash());
+}
+
+#[test]
+fn levers_survive_a_save() {
+    let d = data();
+    let s = run(
+        &d,
+        vec![GameCommand::SetPublicPay {
+            tag: "BRA".into(),
+            per_mille: Some(900),
+        }],
+        Date::new(1925, 2, 1),
+    );
+    let bytes = s.save("test", "levers").unwrap();
+    let loaded = Session::load(&bytes, 2, Some(d.rules())).unwrap();
+    let bra = market(&s, "BRA");
+    assert_eq!(
+        loaded.sim.world().econ.markets[bra].levers.public_pay,
+        Some(900)
+    );
+    assert_eq!(hash_of(loaded.sim.world()), hash_of(s.sim.world()));
+}

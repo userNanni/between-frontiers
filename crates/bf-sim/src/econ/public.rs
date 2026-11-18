@@ -119,7 +119,13 @@ pub const PAY_RESERVE_WEEKS: i64 = 8;
 /// its reserve.
 pub fn goods_budget(m: &Market) -> Fixed {
     let b = &m.budget;
-    let surplus = (m.treasury - b.revenue_avg * (2 * RESERVE_WEEKS)).max(Fixed::ZERO);
+    // Beyond twice the reserve; spent only while the surplus is for spending (D4).
+    let surplus = match m.levers.surplus() {
+        super::levers::SurplusUse::Spend => {
+            (m.treasury - b.revenue_avg * (2 * m.levers.reserve_weeks())).max(Fixed::ZERO)
+        }
+        super::levers::SurplusUse::Repay | super::levers::SurplusUse::Keep => Fixed::ZERO,
+    };
     let planned = b.revenue_avg + super::money::deficit_room(m)
         - b.payroll
         - b.services
@@ -265,7 +271,7 @@ fn market_works(
         .filter(|p| p.public)
         .map(|p| p.left * price)
         .sum();
-    let reserve = m.budget.revenue_avg * RESERVE_WEEKS;
+    let reserve = m.budget.revenue_avg * m.levers.reserve_weeks();
     // Cash above the reserve, plus what the state may borrow for works while debt and rates
     // are low.
     let budget = m.treasury - reserve - committed + super::money::borrowing_room(m);

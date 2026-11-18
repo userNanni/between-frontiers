@@ -613,6 +613,8 @@ fn new_market(parent: &Market) -> Market {
     m.gdp_last_year = Fixed::ZERO;
     m.gov_workers = 0;
     m.queue.clear();
+    // A new government starts on the budget's rule.
+    m.levers = Default::default();
     let b = &mut m.budget;
     for v in [
         &mut b.revenue,

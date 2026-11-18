@@ -125,6 +125,7 @@ impl From<MarketBeforeResearch> for Market {
                 effects: m.laws.effects.map(LawEffects::from),
             },
             money: m.money,
+            levers: Default::default(),
         }
     }
 }

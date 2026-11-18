@@ -9,7 +9,7 @@ use rayon::prelude::*;
 use super::catalogue::{Building, Catalogue, GoodIx, Method};
 use super::local::View;
 use super::prof::{self, P};
-use super::public::{self, CLASS_OF, PUBLIC_PAY};
+use super::public::{self, CLASS_OF};
 use super::state::{Economy, Market, Plant, Region};
 use super::{PAYOUT, PriceBand, SAVE_RATE, Unlocks, WAGE_WEIGHT, fill, milli, plant_tfp, workers};
 use crate::game::GameWorld;
@@ -655,8 +655,10 @@ fn settle_region<const SKIP_IDLE: bool, const ABROAD: bool>(
     // A treasury that could not borrow pays in arrears (`public::pay_share`).
     let mut payroll = Fixed::ZERO;
     let paid = super::public::pay_share(m);
+    // Public pay over the private wage: the rule's, or the one the government fixed (D2).
+    let public_pay = m.levers.public_pay();
     for pi in [prof::CIVIL_SERVANT, prof::CLERGY, prof::SOLDIER] {
-        let pay = wage * WAGE_WEIGHT[pi] * PUBLIC_PAY * workers(r.pops[pi].size) * paid;
+        let pay = wage * WAGE_WEIGHT[pi] * public_pay * workers(r.pops[pi].size) * paid;
         wages[pi] += pay;
         payroll += pay;
     }
