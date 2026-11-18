@@ -277,6 +277,24 @@ impl GameData {
             war,
             crisis,
             trade: switches.trade_by_pair.then(|| self.trade_geography()),
+            treaties: (switches.clause_tests || switches.reputation).then(|| {
+                Arc::new(crate::treaty_system::TreatySetup {
+                    decay: self
+                        .clauses
+                        .as_ref()
+                        .map_or(laplace_schelling::Fixed::ZERO, |c| {
+                            c.weights.reputation_decay
+                        }),
+                    government: self
+                        .politics
+                        .as_ref()
+                        .and_then(|p| {
+                            let g = p.group(crate::politics::GOVERNMENT_GROUP)?;
+                            Some(p.groups[g].laws.clone())
+                        })
+                        .unwrap_or_default(),
+                })
+            }),
             switches,
             education: match (&self.education_1925, &self.literacy_campaign) {
                 (Some(start), Some(campaign)) => {
@@ -359,6 +377,8 @@ impl GameData {
         // The record of each line (`Switches::ledger_record`, off): kept by the ledger itself,
         // so that a line written in play records too.
         world.econ.ledger.record = self.switches.ledger_record;
+        // The reputation of breaches is kept (`Switches::reputation`, off).
+        world.treaties.reputation_on = self.switches.reputation;
         // The treaties of 1925 in force as agreements (`Switches::treaties_in_force`, off).
         if self.switches.treaties_in_force
             && let (Some(d), Some(cat)) = (&self.diplomacy, &self.clauses)
