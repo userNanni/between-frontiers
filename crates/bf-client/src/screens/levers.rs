@@ -5,7 +5,7 @@
 //! `bf_sim::econ::levers::view` with the government's view, once a month.
 
 use bf_i18n::{Arg, I18n};
-use bf_sim::econ::levers::{LeverLine, Levers, LeversView, SurplusUse};
+use bf_sim::econ::levers::{LeverLine, Levers, LeversView, PurchasesView, SurplusUse};
 use bf_sim::game::GameCommand;
 use bf_ui_kit::tokens::space;
 use egui::Ui;
@@ -24,9 +24,11 @@ const CLERGY_STEP: i32 = 1;
 const PAY_STEP: i32 = 25;
 const RESERVE_STEP: i32 = 1;
 const DEFICIT_STEP: i32 = 5;
+const PURCHASES_STEP: i32 = 50;
+const MILITARY_STEP: i32 = 25;
 
 /// The levers as fixed now, from the view: what the commands carry.
-fn levers_of(v: &LeversView) -> Levers {
+fn levers_of(v: &LeversView, p: Option<&PurchasesView>) -> Levers {
     let u = |x: Option<f64>| x.map(|v| v.round() as u16);
     Levers {
         payroll: match (v.servants.fixed, v.clergy.fixed) {
@@ -37,6 +39,8 @@ fn levers_of(v: &LeversView) -> Levers {
         reserve_weeks: u(v.reserve_weeks.fixed),
         surplus: v.surplus_fixed.then_some(v.surplus),
         deficit_cap: u(v.deficit_cap.fixed),
+        purchases: p.and_then(|p| u(p.goods.fixed)),
+        military: p.and_then(|p| u(p.military.fixed)),
         ..Levers::default()
     }
 }
@@ -128,10 +132,18 @@ fn head(ui: &mut Ui, i18n: &I18n, label_key: &str, fixed: &mut bool, id: &str) -
     changed || typed
 }
 
-pub fn show(ui: &mut Ui, cx: &mut TabContext<'_>, view: &LeversView) {
+pub fn show(
+    ui: &mut Ui,
+    cx: &mut TabContext<'_>,
+    view: &LeversView,
+    purchases: Option<&PurchasesView>,
+) {
     let i18n = cx.i18n;
     // What the player set this tick wins over the view until the tick applies it.
-    let mut l = cx.drafts.levers.unwrap_or_else(|| levers_of(view));
+    let mut l = cx
+        .drafts
+        .levers
+        .unwrap_or_else(|| levers_of(view, purchases));
     let before = l;
     let mut out: Vec<GameCommand> = Vec::new();
     let tag = cx.tag.to_owned();
@@ -350,9 +362,114 @@ pub fn show(ui: &mut Ui, cx: &mut TabContext<'_>, view: &LeversView) {
     }
     if l.deficit_cap != before.deficit_cap {
         out.push(GameCommand::SetDeficitCap {
-            tag,
+            tag: tag.clone(),
             per_mille_gdp: l.deficit_cap,
         });
+    }
+
+    // D3, the state's purchases and their military share.
+    if let Some(p) = purchases {
+        bf_ui_kit::gap(ui, space::SM);
+        let mut fixed = l.purchases.is_some();
+        if head(
+            ui,
+            i18n,
+            "lever-purchases",
+            &mut fixed,
+            "gov.lever.purchases",
+        ) {
+            l.purchases = fixed.then(|| start(&p.goods));
+        }
+        bf_ui_kit::lever_rule_line(
+            ui,
+            &i18n.tr_args(
+                "lever-purchases-rule",
+                &[("budget", arg(crate::text::money(i18n, p.budget)))],
+            ),
+            l.purchases
+                .map(|_| i18n.tr("lever-purchases-note"))
+                .as_deref(),
+        );
+        if let Some(now) = l.purchases
+            && let Some(v) = step_row(
+                ui,
+                i18n,
+                &i18n.tr("lever-purchases-fixed"),
+                &p.goods,
+                now,
+                pct_of_milli(i18n, f64::from(now)),
+                PURCHASES_STEP,
+                StepTips {
+                    family: 'F',
+                    id: "gov.lever.purchases",
+                    row: 5,
+                },
+            )
+        {
+            l.purchases = Some(v);
+        }
+        if l.purchases.is_some() {
+            week_effect(ui, i18n, &p.goods);
+        }
+
+        bf_ui_kit::gap(ui, space::SM);
+        let mut fixed = l.military.is_some();
+        if head(ui, i18n, "lever-military", &mut fixed, "gov.lever.military") {
+            l.military = fixed.then(|| start(&p.military));
+        }
+        bf_ui_kit::lever_rule_line(
+            ui,
+            &i18n.tr_args(
+                "lever-military-rule",
+                &[
+                    ("share", arg(pct_of_milli(i18n, p.military.rule))),
+                    ("room", arg(crate::text::money(i18n, p.military_room))),
+                ],
+            ),
+            l.military
+                .map(|_| i18n.tr("lever-military-note"))
+                .as_deref(),
+        );
+        if let Some(now) = l.military
+            && let Some(v) = step_row(
+                ui,
+                i18n,
+                &i18n.tr("lever-military-fixed"),
+                &p.military,
+                now,
+                pct_of_milli(i18n, f64::from(now)),
+                MILITARY_STEP,
+                StepTips {
+                    family: 'F',
+                    id: "gov.lever.military",
+                    row: 6,
+                },
+            )
+        {
+            l.military = Some(v);
+        }
+        // The share moves money between civilian and military goods: the effect is on the
+        // military ceiling, not on the cash.
+        if l.military.is_some()
+            && let Some(e) = p.military.week_effect.filter(|e| e.abs() >= 0.5)
+        {
+            let amount = if e > 0.0 {
+                format!("+{}", crate::text::money(i18n, e))
+            } else {
+                super::budget::signed_money(i18n, e)
+            };
+            bf_ui_kit::small(
+                ui,
+                &i18n.tr_args("lever-military-effect", &[("amount", arg(amount))]),
+            );
+        }
+        if (l.purchases, l.military) != (before.purchases, before.military) {
+            out.push(GameCommand::SetStatePurchases {
+                tag,
+                goods: l.purchases,
+                military: l.military,
+            });
+        }
     }
 
     if !out.is_empty() {

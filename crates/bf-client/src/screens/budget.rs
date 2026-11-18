@@ -452,7 +452,7 @@ fn controls(ui: &mut Ui, cx: &mut TabContext<'_>, v: &GovernmentView) {
 
     // The budget levers: payroll, pay, treasury, deficit.
     if let Some(l) = v.levers {
-        super::levers::show(ui, cx, &l);
+        super::levers::show(ui, cx, &l, v.purchases.as_ref());
         bf_ui_kit::gap(ui, space::MD);
     }
 

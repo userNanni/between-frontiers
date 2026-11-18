@@ -36,6 +36,7 @@ com as telas da fatia, e a exceção sai com elas.
 
 | Decisão | Comando | Onde fica | Estado |
 |---|---|---|---|
+| Compras do Estado e a parte militar (D3) | `SetStatePurchases` | Governo → Orçamento → "Folha e Tesouro": regra histórica ou fixado, com o teto militar da semana | em revisão |
 | Ordenar a fila de obras públicas, pôr e tirar obra (D8) | `SetWorksOrder`, `AddWork`, `CancelWork` | Governo → Obras (Shift+B): ordem de chegada ou a minha, ↑ ↓, cancelar em dois cliques, nova obra por estado com o custo; "só a minha lista" zera as prioridades | em revisão |
 | Folha do Estado: servidores e clero por mil habitantes (D1) | `SetPayroll` | Governo → Orçamento → "Folha e Tesouro": regra histórica ou fixado | em revisão |
 | Salário público sobre o privado (D2) | `SetPublicPay` | Governo → Orçamento → "Folha e Tesouro" | em revisão |
