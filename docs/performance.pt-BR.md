@@ -35,11 +35,36 @@ Rodada de 101 anos na `main` (`7b10b48`, 2 threads, tempo de simulação de 229 
   um save feito durante a rodada principal: a CPU de uma rodada é cerca de 1,5 × o tempo de
   simulação impresso (era 2 ×).
 
+### Ganhos da rodada de 2026-11-17
+
+Todos com o hash igual ao da `main`. Base de 101 anos: 1174 s de CPU em `7d851c1`, 2 threads.
+
+| PR | mudança | CPU |
+|---|---|---|
+| #141 | o bench confere o save a partir de um save da rodada principal | −25 % da rodada |
+| #146 | `Fixed` em linha entre crates | −8 % (2 e 10 anos) |
+| #150 | multiplicação de `Fixed` em 64 bits quando cabe | −6 % em 10 anos, −3,5 % em 101 |
+| #155 | planta parada não passa pelas somas de zero | −18 % em 10 e em 101 anos |
+| #156 | lista de pedidos do pop alocada uma vez | −7 % em 2 e 10 anos (incerto) |
+
+Lições para sistema novo:
+- **O que só soma zero, pule.** Somar zero com saturação não muda nada; testar e pular é exato.
+  Mas o que a entidade parada ainda precisa atualizar (utilização, razão de insumos) continua.
+  O teste compara as duas variantes na transição de zero para não zero.
+- **A conta de `Fixed` é o piso.** Perto de metade do semanal é multiplicação e divisão. O ganho
+  vem de fazer menos contas, não de contas mais baratas.
+
 ## Orçamento de CPU por sistema novo
 
 - **Sistema novo:** até **5 % da simulação** (cerca de 10 s em 101 anos).
 - **Mudança dentro de um sistema que já existe:** até **2 % do custo daquele sistema**.
 - Acima disso, o PR traz a justificativa e o ganho que compensa, ou a regra entra desligada.
+- **Como provar o 2 %.** Com ruído de ±7 % uma medida só não prova nada.
+  - Use **5 pares** intercalados no mesmo slot (`main`, branch, `main`, branch…), 10 anos em 1
+    thread, e compare as **medianas**.
+  - O par vale se a carga ficar abaixo de 12.
+  - Para regra desligada, prefira a **prova estrutural**: o sistema sai na primeira linha, antes
+    de tocar em estado ou alocar, e o hash é igual ao da `main`. Isso vale mais que uma medida.
 - **Regra desligada custa zero.** A chave em `game::Switches` (ou `rules.*`) vem desligada por
   padrão. Desligada, a regra não aloca estado, não pré-calcula nada e o sistema sai na primeira
   linha. A CPU com a regra desligada fica a até 2 % da `main`.
@@ -52,6 +77,10 @@ Em média por execução, medido em 1 thread:
 | semanal | 5 270 | 2 ms |
 | mensal | 1 212 | 8 ms |
 | anual | 101 | 100 ms |
+
+Exemplo do livro de rodadas: com o capital ligado (#117), `economy-investment` vai de 14 para
+43 s em 101 anos, 23 ms por execução mensal contra o orçamento de 8 ms. A causa são 220 mil pares
+fundo × lugar avaliados por mês, quando a conta do lugar não depende do fundo.
 
 Código novo dentro de `economy-week` (comércio, capital, guerra) entra no orçamento do semanal:
 diga no PR quanto o `economy-week` subiu, em 10 anos e nos últimos anos do século.
@@ -88,6 +117,11 @@ diga no PR quanto o `economy-week` subiu, em 10 anos e nos últimos anos do séc
    podada: o custo por ano não pode crescer com o tempo de jogo. Funda, pode ou indexe.
    - Vale também para o que o jogador faz crescer, como a fila de encomendas e os pedidos: ponha
      um teto ou pode.
+   - Fundir coortes ou podar uma lista quase sempre muda o hash (a regra 9 vale). Então entra
+     atrás de regra desligada, como toda mudança de resultado, e se julga pelos agregados.
+   - Exemplo medido: plantas que perderam todos os níveis ficavam na lista do estado e eram
+     custeadas toda semana, 11 % das plantas a partir de 2000. Pular as somas de zero, sem tirar a
+     planta da lista, não mudou o hash e tirou 18 % da CPU de 101 anos (#155).
 8. **Trabalho pesado no `apply`.** O `apply` é serial e a conta vai no `compute`, que é paralelo
    por estado. Exemplo: um `apply` semanal que soma num vetor de mercados × mercados (o
    `trade.add` do #113) é O(n²) serial toda semana. Prefira somar por mercado no `compute` e
@@ -95,6 +129,13 @@ diga no PR quanto o `economy-week` subiu, em 10 anos e nos últimos anos do séc
 9. **Ordem de soma.** Reduções em ordem de id, sem `rayon::reduce`. Trocar a ordem de uma soma ou
    o ponto de arredondamento de um produto de `Fixed` muda o hash: é mudança de comportamento, não
    otimização.
+10. **Estado global ou atômico dentro de `par_iter`.** Contador estático, `AtomicU64` ou
+    `Mutex` tocado por tarefa paralela tem contenção entre núcleos e é compartilhado entre
+    simulações do mesmo processo. Devolva o número na saída da tarefa e some em ordem.
+11. **Tabela plana grande lida fora de ordem no laço quente.** Uma matriz de fundo × lugar ou de
+    mercado × mercado varrida por coluna dentro do laço por linha erra o cache a cada leitura;
+    no investimento do capital (#117) isso deu cerca de 10 % das amostras do mensal. Percorra na
+    ordem da memória, ou transponha uma vez por execução.
 
 ## Regra que muda o hash
 
@@ -105,6 +146,15 @@ só o efeito da regra.
 
 ## Como medir
 
+- **Custo do sistema, não da trajetória.** Ligar uma regra muda o mundo: com o capital ligado o
+  século termina com 1,4× os níveis de planta, e o semanal fica mais caro só por isso. Comparar a
+  rodada ligada com a desligada mistura as duas coisas. Para isolar o custo do código:
+  - compare no mesmo mundo: 10 anos a partir de 1925, quando as duas trajetórias ainda quase não
+    se separaram, e olhe a tabela por sistema (`BF_SYSTEMS=1`), não só o total;
+  - dentro do sistema, use o amostrador (`sample.sh` e `profile.py`) e some a parte das funções
+    do próprio sistema;
+  - o resto da diferença em 101 anos é o mundo maior. Ele entra no julgamento dos agregados, não
+    no orçamento do código.
 - **Carga à parte.** O `%U` do `/usr/bin/time` inclui a carga dos dados (`GameData::load`). O
   que não é simulação sai de `%U − 1,5 × simulação impressa`; uma conta pesada na carga aparece
   ali, em toda rodada e em todo jogo aberto. Conta de carga de regra desligada é preguiçosa: no #113, `Geography::build` calculava as
