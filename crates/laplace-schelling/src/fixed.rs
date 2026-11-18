@@ -811,6 +811,25 @@ mod tests {
         assert_eq!(Fixed::MAX.mul_ratio(2, 1), Fixed::MAX);
     }
 
+    #[cfg(feature = "saturation-count")]
+    #[test]
+    fn saturation_is_counted_where_it_happens() {
+        let big = Fixed::from_int(4_000_000_000_000);
+        let line = line!() + 1;
+        let product = big * big;
+        assert_eq!(product, Fixed::MAX);
+        let shares = big.mul_div(big, Fixed::from_int(1));
+        assert_eq!(shares, Fixed::MAX);
+        let report = super::saturation::report();
+        assert!(
+            report
+                .iter()
+                .any(|&(f, l, op, n)| f.ends_with("fixed.rs") && l == line && op == "mul" && n >= 1),
+            "{report:?}"
+        );
+        assert!(report.iter().any(|&(_, l, op, _)| l == line + 2 && op == "mul_div"));
+    }
+
     #[test]
     fn saturation_and_zero_division() {
         assert_eq!(Fixed::MAX + Fixed::ONE, Fixed::MAX);
