@@ -245,12 +245,33 @@ impostos.
   `data/economy/fiscal_levers.ron`. Piso e teto saem do que países reais fizeram; cada um com fonte.
 - **Hash e save.** Com tudo em `None`, o hash é o do `main`: o campo só entra no hash quando é
   `Some`, como em `state.rs`. O save congela o `Budget` e o `Money` de antes, como
-  `econ/compat.rs` já faz com `MarketBeforeResearch`, e sobe para a próxima versão livre do mundo.
-  O ensino leva a 8.
-- **Um comando para o orçamento.** `GameCommand::SetFiscalLever { tag, lever: FiscalLever }`.
-  `FiscalLever` é um enum com uma variante por alavanca, cada uma com o seu `Option`. A dívida usa
-  `SetDebtIssue`, e o calote usa `DeclareDefault`. O teste `player_commands.rs` ganha uma linha por
-  comando.
+  `econ/compat.rs` já faz com `MarketBeforeResearch`, e sobe para a próxima versão livre do mundo
+  (o ensino levou a 11).
+- **Sem chave de regra para a alavanca.** Com tudo em `None` o hash é o do `main`, então a escolha
+  do jogador não entra desligada: o seletor aparece sempre. Entram atrás de chave em
+  `data/rules.ron` só as mudanças de regra que valem para todos com a alavanca em `None`: o clero
+  pago conforme a lei de religião (`clergy_by_law`) e a capacidade de cobrar pelos servidores
+  (`fiscal_capacity`, pergunta 1).
+- **Um comando por alavanca**, no padrão de `SetTaxRates` e `SetPolicyRate`: `Option`, com `None`
+  de volta à regra histórica. Valores em milésimos. Cada um ganha uma linha no
+  `player_commands.rs`.
+
+  | | Comando | Valor | Piso e teto (dados) |
+  |---|---|---|---|
+  | D1 | `SetPayroll { tag, per_mille: Option<[u16; 2]> }` | servidores e clero por mil habitantes; o clero só conta quando a lei de religião o põe na folha | servidores 2–80, clero 0–15 |
+  | D2 | `SetPublicPay { tag, per_mille: Option<u16> }` | salário público sobre o privado da profissão (regra 700) | 400–1500 |
+  | D3 | `SetStatePurchases { tag, goods: Option<u16>, military: Option<u16> }` | `goods`: fator sobre o orçamento de bens da regra (1000 = a regra); `military`: parcela militar do orçamento de bens (regra: a soma dos pesos `military`, hoje 400) | 250–2000; 0–800 |
+  | D4 | `SetTreasury { tag, reserve_weeks: Option<u16>, surplus: Option<SurplusUse> }` | semanas de receita em reserva (regra 13); destino do excesso: `Spend`, `Repay` ou `Keep` | 4–52 |
+  | D5 | `SetDeficitCap { tag, per_mille_gdp: Option<u16> }` | teto anual do déficit em milésimos do PIB | 0–100 |
+  | D8 | `SetWorksOrder { tag, order: Option<Vec<u32>> }`, `AddWork { tag, state, kind }`, `CancelWork { tag, work: u32 }` | ver D8 | até 200 obras |
+  | D9 | `SetIssuance { tag, shares: Option<[u16; 3]> }` | parcela da emissão nova em casa, fora em moeda própria e fora em dólar, somando 1000 | cada uma 0–1000 |
+  | D6 | `DeclareDefault { tag, target: DebtTarget, haircut: u16 }` e `SetHonourDebt { tag, on: bool }` | nas Agendas, decisão rara com ponto de restauração | perdão 250, 500 ou 750 |
+- **O que a tela lê:** `econ::levers::view(world, cat, country) -> LeversView`, uma linha por
+  alavanca com o valor que a regra dá hoje (para "Regra histórica: 1,2 %" mostrar o número), o
+  valor fixado quando houver, o piso e o teto que a simulação aceita, e o efeito estimado de uma
+  semana do valor fixado sobre o caixa (diferença entre a despesa ou a receita da semana com o
+  valor fixado e com a regra, pela mesma conta do tick). O cliente lê uma vez por tick publicado; a
+  conta é escalar por país.
 - **A IA fica na regra.** Os países sem jogador continuam em `None`. Ensinar a IA a fixar alavancas
   é trabalho à parte, depois do equilíbrio.
 - **Gradual como na vida real.** O decreto vale no mês seguinte. O efeito anda na velocidade do
@@ -267,7 +288,8 @@ impostos.
 - **Regra:** servidores 1,2 % da população e clero 0,5 % (`monthly::STATE_SHARE`). O Estado
   contrata 1/10 da diferença por mês e nunca demite. Os soldados saem daqui: o efetivo de paz segue
   a lei de conscrição (#115, D13).
-- **Fixado:** servidores por mil habitantes, de 2 a 80. O piso é o Estado mínimo de 1925. O teto é
+- **Fixado** (`SetPayroll`): servidores por mil habitantes, de 2 a 80, e o clero pago pelo Tesouro
+  quando a lei de religião o põe na folha. O piso é o Estado mínimo de 1925. O teto é
   o emprego público dos nórdicos e do bloco soviético, por volta de 1980, sobre a população (fonte
   a fixar no PR: ILO, *Public sector employment*, e Maddison para a população).
 - **Demissão gradual (nova).** Acima da meta, a folha encolhe pela aposentadoria e pelo
@@ -348,12 +370,12 @@ Decisão rara, nas Agendas, com ponto de restauração antes (motivo "dívida").
 - **Regra:** o calote automático de hoje, quando o serviço em moeda estrangeira passa de 30 % da
   receita ou o caixa não fecha, e a reestruturação com juros acima de metade da receita. Continua
   igual para quem não decide.
-- **Declarar calote** (`DeclareDefault { tag, haircut }`): a qualquer momento, com o perdão de 25,
+- **Declarar calote** (`DeclareDefault { tag, target, haircut }`): a qualquer momento, com o perdão de 25,
   50 ou 75 % da dívida externa. Quanto maior o perdão, mais anos fora do crédito e mais prêmio
   depois. Cruces e Trebesch (2013, AEJ: Macro 5(3)) medem essa relação; o PR traz a tabela.
 - **Reestruturar a dívida interna:** mesmo comando, com o alvo "interna". Corta o estoque em casa,
   e a poupança das famílias que tinha título perde junto.
-- **Honrar a todo custo** (postura, `Money::honour: bool`): o gatilho automático vira austeridade
+- **Honrar a todo custo** (postura, `SetHonourDebt`, guardada em `Money::honour: bool`): o gatilho automático vira austeridade
   forçada, até a folha cair ao piso. É a Romênia de 1981 a 1989, que pagou a dívida externa
   cortando o consumo. **Decisão pendente (pergunta 3).**
 
@@ -367,13 +389,22 @@ Nota do autor: "uma lista de prioridades que o jogador define e em que pode orde
 
 - **Hoje:** as obras públicas e as privadas dividem `Market::queue`. Os pontos vão às mais velhas
   primeiro, e a regra escolhe cada obra pública (`public_works`, até 200 por mês).
-- **Fixado:** a lista das obras públicas em andamento e das que a regra propõe neste mês. Nela o
-  jogador pode:
-  - subir ou descer uma obra;
-  - fixá-la no topo;
-  - cancelar uma obra (os pontos pagos se perdem);
-  - pôr uma obra nova por estado e por tipo.
-- **"Só a minha lista":** a regra para de acrescentar obras.
+- **Id estável:** cada `Project` ganha `id: u32`, de um contador por mercado que só cresce (vai no
+  save; a obra antiga recebe id na migração, pela ordem da fila). A tela e os comandos falam pelo
+  id, nunca pelo índice.
+- **Fixado** (`SetWorksOrder { tag, order: Some(ids) }`): a ordem das obras públicas da fila. A
+  tela move uma obra e manda a ordem inteira, o que torna o comando idempotente e fácil de
+  repetir num replay. Ids que já não estão na fila são ignorados; obras públicas que não estão na
+  lista ficam depois dela, na ordem de chegada. `None` volta à ordem de chegada.
+- **Obra nova e cancelamento:** `AddWork { tag, state, kind }` põe uma obra pública escolhida pelo
+  jogador no fim da sua ordem (o custo é o da regra da obra; a categoria do tipo diz de que parte do
+  orçamento ela sai). `CancelWork { tag, work }` tira a obra; os pontos pagos se perdem.
+- **Como convive com `SetPublicPriority`:** a prioridade por categoria continua decidindo quanto
+  do dinheiro acima da reserva vai a cada categoria e, portanto, que obras novas a regra propõe
+  todo mês. A ordem fixada só decide quem recebe primeiro os pontos de construção da semana entre
+  as obras públicas. A obra que a regra acrescenta entra no fim da ordem fixada.
+- **"Só a minha lista":** é a prioridade toda em zero (`SetPublicPriority`), que já suspende obra
+  nova da regra; o jogador continua acrescentando com `AddWork`.
 - **Gradual:** reordenar muda quem recebe os pontos da semana. A obra continua com o teto de 1/26
   por semana, e os pontos do país são os que a construção civil produz.
 - **Ponto de desenho:** a obra privada fica na ordem de chegada ou entra na lista. **Decisão
@@ -385,7 +416,7 @@ Nota do autor: "o mercado decide quem compra; o jogador escolhe onde emite".
 
 - **Regra:** a ordem de hoje: a poupança de casa, o banco central subordinado, os estrangeiros e o
   banco central de novo.
-- **Fixado** (`SetDebtIssue { tag, issue: Option<Issue> }`): a parcela de cada emissão nova em casa,
+- **Fixado** (`SetIssuance { tag, shares: Option<[u16; 3]> }`): a parcela de cada emissão nova em casa,
   fora em moeda própria e fora em dólar.
   - Cada comprador segue limitado pelo quanto absorve por semana, como hoje.
   - Fora em moeda própria, o comprador só leva `1 − fx_share`: o "pecado original" continua, e o
