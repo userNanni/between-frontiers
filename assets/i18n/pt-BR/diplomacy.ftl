@@ -92,5 +92,6 @@ treaty-soviet_mongolian_agreement = Acordo Soviético-Mongol
 treaty-belgium_luxembourg_union = União Econômica Bélgica-Luxemburgo
 treaty-swiss_liechtenstein_customs = Tratado Aduaneiro Suíça-Liechtenstein
 treaty-franco_monegasque_customs = União Aduaneira Franco-Monegasca
+treaty-italo_sammarinese_friendship_1897 = Tratado de Amizade Ítalo-Samarinês (1897)
 treaty-saar_french_customs = Sarre no Regime Aduaneiro Francês
 treaty-danzig_polish_customs = Danzig no Território Aduaneiro Polonês
