@@ -128,8 +128,11 @@ preferência, e o valor comerciado por par fica gravado.
 - **Como é na vida real:** Mônaco vivia de turismo e cassino para estrangeiros, e Liechtenstein
   entrou no território aduaneiro suíço em 1924. O serviço vendido ao vizinho é a economia de um
   microestado.
-- **Estado:** no código, desligado (`union_services`). Ligar é um PR próprio, junto com a união de
-  San Marino, julgado pela faixa. As alternativas, trabalho que atravessa a fronteira (B) e
+- **Estado:** no código, desligado (`union_services`), e **não deve ser ligado como está**. Medido
+  ligado em 101 anos, o mundo fica na faixa, mas Mônaco perde ~80 % do PIB e Luxemburgo até 75 %:
+  o fechamento leva o serviço do sócio grande para o pequeno, não o contrário. O que falta é
+  demanda estrangeira pelo serviço do pequeno (cassino, banco, turismo); as opções estão com o
+  dono, para depois da fase 6. As alternativas, trabalho que atravessa a fronteira (B) e
   microestado dentro do mercado do vizinho (C), estão anotadas com o porquê.
 - **Onde está o detalhe:** `trade.pt-BR.md`, seção 12.
 

@@ -3232,6 +3232,103 @@ fn negotiation_table() {
     let _ = std::fs::remove_dir_all(&user);
 }
 
+/// "Renegotiate" in the debts tab (treaties, section 13): Britain's debt to the United States,
+/// the button, and the negotiation table it opens in the Agendas with the revision of that debt
+/// on it, from today's terms. Portuguese at 1600 × 900, English at 1280 × 720; copies in
+/// `target/screenshots/renegotiate/`.
+#[test]
+#[ignore = "needs a GPU (or software Vulkan) and the generated map; run with --ignored"]
+fn renegotiate_debt() {
+    use laplace_schelling::calendar::Date;
+    // SAFETY: the screenshot tests run one at a time (`RUST_TEST_THREADS=1`).
+    unsafe { std::env::set_var("BF_RULES", "negotiation") };
+    let user = std::env::temp_dir().join(format!("bf-shots-renegotiate-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&user);
+    let switches = bf_sim::game::Switches::parse("negotiation").expect("switches");
+    let session = advanced_session_with("GBR", Date::new(1925, 3, 1), switches);
+    let save = write_campaign(&user.join("save"), &session, "Renegociar", "GBR", &[]);
+    let dir = root().join("target/screenshots/renegotiate");
+    std::fs::create_dir_all(&dir).unwrap();
+    let keep = |name: &str| {
+        let from = out_dir().join(format!("{name}.png"));
+        std::fs::copy(&from, dir.join(format!("{name}.png"))).unwrap();
+    };
+    for (locale, size, tag) in [
+        ("pt-BR", egui::vec2(1600.0, 900.0), "pt"),
+        ("en", egui::vec2(1280.0, 720.0), "en-1280"),
+    ] {
+        let en = locale == "en";
+        let wait = |h: &mut Harness<'_, App>| {
+            for _ in 0..30 {
+                std::thread::sleep(std::time::Duration::from_millis(25));
+                h.run_steps(1);
+            }
+        };
+        // Scrolled into view first, then clicked where it is now.
+        let press = |h: &mut Harness<'_, App>, text: &str| {
+            let query = || {
+                egui_kittest::kittest::by()
+                    .label(text)
+                    .role(egui::accesskit::Role::Button)
+            };
+            h.query_all(query())
+                .next()
+                .unwrap_or_else(|| panic!("button {text}"))
+                .scroll_to_me();
+            h.run_steps(4);
+            h.query_all(query()).next().unwrap().click();
+        };
+        let mut h = harness_sized(user.join(tag), locale, size);
+        let ctx = h.ctx.clone();
+        h.state_mut().apply(Transition::Game(save.clone()), &ctx);
+        wait(&mut h);
+        h.key_press(egui::Key::G);
+        wait(&mut h);
+        h.get_all(egui_kittest::kittest::by().label(if en {
+            "Debts between governments"
+        } else {
+            "Dívidas entre governos"
+        }))
+        .next()
+        .expect("debts tab")
+        .click();
+        wait(&mut h);
+        press(
+            &mut h,
+            if en {
+                "United States"
+            } else {
+                "Estados Unidos"
+            },
+        );
+        wait(&mut h);
+        let renegotiate = if en { "Renegotiate" } else { "Renegociar" };
+        h.query_all(egui_kittest::kittest::by().label(renegotiate))
+            .next()
+            .expect("the renegotiate button")
+            .scroll_to_me();
+        wait(&mut h);
+        let name = format!("190-renegotiate-button-{tag}");
+        shot(&mut h, &name);
+        keep(&name);
+        press(&mut h, renegotiate);
+        wait(&mut h);
+        wait(&mut h);
+        let name = format!("191-renegotiate-table-{tag}");
+        shot(&mut h, &name);
+        keep(&name);
+        h.query_all(egui_kittest::kittest::by().label(if en { "Propose" } else { "Propor" }))
+            .next()
+            .expect("the propose button")
+            .scroll_to_me();
+        wait(&mut h);
+        let name = format!("192-renegotiate-account-{tag}");
+        shot(&mut h, &name);
+        keep(&name);
+    }
+    let _ = std::fs::remove_dir_all(&user);
+}
+
 /// Answering a demand of independence: Nigeria's demand pending on the United Kingdom, from the
 /// red button in the Agendas to the screen with the four answers, the refusal chosen and the
 /// review before confirming; in Portuguese at 1600 × 900 and in English at 1280 × 720.

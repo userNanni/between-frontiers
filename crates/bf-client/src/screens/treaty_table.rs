@@ -94,6 +94,9 @@ pub struct TableUi {
     pub states_of: Option<usize>,
     /// An answer to a proposal received waiting for its second click: (id, accept).
     pub confirm: Option<(u32, bool)>,
+    /// The draft came from another screen (a debt to renegotiate): its other party stays, the
+    /// country picked on the map does not replace it.
+    pub fixed: bool,
 }
 
 /// The proposal with the sides swapped: the orientation the other party sent it in, or the
@@ -234,12 +237,15 @@ pub fn set_param(kind: &mut ClauseKind, name: &str, v: Fixed) {
         (AssumeDebt { share }, "share") => *share = v,
         (TariffCap { rate: Some(r) }, "rate") => *r = v,
         (TariffPreference { margin }, "margin") => *margin = v,
-        (Debt { terms: Some(t) }, name) => {
+        (Debt { terms: Some(t) } | ReviseDebt { terms: t, .. }, name) => {
             match name {
                 "principal" => t.principal = v,
                 "rate" => t.rate = v,
                 "years" => t.years = v.to_int_round().clamp(1, i64::from(u16::MAX)) as u16,
                 "deferrable" => t.deferrable = v,
+                "grace_years" => {
+                    t.grace_years = v.to_int_round().clamp(0, i64::from(u16::MAX)) as u16
+                }
                 _ => return,
             }
             t.annuity = annuity(t);
@@ -286,6 +292,8 @@ pub fn show_table(
         ui,
         &i18n.tr(if countering {
             "table-counter-title"
+        } else if st.fixed {
+            "table-renegotiate-title"
         } else {
             "table-title"
         }),
@@ -295,7 +303,7 @@ pub fn show_table(
         return None;
     };
     // A new other party starts a new draft; a counter keeps its own.
-    if !countering {
+    if !countering && !st.fixed {
         match other {
             Some(o) if o != me => {
                 if st.draft.as_ref().map(|(t, _)| t.as_str()) != Some(o) {
@@ -681,6 +689,7 @@ fn clause(
                 LimitUnit::Fraction | LimitUnit::Years => {}
             }
         }
+        revision_lines(ui, i18n, &c.kind);
         if let ClauseKind::Debt { terms: Some(t) } = &c.kind {
             bf_ui_kit::small(
                 ui,
@@ -735,6 +744,38 @@ fn clause(
             }
         }
     });
+}
+
+/// The terms a debt revision sets: of which treaty, and what the debt becomes.
+fn revision_lines(ui: &mut Ui, i18n: &I18n, kind: &ClauseKind) {
+    let ClauseKind::ReviseDebt { treaty, terms: t } = kind else {
+        return;
+    };
+    bf_ui_kit::small(
+        ui,
+        &i18n.tr_args(
+            "table-revise-of",
+            &[("treaty", arg(super::ledger::treaty_name(i18n, treaty)))],
+        ),
+    );
+    for (key, value) in [
+        ("table-param-principal", money(i18n, f(t.principal))),
+        ("table-param-rate", pct(i18n, f(t.rate) * 100.0, 1)),
+        ("table-annuity-label", money(i18n, f(t.annuity))),
+        (
+            "table-param-years",
+            i18n.tr_args("table-years", &[("n", arg(t.years.to_string()))]),
+        ),
+    ] {
+        bf_ui_kit::stat_row(ui, &i18n.tr(key), &value);
+    }
+    if t.grace_years > 0 {
+        bf_ui_kit::stat_row(
+            ui,
+            &i18n.tr("table-param-grace_years"),
+            &i18n.tr_args("table-years", &[("n", arg(t.grace_years.to_string()))]),
+        );
+    }
 }
 
 /// The states a clause names: how many, and the giver's states to pick from.
@@ -1148,6 +1189,7 @@ fn read_only(ui: &mut Ui, i18n: &I18n, world: Option<&World>, ci: usize, c: &Cla
             };
             bf_ui_kit::stat_row(ui, &i18n.tr(&format!("table-param-{name}")), &shown);
         }
+        revision_lines(ui, i18n, &c.kind);
         let names: Vec<String> = match &c.kind {
             ClauseKind::CedeStates { states }
             | ClauseKind::Demilitarized { states }

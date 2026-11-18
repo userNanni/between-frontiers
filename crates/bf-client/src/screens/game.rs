@@ -801,6 +801,20 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
             &mut gov_place,
         );
         keep_window_place(shared, "government", gov_place, res.place_done);
+        // "Renegotiate" in the debts tab: the negotiation table, in the Agendas, with the
+        // revision on it.
+        if let Some(draft) = res.renegotiate.clone() {
+            state.government = None;
+            state.journal = Some(super::journal::Window {
+                picked: Some(super::journal::TABLE.to_owned()),
+                table: super::treaty_table::TableUi {
+                    draft: Some(draft),
+                    fixed: true,
+                    ..Default::default()
+                },
+                ..Default::default()
+            });
+        }
         // Ships and aircraft disbanded leave service for good: a point to come back to first.
         if res
             .commands

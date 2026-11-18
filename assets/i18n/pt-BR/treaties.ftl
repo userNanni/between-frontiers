@@ -187,3 +187,7 @@ table-closed-refused-me = Você recusou a proposta recebida ({ $country }) em { 
 table-closed-countered = Contraproposta na rodada com { $country } em { $date }.
 table-closed-lapsed = A proposta com { $country } venceu em { $date }.
 table-closed-failed = A proposta com { $country } não pôde ser cumprida ({ $date }).
+table-revise-of = Dívida: { $treaty }
+table-annuity-label = Anuidade
+table-param-grace_years = Carência
+table-renegotiate-title = Renegociar a dívida

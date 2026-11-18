@@ -181,3 +181,7 @@ table-closed-refused-me = You refused the proposal from { $country } on { $date 
 table-closed-countered = Counterproposal in the round with { $country } on { $date }.
 table-closed-lapsed = The proposal with { $country } lapsed on { $date }.
 table-closed-failed = The proposal with { $country } could not be carried out ({ $date }).
+table-revise-of = Debt: { $treaty }
+table-annuity-label = Annuity
+table-param-grace_years = Grace
+table-renegotiate-title = Renegotiate the debt
