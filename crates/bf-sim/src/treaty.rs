@@ -425,6 +425,12 @@ pub fn params(kind: &ClauseKind) -> Vec<(&'static str, Fixed)> {
             ("years", Fixed::from_int(i64::from(t.years))),
             ("deferrable", t.deferrable),
         ],
+        ClauseKind::ReviseDebt { terms: t, .. } => vec![
+            ("principal", t.principal),
+            ("rate", t.rate),
+            ("years", Fixed::from_int(i64::from(t.years))),
+            ("grace", Fixed::from_int(i64::from(t.grace_years))),
+        ],
         ClauseKind::AssumeDebt { share } => vec![("share", *share)],
         ClauseKind::TariffCap { rate: Some(r) } => vec![("rate", *r)],
         ClauseKind::TariffPreference { margin } => vec![("margin", *margin)],
@@ -739,6 +745,65 @@ pub struct EvalInputs<'a> {
     /// (`TreatyState::reputation`); discounted over the party's GDP.
     pub reputation: &'a BTreeMap<Tag, Reputation>,
     pub live: &'a [Front],
+    /// The open lines of the ledger, for the price of a revision (`revise_debt`).
+    pub debts: &'a [DebtView],
+}
+
+/// One open line of the ledger as the evaluation reads it ([`EvalInputs::debts`]).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DebtView {
+    pub debtor: Tag,
+    pub creditor: Tag,
+    pub treaty: String,
+    pub annuity: Fixed,
+    pub years_left: u16,
+}
+
+impl DebtView {
+    /// The open lines of `ledger`, with the tags of `tags` (country index order).
+    pub fn of(ledger: &Ledger, tags: &[Tag]) -> Vec<DebtView> {
+        let tag = |i: u16| tags.get(usize::from(i)).cloned().unwrap_or_default();
+        ledger
+            .debts
+            .iter()
+            .map(|d| DebtView {
+                debtor: tag(d.debtor),
+                creditor: tag(d.creditor),
+                treaty: d.treaty.clone(),
+                annuity: d.annuity,
+                years_left: d.years_left,
+            })
+            .collect()
+    }
+}
+
+/// Present value of a revision for the creditor `creditor` of the lines of `treaty` owed by
+/// `debtor`: what the new terms are worth less what the lines are worth today (negative for a
+/// moratorium or a forgiveness). Every line takes the new annuity and term, the first
+/// `grace_years` without service.
+fn revision_value(
+    inputs: &EvalInputs,
+    creditor: &str,
+    debtor: &str,
+    treaty: &str,
+    terms: &DebtTerms,
+) -> Fixed {
+    let lines: Vec<&DebtView> = inputs
+        .debts
+        .iter()
+        .filter(|d| d.creditor == creditor && d.debtor == debtor && d.treaty == treaty)
+        .collect();
+    let now: Fixed = lines
+        .iter()
+        .map(|d| present_value(d.annuity, inputs.discount, d.years_left))
+        .sum();
+    let paid = terms.years.saturating_sub(terms.grace_years);
+    let mut one = present_value(terms.annuity, inputs.discount, paid);
+    let step = Fixed::ONE + inputs.discount;
+    for _ in 0..terms.grace_years {
+        one = one.mul_div(Fixed::ONE, step);
+    }
+    one * Fixed::from_int(lines.len() as i64) - now
 }
 
 /// Present value of `years` yearly payments of `annuity` at `rate`, paid at the end of each year.
@@ -796,6 +861,32 @@ pub fn evaluate(
         }
         let key = c.kind.key();
         let dormant = cat.dormant(key, inputs.live);
+        // A revision: the creditor (giver) gains what the new terms are worth over today's, the
+        // debtor (receiver) the opposite.
+        if let ClauseKind::ReviseDebt { treaty, terms } = &c.kind {
+            let mut value = Fixed::ZERO;
+            for g in &givers {
+                for r in &receivers {
+                    let v = revision_value(inputs, g, r, treaty, terms);
+                    if *g == party {
+                        value += v;
+                    }
+                    if *r == party {
+                        value -= v;
+                    }
+                }
+            }
+            lines.push(ValueLine {
+                clause: ci,
+                term: ValueTerm::Money,
+                value: if dormant.is_some() {
+                    Fixed::ZERO
+                } else {
+                    value
+                },
+                dormant,
+            });
+        }
         // Money: what flows from the giving side to the receiving side, split evenly.
         let flow = match &c.kind {
             ClauseKind::Debt { terms: Some(t) } => Some(present_value(

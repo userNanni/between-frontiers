@@ -163,3 +163,77 @@ fn the_table_does_not_saturate_with_large_economies() {
         assert!(treaties.is_empty(), "saturated: {treaties:#?}");
     }
 }
+
+/// A revision changes only the lines owed by its receivers: France revising Germany's lines of a
+/// treaty leaves Belgium's under the same treaty as they were. And the table prices it: what
+/// the creditor gives up the debtor gains.
+#[test]
+fn a_revision_touches_only_its_debtors_and_has_a_price() {
+    use bf_sim::treaty::InterstateDebt;
+    let mut w = data().new_world();
+    let ix =
+        |w: &GameWorld, t: &str| w.countries.iter().position(|(_, c)| c.tag == t).unwrap() as u16;
+    let (fra, ger, bel) = (ix(&w, "FRA"), ix(&w, "GER"), ix(&w, "BEL"));
+    let terms = |principal: i64| DebtTerms {
+        principal: Fixed::from_int(principal),
+        rate: Fixed::from_ratio(5, 100),
+        annuity: Fixed::from_int(principal / 10),
+        years: 20,
+        currency: Default::default(),
+        deferrable: Fixed::ZERO,
+        transfer_cap: None,
+        pledge: None,
+        contingent: Fixed::ZERO,
+        grace_years: 0,
+    };
+    let big = gdp(&w, "GER").to_int_round() / 10;
+    w.econ
+        .ledger
+        .create(InterstateDebt::new(ger, fra, "two".into(), &terms(big)));
+    w.econ
+        .ledger
+        .create(InterstateDebt::new(bel, fra, "two".into(), &terms(big / 4)));
+    // France forgives half of Germany's, with three years of grace.
+    let mut new = terms(big / 2);
+    new.grace_years = 3;
+    let p = Proposal {
+        side_a: vec!["FRA".into()],
+        side_b: vec!["GER".into()],
+        clauses: vec![clause(
+            ClauseKind::ReviseDebt {
+                treaty: "two".into(),
+                terms: new,
+            },
+            Side::Senior,
+            Side::Junior,
+        )],
+        term_years: None,
+        notice_years: 0,
+    };
+    let creditor = account(&w, cat(), &p, "FRA").term(bf_sim::treaty::ValueTerm::Money);
+    let debtor = account(&w, cat(), &p, "GER").term(bf_sim::treaty::ValueTerm::Money);
+    assert!(
+        creditor < Fixed::ZERO && debtor > Fixed::ZERO,
+        "{creditor:?} {debtor:?}"
+    );
+    assert_eq!(creditor + debtor, Fixed::ZERO);
+    let s = bf_sim::treaty_exec::settle(cat(), &p, "revision").unwrap();
+    bf_sim::treaty_exec::queue(&mut w, &s, 1930);
+    let line = |d: u16| {
+        w.econ
+            .ledger
+            .debts
+            .iter()
+            .find(|l| l.debtor == d && l.treaty == "two")
+            .unwrap()
+            .clone()
+    };
+    assert_eq!(line(ger).principal, Fixed::from_int(big / 2));
+    assert_eq!(line(ger).suspended_until, 1932);
+    assert_eq!(
+        line(bel).principal,
+        Fixed::from_int(big / 4),
+        "Belgium's line is untouched"
+    );
+    assert_eq!(line(bel).suspended_until, 0);
+}

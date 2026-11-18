@@ -328,6 +328,7 @@ fn the_account_is_open_and_even() {
         gdp: &gdp,
         reputation: &clean,
         live: &live,
+        debts: &[],
     };
     let p = reparation_proposal(10_000, 1_000);
     let ger = treaty::evaluate(&d.cat, &inputs, &p, "GER");

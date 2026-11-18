@@ -138,6 +138,7 @@ impl Table {
 pub struct Inputs {
     pub gdp: BTreeMap<Tag, Fixed>,
     pub live: Vec<Front>,
+    pub debts: Vec<crate::treaty::DebtView>,
 }
 
 impl Inputs {
@@ -148,8 +149,10 @@ impl Inputs {
             .zip(&world.econ.markets)
             .map(|((_, c), m)| (c.tag.clone(), m.gdp_last_year))
             .collect();
+        let tags: Vec<Tag> = world.countries.iter().map(|(_, c)| c.tag.clone()).collect();
         Inputs {
             gdp,
+            debts: crate::treaty::DebtView::of(&world.econ.ledger, &tags),
             live: vec![
                 Front::Borders,
                 Front::Ledger,
@@ -170,6 +173,7 @@ pub fn account(world: &GameWorld, cat: &ClauseCatalogue, p: &Proposal, party: &s
             gdp: &i.gdp,
             reputation: &world.treaties.reputation,
             live: &i.live,
+            debts: &i.debts,
         },
         p,
         party,
