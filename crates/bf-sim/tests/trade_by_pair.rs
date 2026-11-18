@@ -27,7 +27,7 @@ fn run(switches: Switches) -> Session {
 #[test]
 fn off_by_default_the_trade_state_stays_empty() {
     let rules = data().rules();
-    assert_eq!(rules.switches, Switches::default());
+    assert!(!rules.switches.trade_by_pair, "ships off");
     assert!(
         rules.trade.is_none(),
         "switched off, the distances are not built"
@@ -98,10 +98,17 @@ fn rules_file_names_every_switch_and_ships_them_off() {
     let path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../data/rules.ron");
     let text = std::fs::read_to_string(&path).unwrap();
     let file: Switches = ron::from_str(&text).unwrap();
-    assert_eq!(file, Switches::default(), "every rule ships off");
+    // A rule ships off until the PR that switches it on adds it here.
+    const ON: &[&str] = &["foreign_flow"];
+    assert_eq!(
+        file,
+        Switches::parse(&ON.join(",")).unwrap(),
+        "only the rules switched on by their own PR ship on"
+    );
     for name in Switches::NAMES {
+        let value = ON.contains(name);
         assert!(
-            text.contains(&format!("{name}: false")),
+            text.contains(&format!("{name}: {value}")),
             "data/rules.ron lists {name}"
         );
     }

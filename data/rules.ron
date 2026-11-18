@@ -26,7 +26,8 @@
     foreign_contract: false,
     // Capital crosses borders (`docs/foreign-capital.pt-BR.md`): the funds build abroad with what
     // they have left at home; the stakes and the weekly remittance follow from what they build.
-    foreign_flow: false,
+    // On since the PR of step 5 (the brake: `ABROAD_CAP`, `MAX_INFLOW`).
+    foreign_flow: true,
     // Technique through the foreign plant (`docs/foreign-capital.pt-BR.md`, C5): imitation and
     // diffusion run faster where foreign owners hold the levels a technology serves. Off: the
     // foreign plants teach nothing.
