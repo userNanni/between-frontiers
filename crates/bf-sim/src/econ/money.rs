@@ -24,6 +24,7 @@
 
 use laplace_schelling::Fixed;
 use laplace_schelling::hash::{HashState, StateHasher};
+use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use super::catalogue::Catalogue;
@@ -359,19 +360,31 @@ pub struct Activity {
 /// Activity of every market, from the plants and the week's prices.
 pub fn activity(cat: &Catalogue, regions: &[Region], markets: &[Market]) -> Vec<Activity> {
     let nm = markets.len();
+    // Each plant's figures in parallel by state; the sums by market stay in state order.
+    let by_plant: Vec<Vec<(Fixed, Fixed)>> = regions
+        .par_iter()
+        .map(|r| {
+            r.plants
+                .iter()
+                .map(|p| {
+                    let b = &cat.buildings[p.kind as usize];
+                    let v = b.methods[p.method as usize].output_value * r.tfp_for(b) * p.levels;
+                    (v, v * p.utilization)
+                })
+                .collect()
+        })
+        .collect();
     let mut capacity = vec![Fixed::ZERO; nm];
     let mut used = vec![Fixed::ZERO; nm];
-    for r in regions {
+    for (r, plants) in regions.iter().zip(&by_plant) {
         let mi = r.market as usize;
-        for p in &r.plants {
-            let b = &cat.buildings[p.kind as usize];
-            let v = b.methods[p.method as usize].output_value * r.tfp_for(b) * p.levels;
+        for &(v, u) in plants {
             capacity[mi] += v;
-            used[mi] += v * p.utilization;
+            used[mi] += u;
         }
     }
     markets
-        .iter()
+        .par_iter()
         .enumerate()
         .map(|(mi, m)| {
             let mut base = Fixed::ZERO;
@@ -551,12 +564,18 @@ struct Plan {
 /// market. Runs after taxes and spending are in the treasuries.
 pub fn week(econ: &mut Economy, activity: &[Activity], year: i32) {
     let nm = econ.markets.len();
+    // Each pop's idle savings in parallel by state; the sums by market stay in pop order.
+    let idle_by_pop: Vec<Vec<Fixed>> = econ
+        .regions
+        .par_iter()
+        .map(|r| r.pops.iter().map(idle_savings).collect())
+        .collect();
     let mut idle = vec![Fixed::ZERO; nm];
     let mut people = vec![0i64; nm];
-    for r in &econ.regions {
+    for (r, pops) in econ.regions.iter().zip(&idle_by_pop) {
         let mi = r.market as usize;
-        for p in &r.pops {
-            idle[mi] += idle_savings(p);
+        for (p, &i) in r.pops.iter().zip(pops) {
+            idle[mi] += i;
             people[mi] += p.size;
         }
     }
@@ -662,15 +681,14 @@ pub fn week(econ: &mut Economy, activity: &[Activity], year: i32) {
         // Lenders' claims lose value with world inflation.
         m.money.foreign_assets -= weekly(m.money.foreign_assets, w.inflation.max(Fixed::ZERO));
     }
-    for r in &mut econ.regions {
-        let mi = r.market as usize;
-        if take[mi] <= Fixed::ZERO {
-            continue;
+    econ.regions.par_iter_mut().for_each(|r| {
+        let take = take[r.market as usize];
+        if take > Fixed::ZERO {
+            for p in &mut r.pops {
+                p.savings -= idle_savings(p) * take;
+            }
         }
-        for p in &mut r.pops {
-            p.savings -= idle_savings(p) * take[mi];
-        }
-    }
+    });
     if !econ.ledger.is_empty() {
         treaty_service(econ, &cuts, &w, year);
     }

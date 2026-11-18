@@ -1125,7 +1125,6 @@ impl System<GameWorld> for Week {
         let mut balance = vec![Fixed::ZERO; markets.len()];
         let mut volume = vec![Fixed::ZERO; markets.len()];
         let construction_good = cat.construction;
-        let mut done = Vec::new();
         for (mi, m) in markets.iter().enumerate() {
             for gi in 0..cat.goods.len() {
                 let n = m.net_import[gi];
@@ -1140,74 +1139,83 @@ impl System<GameWorld> for Week {
         }
         let total_balance: Fixed = balance.iter().copied().sum();
         let total_volume: Fixed = volume.iter().copied().sum();
-        for (mi, m) in markets.iter_mut().enumerate() {
-            let share = if total_volume > Fixed::ZERO {
-                total_balance * volume[mi] / total_volume
-            } else {
-                Fixed::ZERO
-            };
-            m.pool += balance[mi] - share;
-            // The state pays for the goods it got and for what its schools and hospitals made.
-            let goods: Fixed = changes.state_orders[mi]
-                .iter()
-                .map(|(g, q)| *q * m.buy_ratio[*g as usize] * m.price[*g as usize])
-                .sum();
-            // The health and education laws say how much of it the treasury pays; the users pay
-            // the rest out of their savings.
-            let shares = &m.laws.effects[0];
-            let can = super::public::pay_share(m);
-            let (services, fees) = cat
-                .public_goods
-                .iter()
-                .map(|&g| g as usize)
-                .map(|g| {
-                    let cost = m.supply[g] * m.sell_ratio[g] * m.price[g];
-                    let paid = cost * shares.public_share(g) * can;
-                    (paid, cost - paid)
-                })
-                .fold((Fixed::ZERO, Fixed::ZERO), |(a, b), (p, f)| (a + p, b + f));
-            m.treasury -= goods + services;
-            m.pool -= fees;
-            m.budget.goods = goods;
-            m.budget.services = services;
-            m.budget.revenue = Fixed::ZERO;
-            m.budget.revenue_indirect = Fixed::ZERO;
-            m.budget.revenue_firms = Fixed::ZERO;
-            m.budget.payroll = Fixed::ZERO;
-            m.uncollected = self.fiscal_capacity.then_some(Fixed::ZERO);
-            // The building trade delivers points to the queue of works.
-            m.budget.works = Fixed::ZERO;
-            if let Some(cg) = construction_good {
-                let cg = cg as usize;
-                // The public works in the order the government fixed (D8).
-                if let Some(order) = levers.order(mi) {
-                    super::levers::order_queue(m, order);
+        // Each market settles on its own; the finished works are kept in market order.
+        let fiscal_capacity = self.fiscal_capacity;
+        let (state_orders, upkeep) = (&changes.state_orders, &changes.upkeep);
+        let done_by_market: Vec<Vec<_>> = markets
+            .par_iter_mut()
+            .enumerate()
+            .map(|(mi, m)| {
+                let mut done = Vec::new();
+                let share = if total_volume > Fixed::ZERO {
+                    total_balance * volume[mi] / total_volume
+                } else {
+                    Fixed::ZERO
+                };
+                m.pool += balance[mi] - share;
+                // The state pays for the goods it got and for what its schools and hospitals made.
+                let goods: Fixed = state_orders[mi]
+                    .iter()
+                    .map(|(g, q)| *q * m.buy_ratio[*g as usize] * m.price[*g as usize])
+                    .sum();
+                // The health and education laws say how much of it the treasury pays; the users pay
+                // the rest out of their savings.
+                let shares = &m.laws.effects[0];
+                let can = super::public::pay_share(m);
+                let (services, fees) = cat
+                    .public_goods
+                    .iter()
+                    .map(|&g| g as usize)
+                    .map(|g| {
+                        let cost = m.supply[g] * m.sell_ratio[g] * m.price[g];
+                        let paid = cost * shares.public_share(g) * can;
+                        (paid, cost - paid)
+                    })
+                    .fold((Fixed::ZERO, Fixed::ZERO), |(a, b), (p, f)| (a + p, b + f));
+                m.treasury -= goods + services;
+                m.pool -= fees;
+                m.budget.goods = goods;
+                m.budget.services = services;
+                m.budget.revenue = Fixed::ZERO;
+                m.budget.revenue_indirect = Fixed::ZERO;
+                m.budget.revenue_firms = Fixed::ZERO;
+                m.budget.payroll = Fixed::ZERO;
+                m.uncollected = fiscal_capacity.then_some(Fixed::ZERO);
+                // The building trade delivers points to the queue of works.
+                m.budget.works = Fixed::ZERO;
+                if let Some(cg) = construction_good {
+                    let cg = cg as usize;
+                    // The public works in the order the government fixed (D8).
+                    if let Some(order) = levers.order(mi) {
+                        super::levers::order_queue(m, order);
+                    }
+                    let d = super::construction::deliver(m, m.buy_ratio[cg], m.price[cg]);
+                    m.pool -= d.private_cost;
+                    m.treasury -= d.public_cost;
+                    m.budget.works = d.public_cost;
+                    done.extend(d.done);
                 }
-                let d = super::construction::deliver(m, m.buy_ratio[cg], m.price[cg]);
-                m.pool -= d.private_cost;
-                m.treasury -= d.public_cost;
-                m.budget.works = d.public_cost;
-                done.extend(d.done);
-            }
-            for gi in 0..cat.goods.len() {
-                let left = m.construction[gi];
-                if left > Fixed::ZERO {
-                    let bought = construction_this_week(left) * m.buy_ratio[gi];
-                    m.construction[gi] = (left - bought).max(Fixed::ZERO);
-                    m.pool -= bought * m.price[gi];
+                for gi in 0..cat.goods.len() {
+                    let left = m.construction[gi];
+                    if left > Fixed::ZERO {
+                        let bought = construction_this_week(left) * m.buy_ratio[gi];
+                        m.construction[gi] = (left - bought).max(Fixed::ZERO);
+                        m.pool -= bought * m.price[gi];
+                    }
                 }
-            }
-            for &(gi, q) in &changes.upkeep[mi] {
-                m.pool -= q * m.buy_ratio[gi as usize] * m.price[gi as usize];
-            }
-        }
+                for &(gi, q) in &upkeep[mi] {
+                    m.pool -= q * m.buy_ratio[gi as usize] * m.price[gi as usize];
+                }
+                done
+            })
+            .collect();
+        let done: Vec<_> = done_by_market.into_iter().flatten().collect();
         // How busy each market was, for its central bank (`money::week`).
         let activity = super::money::activity(cat, &econ.regions, &markets);
-        for (r, l) in econ.regions.iter_mut().zip(changes.local) {
-            r.local = l;
-        }
+        // The sums into the markets go in state order; what each state keeps for itself is
+        // written in parallel below.
         let mut remitted: Vec<(u16, u16, Fixed, Fixed)> = Vec::new();
-        for (r, s) in econ.regions.iter_mut().zip(changes.regions) {
+        for (r, s) in econ.regions.iter().zip(&changes.regions) {
             let m = &mut markets[r.market as usize];
             m.treasury += s.taxes - s.payroll;
             m.budget.revenue += s.taxes;
@@ -1222,28 +1230,35 @@ impl System<GameWorld> for Week {
             if self.foreign_flow {
                 remitted.extend(
                     s.remit
-                        .into_iter()
-                        .map(|(o, out, kept)| (o, r.market, out, kept)),
+                        .iter()
+                        .map(|&(o, out, kept)| (o, r.market, out, kept)),
                 );
             }
-            for (pop, (income, savings, sat)) in r.pops.iter_mut().zip(s.pops) {
-                pop.income = income;
-                pop.savings = savings;
-                pop.satisfaction = sat;
-            }
-            for (plant, (input_ratio, profit, _va, utilization)) in
-                r.plants.iter_mut().zip(s.plants)
-            {
-                plant.input_ratio = input_ratio;
-                plant.utilization = utilization;
-                plant.profit = profit;
-                plant.losing_weeks = if profit < Fixed::ZERO {
-                    plant.losing_weeks.saturating_add(1)
-                } else {
-                    0
-                };
-            }
         }
+        econ.regions
+            .par_iter_mut()
+            .zip(changes.regions.into_par_iter())
+            .zip(changes.local.into_par_iter())
+            .for_each(|((r, s), l)| {
+                r.local = l;
+                for (pop, (income, savings, sat)) in r.pops.iter_mut().zip(s.pops) {
+                    pop.income = income;
+                    pop.savings = savings;
+                    pop.satisfaction = sat;
+                }
+                for (plant, (input_ratio, profit, _va, utilization)) in
+                    r.plants.iter_mut().zip(s.plants)
+                {
+                    plant.input_ratio = input_ratio;
+                    plant.utilization = utilization;
+                    plant.profit = profit;
+                    plant.losing_weeks = if profit < Fixed::ZERO {
+                        plant.losing_weeks.saturating_add(1)
+                    } else {
+                        0
+                    };
+                }
+            });
         for (owner, host, out, kept) in remitted {
             markets[owner as usize].pool += out;
             if kept > Fixed::ZERO {
