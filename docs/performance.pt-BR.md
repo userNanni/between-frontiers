@@ -244,6 +244,11 @@ ponto em 1935 e de 33 pontos em 2024.
   compara território a território, por década, com a média ± 2σ da base e das amostras, e
   resume quantos ficam fora por série. Por acaso, cerca de 5 % ficam fora a 2σ.
 - **Fora da faixa não é erro:** é efeito da regra, e o PR diz qual e por quê.
+- **A faixa não amostra a perturbação pequena e local.** O `BF_PERTURB_PERMILLE` empurra o fundo
+  de todos os mercados na mesma direção. Uma mudança que mexe num par só (a união de San Marino
+  com a Itália, #222) separa países longe muito além da faixa: a Turquia a 4,4× em 2025, com o
+  PIB mundial na faixa. É a instabilidade de trajetória, o primeiro item da fila de equilíbrio
+  (docs/economy.pt-BR.md). Território longe fora da faixa, sem o agregado sair, é esse caso.
 
 ## Compilar
 

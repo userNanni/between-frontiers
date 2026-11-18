@@ -501,6 +501,18 @@ investigada: a realimentação vem de decisões discretas em cascata — nível 
 troca de método quando o lucro cruza um limiar (`best_method`) —, reforçadas pelo investimento,
 que vai para o maior retorno e faz o vencedor ganhar mais, e pela migração, que segue o salário.
 
+Segundo caso, com dado só (#222, 2026-11-18): a união aduaneira de San Marino com a Itália
+(1897) só tira a tarifa entre os dois. Contra a `main` 153632f, a mesma rodada de 101 anos:
+- San Marino não se mexe (PIB a 0,3 % da `main` em toda década), e a Itália fica entre −3,4 % e
+  +6,1 %;
+- o PIB mundial fica na faixa (−1,4σ a +0,5σ) e 0,3 a 2,2 % abaixo da `main`;
+- os países longe se separam depois de 1955: a Turquia chega a 1,14× a `main` em 1965, 2,9× em
+  2005 e 4,4× em 2025 (PIB por habitante de 2.588 contra 9.305), e as colônias espanholas a
+  0,78× em 1965 e 0,30× em 2025;
+- ficam fora da faixa a 2σ 4 a 15 de 166 territórios por década no PIB, contra 0 a 4 da própria
+  `main`.
+Não se conserta agora.
+
 **Regra desligada: o emprego acompanha o uso** (`game::Switches::jobs_follow_use`,
 `monthly::LAYOFF_PER_MONTH`). A fábrica contrata de imediato o que o uso pede e demite 15 % do
 excesso por mês (meia-vida de uns quatro meses): retenção de mão de obra, com ajuste do emprego
