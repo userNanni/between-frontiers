@@ -117,3 +117,30 @@ fn rules_file_names_every_switch_and_ships_them_off_but_the_switched_on() {
         );
     }
 }
+
+/// The tariff reads the agreements in force when they are kept (`treaties_in_force`): with the
+/// treaties of 1925 the relations are those of `diplomacy.ron`, so the world is the same.
+#[test]
+fn the_tariff_of_the_agreements_in_force_is_that_of_the_1925_treaties() {
+    let d = data();
+    let seeded = || {
+        let mut world = d.new_world();
+        if world.treaties.agreements.is_empty() {
+            world
+                .treaties
+                .seed_1925(d.diplomacy.as_ref().unwrap(), d.clauses.as_ref().unwrap());
+        }
+        world
+    };
+    let run = |treaties_in_force: bool| {
+        let rules = d.rules_with(Switches {
+            trade_by_pair: true,
+            treaties_in_force,
+            ..Switches::shipped()
+        });
+        let mut s = Session::new(seeded(), 1925, Date::new(1925, 1, 1), 2, Some(rules));
+        s.sim.run_until(Date::new(1925, 3, 2));
+        s.state_hash()
+    };
+    assert_eq!(run(true), run(false));
+}

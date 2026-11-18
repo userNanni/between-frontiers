@@ -1685,6 +1685,130 @@ impl TreatyState {
         }
     }
 
+    /// Pairs of countries bound by a customs union in force on `date` (ISO): an agreement in
+    /// force with a `CustomsUnion` clause, its giver and receiver resolved by
+    /// [`Agreement::side`], the clause's `until` not passed and the pair not broken between
+    /// them (a breach of the agreement by one owed to the other suspends the pair, 9.2; the
+    /// other members keep their union). Indices into `tags`, both orders, sorted,
+    /// each once; in a union of several parties every pair of members. For the trade's rule on
+    /// what crosses a border inside a union. Reads only: build it once a month, not per good.
+    pub fn customs_unions(&self, tags: &[Tag], date: &str) -> Vec<(u16, u16)> {
+        let index = |t: &str| tags.iter().position(|x| x == t).map(|i| i as u16);
+        let mut out = Vec::new();
+        for a in &self.agreements {
+            for c in &a.kept {
+                if !matches!(c.kind, ClauseKind::CustomsUnion) {
+                    continue;
+                }
+                if c.until.as_deref().is_some_and(|u| u <= date) {
+                    continue;
+                }
+                let givers = a.side(&c.giver);
+                let receivers = a.side(&c.receiver);
+                for g in &givers {
+                    for r in &receivers {
+                        if g == r || self.broken_between(a.id, g, r) {
+                            continue;
+                        }
+                        if let (Some(x), Some(y)) = (index(g), index(r)) {
+                            out.push((x, y));
+                            out.push((y, x));
+                        }
+                    }
+                }
+            }
+        }
+        out.sort_unstable();
+        out.dedup();
+        out
+    }
+
+    /// Whether one of `x` and `y` broke agreement `agreement` against the other (9.2, by pair).
+    fn broken_between(&self, agreement: u32, x: &str, y: &str) -> bool {
+        self.breaches.iter().any(|b| {
+            b.agreement == agreement
+                && ((b.by == x && b.harmed.iter().any(|h| h == y))
+                    || (b.by == y && b.harmed.iter().any(|h| h == x)))
+        })
+    }
+
+    /// The tariff relations of the agreements in force on `date`, for the trade: a customs
+    /// union both ways ([`TreatyState::customs_unions`]), a preference and a cap from giver to
+    /// receiver, the clause's `until` not passed and the pair not broken between them. A frozen
+    /// tariff (`TariffCap { rate: None }`) treats every partner alike and is not listed.
+    /// Indices into `tags`, in the order of the agreements and their clauses.
+    pub fn tariff_relations(&self, tags: &[Tag], date: &str) -> Vec<TariffLink> {
+        let index = |t: &str| tags.iter().position(|x| x == t).map(|i| i as u16);
+        let mut out = Vec::new();
+        for a in &self.agreements {
+            for c in &a.kept {
+                let rule = match &c.kind {
+                    ClauseKind::CustomsUnion => TariffTerm::Union,
+                    ClauseKind::TariffPreference { margin } => TariffTerm::Margin(*margin),
+                    ClauseKind::TariffCap { rate: Some(r) } => TariffTerm::Cap(*r),
+                    _ => continue,
+                };
+                if c.until.as_deref().is_some_and(|u| u <= date) {
+                    continue;
+                }
+                for g in a.side(&c.giver) {
+                    for r in a.side(&c.receiver) {
+                        if g == r || self.broken_between(a.id, g, r) {
+                            continue;
+                        }
+                        let (Some(gi), Some(ri)) = (index(g), index(r)) else {
+                            continue;
+                        };
+                        out.push(TariffLink {
+                            giver: gi,
+                            receiver: ri,
+                            rule,
+                        });
+                        if rule == TariffTerm::Union {
+                            out.push(TariffLink {
+                                giver: ri,
+                                receiver: gi,
+                                rule,
+                            });
+                        }
+                    }
+                }
+            }
+        }
+        out
+    }
+
+    /// Who leads each customs union in force on `date`: (member, senior) for every member of an
+    /// agreement with a strong side (`side_b` not empty) whose `CustomsUnion` clause counts in
+    /// [`TreatyState::customs_unions`]; the senior is the first of side A (Switzerland for
+    /// Liechtenstein, France for Monaco and the Saar). A union of equals has no senior and is
+    /// not listed. Indices into `tags`, sorted, each once.
+    pub fn customs_union_seniors(&self, tags: &[Tag], date: &str) -> Vec<(u16, u16)> {
+        let pairs = self.customs_unions(tags, date);
+        let index = |t: &str| tags.iter().position(|x| x == t).map(|i| i as u16);
+        let mut out = Vec::new();
+        for a in self.agreements.iter().filter(|a| !a.side_b.is_empty()) {
+            let Some(head) = a.side_a.first().and_then(|t| index(t)) else {
+                continue;
+            };
+            if !a
+                .kept
+                .iter()
+                .any(|c| matches!(c.kind, ClauseKind::CustomsUnion))
+            {
+                continue;
+            }
+            for m in a.side_b.iter().filter_map(|t| index(t)) {
+                if pairs.binary_search(&(m, head)).is_ok() {
+                    out.push((m, head));
+                }
+            }
+        }
+        out.sort_unstable();
+        out.dedup();
+        out
+    }
+
     /// An agreement in force by id.
     pub fn in_force(&self, id: u32) -> Option<&Agreement> {
         self.agreements.iter().find(|a| a.id == id)
@@ -1868,6 +1992,26 @@ impl TreatyState {
             }
         }
     }
+}
+
+/// One tariff relation of an agreement in force ([`TreatyState::tariff_relations`]): the tariff
+/// `giver` charges on `receiver`'s goods follows `rule`. Indices into the caller's tags.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct TariffLink {
+    pub giver: u16,
+    pub receiver: u16,
+    pub rule: TariffTerm,
+}
+
+/// What a tariff clause does to the giver's tariff on the receiver.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TariffTerm {
+    /// No tariff (customs union).
+    Union,
+    /// The tariff lowered by this margin (preference).
+    Margin(Fixed),
+    /// The tariff at most this rate (cap).
+    Cap(Fixed),
 }
 
 /// One breach of a clause in force (9.1).

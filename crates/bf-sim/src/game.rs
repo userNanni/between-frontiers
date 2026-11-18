@@ -1084,6 +1084,7 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
             tree: tree.clone(),
             geo: trade.filter(|_| switches.trade_by_pair),
             by_pair: switches.trade_by_pair,
+            treaty_tariffs: switches.treaties_in_force && switches.trade_by_pair,
             wage_floor: switches.small_market_wage_floor,
             // The week reads the stakes whenever a rule can make them: the funds abroad, or the
             // colony's plants at independence.

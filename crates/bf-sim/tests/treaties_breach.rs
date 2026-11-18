@@ -6,7 +6,8 @@ use std::path::PathBuf;
 
 use bf_sim::data::GameData;
 use bf_sim::treaty::{
-    Agreement, AgreementStatus, BreachCause, Clause, ClauseKind, DutyKind, Side, TreatyState,
+    Agreement, AgreementStatus, BreachCause, Clause, ClauseKind, DutyKind, Side, TariffTerm,
+    TreatyState,
 };
 use laplace_schelling::{Date, Fixed};
 
@@ -260,5 +261,182 @@ fn breaches_save_and_enter_the_hash() {
     assert_eq!(
         laplace_schelling::hash::hash_of(&back),
         laplace_schelling::hash::hash_of(&w)
+    );
+}
+
+/// The customs unions in force, for the trade: Liechtenstein in the Swiss customs territory, a
+/// union of three, a clause past its `until`, and a union suspended by a breach.
+#[test]
+fn customs_unions_in_force_by_pair() {
+    let tags: Vec<String> = ["CHE", "LIE", "BEL", "LUX", "NLD", "FRA"]
+        .iter()
+        .map(|t| t.to_string())
+        .collect();
+    let union = |giver, receiver, until: Option<&str>| Clause {
+        kind: ClauseKind::CustomsUnion,
+        giver,
+        receiver,
+        until: until.map(str::to_owned),
+        note: None,
+    };
+    let mut t = TreatyState::default();
+    t.sign(Agreement {
+        id: 0,
+        key: "swiss_liechtenstein_customs".into(),
+        side_a: vec!["CHE".into()],
+        side_b: vec!["LIE".into()],
+        signed: 1923,
+        term_years: None,
+        notice_years: 0,
+        kept: vec![union(Side::Junior, Side::Senior, None)],
+        status: AgreementStatus::InForce,
+    });
+    pact(
+        &mut t,
+        "benelux",
+        &["BEL", "LUX", "NLD"],
+        vec![union(Side::All, Side::All, None)],
+    );
+    pact(
+        &mut t,
+        "old",
+        &["FRA", "LUX"],
+        vec![union(Side::All, Side::All, Some("1925-01-01"))],
+    );
+    let pairs = t.customs_unions(&tags, "1930-01-01");
+    let ix = |a: &str, b: &str| {
+        (
+            tags.iter().position(|x| x == a).unwrap() as u16,
+            tags.iter().position(|x| x == b).unwrap() as u16,
+        )
+    };
+    let mut want = vec![
+        ix("CHE", "LIE"),
+        ix("LIE", "CHE"),
+        ix("BEL", "LUX"),
+        ix("LUX", "BEL"),
+        ix("BEL", "NLD"),
+        ix("NLD", "BEL"),
+        ix("LUX", "NLD"),
+        ix("NLD", "LUX"),
+    ];
+    want.sort_unstable();
+    assert_eq!(pairs, want, "the union past its date is out");
+    // Before its `until`, the old union counts.
+    assert!(
+        t.customs_unions(&tags, "1924-06-01")
+            .contains(&ix("FRA", "LUX"))
+    );
+    // A breach by the Netherlands suspends what Belgium and Luxembourg give it.
+    let benelux = t.agreements[1].id;
+    t.record_breach(
+        benelux,
+        0,
+        "NLD",
+        Fixed::ONE,
+        Date::new(1930, 1, 1),
+        BreachCause::TestFailed,
+    )
+    .unwrap();
+    let pairs = t.customs_unions(&tags, "1930-02-01");
+    assert!(pairs.contains(&ix("BEL", "LUX")));
+    assert!(!pairs.contains(&ix("BEL", "NLD")));
+    assert!(pairs.contains(&ix("CHE", "LIE")));
+}
+
+/// With the treaties of 1925 in force, the customs unions read from the agreements are the
+/// pairs the trade reads from `diplomacy.ron` on the start date (both orders), and the seniors
+/// are the strong sides.
+#[test]
+fn the_unions_of_1925_are_the_pairs_of_the_diplomacy_file() {
+    let d = load(true);
+    let w = d.new_world();
+    let tags: Vec<String> = w.countries.iter().map(|(_, c)| c.tag.clone()).collect();
+    let dip = d.diplomacy.as_ref().unwrap();
+    let start = dip.start_date.clone();
+    let ix = |t: &String| tags.iter().position(|x| x == t).map(|i| i as u16);
+    let mut want = Vec::new();
+    for t in dip.treaties_on(&start) {
+        let side = |s: &Side| -> Vec<u16> {
+            let v: Vec<&String> = match s {
+                Side::Senior => t.senior.iter().collect(),
+                Side::Junior => t.parties.iter().filter(|p| !t.senior.contains(p)).collect(),
+                Side::All => t.parties.iter().collect(),
+                Side::Parties(v) => v.iter().collect(),
+            };
+            v.into_iter().filter_map(ix).collect()
+        };
+        for c in t
+            .clauses
+            .iter()
+            .filter(|c| matches!(c.kind, ClauseKind::CustomsUnion))
+            .filter(|c| c.until.as_deref().is_none_or(|u| u > start.as_str()))
+        {
+            for g in side(&c.giver) {
+                for r in side(&c.receiver) {
+                    if g != r {
+                        want.push((g, r));
+                        want.push((r, g));
+                    }
+                }
+            }
+        }
+    }
+    want.sort_unstable();
+    want.dedup();
+    assert!(!want.is_empty());
+    assert_eq!(w.treaties.customs_unions(&tags, &start), want);
+    // The tariff relations: the unions both ways, and the caps and preferences of 1925 as the
+    // trade builds them from the file (frozen tariffs left out).
+    let mut links = Vec::new();
+    for t in dip.treaties_on(&start) {
+        let side = |s: &Side| -> Vec<u16> {
+            let v: Vec<&String> = match s {
+                Side::Senior => t.senior.iter().collect(),
+                Side::Junior => t.parties.iter().filter(|p| !t.senior.contains(p)).collect(),
+                Side::All => t.parties.iter().collect(),
+                Side::Parties(v) => v.iter().collect(),
+            };
+            v.into_iter().filter_map(ix).collect()
+        };
+        for c in t
+            .clauses
+            .iter()
+            .filter(|c| c.until.as_deref().is_none_or(|u| u > start.as_str()))
+        {
+            let rule = match &c.kind {
+                ClauseKind::CustomsUnion => TariffTerm::Union,
+                ClauseKind::TariffPreference { margin } => TariffTerm::Margin(*margin),
+                ClauseKind::TariffCap { rate: Some(r) } => TariffTerm::Cap(*r),
+                _ => continue,
+            };
+            for g in side(&c.giver) {
+                for r in side(&c.receiver) {
+                    if g != r {
+                        links.push((g, r, rule));
+                        if rule == TariffTerm::Union {
+                            links.push((r, g, rule));
+                        }
+                    }
+                }
+            }
+        }
+    }
+    let mut got: Vec<_> = w
+        .treaties
+        .tariff_relations(&tags, &start)
+        .into_iter()
+        .map(|l| (l.giver, l.receiver, l.rule))
+        .collect();
+    let key = |x: &(u16, u16, TariffTerm)| (x.0, x.1, format!("{:?}", x.2));
+    links.sort_by_key(key);
+    got.sort_by_key(key);
+    assert_eq!(got, links);
+    let lie = ix(&"LIE".to_string()).unwrap();
+    let che = ix(&"CHE".to_string()).unwrap();
+    assert!(
+        w.treaties
+            .customs_union_seniors(&tags, &start)
+            .contains(&(lie, che))
     );
 }

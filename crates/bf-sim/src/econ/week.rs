@@ -89,6 +89,9 @@ pub struct Week {
     /// Trade by pair (`game::Switches::trade_by_pair`); off, the world pool shares trade pro
     /// rata and the trade state stays empty.
     pub by_pair: bool,
+    /// The tariff reads the agreements in force (`game::Switches::treaties_in_force`) instead
+    /// of the treaties of `diplomacy.ron`.
+    pub treaty_tariffs: bool,
     /// `game::Switches::small_market_wage_floor`.
     pub wage_floor: bool,
     /// `game::Switches::fiscal_capacity`: a state short of servants collects less
@@ -855,7 +858,21 @@ impl Week {
                 })
                 .collect();
             let factors = super::trade::FreightFactors::of(&effect, &gdp, &transport);
-            let eq = super::trade::equilibrium(cat, geo, &econ.markets, &factors, &date);
+            // The tariff relations of the agreements in force, when they are kept
+            // (`treaties_in_force`); else those of `diplomacy.ron`, the same in 1925.
+            let links = self.treaty_tariffs.then(|| {
+                let tags: Vec<String> =
+                    world.countries.iter().map(|(_, c)| c.tag.clone()).collect();
+                world.treaties.tariff_relations(&tags, &date)
+            });
+            let eq = super::trade::equilibrium(
+                cat,
+                geo,
+                &econ.markets,
+                &factors,
+                &date,
+                links.as_deref(),
+            );
             let lambda = Fixed::from_f64_lossy(f64::from(cat.trade.monthly_step));
             super::trade::step(&econ.trade.pref, &eq, lambda)
         });

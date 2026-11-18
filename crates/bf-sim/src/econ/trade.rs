@@ -41,6 +41,7 @@ pub fn equilibrium(
     markets: &[super::Market],
     factors: &FreightFactors,
     date: &str,
+    links: Option<&[crate::treaty::TariffLink]>,
 ) -> Vec<Vec<Fixed>> {
     let groups = crate::economy::BUILDING_GROUPS.len();
     let n = markets.len();
@@ -78,7 +79,15 @@ pub fn equilibrium(
     // What depends only on the pair, once a month: whether it is closed, the km, the carry and
     // the tariff (the treaties in force on the date, filtered once).
     let closed = geo.and_then(|g| g.closed_on(date, n));
-    let relations: Vec<&TariffRelation> = geo.map_or_else(Vec::new, |g| g.relations_on(date));
+    // From the agreements in force when they are kept (`links`), else from the treaties of
+    // `diplomacy.ron` in force on the date: the same relations in 1925, in the same order.
+    let owned: Vec<TariffRelation> = links.map_or_else(Vec::new, |l| {
+        l.iter().map(TariffRelation::from_link).collect()
+    });
+    let relations: Vec<&TariffRelation> = match links {
+        Some(_) => owned.iter().collect(),
+        None => geo.map_or_else(Vec::new, |g| g.relations_on(date)),
+    };
     let mut pair: Vec<Option<(i64, Fixed, Fixed)>> = vec![None; n];
     let mut out = vec![vec![Fixed::ZERO; n]; n * groups];
     for b in 0..n {
@@ -636,6 +645,24 @@ struct TariffRelation {
     from: String,
     until: Option<String>,
     rule: TariffRule,
+}
+
+impl TariffRelation {
+    /// A relation of an agreement in force (`TreatyState::tariff_relations`), in force now.
+    fn from_link(l: &crate::treaty::TariffLink) -> Self {
+        use crate::treaty::TariffTerm;
+        Self {
+            giver: usize::from(l.giver),
+            receiver: usize::from(l.receiver),
+            from: String::new(),
+            until: None,
+            rule: match l.rule {
+                TariffTerm::Union => TariffRule::Union,
+                TariffTerm::Margin(m) => TariffRule::Margin(m),
+                TariffTerm::Cap(c) => TariffRule::Cap(c),
+            },
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
