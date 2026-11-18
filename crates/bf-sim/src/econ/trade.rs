@@ -360,12 +360,26 @@ fn split_exact_into(
     let t = i128::from(total.raw());
     rest.clear();
     let mut given: i128 = 0;
+    // Most products fit in 64 bits: divide there, in hardware, instead of in the 128-bit
+    // software routine (the same integers). A zero weight gets nothing and leaves no remainder:
+    // it is never among the remainders that take a unit, so it is left out of them.
+    let small = i64::try_from(sum).ok();
     for (i, w) in weights.iter().enumerate() {
-        let num = t * i128::from(w.raw().max(0));
-        let part = num / sum;
+        let w = w.raw().max(0);
+        if w == 0 {
+            out[i] = Fixed::ZERO;
+            continue;
+        }
+        let (part, r) = match (small, total.raw().checked_mul(w)) {
+            (Some(d), Some(num)) => (i128::from(num / d), i128::from(num % d)),
+            _ => {
+                let num = t * i128::from(w);
+                (num / sum, num % sum)
+            }
+        };
         given += part;
         out[i] = Fixed::from_raw(part as i64);
-        rest.push((num % sum, i));
+        rest.push((r, i));
     }
     let left = (t - given) as usize;
     if left == 0 {
