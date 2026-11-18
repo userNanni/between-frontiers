@@ -185,3 +185,4 @@ table-revise-of = Debt: { $treaty }
 table-annuity-label = Annuity
 table-param-grace_years = Grace
 table-renegotiate-title = Renegotiate the debt
+table-peace-title = Propose peace

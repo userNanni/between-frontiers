@@ -151,6 +151,7 @@ orders-yearly-parts = A year: { $pay } of pay and { $upkeep } of upkeep and wear
 
 ## The war on land (slice C): the war window
 cmd-window-war = War
+    .short = War
 war-title = War
 war-off = The war on land is off in this game.
 war-none = The country is not at war.

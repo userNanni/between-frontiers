@@ -814,6 +814,7 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
                 table: super::treaty_table::TableUi {
                     draft: Some(draft),
                     fixed: true,
+                    title: Some("table-renegotiate-title"),
                     ..Default::default()
                 },
                 ..Default::default()
@@ -897,6 +898,7 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
                         },
                     )),
                     fixed: true,
+                    title: Some("table-peace-title"),
                     ..Default::default()
                 },
                 ..Default::default()
