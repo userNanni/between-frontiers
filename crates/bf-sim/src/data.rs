@@ -382,7 +382,7 @@ impl GameData {
         world.econ.ledger.record = self.switches.ledger_record;
         // The reputation of breaches is kept (`Switches::reputation`, off).
         world.treaties.reputation_on = self.switches.reputation;
-        // The treaties of 1925 in force as agreements (`Switches::treaties_in_force`, off).
+        // The treaties of 1925 in force as agreements (`Switches::treaties_in_force`, shipped on).
         if self.switches.treaties_in_force
             && let (Some(d), Some(cat)) = (&self.diplomacy, &self.clauses)
         {

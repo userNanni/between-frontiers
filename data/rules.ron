@@ -71,6 +71,7 @@
     trade_by_pair: true,
     // The treaties of 1925 in force as agreements (`docs/treaties.pt-BR.md`, "acordos em
     // vigor"): their clauses call third parties into a crisis and a breach is recorded against
-    // them. Off: only the agreements signed in play are kept.
-    treaties_in_force: false,
+    // them. On since the PR that switched it (judged by the aggregates of the band); off, only
+    // the agreements signed in play are kept.
+    treaties_in_force: true,
 )

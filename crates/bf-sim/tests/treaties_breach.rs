@@ -45,8 +45,10 @@ fn pact(t: &mut TreatyState, key: &str, parties: &[&str], kept: Vec<Clause>) -> 
 
 #[test]
 fn the_treaties_of_1925_are_agreements_only_with_their_switch() {
-    let off = load(false);
-    assert!(!off.switches.treaties_in_force);
+    let mut off = load(false);
+    // Shipped on; switched off, only the agreements signed in play are kept.
+    assert!(off.switches.treaties_in_force);
+    off.switches.treaties_in_force = false;
     assert!(off.new_world().treaties.agreements.is_empty());
     let on = load(true);
     let w = on.new_world();

@@ -103,16 +103,18 @@ fn a_tribute_not_paid_is_a_breach_once_a_year() {
 #[test]
 fn a_fixed_term_runs_out_in_january() {
     let mut w = data().new_world();
+    // The treaties of 1925 in force (shipped on) have no term: they stay.
+    let base = w.treaties.agreements.len();
     tribute(&mut w, 0, Some(10));
     tribute(&mut w, 0, None);
     let mo = month(&w, &setup(), true, Date::new(1934, 12, 2));
     assert_eq!(mo.expire, None);
     apply_month(&mut w, mo, Date::new(1934, 12, 2));
-    assert_eq!(w.treaties.agreements.len(), 2);
+    assert_eq!(w.treaties.agreements.len(), base + 2);
     let mo = month(&w, &setup(), true, Date::new(1935, 1, 2));
     assert_eq!(mo.expire, Some(1935));
     apply_month(&mut w, mo, Date::new(1935, 1, 2));
-    assert_eq!(w.treaties.agreements.len(), 1);
+    assert_eq!(w.treaties.agreements.len(), base + 1);
     assert_eq!(
         w.treaties.ended[0].status,
         AgreementStatus::Ended { year: 1935 }
