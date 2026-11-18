@@ -714,16 +714,36 @@ contra a faixa de oito amostras da `main` (b2acc61). Com o exército colonial fi
 em −1 % e −3 %, e o PIB mundial volta à faixa (+1,6 %, 2σ ±2,2 %). Experimentos E1 a E4 do PR de
 ligar as forças.
 
-**Chave: as forças entram desligadas.** Decisão de 2026-11-17: regra que muda o hash de todos os
-países entra desligada, e ligá-la é um PR pequeno, julgado sozinho pelos agregados. A chave é
-`forces` em `data/rules.ron` (`game::Switches`), desligada: as forças não carregam e os soldados
-seguem a regra antiga do `peace.ron` (`soldiers: PopulationShare(10)`), com o mesmo hash da
-`main`. Ligam com `--rule forces` no bench, `BF_RULES=forces` na carga dos dados (prints) ou
-`GameData::enable_forces` (testes).
+**Chave: as forças ligadas.** As forças entraram desligadas (decisão de 2026-11-17: regra que
+muda o hash de todos os países entra desligada) e foram ligadas por um PR próprio, julgado pelos
+agregados contra a faixa de oito amostras da `main` (`03b00cb`, `tools/bench/band.sh`). A chave é
+`forces` em `data/rules.ron`, agora `true` (`Switches::SHIPPED_ON`); desligada, os soldados seguem
+a regra antiga do `peace.ron` (`soldiers: PopulationShare(10)`).
 
-O PR que liga as forças precisa de:
-- uma faixa com pelo menos oito amostras de reembaralhamento sobre a `main` atual;
-- a origem do PIB a mais de 1975 (+3,2 % com o depósito, +0,5 % sem ele).
+Rodada de 101 anos com as forças ligadas contra a faixa (base mais oito empurrões):
+
+| Ano | PIB mundial | 2σ | População mundial | 2σ |
+|---|---|---|---|---|
+| 1935 | +0,78 % | ±0,83 | −0,01 % | ±0,01 |
+| 1975 | −0,36 % | ±3,99 | −0,01 % | ±0,19 |
+| 2015 | +2,32 % | ±3,74 | −0,39 % | ±0,66 |
+| 2024 | +3,14 % | ±3,86 | −0,51 % | ±0,74 |
+
+- **Dentro da faixa** em todas as décadas, no PIB e na população do mundo. Das doze maiores
+  economias, só o Japão de 2024 sai (+6,3 % contra ±3,8).
+- **Por território:** em 1925 metade sai, porque a faixa quase não abre no começo e as forças
+  trocam os soldados dos pops no primeiro dia; de 1945 em diante, cerca de 9 % dos territórios
+  saem a 2σ, contra 5 % por acaso.
+- **O que muda de propósito:** os soldados são os homens das formações. São 6,4 milhões em 1926 e
+  13 milhões em 2024, contra 8,0 e 35 milhões da regra antiga (1 % da população); a ordem de
+  grandeza mundial real é de cerca de 20 milhões em armas.
+- **Dependência anotada:** os bens militares ficam acima da regra antiga em 2024 (9,3 % contra
+  8,2 % do PIB): o teto inteiro é gasto e o depósito compra na proporção da cesta. Os dois níveis
+  vêm da cesta do Estado, alta demais diante dos 2 a 5 % reais; recalibrar o teto é da alavanca
+  D3 e do equilíbrio fino, depois da fase 6.
+- **O PIB a mais de 1975** que a faixa de três amostras acusava some com a faixa de oito (−0,4 %
+  contra ±4,0). A queda do fim do século (Holanda, Índia britânica) vinha do exército colonial
+  escalado pelos homens da metrópole, corrigido no #195.
 
 ## Encomenda de forças (fatia A2, rascunho)
 

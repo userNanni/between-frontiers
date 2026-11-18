@@ -172,20 +172,21 @@ fn the_colonial_army_keeps_its_size_in_january() {
     assert_eq!(colonial(&s), before);
 }
 
-/// The forces ship off: `peace.ron` keeps the rule from before them, and the world is the one
-/// of before the forces until they are switched on.
+/// The forces ship on (`data/rules.ron`); `peace.ron` keeps the rule from before them for a game
+/// with the switch off, whose world has no forces.
 #[test]
-fn the_forces_ship_off_and_switch_on() {
-    let d = GameData::load(&root()).unwrap();
+fn the_forces_ship_on_and_switch_off() {
+    let mut d = GameData::load(&root()).unwrap();
+    assert!(d.switches.forces, "rules.ron switches the forces on");
+    assert!(!d.new_world().war.is_empty());
+    assert!(d.rules().war.is_some());
     assert_eq!(
         d.war.as_ref().unwrap().peace.as_ref().unwrap().soldiers,
         SoldierRule::PopulationShare(10)
     );
-    let w = d.new_world();
-    assert!(w.war.is_empty());
+    d.switches.forces = false;
+    assert!(d.new_world().war.is_empty());
     assert!(d.rules().war.is_none());
-    assert!(!data().new_world().war.is_empty());
-    assert!(data().rules().war.is_some());
 }
 
 #[test]
