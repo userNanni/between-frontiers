@@ -333,3 +333,20 @@ need-savings = Savings and credit
 need-automobile = Automobile
 need-luxury = Luxury
 need-urban_housing = Urban housing
+
+## Trade by partner (country panel)
+trade-title = Trade
+trade-year = In { $year }, at base prices.
+trade-year-so-far = In { $year } so far, at base prices (the first year has not closed yet).
+trade-exports = Exports
+trade-imports = Imports
+trade-tariff = Own tariff
+trade-none = No trade with other countries yet.
+trade-partners = Largest partners
+trade-flows = Sells { $sold } · buys { $bought }
+trade-union = Customs union
+trade-preference = preference of { $points } points
+trade-cap = cap of { $rate }
+trade-we-charge = On its tariff on them: { $terms }
+trade-they-charge = On their tariff on this country: { $terms }
+trade-basis = The share is of the country's trade (sales and purchases). The agreements in force change the tariff within a pair; without one, the buyer's own tariff applies.

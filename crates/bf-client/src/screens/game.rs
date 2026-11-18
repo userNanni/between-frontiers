@@ -679,7 +679,13 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
         region(ui, side.shrink(space::XL), |ui| {
             egui::ScrollArea::vertical()
                 .auto_shrink([false, false])
-                .show(ui, |ui| country_panel::show(shared, ui, country));
+                .show(ui, |ui| {
+                    country_panel::show(shared, ui, country);
+                    // Its trade by partner, with trade by pair on.
+                    if let (Some(view), Some(world)) = (&snap.trade, &shared.world) {
+                        super::trade::show(ui, &shared.i18n, world, view, country);
+                    }
+                });
         });
     }
 

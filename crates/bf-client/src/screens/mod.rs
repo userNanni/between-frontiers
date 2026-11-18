@@ -31,6 +31,7 @@ pub mod tiles;
 pub mod top_bar;
 pub mod treaty_table;
 pub mod war;
+pub mod trade;
 pub mod works;
 
 use egui::{Rect, Ui, UiBuilder};
