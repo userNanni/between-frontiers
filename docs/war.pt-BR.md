@@ -468,8 +468,8 @@ alerta não dão segundo golpe; com alerta, dão. Trocar os lados troca o result
 2. **Mobilização:** na crise, o país passa homens para o serviço pela lei de conscrição e põe a
    indústria em pedido de equipamento; a mobilização custa trabalho e confiança antes do primeiro
    tiro.
-3. **Coalizão:** aliança chama aliado e garantia chama garantidor (`diplomacy.ron`); cada terceiro
-   decide entrar pelo mesmo cálculo de valor contra custo da IA.
+3. **Coalizão:** entra quem as cláusulas do tratado obrigam (defesa, ofensiva; "Crise e
+   declaração", "Terceiros"); honrar ou trair é escolha, com preço.
 4. **Exaustão medida:** `war::exhaustion` soma termos nomeados, cada um com peso em `rules.ron`:
    perdas sobre os homens em idade, mobilizados sobre os homens em idade (trabalho drenado), falta
    de bens de consumo, população ocupada, semanas de guerra, indústria destruída, gasto de guerra
@@ -760,6 +760,185 @@ ler o teto de `public::military_room(m)`, que o jogador decide, e mais nada muda
 - a tela (lista de encomendas na aba Forças, com a encomenda e o cancelamento) e o teste de
   comandos do jogador;
 - a rodada de 101 anos com encomendas de teste e a CPU.
+
+## Crise e declaração (fatia B, desenho)
+
+A guerra nasce de uma exigência recusada; não há declaração seca. A fatia B põe no estado a crise
+e a guerra declarada, sem combate (o combate é a fatia C, e até lá a guerra só mobiliza, compra e
+pesa no orçamento).
+
+**Estado** (no fim de `WarState`, então o save anterior lê pelo mesmo degrau de bytes vazios):
+- `Crisis`: quem exige, de quem, a exigência como cláusulas do catálogo de tratados (`treaty.rs`,
+  as mesmas que a paz da fatia D executa por `treaty_exec`), prazo em semanas, degrau atual e
+  quem já tomou lado;
+- `War`: os dois lados (líder e quem entrou), data de início, a crise de origem e a exigência em
+  jogo.
+
+**Degraus.** Exigência → prazo correndo → resposta: aceitar (as cláusulas executam como tratado e
+a crise fecha), recusar, ou deixar vencer, que conta como recusa → quem exigiu decide: declarar
+guerra ou recuar (a crise fecha sem nada). Declarada a guerra, entra quem as cláusulas obrigam (abaixo,
+"Terceiros"), e cada um decide na semana seguinte.
+
+**IA mínima: só responde.** Ela nunca exige nem declara.
+- Como alvo, pesa a força contra o que se pede (W3, dono, 2026-11-17). Força é a força em terra de
+  quem exige sobre a sua, contando os terceiros que viriam pelas cláusulas. O que se pede é o peso
+  das cláusulas exigidas sobre o total do país, medido pela avaliação de proposta dos tratados
+  (população, PIB e território que a exigência leva, e se leva a capital). A razão exigida para
+  ceder sobe com essa parcela, numa curva em dados. Uma exigência periférica cede a partir de 3×
+  (valor de desenho). Uma exigência existencial (anexação total, fim do Estado, a capital, a
+  maior parte da gente ou do território) nunca cede, qualquer que seja a razão. Casos:
+  - Crimeia, 2014: parcela pequena e periférica diante de força muito maior, cedida sem guerra;
+  - Israel, 1948: parcela existencial, recusada diante de força maior.
+  Os dois viram testes de jogo: `a_peripheral_demand_by_a_threefold_force_is_yielded` e
+  `an_annexation_is_refused_whatever_the_odds`.
+- Quem exigiu e ouviu recusa recua.
+- Cada termo aparece na tela da crise.
+
+**Exigência sem motivo** (W1): permitida. Fica registrada como exigência sem casus belli, para a
+reputação e para o canal de ameaça do thread de blocos (dormente hoje).
+
+### Terceiros: quem entra, por qual cláusula (W4)
+
+Decidido pelo dono em 2026-11-17: o aliado entra somente quando as cláusulas preveem o caso, e
+aliança é mais do que defesa mútua. O vocabulário é o da literatura. **Aliança** é o gênero: um
+acordo formal com alguma obrigação militar. As espécies são as do Correlates of War (Gibler 2009,
+Formal Alliances v4.1):
+- tipo I, **pacto de defesa**: ajudar com força se o outro for atacado;
+- tipo IIa, **pacto de neutralidade**: não ajudar quem ataca o outro;
+- tipo IIb, **pacto de não agressão**: não atacar o outro;
+- tipo III, **entente**: consultar na crise.
+
+As cláusulas são as obrigações do ATOP (Leeds e outros 2002, v5.1), cada uma com sua condição:
+- **defesa**: entrar se o parceiro for atacado;
+- **ofensiva**: entrar também na guerra que o parceiro começa;
+- **neutralidade**: não ajudar quem ataca o parceiro (não entrar contra ele);
+- **não agressão**: não atacar o parceiro;
+- **consulta**: ser ouvido na crise.
+
+Um tratado é um feixe dessas cláusulas, que pode ser unilateral: a garantia britânica à Polônia,
+de 1939, é uma cláusula de defesa num sentido só. O tipo do tratado sai do feixe pela regra do
+COW, e o thread de blocos rotula o bloco militar pelo mesmo feixe. Em `clauses.ron` (do thread
+dos tratados) são `defence`, `offence`, `neutrality`, `non_aggression` e `consultation`.
+
+Na declaração, para cada terceiro, a regra lê o feixe que ele tem com cada lado:
+- tem **defesa** com o lado atacado (o que recebeu a declaração): está obrigado a entrar;
+- tem **ofensiva** com o lado que declarou: está obrigado a entrar;
+- tem **neutralidade** com um lado: não pode entrar contra ele;
+- a **consulta** dá aviso na crise, sem obrigação de entrar.
+
+A tela da crise mostra, antes de declarar, quem entraria e por qual cláusula.
+
+| Caso | Como foi | Como o jogo lê | Teste |
+|---|---|---|---|
+| Itália, 1914 | A Tríplice Aliança (1882) era defensiva. A Itália declarou neutralidade e tratou a Áustria-Hungria como agressora: não houve *casus foederis* | só defesa com a Áustria, e a Áustria declarou: a Itália não é obrigada | `a_defence_pact_does_not_bind_when_the_ally_attacks` |
+| Pacto de Aço, 1939 | o art. III obriga a ficar ao lado do parceiro em qualquer "complicação militar", sem perguntar quem começou | ofensiva mais defesa: a Itália é obrigada quando a Alemanha declara | `the_pact_of_steel_binds_in_any_war` |
+
+### Honrar ou trair (dono, 2026-11-17)
+
+Quebrar o tratado é possível, e o preço é muito alto. Quando a cláusula chama o país, o jogador
+recebe uma entrada no diário com prazo e duas saídas, honrar ou não honrar. É uma decisão rara, com
+dois passos e ponto de restauração. Na fatia B, a IA honra sempre. A escolha da IA é da fase 6 e vai
+pesar os mesmos termos do preço, mais a força relativa e o estado de preparo (Itália em 1939).
+
+#### O preço de trair: desenho para o dono
+
+Não honrar é uma **quebra da cláusula de defesa** na regra que os tratados já têm
+(`treaties.pt-BR.md`, seção 9). A guerra não cria um sistema de punição próprio: ela chama a regra
+de quebra com o valor da cláusula. O que entra:
+
+| Peça | O que faz | De onde vem | Medida |
+|---|---|---|---|
+| Registro | data, cláusula, guerra que a chamou | tratados, 9.1 | — |
+| Suspensão recíproca | o traído pode suspender o que dava em troca (sua defesa, base, acesso) sem quebrar | tratados, 9.2 (Viena, art. 60) | as cláusulas do mesmo acordo |
+| Causa | o traído ganha causa contra quem traiu | tratados, 9.3 | o valor da cláusula: a força que ele deixou de receber sobre a ameaça (termo "Segurança") |
+| Reputação | sobe pelo valor da quebra e cai 10 % ao ano; desconta as promessas de quem traiu em toda mesa futura | tratados, 9.4 e termo "Confiança" | o mesmo valor |
+| Boa vontade | perda com o traído e, pela metade, com cada país que tem defesa com o traído | influência, canal "Cumprimento" | o mesmo valor, meia-vida de 8 anos |
+| Legitimidade em casa | cada grupo de interesse soma ou tira conforme a sua posição sobre a guerra | política | peso do grupo × posição |
+
+**Atenuante sem regra nova.** Se o parceiro quebrou antes uma cláusula do mesmo acordo (a
+consulta, na Itália de 1939), a defesa já está suspensa pela 9.2: não honrar não é quebra e não
+custa reputação. Fica só a boa vontade com o parceiro, que perde pela metade.
+
+**Fora do caso não é traição.** Se a cláusula não cobre a guerra (só defesa, e o parceiro atacou:
+Itália, 1914), não há chamada nem preço.
+
+**Recomendação: reputação de segurança separada da de dinheiro.** Hoje os tratados têm uma
+reputação por país, e a dívida tem a sua (`default_history`). Recomendo que a quebra de cláusula
+militar (defesa, ofensiva, neutralidade, não agressão) suba uma **reputação de segurança** própria,
+lida pela mesa só quando a proposta tem cláusula militar. A quebra de pagamento, tarifa ou capital
+fica na reputação geral. Dois motivos:
+- é o que a literatura mede: Gibler (2008) acha que o Estado que abandona aliado forma menos
+  alianças depois; Tomz (2007) acha a reputação do devedor ligada ao pagamento, não às alianças;
+- no jogo, a França de 1938 não deve pagar juros mais altos por Munique, mas deve achar menos
+  quem prometa defendê-la.
+
+**Alternativa: uma reputação só**, como os tratados já desenham. É mais simples (um número, um
+termo na mesa), mas mistura a dívida com a guerra, e o país que trai um aliado passa a pagar mais
+pelo crédito.
+
+**Combinado com o thread dos tratados (2026-11-18).**
+- `Reputation { general, security }` por país, as duas subindo pelo valor da quebra e caindo 10 %
+  ao ano (`Weights::reputation_decay`).
+- Sobem `security`: `defence`, `non_aggression`, `consultation`, `border_guarantee`,
+  `troops_quota`, e as duas cláusulas novas, `offence` e `neutrality`. As outras cláusulas sobem
+  `general`, e a dívida segue em `default_history`.
+- Na mesa, o termo "Confiança" de cada cláusula lê a reputação da sua espécie: uma proposta mista
+  desconta cada cláusula pela sua, e não a proposta inteira por uma só.
+- A guerra grava a quebra por `TreatyState::record_breach(agreement, clause, by, value, date,
+  BreachCause::CallUnanswered { war })`, que faz 9.1, 9.3 e 9.4. Antes ela pergunta
+  `TreatyState::suspended(agreement, clause, by)`: se der verdadeiro, a defesa já estava suspensa
+  e não há quebra.
+- A boa vontade fica com a guerra, pela influência.
+- O contrato entra na fatia dos tratados depois do #158. A fatia B desenha contra essa
+  assinatura e a chama quando ela estiver no main.
+
+**Três escolhas para o dono:**
+1. **Reputação:** separada (recomendado) ou uma só.
+2. **Prazo da chamada vencido:** conta como honrar (recomendado: a cláusula obriga, e quem não
+   responde cumpre o tratado), ou como não honrar, como a exigência vencida conta como recusa (W2).
+3. **Troca de regime:** reduz a reputação de segurança à metade (recomendado, Gibler 2008: a
+   reputação de aliança se prende a quem governa) ou não mexe nela.
+
+**Medida de controle.** Na literatura, as alianças são honradas em cerca de 75 % dos casos em que
+a cláusula as chama (Leeds, Long e Mitchell, 2000). Quando a IA decidir (fase 6), a taxa de
+honrar nas rodadas longas deve ficar perto disso; até lá a IA honra sempre.
+
+| Caso | O que houve | O custo, pelas fontes | Para o jogo |
+|---|---|---|---|
+| Itália, 1914 | neutralidade apesar da Tríplice, e em 1915 guerra do outro lado (Tratado de Londres) | pouco imediato, porque o texto a cobria; a fama de parceiro incerto ficou | não é traição: a cláusula não cobria o caso |
+| Itália, 1939 | não beligerância apesar do Pacto de Aço; Roma alegou a quebra alemã da consulta e o despreparo; entrou em junho de 1940 | o pacto sobreviveu; a Itália perdeu peso junto à Alemanha | traição atenuada quando o outro quebrou a consulta antes |
+| França, 1938 | Munique: a França não honrou o tratado com a Tchecoslováquia | Moscou concluiu que não podia contar com o Ocidente, o que preparou o pacto de 1939; os pequenos aliados viram que o tratado não protegia | o caso de referência do preço: reputação e valor dos pactos dos outros |
+
+Fontes:
+- Gibler, D. (2008). The Costs of Reneging: Reputation and Alliance Formation. *Journal of Conflict
+  Resolution* 52(3).
+- Tomz, M. (2007). *Reputation and International Cooperation: Sovereign Debt across Three
+  Centuries*. Princeton.
+- Leeds, B. A., Long, A. G. e Mitchell, S. M. (2000). Reevaluating Alliance Reliability. *Journal
+  of Conflict Resolution* 44(5).
+- [COW Formal Alliances v4.1](https://correlatesofwar.org/data-sets/formal-alliances)
+- [ATOP, via QoG](https://datafinder.qog.gu.se/dataset/atop)
+- [Tríplice Aliança](https://en.wikipedia.org/wiki/Triple_Alliance_(1882))
+- [1914-1918 Online, Itália](https://encyclopedia.1914-1918-online.net/article/london_treaty_of_1915)
+- [Pacto de Aço](https://en.wikipedia.org/wiki/Pact_of_Steel)
+- [Munique](https://en.wikipedia.com/wiki/Munich_Pact)
+
+O valor de cada termo vem da regra de quebra dos tratados; a guerra só fornece o valor da cláusula.
+
+**Telas.** Exigir e declarar são decisões raras em Agendas, com confirmação em dois passos e
+ponto de restauração (`Reason::War`) antes de cada uma. A crise vira uma entrada do diário com:
+- o prazo em barra;
+- a exigência e a parcela do país que ela leva;
+- a resposta esperada da IA, com seus termos;
+- quem entraria e por qual cláusula.
+Quem recebe a exigência tem "aceitar" e "recusar" na mesma entrada. Quem é chamado por cláusula
+tem "honrar" e "não honrar", com o preço à vista.
+
+**Decisões do dono (2026-11-17):**
+- W1: exigência sem motivo é permitida, com registro;
+- W2: prazo padrão de 4 semanas, em dados;
+- W3: a força pesa contra a parcela pedida; o existencial nunca cede;
+- W4: entra quem a cláusula obriga; trair é possível e caro.
 
 ## O que falta para ligar ao tick
 

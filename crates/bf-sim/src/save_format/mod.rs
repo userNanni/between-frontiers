@@ -60,11 +60,13 @@ pub const WORLD_MAGIC: [u8; 4] = *b"BFWD";
 /// 15. the orders of forces (`CountryWar::queue`, `Formation::raised`);
 /// 16. the record of each line of the ledger (`paid`, `written_off`, `status`, closed lines in
 ///     `Ledger::closed`) and the agreements signed in play (`TreatyState::agreements`);
-/// 17. the independence state (`GameWorld::independence`), the last field of the world.
+/// 17. the independence state (`GameWorld::independence`), the last field of the world;
+/// 20. crises and wars (`WarState::conflicts`).
 ///
 /// Versions 12 and 13 were held for the orders and the independence PRs; 14 landed first, so
-/// the orders came after it, and 12 and 13 were never written.
-pub const WORLD_VERSION: u32 = 17;
+/// the orders came after it, and 12 and 13 were never written. 18 and 19 are held for the
+/// budget levers (#165) and the colony's plants (#166); the crises take 20 and read 17.
+pub const WORLD_VERSION: u32 = 20;
 
 /// Why a snapshot does not read.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -191,13 +193,14 @@ pub fn migrate(v: u32, body: &[u8]) -> Result<GameWorld, SaveError> {
         9 => v10_to_v11(v9_to_v10(decode_snapshot(body)?)),
         10 => v10_to_v11(decode_snapshot(body)?),
         11 => decode_snapshot(body)?,
-        14 => return Ok(v15_to_v16(v14_to_v15(decode_snapshot(body)?))),
-        15 => return Ok(v15_to_v16(decode_snapshot(body)?)),
-        16 => return Ok(v16_to_v17(decode_snapshot(body)?)),
-        17 => return decode_snapshot(body),
+        14 => return Ok(v17_to_v20(v15_to_v16(v14_to_v15(decode_snapshot(body)?)))),
+        15 => return Ok(v17_to_v20(v15_to_v16(decode_snapshot(body)?))),
+        16 => return Ok(v17_to_v20(v16_to_v17(decode_snapshot(body)?))),
+        17 => return Ok(v17_to_v20(decode_snapshot(body)?)),
+        20 => return decode_snapshot(body),
         _ => return Err(SaveError::Malformed(format!("unknown world version {v}"))),
     };
-    Ok(v15_to_v16(v14_to_v15(v11_to_v14(v11))))
+    Ok(v17_to_v20(v15_to_v16(v14_to_v15(v11_to_v14(v11)))))
 }
 
 /// A snapshot written before the header: the version is not written, so the layouts are tried

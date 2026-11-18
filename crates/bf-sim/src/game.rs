@@ -255,6 +255,24 @@ pub enum GameCommand {
     /// Cancels the country's order at `index` of its queue: what it built goes to the depot,
     /// the men it raised stay.
     CancelOrder { tag: String, index: u32 },
+    /// Demands of `target` the clauses of `demand` (`side_a` must be `tag`, `side_b` the target),
+    /// to be answered within `weeks` (the rules' deadline when `None`). A demand without a
+    /// cause is allowed and recorded (W1). No-op without forces, between countries at war, or
+    /// when a crisis between them is open.
+    Demand {
+        tag: String,
+        target: String,
+        demand: crate::treaty::Proposal,
+        weeks: Option<u16>,
+    },
+    /// The target of crisis `crisis` accepts (carried out as a treaty) or refuses.
+    AnswerCrisis {
+        tag: String,
+        crisis: u32,
+        accept: bool,
+    },
+    /// The side that demanded, refused, declares war (`true`) or backs down (`false`).
+    Declare { tag: String, crisis: u32, war: bool },
     /// Points the country's research at a technology (index in the tree), or back to choosing
     /// by itself with `None`. Unknown tags and indices are no-ops.
     SetResearch { tag: String, tech: Option<u16> },
@@ -436,6 +454,68 @@ impl Command<GameWorld> for GameCommand {
                     }
                 }
             }
+            GameCommand::Demand {
+                tag,
+                target,
+                demand,
+                weeks,
+            } => {
+                let index = |t: &str| world.countries.iter().position(|(_, c)| c.tag == t);
+                let (Some(by), Some(to)) = (index(tag), index(target)) else {
+                    return;
+                };
+                let c = &mut world.war.conflicts;
+                if by == to
+                    || world.war.countries.is_empty()
+                    || demand.side_a != [tag.clone()]
+                    || demand.side_b != [target.clone()]
+                    || c.at_war(by as u16, to as u16)
+                    || c.crises.iter().any(|k| {
+                        (k.by, k.target) == (by as u16, to as u16)
+                            || (k.by, k.target) == (to as u16, by as u16)
+                    })
+                {
+                    return;
+                }
+                let id = c.next_id;
+                c.next_id += 1;
+                c.crises.push(crate::war::Crisis {
+                    id,
+                    by: by as u16,
+                    target: to as u16,
+                    demand: demand.clone(),
+                    // `None` takes the rules' deadline in the forces system's next week.
+                    weeks_left: weeks.unwrap_or(crate::war::crisis::RULES_DEADLINE),
+                    stage: crate::war::Stage::Waiting,
+                    casus_belli: false,
+                });
+            }
+            GameCommand::AnswerCrisis {
+                tag,
+                crisis,
+                accept,
+            } => {
+                let me = world.countries.iter().position(|(_, c)| c.tag == *tag);
+                if let Some(k) = world
+                    .war
+                    .conflicts
+                    .crises
+                    .iter_mut()
+                    .find(|k| k.id == *crisis && Some(k.target as usize) == me)
+                    && k.stage == crate::war::Stage::Waiting
+                {
+                    k.stage = if *accept {
+                        crate::war::Stage::Accepted
+                    } else {
+                        crate::war::Stage::Refused
+                    };
+                }
+            }
+            GameCommand::Declare { tag, crisis, war } => {
+                let me = world.countries.iter().position(|(_, c)| c.tag == *tag);
+                let date = (ctx.date.year, ctx.date.month, ctx.date.day);
+                crate::war::crisis_decide(&mut world.war, *crisis, me, *war, date);
+            }
             GameCommand::SetLaw { tag, law } => {
                 let Some(ci) = world.countries.iter().position(|(_, c)| c.tag == *tag) else {
                     return;
@@ -568,6 +648,9 @@ pub struct Rules {
     pub influence: Option<Arc<crate::influence::InfluenceSetup>>,
     /// The unit catalogue and how the forces sit in peace; without them no forces run.
     pub war: Option<(Arc<crate::war::Military>, Arc<crate::war::PeaceRules>)>,
+    /// Crises and declaration (slice B): their rules and the clause catalogue that carries out
+    /// a demand accepted. Only with forces.
+    pub crisis: Option<Arc<crate::war::CrisisSetup>>,
     /// Distances for the freight of trade; without them trade pays no freight.
     pub trade: Option<Arc<crate::econ::trade::Geography>>,
     /// Rules that change everyone's results, each off by default until a PR of its own
@@ -591,6 +674,10 @@ pub struct Rules {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Switches {
+    /// Crises and declaration (`docs/war.pt-BR.md`, "Crise e declaração"): demands with a
+    /// deadline, answered by the AI by the force against the share asked for, and war declared
+    /// on a refusal. Needs `forces`. Off: no crisis opens.
+    pub crisis: bool,
     /// Armed forces in peace (`war`, docs/war.pt-BR.md, "Forças em paz"): the soldiers are the
     /// men of the formations. Off, the old rule of `data/military/peace.ron` (`soldiers`).
     pub forces: bool,
@@ -626,7 +713,8 @@ pub struct Switches {
 
 impl Switches {
     /// The names `switch_on` knows, in the order of the fields.
-    pub const NAMES: [&'static str; 9] = [
+    pub const NAMES: [&'static str; 10] = [
+        "crisis",
         "forces",
         "foreign_flow",
         "independence",
@@ -641,6 +729,7 @@ impl Switches {
     /// Switches one rule on by name; unknown names are refused.
     pub fn switch_on(&mut self, name: &str) -> Result<(), String> {
         match name {
+            "crisis" => self.crisis = true,
             "forces" => self.forces = true,
             "foreign_flow" => self.foreign_flow = true,
             "independence" => self.independence = true,
@@ -689,6 +778,7 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
         switches,
         education,
         independence,
+        crisis,
     }) = rules
     {
         if let Some(p) = &politics {
@@ -703,6 +793,7 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
                 military,
                 peace,
                 politics.clone(),
+                crisis,
             ));
         }
         s.add(crate::econ::week::Week {
@@ -1033,7 +1124,7 @@ mod tests {
             foreign: &'a crate::foreign_stakes::ForeignState,
             influence: &'a crate::influence::InfluenceState,
             treaties: Treaties15<'a>,
-            war: &'a crate::war::WarState,
+            war: WarV17<'a>,
             education: &'a crate::demography::education::EducationState,
         }
         /// The economy of before research that costs: the ledger, markets of then.
@@ -1116,7 +1207,7 @@ mod tests {
             foreign: &'a crate::foreign_stakes::ForeignState,
             influence: &'a crate::influence::InfluenceState,
             treaties: &'a crate::treaty::TreatyState,
-            war: &'a crate::war::WarState,
+            war: WarV17<'a>,
             education: &'a crate::demography::education::EducationState,
         }
         /// Version 7: version 8 without the treaty state, its last field, and its economy.
@@ -1250,9 +1341,59 @@ mod tests {
             hash_of(&with_ledger)
         );
         assert_eq!(
-            hash_of(&headed(17, &encode_snapshot(&with_ledger).unwrap())),
+            hash_of(&headed(20, &encode_snapshot(&with_ledger).unwrap())),
             hash_of(&with_ledger)
         );
+        // Version 17, before the crises: the forces without their conflicts.
+        #[derive(Serialize)]
+        struct WarV17<'a> {
+            countries: &'a Vec<crate::war::CountryWar>,
+            soldiers: &'a Vec<i64>,
+        }
+        fn war_v17(w: &GameWorld) -> WarV17<'_> {
+            WarV17 {
+                countries: &w.war.countries,
+                soldiers: &w.war.soldiers,
+            }
+        }
+        #[derive(Serialize)]
+        struct BeforeCrises<'a> {
+            scenario: &'a String,
+            player: &'a Option<Id<Country>>,
+            countries: &'a Table<Country, CountryState>,
+            census: &'a Vec<CensusRecord>,
+            econ: &'a crate::econ::Economy,
+            research: &'a crate::research::ResearchState,
+            politics: &'a crate::polity::PoliticsState,
+            demography: &'a crate::demography::DemographyState,
+            borders: &'a crate::borders::BordersState,
+            foreign: &'a crate::foreign_stakes::ForeignState,
+            influence: &'a crate::influence::InfluenceState,
+            treaties: &'a crate::treaty::TreatyState,
+            war: WarV17<'a>,
+            education: &'a crate::demography::education::EducationState,
+            independence: &'a crate::borders::independence::IndependenceState,
+        }
+        let w = &with_ledger;
+        let v17 = encode_snapshot(&BeforeCrises {
+            scenario: &w.scenario,
+            player: &w.player,
+            countries: &w.countries,
+            census: &w.census,
+            econ: &w.econ,
+            research: &w.research,
+            politics: &w.politics,
+            demography: &w.demography,
+            borders: &w.borders,
+            foreign: &w.foreign,
+            influence: &w.influence,
+            treaties: &w.treaties,
+            war: war_v17(w),
+            education: &w.education,
+            independence: &w.independence,
+        })
+        .unwrap();
+        assert_eq!(hash_of(&headed(17, &v17)), hash_of(&with_ledger));
         // Version 16, before the independence state: this build's fields without the last one.
         let before_independence = encode_snapshot(&BeforeIndependence {
             scenario: &with_ledger.scenario,
@@ -1267,7 +1408,7 @@ mod tests {
             foreign: &with_ledger.foreign,
             influence: &with_ledger.influence,
             treaties: &with_ledger.treaties,
-            war: &with_ledger.war,
+            war: war_v17(&with_ledger),
             education: &with_ledger.education,
         })
         .unwrap();
@@ -1288,7 +1429,7 @@ mod tests {
             treaties: Treaties15 {
                 recognition: &with_ledger.treaties.recognition,
             },
-            war: &with_ledger.war,
+            war: war_v17(&with_ledger),
             education: &with_ledger.education,
         })
         .unwrap();

@@ -26,11 +26,14 @@ pub struct Forces {
     pub military_weight: i64,
     /// The type the reservists report to.
     pub infantry: Option<u16>,
+    /// Crises (slice B); `None` without `crisis.ron`.
+    pub crisis: Option<Arc<super::crisis::CrisisSetup>>,
 }
 
 pub struct ForcesChanges {
     countries: Vec<CountryWar>,
     soldiers: Option<Vec<i64>>,
+    crises: Option<super::crisis::CrisisWeek>,
 }
 
 /// Merges a list of (good, quantity) into a sorted list.
@@ -181,6 +184,7 @@ impl Forces {
         military: Arc<Military>,
         peace: Arc<PeaceRules>,
         politics: Option<Arc<Politics>>,
+        crisis: Option<Arc<super::crisis::CrisisSetup>>,
     ) -> Self {
         let basket: Vec<(u16, i64)> = cat
             .state_basket
@@ -198,6 +202,7 @@ impl Forces {
             basket,
             military_weight,
             infantry,
+            crisis,
         }
     }
 
@@ -830,6 +835,7 @@ impl System<GameWorld> for Forces {
             return ForcesChanges {
                 countries: Vec::new(),
                 soldiers: None,
+                crises: None,
             };
         }
         let countries: Vec<CountryWar> = world
@@ -841,19 +847,32 @@ impl System<GameWorld> for Forces {
             .collect();
         let month_start = ctx.date.day <= 7 || world.war.soldiers.is_empty();
         let soldiers = month_start.then(|| place_soldiers(&self.military, &countries, &world.econ));
+        // Crises run only when there are any: a world in peace pays nothing for them.
+        let crises = self
+            .crisis
+            .as_ref()
+            .filter(|_| !world.war.conflicts.crises.is_empty())
+            .map(|setup| super::crisis::crisis_week(setup, &self.military, world));
         ForcesChanges {
             countries,
             soldiers,
+            crises,
         }
     }
 
-    fn apply(&self, _ctx: &TickCtx, changes: ForcesChanges, world: &mut GameWorld) {
+    fn apply(&self, ctx: &TickCtx, changes: ForcesChanges, world: &mut GameWorld) {
         if changes.countries.is_empty() {
             return;
         }
         world.war.countries = changes.countries;
         if let Some(s) = changes.soldiers {
             world.war.soldiers = s;
+        }
+        if let Some(week) = changes.crises {
+            world.war.conflicts = week.conflicts;
+            for s in &week.settled {
+                crate::treaty_exec::queue(world, s, ctx.date.year);
+            }
         }
     }
 }

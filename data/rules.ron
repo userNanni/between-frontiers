@@ -9,6 +9,10 @@
 //
 // In alphabetical order, as `game::Switches`: a new rule goes in its place, not at the end.
 (
+    // Crises and declaration (`docs/war.pt-BR.md`, "Crise e declaração"): a demand with a
+    // deadline, the AI answering by the force against the share asked for, war on a refusal.
+    // Needs `forces`. Off: no crisis opens.
+    crisis: false,
     // Armed forces in peace (`docs/war.pt-BR.md`, "Forças em paz"): the soldiers are the men of
     // the formations of `data/scenario/1925/forces.ron`. Off: the old rule of
     // `data/military/peace.ron` (`soldiers`).

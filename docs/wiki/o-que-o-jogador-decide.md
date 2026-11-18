@@ -28,6 +28,10 @@ Atalhos do perfil padrão; todos se mudam no editor de atalhos (Configurações 
 Exceção: `Borders` (operação de fronteira) não é do jogador. Vem de tratados, da paz, de testes e
 de ferramentas; o jogador liberta a própria terra com `Liberate`.
 
+Exceção provisória: `Demand`, `AnswerCrisis` e `Declare` (crise e declaração, fatia B, rascunho)
+ainda não têm tela. A entrada da crise no diário e as decisões de exigir e declarar em Agendas vêm
+com as telas da fatia, e a exceção sai com elas.
+
 ## Em PR
 
 | Decisão | Comando | Onde fica | Estado |

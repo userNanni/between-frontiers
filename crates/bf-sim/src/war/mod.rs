@@ -16,6 +16,7 @@
 
 pub mod calc;
 pub mod catalogue;
+pub mod crisis;
 pub mod doctrine;
 pub mod forces;
 pub mod ledger;
@@ -29,6 +30,10 @@ use std::path::Path;
 
 pub use calc::*;
 pub use catalogue::*;
+pub use crisis::{
+    Conflicts, Crisis, CrisisRules, CrisisSetup, Stage, War as WarOn, Weighing, crisis_decide,
+    crisis_week, weigh, weigh_crisis,
+};
 pub use doctrine::*;
 pub use forces::*;
 pub use ledger::*;
@@ -55,6 +60,8 @@ pub struct War {
     pub terrain: Option<TerrainFile>,
     /// How the forces sit in peace, when `data/military/peace.ron` exists.
     pub peace: Option<PeaceRules>,
+    /// How crises run, when `data/military/crisis.ron` exists (slice B).
+    pub crisis: Option<CrisisRules>,
 }
 
 fn read<T: serde::de::DeserializeOwned>(path: &Path) -> Result<T, String> {
@@ -100,10 +107,17 @@ pub fn load(
     } else {
         None
     };
+    let crisis_path = data.join("military/crisis.ron");
+    let crisis = if crisis_path.is_file() {
+        Some(read::<CrisisRules>(&crisis_path)?)
+    } else {
+        None
+    };
     Ok(Some(War {
         military,
         forces_1925,
         terrain,
         peace,
+        crisis,
     }))
 }

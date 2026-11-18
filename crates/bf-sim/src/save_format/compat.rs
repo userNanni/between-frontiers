@@ -483,15 +483,15 @@ pub struct V15 {
     influence: crate::influence::InfluenceState,
     #[serde(deserialize_with = "treaties_before_agreements")]
     treaties: crate::treaty::TreatyState,
-    war: crate::war::WarState,
+    war: crate::war::state::WarStateBeforeCrises,
     education: crate::demography::education::EducationState,
 }
 
 /// 15 → 16: each line of the ledger keeps what was paid and written off and its standing (open
 /// for every line read), closed lines apart; the agreements signed in play (none). Without the
 /// record (`Switches::ledger_record`, off) the world hashes as it did.
-pub fn v15_to_v16(w: V15) -> GameWorld {
-    GameWorld {
+pub fn v15_to_v16(w: V15) -> V17 {
+    V17 {
         scenario: w.scenario,
         player: w.player,
         countries: w.countries,
@@ -526,13 +526,13 @@ pub struct V16 {
     foreign: crate::foreign_stakes::ForeignState,
     influence: crate::influence::InfluenceState,
     treaties: crate::treaty::TreatyState,
-    war: crate::war::WarState,
+    war: crate::war::state::WarStateBeforeCrises,
     education: crate::demography::education::EducationState,
 }
 
 /// 16 → 17: the independence state (`GameWorld::independence`), empty, which hashes as nothing.
-pub fn v16_to_v17(w: V16) -> GameWorld {
-    GameWorld {
+pub fn v16_to_v17(w: V16) -> V17 {
+    V17 {
         scenario: w.scenario,
         player: w.player,
         countries: w.countries,
@@ -548,5 +548,47 @@ pub fn v16_to_v17(w: V16) -> GameWorld {
         war: w.war,
         education: w.education,
         independence: Default::default(),
+    }
+}
+
+/// Version 17: independence by movement (#136), before the crises (slice B). 18 and 19 are
+/// held for the budget levers (#165) and the colony's plants (#166).
+#[derive(Deserialize)]
+pub struct V17 {
+    scenario: String,
+    player: Option<Id<Country>>,
+    countries: Table<Country, CountryState>,
+    census: Vec<CensusRecord>,
+    econ: crate::econ::Economy,
+    research: crate::research::ResearchState,
+    politics: crate::polity::PoliticsState,
+    demography: crate::demography::DemographyState,
+    borders: crate::borders::BordersState,
+    foreign: crate::foreign_stakes::ForeignState,
+    influence: crate::influence::InfluenceState,
+    treaties: crate::treaty::TreatyState,
+    war: crate::war::state::WarStateBeforeCrises,
+    education: crate::demography::education::EducationState,
+    independence: crate::borders::independence::IndependenceState,
+}
+
+/// 17 → 20: crises and wars (`WarState::conflicts`), empty: a world in peace hashes as before.
+pub fn v17_to_v20(w: V17) -> GameWorld {
+    GameWorld {
+        scenario: w.scenario,
+        player: w.player,
+        countries: w.countries,
+        census: w.census,
+        econ: w.econ,
+        research: w.research,
+        politics: w.politics,
+        demography: w.demography,
+        borders: w.borders,
+        foreign: w.foreign,
+        influence: w.influence,
+        treaties: w.treaties,
+        war: w.war.into(),
+        education: w.education,
+        independence: w.independence,
     }
 }
