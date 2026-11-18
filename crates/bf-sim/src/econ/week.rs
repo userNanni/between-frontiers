@@ -92,6 +92,8 @@ pub struct Week {
     /// The tariff reads the agreements in force (`game::Switches::treaties_in_force`) instead
     /// of the treaties of `diplomacy.ron`.
     pub treaty_tariffs: bool,
+    /// Services across a customs union in force (`game::Switches::union_services`).
+    pub union_services: bool,
     /// `game::Switches::small_market_wage_floor`.
     pub wage_floor: bool,
     /// `game::Switches::fiscal_capacity`: a state short of servants collects less
@@ -962,7 +964,126 @@ impl Week {
                 trade[mi][gi] = imports[k];
             }
         }
+        if self.union_services {
+            let tags: Vec<String> = world.countries.iter().map(|(_, c)| c.tag.clone()).collect();
+            let pairs = world.treaties.customs_unions(&tags, &date);
+            if !pairs.is_empty() {
+                let view = UnionView {
+                    pairs: &pairs,
+                    prefs: (&pref_table, pref_rows),
+                    closed: &is_closed,
+                    reach,
+                };
+                union_services(cat, (supply, demand), &view, &mut trade, &mut trade_value);
+            }
+        }
         (trade, trade_value, trade_pref)
+    }
+}
+
+/// The pairs in a customs union and the week's preferences, for `union_services`.
+struct UnionView<'a> {
+    /// Pairs bound by a customs union in force, both orders, sorted (`customs_unions`).
+    pairs: &'a [(u16, u16)],
+    /// The preferences of the month as a flat table, and how many rows it has.
+    prefs: (&'a [Fixed], usize),
+    closed: &'a dyn Fn(usize, usize) -> bool,
+    reach: Fixed,
+}
+
+/// Services across a customs union in force (`game::Switches::union_services`,
+/// docs/trade.pt-BR.md, section 12): services and finance, which no market sells abroad, trade by
+/// pair between two countries bound by a customs union, as the tradable goods do between all.
+/// Only the pairs of a union trade them, and only their own surpluses and shortages: Monaco's
+/// bank serves France, and nobody else.
+fn union_services(
+    cat: &Catalogue,
+    (supply, demand): (&[Vec<Fixed>], &[Vec<Fixed>]),
+    view: &UnionView<'_>,
+    trade: &mut [Vec<Fixed>],
+    trade_value: &mut [Fixed],
+) {
+    let nm = supply.len();
+    let groups = crate::economy::BUILDING_GROUPS.len();
+    let (pref_table, pref_rows) = view.prefs;
+    let in_union = |s: usize, b: usize| view.pairs.binary_search(&(s as u16, b as u16)).is_ok();
+    let mut member = vec![false; nm];
+    for &(a, _) in view.pairs {
+        if let Some(m) = member.get_mut(usize::from(a)) {
+            *m = true;
+        }
+    }
+    let (mut sellers, mut offered, mut buyers, mut sought) =
+        (Vec::new(), Vec::new(), Vec::new(), Vec::new());
+    let mut pref: Vec<Fixed> = Vec::new();
+    let mut clear = super::trade::ClearBuffers::default();
+    for key in ["services", "finance"] {
+        let Some(gi) = cat.good(key).map(usize::from) else {
+            continue;
+        };
+        sellers.clear();
+        offered.clear();
+        buyers.clear();
+        sought.clear();
+        for mi in (0..nm).filter(|&m| member[m]) {
+            let gap = supply[mi][gi] - demand[mi][gi];
+            if gap > Fixed::ZERO {
+                sellers.push(mi);
+                offered.push(gap * view.reach);
+            } else if gap < Fixed::ZERO {
+                buyers.push(mi);
+                sought.push(-gap * view.reach);
+            }
+        }
+        if sellers.is_empty() || buyers.is_empty() {
+            continue;
+        }
+        let k = cat.good_group[gi].map(usize::from);
+        let (ns, nb) = (sellers.len(), buyers.len());
+        pref.clear();
+        pref.resize(ns * nb, Fixed::ZERO);
+        for (b, &bm) in buyers.iter().enumerate() {
+            let row = &mut pref[b * ns..(b + 1) * ns];
+            let table = k
+                .map(|k| bm * groups + k)
+                .filter(|&r| r < pref_rows)
+                .map(|r| &pref_table[r * nm..(r + 1) * nm]);
+            let open = |sm: usize| in_union(sm, bm) && !(view.closed)(sm, bm);
+            let mut any = false;
+            for (s, &sm) in sellers.iter().enumerate() {
+                if open(sm) {
+                    let v = table.map_or(Fixed::ONE, |t| t[sm]);
+                    row[s] = v;
+                    any |= v > Fixed::ZERO;
+                }
+            }
+            if !any {
+                for (s, &sm) in sellers.iter().enumerate() {
+                    if open(sm) {
+                        row[s] = Fixed::ONE;
+                    }
+                }
+            }
+            let top = row.iter().copied().max().unwrap_or(Fixed::ZERO);
+            if top > Fixed::ZERO && top != Fixed::ONE {
+                super::trade::scale_to(row, top);
+            }
+        }
+        super::trade::clear_good_flat(&offered, &sought, &pref, &mut clear);
+        let base = cat.goods[gi].base_price;
+        for s in 0..ns {
+            for (b, q) in clear.flow[s * nb..(s + 1) * nb].iter().enumerate() {
+                if *q > Fixed::ZERO {
+                    trade_value[sellers[s] * nm + buyers[b]] += *q * base;
+                }
+            }
+        }
+        for (s, &mi) in sellers.iter().enumerate() {
+            trade[mi][gi] = -clear.exports[s];
+        }
+        for (b, &mi) in buyers.iter().enumerate() {
+            trade[mi][gi] = clear.imports[b];
+        }
     }
 }
 

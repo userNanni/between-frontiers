@@ -144,3 +144,51 @@ fn the_tariff_of_the_agreements_in_force_is_that_of_the_1925_treaties() {
     };
     assert_eq!(run(true), run(false));
 }
+
+/// Services across a customs union in force (`union_services`, with the 1925 agreements in
+/// force): Liechtenstein and Switzerland, Monaco and France trade services and finance, the
+/// world's net imports of each still add up to zero, and no market outside a union trades them.
+#[test]
+fn services_cross_a_customs_union_in_force_and_nowhere_else() {
+    let d = data();
+    let rules = d.rules_with(Switches {
+        trade_by_pair: true,
+        treaties_in_force: true,
+        union_services: true,
+        ..Switches::shipped()
+    });
+    // The 1925 agreements in force enter the world when it is made, by the switches the data
+    // was loaded with (`data/rules.ron`): seeded here by hand.
+    let mut world = d.new_world();
+    if world.treaties.agreements.is_empty() {
+        world
+            .treaties
+            .seed_1925(d.diplomacy.as_ref().unwrap(), d.clauses.as_ref().unwrap());
+    }
+    let mut s = Session::new(world, 1925, Date::new(1925, 1, 1), 2, Some(rules));
+    s.sim.run_until(Date::new(1925, 3, 2));
+    let w = s.world();
+    let tags: Vec<String> = w.countries.iter().map(|(_, c)| c.tag.clone()).collect();
+    let unions = w.treaties.customs_unions(&tags, "1925-03-02");
+    let at = |t: &str| tags.iter().position(|x| x == t).unwrap() as u16;
+    assert!(unions.contains(&(at("LIE"), at("CHE"))));
+    assert!(unions.contains(&(at("MCO"), at("FRA"))));
+    let member = |m: usize| unions.iter().any(|&(a, _)| usize::from(a) == m);
+    let mut crossing = 0;
+    for key in ["services", "finance"] {
+        let g = usize::from(d.catalogue.good(key).unwrap());
+        let net: Fixed = w.econ.markets.iter().map(|m| m.net_import[g]).sum();
+        assert_eq!(
+            net,
+            Fixed::ZERO,
+            "{key}: the world's net imports add up to {net}"
+        );
+        for (mi, m) in w.econ.markets.iter().enumerate() {
+            if m.net_import[g] != Fixed::ZERO {
+                assert!(member(mi), "{key} traded by {}, in no union", tags[mi]);
+                crossing += 1;
+            }
+        }
+    }
+    assert!(crossing > 0, "no service crossed a union");
+}

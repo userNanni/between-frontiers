@@ -208,6 +208,7 @@ fn the_plants_profit_leaves_for_the_old_metropole_the_next_monday() {
         geo: None,
         by_pair: false,
         treaty_tariffs: false,
+        union_services: false,
         wage_floor: false,
         // Stakes are read whenever either rule can make them.
         foreign_flow: true,
