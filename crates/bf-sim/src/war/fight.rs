@@ -125,6 +125,8 @@ pub struct SegmentWeek {
 #[derive(Clone, Debug, Default)]
 pub struct FightWeek {
     pub fighting: Fighting,
+    /// Wars that ended this week by a peace signed at the treaties' table.
+    pub ended: Vec<u32>,
     /// (country, share of its land elements lost this week).
     pub lost_share: Vec<(u16, Fixed)>,
     pub segments: Vec<SegmentWeek>,
@@ -162,16 +164,91 @@ fn strength(mil: &Military, c: &CountryWar) -> Strength {
 }
 
 /// A week of war on land: segments, combat, advance and control. Pure: reads the world.
-/// `month` is the month of the week (winter in cold states runs from December to February).
-pub fn fight_week(setup: &FightSetup, mil: &Military, world: &GameWorld, month: u8) -> FightWeek {
+/// The wars a peace signed at the treaties' table this week ends: an agreement signed in the
+/// seven days to `date` between a country of each side.
+pub fn peace_signed(world: &GameWorld, date: laplace_schelling::Date) -> Vec<u32> {
+    let tag = |m: u16| {
+        world
+            .countries
+            .iter()
+            .nth(m as usize)
+            .map(|(_, c)| c.tag.as_str())
+    };
+    let since = date.to_days() - 7;
+    world
+        .war
+        .conflicts
+        .wars
+        .iter()
+        .filter(|w| {
+            world.treaties.table.closed.iter().any(|c| {
+                matches!(c.outcome, crate::treaty_table::Outcome::Signed(_))
+                    && c.date.to_days() >= since
+                    && {
+                        let on = |side: &[u16], t: &str| side.iter().any(|&m| tag(m) == Some(t));
+                        (on(&w.side_a, &c.from) && on(&w.side_b, &c.to))
+                            || (on(&w.side_b, &c.from) && on(&w.side_a, &c.to))
+                    }
+            })
+        })
+        .map(|w| w.id)
+        .collect()
+}
+
+/// After a peace, the occupation between the sides ends: the regions one side held of the
+/// other go back to their owner (what the peace ceded changed owner by the treaty's bridge),
+/// and the advances and postures between them are forgotten.
+pub fn end_occupation(f: &mut Fighting, world: &GameWorld, a: &[u16], b: &[u16]) {
+    let regions = &world.econ.regions;
+    let between =
+        |x: u16, y: u16| (a.contains(&x) && b.contains(&y)) || (b.contains(&x) && a.contains(&y));
+    f.control
+        .retain(|(r, by)| !between(*by, regions[*r as usize].market));
+    f.advance.retain(|(x, y, _)| {
+        !between(
+            f.control
+                .binary_search_by_key(x, |(k, _)| *k)
+                .map_or(regions[*x as usize].market, |i| f.control[i].1),
+            regions[*y as usize].market,
+        )
+    });
+    f.postures.retain(|(c, e, _)| !between(*c, *e));
+}
+
+/// `date` is the day of the week (winter in cold states runs from December to February; a
+/// peace signed in the last seven days ends its war).
+pub fn fight_week(
+    setup: &FightSetup,
+    mil: &Military,
+    world: &GameWorld,
+    date: laplace_schelling::Date,
+) -> FightWeek {
+    let month = date.month;
     let mut out = FightWeek {
         fighting: world.war.fighting.clone(),
         ..Default::default()
     };
-    let wars = &world.war.conflicts.wars;
-    if wars.is_empty() {
+    if world.war.conflicts.wars.is_empty() {
         return out;
     }
+    out.ended = peace_signed(world, date);
+    for w in world
+        .war
+        .conflicts
+        .wars
+        .iter()
+        .filter(|w| out.ended.contains(&w.id))
+    {
+        end_occupation(&mut out.fighting, world, &w.side_a, &w.side_b);
+    }
+    let ended = out.ended.clone();
+    let at_war = |a: u16, b: u16| {
+        world.war.conflicts.wars.iter().any(|w| {
+            !ended.contains(&w.id)
+                && ((w.side_a.contains(&a) && w.side_b.contains(&b))
+                    || (w.side_a.contains(&b) && w.side_b.contains(&a)))
+        })
+    };
     let regions = &world.econ.regions;
     // Map state → region.
     let by_state: BTreeMap<u16, u32> = regions
@@ -185,7 +262,7 @@ pub fn fight_week(setup: &FightSetup, mil: &Military, world: &GameWorld, month: 
         .position(|(id, _)| Some(id) == world.player)
         .map(|i| i as u16);
     let controller = |r: u32| out.fighting.controller(r, regions[r as usize].market);
-    let enemies = |a: u16, b: u16| world.war.conflicts.at_war(a, b);
+    let enemies = at_war;
     // The segments: (from, into) where `from`'s holder is at war with `into`'s, each pair once,
     // the lower-indexed holder's region first.
     let mut segments: Vec<(u32, u32, u16, u16)> = Vec::new();

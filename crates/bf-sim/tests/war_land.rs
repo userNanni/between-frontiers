@@ -81,7 +81,7 @@ fn a_declared_war_has_fronts_and_combat() {
             .expect("the war switch builds the setup"),
         &d.war.as_ref().unwrap().military,
         w,
-        s.clock().date.month,
+        s.clock().date,
     );
     let border: Vec<_> = week
         .segments
@@ -139,4 +139,92 @@ fn off_a_declared_war_only_mobilizes() {
     assert!(!d.switches.war);
     assert!(d.rules().fight.is_none());
     let _ = Fixed::ZERO;
+}
+
+/// Hungary, losing, proposes peace at the treaties' table with a payment to Czechoslovakia; the
+/// AI accepts, the war ends, the occupation between them ends and both go home.
+#[test]
+fn a_peace_signed_at_the_table_ends_the_war() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let mut d = GameData::load(&root).unwrap();
+    d.enable_crisis();
+    d.switches.war = true;
+    d.switches.negotiation = true;
+    let mut s = Session::new(
+        d.new_world(),
+        1925,
+        Date::new(1925, 1, 1),
+        2,
+        Some(d.rules()),
+    );
+    s.submit(GameCommand::ChoosePlayer { tag: "HUN".into() });
+    s.sim.run_until(Date::new(1925, 3, 2));
+    let union = |by: &str, to: &str| Proposal {
+        side_a: vec![by.into()],
+        side_b: vec![to.into()],
+        clauses: vec![Clause {
+            kind: ClauseKind::Union,
+            giver: Side::Junior,
+            receiver: Side::Senior,
+            until: None,
+            note: None,
+        }],
+        term_years: None,
+        notice_years: 0,
+    };
+    s.submit(GameCommand::Demand {
+        tag: "HUN".into(),
+        target: "CZE".into(),
+        demand: union("HUN", "CZE"),
+        weeks: None,
+    });
+    s.sim.run_until(Date::new(1925, 3, 20));
+    let id = s.world().war.conflicts.crises[0].id;
+    s.submit(GameCommand::Declare {
+        tag: "HUN".into(),
+        crisis: id,
+        war: true,
+    });
+    s.sim.run_until(Date::new(1925, 6, 1));
+    let (hun, cze) = (index(s.world(), "HUN"), index(s.world(), "CZE"));
+    assert!(
+        !s.world().war.fighting.control.is_empty(),
+        "the front moved"
+    );
+    s.submit(GameCommand::ProposeTreaty {
+        tag: "HUN".into(),
+        to: "CZE".into(),
+        proposal: Proposal {
+            side_a: vec!["HUN".into()],
+            side_b: vec!["CZE".into()],
+            clauses: vec![Clause {
+                kind: ClauseKind::Payment {
+                    amount: Fixed::from_int(50),
+                },
+                giver: Side::Senior,
+                receiver: Side::Junior,
+                until: None,
+                note: None,
+            }],
+            term_years: None,
+            notice_years: 0,
+        },
+    });
+    s.sim.run_until(Date::new(1925, 7, 1));
+    let w = s.world();
+    assert!(
+        !w.war.conflicts.at_war(hun, cze),
+        "peace: {:?}",
+        w.treaties.table.closed
+    );
+    assert!(
+        w.war
+            .fighting
+            .control
+            .iter()
+            .all(|(r, by)| { (*by, w.econ.regions[*r as usize].market) != (cze, hun) }),
+        "the occupation ended"
+    );
+    assert!(!w.war.countries[hun as usize].mobilized);
+    assert!(!w.war.countries[cze as usize].mobilized);
 }

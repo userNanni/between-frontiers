@@ -867,7 +867,7 @@ impl System<GameWorld> for Forces {
             .fight
             .as_ref()
             .filter(|_| !world.war.conflicts.wars.is_empty())
-            .map(|setup| super::fight::fight_week(setup, &self.military, world, ctx.date.month));
+            .map(|setup| super::fight::fight_week(setup, &self.military, world, ctx.date));
         ForcesChanges {
             countries,
             soldiers,
@@ -888,6 +888,29 @@ impl System<GameWorld> for Forces {
                 }
             }
             world.war.fighting = week.fighting;
+            // A peace signed at the table ends its war: the sides go home from mobilization.
+            let ended = &week.ended;
+            let gone: Vec<u16> = world
+                .war
+                .conflicts
+                .wars
+                .iter()
+                .filter(|w| ended.contains(&w.id))
+                .flat_map(|w| w.side_a.iter().chain(&w.side_b).copied())
+                .collect();
+            world.war.conflicts.wars.retain(|w| !ended.contains(&w.id));
+            for c in gone {
+                if !world
+                    .war
+                    .conflicts
+                    .wars
+                    .iter()
+                    .any(|w| w.side_a.contains(&c) || w.side_b.contains(&c))
+                    && let Some(cw) = world.war.countries.get_mut(c as usize)
+                {
+                    cw.mobilized = false;
+                }
+            }
         }
         if let Some(s) = changes.soldiers {
             world.war.soldiers = s;
