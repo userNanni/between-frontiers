@@ -37,20 +37,24 @@ enum Family {
 }
 
 /// The ties family's list: influence both ways, then the blocs in the order of
-/// `blocs_view::KINDS` (`lens-ties-*`).
-const TIES_ITEMS: [&str; 5] = [
+/// `blocs_view::KINDS`, then the wars (`lens-ties-*`).
+const TIES_ITEMS: [&str; 6] = [
     "influence_over",
     "influence_on",
     "military",
     "monetary",
     "subjects",
+    "war",
 ];
+/// Index of the war lens in [`TIES_ITEMS`].
+const TIES_WAR: usize = 5;
 
 /// Index of a ties lens in [`TIES_ITEMS`].
 fn ties_index(lens: Lens) -> Option<usize> {
     match lens {
         Lens::Influence { on, .. } => Some(usize::from(on)),
         Lens::Blocs(k) => Some(2 + k),
+        Lens::War => Some(TIES_WAR),
         _ => None,
     }
 }
@@ -61,6 +65,7 @@ fn ties_lens(i: usize) -> Lens {
             issue: 0,
             on: i == 1,
         },
+        TIES_WAR => Lens::War,
         k => Lens::Blocs(k - 2),
     }
 }
@@ -73,7 +78,7 @@ fn family(lens: Lens) -> Family {
         Lens::Farm(_) => Family::Farms,
         Lens::Local(_) => Family::Infrastructure,
         Lens::Sea => Family::Sea,
-        Lens::Influence { .. } | Lens::Blocs(_) => Family::Ties,
+        Lens::Influence { .. } | Lens::Blocs(_) | Lens::War => Family::Ties,
     }
 }
 
@@ -619,6 +624,10 @@ fn legend(ui: &mut Ui, i18n: &I18n, current: Lens, world: &World) {
         blocs_legend(ui, i18n, world, kind);
         return;
     }
+    if current == Lens::War {
+        war_legend(ui, i18n, world);
+        return;
+    }
     if let Lens::Local(_) = current {
         if world.live_local.is_empty() {
             bf_ui_kit::small(ui, &i18n.tr("lens-no-data"));
@@ -682,7 +691,12 @@ fn legend(ui: &mut Ui, i18n: &I18n, current: Lens, world: &World) {
                 );
             }
         }
-        Lens::Political | Lens::Local(_) | Lens::Sea | Lens::Influence { .. } | Lens::Blocs(_) => {}
+        Lens::Political
+        | Lens::Local(_)
+        | Lens::Sea
+        | Lens::Influence { .. }
+        | Lens::Blocs(_)
+        | Lens::War => {}
     }
 }
 
@@ -738,6 +752,7 @@ pub fn tooltip_line(
         Lens::Political | Lens::Sea => None,
         Lens::Influence { issue, on } => influence_tip(i18n, world, state, issue, on),
         Lens::Blocs(kind) => blocs_tip(i18n, world, state, kind),
+        Lens::War => war_tip(i18n, world, state),
         Lens::Local(i) => {
             let v = world.live_local.get(state)?.get(i).copied()?;
             if v < 0.0 {
@@ -1118,6 +1133,59 @@ fn influence_tip(
 }
 
 /// The bloc under the pointer, and the others of the kind it is in.
+/// The war lens: what the colours say.
+fn war_legend(ui: &mut Ui, i18n: &I18n, world: &World) {
+    let Some(v) = world.live_control.as_deref() else {
+        bf_ui_kit::small(ui, &i18n.tr("legend-war-none"));
+        return;
+    };
+    // The samples take the colour of a country at war on the map, so they read as it does;
+    // outside the wars, a neutral grey faded the same way.
+    let c = v
+        .at_war
+        .first()
+        .and_then(|t| world.countries.iter().find(|c| c.tag() == t))
+        .map_or((120, 112, 98), |c| c.def.color);
+    let sample = [c.0, c.1, c.2, 255];
+    swatch(ui, sample, false, &i18n.tr("legend-war-at-war"));
+    swatch(ui, sample, true, &i18n.tr("legend-war-occupied"));
+    swatch(
+        ui,
+        lens::faded((150, 150, 150)),
+        false,
+        &i18n.tr("legend-war-outside"),
+    );
+    bf_ui_kit::small(
+        ui,
+        &i18n.tr_args(
+            "legend-war-count",
+            &[
+                ("wars", Arg::String(i18n.int(v.at_war.len() as i64))),
+                ("states", Arg::String(i18n.int(v.occupied.len() as i64))),
+            ],
+        ),
+    );
+}
+
+/// Who holds the state under the pointer, in the wars.
+fn war_tip(i18n: &I18n, world: &World, state: usize) -> Option<String> {
+    let v = world.live_control.as_deref()?;
+    let owner = owner_tag(world, state)?;
+    let id = world.states.get(state)?.def.id;
+    let name = |t: &str| crate::text::country_name(i18n, t);
+    Some(match v.occupier(id) {
+        Some(by) => i18n.tr_args(
+            "tip-war-occupied",
+            &[
+                ("by", Arg::String(name(by))),
+                ("owner", Arg::String(name(owner))),
+            ],
+        ),
+        None if v.at_war.iter().any(|t| t == owner) => i18n.tr("tip-war-at-war"),
+        None => i18n.tr("tip-war-outside"),
+    })
+}
+
 fn blocs_tip(i18n: &I18n, world: &World, state: usize, kind: usize) -> Option<String> {
     let v = world.live_blocs.as_deref()?;
     let tag = owner_tag(world, state)?;
