@@ -272,6 +272,20 @@ impostos.
   semana do valor fixado sobre o caixa (diferença entre a despesa ou a receita da semana com o
   valor fixado e com a regra, pela mesma conta do tick). O cliente lê uma vez por tick publicado; a
   conta é escalar por país.
+  No mesmo módulo, mais três leituras, todas sem estado novo (só contas sobre o mundo):
+  - `works(world, cat, country) -> Vec<WorkLine>` (D8): cada obra pública da fila por id, com
+    tipo, estado, categoria, progresso, semanas estimadas no ritmo das últimas quatro semanas, o
+    gargalo da semana (caixa do Tesouro, falta de cimento ou de aço pela regra de insumos do setor
+    de construção, ou preço da construção acima do de referência) e se a posição é fixada ou de
+    chegada.
+  - `buildable(world, cat, country) -> Vec<(state, Vec<(kind, cost)>)>` (`AddWork`): por estado,
+    os tipos públicos que a pesquisa liberou e que a região pode receber (os mesmos filtros de
+    `public_works`), com o custo pela regra da obra (dois anos do valor adicionado do nível a
+    preço-base). O seletor não oferece obra impossível, e o tick recusa a mesma lista.
+  - `default_terms(world, country) -> [DefaultTerms; 4]` (D6): para o perdão de 25, 50 e 75 % da
+    dívida externa e para a reestruturação interna, os anos fora do crédito, o prêmio de risco
+    depois e o quanto a dívida cai. Os anos e o prêmio vêm da tabela de Cruces e Trebesch (2013)
+    em dados, com a fonte; a conta é a mesma que `DeclareDefault` aplica.
 - **A IA fica na regra.** Os países sem jogador continuam em `None`. Ensinar a IA a fixar alavancas
   é trabalho à parte, depois do equilíbrio.
 - **Gradual como na vida real.** O decreto vale no mês seguinte. O efeito anda na velocidade do
