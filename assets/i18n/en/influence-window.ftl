@@ -24,6 +24,7 @@ influence-channel-line = { $channel }: { $part } (weight { $weight } %)
 influence-channel-dormant = { $channel }: not measured yet; { $front }
 influence-goodwill = goodwill: { $part }
 influence-front-war = comes with forces and war
+influence-front-rules-off = switched off in the game's rules
 influence-front-unknown = not measured yet
 influence-note = Values of this month of the game. A proposal's term reads the map of the last 16th, so the two may differ by up to a month.
 influence-front-bilateral-trade = off: trade by partner and the influence channels are switched off in the rules

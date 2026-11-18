@@ -105,6 +105,10 @@ impl InfluenceRules {
     }
 }
 
+/// The front key of a channel whose front is in the game but switched off in `data/rules.ron`
+/// (`front-rules-off`), as against a front still to come (`war`).
+pub const RULES_OFF: &str = "rules-off";
+
 /// A dependence channel: its value, or the front it waits for.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Channel {
@@ -298,14 +302,16 @@ pub fn dependence(
     let credit = share(owed, gdp(world, b)) * share(owed, creditors);
     let mut d = Dependence {
         credit: Channel::Live(credit),
+        // Both fronts are in the game: dormant here means a rule switched off
+        // (`influence_ties`, and `trade_by_pair` for trade), not a front still to come.
         investment: match &ties.owned {
             Some(o) => Channel::Live(investment_dependence(o, a, b)),
-            None => Channel::Dormant("foreign-capital"),
+            None => Channel::Dormant(RULES_OFF),
         },
         trade: if ties.trade_live {
             Channel::Live(trade_dependence(world, ties, a, b))
         } else {
-            Channel::Dormant("bilateral-trade")
+            Channel::Dormant(RULES_OFF)
         },
         protection: Channel::Dormant("war"),
         by_issue: [Fixed::ZERO; Issue::COUNT],

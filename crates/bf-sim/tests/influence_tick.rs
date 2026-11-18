@@ -158,7 +158,11 @@ fn with_the_switch_off_trade_and_investment_stay_dormant() {
     );
     for c in &r.issues[0].channels {
         if matches!(c.kind, ChannelKind::Trade | ChannelKind::Investment) {
-            assert!(matches!(c.channel, Channel::Dormant(_)), "{c:?}");
+            assert_eq!(
+                c.channel,
+                Channel::Dormant(bf_sim::influence::RULES_OFF),
+                "switched off, not a front to come: {c:?}"
+            );
         }
     }
 }

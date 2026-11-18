@@ -24,6 +24,7 @@ influence-channel-line = { $channel }: { $part } (peso { $weight } %)
 influence-channel-dormant = { $channel }: ainda não medido; { $front }
 influence-goodwill = boa vontade: { $part }
 influence-front-war = chega com forças e guerra
+influence-front-rules-off = desligado nas regras do jogo
 influence-front-unknown = ainda não medido
 influence-note = Valores deste mês do jogo. O termo de uma proposta lê o mapa do último dia 16, então os dois podem diferir em até um mês.
 influence-front-bilateral-trade = desligado: o comércio por parceiro e os canais de influência estão desligados nas regras
