@@ -7,6 +7,10 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[features]
+# Record where `Fixed` arithmetic hits its bounds (`fixed::saturation`); for diagnosis only.
+saturation-count = []
+
 [dependencies]
 serde.workspace = true
 blake3.workspace = true
