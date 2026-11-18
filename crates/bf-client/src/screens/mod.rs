@@ -10,6 +10,7 @@ pub mod gov_ui;
 pub mod government;
 pub mod hud_edit;
 pub mod influence;
+pub mod issuance;
 pub mod journal;
 pub mod keys_editor;
 pub mod laws;

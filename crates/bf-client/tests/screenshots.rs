@@ -3390,3 +3390,53 @@ fn third_parties() {
     }
     let _ = std::fs::remove_dir_all(&user);
 }
+
+/// Where the treasury issues (D9): Brazil in 1925 with its new bonds split between home, abroad
+/// in its own currency and abroad in dollars, a month in: what each market bought and left
+/// unsold, and the warning when lenders abroad take less in milréis than asked. Portuguese at
+/// 1600 × 900, English at 1280 × 720.
+#[test]
+#[ignore = "needs a GPU (or software Vulkan) and the generated map; run with --ignored"]
+fn issuance() {
+    use bf_sim::game::GameCommand;
+    use laplace_schelling::calendar::Date;
+    let user = std::env::temp_dir().join(format!("bf-shots-issue-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&user);
+    let mut session = advanced_session_of("BRA", Date::new(1925, 2, 1));
+    session.submit(GameCommand::SetIssuance {
+        tag: "BRA".into(),
+        shares: Some([300, 500, 200]),
+    });
+    while session.clock().date < Date::new(1925, 3, 2) {
+        session.sim.step();
+    }
+    let save = write_campaign(&user, &session, "Emissão", "BRA", &[]);
+    for (locale, size, tag) in [
+        ("pt-BR", egui::vec2(1600.0, 900.0), "pt"),
+        ("en", egui::vec2(1280.0, 720.0), "en-1280"),
+    ] {
+        let en = locale == "en";
+        let mut h = harness_sized(user.join(tag), locale, size);
+        let ctx = h.ctx.clone();
+        h.state_mut().apply(Transition::Game(save.clone()), &ctx);
+        h.run_steps(4);
+        h.key_press(egui::Key::G);
+        h.run_steps(4);
+        h.get_by_label(if en {
+            "Money and debt"
+        } else {
+            "Moeda e dívida"
+        })
+        .click();
+        h.run_steps(4);
+        h.get_by_label(if en {
+            "Sold abroad, in dollars"
+        } else {
+            "Vendido fora, em dólar"
+        })
+        .scroll_to_me();
+        h.run_steps(4);
+        shot(&mut h, &format!("163-issuance-{tag}"));
+    }
+    let _ = std::fs::remove_dir_all(&user);
+}
