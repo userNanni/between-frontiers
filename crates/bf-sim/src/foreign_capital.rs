@@ -46,7 +46,11 @@ pub const RELATION_PREMIUM: Fixed = milli(60);
 /// and whom to trust).
 pub const DIASPORA_TRUST: Fixed = milli(500);
 /// Most of the money left after building at home that a fund sends abroad in a month.
-pub const ABROAD_CAP: Fixed = milli(500);
+/// Calibrated (step 5, `docs/foreign-capital.pt-BR.md`): at 0.5 the world's inflow ran at 4–5 %
+/// of world GDP for decades against 0.4–0.5 % in `data/history/fdi.csv` (1975, 1984); at 0.2,
+/// with `MAX_INFLOW` at 0.02, it runs at 1.1–1.2 % in 60-year runs. Most of a rich country's
+/// idle savings went into loans and bonds, not into plants abroad.
+pub const ABROAD_CAP: Fixed = milli(200);
 /// Diffusion and imitation are this much faster at home when every level of the technology's
 /// buildings is foreign-owned.
 pub const FOREIGN_SPILLOVER: Fixed = milli(1000);
@@ -339,12 +343,13 @@ pub fn transfer_rate(foreign_share: Fixed, transfer: Fixed) -> Fixed {
 pub const REINVESTED: Fixed = milli(400);
 
 /// Most foreign investment a country takes in a year, as a share of its GDP of the year before:
-/// the host's builders, ports and offices absorb only so much. Design value 0.10, the 90th
-/// percentile of the yearly inflows over GDP of every country in `data/history/fdi.csv` (8.4 %;
-/// China peaked at 6.2 % in 1993, Malaysia at 8.8 % in 1992, Vietnam at 11.9 % in 1994). The
-/// financial hubs above it (Ireland, Singapore) are money passing through, which the game does
-/// not carry. Without it a microstate whose market wage reads near zero drew whole funds.
-pub const MAX_INFLOW: Fixed = milli(100);
+/// the host's builders, ports and offices absorb only so much. The design value was 0.10, the
+/// 90th percentile of the yearly inflows over GDP in `data/history/fdi.csv` (8.4 %; China peaked
+/// at 6.2 % in 1993, Malaysia at 8.8 % in 1992, Vietnam at 11.9 % in 1994); calibrated to 0.02
+/// (step 5), about the median of the open countries' inflows there, because every open host
+/// filled the ceiling year after year: a peak is rare, the ceiling is reached every year. The
+/// financial hubs (Ireland, Singapore) are money passing through, which the game does not carry.
+pub const MAX_INFLOW: Fixed = milli(20);
 
 /// Share of an owner's reinvested earnings not yet built into new levels that leaves for home
 /// each month: money kept for an expansion that does not come goes home within about a year.
@@ -531,7 +536,8 @@ mod tests {
         a.room = Fixed::from_int(100);
         let b = site(2, 3, 1000);
         let c = site(3, 4, 1000);
-        let free = Fixed::from_int(1000);
+        // Enough left at home that the cap leaves more than the full site's room.
+        let free = Fixed::from_int(2500);
         let p = allocate(free, home(8, 1000), &[a, b, c]);
         let total: Fixed = p.iter().map(|x| x.amount).sum();
         assert!(total <= free * ABROAD_CAP);

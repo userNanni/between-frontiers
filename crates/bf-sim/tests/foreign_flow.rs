@@ -47,7 +47,7 @@ fn switched_off_no_capital_crosses_a_border() {
         7,
         Date::new(1925, 1, 1),
         2,
-        Some(data.rules()),
+        Some(data.rules_with(Default::default())),
     );
     s.sim.run_until(Date::new(1927, 1, 1));
     assert!(s.world().foreign.is_empty());

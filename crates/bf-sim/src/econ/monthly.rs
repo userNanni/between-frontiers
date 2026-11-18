@@ -1322,16 +1322,104 @@ fn abroad(
                         }
                     }
                     let tfp = plant_tfp(r, m, b);
+                    let level = base0_of[kind] * tfp * (52 * CAPITAL_YEARS);
+                    let by_room = m.gdp_last_year * crate::foreign_capital::MAX_INFLOW / 12;
+                    // A host whose room of the month does not take one level of the kind is no
+                    // destination for it this month: no fund weighs it.
+                    if by_room < level {
+                        return None;
+                    }
                     Some(Pre {
                         ri,
                         dest: r.market as usize,
                         tfp,
-                        level: base0_of[kind] * tfp * (52 * CAPITAL_YEARS),
-                        by_room: m.gdp_last_year * crate::foreign_capital::MAX_INFLOW / 12,
+                        level,
+                        by_room,
                         openness: Openness::from_pull(m.laws.of(r).foreign_investment),
                     })
                 })
                 .collect()
+        })
+        .collect();
+    // A site's return depends on the fund only through the kind, the method its country runs
+    // and its tariff (the freight to the buyers): the sites are weighed once per such group,
+    // and each fund keeps those that beat its own home return (rule 6 of
+    // `docs/performance.pt-BR.md`).
+    #[derive(Clone, Copy)]
+    struct Cand {
+        ri: usize,
+        dest: usize,
+        site: Site,
+        net: Fixed,
+        level: Fixed,
+        by_hands: Fixed,
+        by_room: Fixed,
+    }
+    let tariff = |o: usize| econ.markets[o].laws.effects[0].tariff;
+    let mut groups: Vec<(usize, u8, Fixed)> = (0..nm)
+        .filter(|&o| leftover[o] > Fixed::ZERO)
+        .flat_map(|o| {
+            fund_kinds[o]
+                .iter()
+                .map(move |&(_, kind, method)| (kind, method, tariff(o)))
+        })
+        .collect();
+    groups.sort_unstable();
+    groups.dedup();
+    let (idle_of, pre_of, slot_of) = (&idle, &pre, &slot);
+    let weighed: Vec<Vec<Cand>> = groups
+        .par_iter()
+        .map(|&(kind, method, freight)| {
+            let b = &cat.buildings[kind];
+            let def = &b.methods[method as usize];
+            if def.workers <= 0 {
+                return Vec::new();
+            }
+            let value_added = base_value_added(cat, kind, method as usize);
+            let mut out = Vec::new();
+            for p in &pre_of[slot_of[kind]] {
+                let (ri, d) = (p.ri, p.dest);
+                if idle_of[ri] < def.workers {
+                    continue;
+                }
+                let level = match def.capital {
+                    Some(share) => p.level * share,
+                    None => p.level,
+                };
+                // The method's level must fit the host's room too.
+                if level <= Fixed::ZERO || level > p.by_room {
+                    continue;
+                }
+                let by_hands = level * (idle_of[ri] / def.workers);
+                let site = Site {
+                    dest: d as u16,
+                    value_added,
+                    workers: def.workers,
+                    wage: wages[d],
+                    reach: p.tfp,
+                    freight,
+                    expropriation: premium[d],
+                    // Relation and diaspora wait for the influence in the tick.
+                    relation: Fixed::ZERO,
+                    diaspora: Fixed::ZERO,
+                    openness: p.openness,
+                    room: by_hands.min(p.by_room),
+                };
+                if site.openness.is_closed() || site.room <= Fixed::ZERO {
+                    continue;
+                }
+                let net = crate::foreign_capital::site_return(&site).net;
+                out.push(Cand {
+                    ri,
+                    dest: d,
+                    site,
+                    net,
+                    level,
+                    by_hands,
+                    by_room: p.by_room,
+                });
+            }
+            out
         })
         .collect();
     let plans: Vec<Plan> = (0..nm)
@@ -1347,61 +1435,21 @@ fn abroad(
             }
             let home = &econ.markets[o];
             let home_return = hurdle(home);
-            let freight = home.laws.effects[0].tariff;
             let mut sites = Vec::new();
             let mut rooms = Vec::new();
             for &(_, kind, method) in &fund_kinds[o] {
-                let b = &cat.buildings[kind];
-                let def = &b.methods[method as usize];
-                if def.workers <= 0 {
+                let Ok(g) = groups.binary_search(&(kind, method, tariff(o))) else {
                     continue;
-                }
-                let value_added = base_value_added(cat, kind, method as usize);
+                };
+                // Only a site the split would give money to: open, with room, and beating the
+                // return at home (`allocate` weighs nothing else); never at home.
+                for c in weighed[g]
+                    .iter()
+                    .filter(|c| c.dest != o && c.net > home_return)
                 {
-                    for p in &pre[slot[kind]] {
-                        let (ri, d) = (p.ri, p.dest);
-                        if d == o {
-                            continue;
-                        }
-                        if idle[ri] < def.workers {
-                            continue;
-                        }
-                        let tfp = p.tfp;
-                        let level = match def.capital {
-                            Some(share) => p.level * share,
-                            None => p.level,
-                        };
-                        if level <= Fixed::ZERO {
-                            continue;
-                        }
-                        let by_hands = level * (idle[ri] / def.workers);
-                        let by_room = p.by_room;
-                        let site = Site {
-                            dest: d as u16,
-                            value_added,
-                            workers: def.workers,
-                            wage: wages[d],
-                            reach: tfp,
-                            freight,
-                            expropriation: premium[d],
-                            // Relation and diaspora wait for the influence in the tick.
-                            relation: Fixed::ZERO,
-                            diaspora: Fixed::ZERO,
-                            openness: p.openness,
-                            room: by_hands.min(by_room),
-                        };
-                        // Only a site the split would give money to: open, with room, and
-                        // beating the return at home (`allocate` weighs nothing else).
-                        if site.openness.is_closed()
-                            || site.room <= Fixed::ZERO
-                            || crate::foreign_capital::site_return(&site).net <= home_return
-                        {
-                            continue;
-                        }
-                        rooms.push((by_hands, by_room));
-                        sites.push(site);
-                        plan.sites.push((ri, kind as u16, method, level));
-                    }
+                    rooms.push((c.by_hands, c.by_room));
+                    sites.push(c.site);
+                    plan.sites.push((c.ri, kind as u16, method, c.level));
                 }
             }
             plan.amounts = allocate(leftover[o], home_return, &sites)
