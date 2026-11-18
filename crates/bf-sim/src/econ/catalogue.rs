@@ -136,6 +136,9 @@ pub struct Catalogue {
     pub informal: Option<u16>,
     /// Goods the state buys whole (category `public`: schools, hospitals, research).
     pub public_goods: Vec<GoodIx>,
+    /// Per good: of the `military` category (arms the forces order); resolved at load so the
+    /// tick does not compare names.
+    pub military: Vec<bool>,
     /// Research and development, and what each building group's firms want of it, as a share
     /// of the value the group adds (`economy::BUILDING_GROUPS` order).
     pub research: Option<GoodIx>,
@@ -401,6 +404,7 @@ impl Catalogue {
             staple_need,
             local: goods_where(&|g| g.local),
             public_goods: goods_where(&|g| g.category == "public"),
+            military: goods.iter().map(|g| g.category == "military").collect(),
             research: gx("research").ok(),
             laboratory: bs
                 .iter()
