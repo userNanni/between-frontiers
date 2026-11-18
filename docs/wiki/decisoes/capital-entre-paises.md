@@ -23,7 +23,7 @@ o resultado ([Princípios](../principios.md#não-forçar-o-resultado-histórico-
 - **Como é na vida real:** o investimento direto chega como fábricas, cada uma com data, dono e
   contrato. Na China, o recebido no ano subiu ano a ano depois que a lei e as zonas abriram (a série
   em `data/history/fdi.csv`).
-- **Estado:** camadas no save (#109); fluxo mensal e remessa semanal em rascunho (#117).
+- **Estado:** camadas no save (#109); fluxo mensal e remessa semanal no #117.
 - **Onde está o detalhe:** [seção 2](../../foreign-capital.pt-BR.md#2-o-que-entra-no-estado).
 
 ### Ninguém começa com capital estrangeiro em 1925; semeia-se depois
@@ -68,6 +68,26 @@ o resultado ([Princípios](../principios.md#não-forçar-o-resultado-histórico-
   contraprova.
 - **Estado:** decidido (C5); entra no passo 4.
 - **Onde está o detalhe:** [seção 5, decisão 5](../../foreign-capital.pt-BR.md#5-decisões-do-dono).
+
+### O dono estrangeiro reinveste 40 % do lucro onde a fábrica está
+
+- **Decisão:** da parte do lucro positivo que é do dono estrangeiro, 60 % vai para o fundo dele em
+  casa. Os outros 40 % ficam no fundo do país de destino como crédito do dono e pagam primeiro as
+  fábricas novas dele naquele país. O que não acha obra volta para casa aos poucos, em cerca de um
+  ano.
+- **O que o autor pensou:** o orquestrador pediu para conferir se remeter todo o lucro toda semana
+  era o real ("lucro reinvestido no destino é parte grande do investimento direto"). Com a fonte, o
+  valor de desenho de 0,40 foi aceito e relatado ao dono.
+- **Como o jogo funciona por causa disso:** a filial cresce com o próprio lucro. O país que recebe
+  não vê sair todo mês um lucro que na vida real em boa parte ficava lá.
+- **Como é na vida real:**
+  - cerca de um terço do lucro do investimento direto no mundo foi reinvestido em 2005–2011, e
+    49 % nas economias em desenvolvimento em 2011 (UNCTAD, *World Investment Report 2013*);
+  - nas filiais de empresas americanas foi de 55 % a 66 % em 2000–2003 (BEA);
+  - a parcela cai numa crise e chegou a ser negativa com a anistia fiscal americana à repatriação
+    de 2018. Esses choques ficam para o equilíbrio.
+- **Estado:** no #117 (`foreign_capital::REINVESTED`).
+- **Onde está o detalhe:** [seção 8](../../foreign-capital.pt-BR.md#8-o-fluxo-no-tick-passo-3).
 
 ### As fábricas da metrópole na independência ficam como capital estrangeiro
 

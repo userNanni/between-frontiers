@@ -78,6 +78,9 @@ pub struct Week {
     pub by_pair: bool,
     /// `game::Switches::small_market_wage_floor`.
     pub wage_floor: bool,
+    /// Capital crosses borders (`game::Switches::foreign_flow`); off, the week runs as before
+    /// it: no foreign owner is read, no profit is remitted, no work becomes a stake.
+    pub foreign_flow: bool,
 }
 
 /// What a pop wants to buy this week.
@@ -118,6 +121,9 @@ pub struct RegionSettlement {
     pub payroll: Fixed,
     pub pool: Fixed,
     pub gdp: Fixed,
+    /// The foreign owners' part of the profit, by owner market: what leaves for their funds,
+    /// and what they keep here to invest (already in `pool`).
+    pub remit: Vec<(u16, Fixed, Fixed)>,
 }
 
 pub struct WeekChanges {
@@ -493,14 +499,16 @@ fn clear_market(
 
 /// With `SKIP_IDLE`, a plant at scale zero skips the sums it would add zero to (cost, revenue,
 /// output, pay); its input ratio and utilization still move as for any plant, so it restarts
-/// where it would have. The tests run both ways.
-fn settle_region<const SKIP_IDLE: bool>(
+/// where it would have. The tests run both ways. `abroad`: the foreign owners of the region's
+/// plants, as (kind, owner market, share of the plant's levels; `ForeignState::owners_in`).
+fn settle_region<const SKIP_IDLE: bool, const ABROAD: bool>(
     cat: &Catalogue,
     m: &Market,
     r: &Region,
     orders: &RegionOrders,
     wage: Fixed,
     v: &View,
+    abroad: &[(u16, u16, Fixed)],
 ) -> RegionSettlement {
     let laws = m.laws.of(r);
     let mut wages = [Fixed::ZERO; P];
@@ -510,6 +518,7 @@ fn settle_region<const SKIP_IDLE: bool>(
     let mut tenants = Fixed::ZERO;
     let mut pool = Fixed::ZERO;
     let mut gdp = Fixed::ZERO;
+    let mut remit: Vec<(u16, Fixed, Fixed)> = Vec::new();
     let mut plants = Vec::with_capacity(r.plants.len());
     for p in &r.plants {
         let (b, method, scale) = plant_run(cat, r, m, p);
@@ -562,6 +571,28 @@ fn settle_region<const SKIP_IDLE: bool>(
             }
         }
         if profit > Fixed::ZERO {
+            // The foreign owners' share leaves for their funds, less what they reinvest here,
+            // which stays in this country's fund as their claim; the rest splits as at home
+            // (`docs/foreign-capital.pt-BR.md`, section 8).
+            let mut kept = profit;
+            for &(_, owner, share) in abroad.iter().filter(|e| ABROAD && e.0 == p.kind) {
+                let theirs = crate::foreign_capital::remittance(profit, share, Fixed::ZERO);
+                let out = crate::foreign_capital::remittance(
+                    profit,
+                    share,
+                    crate::foreign_capital::REINVESTED,
+                );
+                kept -= theirs;
+                pool += theirs - out;
+                match remit.iter_mut().find(|e| e.0 == owner) {
+                    Some(e) => {
+                        e.1 += out;
+                        e.2 += theirs - out;
+                    }
+                    None => remit.push((owner, out, theirs - out)),
+                }
+            }
+            let profit = kept;
             let to_owners = profit * PAYOUT;
             if b.agriculture {
                 // Free tenancy gives the landowners the owners' payout; harsher tenure takes more
@@ -692,6 +723,7 @@ fn settle_region<const SKIP_IDLE: bool>(
         payroll,
         pool,
         gdp,
+        remit,
     }
 }
 
@@ -874,6 +906,8 @@ impl System<GameWorld> for Week {
             .read(crate::war::WAR)
             .write(ECON)
             .read(crate::research_system::RESEARCH)
+            .read(crate::foreign_stakes::FOREIGN)
+            .write(crate::foreign_stakes::FOREIGN)
     }
 
     fn compute(&self, ctx: &TickCtx, world: &GameWorld) -> WeekChanges {
@@ -945,17 +979,42 @@ impl System<GameWorld> for Week {
         );
         let local = cleared.regions;
         let wages = super::monthly::market_wages(econ, self.wage_floor);
-        let regions: Vec<RegionSettlement> = econ
-            .regions
-            .par_iter()
-            .zip(orders.par_iter())
-            .zip(local.par_iter())
-            .map(|((r, o), l)| {
-                let mi = r.market as usize;
-                let m = &markets[mi];
-                settle_region::<true>(cat, m, r, o, wages[mi], &View::new(cat, m, l, &[]))
-            })
-            .collect();
+        // Capital across borders is tested once: off, this is the loop of before it.
+        let regions: Vec<RegionSettlement> = if self.foreign_flow {
+            let (foreign, year) = (&world.foreign, ctx.date.year);
+            econ.regions
+                .par_iter()
+                .enumerate()
+                .zip(orders.par_iter())
+                .zip(local.par_iter())
+                .map(|(((ri, r), o), l)| {
+                    let mi = r.market as usize;
+                    let m = &markets[mi];
+                    // The foreign owners of the state's plants, in the state's own task: empty
+                    // (no allocation) where nobody abroad owns a plant.
+                    let a = foreign.owners_in(ri as u32, year, |k| {
+                        r.plants
+                            .iter()
+                            .find(|p| p.kind == k)
+                            .map_or(0, |p| p.levels)
+                    });
+                    let v = View::new(cat, m, l, &[]);
+                    settle_region::<true, true>(cat, m, r, o, wages[mi], &v, &a)
+                })
+                .collect()
+        } else {
+            econ.regions
+                .par_iter()
+                .zip(orders.par_iter())
+                .zip(local.par_iter())
+                .map(|((r, o), l)| {
+                    let mi = r.market as usize;
+                    let m = &markets[mi];
+                    let v = View::new(cat, m, l, &[]);
+                    settle_region::<true, false>(cat, m, r, o, wages[mi], &v, &[])
+                })
+                .collect()
+        };
         // World price: average of the market prices weighted by volume.
         let world_price = (0..g)
             .map(|gi| {
@@ -1083,6 +1142,7 @@ impl System<GameWorld> for Week {
         for (r, l) in econ.regions.iter_mut().zip(changes.local) {
             r.local = l;
         }
+        let mut remitted: Vec<(u16, u16, Fixed, Fixed)> = Vec::new();
         for (r, s) in econ.regions.iter_mut().zip(changes.regions) {
             let m = &mut markets[r.market as usize];
             m.treasury += s.taxes - s.payroll;
@@ -1092,6 +1152,13 @@ impl System<GameWorld> for Week {
             m.budget.payroll += s.payroll;
             m.pool += s.pool;
             m.gdp_running += s.gdp;
+            if self.foreign_flow {
+                remitted.extend(
+                    s.remit
+                        .into_iter()
+                        .map(|(o, out, kept)| (o, r.market, out, kept)),
+                );
+            }
             for (pop, (income, savings, sat)) in r.pops.iter_mut().zip(s.pops) {
                 pop.income = income;
                 pop.savings = savings;
@@ -1110,6 +1177,12 @@ impl System<GameWorld> for Week {
                 };
             }
         }
+        for (owner, host, out, kept) in remitted {
+            markets[owner as usize].pool += out;
+            if kept > Fixed::ZERO {
+                world.foreign.retain(owner, host, kept);
+            }
+        }
         for m in &mut markets {
             let b = &mut m.budget;
             b.revenue_avg += (b.revenue - b.revenue_avg).mul_ratio(1, public::REVENUE_SMOOTHING);
@@ -1118,7 +1191,7 @@ impl System<GameWorld> for Week {
         econ.world_price = changes.world_price;
         // Prices, central banks and bonds: the treasury's gap becomes debt.
         super::money::week(econ, &activity, ctx.date.year);
-        // Finished works start running.
+        // Finished works start running; one paid from abroad becomes its owner's stake.
         for p in done {
             let r = &mut econ.regions[p.region as usize];
             let plant = r.plant_mut(p.kind);
@@ -1126,6 +1199,9 @@ impl System<GameWorld> for Week {
                 plant.method = p.method;
             }
             plant.levels += 1;
+            if self.foreign_flow && !p.public {
+                world.foreign.finished(p.region, p.kind, ctx.date.year);
+            }
         }
     }
 }
@@ -1190,8 +1266,8 @@ mod tests {
                 let mut v = View::last_week(cat, m, r, nat);
                 v.buy.iter_mut().for_each(|b| *b = milli(700));
                 let wage = Fixed::from_int(3);
-                let s = settle_region::<true>(cat, m, r, &skip, wage, &v);
-                let f = settle_region::<false>(cat, m, r, &full, wage, &v);
+                let s = settle_region::<true, false>(cat, m, r, &skip, wage, &v, &[]);
+                let f = settle_region::<false, false>(cat, m, r, &full, wage, &v, &[]);
                 assert_eq!(s, f, "settlement of state {ri}");
                 idle += r
                     .plants

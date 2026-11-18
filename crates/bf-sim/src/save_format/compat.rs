@@ -163,6 +163,14 @@ pub fn v5_to_v6(w: V5) -> V6 {
     }
 }
 
+/// The foreign state of versions 6 to 11 (#109): stakes and expropriations, before the works
+/// paid from abroad and the reinvested earnings.
+#[derive(Default, Deserialize)]
+pub struct ForeignV7 {
+    stakes: Vec<crate::foreign_stakes::Stake>,
+    expropriations: Vec<crate::foreign_stakes::Expropriation>,
+}
+
 /// Version 6, foreign capital (`GameWorld::foreign`), before the influence state.
 #[derive(Deserialize)]
 pub struct V6 {
@@ -175,7 +183,7 @@ pub struct V6 {
     politics: crate::polity::PoliticsState,
     demography: crate::demography::DemographyState,
     borders: crate::borders::BordersState,
-    foreign: crate::foreign_stakes::ForeignState,
+    foreign: ForeignV7,
 }
 
 /// Version 7, the influence state (`GameWorld::influence`), before trade by pair.
@@ -190,7 +198,7 @@ pub struct V7 {
     politics: crate::polity::PoliticsState,
     demography: crate::demography::DemographyState,
     borders: crate::borders::BordersState,
-    foreign: crate::foreign_stakes::ForeignState,
+    foreign: ForeignV7,
     influence: crate::influence::InfluenceState,
 }
 
@@ -241,7 +249,7 @@ pub struct V8 {
     politics: crate::polity::PoliticsState,
     demography: crate::demography::DemographyState,
     borders: crate::borders::BordersState,
-    foreign: crate::foreign_stakes::ForeignState,
+    foreign: ForeignV7,
     influence: crate::influence::InfluenceState,
     treaties: crate::treaty::TreatyState,
 }
@@ -277,7 +285,7 @@ pub struct V9 {
     politics: crate::polity::PoliticsState,
     demography: crate::demography::DemographyState,
     borders: crate::borders::BordersState,
-    foreign: crate::foreign_stakes::ForeignState,
+    foreign: ForeignV7,
     influence: crate::influence::InfluenceState,
     treaties: crate::treaty::TreatyState,
     war: crate::war::WarState,
@@ -316,7 +324,7 @@ pub struct V10 {
     politics: crate::polity::PoliticsState,
     demography: crate::demography::DemographyState,
     borders: crate::borders::BordersState,
-    foreign: crate::foreign_stakes::ForeignState,
+    foreign: ForeignV7,
     influence: crate::influence::InfluenceState,
     treaties: crate::treaty::TreatyState,
     war: crate::war::WarState,
@@ -325,8 +333,8 @@ pub struct V10 {
 /// 10 → 11: schooling by cohort and level (`GameWorld::education`), empty. With the rule
 /// `schooling` off it stays empty; on, the demography builds it from 1925's data and the
 /// state's literacy at its next month. An empty schooling hashes as nothing.
-pub fn v10_to_v11(w: V10) -> GameWorld {
-    GameWorld {
+pub fn v10_to_v11(w: V10) -> V11 {
+    V11 {
         scenario: w.scenario,
         player: w.player,
         countries: w.countries,
@@ -341,5 +349,55 @@ pub fn v10_to_v11(w: V10) -> GameWorld {
         treaties: w.treaties,
         war: w.war,
         education: Default::default(),
+    }
+}
+
+/// Version 11: schooling by cohort (#152), before capital crossed borders. Versions 12 and 13
+/// are taken by the orders and independence PRs.
+#[derive(Deserialize)]
+pub struct V11 {
+    scenario: String,
+    player: Option<Id<Country>>,
+    countries: Table<Country, CountryState>,
+    census: Vec<CensusRecord>,
+    econ: crate::econ::Economy,
+    research: crate::research::ResearchState,
+    politics: crate::polity::PoliticsState,
+    demography: crate::demography::DemographyState,
+    borders: crate::borders::BordersState,
+    foreign: ForeignV7,
+    influence: crate::influence::InfluenceState,
+    treaties: crate::treaty::TreatyState,
+    war: crate::war::WarState,
+    education: crate::demography::education::EducationState,
+}
+
+/// 11 → 14: capital crosses borders (#117); no work was paid from abroad and no earnings were
+/// kept, so the two new lists are empty and the hash stays.
+pub fn v11_to_v14(w: V11) -> GameWorld {
+    GameWorld {
+        scenario: w.scenario,
+        player: w.player,
+        countries: w.countries,
+        census: w.census,
+        econ: w.econ,
+        research: w.research,
+        politics: w.politics,
+        demography: w.demography,
+        borders: w.borders,
+        foreign: {
+            let mut f = crate::foreign_stakes::ForeignState {
+                expropriations: w.foreign.expropriations,
+                ..Default::default()
+            };
+            for s in w.foreign.stakes {
+                f.add(s);
+            }
+            f
+        },
+        influence: w.influence,
+        treaties: w.treaties,
+        war: w.war,
+        education: w.education,
     }
 }

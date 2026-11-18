@@ -53,6 +53,10 @@ pub const FOREIGN_SPILLOVER: Fixed = milli(1000);
 /// And this much more when the law makes the owner hand the technique to a local partner.
 pub const PARTNER_SPILLOVER: Fixed = milli(1000);
 
+/// The pull of the closed capital law (`closed_capital`, `foreign_investment` 100): at it or
+/// below no foreigner builds.
+pub const CLOSED_PULL: Fixed = milli(100);
+
 /// What the law of the destination lets a foreigner do. Built from the law effects in force.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Openness {
@@ -81,6 +85,17 @@ impl Openness {
         term_years: 0,
         transfer: Fixed::ZERO,
     };
+
+    /// What the law lets in until the laws carry the contract terms (joint ventures, export
+    /// zones): a pull at the closed law's or below shuts the country, anything above lets a
+    /// foreigner own the whole plant, with no term and no transfer.
+    pub fn from_pull(pull: Fixed) -> Self {
+        if pull <= CLOSED_PULL {
+            Self::CLOSED
+        } else {
+            Self { pull, ..Self::OPEN }
+        }
+    }
 
     pub fn is_closed(&self) -> bool {
         self.max_foreign_share <= Fixed::ZERO || self.pull <= Fixed::ZERO
@@ -221,7 +236,8 @@ pub fn allocate(free: Fixed, home_return: Fixed, sites: &[Site]) -> Vec<Placemen
             break;
         }
         let pass = left;
-        let mut full = Vec::new();
+        let mut full = vec![false; out.len()];
+        let mut any = false;
         for &i in &open {
             let want = pass.mul_div(out[i].weight, total);
             let room = sites[i].room - out[i].amount;
@@ -229,13 +245,14 @@ pub fn allocate(free: Fixed, home_return: Fixed, sites: &[Site]) -> Vec<Placemen
             out[i].amount += give;
             left -= give;
             if out[i].amount >= sites[i].room {
-                full.push(i);
+                full[i] = true;
+                any = true;
             }
         }
-        if full.is_empty() {
+        if !any {
             break;
         }
-        open.retain(|i| !full.contains(i));
+        open.retain(|&i| !full[i]);
     }
     out
 }
@@ -276,7 +293,9 @@ pub fn expropriation_premium(history: &[Expropriation]) -> Fixed {
 }
 
 /// How a mixed plant passes to the local partner.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, serde::Serialize, serde::Deserialize,
+)]
 pub enum Handover {
     /// The foreign owner keeps its share.
     Never,
@@ -310,6 +329,26 @@ pub fn transfer_rate(foreign_share: Fixed, transfer: Fixed) -> Fixed {
         + share * FOREIGN_SPILLOVER
         + share * transfer.clamp(Fixed::ZERO, Fixed::ONE) * PARTNER_SPILLOVER
 }
+
+/// Share of a foreign plant's positive profit its owner keeps in the host country to invest
+/// there (reinvested earnings). Design value 0.40, inside the range the sources give: about a
+/// third of the world's FDI earnings were reinvested in 2005–2011 (UNCTAD, World Investment
+/// Report 2013, fig. I.30; 49 % in developing economies in 2011), and 0.55–0.66 for the foreign
+/// affiliates of US firms in 2000–2003 (BEA, Survey of Current Business, Sept. 2002 table 6 and
+/// Sept. 2006 table 7). `docs/foreign-capital.pt-BR.md`, section 8.
+pub const REINVESTED: Fixed = milli(400);
+
+/// Most foreign investment a country takes in a year, as a share of its GDP of the year before:
+/// the host's builders, ports and offices absorb only so much. Design value 0.10, the 90th
+/// percentile of the yearly inflows over GDP of every country in `data/history/fdi.csv` (8.4 %;
+/// China peaked at 6.2 % in 1993, Malaysia at 8.8 % in 1992, Vietnam at 11.9 % in 1994). The
+/// financial hubs above it (Ireland, Singapore) are money passing through, which the game does
+/// not carry. Without it a microstate whose market wage reads near zero drew whole funds.
+pub const MAX_INFLOW: Fixed = milli(100);
+
+/// Share of an owner's reinvested earnings not yet built into new levels that leaves for home
+/// each month: money kept for an expansion that does not come goes home within about a year.
+pub const RETAINED_RELEASE: Fixed = milli(83);
 
 /// The part of `profit` that leaves for the owner's country: the foreign share of it, less what
 /// the owner reinvests where the plant is.

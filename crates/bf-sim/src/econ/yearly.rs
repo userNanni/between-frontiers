@@ -62,7 +62,10 @@ impl System<GameWorld> for Yearly {
         Cadence::Yearly { month: 1, day: 1 }
     }
     fn access(&self) -> Access {
-        Access::new().read(ECON).write(ECON)
+        Access::new()
+            .read(ECON)
+            .write(ECON)
+            .write(crate::foreign_stakes::FOREIGN)
     }
     fn compute(&self, ctx: &TickCtx, world: &GameWorld) -> YearlyChanges {
         let cat = &*self.cat;
@@ -260,10 +263,13 @@ impl System<GameWorld> for Yearly {
         if ctx.tick > 0 {
             econ.trade.roll_year();
         }
-        for (((r, methods), lit), tfp) in econ
+        let foreign = &mut world.foreign;
+        for (((ri, r, methods), lit), tfp) in econ
             .regions
             .iter_mut()
+            .enumerate()
             .zip(changes.methods)
+            .map(|((ri, r), m)| (ri, r, m))
             .zip(changes.literacy)
             .zip(changes.tfp)
         {
@@ -277,6 +283,7 @@ impl System<GameWorld> for Yearly {
                     if !b.public && !b.informal {
                         p.wear += Fixed::from_int(p.levels) * DEPRECIATION;
                         let gone = p.wear.to_int_floor().min(p.levels);
+                        foreign.plant_shrank(ri as u32, p.kind, p.levels, p.levels - gone);
                         p.levels -= gone;
                         p.wear -= Fixed::from_int(gone);
                     }

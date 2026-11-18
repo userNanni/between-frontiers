@@ -111,6 +111,15 @@ pub struct Country {
     /// Research points made over the year (`ResearchState::points`, summed over the months):
     /// the effort the technology tree is written in (`tools/research/convert_tree.py`).
     pub research_points: Vec<f64>,
+    /// Foreign capital in the country at the year's end, as host: the stakes and the works paid
+    /// from abroad still building, valued at what a level costs there now (`level_capital`), in
+    /// reference units. The yearly inflow is its change plus depreciation
+    /// (`tools/history/fdi.py`).
+    pub foreign_stock: Vec<f64>,
+    /// The same, owned by this country abroad.
+    pub foreign_owned: Vec<f64>,
+    /// GDP of the year, reference units.
+    pub gdp: Vec<f64>,
 }
 
 #[derive(Serialize)]
@@ -358,6 +367,9 @@ impl History {
                 soldiers: vec![0; years],
                 inflation: vec![0.0; years],
                 research_points: vec![0.0; years],
+                foreign_stock: vec![0.0; years],
+                foreign_owned: vec![0.0; years],
+                gdp: vec![0.0; years],
             });
         }
     }
@@ -681,6 +693,12 @@ impl History {
             c.inflation.push((p1 * cut / p0.max(1e-12) - 1.0) * 100.0);
             c.research_points
                 .push(self.points.get(mi).copied().unwrap_or(0.0));
+            c.gdp.push(gdp);
+        }
+        let (hosted, owned) = foreign_stock(data, w, self.year);
+        for (mi, c) in rep.countries.iter_mut().enumerate() {
+            c.foreign_stock.push(hosted.get(mi).copied().unwrap_or(0.0));
+            c.foreign_owned.push(owned.get(mi).copied().unwrap_or(0.0));
         }
         self.points.iter_mut().for_each(|x| *x = 0.0);
         self.jan = dec;
@@ -838,4 +856,37 @@ fn smallholders(r: &Region) -> i64 {
 pub fn write(h: History, path: &str) -> Result<(), String> {
     let json = serde_json::to_string(&h.finish()).map_err(|e| e.to_string())?;
     std::fs::write(path, json).map_err(|e| format!("{path}: {e}"))
+}
+
+/// Foreign capital by host and by owner market: stakes and works paid from abroad, at what a
+/// level of that kind costs in that state now.
+fn foreign_stock(data: &GameData, w: &GameWorld, year: i32) -> (Vec<f64>, Vec<f64>) {
+    let cat = &data.catalogue;
+    let nm = w.econ.markets.len();
+    let mut hosted = vec![0.0; nm];
+    let mut owned = vec![0.0; nm];
+    let level = |region: u32, kind: u16| {
+        let r = &w.econ.regions[region as usize];
+        let m = &w.econ.markets[r.market as usize];
+        let b = &cat.buildings[kind as usize];
+        let tfp = bf_sim::econ::plant_tfp(r, m, b);
+        (
+            r.market as usize,
+            bf_sim::econ::monthly::level_capital(cat, kind as usize, 0, tfp).to_f64_lossy(),
+        )
+    };
+    for s in w.foreign.stakes() {
+        let (host, v) = level(s.region, s.kind);
+        let value = v * s.levels as f64 * s.foreign_share(year).to_f64_lossy();
+        hosted[host] += value;
+        owned[s.owner as usize] += value;
+    }
+    for (&(region, kind), owners) in &w.foreign.building {
+        let (host, v) = level(region, kind);
+        for &o in owners {
+            hosted[host] += v;
+            owned[o as usize] += v;
+        }
+    }
+    (hosted, owned)
 }

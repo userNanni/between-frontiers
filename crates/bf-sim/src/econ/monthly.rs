@@ -474,6 +474,8 @@ pub struct Investment {
     pub tree: Option<Arc<crate::research::TechTree>>,
     /// `game::Switches::small_market_wage_floor`.
     pub wage_floor: bool,
+    /// `Switches::foreign_flow`: the funds build abroad with what they have left.
+    pub foreign_flow: bool,
 }
 
 pub struct Build {
@@ -486,6 +488,10 @@ pub struct Build {
     cost: Fixed,
     /// The farm (`FARMS` index) whose land this level clears from pasture or forest.
     clears: Option<u8>,
+    /// The market whose fund pays for a level built abroad; `None` at home.
+    owner: Option<u16>,
+    /// Paid with the earnings the owner keeps in the host, already in the host's fund.
+    from_retained: bool,
 }
 
 pub struct InvestmentChanges {
@@ -535,6 +541,65 @@ pub fn method_score(m: &super::catalogue::Method, profit: Fixed) -> Fixed {
 /// With `floor` (`game::Switches::small_market_wage_floor`), a market too small to have a wage
 /// of its own reads the lowest of the others.
 pub fn market_wages(econ: &crate::econ::Economy, floor: bool) -> Vec<Fixed> {
+    let (wages, hands) = wages_and_hands(econ);
+    market_wages_of(wages, &hands, floor)
+}
+
+/// [`market_wages`] from the markets' average pay and hands in jobs ([`wages_and_hands`]).
+fn market_wages_of(mut wages: Vec<Fixed>, hands: &[i64], floor: bool) -> Vec<Fixed> {
+    // A market with fewer workers than a few plant levels (San Marino, Andorra, Liechtenstein
+    // in 1925) has no wage of its own to read: its two or three plants run at the floor of use
+    // with full crews and pay almost nothing. Its people could work across the border, so it
+    // reads the lowest wage among the markets with a reading when its own is lower.
+    if !floor {
+        return wages;
+    }
+    let floor = wages
+        .iter()
+        .zip(hands)
+        .filter(|(w, h)| **h >= MIN_HANDS_FOR_A_WAGE && **w > Fixed::ZERO)
+        .map(|(w, _)| *w)
+        .min();
+    // In full below half the threshold, fading linearly to nothing at it: a market that grows
+    // past it from one month to the next sees no jump in its wage.
+    if let Some(floor) = floor {
+        for (w, h) in wages.iter_mut().zip(hands) {
+            *w = small_market_wage(*w, floor, *h);
+        }
+    }
+    wages
+}
+
+/// Fewest workers in jobs for a market's average wage to count as a reading: below it (the
+/// microstates, a few thousand people) the average of a handful of jobs is noise.
+pub const WAGE_READING_HANDS: i64 = 10_000;
+
+/// The wage a foreign fund expects to pay in each market: the market's own where it has a
+/// reading ([`WAGE_READING_HANDS`]), else the lowest wage among the markets that have one. A
+/// country with no reading does not offer labour for free.
+pub fn site_wages(econ: &crate::econ::Economy) -> Vec<Fixed> {
+    let (wages, hands) = wages_and_hands(econ);
+    site_wages_of(&wages, &hands)
+}
+
+/// [`site_wages`] from the markets' average pay and hands in jobs ([`wages_and_hands`]).
+fn site_wages_of(wages: &[Fixed], hands: &[i64]) -> Vec<Fixed> {
+    let floor = wages
+        .iter()
+        .zip(hands)
+        .filter(|(w, h)| **h >= WAGE_READING_HANDS && **w > Fixed::ZERO)
+        .map(|(w, _)| *w)
+        .min()
+        .unwrap_or(Fixed::ZERO);
+    wages
+        .iter()
+        .zip(hands)
+        .map(|(w, h)| if *h >= WAGE_READING_HANDS { *w } else { floor })
+        .collect()
+}
+
+/// Each market's average pay of a worker in jobs, and the hands in jobs it averages over.
+fn wages_and_hands(econ: &crate::econ::Economy) -> (Vec<Fixed>, Vec<i64>) {
     let mut pay = vec![Fixed::ZERO; econ.markets.len()];
     let mut hands = vec![0i64; econ.markets.len()];
     for r in &econ.regions {
@@ -554,32 +619,12 @@ pub fn market_wages(econ: &crate::econ::Economy, floor: bool) -> Vec<Fixed> {
             hands[r.market as usize] += p.employed;
         }
     }
-    let mut wages: Vec<Fixed> = pay
+    let wages = pay
         .iter()
         .zip(&hands)
         .map(|(p, h)| if *h > 0 { *p / *h } else { Fixed::ZERO })
         .collect();
-    // A market with fewer workers than a few plant levels (San Marino, Andorra, Liechtenstein
-    // in 1925) has no wage of its own to read: its two or three plants run at the floor of use
-    // with full crews and pay almost nothing. Its people could work across the border, so it
-    // reads the lowest wage among the markets with a reading when its own is lower.
-    if !floor {
-        return wages;
-    }
-    let floor = wages
-        .iter()
-        .zip(&hands)
-        .filter(|(w, h)| **h >= MIN_HANDS_FOR_A_WAGE && **w > Fixed::ZERO)
-        .map(|(w, _)| *w)
-        .min();
-    // In full below half the threshold, fading linearly to nothing at it: a market that grows
-    // past it from one month to the next sees no jump in its wage.
-    if let Some(floor) = floor {
-        for (w, h) in wages.iter_mut().zip(&hands) {
-            *w = small_market_wage(*w, floor, *h);
-        }
-    }
-    wages
+    (wages, hands)
 }
 
 /// The wage a market with `hands` plant workers reads, its own pay being `own`: the floor in
@@ -710,6 +755,8 @@ impl System<GameWorld> for Investment {
             .read(ECON)
             .write(ECON)
             .read(crate::demography::DEMOGRAPHY)
+            .read(crate::foreign_stakes::FOREIGN)
+            .write(crate::foreign_stakes::FOREIGN)
     }
     fn compute(&self, ctx: &TickCtx, world: &GameWorld) -> InvestmentChanges {
         let cat = &*self.cat;
@@ -722,7 +769,10 @@ impl System<GameWorld> for Investment {
             &world.research,
             econ.markets.len(),
         );
-        let wages = market_wages(econ, self.wage_floor);
+        // The month's pay is counted once, for the works at home and (switched on) abroad.
+        let (pay, hands) = wages_and_hands(econ);
+        let site = self.foreign_flow.then(|| site_wages_of(&pay, &hands));
+        let wages = market_wages_of(pay, &hands, self.wage_floor);
         let mut closes = Vec::new();
         for (ri, r) in econ.regions.iter().enumerate() {
             for p in &r.plants {
@@ -898,6 +948,8 @@ impl System<GameWorld> for Investment {
                             points,
                             cost,
                             clears,
+                            owner: None,
+                            from_retained: false,
                         },
                     ));
                 }
@@ -919,8 +971,10 @@ impl System<GameWorld> for Investment {
                     .then(a.1.kind.cmp(&b.1.kind))
             });
             let mut started = 0;
+            let mut waiting = false;
             for (_, build) in list.into_iter().take(MAX_BUILDS * 4) {
                 if started >= MAX_BUILDS {
+                    waiting = true;
                     break;
                 }
                 if build.cost > budget {
@@ -930,7 +984,11 @@ impl System<GameWorld> for Investment {
                 builds.push(build);
                 started += 1;
             }
-            leftover.push(budget);
+            // A fund with works still waiting at home for next month has nothing to spare.
+            leftover.push(if waiting { Fixed::ZERO } else { budget });
+        }
+        if let Some(site) = &site {
+            builds.extend(abroad(cat, world, year, &busy, &queued, &leftover, site));
         }
         let schools: Option<Vec<[i64; 3]>> = (world.education.regions.len() == econ.regions.len())
             .then(|| {
@@ -947,13 +1005,16 @@ impl System<GameWorld> for Investment {
             public,
         }
     }
-    fn apply(&self, _ctx: &TickCtx, changes: InvestmentChanges, world: &mut GameWorld) {
+    fn apply(&self, ctx: &TickCtx, changes: InvestmentChanges, world: &mut GameWorld) {
         let econ = &mut world.econ;
+        let foreign = &mut world.foreign;
         for (ri, kind) in changes.closes {
             // A tenth of a losing plant closes each month, at least one level.
             let p = econ.regions[ri].plant_mut(kind);
+            let before = p.levels;
             p.levels -= (p.levels / 10).max(1);
             p.losing_weeks = 0;
+            foreign.plant_shrank(ri as u32, kind, before, p.levels);
         }
         for b in changes.builds {
             if let Some(farm) = b.clears {
@@ -963,7 +1024,18 @@ impl System<GameWorld> for Investment {
             for (g, q) in b.goods {
                 econ.markets[market].construction[g as usize] += q;
             }
-            let _ = b.cost;
+            if let Some(owner) = b.owner {
+                // The owner's fund pays the host's for the work, which the host's builders do
+                // and its pool pays as they deliver (`docs/foreign-capital.pt-BR.md`, section 3).
+                // Earnings kept in the host are in its fund already: the claim pays.
+                if b.from_retained {
+                    foreign.retain(owner, market as u16, -b.cost);
+                } else {
+                    econ.markets[owner as usize].pool -= b.cost;
+                    econ.markets[market].pool += b.cost;
+                }
+                foreign.paid(b.region as u32, b.kind, owner);
+            }
             if b.points > Fixed::ZERO {
                 // The level runs when the building trade has delivered its points.
                 econ.markets[market].queue.push(super::state::Project {
@@ -980,13 +1052,454 @@ impl System<GameWorld> for Investment {
                     p.method = b.method;
                 }
                 p.levels += 1;
+                foreign.finished(b.region as u32, b.kind, ctx.date.year);
             }
         }
         for p in changes.public {
             let market = econ.regions[p.region as usize].market as usize;
             econ.markets[market].queue.push(p);
         }
+        // Earnings kept for an expansion that did not come go home bit by bit.
+        let release: Vec<(u16, u16, Fixed)> = foreign
+            .retained
+            .iter()
+            .map(|(&(owner, host), &amount)| {
+                (
+                    owner,
+                    host,
+                    amount * crate::foreign_capital::RETAINED_RELEASE,
+                )
+            })
+            .collect();
+        for (owner, host, out) in release {
+            econ.markets[host as usize].pool -= out;
+            econ.markets[owner as usize].pool += out;
+            foreign.retain(owner, host, -out);
+        }
     }
+}
+
+/// What held the money funds offered abroad, summed over a run, in raw fixed-point units:
+/// offered (after `ABROAD_CAP`), placed by the split, placed at sites full by their idle
+/// hands, placed at sites full by the host's yearly room (`MAX_INFLOW`), and, turning money
+/// into whole levels, what the hands and the room left unbuilt; in whole reference units.
+/// Diagnostics for the bench only:
+/// never read by the simulation, so they do not touch the state or its hash.
+pub static ABROAD_HELD: [std::sync::atomic::AtomicI64; 6] =
+    [const { std::sync::atomic::AtomicI64::new(0) }; 6];
+
+fn held(i: usize, v: Fixed) {
+    ABROAD_HELD[i].fetch_add(v.raw() / 1000, std::sync::atomic::Ordering::Relaxed);
+}
+
+/// Dearest destination states a fund looks at in each open country: those with the most idle
+/// hands. Bounds the sites a fund weighs each month.
+const ABROAD_STATES: usize = 4;
+
+/// Kinds a fund looks at abroad: those its country has most levels of among the ones it runs
+/// full. A country's firms go abroad in the trades they lead at home; it bounds the sites a
+/// fund weighs each month.
+const ABROAD_KINDS: usize = 8;
+
+/// Levels a fund starts abroad in a month, at most.
+const MAX_ABROAD: i64 = MAX_BUILDS as i64;
+
+/// The levels each fund builds abroad this month with what it has left after building at home
+/// (`docs/foreign-capital.pt-BR.md`, section 3). A site is a kind the fund's country runs full
+/// at home, in one of the open countries' states with the most idle hands; the contract
+/// (`foreign_capital::allocate`) splits the money among the sites that beat the return at home,
+/// and each site gets the whole levels its money pays for. The plant runs at the host's
+/// productivity until the technique of the owner reaches it (decision C5).
+fn abroad(
+    cat: &Catalogue,
+    world: &GameWorld,
+    year: i32,
+    busy: &[Vec<bool>],
+    queued: &[Vec<(u16, i64)>],
+    leftover: &[Fixed],
+    wages: &[Fixed],
+) -> Vec<Build> {
+    use crate::foreign_capital::{Expropriation, Openness, Site, allocate, expropriation_premium};
+    let econ = &world.econ;
+    let nm = econ.markets.len();
+    if nm < 2 || !leftover.iter().any(|l| *l > Fixed::ZERO) {
+        return Vec::new();
+    }
+    // Hands a new plant can hire in each state, as the home builders count them.
+    let idle: Vec<i64> = econ
+        .regions
+        .iter()
+        .map(|r| {
+            let idle_of = |pi: usize| (workers(r.pops[pi].size) - r.pops[pi].employed).max(0);
+            let informal: i64 = cat.informal.map_or(0, |k| {
+                r.plants
+                    .iter()
+                    .filter(|p| p.kind == k)
+                    .map(|p| p.levels * cat.buildings[k as usize].methods[0].workers)
+                    .sum()
+            });
+            idle_of(prof::PEASANT) + idle_of(prof::LABORER) + informal
+        })
+        .collect();
+    // Less the hands the works already in the queue will hire when they finish: a level
+    // promised is a level whose workers are spoken for (the queue had piled up in states
+    // too small to staff it).
+    let idle: Vec<i64> = idle
+        .iter()
+        .enumerate()
+        .map(|(ri, &n)| {
+            let promised: i64 = queued[ri]
+                .iter()
+                .map(|&(k, levels)| levels * cat.buildings[k as usize].methods[0].workers)
+                .sum();
+            (n - promised).max(0)
+        })
+        .collect();
+    // The open states of each country, most idle hands first.
+    let mut states: Vec<Vec<usize>> = vec![Vec::new(); nm];
+    for (ri, r) in econ.regions.iter().enumerate() {
+        let m = &econ.markets[r.market as usize];
+        if idle[ri] > 0 && !Openness::from_pull(m.laws.of(r).foreign_investment).is_closed() {
+            states[r.market as usize].push(ri);
+        }
+    }
+    for list in &mut states {
+        list.sort_by(|a, b| idle[*b].cmp(&idle[*a]).then(a.cmp(b)));
+        list.truncate(ABROAD_STATES);
+    }
+    // The method each country runs a kind with: that of its largest plant.
+    let mut method_of: Vec<Vec<Option<(i64, u8)>>> = vec![vec![None; cat.buildings.len()]; nm];
+    for r in &econ.regions {
+        for p in &r.plants {
+            let e = &mut method_of[r.market as usize][p.kind as usize];
+            if p.levels > 0 && e.is_none_or(|(l, _)| p.levels > l) {
+                *e = Some((p.levels, p.method));
+            }
+        }
+    }
+    let premium: Vec<Fixed> = (0..nm)
+        .map(|mi| {
+            let past: Vec<Expropriation> = world
+                .foreign
+                .expropriations
+                .iter()
+                .filter(|e| usize::from(e.host) == mi)
+                .map(|e| Expropriation {
+                    years_ago: i64::from(year - e.year),
+                    share: e.share,
+                })
+                .collect();
+            expropriation_premium(&past)
+        })
+        .collect();
+    let existing = |ri: usize, kind: usize| -> i64 {
+        econ.regions[ri]
+            .plants
+            .iter()
+            .find(|p| p.kind as usize == kind)
+            .map_or(0, |p| p.levels)
+            + queued[ri]
+                .iter()
+                .find(|(k, _)| *k as usize == kind)
+                .map_or(0, |e| e.1)
+    };
+    // Sites and the contract's split, fund by fund.
+    struct Plan {
+        sites: Vec<(usize, u16, u8, Fixed)>,
+        amounts: Vec<(Fixed, Fixed)>,
+        /// The bench's counters 0 to 3 for this fund ([`ABROAD_HELD`]), added after the
+        /// parallel part, in fund order.
+        held: [i64; 4],
+    }
+    // The first method's base value added by kind, for a level's capital (`level_capital`).
+    let base0: Vec<Fixed> = (0..cat.buildings.len())
+        .map(|k| base_value_added(cat, k, 0))
+        .collect();
+    // The kinds each fund weighs abroad: the `ABROAD_KINDS` it has most levels of among those
+    // it runs full.
+    let fund_kinds: Vec<Vec<(i64, usize, u8)>> = (0..nm)
+        .map(|o| {
+            if leftover[o] <= Fixed::ZERO {
+                return Vec::new();
+            }
+            let mut kinds: Vec<(i64, usize, u8)> = cat
+                .buildings
+                .iter()
+                .enumerate()
+                .filter(|(kind, b)| !b.public && !b.informal && b.farm.is_none() && busy[o][*kind])
+                .filter_map(|(kind, _)| method_of[o][kind].map(|(l, m)| (l, kind, m)))
+                .collect();
+            kinds.sort_by(|a, b| b.0.cmp(&a.0).then(a.1.cmp(&b.1)));
+            kinds.truncate(ABROAD_KINDS);
+            kinds
+        })
+        .collect();
+    // What a site is worth whoever builds it, once per kind weighed and open state (rule 6 of
+    // `docs/performance.pt-BR.md`): `None` where the deposits are used up, else the state's
+    // productivity for the kind, a level's capital at the first method and the host's room.
+    #[derive(Clone, Copy)]
+    struct Pre {
+        ri: usize,
+        dest: usize,
+        tfp: Fixed,
+        level: Fixed,
+        by_room: Fixed,
+        openness: Openness,
+    }
+    let mut slot: Vec<usize> = vec![usize::MAX; cat.buildings.len()];
+    let mut used: Vec<usize> = Vec::new();
+    for kinds in &fund_kinds {
+        for &(_, kind, _) in kinds {
+            if slot[kind] == usize::MAX {
+                slot[kind] = used.len();
+                used.push(kind);
+            }
+        }
+    }
+    // In the order the funds weigh them: by destination, then its states most idle first.
+    let open: Vec<usize> = states.iter().flatten().copied().collect();
+    let (base0_of, existing_of, open_list) = (&base0, &existing, &open);
+    let pre: Vec<Vec<Pre>> = used
+        .par_iter()
+        .map(|&kind| {
+            let b = &cat.buildings[kind];
+            open_list
+                .iter()
+                .filter_map(|&ri| {
+                    let r = &econ.regions[ri];
+                    let m = &econ.markets[r.market as usize];
+                    if let Some(res) = b.resource {
+                        let ceiling: i64 = r
+                            .deposits
+                            .iter()
+                            .filter(|x| x.0 == res && x.1 <= year)
+                            .map(|x| x.2)
+                            .sum();
+                        if existing_of(ri, kind) >= ceiling {
+                            return None;
+                        }
+                    }
+                    let tfp = plant_tfp(r, m, b);
+                    Some(Pre {
+                        ri,
+                        dest: r.market as usize,
+                        tfp,
+                        level: base0_of[kind] * tfp * (52 * CAPITAL_YEARS),
+                        by_room: m.gdp_last_year * crate::foreign_capital::MAX_INFLOW / 12,
+                        openness: Openness::from_pull(m.laws.of(r).foreign_investment),
+                    })
+                })
+                .collect()
+        })
+        .collect();
+    let plans: Vec<Plan> = (0..nm)
+        .into_par_iter()
+        .map(|o| {
+            let mut plan = Plan {
+                sites: Vec::new(),
+                amounts: Vec::new(),
+                held: [0; 4],
+            };
+            if leftover[o] <= Fixed::ZERO {
+                return plan;
+            }
+            let home = &econ.markets[o];
+            let home_return = hurdle(home);
+            let freight = home.laws.effects[0].tariff;
+            let mut sites = Vec::new();
+            let mut rooms = Vec::new();
+            for &(_, kind, method) in &fund_kinds[o] {
+                let b = &cat.buildings[kind];
+                let def = &b.methods[method as usize];
+                if def.workers <= 0 {
+                    continue;
+                }
+                let value_added = base_value_added(cat, kind, method as usize);
+                {
+                    for p in &pre[slot[kind]] {
+                        let (ri, d) = (p.ri, p.dest);
+                        if d == o {
+                            continue;
+                        }
+                        if idle[ri] < def.workers {
+                            continue;
+                        }
+                        let tfp = p.tfp;
+                        let level = match def.capital {
+                            Some(share) => p.level * share,
+                            None => p.level,
+                        };
+                        if level <= Fixed::ZERO {
+                            continue;
+                        }
+                        let by_hands = level * (idle[ri] / def.workers);
+                        let by_room = p.by_room;
+                        let site = Site {
+                            dest: d as u16,
+                            value_added,
+                            workers: def.workers,
+                            wage: wages[d],
+                            reach: tfp,
+                            freight,
+                            expropriation: premium[d],
+                            // Relation and diaspora wait for the influence in the tick.
+                            relation: Fixed::ZERO,
+                            diaspora: Fixed::ZERO,
+                            openness: p.openness,
+                            room: by_hands.min(by_room),
+                        };
+                        // Only a site the split would give money to: open, with room, and
+                        // beating the return at home (`allocate` weighs nothing else).
+                        if site.openness.is_closed()
+                            || site.room <= Fixed::ZERO
+                            || crate::foreign_capital::site_return(&site).net <= home_return
+                        {
+                            continue;
+                        }
+                        rooms.push((by_hands, by_room));
+                        sites.push(site);
+                        plan.sites.push((ri, kind as u16, method, level));
+                    }
+                }
+            }
+            plan.amounts = allocate(leftover[o], home_return, &sites)
+                .iter()
+                .map(|p| (p.amount, p.weight))
+                .collect();
+            plan.held[0] += (leftover[o] * crate::foreign_capital::ABROAD_CAP).raw() / 1000;
+            for (s, (&(amount, _), &(by_hands, by_room))) in
+                sites.iter().zip(plan.amounts.iter().zip(&rooms))
+            {
+                plan.held[1] += amount.raw() / 1000;
+                if amount > Fixed::ZERO && amount >= s.room {
+                    plan.held[if by_hands <= by_room { 2 } else { 3 }] += amount.raw() / 1000;
+                }
+            }
+            plan
+        })
+        .collect();
+    // Whole levels, fund by fund in market order, each taking the hands it hires and the room
+    // the host has left this month (`foreign_capital::MAX_INFLOW`).
+    let mut idle = idle;
+    let mut absorb: Vec<Fixed> = econ
+        .markets
+        .iter()
+        .map(|m| m.gdp_last_year * crate::foreign_capital::MAX_INFLOW / 12)
+        .collect();
+    let mut out = Vec::new();
+    let construction = cat.construction;
+    for (o, plan) in plans.into_iter().enumerate() {
+        for (i, v) in plan.held.iter().enumerate() {
+            ABROAD_HELD[i].fetch_add(*v, std::sync::atomic::Ordering::Relaxed);
+        }
+        let mut started = 0i64;
+        let mut levels: Vec<i64> = vec![0; plan.sites.len()];
+        // First the earnings the fund keeps in each host: whole levels at the sites there that
+        // beat its home return, the heaviest first.
+        let mut from_retained: Vec<i64> = vec![0; plan.sites.len()];
+        let mut kept: Vec<(u16, Fixed)> = world
+            .foreign
+            .retained
+            .range((o as u16, 0)..=(o as u16, u16::MAX))
+            .map(|(&(_, host), &amount)| (host, amount))
+            .collect();
+        if !kept.is_empty() {
+            let mut order: Vec<usize> = (0..plan.sites.len())
+                .filter(|&i| plan.amounts[i].1 > Fixed::ZERO)
+                .collect();
+            order.sort_by(|a, b| plan.amounts[*b].1.cmp(&plan.amounts[*a].1).then(a.cmp(b)));
+            for i in order {
+                let (ri, kind, method, cost) = plan.sites[i];
+                let host = econ.regions[ri].market;
+                let hands = cat.buildings[kind as usize].methods[method as usize].workers;
+                let Some(k) = kept.iter_mut().find(|k| k.0 == host) else {
+                    continue;
+                };
+                let room = &mut absorb[host as usize];
+                while k.1 >= cost && *room >= cost && idle[ri] >= hands && started < MAX_ABROAD {
+                    k.1 -= cost;
+                    *room -= cost;
+                    from_retained[i] += 1;
+                    idle[ri] -= hands;
+                    started += 1;
+                }
+            }
+        }
+        let mut spare = Fixed::ZERO;
+        for (i, &(ri, kind, method, cost)) in plan.sites.iter().enumerate() {
+            let (amount, _) = plan.amounts[i];
+            if amount <= Fixed::ZERO {
+                continue;
+            }
+            let hands = cat.buildings[kind as usize].methods[method as usize].workers;
+            let host = econ.regions[ri].market as usize;
+            let want = (amount / cost).to_int_floor().max(0);
+            let staffed = want.min(idle[ri] / hands);
+            let n = staffed
+                .min((absorb[host] / cost).to_int_floor())
+                .min(MAX_ABROAD - started)
+                .max(0);
+            held(4, cost * (want - staffed));
+            held(5, cost * (staffed - n));
+            levels[i] = n;
+            absorb[host] -= cost * n;
+            idle[ri] -= n * hands;
+            started += n;
+            spare += amount - cost * n;
+        }
+        // What the split left in pieces too small for a level goes, a level at a time, to
+        // the sites of most weight.
+        let mut order: Vec<usize> = (0..plan.sites.len())
+            .filter(|&i| plan.amounts[i].1 > Fixed::ZERO)
+            .collect();
+        order.sort_by(|a, b| plan.amounts[*b].1.cmp(&plan.amounts[*a].1).then(a.cmp(b)));
+        for i in order {
+            let (ri, kind, method, cost) = plan.sites[i];
+            let hands = cat.buildings[kind as usize].methods[method as usize].workers;
+            let host = econ.regions[ri].market as usize;
+            if started >= MAX_ABROAD || spare < cost || idle[ri] < hands || absorb[host] < cost {
+                continue;
+            }
+            levels[i] += 1;
+            absorb[host] -= cost;
+            idle[ri] -= hands;
+            started += 1;
+            spare -= cost;
+        }
+        for (i, &(ri, kind, method, cost)) in plan.sites.iter().enumerate() {
+            let host = &econ.markets[econ.regions[ri].market as usize];
+            let b = &cat.buildings[kind as usize];
+            for n in 0..levels[i] + from_retained[i] {
+                let mut points = Fixed::ZERO;
+                let goods = b
+                    .construction
+                    .iter()
+                    .filter_map(|&(g, share, work)| {
+                        if let Some(cg) = construction
+                            && work
+                        {
+                            points +=
+                                cost.mul_ratio(share, 1000) / cat.goods[cg as usize].base_price;
+                            return None;
+                        }
+                        Some((g, cost.mul_ratio(share, 1000) / host.price[g as usize]))
+                    })
+                    .collect();
+                out.push(Build {
+                    region: ri,
+                    kind,
+                    method,
+                    goods,
+                    points,
+                    cost,
+                    clears: None,
+                    owner: Some(o as u16),
+                    from_retained: n < from_retained[i],
+                });
+            }
+        }
+    }
+    out
 }
 
 #[cfg(test)]

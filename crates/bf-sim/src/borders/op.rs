@@ -794,6 +794,11 @@ fn move_regions(
             r.colony = c;
         }
     }
+    // A state back with the country that owns plants in it: those are no longer foreign.
+    let regions_now = &world.econ.regions;
+    world
+        .foreign
+        .border_changed(|r| regions_now[r as usize].market);
     let (a, b) = two(&mut world.econ.markets, from, to);
     let left_all: Fixed = a.queue.iter().map(|p| p.left).sum();
     let left_moved: Fixed = a
@@ -1379,6 +1384,7 @@ impl System<GameWorld> for Borders {
             .write(crate::research_system::RESEARCH)
             .write(crate::polity::POLITY)
             .write(crate::demography::DEMOGRAPHY)
+            .write(crate::foreign_stakes::FOREIGN)
             .write(ResourceId(0))
     }
 
