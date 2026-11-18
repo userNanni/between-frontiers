@@ -1,7 +1,7 @@
 //! The forces tab with orders fits every logical screen, in both languages: Britain in 1925 with
 //! a battleship, destroyers and infantry on order, the queue, a large order waiting for its second
 //! click and a cancellation asked. Its own binary: the forces ship off and switch on through
-//! `BF_FORCES`, which only a process alone may write.
+//! `BF_RULES=forces`, which only a process alone may write.
 
 use bf_client::app::Transition;
 use bf_client::saves;
@@ -39,7 +39,7 @@ fn session() -> bf_sim::game::Session {
 #[test]
 fn the_forces_tab_holds_the_orders() {
     // SAFETY: the only test of this binary; nothing else reads the environment meanwhile.
-    unsafe { std::env::set_var("BF_FORCES", "1") };
+    unsafe { std::env::set_var("BF_RULES", "forces") };
     let session = session();
     let mut failures = Vec::new();
     for locale in ["pt-BR", "en"] {
