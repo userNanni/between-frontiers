@@ -822,6 +822,10 @@ pub struct Rules {
     /// Independence by movement (`data/borders/independence.ron`); without it colonies only
     /// grow their movement.
     pub independence: Option<Arc<crate::borders::independence::IndependenceSetup>>,
+    /// What the monthly step of the agreements reads (`treaty_system`): the yearly loss of the
+    /// reputation and the laws that are forms of government. With `clause_tests` or
+    /// `reputation`.
+    pub treaties: Option<Arc<crate::treaty_system::TreatySetup>>,
 }
 
 /// Rules that can be switched on, all off by default: a rule enters the main switched off, with
@@ -873,6 +877,11 @@ pub struct Switches {
     /// docs/treaties.pt-BR.md): what was paid and written off, and a line that ends stays in
     /// `Ledger::closed`. Off, a line that ends leaves the ledger and nothing is recorded.
     pub ledger_record: bool,
+    /// The reputation of each country's breaches (`treaty::Reputation`, docs/treaties.pt-BR.md
+    /// 9.4, owner's decisions P1–P3): a breach weighs on the reputation of its kind, a tenth of
+    /// it is forgotten each year, a change of regime halves the security one, and the table
+    /// discounts each promise by it. Off: breaches are recorded and give causes, nothing more.
+    pub reputation: bool,
     /// Schooling by cohort and level and the adult literacy campaign (`demography::education`,
     /// docs/population.pt-BR.md, "Ensino por coorte"). Off, literacy follows the economy's yearly
     /// rule; a world that already has schooling keeps it.
@@ -906,6 +915,7 @@ impl Switches {
         "influence_ties",
         "jobs_follow_use",
         "ledger_record",
+        "reputation",
         "schooling",
         "small_market_wage_floor",
         "trade_by_pair",
@@ -926,6 +936,7 @@ impl Switches {
             "influence_ties" => self.influence_ties = true,
             "jobs_follow_use" => self.jobs_follow_use = true,
             "ledger_record" => self.ledger_record = true,
+            "reputation" => self.reputation = true,
             "schooling" => self.schooling = true,
             "small_market_wage_floor" => self.small_market_wage_floor = true,
             "trade_by_pair" => self.trade_by_pair = true,
@@ -970,6 +981,7 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
         education,
         independence,
         crisis,
+        treaties,
     }) = rules
     {
         if let Some(p) = &politics {
@@ -1035,8 +1047,11 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
             foreign_contract: switches.foreign_contract,
         });
         // The agreements in force: tribute paid and tested, terms run out (off by default).
-        if switches.clause_tests {
-            s.add(crate::treaty_system::TreatyMonth);
+        if let Some(setup) = treaties {
+            s.add(crate::treaty_system::TreatyMonth {
+                setup,
+                tests: switches.clause_tests,
+            });
         }
         // Last in the day: an operation sees the day's results and the next day sees its own.
         if let Some(setup) = influence {
@@ -1327,6 +1342,36 @@ mod tests {
                 next_agreement: t.next_agreement,
             }
         }
+        /// The treaty state of formats 22 and 23: breaches, no reputation.
+        #[derive(Serialize)]
+        struct Treaties22<'a> {
+            recognition: &'a crate::treaty::Recognition,
+            agreements: &'a Vec<crate::treaty::Agreement>,
+            ended: &'a Vec<crate::treaty::Agreement>,
+            next_agreement: u32,
+            breaches: &'a Vec<crate::treaty::Breach>,
+            causes: &'a Vec<crate::treaty::Cause>,
+        }
+        /// Version 23: this build's world with the treaty state of then.
+        #[derive(Serialize)]
+        struct BeforeReputation<'a> {
+            scenario: &'a String,
+            player: &'a Option<Id<Country>>,
+            countries: &'a Table<Country, CountryState>,
+            census: &'a Vec<CensusRecord>,
+            econ: &'a crate::econ::Economy,
+            research: &'a crate::research::ResearchState,
+            politics: &'a crate::polity::PoliticsState,
+            demography: &'a crate::demography::DemographyState,
+            borders: &'a crate::borders::BordersState,
+            foreign: &'a crate::foreign_stakes::ForeignState,
+            influence: &'a crate::influence::InfluenceState,
+            treaties: Treaties22<'a>,
+            war: &'a crate::war::WarState,
+            education: &'a crate::demography::education::EducationState,
+            independence: &'a crate::borders::independence::IndependenceState,
+            levers: &'a crate::econ::levers::LeversState,
+        }
         /// Version 21: this build's world with the treaty state of then.
         #[derive(Serialize)]
         struct BeforeBreaches<'a> {
@@ -1584,9 +1629,40 @@ mod tests {
             hash_of(&with_ledger)
         );
         assert_eq!(
-            hash_of(&headed(23, &encode_snapshot(&with_ledger).unwrap())),
+            hash_of(&headed(24, &encode_snapshot(&with_ledger).unwrap())),
             hash_of(&with_ledger)
         );
+        // Version 23, before the reputation.
+        let t = &with_ledger.treaties;
+        let before_reputation = encode_snapshot(&BeforeReputation {
+            scenario: &with_ledger.scenario,
+            player: &with_ledger.player,
+            countries: &with_ledger.countries,
+            census: &with_ledger.census,
+            econ: &with_ledger.econ,
+            research: &with_ledger.research,
+            politics: &with_ledger.politics,
+            demography: &with_ledger.demography,
+            borders: &with_ledger.borders,
+            foreign: &with_ledger.foreign,
+            influence: &with_ledger.influence,
+            treaties: Treaties22 {
+                recognition: &t.recognition,
+                agreements: &t.agreements,
+                ended: &t.ended,
+                next_agreement: t.next_agreement,
+                breaches: &t.breaches,
+                causes: &t.causes,
+            },
+            war: &with_ledger.war,
+            education: &with_ledger.education,
+            independence: &with_ledger.independence,
+            levers: &with_ledger.levers,
+        })
+        .unwrap();
+        let loaded = headed(23, &before_reputation);
+        assert_eq!(hash_of(&loaded), hash_of(&with_ledger));
+        assert_eq!(loaded, with_ledger);
         // Versions 20 to 22, before the calls of third parties: the conflicts without `calls`.
         #[derive(Serialize)]
         struct ConflictsV22<'a> {
@@ -1624,7 +1700,7 @@ mod tests {
             borders: &'a crate::borders::BordersState,
             foreign: &'a crate::foreign_stakes::ForeignState,
             influence: &'a crate::influence::InfluenceState,
-            treaties: &'a crate::treaty::TreatyState,
+            treaties: Treaties22<'a>,
             war: WarV22<'a>,
             education: &'a crate::demography::education::EducationState,
             independence: &'a crate::borders::independence::IndependenceState,
@@ -1643,7 +1719,14 @@ mod tests {
             borders: &w.borders,
             foreign: &w.foreign,
             influence: &w.influence,
-            treaties: &w.treaties,
+            treaties: Treaties22 {
+                recognition: &w.treaties.recognition,
+                agreements: &w.treaties.agreements,
+                ended: &w.treaties.ended,
+                next_agreement: w.treaties.next_agreement,
+                breaches: &w.treaties.breaches,
+                causes: &w.treaties.causes,
+            },
             war: war_v22(w),
             education: &w.education,
             independence: &w.independence,
