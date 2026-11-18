@@ -267,6 +267,20 @@ impl GameData {
                     state_ids: self.border_rules.state_ids.clone(),
                 })
             });
+        let fight = war.as_ref().filter(|_| switches.war).map(|_| {
+            Arc::new(crate::war::fight::FightSetup {
+                neighbours: Arc::new(self.border_rules.neighbours.clone()),
+                depth_km: self
+                    .map
+                    .states
+                    .iter()
+                    .map(|s| {
+                        let side = f64::from(s.area_km2.max(1.0)).sqrt();
+                        (s.id, laplace_schelling::Fixed::from_f64_lossy(side / 2.0))
+                    })
+                    .collect(),
+            })
+        });
         crate::game::Rules {
             catalogue: Arc::clone(&self.catalogue),
             tree: self.tree.clone(),
@@ -276,6 +290,7 @@ impl GameData {
             influence,
             war,
             crisis,
+            fight,
             trade: switches.trade_by_pair.then(|| self.trade_geography()),
             treaties: (switches.clause_tests || switches.reputation || switches.negotiation).then(
                 || {

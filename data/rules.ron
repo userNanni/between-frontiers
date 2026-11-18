@@ -79,4 +79,7 @@
     // finance trade by pair (the microstates' economy). Needs `trade_by_pair`, and the 1925
     // unions need `treaties_in_force`. Off: services are sold only at home.
     union_services: false,
+    // The war on land in the tick (`docs/war.pt-BR.md`, "A guerra no tick"): fronts, combat,
+    // advance and control. Needs `forces`. Off: a declared war only mobilizes.
+    war: false,
 )

@@ -26,12 +26,15 @@ pub struct Forces {
     pub infantry: Option<u16>,
     /// Crises (slice B); `None` without `crisis.ron`.
     pub crisis: Option<Arc<super::crisis::CrisisSetup>>,
+    /// The war on land (slice C); `None` with `Switches::war` off.
+    pub fight: Option<Arc<super::fight::FightSetup>>,
 }
 
 pub struct ForcesChanges {
     countries: Vec<CountryWar>,
     soldiers: Option<Vec<i64>>,
     crises: Option<super::crisis::CrisisWeek>,
+    fight: Option<super::fight::FightWeek>,
 }
 
 /// Merges a list of (good, quantity) into a sorted list.
@@ -183,6 +186,7 @@ impl Forces {
         peace: Arc<PeaceRules>,
         politics: Option<Arc<Politics>>,
         crisis: Option<Arc<super::crisis::CrisisSetup>>,
+        fight: Option<Arc<super::fight::FightSetup>>,
     ) -> Self {
         let basket: Vec<(u16, i64)> = cat
             .state_basket
@@ -199,6 +203,7 @@ impl Forces {
             basket,
             infantry,
             crisis,
+            fight,
         }
     }
 
@@ -837,6 +842,7 @@ impl System<GameWorld> for Forces {
                 countries: Vec::new(),
                 soldiers: None,
                 crises: None,
+                fight: None,
             };
         }
         let countries: Vec<CountryWar> = world
@@ -856,10 +862,17 @@ impl System<GameWorld> for Forces {
                 !world.war.conflicts.crises.is_empty() || !world.war.conflicts.calls.is_empty()
             })
             .map(|setup| super::crisis::crisis_week(setup, &self.military, world));
+        // The war on land, only while a war is under way.
+        let fight = self
+            .fight
+            .as_ref()
+            .filter(|_| !world.war.conflicts.wars.is_empty())
+            .map(|setup| super::fight::fight_week(setup, &self.military, world));
         ForcesChanges {
             countries,
             soldiers,
             crises,
+            fight,
         }
     }
 
@@ -868,6 +881,14 @@ impl System<GameWorld> for Forces {
             return;
         }
         world.war.countries = changes.countries;
+        if let Some(week) = changes.fight {
+            for (c, share) in &week.lost_share {
+                if let Some(cw) = world.war.countries.get_mut(*c as usize) {
+                    super::fight::take_losses(&self.military, cw, *share);
+                }
+            }
+            world.war.fighting = week.fighting;
+        }
         if let Some(s) = changes.soldiers {
             world.war.soldiers = s;
         }

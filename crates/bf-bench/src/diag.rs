@@ -92,6 +92,7 @@ pub fn main() -> Result<(), String> {
             switches: Default::default(),
             independence: None,
             crisis: None,
+            fight: None,
             treaties: None,
         }),
     );
