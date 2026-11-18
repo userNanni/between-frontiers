@@ -13,6 +13,10 @@
     // the formations of `data/scenario/1925/forces.ron`. Off: the old rule of
     // `data/military/peace.ron` (`soldiers`).
     forces: false,
+    // The contract and the expropriation of foreign plants (`docs/foreign-capital.pt-BR.md`, step
+    // 4a): the colony's plants stay the old metropole's at independence, and on January 1st a
+    // host whose laws close the capital or plan the economy takes them. Off: no such stake.
+    foreign_contract: false,
     // Capital crosses borders (`docs/foreign-capital.pt-BR.md`): the funds build abroad with what
     // they have left at home; the stakes and the weekly remittance follow from what they build.
     foreign_flow: false,

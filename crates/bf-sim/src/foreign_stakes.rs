@@ -321,6 +321,182 @@ impl ForeignState {
     }
 }
 
+/// `state_ownership` at or above which the economy is planned (the `planned_economy` law has
+/// 950‰; the next one, 500‰): a planned economy takes every foreign plant.
+pub const PLANNED_OWNERSHIP: Fixed = crate::econ::milli(900);
+
+/// Whether the laws in force take the foreign plants of a state: the capital law closes the
+/// country (`foreign_investment` at the closed law's pull or below) or the economy is planned
+/// (`docs/foreign-capital.pt-BR.md`, section 3, "Contrato e estatização").
+pub fn laws_take(laws: &crate::econ::state::LawEffects) -> bool {
+    laws.foreign_investment <= crate::foreign_capital::CLOSED_PULL
+        || laws.state_ownership >= PLANNED_OWNERSHIP
+}
+
+/// The foreign plants of an independent colony (C6a by agreement, C6c by revolt; section 7):
+/// the private levels of the plants that are neither farms (C6d: the land stays with whoever
+/// lives there), nor public, nor informal (`kinds`, by building) become a stake of the old
+/// metropole `owner`, built in `year`, with no contract: `private` of each plant's levels, the
+/// share neither the colonial state (`state_ownership`, which passes to the new one) nor the
+/// region's own owners ([`local_owners`]) held ([`colonial_private_share`]). Levels already held
+/// by another foreign owner stay theirs. Plants are (kind, levels).
+pub fn colonial_stakes(
+    foreign: &mut ForeignState,
+    region: u32,
+    owner: u16,
+    year: i32,
+    private: Fixed,
+    kinds: &[bool],
+    plants: impl Iterator<Item = (u16, i64)>,
+) {
+    let private = private.clamp(Fixed::ZERO, Fixed::ONE);
+    for (kind, levels) in plants {
+        if !kinds.get(usize::from(kind)).copied().unwrap_or(false) {
+            continue;
+        }
+        let free = levels - foreign.foreign_levels(region, kind);
+        let held = (Fixed::from_int(free.max(0)) * private).to_int_floor();
+        foreign.add(Stake {
+            region,
+            kind,
+            owner,
+            levels: held,
+            built: year,
+            partner: Fixed::ZERO,
+            term: 0,
+            handover: Handover::Never,
+        });
+    }
+}
+
+/// Share of a colony plant's levels that stays the old metropole's: what neither the colonial
+/// state (the colonial laws' `state_ownership`) nor the local owners (`local`) held.
+pub fn colonial_private_share(laws: &crate::econ::state::LawEffects, local: Fixed) -> Fixed {
+    (Fixed::ONE - laws.state_ownership).clamp(Fixed::ZERO, Fixed::ONE)
+        * (Fixed::ONE - local).clamp(Fixed::ZERO, Fixed::ONE)
+}
+
+/// Share of a colony's private plants its own owners held at independence: the density of
+/// capitalists among its people over that of the metropole's home states, up to 1. The weekly
+/// split cannot say it (it gives a state's whole dividend to its capitalists if there is one),
+/// so the rule reads who could own: a colony with as many capitalists per head as the metropole
+/// owns its plants, one with a tenth of them a tenth. `colony` and `home` are (capitalists,
+/// people).
+pub fn local_owners(colony: (i64, i64), home: (i64, i64)) -> Fixed {
+    let (c, n) = colony;
+    let (hc, hn) = home;
+    if c <= 0 || n <= 0 {
+        return Fixed::ZERO;
+    }
+    if hc <= 0 || hn <= 0 {
+        return Fixed::ONE;
+    }
+    // c/n over hc/hn, in i128 to keep the products of two populations.
+    let num = i128::from(c) * i128::from(hn);
+    let den = i128::from(n) * i128::from(hc);
+    if num >= den {
+        return Fixed::ONE;
+    }
+    Fixed::from_raw((num * i128::from(Fixed::ONE.raw()) / den) as i64)
+}
+
+/// What January 1st did to the stakes (for the bench and the tests).
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct January {
+    /// Stakes whose contract passed the whole plant to the local partner.
+    pub handed_over: usize,
+    /// (host, owner, value taken), in order.
+    pub taken: Vec<(u16, u16, Fixed)>,
+}
+
+/// January 1st, after the depreciation (`econ::yearly`): the contracts and the laws of the
+/// hosts (`docs/foreign-capital.pt-BR.md`, section 3).
+/// - A stake whose contract has passed the whole plant to the local partner goes; its levels
+///   stay in the plant, now domestic.
+/// - In every state whose laws take the foreign plants ([`laws_take`]) the stakes go to the
+///   host without pay, and so do the levels paid from abroad still building there. Where the
+///   host's own law (not its colonies') takes, what the owners reinvest there and have not yet
+///   built with is the host's too. Each owner taken from leaves an [`Expropriation`]: the share
+///   of the host's foreign capital (stakes at what a level costs there now) that was its and
+///   was taken, so the shares of one January add up to the share of the whole taken.
+///
+/// The laws read are those in force on the day: a law passed in the year takes the plants on
+/// the next January 1st.
+pub fn january(
+    world: &mut crate::game::GameWorld,
+    cat: &crate::econ::catalogue::Catalogue,
+    year: i32,
+) -> January {
+    let mut out = January::default();
+    let before = world.foreign.stakes.len();
+    world
+        .foreign
+        .stakes
+        .retain(|k, l| Stake::from_key(k, *l).foreign_share(year) > Fixed::ZERO);
+    out.handed_over = before - world.foreign.stakes.len();
+    let econ = &world.econ;
+    let takes: Vec<bool> = econ
+        .regions
+        .iter()
+        .map(|r| laws_take(econ.markets[usize::from(r.market)].laws.of(r)))
+        .collect();
+    let home_takes: Vec<bool> = econ
+        .markets
+        .iter()
+        .map(|m| laws_take(&m.laws.effects[0]))
+        .collect();
+    let any_stake = world
+        .foreign
+        .stakes
+        .keys()
+        .any(|k| takes[k.region as usize]);
+    let any_work = world.foreign.building.keys().any(|k| takes[k.0 as usize]);
+    let any_claim = world
+        .foreign
+        .retained
+        .keys()
+        .any(|k| home_takes[usize::from(k.1)]);
+    if !(any_stake || any_work || any_claim) {
+        return out;
+    }
+    // Value of each owner's stakes in each host, and of those taken.
+    let mut total: BTreeMap<u16, Fixed> = BTreeMap::new();
+    let mut taken: BTreeMap<(u16, u16), Fixed> = BTreeMap::new();
+    for s in world.foreign.stakes() {
+        let r = &econ.regions[s.region as usize];
+        let m = &econ.markets[usize::from(r.market)];
+        let b = &cat.buildings[usize::from(s.kind)];
+        let level = crate::econ::monthly::level_capital(
+            cat,
+            usize::from(s.kind),
+            0,
+            crate::econ::plant_tfp(r, m, b),
+        );
+        let v = level * s.levels * s.foreign_share(year);
+        *total.entry(r.market).or_default() += v;
+        if takes[s.region as usize] {
+            *taken.entry((r.market, s.owner)).or_default() += v;
+        }
+    }
+    let f = &mut world.foreign;
+    f.stakes.retain(|k, _| !takes[k.region as usize]);
+    f.building.retain(|k, _| !takes[k.0 as usize]);
+    f.retained.retain(|k, _| !home_takes[usize::from(k.1)]);
+    for ((host, owner), v) in taken {
+        let all = total.get(&host).copied().unwrap_or(Fixed::ZERO);
+        if v <= Fixed::ZERO || all <= Fixed::ZERO {
+            continue;
+        }
+        f.expropriations.push(Expropriation {
+            host,
+            year,
+            share: (v / all).clamp(Fixed::ZERO, Fixed::ONE),
+        });
+        out.taken.push((host, owner, v));
+    }
+    out
+}
+
 /// Foreign capital by pair, for the influence's investment channel (`influence::dependence`):
 /// the value of the plants of host B owned by A over B's GDP of last year, and the sum over
 /// all owners of B. Plants still in the queue do not count; a stake counts the share of its
@@ -540,6 +716,15 @@ mod tests {
         assert_eq!(f.retained_in(1, 4), Fixed::ZERO);
         assert_eq!(f.retained.len(), 1);
         assert!(!f.is_empty());
+    }
+
+    #[test]
+    fn local_owners_follow_the_density_of_capitalists() {
+        // 1 in 1000 at home; 1 in 10 000 in the colony: a tenth of the plants are local.
+        assert_eq!(local_owners((10, 100_000), (1_000, 1_000_000)), milli(100));
+        assert_eq!(local_owners((0, 100_000), (1_000, 1_000_000)), Fixed::ZERO);
+        assert_eq!(local_owners((500, 100_000), (1_000, 1_000_000)), Fixed::ONE);
+        assert_eq!(local_owners((5, 100), (0, 1_000_000)), Fixed::ONE);
     }
 
     #[test]
