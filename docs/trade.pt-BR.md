@@ -153,7 +153,15 @@ com o comércio sobre o PIB igual. Era a interação com o vazamento de dinheiro
 com o vazamento consertado, o PIB fica dentro da faixa, e com σ = 0 (custos iguais) o fechamento já
 reproduzia o pool. A CPU do caminho ligado caiu no #201, de +25 % para cerca de +8 % do semanal: o
 custo estava nas varreduras da matriz vendedor × comprador, não nos pares. Os números da rodada
-que ligou estão no PR. O frete que baixa o comércio antes de 1960 e o contêiner que o sobe depois
+que ligou estão no PR.
+
+O fechamento é por bem, por decisão do dono (T1, 2026-11-18,
+[wiki](wiki/decisoes/comercio.md#o-fechamento-é-por-bem-não-por-grupo-de-bens-e-custa-9--da-simulação)).
+Foi medida a alternativa de fechar por grupo de bens, em valor, com a fração do grupo aplicada a
+cada bem. O código do comércio caía de 9,1–9,4 % para 5,2–5,3 % da simulação (relógio no trecho,
+10 anos, três medidas por forma), mas o PIB mundial ficava de 5 a 8 % abaixo da faixa de 1945 em
+diante (de −4 a −9 σ), e o par por bem, que influência, embargo e tarifa leem, se perdia. O código
+dessa alternativa não ficou no jogo. O frete que baixa o comércio antes de 1960 e o contêiner que o sobe depois
 não aparecem; ficam anotados como dependência, não como meta.
 
 ## 9. Decisões do dono (2026-11-17)
