@@ -817,17 +817,19 @@ fn states(
         });
 }
 
-/// The term and the notice of the draft.
+/// The term and the notice of the draft. Both values sit in one width, the longest either can
+/// show in this language ("No term", "99 years"), so the words stay clear of − and +.
 fn term(ui: &mut Ui, i18n: &I18n, p: &mut Proposal) {
+    let years = |n: u16| i18n.tr_args("table-years", &[("n", arg(n.to_string()))]);
+    let term_text = |t: Option<u16>| t.map_or_else(|| i18n.tr("table-term-none"), years);
+    let all: Vec<String> = TERMS.iter().map(|t| term_text(*t)).collect();
+    let width = super::gov_ui::step_width(ui, &all);
     let at = TERMS.iter().position(|t| *t == p.term_years).unwrap_or(0);
-    let shown = match p.term_years {
-        None => i18n.tr("table-term-none"),
-        Some(y) => i18n.tr_args("table-years", &[("n", arg(y.to_string()))]),
-    };
     let d = super::gov_ui::control_row(ui, &i18n.tr("table-term"), |ui| {
-        super::gov_ui::stepper(
+        super::gov_ui::stepper_wide(
             ui,
-            &shown,
+            &term_text(p.term_years),
+            width,
             &i18n.tr("table-term-tip"),
             at > 0,
             at + 1 < TERMS.len(),
@@ -845,9 +847,10 @@ fn term(ui: &mut Ui, i18n: &I18n, p: &mut Proposal) {
     p.notice_years = p.notice_years.min(most);
     let n = p.notice_years;
     let d = super::gov_ui::control_row(ui, &i18n.tr("table-notice"), |ui| {
-        super::gov_ui::stepper(
+        super::gov_ui::stepper_wide(
             ui,
-            &i18n.tr_args("table-years", &[("n", arg(n.to_string()))]),
+            &years(n),
+            width,
             &i18n.tr("table-notice-tip"),
             n > 0,
             n < most,
