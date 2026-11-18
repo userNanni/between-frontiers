@@ -216,6 +216,56 @@ o par.
   tratados), a guerra não tem estado no mundo e a rota é fixa na carga; o fecho entra pela mesma
   porta (`Geography::closed`) quando cada um existir.
 
+## 12. Serviço e bem local dentro da união aduaneira (microestados)
+
+**O problema.** San Marino, Liechtenstein, Mônaco e Andorra são menores que o grão do modelo. Um
+nível de planta emprega de 870 a 990 pessoas; San Marino tem 5 160 trabalhadores. O comércio, o
+banco e a ferrovia deles rodam a 5 % de uso e pagam quase nada, porque servem só à própria gente
+(`docs/economy.pt-BR.md`, "Microestados"). Serviço, finança e construção não são comerciáveis
+(`tradable: false`), e os bens locais (transporte, energia) só transbordam para estados
+vizinhos do mesmo mercado (`econ::local`). Na vida real era o contrário: Mônaco vivia de turismo
+e cassino para estrangeiros, e Liechtenstein, do mercado suíço. O serviço vendido ao vizinho é a
+economia do microestado. As uniões aduaneiras de 1925 existem nos dados (Liechtenstein–Suíça,
+1924; Mônaco–França, 1865; também Luxemburgo–Bélgica, Danzig–Polônia e Sarre–França), e com o
+comércio por par já zeram a tarifa entre os parceiros nos bens comerciáveis. Isso não alcança o
+que pesa.
+
+**A regra (opção A, atrás de chave).** Entre dois países ligados por uma cláusula de união
+aduaneira de um acordo em vigor (`TreatyState::customs_unions`, a mesma leitura da tarifa, de modo
+que uma união negociada na mesa vale igual), duas coisas atravessam a fronteira:
+- **Serviço e finança entram no comércio por par desse par**, com o frete do grupo de serviços. O
+  excedente de serviço de um parceiro atende a procura do outro, e o pool mundial não vê esses
+  bens: só o par em união os troca.
+- **O bem local transborda para o estado vizinho do parceiro**, como já transborda para o vizinho
+  do mesmo mercado. A ferrovia de Liechtenstein serve o vale do Reno suíço, e a usina francesa
+  serve Mônaco.
+
+O preço de cada bem continua sendo do mercado de cada país. A conta de cada país (PIB, impostos,
+gente) segue própria.
+
+**Dados.** San Marino entra com a sua união com a Itália. O tratado de amizade e cooperação de
+1862 criou uma união aduaneira de fato com o Reino da Itália, renovada em 1872 e em 28 de junho de
+1897, e a de 1897 é a que vale em 1925 (*The Statesman's Year-Book*, verbete San Marino; a
+renovação seguinte é de 31 de março de 1939). Andorra não tinha união: havia comércio livre de
+fato com a França e a Espanha, e contrabando. Fica fora da opção A e é caso da B.
+
+**Ordem, para mexer no hash uma vez por passo.** (1) O leitor das uniões dos acordos em vigor
+(`TreatyState::customs_unions`, #205). (2) A tarifa do comércio lendo os acordos em vigor (#207),
+com efeito nulo nos dados de 1925. (3) Os acordos de 1925 em vigor ligados (`treaties_in_force`,
+#208). (4) Esta regra, desligada (`union_services`). (5) Ligá-la junto com a entrada de San
+Marino, que já muda a tarifa entre San Marino e a Itália, julgadas pela faixa. O custo se mede
+pelo relógio no trecho; os pares em união são poucos.
+
+**Alternativas anotadas, e por que não agora.**
+- **B. Trabalho que atravessa.** O trabalhador ocioso de um mercado pequeno ocupa vaga num estado
+  vizinho do parceiro, e o salário volta para casa. É o caso de Andorra e o complemento de A se os
+  serviços não bastarem. Mexe no trabalho e na migração, que têm donos próprios, e só se justifica
+  depois de medir A.
+- **C. O microestado no mercado do vizinho, com a conta própria.** É o mais fiel: San Marino
+  compraria e venderia ao preço italiano. Mas hoje mercado e país são o mesmo índice em todo o
+  código (o PIB, o caixa e o fundo de cada país são do mercado). Separar os dois é uma refatoração
+  grande, para quatro países com menos de 60 mil pessoas.
+
 ## Fontes
 
 - Gallaway, M. P.; McDaniel, C. A.; Rivera, S. A. "Short-run and long-run industry-level estimates
