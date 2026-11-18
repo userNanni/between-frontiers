@@ -35,7 +35,11 @@ fn employed(switches: Switches) -> (i64, laplace_schelling::StateHash) {
 
 #[test]
 fn off_by_default_and_on_it_lays_off_the_idle_crews() {
-    assert_eq!(data().rules().switches, Switches::default());
+    assert_eq!(data().rules().switches, Switches::shipped());
+    assert!(
+        !data().rules().switches.jobs_follow_use,
+        "jobs_follow_use ships off"
+    );
     let (off, off_hash) = employed(Switches::default());
     let (on, on_hash) = employed(Switches {
         jobs_follow_use: true,

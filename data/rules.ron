@@ -22,8 +22,9 @@
     fiscal_capacity: false,
     // Armed forces in peace (`docs/war.pt-BR.md`, "Forças em paz"): the soldiers are the men of
     // the formations of `data/scenario/1925/forces.ron`. Off: the old rule of
-    // `data/military/peace.ron` (`soldiers`).
-    forces: false,
+    // `data/military/peace.ron` (`soldiers`). On since the PR that switched it, judged by the
+    // eight-sample band of main (docs/war.pt-BR.md, "Chave").
+    forces: true,
     // The contract and the expropriation of foreign plants (`docs/foreign-capital.pt-BR.md`, step
     // 4a): the colony's plants stay the old metropole's at independence, and on January 1st a
     // host whose laws close the capital or plan the economy takes them. Off: no such stake.

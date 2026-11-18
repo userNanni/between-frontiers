@@ -27,7 +27,8 @@ fn run(switches: Switches) -> Session {
 #[test]
 fn off_by_default_the_trade_state_stays_empty() {
     let rules = data().rules();
-    assert_eq!(rules.switches, Switches::default());
+    assert_eq!(rules.switches, Switches::shipped());
+    assert!(!rules.switches.trade_by_pair, "trade by pair ships off");
     assert!(
         rules.trade.is_none(),
         "switched off, the distances are not built"
@@ -94,15 +95,20 @@ fn every_switch_field_has_its_name() {
 
 /// `data/rules.ron` names every switch, and all of them ship off: the main keeps its hash.
 #[test]
-fn rules_file_names_every_switch_and_ships_them_off() {
+fn rules_file_names_every_switch_and_ships_them_off_but_the_switched_on() {
     let path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../data/rules.ron");
     let text = std::fs::read_to_string(&path).unwrap();
     let file: Switches = ron::from_str(&text).unwrap();
-    assert_eq!(file, Switches::default(), "every rule ships off");
+    assert_eq!(
+        file,
+        Switches::shipped(),
+        "every rule ships off but those its own PR switched on"
+    );
     for name in Switches::NAMES {
+        let on = Switches::SHIPPED_ON.contains(name);
         assert!(
-            text.contains(&format!("{name}: false")),
-            "data/rules.ron lists {name}"
+            text.contains(&format!("{name}: {on}")),
+            "data/rules.ron lists {name}: {on}"
         );
     }
 }
