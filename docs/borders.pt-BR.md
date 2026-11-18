@@ -731,3 +731,144 @@ os chama.
    independências não é maior que antes;
 6. conservação quebrada (população, dinheiro, dívida, plantas) em qualquer separação;
 7. o hash com `enabled: false` diferente do da `main`.
+
+### Ligar a regra: estudo da onda (rascunho; I1 a I3 decididas em 2026-11-18)
+
+Rodada de 101 anos no `main` `ca21e5a` com `--rule independence`. A referência é a década do
+`born` de `candidates.ron` das mesmas 83 unidades de 1925, sem forçar data:
+
+| Década | História | Regra atual (`AtMost(400)`) | Experimento (`AtMost(900)`) |
+|---|---|---|---|
+| 1930 | 0 | 1 | 5 |
+| 1940 | 10 | 6 | 10 |
+| 1950 | 8 | 2 | 22 |
+| 1960 | 39 | 1 | 14 |
+| 1970 | 20 | 0 | 14 |
+| 1980 | 4 | 0 | 5 |
+| 1990 | 2 | 0 | 7 |
+| 2000 | 0 | 0 | 6 |
+| Sobram em 2026 | 0 | 73 | 0 |
+
+**Diagnóstico da regra atual: o governo próprio apaga a causa, e apaga em todas as colônias do
+dono.**
+- Na escada de resposta, a primeira concessão é o governo próprio, a lei `trusteeship`, que dá
+  `colonial_self_rule` 500.
+- A causa do movimento exige `colonial_self_rule` no máximo 400. Concedido o governo próprio, a
+  pressão vai a zero e o apoio decai pela meia-vida.
+- A lei é do país, não da unidade: uma concessão a uma unidade vale para todas as colônias do
+  dono.
+- No fim da rodada, as 73 unidades que sobram têm a condição de governo próprio como a mais
+  fraca. Todos os donos têm a lei em vigor: GBR (35 unidades), FRA (25), POR (5), ITA (2),
+  JAP (2), BEL, NLD, USA e NZL (1 cada).
+- Na história, o governo próprio veio antes da independência, e não no lugar dela: Costa do Ouro
+  em 1951, independente em 1957; Nigéria em 1954, independente em 1960; a loi-cadre francesa de
+  1956, e as independências de 1960.
+
+**O experimento** só muda o limite da causa para 900, acima de qualquer lei colonial. Com isso,
+o governo próprio freia o movimento (a margem cai de 875 para 444 por mil) em vez de apagá-lo.
+Não é proposta pronta, e mostra três coisas:
+- **A onda fecha:** as 83 unidades se separam.
+- **Ela vem cedo e achatada:** o pico fica na década de 1950 (22 contra 8 na história), e não há
+  o salto de 1960 (14 contra 39).
+- **Nunca há revolta:** são 81 por acordo e 2 como domínio. A metrópole sempre concede antes da
+  marca da revolta. Na história houve guerras coloniais (Indochina, Argélia, Quênia, Angola), que
+  dependem da fase 5.
+
+**Custo:** com a onda inteira, o sistema `influence` sobe para 9,0 ms por mês em média, acima dos
+8 ms do orçamento. A causa é a boa vontade negativa que a independência grava todo ano por par
+metrópole–anticolonial; com mais países anticoloniais, há mais pares. Precisa ser resolvido no PR
+que liga a regra, por exemplo gravando só quando o valor muda além de um limiar, ou fundindo o
+ato no ano.
+
+**Decisões do dono (2026-11-18):** I1 como recomendado. Na I2, o dono acrescentou que a concessão depende do tipo de vínculo (detalhe abaixo, "Tipos de vínculo"). Na I3, opção A. A redação das três recomendações, como foram levadas:
+1. **O governo próprio freia, não apaga.** Recomendação: a condição de governo próprio sobe com a
+   alfabetização da unidade, porque a elite educada pede mais quanto mais cresce. Na prática, o
+   limite passa a 400 + alfabetização × 500 por mil.
+   - Teste: Costa do Ouro com governo próprio em 1951 continua com pressão acima de zero.
+   - Alternativa: o limite fixo em 900 do experimento. É mais simples, mas acelera a onda cedo
+     demais, porque não depende de nada que mude no século.
+2. **Governo próprio por unidade ou por dono.** Recomendação: por dono, como está. A loi-cadre de
+   1956 valeu para toda a África francesa, e a lei por unidade pede leis coloniais por estado, uma
+   frente nova.
+3. **A falta de revolta fica para a fase 5.** Recomendação: sim, e anotada como dependência no
+   placar, sem meta. Com a guerra, a metrópole medirá o custo de lutar contra o de conceder.
+
+**Sinais de regra quebrada, conferidos na rodada da regra atual:**
+- **Sinal 5 (a onda acelera):** pela letra não dispara, mas a onda para em 1963. O diagnóstico
+  acima mostra que isso é regra quebrada.
+- **Sinal 6 (conservação):** coberto pelo teste das duas separações.
+- **Sinal 7 (hash com a regra desligada):** igual ao do `main`, provado no #136.
+
+**Rodada com a decisão I1 (`main` `ea09dda`, commit `ec58056`).**
+- **Neutralidade:** com a regra desligada, o hash de 101 anos é o da base guardada (`c7900608…`).
+  O determinismo entre threads e o save de 1975 também conferem.
+- **A onda:** igual à do experimento. As 83 unidades se separam: 5 na década de 1930, 10 na de
+  1940, 22 na de 1950, 14 na de 1960, 14 na de 1970 e 18 de 1980 a 2019. O pico vem uma década
+  antes da história (39 em 1960), e nenhuma separação é por revolta. Hipótese a estudar: a
+  alfabetização das colônias cresce cedo demais com a regra anual da economia, porque o ensino
+  por coorte está desligado.
+- **Custo:** a influência caiu de 9,0 para 2,3 ms por mês em média, abaixo dos 8 ms. O termo de
+  gente da afinidade percorria todas as regiões em cada par, e o crédito varria o livro de
+  dívidas em cada par. Agora os dois são indexados uma vez por passada, com as mesmas somas.
+- **Agregados contra a faixa de oito amostras** (`main` `ca21e5a`, mesmo hash), do `game.json`,
+  que conta todos os mercados, inclusive os países novos:
+
+  | Ano | PIB mundial | População mundial | Urbanização |
+  |---|---|---|---|
+  | 1955 | −1,8 % (−2,4σ) | −0,04 % | −0,3 % |
+  | 1975 | −6,7 % (−5,6σ) | −0,1 % | −0,1 % |
+  | 1995 | −12,2 % (−11σ) | −0,8 % | −2,5 % |
+  | 2025 | −17,5 % (−16σ) | −1,6 % (−6σ) | −8,5 % (−20σ) |
+
+  A perda não fica nos países novos: em 2025, as metrópoles dos donos perdem 12,7 % do PIB e os
+  países sem colônias, 10 %. Uma descolonização que derruba o PIB do mundo 17 % não é a da
+  história, então isso é regra quebrada e não equilíbrio. **A regra não pode ser ligada antes de
+  achar a causa.**
+- **Para o próximo estudo**, que precisa de uma leitura nova no bench: o PIB por país no fim,
+  inclusive dos países novos (o `history.json` só tem os territórios de 1925). As hipóteses, a
+  conferir nesta ordem:
+  1. o país novo nasce com a técnica limitada e sem fundo de investimento;
+  2. as fábricas da metrópole na colônia param ou mudam de dono (C6a a C6c);
+  3. a demanda dos países novos cai no comércio mundial e puxa as exportações das metrópoles.
+
+### Tipos de vínculo (decisão I2 do dono, 2026-11-18)
+
+- **Um tipo só para colônias e súditos:** `SubjectKind`, com colônia da Coroa, protetorado,
+  mandato, domínio e satélite, ganha `Integrated`, o território que é parte da metrópole em lei
+  (os departamentos da Argélia). A fatia de súditos e protetorados usa o mesmo tipo.
+- **Dado novo:** `data/borders/colonial_bonds.ron` dá o tipo de cada uma das 83 unidades em
+  1925, com a fonte (os artigos da Wikipédia de cada território).
+  - Uma unidade que mistura tipos fica com o tipo da maior parte da gente, anotado: a Nigéria e a
+    Serra Leoa como protetorado; a Indochina, por Anam e Tonquim; a Malásia, pelos Estados
+    Malaios.
+  - Um condomínio (Sudão anglo-egípcio, Novas Hébridas) é lido como protetorado.
+  - Ficam 50 colônias da Coroa, 22 protetorados, 10 mandatos e 1 integrada.
+- **A concessão:** quando a metrópole responde "governo próprio", grava o par (dono, tipo) no
+  estado da independência. A partir daí, toda unidade do dono com esse tipo mede o movimento sob
+  a lei `trusteeship` no lugar da lei colonial do dono.
+  - A lei do país não muda, então o tributo e os outros efeitos econômicos da lei colonial ficam
+    os do dono. Lei colonial por tipo na economia seria uma frente nova.
+  - Se o próprio dono adota `trusteeship` (política ou jogador), vale para todas as colônias,
+    como antes.
+- **Save:** o estado da independência ganha a lista de concessões e o tipo ganha uma variante,
+  então o PR pede um número de versão do mundo.
+
+### A revolta e a guerra (decisão I3 do dono, 2026-11-18: opção A)
+
+- **Sem regra simplificada de revolta.** Com a recusa e a mobilização acima da marca, a separação
+  sem acordo segue como hoje (`Secede`, sem reconhecimento da metrópole, com o `Record` de
+  `How::Revolt`).
+- **Proposta do thread da guerra, combinada:** a revolta é uma proclamação seguida de guerra, no
+  caso de referência da Indonésia de 1945 a 1949. Com `war` ligada, a guerra lê os `Record` novos
+  de revolta e abre a guerra colonial:
+  - de um lado, o antigo dono, que exige a unidade de volta (`Union`);
+  - do outro, o país novo, com formações irregulares do tamanho da mobilização vezes os homens em
+    idade de serviço da unidade.
+  - A paz decide: independência por acordo, ou a volta ao dono.
+- **Do lado das fronteiras:**
+  - **a sigla do país novo** passa a ir no `Record`, num campo `country`;
+  - **a ordem no tick é determinística:** a independência roda no dia 2 de janeiro, antes da
+    semana da guerra, que lê o registro na semana seguinte;
+  - **com `war` desligada, nada muda**, nem o hash.
+- **Dependência no placar:** sem guerra, a onda sai mais pacífica e menor que a real. A falta das
+  guerras coloniais fica anotada como dependência da fatia C da guerra, não como meta.

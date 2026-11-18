@@ -7,6 +7,11 @@
     // Mobilization of a colonial unit (per mille: support × recruits ÷ people) at which it demands
     // an answer, and at which, after a refusal, it breaks away without an agreement.
     demand: 80,
+    // How much a unit's literacy raises the bound of the self-rule condition of the cause, per
+    // mille (decision I1, docs/borders.pt-BR.md "Ligar a regra"): the bound of movements.ron (400)
+    // plus literacy x 500 / 1000. Self-rule (500) slows the movement while few read, and stops
+    // holding it back once a fifth reads.
+    self_rule_per_literacy: 500,
     revolt: 200,
     // Months a player metropole has to answer before silence counts as a refusal.
     answer_months: 12,

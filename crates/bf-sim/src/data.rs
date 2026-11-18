@@ -65,6 +65,8 @@ pub struct GameData {
     pub recognition: Option<crate::treaty::RecognitionFile>,
     /// Independence by movement (`data/borders/independence.ron`).
     pub independence: Option<crate::borders::independence::IndependenceRules>,
+    /// The bond of each colonial unit in 1925 (`data/borders/colonial_bonds.ron`).
+    pub colonial_bonds: Option<crate::borders::independence::ColonialBondsFile>,
 }
 
 fn read<T: serde::de::DeserializeOwned>(path: &Path) -> Result<T, String> {
@@ -178,6 +180,7 @@ impl GameData {
             influence: optional(&data.join("diplomacy/influence.ron"))?,
             clauses,
             independence: optional(&data.join("borders/independence.ron"))?,
+            colonial_bonds: optional(&data.join("borders/colonial_bonds.ron"))?,
             war_debts: optional(&scenario.join("war_debts.ron"))?,
             recognition: optional(&scenario.join("recognition.ron"))?,
         };
@@ -245,6 +248,14 @@ impl GameData {
                     clauses: self.clauses.clone().map(Arc::new),
                     influence: influence.clone(),
                     trusteeship: politics.law("trusteeship").map(|l| l as u16),
+                    self_rule_effect: crate::politics::effect_index("colonial_self_rule")
+                        .map(|e| e as u8),
+                    bonds: self
+                        .colonial_bonds
+                        .iter()
+                        .flat_map(|f| &f.bonds)
+                        .map(|b| (b.unit.clone(), b.kind.clone()))
+                        .collect(),
                     services: (
                         self.catalogue.building("school"),
                         self.catalogue.building("hospital"),
