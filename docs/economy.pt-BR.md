@@ -519,6 +519,14 @@ pequeno.
 
 ## Aberto
 
+- **PIB mundial abaixo do real depois de 2000 (fila de equilíbrio, não meta agora).** O comércio
+  criava dinheiro nas margens, de 0,65 a 0,87 % do PIB mundial por ano, porque a partilha
+  saturava o `Fixed` (#193, `week::margin_transfers`). O mundo tinha sido ajustado com esse
+  dinheiro. Sem ele, o PIB mundial fica 10 % menor em 1965 e 17 % menor em 2025. Contra o real,
+  ele melhora até 1985 (1,25 → 1,12 em 1965, 1,19 → 1,01 em 1985) e piora depois (1,04 → 0,87 em
+  2005, 0,83 → 0,69 em 2025). A dívida pública sobe de 7 a 10 pontos do PIB, e a população quase
+  não muda. Por decisão do dono (2026-11-18, M1), o conserto entrou assim; o PIB baixo do fim do
+  século vai para o equilíbrio, depois das fases.
 - **Eletricidade de 1925 (0,48 da referência).** As plantas nascem no primeiro método de cada
   edifício; a eletrificação de 1925 (motores, linhas de montagem, bondes) teria de entrar no setup
   pela eletricidade de cada país em `industry.ron`.
