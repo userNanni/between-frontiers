@@ -51,6 +51,8 @@ pub struct Snapshot {
     /// The player's population: pyramid, rates, fertility terms, migration; read on the first
     /// snapshot and then once a month.
     pub population: Option<Arc<crate::population::PopulationView>>,
+    /// The player's pending independence demands, read once a month.
+    pub demands: Option<Arc<crate::demands_view::DemandsView>>,
     /// The player's debts between governments, read once a month.
     pub ledger: Option<Arc<crate::ledger_view::LedgerView>>,
     /// The influence around the player, read once a month; `None` without influence rules.
@@ -284,12 +286,39 @@ fn forces_of(
     }
 }
 
+/// The demands, read again on a new month or when the answers changed (an answer just given
+/// takes the demand off the list).
+fn demands_of(
+    session: &Session,
+    rules: &Rules,
+    last: &Option<Arc<crate::demands_view::DemandsView>>,
+) -> Option<Arc<crate::demands_view::DemandsView>> {
+    let date = session.clock().date;
+    let w = session.world();
+    let fresh = last.as_ref().is_some_and(|d| {
+        d.month == (date.year, date.month)
+            && Some(d.tag.as_str()) == session.player()
+            && w.independence.answers.is_empty()
+    });
+    if fresh {
+        return last.clone();
+    }
+    crate::demands_view::read(
+        w,
+        rules.as_ref().and_then(|r| r.independence.as_deref()),
+        session.player(),
+        date,
+    )
+    .map(Arc::new)
+}
+
 /// What a snapshot carries that is read once a month, or when it changed.
 #[derive(Clone, Default)]
 struct Monthly {
     figures: Option<Arc<LiveFigures>>,
     journal: Option<Arc<Journal>>,
     population: Option<Arc<crate::population::PopulationView>>,
+    demands: Option<Arc<crate::demands_view::DemandsView>>,
     ledger: Option<Arc<crate::ledger_view::LedgerView>>,
     influence: Option<Arc<crate::influence_view::InfluenceView>>,
     owners: Option<Arc<bf_sim::borders::op::OwnersView>>,
@@ -391,6 +420,7 @@ impl Monthly {
             figures: figures_of(session, &last.figures),
             journal: journal_of(session, rules, &last.journal),
             population: population_of(session, rules, &last.population),
+            demands: demands_of(session, rules, &last.demands),
             ledger: ledger_of(session, &last.ledger),
             influence,
             owners: owners_of(session, rules, &last.owners),
@@ -420,6 +450,7 @@ fn snapshot_of(
         figures: monthly.figures,
         journal: monthly.journal,
         population: monthly.population,
+        demands: monthly.demands,
         ledger: monthly.ledger,
         influence: monthly.influence,
         owners: monthly.owners,

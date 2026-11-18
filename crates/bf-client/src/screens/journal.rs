@@ -29,10 +29,14 @@ pub struct Window {
     pub liberate: Liberate,
     /// A decision clicked once and waiting for its confirmation (the entry id).
     pub confirm: Option<String>,
+    /// The answer to a demand of independence, while it is open.
+    pub demand: super::demand::DemandUi,
 }
 
 /// The id the decision "Libertar território" takes in `Window::picked`.
 pub const LIBERATE: &str = "decision:liberate";
+/// The prefix of the id a demand of independence takes in `Window::picked`, before the unit.
+pub const DEMAND: &str = "decision:demand:";
 
 /// The decision to free land: the option picked (index into the view's options), independent
 /// or subject, and whether the player is at the confirmation step.
@@ -55,6 +59,8 @@ pub struct Response {
     pub liberate: Option<(Vec<String>, Option<String>, bool)>,
     /// The player confirmed mobilizing (`true`) or sending the reserve home (`false`).
     pub mobilize: Option<bool>,
+    /// The player confirmed an answer to a demand of independence: (unit, answer).
+    pub answer: Option<(String, bf_sim::borders::independence::Answer)>,
 }
 
 /// Formats a value.
@@ -238,6 +244,7 @@ pub fn show(
     world: Option<&World>,
     journal: Option<&Journal>,
     liberation: Option<&crate::sim::LiberationView>,
+    demands: Option<&crate::demands_view::DemandsView>,
     pinned: &[String],
     window: &mut Window,
     place: &mut crate::hud::WindowPlace,
@@ -277,6 +284,30 @@ pub fn show(
             super::liberate::show(ui, i18n, world, liberation, &mut window.liberate, &mut out);
             return;
         }
+        let demand = window
+            .picked
+            .as_deref()
+            .and_then(|p| p.strip_prefix(DEMAND))
+            .and_then(|unit| demands?.demands.iter().find(|d| d.view.unit == unit));
+        if let (Some(d), Some(all)) = (demand, demands) {
+            let back = Button::ghost(&format!("←  {}", i18n.tr("journal-agendas")))
+                .size(ButtonSize::Small)
+                .show(ui);
+            if back.clicked() || keys::single(ui, "journal.decision.back", 'B', back.rect) {
+                window.picked = None;
+                window.demand = Default::default();
+                return;
+            }
+            egui::ScrollArea::vertical()
+                .id_salt("demand")
+                .auto_shrink([false, false])
+                .show(ui, |ui| {
+                    // Clear of the scroll bar.
+                    ui.set_max_width(ui.available_width() - space::LG);
+                    super::demand::show(ui, i18n, world, &all.tags, d, &mut window.demand, &mut out)
+                });
+            return;
+        }
         let decisions = |ui: &mut Ui, window: &mut Window| {
             bf_ui_kit::heading(ui, &i18n.tr("decisions-title"));
             bf_ui_kit::small(ui, &i18n.tr("decisions-hint"));
@@ -286,6 +317,29 @@ pub fn show(
             if b.clicked() || keys::single(ui, "journal.decision.liberate", 'D', b.rect) {
                 window.picked = Some(LIBERATE.to_owned());
                 window.liberate = Liberate::default();
+            }
+            // A colony's demand waits for an answer: one button each, in the danger colour.
+            for (k, d) in demands.iter().flat_map(|d| &d.demands).enumerate() {
+                let label = i18n.tr_args(
+                    "independence-demand-title",
+                    &[(
+                        "unit",
+                        bf_i18n::Arg::String(crate::text::country_name(i18n, &d.view.unit)),
+                    )],
+                );
+                let b = Button::danger(&label).size(ButtonSize::Small).show(ui);
+                if b.clicked()
+                    || keys::item(
+                        ui,
+                        'D',
+                        format!("journal.decision.demand.{}", d.view.unit),
+                        &(k + 1).to_string(),
+                        b.rect,
+                    )
+                {
+                    window.picked = Some(format!("{DEMAND}{}", d.view.unit));
+                    window.demand = Default::default();
+                }
             }
         };
         let Some(journal) = journal else {

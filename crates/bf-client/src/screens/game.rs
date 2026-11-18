@@ -831,6 +831,7 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
             shared.world.as_ref(),
             snap.journal.as_deref(),
             snap.liberation.as_deref(),
+            snap.demands.as_deref(),
             &pinned,
             state.journal.as_mut().expect("journal open"),
             &mut journal_place,
@@ -844,6 +845,13 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
                 tag,
                 subject,
             }));
+        }
+        if let Some((unit, answer)) = res.answer {
+            // Some answers cannot be undone in the game: a point to go back to first.
+            state.restore_point_before(shared, Reason::Demand);
+            state
+                .sim
+                .send(Command::Issue(GameCommand::AnswerDemand { unit, answer }));
         }
         keep_window_place(shared, "journal", journal_place, res.place_done);
         for id in res.toggle_pin {

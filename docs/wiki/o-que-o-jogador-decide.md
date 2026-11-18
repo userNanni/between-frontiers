@@ -23,6 +23,7 @@ Atalhos do perfil padrão; todos se mudam no editor de atalhos (Configurações 
 | Propor uma lei | `SetLaw` | Governo → Leis: escolher a lei e "Propor" | G, L; Ctrl+Enter propõe | no jogo |
 | Libertar território | `Liberate` | Agendas → Decisões → "Libertar território", com confirmação | J abre as Agendas | no jogo (#96) |
 | Mobilizar e desmobilizar a reserva | `Mobilize` | Agendas → "Forças armadas em paz" → "Mobilizar a reserva…" (ou desmobilizar), com confirmação e ponto de restauração; a aba Forças do governo (T) mostra os reservistas que se apresentam | J abre as Agendas | em revisão (#115) |
+| Responder à exigência de independência de uma colônia: governo próprio, domínio, independência ou recusar | `AnswerDemand` | Agendas → Decisões → "{colônia} exige uma resposta": mobilização contra as marcas, o que segura o movimento, a conta de manter a colônia, o preço de cada resposta, o prazo e confirmação; ponto de restauração antes (motivo "exigência") | J abre as Agendas; a dica de tecla escolhe a exigência, 1 a 4 a resposta, R revisa, Y confirma | no jogo (#136 e a tela empilhada nele) |
 
 Exceção: `Borders` (operação de fronteira) não é do jogador. Vem de tratados, da paz, de testes e
 de ferramentas; o jogador liberta a própria terra com `Liberate`.
@@ -34,7 +35,6 @@ de ferramentas; o jogador liberta a própria terra com `Liberate`.
 | Mobilizar e desmobilizar | `Mobilize { on }` | Agendas, decisão em dois passos, com ponto de restauração antes (motivo "guerra") | em revisão (#115) |
 | Encomendar tropas, navios e aviões | `OrderForces` | Governo → Forças → "Nova encomenda": tipo, elementos, colonial; o custo de construir e o de todo ano; a encomenda grande pede um segundo clique | em revisão |
 | Cancelar uma encomenda | `CancelOrder` | Governo → Forças → "Encomendas": "Cancelar" e confirmação; o construído vai ao depósito | em revisão |
-| Responder à exigência de independência de uma colônia (governo próprio, domínio, independência, recusar) | `AnswerDemand` | Agendas → Decisões, com o preço de cada saída, o prazo e confirmação; ponto de restauração antes (motivo "exigência"); entrada de agenda fixável enquanto pende | em rascunho (#136); a tela vem no PR da interface empilhado nele, e até lá o comando está na lista de exceções do teste |
 
 ## Desenhadas, sem comando ainda
 
@@ -46,7 +46,6 @@ de ferramentas; o jogador liberta a própria terra com `Liberate`.
 | Denunciar um tratado | Agendas | denúncia no tick |
 | Honrar ou não um pacto de defesa | Agendas, decisão com ponto de restauração | registro de quebras |
 | Exigir e declarar guerra | Agendas, com ponto de restauração (motivo "guerra") | fase 5 |
-| Responder a um movimento de independência | Agendas | parte C das fronteiras (#133) |
 | Entrar e sair de um bloco | Agendas | blocos como rótulo sobre tratados (#132) e proposta no tick |
 | Vetar capital estrangeiro e impor embargo | Governo | fluxo de capital (#117) e comércio por par (#113) |
 | Abrir missão diplomática | Agendas | serviço exterior (#112) |

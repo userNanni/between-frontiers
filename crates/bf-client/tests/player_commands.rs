@@ -24,6 +24,11 @@ const PLAYER: &[Surface] = &[
         files: &["screens/game.rs"],
     },
     Surface {
+        variant: "AnswerDemand",
+        command: id::JOURNAL,
+        files: &["screens/game.rs", "screens/demand.rs"],
+    },
+    Surface {
         variant: "SetResearch",
         command: id::RESEARCH,
         files: &["screens/research.rs", "screens/game.rs"],
@@ -91,17 +96,10 @@ const PLAYER: &[Surface] = &[
 ];
 
 /// Variants the player does not give from a screen with a key, and why.
-const EXCEPTIONS: &[(&str, &str)] = &[
-    (
-        "AnswerDemand",
-        "the demand screen in Agendas comes in the interface PR stacked on #136 and both are \
-         merged together; that PR removes this line",
-    ),
-    (
-        "Borders",
-        "issued by treaties, peace, tests and tools; the player frees its land with Liberate",
-    ),
-];
+const EXCEPTIONS: &[(&str, &str)] = &[(
+    "Borders",
+    "issued by treaties, peace, tests and tools; the player frees its land with Liberate",
+)];
 
 fn variants() -> BTreeSet<String> {
     let mut tracer = Tracer::new(TracerConfig::default());
