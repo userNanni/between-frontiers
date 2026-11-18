@@ -9,6 +9,10 @@
 //
 // In alphabetical order, as `game::Switches`: a new rule goes in its place, not at the end.
 (
+    // The monthly step of the agreements in force (`docs/treaties.pt-BR.md`, "o teste mensal"):
+    // tribute paid and tested, and an agreement with a fixed term ends when it runs out.
+    // Off: nothing is paid and agreements never end by their term.
+    clause_tests: false,
     // Crises and declaration (`docs/war.pt-BR.md`, "Crise e declaração"): a demand with a
     // deadline, the AI answering by the force against the share asked for, war on a refusal.
     // Needs `forces`. Off: no crisis opens.
