@@ -7,6 +7,10 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[features]
+# Count where `Fixed` arithmetic saturates and print it after the run (`--game`).
+saturation-count = ["laplace-schelling/saturation-count"]
+
 [dependencies]
 laplace-schelling.workspace = true
 rayon.workspace = true

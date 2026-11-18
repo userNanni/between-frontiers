@@ -13,6 +13,64 @@ use core::str::FromStr;
 use serde::de::{self, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
+/// A public saturating operation: `const` and free of any bookkeeping, or, with the
+/// `saturation-count` feature, one that records where it hit the bounds (`saturation`).
+macro_rules! counted {
+    ($(#[$doc:meta])* $name:ident, $raw:ident, $op:literal, ($($arg:ident: $ty:ty),*)) => {
+        $(#[$doc])*
+        #[cfg(not(feature = "saturation-count"))]
+        #[inline]
+        pub const fn $name(self, $($arg: $ty),*) -> Self {
+            self.$raw($($arg),*)
+        }
+        $(#[$doc])*
+        #[cfg(feature = "saturation-count")]
+        #[inline]
+        #[track_caller]
+        pub fn $name(self, $($arg: $ty),*) -> Self {
+            let r = self.$raw($($arg),*);
+            saturation::check(r, $op);
+            r
+        }
+    };
+}
+
+/// Where the arithmetic hit the bounds (feature `saturation-count`, for diagnosis): a value
+/// that saturates silently is usually a sum or a product that outgrew the range, and the
+/// result is wrong without any sign. Each public saturating operation and operator records its
+/// caller's file and line when the result is `MAX` or `MIN`. Off, none of this is compiled.
+#[cfg(feature = "saturation-count")]
+pub mod saturation {
+    use std::collections::BTreeMap;
+    use std::panic::Location;
+    use std::sync::Mutex;
+
+    type Counts = BTreeMap<(&'static str, u32, &'static str), u64>;
+    static COUNTS: Mutex<Counts> = Mutex::new(BTreeMap::new());
+
+    #[inline]
+    #[track_caller]
+    pub(crate) fn check(v: super::Fixed, op: &'static str) {
+        if v == super::Fixed::MAX || v == super::Fixed::MIN {
+            record(Location::caller(), op);
+        }
+    }
+
+    #[cold]
+    fn record(at: &'static Location<'static>, op: &'static str) {
+        let mut c = COUNTS.lock().unwrap_or_else(|e| e.into_inner());
+        *c.entry((at.file(), at.line(), op)).or_insert(0) += 1;
+    }
+
+    /// Every place that saturated so far: (file, line, operation, times), most first.
+    pub fn report() -> Vec<(&'static str, u32, &'static str, u64)> {
+        let c = COUNTS.lock().unwrap_or_else(|e| e.into_inner());
+        let mut v: Vec<_> = c.iter().map(|(&(f, l, o), &n)| (f, l, o, n)).collect();
+        v.sort_by(|a, b| b.3.cmp(&a.3).then(a.cmp(b)));
+        v
+    }
+}
+
 /// Signed decimal fixed-point number: the value is `raw / 1000`, stored in an `i64`.
 ///
 /// # Why a scale of 1000
@@ -217,19 +275,19 @@ impl Fixed {
 
     /// `self + rhs`, saturating.
     #[inline]
-    pub const fn saturating_add(self, rhs: Self) -> Self {
+    const fn saturating_add_raw(self, rhs: Self) -> Self {
         Self::saturate_wide(self.0 as i128 + rhs.0 as i128)
     }
 
     /// `self - rhs`, saturating.
     #[inline]
-    pub const fn saturating_sub(self, rhs: Self) -> Self {
+    const fn saturating_sub_raw(self, rhs: Self) -> Self {
         Self::saturate_wide(self.0 as i128 - rhs.0 as i128)
     }
 
     /// `self * rhs`, rounded, saturating.
     #[inline]
-    pub const fn saturating_mul(self, rhs: Self) -> Self {
+    const fn saturating_mul_raw(self, rhs: Self) -> Self {
         // Almost every product fits in 64 bits: multiply and round there. The same integers and
         // the same rounding as the wide path below (`i64::MIN` goes there too).
         if let Some(p) = self.0.checked_mul(rhs.0)
@@ -246,7 +304,7 @@ impl Fixed {
     /// `self / rhs`, rounded, saturating. A zero divisor gives `MAX` or `MIN` by the sign of
     /// `self`, and zero for `0 / 0`.
     #[inline]
-    pub const fn saturating_div(self, rhs: Self) -> Self {
+    const fn saturating_div_raw(self, rhs: Self) -> Self {
         if rhs.0 == 0 {
             return if self.0 > 0 {
                 Self::MAX
@@ -276,7 +334,7 @@ impl Fixed {
     /// # Panics
     /// When `div` is zero.
     #[inline]
-    pub const fn mul_div(self, mul: Self, div: Self) -> Self {
+    const fn mul_div_raw(self, mul: Self, div: Self) -> Self {
         assert!(div.0 != 0, "Fixed::mul_div with a zero divisor");
         Self::saturate_wide(div_round(self.0 as i128 * mul.0 as i128, div.0 as i128))
     }
@@ -296,10 +354,43 @@ impl Fixed {
     /// # Panics
     /// When `den` is zero.
     #[inline]
-    pub const fn mul_ratio(self, num: i64, den: i64) -> Self {
+    const fn mul_ratio_raw(self, num: i64, den: i64) -> Self {
         assert!(den != 0, "Fixed::mul_ratio with a zero denominator");
         Self::saturate_wide(div_round(self.0 as i128 * num as i128, den as i128))
     }
+
+    counted!(
+        /// `self + rhs`, saturating.
+        saturating_add, saturating_add_raw, "add", (rhs: Self)
+    );
+    counted!(
+        /// `self - rhs`, saturating.
+        saturating_sub, saturating_sub_raw, "sub", (rhs: Self)
+    );
+    counted!(
+        /// `self * rhs`, rounded, saturating.
+        saturating_mul, saturating_mul_raw, "mul", (rhs: Self)
+    );
+    counted!(
+        /// `self / rhs`, rounded, saturating. A zero divisor gives `MAX` or `MIN` by the sign
+        /// of `self`, and zero for `0 / 0`.
+        saturating_div, saturating_div_raw, "div", (rhs: Self)
+    );
+    counted!(
+        /// `self * mul / div` with a single rounding, saturating.
+        ///
+        /// # Panics
+        /// When `div` is zero.
+        mul_div, mul_div_raw, "mul_div", (mul: Self, div: Self)
+    );
+    counted!(
+        /// `self * num / den` for an exact integer ratio, one rounding, saturating. Use it for
+        /// rates finer than the resolution: `pop.mul_ratio(3, 100_000)` is 0.003%.
+        ///
+        /// # Panics
+        /// When `den` is zero.
+        mul_ratio, mul_ratio_raw, "mul_ratio", (num: i64, den: i64)
+    );
 
     /// Absolute value (never overflows: the range is symmetric).
     #[inline]
@@ -351,6 +442,7 @@ impl Fixed {
 impl Add for Fixed {
     type Output = Self;
     #[inline]
+    #[cfg_attr(feature = "saturation-count", track_caller)]
     fn add(self, rhs: Self) -> Self {
         self.saturating_add(rhs)
     }
@@ -359,6 +451,7 @@ impl Add for Fixed {
 impl Sub for Fixed {
     type Output = Self;
     #[inline]
+    #[cfg_attr(feature = "saturation-count", track_caller)]
     fn sub(self, rhs: Self) -> Self {
         self.saturating_sub(rhs)
     }
@@ -367,6 +460,7 @@ impl Sub for Fixed {
 impl Mul for Fixed {
     type Output = Self;
     #[inline]
+    #[cfg_attr(feature = "saturation-count", track_caller)]
     fn mul(self, rhs: Self) -> Self {
         self.saturating_mul(rhs)
     }
@@ -377,6 +471,7 @@ impl Mul for Fixed {
 impl Div for Fixed {
     type Output = Self;
     #[inline]
+    #[cfg_attr(feature = "saturation-count", track_caller)]
     fn div(self, rhs: Self) -> Self {
         assert!(rhs.0 != 0, "attempt to divide a Fixed by zero");
         self.saturating_div(rhs)
@@ -387,8 +482,12 @@ impl Div for Fixed {
 impl Mul<i64> for Fixed {
     type Output = Self;
     #[inline]
+    #[cfg_attr(feature = "saturation-count", track_caller)]
     fn mul(self, rhs: i64) -> Self {
-        Self::saturate_wide(self.0 as i128 * rhs as i128)
+        let r = Self::saturate_wide(self.0 as i128 * rhs as i128);
+        #[cfg(feature = "saturation-count")]
+        saturation::check(r, "mul_int");
+        r
     }
 }
 
@@ -399,6 +498,7 @@ impl Mul<i64> for Fixed {
 impl Div<i64> for Fixed {
     type Output = Self;
     #[inline]
+    #[cfg_attr(feature = "saturation-count", track_caller)]
     fn div(self, rhs: i64) -> Self {
         assert!(rhs != 0, "attempt to divide a Fixed by zero");
         Self::saturate_wide(div_round(self.0 as i128, rhs as i128))
@@ -415,6 +515,7 @@ impl Neg for Fixed {
 
 impl AddAssign for Fixed {
     #[inline]
+    #[cfg_attr(feature = "saturation-count", track_caller)]
     fn add_assign(&mut self, rhs: Self) {
         *self = *self + rhs;
     }
@@ -422,6 +523,7 @@ impl AddAssign for Fixed {
 
 impl SubAssign for Fixed {
     #[inline]
+    #[cfg_attr(feature = "saturation-count", track_caller)]
     fn sub_assign(&mut self, rhs: Self) {
         *self = *self - rhs;
     }
@@ -429,6 +531,7 @@ impl SubAssign for Fixed {
 
 impl MulAssign for Fixed {
     #[inline]
+    #[cfg_attr(feature = "saturation-count", track_caller)]
     fn mul_assign(&mut self, rhs: Self) {
         *self = *self * rhs;
     }
@@ -436,6 +539,7 @@ impl MulAssign for Fixed {
 
 impl DivAssign for Fixed {
     #[inline]
+    #[cfg_attr(feature = "saturation-count", track_caller)]
     fn div_assign(&mut self, rhs: Self) {
         *self = *self / rhs;
     }
@@ -443,7 +547,7 @@ impl DivAssign for Fixed {
 
 impl Sum for Fixed {
     fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
-        iter.fold(Self::ZERO, Self::saturating_add)
+        iter.fold(Self::ZERO, |a, b| a + b)
     }
 }
 

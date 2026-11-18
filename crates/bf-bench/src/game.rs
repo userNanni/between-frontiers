@@ -1051,6 +1051,16 @@ pub fn main(
         );
     }
     println!("final hash {}", report.final_hash);
+    #[cfg(feature = "saturation-count")]
+    {
+        // Every place in the tick where `Fixed` hit its bounds, across every run of this
+        // process (the main run, the check of determinism, the reloads).
+        let sat = laplace_schelling::fixed::saturation::report();
+        println!("saturations: {} places", sat.len());
+        for (file, line, op, n) in sat {
+            println!("  {n:>12} {op:<9} {file}:{line}");
+        }
+    }
     std::fs::write(
         out,
         serde_json::to_string_pretty(&report).map_err(|e| e.to_string())?,
