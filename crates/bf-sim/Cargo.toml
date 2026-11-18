@@ -13,5 +13,9 @@ serde.workspace = true
 ron.workspace = true
 rayon.workspace = true
 
+[features]
+# Record where `Fixed` arithmetic hits its bounds (for diagnosis: `tests/treaties_saturation.rs`).
+saturation-count = ["laplace-schelling/saturation-count"]
+
 [dev-dependencies]
 serde-reflection.workspace = true

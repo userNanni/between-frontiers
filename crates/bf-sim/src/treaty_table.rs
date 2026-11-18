@@ -243,8 +243,9 @@ pub fn respond(
         // Lower the amount by the share that closes the balance; drop it if that is all of it.
         let deficit = -v.total;
         let lowered = amount(&mut q.clauses[worst].kind).map(|a| {
+            // `a × deficit` passes the range with sums of billions: one rounding in `i128`.
             let cut = if -value > Fixed::ZERO {
-                (*a * deficit / -value).min(*a)
+                a.mul_div(deficit, -value).min(*a)
             } else {
                 *a
             };
@@ -252,8 +253,14 @@ pub fn respond(
             *a = (*a - cut - Fixed::from_raw(1)).max(Fixed::ZERO);
             *a > Fixed::ZERO
         });
-        if lowered != Some(true) {
-            q.clauses.remove(worst);
+        // Lowering helps only the part of the clause that grows with its amount; when what is
+        // left (sovereignty, say) still keeps the balance shut, the clause goes instead.
+        let closes = lowered == Some(true) && account(world, cat, &q, party).total > Fixed::ZERO;
+        if !closes {
+            let before = by_clause(&account(world, cat, &q, party), q.clauses.len())[worst];
+            if lowered != Some(true) || before < Fixed::ZERO {
+                q.clauses.remove(worst);
+            }
         }
         if q.clauses.is_empty() {
             return refuse;
