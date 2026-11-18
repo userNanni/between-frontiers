@@ -626,7 +626,7 @@ do fluxo comum, `wiki/o-que-o-jogador-decide.md`). Teclado primeiro, os dois idi
 
 | Decisão | Entrada em Agendas | Comando | Ponto de restauração |
 |---|---|---|---|
-| Propor um acordo | Decisões → "Propor acordo…" → escolher o outro país (lista com busca, `/`) → a mesa | `ProposeTreaty { proposal }` | não |
+| Propor um acordo | Decisões → "Propor acordo a {país selecionado}…" (como "Exigir de…" na crise); sem país selecionado, a lista com busca da escolha de país (Ctrl+F) → a mesa | `ProposeTreaty { proposal }` | não |
 | Responder a uma proposta recebida | Decisões → "{país} propõe um acordo" (com prazo, em semanas) → a mesa, só leitura do lado dele | `AnswerProposal { id, answer: Accept \| Refuse \| Counter(proposal) }` | não |
 | Honrar ou não uma chamada de defesa | Decisões → "{aliado} chama: {agressor} o atacou" → as duas saídas e o preço de cada uma | `AnswerCall { war, agreement, clause, honour }` | sim (motivo "guerra") |
 | Denunciar um acordo | Diplomacia → acordos em vigor → "Denunciar…" (pelo prazo de aviso; fora dele é quebra, e a tela diz) | `Denounce { agreement }` | sim |
@@ -648,7 +648,7 @@ cláusulas contínuas e o teste de cada uma), propostos (com o prazo) e encerrad
 │   moeda: referência · adiável 1/3    │ ▸ Teto de transferência retirado                │
 │ ▸ Não agressão (sem prazo)           │ ▸ Garantia da fronteira do Reno                 │
 │                                      │   ⚠ sem efeito até a fase 5 (guerra)            │
-│ [a] acrescentar  [x] tirar  [Enter] editar parâmetros                                 │
+│ ‹acrescentar›  ‹tirar›  ‹editar parâmetros›                                           │
 ├──────────────────────────────────────┼────────────────────────────────────────────────┤
 │ Conta da Alemanha        −1,9 bi     │ Conta de França e Reino Unido     +2,4 bi       │
 │  dinheiro (valor presente)  −2,6     │  dinheiro                          +2,6         │
@@ -661,10 +661,15 @@ cláusulas contínuas e o teste de cada uma), propostos (com o prazo) e encerrad
 │  abaixo de 50 %: assinar custa       │ Resposta provável: aceita (saldo +2,4)          │
 │  3 de legitimidade                   │                                                 │
 ├──────────────────────────────────────┴────────────────────────────────────────────────┤
-│ [Enter] propor   [Tab] coluna   [c] contraproposta deles   [r] registro   [?] por quê │
+│ ‹Ctrl+Enter› propor   ‹contraproposta deles›   ‹registro›   ‹por quê›   [Esc] voltar  │
 └───────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
+- **Teclas como no resto do cliente:** letra solta é comando global, então as ações da mesa são
+  dicas de tecla (a tecla líder mostra a letra sobre cada botão; ‹…› no esboço). `Ctrl+Enter`
+  propõe, como "Propor lei"; `Esc` volta; `Tab` é o foco do egui.
+- **Largura:** duas colunas acima de ~680 px; abaixo, uma coluna com rolagem, como a exigência de
+  independência.
 - **Duas colunas, uma por lado**, na ordem das cláusulas; cada linha abre os parâmetros
   (setas mudam o valor, dentro dos limites do catálogo) e mostra "sem efeito até…" quando a
   frente dorme (seção 4).
@@ -683,6 +688,16 @@ cláusulas contínuas e o teste de cada uma), propostos (com o prazo) e encerrad
   P1–P3, a reputação).
 
 ### O que a simulação precisa para a mesa (fatia seguinte)
+
+- **Uma leitura sem custo no tick**, `treaty::proposal_view(world, &Proposal) -> ProposalView`,
+  refeita a cada mudança do rascunho (o cliente manda o rascunho ao fio da simulação, como na
+  crise): por lado, a `Valuation` por termo e o total; quem é contra, com o motivo e o peso; a
+  ratificação (quem aprova, o apoio, o limiar, o custo de assinar abaixo); e, por cláusula, se é
+  proibida (chave do motivo) e se a frente dorme (chave da frente). A mesma leitura serve à
+  chamada de defesa e à seção "Quem entraria" da crise (`TreatyState::duties`).
+- **Os limites de cada parâmetro no catálogo** (`clauses.ron`: mínimo, máximo, passo, unidade),
+  para o editor da mesa não repetir números no cliente. Hoje o catálogo só tem chave, execução,
+  frentes, soberania, grupos e fonte.
 
 - `TreatyState::proposals`: propostas pendentes, com prazo em semanas; recusa por prazo vencido.
 - Comandos `ProposeTreaty`, `AnswerProposal`, `AnswerCall`, `Denounce`, validados no tick como os
