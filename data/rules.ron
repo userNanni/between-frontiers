@@ -51,4 +51,8 @@
     // Trade by pair (`docs/trade.pt-BR.md`): each buyer splits what it seeks among the sellers by
     // the cost of arrival. Off: the world pool shares trade pro rata.
     trade_by_pair: false,
+    // The treaties of 1925 in force as agreements (`docs/treaties.pt-BR.md`, "acordos em
+    // vigor"): their clauses call third parties into a crisis and a breach is recorded against
+    // them. Off: only the agreements signed in play are kept.
+    treaties_in_force: false,
 )
