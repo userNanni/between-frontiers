@@ -701,6 +701,26 @@ fecha.
   as mesmas duas funções.
 - **Na mesa:** a proposta fora do limite fecha como `Failed`, com o motivo, e não é cumprida.
 
+### Feito: as uniões aduaneiras e as tarifas dos acordos, para o comércio
+
+- `TreatyState::customs_unions(siglas, data)`: os pares ligados por uma união aduaneira de acordo
+  em vigor na data, nos dois sentidos, em ordem e sem repetir. Uma união de várias partes entra
+  com todos os pares entre os membros. Só conta a cláusula com o `until` ainda não passado. Uma
+  quebra entre dois membros tira só o par deles (9.2 por par); os outros membros mantêm a união.
+- `TreatyState::customs_union_seniors(siglas, data)`: quem lidera cada união, `(membro, sênior)`
+  (a Suíça para Liechtenstein, a França para Mônaco e o Sarre).
+- `TreatyState::tariff_relations(siglas, data)`: as relações de tarifa dos acordos em vigor
+  (união nos dois sentidos, preferência e teto de quem dá para quem recebe), na forma de
+  `TariffRelation` do comércio. A tarifa congelada (`TariffCap { rate: None }`) trata todos os
+  parceiros igualmente e não entra.
+- **Fonte única** (decisão do orquestrador): o comércio troca `diplomacy.ron` por esses leitores
+  quando `treaties_in_force` estiver ligada. Com os dados de 1925, na data de início, a lista é
+  idêntica à que o comércio lia do arquivo (teste
+  `the_unions_of_1925_are_the_pairs_of_the_diplomacy_file`).
+- **Dado de 1925:** a união do Sarre com a França ganhou o `until` na própria cláusula
+  (1935-03-01, os quinze anos de Versalhes, art. 49), porque os acordos não copiam o fim do
+  tratado.
+
 ## 13. Interface: a mesa de negociação, em Agendas
 
 A mesa não é um painel à parte: é uma **decisão rara da janela de Agendas (J)**, como libertar
