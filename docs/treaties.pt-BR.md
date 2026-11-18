@@ -651,6 +651,40 @@ fecha.
   o PIB de quem promete (`EvalInputs::reputation`).
 - **Save:** versão 24.
 
+### Feito: a mesa de negociação na simulação (desligada)
+
+- **Onde:** `treaty_table`, `TreatyState::table`, atrás de `negotiation` em `data/rules.ron`
+  (`false`). Desligada, o passo semanal não roda e as propostas ficam na mesa sem resposta.
+- **Comandos:**
+  - `ProposeTreaty { tag, to, proposal }`, com `tag` no lado A;
+  - `AnswerProposal { tag, id, answer: Accept | Refuse | Counter(proposta) }`;
+  - `Denounce { tag, agreement }`.
+- **Passo semanal** (`TableWeek`, às segundas):
+  - aplica as respostas dos jogadores;
+  - a IA responde ao que lhe foi dirigido na primeira semana (`respond`);
+  - vence o prazo de 4 semanas das propostas ao jogador;
+  - faz as denúncias;
+  - esquece as propostas fechadas há mais de 6 meses.
+- **A resposta da IA** é a conta de `evaluate`, pela mesma leitura que a tela usa
+  (`treaty_table::account`). Ela aceita o saldo positivo. Senão, contrapropõe:
+  1. baixa o valor da cláusula de pior saldo para ela (pagamento, tributo, principal da dívida) até
+     o saldo fechar, ou tira a cláusula;
+  2. faz no máximo 3 mudanças, até a terceira rodada;
+  3. se não fecha, recusa com o termo que mais pesou.
+- **Contraproposta:** volta com os lados trocados (quem respondeu passa a propor).
+- **Aceita:** vira acordo pela ponte (`treaty_exec::settle` e `queue`).
+- **Proposta recusada ou vencida:** fica bloqueada por 6 meses; a mesma proposta não volta antes.
+- **Denúncia:**
+  - com aviso, o acordo acaba no fim do aviso (`term_years`), sem quebra;
+  - sem aviso, acaba na hora e é quebra (`BreachCause::Denounced`) de cada cláusula que quem
+    denuncia dá. O valor de cada quebra é zero até a mesa dar preço à cláusula para o prejudicado.
+- **Ainda não:**
+  - a ratificação dentro do país (seção 8), que passa sempre;
+  - os limites de cada parâmetro no catálogo;
+  - `proposal_view` com quem é contra e a ratificação, para a tela;
+  - a chamada de defesa já está na guerra (`AnswerCall`, #184).
+- **Save:** versão 25.
+
 ## 13. Interface: a mesa de negociação, em Agendas
 
 A mesa não é um painel à parte: é uma **decisão rara da janela de Agendas (J)**, como libertar

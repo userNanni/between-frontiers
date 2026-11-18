@@ -29,6 +29,8 @@ pub struct TreatySetup {
     /// The laws that are forms of government (`politics::GOVERNMENT_GROUP`): a change to one is
     /// a change of regime.
     pub government: Vec<u16>,
+    /// The clause catalogue, for the negotiation table (`treaty_table`).
+    pub clauses: Option<std::sync::Arc<crate::treaty::ClauseCatalogue>>,
 }
 
 /// What one month of the agreements does.

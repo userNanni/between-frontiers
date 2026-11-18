@@ -401,6 +401,21 @@ pub enum GameCommand {
         tag: String,
         work: crate::econ::levers::WorkKey,
     },
+    /// Puts a proposal on the negotiation table (`treaty_table`): `tag` is side A, `to` side B.
+    /// Refused silently when an identical one was refused in the last six months.
+    ProposeTreaty {
+        tag: String,
+        to: String,
+        proposal: crate::treaty::Proposal,
+    },
+    /// `tag` answers proposal `id` addressed to it.
+    AnswerProposal {
+        tag: String,
+        id: u32,
+        answer: crate::treaty_table::ProposalAnswer,
+    },
+    /// `tag` denounces agreement `agreement`: by its notice, or now as a breach.
+    Denounce { tag: String, agreement: u32 },
 }
 
 /// Changes the levers of the country `tag` (`econ::levers`); unknown tags are no-ops.
@@ -704,6 +719,28 @@ impl Command<GameWorld> for GameCommand {
                     0
                 };
             }
+            GameCommand::ProposeTreaty { tag, to, proposal } => {
+                let known = |t: &str| world.countries.iter().any(|(_, c)| c.tag == t);
+                if tag != to && known(tag) && known(to) && proposal.side_a == [tag.clone()] {
+                    let date = ctx.date;
+                    world
+                        .treaties
+                        .table
+                        .propose(tag, to, proposal.clone(), date);
+                }
+            }
+            GameCommand::AnswerProposal { tag, id, answer } => {
+                world
+                    .treaties
+                    .table
+                    .answers
+                    .push((*id, tag.clone(), answer.clone()))
+            }
+            GameCommand::Denounce { tag, agreement } => world
+                .treaties
+                .table
+                .denounce
+                .push((*agreement, tag.clone())),
             GameCommand::AnswerDemand { unit, answer } => {
                 world.independence.answers.push((unit.clone(), *answer))
             }
@@ -877,6 +914,10 @@ pub struct Switches {
     /// docs/treaties.pt-BR.md): what was paid and written off, and a line that ends stays in
     /// `Ledger::closed`. Off, a line that ends leaves the ledger and nothing is recorded.
     pub ledger_record: bool,
+    /// The negotiation table (`treaty_table`, docs/treaties.pt-BR.md section 13): proposals
+    /// answered by the AI in the first week by the same account the player sees, counters, and
+    /// denunciations. Off: proposals wait on the table and nothing is answered.
+    pub negotiation: bool,
     /// The reputation of each country's breaches (`treaty::Reputation`, docs/treaties.pt-BR.md
     /// 9.4, owner's decisions P1–P3): a breach weighs on the reputation of its kind, a tenth of
     /// it is forgotten each year, a change of regime halves the security one, and the table
@@ -915,6 +956,7 @@ impl Switches {
         "influence_ties",
         "jobs_follow_use",
         "ledger_record",
+        "negotiation",
         "reputation",
         "schooling",
         "small_market_wage_floor",
@@ -936,6 +978,7 @@ impl Switches {
             "influence_ties" => self.influence_ties = true,
             "jobs_follow_use" => self.jobs_follow_use = true,
             "ledger_record" => self.ledger_record = true,
+            "negotiation" => self.negotiation = true,
             "reputation" => self.reputation = true,
             "schooling" => self.schooling = true,
             "small_market_wage_floor" => self.small_market_wage_floor = true,
@@ -1048,10 +1091,15 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
         });
         // The agreements in force: tribute paid and tested, terms run out (off by default).
         if let Some(setup) = treaties {
-            s.add(crate::treaty_system::TreatyMonth {
-                setup,
-                tests: switches.clause_tests,
-            });
+            if let (true, Some(cat)) = (switches.negotiation, setup.clauses.clone()) {
+                s.add(crate::treaty_table::TableWeek { cat });
+            }
+            if switches.clause_tests || switches.reputation {
+                s.add(crate::treaty_system::TreatyMonth {
+                    setup,
+                    tests: switches.clause_tests,
+                });
+            }
         }
         // Last in the day: an operation sees the day's results and the next day sees its own.
         if let Some(setup) = influence {
@@ -1342,6 +1390,37 @@ mod tests {
                 next_agreement: t.next_agreement,
             }
         }
+        /// The treaty state of format 24: no negotiation table.
+        #[derive(Serialize)]
+        struct Treaties24<'a> {
+            recognition: &'a crate::treaty::Recognition,
+            agreements: &'a Vec<crate::treaty::Agreement>,
+            ended: &'a Vec<crate::treaty::Agreement>,
+            next_agreement: u32,
+            breaches: &'a Vec<crate::treaty::Breach>,
+            causes: &'a Vec<crate::treaty::Cause>,
+            reputation: &'a std::collections::BTreeMap<String, crate::treaty::Reputation>,
+            reputation_on: bool,
+        }
+        #[derive(Serialize)]
+        struct BeforeTable<'a> {
+            scenario: &'a String,
+            player: &'a Option<Id<Country>>,
+            countries: &'a Table<Country, CountryState>,
+            census: &'a Vec<CensusRecord>,
+            econ: &'a crate::econ::Economy,
+            research: &'a crate::research::ResearchState,
+            politics: &'a crate::polity::PoliticsState,
+            demography: &'a crate::demography::DemographyState,
+            borders: &'a crate::borders::BordersState,
+            foreign: &'a crate::foreign_stakes::ForeignState,
+            influence: &'a crate::influence::InfluenceState,
+            treaties: Treaties24<'a>,
+            war: &'a crate::war::WarState,
+            education: &'a crate::demography::education::EducationState,
+            independence: &'a crate::borders::independence::IndependenceState,
+            levers: &'a crate::econ::levers::LeversState,
+        }
         /// The treaty state of formats 22 and 23: breaches, no reputation.
         #[derive(Serialize)]
         struct Treaties22<'a> {
@@ -1629,9 +1708,42 @@ mod tests {
             hash_of(&with_ledger)
         );
         assert_eq!(
-            hash_of(&headed(24, &encode_snapshot(&with_ledger).unwrap())),
+            hash_of(&headed(25, &encode_snapshot(&with_ledger).unwrap())),
             hash_of(&with_ledger)
         );
+        // Version 24, before the negotiation table.
+        let t = &with_ledger.treaties;
+        let before_table = encode_snapshot(&BeforeTable {
+            scenario: &with_ledger.scenario,
+            player: &with_ledger.player,
+            countries: &with_ledger.countries,
+            census: &with_ledger.census,
+            econ: &with_ledger.econ,
+            research: &with_ledger.research,
+            politics: &with_ledger.politics,
+            demography: &with_ledger.demography,
+            borders: &with_ledger.borders,
+            foreign: &with_ledger.foreign,
+            influence: &with_ledger.influence,
+            treaties: Treaties24 {
+                recognition: &t.recognition,
+                agreements: &t.agreements,
+                ended: &t.ended,
+                next_agreement: t.next_agreement,
+                breaches: &t.breaches,
+                causes: &t.causes,
+                reputation: &t.reputation,
+                reputation_on: t.reputation_on,
+            },
+            war: &with_ledger.war,
+            education: &with_ledger.education,
+            independence: &with_ledger.independence,
+            levers: &with_ledger.levers,
+        })
+        .unwrap();
+        let loaded = headed(24, &before_table);
+        assert_eq!(hash_of(&loaded), hash_of(&with_ledger));
+        assert_eq!(loaded, with_ledger);
         // Version 23, before the reputation.
         let t = &with_ledger.treaties;
         let before_reputation = encode_snapshot(&BeforeReputation {

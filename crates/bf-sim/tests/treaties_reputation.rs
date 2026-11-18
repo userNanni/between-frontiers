@@ -92,6 +92,7 @@ fn the_month_finds_a_new_regime_and_forgets_in_january() {
     let setup = TreatySetup {
         decay: Fixed::from_ratio(1, 10),
         government: laws.clone(),
+        clauses: None,
     };
     let mut w = d.new_world();
     let ita = w

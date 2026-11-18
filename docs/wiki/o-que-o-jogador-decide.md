@@ -51,10 +51,10 @@ com as telas da fatia, e a exceção sai com elas.
 
 | Decisão | Onde deve ficar | Depende de |
 |---|---|---|
-| Propor um tratado | mesa de negociação em Agendas | etapa 4 dos tratados (proposta por comando) |
-| Assinar ou recusar um tratado proposto | Agendas | idem |
+| Propor um tratado | mesa de negociação em Agendas | comando `ProposeTreaty` na simulação, atrás de `negotiation` (desligada); falta a tela |
+| Assinar, recusar ou contrapropor um tratado proposto | Agendas | comando `AnswerProposal`, atrás de `negotiation`; falta a tela |
 | Renegociar uma dívida | Governo → Dívidas entre governos → "Renegociar" (hoje desligado) | mesa de negociação |
-| Denunciar um tratado | Agendas | denúncia no tick |
+| Denunciar um tratado | Agendas, sem aviso em dois passos e com ponto de restauração | comando `Denounce`, atrás de `negotiation`; falta a tela |
 | Honrar ou não um pacto de defesa | Agendas, decisão com ponto de restauração | registro de quebras |
 | Exigir e declarar guerra | Agendas, com ponto de restauração (motivo "guerra") | fase 5 |
 | Entrar e sair de um bloco | Agendas | blocos como rótulo sobre tratados (#132) e proposta no tick |
