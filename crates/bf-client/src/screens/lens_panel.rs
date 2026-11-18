@@ -917,8 +917,26 @@ fn influence_legend(ui: &mut Ui, i18n: &I18n, world: &World, on: bool) {
             false,
             &i18n.tr("legend-influence-nothing"),
         );
+        ui.add_space(space::SM);
+        swatch(
+            ui,
+            lens::UNMEASURED,
+            true,
+            &i18n.tr("legend-influence-unmeasured"),
+        );
     });
-    bf_ui_kit::small(ui, &i18n.tr("legend-influence-scope"));
+    // What is measured today, in one line; the whole story on hover.
+    ui.add(
+        egui::Label::new(
+            egui::RichText::new(i18n.tr("legend-influence-scope"))
+                .font(sans(11.5))
+                .color(color::TEXT_MUTED),
+        )
+        .sense(Sense::hover()),
+    )
+    .on_hover_text(bf_ui_kit::tooltip_text(
+        &i18n.tr("legend-influence-scope-tip"),
+    ));
 }
 
 /// A mark of the influence ramp: 0,01 %, 0,1 %, 1 %, 10 %.
@@ -1055,6 +1073,9 @@ fn influence_tip(
     let Some(p) = pairs.iter().find(|p| p.other == tag) else {
         return Some(i18n.tr("tip-influence-nothing"));
     };
+    if p.top() <= 0.0 {
+        return Some(i18n.tr("tip-influence-unmeasured"));
+    }
     let k = if issue == 0 {
         p.issues
             .iter()
