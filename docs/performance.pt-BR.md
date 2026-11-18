@@ -137,6 +137,19 @@ diga no PR quanto o `economy-week` subiu, em 10 anos e nos últimos anos do séc
     no investimento do capital (#117) isso deu cerca de 10 % das amostras do mensal. Percorra na
     ordem da memória, ou transponha uma vez por execução.
 
+12. **Produto de dois valores grandes usa `mul_div`.** `Fixed` vai até cerca de 9,2e15. `a * b / c`
+    calcula `a * b` primeiro e satura quando o produto passa disso: com PIB, comércio ou dívida
+    nacionais (1e12 a 1e14) isso acontece cedo. A saturação não dá erro; ela cria ou some com
+    dinheiro em silêncio. Nas margens de comércio, foi 0,65 a 0,77 % do PIB mundial por ano.
+    - Use `a.mul_div(b, c)`: o produto vai em 128 bits e arredonda uma vez.
+    - Uma partilha pro rata (`total × parte / soma`) que precisa fechar a soma manda o resto do
+      arredondamento para um participante fixo (o de maior parte, por exemplo).
+    - Para achar os pontos que saturam: `cargo build --release -p bf-bench --features
+      saturation-count` e uma rodada `--game`. O bench lista no fim cada arquivo e linha que
+      bateu em `MAX` ou `MIN`. Sem a feature, o build normal não muda.
+    - Trocar `a * b / c` por `mul_div` muda o hash onde havia saturação ou arredondamento duplo:
+      é conserto, num PR próprio, com base e faixa refeitas depois.
+
 ## Regra que muda o hash
 
 Regra nova que muda o resultado de todos entra **desligada**, num campo de `rules.*` (ou do
