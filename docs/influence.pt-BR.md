@@ -529,9 +529,10 @@ metade; a denúncia do feixe por um membro o tira do bloco no mês seguinte.
 Estado: **rascunho**, sobre o `main` com o comércio por par (#113) e com o commit `owned_shares`
 do #117 (capital estrangeiro), que sai daqui quando o #117 entrar.
 
-**Chave desligada.** Os canais entram atrás de `live_ties` em `data/diplomacy/influence.ron`,
-desligada por padrão. Com ela desligada, os dois ficam dormentes e o hash de 101 anos é o do
-`main`. Ligar é um PR pequeno separado, julgado pelos agregados.
+**Chave desligada.** Os canais entram atrás de `influence_ties` em `data/rules.ron`
+(`game::Switches`), desligada por padrão. Com ela desligada, os dois ficam dormentes e o hash de
+101 anos é o do `main`. No bench, `--rule influence_ties` liga. Ligar no jogo é um PR pequeno
+separado, julgado pelos agregados.
 
 **O que muda com a chave ligada.** Os dois canais deixam de ser dormentes quando o mundo tem o que
 eles medem:

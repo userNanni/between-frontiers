@@ -135,15 +135,18 @@ fn the_reading_of_a_pair_adds_up_and_names_the_dormant_fronts() {
     );
 }
 
-/// The switch: with `live_ties` off (the data's default) trade and investment stay dormant in the
+/// The switch: with `influence_ties` off (`data/rules.ron`) trade and investment stay dormant in the
 /// reading, as in the build without them.
 #[test]
 fn with_the_switch_off_trade_and_investment_stay_dormant() {
     use bf_sim::influence::{Channel, ChannelKind, channels};
     let d = data();
     let rules = d.rules();
+    assert!(!rules.switches.influence_ties, "the switch ships off");
     let setup = rules.influence.as_deref().unwrap();
-    assert!(!setup.rules.live_ties, "the switch ships off");
+    assert!(!setup.rules.live_ties);
+    let on = d.rules_with(bf_sim::game::Switches::parse("influence_ties").unwrap());
+    assert!(on.influence.as_deref().unwrap().rules.live_ties);
     let w = d.new_world();
     let debt = w.econ.ledger.debts.first().unwrap();
     let r = channels(

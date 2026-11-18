@@ -212,7 +212,10 @@ impl GameData {
     pub fn rules_with(&self, switches: crate::game::Switches) -> crate::game::Rules {
         let influence = self.influence.clone().map(|rules| {
             Arc::new(crate::influence::InfluenceSetup {
-                rules,
+                rules: crate::influence::InfluenceRules {
+                    live_ties: switches.influence_ties,
+                    ..rules
+                },
                 table: self.community_table.clone(),
                 colonial: self
                     .politics

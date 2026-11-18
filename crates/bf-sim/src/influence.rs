@@ -79,9 +79,9 @@ pub struct InfluenceRules {
     /// Most the term may add to a proposal, per mille of the proposal's size: influence makes a
     /// country accept a small loss for a patron, never any loss.
     pub proposal_cap: u32,
-    /// The trade and investment channels read the world (`docs/influence.pt-BR.md`, 13c). Off by
-    /// default: with it off both stay dormant and the hash is the one without them; switching it
-    /// on is a PR of its own.
+    /// The trade and investment channels read the world (`docs/influence.pt-BR.md`, 13c). On
+    /// only with `game::Switches::influence_ties` (written by `GameData::rules_with`, never read
+    /// from the data): off, both stay dormant and the hash is the one without them.
     #[serde(default)]
     pub live_ties: bool,
     /// The foreign service: missions, teams, the cost at home.
