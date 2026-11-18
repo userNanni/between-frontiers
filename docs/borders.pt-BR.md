@@ -798,3 +798,35 @@ ato no ano.
   acima mostra que isso é regra quebrada.
 - **Sinal 6 (conservação):** coberto pelo teste das duas separações.
 - **Sinal 7 (hash com a regra desligada):** igual ao do `main`, provado no #136.
+
+**Rodada com a decisão I1 (`main` `ea09dda`, commit `ec58056`).**
+- **Neutralidade:** com a regra desligada, o hash de 101 anos é o da base guardada (`c7900608…`).
+  O determinismo entre threads e o save de 1975 também conferem.
+- **A onda:** igual à do experimento. As 83 unidades se separam: 5 na década de 1930, 10 na de
+  1940, 22 na de 1950, 14 na de 1960, 14 na de 1970 e 18 de 1980 a 2019. O pico vem uma década
+  antes da história (39 em 1960), e nenhuma separação é por revolta. Hipótese a estudar: a
+  alfabetização das colônias cresce cedo demais com a regra anual da economia, porque o ensino
+  por coorte está desligado.
+- **Custo:** a influência caiu de 9,0 para 2,3 ms por mês em média, abaixo dos 8 ms. O termo de
+  gente da afinidade percorria todas as regiões em cada par, e o crédito varria o livro de
+  dívidas em cada par. Agora os dois são indexados uma vez por passada, com as mesmas somas.
+- **Agregados contra a faixa de oito amostras** (`main` `ca21e5a`, mesmo hash), do `game.json`,
+  que conta todos os mercados, inclusive os países novos:
+
+  | Ano | PIB mundial | População mundial | Urbanização |
+  |---|---|---|---|
+  | 1955 | −1,8 % (−2,4σ) | −0,04 % | −0,3 % |
+  | 1975 | −6,7 % (−5,6σ) | −0,1 % | −0,1 % |
+  | 1995 | −12,2 % (−11σ) | −0,8 % | −2,5 % |
+  | 2025 | −17,5 % (−16σ) | −1,6 % (−6σ) | −8,5 % (−20σ) |
+
+  A perda não fica nos países novos: em 2025, as metrópoles dos donos perdem 12,7 % do PIB e os
+  países sem colônias, 10 %. Uma descolonização que derruba o PIB do mundo 17 % não é a da
+  história, então isso é regra quebrada e não equilíbrio. **A regra não pode ser ligada antes de
+  achar a causa.**
+- **Para o próximo estudo**, que precisa de uma leitura nova no bench: o PIB por país no fim,
+  inclusive dos países novos (o `history.json` só tem os territórios de 1925). As hipóteses, a
+  conferir nesta ordem:
+  1. o país novo nasce com a técnica limitada e sem fundo de investimento;
+  2. as fábricas da metrópole na colônia param ou mudam de dono (C6a a C6c);
+  3. a demanda dos países novos cai no comércio mundial e puxa as exportações das metrópoles.
