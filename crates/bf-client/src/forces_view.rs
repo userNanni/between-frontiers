@@ -127,7 +127,7 @@ impl ForcesView {
             .iter()
             .filter(|f| f.row == row && !f.called_up && f.elements.is_positive())
             .collect();
-        of.sort_by(|a, b| (b.raised, b.elements, b.index).cmp(&(a.raised, a.elements, a.index)));
+        of.sort_by_key(|f| std::cmp::Reverse((f.raised, f.elements, f.index)));
         let mut left = Fixed::from_int(i64::from(count));
         let mut d = Disband::default();
         let mut goods: Vec<(u16, Fixed)> = Vec::new();
