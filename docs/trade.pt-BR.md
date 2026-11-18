@@ -256,6 +256,43 @@ com efeito nulo nos dados de 1925. (3) Os acordos de 1925 em vigor ligados (`tre
 Marino, que já muda a tarifa entre San Marino e a Itália, julgadas pela faixa. O custo se mede
 pelo relógio no trecho; os pares em união são poucos.
 
+**Resultado medido: não ligar como está.** Ligada, com a união de San Marino nos dados (101 anos,
+determinismo e save conferidos), o mundo fica dentro da faixa de reembaralhamento do main 1097315
+(PIB mundial de −1,7 a +1,0 %, população até +0,6 %, de 5 a 17 territórios de 166 fora de 2 σ).
+Mas os países que a regra devia ajudar pioram:
+
+| PIB contra a faixa | 1935 | 1965 | 2025 |
+|---|---|---|---|
+| Mônaco | −81 % | −78 % | ~0 |
+| Luxemburgo | 0 % | −43 % (−9 σ) | −75 % (−9 σ) |
+| San Marino | +16 % | −21 % | +20 % |
+| Liechtenstein | ~0 | ~0 | ~0 |
+
+| Salário de mercado, por semana | 1925 | 1927 | 1930 |
+|---|---|---|---|
+| San Marino (sem a regra: ~1,3) | 23,5 | 5,2 | 4,4 |
+| Liechtenstein (sem a regra: ~0,3) | 16,8 | 5,2 | 1,1 |
+| Mônaco (sem a regra: ~52) | 119 | 22,8 | 8,0 |
+
+O porquê: o fechamento leva excedente para onde falta. O sócio grande tem sobra de serviço e o
+pequeno tem falta (a sua gente compra mais serviço do que as suas plantas, no piso de uso, vendem),
+então o serviço francês entra em Mônaco, e não o contrário. As plantas de serviço do sócio pequeno
+perdem a venda que tinham, e a economia encolhe. O salário sobe no começo, enquanto a folha se paga,
+e cai depois. Na vida real, o microestado vendia ao vizinho o que o vizinho queria *dele* (cassino,
+sigilo bancário, turismo, selo), e o fechamento por excedente não tem como dizer isso. A chave
+`union_services` fica no código, desligada, e não deve ser ligada como está.
+
+**O que falta, para o dono (depois da fase 6, salvo pedido dele).** O microestado precisa de
+demanda estrangeira pelo que é dele, não de um caminho para o excedente do vizinho:
+
+| Opção | O que é | Prós | Contras |
+|---|---|---|---|
+| 1. Serviço de exportação de quem tem a planta | cassino, banco, turismo como plantas cujo serviço é comprado por estrangeiros, pela renda deles | é o que Mônaco e Liechtenstein foram; vale para Suíça, Luxemburgo, ilhas | plantas e demanda novas no catálogo |
+| 2. Demanda do vizinho proporcional à renda dele | o sócio de união compra do pequeno uma parte fixa do seu gasto em serviço | simples, sem planta nova | uma parte fixa é dado arbitrário por país |
+| 3. Trabalhador transfronteiriço | o ocioso do mercado pequeno trabalha no vizinho e manda o salário para casa | é Andorra e Liechtenstein | mexe no trabalho e na migração |
+
+Recomendação: 1, com 3 para Andorra. É o processo real e serve além dos microestados.
+
 **Alternativas anotadas, e por que não agora.**
 - **B. Trabalho que atravessa.** O trabalhador ocioso de um mercado pequeno ocupa vaga num estado
   vizinho do parceiro, e o salário volta para casa. É o caso de Andorra e o complemento de A se os
