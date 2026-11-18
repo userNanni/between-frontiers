@@ -466,7 +466,10 @@ hoje vai ao depósito, e o efetivo de paz continua pela lei.
 Estado: a fatia 1 (D1, D2, D4, D5) está no código, com os comandos `SetPayroll`, `SetPublicPay`,
 `SetTreasury` e `SetDeficitCap`, sem tela (a tela é do thread de interface). Pisos e tetos estão
 em `econ::levers` como valores de desenho, e a saída gradual da folha é um quadragésimo do excesso
-por mês, a calibrar. A `fiscal_capacity` (O1) entra nesta fatia, desligada.
+por mês, a calibrar. A `fiscal_capacity` (O1) está no código, desligada em `data/rules.ron`: ligada,
+cada região cobra a parcela dos servidores que a regra pede (`econ::levers::collection`), no imposto
+de renda e no de consumo, e o `view` diz a fração perdida (`uncollected`) e o efeito de uma semana
+no caixa (`week_effect`).
 
 1. D1, D2, D4 e D5: escalares do orçamento, comando e tela no Orçamento.
 2. D3 com `military_room`, junto com a guerra, e D9 em Moeda e dívida.

@@ -162,3 +162,66 @@ fn levers_survive_a_save() {
     );
     assert_eq!(hash_of(loaded.sim.world()), hash_of(s.sim.world()));
 }
+
+/// O1, `fiscal_capacity`: with the switch on, a payroll cut below the rule collects less tax,
+/// and the screen reads how much; with it off, the same cut costs no revenue.
+#[test]
+fn fewer_servants_collect_less_with_the_switch_on() {
+    let mut d = data();
+    let cut = || {
+        vec![GameCommand::SetPayroll {
+            tag: "MEX".into(),
+            per_mille: Some([2, 5]),
+        }]
+    };
+    let until = Date::new(1925, 7, 1);
+    let off = run(&d, cut(), until);
+    d.switches.fiscal_capacity = true;
+    let on = run(&d, cut(), until);
+    let mex = market(&off, "MEX");
+    let (m_off, m_on) = (
+        &off.sim.world().econ.markets[mex],
+        &on.sim.world().econ.markets[mex],
+    );
+    assert_eq!(m_off.uncollected, None);
+    let lost = m_on.uncollected.expect("the switch is on");
+    assert!(
+        lost > laplace_schelling::Fixed::ZERO,
+        "fewer servants, taxes lost"
+    );
+    let v = bf_sim::econ::levers::view(m_on);
+    let share = v.uncollected.unwrap();
+    assert!(share > 0.0 && share < 1.0, "share lost {share}");
+    assert!(v.servants.week_effect.unwrap() < 0.0);
+    assert!(m_on.budget.revenue < m_off.budget.revenue);
+}
+
+#[test]
+fn the_view_prices_a_week_of_the_fixed_value() {
+    let d = data();
+    let s = run(
+        &d,
+        vec![
+            GameCommand::SetPublicPay {
+                tag: "BRA".into(),
+                per_mille: Some(500),
+            },
+            GameCommand::SetDeficitCap {
+                tag: "BRA".into(),
+                per_mille_gdp: Some(0),
+            },
+        ],
+        Date::new(1925, 3, 1),
+    );
+    let v = bf_sim::econ::levers::view(&s.sim.world().econ.markets[market(&s, "BRA")]);
+    assert!(
+        v.public_pay.week_effect.unwrap() > 0.0,
+        "lower pay saves cash"
+    );
+    assert!(
+        v.deficit_cap.week_effect.unwrap() >= 0.0,
+        "no deficit borrows less"
+    );
+    assert_eq!(v.reserve_weeks.week_effect, None);
+    assert_eq!(v.uncollected, None);
+}

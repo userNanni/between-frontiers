@@ -47,6 +47,25 @@ pub struct Levers {
     pub issuance: Option<[u16; 3]>,
 }
 
+/// Share of the taxes a region's servants can collect (`Switches::fiscal_capacity`, owner's
+/// decision O1 of 2026-11-17): below the servants the rule asks for (`monthly::STATE_SHARE`), the
+/// state collects in proportion to what it has; above, no more. Linear, as the owner put it ("a
+/// arrecadação cai na proporção que falta"); the idea is Besley and Persson's fiscal capacity
+/// (2009, AER 99(4)). The rule's servants are a fixed share of the people, so a country on the
+/// rule collects all but the lag of hiring behind growth.
+pub fn collection(r: &super::state::Region) -> Fixed {
+    let share = super::monthly::STATE_SHARE
+        .iter()
+        .find(|s| s.0 == super::prof::CIVIL_SERVANT)
+        .map_or(0, |s| s.1);
+    let needed = r.population() * share / 1000;
+    if needed <= 0 {
+        return Fixed::ONE;
+    }
+    let have = r.pops[super::prof::CIVIL_SERVANT].size;
+    Fixed::from_ratio(have.min(needed), needed)
+}
+
 /// Floors and ceilings of what a command may fix. Design values for the first slice, each to be
 /// replaced by a measured one with its source in the PR that switches the lever's screen on
 /// (`docs/state.pt-BR.md`, the table of the commands).
@@ -184,6 +203,10 @@ pub struct LeverLine {
     pub fixed: Option<f64>,
     pub floor: f64,
     pub ceiling: f64,
+    /// What the fixed value does to the treasury in a week against the rule, in real units
+    /// (positive: more cash). `None` on the rule, or where a week's effect is not one number
+    /// (the reserve).
+    pub week_effect: Option<f64>,
 }
 
 /// The first slice's levers of one country, for the budget screen.
@@ -199,6 +222,9 @@ pub struct LeversView {
     pub surplus_fixed: bool,
     /// The year's deficit for purchases over GDP.
     pub deficit_cap: LeverLine,
+    /// With `Switches::fiscal_capacity` on, the share of last week's taxes not collected for
+    /// lack of servants (0–1); `None` with the switch off.
+    pub uncollected: Option<f64>,
 }
 
 /// What the budget screen reads for country `ci`.
@@ -210,28 +236,63 @@ pub fn view(m: &Market) -> LeversView {
         fixed: fixed.map(f64::from),
         floor: f64::from(lo),
         ceiling: f64::from(hi),
+        week_effect: None,
     };
+    // A week of each lever against the rule, by the tick's own sums.
+    let b = &m.budget;
+    let rule_pay = f(super::public::PUBLIC_PAY);
+    // Public pay: last week's payroll was paid at the fixed share; at the rule's it would be
+    // payroll × rule / fixed. Cash rises by what the fixed pay saves.
+    let pay_effect = l.public_pay.map(|v| {
+        let fixed = f64::from(v) / 1000.0;
+        let payroll = f(b.payroll);
+        payroll * rule_pay / fixed - payroll
+    });
+    // Servants: those missing against the rule cost no pay but, with the capacity to collect
+    // on, the taxes they would have collected. Last week's sums give the second.
+    let servants_effect = l.payroll.and(m.uncollected).map(|u| -f(u));
+    // Deficit cap: the purchases the cap allows against the rule's, a week.
+    let deficit_effect = l.deficit_cap.map(|_| {
+        let mut rule = m.clone();
+        rule.levers.deficit_cap = None;
+        f(super::money::deficit_room(&rule)) - f(super::money::deficit_room(m))
+    });
     let share = |p: usize| {
         super::monthly::STATE_SHARE
             .iter()
             .find(|s| s.0 == p)
             .map_or(0.0, |s| s.1 as f64)
     };
+    let with = |mut line: LeverLine, e: Option<f64>| {
+        line.week_effect = e;
+        line
+    };
+    let uncollected = m.uncollected.map(|u| {
+        let due = f(b.revenue) + f(u);
+        if due > 0.0 { f(u) / due } else { 0.0 }
+    });
     LeversView {
-        servants: line(
-            share(super::prof::CIVIL_SERVANT),
-            l.payroll.map(|p| p[0]),
-            SERVANTS_PER_MILLE,
+        uncollected,
+        servants: with(
+            line(
+                share(super::prof::CIVIL_SERVANT),
+                l.payroll.map(|p| p[0]),
+                SERVANTS_PER_MILLE,
+            ),
+            servants_effect,
         ),
         clergy: line(
             share(super::prof::CLERGY),
             l.payroll.map(|p| p[1]),
             CLERGY_PER_MILLE,
         ),
-        public_pay: line(
-            f(super::public::PUBLIC_PAY) * 1000.0,
-            l.public_pay,
-            PUBLIC_PAY_MILLE,
+        public_pay: with(
+            line(
+                f(super::public::PUBLIC_PAY) * 1000.0,
+                l.public_pay,
+                PUBLIC_PAY_MILLE,
+            ),
+            pay_effect,
         ),
         reserve_weeks: line(
             super::public::RESERVE_WEEKS as f64,
@@ -240,10 +301,13 @@ pub fn view(m: &Market) -> LeversView {
         ),
         surplus: l.surplus(),
         surplus_fixed: l.surplus.is_some(),
-        deficit_cap: line(
-            f(super::money::DEFICIT_TARGET) * 1000.0,
-            l.deficit_cap,
-            DEFICIT_CAP_MILLE,
+        deficit_cap: with(
+            line(
+                f(super::money::DEFICIT_TARGET) * 1000.0,
+                l.deficit_cap,
+                DEFICIT_CAP_MILLE,
+            ),
+            deficit_effect,
         ),
     }
 }

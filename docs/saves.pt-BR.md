@@ -114,11 +114,12 @@ commit, como `0.0.1+92093bd4e`), para a mensagem de erro.
 | 10 | comércio com parceiro: `Economy::trade` (`econ::trade::TradeState`: número de países, valor exportado por par no ano corrente e no último ano, preferências por comprador e grupo), último campo do `Economy`, #113. Vazio e fora do hash enquanto a chave `trade_by_pair` estiver desligada | `compat::V10` |
 | 11 | ensino por coorte e nível (`GameWorld::education`); vazio na migração. Com a regra `schooling` desligada continua vazio; ligada, a demografia monta no mês seguinte | `compat::V11` |
 | 12 e 13 | reservadas: encomendas e independência | — |
-| 14 | capital que cruza fronteira: obras pagas de fora e lucro reinvestido (`ForeignState::building`, `retained`, #117). Vazios enquanto a chave `foreign_flow` estiver desligada | `GameWorld` |
+| 14 | capital que cruza fronteira: obras pagas de fora e lucro reinvestido (`ForeignState::building`, `retained`, #117). Vazios enquanto a chave `foreign_flow` estiver desligada | `compat::V14` |
+| 15 | alavancas do orçamento (`GameWorld::levers`); vazias na migração: todos na regra, mesmo hash | `GameWorld` |
 
 `decode_world` lê a versão e aplica a cadeia até a atual: `v0_to_v1 → v1_to_v2 → v2_to_now`
 (a economia da 2 converte direto para a da 5: `v2_to_v5`), `v4_to_v5` (a 3 lê direto como a 4) e
-`v5_to_v6`, `v6_to_v7`, `v7_to_v8`, `v8_to_v9`, `v9_to_v10`, `v10_to_v11` e `v11_to_v14` (o comércio por par começa vazio; com a chave
+`v5_to_v6`, `v6_to_v7`, `v7_to_v8`, `v8_to_v9`, `v9_to_v10`, `v10_to_v11`, `v11_to_v14` e `v14_to_v15` (o comércio por par começa vazio; com a chave
 ligada, se preenche na primeira semana; o ensino também começa vazio)
 (`save_format::migrate`). Os saves sem cabeçalho, de antes deste formato, continuam abrindo pelas
 tentativas de antes (da versão mais nova para a mais velha, com a cauda de listas vazias

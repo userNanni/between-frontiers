@@ -78,6 +78,9 @@ pub struct Week {
     pub by_pair: bool,
     /// `game::Switches::small_market_wage_floor`.
     pub wage_floor: bool,
+    /// `game::Switches::fiscal_capacity`: a state short of servants collects less
+    /// (`econ::levers::collection`).
+    pub fiscal_capacity: bool,
     /// Capital crosses borders (`game::Switches::foreign_flow`); off, the week runs as before
     /// it: no foreign owner is read, no profit is remitted, no work becomes a stake.
     pub foreign_flow: bool,
@@ -119,6 +122,8 @@ pub struct RegionSettlement {
     pub firms: Fixed,
     /// Pay of the servants, soldiers and clergy here.
     pub payroll: Fixed,
+    /// Taxes the state did not collect for lack of servants (`Switches::fiscal_capacity`).
+    pub uncollected: Fixed,
     pub pool: Fixed,
     pub gdp: Fixed,
     /// The foreign owners' part of the profit, by owner market: what leaves for their funds,
@@ -501,6 +506,7 @@ fn clear_market(
 /// output, pay); its input ratio and utilization still move as for any plant, so it restarts
 /// where it would have. The tests run both ways. `abroad`: the foreign owners of the region's
 /// plants, as (kind, owner market, share of the plant's levels; `ForeignState::owners_in`).
+#[allow(clippy::too_many_arguments)]
 fn settle_region<const SKIP_IDLE: bool, const ABROAD: bool>(
     cat: &Catalogue,
     m: &Market,
@@ -509,8 +515,16 @@ fn settle_region<const SKIP_IDLE: bool, const ABROAD: bool>(
     wage: Fixed,
     v: &View,
     abroad: &[(u16, u16, Fixed)],
+    fiscal_capacity: bool,
 ) -> RegionSettlement {
     let laws = m.laws.of(r);
+    // The share of the taxes the state's servants here can collect (1 with the switch off).
+    let collected = if fiscal_capacity {
+        super::levers::collection(r)
+    } else {
+        Fixed::ONE
+    };
+    let mut uncollected = Fixed::ZERO;
     let mut wages = [Fixed::ZERO; P];
     let mut owners_industry = Fixed::ZERO;
     let mut owners_land = Fixed::ZERO;
@@ -670,7 +684,12 @@ fn settle_region<const SKIP_IDLE: bool, const ABROAD: bool>(
     let mut pops = Vec::with_capacity(P);
     for (pi, pop) in r.pops.iter().enumerate() {
         let gross = wages[pi];
-        let tax = gross * m.budget.tax_rates[CLASS_OF[pi]] * laws.tax_collection;
+        let mut tax = gross * m.budget.tax_rates[CLASS_OF[pi]] * laws.tax_collection;
+        if collected < Fixed::ONE {
+            let due = tax;
+            tax = due * collected;
+            uncollected += due - tax;
+        }
         taxes += tax;
         let income = gross - tax;
         let unplaced = orders.pops[pi].as_ref().map_or(Fixed::ZERO, |p| p.unplaced);
@@ -705,7 +724,12 @@ fn settle_region<const SKIP_IDLE: bool, const ABROAD: bool>(
         let saved = income * SAVE_RATE[pi];
         // Tax on consumption, out of what is left after buying and saving.
         let before_tax = pop.savings - spent + income - saved;
-        let consumption_tax = (spent * m.budget.indirect_rate).min(before_tax.max(Fixed::ZERO));
+        let mut consumption_tax = (spent * m.budget.indirect_rate).min(before_tax.max(Fixed::ZERO));
+        if collected < Fixed::ONE {
+            let due = consumption_tax;
+            consumption_tax = due * collected;
+            uncollected += due - consumption_tax;
+        }
         indirect += consumption_tax;
         let buffer = before_tax - consumption_tax;
         let invested = unplaced.min(buffer).max(Fixed::ZERO);
@@ -723,6 +747,7 @@ fn settle_region<const SKIP_IDLE: bool, const ABROAD: bool>(
         indirect,
         firms: state_revenue,
         payroll,
+        uncollected,
         pool,
         gdp,
         remit,
@@ -1001,7 +1026,16 @@ impl System<GameWorld> for Week {
                             .map_or(0, |p| p.levels)
                     });
                     let v = View::new(cat, m, l, &[]);
-                    settle_region::<true, true>(cat, m, r, o, wages[mi], &v, &a)
+                    settle_region::<true, true>(
+                        cat,
+                        m,
+                        r,
+                        o,
+                        wages[mi],
+                        &v,
+                        &a,
+                        self.fiscal_capacity,
+                    )
                 })
                 .collect()
         } else {
@@ -1013,7 +1047,16 @@ impl System<GameWorld> for Week {
                     let mi = r.market as usize;
                     let m = &markets[mi];
                     let v = View::new(cat, m, l, &[]);
-                    settle_region::<true, false>(cat, m, r, o, wages[mi], &v, &[])
+                    settle_region::<true, false>(
+                        cat,
+                        m,
+                        r,
+                        o,
+                        wages[mi],
+                        &v,
+                        &[],
+                        self.fiscal_capacity,
+                    )
                 })
                 .collect()
         };
@@ -1117,6 +1160,7 @@ impl System<GameWorld> for Week {
             m.budget.revenue_indirect = Fixed::ZERO;
             m.budget.revenue_firms = Fixed::ZERO;
             m.budget.payroll = Fixed::ZERO;
+            m.uncollected = self.fiscal_capacity.then_some(Fixed::ZERO);
             // The building trade delivers points to the queue of works.
             m.budget.works = Fixed::ZERO;
             if let Some(cg) = construction_good {
@@ -1152,6 +1196,9 @@ impl System<GameWorld> for Week {
             m.budget.revenue_indirect += s.indirect;
             m.budget.revenue_firms += s.firms;
             m.budget.payroll += s.payroll;
+            if let Some(u) = &mut m.uncollected {
+                *u += s.uncollected;
+            }
             m.pool += s.pool;
             m.gdp_running += s.gdp;
             if self.foreign_flow {
@@ -1268,8 +1315,8 @@ mod tests {
                 let mut v = View::last_week(cat, m, r, nat);
                 v.buy.iter_mut().for_each(|b| *b = milli(700));
                 let wage = Fixed::from_int(3);
-                let s = settle_region::<true, false>(cat, m, r, &skip, wage, &v, &[]);
-                let f = settle_region::<false, false>(cat, m, r, &full, wage, &v, &[]);
+                let s = settle_region::<true, false>(cat, m, r, &skip, wage, &v, &[], false);
+                let f = settle_region::<false, false>(cat, m, r, &full, wage, &v, &[], false);
                 assert_eq!(s, f, "settlement of state {ri}");
                 idle += r
                     .plants

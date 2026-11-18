@@ -126,6 +126,7 @@ impl From<MarketBeforeResearch> for Market {
             },
             money: m.money,
             levers: Default::default(),
+            uncollected: None,
         }
     }
 }

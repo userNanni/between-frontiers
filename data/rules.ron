@@ -27,4 +27,7 @@
     // the formations of `data/scenario/1925/forces.ron`. Off: the old rule of
     // `data/military/peace.ron` (`soldiers`).
     forces: false,
+    // The servants' capacity to collect (`docs/state.pt-BR.md`, D1, owner's decision O1): a
+    // region with fewer servants than the rule asks for collects that much less tax.
+    fiscal_capacity: false,
 )
