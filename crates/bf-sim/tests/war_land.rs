@@ -81,6 +81,7 @@ fn a_declared_war_has_fronts_and_combat() {
             .expect("the war switch builds the setup"),
         &d.war.as_ref().unwrap().military,
         w,
+        s.clock().date.month,
     );
     let border: Vec<_> = week
         .segments

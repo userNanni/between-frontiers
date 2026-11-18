@@ -1,6 +1,9 @@
 //! Reads the game data from disk: the economy catalogue and the 1925 scenario. Kept out of the
 //! engine (which does no I/O); the client, the server and the benchmark all start here.
 
+use std::collections::BTreeMap;
+
+use laplace_schelling::Fixed;
 use std::path::Path;
 use std::sync::Arc;
 
@@ -184,6 +187,87 @@ impl GameData {
         Ok(data)
     }
 
+    /// The terrain of each map state for the war on land: climate, mountain and marsh, forest
+    /// and town (`war::state_terrain`).
+    fn state_terrains(&self) -> BTreeMap<u16, crate::war::TerrainMix> {
+        let (Some(w), Some(land)) = (&self.war, &self.land) else {
+            return BTreeMap::new();
+        };
+        let rules = &w.military.rules;
+        let ids = &self.border_rules.state_ids;
+        let pop: BTreeMap<&str, (u64, f32)> = self
+            .population
+            .as_ref()
+            .map(|p| {
+                p.states
+                    .iter()
+                    .map(|s| (s.state.as_str(), (s.population, s.urban)))
+                    .collect()
+            })
+            .unwrap_or_default();
+        let area: BTreeMap<u16, f32> = self.map.states.iter().map(|s| (s.id, s.area_km2)).collect();
+        land.states
+            .iter()
+            .filter_map(|s| {
+                let id = *ids.get(&s.state)?;
+                let a = area.get(&id).copied().unwrap_or(1.0).max(1.0);
+                let urban = pop.get(s.state.as_str()).map_or(Fixed::ZERO, |(p, u)| {
+                    crate::war::urban_share(rules, *p, *u, a)
+                });
+                let forest = (s.forest_km2 / a).clamp(0.0, 1.0);
+                let terrain = w.terrain.as_ref().and_then(|t| t.state(id));
+                Some((
+                    id,
+                    crate::war::state_terrain(rules, terrain, &s.climate, forest, urban),
+                ))
+            })
+            .collect()
+    }
+
+    /// Big rivers along the borders between states, by (lower, higher) state id.
+    fn river_borders(&self) -> BTreeMap<(u16, u16), Fixed> {
+        let Some(t) = self.war.as_ref().and_then(|w| w.terrain.as_ref()) else {
+            return BTreeMap::new();
+        };
+        let mut out = BTreeMap::new();
+        for (a, near) in self.border_rules.neighbours.iter() {
+            for b in near.iter().filter(|b| *b > a) {
+                let r = t.river_share(*a, *b);
+                if r.is_positive() {
+                    out.insert((*a, *b), r);
+                }
+            }
+        }
+        out
+    }
+
+    /// States whose climate is mostly cold (continental, subarctic and polar): winter slows
+    /// the front there from December to February.
+    fn cold_states(&self) -> std::collections::BTreeSet<u16> {
+        let Some(land) = &self.land else {
+            return Default::default();
+        };
+        let ids = &self.border_rules.state_ids;
+        land.states
+            .iter()
+            .filter(|s| {
+                let cold: f32 = s
+                    .climate
+                    .iter()
+                    .filter(|(k, _)| {
+                        matches!(
+                            k.as_str(),
+                            "humid_continental" | "subarctic" | "tundra" | "ice_cap"
+                        )
+                    })
+                    .map(|(_, v)| v)
+                    .sum();
+                cold >= 0.5
+            })
+            .filter_map(|s| ids.get(&s.state).copied())
+            .collect()
+    }
+
     /// Switches the forces in peace on (`Switches::forces`), whatever `data/rules.ron` says.
     pub fn enable_forces(&mut self) {
         self.switches.forces = true;
@@ -279,6 +363,9 @@ impl GameData {
                         (s.id, laplace_schelling::Fixed::from_f64_lossy(side / 2.0))
                     })
                     .collect(),
+                terrain: self.state_terrains(),
+                river: self.river_borders(),
+                cold: self.cold_states(),
             })
         });
         crate::game::Rules {

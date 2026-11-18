@@ -30,6 +30,15 @@ pub struct FightSetup {
     /// Depth of each state, km: half the side of a square of its area. The front takes the
     /// state when its advance passes it.
     pub depth_km: BTreeMap<u16, Fixed>,
+    /// Terrain of each state (`calc::state_terrain`: climate, mountain, marsh, forest, town),
+    /// by state id; open where the data lack the state.
+    pub terrain: BTreeMap<u16, TerrainMix>,
+    /// Share of the border between two states that runs along a big river, by (lower, higher)
+    /// state id; none where absent.
+    pub river: BTreeMap<(u16, u16), Fixed>,
+    /// States whose winters stop the front (`Terrain` of their climate is cold): the months of
+    /// December to February slow the front there.
+    pub cold: std::collections::BTreeSet<u16>,
 }
 
 /// The war on land, saved and hashed only when not empty.
@@ -153,7 +162,8 @@ fn strength(mil: &Military, c: &CountryWar) -> Strength {
 }
 
 /// A week of war on land: segments, combat, advance and control. Pure: reads the world.
-pub fn fight_week(setup: &FightSetup, mil: &Military, world: &GameWorld) -> FightWeek {
+/// `month` is the month of the week (winter in cold states runs from December to February).
+pub fn fight_week(setup: &FightSetup, mil: &Military, world: &GameWorld, month: u8) -> FightWeek {
     let mut out = FightWeek {
         fighting: world.war.fighting.clone(),
         ..Default::default()
@@ -238,10 +248,24 @@ pub fn fight_week(setup: &FightSetup, mil: &Military, world: &GameWorld) -> Figh
         count.iter().map(|(&c, &n)| (c, share_of(c, n))).collect();
     let mut next: BTreeMap<u16, usize> = BTreeMap::new();
     let mut lost: BTreeMap<u16, u64> = BTreeMap::new();
-    let field = LandField {
-        terrain: TerrainMix::only(Terrain::Open),
-        winter: false,
-        river: Fixed::ZERO,
+    let winter_month = matches!(month, 12 | 1 | 2);
+    let field_of = |from: u32, into: u32, attack_from_a: bool| -> LandField {
+        let (sa, sb) = (regions[from as usize].state, regions[into as usize].state);
+        // The terrain is the defender's state: where the attack goes.
+        let at = if attack_from_a { sb } else { sa };
+        LandField {
+            terrain: setup
+                .terrain
+                .get(&at)
+                .cloned()
+                .unwrap_or_else(|| TerrainMix::only(Terrain::Open)),
+            winter: winter_month && setup.cold.contains(&at),
+            river: setup
+                .river
+                .get(&(sa.min(sb), sa.max(sb)))
+                .copied()
+                .unwrap_or(Fixed::ZERO),
+        }
     };
     let side = |c: u16, men_here: u64, attack: bool| -> LandSide {
         let s = &strengths[&c];
@@ -276,6 +300,7 @@ pub fn fight_week(setup: &FightSetup, mil: &Military, world: &GameWorld) -> Figh
         let ma = men_on[&a].get(ia).copied().unwrap_or(0);
         let mb = men_on[&b].get(ib).copied().unwrap_or(0);
         let (sa, sb) = (side(a, ma, attacks(a, b)), side(b, mb, attacks(b, a)));
+        let field = field_of(from, into, attacks(a, b) || !attacks(b, a));
         let o = land_step(&mil.rules, &field, [&sa, &sb]);
         *lost.entry(a).or_default() += o.losses[0];
         *lost.entry(b).or_default() += o.losses[1];

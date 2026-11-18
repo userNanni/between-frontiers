@@ -867,7 +867,7 @@ impl System<GameWorld> for Forces {
             .fight
             .as_ref()
             .filter(|_| !world.war.conflicts.wars.is_empty())
-            .map(|setup| super::fight::fight_week(setup, &self.military, world));
+            .map(|setup| super::fight::fight_week(setup, &self.military, world, ctx.date.month));
         ForcesChanges {
             countries,
             soldiers,
