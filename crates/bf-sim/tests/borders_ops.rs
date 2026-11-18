@@ -556,3 +556,42 @@ fn a_dissolution_ends_the_country_and_conserves() {
     assert_eq!(debt(&w, hrv) + debt(&w, scg), debt_before);
     assert_eq!(w.borders.changes.last().unwrap().ended, Some(yug_ix as u16));
 }
+
+/// The grade of a subject (`BorderRules::subject_of`): read from the scenario until the first
+/// operation; a subject that changes overlord keeps it, a sovereign country made a subject is a
+/// protectorate.
+#[test]
+fn a_subject_keeps_its_grade_when_its_overlord_changes() {
+    use bf_sim::scenario::SubjectKind;
+    let mut w = world();
+    let rules = &data().border_rules;
+    let raj = ix(&w, "RAJ");
+    assert_eq!(
+        rules.subject_of(&w, raj).map(|s| s.kind.clone()),
+        Some(SubjectKind::CrownColony)
+    );
+    run(
+        &mut w,
+        vec![
+            Operation::Status {
+                tag: "RAJ".into(),
+                overlord: Some("USA".into()),
+            },
+            Operation::Status {
+                tag: "BRA".into(),
+                overlord: Some("USA".into()),
+            },
+        ],
+    );
+    let usa = ix(&w, "USA");
+    let s = rules.subject_of(&w, raj).unwrap();
+    assert_eq!(
+        (usize::from(s.overlord), s.kind.clone()),
+        (usa, SubjectKind::CrownColony)
+    );
+    let bra = ix(&w, "BRA");
+    assert_eq!(
+        rules.subject_of(&w, bra).map(|s| s.kind.clone()),
+        Some(SubjectKind::Protectorate)
+    );
+}

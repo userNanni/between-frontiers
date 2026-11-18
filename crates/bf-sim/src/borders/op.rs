@@ -321,15 +321,18 @@ impl BorderRules {
 
     /// The overlord of country `c`, if it is a subject.
     pub fn overlord_of(&self, world: &GameWorld, c: usize) -> Option<usize> {
+        self.subject_of(world, c).map(|s| usize::from(s.overlord))
+    }
+
+    /// The bond of country `c` (overlord, grade, since when), if it is a subject: the world's,
+    /// or the start date's (`countries.ron`) while no border operation has run.
+    pub fn subject_of<'a>(&'a self, world: &'a GameWorld, c: usize) -> Option<&'a Subject> {
         let subjects = if world.borders.subjects.is_empty() {
             &self.subjects
         } else {
             &world.borders.subjects
         };
-        subjects
-            .get(c)
-            .and_then(|s| s.as_ref())
-            .map(|s| usize::from(s.overlord))
+        subjects.get(c).and_then(|s| s.as_ref())
     }
 }
 
@@ -1244,10 +1247,24 @@ fn execute(
         }
         Operation::Status { tag, overlord } => {
             let c = ix(world, tag);
-            world.borders.subjects[c] = overlord.as_ref().map(|o| Subject {
-                overlord: ix(world, o) as u16,
-                kind: SubjectKind::Protectorate,
-                since: date,
+            // A subject that changes overlord keeps its grade; a sovereign country that becomes
+            // a subject is a protectorate (the grade travels with the agreement, `Regrade`).
+            let before = world.borders.subjects[c].clone();
+            world.borders.subjects[c] = overlord.as_ref().map(|o| {
+                let o = ix(world, o) as u16;
+                match before {
+                    Some(s) if s.overlord == o => s,
+                    Some(s) => Subject {
+                        overlord: o,
+                        kind: s.kind,
+                        since: date,
+                    },
+                    None => Subject {
+                        overlord: o,
+                        kind: SubjectKind::Protectorate,
+                        since: date,
+                    },
+                }
             });
         }
         Operation::Terms { terms } => apply_terms(world, terms),
