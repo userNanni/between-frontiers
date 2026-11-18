@@ -219,3 +219,40 @@ fn a_denunciation_ends_by_its_notice_or_as_a_breach() {
     week(&mut w, cat(), Date::new(1930, 3, 17));
     assert!(w.treaties.in_force(a).is_some());
 }
+
+/// A clause outside the catalogue's limits is not carried out: a payment of three years of
+/// Britain's GDP (the limit is two).
+#[test]
+fn a_clause_outside_its_limits_fails() {
+    let mut w = data().new_world();
+    let gbr = w
+        .countries
+        .iter()
+        .position(|(_, c)| c.tag == "GBR")
+        .unwrap();
+    let gdp = w.econ.markets[gbr].gdp_last_year;
+    let too_much = (gdp * Fixed::from_int(3)).to_int_round();
+    let p = proposal(vec![pay(Side::Senior, Side::Junior, too_much)]);
+    let id = w.treaties.table.propose("GBR", "FRA", p, D0).unwrap();
+    let before = treasury(&w, "GBR");
+    week(&mut w, cat(), D0);
+    let c = w.treaties.table.closed.iter().find(|c| c.id == id).unwrap();
+    assert!(
+        matches!(&c.outcome, Outcome::Failed(r) if r.contains("amount")),
+        "{:?}",
+        c.outcome
+    );
+    assert_eq!(treasury(&w, "GBR"), before);
+    // Within the limit it is signed.
+    let ok = proposal(vec![pay(
+        Side::Senior,
+        Side::Junior,
+        gdp.to_int_round() / 10,
+    )]);
+    w.treaties.table.propose("GBR", "FRA", ok, D0).unwrap();
+    week(&mut w, cat(), D0);
+    assert!(matches!(
+        w.treaties.table.closed.last().unwrap().outcome,
+        Outcome::Signed(_)
+    ));
+}

@@ -382,6 +382,88 @@ pub struct ClauseDef {
     #[serde(default)]
     pub concerns: Vec<(String, i8)>,
     pub source: String,
+    /// Bounds of the clause's parameters, for the table's editor and its check
+    /// ([`limit_violations`]). Design choices, noted in `clauses.ron`.
+    #[serde(default)]
+    pub limits: Vec<Limit>,
+}
+
+/// The bounds of one parameter of a clause.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Limit {
+    /// The parameter: `amount`, `yearly`, `principal`, `rate`, `years`, `deferrable`, `share`,
+    /// `margin`.
+    pub param: String,
+    pub unit: LimitUnit,
+    pub min: Fixed,
+    pub max: Fixed,
+    /// The step of the editor's arrows, in the same unit.
+    pub step: Fixed,
+}
+
+/// What a limit's numbers mean.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum LimitUnit {
+    /// A share of the giving side's yearly GDP (a payment, a debt's principal).
+    ShareOfGdp,
+    /// A share of the giving side's yearly GDP, every year (a tribute).
+    ShareOfGdpYearly,
+    /// A fraction, 0 to 1 (a rate, a share).
+    Fraction,
+    /// Years.
+    Years,
+}
+
+/// The numeric parameters of a clause, by the names of [`Limit::param`].
+pub fn params(kind: &ClauseKind) -> Vec<(&'static str, Fixed)> {
+    match kind {
+        ClauseKind::Payment { amount } => vec![("amount", *amount)],
+        ClauseKind::Tribute { yearly } => vec![("yearly", *yearly)],
+        ClauseKind::Debt { terms: Some(t) } => vec![
+            ("principal", t.principal),
+            ("rate", t.rate),
+            ("years", Fixed::from_int(i64::from(t.years))),
+            ("deferrable", t.deferrable),
+        ],
+        ClauseKind::AssumeDebt { share } => vec![("share", *share)],
+        ClauseKind::TariffCap { rate: Some(r) } => vec![("rate", *r)],
+        ClauseKind::TariffPreference { margin } => vec![("margin", *margin)],
+        _ => Vec::new(),
+    }
+}
+
+/// The parameters of `proposal` outside the catalogue's limits: (clause index, parameter). A
+/// share of GDP is of the giving side's yearly GDP, summed over its members (`gdp`).
+pub fn limit_violations(
+    cat: &ClauseCatalogue,
+    proposal: &Proposal,
+    gdp: &BTreeMap<Tag, Fixed>,
+) -> Vec<(usize, &'static str)> {
+    let mut out = Vec::new();
+    for (ci, c) in proposal.clauses.iter().enumerate() {
+        let Some(def) = cat.get(c.kind.key()) else {
+            continue;
+        };
+        let giving: Fixed = side_members(&c.giver, proposal)
+            .iter()
+            .map(|t| gdp.get(*t).copied().unwrap_or_default())
+            .sum();
+        for (name, value) in params(&c.kind) {
+            let Some(l) = def.limits.iter().find(|l| l.param == name) else {
+                continue;
+            };
+            let (lo, hi) = match l.unit {
+                LimitUnit::ShareOfGdp | LimitUnit::ShareOfGdpYearly => {
+                    (giving * l.min, giving * l.max)
+                }
+                LimitUnit::Fraction | LimitUnit::Years => (l.min, l.max),
+            };
+            if value < lo || value > hi {
+                out.push((ci, name));
+            }
+        }
+    }
+    out
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
