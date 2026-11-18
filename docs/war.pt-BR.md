@@ -708,10 +708,11 @@ military`, só local, porque os termos do SIPRI ainda não foram lidos (`data/hi
 "Left out").
 
 **Chave: as forças entram desligadas.** Decisão de 2026-11-17: regra que muda o hash de todos os
-países entra desligada, e ligá-la é um PR pequeno, julgado sozinho pelos agregados. O `peace.ron`
-traz `soldiers: PopulationShare(10)`: as forças não carregam e a partida é a de antes, com o mesmo
-hash da `main`. Elas ligam com `BF_FORCES=1` (bench e prints) ou `GameData::enable_forces`
-(testes).
+países entra desligada, e ligá-la é um PR pequeno, julgado sozinho pelos agregados. A chave é
+`forces` em `data/rules.ron` (`game::Switches`), desligada: as forças não carregam e os soldados
+seguem a regra antiga do `peace.ron` (`soldiers: PopulationShare(10)`), com o mesmo hash da
+`main`. Ligam com `--rule forces` no bench, `BF_RULES=forces` na carga dos dados (prints) ou
+`GameData::enable_forces` (testes).
 
 O PR que liga as forças precisa de:
 - uma faixa com pelo menos oito amostras de reembaralhamento sobre a `main` atual;

@@ -559,8 +559,12 @@ pub struct Rules {
 }
 
 /// Rules that can be switched on, all off by default: a rule enters the main switched off, with
-/// the world's hash unchanged, and a later PR switches it on and is judged on its own.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+/// the world's hash unchanged, and a later PR switches it on and is judged on its own. The
+/// values the game starts with are in `data/rules.ron` (`GameData::switches`); a field missing
+/// there is off. `BF_RULES` switches some on over the file when the data load, and
+/// `bf-bench --rule NAME` for a run.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Deserialize)]
+#[serde(default, deny_unknown_fields)]
 pub struct Switches {
     /// Trade by pair (`econ::trade`, docs/trade.pt-BR.md): each buyer splits what it seeks among
     /// the sellers by the cost of arrival. Off, the world pool shares trade pro rata.
@@ -576,24 +580,56 @@ pub struct Switches {
     /// funds build abroad with what they have left at home; the stakes and the weekly
     /// remittance follow from what they build.
     pub foreign_flow: bool,
+    /// Schooling by cohort and level and the adult literacy campaign (`demography::education`,
+    /// docs/population.pt-BR.md, "Ensino por coorte"). Off, literacy follows the economy's yearly
+    /// rule; a world that already has schooling keeps it.
+    pub schooling: bool,
+    /// Armed forces in peace (`war`, docs/war.pt-BR.md, "Forças em paz"): the soldiers are the
+    /// men of the formations. Off, the old rule of `data/military/peace.ron` (`soldiers`).
+    pub forces: bool,
 }
 
 impl Switches {
-    /// The switches named in a comma-separated list (`trade_by_pair`,
-    /// `jobs_follow_use`, `small_market_wage_floor`, `foreign_flow`), on; unknown names are
-    /// refused.
-    pub fn parse(names: &str) -> Result<Self, String> {
-        let mut s = Self::default();
-        for name in names.split(',').map(str::trim).filter(|n| !n.is_empty()) {
-            match name {
-                "trade_by_pair" => s.trade_by_pair = true,
-                "jobs_follow_use" => s.jobs_follow_use = true,
-                "small_market_wage_floor" => s.small_market_wage_floor = true,
-                "foreign_flow" => s.foreign_flow = true,
-                other => return Err(format!("unknown rule switch {other}")),
+    /// The names `switch_on` knows, in the order of the fields.
+    pub const NAMES: [&'static str; 6] = [
+        "trade_by_pair",
+        "jobs_follow_use",
+        "small_market_wage_floor",
+        "foreign_flow",
+        "schooling",
+        "forces",
+    ];
+
+    /// Switches one rule on by name; unknown names are refused.
+    pub fn switch_on(&mut self, name: &str) -> Result<(), String> {
+        match name {
+            "trade_by_pair" => self.trade_by_pair = true,
+            "jobs_follow_use" => self.jobs_follow_use = true,
+            "small_market_wage_floor" => self.small_market_wage_floor = true,
+            "foreign_flow" => self.foreign_flow = true,
+            "schooling" => self.schooling = true,
+            "forces" => self.forces = true,
+            other => {
+                return Err(format!(
+                    "unknown rule switch {other} (known: {})",
+                    Self::NAMES.join(", ")
+                ));
             }
         }
-        Ok(s)
+        Ok(())
+    }
+
+    /// These switches with the ones named in a comma-separated list on.
+    pub fn with(mut self, names: &str) -> Result<Self, String> {
+        for name in names.split(',').map(str::trim).filter(|n| !n.is_empty()) {
+            self.switch_on(name)?;
+        }
+        Ok(self)
+    }
+
+    /// The switches named in a comma-separated list on, the others off.
+    pub fn parse(names: &str) -> Result<Self, String> {
+        Self::default().with(names)
     }
 }
 

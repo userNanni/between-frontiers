@@ -145,7 +145,7 @@ O fechamento por par fica atrás da chave `game::Switches::trade_by_pair`, desli
 (`GameData::rules`). Desligada, a semana roda o *pool* mundial de antes (`week::world_pool`, o mesmo
 código e o mesmo alcance de 85 %), o estado por par fica vazio e fora do hash, e nada do frete é
 calculado, nem as distâncias entre países na carga (`GameData::trade_geography`, feita na primeira
-vez que a chave liga): o mundo tem o hash da `main` e a CPU dela. No bench, `BF_RULES=trade_by_pair` liga. O teste
+vez que a chave liga): o mundo tem o hash da `main` e a CPU dela. A chave é `trade_by_pair` em `data/rules.ron`; liga com `--rule trade_by_pair` no bench ou `BF_RULES=trade_by_pair` na carga dos dados. O teste
 `tests/trade_by_pair.rs` roda dois meses ligado para o caminho não apodrecer.
 
 Ligar é um PR próprio, julgado pelos critérios da seção 8. A rodada de 101 anos ligada (branch

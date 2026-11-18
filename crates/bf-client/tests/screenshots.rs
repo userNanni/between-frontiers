@@ -632,14 +632,14 @@ fn advanced_session_of(
     tag: &str,
     until: laplace_schelling::calendar::Date,
 ) -> bf_sim::game::Session {
-    advanced_session_with(tag, until, bf_sim::data::RuleSwitches::default())
+    advanced_session_with(tag, until, bf_sim::game::Switches::default())
 }
 
 /// [`advanced_session_of`] with rules of `data/rules.ron` switched on.
 fn advanced_session_with(
     tag: &str,
     until: laplace_schelling::calendar::Date,
-    switches: bf_sim::data::RuleSwitches,
+    switches: bf_sim::game::Switches,
 ) -> bf_sim::game::Session {
     let mut data = bf_sim::data::GameData::load(&root()).expect("game data");
     data.switches = switches;
@@ -2539,10 +2539,10 @@ fn influence_window() {
 #[ignore = "needs a GPU (or software Vulkan) and the generated map; run with --ignored"]
 fn armed_forces() {
     use laplace_schelling::calendar::Date;
-    // The forces ship off; the session and the client read them on through `BF_FORCES`.
+    // The forces ship off; the session and the client read them on through `BF_RULES`.
     // SAFETY: the screenshot tests run one at a time (`RUST_TEST_THREADS=1`), and no other
     // thread reads the environment while this one writes it.
-    unsafe { std::env::set_var("BF_FORCES", "1") };
+    unsafe { std::env::set_var("BF_RULES", "forces") };
     let user = std::env::temp_dir().join(format!("bf-shots-forces-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&user);
     let peace = advanced_session_of("GBR", Date::new(1926, 2, 1));
@@ -2649,7 +2649,10 @@ fn schooling_screens() {
     let bra = advanced_session_with(
         "BRA",
         Date::new(1930, 3, 1),
-        bf_sim::data::RuleSwitches { schooling: true },
+        bf_sim::game::Switches {
+            schooling: true,
+            ..Default::default()
+        },
     );
     let save = write_campaign(&user, &bra, "Brasil 1930", "BRA", &[]);
     for (locale, size, tag, schooling, budget, campaign, start, yes) in [

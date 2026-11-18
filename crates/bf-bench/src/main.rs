@@ -40,7 +40,7 @@ Usage: bf-bench [options]
   --save-at DATES       with --game: save, reload and finish from each YYYY-MM-DD in this
                         comma-separated list (default: 1 January of the middle year)
   --rule NAME           with --game: switch on a rule of data/rules.ron that is off
-                        (repeatable)
+                        (repeatable; BF_RULES=a,b does the same when the data load)
   --borders-history     with --game: apply data/history/borders.ron on its dates, only to
                         exercise the border operations (off by default; not the reference run)
 

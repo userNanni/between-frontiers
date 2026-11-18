@@ -17,8 +17,8 @@ use crate::resources::{DepositsFile, LandFile};
 use crate::scenario::{CountriesFile, MapFile};
 
 pub struct GameData {
-    /// Rules a PR added switched off (`data/rules.ron`).
-    pub switches: RuleSwitches,
+    /// The rule switches the game starts with (`data/rules.ron`, then `BF_RULES`).
+    pub switches: crate::game::Switches,
     pub catalogue: Arc<Catalogue>,
     pub countries: CountriesFile,
     pub map: MapFile,
@@ -63,25 +63,6 @@ pub struct GameData {
     pub border_rules: Arc<crate::borders::BorderRules>,
     /// Who did not recognise whom on the start date, when `recognition.ron` exists.
     pub recognition: Option<crate::treaty::RecognitionFile>,
-}
-
-/// Rules a PR added switched off (`data/rules.ron`); a missing file or field is off.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Deserialize)]
-#[serde(default)]
-pub struct RuleSwitches {
-    /// Schooling by cohort and level (`demography::education`).
-    pub schooling: bool,
-}
-
-impl RuleSwitches {
-    /// Switches one rule on by name; `false` for an unknown name.
-    pub fn switch_on(&mut self, name: &str) -> bool {
-        match name {
-            "schooling" => self.schooling = true,
-            _ => return false,
-        }
-        true
-    }
 }
 
 fn read<T: serde::de::DeserializeOwned>(path: &Path) -> Result<T, String> {
@@ -165,9 +146,12 @@ impl GameData {
         border_rules.recognition = clauses.as_ref().map(|c| c.policy.recognition_default);
         let border_rules = Arc::new(border_rules);
         let diplomacy: Option<DiplomacyFile> = optional(&scenario.join("diplomacy.ron"))?;
-        let mut data = Self {
+        let data = Self {
             trade_geography: std::sync::OnceLock::new(),
-            switches: optional(&data.join("rules.ron"))?.unwrap_or_default(),
+            switches: optional::<crate::game::Switches>(&data.join("rules.ron"))?
+                .unwrap_or_default()
+                .with(&std::env::var("BF_RULES").unwrap_or_default())
+                .map_err(|e| format!("BF_RULES: {e}"))?,
             border_rules,
             war,
             tree,
@@ -194,20 +178,12 @@ impl GameData {
             war_debts: optional(&scenario.join("war_debts.ron"))?,
             recognition: optional(&scenario.join("recognition.ron"))?,
         };
-        // `BF_FORCES=1` switches the forces on over `peace.ron` (bench runs and screenshots;
-        // tests call `enable_forces`).
-        if std::env::var("BF_FORCES").is_ok_and(|v| v == "1") {
-            data.enable_forces();
-        }
         Ok(data)
     }
 
-    /// Switches the forces in peace on (`soldiers: Forces`), whatever `peace.ron` says. They
-    /// ship off until their own PR switches them on (`docs/war.pt-BR.md`, "Chave").
+    /// Switches the forces in peace on (`Switches::forces`), whatever `data/rules.ron` says.
     pub fn enable_forces(&mut self) {
-        if let Some(p) = self.war.as_mut().and_then(|w| w.peace.as_mut()) {
-            p.soldiers = crate::war::SoldierRule::Forces;
-        }
+        self.switches.forces = true;
     }
 
     /// The distances of trade by pair, built on the first call: a game with trade by pair
@@ -224,9 +200,9 @@ impl GameData {
         }))
     }
 
-    /// The rules the schedule runs with, every switch off.
+    /// The rules the schedule runs with, with the switches of `data/rules.ron` (and `BF_RULES`).
     pub fn rules(&self) -> crate::game::Rules {
-        self.rules_with(crate::game::Switches::default())
+        self.rules_with(self.switches)
     }
 
     /// The rules the schedule runs with, with these switches.
@@ -248,7 +224,7 @@ impl GameData {
                         .unwrap_or_default(),
                 })
             }),
-            war: self.war_rules(),
+            war: self.war_rules(switches.forces),
             trade: switches.trade_by_pair.then(|| self.trade_geography()),
             switches,
             education: match (&self.education_1925, &self.literacy_campaign) {
@@ -256,7 +232,7 @@ impl GameData {
                     Some(Arc::new(crate::demography::education::EducationRules {
                         start: start.clone(),
                         campaign: campaign.clone(),
-                        enabled: self.switches.schooling,
+                        enabled: switches.schooling,
                         kinds: [
                             self.catalogue.building("school"),
                             self.catalogue.building("secondary_school"),
@@ -269,13 +245,20 @@ impl GameData {
         }
     }
 
-    /// The unit catalogue and the rules in peace, when the forces are loaded (`peace.ron`
-    /// with `soldiers: Forces` and the 1925 forces).
-    fn war_rules(&self) -> Option<(Arc<crate::war::Military>, Arc<crate::war::PeaceRules>)> {
+    /// The unit catalogue and the rules in peace, when the forces are on (the switch, or
+    /// `peace.ron` with `soldiers: Forces`) and the 1925 forces are loaded.
+    fn war_rules(
+        &self,
+        forces: bool,
+    ) -> Option<(Arc<crate::war::Military>, Arc<crate::war::PeaceRules>)> {
         let w = self.war.as_ref()?;
         let peace = w.peace.as_ref()?;
-        (peace.soldiers == crate::war::SoldierRule::Forces && w.forces_1925.is_some())
-            .then(|| (Arc::new(w.military.clone()), Arc::new(peace.clone())))
+        let on = forces || peace.soldiers == crate::war::SoldierRule::Forces;
+        (on && w.forces_1925.is_some()).then(|| {
+            let mut peace = peace.clone();
+            peace.soldiers = crate::war::SoldierRule::Forces;
+            (Arc::new(w.military.clone()), Arc::new(peace))
+        })
     }
 
     /// The world on the start date, economy included.
@@ -325,7 +308,7 @@ impl GameData {
         if let (Some(cat), Some(rec)) = (&self.clauses, &self.recognition) {
             world.treaties.recognition = rec.start(&self.countries, &cat.policy);
         }
-        if let (Some(w), Some(_)) = (&self.war, self.war_rules()) {
+        if let (Some(w), Some(_)) = (&self.war, self.war_rules(self.switches.forces)) {
             let forces = w.forces_1925.as_ref().expect("checked by war_rules");
             world.war =
                 crate::war::WarState::initial(&w.military, forces, &self.countries.countries);

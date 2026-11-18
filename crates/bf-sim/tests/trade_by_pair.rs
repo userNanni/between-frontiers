@@ -59,4 +59,28 @@ fn switches_parse_by_name() {
     assert_eq!(Switches::parse("").unwrap(), Switches::default());
     assert!(Switches::parse(" trade_by_pair ").unwrap().trade_by_pair);
     assert!(Switches::parse("no_such_rule").is_err());
+    let all = Switches::parse(&Switches::NAMES.join(",")).unwrap();
+    assert!(
+        all.trade_by_pair
+            && all.jobs_follow_use
+            && all.small_market_wage_floor
+            && all.foreign_flow
+            && all.schooling
+            && all.forces
+    );
+}
+
+/// `data/rules.ron` names every switch, and all of them ship off: the main keeps its hash.
+#[test]
+fn rules_file_names_every_switch_and_ships_them_off() {
+    let path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../data/rules.ron");
+    let text = std::fs::read_to_string(&path).unwrap();
+    let file: Switches = ron::from_str(&text).unwrap();
+    assert_eq!(file, Switches::default(), "every rule ships off");
+    for name in Switches::NAMES {
+        assert!(
+            text.contains(&format!("{name}: false")),
+            "data/rules.ron lists {name}"
+        );
+    }
 }
