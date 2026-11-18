@@ -1013,7 +1013,7 @@ pub fn main(
             pr.extra.len()
         );
     }
-    print_independence(&main.session);
+    print_independence(&data, &main.session);
     print_timings(&report.technologies);
     crate::print_systems(&report.systems);
     println!(
@@ -1207,7 +1207,7 @@ fn foreign_report(w: &bf_sim::game::GameWorld) {
 
 /// Independence by movement: the units at the end, the independences by decade and how, and the
 /// checks of the broken-rule signals (`docs/borders.pt-BR.md`, section 11).
-fn print_independence(session: &bf_sim::game::Session) {
+fn print_independence(data: &GameData, session: &bf_sim::game::Session) {
     use bf_sim::borders::independence::How;
     let w = session.world();
     let st = &w.independence;
@@ -1221,6 +1221,85 @@ fn print_independence(session: &bf_sim::game::Session) {
             .map_or("?", |(_, x)| x.tag.as_str())
             .to_owned()
     };
+    // History of the same units (every unit the run had: broken away or still at the end), by
+    // the decade of the candidate's `born`, beside the run's.
+    let born: std::collections::BTreeMap<&str, i32> = data
+        .border_rules
+        .candidates
+        .countries
+        .iter()
+        .filter_map(|c| c.born.get(..4)?.parse().ok().map(|y| (c.tag.as_str(), y)))
+        .collect();
+    let mut hist: std::collections::BTreeMap<i32, u32> = Default::default();
+    for key in st
+        .history
+        .iter()
+        .map(|r| r.unit.as_str())
+        .chain(st.units.iter().map(|u| u.key.as_str()))
+    {
+        if let Some(y) = born.get(key) {
+            *hist.entry(y / 10 * 10).or_default() += 1;
+        }
+    }
+    println!(
+        "independence history (same units, decade of `born`): {}",
+        hist.iter()
+            .map(|(d, n)| format!("{d}s {n}"))
+            .collect::<Vec<_>>()
+            .join(", ")
+    );
+    // Why the units left stand still: the weakest condition of their cause, and the owners with
+    // self-rule (`trusteeship`) in force, which holds for every colony of the owner.
+    if let Some(p) = data.politics.as_ref() {
+        let kind = p
+            .movements
+            .iter()
+            .find(|m| matches!(m.goal, bf_sim::politics::GoalRef::Independence));
+        let mut weakest: std::collections::BTreeMap<String, u32> = Default::default();
+        for u in &st.units {
+            let k = kind
+                .and_then(|k| bf_sim::borders::independence::weakest_key(k, u.movement.weakest))
+                .unwrap_or_else(|| "?".into());
+            let k = if u.movement.pressure > 0 {
+                "growing".to_owned()
+            } else {
+                k
+            };
+            *weakest.entry(k).or_default() += 1;
+        }
+        println!(
+            "independence units at the end by weakest condition (pressure 0): {}",
+            weakest
+                .iter()
+                .map(|(k, n)| format!("{k} {n}"))
+                .collect::<Vec<_>>()
+                .join(", ")
+        );
+        if let Some(l) = p.law("trusteeship") {
+            let owners: std::collections::BTreeSet<u16> =
+                st.units.iter().map(|u| u.owner).collect();
+            let with: Vec<String> = owners
+                .iter()
+                .filter(|o| {
+                    w.politics
+                        .laws
+                        .get(usize::from(**o))
+                        .is_some_and(|ls| ls.contains(&Some(l as u16)))
+                })
+                .map(|o| {
+                    format!(
+                        "{} ({} units)",
+                        tag(*o),
+                        st.units.iter().filter(|u| u.owner == *o).count()
+                    )
+                })
+                .collect();
+            println!(
+                "independence owners with self-rule in force: {}",
+                with.join(", ")
+            );
+        }
+    }
     let mut by_decade: std::collections::BTreeMap<i32, [u32; 3]> = Default::default();
     for r in &st.history {
         let e = by_decade.entry(r.date.year / 10 * 10).or_default();

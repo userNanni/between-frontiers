@@ -731,3 +731,70 @@ os chama.
    independências não é maior que antes;
 6. conservação quebrada (população, dinheiro, dívida, plantas) em qualquer separação;
 7. o hash com `enabled: false` diferente do da `main`.
+
+### Ligar a regra: estudo da onda (rascunho, decisões abertas)
+
+Rodada de 101 anos no `main` `ca21e5a` com `--rule independence`. A referência é a década do
+`born` de `candidates.ron` das mesmas 83 unidades de 1925, sem forçar data:
+
+| Década | História | Regra atual (`AtMost(400)`) | Experimento (`AtMost(900)`) |
+|---|---|---|---|
+| 1930 | 0 | 1 | 5 |
+| 1940 | 10 | 6 | 10 |
+| 1950 | 8 | 2 | 22 |
+| 1960 | 39 | 1 | 14 |
+| 1970 | 20 | 0 | 14 |
+| 1980 | 4 | 0 | 5 |
+| 1990 | 2 | 0 | 7 |
+| 2000 | 0 | 0 | 6 |
+| Sobram em 2026 | 0 | 73 | 0 |
+
+**Diagnóstico da regra atual: o governo próprio apaga a causa, e apaga em todas as colônias do
+dono.**
+- Na escada de resposta, a primeira concessão é o governo próprio, a lei `trusteeship`, que dá
+  `colonial_self_rule` 500.
+- A causa do movimento exige `colonial_self_rule` no máximo 400. Concedido o governo próprio, a
+  pressão vai a zero e o apoio decai pela meia-vida.
+- A lei é do país, não da unidade: uma concessão a uma unidade vale para todas as colônias do
+  dono.
+- No fim da rodada, as 73 unidades que sobram têm a condição de governo próprio como a mais
+  fraca. Todos os donos têm a lei em vigor: GBR (35 unidades), FRA (25), POR (5), ITA (2),
+  JAP (2), BEL, NLD, USA e NZL (1 cada).
+- Na história, o governo próprio veio antes da independência, e não no lugar dela: Costa do Ouro
+  em 1951, independente em 1957; Nigéria em 1954, independente em 1960; a loi-cadre francesa de
+  1956, e as independências de 1960.
+
+**O experimento** só muda o limite da causa para 900, acima de qualquer lei colonial. Com isso,
+o governo próprio freia o movimento (a margem cai de 875 para 444 por mil) em vez de apagá-lo.
+Não é proposta pronta, e mostra três coisas:
+- **A onda fecha:** as 83 unidades se separam.
+- **Ela vem cedo e achatada:** o pico fica na década de 1950 (22 contra 8 na história), e não há
+  o salto de 1960 (14 contra 39).
+- **Nunca há revolta:** são 81 por acordo e 2 como domínio. A metrópole sempre concede antes da
+  marca da revolta. Na história houve guerras coloniais (Indochina, Argélia, Quênia, Angola), que
+  dependem da fase 5.
+
+**Custo:** com a onda inteira, o sistema `influence` sobe para 9,0 ms por mês em média, acima dos
+8 ms do orçamento. A causa é a boa vontade negativa que a independência grava todo ano por par
+metrópole–anticolonial; com mais países anticoloniais, há mais pares. Precisa ser resolvido no PR
+que liga a regra, por exemplo gravando só quando o valor muda além de um limiar, ou fundindo o
+ato no ano.
+
+**Decisões para o dono (recomendação primeiro):**
+1. **O governo próprio freia, não apaga.** Recomendação: a condição de governo próprio sobe com a
+   alfabetização da unidade, porque a elite educada pede mais quanto mais cresce. Na prática, o
+   limite passa a 400 + alfabetização × 500 por mil.
+   - Teste: Costa do Ouro com governo próprio em 1951 continua com pressão acima de zero.
+   - Alternativa: o limite fixo em 900 do experimento. É mais simples, mas acelera a onda cedo
+     demais, porque não depende de nada que mude no século.
+2. **Governo próprio por unidade ou por dono.** Recomendação: por dono, como está. A loi-cadre de
+   1956 valeu para toda a África francesa, e a lei por unidade pede leis coloniais por estado, uma
+   frente nova.
+3. **A falta de revolta fica para a fase 5.** Recomendação: sim, e anotada como dependência no
+   placar, sem meta. Com a guerra, a metrópole medirá o custo de lutar contra o de conceder.
+
+**Sinais de regra quebrada, conferidos na rodada da regra atual:**
+- **Sinal 5 (a onda acelera):** pela letra não dispara, mas a onda para em 1963. O diagnóstico
+  acima mostra que isso é regra quebrada.
+- **Sinal 6 (conservação):** coberto pelo teste das duas separações.
+- **Sinal 7 (hash com a regra desligada):** igual ao do `main`, provado no #136.
