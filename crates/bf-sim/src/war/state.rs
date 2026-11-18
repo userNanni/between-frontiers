@@ -457,3 +457,61 @@ impl From<WarStateBeforeCalls> for WarState {
         }
     }
 }
+
+/// Men per element of a land formation: every land type of `units.ron` counts its elements in
+/// thousands of men.
+const LAND_MEN_PER_ELEMENT: u64 = 1000;
+
+/// The elements `disband` would take from formation `index` of `c`, and their equipment in the
+/// formation's order; `None` when nothing would be disbanded (no such formation, called-up
+/// reservists, none asked).
+fn disbanded(c: &CountryWar, index: usize, elements: u32) -> Option<(Fixed, Vec<(u16, Fixed)>)> {
+    let f = c.formations.get(index)?;
+    if f.called_up || !f.elements.is_positive() || elements == 0 {
+        return None;
+    }
+    let n = Fixed::from_int(i64::from(elements)).min(f.elements);
+    let share = n / f.elements;
+    Some((
+        n,
+        f.equipment.iter().map(|(g, q)| (*g, *q * share)).collect(),
+    ))
+}
+
+/// What disbanding `elements` elements of formation `index` would send to the depot, by good:
+/// what the forces tab shows before the click. The same account as [`disband`].
+pub fn disband_preview(c: &CountryWar, index: usize, elements: u32) -> Vec<(u16, Fixed)> {
+    disbanded(c, index, elements)
+        .map(|(_, freed)| freed.into_iter().filter(|(_, q)| q.is_positive()).collect())
+        .unwrap_or_default()
+}
+
+/// Disbands `elements` whole elements of formation `index` of `c` (fewer if it holds fewer):
+/// their share of its equipment goes to the depot, and the men of a raised (ordered) land
+/// formation join the reserve. A formation left empty leaves the list. Called-up reservists are
+/// left to `Mobilize`. Returns the elements disbanded.
+pub fn disband(c: &mut CountryWar, index: usize, elements: u32) -> Fixed {
+    let Some((n, freed)) = disbanded(c, index, elements) else {
+        return Fixed::ZERO;
+    };
+    let f = &mut c.formations[index];
+    for (e, (_, q)) in f.equipment.iter_mut().zip(&freed) {
+        e.1 -= *q;
+    }
+    f.elements -= n;
+    if f.raised {
+        c.reserve += (n * LAND_MEN_PER_ELEMENT as i64).to_int_floor().max(0) as u64;
+    }
+    for (g, q) in freed {
+        if q.is_positive() {
+            match c.depot.binary_search_by_key(&g, |(k, _)| *k) {
+                Ok(i) => c.depot[i].1 += q,
+                Err(i) => c.depot.insert(i, (g, q)),
+            }
+        }
+    }
+    if !c.formations[index].elements.is_positive() {
+        c.formations.remove(index);
+    }
+    n
+}

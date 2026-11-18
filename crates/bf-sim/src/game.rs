@@ -265,6 +265,16 @@ pub enum GameCommand {
     /// Cancels the country's order at `index` of its queue: what it built goes to the depot,
     /// the men it raised stay.
     CancelOrder { tag: String, index: u32 },
+    /// Disbands `elements` whole elements of the country's formation at `formation` (its index in
+    /// `CountryWar::formations`, as the forces tab lists them): ships and aircraft leave service,
+    /// land elements go home. Their equipment goes to the depot; the men of a raised land
+    /// formation (an order's) join the reserve. The peace army's land formations come back to
+    /// the size in peace the next January. Called-up reservists are sent home by `Mobilize`.
+    DisbandForces {
+        tag: String,
+        formation: u32,
+        elements: u32,
+    },
     /// Demands of `target` the clauses of `demand` (`side_a` must be `tag`, `side_b` the target),
     /// to be answered within `weeks` (the rules' deadline when `None`). A demand without a
     /// cause is allowed and recorded (W1). No-op without forces, between countries at war, or
@@ -540,6 +550,18 @@ impl Command<GameWorld> for GameCommand {
                     for (g, q) in o.built {
                         crate::war::add_goods(&mut c.depot, g, q);
                     }
+                }
+            }
+            GameCommand::DisbandForces {
+                tag,
+                formation,
+                elements,
+            } => {
+                let Some(ci) = world.countries.iter().position(|(_, c)| c.tag == *tag) else {
+                    return;
+                };
+                if let Some(c) = world.war.countries.get_mut(ci) {
+                    crate::war::disband(c, *formation as usize, *elements);
                 }
             }
             GameCommand::Demand {
