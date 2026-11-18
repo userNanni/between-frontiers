@@ -27,6 +27,10 @@
     // Capital crosses borders (`docs/foreign-capital.pt-BR.md`): the funds build abroad with what
     // they have left at home; the stakes and the weekly remittance follow from what they build.
     foreign_flow: false,
+    // Technique through the foreign plant (`docs/foreign-capital.pt-BR.md`, C5): imitation and
+    // diffusion run faster where foreign owners hold the levels a technology serves. Off: the
+    // foreign plants teach nothing.
+    foreign_technique: false,
     // Independence by movement (`docs/borders.pt-BR.md`, section 11): colonial units demand an
     // answer, the metropole answers by its measured account, a refusal can end in revolt. Off:
     // colonies only grow their movement.
