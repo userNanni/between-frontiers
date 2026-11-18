@@ -5,8 +5,6 @@ cmd-map-mode-influence = Mapa de influência
 cmd-map-mode-blocs = Mapa de blocos
     .short = Blocos
 lens-influence-none = Sem dados de influência nesta campanha.
-legend-influence-unit-over = Influência de { $country } sobre cada país, em % do PIB do país influenciado
-legend-influence-unit-on = Influência de cada país sobre { $country }, em % do PIB de { $country }
 legend-influence-focus = { $country } (em foco)
 legend-influence-nothing = Nada medido
 tip-influence = { $share } do PIB · maior assunto: { $issue } · { $channels }
@@ -20,10 +18,7 @@ legend-bloc-line = { $name } · { $count ->
 }
 legend-blocs-member = Tom claro: membro; tom forte: líder
 legend-blocs-customs = União aduaneira
-bloc-name-military = Bloco militar de { $leader }
-bloc-name-monetary = Bloco monetário de { $leader }
 bloc-name-subjects = { $leader } e seus súditos
-bloc-name-customs = Bloco aduaneiro de { $leader }
 tip-bloc-leader = { $name } (líder)
 tip-bloc-none = Fora de blocos deste tipo
 lens-ties = Laços
@@ -32,3 +27,49 @@ lens-ties-influence_on = Influência dos outros sobre o país
 lens-ties-military = Blocos militares
 lens-ties-monetary = Blocos monetários
 lens-ties-subjects = Súditos
+legend-influence-unit-over = Influência { $article ->
+    [o] do
+    [a] da
+    [os] dos
+    [as] das
+   *[other] de
+} { $country } sobre cada país, em % do PIB do país influenciado
+legend-influence-unit-on = Influência de cada país { $article ->
+    [o] sobre o
+    [a] sobre a
+    [os] sobre os
+    [as] sobre as
+   *[other] sobre
+} { $country }, em % do PIB { $article ->
+    [o] do
+    [a] da
+    [os] dos
+    [as] das
+   *[other] de
+} { $country }
+legend-influence-scope = Medidos hoje: crédito entre governos e boa vontade. Súditos: Laços → Súditos.
+bloc-name-military = Bloco militar { $article ->
+    [o] do
+    [a] da
+    [os] dos
+    [as] das
+   *[other] de
+} { $leader }
+bloc-name-monetary = Bloco monetário { $article ->
+    [o] do
+    [a] da
+    [os] dos
+    [as] das
+   *[other] de
+} { $leader }
+bloc-name-customs = Bloco aduaneiro { $article ->
+    [o] do
+    [a] da
+    [os] dos
+    [as] das
+   *[other] de
+} { $leader }
+legend-bloc-leaderless = { $name } · sem líder · { $count ->
+    [one] { $members } membro
+   *[other] { $members } membros
+}
