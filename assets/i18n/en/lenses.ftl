@@ -38,7 +38,6 @@ legend-influence-unit-on = Influence of each country over { $article ->
     [the] the { $country }
    *[other] { $country }
 }
-legend-influence-scope = Measured today: credit between governments and goodwill. Subjects: Ties → Subjects.
 bloc-name-military = Military bloc of { $article ->
     [the] the { $leader }
    *[other] { $leader }
@@ -55,3 +54,7 @@ legend-bloc-leaderless = { $name } · no leader · { $count ->
     [one] { $members } member
    *[other] { $members } members
 }
+legend-influence-scope = Measured today: credit between governments and goodwill; the rest is switched off.
+legend-influence-scope-tip = Measured today: credit between governments and goodwill. Trade and investment are switched off in the game's rules. Protection comes with war (phase 5). A subject shows zero, and the influence window says why.
+legend-influence-unmeasured = No channel measured
+tip-influence-unmeasured = A tie with no channel measured: the influence window says what is missing

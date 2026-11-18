@@ -47,7 +47,6 @@ legend-influence-unit-on = Influência de cada país { $article ->
     [as] das
    *[other] de
 } { $country }
-legend-influence-scope = Medidos hoje: crédito entre governos e boa vontade. Súditos: Laços → Súditos.
 bloc-name-military = Bloco militar { $article ->
     [o] do
     [a] da
@@ -73,3 +72,7 @@ legend-bloc-leaderless = { $name } · sem líder · { $count ->
     [one] { $members } membro
    *[other] { $members } membros
 }
+legend-influence-scope = Medidos hoje: crédito entre governos e boa vontade; o resto está desligado.
+legend-influence-scope-tip = Medidos hoje: crédito entre governos e boa vontade. Comércio e investimento estão desligados nas regras do jogo. Proteção chega com a guerra (fase 5). Um súdito aparece com zero, e a janela de influência diz por quê.
+legend-influence-unmeasured = Sem canal medido
+tip-influence-unmeasured = Laço sem canal medido: a janela de influência diz o que falta

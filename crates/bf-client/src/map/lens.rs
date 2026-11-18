@@ -204,7 +204,8 @@ pub fn influence_color(share: f64) -> [u8; 4] {
 }
 
 /// The share for country `tag` in the lens: over it (or of it over the focus, `on`), the given
-/// issue or the largest. `None` where nothing is measured.
+/// issue or the largest. `None` where the pair is not in the influence at all; zero where it is
+/// (a subject, say) and no channel measures anything yet.
 pub fn influence_of(
     view: &crate::influence_view::InfluenceView,
     tag: &str,
@@ -218,8 +219,11 @@ pub fn influence_of(
     } else {
         p.issues.get(issue - 1)?.influence
     };
-    (v > 0.0).then_some(v)
+    Some(v.max(0.0))
 }
+
+/// A pair the influence knows with no channel measured: paper, hatched (`HATCH_ALPHA`).
+pub const UNMEASURED: [u8; 4] = [178, 170, 152, HATCH_ALPHA];
 
 fn influence_palette(world: &World, mut out: Vec<[u8; 4]>, issue: usize, on: bool) -> Vec<[u8; 4]> {
     let empty = [EMPTY[0], EMPTY[1], EMPTY[2], 255];
@@ -231,7 +235,11 @@ fn influence_palette(world: &World, mut out: Vec<[u8; 4]>, issue: usize, on: boo
                 if tag == v.tag {
                     [FOCUS[0], FOCUS[1], FOCUS[2], 255]
                 } else {
-                    influence_of(v, tag, issue, on).map_or(empty, influence_color)
+                    match influence_of(v, tag, issue, on) {
+                        Some(x) if x > 0.0 => influence_color(x),
+                        Some(_) => UNMEASURED,
+                        None => empty,
+                    }
                 }
             }
             _ => empty,
