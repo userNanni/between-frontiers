@@ -139,27 +139,22 @@ Declarado antes de rodar:
   parte B).
 - **CPU** de 10 anos contra a `main`: até 2 % a mais no passo semanal.
 
-## 8a. Entra desligado
+## 8a. A chave
 
-O fechamento por par fica atrás da chave `game::Switches::trade_by_pair`, desligada por padrão
-(`GameData::rules`). Desligada, a semana roda o *pool* mundial de antes (`week::world_pool`, o mesmo
-código e o mesmo alcance de 85 %), o estado por par fica vazio e fora do hash, e nada do frete é
-calculado, nem as distâncias entre países na carga (`GameData::trade_geography`, feita na primeira
-vez que a chave liga): o mundo tem o hash da `main` e a CPU dela. A chave é `trade_by_pair` em `data/rules.ron`; liga com `--rule trade_by_pair` no bench ou `BF_RULES=trade_by_pair` na carga dos dados. O teste
-`tests/trade_by_pair.rs` roda dois meses ligado para o caminho não apodrecer.
+O fechamento por par fica atrás da chave `game::Switches::trade_by_pair` em `data/rules.ron`.
+Desligada, a semana roda o *pool* mundial de antes (`week::world_pool`, o mesmo código e o mesmo
+alcance de 85 %), o estado por par fica vazio e fora do hash, e nada do frete é calculado, nem as
+distâncias entre países na carga (`GameData::trade_geography`, feita na primeira vez que a chave
+liga). O teste `tests/trade_by_pair.rs` roda os dois caminhos.
 
-Ligar é um PR próprio, julgado pelos critérios da seção 8. A rodada de 101 anos ligada (branch
-f60ddc7 sobre a `main` e4df5dc) passou no determinismo e no save de 1975, e na regra dos 20 % do
-comércio sobre o PIB (2,2 · 4,4 · 2,5 · 1,7 % em 1925 · 1945 · 1975 · 2025, contra 2,2 · 4,1 ·
-2,9 · 1,8 % na `main`). Mas o PIB mundial saiu da faixa de reembaralhamento de 1945 a 2005 para
-cima (+7 desvios em 1965, de 1,25 para 1,32 do real) e a parcela da Europa Oriental em 2025 foi de
-1,43 para 1,68 do real. PIB 3 a 6 % maior com o comércio sobre o PIB igual é sinal de regra
-quebrada, não de ganho de troca. O PR de ligar começa por esse diagnóstico: conservação de dinheiro
-e de bens por par, semana a semana, e o destino do que o *pool* deixava sem comprador. A faixa de
-reembaralhamento precisa ser refeita sobre a `main` atual, porque a usada é de d5570d0. O frete que
-baixa o comércio antes de 1960 e o contêiner que o sobe depois não aparecem; ficam anotados como
-dependência, não como meta. A CPU ligada (+20 % no passo semanal, medida com os três slots cheios)
-se mede de novo no mesmo slot e se corta pela lista do guia de performance.
+**Ligada desde o PR que a ligou**, julgada pela faixa de oito amostras da `main` com as forças
+ligadas (6bdba90). A primeira rodada ligada, de 2026-11-17, deu PIB mundial 3 a 6 % acima da faixa
+com o comércio sobre o PIB igual. Era a interação com o vazamento de dinheiro nas margens (#193):
+com o vazamento consertado, o PIB fica dentro da faixa, e com σ = 0 (custos iguais) o fechamento já
+reproduzia o pool. A CPU do caminho ligado caiu no #201, de +25 % para cerca de +8 % do semanal: o
+custo estava nas varreduras da matriz vendedor × comprador, não nos pares. Os números da rodada
+que ligou estão no PR. O frete que baixa o comércio antes de 1960 e o contêiner que o sobe depois
+não aparecem; ficam anotados como dependência, não como meta.
 
 ## 9. Decisões do dono (2026-11-17)
 
