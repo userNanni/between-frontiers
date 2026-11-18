@@ -32,6 +32,7 @@ de ferramentas; o jogador liberta a própria terra com `Liberate`.
 
 | Decisão | Comando | Onde fica | Estado |
 |---|---|---|---|
+| Ordenar a fila de obras públicas, pôr e tirar obra (D8) | `SetWorksOrder`, `AddWork`, `CancelWork` | Governo → Obras (Shift+B): ordem de chegada ou a minha, ↑ ↓, cancelar em dois cliques, nova obra por estado com o custo; "só a minha lista" zera as prioridades | em revisão |
 | Folha do Estado: servidores e clero por mil habitantes (D1) | `SetPayroll` | Governo → Orçamento → "Folha e Tesouro": regra histórica ou fixado | em revisão |
 | Salário público sobre o privado (D2) | `SetPublicPay` | Governo → Orçamento → "Folha e Tesouro" | em revisão |
 | Reserva do Tesouro e destino do excesso (D4) | `SetTreasury` | Governo → Orçamento → "Folha e Tesouro" | em revisão |

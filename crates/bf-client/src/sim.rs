@@ -65,6 +65,9 @@ pub struct Snapshot {
     /// The influence around the country the "Influence" lens looks at, read once a month and when
     /// that country changes; `None` without the lens on or without influence.
     pub lens_influence: Option<Arc<crate::influence_view::InfluenceView>>,
+    /// The player's public works and what could be built, read once a month and when the queue
+    /// or its order changes (the government's works tab).
+    pub works: Option<Arc<crate::works_view::WorksView>>,
     /// The blocs, read once a month, for the "Blocs" lens.
     pub blocs: Option<Arc<crate::blocs_view::BlocsView>>,
     /// The player's armed forces, read once a month; `None` without forces.
@@ -326,6 +329,32 @@ struct Monthly {
     forces: Option<Arc<crate::forces_view::ForcesView>>,
     lens_influence: Option<Arc<crate::influence_view::InfluenceView>>,
     blocs: Option<Arc<crate::blocs_view::BlocsView>>,
+    works: Option<Arc<crate::works_view::WorksView>>,
+}
+
+/// The player's works, read again on a new month or when the queue or its order changed.
+fn works_of(
+    session: &Session,
+    rules: &Rules,
+    last: &Option<Arc<crate::works_view::WorksView>>,
+) -> Option<Arc<crate::works_view::WorksView>> {
+    let date = session.clock().date;
+    let w = session.world();
+    let ci = w
+        .player_tag()
+        .and_then(|t| w.countries.iter().position(|(_, c)| c.tag == t))?;
+    match last {
+        Some(v)
+            if v.month == (date.year, date.month)
+                && v.signature == crate::works_view::signature(w, ci) =>
+        {
+            Some(Arc::clone(v))
+        }
+        _ => {
+            let r = rules.as_ref()?;
+            crate::works_view::read(w, &r.catalogue, r.tree.as_deref(), date).map(Arc::new)
+        }
+    }
 }
 
 /// What the monthly views read besides the session: the scenario's treaties (for the blocs)
@@ -417,6 +446,7 @@ impl Monthly {
                 &last.lens_influence,
             ),
             blocs: blocs_of(session, rules, extras, &last.blocs),
+            works: works_of(session, rules, &last.works),
             figures: figures_of(session, &last.figures),
             journal: journal_of(session, rules, &last.journal),
             population: population_of(session, rules, &last.population),
@@ -458,6 +488,7 @@ fn snapshot_of(
         forces: monthly.forces,
         lens_influence: monthly.lens_influence,
         blocs: monthly.blocs,
+        works: monthly.works,
         government: crate::government::read(
             session.world(),
             session.player(),
