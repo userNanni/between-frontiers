@@ -47,6 +47,21 @@ Todos com o hash igual ao da `main`. Base de 101 anos: 1174 s de CPU em `7d851c1
 | #155 | planta parada não passa pelas somas de zero | −18 % em 10 e em 101 anos |
 | #156 | lista de pedidos do pop alocada uma vez | −7 % em 2 e 10 anos (incerto) |
 
+**101 anos, antes e depois da rodada**, no mesmo slot, um depois do outro. Antes é `7d851c1`;
+depois é `015b601` + #156, a mesma simulação de `6ce4ae5`. O hash mudou entre os dois por causa do
+#145; cada PR da rodada deu o hash da sua base.
+
+| | 1 thread antes | 1 thread depois | 2 threads antes | 2 threads depois |
+|---|---|---|---|---|
+| CPU (`%U`) | 1166 s | 668 s (−43 %) | 1152 s | 683 s (−41 %) |
+| relógio | 1214 s | 697 s | 834 s | 540 s (−35 %) |
+| simulação impressa | 595 s | 454 s (−24 %) | 429 s | 360 s (−16 %) |
+| `economy-week` | 491 s | 360 s | 340 s | 273 s |
+| carga de 1 min | 31 → 23 | 23 → 16 | 16 → 22 | 22 → 17 |
+
+O tempo da simulação caiu 16–24 %. O resto da queda de CPU é o bench, que deixou de simular o
+século duas vezes.
+
 Lições para sistema novo:
 - **O que só soma zero, pule.** Somar zero com saturação não muda nada; testar e pular é exato.
   Mas o que a entidade parada ainda precisa atualizar (utilização, razão de insumos) continua.
