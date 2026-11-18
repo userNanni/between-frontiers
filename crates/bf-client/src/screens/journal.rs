@@ -31,12 +31,20 @@ pub struct Window {
     pub confirm: Option<String>,
     /// The answer to a demand of independence, while it is open.
     pub demand: super::demand::DemandUi,
+    /// The demand on another country being drafted (crisis).
+    pub crisis_demand: super::crisis::DemandUi,
+    /// A crisis's choice waiting for its confirmation.
+    pub crisis: super::crisis::CrisisUi,
 }
 
 /// The id the decision "Libertar território" takes in `Window::picked`.
 pub const LIBERATE: &str = "decision:liberate";
 /// The prefix of the id a demand of independence takes in `Window::picked`, before the unit.
 pub const DEMAND: &str = "decision:demand:";
+/// The id the decision to demand of another country takes in `Window::picked`.
+pub const CRISIS_DEMAND: &str = "decision:exigency";
+/// The prefix of a crisis in `Window::picked`, before its id.
+pub const CRISIS: &str = "crisis:";
 
 /// The decision to free land: the option picked (index into the view's options), independent
 /// or subject, and whether the player is at the confirmation step.
@@ -61,6 +69,24 @@ pub struct Response {
     pub mobilize: Option<bool>,
     /// The player confirmed an answer to a demand of independence: (unit, answer).
     pub answer: Option<(String, bf_sim::borders::independence::Answer)>,
+    /// The player confirmed a demand on another country: the target and the proposal.
+    pub crisis_demand: Option<(String, bf_sim::treaty::Proposal)>,
+    /// The player, target of a crisis, accepted (`true`) or refused it.
+    pub crisis_answer: Option<(u32, bool)>,
+    /// The player, after a refusal, declared war (`true`) or backed down.
+    pub declare: Option<(u32, bool)>,
+    /// The demand being drafted, to weigh (`None` off the demand screen).
+    pub draft: Option<(String, bf_sim::treaty::Proposal)>,
+}
+
+/// What the journal shows of crises: the player's, the draft's weighing, and the country picked
+/// on the map as the target of a demand.
+#[derive(Clone, Copy, Default)]
+pub struct CrisisInput<'a> {
+    pub view: Option<&'a crate::crisis_view::CrisisView>,
+    pub draft: Option<&'a crate::crisis_view::DraftWeighing>,
+    pub me: Option<&'a str>,
+    pub target: Option<&'a str>,
 }
 
 /// Formats a value.
@@ -245,6 +271,7 @@ pub fn show(
     journal: Option<&Journal>,
     liberation: Option<&crate::sim::LiberationView>,
     demands: Option<&crate::demands_view::DemandsView>,
+    crises: CrisisInput<'_>,
     pinned: &[String],
     window: &mut Window,
     place: &mut crate::hud::WindowPlace,
@@ -308,6 +335,53 @@ pub fn show(
                 });
             return;
         }
+        // The decision to demand of another country, and a crisis, take the whole window too.
+        let picked_crisis = window
+            .picked
+            .as_deref()
+            .and_then(|p| p.strip_prefix(CRISIS))
+            .and_then(|id| id.parse::<u32>().ok())
+            .and_then(|id| crises.view?.crises.iter().find(|c| c.id == id));
+        let on_demand = window.picked.as_deref() == Some(CRISIS_DEMAND);
+        if on_demand || picked_crisis.is_some() {
+            let back = Button::ghost(&format!("←  {}", i18n.tr("journal-agendas")))
+                .size(ButtonSize::Small)
+                .show(ui);
+            if back.clicked() || keys::single(ui, "journal.decision.back", 'B', back.rect) {
+                window.picked = None;
+                window.crisis_demand = Default::default();
+                window.crisis = Default::default();
+                return;
+            }
+            egui::ScrollArea::vertical()
+                .id_salt("crisis")
+                .auto_shrink([false, false])
+                .show(ui, |ui| {
+                    ui.set_max_width(ui.available_width() - space::LG);
+                    if let Some(l) = picked_crisis {
+                        super::crisis::show_crisis(
+                            ui,
+                            i18n,
+                            world,
+                            l,
+                            &mut window.crisis,
+                            &mut out,
+                        );
+                    } else if let Some(me) = crises.me {
+                        out.draft = super::crisis::show_demand(
+                            ui,
+                            i18n,
+                            world,
+                            me,
+                            crises.target,
+                            crises.draft,
+                            &mut window.crisis_demand,
+                            &mut out,
+                        );
+                    }
+                });
+            return;
+        }
         let decisions = |ui: &mut Ui, window: &mut Window| {
             bf_ui_kit::heading(ui, &i18n.tr("decisions-title"));
             bf_ui_kit::small(ui, &i18n.tr("decisions-hint"));
@@ -339,6 +413,69 @@ pub fn show(
                 {
                     window.picked = Some(format!("{DEMAND}{}", d.view.unit));
                     window.demand = Default::default();
+                }
+            }
+            // With the crisis rule on: demand of the country picked on the map, and the crises
+            // and wars the country is in.
+            if let Some(v) = crises.view {
+                let label = match crises.target {
+                    Some(t) => i18n.tr_args(
+                        "crisis-demand-from",
+                        &[
+                            (
+                                "country",
+                                I18nArg::String(crate::text::country_name(i18n, t)),
+                            ),
+                            (
+                                "article",
+                                I18nArg::String(crate::text::country_article(i18n, t)),
+                            ),
+                        ],
+                    ),
+                    None => i18n.tr("crisis-demand-title"),
+                };
+                let b = Button::secondary(&label).size(ButtonSize::Small).show(ui);
+                if b.clicked() || keys::single(ui, "journal.decision.exigency", 'E', b.rect) {
+                    window.picked = Some(CRISIS_DEMAND.to_owned());
+                }
+                if !v.crises.is_empty() || !v.wars.is_empty() {
+                    bf_ui_kit::gap(ui, space::SM);
+                    bf_ui_kit::caption(ui, &i18n.tr("crisis-section"));
+                }
+                for (k, c) in v.crises.iter().enumerate() {
+                    let b = Button::danger(&super::crisis::list_label(i18n, c))
+                        .size(ButtonSize::Small)
+                        .show(ui);
+                    if b.clicked()
+                        || keys::item(
+                            ui,
+                            'K',
+                            format!("journal.crisis.{}", c.id),
+                            &(k + 1).to_string(),
+                            b.rect,
+                        )
+                    {
+                        window.picked = Some(format!("{CRISIS}{}", c.id));
+                    }
+                }
+                for w in &v.wars {
+                    let names = |s: &[String]| {
+                        s.iter()
+                            .map(|t| crate::text::country_name(i18n, t))
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    };
+                    bf_ui_kit::small(
+                        ui,
+                        &i18n.tr_args(
+                            "crisis-war-line",
+                            &[
+                                ("a", I18nArg::String(names(&w.side_a))),
+                                ("b", I18nArg::String(names(&w.side_b))),
+                                ("year", I18nArg::String(w.since.0.to_string())),
+                            ],
+                        ),
+                    );
                 }
             }
         };

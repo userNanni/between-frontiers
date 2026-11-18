@@ -55,6 +55,8 @@ pub struct State {
     ),
     /// The country the influence lens was last asked to look at.
     lens_focus: Option<String>,
+    /// The demand draft last sent to be weighed.
+    crisis_draft: Option<(String, bf_sim::treaty::Proposal)>,
     last_autosave: laplace_schelling::calendar::Date,
     /// Saves the simulation is writing while the interface keeps drawing.
     writing: Vec<Writing>,
@@ -115,6 +117,7 @@ impl State {
         let extras = crate::sim::Extras {
             diplomacy: data.diplomacy.clone().map(std::sync::Arc::new),
             focus: None,
+            draft: None,
         };
         let sim = SimHandle::start(session, rules.clone(), extras, move || {
             repaint.request_repaint()
@@ -145,6 +148,7 @@ impl State {
             live_figures: None,
             lens_seen: (None, None),
             lens_focus: None,
+            crisis_draft: None,
         };
         if !path.is_file() {
             state.sim.save(path, state.save.meta.name.clone())?;
@@ -173,6 +177,11 @@ impl State {
     /// Tab of the government window, while it is open.
     pub fn government_tab(&self) -> Option<super::government::Tab> {
         self.government.as_ref().map(|w| w.tab)
+    }
+
+    /// Selects a country (index into the map's countries), as a click on it does (tests).
+    pub fn select(&mut self, country: Option<usize>) {
+        self.selected = country;
     }
 
     /// The sea lens' route and preview (tests and commands set them).
@@ -824,6 +833,17 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
     if state.journal.is_some() && !state.research_open && state.government.is_none() {
         let pinned = state.save.meta.pinned.clone();
         let mut journal_place = shared.hud.layout.window("journal");
+        // A demand goes to the country selected on the map, when it is not the player's.
+        let target = shared.world.as_ref().and_then(|w| {
+            let c = w.countries.get(state.selected?)?;
+            (Some(c.tag()) != snap.player.as_deref()).then(|| c.tag().to_owned())
+        });
+        let crises = super::journal::CrisisInput {
+            view: snap.crises.as_deref(),
+            draft: snap.crisis_draft.as_deref(),
+            me: snap.player.as_deref(),
+            target: target.as_deref(),
+        };
         let res = super::journal::show(
             ui,
             rect,
@@ -832,6 +852,7 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
             snap.journal.as_deref(),
             snap.liberation.as_deref(),
             snap.demands.as_deref(),
+            crises,
             &pinned,
             state.journal.as_mut().expect("journal open"),
             &mut journal_place,
@@ -856,6 +877,37 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
         keep_window_place(shared, "journal", journal_place, res.place_done);
         for id in res.toggle_pin {
             state.toggle_pin(shared, &id, now);
+        }
+        // The demand being drafted is weighed by the simulation thread.
+        if res.draft != state.crisis_draft {
+            state.crisis_draft.clone_from(&res.draft);
+            state.sim.send(Command::CrisisDraft(res.draft.clone()));
+        }
+        if let Some(tag) = snap.player.clone() {
+            // Demanding and declaring start what cannot be undone: a point to go back to first.
+            if let Some((target, demand)) = res.crisis_demand {
+                state.restore_point_before(shared, Reason::War);
+                state.sim.send(Command::Issue(GameCommand::Demand {
+                    tag: tag.clone(),
+                    target,
+                    demand,
+                    weeks: None,
+                }));
+            }
+            if let Some((crisis, accept)) = res.crisis_answer {
+                state.restore_point_before(shared, Reason::War);
+                state.sim.send(Command::Issue(GameCommand::AnswerCrisis {
+                    tag: tag.clone(),
+                    crisis,
+                    accept,
+                }));
+            }
+            if let Some((crisis, war)) = res.declare {
+                state.restore_point_before(shared, Reason::War);
+                state
+                    .sim
+                    .send(Command::Issue(GameCommand::Declare { tag, crisis, war }));
+            }
         }
         if let (Some(on), Some(tag)) = (res.mobilize, state.save.meta.player.clone()) {
             // Mobilizing moves men out of work for months: a point to come back to first.

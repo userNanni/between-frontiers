@@ -2802,7 +2802,8 @@ fn force_orders() {
     unsafe { std::env::set_var("BF_RULES", "forces") };
     let user = std::env::temp_dir().join(format!("bf-shots-orders-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&user);
-    let mut session = advanced_session_of("GBR", Date::new(1925, 1, 2));
+    let forces = bf_sim::game::Switches::parse("forces").expect("switches");
+    let mut session = advanced_session_with("GBR", Date::new(1925, 1, 2), forces);
     for (unit, elements) in [("battleship", 1), ("destroyer", 4), ("infantry", 6)] {
         session.submit(GameCommand::OrderForces {
             tag: "GBR".into(),
@@ -2977,6 +2978,144 @@ fn demand_screen() {
         if clicked {
             h.run_steps(4);
             shot(&mut h, &format!("133-demand-review-{name}"));
+        }
+    }
+    let _ = std::fs::remove_dir_all(&user);
+}
+
+/// Crisis and declaration (phase 5, slice B): Greece answering Italy's demand of the Aegean
+/// islands and a payment, the refusal's second step; Italy drafting a demand of Albania with
+/// how Albania would weigh it; and Italy, refused by Greece, choosing between war and backing
+/// down. Portuguese at 1600 × 900, English at 1280 × 720.
+#[test]
+#[ignore = "needs a GPU (or software Vulkan) and the generated map; run with --ignored"]
+fn crisis_screens() {
+    use bf_sim::game::GameCommand;
+    use bf_sim::treaty::{Clause, ClauseKind, Proposal, Side};
+    use laplace_schelling::calendar::Date;
+    // SAFETY: the screenshot tests run one at a time (`RUST_TEST_THREADS=1`).
+    unsafe { std::env::set_var("BF_RULES", "forces,crisis") };
+    let switches = bf_sim::game::Switches::parse("forces,crisis").expect("switches");
+    let user = std::env::temp_dir().join(format!("bf-shots-crisis-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&user);
+    let give = |kind| Clause {
+        kind,
+        giver: Side::Junior,
+        receiver: Side::Senior,
+        until: None,
+        note: None,
+    };
+    let demand = |kinds: Vec<ClauseKind>| Proposal {
+        side_a: vec!["ITA".into()],
+        side_b: vec!["GRE".into()],
+        clauses: kinds.into_iter().map(give).collect(),
+        term_years: None,
+        notice_years: 0,
+    };
+    // Greece, target of Italy's demand.
+    let mut greece = advanced_session_with("GRE", Date::new(1925, 2, 1), switches);
+    greece.submit(GameCommand::Demand {
+        tag: "ITA".into(),
+        target: "GRE".into(),
+        demand: demand(vec![ClauseKind::CedeStates {
+            states: vec!["GRC-AIGAIO".into()],
+        }]),
+        weeks: None,
+    });
+    while greece.clock().date < Date::new(1925, 2, 3) {
+        greece.sim.step();
+    }
+    // Italy, refused by Greece over an annexation.
+    let mut italy = advanced_session_with("ITA", Date::new(1925, 2, 1), switches);
+    italy.submit(GameCommand::Demand {
+        tag: "ITA".into(),
+        target: "GRE".into(),
+        demand: demand(vec![ClauseKind::Union]),
+        weeks: None,
+    });
+    italy.submit(GameCommand::AnswerCrisis {
+        tag: "GRE".into(),
+        crisis: 0,
+        accept: false,
+    });
+    while italy.clock().date < Date::new(1925, 2, 20) {
+        italy.sim.step();
+    }
+    let save_greece = write_campaign(&user.join("grc"), &greece, "Crise grega", "GRE", &[]);
+    let save_italy = write_campaign(&user.join("ita"), &italy, "Crise italiana", "ITA", &[]);
+    for (locale, size, tag) in [
+        ("pt-BR", egui::vec2(1600.0, 900.0), "pt"),
+        ("en", egui::vec2(1280.0, 720.0), "en-1280"),
+    ] {
+        let en = locale == "en";
+        let wait = |h: &mut Harness<'_, App>| {
+            for _ in 0..30 {
+                std::thread::sleep(std::time::Duration::from_millis(25));
+                h.run_steps(1);
+            }
+        };
+        let button = |h: &mut Harness<'_, App>, text: &str| {
+            let found = h
+                .query_all(egui_kittest::kittest::by().label_contains(text))
+                .find(|n| n.accesskit_node().role() == egui::accesskit::Role::Button);
+            match found {
+                Some(b) => {
+                    b.click();
+                    true
+                }
+                None => false,
+            }
+        };
+        // Greece: the crisis in the Agendas, then its screen and the refusal's second step.
+        let mut h = harness_sized(user.join(format!("grc-{tag}")), locale, size);
+        let ctx = h.ctx.clone();
+        h.state_mut()
+            .apply(Transition::Game(save_greece.clone()), &ctx);
+        wait(&mut h);
+        h.key_press(egui::Key::J);
+        wait(&mut h);
+        shot(&mut h, &format!("170-crisis-agendas-{tag}"));
+        button(&mut h, if en { "Italy demands" } else { "Itália exige" });
+        wait(&mut h);
+        shot(&mut h, &format!("171-crisis-target-{tag}"));
+        if button(&mut h, if en { "Refuse" } else { "Recusar" }) {
+            wait(&mut h);
+            shot(&mut h, &format!("172-crisis-refuse-confirm-{tag}"));
+        }
+        // Italy: drafting a demand of Albania, picked on the map.
+        let mut h = harness_sized(user.join(format!("ita-{tag}")), locale, size);
+        let ctx = h.ctx.clone();
+        h.state_mut()
+            .apply(Transition::Game(save_italy.clone()), &ctx);
+        wait(&mut h);
+        let albania = h
+            .state()
+            .shared
+            .world
+            .as_ref()
+            .and_then(|w| w.countries.iter().position(|c| c.tag() == "ALB"));
+        if let Screen::Game(g) = &mut h.state_mut().screen {
+            g.select(albania);
+        }
+        h.key_press(egui::Key::J);
+        wait(&mut h);
+        button(&mut h, if en { "Demand of" } else { "Exigir d" });
+        wait(&mut h);
+        if let Some(b) = h
+            .query_all(egui_kittest::kittest::by().role(egui::accesskit::Role::CheckBox))
+            .nth(1)
+        {
+            b.click();
+        }
+        wait(&mut h);
+        shot(&mut h, &format!("173-crisis-demand-draft-{tag}"));
+        // Italy, refused: war or backing down.
+        // The back button of the decision, not the overview's link to the Agendas.
+        button(&mut h, "←");
+        wait(&mut h);
+        if button(&mut h, if en { "Italy demands" } else { "Itália exige" }) {
+            wait(&mut h);
+            shot(&mut h, &format!("174-crisis-declare-{tag}"));
         }
     }
     let _ = std::fs::remove_dir_all(&user);

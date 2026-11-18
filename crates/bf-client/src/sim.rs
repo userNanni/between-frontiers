@@ -65,6 +65,10 @@ pub struct Snapshot {
     /// The influence around the country the "Influence" lens looks at, read once a month and when
     /// that country changes; `None` without the lens on or without influence.
     pub lens_influence: Option<Arc<crate::influence_view::InfluenceView>>,
+    /// The player's crises and wars, read when they change; `None` with the crisis switch off.
+    pub crises: Option<Arc<crate::crisis_view::CrisisView>>,
+    /// The demand the player is drafting, weighed as its target would weigh it.
+    pub crisis_draft: Option<Arc<crate::crisis_view::DraftWeighing>>,
     /// The blocs, read once a month, for the "Blocs" lens.
     pub blocs: Option<Arc<crate::blocs_view::BlocsView>>,
     /// The player's armed forces, read once a month; `None` without forces.
@@ -142,6 +146,8 @@ pub enum Command {
     SetPaused(bool),
     /// The country the "Influence" lens looks at (`None`: the lens is off).
     LensFocus(Option<String>),
+    /// The demand the player is drafting, to be weighed (`None`: no draft).
+    CrisisDraft(Option<(String, bf_sim::treaty::Proposal)>),
     SetSpeed(u8),
     Issue(GameCommand),
     /// Writes the engine save to `path`; replies with the error text on failure.
@@ -326,6 +332,8 @@ struct Monthly {
     forces: Option<Arc<crate::forces_view::ForcesView>>,
     lens_influence: Option<Arc<crate::influence_view::InfluenceView>>,
     blocs: Option<Arc<crate::blocs_view::BlocsView>>,
+    crises: Option<Arc<crate::crisis_view::CrisisView>>,
+    crisis_draft: Option<Arc<crate::crisis_view::DraftWeighing>>,
 }
 
 /// What the monthly views read besides the session: the scenario's treaties (for the blocs)
@@ -334,6 +342,53 @@ struct Monthly {
 pub struct Extras {
     pub diplomacy: Option<Arc<bf_sim::diplomacy::DiplomacyFile>>,
     pub focus: Option<String>,
+    /// The demand being drafted: target and proposal.
+    pub draft: Option<(String, bf_sim::treaty::Proposal)>,
+}
+
+/// The player's crises, read again when the conflicts changed since `last`.
+fn crises_of(
+    session: &Session,
+    rules: &Rules,
+    last: &Option<Arc<crate::crisis_view::CrisisView>>,
+) -> Option<Arc<crate::crisis_view::CrisisView>> {
+    let r = rules.as_ref()?;
+    let setup = r.crisis.as_deref()?;
+    let sig = crate::crisis_view::signature(session.world());
+    match last {
+        Some(v) if v.signature == sig && session.player().is_some() => Some(Arc::clone(v)),
+        _ => crate::crisis_view::read(
+            session.world(),
+            Some(setup),
+            r.war.as_ref().map(|(m, _)| m.as_ref()),
+        )
+        .map(Arc::new),
+    }
+}
+
+/// The draft's weighing, again when the draft or the conflicts changed.
+fn draft_of(
+    session: &Session,
+    rules: &Rules,
+    extras: &Extras,
+    last: &Option<Arc<crate::crisis_view::DraftWeighing>>,
+) -> Option<Arc<crate::crisis_view::DraftWeighing>> {
+    let (target, demand) = extras.draft.as_ref()?;
+    if let Some(v) = last
+        && v.target == *target
+        && v.demand == *demand
+    {
+        return Some(Arc::clone(v));
+    }
+    let r = rules.as_ref()?;
+    crate::crisis_view::weigh_draft(
+        session.world(),
+        r.crisis.as_deref(),
+        r.war.as_ref().map(|(m, _)| m.as_ref()),
+        target,
+        demand,
+    )
+    .map(Arc::new)
 }
 
 /// The influence around the lens's country: the player's own view when it is the player.
@@ -417,6 +472,8 @@ impl Monthly {
                 &last.lens_influence,
             ),
             blocs: blocs_of(session, rules, extras, &last.blocs),
+            crises: crises_of(session, rules, &last.crises),
+            crisis_draft: draft_of(session, rules, extras, &last.crisis_draft),
             figures: figures_of(session, &last.figures),
             journal: journal_of(session, rules, &last.journal),
             population: population_of(session, rules, &last.population),
@@ -458,6 +515,8 @@ fn snapshot_of(
         forces: monthly.forces,
         lens_influence: monthly.lens_influence,
         blocs: monthly.blocs,
+        crises: monthly.crises,
+        crisis_draft: monthly.crisis_draft,
         government: crate::government::read(
             session.world(),
             session.player(),
@@ -601,6 +660,8 @@ struct Control {
     reread: bool,
     /// The influence lens's country, as the last `LensFocus` set it.
     focus: Option<String>,
+    /// The demand being drafted, as the last `CrisisDraft` set it.
+    draft: Option<(String, bf_sim::treaty::Proposal)>,
 }
 
 /// Applies one command.
@@ -613,6 +674,12 @@ fn apply(session: &mut Session, ctl: &mut Control, command: Command) {
         Command::SetSpeed(s) => {
             ctl.speed = s.clamp(1, 5);
             ctl.changed = true;
+        }
+        Command::CrisisDraft(d) => {
+            if ctl.draft != d {
+                ctl.draft = d;
+                ctl.changed = true;
+            }
         }
         Command::LensFocus(tag) => {
             if ctl.focus != tag {
@@ -671,6 +738,7 @@ fn run(
         changed: false,
         reread: false,
         focus: extras.focus.clone(),
+        draft: extras.draft.clone(),
     };
     // The hash shown, and the tick it belongs to: computed only when a snapshot shows a new
     // one (on pause, and on the first of the month).
@@ -726,6 +794,7 @@ fn run(
                 monthly = Monthly::default();
             }
             extras.focus.clone_from(&ctl.focus);
+            extras.draft.clone_from(&ctl.draft);
             monthly = Monthly::read(&session, &rules, &extras, &monthly);
             let snap = snapshot_of(
                 &session,
