@@ -450,6 +450,12 @@ fn controls(ui: &mut Ui, cx: &mut TabContext<'_>, v: &GovernmentView) {
     pending_note(ui, cx);
     bf_ui_kit::gap(ui, space::MD);
 
+    // The budget levers: payroll, pay, treasury, deficit.
+    if let Some(l) = v.levers {
+        super::levers::show(ui, cx, &l);
+        bf_ui_kit::gap(ui, space::MD);
+    }
+
     // Public works: weights and the queue.
     bf_ui_kit::heading(ui, &i18n.tr("gov-works"));
     let weights = cx.drafts.priority.unwrap_or(b.priority);
@@ -725,7 +731,8 @@ pub fn pending_note(ui: &mut Ui, cx: &TabContext<'_>) {
         || d.priority.is_some()
         || d.migration.is_some()
         || d.rate.is_some()
-        || d.bank.is_some();
+        || d.bank.is_some()
+        || d.levers.is_some();
     if pending && cx.snap.paused {
         bf_ui_kit::small(ui, &cx.i18n.tr("gov-pending"));
     }

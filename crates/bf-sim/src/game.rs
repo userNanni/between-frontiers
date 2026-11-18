@@ -132,6 +132,10 @@ pub struct GameWorld {
     /// empty when independence by movement is off.
     #[serde(default)]
     pub independence: crate::borders::independence::IndependenceState,
+    /// What each government fixed over the budget's rule (`econ::levers`); empty while every
+    /// country follows the rule. Each market carries a copy (`Market::levers`).
+    #[serde(default)]
+    pub levers: crate::econ::levers::LeversState,
 }
 
 impl HashState for GameWorld {
@@ -193,6 +197,11 @@ impl HashState for GameWorld {
             h.section("independence");
             self.independence.hash_state(h);
         }
+        // Worlds where every country follows the budget's rule keep their hash.
+        if !self.levers.is_empty() {
+            h.section("levers");
+            self.levers.hash_state(h);
+        }
     }
 }
 
@@ -214,6 +223,7 @@ impl GameWorld {
             influence: Default::default(),
             education: Default::default(),
             independence: Default::default(),
+            levers: Default::default(),
             demography: crate::demography::DemographyState::default(),
             treaties: Default::default(),
             war: crate::war::WarState::default(),
@@ -318,6 +328,33 @@ pub enum GameCommand {
         unit: String,
         answer: crate::borders::independence::Answer,
     },
+    /// Fixes the servants and the clergy per thousand people (`econ::levers`, D1), cut to their
+    /// floor and ceiling; `None` hands the payroll back to the rule. Unknown tags are no-ops.
+    SetPayroll {
+        tag: String,
+        per_mille: Option<[u16; 2]>,
+    },
+    /// Fixes public pay over the private wage, in thousandths (the rule is 700; D2).
+    SetPublicPay { tag: String, per_mille: Option<u16> },
+    /// Fixes the weeks of revenue the treasury keeps and what its surplus is for (D4).
+    SetTreasury {
+        tag: String,
+        reserve_weeks: Option<u16>,
+        surplus: Option<crate::econ::levers::SurplusUse>,
+    },
+    /// Fixes the year's deficit for purchases, in thousandths of GDP (D5).
+    SetDeficitCap {
+        tag: String,
+        per_mille_gdp: Option<u16>,
+    },
+}
+
+/// Changes the levers of the country `tag` (`econ::levers`); unknown tags are no-ops.
+fn set_levers(world: &mut GameWorld, tag: &str, f: impl FnOnce(&mut crate::econ::levers::Levers)) {
+    let Some(ci) = world.countries.iter().position(|(_, c)| c.tag == tag) else {
+        return;
+    };
+    world.levers.set(&mut world.econ.markets, ci, f);
 }
 
 impl Command<GameWorld> for GameCommand {
@@ -445,6 +482,29 @@ impl Command<GameWorld> for GameCommand {
                 }
             }
             GameCommand::SwitchCountry { .. } => {}
+            GameCommand::SetPayroll { tag, per_mille } => {
+                let v = *per_mille;
+                set_levers(world, tag, |l| l.payroll = v);
+            }
+            GameCommand::SetPublicPay { tag, per_mille } => {
+                let v = *per_mille;
+                set_levers(world, tag, |l| l.public_pay = v);
+            }
+            GameCommand::SetTreasury {
+                tag,
+                reserve_weeks,
+                surplus,
+            } => {
+                let (w, s) = (*reserve_weeks, *surplus);
+                set_levers(world, tag, |l| {
+                    l.reserve_weeks = w;
+                    l.surplus = s;
+                });
+            }
+            GameCommand::SetDeficitCap { tag, per_mille_gdp } => {
+                let v = *per_mille_gdp;
+                set_levers(world, tag, |l| l.deficit_cap = v);
+            }
             GameCommand::LiteracyCampaign { tag, on } => {
                 // Without schooling (the rule off) there is nothing to teach with.
                 if world.education.regions.is_empty() {
@@ -591,6 +651,9 @@ pub struct Rules {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Switches {
+    /// The servants' capacity to collect (`econ::levers::collection`, owner's decision O1): a
+    /// region with fewer servants than the rule asks for collects that much less tax.
+    pub fiscal_capacity: bool,
     /// Armed forces in peace (`war`, docs/war.pt-BR.md, "Forças em paz"): the soldiers are the
     /// men of the formations. Off, the old rule of `data/military/peace.ron` (`soldiers`).
     pub forces: bool,
@@ -630,7 +693,8 @@ pub struct Switches {
 
 impl Switches {
     /// The names `switch_on` knows, in the order of the fields.
-    pub const NAMES: [&'static str; 10] = [
+    pub const NAMES: [&'static str; 11] = [
+        "fiscal_capacity",
         "forces",
         "foreign_contract",
         "foreign_flow",
@@ -646,6 +710,7 @@ impl Switches {
     /// Switches one rule on by name; unknown names are refused.
     pub fn switch_on(&mut self, name: &str) -> Result<(), String> {
         match name {
+            "fiscal_capacity" => self.fiscal_capacity = true,
             "forces" => self.forces = true,
             "foreign_contract" => self.foreign_contract = true,
             "foreign_flow" => self.foreign_flow = true,
@@ -720,6 +785,7 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
             // The week reads the stakes whenever a rule can make them: the funds abroad, or the
             // colony's plants at independence.
             foreign_flow: switches.foreign_flow || switches.foreign_contract,
+            fiscal_capacity: switches.fiscal_capacity,
         });
         s.add(crate::econ::monthly::Labour {
             cat: Arc::clone(&cat),
@@ -1266,7 +1332,7 @@ mod tests {
             hash_of(&with_ledger)
         );
         assert_eq!(
-            hash_of(&headed(17, &encode_snapshot(&with_ledger).unwrap())),
+            hash_of(&headed(18, &encode_snapshot(&with_ledger).unwrap())),
             hash_of(&with_ledger)
         );
         // Version 16, before the independence state: this build's fields without the last one.
@@ -1462,6 +1528,48 @@ mod tests {
         .unwrap();
         assert_eq!(headed(9, &before_trade), with_ledger);
         // Version 8, before the forces: no forces then.
+        // Version 17, before the budget's levers: this build's fields without `levers`.
+        #[derive(Serialize)]
+        struct BeforeLevers<'a> {
+            scenario: &'a String,
+            player: &'a Option<Id<Country>>,
+            countries: &'a Table<Country, CountryState>,
+            census: &'a Vec<CensusRecord>,
+            econ: &'a crate::econ::Economy,
+            research: &'a crate::research::ResearchState,
+            politics: &'a crate::polity::PoliticsState,
+            demography: &'a crate::demography::DemographyState,
+            borders: &'a crate::borders::BordersState,
+            foreign: &'a crate::foreign_stakes::ForeignState,
+            influence: &'a crate::influence::InfluenceState,
+            treaties: &'a crate::treaty::TreatyState,
+            war: &'a crate::war::WarState,
+            education: &'a crate::demography::education::EducationState,
+            independence: &'a crate::borders::independence::IndependenceState,
+        }
+        let on_the_rule = data.new_world();
+        assert!(on_the_rule.levers.is_empty());
+        let before_levers = encode_snapshot(&BeforeLevers {
+            scenario: &on_the_rule.scenario,
+            player: &on_the_rule.player,
+            countries: &on_the_rule.countries,
+            census: &on_the_rule.census,
+            econ: &on_the_rule.econ,
+            research: &on_the_rule.research,
+            politics: &on_the_rule.politics,
+            demography: &on_the_rule.demography,
+            borders: &on_the_rule.borders,
+            foreign: &on_the_rule.foreign,
+            influence: &on_the_rule.influence,
+            treaties: &on_the_rule.treaties,
+            war: &on_the_rule.war,
+            education: &on_the_rule.education,
+            independence: &on_the_rule.independence,
+        })
+        .unwrap();
+        let loaded = headed(17, &before_levers);
+        assert_eq!(hash_of(&loaded), hash_of(&on_the_rule));
+        assert_eq!(loaded, on_the_rule, "version 17");
         // Version 10, before schooling by cohort: this build's fields without `education`.
         #[derive(Serialize)]
         struct BeforeEducation<'a> {

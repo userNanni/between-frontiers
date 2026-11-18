@@ -507,6 +507,7 @@ pub fn v15_to_v16(w: V15) -> GameWorld {
         war: w.war,
         education: w.education,
         independence: Default::default(),
+        levers: Default::default(),
     }
 }
 
@@ -548,5 +549,49 @@ pub fn v16_to_v17(w: V16) -> GameWorld {
         war: w.war,
         education: w.education,
         independence: Default::default(),
+        levers: Default::default(),
+    }
+}
+
+/// Version 17: independence by movement (#136), before the budget's levers.
+#[derive(Deserialize)]
+pub struct V17 {
+    scenario: String,
+    player: Option<Id<Country>>,
+    countries: Table<Country, CountryState>,
+    census: Vec<CensusRecord>,
+    econ: crate::econ::Economy,
+    research: crate::research::ResearchState,
+    politics: crate::polity::PoliticsState,
+    demography: crate::demography::DemographyState,
+    borders: crate::borders::BordersState,
+    foreign: crate::foreign_stakes::ForeignState,
+    influence: crate::influence::InfluenceState,
+    treaties: crate::treaty::TreatyState,
+    war: crate::war::WarState,
+    education: crate::demography::education::EducationState,
+    independence: crate::borders::independence::IndependenceState,
+}
+
+/// 17 → 18: the budget's levers (`GameWorld::levers`), empty: every country on the rule, and
+/// the world hashes as before.
+pub fn v17_to_v18(w: V17) -> GameWorld {
+    GameWorld {
+        scenario: w.scenario,
+        player: w.player,
+        countries: w.countries,
+        census: w.census,
+        econ: w.econ,
+        research: w.research,
+        politics: w.politics,
+        demography: w.demography,
+        borders: w.borders,
+        foreign: w.foreign,
+        influence: w.influence,
+        treaties: w.treaties,
+        war: w.war,
+        education: w.education,
+        independence: w.independence,
+        levers: Default::default(),
     }
 }

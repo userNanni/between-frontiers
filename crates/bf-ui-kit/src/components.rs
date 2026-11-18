@@ -749,3 +749,57 @@ pub fn paint_rule(ui: &Ui, rect: Rect, y: f32) {
     ui.painter()
         .hline(rect.x_range(), y, Stroke::new(1.0, color::BORDER));
 }
+
+/// The head of a lever the government may fix: its name on the left and, on the right, the
+/// choice between the historical rule and a value fixed by the government. Returns whether the
+/// choice changed and the rectangles of the two options (for key tips).
+pub fn lever_header(
+    ui: &mut Ui,
+    label: &str,
+    fixed: &mut bool,
+    rule_label: &str,
+    fixed_label: &str,
+) -> (bool, Vec<Rect>) {
+    ui.horizontal(|ui| {
+        ui.label(
+            egui::RichText::new(label)
+                .font(sans_medium(size::BODY))
+                .color(color::TEXT),
+        );
+        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+            // Added from the right: the fixed option first, so the pair reads "rule | fixed".
+            let options = [
+                (true, fixed_label.to_owned()),
+                (false, rule_label.to_owned()),
+            ];
+            let (changed, mut rects) = segmented_rects(ui, fixed, &options);
+            rects.reverse();
+            (changed, rects)
+        })
+        .inner
+    })
+    .inner
+}
+
+/// The line under a lever's head: what the rule gives now, muted, and the note that comes with
+/// a fixed value (its limits, what it does), when there is one.
+pub fn lever_rule_line(ui: &mut Ui, rule: &str, note: Option<&str>) {
+    ui.add(
+        egui::Label::new(
+            egui::RichText::new(rule)
+                .font(sans(size::SMALL))
+                .color(color::TEXT_MUTED),
+        )
+        .wrap(),
+    );
+    if let Some(n) = note {
+        ui.add(
+            egui::Label::new(
+                egui::RichText::new(n)
+                    .font(sans(size::SMALL))
+                    .color(color::TEXT_FAINT),
+            )
+            .wrap(),
+        );
+    }
+}

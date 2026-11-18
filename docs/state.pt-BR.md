@@ -267,7 +267,7 @@ impostos.
   | D8 | `SetWorksOrder { tag, order: Option<Vec<u32>> }`, `AddWork { tag, state, kind }`, `CancelWork { tag, work: u32 }` | ver D8 | até 200 obras |
   | D9 | `SetIssuance { tag, shares: Option<[u16; 3]> }` | parcela da emissão nova em casa, fora em moeda própria e fora em dólar, somando 1000 | cada uma 0–1000 |
   | D6 | `DeclareDefault { tag, target: DebtTarget, haircut: u16 }` e `SetHonourDebt { tag, on: bool }` | nas Agendas, decisão rara com ponto de restauração | perdão 250, 500 ou 750 |
-- **O que a tela lê:** `econ::levers::view(world, cat, country) -> LeversView`, uma linha por
+- **O que a tela lê:** `econ::levers::view(m: &Market) -> LeversView` (o mercado do país), uma linha por
   alavanca com o valor que a regra dá hoje (para "Regra histórica: 1,2 %" mostrar o número), o
   valor fixado quando houver, o piso e o teto que a simulação aceita, e o efeito estimado de uma
   semana do valor fixado sobre o caixa (diferença entre a despesa ou a receita da semana com o
@@ -462,6 +462,14 @@ hoje vai ao depósito, e o efetivo de paz continua pela lei.
   ser o esperado (receita, dívida, prêmio, calote), sem quebrar o resto do mundo.
 
 ### Fatias propostas
+
+Estado: a fatia 1 (D1, D2, D4, D5) está no código, com os comandos `SetPayroll`, `SetPublicPay`,
+`SetTreasury` e `SetDeficitCap`, sem tela (a tela é do thread de interface). Pisos e tetos estão
+em `econ::levers` como valores de desenho, e a saída gradual da folha é um quadragésimo do excesso
+por mês, a calibrar. A `fiscal_capacity` (O1) está no código, desligada em `data/rules.ron`: ligada,
+cada região cobra a parcela dos servidores que a regra pede (`econ::levers::collection`), no imposto
+de renda e no de consumo, e o `view` diz a fração perdida (`uncollected`) e o efeito de uma semana
+no caixa (`week_effect`).
 
 1. D1, D2, D4 e D5: escalares do orçamento, comando e tela no Orçamento.
 2. D3 com `military_room`, junto com a guerra, e D9 em Moeda e dívida.

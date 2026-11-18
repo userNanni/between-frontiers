@@ -6,6 +6,7 @@
 pub mod catalogue;
 pub(crate) mod compat;
 pub mod construction;
+pub mod levers;
 pub mod local;
 pub mod migration;
 pub mod money;

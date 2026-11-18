@@ -14,6 +14,7 @@ pub mod keys_editor;
 pub mod laws;
 pub mod ledger;
 pub mod lens_panel;
+pub mod levers;
 pub mod liberate;
 pub mod menu;
 pub mod money;

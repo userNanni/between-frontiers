@@ -1,0 +1,31 @@
+# Budget levers in the budget tab.
+
+lever-heading = Payroll and treasury
+lever-basis = Each line follows the historical rule until the government fixes a value. The decree holds from the next month and the effect moves at the real pace: hiring and firing take months.
+lever-rule = Historical rule
+lever-fixed = Fixed
+lever-limits = From { $floor } to { $ceiling }
+lever-per-mille-people = { $n } per thousand people
+lever-payroll = State payroll
+lever-payroll-rule = Historical rule: servants { $servants }, clergy { $clergy }. The state hires a tenth of the gap a month and never fires.
+lever-payroll-note = Below the fixed number, the payroll grows as under the rule; above it, it shrinks little by little: retirements, frozen posts and lay-offs up to a ceiling a month.
+lever-pay = Public pay
+lever-pay-rule = Historical rule: { $share } of the profession's private wage.
+lever-pay-note = Below the private wage, posts fill slowly and some servants leave for the private sector; above it, they fill faster.
+lever-treasury = Treasury reserve
+lever-treasury-rule = Historical rule: { $weeks } weeks of revenue in cash before starting works; above twice that, a tenth of the excess is spent each week, and debt is repaid when it is above 60 % of GDP.
+lever-treasury-note = A larger reserve delays public works; a smaller one brings payroll arrears closer, which start below 8 weeks.
+lever-surplus = Excess
+lever-surplus-spend = Spend
+lever-surplus-repay = Repay debt
+lever-surplus-keep = Keep
+lever-deficit = Deficit cap
+lever-deficit-rule = Historical rule: a target of { $share } of GDP a year, held back by debt and interest.
+lever-deficit-note = The brake of debt and interest stays: the market does not buy more bonds because the government wants it to.
+lever-servants = Civil servants per thousand
+lever-clergy = Clergy paid by the treasury, per thousand
+lever-reserve = Reserve, in weeks of revenue
+lever-pay-fixed = Fixed, % of the private wage
+lever-deficit-fixed = Fixed, % of GDP a year
+lever-week-effect = In a week, against the rule: { $amount } in the treasury
+lever-uncollected = Too few servants to collect: { $share } of the week's taxes went uncollected.
