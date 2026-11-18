@@ -139,6 +139,11 @@ const PLAYER: &[Surface] = &[
         files: &["screens/works.rs"],
     },
     Surface {
+        variant: "AnswerCall",
+        command: id::JOURNAL,
+        files: &["screens/game.rs", "screens/crisis.rs"],
+    },
+    Surface {
         variant: "Mobilize",
         command: id::JOURNAL,
         files: &["screens/game.rs", "screens/journal.rs"],
@@ -146,18 +151,10 @@ const PLAYER: &[Surface] = &[
 ];
 
 /// Variants the player does not give from a screen with a key, and why.
-const EXCEPTIONS: &[(&str, &str)] = &[
-    (
-        "Borders",
-        "issued by treaties, peace, tests and tools; the player frees its land with Liberate",
-    ),
-    // Draft of W4: the call of an agreement comes as a journal entry with the interface PR
-    // stacked on this one; this line leaves with it.
-    (
-        "AnswerCall",
-        "draft: the call's journal entry is being made",
-    ),
-];
+const EXCEPTIONS: &[(&str, &str)] = &[(
+    "Borders",
+    "issued by treaties, peace, tests and tools; the player frees its land with Liberate",
+)];
 
 fn variants() -> BTreeSet<String> {
     let mut tracer = Tracer::new(TracerConfig::default());

@@ -3245,3 +3245,134 @@ fn works_tab() {
     }
     let _ = std::fs::remove_dir_all(&user);
 }
+
+/// Third parties in a crisis (W4): Hungary, refused by Czechoslovakia over Subcarpathian Ruthenia, sees who
+/// would join before declaring (the Little Entente and France's alliance of 1924); with the war
+/// declared, France, called by its alliance, answers. Portuguese at 1600 × 900, English at
+/// 1280 × 720.
+#[test]
+#[ignore = "needs a GPU (or software Vulkan) and the generated map; run with --ignored"]
+fn third_parties() {
+    use bf_sim::game::GameCommand;
+    use bf_sim::treaty::{Clause, ClauseKind, Proposal, Side};
+    use laplace_schelling::calendar::Date;
+    let switches =
+        bf_sim::game::Switches::parse("forces,crisis,treaties_in_force").expect("switches");
+    // SAFETY: the screenshot tests run one at a time (`RUST_TEST_THREADS=1`).
+    unsafe { std::env::set_var("BF_RULES", "forces,crisis,treaties_in_force") };
+    let user = std::env::temp_dir().join(format!("bf-shots-third-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&user);
+    let demand = Proposal {
+        side_a: vec!["HUN".into()],
+        side_b: vec!["CZE".into()],
+        clauses: vec![Clause {
+            kind: ClauseKind::CedeStates {
+                states: vec!["CZE-PODKARPATSKA-RUS".into()],
+            },
+            giver: Side::Junior,
+            receiver: Side::Senior,
+            until: None,
+            note: None,
+        }],
+        term_years: None,
+        notice_years: 0,
+    };
+    let refused = |tag: &str| {
+        let mut s = advanced_session_with(tag, Date::new(1925, 2, 1), switches);
+        s.submit(GameCommand::Demand {
+            tag: "HUN".into(),
+            target: "CZE".into(),
+            demand: demand.clone(),
+            weeks: None,
+        });
+        while s.clock().date < Date::new(1925, 2, 12) {
+            s.sim.step();
+        }
+        s
+    };
+    let hungary = refused("HUN");
+    // France as the player: Hungary is the AI then, and an AI refused backs down in the week; the
+    // demand, the refusal and the declaration go in the same day.
+    let mut france = advanced_session_with("FRA", Date::new(1925, 2, 1), switches);
+    let crisis = france.world().war.conflicts.next_id;
+    france.submit(GameCommand::Demand {
+        tag: "HUN".into(),
+        target: "CZE".into(),
+        demand: demand.clone(),
+        weeks: None,
+    });
+    france.submit(GameCommand::AnswerCrisis {
+        tag: "CZE".into(),
+        crisis,
+        accept: false,
+    });
+    france.submit(GameCommand::Declare {
+        tag: "HUN".into(),
+        crisis,
+        war: true,
+    });
+    while france.clock().date < Date::new(1925, 2, 4) {
+        france.sim.step();
+    }
+    let save_hun = write_campaign(&user.join("hun"), &hungary, "Hungria", "HUN", &[]);
+    let save_fra = write_campaign(&user.join("fra"), &france, "França", "FRA", &[]);
+    for (locale, size, tag) in [
+        ("pt-BR", egui::vec2(1600.0, 900.0), "pt"),
+        ("en", egui::vec2(1280.0, 720.0), "en-1280"),
+    ] {
+        let en = locale == "en";
+        let wait = |h: &mut Harness<'_, App>| {
+            for _ in 0..30 {
+                std::thread::sleep(std::time::Duration::from_millis(25));
+                h.run_steps(1);
+            }
+        };
+        let button = |h: &mut Harness<'_, App>, text: &str| {
+            let found = h
+                .query_all(egui_kittest::kittest::by().label_contains(text))
+                .find(|n| n.accesskit_node().role() == egui::accesskit::Role::Button);
+            match found {
+                Some(b) => {
+                    b.click();
+                    true
+                }
+                None => false,
+            }
+        };
+        let mut h = harness_sized(user.join(format!("hun-{tag}")), locale, size);
+        let ctx = h.ctx.clone();
+        h.state_mut()
+            .apply(Transition::Game(save_hun.clone()), &ctx);
+        wait(&mut h);
+        h.key_press(egui::Key::J);
+        wait(&mut h);
+        if button(
+            &mut h,
+            if en {
+                "Hungary demands"
+            } else {
+                "Hungria exige"
+            },
+        ) {
+            wait(&mut h);
+            shot(&mut h, &format!("190-third-who-would-join-{tag}"));
+        }
+        let mut h = harness_sized(user.join(format!("fra-{tag}")), locale, size);
+        let ctx = h.ctx.clone();
+        h.state_mut()
+            .apply(Transition::Game(save_fra.clone()), &ctx);
+        wait(&mut h);
+        h.key_press(egui::Key::J);
+        wait(&mut h);
+        shot(&mut h, &format!("191-third-call-agendas-{tag}"));
+        if button(&mut h, if en { "calls:" } else { "chama:" }) {
+            wait(&mut h);
+            shot(&mut h, &format!("192-third-call-{tag}"));
+            if button(&mut h, if en { "Do not honour" } else { "Não honrar" }) {
+                wait(&mut h);
+                shot(&mut h, &format!("193-third-call-refuse-{tag}"));
+            }
+        }
+    }
+    let _ = std::fs::remove_dir_all(&user);
+}
