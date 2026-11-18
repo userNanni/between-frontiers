@@ -623,6 +623,9 @@ pub struct LandField {
     /// Share of the segment's border that runs along a big river, 0 to 1
     /// ([`crate::war::TerrainFile::river_share`]).
     pub river: Fixed,
+    /// Width of the segment, km: the border between its two states (`assets/map/borders.ron`).
+    /// Zero when unknown: the density then does not count.
+    pub width_km: Fixed,
 }
 
 fn land_terms(rules: &Rules, field: &LandField, me: &LandSide, other: &LandSide) -> LandTerms {
@@ -669,11 +672,43 @@ fn casualties(rules: &Rules, enemy_share: Fixed, me: &LandSide) -> u64 {
     (lost.to_int_floor().max(0) as u64).min(me.men)
 }
 
-fn advance(rules: &Rules, field: &LandField, a: &LandSide, pa: Fixed, pd: Fixed) -> Fixed {
+fn advance(
+    rules: &Rules,
+    field: &LandField,
+    a: &LandSide,
+    d: &LandSide,
+    pa: Fixed,
+    pd: Fixed,
+) -> Fixed {
     if pa <= pd || !pa.is_positive() {
         return Fixed::ZERO;
     }
-    rules.base_speed(a.mobility) * terrain_speed(rules, field, a.mobility) * (Fixed::ONE - pd / pa)
+    rules.base_speed(a.mobility)
+        * terrain_speed(rules, field, a.mobility)
+        * density_speed(rules, field, d)
+        * (Fixed::ONE - pd / pa)
+}
+
+/// How the defender's density on the segment speeds or slows the attacker: a full line
+/// (`front.full_line_men_km`) holds the pace at the base speed; the ratio of the full line to
+/// the density, to the power `front.density_power`, slows a denser one down to
+/// `front.density_min` and lets a thinner one run up to `front.density_max`. The
+/// force-to-space ratio (Liddell Hart; Mearsheimer, 1989, "Assessing the Conventional
+/// Balance", *International Security* 13(4)).
+pub fn density_speed(rules: &Rules, field: &LandField, d: &LandSide) -> Fixed {
+    if !field.width_km.is_positive() {
+        return Fixed::ONE;
+    }
+    let per_km = Fixed::from_int(d.men as i64) / field.width_km;
+    if !per_km.is_positive() {
+        return rules.front.density_max;
+    }
+    let ratio = rules.front.full_line_men_km / per_km;
+    let mut f = Fixed::ONE;
+    for _ in 0..rules.front.density_power {
+        f = (f * ratio).min(rules.front.density_max * 16);
+    }
+    f.clamp(rules.front.density_min, rules.front.density_max)
 }
 
 /// Speed factor of a mobility on the segment: terrain and winter.
@@ -712,12 +747,12 @@ pub fn land_step(rules: &Rules, field: &LandField, sides: [&LandSide; 2]) -> Lan
         casualties(rules, enemy[1], sides[1]),
     ];
     let forward = if sides[0].posture == Posture::Attack {
-        advance(rules, field, sides[0], power[0], power[1])
+        advance(rules, field, sides[0], sides[1], power[0], power[1])
     } else {
         Fixed::ZERO
     };
     let back = if sides[1].posture == Posture::Attack {
-        advance(rules, field, sides[1], power[1], power[0])
+        advance(rules, field, sides[1], sides[0], power[1], power[0])
     } else {
         Fixed::ZERO
     };
@@ -1149,6 +1184,14 @@ pub(crate) mod tests {
                 call_up_weeks: 4,
                 training: 700,
             },
+            front: crate::war::catalogue::FrontRule {
+                full_line_men_km: Fixed::from_int(600),
+                density_min: pm(100),
+                density_max: pm(1750),
+                density_power: 2,
+                dig_weeks: 10,
+                still_km: Fixed::from_int(2),
+            },
             nuclear: NuclearRule {
                 silo_kill: 500,
                 soft_kill: 900,
@@ -1178,6 +1221,7 @@ pub(crate) mod tests {
             terrain: TerrainMix::only(Terrain::Open),
             winter: false,
             river: Fixed::ZERO,
+            width_km: Fixed::ZERO,
         }
     }
 
@@ -1193,6 +1237,7 @@ pub(crate) mod tests {
                 terrain: TerrainMix::only(Terrain::Forest),
                 winter: false,
                 river: Fixed::ZERO,
+                width_km: Fixed::ZERO,
             },
             [&a, &d],
         );
@@ -1257,6 +1302,7 @@ pub(crate) mod tests {
             terrain: TerrainMix(vec![(Terrain::Forest, pm(400)), (Terrain::Open, pm(600))]),
             winter: true,
             river: Fixed::ZERO,
+            width_km: Fixed::ZERO,
         };
         let mut a = side(15_000, Posture::Attack);
         a.mobility = Mobility::Tracked;
@@ -1579,6 +1625,7 @@ pub(crate) mod tests {
         let dry = land_step(&r, &open(), [&a, &d]);
         let river = LandField {
             river: Fixed::ONE,
+            width_km: Fixed::ZERO,
             ..open()
         };
         let wet = land_step(&r, &river, [&a, &d]);

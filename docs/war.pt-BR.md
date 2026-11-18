@@ -1081,10 +1081,49 @@ Lida do estado que o tick grava, sem refazer a semana:
 - **Paz:** a proposta vai pela mesa de tratados (`ProposeTreaty`); assinada entre os líderes dos
   dois lados, a guerra acaba, a ocupação entre eles termina e quem fica sem guerra desmobiliza.
 
+### Ritmo da frente
+
+O avanço semanal de um segmento é a velocidade-base da mobilidade × o terreno × o fator da
+densidade × (1 − defesa/ataque). O que decide o ritmo:
+- **Densidade do defensor por km de frente.** A largura do segmento é a fronteira real entre os
+  dois estados, em `assets/map/borders.ron` (`bf-mapgen borders`, lido uma vez na carga).
+  - Uma linha cheia tem 600 homens por km, cerca de uma divisão a cada 25 km, o mínimo de uma
+    defesa coerente (Mearsheimer, 1989). Nela o atacante anda na velocidade-base.
+  - O fator é o quadrado da razão entre a linha cheia e a densidade, entre 0,1 e 1,75. Uma
+    linha densa como a do Somme (3.300 homens por km) desce ao piso; uma rala deixa a frente
+    correr até 1,75 vez, a perseguição a pé de um exército quebrado.
+- **Entrincheiramento.** Um segmento parado (menos de 2 km na semana) cava semana a semana
+  (`Fighting::still`) e fica cheio em 10 semanas. Um segmento que anda recomeça do zero. A
+  fortificação cheia dobra o terreno do defensor: trincheira com arame e metralhadora.
+- **Postura da IA por segmento.** A IA ataca onde o seu fogo no segmento é pelo menos 1,5 vez
+  o do inimigo ali (G5): é superioridade local, e dois países parelhos ainda atacam onde o outro
+  está mais ralo.
+- **Faltam:**
+  - 3, a mobilidade real das formações: o tick ainda põe todo mundo a pé;
+  - 4, a ruptura e o aproveitamento de `war::doctrine`, ligados ao tick.
+
+**Casos de conferência** (`tests/front_pace.rs`, com a fonte em cada teste):
+
+| caso | história | faixa | modelo |
+|---|---|---|---|
+| frente ocidental, 1916 (Somme) | ~10 km em 20 semanas | abaixo de 2 km/semana | 1,3 |
+| a mesma frente antes das trincheiras | guerra de movimento de 1914 | ao menos o dobro | ok |
+| Polônia, 1920 | ~600 km em 6 semanas | 40 a 150 km/semana | 26, falta 3 (cavalaria) |
+| Polônia, 1939 | Varsóvia em ~8 dias | 60 a 200 km/semana | 56, faltam 3 e 4 |
+| França, 1940 | Sedan ao Canal em ~7 dias | 100 a 300 km/semana | 35, faltam 3 e 4 |
+| Hungria, 1925, contra a Tchecoslováquia com ~4× o fogo | 1919: meses contra um exército de massa; a perseguição final, ~100 km em 10 dias | 9/10 do povo tomados em 3 a 8 semanas | 4 semanas |
+
+Os casos ignorados ficam marcados com o que lhes falta; a faixa não foi afrouxada.
+
 ### Custo de CPU
 
 Decisão 6: a guerra mundial de 1939, com todos os segmentos ativos, abaixo de 15 % do tick. A
 fatia mede com uma guerra de teste de cinco grandes países, porque a IA não declara.
+
+Na medida de 2026-11-18, com a densidade e o entrincheiramento, a guerra de nove países durou o
+ano inteiro (`front_pace::a_great_war_costs_under_a_seventh_of_the_tick`, ignorado, rodado no
+slot). O sistema de forças gastou 82,3 ms de 5.854 ms, **1,4 % do tick**. No fim havia 56
+regiões ocupadas e uma frente de 18 segmentos, toda entrincheirada.
 
 ### Decidido pelo dono (G1–G6, 2026-11-18)
 

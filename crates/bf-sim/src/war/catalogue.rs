@@ -326,6 +326,7 @@ pub struct RulesFile {
     pub doctrine: DoctrineRule,
     pub nuclear: NuclearRule,
     pub reserve: ReserveRule,
+    pub front: FrontRule,
     /// The catalogue counts these goods in lots of 1925 dollars; the economy prices them in
     /// 2011 dollars. Their quantities in `units.ron` are multiplied by `factor` on load (and
     /// their weight per lot and the reference fire follow), so a unit costs what it did.
@@ -337,6 +338,25 @@ pub struct RulesFile {
 pub struct Dollars1925 {
     pub factor: Fixed,
     pub goods: Vec<String>,
+}
+
+/// The pace of a front (docs/war.pt-BR.md, "Ritmo da frente").
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+pub struct FrontRule {
+    /// Men per km of front at which a defence is a full line: the attacker moves at its base
+    /// speed. About a division per 25 km is the least a coherent defence holds (Mearsheimer).
+    pub full_line_men_km: Fixed,
+    /// Bounds of the density's factor on the speed: a dense defence slows it to `density_min`,
+    /// a thin one lets it run to `density_max`.
+    pub density_min: Fixed,
+    pub density_max: Fixed,
+    /// Power of the ratio of the full line to the defender's density: 2, so that a line five
+    /// times as dense slows the attacker 25 times (the Somme against the war of movement).
+    pub density_power: u32,
+    /// Weeks a segment holds still to be fully entrenched (1914: the race to the sea, then the
+    /// trenches); a week in which the front moves less than `still_km` counts as still.
+    pub dig_weeks: u16,
+    pub still_km: Fixed,
 }
 
 /// Calling up the reserve.
@@ -530,6 +550,7 @@ pub struct Rules {
     pub doctrine: DoctrineRule,
     pub nuclear: NuclearRule,
     pub reserve: ReserveRule,
+    pub front: FrontRule,
 }
 
 /// The catalogue and the rules, resolved.
@@ -925,6 +946,7 @@ fn resolve_rules(file: &RulesFile, cat: &Catalogue, errors: &mut Vec<String>) ->
         doctrine: file.doctrine,
         nuclear: file.nuclear,
         reserve: file.reserve,
+        front: file.front,
     })
 }
 

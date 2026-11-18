@@ -64,6 +64,8 @@ pub struct War {
     pub peace: Option<PeaceRules>,
     /// How crises run, when `data/military/crisis.ron` exists (slice B).
     pub crisis: Option<CrisisRules>,
+    /// The km of border between neighbouring states, when `assets/map/borders.ron` exists.
+    pub borders: Option<BordersFile>,
 }
 
 fn read<T: serde::de::DeserializeOwned>(path: &Path) -> Result<T, String> {
@@ -115,11 +117,18 @@ pub fn load(
     } else {
         None
     };
+    let borders_path = data.join("../assets/map/borders.ron");
+    let borders = if borders_path.is_file() {
+        Some(read::<BordersFile>(&borders_path)?)
+    } else {
+        None
+    };
     Ok(Some(War {
         military,
         forces_1925,
         terrain,
         peace,
         crisis,
+        borders,
     }))
 }
