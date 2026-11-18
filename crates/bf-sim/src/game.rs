@@ -283,6 +283,12 @@ pub enum GameCommand {
     },
     /// The side that demanded, refused, declares war (`true`) or backs down (`false`).
     Declare { tag: String, crisis: u32, war: bool },
+    /// Takes the foreign plants in the country's states, paying `cash` thousandths of their value
+    /// at once from its fund and writing `debt` thousandths as a debt to each owner; the rest is
+    /// taken without pay (`foreign_stakes::nationalize`, carried out on the next investment
+    /// month). Needs the rule `foreign_contract`; off, the order is dropped. Shares above a
+    /// thousand together are cut to it.
+    Nationalize { tag: String, cash: u16, debt: u16 },
     /// Points the country's research at a technology (index in the tree), or back to choosing
     /// by itself with `None`. Unknown tags and indices are no-ops.
     SetResearch { tag: String, tech: Option<u16> },
@@ -406,6 +412,21 @@ impl Command<GameWorld> for GameCommand {
                 if let Some(id) = world.country_by_tag(tag) {
                     world.player = Some(id);
                 }
+            }
+            GameCommand::Nationalize { tag, cash, debt } => {
+                let Some(ci) = world.countries.iter().position(|(_, c)| c.tag == *tag) else {
+                    return;
+                };
+                let cash = crate::econ::milli(i64::from((*cash).min(1000)));
+                let debt = crate::econ::milli(i64::from((*debt).min(1000)));
+                world
+                    .foreign
+                    .requests
+                    .push(crate::foreign_stakes::Nationalization {
+                        host: ci as u16,
+                        cash,
+                        debt: debt.min(Fixed::ONE - cash),
+                    });
             }
             GameCommand::SetResearch { tag, tech } => {
                 let Some(ci) = world.countries.iter().position(|(_, c)| c.tag == *tag) else {
@@ -984,6 +1005,7 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
             tree: tree.clone(),
             wage_floor: switches.small_market_wage_floor,
             foreign_flow: switches.foreign_flow,
+            foreign_contract: switches.foreign_contract,
         });
         if let Some(tree) = &tree {
             s.add(crate::research_system::Research {
@@ -1250,6 +1272,25 @@ mod tests {
     /// A 1925 world written in every layout the saves had loads in this build with the hash it
     /// was saved with: this build; before the ledger; before the ledger and the border state;
     /// before the communities (and both). The ledger and the border state empty, as they were.
+    /// The foreign state of formats 14 to 22, before the indemnities and the orders to
+    /// nationalize: this build's first four fields.
+    #[derive(Serialize)]
+    struct ForeignBefore23 {
+        stakes: std::collections::BTreeMap<crate::foreign_stakes::StakeKey, i64>,
+        expropriations: Vec<crate::foreign_stakes::Expropriation>,
+        building: std::collections::BTreeMap<(u32, u16), Vec<u16>>,
+        retained: std::collections::BTreeMap<(u16, u16), Fixed>,
+    }
+
+    fn before23(w: &GameWorld) -> ForeignBefore23 {
+        ForeignBefore23 {
+            stakes: w.foreign.stakes.clone(),
+            expropriations: w.foreign.expropriations.clone(),
+            building: w.foreign.building.clone(),
+            retained: w.foreign.retained.clone(),
+        }
+    }
+
     #[test]
     fn every_version_loads_with_its_hash() {
         #[derive(Serialize)]
@@ -1307,7 +1348,7 @@ mod tests {
             politics: &'a crate::polity::PoliticsState,
             demography: &'a crate::demography::DemographyState,
             borders: &'a crate::borders::BordersState,
-            foreign: &'a crate::foreign_stakes::ForeignState,
+            foreign: ForeignBefore23,
             influence: &'a crate::influence::InfluenceState,
             treaties: Treaties21<'a>,
             war: &'a crate::war::WarState,
@@ -1332,7 +1373,7 @@ mod tests {
             politics: &'a crate::polity::PoliticsState,
             demography: &'a crate::demography::DemographyState,
             borders: &'a crate::borders::BordersState,
-            foreign: &'a crate::foreign_stakes::ForeignState,
+            foreign: ForeignBefore23,
             influence: &'a crate::influence::InfluenceState,
             treaties: Treaties15<'a>,
             war: WarV17<'a>,
@@ -1415,7 +1456,7 @@ mod tests {
             politics: &'a crate::polity::PoliticsState,
             demography: &'a crate::demography::DemographyState,
             borders: &'a crate::borders::BordersState,
-            foreign: &'a crate::foreign_stakes::ForeignState,
+            foreign: ForeignBefore23,
             influence: &'a crate::influence::InfluenceState,
             treaties: Treaties21<'a>,
             war: WarV17<'a>,
@@ -1552,9 +1593,52 @@ mod tests {
             hash_of(&with_ledger)
         );
         assert_eq!(
-            hash_of(&headed(22, &encode_snapshot(&with_ledger).unwrap())),
+            hash_of(&headed(23, &encode_snapshot(&with_ledger).unwrap())),
             hash_of(&with_ledger)
         );
+        // Version 22, before the indemnities and the orders to nationalize.
+        #[derive(Serialize)]
+        struct BeforeNationalization<'a> {
+            scenario: &'a String,
+            player: &'a Option<Id<Country>>,
+            countries: &'a Table<Country, CountryState>,
+            census: &'a Vec<CensusRecord>,
+            econ: &'a crate::econ::Economy,
+            research: &'a crate::research::ResearchState,
+            politics: &'a crate::polity::PoliticsState,
+            demography: &'a crate::demography::DemographyState,
+            borders: &'a crate::borders::BordersState,
+            foreign: ForeignBefore23,
+            influence: &'a crate::influence::InfluenceState,
+            treaties: &'a crate::treaty::TreatyState,
+            war: &'a crate::war::WarState,
+            education: &'a crate::demography::education::EducationState,
+            independence: &'a crate::borders::independence::IndependenceState,
+            levers: &'a crate::econ::levers::LeversState,
+        }
+        let before_nationalization = encode_snapshot(&BeforeNationalization {
+            scenario: &with_ledger.scenario,
+            player: &with_ledger.player,
+            countries: &with_ledger.countries,
+            census: &with_ledger.census,
+            econ: &with_ledger.econ,
+            research: &with_ledger.research,
+            politics: &with_ledger.politics,
+            demography: &with_ledger.demography,
+            borders: &with_ledger.borders,
+            foreign: before23(&with_ledger),
+            influence: &with_ledger.influence,
+            treaties: &with_ledger.treaties,
+            war: &with_ledger.war,
+            education: &with_ledger.education,
+            independence: &with_ledger.independence,
+            levers: &with_ledger.levers,
+        })
+        .unwrap();
+        assert!(decode_snapshot::<GameWorld>(&before_nationalization).is_err());
+        let loaded = headed(22, &before_nationalization);
+        assert_eq!(hash_of(&loaded), hash_of(&with_ledger));
+        assert_eq!(loaded, with_ledger);
         // Version 21, before the breaches of clauses.
         let before_breaches = encode_snapshot(&BeforeBreaches {
             scenario: &with_ledger.scenario,
@@ -1566,7 +1650,7 @@ mod tests {
             politics: &with_ledger.politics,
             demography: &with_ledger.demography,
             borders: &with_ledger.borders,
-            foreign: &with_ledger.foreign,
+            foreign: before23(&with_ledger),
             influence: &with_ledger.influence,
             treaties: treaties21(&with_ledger.treaties),
             war: &with_ledger.war,
@@ -1601,7 +1685,7 @@ mod tests {
             politics: &'a crate::polity::PoliticsState,
             demography: &'a crate::demography::DemographyState,
             borders: &'a crate::borders::BordersState,
-            foreign: &'a crate::foreign_stakes::ForeignState,
+            foreign: ForeignBefore23,
             influence: &'a crate::influence::InfluenceState,
             treaties: Treaties21<'a>,
             war: WarV17<'a>,
@@ -1620,7 +1704,7 @@ mod tests {
             politics: &w.politics,
             demography: &w.demography,
             borders: &w.borders,
-            foreign: &w.foreign,
+            foreign: before23(&w),
             influence: &w.influence,
             treaties: treaties21(&w.treaties),
             war: war_v17(w),
@@ -1641,7 +1725,7 @@ mod tests {
             politics: &with_ledger.politics,
             demography: &with_ledger.demography,
             borders: &with_ledger.borders,
-            foreign: &with_ledger.foreign,
+            foreign: before23(&with_ledger),
             influence: &with_ledger.influence,
             treaties: treaties21(&with_ledger.treaties),
             war: war_v17(&with_ledger),
@@ -1660,7 +1744,7 @@ mod tests {
             politics: &with_ledger.politics,
             demography: &with_ledger.demography,
             borders: &with_ledger.borders,
-            foreign: &with_ledger.foreign,
+            foreign: before23(&with_ledger),
             influence: &with_ledger.influence,
             treaties: Treaties15 {
                 recognition: &with_ledger.treaties.recognition,
@@ -1711,7 +1795,7 @@ mod tests {
             politics: &'a crate::polity::PoliticsState,
             demography: &'a crate::demography::DemographyState,
             borders: &'a crate::borders::BordersState,
-            foreign: &'a crate::foreign_stakes::ForeignState,
+            foreign: ForeignBefore23,
             influence: &'a crate::influence::InfluenceState,
             treaties: Treaties15<'a>,
             war: WarV8<'a>,
@@ -1761,7 +1845,7 @@ mod tests {
             politics: &w.politics,
             demography: &w.demography,
             borders: &w.borders,
-            foreign: &w.foreign,
+            foreign: before23(&w),
             influence: &w.influence,
             treaties: Treaties15 {
                 recognition: &w.treaties.recognition,
@@ -1835,7 +1919,7 @@ mod tests {
             politics: &'a crate::polity::PoliticsState,
             demography: &'a crate::demography::DemographyState,
             borders: &'a crate::borders::BordersState,
-            foreign: &'a crate::foreign_stakes::ForeignState,
+            foreign: ForeignBefore23,
             influence: &'a crate::influence::InfluenceState,
             treaties: Treaties21<'a>,
             war: WarV17<'a>,
@@ -1854,7 +1938,7 @@ mod tests {
             politics: &on_the_rule.politics,
             demography: &on_the_rule.demography,
             borders: &on_the_rule.borders,
-            foreign: &on_the_rule.foreign,
+            foreign: before23(&on_the_rule),
             influence: &on_the_rule.influence,
             treaties: treaties21(&on_the_rule.treaties),
             war: war_v17(&on_the_rule),
@@ -1881,7 +1965,7 @@ mod tests {
             politics: &'a crate::polity::PoliticsState,
             demography: &'a crate::demography::DemographyState,
             borders: &'a crate::borders::BordersState,
-            foreign: &'a crate::foreign_stakes::ForeignState,
+            foreign: ForeignBefore23,
             influence: &'a crate::influence::InfluenceState,
             treaties: Treaties21<'a>,
             war: &'a crate::war::WarState,
@@ -1905,7 +1989,7 @@ mod tests {
             politics: &fixed.politics,
             demography: &fixed.demography,
             borders: &fixed.borders,
-            foreign: &fixed.foreign,
+            foreign: before23(&fixed),
             influence: &fixed.influence,
             treaties: treaties21(&fixed.treaties),
             war: &fixed.war,

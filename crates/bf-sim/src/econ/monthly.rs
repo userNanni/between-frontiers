@@ -494,6 +494,9 @@ pub struct Investment {
     pub wage_floor: bool,
     /// `Switches::foreign_flow`: the funds build abroad with what they have left.
     pub foreign_flow: bool,
+    /// `Switches::foreign_contract`: the orders to nationalize foreign plants are carried out
+    /// (`foreign_stakes::nationalize`); off, they are dropped.
+    pub foreign_contract: bool,
 }
 
 pub struct Build {
@@ -1047,6 +1050,15 @@ impl System<GameWorld> for Investment {
         }
     }
     fn apply(&self, ctx: &TickCtx, changes: InvestmentChanges, world: &mut GameWorld) {
+        // Orders to nationalize, given since last month, before the month's works.
+        if !world.foreign.requests.is_empty() {
+            let orders = std::mem::take(&mut world.foreign.requests);
+            if self.foreign_contract {
+                for o in &orders {
+                    crate::foreign_stakes::nationalize(world, &self.cat, o, ctx.date.year);
+                }
+            }
+        }
         let econ = &mut world.econ;
         let foreign = &mut world.foreign;
         for (ri, kind) in changes.closes {
@@ -1230,6 +1242,19 @@ fn abroad(
                     years_ago: i64::from(year - e.year),
                     share: e.share,
                 })
+                // A taking promised in debt weighs by what of the debt is still unpaid (C6e).
+                .chain(
+                    world
+                        .foreign
+                        .indemnities
+                        .iter()
+                        .filter(|i| usize::from(i.host) == mi)
+                        .map(|i| Expropriation {
+                            years_ago: i64::from(year - i.year),
+                            share: i.share
+                                * crate::foreign_stakes::unpaid_share(&world.econ.ledger, i),
+                        }),
+                )
                 .collect();
             expropriation_premium(&past)
         })

@@ -137,6 +137,38 @@ pub struct Expropriation {
     pub share: Fixed,
 }
 
+/// A country took foreign plants and promised to pay part of their value in a debt to the
+/// owner (`docs/foreign-capital.pt-BR.md`, section 7, (c) and C6e). The premium the capital asks
+/// of the host for it is that share times the part of the debt not yet paid: a moratorium
+/// freezes the fall, a debt written off (default, forgiveness, repudiation) counts as not paid.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Indemnity {
+    pub host: u16,
+    pub owner: u16,
+    pub year: i32,
+    /// Share of the host's foreign capital at the taking that the debt is for, 0–1.
+    pub share: Fixed,
+    /// The line of the ledger (`treaty::InterstateDebt::id`) and its principal when written.
+    pub debt: u32,
+    pub value: Fixed,
+}
+
+/// A country's order to take the foreign plants in its states: `cash` of their value paid at
+/// once from its fund (a buyout, (j)), `debt` of it written as a debt to each owner, paid over
+/// [`INDEMNITY_YEARS`] years ((c)), the rest taken without pay ((d)). Carried out on the next
+/// investment month, which values the plants.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Nationalization {
+    pub host: u16,
+    pub cash: Fixed,
+    pub debt: Fixed,
+}
+
+/// Years an indemnity debt runs, with no interest: the settlements of the century were a sum
+/// below the claim, paid in yearly instalments at low or no interest (Indonesia 1966: 30
+/// instalments at 1 %; Suez 1958; section 7 of `docs/foreign-capital.pt-BR.md`).
+pub const INDEMNITY_YEARS: u16 = 10;
+
 /// Saved last in the world and hashed only when not empty. Kept in ordered maps: the rules
 /// that read a plant's or a state's stakes (every week, every plant that shrinks) find them
 /// by key, not by walking the world's.
@@ -151,12 +183,18 @@ pub struct ForeignState {
     /// Earnings each owner reinvests in each host and has not yet built with, by (owner, host):
     /// the money sits in the host's fund, the claim is the owner's.
     pub retained: BTreeMap<(u16, u16), Fixed>,
+    /// Takings promised in debt, for the premium that reads what was paid.
+    pub indemnities: Vec<Indemnity>,
+    /// Orders to take the foreign plants waiting for the next investment month.
+    pub requests: Vec<Nationalization>,
 }
 
 impl ForeignState {
     pub fn is_empty(&self) -> bool {
         self.stakes.is_empty()
             && self.expropriations.is_empty()
+            && self.indemnities.is_empty()
+            && self.requests.is_empty()
             && self.building.is_empty()
             && self.retained.is_empty()
     }
@@ -497,6 +535,134 @@ pub fn january(
     out
 }
 
+/// What a nationalization did (for the tests and the screen): by owner, the value of its
+/// stakes taken, what it got at once, what it is owed in debt.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Taking {
+    pub host: u16,
+    /// (owner, value taken, paid in cash, written as debt), in owner order.
+    pub owners: Vec<(u16, Fixed, Fixed, Fixed)>,
+}
+
+/// Carries out `order` in `year` (`docs/foreign-capital.pt-BR.md`, section 7, (c), (d), (j)):
+/// every stake in the host's states passes to it, with the levels paid from abroad still
+/// building there and what the owners kept there to reinvest. Each owner's stakes are valued at
+/// what a level of the kind costs in that state now; `cash` of the value goes from the host's
+/// fund to the owner's at once (as far as the fund has it, owner by owner), `debt` of it becomes
+/// a line of the ledger, host to owner, over [`INDEMNITY_YEARS`] years with no interest, and
+/// the rest is taken without pay and remembered as an [`Expropriation`]. The debt is remembered
+/// as an [`Indemnity`]: the premium falls as it is paid.
+pub fn nationalize(
+    world: &mut crate::game::GameWorld,
+    cat: &crate::econ::catalogue::Catalogue,
+    order: &Nationalization,
+    year: i32,
+) -> Taking {
+    let host = order.host;
+    let cash = order.cash.clamp(Fixed::ZERO, Fixed::ONE);
+    let debt = order.debt.clamp(Fixed::ZERO, Fixed::ONE - cash);
+    let econ = &world.econ;
+    let in_host = |region: u32| econ.regions[region as usize].market == host;
+    let mut value: BTreeMap<u16, Fixed> = BTreeMap::new();
+    for s in world.foreign.stakes() {
+        if !in_host(s.region) {
+            continue;
+        }
+        let r = &econ.regions[s.region as usize];
+        let m = &econ.markets[usize::from(host)];
+        let b = &cat.buildings[usize::from(s.kind)];
+        let level = crate::econ::monthly::level_capital(
+            cat,
+            usize::from(s.kind),
+            0,
+            crate::econ::plant_tfp(r, m, b),
+        );
+        *value.entry(s.owner).or_default() += level * s.levels * s.foreign_share(year);
+    }
+    let regions: Vec<bool> = econ.regions.iter().map(|r| r.market == host).collect();
+    let f = &mut world.foreign;
+    f.stakes.retain(|k, _| !regions[k.region as usize]);
+    f.building.retain(|k, _| !regions[k.0 as usize]);
+    f.retained.retain(|k, _| k.1 != host);
+    let total: Fixed = value.values().copied().sum();
+    let mut out = Taking {
+        host,
+        owners: Vec::new(),
+    };
+    if total <= Fixed::ZERO {
+        return out;
+    }
+    for (owner, v) in value {
+        let share = v / total;
+        // Cash as far as the host's fund goes.
+        let wanted = v * cash;
+        let pool = world.econ.markets[usize::from(host)].pool.max(Fixed::ZERO);
+        let paid = wanted.min(pool);
+        world.econ.markets[usize::from(host)].pool -= paid;
+        world.econ.markets[usize::from(owner)].pool += paid;
+        let owed = v * debt;
+        if owed > Fixed::ZERO {
+            let id = world.econ.ledger.create(crate::treaty::InterstateDebt {
+                id: 0,
+                debtor: host,
+                creditor: owner,
+                treaty: format!("nationalization_{host}_{year}"),
+                currency: crate::treaty::Currency::Reference,
+                principal: owed,
+                rate: Fixed::ZERO,
+                annuity: owed / i64::from(INDEMNITY_YEARS),
+                years_left: INDEMNITY_YEARS,
+                deferrable: Fixed::ZERO,
+                transfer_cap: None,
+                pledge: None,
+                contingent: Fixed::ZERO,
+                arrears: Fixed::ZERO,
+                suspended_until: 0,
+                paid: Fixed::ZERO,
+                written_off: Fixed::ZERO,
+                status: Default::default(),
+            });
+            world.foreign.indemnities.push(Indemnity {
+                host,
+                owner,
+                year,
+                share: share * debt,
+                debt: id,
+                value: owed,
+            });
+        }
+        // What was neither paid nor owed, and the cash the fund could not pay, was taken.
+        let unpaid = v - paid - owed;
+        if unpaid > Fixed::ZERO {
+            world.foreign.expropriations.push(Expropriation {
+                host,
+                year,
+                share: (unpaid / total).clamp(Fixed::ZERO, Fixed::ONE),
+            });
+        }
+        out.owners.push((owner, v, paid, owed));
+    }
+    out
+}
+
+/// The share of the debt of `i` not yet paid, read in the ledger: the open line's principal and
+/// arrears over what was written, or, for a line already closed, what was written off of it. A
+/// line no longer in the ledger was paid (a closed line leaves it when the ledger keeps no
+/// record).
+pub fn unpaid_share(ledger: &crate::treaty::Ledger, i: &Indemnity) -> Fixed {
+    if i.value <= Fixed::ZERO {
+        return Fixed::ZERO;
+    }
+    let left = if let Some(d) = ledger.debts.iter().find(|d| d.id == i.debt) {
+        d.principal + d.arrears
+    } else if let Some(d) = ledger.closed.iter().find(|d| d.id == i.debt) {
+        d.written_off
+    } else {
+        Fixed::ZERO
+    };
+    (left / i.value).clamp(Fixed::ZERO, Fixed::ONE)
+}
+
 /// Foreign capital by pair, for the influence's investment channel (`influence::dependence`):
 /// the value of the plants of host B owned by A over B's GDP of last year, and the sum over
 /// all owners of B. Plants still in the queue do not count; a stake counts the share of its
@@ -604,6 +770,24 @@ impl HashState for ForeignState {
             h.write_u16(*owner);
             h.write_u16(*host);
             amount.hash_state(h);
+        }
+        // Written only when there is one, so a world that never nationalized keeps its hash.
+        if !self.indemnities.is_empty() || !self.requests.is_empty() {
+            h.write_len(self.indemnities.len());
+            for i in &self.indemnities {
+                h.write_u16(i.host);
+                h.write_u16(i.owner);
+                h.write_i64(i64::from(i.year));
+                i.share.hash_state(h);
+                h.write_u32(i.debt);
+                i.value.hash_state(h);
+            }
+            h.write_len(self.requests.len());
+            for r in &self.requests {
+                h.write_u16(r.host);
+                r.cash.hash_state(h);
+                r.debt.hash_state(h);
+            }
         }
     }
 }

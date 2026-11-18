@@ -421,6 +421,7 @@ pub struct V14 {
     politics: crate::polity::PoliticsState,
     demography: crate::demography::DemographyState,
     borders: crate::borders::BordersState,
+    #[serde(deserialize_with = "foreign_before_nationalization")]
     foreign: crate::foreign_stakes::ForeignState,
     influence: crate::influence::InfluenceState,
     #[serde(deserialize_with = "treaties_before_agreements")]
@@ -479,6 +480,7 @@ pub struct V15 {
     politics: crate::polity::PoliticsState,
     demography: crate::demography::DemographyState,
     borders: crate::borders::BordersState,
+    #[serde(deserialize_with = "foreign_before_nationalization")]
     foreign: crate::foreign_stakes::ForeignState,
     influence: crate::influence::InfluenceState,
     #[serde(deserialize_with = "treaties_before_agreements")]
@@ -524,6 +526,7 @@ pub struct V16 {
     politics: crate::polity::PoliticsState,
     demography: crate::demography::DemographyState,
     borders: crate::borders::BordersState,
+    #[serde(deserialize_with = "foreign_before_nationalization")]
     foreign: crate::foreign_stakes::ForeignState,
     influence: crate::influence::InfluenceState,
     #[serde(deserialize_with = "treaties_before_breaches")]
@@ -566,6 +569,7 @@ pub struct V17 {
     politics: crate::polity::PoliticsState,
     demography: crate::demography::DemographyState,
     borders: crate::borders::BordersState,
+    #[serde(deserialize_with = "foreign_before_nationalization")]
     foreign: crate::foreign_stakes::ForeignState,
     influence: crate::influence::InfluenceState,
     #[serde(deserialize_with = "treaties_before_breaches")]
@@ -611,6 +615,7 @@ pub struct V18 {
     politics: crate::polity::PoliticsState,
     demography: crate::demography::DemographyState,
     borders: crate::borders::BordersState,
+    #[serde(deserialize_with = "foreign_before_nationalization")]
     foreign: crate::foreign_stakes::ForeignState,
     influence: crate::influence::InfluenceState,
     #[serde(deserialize_with = "treaties_before_breaches")]
@@ -670,6 +675,7 @@ pub struct V20 {
     politics: crate::polity::PoliticsState,
     demography: crate::demography::DemographyState,
     borders: crate::borders::BordersState,
+    #[serde(deserialize_with = "foreign_before_nationalization")]
     foreign: crate::foreign_stakes::ForeignState,
     influence: crate::influence::InfluenceState,
     #[serde(deserialize_with = "treaties_before_breaches")]
@@ -721,6 +727,7 @@ pub struct V21 {
     politics: crate::polity::PoliticsState,
     demography: crate::demography::DemographyState,
     borders: crate::borders::BordersState,
+    #[serde(deserialize_with = "foreign_before_nationalization")]
     foreign: crate::foreign_stakes::ForeignState,
     influence: crate::influence::InfluenceState,
     #[serde(deserialize_with = "treaties_before_breaches")]
@@ -734,6 +741,73 @@ pub struct V21 {
 /// 21 → 22: the breaches of clauses and the causes they give (`TreatyState::breaches`,
 /// `causes`), none: a world without breaches hashes as before.
 pub fn v21_to_v22(w: V21) -> GameWorld {
+    GameWorld {
+        scenario: w.scenario,
+        player: w.player,
+        countries: w.countries,
+        census: w.census,
+        econ: w.econ,
+        research: w.research,
+        politics: w.politics,
+        demography: w.demography,
+        borders: w.borders,
+        foreign: w.foreign,
+        influence: w.influence,
+        treaties: w.treaties,
+        war: w.war,
+        education: w.education,
+        independence: w.independence,
+        levers: w.levers,
+    }
+}
+
+/// The foreign state of formats 14 to 22: before the indemnities and the orders to nationalize.
+#[derive(Deserialize)]
+struct ForeignV22 {
+    stakes: std::collections::BTreeMap<crate::foreign_stakes::StakeKey, i64>,
+    expropriations: Vec<crate::foreign_stakes::Expropriation>,
+    building: std::collections::BTreeMap<(u32, u16), Vec<u16>>,
+    retained: std::collections::BTreeMap<(u16, u16), laplace_schelling::Fixed>,
+}
+
+/// Formats 14 to 22 wrote the foreign state without indemnities nor orders: none.
+fn foreign_before_nationalization<'de, D: serde::Deserializer<'de>>(
+    d: D,
+) -> Result<crate::foreign_stakes::ForeignState, D::Error> {
+    ForeignV22::deserialize(d).map(|f| crate::foreign_stakes::ForeignState {
+        stakes: f.stakes,
+        expropriations: f.expropriations,
+        building: f.building,
+        retained: f.retained,
+        ..Default::default()
+    })
+}
+
+/// Version 22: the breaches of clauses (#181), before the nationalizations.
+#[derive(Deserialize)]
+pub struct V22 {
+    scenario: String,
+    player: Option<Id<Country>>,
+    countries: Table<Country, CountryState>,
+    census: Vec<CensusRecord>,
+    econ: crate::econ::Economy,
+    research: crate::research::ResearchState,
+    politics: crate::polity::PoliticsState,
+    demography: crate::demography::DemographyState,
+    borders: crate::borders::BordersState,
+    #[serde(deserialize_with = "foreign_before_nationalization")]
+    foreign: crate::foreign_stakes::ForeignState,
+    influence: crate::influence::InfluenceState,
+    treaties: crate::treaty::TreatyState,
+    war: crate::war::WarState,
+    education: crate::demography::education::EducationState,
+    independence: crate::borders::independence::IndependenceState,
+    levers: crate::econ::levers::LeversState,
+}
+
+/// 22 → 23: the indemnities and the orders to nationalize (`ForeignState::indemnities`,
+/// `requests`), none: a world without them hashes as before.
+pub fn v22_to_v23(w: V22) -> GameWorld {
     GameWorld {
         scenario: w.scenario,
         player: w.player,

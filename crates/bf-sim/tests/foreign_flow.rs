@@ -91,6 +91,7 @@ fn capital_abroad_moves_money_between_funds_and_keeps_the_stakes_consistent() {
         tree: rules.tree.clone(),
         wage_floor: false,
         foreign_flow: true,
+        foreign_contract: false,
     };
     let before = pools(&w);
     let waiting = w.foreign.building_count();
