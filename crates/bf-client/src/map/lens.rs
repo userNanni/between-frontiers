@@ -26,6 +26,9 @@ pub enum Lens {
     },
     /// Blocs of one kind (index into [`crate::blocs_view::KINDS`]); customs ties hatched.
     Blocs(usize),
+    /// Who holds what in the wars: the countries at war in their colours, the states held by
+    /// another than their owner in the occupier's colour, hatched; the rest faded.
+    War,
 }
 
 /// Goods the infrastructure lens shows, in the simulation's `Catalogue::local` order (catalogue
@@ -116,7 +119,7 @@ pub fn ramp_color(key: &str, size: u8) -> [u8; 4] {
 /// Colour of one state in the lens, `None` meaning "nothing here".
 pub fn state_color(world: &World, state: usize, lens: Lens, year: i32) -> Option<[u8; 4]> {
     match lens {
-        Lens::Political | Lens::Sea | Lens::Influence { .. } | Lens::Blocs(_) => None,
+        Lens::Political | Lens::Sea | Lens::Influence { .. } | Lens::Blocs(_) | Lens::War => None,
         Lens::Resource(i) => {
             let key = RESOURCES[i];
             let size = world.deposits[state]
@@ -169,6 +172,9 @@ pub fn palette(world: &World, lens: Lens, year: i32) -> Vec<[u8; 4]> {
     }
     if let Lens::Blocs(kind) = lens {
         return blocs_palette(world, out, kind);
+    }
+    if lens == Lens::War {
+        return war_palette(world, out);
     }
     let mut by_state = vec![None; world.states.len()];
     for (i, slot) in by_state.iter_mut().enumerate() {
@@ -292,6 +298,43 @@ pub fn blocs_of_kind(view: &crate::blocs_view::BlocsView, kind: usize) -> Vec<us
             .then_with(|| view.blocs[*a].key.cmp(&view.blocs[*b].key))
     });
     list
+}
+
+/// Faded: a country outside the wars, most of the way to the paper of "nothing here".
+pub fn faded(c: (u8, u8, u8)) -> [u8; 4] {
+    mix([c.0, c.1, c.2], EMPTY, 0.8)
+}
+
+fn war_palette(world: &World, mut out: Vec<[u8; 4]>) -> Vec<[u8; 4]> {
+    let color_of = |tag: &str| {
+        world
+            .countries
+            .iter()
+            .find(|c| c.tag() == tag)
+            .map_or((120, 112, 98), |c| c.def.color)
+    };
+    let view = world.live_control.as_deref();
+    for p in &world.provinces {
+        let Some(owner) = p.owner.map(|c| &world.countries[c]) else {
+            continue;
+        };
+        let state_id = p.state.and_then(|s| world.states.get(s)).map(|s| s.def.id);
+        let occupier = view.zip(state_id).and_then(|(v, id)| v.occupier(id));
+        let at_war = view.is_some_and(|v| v.at_war.iter().any(|t| t == owner.tag()));
+        let color = match occupier {
+            Some(by) => {
+                let c = color_of(by);
+                [c.0, c.1, c.2, HATCH_ALPHA]
+            }
+            None if at_war => {
+                let c = owner.def.color;
+                [c.0, c.1, c.2, 255]
+            }
+            None => faded(owner.def.color),
+        };
+        out[p.def.id as usize] = color;
+    }
+    out
 }
 
 fn blocs_palette(world: &World, mut out: Vec<[u8; 4]>, kind: usize) -> Vec<[u8; 4]> {

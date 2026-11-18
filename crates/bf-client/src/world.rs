@@ -251,6 +251,8 @@ pub struct World {
     pub live_influence: Option<std::sync::Arc<crate::influence_view::InfluenceView>>,
     /// Live: the blocs, for the "Blocs" lens.
     pub live_blocs: Option<std::sync::Arc<crate::blocs_view::BlocsView>>,
+    /// Live: who holds what in every war, for the "War" lens.
+    pub live_control: Option<std::sync::Arc<crate::war_view::ControlView>>,
     /// Border changes of the simulation already applied to the owners (`apply_owners`).
     pub owners_seen: usize,
     /// Countries that may be born (`data/borders/candidates.ron`); empty when the file is missing.
@@ -377,6 +379,7 @@ impl World {
             live_local: std::sync::Arc::default(),
             live_influence: None,
             live_blocs: None,
+            live_control: None,
             owners_seen: 0,
             candidates: Vec::new(),
             scenario_countries: 0,
@@ -589,6 +592,7 @@ impl World {
         self.live_local = std::sync::Arc::default();
         self.live_influence = None;
         self.live_blocs = None;
+        self.live_control = None;
     }
 
     /// Tooltip text for a province: the state name (the province name on maps without states)

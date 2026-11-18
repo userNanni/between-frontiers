@@ -55,6 +55,8 @@ pub struct State {
         Option<std::sync::Arc<crate::influence_view::InfluenceView>>,
         Option<std::sync::Arc<crate::blocs_view::BlocsView>>,
     ),
+    /// The control of the wars the map was last coloured with.
+    control_seen: Option<std::sync::Arc<crate::war_view::ControlView>>,
     /// The country the influence lens was last asked to look at.
     lens_focus: Option<String>,
     /// The demand draft last sent to be weighed.
@@ -153,6 +155,7 @@ impl State {
             live_month: None,
             live_figures: None,
             lens_seen: (None, None),
+            control_seen: None,
             lens_focus: None,
             crisis_draft: None,
             treaty_draft: None,
@@ -419,14 +422,16 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
         }
         world.live_influence = snap.lens_influence.clone();
         world.live_blocs = snap.blocs.clone();
+        world.live_control = snap.control.clone();
         let month = (snap.date.year, snap.date.month);
         let lens_data_new = !same(&snap.lens_influence, &state.lens_seen.0)
-            || !same(&snap.blocs, &state.lens_seen.1);
+            || !same(&snap.blocs, &state.lens_seen.1)
+            || !same(&snap.control, &state.control_seen);
         if let Some(view) = &mut shared.map_view {
             use crate::map::lens::Lens;
             let live = match view.lens {
                 Lens::Local(_) => state.live_month != Some(month),
-                Lens::Influence { .. } | Lens::Blocs(_) => lens_data_new,
+                Lens::Influence { .. } | Lens::Blocs(_) | Lens::War => lens_data_new,
                 _ => false,
             };
             if live {
@@ -444,6 +449,7 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
             }
         }
         state.lens_seen = (snap.lens_influence.clone(), snap.blocs.clone());
+        state.control_seen = snap.control.clone();
         state.live_month = Some(month);
     }
     // Border changes: owners, new countries, the map's colours and borders, the flags.

@@ -248,3 +248,56 @@ pub fn read(world: &GameWorld, setup: &FightSetup, days: i64) -> Option<WarView>
         signature: signature(world, days),
     })
 }
+
+/// Who holds what in every war, for the map's war lens: the countries at war and the states
+/// held by another than their owner (`fighting.control`).
+#[derive(Clone, Debug, PartialEq)]
+pub struct ControlView {
+    pub at_war: Vec<String>,
+    /// (map state id, occupier's tag), by state.
+    pub occupied: Vec<(u16, String)>,
+}
+
+impl ControlView {
+    pub fn occupier(&self, state_id: u16) -> Option<&str> {
+        self.occupied
+            .binary_search_by_key(&state_id, |(s, _)| *s)
+            .ok()
+            .map(|i| self.occupied[i].1.as_str())
+    }
+}
+
+/// The control of every war; `None` with no war.
+pub fn read_control(world: &GameWorld) -> Option<ControlView> {
+    let wars = &world.war.conflicts.wars;
+    if wars.is_empty() {
+        return None;
+    }
+    let tag_of = |i: u16| {
+        world
+            .countries
+            .iter()
+            .nth(usize::from(i))
+            .map(|(_, c)| c.tag.clone())
+    };
+    let mut at_war: Vec<String> = wars
+        .iter()
+        .flat_map(|w| w.side_a.iter().chain(&w.side_b))
+        .filter_map(|i| tag_of(*i))
+        .collect();
+    at_war.sort();
+    at_war.dedup();
+    let mut occupied: Vec<(u16, String)> = world
+        .war
+        .fighting
+        .control
+        .iter()
+        .filter_map(|(r, by)| {
+            let state = world.econ.regions.get(*r as usize)?.state;
+            Some((state, tag_of(*by)?))
+        })
+        .collect();
+    occupied.sort();
+    occupied.dedup_by_key(|(s, _)| *s);
+    Some(ControlView { at_war, occupied })
+}

@@ -3446,6 +3446,40 @@ fn war_window() {
         let name = format!("213-war-peace-table-{tag}");
         shot(&mut h, &name);
         keep(&name);
+        // The war lens over Central Europe: Hungary and Czechoslovakia in their colours, the
+        // states each holds of the other hatched in the occupier's, the rest faded.
+        let mut h = harness_sized(user.join(format!("lens-{tag}")), locale, size);
+        let ctx = h.ctx.clone();
+        h.state_mut().apply(Transition::Game(save.clone()), &ctx);
+        wait(&mut h);
+        {
+            let app = h.state_mut();
+            if let (Some(view), Some(world)) = (&mut app.shared.map_view, &app.shared.world) {
+                bf_client::screens::lens_panel::choose(
+                    view,
+                    world,
+                    bf_client::map::lens::Lens::War,
+                    1925,
+                );
+            }
+        }
+        wait(&mut h);
+        h.key_press(egui::Key::V);
+        wait(&mut h);
+        {
+            let app = h.state_mut();
+            let meta = app.shared.world.as_ref().unwrap().map.meta.clone();
+            let (x, y) = bf_client::world::project(&meta, 19.0, 48.5).unwrap();
+            let view = app.shared.map_view.as_mut().unwrap();
+            view.camera
+                .as_mut()
+                .unwrap()
+                .look_at(egui::pos2(x, y), size.x / 1600.0 * 3.0);
+        }
+        wait(&mut h);
+        let name = format!("214-war-lens-{tag}");
+        shot(&mut h, &name);
+        keep(&name);
     }
     let _ = std::fs::remove_dir_all(&user);
 }
