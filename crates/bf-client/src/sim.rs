@@ -76,6 +76,8 @@ pub struct Snapshot {
     pub blocs: Option<Arc<crate::blocs_view::BlocsView>>,
     /// The player's armed forces, read once a month; `None` without forces.
     pub forces: Option<Arc<crate::forces_view::ForcesView>>,
+    /// The player's wars on land, read when the fighting changes; `None` without the war rule.
+    pub war: Option<Arc<crate::war_view::WarView>>,
     /// The negotiation table of the player's country, read when the table changes and weekly;
     /// `None` with the `negotiation` rule off.
     pub treaty_table: Option<Arc<crate::treaty_view::TableView>>,
@@ -347,6 +349,7 @@ struct Monthly {
     crises: Option<Arc<crate::crisis_view::CrisisView>>,
     crisis_draft: Option<Arc<crate::crisis_view::DraftWeighing>>,
     works: Option<Arc<crate::works_view::WorksView>>,
+    war: Option<Arc<crate::war_view::WarView>>,
     treaty_table: Option<Arc<crate::treaty_view::TableView>>,
     treaty_draft: Option<Arc<crate::treaty_view::Weighed>>,
 }
@@ -373,6 +376,25 @@ fn works_of(
             let r = rules.as_ref()?;
             crate::works_view::read(w, &r.catalogue, r.tree.as_deref(), date).map(Arc::new)
         }
+    }
+}
+
+/// The player's wars, read again when the fighting changed or a week went by.
+fn war_of(
+    session: &Session,
+    rules: &Rules,
+    last: &Option<Arc<crate::war_view::WarView>>,
+) -> Option<Arc<crate::war_view::WarView>> {
+    let setup = rules.as_ref()?.fight.as_deref()?;
+    let days = session.clock().date.to_days();
+    let w = session.world();
+    match last {
+        Some(v)
+            if v.signature == crate::war_view::signature(w, days) && session.player().is_some() =>
+        {
+            Some(Arc::clone(v))
+        }
+        _ => crate::war_view::read(w, setup, days).map(Arc::new),
     }
 }
 
@@ -576,6 +598,7 @@ impl Monthly {
             crises: crises_of(session, rules, &last.crises),
             crisis_draft: draft_of(session, rules, extras, &last.crisis_draft),
             works: works_of(session, rules, &last.works),
+            war: war_of(session, rules, &last.war),
             figures: figures_of(session, &last.figures),
             journal: journal_of(session, rules, &last.journal),
             population: population_of(session, rules, &last.population),
@@ -620,6 +643,7 @@ fn snapshot_of(
         crises: monthly.crises,
         crisis_draft: monthly.crisis_draft,
         works: monthly.works,
+        war: monthly.war,
         treaty_table: monthly.treaty_table,
         treaty_draft: monthly.treaty_draft,
         government: crate::government::read(

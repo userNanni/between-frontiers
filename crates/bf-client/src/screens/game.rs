@@ -31,6 +31,8 @@ pub struct State {
     journal: Option<super::journal::Window>,
     /// The influence window while it is open.
     influence: Option<super::influence::Window>,
+    /// The war window, while open.
+    war: Option<super::war::Window>,
     /// What the side panel shows folded.
     fold: super::outliner::Fold,
     /// Arranging the HUD.
@@ -140,6 +142,7 @@ impl State {
             government: None,
             journal: None,
             influence: None,
+            war: None,
             fold: super::outliner::Fold::default(),
             edit: super::hud_edit::Edit::default(),
             lens_open: false,
@@ -636,6 +639,7 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
         state.government = None;
         state.journal = None;
         state.influence = None;
+        state.war = None;
     }
     if bar_out.open_government {
         toggle_government(state);
@@ -852,6 +856,53 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
         keep_window_place(shared, "influence", place, res.place_done);
         if res.close {
             state.influence = None;
+            state.war = None;
+        }
+    }
+
+    // War window.
+    if state.war.is_some()
+        && !state.research_open
+        && state.government.is_none()
+        && state.journal.is_none()
+    {
+        let mut place = shared.hud.layout.window("war");
+        let res = super::war::show(
+            ui,
+            rect,
+            &shared.i18n,
+            shared.world.as_ref(),
+            snap.war.as_deref(),
+            state.war.as_mut().expect("war open"),
+            &mut place,
+        );
+        keep_window_place(shared, "war", place, res.place_done);
+        for c in res.commands {
+            state.sim.send(Command::Issue(c));
+        }
+        // Peace goes through the negotiation table, in the Agendas, with the enemy fixed.
+        if let (Some(enemy), Some(me)) = (res.peace, snap.player.clone()) {
+            state.war = None;
+            state.journal = Some(super::journal::Window {
+                picked: Some(super::journal::TABLE.to_owned()),
+                table: super::treaty_table::TableUi {
+                    draft: Some((
+                        enemy.clone(),
+                        bf_sim::treaty::Proposal {
+                            side_a: vec![me],
+                            side_b: vec![enemy],
+                            clauses: Vec::new(),
+                            term_years: None,
+                            notice_years: 0,
+                        },
+                    )),
+                    fixed: true,
+                    ..Default::default()
+                },
+                ..Default::default()
+            });
+        } else if res.close {
+            state.war = None;
         }
     }
 
@@ -994,10 +1045,14 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
                 .sim
                 .send(Command::Issue(GameCommand::Mobilize { tag, on }));
         }
+        if res.open_war {
+            toggle_war(state);
+        }
         if let Some(screen) = res.open {
             use super::government::{Tab, Window};
             state.journal = None;
             state.influence = None;
+            state.war = None;
             let tab = match screen {
                 crate::journal::Screen::Budget => Some(Tab::Budget),
                 crate::journal::Screen::Money => Some(Tab::Money),
@@ -1018,6 +1073,7 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
         if res.close {
             state.journal = None;
             state.influence = None;
+            state.war = None;
         }
     }
 
@@ -1101,6 +1157,7 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
             state.government = None;
             state.journal = None;
             state.influence = None;
+            state.war = None;
         }
         if fired(id::GOVERNMENT) {
             toggle_government(state);
@@ -1110,6 +1167,9 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
         }
         if fired(id::INFLUENCE) {
             toggle_influence(state);
+        }
+        if fired(id::WAR) {
+            toggle_war(state);
         }
         for (cmd, tab) in [
             (id::TAB_BUDGET, Tab::Budget),
@@ -1123,6 +1183,7 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
                 state.research_open = false;
                 state.journal = None;
                 state.influence = None;
+                state.war = None;
                 state.government.get_or_insert_with(Default::default).tab = tab;
             }
         }
@@ -1156,6 +1217,7 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
             } else if state.journal.is_some() || state.influence.is_some() {
                 state.journal = None;
                 state.influence = None;
+                state.war = None;
             } else if state.selected.is_some() {
                 state.selected = None;
             } else {
@@ -1355,6 +1417,17 @@ fn toggle_government(state: &mut State) {
     state.research_open = false;
     state.journal = None;
     state.influence = None;
+    state.war = None;
+}
+
+/// Opens the war window, or closes it; the other windows give way.
+fn toggle_war(state: &mut State) {
+    let open = state.war.is_none();
+    state.research_open = false;
+    state.government = None;
+    state.journal = None;
+    state.influence = None;
+    state.war = open.then(super::war::Window::default);
 }
 
 /// Opens the influence window, or closes it; the other windows give way.
@@ -1366,6 +1439,7 @@ fn toggle_influence(state: &mut State) {
     state.research_open = false;
     state.government = None;
     state.journal = None;
+    state.war = None;
 }
 
 /// Opens the journal on its first entry, or closes it; the other windows give way.
@@ -1375,6 +1449,7 @@ fn toggle_journal(state: &mut State) {
         None => Some(super::journal::Window::default()),
     };
     state.influence = None;
+    state.war = None;
     state.research_open = false;
     state.government = None;
 }
@@ -1388,6 +1463,7 @@ pub fn toggle_hud_edit(state: &mut State) {
         state.government = None;
         state.journal = None;
         state.influence = None;
+        state.war = None;
         state.research_open = false;
     }
 }
@@ -1500,6 +1576,7 @@ fn open_from_tile(state: &mut State, open: super::tiles::Open) {
             state.government = None;
             state.journal = None;
             state.influence = None;
+            state.war = None;
             return;
         }
         Open::Journal => {
@@ -1515,6 +1592,7 @@ fn open_from_tile(state: &mut State, open: super::tiles::Open) {
     });
     state.journal = None;
     state.influence = None;
+    state.war = None;
     state.research_open = false;
 }
 
