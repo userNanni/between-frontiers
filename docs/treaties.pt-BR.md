@@ -687,6 +687,70 @@ cláusulas contínuas e o teste de cada uma), propostos (com o prazo) e encerrad
   semanal); não honrar grava a quebra (`record_breach`, causa do traído e, quando o dono decidir
   P1–P3, a reputação).
 
+### O fluxo, passo a passo
+
+**1. O que o jogador põe na mesa.**
+- **Partes:** o país do jogador e um outro (o selecionado), num lado cada. Multilateral (Locarno,
+  o acordo das dívidas com vários credores) entra depois: o contrato já aceita lados com vários
+  países, a tela começa com dois.
+- **Cláusulas:** qualquer uma do catálogo (`clauses.ron`), em qualquer coluna. "Dar" põe o
+  jogador como quem dá; "pedir" põe o outro. Os parâmetros vêm do catálogo, com mínimo, máximo,
+  passo e unidade (a acrescentar ao catálogo).
+- **Prazo e aviso:** "sem prazo" por padrão. O prazo vai de 1 a 99 anos, e o aviso para denunciar
+  de 0 ao prazo.
+- **O que a mesa recusa antes de enviar,** com o motivo na linha (seção 13, "Recusa explicada"):
+  - cláusula contínua sem reconhecimento mútuo;
+  - cessão ou união com mais de um dador ou recebedor;
+  - parâmetro fora do limite;
+  - proposta idêntica recusada há menos de 6 meses.
+
+  Cláusula dormente pode ir: fica no acordo e diz por que dorme.
+
+**2. A vida de uma proposta** (`TreatyState::proposals`).
+```text
+Rascunho (só no cliente) ─Ctrl+Enter→ Enviada ─resposta→ Aceita → Assinada → (ratificação) → Em vigor
+                                         │                  └─ ratificação falha → Recusada (motivo)
+                                         ├─ Recusada (termo que mais pesou)
+                                         ├─ Contraproposta (até 3 rodadas) ─→ Enviada, com os lados trocados
+                                         └─ Prazo vencido (4 semanas) → Recusada
+```
+- O prazo de resposta é de 4 semanas, como as exigências de independência (escolha de desenho).
+- A IA responde na primeira semana: a conta é a mesma todo dia, então esperar não muda nada.
+- A resposta do jogador a uma proposta da IA aparece em Decisões, com o prazo contando.
+- Aceita, ela vira acordo pela ponte que já existe (`treaty_exec::settle` e `queue`). As cláusulas
+  de uma vez agem na assinatura; as contínuas ficam em `agreements`.
+
+**3. Como a IA avalia e responde** (seção 10).
+- `evaluate(world, proposta, lado)` dá o saldo por termo. A IA **aceita** quando o saldo do seu
+  lado é positivo e a sua ratificação passa (seção 8).
+- Na **contraproposta**, a IA parte da proposta recebida e mexe no mínimo:
+  1. Escolhe a cláusula de pior termo para ela, a de maior valor negativo no seu saldo.
+  2. Se essa cláusula tem parâmetro numérico (anuidade, prazo, juro, teto), reduz o valor ao ponto
+     em que o saldo fica zero, se ele estiver dentro do limite do catálogo.
+  3. Se não tiver parâmetro, ou o limite não alcançar, tira a cláusula.
+  4. Se o saldo continua negativo, repete com a próxima, até 3 mudanças.
+  5. Se ainda assim não fecha, **recusa**, com o termo que mais pesou.
+
+  Ela nunca acrescenta o que ninguém pediu. A busca é determinística: a ordem das cláusulas, o
+  maior valor primeiro, e o empate pela ordem do catálogo.
+- **Ratificação abaixo do limiar:** a IA recusa (decisão 5, `PlayerOnly`). O jogador pode assinar
+  pagando a legitimidade que a tela mostra.
+- **Propostas da IA ao jogador** na fase 4 são só as da seção 10: a revisão pedida pelo devedor
+  em aperto, as cláusulas de volta pedidas pelo súdito e o reconhecimento pedido pelo país novo.
+  Cada uma tem a causa medida na decisão.
+
+**4. A chamada de defesa** (W4 da guerra, `TreatyState::duties`).
+- O aliado recebe a chamada como decisão, com prazo de 2 semanas e ponto de restauração.
+- Se a cláusula está suspensa (`suspended`), a tela diz por quê, e não honrar não custa nada.
+- Se não está, "não honrar" grava a quebra (`record_breach`, `CallUnanswered`) e mostra a causa
+  que o traído ganha. A reputação entra quando o dono decidir P1–P3.
+- A IA honra sempre, até a fase 6.
+
+**5. Denunciar.**
+- Dentro do prazo de aviso, a denúncia encerra o acordo no fim do aviso, sem quebra.
+- Acordo sem aviso (0), ou antes do prazo fixo: a tela avisa que é quebra de todas as cláusulas
+  que o país dá, com a causa de cada parte e o valor.
+
 ### O que a simulação precisa para a mesa (fatia seguinte)
 
 - **Uma leitura sem custo no tick**, `treaty::proposal_view(world, &Proposal) -> ProposalView`,
