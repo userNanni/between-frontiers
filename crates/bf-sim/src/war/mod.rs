@@ -23,6 +23,7 @@ pub mod nuclear;
 pub mod state;
 pub mod system;
 pub mod terrain;
+pub mod view;
 
 use std::path::Path;
 
@@ -33,8 +34,12 @@ pub use forces::*;
 pub use ledger::*;
 pub use nuclear::*;
 pub use state::*;
-pub use system::{Forces, place_soldiers, state_purchases, station_soldiers};
+pub use system::{
+    Forces, add_goods, can_equip, needs_of, newest_generation, place_soldiers, state_purchases,
+    station_soldiers,
+};
 pub use terrain::*;
+pub use view::{OrderLine, OrdersView, UnitOffer, orders_view};
 
 use crate::econ::Catalogue;
 use crate::research::TechTree;

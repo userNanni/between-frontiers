@@ -288,7 +288,7 @@ pub struct V9 {
     foreign: ForeignV7,
     influence: crate::influence::InfluenceState,
     treaties: crate::treaty::TreatyState,
-    war: crate::war::WarState,
+    war: crate::war::state::WarStateBeforeOrders,
 }
 
 /// 9 → 10: trade by pair (`econ::trade::TradeState`) starts empty and stays out of the hash;
@@ -327,7 +327,7 @@ pub struct V10 {
     foreign: ForeignV7,
     influence: crate::influence::InfluenceState,
     treaties: crate::treaty::TreatyState,
-    war: crate::war::WarState,
+    war: crate::war::state::WarStateBeforeOrders,
 }
 
 /// 10 → 11: schooling by cohort and level (`GameWorld::education`), empty. With the rule
@@ -368,14 +368,14 @@ pub struct V11 {
     foreign: ForeignV7,
     influence: crate::influence::InfluenceState,
     treaties: crate::treaty::TreatyState,
-    war: crate::war::WarState,
+    war: crate::war::state::WarStateBeforeOrders,
     education: crate::demography::education::EducationState,
 }
 
 /// 11 → 14: capital crosses borders (#117); no work was paid from abroad and no earnings were
 /// kept, so the two new lists are empty and the hash stays.
-pub fn v11_to_v14(w: V11) -> GameWorld {
-    GameWorld {
+pub fn v11_to_v14(w: V11) -> V14 {
+    V14 {
         scenario: w.scenario,
         player: w.player,
         countries: w.countries,
@@ -398,6 +398,46 @@ pub fn v11_to_v14(w: V11) -> GameWorld {
         influence: w.influence,
         treaties: w.treaties,
         war: w.war,
+        education: w.education,
+    }
+}
+
+/// Version 14: capital crosses borders (#117), before the orders of forces (slice A2).
+#[derive(Deserialize)]
+pub struct V14 {
+    scenario: String,
+    player: Option<Id<Country>>,
+    countries: Table<Country, CountryState>,
+    census: Vec<CensusRecord>,
+    econ: crate::econ::Economy,
+    research: crate::research::ResearchState,
+    politics: crate::polity::PoliticsState,
+    demography: crate::demography::DemographyState,
+    borders: crate::borders::BordersState,
+    foreign: crate::foreign_stakes::ForeignState,
+    influence: crate::influence::InfluenceState,
+    treaties: crate::treaty::TreatyState,
+    war: crate::war::state::WarStateBeforeOrders,
+    education: crate::demography::education::EducationState,
+}
+
+/// 14 → 15: the orders of forces (`CountryWar::queue`, `Formation::raised`), empty: a world
+/// where nobody ordered anything hashes as before.
+pub fn v14_to_v15(w: V14) -> GameWorld {
+    GameWorld {
+        scenario: w.scenario,
+        player: w.player,
+        countries: w.countries,
+        census: w.census,
+        econ: w.econ,
+        research: w.research,
+        politics: w.politics,
+        demography: w.demography,
+        borders: w.borders,
+        foreign: w.foreign,
+        influence: w.influence,
+        treaties: w.treaties,
+        war: w.war.into(),
         education: w.education,
     }
 }

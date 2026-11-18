@@ -32,6 +32,8 @@ de ferramentas; o jogador liberta a própria terra com `Liberate`.
 | Decisão | Comando | Onde fica | Estado |
 |---|---|---|---|
 | Mobilizar e desmobilizar | `Mobilize { on }` | Agendas, decisão em dois passos, com ponto de restauração antes (motivo "guerra") | em revisão (#115) |
+| Encomendar tropas, navios e aviões | `OrderForces` | Governo → Forças → "Nova encomenda": tipo, elementos, colonial; o custo de construir e o de todo ano; a encomenda grande pede um segundo clique | em revisão |
+| Cancelar uma encomenda | `CancelOrder` | Governo → Forças → "Encomendas": "Cancelar" e confirmação; o construído vai ao depósito | em revisão |
 
 ## Desenhadas, sem comando ainda
 

@@ -30,4 +30,18 @@
     // the 1925 arms industry does not make enough of (docs/war.pt-BR.md, "Forças em paz").
     upkeep_scale: "1",
     share_override: [],
+    // Orders of forces (slice A2). Weeks over which the men of a land order report, a class at
+    // a time; their training then takes the type's training weeks (design parameter).
+    raise_weeks: 12,
+    // Weeks from laying down to delivery, peacetime pace, for the types that join whole
+    // (docs/war.pt-BR.md, "Encomenda de forças"); a type not listed takes 52.
+    build_weeks: [
+        ("battleship", 156), ("carrier", 156), ("cruiser", 104), ("destroyer", 52),
+        ("submarine", 65), ("escort", 39), ("coastal", 39), ("mine_warfare", 26),
+        ("transport", 52), ("missile_submarine", 260),
+        ("fighter", 26), ("attack", 26), ("strategic_bomber", 52), ("patrol", 26),
+        ("air_transport", 26), ("naval_aviation", 26), ("helicopter", 26), ("drone", 26),
+        ("ballistic_missile", 104), ("nuclear_warhead", 52), ("satellite", 156),
+        ("missile_defense", 208),
+    ],
 )

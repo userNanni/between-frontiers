@@ -78,3 +78,54 @@ unit-missile_submarine = Missile submarines
 unit-nuclear_warhead = Nuclear warheads
 unit-satellite = Satellites
 unit-missile_defense = Missile defence
+
+# Orders of forces, in the forces tab.
+orders-title = Orders
+orders-rule = Orders are paid in queue order, after keeping the existing forces supplied; when the military budget is not enough, they wait.
+orders-room = Left in the military budget this week, once the forces are supplied: { $room }
+orders-none = No orders.
+orders-generation = { $unit }, generation { $generation }
+orders-colonial-unit = { $unit } (colonial)
+orders-delivered = { $done } of { $ordered } delivered
+orders-raising = { $share } of the men have reported; their training comes after
+orders-building = { $share } of the equipment built; they join whole, at the end
+orders-weeks = delivered { $weeks } weeks after the order, expected { $month } { $year }
+orders-waiting = { $count ->
+    [one] Waiting for room in the military budget for { $weeks } week
+   *[other] Waiting for room in the military budget for { $weeks } weeks
+}
+orders-cancel = Cancel
+orders-cancel-explain = What was built goes to the depot; the men already called up stay.
+orders-cancel-yes = Cancel the order
+orders-keep = Keep it
+orders-new = New order
+orders-nothing = Nothing to order yet.
+orders-pick = Pick a type to see what it costs.
+orders-count = Elements
+orders-count-tip = Elements: 1,000 men on land, one ship, one aircraft, one weapon
+orders-amount-men = { $men } men
+orders-amount-ships = { $count ->
+    [one] { $n } ship
+   *[other] { $n } ships
+}
+orders-amount-aircraft = { $count ->
+    [one] { $n } aircraft
+   *[other] { $n } aircraft
+}
+orders-amount-weapons = { $count ->
+    [one] { $n } weapon
+   *[other] { $n } weapons
+}
+orders-colonial = Raised in the colonies
+orders-cost-build = To build, at this week's prices
+orders-cost-yearly = Every year once it serves
+orders-cost-yearly-share = { $money } ({ $share } of the military budget)
+orders-lead = Time to service
+orders-lead-land = { $weeks } weeks for the men to report, then { $training } of training
+orders-lead-build = { $weeks } weeks on the slipway or the line
+orders-confirm = A large order: { $unit }, { $amount }. It costs { $build } to build and { $yearly } every year after.
+orders-confirm-yes = Place the order
+orders-confirm-no = Back
+orders-place = Order
+
+orders-yearly-parts = A year: { $pay } of pay and { $upkeep } of upkeep and wear; it stays as long as the force does.

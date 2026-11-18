@@ -74,6 +74,16 @@ const PLAYER: &[Surface] = &[
         files: &["screens/game.rs", "screens/journal.rs"],
     },
     Surface {
+        variant: "OrderForces",
+        command: id::TAB_FORCES,
+        files: &["screens/forces.rs"],
+    },
+    Surface {
+        variant: "CancelOrder",
+        command: id::TAB_FORCES,
+        files: &["screens/forces.rs"],
+    },
+    Surface {
         variant: "Mobilize",
         command: id::JOURNAL,
         files: &["screens/game.rs", "screens/journal.rs"],

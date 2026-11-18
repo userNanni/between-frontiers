@@ -20,6 +20,12 @@ pub struct Forces {
     pub military: Arc<Military>,
     pub peace: Arc<PeaceRules>,
     pub politics: Option<Arc<Politics>>,
+    /// The military goods of the state's basket and their weights over 1,000, resolved at load.
+    pub basket: Vec<(u16, i64)>,
+    /// Their weights summed: the military budget's share of the goods budget.
+    pub military_weight: i64,
+    /// The type the reservists report to.
+    pub infantry: Option<u16>,
 }
 
 pub struct ForcesChanges {
@@ -28,11 +34,132 @@ pub struct ForcesChanges {
 }
 
 /// Merges a list of (good, quantity) into a sorted list.
+pub fn add_goods(list: &mut Vec<(u16, Fixed)>, g: u16, q: Fixed) {
+    add(list, g, q)
+}
+
 fn add(list: &mut Vec<(u16, Fixed)>, g: u16, q: Fixed) {
     match list.binary_search_by_key(&g, |(k, _)| *k) {
         Ok(i) => list[i].1 += q,
         Err(i) => list.insert(i, (g, q)),
     }
+}
+
+fn held(list: &[(u16, Fixed)], g: u16) -> Fixed {
+    list.iter()
+        .find(|(k, _)| *k == g)
+        .map_or(Fixed::ZERO, |e| e.1)
+}
+
+/// Puts `elements` of a type into the formation of the same kind, or a new one, diluting its
+/// training by the newcomers' and adding their equipment.
+fn join(
+    c: &mut CountryWar,
+    (unit, generation, colonial, raised): (u16, u8, bool, bool),
+    elements: Fixed,
+    training: Fixed,
+    equipment: Vec<(u16, Fixed)>,
+) {
+    let i = match c.formations.iter().position(|f| {
+        f.unit == unit
+            && f.generation == generation
+            && f.colonial == colonial
+            && f.raised == raised
+            && !f.called_up
+    }) {
+        Some(i) => i,
+        None => {
+            c.formations.push(Formation {
+                unit,
+                generation,
+                elements: Fixed::ZERO,
+                colonial,
+                called_up: false,
+                equipment: Vec::new(),
+                training,
+                raised,
+            });
+            c.formations.len() - 1
+        }
+    };
+    let f = &mut c.formations[i];
+    let total = f.elements + elements;
+    if total.is_positive() {
+        f.training = (f.training * f.elements + training * elements) / total;
+    }
+    f.elements = total;
+    for (g, q) in equipment {
+        add(&mut f.equipment, g, q);
+    }
+}
+
+/// Whether `country` can equip generation `generation` of type `ty`: every technology it needs
+/// made at home (Industrial stage or past it), or diffused somewhere, so it can be bought.
+pub fn can_equip(
+    mil: &Military,
+    world: &GameWorld,
+    country: usize,
+    ty: u16,
+    generation: usize,
+) -> bool {
+    let spec = mil.spec(ty, generation);
+    let r = &world.research;
+    if r.is_empty() {
+        return false;
+    }
+    spec.requires.iter().all(|&t| {
+        let t = t as usize;
+        let home = r.stage.get(country).is_some_and(|s| {
+            s.get(t)
+                .is_some_and(|&st| st >= crate::research::Stage::Industrial)
+        });
+        let abroad = r
+            .firsts
+            .get(t)
+            .is_some_and(|f| f[crate::research::Stage::Diffused as usize] > 0);
+        home || abroad
+    })
+}
+
+/// The newest generation of type `ty` that `country` can equip, if any.
+pub fn newest_generation(mil: &Military, world: &GameWorld, country: usize, ty: u16) -> Option<u8> {
+    let n = mil.types[ty as usize].generations.len();
+    (0..n)
+        .rev()
+        .find(|&g| can_equip(mil, world, country, ty, g))
+        .map(|g| g as u8)
+}
+
+/// A list of (good, quantity), sorted by good.
+pub type Goods = Vec<(u16, Fixed)>;
+
+/// What the forces of `c` need this week: what they consume, and the replacement of what they
+/// lack over `replace_weeks`; the second list is the replacement alone.
+pub fn needs_of(mil: &Military, peace: &PeaceRules, c: &CountryWar) -> (Goods, Goods) {
+    let weeks = i64::from(peace.replace_weeks.max(1));
+    let mut orders: Vec<(u16, Fixed)> = Vec::new();
+    let mut repair: Vec<(u16, Fixed)> = Vec::new();
+    for f in &c.formations {
+        let spec = mil.spec(f.unit, f.generation as usize);
+        for (g, q) in &spec.upkeep {
+            add(&mut orders, *g, *q * f.elements * peace.upkeep_scale);
+        }
+        for (g, per) in &spec.equipment {
+            let have = f
+                .equipment
+                .iter()
+                .find(|(k, _)| k == g)
+                .map_or(Fixed::ZERO, |e| e.1);
+            let lack = (*per * f.elements - have).max(Fixed::ZERO);
+            if lack.is_positive() {
+                add(&mut repair, *g, lack / weeks);
+            }
+        }
+    }
+    for (g, q) in &repair {
+        add(&mut orders, *g, *q);
+    }
+    (orders, repair)
 }
 
 /// Years of age of each group of the demography's pyramid (5-year groups, the last open).
@@ -49,6 +176,31 @@ fn bands(ages: &[i64]) -> Vec<AgeBand> {
 }
 
 impl Forces {
+    pub fn new(
+        cat: Arc<crate::econ::Catalogue>,
+        military: Arc<Military>,
+        peace: Arc<PeaceRules>,
+        politics: Option<Arc<Politics>>,
+    ) -> Self {
+        let basket: Vec<(u16, i64)> = cat
+            .state_basket
+            .iter()
+            .filter(|(g, _)| cat.goods[*g as usize].category == "military")
+            .copied()
+            .collect();
+        let military_weight = basket.iter().map(|(_, w)| *w).sum();
+        let infantry = military.unit("infantry");
+        Self {
+            cat,
+            military,
+            peace,
+            politics,
+            basket,
+            military_weight,
+            infantry,
+        }
+    }
+
     fn conscription(&self, world: &GameWorld, country: usize) -> i32 {
         let (Some(p), Some(e)) = (
             &self.politics,
@@ -76,26 +228,8 @@ impl Forces {
             .sum()
     }
 
-    /// Whether `country` can equip generation `generation` of type `ty`: every technology it needs
-    /// made at home (Industrial stage or past it), or diffused somewhere, so it can be bought.
     fn can_equip(&self, world: &GameWorld, country: usize, ty: u16, generation: usize) -> bool {
-        let spec = self.military.spec(ty, generation);
-        let r = &world.research;
-        if r.is_empty() {
-            return false;
-        }
-        spec.requires.iter().all(|&t| {
-            let t = t as usize;
-            let home = r.stage.get(country).is_some_and(|s| {
-                s.get(t)
-                    .is_some_and(|&st| st >= crate::research::Stage::Industrial)
-            });
-            let abroad = r
-                .firsts
-                .get(t)
-                .is_some_and(|f| f[crate::research::Stage::Diffused as usize] > 0);
-            home || abroad
-        })
+        can_equip(&self.military, world, country, ty, generation)
     }
 
     /// Moves a share of each formation to the next generation it can equip, as far as `money`
@@ -156,12 +290,13 @@ impl Forces {
                 e.1 -= *q;
             }
             f.elements -= moved;
-            let (unit, colonial, training) = (f.unit, f.colonial, f.training);
+            let (unit, colonial, training, raised) = (f.unit, f.colonial, f.training, f.raised);
             let to = match c.formations.iter().position(|g| {
                 g.unit == unit
                     && g.generation as usize == next
                     && g.colonial == colonial
                     && !g.called_up
+                    && g.raised == raised
             }) {
                 Some(j) => j,
                 None => {
@@ -173,6 +308,7 @@ impl Forces {
                         called_up: false,
                         equipment: Vec::new(),
                         training,
+                        raised,
                     });
                     c.formations.len() - 1
                 }
@@ -187,6 +323,158 @@ impl Forces {
         }
         c.formations
             .retain(|f| f.elements.is_positive() || f.called_up);
+    }
+
+    fn newest(&self, world: &GameWorld, country: usize, ty: u16) -> Option<u8> {
+        newest_generation(&self.military, world, country, ty)
+    }
+
+    /// Ships, aircraft and strategic forces whose equipment is complete join the forces, with
+    /// their crews untrained: aircraft one by one, ships and strategic forces the whole order at
+    /// once; orders fully delivered leave the queue.
+    fn deliver(&self, c: &mut CountryWar) {
+        let mil = &self.military;
+        let mut done = Vec::new();
+        for k in 0..c.queue.len() {
+            let o = &c.queue[k];
+            let (Some(ty), Some(generation)) = (mil.unit(&o.unit), o.generation) else {
+                continue;
+            };
+            if mil.types[ty as usize].domain == Domain::Land {
+                continue;
+            }
+            let per = &mil.spec(ty, generation as usize).equipment;
+            // Whole elements still to deliver, the last one perhaps a part.
+            let left = (o.ordered - o.delivered + Fixed::from_raw(Fixed::SCALE - 1)).to_int_floor();
+            let ready = per
+                .iter()
+                .filter(|(_, q)| q.is_positive())
+                .map(|(g, q)| (held(&o.built, *g) / *q).to_int_floor())
+                .min()
+                .unwrap_or(left)
+                .min(left);
+            // Ships and strategic forces are built side by side and join together at the end
+            // of their build weeks; aircraft leave the line one by one.
+            let ready = if mil.types[ty as usize].domain == Domain::Air || ready >= left {
+                ready
+            } else {
+                0
+            };
+            if ready <= 0 {
+                continue;
+            }
+            let n = Fixed::from_int(ready).min(o.ordered - o.delivered);
+            let equipment: Vec<(u16, Fixed)> = per.iter().map(|(g, q)| (*g, *q * n)).collect();
+            let o = &mut c.queue[k];
+            for (g, q) in &equipment {
+                if let Ok(i) = o.built.binary_search_by_key(g, |(k, _)| *k) {
+                    o.built[i].1 = (o.built[i].1 - *q).max(Fixed::ZERO);
+                }
+            }
+            o.delivered += n;
+            let colonial = o.colonial;
+            if o.delivered >= o.ordered {
+                done.push(k);
+            }
+            join(
+                c,
+                (ty, generation, colonial, false),
+                n,
+                Fixed::ZERO,
+                equipment,
+            );
+        }
+        for k in done.into_iter().rev() {
+            let o = c.queue.remove(k);
+            // What was built beyond the last element goes to the depot.
+            for (g, q) in o.built {
+                if q.is_positive() {
+                    add(&mut c.depot, g, q);
+                }
+            }
+        }
+    }
+
+    /// Pays the orders from `money`, the military budget left this week once the needs are
+    /// paid, in the order they were placed. Land orders raise a class of men this week, as far
+    /// as the money pays the replacement of their equipment over `replace_weeks`; the others
+    /// draw on the depot and buy this week's part of their equipment. Returns what is left.
+    fn place_orders(
+        &self,
+        world: &GameWorld,
+        ci: usize,
+        c: &mut CountryWar,
+        mut money: Fixed,
+        prices: &[Fixed],
+    ) -> Fixed {
+        let mil = &self.military;
+        let weeks = i64::from(self.peace.replace_weeks.max(1));
+        let mut raised = Vec::new();
+        let CountryWar { queue, depot, .. } = c;
+        for o in queue.iter_mut() {
+            o.buying.clear();
+            let Some(ty) = mil.unit(&o.unit) else {
+                continue;
+            };
+            if o.generation.is_none() {
+                o.generation = self.newest(world, ci, ty);
+            }
+            let Some(generation) = o.generation else {
+                continue;
+            };
+            if !money.is_positive() {
+                continue;
+            }
+            let per = &mil.spec(ty, generation as usize).equipment;
+            let unit_cost: Fixed = per.iter().map(|(g, q)| *q * prices[*g as usize]).sum();
+            let left = o.ordered - o.delivered;
+            if mil.types[ty as usize].domain == Domain::Land {
+                let pace = o.ordered / i64::from(self.peace.raise_weeks.max(1));
+                let mut n = pace.min(left);
+                if unit_cost.is_positive() {
+                    n = n.min(money * weeks / unit_cost);
+                }
+                if !n.is_positive() {
+                    continue;
+                }
+                money -= n * unit_cost / weeks;
+                o.delivered += n;
+                raised.push(((ty, generation, o.colonial, true), n));
+            } else {
+                // This week's part of the whole order, short of what is built: from the depot
+                // first, the rest bought. The depot does not shorten the build, it pays for it.
+                let build = i64::from(self.peace.build_weeks(&mil.types[ty as usize].key));
+                for (g, q) in per {
+                    let want = (*q * left - held(&o.built, *g)).max(Fixed::ZERO);
+                    let mut pace = (*q * o.ordered / build).min(want);
+                    if let Ok(i) = depot.binary_search_by_key(g, |(k, _)| *k) {
+                        let take = pace.min(depot[i].1);
+                        if take.is_positive() {
+                            depot[i].1 -= take;
+                            add(&mut o.built, *g, take);
+                            pace -= take;
+                        }
+                    }
+                    let p = prices[*g as usize];
+                    if !pace.is_positive() || !p.is_positive() {
+                        continue;
+                    }
+                    let q = pace.min(money / p);
+                    if q.is_positive() {
+                        money -= q * p;
+                        add(&mut o.buying, *g, q);
+                    }
+                }
+            }
+        }
+        for (key, n) in raised {
+            // Recruits report untrained and without equipment: the depot and the replacement
+            // purchases equip them.
+            join(c, key, n, Fixed::ZERO, Vec::new());
+        }
+        c.queue
+            .retain(|o| o.delivered < o.ordered || o.built.iter().any(|(_, q)| q.is_positive()));
+        money
     }
 
     fn country_week(
@@ -262,6 +550,15 @@ impl Forces {
                 }
             }
         }
+        // Orders (slice A2): last week's purchases go to what is being built, and whatever is
+        // complete joins the forces.
+        for o in &mut c.queue {
+            for (g, q) in std::mem::take(&mut o.buying) {
+                let got = q * m.buy_ratio.get(g as usize).copied().unwrap_or(Fixed::ZERO);
+                add(&mut o.built, g, got);
+            }
+        }
+        self.deliver(&mut c);
         // 2. Training rises a week at a time toward complete, over the type's training weeks.
         for f in &mut c.formations {
             let weeks = mil
@@ -282,7 +579,7 @@ impl Forces {
         }
         // 3. The reserve reports when mobilized, a share each week; goes back when demobilized.
         if c.mobilized && c.reserve > 0 {
-            if let Some(inf) = mil.unit("infantry") {
+            if let Some(inf) = self.infantry {
                 let weeks = u64::from(rules.reserve.call_up_weeks.max(1));
                 let n = (c.reserve / weeks).max(1000).min(c.reserve);
                 c.reserve -= n;
@@ -297,6 +594,7 @@ impl Forces {
                         called_up: true,
                         equipment: Vec::new(),
                         training: Fixed::from_ratio(i64::from(rules.reserve.training), 1000),
+                        raised: false,
                     }),
                 }
             }
@@ -314,8 +612,10 @@ impl Forces {
         let new_year = ctx.date.month == 1 && ctx.date.day <= 7;
         if new_year && self.peace.peace_size == PeaceSize::ShareOfServiceAge && !c.mobilized {
             let of_age = self.men_of_service_age(world, ci);
-            let land =
-                |f: &Formation| mil.types[f.unit as usize].domain == Domain::Land && !f.called_up;
+            // Forces raised by an order stay outside the size in peace.
+            let land = |f: &Formation| {
+                mil.types[f.unit as usize].domain == Domain::Land && !f.called_up && !f.raised
+            };
             let land_men: i64 = c
                 .formations
                 .iter()
@@ -354,51 +654,44 @@ impl Forces {
         // the civilian basket's, as before the forces. It pays first what the forces consume and
         // what makes good their equipment; with room left, part of the force moves to a newer
         // generation, and what is still left buys equipment above the needs.
-        let military_weight: i64 = self
-            .cat
-            .state_basket
-            .iter()
-            .filter(|(g, _)| self.cat.military[*g as usize])
-            .map(|(_, w)| *w)
-            .sum();
         let room = crate::econ::public::goods_budget(m)
             .max(Fixed::ZERO)
-            .mul_ratio(military_weight, 1000);
+            .mul_ratio(self.military_weight, 1000);
         let weeks = i64::from(self.peace.replace_weeks.max(1));
         let price = |list: &[(u16, Fixed)]| -> Fixed {
             list.iter().map(|(g, q)| *q * m.price[*g as usize]).sum()
         };
-        let needs = |c: &CountryWar| {
-            let mut orders: Vec<(u16, Fixed)> = Vec::new();
-            let mut repair: Vec<(u16, Fixed)> = Vec::new();
-            for f in &c.formations {
-                let spec = mil.spec(f.unit, f.generation as usize);
-                for (g, q) in &spec.upkeep {
-                    add(&mut orders, *g, *q * f.elements * self.peace.upkeep_scale);
-                }
-                for (g, per) in &spec.equipment {
-                    let have = f
-                        .equipment
-                        .iter()
-                        .find(|(k, _)| k == g)
-                        .map_or(Fixed::ZERO, |e| e.1);
-                    let lack = (*per * f.elements - have).max(Fixed::ZERO);
-                    if lack.is_positive() {
-                        add(&mut repair, *g, lack / weeks);
-                    }
-                }
-            }
-            for (g, q) in &repair {
-                add(&mut orders, *g, *q);
-            }
-            (orders, repair)
-        };
+        let needs = |c: &CountryWar| needs_of(mil, &self.peace, c);
         let (first, _) = needs(&c);
-        let spare = room - price(&first);
+        let mut spare = room - price(&first);
+        let before: Vec<(Fixed, Fixed)> = c
+            .queue
+            .iter()
+            .map(|o| (o.delivered, o.built.iter().map(|(_, q)| *q).sum()))
+            .collect();
+        if spare.is_positive() && !c.queue.is_empty() {
+            spare = self.place_orders(world, ci, &mut c, spare, &m.price);
+        }
+        // Weeks in a row an order got nothing for want of room in the budget.
+        for (o, (delivered, built)) in c.queue.iter_mut().zip(before) {
+            let got = o.delivered != delivered
+                || !o.buying.is_empty()
+                || o.built.iter().map(|(_, q)| *q).sum::<Fixed>() != built;
+            o.stalled = if got || o.generation.is_none() {
+                0
+            } else {
+                o.stalled + 1
+            };
+        }
         if spare.is_positive() && !c.mobilized {
             self.modernize(world, ci, &mut c, spare * weeks, &m.price);
         }
         let (mut orders, mut repair) = needs(&c);
+        for o in &c.queue {
+            for (g, q) in &o.buying {
+                add(&mut orders, *g, *q);
+            }
+        }
         let cost = price(&orders);
         let mut upgrade: Vec<(u16, Fixed)> = Vec::new();
         if cost > room && cost.is_positive() {
@@ -406,6 +699,11 @@ impl Forces {
             let cut = room / cost;
             for (_, q) in orders.iter_mut().chain(repair.iter_mut()) {
                 *q *= cut;
+            }
+            for o in &mut c.queue {
+                for (_, q) in o.buying.iter_mut() {
+                    *q *= cut;
+                }
             }
         } else {
             // The rest buys the military goods in the proportions of the state's military basket
@@ -415,16 +713,14 @@ impl Forces {
             // equipment; ammunition bought this way is used up in training.
             let left = room - cost;
             if left.is_positive() {
-                let basket: Vec<(u16, i64)> = self
-                    .cat
-                    .state_basket
-                    .iter()
-                    .filter(|(g, _)| self.cat.military[*g as usize])
-                    .filter(|(g, _)| m.price[*g as usize].is_positive())
-                    .copied()
-                    .collect();
-                let total: i64 = basket.iter().map(|(_, w)| *w).sum();
-                for (g, w) in basket {
+                let priced = || {
+                    self.basket
+                        .iter()
+                        .copied()
+                        .filter(|(g, _)| m.price[*g as usize].is_positive())
+                };
+                let total: i64 = priced().map(|(_, w)| w).sum();
+                for (g, w) in priced() {
                     let q = left.mul_ratio(w, total.max(1)) / m.price[g as usize];
                     if q.is_positive() {
                         add(&mut upgrade, g, q);
