@@ -35,6 +35,8 @@ pub struct Window {
     pub crisis_demand: super::crisis::DemandUi,
     /// A crisis's choice waiting for its confirmation.
     pub crisis: super::crisis::CrisisUi,
+    /// A call's choice waiting for its confirmation.
+    pub call: super::crisis::CallUi,
 }
 
 /// The id the decision "Libertar território" takes in `Window::picked`.
@@ -45,6 +47,8 @@ pub const DEMAND: &str = "decision:demand:";
 pub const CRISIS_DEMAND: &str = "decision:exigency";
 /// The prefix of a crisis in `Window::picked`, before its id.
 pub const CRISIS: &str = "crisis:";
+/// The prefix of a call to honour an agreement in `Window::picked`, before the war's id.
+pub const CALL: &str = "call:";
 
 /// The decision to free land: the option picked (index into the view's options), independent
 /// or subject, and whether the player is at the confirmation step.
@@ -75,6 +79,8 @@ pub struct Response {
     pub crisis_answer: Option<(u32, bool)>,
     /// The player, after a refusal, declared war (`true`) or backed down.
     pub declare: Option<(u32, bool)>,
+    /// The player, called by an agreement into war `0`, honoured it (`true`) or not.
+    pub call_answer: Option<(u32, bool)>,
     /// The demand being drafted, to weigh (`None` off the demand screen).
     pub draft: Option<(String, bf_sim::treaty::Proposal)>,
 }
@@ -342,8 +348,14 @@ pub fn show(
             .and_then(|p| p.strip_prefix(CRISIS))
             .and_then(|id| id.parse::<u32>().ok())
             .and_then(|id| crises.view?.crises.iter().find(|c| c.id == id));
+        let picked_call = window
+            .picked
+            .as_deref()
+            .and_then(|p| p.strip_prefix(CALL))
+            .and_then(|id| id.parse::<u32>().ok())
+            .and_then(|id| crises.view?.calls.iter().find(|c| c.war == id));
         let on_demand = window.picked.as_deref() == Some(CRISIS_DEMAND);
-        if on_demand || picked_crisis.is_some() {
+        if on_demand || picked_crisis.is_some() || picked_call.is_some() {
             let back = Button::ghost(&format!("←  {}", i18n.tr("journal-agendas")))
                 .size(ButtonSize::Small)
                 .show(ui);
@@ -351,6 +363,7 @@ pub fn show(
                 window.picked = None;
                 window.crisis_demand = Default::default();
                 window.crisis = Default::default();
+                window.call = Default::default();
                 return;
             }
             egui::ScrollArea::vertical()
@@ -358,7 +371,9 @@ pub fn show(
                 .auto_shrink([false, false])
                 .show(ui, |ui| {
                     ui.set_max_width(ui.available_width() - space::LG);
-                    if let Some(l) = picked_crisis {
+                    if let Some(c) = picked_call {
+                        super::crisis::show_call(ui, i18n, c, &mut window.call, &mut out);
+                    } else if let Some(l) = picked_crisis {
                         super::crisis::show_crisis(
                             ui,
                             i18n,
@@ -438,9 +453,26 @@ pub fn show(
                 if b.clicked() || keys::single(ui, "journal.decision.exigency", 'E', b.rect) {
                     window.picked = Some(CRISIS_DEMAND.to_owned());
                 }
-                if !v.crises.is_empty() || !v.wars.is_empty() {
+                if !v.crises.is_empty() || !v.wars.is_empty() || !v.calls.is_empty() {
                     bf_ui_kit::gap(ui, space::SM);
                     bf_ui_kit::caption(ui, &i18n.tr("crisis-section"));
+                }
+                // A call by an agreement waits for an answer, like a demand.
+                for (k, c) in v.calls.iter().enumerate() {
+                    let b = Button::danger(&super::crisis::call_label(i18n, c))
+                        .size(ButtonSize::Small)
+                        .show(ui);
+                    if b.clicked()
+                        || keys::item(
+                            ui,
+                            'H',
+                            format!("journal.call.{}", c.war),
+                            &(k + 1).to_string(),
+                            b.rect,
+                        )
+                    {
+                        window.picked = Some(format!("{CALL}{}", c.war));
+                    }
                 }
                 for (k, c) in v.crises.iter().enumerate() {
                     let b = Button::danger(&super::crisis::list_label(i18n, c))

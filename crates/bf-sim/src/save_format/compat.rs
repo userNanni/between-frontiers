@@ -674,7 +674,7 @@ pub struct V20 {
     influence: crate::influence::InfluenceState,
     #[serde(deserialize_with = "treaties_before_breaches")]
     treaties: crate::treaty::TreatyState,
-    war: crate::war::WarState,
+    war: crate::war::state::WarStateBeforeCalls,
     education: crate::demography::education::EducationState,
     independence: crate::borders::independence::IndependenceState,
     levers: LeversV18,
@@ -695,7 +695,7 @@ pub fn v20_to_v21(w: V20) -> GameWorld {
         foreign: w.foreign,
         influence: w.influence,
         treaties: w.treaties,
-        war: w.war,
+        war: w.war.into(),
         education: w.education,
         independence: w.independence,
         levers: w.levers.into(),
@@ -725,7 +725,7 @@ pub struct V21 {
     influence: crate::influence::InfluenceState,
     #[serde(deserialize_with = "treaties_before_breaches")]
     treaties: crate::treaty::TreatyState,
-    war: crate::war::WarState,
+    war: crate::war::state::WarStateBeforeCalls,
     education: crate::demography::education::EducationState,
     independence: crate::borders::independence::IndependenceState,
     levers: crate::econ::levers::LeversState,
@@ -747,7 +747,51 @@ pub fn v21_to_v22(w: V21) -> GameWorld {
         foreign: w.foreign,
         influence: w.influence,
         treaties: w.treaties,
-        war: w.war,
+        war: w.war.into(),
+        education: w.education,
+        independence: w.independence,
+        levers: w.levers,
+    }
+}
+
+/// Version 22: the breaches of clauses in force (#181), before the calls of third parties (W4).
+#[derive(Deserialize)]
+pub struct V22 {
+    scenario: String,
+    player: Option<Id<Country>>,
+    countries: Table<Country, CountryState>,
+    census: Vec<CensusRecord>,
+    econ: crate::econ::Economy,
+    research: crate::research::ResearchState,
+    politics: crate::polity::PoliticsState,
+    demography: crate::demography::DemographyState,
+    borders: crate::borders::BordersState,
+    foreign: crate::foreign_stakes::ForeignState,
+    influence: crate::influence::InfluenceState,
+    treaties: crate::treaty::TreatyState,
+    war: crate::war::state::WarStateBeforeCalls,
+    education: crate::demography::education::EducationState,
+    independence: crate::borders::independence::IndependenceState,
+    levers: crate::econ::levers::LeversState,
+}
+
+/// 22 → 23: the calls of third parties to war (`Conflicts::calls`), empty: a world without a
+/// call hashes as before.
+pub fn v22_to_v23(w: V22) -> GameWorld {
+    GameWorld {
+        scenario: w.scenario,
+        player: w.player,
+        countries: w.countries,
+        census: w.census,
+        econ: w.econ,
+        research: w.research,
+        politics: w.politics,
+        demography: w.demography,
+        borders: w.borders,
+        foreign: w.foreign,
+        influence: w.influence,
+        treaties: w.treaties,
+        war: w.war.into(),
         education: w.education,
         independence: w.independence,
         levers: w.levers,

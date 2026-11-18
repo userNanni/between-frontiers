@@ -425,3 +425,35 @@ impl From<WarStateBeforeOrders> for WarStateBeforeCrises {
         }
     }
 }
+
+/// [`super::crisis::Conflicts`] as versions 20 to 22 of the world wrote it, before the calls of
+/// third parties (W4).
+#[derive(Default, Deserialize)]
+pub(crate) struct ConflictsBeforeCalls {
+    crises: Vec<super::crisis::Crisis>,
+    wars: Vec<super::crisis::War>,
+    next_id: u32,
+}
+
+/// [`WarState`] as versions 20 to 22 of the world wrote it, before the calls of third parties.
+#[derive(Default, Deserialize)]
+pub(crate) struct WarStateBeforeCalls {
+    countries: Vec<CountryWar>,
+    soldiers: Vec<i64>,
+    conflicts: ConflictsBeforeCalls,
+}
+
+impl From<WarStateBeforeCalls> for WarState {
+    fn from(w: WarStateBeforeCalls) -> Self {
+        Self {
+            countries: w.countries,
+            soldiers: w.soldiers,
+            conflicts: super::crisis::Conflicts {
+                crises: w.conflicts.crises,
+                wars: w.conflicts.wars,
+                next_id: w.conflicts.next_id,
+                calls: Vec::new(),
+            },
+        }
+    }
+}

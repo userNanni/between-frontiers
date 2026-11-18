@@ -26,7 +26,6 @@ crisis-needed-never = never: it is existential
 crisis-yields = Expected answer: yields
 crisis-refuses = Expected answer: refuses
 crisis-third-parties = Who would join, and by which clause
-crisis-third-parties-later = To come: it depends on the defence, offence and neutrality clauses of the treaties.
 crisis-accept = Accept…
 crisis-refuse = Refuse…
 crisis-accept-confirm = Accepting carries the clauses out as a treaty next week. A restore point is saved first.
@@ -56,3 +55,26 @@ crisis-demand-confirm = Send the demand to { $country }?
 crisis-demand-send = Send the demand
 crisis-demand-final = Refused, it is ours to declare war or back down. A restore point is saved before sending.
 crisis-share-all = the whole country
+crisis-third-parties-off = No agreement in force in this campaign: nobody is called (the agreements are switched off in the rules).
+crisis-third-parties-none = No agreement in force calls a third party in this crisis.
+crisis-agreement = { $name }, { $year }
+crisis-duty-defend = { $party } — defence ({ $agreement }) — with { $partner }
+crisis-duty-attack = { $party } — offence ({ $agreement }) — with { $partner }
+crisis-duty-neutral = { $party } — neutrality ({ $agreement }): does not join against { $partner }
+crisis-duty-not-attack = Declaring breaks the non-aggression with { $partner } ({ $agreement })
+crisis-duty-suspended = suspended: the partner broke the agreement first
+crisis-duty-barred = barred: a neutrality forbids it
+call-title = { $ally } calls: { $enemy } attacked it
+call-by = By the agreement: { $agreement }
+call-deadline = { $count ->
+    [one] { $left } week left; no answer counts as honouring
+   *[other] { $left } weeks left; no answer counts as honouring
+}
+call-honour-means = Honour
+call-honour-what = enter the war: reserve called up and a weekly cost
+call-refuse-means = Do not honour
+call-refuse-what = the breach goes on the record, and costs { $price } (a year of the forces)
+call-honour = Honour…
+call-refuse = Do not honour…
+call-honour-confirm = Honouring enters the war and cannot be undone. A restore point is saved first.
+call-refuse-confirm = Not honouring records the breach of the agreement. A restore point is saved first.

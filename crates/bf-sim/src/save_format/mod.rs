@@ -67,11 +67,12 @@ pub const WORLD_MAGIC: [u8; 4] = *b"BFWD";
 /// 21. the order of the public works and the works asked for (`LeversState::works_order`,
 ///     `requests`);
 /// 22. the breaches of clauses in force and the causes they give (`TreatyState::breaches`,
-///     `causes`).
+///     `causes`);
+/// 23. the calls of third parties to war (`Conflicts::calls`).
 ///
 /// Versions 12 and 13 were held for the orders and the independence PRs; 14 landed first, so
 /// the orders came after it, and 12 and 13 were never written.
-pub const WORLD_VERSION: u32 = 22;
+pub const WORLD_VERSION: u32 = 23;
 
 /// Why a snapshot does not read.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -210,7 +211,8 @@ pub fn migrate(v: u32, body: &[u8]) -> Result<GameWorld, SaveError> {
         18 => return Ok(v18_to_v20(decode_snapshot(body)?)),
         20 => return Ok(v20_to_v21(decode_snapshot(body)?)),
         21 => return Ok(v21_to_v22(decode_snapshot(body)?)),
-        22 => return decode_snapshot(body),
+        22 => return Ok(v22_to_v23(decode_snapshot(body)?)),
+        23 => return decode_snapshot(body),
         _ => return Err(SaveError::Malformed(format!("unknown world version {v}"))),
     };
     Ok(v15_to_v16(v14_to_v15(v11_to_v14(v11))))

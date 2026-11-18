@@ -164,7 +164,7 @@ fn weighing(ui: &mut Ui, i18n: &I18n, l: &CrisisLine) {
     };
     ui.label(RichText::new(i18n.tr(key)).font(sans(size::SMALL)).color(c));
     bf_ui_kit::caption(ui, &i18n.tr("crisis-third-parties"));
-    bf_ui_kit::small(ui, &i18n.tr("crisis-third-parties-later"));
+    third_parties(ui, i18n, l);
 }
 
 /// The deadline as a bar.
@@ -484,4 +484,191 @@ pub fn show_demand(
         });
     }
     Some((target.to_owned(), p))
+}
+
+/// Who would join at the declaration, by which agreement, and the non-aggression broken (W4).
+fn third_parties(ui: &mut Ui, i18n: &I18n, l: &CrisisLine) {
+    use bf_sim::treaty::DutyKind;
+    let Some(joiners) = &l.joiners else {
+        bf_ui_kit::small(ui, &i18n.tr("crisis-third-parties-off"));
+        return;
+    };
+    if joiners.is_empty() {
+        bf_ui_kit::small(ui, &i18n.tr("crisis-third-parties-none"));
+        return;
+    }
+    for j in joiners {
+        let agreement = i18n.tr_args(
+            "crisis-agreement",
+            &[
+                ("name", arg(treaty_name(i18n, &j.agreement))),
+                ("year", arg(j.signed.to_string())),
+            ],
+        );
+        let kind = match j.kind {
+            DutyKind::JoinDefender => "crisis-duty-defend",
+            DutyKind::JoinAttacker => "crisis-duty-attack",
+            DutyKind::StayOut => "crisis-duty-neutral",
+            DutyKind::NotAttack => "crisis-duty-not-attack",
+        };
+        let mut text = i18n.tr_args(
+            kind,
+            &[
+                ("party", arg(country_name(i18n, &j.party))),
+                ("partner", arg(country_name(i18n, &j.partner))),
+                (
+                    "article",
+                    arg(crate::text::country_article(i18n, &j.partner)),
+                ),
+                ("agreement", arg(agreement)),
+            ],
+        );
+        if j.suspended {
+            text = format!("{text} · {}", i18n.tr("crisis-duty-suspended"));
+        } else if j.barred {
+            text = format!("{text} · {}", i18n.tr("crisis-duty-barred"));
+        }
+        // Breaking one's own non-aggression is a warning, not a line like the others.
+        let c = if j.kind == DutyKind::NotAttack {
+            color::DANGER
+        } else {
+            color::TEXT
+        };
+        ui.add(egui::Label::new(RichText::new(text).font(sans(size::SMALL)).color(c)).wrap());
+    }
+}
+
+/// A treaty's name: `treaty-<key>` when the Fluent files name it, else its key.
+fn treaty_name(i18n: &I18n, key: &str) -> String {
+    let id = format!("treaty-{key}");
+    if i18n.has(&id) {
+        i18n.tr(&id)
+    } else {
+        key.replace('_', " ")
+    }
+}
+
+/// The choice a call waits for: honour (`true`) or not, at its second click.
+#[derive(Clone, Debug, Default)]
+pub struct CallUi {
+    pub confirm: Option<(u32, bool)>,
+}
+
+/// A call on the player to honour an agreement: who calls, against whom, by which agreement,
+/// the deadline, and the price of not honouring. Two steps and a restore point.
+pub fn show_call(
+    ui: &mut Ui,
+    i18n: &I18n,
+    c: &crate::crisis_view::CallLine,
+    st: &mut CallUi,
+    out: &mut Response,
+) {
+    ui.spacing_mut().item_spacing.y = space::SM;
+    bf_ui_kit::title(ui, &call_label(i18n, c));
+    bf_ui_kit::small(
+        ui,
+        &i18n.tr_args(
+            "call-by",
+            &[(
+                "agreement",
+                arg(i18n.tr_args(
+                    "crisis-agreement",
+                    &[
+                        ("name", arg(treaty_name(i18n, &c.agreement))),
+                        ("year", arg(c.signed.to_string())),
+                    ],
+                )),
+            )],
+        ),
+    );
+    let share = if c.call_weeks > 0 {
+        f32::from(c.weeks_left) / f32::from(c.call_weeks)
+    } else {
+        0.0
+    };
+    let (r, _) = ui.allocate_exact_size(vec2(ui.available_width().min(360.0), 6.0), Sense::hover());
+    let p = ui.painter();
+    p.rect_filled(r, radius::SM, color::SURFACE_SUNKEN);
+    let mut done = r;
+    done.set_width(r.width() * share.clamp(0.0, 1.0));
+    p.rect_filled(done, radius::SM, color::DANGER);
+    bf_ui_kit::small(
+        ui,
+        &i18n.tr_args(
+            "call-deadline",
+            &[
+                ("left", arg(c.weeks_left.to_string())),
+                ("count", Arg::Num(f64::from(c.weeks_left))),
+            ],
+        ),
+    );
+    bf_ui_kit::gap(ui, space::SM);
+    bf_ui_kit::stat_row(
+        ui,
+        &i18n.tr("call-honour-means"),
+        &i18n.tr("call-honour-what"),
+    );
+    bf_ui_kit::stat_row(
+        ui,
+        &i18n.tr("call-refuse-means"),
+        &i18n.tr_args(
+            "call-refuse-what",
+            &[("price", arg(crate::text::money(i18n, c.price)))],
+        ),
+    );
+    bf_ui_kit::gap(ui, space::SM);
+    match st.confirm {
+        Some((war, honour)) if war == c.war => {
+            bf_ui_kit::small(
+                ui,
+                &i18n.tr(if honour {
+                    "call-honour-confirm"
+                } else {
+                    "call-refuse-confirm"
+                }),
+            );
+            ui.horizontal(|ui| {
+                let go = Button::danger(&i18n.tr("crisis-confirm"))
+                    .size(ButtonSize::Medium)
+                    .show(ui);
+                if go.clicked() || keys::single(ui, "call.confirm", 'Y', go.rect) {
+                    out.call_answer = Some((c.war, honour));
+                    st.confirm = None;
+                }
+                let back = Button::ghost(&i18n.tr("crisis-cancel"))
+                    .size(ButtonSize::Medium)
+                    .show(ui);
+                if back.clicked() || keys::single(ui, "call.cancel", 'N', back.rect) {
+                    st.confirm = None;
+                }
+            });
+        }
+        _ => {
+            ui.horizontal(|ui| {
+                let a = Button::secondary(&i18n.tr("call-honour"))
+                    .size(ButtonSize::Medium)
+                    .show(ui);
+                if a.clicked() || keys::single(ui, "call.honour", 'H', a.rect) {
+                    st.confirm = Some((c.war, true));
+                }
+                let b = Button::secondary(&i18n.tr("call-refuse"))
+                    .size(ButtonSize::Medium)
+                    .show(ui);
+                if b.clicked() || keys::single(ui, "call.refuse", 'R', b.rect) {
+                    st.confirm = Some((c.war, false));
+                }
+            });
+        }
+    }
+}
+
+/// A call's line in the Agendas: "{ally} calls: {enemy} attacked it".
+pub fn call_label(i18n: &I18n, c: &crate::crisis_view::CallLine) -> String {
+    i18n.tr_args(
+        "call-title",
+        &[
+            ("ally", arg(country_name(i18n, &c.ally))),
+            ("enemy", arg(country_name(i18n, &c.enemy))),
+        ],
+    )
 }
