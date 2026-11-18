@@ -169,6 +169,11 @@ const PLAYER: &[Surface] = &[
         files: &["screens/game.rs", "screens/treaty_table.rs"],
     },
     Surface {
+        variant: "SetPosture",
+        command: id::WAR,
+        files: &["screens/war.rs"],
+    },
+    Surface {
         variant: "Mobilize",
         command: id::JOURNAL,
         files: &["screens/game.rs", "screens/journal.rs"],
@@ -179,7 +184,6 @@ const PLAYER: &[Surface] = &[
 const EXCEPTIONS: &[(&str, &str)] = &[
     // Draft of slice C: the front's posture comes with the war screen of the interface PR
     // stacked on this one; this line leaves with it.
-    ("SetPosture", "draft: the war screen is being made"),
     (
         "Borders",
         "issued by treaties, peace, tests and tools; the player frees its land with Liberate",

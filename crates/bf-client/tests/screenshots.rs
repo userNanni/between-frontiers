@@ -3329,6 +3329,127 @@ fn renegotiate_debt() {
     let _ = std::fs::remove_dir_all(&user);
 }
 
+/// The war window (phase 5, slice C): Hungary at war with Czechoslovakia, attacking since the
+/// declaration: the front with the posture, the forces, the week's losses and advance; the
+/// segments opened, with the advance into each state; and peace, which opens the negotiation
+/// table with Czechoslovakia fixed. Portuguese at 1600 × 900, English at 1280 × 720; copies in
+/// `target/screenshots/war-window/`.
+#[test]
+#[ignore = "needs a GPU (or software Vulkan) and the generated map; run with --ignored"]
+fn war_window() {
+    use bf_sim::game::GameCommand;
+    use bf_sim::treaty::{Clause, ClauseKind, Proposal, Side};
+    use laplace_schelling::calendar::Date;
+    // SAFETY: the screenshot tests run one at a time (`RUST_TEST_THREADS=1`).
+    unsafe { std::env::set_var("BF_RULES", "forces,crisis,war,negotiation") };
+    let switches =
+        bf_sim::game::Switches::parse("forces,crisis,war,negotiation").expect("switches");
+    let user = std::env::temp_dir().join(format!("bf-shots-war-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&user);
+    let mut s = advanced_session_with("HUN", Date::new(1925, 3, 2), switches);
+    s.submit(GameCommand::Demand {
+        tag: "HUN".into(),
+        target: "CZE".into(),
+        demand: Proposal {
+            side_a: vec!["HUN".into()],
+            side_b: vec!["CZE".into()],
+            clauses: vec![Clause {
+                kind: ClauseKind::Union,
+                giver: Side::Junior,
+                receiver: Side::Senior,
+                until: None,
+                note: None,
+            }],
+            term_years: None,
+            notice_years: 0,
+        },
+        weeks: None,
+    });
+    while s.clock().date < Date::new(1925, 3, 20) {
+        s.sim.step();
+    }
+    let id = s.world().war.conflicts.crises[0].id;
+    s.submit(GameCommand::Declare {
+        tag: "HUN".into(),
+        crisis: id,
+        war: true,
+    });
+    s.submit(GameCommand::SetPosture {
+        tag: "HUN".into(),
+        enemy: "CZE".into(),
+        attack: true,
+    });
+    // Four weeks of attack: the front has moved and holds five segments (it empties in late
+    // April, when Hungary has taken seven states).
+    while s.clock().date < Date::new(1925, 4, 22) {
+        s.sim.step();
+    }
+    assert!(
+        !s.world().war.fighting.last_week.is_empty(),
+        "the war has a front"
+    );
+    let save = write_campaign(&user.join("save"), &s, "Guerra", "HUN", &[]);
+    let dir = root().join("target/screenshots/war-window");
+    std::fs::create_dir_all(&dir).unwrap();
+    let keep = |name: &str| {
+        let from = out_dir().join(format!("{name}.png"));
+        std::fs::copy(&from, dir.join(format!("{name}.png"))).unwrap();
+    };
+    for (locale, size, tag) in [
+        ("pt-BR", egui::vec2(1600.0, 900.0), "pt"),
+        ("en", egui::vec2(1280.0, 720.0), "en-1280"),
+    ] {
+        let en = locale == "en";
+        let wait = |h: &mut Harness<'_, App>| {
+            for _ in 0..30 {
+                std::thread::sleep(std::time::Duration::from_millis(25));
+                h.run_steps(1);
+            }
+        };
+        let press = |h: &mut Harness<'_, App>, text: &str| {
+            let query = || {
+                egui_kittest::kittest::by()
+                    .label_contains(text)
+                    .role(egui::accesskit::Role::Button)
+            };
+            h.query_all(query())
+                .next()
+                .unwrap_or_else(|| panic!("button {text}"))
+                .scroll_to_me();
+            h.run_steps(4);
+            h.query_all(query()).next().unwrap().click();
+        };
+        let mut h = harness_sized(user.join(tag), locale, size);
+        let ctx = h.ctx.clone();
+        h.state_mut().apply(Transition::Game(save.clone()), &ctx);
+        wait(&mut h);
+        // The Agendas list the war; its button opens the window.
+        h.key_press(egui::Key::J);
+        wait(&mut h);
+        let name = format!("210-war-agendas-{tag}");
+        shot(&mut h, &name);
+        keep(&name);
+        press(&mut h, if en { "Hungary" } else { "Hungria" });
+        wait(&mut h);
+        wait(&mut h);
+        let name = format!("211-war-window-{tag}");
+        shot(&mut h, &name);
+        keep(&name);
+        press(&mut h, if en { "Show " } else { "Ver " });
+        wait(&mut h);
+        let name = format!("212-war-segments-{tag}");
+        shot(&mut h, &name);
+        keep(&name);
+        press(&mut h, if en { "Propose peace" } else { "Propor paz" });
+        wait(&mut h);
+        wait(&mut h);
+        let name = format!("213-war-peace-table-{tag}");
+        shot(&mut h, &name);
+        keep(&name);
+    }
+    let _ = std::fs::remove_dir_all(&user);
+}
+
 /// Answering a demand of independence: Nigeria's demand pending on the United Kingdom, from the
 /// red button in the Agendas to the screen with the four answers, the refusal chosen and the
 /// review before confirming; in Portuguese at 1600 × 900 and in English at 1280 × 720.

@@ -148,3 +148,70 @@ orders-confirm-no = Voltar
 orders-place = Encomendar
 
 orders-yearly-parts = Por ano: { $pay } de soldo e { $upkeep } de manutenção e desgaste; fica enquanto a força existir.
+
+## A guerra em terra (fatia C): a janela da guerra
+cmd-window-war = Guerra
+    .short = Guerra
+war-title = Guerra
+war-off = A guerra em terra está desligada nesta partida.
+war-none = O país não está em guerra.
+war-sides = { $ours } contra { $theirs }
+war-since-declared = Declarada em { $date }, há { $count ->
+    [one] { $weeks } semana
+   *[other] { $weeks } semanas
+}.
+war-since-declared-on = Declarada contra nós em { $date }, há { $count ->
+    [one] { $weeks } semana
+   *[other] { $weeks } semanas
+}.
+war-at-stake = Em jogo
+war-support = Apoio à guerra
+war-support-soon = O apoio de cada lado decide a paz e a rendição; o valor, o que o move e a revolução chegam com a próxima parte da simulação.
+war-occupation = Ocupação
+war-taken = Ocupados por nós:
+war-lost = Nossos, ocupados:
+war-states-none = nenhum
+war-occupation-soon = O que o território ocupado paga, a devastação e a guarnição chegam com a próxima parte da simulação.
+war-fronts = Frentes
+war-fronts-basis = Uma frente por país inimigo, lida da última semana de combate: segmentos, forças, baixas e avanço.
+war-front = Frente com { $country }
+war-posture = Postura:
+war-hold = Segurar
+war-attack = Atacar
+war-hold-note = Segurando: as tropas defendem e só lutam se o inimigo atacar.
+war-attack-note = Atacando: as tropas avançam em todos os segmentos, com baixas dos dois lados.
+war-front-none = Sem fronteira de terra com este inimigo nesta semana.
+war-both = { $ours } nós · { $theirs } eles
+war-men = Homens na frente
+war-power = Poder de fogo
+war-week-losses = Baixas na semana
+war-advance = Avanço na semana
+war-enemy-losses = Baixas do inimigo desde o início
+war-our-losses = Nossas baixas em terra desde o início
+war-km-gained = ganhamos { $km } km
+war-km-lost = perdemos { $km } km
+war-km-none = parada
+war-segments-show = Ver { $count ->
+    [one] { $n } segmento
+   *[other] { $n } segmentos
+}
+war-segments-hide = Esconder { $count ->
+    [one] { $n } segmento
+   *[other] { $n } segmentos
+}
+war-segment = { $ours } – { $theirs }
+war-quiet = sem combate
+war-segment-line = Poder { $ours } nós, { $theirs } eles · baixas { $lost } nós, { $killed } eles · { $advance }
+war-terms-ours = Nossos termos:
+war-terms-theirs = Termos deles:
+war-term = { $term }: { $value }
+war-term-number = Número (milhares de homens)
+war-term-equipment = Equipamento
+war-term-training = Treino
+war-term-supply = Suprimento
+war-term-terrain = Terreno
+war-term-air = Ar
+war-into-theirs = Avançamos { $share } do estado deles; em 100 % ele passa a nós.
+war-into-ours = Eles avançaram { $share } do nosso estado; em 100 % ele passa a eles.
+war-peace = Propor paz a { $country }…
+war-peace-note = A paz é um acordo na mesa de negociação, nas Agendas; assinado entre os líderes, a guerra acaba e a ocupação entre eles termina.

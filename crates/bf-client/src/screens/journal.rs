@@ -51,6 +51,8 @@ pub const CRISIS_DEMAND: &str = "decision:exigency";
 pub const CRISIS: &str = "crisis:";
 /// The prefix of a call to honour an agreement in `Window::picked`, before the war's id.
 pub const CALL: &str = "call:";
+/// `Window::picked` set by a war's button: the war window opens.
+pub const OPEN_WAR: &str = "open:war";
 /// The id the negotiation table takes in `Window::picked`.
 pub const TABLE: &str = "decision:treaty";
 /// The prefix of a proposal received in `Window::picked`, before its id.
@@ -91,6 +93,8 @@ pub struct Response {
     pub draft: Option<(String, bf_sim::treaty::Proposal)>,
     /// The player proposed an agreement, or answered a proposal received.
     pub treaty: Option<super::treaty_table::Sent>,
+    /// Open the war window (from a war's line).
+    pub open_war: bool,
     /// The proposal on the negotiation table, to weigh (`None` off the table).
     pub treaty_draft: Option<(String, bf_sim::treaty::Proposal)>,
 }
@@ -312,6 +316,10 @@ pub fn show(
     let default = Rect::from_min_size(egui::pos2(screen.center().x - size.x / 2.0, top), size);
     let (rect, moved) = super::window_frame(ui, "journal", default, screen, place, MIN_WINDOW);
     out.place_done |= moved;
+    if window.picked.as_deref() == Some(OPEN_WAR) {
+        window.picked = None;
+        out.open_war = true;
+    }
     region(ui, rect.shrink(space::XL), |ui| {
         ui.horizontal(|ui| {
             bf_ui_kit::title(ui, &i18n.tr("journal-title"));
@@ -621,24 +629,34 @@ pub fn show(
                         window.picked = Some(format!("{CRISIS}{}", c.id));
                     }
                 }
-                for w in &v.wars {
+                for (k, w) in v.wars.iter().enumerate() {
                     let names = |s: &[String]| {
                         s.iter()
                             .map(|t| crate::text::country_name(i18n, t))
                             .collect::<Vec<_>>()
                             .join(", ")
                     };
-                    bf_ui_kit::small(
-                        ui,
-                        &i18n.tr_args(
-                            "crisis-war-line",
-                            &[
-                                ("a", I18nArg::String(names(&w.side_a))),
-                                ("b", I18nArg::String(names(&w.side_b))),
-                                ("year", I18nArg::String(w.since.0.to_string())),
-                            ],
-                        ),
+                    let label = i18n.tr_args(
+                        "crisis-war-line",
+                        &[
+                            ("a", I18nArg::String(names(&w.side_a))),
+                            ("b", I18nArg::String(names(&w.side_b))),
+                            ("year", I18nArg::String(w.since.0.to_string())),
+                        ],
                     );
+                    // The war's window: its fronts, postures and peace.
+                    let b = Button::danger(&label).size(ButtonSize::Small).show(ui);
+                    if b.clicked()
+                        || keys::item(
+                            ui,
+                            'G',
+                            format!("journal.war.{}", w.id),
+                            &(k + 1).to_string(),
+                            b.rect,
+                        )
+                    {
+                        window.picked = Some(OPEN_WAR.to_owned());
+                    }
                 }
             }
         };

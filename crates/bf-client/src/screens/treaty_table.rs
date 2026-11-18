@@ -97,6 +97,9 @@ pub struct TableUi {
     /// The draft came from another screen (a debt to renegotiate): its other party stays, the
     /// country picked on the map does not replace it.
     pub fixed: bool,
+    /// The title of a draft opened from another screen (`table-renegotiate-title`,
+    /// `table-peace-title`).
+    pub title: Option<&'static str>,
 }
 
 /// The proposal with the sides swapped: the orientation the other party sent it in, or the
@@ -292,8 +295,8 @@ pub fn show_table(
         ui,
         &i18n.tr(if countering {
             "table-counter-title"
-        } else if st.fixed {
-            "table-renegotiate-title"
+        } else if let Some(t) = st.title {
+            t
         } else {
             "table-title"
         }),
