@@ -579,36 +579,131 @@ fecha.
 - **Falta:** chamar `expire` no tick (junto do teste mensal de cumprimento, que é a próxima
   fatia), os tratados de 1925 como acordos em vigor no início, e a quebra lendo o repúdio.
 
-## 13. Interface: a mesa de negociação
+### Feito: os acordos em vigor e o registro de quebras (desligados)
 
-Painel registrado (`PanelId::Treaty`), escondido até ser aberto, teclado primeiro, textos em
-`assets/i18n/{en,pt-BR}/treaties.ftl`. Esboço:
+- **Os tratados de 1925 como acordos**, atrás de `treaties_in_force` em `data/rules.ron`
+  (`false`): `TreatyState::seed_1925` copia os tratados de `diplomacy.ron` em vigor na data de
+  início que têm cláusulas, só com as cláusulas contínuas (as de execução única agiram antes de
+  1925). O lado forte (`senior`) é o lado A; no tratado sem lado forte, todos são o lado A. Sem
+  prazo: o fim escrito no arquivo é história, não roteiro. Desligada, só ficam os acordos
+  assinados em jogo (independência, paz), e o hash é o da `main`.
+- **O que a guerra pede a terceiros:** `TreatyState::duties(agressor, atacado)` lê os acordos em
+  vigor e devolve, na ordem dos acordos e das cláusulas, quem entra ao lado do atacado (`defence`,
+  `border_guarantee`), quem entra ao lado do agressor (`offence`, com as partes nomeadas), quem
+  fica fora (`neutrality`) e se o próprio agressor quebra uma `non_aggression`. Casos de teste: a
+  Itália de 1914 (a Tríplice era defensiva e a Áustria-Hungria declarou primeiro: ninguém é
+  chamado) e o Pacto de Aço de 1939 (ofensiva e defesa: a Itália é chamada em qualquer guerra
+  alemã).
+- **Duas cláusulas novas**, com as definições do ATOP v5.1 (Leeds, Ritter, Mitchell e Long, 2002)
+  e da COW Formal Alliances v4.1 (Gibler, 2009): `offence { against }` (entrar na guerra que o
+  parceiro começa) e `neutrality` (não ajudar quem está em guerra com o parceiro; tipo IIa da COW,
+  que `influence::cow_type` passa a produzir).
+- **Registro (9.1) e causa (9.3):** `TreatyState::record_breach(acordo, cláusula, por, valor, data,
+  causa)` só grava quando o acordo está em vigor, a cláusula existe e quem quebra dá a cláusula;
+  cada parte a quem a cláusula era devida ganha uma causa contra quem quebrou, com o valor
+  dividido entre elas. `BreachCause`: `CallUnanswered { war }`, `Attacked { war }`,
+  `ServiceUnpaid`, `TestFailed`, `Repudiated`. `TreatyState::cause(quem, contra)` soma as causas:
+  é o que a crise lê como casus belli.
+- **Suspensão recíproca (9.2):** `TreatyState::suspended(acordo, cláusula, por)` é verdadeira
+  quando outra parte quebrou antes uma cláusula do mesmo acordo devida a `por` (a Itália de 1939,
+  depois da quebra alemã da consulta). ESCOLHA DE DESENHO: a suspensão é automática; escolhê-la é
+  da mesa de negociação.
+- **Fora desta fatia:** a reputação (9.4), que espera as decisões P1–P3 do dono; o teste mensal de
+  cada cláusula contínua e a chamada de `expire` no tick.
+- **Quem chama por nome:** a quebra e a causa guardam a sigla do país, não o índice: `by` é a
+  sigla (a guerra passa `world.countries` → sigla).
+- **Save:** versão 22 (`saves.pt-BR.md`).
+
+## 13. Interface: a mesa de negociação, em Agendas
+
+A mesa não é um painel à parte: é uma **decisão rara da janela de Agendas (J)**, como libertar
+território, responder à exigência de independência e mobilizar (regra do dono: decisão rara fora
+do fluxo comum, `wiki/o-que-o-jogador-decide.md`). Teclado primeiro, os dois idiomas em
+`assets/i18n/{en,pt-BR}/treaties.ftl`, os mesmos componentes da janela de demanda
+(`screens/demand.rs`: situação, conta, respostas com o preço à vista).
+
+### Onde entra cada decisão
+
+| Decisão | Entrada em Agendas | Comando | Ponto de restauração |
+|---|---|---|---|
+| Propor um acordo | Decisões → "Propor acordo a {país selecionado}…" (como "Exigir de…" na crise); sem país selecionado, a lista com busca da escolha de país (Ctrl+F) → a mesa | `ProposeTreaty { proposal }` | não |
+| Responder a uma proposta recebida | Decisões → "{país} propõe um acordo" (com prazo, em semanas) → a mesa, só leitura do lado dele | `AnswerProposal { id, answer: Accept \| Refuse \| Counter(proposal) }` | não |
+| Honrar ou não uma chamada de defesa | Decisões → "{aliado} chama: {agressor} o atacou" → as duas saídas e o preço de cada uma | `AnswerCall { war, agreement, clause, honour }` | sim (motivo "guerra") |
+| Denunciar um acordo | Diplomacia → acordos em vigor → "Denunciar…" (pelo prazo de aviso; fora dele é quebra, e a tela diz) | `Denounce { agreement }` | sim |
+| Renegociar uma dívida | Governo → Dívidas entre governos → "Renegociar" abre a mesa já com a cláusula `revise_debt` | `ProposeTreaty` | não |
+
+Fora das decisões, a seção **Diplomacia** das Agendas lista os acordos do país: em vigor (com as
+cláusulas contínuas e o teste de cada uma), propostos (com o prazo) e encerrados, e as quebras
+(a data, a cláusula, quem quebrou e a causa que deu). Cada linha abre o registro do acordo.
+
+### A mesa
 
 ```text
-┌ Mesa: Alemanha ⇄ Estados Unidos, Reino Unido, França ─────────────── [Esc] fechar ┐
-│ Alemanha dá                           │ Credores dão                                │
-│  ▸ Anuidade 2,0 bi RM até 1988        │  ▸ Fim da ocupação da Renânia em 1930       │
-│    (moeda: referência; adiável 1/3)   │  ▸ Teto de transferência retirado           │
-│                                       │  ▸ Empréstimo 0,3 bi a 5,5 %                │
-│ [a] acrescentar cláusula  [x] tirar   │ [A] pedir cláusula                          │
-├───────────────────────────────────────┴─────────────────────────────────────────────┤
-│ Saldo da Alemanha        −1,9 bi │ Saldo dos credores            +2,4 bi            │
-│  dinheiro (valor presente) −2,6  │  dinheiro                      +2,6               │
-│  soberania (ocupação)      +0,5  │  segurança                     −0,2               │
-│  política interna          +0,2  │                                                   │
-│ Contra, na Alemanha:             │ Ratificação nos Estados Unidos: dispensa          │
-│  indústria pesada −420 (imposto) │                                                   │
-│  movimento revisionista +90      │ Resposta provável: aceita (saldo +2,4)            │
-├─────────────────────────────────────────────────────────────────────────────────────┤
-│ [Enter] propor   [c] ver contraproposta   [r] registro do acordo   [Tab] coluna    │
-└─────────────────────────────────────────────────────────────────────────────────────┘
+┌ Agendas › Propor acordo ─ Alemanha ⇄ França, Reino Unido ────────────── [Esc] voltar ┐
+│ Situação: França reconhece a Alemanha · dívida da Alemanha com a França 22 % do PIB  │
+│           acordos em vigor entre as partes: nenhum                                    │
+├──────────────────────────────────────┬────────────────────────────────────────────────┤
+│ A Alemanha dá                        │ França e Reino Unido dão                        │
+│ ▸ Anuidade 2,0 bi até 1988           │ ▸ Fim da ocupação da Renânia, 1930              │
+│   moeda: referência · adiável 1/3    │ ▸ Teto de transferência retirado                │
+│ ▸ Não agressão (sem prazo)           │ ▸ Garantia da fronteira do Reno                 │
+│                                      │   ⚠ sem efeito até a fase 5 (guerra)            │
+│ ‹acrescentar›  ‹tirar›  ‹editar parâmetros›                                           │
+├──────────────────────────────────────┼────────────────────────────────────────────────┤
+│ Conta da Alemanha        −1,9 bi     │ Conta de França e Reino Unido     +2,4 bi       │
+│  dinheiro (valor presente)  −2,6     │  dinheiro                          +2,6         │
+│  soberania (ocupação)       +0,5     │  segurança                         −0,2         │
+│  política interna           +0,2     │  confiança na Alemanha (quebras)   ×0,9         │
+│ Quem é contra, na Alemanha           │ Ratificação                                     │
+│  indústria pesada  −420 (imposto)    │  França: Câmara, apoio 58 % (passa de 50 %)     │
+│  revisionismo      +90 de causa      │  Reino Unido: governo ratifica                  │
+│ Ratificação: Reichstag, apoio 46 %   │                                                 │
+│  abaixo de 50 %: assinar custa       │ Resposta provável: aceita (saldo +2,4)          │
+│  3 de legitimidade                   │                                                 │
+├──────────────────────────────────────┴────────────────────────────────────────────────┤
+│ ‹Ctrl+Enter› propor   ‹contraproposta deles›   ‹registro›   ‹por quê›   [Esc] voltar  │
+└───────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-- Duas colunas de cláusulas, uma por lado; cada linha abre os parâmetros (setas mudam valor).
-- O saldo de cada lado por termo, com o total; quem dentro de cada país é contra e por quê.
-- "Resposta provável" é a `Valuation` do outro lado: a IA não esconde a conta.
-- Fora da mesa: a lista de acordos do país (em vigor, propostos, quebrados), o livro de dívidas
-  entre Estados, e no súdito os dois números da seção 7.
+- **Teclas como no resto do cliente:** letra solta é comando global, então as ações da mesa são
+  dicas de tecla (a tecla líder mostra a letra sobre cada botão; ‹…› no esboço). `Ctrl+Enter`
+  propõe, como "Propor lei"; `Esc` volta; `Tab` é o foco do egui.
+- **Largura:** duas colunas acima de ~680 px; abaixo, uma coluna com rolagem, como a exigência de
+  independência.
+- **Duas colunas, uma por lado**, na ordem das cláusulas; cada linha abre os parâmetros
+  (setas mudam o valor, dentro dos limites do catálogo) e mostra "sem efeito até…" quando a
+  frente dorme (seção 4).
+- **A conta de cada lado por termo** (`ValueTerm`), com o total: é a `Valuation` que a IA usa
+  (seção 10). "Resposta provável" é a conta do outro lado, à vista: a IA não esconde por que
+  aceita ou recusa.
+- **Quem é contra** em cada país, com o motivo (seção 8), e a ratificação: quem aprova, o apoio, o
+  limiar e o custo de assinar abaixo dele.
+- **Recusa explicada:** uma cláusula que a regra não permite (sem reconhecimento mútuo, seção 6;
+  frente que não existe) fica marcada em vermelho com o motivo, e "propor" fica desligado até ela
+  sair.
+- **A chamada de defesa** usa a mesma janela em modo de decisão: o aliado, o agressor, a cláusula,
+  se ela está suspensa (`TreatyState::suspended`: o outro quebrou antes, então não honrar não é
+  quebra), e as duas saídas com o preço de cada uma: honrar entra na guerra (mobilização, custo
+  semanal); não honrar grava a quebra (`record_breach`, causa do traído e, quando o dono decidir
+  P1–P3, a reputação).
+
+### O que a simulação precisa para a mesa (fatia seguinte)
+
+- **Uma leitura sem custo no tick**, `treaty::proposal_view(world, &Proposal) -> ProposalView`,
+  refeita a cada mudança do rascunho (o cliente manda o rascunho ao fio da simulação, como na
+  crise): por lado, a `Valuation` por termo e o total; quem é contra, com o motivo e o peso; a
+  ratificação (quem aprova, o apoio, o limiar, o custo de assinar abaixo); e, por cláusula, se é
+  proibida (chave do motivo) e se a frente dorme (chave da frente). A mesma leitura serve à
+  chamada de defesa e à seção "Quem entraria" da crise (`TreatyState::duties`).
+- **Os limites de cada parâmetro no catálogo** (`clauses.ron`: mínimo, máximo, passo, unidade),
+  para o editor da mesa não repetir números no cliente. Hoje o catálogo só tem chave, execução,
+  frentes, soberania, grupos e fonte.
+
+- `TreatyState::proposals`: propostas pendentes, com prazo em semanas; recusa por prazo vencido.
+- Comandos `ProposeTreaty`, `AnswerProposal`, `AnswerCall`, `Denounce`, validados no tick como os
+  outros (o jogador e a IA pelo mesmo comando).
+- `evaluate` (seção 10) já existe; falta a ratificação (seção 8) ligada às leis em vigor.
+- A IA responde no mesmo tick semanal pela mesma conta.
 
 ## 14. O que cada cláusula precisa das outras frentes
 

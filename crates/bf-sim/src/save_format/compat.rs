@@ -526,6 +526,7 @@ pub struct V16 {
     borders: crate::borders::BordersState,
     foreign: crate::foreign_stakes::ForeignState,
     influence: crate::influence::InfluenceState,
+    #[serde(deserialize_with = "treaties_before_breaches")]
     treaties: crate::treaty::TreatyState,
     war: crate::war::state::WarStateBeforeCrises,
     education: crate::demography::education::EducationState,
@@ -567,6 +568,7 @@ pub struct V17 {
     borders: crate::borders::BordersState,
     foreign: crate::foreign_stakes::ForeignState,
     influence: crate::influence::InfluenceState,
+    #[serde(deserialize_with = "treaties_before_breaches")]
     treaties: crate::treaty::TreatyState,
     war: crate::war::state::WarStateBeforeCrises,
     education: crate::demography::education::EducationState,
@@ -611,6 +613,7 @@ pub struct V18 {
     borders: crate::borders::BordersState,
     foreign: crate::foreign_stakes::ForeignState,
     influence: crate::influence::InfluenceState,
+    #[serde(deserialize_with = "treaties_before_breaches")]
     treaties: crate::treaty::TreatyState,
     war: crate::war::state::WarStateBeforeCrises,
     education: crate::demography::education::EducationState,
@@ -669,6 +672,7 @@ pub struct V20 {
     borders: crate::borders::BordersState,
     foreign: crate::foreign_stakes::ForeignState,
     influence: crate::influence::InfluenceState,
+    #[serde(deserialize_with = "treaties_before_breaches")]
     treaties: crate::treaty::TreatyState,
     war: crate::war::WarState,
     education: crate::demography::education::EducationState,
@@ -695,5 +699,57 @@ pub fn v20_to_v21(w: V20) -> GameWorld {
         education: w.education,
         independence: w.independence,
         levers: w.levers.into(),
+    }
+}
+
+/// Formats 16 to 21 wrote the treaty state without breaches nor causes.
+fn treaties_before_breaches<'de, D: serde::Deserializer<'de>>(
+    d: D,
+) -> Result<crate::treaty::TreatyState, D::Error> {
+    crate::treaty::TreatyStateBeforeBreaches::deserialize(d).map(Into::into)
+}
+
+/// Version 21: the order of the public works (#176), before the breaches of clauses.
+#[derive(Deserialize)]
+pub struct V21 {
+    scenario: String,
+    player: Option<Id<Country>>,
+    countries: Table<Country, CountryState>,
+    census: Vec<CensusRecord>,
+    econ: crate::econ::Economy,
+    research: crate::research::ResearchState,
+    politics: crate::polity::PoliticsState,
+    demography: crate::demography::DemographyState,
+    borders: crate::borders::BordersState,
+    foreign: crate::foreign_stakes::ForeignState,
+    influence: crate::influence::InfluenceState,
+    #[serde(deserialize_with = "treaties_before_breaches")]
+    treaties: crate::treaty::TreatyState,
+    war: crate::war::WarState,
+    education: crate::demography::education::EducationState,
+    independence: crate::borders::independence::IndependenceState,
+    levers: crate::econ::levers::LeversState,
+}
+
+/// 21 → 22: the breaches of clauses and the causes they give (`TreatyState::breaches`,
+/// `causes`), none: a world without breaches hashes as before.
+pub fn v21_to_v22(w: V21) -> GameWorld {
+    GameWorld {
+        scenario: w.scenario,
+        player: w.player,
+        countries: w.countries,
+        census: w.census,
+        econ: w.econ,
+        research: w.research,
+        politics: w.politics,
+        demography: w.demography,
+        borders: w.borders,
+        foreign: w.foreign,
+        influence: w.influence,
+        treaties: w.treaties,
+        war: w.war,
+        education: w.education,
+        independence: w.independence,
+        levers: w.levers,
     }
 }

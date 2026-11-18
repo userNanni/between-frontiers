@@ -64,6 +64,10 @@ clause-minorities = Proteção de minorias
 clause-minorities-effect = Quem dá não aplica lei dirigida contra a comunidade protegida.
 clause-troops_quota = Contingente
 clause-troops_quota-effect = Quem dá põe tropas à disposição de quem recebe.
+clause-offence = Aliança ofensiva
+clause-offence-effect = Quem dá entra na guerra que quem recebe começar, contra as partes nomeadas.
+clause-neutrality = Neutralidade
+clause-neutrality-effect = Quem dá não ajuda quem estiver em guerra com quem recebe.
 
 ## Frentes: por que a cláusula está sem efeito e o que a acorda
 front-borders = Sem efeito até as operações de fronteira entrarem no jogo (fronteiras, parte B).

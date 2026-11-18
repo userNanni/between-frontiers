@@ -838,11 +838,16 @@ pub struct Switches {
     /// Trade by pair (`econ::trade`, docs/trade.pt-BR.md): each buyer splits what it seeks among
     /// the sellers by the cost of arrival. Off, the world pool shares trade pro rata.
     pub trade_by_pair: bool,
+    /// The treaties of 1925 in force as agreements (`treaty::TreatyState::seed_1925`,
+    /// docs/treaties.pt-BR.md, "acordos em vigor"): their continuous clauses are what a crisis
+    /// reads to call third parties, and what a breach is recorded against. Off: only the
+    /// agreements signed in play are kept.
+    pub treaties_in_force: bool,
 }
 
 impl Switches {
     /// The names `switch_on` knows, in the order of the fields.
-    pub const NAMES: [&'static str; 13] = [
+    pub const NAMES: [&'static str; 14] = [
         "crisis",
         "fiscal_capacity",
         "forces",
@@ -856,6 +861,7 @@ impl Switches {
         "schooling",
         "small_market_wage_floor",
         "trade_by_pair",
+        "treaties_in_force",
     ];
 
     /// Switches one rule on by name; unknown names are refused.
@@ -874,6 +880,7 @@ impl Switches {
             "schooling" => self.schooling = true,
             "small_market_wage_floor" => self.small_market_wage_floor = true,
             "trade_by_pair" => self.trade_by_pair = true,
+            "treaties_in_force" => self.treaties_in_force = true,
             other => {
                 return Err(format!(
                     "unknown rule switch {other} (known: {})",
@@ -1251,6 +1258,42 @@ mod tests {
                 trade: &e.trade,
             }
         }
+        /// The treaty state of formats 16 to 21: no breaches nor causes.
+        #[derive(Serialize)]
+        struct Treaties21<'a> {
+            recognition: &'a crate::treaty::Recognition,
+            agreements: &'a Vec<crate::treaty::Agreement>,
+            ended: &'a Vec<crate::treaty::Agreement>,
+            next_agreement: u32,
+        }
+        fn treaties21(t: &crate::treaty::TreatyState) -> Treaties21<'_> {
+            Treaties21 {
+                recognition: &t.recognition,
+                agreements: &t.agreements,
+                ended: &t.ended,
+                next_agreement: t.next_agreement,
+            }
+        }
+        /// Version 21: this build's world with the treaty state of then.
+        #[derive(Serialize)]
+        struct BeforeBreaches<'a> {
+            scenario: &'a String,
+            player: &'a Option<Id<Country>>,
+            countries: &'a Table<Country, CountryState>,
+            census: &'a Vec<CensusRecord>,
+            econ: &'a crate::econ::Economy,
+            research: &'a crate::research::ResearchState,
+            politics: &'a crate::polity::PoliticsState,
+            demography: &'a crate::demography::DemographyState,
+            borders: &'a crate::borders::BordersState,
+            foreign: &'a crate::foreign_stakes::ForeignState,
+            influence: &'a crate::influence::InfluenceState,
+            treaties: Treaties21<'a>,
+            war: &'a crate::war::WarState,
+            education: &'a crate::demography::education::EducationState,
+            independence: &'a crate::borders::independence::IndependenceState,
+            levers: &'a crate::econ::levers::LeversState,
+        }
         /// The treaty state of formats 8 to 15: recognition only.
         #[derive(Serialize)]
         struct Treaties15<'a> {
@@ -1353,7 +1396,7 @@ mod tests {
             borders: &'a crate::borders::BordersState,
             foreign: &'a crate::foreign_stakes::ForeignState,
             influence: &'a crate::influence::InfluenceState,
-            treaties: &'a crate::treaty::TreatyState,
+            treaties: Treaties21<'a>,
             war: WarV17<'a>,
             education: &'a crate::demography::education::EducationState,
         }
@@ -1488,9 +1531,32 @@ mod tests {
             hash_of(&with_ledger)
         );
         assert_eq!(
-            hash_of(&headed(21, &encode_snapshot(&with_ledger).unwrap())),
+            hash_of(&headed(22, &encode_snapshot(&with_ledger).unwrap())),
             hash_of(&with_ledger)
         );
+        // Version 21, before the breaches of clauses.
+        let before_breaches = encode_snapshot(&BeforeBreaches {
+            scenario: &with_ledger.scenario,
+            player: &with_ledger.player,
+            countries: &with_ledger.countries,
+            census: &with_ledger.census,
+            econ: &with_ledger.econ,
+            research: &with_ledger.research,
+            politics: &with_ledger.politics,
+            demography: &with_ledger.demography,
+            borders: &with_ledger.borders,
+            foreign: &with_ledger.foreign,
+            influence: &with_ledger.influence,
+            treaties: treaties21(&with_ledger.treaties),
+            war: &with_ledger.war,
+            education: &with_ledger.education,
+            independence: &with_ledger.independence,
+            levers: &with_ledger.levers,
+        })
+        .unwrap();
+        let loaded = headed(21, &before_breaches);
+        assert_eq!(hash_of(&loaded), hash_of(&with_ledger));
+        assert_eq!(loaded, with_ledger);
         // Version 18, before the crises: the forces without their conflicts.
         #[derive(Serialize)]
         struct WarV17<'a> {
@@ -1516,7 +1582,7 @@ mod tests {
             borders: &'a crate::borders::BordersState,
             foreign: &'a crate::foreign_stakes::ForeignState,
             influence: &'a crate::influence::InfluenceState,
-            treaties: &'a crate::treaty::TreatyState,
+            treaties: Treaties21<'a>,
             war: WarV17<'a>,
             education: &'a crate::demography::education::EducationState,
             independence: &'a crate::borders::independence::IndependenceState,
@@ -1535,7 +1601,7 @@ mod tests {
             borders: &w.borders,
             foreign: &w.foreign,
             influence: &w.influence,
-            treaties: &w.treaties,
+            treaties: treaties21(&w.treaties),
             war: war_v17(w),
             education: &w.education,
             independence: &w.independence,
@@ -1556,7 +1622,7 @@ mod tests {
             borders: &with_ledger.borders,
             foreign: &with_ledger.foreign,
             influence: &with_ledger.influence,
-            treaties: &with_ledger.treaties,
+            treaties: treaties21(&with_ledger.treaties),
             war: war_v17(&with_ledger),
             education: &with_ledger.education,
         })
@@ -1750,7 +1816,7 @@ mod tests {
             borders: &'a crate::borders::BordersState,
             foreign: &'a crate::foreign_stakes::ForeignState,
             influence: &'a crate::influence::InfluenceState,
-            treaties: &'a crate::treaty::TreatyState,
+            treaties: Treaties21<'a>,
             war: WarV17<'a>,
             education: &'a crate::demography::education::EducationState,
             independence: &'a crate::borders::independence::IndependenceState,
@@ -1769,7 +1835,7 @@ mod tests {
             borders: &on_the_rule.borders,
             foreign: &on_the_rule.foreign,
             influence: &on_the_rule.influence,
-            treaties: &on_the_rule.treaties,
+            treaties: treaties21(&on_the_rule.treaties),
             war: war_v17(&on_the_rule),
             education: &on_the_rule.education,
             independence: &on_the_rule.independence,
@@ -1796,7 +1862,7 @@ mod tests {
             borders: &'a crate::borders::BordersState,
             foreign: &'a crate::foreign_stakes::ForeignState,
             influence: &'a crate::influence::InfluenceState,
-            treaties: &'a crate::treaty::TreatyState,
+            treaties: Treaties21<'a>,
             war: &'a crate::war::WarState,
             education: &'a crate::demography::education::EducationState,
             independence: &'a crate::borders::independence::IndependenceState,
@@ -1820,7 +1886,7 @@ mod tests {
             borders: &fixed.borders,
             foreign: &fixed.foreign,
             influence: &fixed.influence,
-            treaties: &fixed.treaties,
+            treaties: treaties21(&fixed.treaties),
             war: &fixed.war,
             education: &fixed.education,
             independence: &fixed.independence,

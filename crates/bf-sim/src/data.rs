@@ -359,6 +359,12 @@ impl GameData {
         // The record of each line (`Switches::ledger_record`, off): kept by the ledger itself,
         // so that a line written in play records too.
         world.econ.ledger.record = self.switches.ledger_record;
+        // The treaties of 1925 in force as agreements (`Switches::treaties_in_force`, off).
+        if self.switches.treaties_in_force
+            && let (Some(d), Some(cat)) = (&self.diplomacy, &self.clauses)
+        {
+            world.treaties.seed_1925(d, cat);
+        }
         // Recognition withheld on the start date (owner's decision 4).
         if let (Some(cat), Some(rec)) = (&self.clauses, &self.recognition) {
             world.treaties.recognition = rec.start(&self.countries, &cat.policy);

@@ -23,6 +23,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use laplace_schelling::Fixed;
+use laplace_schelling::calendar::Date;
 use laplace_schelling::hash::{HashState, StateHasher};
 use serde::{Deserialize, Serialize};
 
@@ -150,6 +151,13 @@ pub enum ClauseKind {
     Minorities { community: Option<u16> },
     /// The giver puts troops at the receiver's disposal.
     TroopsQuota,
+    /// The giver goes to war beside the receiver in a war the receiver starts, against the
+    /// parties named (`casus foederis`; all when empty). ATOP's offence obligation (Leeds and
+    /// others, 2002): the Pact of Steel of 1939, art. III, is offence and defence.
+    Offence { against: Vec<Tag> },
+    /// The giver does not help whoever is at war with the receiver. ATOP's neutrality (Leeds and
+    /// others, 2002); type IIa of the COW Formal Alliances (Gibler, 2009).
+    Neutrality,
 }
 
 /// Terms of a debt between states, in reference units (the economy's 2011 dollars at 1925 base
@@ -236,11 +244,13 @@ impl ClauseKind {
             Intervention => "intervention",
             Minorities { .. } => "minorities",
             TroopsQuota => "troops_quota",
+            Offence { .. } => "offence",
+            Neutrality => "neutrality",
         }
     }
 
     /// Every catalogue key, in declaration order.
-    pub const KEYS: [&'static str; 30] = [
+    pub const KEYS: [&'static str; 32] = [
         "cede_states",
         "release_country",
         "union",
@@ -271,6 +281,8 @@ impl ClauseKind {
         "intervention",
         "minorities",
         "troops_quota",
+        "offence",
+        "neutrality",
     ];
 }
 
@@ -1467,6 +1479,10 @@ pub struct TreatyState {
     /// Agreements that ended, in order of ending: the record, apart from those in force.
     pub ended: Vec<Agreement>,
     pub next_agreement: u32,
+    /// Breaches of clauses in force, in order (section 9.1 of the design).
+    pub breaches: Vec<Breach>,
+    /// What each breach gave the parties it harmed (9.3): a cause against the one who broke.
+    pub causes: Vec<Cause>,
 }
 
 impl TreatyState {
@@ -1481,6 +1497,188 @@ impl TreatyState {
         self.next_agreement += 1;
         self.agreements.push(a);
         id
+    }
+
+    /// The agreements in force of 1925 (`diplomacy.ron`, the treaties in force on the start
+    /// date that have clauses), with their continuous clauses; the one-off clauses acted before
+    /// the start. The parties of the strong side (`senior`) are side A; of an even treaty, all
+    /// are side A. No term: the ends written in the file are history, not a script.
+    pub fn seed_1925(
+        &mut self,
+        diplomacy: &crate::diplomacy::DiplomacyFile,
+        cat: &ClauseCatalogue,
+    ) {
+        for t in diplomacy.treaties_on(&diplomacy.start_date) {
+            let kept: Vec<Clause> = t
+                .clauses
+                .iter()
+                .filter(|c| cat.get(c.kind.key()).is_some_and(|d| !d.once))
+                .cloned()
+                .collect();
+            if kept.is_empty() {
+                continue;
+            }
+            let (side_a, side_b) = if t.senior.is_empty() {
+                (t.parties.clone(), Vec::new())
+            } else {
+                let rest = t
+                    .parties
+                    .iter()
+                    .filter(|p| !t.senior.contains(p))
+                    .cloned()
+                    .collect();
+                (t.senior.clone(), rest)
+            };
+            self.sign(Agreement {
+                id: 0,
+                key: t.key.clone(),
+                side_a,
+                side_b,
+                signed: t.signed.get(..4).and_then(|y| y.parse().ok()).unwrap_or(0),
+                term_years: None,
+                notice_years: 0,
+                kept,
+                status: AgreementStatus::InForce,
+            });
+        }
+    }
+
+    /// An agreement in force by id.
+    pub fn in_force(&self, id: u32) -> Option<&Agreement> {
+        self.agreements.iter().find(|a| a.id == id)
+    }
+
+    /// `by` breaks clause `clause` (its index in `Agreement::kept`) of agreement `agreement`, on
+    /// `date`, worth `value` (reference units: what the harmed parties lose by it). Records the
+    /// breach (9.1) and gives each party the clause was owed to a cause against `by`, the value
+    /// shared among them (9.3). `None`, and nothing recorded, when the agreement is not in
+    /// force, the clause does not exist, `by` does not give it, or nobody else receives it. A
+    /// breach of a clause already suspended for `by` ([`TreatyState::suspended`]) is not a
+    /// breach: ask first. Reputation (9.4) reads these breaches once the owner decides its form.
+    pub fn record_breach(
+        &mut self,
+        agreement: u32,
+        clause: usize,
+        by: &str,
+        value: Fixed,
+        date: Date,
+        cause: BreachCause,
+    ) -> Option<u32> {
+        let a = self.in_force(agreement)?;
+        let c = a.kept.get(clause)?;
+        if !a.side(&c.giver).contains(&by) {
+            return None;
+        }
+        let harmed: Vec<Tag> = a
+            .side(&c.receiver)
+            .into_iter()
+            .filter(|t| *t != by)
+            .map(str::to_owned)
+            .collect();
+        if harmed.is_empty() {
+            return None;
+        }
+        let id = self.breaches.last().map_or(0, |b| b.id + 1);
+        let share = value.max(Fixed::ZERO).mul_ratio(1, harmed.len() as i64);
+        for h in &harmed {
+            self.causes.push(Cause {
+                holder: h.clone(),
+                against: by.to_owned(),
+                value: share,
+                breach: id,
+            });
+        }
+        self.breaches.push(Breach {
+            id,
+            agreement,
+            clause: clause as u16,
+            by: by.to_owned(),
+            harmed,
+            value: value.max(Fixed::ZERO),
+            date,
+            cause,
+        });
+        Some(id)
+    }
+
+    /// Whether clause `clause` of `agreement` is suspended for `by`: another party broke a
+    /// clause of the same agreement owed to `by` before, and the harmed party may suspend what it
+    /// gives in return (9.2; the Vienna Convention of 1969, art. 60). Not honouring a suspended
+    /// clause is not a breach (Italy in 1939, after Germany broke the consultation of the Pact of
+    /// Steel). DESIGN CHOICE: the suspension is automatic; choosing it is for the negotiation.
+    pub fn suspended(&self, agreement: u32, clause: usize, by: &str) -> bool {
+        let Some(a) = self.in_force(agreement) else {
+            return false;
+        };
+        if a.kept.get(clause).is_none() {
+            return false;
+        }
+        self.breaches
+            .iter()
+            .any(|b| b.agreement == agreement && b.by != by && b.harmed.iter().any(|h| h == by))
+    }
+
+    /// The causes `holder` has against `against`, summed (what the crisis reads as a casus
+    /// belli).
+    pub fn cause(&self, holder: &str, against: &str) -> Fixed {
+        self.causes
+            .iter()
+            .filter(|c| c.holder == holder && c.against == against)
+            .map(|c| c.value)
+            .sum()
+    }
+
+    /// What the agreements in force ask of third parties when `attacker` goes to war against
+    /// `attacked`: who must join each side, who must stay out, and whether the attacker itself
+    /// breaks a non-aggression clause. In the order of the agreements and their clauses.
+    pub fn duties(&self, attacker: &str, attacked: &str) -> Vec<Duty> {
+        let mut out = Vec::new();
+        for a in &self.agreements {
+            for (i, c) in a.kept.iter().enumerate() {
+                let givers = a.side(&c.giver);
+                let receivers = a.side(&c.receiver);
+                let mut push = |party: &str, kind: DutyKind| {
+                    out.push(Duty {
+                        agreement: a.id,
+                        clause: i as u16,
+                        party: party.to_owned(),
+                        kind,
+                    })
+                };
+                let third = |g: &str| g != attacker && g != attacked;
+                match &c.kind {
+                    ClauseKind::Defence | ClauseKind::BorderGuarantee
+                        if receivers.contains(&attacked) =>
+                    {
+                        for g in givers.iter().copied().filter(|g| third(g)) {
+                            push(g, DutyKind::JoinDefender);
+                        }
+                    }
+                    ClauseKind::Offence { against }
+                        if receivers.contains(&attacker)
+                            && (against.is_empty() || against.iter().any(|t| t == attacked)) =>
+                    {
+                        for g in givers.iter().copied().filter(|g| third(g)) {
+                            push(g, DutyKind::JoinAttacker);
+                        }
+                    }
+                    ClauseKind::Neutrality
+                        if receivers.contains(&attacked) || receivers.contains(&attacker) =>
+                    {
+                        for g in givers.iter().copied().filter(|g| third(g)) {
+                            push(g, DutyKind::StayOut);
+                        }
+                    }
+                    ClauseKind::NonAggression
+                        if givers.contains(&attacker) && receivers.contains(&attacked) =>
+                    {
+                        push(attacker, DutyKind::NotAttack);
+                    }
+                    _ => {}
+                }
+            }
+        }
+        out
     }
 
     /// The term runs out in `year`: an agreement with a fixed term ends on the anniversary of
@@ -1498,6 +1696,122 @@ impl TreatyState {
             } else {
                 i += 1;
             }
+        }
+    }
+}
+
+/// One breach of a clause in force (9.1).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Breach {
+    pub id: u32,
+    pub agreement: u32,
+    /// Index of the clause in `Agreement::kept`.
+    pub clause: u16,
+    pub by: Tag,
+    /// The parties the clause was owed to, who hold a cause for it.
+    pub harmed: Vec<Tag>,
+    /// What the harmed lose by it, reference units.
+    pub value: Fixed,
+    pub date: Date,
+    pub cause: BreachCause,
+}
+
+/// What failed.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum BreachCause {
+    /// A call of defence (or offence) not answered in war `war` (`war::War::id`).
+    CallUnanswered { war: u32 },
+    /// The service of a debt of the agreement not paid.
+    ServiceUnpaid,
+    /// The monthly test of a continuous clause failed (a tariff above the cap, troops in a
+    /// demilitarized zone).
+    TestFailed,
+    /// The debtor denounced a debt of the agreement (`Ledger::repudiate`).
+    Repudiated,
+    /// A war started against a party promised non-aggression.
+    Attacked { war: u32 },
+}
+
+/// A cause one party holds against another for a breach (9.3).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Cause {
+    pub holder: Tag,
+    pub against: Tag,
+    pub value: Fixed,
+    pub breach: u32,
+}
+
+/// What an agreement in force asks of a party when a war starts ([`TreatyState::duties`]).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Duty {
+    pub agreement: u32,
+    pub clause: u16,
+    pub party: Tag,
+    pub kind: DutyKind,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DutyKind {
+    /// Defence or border guarantee: go to war beside the attacked.
+    JoinDefender,
+    /// Offence: go to war beside the attacker.
+    JoinAttacker,
+    /// Neutrality: help neither the partner's enemy.
+    StayOut,
+    /// Non-aggression: the attacker itself breaks it by attacking.
+    NotAttack,
+}
+
+impl HashState for Breach {
+    fn hash_state(&self, h: &mut StateHasher) {
+        h.write_u32(self.id);
+        h.write_u32(self.agreement);
+        h.write_u16(self.clause);
+        h.write_str(&self.by);
+        h.write_len(self.harmed.len());
+        for t in &self.harmed {
+            h.write_str(t);
+        }
+        self.value.hash_state(h);
+        self.date.hash_state(h);
+        let (k, w) = match self.cause {
+            BreachCause::CallUnanswered { war } => (0, war),
+            BreachCause::ServiceUnpaid => (1, 0),
+            BreachCause::TestFailed => (2, 0),
+            BreachCause::Repudiated => (3, 0),
+            BreachCause::Attacked { war } => (4, war),
+        };
+        h.write_u8(k);
+        h.write_u32(w);
+    }
+}
+
+impl HashState for Cause {
+    fn hash_state(&self, h: &mut StateHasher) {
+        h.write_str(&self.holder);
+        h.write_str(&self.against);
+        self.value.hash_state(h);
+        h.write_u32(self.breach);
+    }
+}
+
+/// The treaty state of formats 16 to 21: no breaches nor causes.
+#[derive(Default, Serialize, Deserialize)]
+pub(crate) struct TreatyStateBeforeBreaches {
+    recognition: Recognition,
+    agreements: Vec<Agreement>,
+    ended: Vec<Agreement>,
+    next_agreement: u32,
+}
+
+impl From<TreatyStateBeforeBreaches> for TreatyState {
+    fn from(t: TreatyStateBeforeBreaches) -> Self {
+        TreatyState {
+            recognition: t.recognition,
+            agreements: t.agreements,
+            ended: t.ended,
+            next_agreement: t.next_agreement,
+            ..Default::default()
         }
     }
 }
@@ -1580,6 +1894,28 @@ impl HashState for TreatyState {
             self.agreements.hash_state(h);
             self.ended.hash_state(h);
             h.write_u32(self.next_agreement);
+        }
+        // Worlds without breaches keep their hash.
+        if !self.breaches.is_empty() {
+            self.breaches.hash_state(h);
+            self.causes.hash_state(h);
+        }
+    }
+}
+
+impl Agreement {
+    /// The parties a side names in this agreement (`Senior` is side A, `Junior` side B).
+    pub fn side<'a>(&'a self, s: &'a Side) -> Vec<&'a str> {
+        match s {
+            Side::Senior => self.side_a.iter().map(String::as_str).collect(),
+            Side::Junior => self.side_b.iter().map(String::as_str).collect(),
+            Side::All => self
+                .side_a
+                .iter()
+                .chain(&self.side_b)
+                .map(String::as_str)
+                .collect(),
+            Side::Parties(t) => t.iter().map(String::as_str).collect(),
         }
     }
 }

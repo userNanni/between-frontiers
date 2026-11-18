@@ -64,6 +64,10 @@ clause-minorities = Protection of minorities
 clause-minorities-effect = The giver applies no law aimed at the protected community.
 clause-troops_quota = Contingent
 clause-troops_quota-effect = The giver puts troops at the receiver's disposal.
+clause-offence = Offensive alliance
+clause-offence-effect = The giver joins the war the receiver starts, against the parties named.
+clause-neutrality = Neutrality
+clause-neutrality-effect = The giver does not help whoever is at war with the receiver.
 
 ## Fronts: why the clause has no effect and what wakes it
 front-borders = No effect until the border operations enter the game (borders, part B).

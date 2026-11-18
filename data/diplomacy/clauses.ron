@@ -102,6 +102,12 @@
         (key: "troops_quota", once: false, needs: [War], sovereignty: 2,
             concerns: [("conscription", 1), ("sovereignty", -1)],
             source: "Anglo-Iraqi treaty (1930); Warsaw Pact; Indian Army in the British wars"),
+        (key: "offence", once: false, needs: [War], sovereignty: 1,
+            concerns: [("conscription", 2)],
+            source: "ATOP v5.1 offence obligation (Leeds, Ritter, Mitchell and Long 2002); Pact of Steel (1939) art. III"),
+        (key: "neutrality", once: false, needs: [War], sovereignty: 0,
+            concerns: [],
+            source: "ATOP v5.1 neutrality obligation (Leeds and others 2002); COW Formal Alliances v4.1 type IIa (Gibler 2009)"),
     ],
     // Subject grades as bundles of clauses: the subject gives, the overlord receives, unless the
     // line says `overlord_gives`. Docs: treaties.pt-BR.md, section 7.

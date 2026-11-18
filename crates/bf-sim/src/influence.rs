@@ -618,8 +618,7 @@ pub fn alliance_label(clauses: &[crate::treaty::Clause]) -> Option<AllianceLabel
 
 /// The Correlates of War type (Formal Alliances v4.1), from the strongest obligation: defence is
 /// type I, neutrality IIa, non-aggression IIb, consultation alone III. Offence without defence has
-/// no COW type (ATOP calls it an offensive pact). Neutrality enters the clause catalogue with the
-/// treaties' negotiation; until then IIa is not produced.
+/// no COW type (ATOP calls it an offensive pact).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum CowType {
     I,
@@ -634,6 +633,8 @@ pub fn cow_type(clauses: &[crate::treaty::Clause]) -> Option<CowType> {
     let has = |f: &dyn Fn(&K) -> bool| clauses.iter().any(|c| f(&c.kind));
     if has(&|k| matches!(k, K::Defence | K::BorderGuarantee)) {
         Some(CowType::I)
+    } else if has(&|k| matches!(k, K::Neutrality)) {
+        Some(CowType::IIa)
     } else if has(&|k| matches!(k, K::NonAggression)) {
         Some(CowType::IIb)
     } else if has(&|k| matches!(k, K::Consultation)) {
