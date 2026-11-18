@@ -51,12 +51,12 @@ com as telas da fatia, e a exceção sai com elas.
 | Aceitar, recusar ou contrapropor um acordo recebido | `AnswerProposal` | Agendas → Decisões → "{país} propõe um acordo (N semanas)": o que cada lado dá, a conta do jogador, o prazo; aceitar e recusar em dois passos, contrapropor na mesma mesa (até a terceira rodada); ponto de restauração antes de aceitar ou contrapropor | J; P escolhe a proposta; A, R, C; Y confirma | em revisão, regra desligada |
 | Renegociar uma dívida entre governos | `ProposeTreaty` (cláusula `revise_debt`) | Governo → Dívidas entre governos → a linha → "Renegociar": abre a mesa nas Agendas com a revisão da dívida, a partir dos termos de hoje, e o outro lado fixo. Os parâmetros da revisão e o preço dela na conta chegam com a simulação (pedido ao thread dos tratados) | G, Shift+M; Z escolhe a linha; N renegocia | em revisão, regra desligada |
 | Postura de cada frente na guerra: segurar ou atacar | `SetPosture` | Janela "Guerra" (Shift+W, ou a linha da guerra nas Agendas): uma frente por país inimigo, com "Segurar" e "Atacar", os homens e o poder de fogo dos dois lados, as baixas e o avanço da semana e cada segmento com os termos do poder e quanto já entrou em cada estado. O padrão é segurar. "Propor paz…" abre a mesa nas Agendas com o líder inimigo. Só com a regra `war` | Shift+W; F + número troca a postura; S + número abre os segmentos; Q propõe a paz | em revisão, regra desligada |
+| Denunciar um acordo em vigor | `Denounce` | Agendas → Decisões → "Acordos do país (N em vigor)": cada acordo com as partes, o ano, o prazo, o aviso e as cláusulas; "Denunciar…" — com aviso, diz o ano em que acaba, sem quebra; sem aviso, diz que é quebra de cada cláusula que o país dá e pede dois passos. Ponto de restauração antes (motivo "denunciar um acordo"). A mesma tela mostra as quebras, as causas e a reputação geral e de segurança de cada país. A denúncia só é processada com a mesa (`negotiation`) | J; O abre; U + número denuncia; Y confirma, N mantém | em revisão, regra desligada |
 
 ## Desenhadas, sem comando ainda
 
 | Decisão | Onde deve ficar | Depende de |
 |---|---|---|
-| Denunciar um tratado | Agendas, sem aviso em dois passos e com ponto de restauração | comando `Denounce`, atrás de `negotiation`; falta a tela |
 | Honrar ou não um pacto de defesa | Agendas, decisão com ponto de restauração | registro de quebras |
 | Exigir e declarar guerra | Agendas, com ponto de restauração (motivo "guerra") | fase 5 |
 | Entrar e sair de um bloco | Agendas | blocos como rótulo sobre tratados (#132) e proposta no tick |

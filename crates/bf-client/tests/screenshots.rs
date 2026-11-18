@@ -3554,6 +3554,127 @@ fn trade_partners() {
     let _ = std::fs::remove_dir_all(&user);
 }
 
+/// The country's agreements (treaties, sections 9 and 13): Britain in March 1925, after
+/// denouncing without notice one of its agreements of 1925 (a breach on the record, the
+/// agreement ended, its reputation weighed): the agreements in force with their clauses, the
+/// breach, the reputations, and the two steps of denouncing another without notice. Portuguese
+/// at 1600 × 900, English at 1280 × 720; copies in `target/screenshots/agreements/`.
+#[test]
+#[ignore = "needs a GPU (or software Vulkan) and the generated map; run with --ignored"]
+fn agreements_screen() {
+    use bf_sim::game::GameCommand;
+    use laplace_schelling::calendar::Date;
+    // SAFETY: the screenshot tests run one at a time (`RUST_TEST_THREADS=1`).
+    unsafe { std::env::set_var("BF_RULES", "negotiation,reputation") };
+    let user = std::env::temp_dir().join(format!("bf-shots-agreements-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&user);
+    let mut switches = bf_sim::data::GameData::load(&root())
+        .expect("game data")
+        .switches;
+    switches = switches.with("negotiation,reputation").expect("switches");
+    let mut s = advanced_session_with("GBR", Date::new(1925, 2, 1), switches);
+    let party =
+        |a: &bf_sim::treaty::Agreement| a.side_a.iter().chain(&a.side_b).any(|t| t == "GBR");
+    let id = s
+        .world()
+        .treaties
+        .agreements
+        .iter()
+        .find(|a| party(a) && a.notice_years == 0 && !a.kept.is_empty())
+        .map(|a| a.id)
+        .expect("an agreement of Britain's without notice");
+    s.submit(GameCommand::Denounce {
+        tag: "GBR".into(),
+        agreement: id,
+    });
+    while s.clock().date < Date::new(1925, 3, 2) {
+        s.sim.step();
+    }
+    assert!(
+        !s.world().treaties.breaches.is_empty(),
+        "the denunciation without notice is on the record"
+    );
+    let save = write_campaign(&user.join("save"), &s, "Acordos", "GBR", &[]);
+    let dir = root().join("target/screenshots/agreements");
+    std::fs::create_dir_all(&dir).unwrap();
+    let keep = |name: &str| {
+        let from = out_dir().join(format!("{name}.png"));
+        std::fs::copy(&from, dir.join(format!("{name}.png"))).unwrap();
+    };
+    for (locale, size, tag) in [
+        ("pt-BR", egui::vec2(1600.0, 900.0), "pt"),
+        ("en", egui::vec2(1280.0, 720.0), "en-1280"),
+    ] {
+        let en = locale == "en";
+        let wait = |h: &mut Harness<'_, App>| {
+            for _ in 0..30 {
+                std::thread::sleep(std::time::Duration::from_millis(25));
+                h.run_steps(1);
+            }
+        };
+        let press = |h: &mut Harness<'_, App>, text: &str| {
+            let query = || {
+                egui_kittest::kittest::by()
+                    .label_contains(text)
+                    .role(egui::accesskit::Role::Button)
+            };
+            h.query_all(query())
+                .next()
+                .unwrap_or_else(|| panic!("button {text}"))
+                .scroll_to_me();
+            h.run_steps(4);
+            h.query_all(query()).next().unwrap().click();
+        };
+        let mut h = harness_sized(user.join(tag), locale, size);
+        let ctx = h.ctx.clone();
+        h.state_mut().apply(Transition::Game(save.clone()), &ctx);
+        wait(&mut h);
+        h.key_press(egui::Key::J);
+        wait(&mut h);
+        press(
+            &mut h,
+            if en {
+                "The country's agreements"
+            } else {
+                "Acordos do país"
+            },
+        );
+        wait(&mut h);
+        let name = format!("220-agreements-{tag}");
+        shot(&mut h, &name);
+        keep(&name);
+        h.query_all(egui_kittest::kittest::by().label(if en { "Breaches" } else { "Quebras" }))
+            .next()
+            .expect("the breaches")
+            .scroll_to_me();
+        wait(&mut h);
+        let name = format!("221-agreements-breaches-{tag}");
+        shot(&mut h, &name);
+        keep(&name);
+        press(&mut h, if en { "Denounce…" } else { "Denunciar…" });
+        wait(&mut h);
+        let name = format!("222-agreements-denounce-{tag}");
+        shot(&mut h, &name);
+        keep(&name);
+        let next = if en {
+            "I want to break the agreement"
+        } else {
+            "Quero quebrar o acordo"
+        };
+        if h.query_all(egui_kittest::kittest::by().label_contains(next))
+            .next()
+            .is_some()
+        {
+            press(&mut h, next);
+            wait(&mut h);
+            let name = format!("223-agreements-break-{tag}");
+            shot(&mut h, &name);
+            keep(&name);
+        }
+    }
+    let _ = std::fs::remove_dir_all(&user);
+}
+
 /// Answering a demand of independence: Nigeria's demand pending on the United Kingdom, from the
 /// red button in the Agendas to the screen with the four answers, the refusal chosen and the
 /// review before confirming; in Portuguese at 1600 × 900 and in English at 1280 × 720.

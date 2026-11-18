@@ -94,3 +94,4 @@ saves-cause-malformed = uma parte do arquivo não decodifica
 saves-damaged-short = Arquivo danificado
 settings-autosave-cost = Tempo que tira da simulação (medido em 2025): { $costs }.
 settings-autosave-cost-one = { $option } ~{ $percent } %
+points-reason-denounce = Antes de denunciar um acordo

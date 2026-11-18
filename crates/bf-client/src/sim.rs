@@ -76,6 +76,9 @@ pub struct Snapshot {
     pub blocs: Option<Arc<crate::blocs_view::BlocsView>>,
     /// The player's armed forces, read once a month; `None` without forces.
     pub forces: Option<Arc<crate::forces_view::ForcesView>>,
+    /// The player's agreements, breaches and the reputations, read when they change; `None`
+    /// without any agreement on record.
+    pub agreements: Option<Arc<crate::agreements_view::AgreementsView>>,
     /// Every country's trade by partner, read once a month; `None` with trade by pair off.
     pub trade: Option<Arc<crate::trade_view::TradeView>>,
     /// The player's wars on land, read when the fighting changes; `None` without the war rule.
@@ -353,6 +356,7 @@ struct Monthly {
     crises: Option<Arc<crate::crisis_view::CrisisView>>,
     crisis_draft: Option<Arc<crate::crisis_view::DraftWeighing>>,
     works: Option<Arc<crate::works_view::WorksView>>,
+    agreements: Option<Arc<crate::agreements_view::AgreementsView>>,
     trade: Option<Arc<crate::trade_view::TradeView>>,
     war: Option<Arc<crate::war_view::WarView>>,
     control: Option<Arc<crate::war_view::ControlView>>,
@@ -425,6 +429,28 @@ fn trade_of(
     match last {
         Some(t) if t.month == (date.year, date.month) => Some(Arc::clone(t)),
         _ => crate::trade_view::read(session.world(), date).map(Arc::new),
+    }
+}
+
+/// The player's agreements, read again when they changed or the year turned.
+fn agreements_of(
+    session: &Session,
+    rules: &Rules,
+    last: &Option<Arc<crate::agreements_view::AgreementsView>>,
+) -> Option<Arc<crate::agreements_view::AgreementsView>> {
+    let year = session.clock().date.year;
+    let w = session.world();
+    match last {
+        Some(v)
+            if v.signature == crate::agreements_view::signature(w, year)
+                && session.player() == Some(v.me.as_str()) =>
+        {
+            Some(Arc::clone(v))
+        }
+        _ => {
+            let negotiation = rules.as_ref().is_some_and(|r| r.switches.negotiation);
+            crate::agreements_view::read(w, year, negotiation).map(Arc::new)
+        }
     }
 }
 
@@ -628,6 +654,7 @@ impl Monthly {
             crises: crises_of(session, rules, &last.crises),
             crisis_draft: draft_of(session, rules, extras, &last.crisis_draft),
             works: works_of(session, rules, &last.works),
+            agreements: agreements_of(session, rules, &last.agreements),
             trade: trade_of(session, &last.trade),
             war: war_of(session, rules, &last.war),
             control: control_of(session, &last.control),
@@ -675,6 +702,7 @@ fn snapshot_of(
         crises: monthly.crises,
         crisis_draft: monthly.crisis_draft,
         works: monthly.works,
+        agreements: monthly.agreements,
         trade: monthly.trade,
         war: monthly.war,
         control: monthly.control,
