@@ -376,6 +376,15 @@ pub enum GameCommand {
         goods: Option<u16>,
         military: Option<u16>,
     },
+    /// Fixes where the treasury issues its new bonds (D9): the shares, per mille, sold at home,
+    /// abroad in the country's own currency and abroad in dollars (scaled to add up to 1000).
+    /// The market still decides who buys: each place buys what it can, a place that does not buy
+    /// leaves its share unsold, and lenders abroad take local bonds only up to the share they
+    /// accept. `None` hands the issue back to the rule.
+    SetIssuance {
+        tag: String,
+        shares: Option<[u16; 3]>,
+    },
     /// Fixes the order of the country's public works (D8): the points of each week go to them in
     /// this order; works not listed follow, in arrival order. `None` hands the order back to
     /// arrival. Private works keep their places (owner's decision O2).
@@ -628,6 +637,10 @@ impl Command<GameWorld> for GameCommand {
                     l.purchases = g;
                     l.military = mil;
                 });
+            }
+            GameCommand::SetIssuance { tag, shares } => {
+                let v = *shares;
+                set_levers(world, tag, |l| l.issuance = v);
             }
             GameCommand::SetWorksOrder { tag, order } => {
                 let Some(ci) = world.countries.iter().position(|(_, c)| c.tag == *tag) else {

@@ -72,6 +72,29 @@ com outras mudanças esconde qual delas moveu os números. Separada, cada efeito
 **O que muda no jogo:** a regra chega primeiro sem efeito; o jogador só a sente quando o PR que a
 liga entrar. A diferença que ela causa no século fica registrada no PR que a ligou.
 
+## PRs prontos entram juntos, num trem
+
+**Decisão (2026-11-18, F2):** os PRs prontos são juntados num ramo (`train/N`). O CI e a rodada de
+101 anos rodam uma vez sobre o conjunto, e só então o ramo vai para o `main`.
+
+**O que o autor pensou:** ele aprovou a proposta da coordenação. Antes, cada merge obrigava os
+outros PRs a rodar de novo, e uma rodada leva quase meia hora.
+
+**O que muda no jogo:** nada direto. Para quem desenvolve, uma rodada aprova vários PRs, e um
+conflito entre dois aparece no trem, antes do `main`.
+
+## O padrão sem ação é o comportamento natural
+
+**Decisão (2026-11-18):** quando o jogador não responde a tempo, o jogo faz o que um país faria
+sem decidir nada; romper é sempre um ato explícito. A chamada de um aliado com o prazo vencido
+conta como honrar.
+
+**O que o autor pensou:** "Trair é decisão; honrar é o natural."
+
+**O que muda no jogo:** deixar passar um prazo nunca trai um aliado nem rompe um acordo. A ação
+que rompe tem botão próprio, em Agendas, com o preço à vista. Ver
+[Tratados e acordos](decisoes/tratados-e-acordos.md#duas-reputações-a-de-segurança-e-a-geral).
+
 ## Gradual como na vida real, mas não tanto assim
 
 **Decisão (2026-11-17):** toda regra confere se o processo real é imediato, gradual ou por coorte,
