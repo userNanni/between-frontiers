@@ -317,11 +317,21 @@ pub fn week(world: &mut GameWorld, cat: &ClauseCatalogue, date: Date) {
             settle_answer(world, cat, p, answer, None, date);
         }
     }
-    // The AI answers what is addressed to it; deadlines lapse.
+    // The AI answers what is addressed to it; deadlines lapse. A proposal outside the
+    // catalogue's limits is not carried out (the table's screen refuses it before sending).
     let open = std::mem::take(&mut world.treaties.table.open);
     let mut keep = Vec::new();
+    let gdp = Inputs::of(world).gdp;
     for p in open {
-        if !is_player(world, &p.to) {
+        let out = crate::treaty::limit_violations(cat, &p.proposal, &gdp);
+        if let Some((ci, param)) = out.first() {
+            close(
+                world,
+                &p,
+                Outcome::Failed(format!("clause {ci}: {param} outside its limits")),
+                date,
+            );
+        } else if !is_player(world, &p.to) {
             let (answer, why) = respond(world, cat, &p.proposal, &p.to, p.round < MAX_ROUNDS);
             settle_answer(world, cat, p, answer, why, date);
         } else if date >= p.deadline {
