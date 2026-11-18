@@ -545,6 +545,40 @@ fecha.
   `on_annex`. A parte B das fronteiras chama as duas na operação.
 - "Não reconhecido" é derivado: `recognised_by_share` (parcela do PIB mundial que reconhece).
 
+### Feito: o registro de cada linha e o dos acordos
+
+- **Entra desligado** (regra do dono de 2026-11-17: regra nova entra desligada, com o hash de 101
+  anos igual ao da `main`): `ledger_record` em `data/rules.ron` (`game::Switches`), `false`; ligue
+  com `BF_RULES=ledger_record` ou `bf-bench --rule ledger_record`.
+  Desligado, a linha que acaba sai do livro como antes, nada é registrado, e os campos novos não
+  entram no hash da linha. Ligar é um PR pequeno à parte, julgado pelos agregados. Os acordos
+  gravados por `queue` não dependem da chave: no jogo de hoje ninguém assina, e o hash só muda
+  quando há acordo.
+
+- **O que a linha guarda:** `paid` (serviço pago desde que a linha foi escrita, em unidades de
+  referência, juro e principal juntos; para as linhas de 1925, desde a data de início, porque o
+  pago antes de 1925 não está nos dados) e `written_off` (o que foi cortado: calote, perdão por
+  revisão, repúdio, e o principal que sobra quando o calendário acaba).
+- **Estado da obrigação** (`Obligation`): `Open`, `Closed { ano }` (paga, ou prazo esgotado sem
+  atraso) e `Repudiated { ano }`. Só a linha aberta deve, é servida, entra nas somas (`owed_by`,
+  `claims_of`, serviço anual, prêmio, influência) e pode ser cortada. A linha encerrada passa
+  para `Ledger::closed`, o registro, em vez de ser apagada; fica fora de `debts`, que o serviço
+  semanal percorre, para o custo não crescer com o tempo de jogo (regra 7 de
+  `performance.pt-BR.md`). Atraso e moratória não são estados guardados: a
+  tela os lê dos campos da linha aberta, para não haver duas fontes.
+- **Repúdio:** `Ledger::repudiate(id, devedor, ano)` corta a linha inteira de uma vez, dos dois
+  lados, e devolve o credor e a perda (a causa da seção 9, que a quebra vai usar). O livro continua
+  somando zero.
+- **Acordos assinados:** `GameWorld::treaties.agreements`. `treaty_exec::queue` grava cada acordo
+  com as partes, o ano, o prazo, o aviso e as cláusulas contínuas (`kept`, que antes se perdiam),
+  e devolve o id. `TreatyState::expire(ano)` encerra o acordo de prazo fixo no aniversário e o
+  passa para `TreatyState::ended`, longe dos acordos em vigor que o teste mensal vai ler; ainda
+  não há renovação tácita nem denúncia. No hash só quando há acordo: sem acordo, o hash é o do
+  reconhecimento sozinho.
+- **Save:** versão 16 (`saves.pt-BR.md`).
+- **Falta:** chamar `expire` no tick (junto do teste mensal de cumprimento, que é a próxima
+  fatia), os tratados de 1925 como acordos em vigor no início, e a quebra lendo o repúdio.
+
 ## 13. Interface: a mesa de negociação
 
 Painel registrado (`PanelId::Treaty`), escondido até ser aberto, teclado primeiro, textos em

@@ -17,6 +17,7 @@ pub(crate) struct EconomyBeforeResearch {
     markets: Vec<MarketBeforeResearch>,
     world_price: Vec<Fixed>,
     history: Vec<YearRecord>,
+    #[serde(deserialize_with = "crate::treaty::ledger_before_obligations")]
     ledger: crate::treaty::Ledger,
 }
 
@@ -278,6 +279,7 @@ pub(crate) struct EconomyBeforeTrade {
     markets: Vec<Market>,
     world_price: Vec<Fixed>,
     history: Vec<YearRecord>,
+    #[serde(deserialize_with = "crate::treaty::ledger_before_obligations")]
     ledger: crate::treaty::Ledger,
 }
 
@@ -317,5 +319,31 @@ impl From<EconomyBeforeResearch> for EconomyBeforeTrade {
 impl From<super::state::EconomyBeforeLedger> for EconomyBeforeTrade {
     fn from(e: super::state::EconomyBeforeLedger) -> Self {
         Economy::from(e).into()
+    }
+}
+
+/// The economy of formats 10 to 14: trade by pair, the ledger without the record of each line
+/// (`treaty::LedgerBeforeObligations`).
+#[derive(Deserialize)]
+pub(crate) struct EconomyBeforeObligations {
+    regions: Vec<Region>,
+    markets: Vec<Market>,
+    world_price: Vec<Fixed>,
+    history: Vec<YearRecord>,
+    #[serde(deserialize_with = "crate::treaty::ledger_before_obligations")]
+    ledger: crate::treaty::Ledger,
+    trade: super::trade::TradeState,
+}
+
+impl From<EconomyBeforeObligations> for Economy {
+    fn from(e: EconomyBeforeObligations) -> Self {
+        Self {
+            regions: e.regions,
+            markets: e.markets,
+            world_price: e.world_price,
+            history: e.history,
+            ledger: e.ledger,
+            trade: e.trade,
+        }
     }
 }

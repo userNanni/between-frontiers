@@ -544,6 +544,9 @@ fn the_debts_tab_holds_many_and_long() {
                 Fixed::ZERO
             },
             suspended_until: if k % 5 == 0 { 1932 } else { 0 },
+            paid: Fixed::ZERO,
+            written_off: Fixed::ZERO,
+            status: Default::default(),
         });
     }
     let mut session = bf_sim::game::Session::new(

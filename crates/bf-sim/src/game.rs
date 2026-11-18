@@ -587,17 +587,22 @@ pub struct Switches {
     /// Armed forces in peace (`war`, docs/war.pt-BR.md, "Forças em paz"): the soldiers are the
     /// men of the formations. Off, the old rule of `data/military/peace.ron` (`soldiers`).
     pub forces: bool,
+    /// The record of each line of the ledger of debts between governments (`treaty::Ledger`,
+    /// docs/treaties.pt-BR.md): what was paid and written off, and a line that ends stays in
+    /// `Ledger::closed`. Off, a line that ends leaves the ledger and nothing is recorded.
+    pub ledger_record: bool,
 }
 
 impl Switches {
     /// The names `switch_on` knows, in the order of the fields.
-    pub const NAMES: [&'static str; 6] = [
+    pub const NAMES: [&'static str; 7] = [
         "trade_by_pair",
         "jobs_follow_use",
         "small_market_wage_floor",
         "foreign_flow",
         "schooling",
         "forces",
+        "ledger_record",
     ];
 
     /// Switches one rule on by name; unknown names are refused.
@@ -609,6 +614,7 @@ impl Switches {
             "foreign_flow" => self.foreign_flow = true,
             "schooling" => self.schooling = true,
             "forces" => self.forces = true,
+            "ledger_record" => self.ledger_record = true,
             other => {
                 return Err(format!(
                     "unknown rule switch {other} (known: {})",
@@ -948,6 +954,49 @@ mod tests {
             world_price: &'a Vec<laplace_schelling::Fixed>,
             history: &'a Vec<crate::econ::YearRecord>,
         }
+        /// The economy of formats 10 to 15: the ledger without the record of each line.
+        #[derive(Serialize)]
+        struct Econ15<'a> {
+            regions: &'a Vec<crate::econ::Region>,
+            markets: &'a Vec<crate::econ::Market>,
+            world_price: &'a Vec<laplace_schelling::Fixed>,
+            history: &'a Vec<crate::econ::YearRecord>,
+            ledger: crate::treaty::LedgerBeforeObligations,
+            trade: &'a crate::econ::trade::TradeState,
+        }
+        fn econ15(e: &crate::econ::Economy) -> Econ15<'_> {
+            Econ15 {
+                regions: &e.regions,
+                markets: &e.markets,
+                world_price: &e.world_price,
+                history: &e.history,
+                ledger: crate::treaty::LedgerBeforeObligations::of(&e.ledger),
+                trade: &e.trade,
+            }
+        }
+        /// The treaty state of formats 8 to 15: recognition only.
+        #[derive(Serialize)]
+        struct Treaties15<'a> {
+            recognition: &'a crate::treaty::Recognition,
+        }
+        /// Version 15: this build's world with the economy and the treaty state of then.
+        #[derive(Serialize)]
+        struct BeforeAgreements<'a> {
+            scenario: &'a String,
+            player: &'a Option<Id<Country>>,
+            countries: &'a Table<Country, CountryState>,
+            census: &'a Vec<CensusRecord>,
+            econ: Econ15<'a>,
+            research: &'a crate::research::ResearchState,
+            politics: &'a crate::polity::PoliticsState,
+            demography: &'a crate::demography::DemographyState,
+            borders: &'a crate::borders::BordersState,
+            foreign: &'a crate::foreign_stakes::ForeignState,
+            influence: &'a crate::influence::InfluenceState,
+            treaties: Treaties15<'a>,
+            war: &'a crate::war::WarState,
+            education: &'a crate::demography::education::EducationState,
+        }
         /// The economy of before research that costs: the ledger, markets of then.
         #[derive(Serialize)]
         struct EconomyWithLedger<'a> {
@@ -955,7 +1004,7 @@ mod tests {
             markets: &'a Vec<crate::econ::compat::MarketBeforeResearch>,
             world_price: &'a Vec<laplace_schelling::Fixed>,
             history: &'a Vec<crate::econ::YearRecord>,
-            ledger: &'a crate::treaty::Ledger,
+            ledger: crate::treaty::LedgerBeforeObligations,
         }
         /// The economy of before trade by pair: this build's fields without `trade`.
         #[derive(Serialize)]
@@ -964,7 +1013,7 @@ mod tests {
             markets: &'a Vec<crate::econ::Market>,
             world_price: &'a Vec<laplace_schelling::Fixed>,
             history: &'a Vec<crate::econ::YearRecord>,
-            ledger: &'a crate::treaty::Ledger,
+            ledger: crate::treaty::LedgerBeforeObligations,
         }
         /// The foreign state of versions 6 to 11, before the works paid from abroad.
         #[derive(Serialize)]
@@ -985,14 +1034,14 @@ mod tests {
             player: &'a Option<Id<Country>>,
             countries: &'a Table<Country, CountryState>,
             census: &'a Vec<CensusRecord>,
-            econ: &'a crate::econ::Economy,
+            econ: Econ15<'a>,
             research: &'a crate::research::ResearchState,
             politics: &'a crate::polity::PoliticsState,
             demography: &'a crate::demography::DemographyState,
             borders: &'a crate::borders::BordersState,
             foreign: ForeignWithoutWorks,
             influence: &'a crate::influence::InfluenceState,
-            treaties: &'a crate::treaty::TreatyState,
+            treaties: Treaties15<'a>,
             war: WarV8<'a>,
             education: &'a crate::demography::education::EducationState,
         }
@@ -1010,7 +1059,7 @@ mod tests {
             borders: &'a crate::borders::BordersState,
             foreign: ForeignWithoutWorks,
             influence: &'a crate::influence::InfluenceState,
-            treaties: &'a crate::treaty::TreatyState,
+            treaties: Treaties15<'a>,
             war: WarV8<'a>,
         }
         /// Version 7: version 8 without the treaty state, its last field, and its economy.
@@ -1069,7 +1118,7 @@ mod tests {
             borders: &'a crate::borders::BordersState,
             foreign: ForeignWithoutWorks,
             influence: &'a crate::influence::InfluenceState,
-            treaties: &'a crate::treaty::TreatyState,
+            treaties: Treaties15<'a>,
         }
         #[derive(Serialize)]
         struct BeforeResearch<'a> {
@@ -1144,9 +1193,32 @@ mod tests {
             hash_of(&with_ledger)
         );
         assert_eq!(
-            hash_of(&headed(15, &encode_snapshot(&with_ledger).unwrap())),
+            hash_of(&headed(16, &encode_snapshot(&with_ledger).unwrap())),
             hash_of(&with_ledger)
         );
+        // Version 15, before the record of each line and the agreements.
+        let before_agreements = encode_snapshot(&BeforeAgreements {
+            scenario: &with_ledger.scenario,
+            player: &with_ledger.player,
+            countries: &with_ledger.countries,
+            census: &with_ledger.census,
+            econ: econ15(&with_ledger.econ),
+            research: &with_ledger.research,
+            politics: &with_ledger.politics,
+            demography: &with_ledger.demography,
+            borders: &with_ledger.borders,
+            foreign: &with_ledger.foreign,
+            influence: &with_ledger.influence,
+            treaties: Treaties15 {
+                recognition: &with_ledger.treaties.recognition,
+            },
+            war: &with_ledger.war,
+            education: &with_ledger.education,
+        })
+        .unwrap();
+        let loaded = headed(15, &before_agreements);
+        assert_eq!(hash_of(&loaded), hash_of(&with_ledger));
+        assert_eq!(loaded, with_ledger);
         // Version 14, before the orders: formations without `raised`, countries without a queue.
         #[derive(Serialize)]
         struct FormationV8<'a> {
@@ -1181,14 +1253,14 @@ mod tests {
             player: &'a Option<Id<Country>>,
             countries: &'a Table<Country, CountryState>,
             census: &'a Vec<CensusRecord>,
-            econ: &'a crate::econ::Economy,
+            econ: Econ15<'a>,
             research: &'a crate::research::ResearchState,
             politics: &'a crate::polity::PoliticsState,
             demography: &'a crate::demography::DemographyState,
             borders: &'a crate::borders::BordersState,
             foreign: &'a crate::foreign_stakes::ForeignState,
             influence: &'a crate::influence::InfluenceState,
-            treaties: &'a crate::treaty::TreatyState,
+            treaties: Treaties15<'a>,
             war: WarV8<'a>,
             education: &'a crate::demography::education::EducationState,
         }
@@ -1231,14 +1303,16 @@ mod tests {
             player: &w.player,
             countries: &w.countries,
             census: &w.census,
-            econ: &w.econ,
+            econ: econ15(&w.econ),
             research: &w.research,
             politics: &w.politics,
             demography: &w.demography,
             borders: &w.borders,
             foreign: &w.foreign,
             influence: &w.influence,
-            treaties: &w.treaties,
+            treaties: Treaties15 {
+                recognition: &w.treaties.recognition,
+            },
             war: war_v8(w),
             education: &w.education,
         })
@@ -1251,14 +1325,16 @@ mod tests {
             player: &with_ledger.player,
             countries: &with_ledger.countries,
             census: &with_ledger.census,
-            econ: &with_ledger.econ,
+            econ: econ15(&with_ledger.econ),
             research: &with_ledger.research,
             politics: &with_ledger.politics,
             demography: &with_ledger.demography,
             borders: &with_ledger.borders,
             foreign: foreign_then(&with_ledger),
             influence: &with_ledger.influence,
-            treaties: &with_ledger.treaties,
+            treaties: Treaties15 {
+                recognition: &with_ledger.treaties.recognition,
+            },
             war: war_v8(&with_ledger),
             education: &with_ledger.education,
         })
@@ -1270,7 +1346,7 @@ mod tests {
                 markets: &w.econ.markets,
                 world_price: &w.econ.world_price,
                 history: &w.econ.history,
-                ledger: &w.econ.ledger,
+                ledger: crate::treaty::LedgerBeforeObligations::of(&w.econ.ledger),
             }
         }
         // Version 9, before trade by pair: the economy without its trade state.
@@ -1286,7 +1362,9 @@ mod tests {
             borders: &with_ledger.borders,
             foreign: foreign_then(&with_ledger),
             influence: &with_ledger.influence,
-            treaties: &with_ledger.treaties,
+            treaties: Treaties15 {
+                recognition: &with_ledger.treaties.recognition,
+            },
             war: war_v8(&with_ledger),
         })
         .unwrap();
@@ -1299,14 +1377,14 @@ mod tests {
             player: &'a Option<Id<Country>>,
             countries: &'a Table<Country, CountryState>,
             census: &'a Vec<CensusRecord>,
-            econ: &'a crate::econ::Economy,
+            econ: Econ15<'a>,
             research: &'a crate::research::ResearchState,
             politics: &'a crate::polity::PoliticsState,
             demography: &'a crate::demography::DemographyState,
             borders: &'a crate::borders::BordersState,
             foreign: ForeignWithoutWorks,
             influence: &'a crate::influence::InfluenceState,
-            treaties: &'a crate::treaty::TreatyState,
+            treaties: Treaties15<'a>,
             war: WarV8<'a>,
         }
         let no_schooling = data.new_world();
@@ -1316,14 +1394,16 @@ mod tests {
             player: &no_schooling.player,
             countries: &no_schooling.countries,
             census: &no_schooling.census,
-            econ: &no_schooling.econ,
+            econ: econ15(&no_schooling.econ),
             research: &no_schooling.research,
             politics: &no_schooling.politics,
             demography: &no_schooling.demography,
             borders: &no_schooling.borders,
             foreign: foreign_then(&no_schooling),
             influence: &no_schooling.influence,
-            treaties: &no_schooling.treaties,
+            treaties: Treaties15 {
+                recognition: &no_schooling.treaties.recognition,
+            },
             war: war_v8(&no_schooling),
         })
         .unwrap();
@@ -1345,7 +1425,9 @@ mod tests {
             borders: &no_forces.borders,
             foreign: foreign_then(&no_forces),
             influence: &no_forces.influence,
-            treaties: &no_forces.treaties,
+            treaties: Treaties15 {
+                recognition: &no_forces.treaties.recognition,
+            },
         })
         .unwrap();
         assert!(decode_snapshot::<GameWorld>(&before_forces).is_err());
@@ -1446,7 +1528,7 @@ mod tests {
                 markets: &old_markets,
                 world_price: &world.econ.world_price,
                 history: &world.econ.history,
-                ledger: &world.econ.ledger,
+                ledger: crate::treaty::LedgerBeforeObligations::of(&world.econ.ledger),
             },
             research: &world.research,
             politics: &world.politics,

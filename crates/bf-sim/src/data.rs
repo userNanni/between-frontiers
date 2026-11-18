@@ -304,6 +304,9 @@ impl GameData {
         {
             world.econ.ledger = crate::treaty::ledger_1925(debts, &cat.policy, &self.countries);
         }
+        // The record of each line (`Switches::ledger_record`, off): kept by the ledger itself,
+        // so that a line written in play records too.
+        world.econ.ledger.record = self.switches.ledger_record;
         // Recognition withheld on the start date (owner's decision 4).
         if let (Some(cat), Some(rec)) = (&self.clauses, &self.recognition) {
             world.treaties.recognition = rec.start(&self.countries, &cat.policy);

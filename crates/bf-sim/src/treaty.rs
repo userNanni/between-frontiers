@@ -804,6 +804,171 @@ pub struct InterstateDebt {
     pub arrears: Fixed,
     /// Year until which the service is suspended (moratorium); 0: none.
     pub suspended_until: i32,
+    /// Service paid since the line was written (since the start date for the lines of 1925),
+    /// reference units, interest and principal together.
+    pub paid: Fixed,
+    /// Written off since the line was written: defaults, forgiveness and repudiation.
+    pub written_off: Fixed,
+    /// Open, or closed and kept for the record.
+    pub status: Obligation,
+}
+
+/// Where a line of the ledger stands. Open lines are `Ledger::debts`: only they owe, are
+/// served, count in the sums and can be cut. A closed line is in `Ledger::closed`, the record of
+/// what happened (`paid`, `written_off`).
+/// Arrears and moratorium are not states: they are read off the open line's fields.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Obligation {
+    #[default]
+    Open,
+    /// Paid off, or the term ran out with nothing in arrears.
+    Closed { year: i32 },
+    /// The debtor denounced the clause: the whole line was written off at once, a breach
+    /// with that creditor (`docs/treaties.pt-BR.md`, section 5, "repúdio").
+    Repudiated { year: i32 },
+}
+
+impl Obligation {
+    fn hash_code(self) -> (u8, i32) {
+        match self {
+            Obligation::Open => (0, 0),
+            Obligation::Closed { year } => (1, year),
+            Obligation::Repudiated { year } => (2, year),
+        }
+    }
+}
+
+impl InterstateDebt {
+    pub fn is_open(&self) -> bool {
+        self.status == Obligation::Open
+    }
+
+    /// A new open line, nothing paid nor in arrears (the id is the ledger's).
+    pub fn new(debtor: u16, creditor: u16, treaty: String, terms: &DebtTerms) -> Self {
+        InterstateDebt {
+            id: 0,
+            debtor,
+            creditor,
+            treaty,
+            currency: terms.currency,
+            principal: terms.principal,
+            rate: terms.rate,
+            annuity: terms.annuity,
+            years_left: terms.years,
+            deferrable: terms.deferrable,
+            transfer_cap: terms.transfer_cap,
+            pledge: terms.pledge,
+            contingent: terms.contingent,
+            arrears: Fixed::ZERO,
+            suspended_until: 0,
+            paid: Fixed::ZERO,
+            written_off: Fixed::ZERO,
+            status: Obligation::Open,
+        }
+    }
+}
+
+/// A line as saves of format 8 and before wrote it: no record of what was paid or written off,
+/// and a line that ended was dropped (so every line read is open).
+#[derive(Serialize, Deserialize)]
+pub(crate) struct DebtBeforeObligations {
+    id: u32,
+    debtor: u16,
+    creditor: u16,
+    treaty: String,
+    currency: Currency,
+    principal: Fixed,
+    rate: Fixed,
+    annuity: Fixed,
+    years_left: u16,
+    deferrable: Fixed,
+    transfer_cap: Option<Fixed>,
+    pledge: Option<Pledge>,
+    contingent: Fixed,
+    arrears: Fixed,
+    suspended_until: i32,
+}
+
+/// The ledger of format 8 and before.
+#[derive(Default, Serialize, Deserialize)]
+pub(crate) struct LedgerBeforeObligations {
+    debts: Vec<DebtBeforeObligations>,
+    next_id: u32,
+    year: i32,
+}
+
+impl From<LedgerBeforeObligations> for Ledger {
+    fn from(l: LedgerBeforeObligations) -> Self {
+        Ledger {
+            debts: l
+                .debts
+                .into_iter()
+                .map(|d| InterstateDebt {
+                    id: d.id,
+                    debtor: d.debtor,
+                    creditor: d.creditor,
+                    treaty: d.treaty,
+                    currency: d.currency,
+                    principal: d.principal,
+                    rate: d.rate,
+                    annuity: d.annuity,
+                    years_left: d.years_left,
+                    deferrable: d.deferrable,
+                    transfer_cap: d.transfer_cap,
+                    pledge: d.pledge,
+                    contingent: d.contingent,
+                    arrears: d.arrears,
+                    suspended_until: d.suspended_until,
+                    paid: Fixed::ZERO,
+                    written_off: Fixed::ZERO,
+                    status: Obligation::Open,
+                })
+                .collect(),
+            next_id: l.next_id,
+            year: l.year,
+            record: false,
+            closed: Vec::new(),
+        }
+    }
+}
+
+/// Reads a ledger written in the layout of formats 14 and before.
+pub(crate) fn ledger_before_obligations<'de, D: serde::Deserializer<'de>>(
+    d: D,
+) -> Result<Ledger, D::Error> {
+    LedgerBeforeObligations::deserialize(d).map(Into::into)
+}
+
+impl LedgerBeforeObligations {
+    /// The old layout of an open ledger (for the tests that write old saves).
+    #[cfg(test)]
+    pub(crate) fn of(l: &Ledger) -> Self {
+        LedgerBeforeObligations {
+            debts: l
+                .debts
+                .iter()
+                .map(|d| DebtBeforeObligations {
+                    id: d.id,
+                    debtor: d.debtor,
+                    creditor: d.creditor,
+                    treaty: d.treaty.clone(),
+                    currency: d.currency,
+                    principal: d.principal,
+                    rate: d.rate,
+                    annuity: d.annuity,
+                    years_left: d.years_left,
+                    deferrable: d.deferrable,
+                    transfer_cap: d.transfer_cap,
+                    pledge: d.pledge,
+                    contingent: d.contingent,
+                    arrears: d.arrears,
+                    suspended_until: d.suspended_until,
+                })
+                .collect(),
+            next_id: l.next_id,
+            year: l.year,
+        }
+    }
 }
 
 /// The ledger: `GameWorld::treaties.debts` once in the tick.
@@ -814,6 +979,16 @@ pub struct Ledger {
     /// Year of the last service: on a new year the lines lose a year of their term.
     #[serde(default)]
     pub year: i32,
+    /// The lines keep their record (`game::Switches::ledger_record`): what was paid and written
+    /// off, and a closed line moves to `closed`. Off, a line that ends leaves the ledger and
+    /// nothing is recorded.
+    #[serde(default)]
+    pub record: bool,
+    /// Lines that ended (paid off, out of term, repudiated), in order of closing: the record.
+    /// Kept apart so that the weekly service walks only the open lines (`debts`), however long
+    /// the game.
+    #[serde(default)]
+    pub closed: Vec<InterstateDebt>,
 }
 
 impl HashState for InterstateDebt {
@@ -833,6 +1008,14 @@ impl HashState for InterstateDebt {
         self.contingent.hash_state(h);
         self.arrears.hash_state(h);
         h.write_i64(i64::from(self.suspended_until));
+        // The record enters only where there is one: off, a line hashes as it did.
+        if self.paid != Fixed::ZERO || self.written_off != Fixed::ZERO || !self.is_open() {
+            self.paid.hash_state(h);
+            self.written_off.hash_state(h);
+            let (k, y) = self.status.hash_code();
+            h.write_u8(k);
+            h.write_i64(i64::from(y));
+        }
     }
 }
 
@@ -841,6 +1024,10 @@ impl HashState for Ledger {
         self.debts.hash_state(h);
         h.write_u32(self.next_id);
         h.write_i64(i64::from(self.year));
+        if self.record || !self.closed.is_empty() {
+            h.write_u8(u8::from(self.record));
+            self.closed.hash_state(h);
+        }
     }
 }
 
@@ -904,11 +1091,12 @@ impl Ledger {
         let weekly = |x: Fixed| x.mul_ratio(1, 52);
         let new_year = self.year != 0 && year > self.year;
         self.year = year;
+        let record = self.record;
         for d in &mut self.debts {
+            let mut s = Service::default();
             if new_year {
                 d.years_left = d.years_left.saturating_sub(1);
             }
-            let mut s = Service::default();
             if d.suspended_until < year && d.years_left > 0 {
                 let interest = weekly(d.principal * d.rate);
                 let scheduled = weekly(d.annuity).max(interest).min(d.principal + interest);
@@ -923,6 +1111,9 @@ impl Ledger {
                 s.deferred = due - paid;
                 treasuries[d.debtor as usize] -= s.paid;
                 treasuries[d.creditor as usize] += s.paid;
+                if record {
+                    d.paid += paid;
+                }
                 // The schedule first (interest, then principal), then the arrears. Interest not
                 // paid goes to arrears; amortization not paid stays in the principal.
                 let on_schedule = paid.min(scheduled);
@@ -959,11 +1150,15 @@ impl Ledger {
     /// each creditor, by country.
     pub fn haircut(&mut self, debtor: u16, share: Fixed) -> BTreeMap<u16, Fixed> {
         let mut lost = BTreeMap::new();
+        let record = self.record;
         for d in self.debts.iter_mut().filter(|d| d.debtor == debtor) {
             let cut = (d.principal + d.arrears) * share;
             let from_arrears = cut.min(d.arrears);
             d.arrears -= from_arrears;
             d.principal -= cut - from_arrears;
+            if record {
+                d.written_off += cut;
+            }
             *lost.entry(d.creditor).or_insert(Fixed::ZERO) += cut;
         }
         lost
@@ -983,11 +1178,54 @@ impl Ledger {
         self.debts.retain(|d| d.debtor != d.creditor);
     }
 
-    /// Lines that end: paid off, or out of years with nothing in arrears.
-    pub fn settle(&mut self) {
-        self.debts.retain(|d| {
-            d.principal + d.arrears > Fixed::ZERO && (d.years_left > 0 || d.arrears > Fixed::ZERO)
-        });
+    /// Lines that end in `year`: paid off, or out of years with nothing in arrears. They close
+    /// and stay as the record; what principal the term left is written off (the erosion of a
+    /// schedule that outran its principal, or a line served to its end).
+    pub fn settle(&mut self, year: i32) {
+        if !self.record {
+            // Without the record, as before: a line that ends leaves both sides at once.
+            self.debts.retain(|d| {
+                d.principal + d.arrears > Fixed::ZERO
+                    && (d.years_left > 0 || d.arrears > Fixed::ZERO)
+            });
+            return;
+        }
+        let mut i = 0;
+        while i < self.debts.len() {
+            let d = &self.debts[i];
+            let done = d.principal + d.arrears <= Fixed::ZERO
+                || (d.years_left == 0 && d.arrears <= Fixed::ZERO);
+            if done {
+                let mut d = self.debts.remove(i);
+                d.written_off += d.principal.max(Fixed::ZERO);
+                d.principal = Fixed::ZERO;
+                d.status = Obligation::Closed { year };
+                self.closed.push(d);
+            } else {
+                i += 1;
+            }
+        }
+    }
+
+    /// `debtor` repudiates line `id`: the whole of it is written off at once and the line closes
+    /// as repudiated. Returns the creditor and its loss; `None` if the line is not `debtor`'s
+    /// or not open. Both sides of the line go together, so the ledger still sums to zero.
+    pub fn repudiate(&mut self, id: u32, debtor: u16, year: i32) -> Option<(u16, Fixed)> {
+        let i = self
+            .debts
+            .iter()
+            .position(|d| d.id == id && d.debtor == debtor)?;
+        let mut d = self.debts.remove(i);
+        let loss = d.principal + d.arrears;
+        let creditor = d.creditor;
+        if self.record {
+            d.written_off += loss;
+            d.principal = Fixed::ZERO;
+            d.arrears = Fixed::ZERO;
+            d.status = Obligation::Repudiated { year };
+            self.closed.push(d);
+        }
+        Some((creditor, loss))
     }
 }
 
@@ -1223,17 +1461,126 @@ impl RecognitionFile {
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TreatyState {
     pub recognition: Recognition,
+    /// The agreements in force signed in play, in order of signature, with the clauses that
+    /// hold while they are in force (`treaty_exec::queue` writes them).
+    pub agreements: Vec<Agreement>,
+    /// Agreements that ended, in order of ending: the record, apart from those in force.
+    pub ended: Vec<Agreement>,
+    pub next_agreement: u32,
 }
 
 impl TreatyState {
     pub fn is_empty(&self) -> bool {
-        self.recognition.is_empty()
+        self.recognition.is_empty() && self.next_agreement == 0
+    }
+
+    /// Records a signed agreement; returns its id.
+    pub fn sign(&mut self, mut a: Agreement) -> u32 {
+        let id = self.next_agreement;
+        a.id = id;
+        self.next_agreement += 1;
+        self.agreements.push(a);
+        id
+    }
+
+    /// The term runs out in `year`: an agreement with a fixed term ends on the anniversary of
+    /// its signature (no tacit renewal yet) and moves to `ended`.
+    pub fn expire(&mut self, year: i32) {
+        let mut i = 0;
+        while i < self.agreements.len() {
+            let a = &self.agreements[i];
+            if a.term_years
+                .is_some_and(|t| year >= a.signed + i32::from(t))
+            {
+                let mut a = self.agreements.remove(i);
+                a.status = AgreementStatus::Ended { year };
+                self.ended.push(a);
+            } else {
+                i += 1;
+            }
+        }
+    }
+}
+
+/// The treaty state of format 8: recognition only.
+#[derive(Default, Serialize, Deserialize)]
+pub(crate) struct TreatyStateBeforeAgreements {
+    pub(crate) recognition: Recognition,
+}
+
+impl From<TreatyStateBeforeAgreements> for TreatyState {
+    fn from(t: TreatyStateBeforeAgreements) -> Self {
+        TreatyState {
+            recognition: t.recognition,
+            ..Default::default()
+        }
+    }
+}
+
+/// A signed agreement: its parties, its term, and what of it still holds. The one-off clauses
+/// (territory, debt, payment, revision) acted on signature and are in the ledger and the border
+/// record; `kept` are the clauses that hold while it is in force, read with `Senior` as
+/// `side_a` and `Junior` as `side_b`.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Agreement {
+    pub id: u32,
+    /// The key its debt lines carry (`InterstateDebt::treaty`).
+    pub key: String,
+    pub side_a: Vec<Tag>,
+    pub side_b: Vec<Tag>,
+    /// Year of signature.
+    pub signed: i32,
+    pub term_years: Option<u16>,
+    pub notice_years: u16,
+    pub kept: Vec<Clause>,
+    pub status: AgreementStatus,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum AgreementStatus {
+    #[default]
+    InForce,
+    /// The term ran out, or every party denounced it.
+    Ended { year: i32 },
+}
+
+impl HashState for Agreement {
+    fn hash_state(&self, h: &mut StateHasher) {
+        h.write_u32(self.id);
+        h.write_str(&self.key);
+        h.write_len(self.side_a.len());
+        for t in &self.side_a {
+            h.write_str(t);
+        }
+        h.write_len(self.side_b.len());
+        for t in &self.side_b {
+            h.write_str(t);
+        }
+        h.write_i64(i64::from(self.signed));
+        h.write_u16(self.term_years.map_or(0, |y| y + 1));
+        h.write_u16(self.notice_years);
+        // The clauses are data with many shapes: their saved bytes are their state.
+        let bytes = laplace_schelling::save::encode_snapshot(&self.kept).unwrap_or_default();
+        h.write_bytes(&bytes);
+        match self.status {
+            AgreementStatus::InForce => h.write_u8(0),
+            AgreementStatus::Ended { year } => {
+                h.write_u8(1);
+                h.write_i64(i64::from(year));
+            }
+        }
     }
 }
 
 impl HashState for TreatyState {
     fn hash_state(&self, h: &mut StateHasher) {
         self.recognition.hash_state(h);
+        // Worlds without agreements keep the hash of the recognition alone.
+        if self.next_agreement > 0 {
+            self.agreements.hash_state(h);
+            self.ended.hash_state(h);
+            h.write_u32(self.next_agreement);
+        }
     }
 }
 
@@ -1605,6 +1952,9 @@ pub fn ledger_1925(
             contingent: t.contingent,
             arrears: Fixed::ZERO,
             suspended_until: 0,
+            paid: Fixed::ZERO,
+            written_off: Fixed::ZERO,
+            status: Default::default(),
         });
     }
     ledger
@@ -1631,6 +1981,9 @@ mod tests {
             contingent: Fixed::ZERO,
             arrears: Fixed::ZERO,
             suspended_until: 0,
+            paid: Fixed::ZERO,
+            written_off: Fixed::ZERO,
+            status: Default::default(),
         }
     }
 
@@ -1734,5 +2087,158 @@ mod tests {
         let p = l.debts[0].principal.to_f64_lossy();
         assert!(p < 700.0 && p > 550.0, "{p}");
         assert_eq!(l.owed_by(0), l.claims_of(1));
+    }
+
+    /// What left the debtor's treasury, at parity, is what the line records as paid; the
+    /// principal at the start is what was amortized plus what is left plus what was written off.
+    #[test]
+    fn a_line_records_what_was_paid_and_written_off() {
+        let mut l = Ledger {
+            record: true,
+            ..Default::default()
+        };
+        let mut d = debt(0, 1, 1_000, 200);
+        d.years_left = 3;
+        l.create(d);
+        let mut tr = vec![Fixed::from_int(10_000); 2];
+        let start = tr[0];
+        for week in 0..(52 * 4) {
+            let year = 1925 + week / 52;
+            l.service_week(
+                &mut tr,
+                &[Fixed::from_int(10); 2],
+                &[Fixed::ONE; 2],
+                &[Fixed::ZERO; 2],
+                Fixed::ZERO,
+                year,
+            );
+            l.settle(year);
+        }
+        assert!(l.debts.is_empty());
+        let d = &l.closed[0];
+        assert_eq!(start - tr[0], d.paid);
+        assert!(
+            matches!(d.status, Obligation::Closed { .. }),
+            "{:?}",
+            d.status
+        );
+        // A closed line stays in the record, and owes nothing.
+        assert_eq!(l.owed_by(0), Fixed::ZERO);
+        assert_eq!(l.claims_of(1), Fixed::ZERO);
+        // Nothing more moves on a closed line.
+        let before = tr.clone();
+        let s = l.service_week(
+            &mut tr,
+            &[Fixed::from_int(10); 2],
+            &[Fixed::ONE; 2],
+            &[Fixed::ZERO; 2],
+            Fixed::ZERO,
+            1930,
+        );
+        assert!(s.is_empty());
+        assert_eq!(tr, before);
+    }
+
+    #[test]
+    fn a_repudiation_writes_the_line_off_on_both_sides() {
+        let mut l = Ledger {
+            record: true,
+            ..Default::default()
+        };
+        let a = l.create(debt(0, 1, 1_000, 100));
+        l.create(debt(0, 2, 500, 50));
+        l.debts[0].arrears = Fixed::from_int(30);
+        // Only the debtor repudiates.
+        assert_eq!(l.repudiate(a, 1, 1931), None);
+        let (creditor, loss) = l.repudiate(a, 0, 1931).unwrap();
+        assert_eq!((creditor, loss), (1, Fixed::from_int(1_030)));
+        assert_eq!(l.closed[0].status, Obligation::Repudiated { year: 1931 });
+        assert_eq!(l.closed[0].written_off, Fixed::from_int(1_030));
+        assert_eq!(l.claims_of(1), Fixed::ZERO);
+        assert_eq!(l.owed_by(0), Fixed::from_int(500));
+        assert_eq!(balance(&l, 3), Fixed::ZERO);
+        // Once.
+        assert_eq!(l.repudiate(a, 0, 1932), None);
+        // A default after it cuts only the open line.
+        l.haircut(0, Fixed::from_ratio(1, 2));
+        assert_eq!(l.closed[0].written_off, Fixed::from_int(1_030));
+        assert_eq!(l.debts[0].written_off, Fixed::from_int(250));
+        assert_eq!(l.yearly_service(0, 1932), l.debts[0].annuity);
+    }
+
+    #[test]
+    fn agreements_are_recorded_in_order_and_end_with_their_term() {
+        let mut t = TreatyState::default();
+        assert!(t.is_empty());
+        let a = |key: &str, term| Agreement {
+            id: 99,
+            key: key.into(),
+            side_a: vec!["FRA".into()],
+            side_b: vec!["GER".into()],
+            signed: 1926,
+            term_years: term,
+            notice_years: 0,
+            kept: Vec::new(),
+            status: AgreementStatus::InForce,
+        };
+        assert_eq!(t.sign(a("x", Some(10))), 0);
+        assert_eq!(t.sign(a("y", None)), 1);
+        assert!(!t.is_empty());
+        t.expire(1935);
+        assert_eq!(t.agreements.len(), 2);
+        t.expire(1936);
+        assert_eq!(
+            t.agreements
+                .iter()
+                .map(|a| a.key.as_str())
+                .collect::<Vec<_>>(),
+            ["y"]
+        );
+        assert_eq!(t.ended[0].status, AgreementStatus::Ended { year: 1936 });
+        let mut h1 = StateHasher::new();
+        t.hash_state(&mut h1);
+        let mut h2 = StateHasher::new();
+        TreatyState::default().hash_state(&mut h2);
+        assert_ne!(h1.finish(), h2.finish());
+    }
+
+    /// Without the record (the default), a line that ends leaves the ledger as before and the
+    /// lines hash as they did.
+    #[test]
+    fn without_the_record_the_ledger_is_as_before() {
+        let mut l = Ledger::default();
+        let mut d = debt(0, 1, 1_000, 200);
+        d.years_left = 3;
+        let fresh = d.clone();
+        l.create(d);
+        let mut tr = vec![Fixed::from_int(10_000); 2];
+        for week in 0..(52 * 4) {
+            let year = 1925 + week / 52;
+            l.service_week(
+                &mut tr,
+                &[Fixed::from_int(10); 2],
+                &[Fixed::ONE; 2],
+                &[Fixed::ZERO; 2],
+                Fixed::ZERO,
+                year,
+            );
+            if week == 10 {
+                assert_eq!(l.debts[0].paid, Fixed::ZERO);
+            }
+            l.settle(year);
+        }
+        assert!(l.debts.is_empty());
+        let a = l.create(fresh.clone());
+        assert!(l.repudiate(a, 0, 1930).is_some());
+        assert!(l.debts.is_empty() && l.closed.is_empty());
+        // A line without a record hashes without the new fields.
+        let hash = |d: &InterstateDebt| {
+            let mut h = StateHasher::new();
+            d.hash_state(&mut h);
+            h.finish()
+        };
+        let mut recorded = fresh.clone();
+        recorded.paid = Fixed::ONE;
+        assert_ne!(hash(&fresh), hash(&recorded));
     }
 }

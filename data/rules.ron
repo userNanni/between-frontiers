@@ -27,4 +27,8 @@
     // the formations of `data/scenario/1925/forces.ron`. Off: the old rule of
     // `data/military/peace.ron` (`soldiers`).
     forces: false,
+    // The record of each line of the ledger of debts between governments
+    // (`docs/treaties.pt-BR.md`, "o registro de cada linha"): what was paid and written off, and a
+    // line that ends stays closed in the record. Off: a line that ends leaves the ledger.
+    ledger_record: false,
 )

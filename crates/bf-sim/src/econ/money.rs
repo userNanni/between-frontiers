@@ -709,7 +709,7 @@ fn treaty_service(econ: &mut Economy, cuts: &[Fixed], w: &World, year: i32) {
     for (d, s) in econ.ledger.debts.iter().zip(&services) {
         paid[d.debtor as usize] += s.paid;
     }
-    econ.ledger.settle();
+    econ.ledger.settle(year);
     for (mi, m) in econ.markets.iter_mut().enumerate() {
         m.treasury = treasuries[mi];
         m.budget.interest += paid[mi];
@@ -1027,6 +1027,9 @@ mod tests {
             contingent: Fixed::ZERO,
             arrears: Fixed::ZERO,
             suspended_until: 0,
+            paid: Fixed::ZERO,
+            written_off: Fixed::ZERO,
+            status: Default::default(),
         }
     }
 

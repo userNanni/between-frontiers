@@ -79,7 +79,14 @@ fn sign(w: &mut GameWorld, p: &Proposal, key: &str) -> Settlement {
     let s = treaty_exec::settle(cat, p, key).unwrap();
     let before = Totals::of(w);
     let money: Fixed = w.econ.markets.iter().map(|m| m.treasury).sum();
-    treaty_exec::queue(w, &s, 1925);
+    let signed = w.treaties.agreements.len();
+    let id = treaty_exec::queue(w, &s, 1925).unwrap();
+    // The agreement is recorded with its parties and what holds while in force.
+    assert_eq!(w.treaties.agreements.len(), signed + 1);
+    let a = w.treaties.agreements.last().unwrap();
+    assert_eq!((a.id, a.key.as_str(), a.signed), (id, key, 1925));
+    assert_eq!((&a.side_a, &a.side_b), (&p.side_a, &p.side_b));
+    assert_eq!(a.kept, s.kept);
     op::run_pending(w, &data().border_rules, Date::new(1925, 2, 1));
     assert!(w.borders.refused.is_empty(), "{:?}", w.borders.refused);
     let mut after = Totals::of(w);
@@ -284,4 +291,30 @@ fn what_cannot_be_carried_out_is_refused() {
         notice_years: 0,
     };
     assert!(treaty_exec::settle(cat, &p, "x").is_err(), "two receivers");
+}
+
+/// The record of each line follows the rule switch (`data/rules.ron`, off): off, the 1925 lines
+/// carry no record and hash as before; on, they record what is paid from the first week.
+#[test]
+fn the_record_of_the_ledger_follows_its_switch() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let mut on = GameData::load(&root).unwrap();
+    assert!(!on.switches.ledger_record);
+    assert!(!data().new_world().econ.ledger.record);
+    on.switches.switch_on("ledger_record").unwrap();
+    let w = on.new_world();
+    assert!(w.econ.ledger.record);
+    let mut s = Session::new(w, 1925, Date::new(1925, 1, 1), 2, Some(on.rules()));
+    s.sim.run_until(Date::new(1925, 2, 1));
+    let ledger = &s.world().econ.ledger;
+    assert!(ledger.debts.iter().any(|d| d.paid > Fixed::ZERO));
+    // Off, nothing is recorded.
+    assert!(
+        world()
+            .econ
+            .ledger
+            .debts
+            .iter()
+            .all(|d| d.paid == Fixed::ZERO)
+    );
 }

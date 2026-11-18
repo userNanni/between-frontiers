@@ -251,6 +251,7 @@ pub struct V8 {
     borders: crate::borders::BordersState,
     foreign: ForeignV7,
     influence: crate::influence::InfluenceState,
+    #[serde(deserialize_with = "treaties_before_agreements")]
     treaties: crate::treaty::TreatyState,
 }
 
@@ -287,6 +288,7 @@ pub struct V9 {
     borders: crate::borders::BordersState,
     foreign: ForeignV7,
     influence: crate::influence::InfluenceState,
+    #[serde(deserialize_with = "treaties_before_agreements")]
     treaties: crate::treaty::TreatyState,
     war: crate::war::state::WarStateBeforeOrders,
 }
@@ -319,6 +321,7 @@ pub struct V10 {
     player: Option<Id<Country>>,
     countries: Table<Country, CountryState>,
     census: Vec<CensusRecord>,
+    #[serde(deserialize_with = "econ_before_obligations")]
     econ: crate::econ::Economy,
     research: crate::research::ResearchState,
     politics: crate::polity::PoliticsState,
@@ -326,6 +329,7 @@ pub struct V10 {
     borders: crate::borders::BordersState,
     foreign: ForeignV7,
     influence: crate::influence::InfluenceState,
+    #[serde(deserialize_with = "treaties_before_agreements")]
     treaties: crate::treaty::TreatyState,
     war: crate::war::state::WarStateBeforeOrders,
 }
@@ -360,6 +364,7 @@ pub struct V11 {
     player: Option<Id<Country>>,
     countries: Table<Country, CountryState>,
     census: Vec<CensusRecord>,
+    #[serde(deserialize_with = "econ_before_obligations")]
     econ: crate::econ::Economy,
     research: crate::research::ResearchState,
     politics: crate::polity::PoliticsState,
@@ -367,6 +372,7 @@ pub struct V11 {
     borders: crate::borders::BordersState,
     foreign: ForeignV7,
     influence: crate::influence::InfluenceState,
+    #[serde(deserialize_with = "treaties_before_agreements")]
     treaties: crate::treaty::TreatyState,
     war: crate::war::state::WarStateBeforeOrders,
     education: crate::demography::education::EducationState,
@@ -409,6 +415,7 @@ pub struct V14 {
     player: Option<Id<Country>>,
     countries: Table<Country, CountryState>,
     census: Vec<CensusRecord>,
+    #[serde(deserialize_with = "econ_before_obligations")]
     econ: crate::econ::Economy,
     research: crate::research::ResearchState,
     politics: crate::polity::PoliticsState,
@@ -416,6 +423,7 @@ pub struct V14 {
     borders: crate::borders::BordersState,
     foreign: crate::foreign_stakes::ForeignState,
     influence: crate::influence::InfluenceState,
+    #[serde(deserialize_with = "treaties_before_agreements")]
     treaties: crate::treaty::TreatyState,
     war: crate::war::state::WarStateBeforeOrders,
     education: crate::demography::education::EducationState,
@@ -423,8 +431,8 @@ pub struct V14 {
 
 /// 14 → 15: the orders of forces (`CountryWar::queue`, `Formation::raised`), empty: a world
 /// where nobody ordered anything hashes as before.
-pub fn v14_to_v15(w: V14) -> GameWorld {
-    GameWorld {
+pub fn v14_to_v15(w: V14) -> V15 {
+    V15 {
         scenario: w.scenario,
         player: w.player,
         countries: w.countries,
@@ -438,6 +446,65 @@ pub fn v14_to_v15(w: V14) -> GameWorld {
         influence: w.influence,
         treaties: w.treaties,
         war: w.war.into(),
+        education: w.education,
+    }
+}
+
+/// Formats 10 to 15 wrote the ledger without the record of each line: read the economy in that
+/// layout and convert (every line open, nothing recorded as paid or written off).
+fn econ_before_obligations<'de, D: serde::Deserializer<'de>>(
+    d: D,
+) -> Result<crate::econ::Economy, D::Error> {
+    crate::econ::compat::EconomyBeforeObligations::deserialize(d).map(Into::into)
+}
+
+/// Formats 8 to 15 wrote the treaty state with recognition only.
+fn treaties_before_agreements<'de, D: serde::Deserializer<'de>>(
+    d: D,
+) -> Result<crate::treaty::TreatyState, D::Error> {
+    crate::treaty::TreatyStateBeforeAgreements::deserialize(d).map(Into::into)
+}
+
+/// Version 15: the orders of forces (#151); the ledger without the record of each line and the
+/// treaty state with recognition only.
+#[derive(Deserialize)]
+pub struct V15 {
+    scenario: String,
+    player: Option<Id<Country>>,
+    countries: Table<Country, CountryState>,
+    census: Vec<CensusRecord>,
+    #[serde(deserialize_with = "econ_before_obligations")]
+    econ: crate::econ::Economy,
+    research: crate::research::ResearchState,
+    politics: crate::polity::PoliticsState,
+    demography: crate::demography::DemographyState,
+    borders: crate::borders::BordersState,
+    foreign: crate::foreign_stakes::ForeignState,
+    influence: crate::influence::InfluenceState,
+    #[serde(deserialize_with = "treaties_before_agreements")]
+    treaties: crate::treaty::TreatyState,
+    war: crate::war::WarState,
+    education: crate::demography::education::EducationState,
+}
+
+/// 15 → 16: each line of the ledger keeps what was paid and written off and its standing (open
+/// for every line read), closed lines apart; the agreements signed in play (none). Without the
+/// record (`Switches::ledger_record`, off) the world hashes as it did.
+pub fn v15_to_v16(w: V15) -> GameWorld {
+    GameWorld {
+        scenario: w.scenario,
+        player: w.player,
+        countries: w.countries,
+        census: w.census,
+        econ: w.econ,
+        research: w.research,
+        politics: w.politics,
+        demography: w.demography,
+        borders: w.borders,
+        foreign: w.foreign,
+        influence: w.influence,
+        treaties: w.treaties,
+        war: w.war,
         education: w.education,
     }
 }
