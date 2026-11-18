@@ -921,12 +921,11 @@ impl Week {
                         }
                     }
                 }
-                // Scaled so that the favourite seller has 1.
+                // Scaled so that the favourite seller has 1: nothing to do when it already has
+                // (`v / 1 = v`), else `v / top` for every seller, by one reciprocal.
                 let top = row.iter().copied().max().unwrap_or(Fixed::ZERO);
-                if top > Fixed::ZERO {
-                    for v in row.iter_mut() {
-                        *v /= top;
-                    }
+                if top > Fixed::ZERO && top != Fixed::ONE {
+                    super::trade::scale_to(row, top);
                 }
             }
             super::trade::clear_good_flat(&offered, &sought, &pref, &mut clear);

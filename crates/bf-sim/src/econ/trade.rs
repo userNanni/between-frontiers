@@ -404,6 +404,52 @@ pub fn clear_good_flat(
     }
 }
 
+/// Division by a divisor fixed for many numerators, without a hardware division each time: the
+/// reciprocal `⌊(2⁶⁴ − 1) / d⌋` is taken once, the quotient estimated by a 64 × 64 → 128-bit
+/// multiplication and corrected exactly (it is short by at most two). The same quotient and
+/// remainder as `/` and `%`.
+pub(crate) struct Divisor {
+    d: u64,
+    m: u64,
+}
+
+impl Divisor {
+    pub(crate) fn new(d: u64) -> Self {
+        assert!(d > 0, "a divisor of zero");
+        Self { d, m: u64::MAX / d }
+    }
+
+    #[inline]
+    pub(crate) fn div_rem(&self, n: u64) -> (u64, u64) {
+        let mut q = ((u128::from(n) * u128::from(self.m)) >> 64) as u64;
+        let mut r = n - q * self.d;
+        while r >= self.d {
+            q += 1;
+            r -= self.d;
+        }
+        (q, r)
+    }
+
+    /// `n / d` rounded to nearest, ties up: `Fixed`'s division of two non-negative values
+    /// (`n` the dividend's raw times the scale).
+    #[inline]
+    pub(crate) fn div_round(&self, n: u64) -> u64 {
+        let (q, r) = self.div_rem(n);
+        if r * 2 >= self.d { q + 1 } else { q }
+    }
+}
+
+/// Every value of `row` (non-negative) divided by `top` (positive), as `Fixed`'s `/` would.
+pub(crate) fn scale_to(row: &mut [Fixed], top: Fixed) {
+    let d = Divisor::new(top.raw() as u64);
+    for v in row.iter_mut() {
+        match v.raw().checked_mul(Fixed::SCALE) {
+            Some(n) if n >= 0 => *v = Fixed::from_raw(d.div_round(n as u64) as i64),
+            _ => *v /= top,
+        }
+    }
+}
+
 /// `total` split by `weights` exactly into `out` (`rest` is scratch): the floor of each share in
 /// raw units, and the units left to the largest remainders (ties to the lower index), so the
 /// parts add up to `total` to the last unit and never past it. Fewer units are left than there
@@ -426,15 +472,18 @@ fn split_exact_into(
     // Most products fit in 64 bits: divide there, in hardware, instead of in the 128-bit
     // software routine (the same integers). A zero weight gets nothing and leaves no remainder:
     // it is never among the remainders that take a unit, so it is left out of them.
-    let small = i64::try_from(sum).ok();
+    let small = u64::try_from(sum).ok().map(Divisor::new);
     for (i, w) in weights.iter().enumerate() {
         let w = w.raw().max(0);
         if w == 0 {
             out[i] = Fixed::ZERO;
             continue;
         }
-        let (part, r) = match (small, total.raw().checked_mul(w)) {
-            (Some(d), Some(num)) => (i128::from(num / d), i128::from(num % d)),
+        let (part, r) = match (&small, total.raw().checked_mul(w)) {
+            (Some(d), Some(num)) => {
+                let (q, r) = d.div_rem(num as u64);
+                (i128::from(q), i128::from(r))
+            }
             _ => {
                 let num = t * i128::from(w);
                 (num / sum, num % sum)
@@ -1084,5 +1133,41 @@ mod tests {
         // Scarce inland transport (twice the base price) doubles the land leg and the port.
         let scarce = FreightFactors::of(&[Fixed::ZERO], &[Fixed::ONE], &[Fixed::from_int(2)]);
         assert_eq!(scarce.land[0], Fixed::from_int(2));
+    }
+}
+
+#[cfg(test)]
+mod divisor_tests {
+    use super::*;
+
+    #[test]
+    fn the_reciprocal_divides_as_the_hardware_does() {
+        let mut rng = laplace_schelling::Rng::from_seed(7);
+        for _ in 0..200_000 {
+            let d = (rng.next_u64() >> (rng.next_u64() % 64)).max(1);
+            let n = rng.next_u64() >> (rng.next_u64() % 64);
+            let div = Divisor::new(d);
+            assert_eq!(div.div_rem(n), (n / d, n % d), "{n} / {d}");
+        }
+        for d in [1u64, 2, 3, 7, 1000, u64::MAX, u64::MAX - 1] {
+            let div = Divisor::new(d);
+            for n in [0u64, 1, d - 1, d, d.saturating_add(1), u64::MAX] {
+                assert_eq!(div.div_rem(n), (n / d, n % d), "{n} / {d}");
+            }
+        }
+    }
+
+    #[test]
+    fn scaling_to_the_favourite_is_fixed_division() {
+        let mut rng = laplace_schelling::Rng::from_seed(11);
+        for _ in 0..20_000 {
+            let top = Fixed::from_raw((rng.next_u64() % 1_000_000) as i64 + 1);
+            let mut row: Vec<Fixed> = (0..8)
+                .map(|_| Fixed::from_raw((rng.next_u64() % 2_000_000) as i64))
+                .collect();
+            let want: Vec<Fixed> = row.iter().map(|v| *v / top).collect();
+            scale_to(&mut row, top);
+            assert_eq!(row, want);
+        }
     }
 }
