@@ -768,6 +768,7 @@ encomenda não corta a reposição das formações que já existem.
 | Avião | encomendado em lote, entregue em meses | comprado como o navio, em 26 semanas, mas sai da linha avião a avião | sim |
 | Depósito | o estoque paga a encomenda, mas não apressa o estaleiro | o depósito paga primeiro a parte da semana; a construção leva o mesmo tempo | sim: gasta o estoque antes de comprar |
 | Cancelar | o casco inacabado vira sucata ou estoque | o que foi construído vai ao depósito; os homens já chamados ficam | sim |
+| Dissolver e dar baixa | a divisão desmobilizada manda os homens para a reserva e as armas para o depósito; o navio sai de serviço e vai para a frota de reserva | `DisbandForces` tira elementos inteiros de uma formação: o equipamento deles vai ao depósito, e os homens de uma formação encomendada vão à reserva. A formação do exército de paz volta ao tamanho de paz no janeiro seguinte; os reservistas chamados voltam por `Mobilize` | sim: menos soldados no trabalho e menos consumo; o depósito guarda o equipamento |
 | Geração | o navio segue o projeto de quando foi lançado | a geração é a mais nova que o país sabe equipar na primeira semana paga, e fica | não |
 
 **Gradual ou por coorte.** O soldado é gradual (classe por classe), e o navio e o avião são por
@@ -783,7 +784,6 @@ alavanca das compras do Estado entrar (thread da demografia e do ensino), as enc
 ler o teto de `public::military_room(m)`, que o jogador decide, e mais nada muda aqui.
 
 **Falta no rascunho:**
-- dissolver tropas encomendadas (os homens voltam à reserva) e baixar navios;
 - a tela (lista de encomendas na aba Forças, com a encomenda e o cancelamento) e o teste de
   comandos do jogador;
 - a rodada de 101 anos com encomendas de teste e a CPU.

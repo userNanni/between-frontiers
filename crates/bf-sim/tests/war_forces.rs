@@ -189,6 +189,91 @@ fn the_forces_ship_on_and_switch_off() {
     assert!(d.rules().war.is_none());
 }
 
+/// Slice A2: a raised division disbanded sends its men to the reserve and its rifles to the
+/// depot; destroyers paid off leave service and leave their equipment in store.
+#[test]
+fn disbanded_forces_go_home_and_their_equipment_to_the_depot() {
+    use laplace_schelling::Fixed;
+    let d = data();
+    let mil = &d.war.as_ref().unwrap().military;
+    let mut s = Session::new(
+        d.new_world(),
+        1925,
+        Date::new(1925, 1, 1),
+        2,
+        Some(d.rules()),
+    );
+    s.sim.run_until(Date::new(1926, 1, 12));
+    s.submit(GameCommand::OrderForces {
+        tag: "GBR".into(),
+        unit: "infantry".into(),
+        elements: 12,
+        colonial: false,
+    });
+    s.sim.run_until(Date::new(1926, 6, 1));
+    let gbr = index(s.world(), "GBR");
+    let value = |s: &Session| mil.value_lots(&s.world().war.countries[gbr].depot);
+    let raised = s.world().war.countries[gbr]
+        .formations
+        .iter()
+        .position(|f| f.raised)
+        .expect("the order raised its men");
+    let (reserve, depot) = (s.world().war.countries[gbr].reserve, value(&s));
+    let preview = bf_sim::war::disband_preview(&s.world().war.countries[gbr], raised, 12);
+    assert!(
+        !preview.is_empty(),
+        "the screen sees what goes to the depot"
+    );
+    s.submit(GameCommand::DisbandForces {
+        tag: "GBR".into(),
+        formation: raised as u32,
+        elements: 12,
+    });
+    s.sim.step();
+    let c = &s.world().war.countries[gbr];
+    assert!(
+        c.formations.iter().all(|f| !f.raised),
+        "the raised formation is gone"
+    );
+    assert!(
+        c.reserve >= reserve + 12_000 - 1,
+        "{} → {}",
+        reserve,
+        c.reserve
+    );
+    assert!(value(&s) > depot, "its equipment is in store");
+    // What the preview showed went in, less the week's wear of the depot.
+    assert!(
+        value(&s)
+            >= depot + mil.value_lots(&preview) * laplace_schelling::Fixed::from_ratio(99, 100)
+    );
+    // Ships: two destroyers paid off.
+    let destroyer = mil.unit("destroyer").unwrap();
+    let (i, before) = c
+        .formations
+        .iter()
+        .enumerate()
+        .find(|(_, f)| f.unit == destroyer)
+        .map(|(i, f)| (i, f.elements))
+        .unwrap();
+    s.submit(GameCommand::DisbandForces {
+        tag: "GBR".into(),
+        formation: i as u32,
+        elements: 2,
+    });
+    s.sim.step();
+    let after: Fixed = s.world().war.countries[gbr]
+        .formations
+        .iter()
+        .filter(|f| f.unit == destroyer)
+        .map(|f| f.elements)
+        .sum();
+    assert!(
+        after <= before - Fixed::from_int(2),
+        "{before:?} → {after:?}"
+    );
+}
+
 #[test]
 fn the_whole_military_budget_is_spent() {
     let d = data();
