@@ -24,6 +24,7 @@ pub mod nuclear;
 pub mod state;
 pub mod system;
 pub mod terrain;
+pub mod third;
 pub mod view;
 
 use std::path::Path;

@@ -828,6 +828,28 @@ Na declaração, para cada terceiro, a regra lê o feixe que ele tem com cada la
 
 A tela da crise mostra, antes de declarar, quem entraria e por qual cláusula.
 
+**No tick (W4, com `treaties_in_force`, `forces` e `crisis` ligadas).** Na declaração,
+`war::third::on_declaration` lê `TreatyState::duties(quem declarou, quem recebeu)` (contrato do
+#181, por sigla):
+- **defesa ou garantia de fronteira** chama o terceiro para o lado atacado; **ofensiva** com as
+  partes nomeadas chama para o lado de quem declarou. Chamado para os dois lados, o terceiro
+  atende só à defesa: a defesa vem antes da ofensiva;
+- **neutralidade** com um lado impede de entrar contra ele (a chamada nem é feita);
+- **não agressão** do próprio agressor é quebrada no ato: `record_breach(..., Attacked { war })`;
+- a cláusula **suspensa** (o parceiro quebrou o acordo antes, `suspended`) não chama nem custa;
+- a **IA** chamada entra na hora e chama a reserva (a escolha dela é da fase 6);
+- o **jogador** recebe uma chamada (`Conflicts::calls`) com `call_weeks` semanas (2) para
+  `AnswerCall { honour }`. Honrar entra na guerra; não honrar grava a quebra
+  (`record_breach(..., CallUnanswered { war })`), cujo valor é o custo de um ano das forças dele
+  aos preços da semana: a ajuda que ele deixou de dar. O prazo vencido honra
+  (`lapsed_call_honours`, recomendação P2, que espera o dono).
+
+A tela lê `war::third::who_would_join(world, quem declara, quem recebe)`, a mesma conta, linha a
+linha: quem, por qual acordo e cláusula, de que lado, e se está suspenso ou barrado.
+
+O motivo da crise (`Crisis::casus_belli`) passou a ser a causa registrada pelos tratados contra o
+alvo (`TreatyState::cause`), a do registro de quebras.
+
 | Caso | Como foi | Como o jogo lê | Teste |
 |---|---|---|---|
 | Itália, 1914 | A Tríplice Aliança (1882) era defensiva. A Itália declarou neutralidade e tratou a Áustria-Hungria como agressora: não houve *casus foederis* | só defesa com a Áustria, e a Áustria declarou: a Itália não é obrigada | `a_defence_pact_does_not_bind_when_the_ally_attacks` |
