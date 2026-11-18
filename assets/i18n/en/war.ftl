@@ -148,3 +148,69 @@ orders-confirm-no = Back
 orders-place = Order
 
 orders-yearly-parts = A year: { $pay } of pay and { $upkeep } of upkeep and wear; it stays as long as the force does.
+
+## The war on land (slice C): the war window
+cmd-window-war = War
+war-title = War
+war-off = The war on land is off in this game.
+war-none = The country is not at war.
+war-sides = { $ours } against { $theirs }
+war-since-declared = Declared on { $date }, { $count ->
+    [one] { $weeks } week
+   *[other] { $weeks } weeks
+} ago.
+war-since-declared-on = Declared on us on { $date }, { $count ->
+    [one] { $weeks } week
+   *[other] { $weeks } weeks
+} ago.
+war-at-stake = At stake
+war-support = Support for the war
+war-support-soon = Each side's support decides peace and surrender; its value, what moves it and the revolution come with the next part of the simulation.
+war-occupation = Occupation
+war-taken = Held by us:
+war-lost = Ours, held by them:
+war-states-none = none
+war-occupation-soon = What occupied land pays, the devastation and the garrison come with the next part of the simulation.
+war-fronts = Fronts
+war-fronts-basis = One front per enemy country, read from the last week of combat: segments, forces, losses and advance.
+war-front = Front with { $country }
+war-posture = Posture:
+war-hold = Hold
+war-attack = Attack
+war-hold-note = Holding: the troops defend and fight only if the enemy attacks.
+war-attack-note = Attacking: the troops advance on every segment, with losses on both sides.
+war-front-none = No land border with this enemy this week.
+war-both = { $ours } us · { $theirs } them
+war-men = Men at the front
+war-power = Firepower
+war-week-losses = Losses this week
+war-advance = Advance this week
+war-enemy-losses = Enemy losses since the start
+war-our-losses = Our land losses since the start
+war-km-gained = gained { $km } km
+war-km-lost = lost { $km } km
+war-km-none = still
+war-segments-show = Show { $count ->
+    [one] { $n } segment
+   *[other] { $n } segments
+}
+war-segments-hide = Hide { $count ->
+    [one] { $n } segment
+   *[other] { $n } segments
+}
+war-segment = { $ours } – { $theirs }
+war-quiet = no fighting
+war-segment-line = Power { $ours } us, { $theirs } them · losses { $lost } us, { $killed } them · { $advance }
+war-terms-ours = Our terms:
+war-terms-theirs = Their terms:
+war-term = { $term }: { $value }
+war-term-number = Number (thousands of men)
+war-term-equipment = Equipment
+war-term-training = Training
+war-term-supply = Supply
+war-term-terrain = Terrain
+war-term-air = Air
+war-into-theirs = We advanced { $share } into their state; at 100 % it passes to us.
+war-into-ours = They advanced { $share } into our state; at 100 % it passes to them.
+war-peace = Propose peace to { $country }…
+war-peace-note = Peace is an agreement at the negotiation table, in the Agendas; signed between the leaders, the war ends and the occupation between them ends.

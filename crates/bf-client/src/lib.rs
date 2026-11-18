@@ -26,6 +26,7 @@ pub mod sim;
 pub mod text;
 pub mod treaty_view;
 pub mod ui_scale;
+pub mod war_view;
 pub mod works_view;
 pub mod world;
 
