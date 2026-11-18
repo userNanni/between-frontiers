@@ -2787,3 +2787,66 @@ fn influence_and_bloc_lenses() {
     }
     let _ = std::fs::remove_dir_all(&user);
 }
+
+/// The budget levers (D1, D2, D4, D5) in the budget tab: Britain in 1925 with the payroll and
+/// the deficit cap fixed, public pay and the treasury on the historical rule. Portuguese at
+/// 1600 × 900, English at 1280 × 720.
+#[test]
+#[ignore = "needs a GPU (or software Vulkan) and the generated map; run with --ignored"]
+fn budget_levers() {
+    use bf_sim::game::GameCommand;
+    use laplace_schelling::calendar::Date;
+    let user = std::env::temp_dir().join(format!("bf-shots-levers-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&user);
+    let mut session = advanced_session_of("GBR", Date::new(1925, 2, 1));
+    session.submit(GameCommand::SetPayroll {
+        tag: "GBR".into(),
+        per_mille: Some([10, 5]),
+    });
+    session.submit(GameCommand::SetDeficitCap {
+        tag: "GBR".into(),
+        per_mille_gdp: Some(30),
+    });
+    while session.clock().date < Date::new(1925, 3, 2) {
+        session.sim.step();
+    }
+    let save = write_campaign(&user, &session, "Alavancas", "GBR", &[]);
+    for (locale, size, tag) in [
+        ("pt-BR", egui::vec2(1600.0, 900.0), "pt"),
+        ("en", egui::vec2(1280.0, 720.0), "en-1280"),
+    ] {
+        let en = locale == "en";
+        let mut h = harness_sized(user.join(tag), locale, size);
+        let ctx = h.ctx.clone();
+        h.state_mut().apply(Transition::Game(save.clone()), &ctx);
+        h.run_steps(4);
+        h.key_press(egui::Key::G);
+        h.run_steps(4);
+        h.get_by_label(if en { "Budget" } else { "Orçamento" })
+            .click();
+        h.run_steps(4);
+        let heading = if en {
+            "Payroll and treasury"
+        } else {
+            "Folha e Tesouro"
+        };
+        h.get_by_label(heading).scroll_to_me();
+        h.run_steps(4);
+        shot(&mut h, &format!("160-levers-{tag}"));
+        // The treasury fixed: its reserve and the use of the excess show.
+        let treasury = if en {
+            "Treasury reserve"
+        } else {
+            "Reserva do Tesouro"
+        };
+        h.get_by_label(treasury).scroll_to_me();
+        h.run_steps(4);
+        let fixed = if en { "Fixed" } else { "Fixado" };
+        if let Some(b) = h.query_all(egui_kittest::kittest::by().label(fixed)).nth(2) {
+            b.click();
+        }
+        h.run_steps(4);
+        shot(&mut h, &format!("161-levers-treasury-{tag}"));
+    }
+    let _ = std::fs::remove_dir_all(&user);
+}

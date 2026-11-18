@@ -74,6 +74,26 @@ const PLAYER: &[Surface] = &[
         files: &["screens/game.rs", "screens/journal.rs"],
     },
     Surface {
+        variant: "SetPayroll",
+        command: id::TAB_BUDGET,
+        files: &["screens/levers.rs"],
+    },
+    Surface {
+        variant: "SetPublicPay",
+        command: id::TAB_BUDGET,
+        files: &["screens/levers.rs"],
+    },
+    Surface {
+        variant: "SetTreasury",
+        command: id::TAB_BUDGET,
+        files: &["screens/levers.rs"],
+    },
+    Surface {
+        variant: "SetDeficitCap",
+        command: id::TAB_BUDGET,
+        files: &["screens/levers.rs"],
+    },
+    Surface {
         variant: "Mobilize",
         command: id::JOURNAL,
         files: &["screens/game.rs", "screens/journal.rs"],
@@ -81,28 +101,10 @@ const PLAYER: &[Surface] = &[
 ];
 
 /// Variants the player does not give from a screen with a key, and why.
-const EXCEPTIONS: &[(&str, &str)] = &[
-    (
-        "Borders",
-        "issued by treaties, peace, tests and tools; the player frees its land with Liberate",
-    ),
-    (
-        "SetPayroll",
-        "the budget levers' first slice (docs/state.pt-BR.md, D1, D2, D4, D5): the screen comes from the client thread on econ::levers::view",
-    ),
-    (
-        "SetPublicPay",
-        "the budget levers' first slice (docs/state.pt-BR.md, D1, D2, D4, D5): the screen comes from the client thread on econ::levers::view",
-    ),
-    (
-        "SetTreasury",
-        "the budget levers' first slice (docs/state.pt-BR.md, D1, D2, D4, D5): the screen comes from the client thread on econ::levers::view",
-    ),
-    (
-        "SetDeficitCap",
-        "the budget levers' first slice (docs/state.pt-BR.md, D1, D2, D4, D5): the screen comes from the client thread on econ::levers::view",
-    ),
-];
+const EXCEPTIONS: &[(&str, &str)] = &[(
+    "Borders",
+    "issued by treaties, peace, tests and tools; the player frees its land with Liberate",
+)];
 
 fn variants() -> BTreeSet<String> {
     let mut tracer = Tracer::new(TracerConfig::default());

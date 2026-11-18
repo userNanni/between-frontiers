@@ -28,6 +28,8 @@ pub struct GovernmentView {
     /// Date the view was read on.
     pub date: Date,
     pub budget: Budget,
+    /// The budget levers (D1, D2, D4, D5): what the rule gives, what is fixed, the limits.
+    pub levers: Option<bf_sim::econ::levers::LeversView>,
     pub money: Money,
     pub laws: Laws,
     /// Cash in the treasury (negative: bills nobody would lend for).
@@ -190,6 +192,7 @@ pub fn read(
         },
         research_state_share: research
             .map_or(0.0, |g| f(m.laws.effects[0].public_share(usize::from(g)))),
+        levers: Some(bf_sim::econ::levers::view(m)),
         campaign: education.and_then(|(rules, price)| {
             bf_sim::demography::education::campaign_outlook(world, rules, price, ci)
         }),
@@ -235,6 +238,7 @@ mod tests {
             research: [0.0; 2],
             research_state_share: 0.0,
             campaign: None,
+            levers: None,
         }
     }
 

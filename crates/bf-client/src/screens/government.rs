@@ -70,6 +70,8 @@ pub struct Drafts {
     /// The player is at the confirmation step of starting or stopping the literacy campaign.
     /// Survives the ticks: a confirmation is not a draft.
     pub campaign_confirm: bool,
+    /// The budget levers as the player set them this tick (shown before the tick applies them).
+    pub levers: Option<bf_sim::econ::levers::Levers>,
 }
 
 impl Drafts {
