@@ -811,6 +811,9 @@ pub struct Switches {
     /// funds build abroad with what they have left at home; the stakes and the weekly
     /// remittance follow from what they build.
     pub foreign_flow: bool,
+    /// Technique through the foreign plant (`docs/foreign-capital.pt-BR.md`, C5): imitation and
+    /// diffusion of a technology run faster where foreign owners hold the levels it serves.
+    pub foreign_technique: bool,
     /// Independence by movement (`borders::independence`, docs/borders.pt-BR.md section 11):
     /// colonial units demand, the metropole answers by account, a refusal can end in revolt.
     pub independence: bool,
@@ -850,6 +853,7 @@ impl Switches {
         "forces",
         "foreign_contract",
         "foreign_flow",
+        "foreign_technique",
         "independence",
         "influence_ties",
         "jobs_follow_use",
@@ -868,6 +872,7 @@ impl Switches {
             "forces" => self.forces = true,
             "foreign_contract" => self.foreign_contract = true,
             "foreign_flow" => self.foreign_flow = true,
+            "foreign_technique" => self.foreign_technique = true,
             "independence" => self.independence = true,
             "influence_ties" => self.influence_ties = true,
             "jobs_follow_use" => self.jobs_follow_use = true,
@@ -964,6 +969,7 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
                 cat: Arc::clone(&cat),
                 tree: Arc::clone(tree),
                 wage_floor: switches.small_market_wage_floor,
+                foreign_technique: switches.foreign_technique,
             });
         }
         let borders = borders.map(|b| {

@@ -55,6 +55,69 @@ pub struct Research {
     pub tree: Arc<TechTree>,
     /// `game::Switches::small_market_wage_floor`.
     pub wage_floor: bool,
+    /// `game::Switches::foreign_technique`: foreign plants speed up imitation and diffusion.
+    pub foreign_technique: bool,
+}
+
+/// Share of the levels of the buildings each technology serves (`Tech::methods`) that foreign
+/// owners hold in each country, `[country][tech]` (`docs/foreign-capital.pt-BR.md`, C5): the
+/// plant a foreigner built brings its technique, its engineers and its suppliers, and what it
+/// shows is copied around it. A stake counts the share the contract has not passed to the local
+/// partner. `None` where no plant is foreign.
+fn foreign_shares(
+    world: &GameWorld,
+    tree: &TechTree,
+    n: usize,
+    nk: usize,
+    year: i32,
+) -> Option<Vec<Vec<Fixed>>> {
+    if world.foreign.stakes.is_empty() {
+        return None;
+    }
+    let econ = &world.econ;
+    let mut levels = vec![vec![0i64; nk]; n];
+    for r in &econ.regions {
+        let c = usize::from(r.market);
+        if c >= n {
+            continue;
+        }
+        for p in &r.plants {
+            if let Some(l) = levels[c].get_mut(usize::from(p.kind)) {
+                *l += p.levels.max(0);
+            }
+        }
+    }
+    let mut foreign = vec![vec![Fixed::ZERO; nk]; n];
+    for s in world.foreign.stakes() {
+        let c = usize::from(econ.regions[s.region as usize].market);
+        if c < n && usize::from(s.kind) < nk {
+            foreign[c][usize::from(s.kind)] += s.foreign_share(year) * s.levels;
+        }
+    }
+    let shares = (0..n)
+        .map(|c| {
+            tree.techs
+                .iter()
+                .map(|t| {
+                    let mut kinds: Vec<usize> =
+                        t.methods.iter().map(|(b, _)| usize::from(*b)).collect();
+                    kinds.sort_unstable();
+                    kinds.dedup();
+                    let all: i64 = kinds.iter().filter_map(|&k| levels[c].get(k)).sum();
+                    if all <= 0 {
+                        return Fixed::ZERO;
+                    }
+                    let own: Fixed = kinds
+                        .iter()
+                        .filter_map(|&k| foreign[c].get(k))
+                        .copied()
+                        .sum();
+                    (own / all).clamp(Fixed::ZERO, Fixed::ONE)
+                })
+                .collect()
+        })
+        .collect();
+    Some(shares)
 }
 
 pub struct ResearchChanges {
@@ -242,6 +305,20 @@ impl System<GameWorld> for Research {
                 * ahead(year, tech.demonstrated - 3)
         };
 
+        let foreign = if self.foreign_technique {
+            foreign_shares(world, tree, n, cat.buildings.len(), year)
+        } else {
+            None
+        };
+        // How much faster a technology spreads in country `c` for its foreign plants (C5); one
+        // where none is foreign. The law's transfer to a local partner waits for the contract
+        // terms in the laws.
+        let spread = |c: usize, t: usize| -> Fixed {
+            foreign.as_ref().map_or(Fixed::ONE, |f| {
+                crate::foreign_capital::transfer_rate(f[c][t], Fixed::ZERO)
+            })
+        };
+
         for c in 0..n {
             let f = &facts[c];
             let boost = Fixed::ONE + state.effects[c][3] * 2;
@@ -338,7 +415,8 @@ impl System<GameWorld> for Research {
             for t in 0..nt {
                 if stages[t] < Stage::Industrial && industrial[t] > Fixed::ZERO {
                     state.progress[c][t] += (milli(300) + f.literacy) * industrial[t] * channel
-                        / (IMITATION_YEARS * 12);
+                        / (IMITATION_YEARS * 12)
+                        * spread(c, t);
                 }
             }
 
@@ -346,7 +424,8 @@ impl System<GameWorld> for Research {
             for t in 0..nt {
                 if stages[t] == Stage::Industrial {
                     state.progress[c][t] += (milli(500) + f.literacy) * (Fixed::ONE + diffused[t])
-                        / (DIFFUSION_YEARS * 12);
+                        / (DIFFUSION_YEARS * 12)
+                        * spread(c, t);
                 }
             }
 

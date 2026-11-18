@@ -112,6 +112,10 @@ fn a_fixed_order_moves_the_public_works_and_leaves_the_private_ones() {
             .iter()
             .all(|l| l.weeks >= 1 && (0.0..=1.0).contains(&l.progress))
     );
+    assert!(lines.iter().all(|l| l.weeks_full >= 1
+        && l.weeks_full <= l.weeks
+        && (0.0..=1.0).contains(&l.met)
+        && (0.0..=1.0).contains(&l.pace)));
 }
 
 #[test]

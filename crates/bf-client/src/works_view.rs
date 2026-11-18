@@ -23,7 +23,13 @@ pub struct WorkRow {
     pub category: Option<usize>,
     pub progress: f64,
     pub weeks: i64,
+    /// Weeks left once the bottleneck clears, at the full weekly share.
+    pub weeks_full: i64,
     pub bottleneck: Bottleneck,
+    /// How tight the bottleneck is, 0–1 (`WorkLine::met`).
+    pub met: f64,
+    /// With `Cash`: what the treasury lacks to pay in full again, real dollars.
+    pub short: Option<f64>,
     /// Placed by the government's order rather than by arrival.
     pub fixed: bool,
 }
@@ -88,7 +94,10 @@ pub fn read(
             category: w.category,
             progress: w.progress,
             weeks: w.weeks,
+            weeks_full: w.weeks_full,
             bottleneck: w.bottleneck,
+            met: w.met,
+            short: w.short,
             fixed: w.fixed,
         })
         .collect();
