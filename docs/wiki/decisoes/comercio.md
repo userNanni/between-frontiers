@@ -94,6 +94,26 @@ preferência, e o valor comerciado por par fica gravado.
   `TradeState::exports`); o canal liga no tick da influência; ver
   [Diplomacia e influência](diplomacia-e-influencia.md#canais-que-ainda-não-existem-ficam-dormentes).
 
+### O fechamento é por bem, não por grupo de bens, e custa ~9 % da simulação
+
+- **Decisão:** o comércio por par fecha cada bem com o seu parceiro, não os grupos de bens
+  (indústria pesada, alimentos...) em valor. O custo aceito é de ~9 % da CPU da simulação, contra o
+  orçamento de 5 % para sistema novo.
+- **O que o autor pensou:** escolheu a opção A da decisão T1 (2026-11-18), o fechamento por bem a
+  ~9 %, contra a opção B, por grupo, que cabia nos 5 %.
+- **Como o jogo funciona por causa disso:** influência, embargo e tarifa leem o par por bem: dá
+  para saber de quem um país compra aço e de quem compra carvão, e cortar um sem cortar o outro.
+- **O que foi medido:** fechando por grupo, o código do comércio caía de 9,1–9,4 % para 5,2–5,3 %
+  da simulação. Mas o PIB mundial ficava de 5 a 8 % abaixo da faixa de reembaralhamento de 1945 em
+  diante, de −4 a −9 σ, porque a fração do grupo aplicada a cada bem troca menos que o fechamento
+  do próprio bem. Por bem, PIB e população ficam dentro da faixa. O custo está na aritmética por
+  par, uns 300 mil pares por semana; os cortes que não mudam o resultado tiraram pouco (#201,
+  #204).
+- **Estado:** no jogo, ligado (`data/rules.ron`, `trade_by_pair: true`). O fechamento dos bens em
+  paralelo entre os núcleos, que não muda o resultado nem a CPU mas baixa a espera do jogador,
+  fica para a próxima rodada de performance.
+- **Onde está o detalhe:** `trade.pt-BR.md`, seção 8a.
+
 ## Fontes
 
 - Gallaway, M. P.; McDaniel, C. A.; Rivera, S. A. "Short-run and long-run industry-level estimates of

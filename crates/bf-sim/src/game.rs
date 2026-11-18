@@ -966,7 +966,7 @@ impl Switches {
     /// Rules switched on in `data/rules.ron` by a PR of their own, judged by the world's
     /// aggregates against the reshuffle band of main (`docs/wiki/principios.md`); every other
     /// rule ships off.
-    pub const SHIPPED_ON: &'static [&'static str] = &["forces"];
+    pub const SHIPPED_ON: &'static [&'static str] = &["forces", "trade_by_pair"];
 
     /// The switches `data/rules.ron` ships with: [`Self::SHIPPED_ON`] on, the rest off.
     pub fn shipped() -> Self {

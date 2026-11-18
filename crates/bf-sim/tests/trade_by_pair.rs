@@ -1,6 +1,6 @@
-//! Trade by pair behind its switch (`game::Switches::trade_by_pair`, docs/trade.pt-BR.md): off,
-//! the trade state stays empty and the world keeps the hash of the world pool; on, a short run
-//! fills it, so the path switched on keeps compiling and running in the main.
+//! Trade by pair behind its switch (`game::Switches::trade_by_pair`, docs/trade.pt-BR.md), on as
+//! shipped: off, the trade state stays empty and the world keeps the hash of the world pool, so
+//! the old path keeps compiling and running; on, a short run fills it.
 
 use std::path::PathBuf;
 use std::sync::OnceLock;
@@ -25,12 +25,17 @@ fn run(switches: Switches) -> Session {
 }
 
 #[test]
-fn off_by_default_the_trade_state_stays_empty() {
-    let rules = data().rules();
-    assert_eq!(rules.switches, Switches::shipped());
-    assert!(!rules.switches.trade_by_pair, "trade by pair ships off");
+fn on_as_shipped_and_off_the_trade_state_stays_empty() {
+    let shipped = data().rules();
+    assert_eq!(shipped.switches, Switches::shipped());
+    assert!(shipped.switches.trade_by_pair, "trade by pair ships on");
     assert!(
-        rules.trade.is_none(),
+        shipped.trade.is_some(),
+        "switched on, the distances are built"
+    );
+    let off = data().rules_with(Switches::default());
+    assert!(
+        off.trade.is_none(),
         "switched off, the distances are not built"
     );
     let s = run(Switches::default());

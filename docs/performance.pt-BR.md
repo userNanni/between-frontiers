@@ -121,6 +121,11 @@ diga no PR quanto o `economy-week` subiu, em 10 anos e nos últimos anos do séc
      mesmo laço que escreve, não zerar o que não se usou e não somar coluna de matriz por linha. A
      divisão de 128 bits e os pesos zero não eram o custo. Meça com relógio por trecho antes de
      otimizar: com a máquina carregada, o amostrador de pilha pega poucas amostras.
+   - Próxima rodada: fechar os bens do comércio por par em paralelo entre os núcleos. Cada bem só
+     lê o que nenhum outro bem escreve na semana, e a junção dos valores por par, em série na
+     ordem dos bens, mantém o hash com qualquer número de threads. Não baixa a CPU (o comércio
+     fica em ~9 % da simulação, decisão T1), mas baixa a espera do jogador: é o maior trecho serial
+     do semanal.
 7. **Lista que só cresce percorrida no tick.** Histórico, coorte por ano de construção, fila nunca
    podada: o custo por ano não pode crescer com o tempo de jogo. Funda, pode ou indexe.
    - Vale também para o que o jogador faz crescer, como a fila de encomendas e os pedidos: ponha
