@@ -37,6 +37,8 @@ pub struct Window {
     pub crisis: super::crisis::CrisisUi,
     /// A call's choice waiting for its confirmation.
     pub call: super::crisis::CallUi,
+    /// The negotiation table: the draft, a counter, an answer waiting for its confirmation.
+    pub table: super::treaty_table::TableUi,
 }
 
 /// The id the decision "Libertar território" takes in `Window::picked`.
@@ -49,6 +51,10 @@ pub const CRISIS_DEMAND: &str = "decision:exigency";
 pub const CRISIS: &str = "crisis:";
 /// The prefix of a call to honour an agreement in `Window::picked`, before the war's id.
 pub const CALL: &str = "call:";
+/// The id the negotiation table takes in `Window::picked`.
+pub const TABLE: &str = "decision:treaty";
+/// The prefix of a proposal received in `Window::picked`, before its id.
+pub const RECEIVED: &str = "proposal:";
 
 /// The decision to free land: the option picked (index into the view's options), independent
 /// or subject, and whether the player is at the confirmation step.
@@ -83,6 +89,20 @@ pub struct Response {
     pub call_answer: Option<(u32, bool)>,
     /// The demand being drafted, to weigh (`None` off the demand screen).
     pub draft: Option<(String, bf_sim::treaty::Proposal)>,
+    /// The player proposed an agreement, or answered a proposal received.
+    pub treaty: Option<super::treaty_table::Sent>,
+    /// The proposal on the negotiation table, to weigh (`None` off the table).
+    pub treaty_draft: Option<(String, bf_sim::treaty::Proposal)>,
+}
+
+/// What the journal shows of the negotiation table.
+#[derive(Clone, Copy, Default)]
+pub struct TableInput<'a> {
+    /// `None` with the `negotiation` rule off.
+    pub view: Option<&'a crate::treaty_view::TableView>,
+    pub draft: Option<&'a crate::treaty_view::Weighed>,
+    pub catalogue: Option<&'a bf_sim::treaty::ClauseCatalogue>,
+    pub today: Option<laplace_schelling::calendar::Date>,
 }
 
 /// What the journal shows of crises: the player's, the draft's weighing, and the country picked
@@ -278,6 +298,7 @@ pub fn show(
     liberation: Option<&crate::sim::LiberationView>,
     demands: Option<&crate::demands_view::DemandsView>,
     crises: CrisisInput<'_>,
+    table: TableInput<'_>,
     pinned: &[String],
     window: &mut Window,
     place: &mut crate::hud::WindowPlace,
@@ -339,6 +360,60 @@ pub fn show(
                     ui.set_max_width(ui.available_width() - space::LG);
                     super::demand::show(ui, i18n, world, &all.tags, d, &mut window.demand, &mut out)
                 });
+            return;
+        }
+        // The negotiation table and a proposal received take the whole window too.
+        let picked_received = window
+            .picked
+            .as_deref()
+            .and_then(|p| p.strip_prefix(RECEIVED))
+            .and_then(|id| id.parse::<u32>().ok())
+            .and_then(|id| table.view?.incoming.iter().find(|l| l.id == id));
+        let on_table = window.picked.as_deref() == Some(TABLE) || window.table.counter.is_some();
+        if let Some(view) = table.view.filter(|_| on_table || picked_received.is_some()) {
+            let back = Button::ghost(&format!("←  {}", i18n.tr("journal-agendas")))
+                .size(ButtonSize::Small)
+                .show(ui);
+            if back.clicked() || keys::single(ui, "journal.decision.back", 'B', back.rect) {
+                window.picked = None;
+                window.table = Default::default();
+                return;
+            }
+            egui::ScrollArea::vertical()
+                .id_salt("treaty-table")
+                .auto_shrink([false, false])
+                .show(ui, |ui| {
+                    ui.set_max_width(ui.available_width() - space::LG);
+                    if on_table {
+                        if let Some(me) = crises.me {
+                            out.treaty_draft = super::treaty_table::show_table(
+                                ui,
+                                i18n,
+                                world,
+                                table.catalogue,
+                                me,
+                                crises.target,
+                                view,
+                                table.draft,
+                                &mut window.table,
+                                &mut out,
+                            );
+                        }
+                    } else if let Some(l) = picked_received {
+                        super::treaty_table::show_received(
+                            ui,
+                            i18n,
+                            world,
+                            l,
+                            &mut window.table,
+                            &mut out,
+                        );
+                    }
+                });
+            // An answer sent, or a counter dropped, goes back to the agendas.
+            if out.treaty.is_some() {
+                window.picked = None;
+            }
             return;
         }
         // The decision to demand of another country, and a crisis, take the whole window too.
@@ -428,6 +503,61 @@ pub fn show(
                 {
                     window.picked = Some(format!("{DEMAND}{}", d.view.unit));
                     window.demand = Default::default();
+                }
+            }
+            // With the negotiation rule on: propose an agreement to the country picked on the map,
+            // the proposals received and the player's own.
+            if let Some(v) = table.view {
+                let label = match crises.target.filter(|t| Some(*t) != crises.me) {
+                    Some(t) => i18n.tr_args(
+                        "table-propose-to",
+                        &[
+                            (
+                                "country",
+                                I18nArg::String(crate::text::country_name(i18n, t)),
+                            ),
+                            (
+                                "article",
+                                I18nArg::String(crate::text::country_article(i18n, t)),
+                            ),
+                        ],
+                    ),
+                    None => i18n.tr("table-title"),
+                };
+                let b = Button::secondary(&label).size(ButtonSize::Small).show(ui);
+                if b.clicked() || keys::single(ui, "journal.decision.treaty", 'T', b.rect) {
+                    window.picked = Some(TABLE.to_owned());
+                    window.table.counter = None;
+                }
+                for (k, l) in v.incoming.iter().enumerate() {
+                    let label = table.today.map_or_else(String::new, |d| {
+                        super::treaty_table::received_label(i18n, l, d)
+                    });
+                    let b = Button::danger(&label).size(ButtonSize::Small).show(ui);
+                    if b.clicked()
+                        || keys::item(
+                            ui,
+                            'P',
+                            format!("journal.proposal.{}", l.id),
+                            &(k + 1).to_string(),
+                            b.rect,
+                        )
+                    {
+                        window.picked = Some(format!("{RECEIVED}{}", l.id));
+                        window.table = Default::default();
+                    }
+                }
+                if !v.outgoing.is_empty() || !v.closed.is_empty() {
+                    bf_ui_kit::gap(ui, space::SM);
+                    bf_ui_kit::caption(ui, &i18n.tr("table-section"));
+                    for l in &v.outgoing {
+                        bf_ui_kit::small(ui, &super::treaty_table::outgoing_label(i18n, l));
+                    }
+                    if let Some(me) = crises.me {
+                        for c in &v.closed {
+                            bf_ui_kit::small(ui, &super::treaty_table::closed_label(i18n, me, c));
+                        }
+                    }
                 }
             }
             // With the crisis rule on: demand of the country picked on the map, and the crises

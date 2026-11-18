@@ -57,6 +57,8 @@ pub struct State {
     lens_focus: Option<String>,
     /// The demand draft last sent to be weighed.
     crisis_draft: Option<(String, bf_sim::treaty::Proposal)>,
+    /// The proposal on the negotiation table, as last sent to be weighed.
+    treaty_draft: Option<(String, bf_sim::treaty::Proposal)>,
     last_autosave: laplace_schelling::calendar::Date,
     /// Saves the simulation is writing while the interface keeps drawing.
     writing: Vec<Writing>,
@@ -118,6 +120,7 @@ impl State {
             diplomacy: data.diplomacy.clone().map(std::sync::Arc::new),
             focus: None,
             draft: None,
+            treaty_draft: None,
         };
         let sim = SimHandle::start(session, rules.clone(), extras, move || {
             repaint.request_repaint()
@@ -149,6 +152,7 @@ impl State {
             lens_seen: (None, None),
             lens_focus: None,
             crisis_draft: None,
+            treaty_draft: None,
         };
         if !path.is_file() {
             state.sim.save(path, state.save.meta.name.clone())?;
@@ -852,6 +856,16 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
             me: snap.player.as_deref(),
             target: target.as_deref(),
         };
+        let table = super::journal::TableInput {
+            view: snap.treaty_table.as_deref(),
+            draft: snap.treaty_draft.as_deref(),
+            catalogue: state
+                .rules
+                .treaties
+                .as_ref()
+                .and_then(|t| t.clauses.as_deref()),
+            today: Some(snap.date),
+        };
         let res = super::journal::show(
             ui,
             rect,
@@ -861,6 +875,7 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
             snap.liberation.as_deref(),
             snap.demands.as_deref(),
             crises,
+            table,
             &pinned,
             state.journal.as_mut().expect("journal open"),
             &mut journal_place,
@@ -885,6 +900,38 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
         keep_window_place(shared, "journal", journal_place, res.place_done);
         for id in res.toggle_pin {
             state.toggle_pin(shared, &id, now);
+        }
+        // The proposal on the negotiation table, too.
+        if res.treaty_draft != state.treaty_draft {
+            state.treaty_draft.clone_from(&res.treaty_draft);
+            state
+                .sim
+                .send(Command::TreatyDraft(res.treaty_draft.clone()));
+        }
+        if let (Some(sent), Some(tag)) = (res.treaty, snap.player.clone()) {
+            use super::treaty_table::Sent;
+            match sent {
+                Sent::Propose(to, proposal) => {
+                    // The other side may sign it on Monday: a point to go back to first.
+                    state.restore_point_before(shared, Reason::Treaty);
+                    state.sim.send(Command::Issue(GameCommand::ProposeTreaty {
+                        tag,
+                        to,
+                        proposal,
+                    }));
+                }
+                Sent::Answer(id, answer) => {
+                    // Accepting signs it; a counter may be accepted on Monday.
+                    if !matches!(answer, bf_sim::treaty_table::ProposalAnswer::Refuse) {
+                        state.restore_point_before(shared, Reason::Treaty);
+                    }
+                    state.sim.send(Command::Issue(GameCommand::AnswerProposal {
+                        tag,
+                        id,
+                        answer,
+                    }));
+                }
+            }
         }
         // The demand being drafted is weighed by the simulation thread.
         if res.draft != state.crisis_draft {

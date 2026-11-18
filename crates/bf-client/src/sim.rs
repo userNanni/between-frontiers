@@ -76,6 +76,11 @@ pub struct Snapshot {
     pub blocs: Option<Arc<crate::blocs_view::BlocsView>>,
     /// The player's armed forces, read once a month; `None` without forces.
     pub forces: Option<Arc<crate::forces_view::ForcesView>>,
+    /// The negotiation table of the player's country, read when the table changes and weekly;
+    /// `None` with the `negotiation` rule off.
+    pub treaty_table: Option<Arc<crate::treaty_view::TableView>>,
+    /// The proposal the player is drafting on the table, weighed.
+    pub treaty_draft: Option<Arc<crate::treaty_view::Weighed>>,
 }
 
 /// What the decision to free land shows.
@@ -151,6 +156,9 @@ pub enum Command {
     LensFocus(Option<String>),
     /// The demand the player is drafting, to be weighed (`None`: no draft).
     CrisisDraft(Option<(String, bf_sim::treaty::Proposal)>),
+    /// The proposal the player is drafting on the negotiation table, to be weighed: the other
+    /// party and the proposal (`None`: no draft).
+    TreatyDraft(Option<(String, bf_sim::treaty::Proposal)>),
     SetSpeed(u8),
     Issue(GameCommand),
     /// Writes the engine save to `path`; replies with the error text on failure.
@@ -339,6 +347,8 @@ struct Monthly {
     crises: Option<Arc<crate::crisis_view::CrisisView>>,
     crisis_draft: Option<Arc<crate::crisis_view::DraftWeighing>>,
     works: Option<Arc<crate::works_view::WorksView>>,
+    treaty_table: Option<Arc<crate::treaty_view::TableView>>,
+    treaty_draft: Option<Arc<crate::treaty_view::Weighed>>,
 }
 
 /// The player's works, read again on a new month or when the queue or its order changed.
@@ -374,6 +384,64 @@ pub struct Extras {
     pub focus: Option<String>,
     /// The demand being drafted: target and proposal.
     pub draft: Option<(String, bf_sim::treaty::Proposal)>,
+    /// The proposal being drafted on the negotiation table: the other party and the proposal.
+    pub treaty_draft: Option<(String, bf_sim::treaty::Proposal)>,
+}
+
+/// The clause catalogue of the negotiation table, with the `negotiation` rule on.
+fn table_catalogue(rules: &Rules) -> Option<&bf_sim::treaty::ClauseCatalogue> {
+    let r = rules.as_ref()?;
+    if !r.switches.negotiation {
+        return None;
+    }
+    r.treaties.as_ref()?.clauses.as_deref()
+}
+
+/// The player's negotiation table, read again when it changed or a week went by.
+fn treaty_table_of(
+    session: &Session,
+    rules: &Rules,
+    last: &Option<Arc<crate::treaty_view::TableView>>,
+) -> Option<Arc<crate::treaty_view::TableView>> {
+    let cat = table_catalogue(rules)?;
+    let date = session.clock().date;
+    match last {
+        Some(v)
+            if v.signature == crate::treaty_view::signature(session.world(), date)
+                && session.player().is_some() =>
+        {
+            Some(Arc::clone(v))
+        }
+        _ => crate::treaty_view::read(session.world(), cat, date).map(Arc::new),
+    }
+}
+
+/// The draft on the table, weighed again when the draft or the table changed.
+fn treaty_draft_of(
+    session: &Session,
+    rules: &Rules,
+    extras: &Extras,
+    table: &Option<Arc<crate::treaty_view::TableView>>,
+    last: &Monthly,
+) -> Option<Arc<crate::treaty_view::Weighed>> {
+    let (other, proposal) = extras.treaty_draft.as_ref()?;
+    let cat = table_catalogue(rules)?;
+    if let (Some(v), Some(t), Some(lt)) = (&last.treaty_draft, table, &last.treaty_table)
+        && v.other == *other
+        && v.proposal == *proposal
+        && t.signature == lt.signature
+    {
+        return Some(Arc::clone(v));
+    }
+    let me = session.player()?;
+    Some(Arc::new(crate::treaty_view::weigh(
+        session.world(),
+        cat,
+        me,
+        other,
+        proposal,
+        true,
+    )))
 }
 
 /// The player's crises, read again when the conflicts changed since `last`.
@@ -493,7 +561,10 @@ fn owners_of(
 impl Monthly {
     fn read(session: &Session, rules: &Rules, extras: &Extras, last: &Monthly) -> Self {
         let influence = influence_of(session, rules, &last.influence);
+        let treaty_table = treaty_table_of(session, rules, &last.treaty_table);
         Self {
+            treaty_draft: treaty_draft_of(session, rules, extras, &treaty_table, last),
+            treaty_table,
             lens_influence: lens_influence_of(
                 session,
                 rules,
@@ -549,6 +620,8 @@ fn snapshot_of(
         crises: monthly.crises,
         crisis_draft: monthly.crisis_draft,
         works: monthly.works,
+        treaty_table: monthly.treaty_table,
+        treaty_draft: monthly.treaty_draft,
         government: crate::government::read(
             session.world(),
             session.player(),
@@ -712,6 +785,8 @@ struct Control {
     focus: Option<String>,
     /// The demand being drafted, as the last `CrisisDraft` set it.
     draft: Option<(String, bf_sim::treaty::Proposal)>,
+    /// The proposal on the negotiation table, as the last `TreatyDraft` set it.
+    treaty_draft: Option<(String, bf_sim::treaty::Proposal)>,
 }
 
 /// Applies one command.
@@ -728,6 +803,12 @@ fn apply(session: &mut Session, ctl: &mut Control, command: Command) {
         Command::CrisisDraft(d) => {
             if ctl.draft != d {
                 ctl.draft = d;
+                ctl.changed = true;
+            }
+        }
+        Command::TreatyDraft(d) => {
+            if ctl.treaty_draft != d {
+                ctl.treaty_draft = d;
                 ctl.changed = true;
             }
         }
@@ -789,6 +870,7 @@ fn run(
         reread: false,
         focus: extras.focus.clone(),
         draft: extras.draft.clone(),
+        treaty_draft: extras.treaty_draft.clone(),
     };
     // The hash shown, and the tick it belongs to: computed only when a snapshot shows a new
     // one (on pause, and on the first of the month).
@@ -845,6 +927,7 @@ fn run(
             }
             extras.focus.clone_from(&ctl.focus);
             extras.draft.clone_from(&ctl.draft);
+            extras.treaty_draft.clone_from(&ctl.treaty_draft);
             monthly = Monthly::read(&session, &rules, &extras, &monthly);
             let snap = snapshot_of(
                 &session,

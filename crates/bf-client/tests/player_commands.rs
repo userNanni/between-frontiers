@@ -159,6 +159,16 @@ const PLAYER: &[Surface] = &[
         files: &["screens/game.rs", "screens/crisis.rs"],
     },
     Surface {
+        variant: "ProposeTreaty",
+        command: id::JOURNAL,
+        files: &["screens/game.rs", "screens/treaty_table.rs"],
+    },
+    Surface {
+        variant: "AnswerProposal",
+        command: id::JOURNAL,
+        files: &["screens/game.rs", "screens/treaty_table.rs"],
+    },
+    Surface {
         variant: "Mobilize",
         command: id::JOURNAL,
         files: &["screens/game.rs", "screens/journal.rs"],
@@ -172,16 +182,8 @@ const EXCEPTIONS: &[(&str, &str)] = &[
         "issued by treaties, peace, tests and tools; the player frees its land with Liberate",
     ),
     (
-        "ProposeTreaty",
-        "the negotiation table's screen comes in the client's PR over the treaty table (switched off)",
-    ),
-    (
-        "AnswerProposal",
-        "the negotiation table's screen comes in the client's PR over the treaty table (switched off)",
-    ),
-    (
         "Denounce",
-        "the negotiation table's screen comes in the client's PR over the treaty table (switched off)",
+        "comes with the list of the agreements in force, where the player reaches it (section 13)",
     ),
 ];
 

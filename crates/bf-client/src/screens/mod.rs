@@ -29,6 +29,7 @@ pub mod sea_lens;
 pub mod settings;
 pub mod tiles;
 pub mod top_bar;
+pub mod treaty_table;
 pub mod works;
 
 use egui::{Rect, Ui, UiBuilder};

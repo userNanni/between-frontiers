@@ -3011,6 +3011,227 @@ fn disband_forces() {
     let _ = std::fs::remove_dir_all(&user);
 }
 
+/// The negotiation table (treaties, section 13): Britain drafting a proposal to France picked
+/// on the map (a payment of its own, a tribute of France's), with each side's account and the
+/// likely answer; then a Britain whose proposal France refused and to which France proposed
+/// non-aggression for a payment: the Agendas with the proposal waiting and the refusal on the
+/// record, the proposal received with the three answers, and the counter on the table. Portuguese at 1600 × 900, English at 1280 × 720; copies in
+/// `target/screenshots/treaty-table/`.
+#[test]
+#[ignore = "needs a GPU (or software Vulkan) and the generated map; run with --ignored"]
+fn negotiation_table() {
+    use bf_sim::game::GameCommand;
+    use bf_sim::treaty::{Clause, ClauseKind, Proposal, Side};
+    use laplace_schelling::Fixed;
+    use laplace_schelling::calendar::Date;
+    // SAFETY: the screenshot tests run one at a time (`RUST_TEST_THREADS=1`).
+    unsafe { std::env::set_var("BF_RULES", "negotiation") };
+    let user = std::env::temp_dir().join(format!("bf-shots-table-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&user);
+    let switches = bf_sim::game::Switches::parse("negotiation").expect("switches");
+    let drafting = advanced_session_with("GBR", Date::new(1925, 2, 1), switches);
+    let mut countered = advanced_session_with("GBR", Date::new(1925, 2, 1), switches);
+    let gdp = |s: &bf_sim::game::Session, tag: &str| {
+        let w = s.world();
+        let i = w.countries.iter().position(|(_, c)| c.tag == tag).unwrap();
+        w.econ.markets[i].gdp_last_year
+    };
+    let clause = |kind, mine: bool| Clause {
+        kind,
+        giver: if mine { Side::Senior } else { Side::Junior },
+        receiver: if mine { Side::Junior } else { Side::Senior },
+        until: None,
+        note: None,
+    };
+    let proposal = Proposal {
+        side_a: vec!["GBR".into()],
+        side_b: vec!["FRA".into()],
+        clauses: vec![
+            clause(
+                ClauseKind::Payment {
+                    amount: gdp(&countered, "GBR") * Fixed::from_ratio(1, 100),
+                },
+                true,
+            ),
+            clause(
+                ClauseKind::Tribute {
+                    yearly: gdp(&countered, "FRA") * Fixed::from_ratio(2, 100),
+                },
+                false,
+            ),
+        ],
+        term_years: Some(10),
+        notice_years: 2,
+    };
+    // France proposes the mirror of it to Britain: non-aggression for a payment.
+    let from_france = Proposal {
+        side_a: vec!["FRA".into()],
+        side_b: vec!["GBR".into()],
+        clauses: vec![
+            clause(ClauseKind::NonAggression, true),
+            clause(
+                ClauseKind::Payment {
+                    amount: gdp(&countered, "GBR") * Fixed::from_ratio(1, 200),
+                },
+                false,
+            ),
+        ],
+        term_years: Some(20),
+        notice_years: 2,
+    };
+    countered.submit(GameCommand::ProposeTreaty {
+        tag: "GBR".into(),
+        to: "FRA".into(),
+        proposal,
+    });
+    countered.submit(GameCommand::ProposeTreaty {
+        tag: "FRA".into(),
+        to: "GBR".into(),
+        proposal: from_france,
+    });
+    while countered.clock().date < Date::new(1925, 2, 12) {
+        countered.sim.step();
+    }
+    let save_draft = write_campaign(&user.join("draft"), &drafting, "Mesa", "GBR", &[]);
+    let save_counter = write_campaign(
+        &user.join("counter"),
+        &countered,
+        "Contraproposta",
+        "GBR",
+        &[],
+    );
+    let dir = root().join("target/screenshots/treaty-table");
+    std::fs::create_dir_all(&dir).unwrap();
+    let keep = |name: &str| {
+        let from = out_dir().join(format!("{name}.png"));
+        std::fs::copy(&from, dir.join(format!("{name}.png"))).unwrap();
+    };
+    for (locale, size, tag) in [
+        ("pt-BR", egui::vec2(1600.0, 900.0), "pt"),
+        ("en", egui::vec2(1280.0, 720.0), "en-1280"),
+    ] {
+        let en = locale == "en";
+        let wait = |h: &mut Harness<'_, App>| {
+            for _ in 0..30 {
+                std::thread::sleep(std::time::Duration::from_millis(25));
+                h.run_steps(1);
+            }
+        };
+        // Scrolled into view first, then clicked where it is now: a click at a stale place
+        // would land on the map and change the country picked.
+        let press = |h: &mut Harness<'_, App>, text: &str, nth: usize| {
+            let query = || {
+                egui_kittest::kittest::by()
+                    .label(text)
+                    .role(egui::accesskit::Role::Button)
+            };
+            h.query_all(query())
+                .nth(nth)
+                .unwrap_or_else(|| panic!("button {text}"))
+                .scroll_to_me();
+            h.run_steps(4);
+            h.query_all(query()).nth(nth).unwrap().click();
+        };
+        let contains = |h: &mut Harness<'_, App>, text: &str| {
+            let b = h
+                .query_all(egui_kittest::kittest::by().label_contains(text))
+                .find(|n| n.accesskit_node().role() == egui::accesskit::Role::Button)
+                .unwrap_or_else(|| panic!("button with {text}"));
+            b.click();
+        };
+        // Drafting: France picked on the map.
+        let mut h = harness_sized(user.join(format!("draft-{tag}")), locale, size);
+        let ctx = h.ctx.clone();
+        h.state_mut()
+            .apply(Transition::Game(save_draft.clone()), &ctx);
+        wait(&mut h);
+        let started = std::time::Instant::now();
+        while h.state().shared.world.is_none() && started.elapsed().as_secs() < 20 {
+            wait(&mut h);
+        }
+        let france = h
+            .state()
+            .shared
+            .world
+            .as_ref()
+            .and_then(|w| w.countries.iter().position(|c| c.tag() == "FRA"));
+        assert!(france.is_some(), "the map is loaded");
+        if let Screen::Game(g) = &mut h.state_mut().screen {
+            g.select(france);
+        }
+        h.key_press(egui::Key::J);
+        wait(&mut h);
+        contains(
+            &mut h,
+            if en {
+                "Propose an agreement"
+            } else {
+                "Propor acordo"
+            },
+        );
+        wait(&mut h);
+        let add = if en {
+            "Add a clause…"
+        } else {
+            "Acrescentar cláusula…"
+        };
+        press(&mut h, add, 0);
+        wait(&mut h);
+        let name = format!("180-table-picker-{tag}");
+        shot(&mut h, &name);
+        keep(&name);
+        press(&mut h, if en { "Payment" } else { "Pagamento" }, 0);
+        wait(&mut h);
+        press(&mut h, add, 1);
+        wait(&mut h);
+        press(&mut h, if en { "Tribute" } else { "Tributo" }, 0);
+        wait(&mut h);
+        wait(&mut h);
+        let name = format!("181-table-draft-{tag}");
+        shot(&mut h, &name);
+        keep(&name);
+        let go = if en { "Propose" } else { "Propor" };
+        h.query_all(egui_kittest::kittest::by().label(go))
+            .next()
+            .expect("the propose button")
+            .scroll_to_me();
+        wait(&mut h);
+        let name = format!("182-table-account-{tag}");
+        shot(&mut h, &name);
+        keep(&name);
+        // Countered: the Agendas, the proposal received, the counter.
+        let mut h = harness_sized(user.join(format!("counter-{tag}")), locale, size);
+        let ctx = h.ctx.clone();
+        h.state_mut()
+            .apply(Transition::Game(save_counter.clone()), &ctx);
+        wait(&mut h);
+        h.key_press(egui::Key::J);
+        wait(&mut h);
+        let name = format!("183-table-agendas-{tag}");
+        shot(&mut h, &name);
+        keep(&name);
+        contains(
+            &mut h,
+            if en {
+                "proposes an agreement"
+            } else {
+                "propõe um acordo"
+            },
+        );
+        wait(&mut h);
+        let name = format!("184-table-received-{tag}");
+        shot(&mut h, &name);
+        keep(&name);
+        press(&mut h, if en { "Counter…" } else { "Contrapropor…" }, 0);
+        wait(&mut h);
+        wait(&mut h);
+        let name = format!("185-table-counter-{tag}");
+        shot(&mut h, &name);
+        keep(&name);
+    }
+    let _ = std::fs::remove_dir_all(&user);
+}
+
 /// Answering a demand of independence: Nigeria's demand pending on the United Kingdom, from the
 /// red button in the Agendas to the screen with the four answers, the refusal chosen and the
 /// review before confirming; in Portuguese at 1600 × 900 and in English at 1280 × 720.
