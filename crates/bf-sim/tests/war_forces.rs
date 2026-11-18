@@ -144,6 +144,34 @@ fn the_size_in_peace_is_measured_the_first_january() {
     assert!(ger.peace_share < fra.peace_share);
 }
 
+/// The January rule follows the metropole's men of service age and leaves the colonial army as
+/// it was: the Netherlands' army of the Indies keeps its size while the home army moves.
+#[test]
+fn the_colonial_army_keeps_its_size_in_january() {
+    let d = data();
+    let mut s = Session::new(
+        d.new_world(),
+        1925,
+        Date::new(1925, 1, 1),
+        2,
+        Some(d.rules()),
+    );
+    let nld = index(s.world(), "NLD");
+    let colonial = |s: &Session| -> laplace_schelling::Fixed {
+        s.world().war.countries[nld]
+            .formations
+            .iter()
+            .filter(|f| f.colonial)
+            .map(|f| f.elements)
+            .sum()
+    };
+    let before = colonial(&s);
+    assert!(before.is_positive(), "the Netherlands hold a colonial army");
+    s.sim.run_until(Date::new(1931, 1, 15));
+    // Wear and orders aside, the elements of the colonial formations are those of 1925.
+    assert_eq!(colonial(&s), before);
+}
+
 /// The forces ship off: `peace.ron` keeps the rule from before them, and the world is the one
 /// of before the forces until they are switched on.
 #[test]
