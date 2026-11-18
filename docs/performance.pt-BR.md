@@ -161,6 +161,13 @@ só o efeito da regra.
     se separaram, e olhe a tabela por sistema (`BF_SYSTEMS=1`), não só o total;
   - dentro do sistema, use o amostrador (`sample.sh` e `profile.py`) e some a parte das funções
     do próprio sistema;
+  - a medida que vale é o relógio no trecho. Num binário temporário (numa worktree descartável,
+    nunca no ramo), some `Instant::elapsed` em volta da chamada do sistema num `AtomicU64` e
+    imprima no fim. Rode três medidas por forma, alternando as formas, 10 anos com 1 thread pelo
+    slot. A parte do sistema é o tempo do trecho sobre o `%U` da mesma rodada. Com a máquina
+    carregada, o amostrador pega poucas amostras (35 em 2 anos no #203). A diferença de `%U`
+    entre ligado e desligado mistura o código com a trajetória: no comércio por par, o trecho dava
+    9 % da simulação e o `%U` dava ora +8 %, ora +13 %, conforme a carga;
   - o resto da diferença em 101 anos é o mundo maior. Ele entra no julgamento dos agregados, não
     no orçamento do código.
 - **Carga à parte.** O `%U` do `/usr/bin/time` inclui a carga dos dados (`GameData::load`). O
