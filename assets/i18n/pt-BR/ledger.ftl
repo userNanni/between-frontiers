@@ -52,4 +52,5 @@ ledger-moratorium = Suspensa até
 ledger-history = Revisões
 ledger-history-last = Feita ou revista por último por: { $treaty }. As revisões anteriores vão aparecer aqui quando o livro as guardar.
 ledger-renegotiate = Renegociar
-ledger-renegotiate-tip = Chega com a mesa de negociação nas Agendas.
+ledger-renegotiate-tip = Com a mesa de negociação ligada, abre a mesa nas Agendas com a revisão desta dívida.
+ledger-renegotiate-open = Abre a mesa de negociação nas Agendas com a revisão desta dívida, a partir dos termos de hoje.

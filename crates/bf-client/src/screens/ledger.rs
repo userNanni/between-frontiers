@@ -15,7 +15,7 @@ use crate::text::{country_name, money};
 
 const ROW: f32 = 30.0;
 
-fn treaty_name(i18n: &I18n, key: &str) -> String {
+pub fn treaty_name(i18n: &I18n, key: &str) -> String {
     let id = format!("treaty-{key}");
     if i18n.has(&id) {
         i18n.tr(&id)
@@ -370,11 +370,60 @@ fn detail(ui: &mut Ui, cx: &mut TabContext<'_>, v: &LedgerView) {
         ),
     );
     bf_ui_kit::gap(ui, space::SM);
-    // Renegotiating comes with the negotiating table in the Agendas.
+    // Renegotiating opens the negotiation table in the Agendas with the revision on it; with the
+    // table switched off the button says so.
+    let on = cx.snap.treaty_table.is_some();
     let b = bf_ui_kit::Button::secondary(&i18n.tr("ledger-renegotiate"))
-        .enabled(false)
+        .enabled(on)
         .show(ui);
-    b.on_disabled_hover_text(i18n.tr("ledger-renegotiate-tip"));
+    let typed = on && keys::single(ui, "ledger.renegotiate", 'N', b.rect);
+    if on && (b.clicked() || typed) {
+        *cx.renegotiate = Some((l.other.clone(), revision(cx.tag, l)));
+    }
+    b.on_disabled_hover_text(i18n.tr("ledger-renegotiate-tip"))
+        .on_hover_text(bf_ui_kit::tooltip_text(&i18n.tr("ledger-renegotiate-open")));
+}
+
+/// The proposal "Renegotiate" puts on the table: the creditor revises the terms of the line's
+/// treaty, starting from the terms of today.
+pub fn revision(me: &str, l: &Line) -> bf_sim::treaty::Proposal {
+    use bf_sim::treaty::{Clause, ClauseKind, DebtTerms, Proposal, Side};
+    use laplace_schelling::Fixed;
+    let x = Fixed::from_f64_lossy;
+    let terms = DebtTerms {
+        principal: x(l.principal),
+        rate: x(l.rate),
+        annuity: x(l.annuity),
+        years: l.years_left,
+        currency: l.currency,
+        deferrable: x(l.deferrable),
+        transfer_cap: l.transfer_cap.map(x),
+        pledge: l.pledge,
+        contingent: x(l.contingent),
+        grace_years: 0,
+    };
+    // The creditor gives the revision: the other side when the player owes.
+    let (giver, receiver) = if l.owed_by_us {
+        (Side::Junior, Side::Senior)
+    } else {
+        (Side::Senior, Side::Junior)
+    };
+    Proposal {
+        side_a: vec![me.to_owned()],
+        side_b: vec![l.other.clone()],
+        clauses: vec![Clause {
+            kind: ClauseKind::ReviseDebt {
+                treaty: l.treaty.clone(),
+                terms,
+            },
+            giver,
+            receiver,
+            until: None,
+            note: None,
+        }],
+        term_years: None,
+        notice_years: 0,
+    }
 }
 
 /// What the tab keeps between frames.

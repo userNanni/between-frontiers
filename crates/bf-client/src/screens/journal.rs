@@ -528,6 +528,7 @@ pub fn show(
                 if b.clicked() || keys::single(ui, "journal.decision.treaty", 'T', b.rect) {
                     window.picked = Some(TABLE.to_owned());
                     window.table.counter = None;
+                    window.table.fixed = false;
                 }
                 for (k, l) in v.incoming.iter().enumerate() {
                     let label = table.today.map_or_else(String::new, |d| {

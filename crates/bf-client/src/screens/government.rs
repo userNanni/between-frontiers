@@ -135,6 +135,9 @@ pub struct TabContext<'a> {
     pub works: &'a mut super::works::WorksUi,
     /// The principal each 1925 debt was signed with.
     pub signed: &'a crate::ledger_view::Signed,
+    /// The debts tab asked to renegotiate a debt: the other party and the proposal to put on
+    /// the negotiation table.
+    pub renegotiate: &'a mut Option<(String, bf_sim::treaty::Proposal)>,
 }
 
 #[derive(Default)]
@@ -143,6 +146,8 @@ pub struct GovernmentResponse {
     /// The player finished moving or resizing the window.
     pub place_done: bool,
     pub commands: Vec<GameCommand>,
+    /// Open the negotiation table with this proposal (the debts tab's "Renegotiate").
+    pub renegotiate: Option<(String, bf_sim::treaty::Proposal)>,
 }
 
 /// Width of the head below which the title gives its room to the tabs.
@@ -246,6 +251,7 @@ pub fn show(
             orders,
             works,
             signed,
+            renegotiate: &mut out.renegotiate,
         };
         egui::ScrollArea::vertical()
             .auto_shrink([false, false])
