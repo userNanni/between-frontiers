@@ -1088,6 +1088,71 @@ fatia mede com uma guerra de teste de cinco grandes países, porque a IA não de
 | C5 | IA na guerra | defende; contra-ataca com 1,5 vez o poder do outro no segmento; pede paz quando a sua exaustão passa a do outro; continua sem declarar até a fase 6 | a IA só defende |
 | C6 | Guerra colonial | proclamação seguida de guerra entre dois países (reaproveita o `Secede` e a guerra comum) | guerra antes da separação, com a unidade ainda dentro do dono (mais fiel à Argélia, mas pede um lado sem país e uma regra de insurgência) |
 
+## Mar e ar (fatia C2, desenho)
+
+A fatia C2 traz para a guerra da fatia C o mar e o ar: `naval_step` e `air_step` (já escritos e
+testados) no tick, sobre as 63 zonas marítimas do `SeaGraph` (`map-pipeline.pt-BR.md`, "Zonas
+marítimas") e sobre as zonas aéreas das frentes. Mesma chave `war`; vem depois da C.
+
+### Mar
+
+- **Frotas por zona:** as formações de mar de cada país ficam numa zona marítima, com uma
+  **missão**: controlar a zona, escoltar comboios, bloquear, ou atacar o comércio (submarinos). O
+  jogador dá a missão por zona; a IA mantém as frotas nas zonas dos seus portos (C5).
+- **Encontro:** numa zona com frotas dos dois lados, `naval_step` resolve a semana: canhão e
+  torpedo contra a superfície, antissubmarino contra os submarinos, aviões a bordo; perdas por
+  navio inteiro e avaria. A decomposição vai para a tela, como em terra.
+- **Controle da zona:** quem tem mais poder de superfície na zona no fim da semana controla. O
+  controle decide quem passa.
+- **Bloqueio e comboio:** o trecho de uma rota (`SeaGraph::route`) que passa por zona
+  controlada ou disputada pelo inimigo perde uma parcela do que leva, proporcional ao poder de
+  interdição (submarino, superfície, ar de patrulha) sobre o de escolta. A perda vale para o
+  suprimento da frente (`supply`, pernas marítimas) e para o comércio (por par, quando
+  `trade_by_pair` estiver ligada; senão, a importação do país bloqueado cai pela mesma parcela).
+- **Desembarque:** transporte com tropa sai de um porto, atravessa as zonas e desembarca num
+  estado costeiro inimigo; chega com o que sobrou do passo de mar e luta em terra com o fator de
+  terreno `amphibious`.
+- **Casos:** o bloqueio da Alemanha de 1914–19 (importação de comida e de nitrato cortada); a
+  Batalha do Atlântico (comboio contra submarino, a escolta e a patrulha aérea que viraram o jogo
+  em 1943); a Normandia (desembarque sobre controle do mar e do ar).
+
+### Ar
+
+- **Zonas aéreas:** a zona de cada frente, e a de cada estado bombardeado.
+- **Superioridade:** `air_step` disputa a zona; a superioridade de um lado é o seu poder ar-ar
+  sobre a soma dos dois. Ela entra no termo "ar" do combate em terra (neutro na fatia C) e no
+  passo de mar.
+- **Ataque ao solo:** soma ao fogo da frente, vezes a superioridade.
+- **Bombardeio estratégico:** tira níveis de edifício (fábrica, usina, ferrovia) do estado alvo,
+  vezes a superioridade, e a fila de obras reconstrói (devastação, "Perdas que voltam para o
+  mundo"). Mata civis por idade na pirâmide.
+- **Repartição:** os aviões de cada país vão às zonas pelo peso da frente, pela mesma regra aberta
+  da terra; o jogador escolhe o alvo do bombardeio estratégico (C2-S4).
+- **Casos:** a Batalha da Inglaterra (superioridade sem invasão); o bombardeio da Alemanha
+  (USSBS 1945: a produção alemã de armas subiu até o meio de 1944, e o golpe que contou foi no
+  combustível e no transporte).
+
+### Estado
+
+Guardado só quando há guerra: a zona e a missão de cada frota, o controle de cada zona marítima,
+e o alvo de bombardeio escolhido. A superioridade não é estado: sai da semana.
+
+### Custo de CPU
+
+63 zonas marítimas, poucas com dois lados ao mesmo tempo, e as zonas aéreas das frentes: o custo
+fica abaixo do da terra. A meta segue a decisão 6 (a guerra mundial de 1939 abaixo de 15 % do
+tick, terra, mar e ar juntos).
+
+### Decisões para o dono
+
+| # | Escolha | Recomendado | Alternativa |
+|---|---|---|---|
+| S1 | Comando no mar | missão por zona (controlar, escoltar, bloquear, atacar o comércio); as frotas se repartem pela regra | o jogador move cada frota |
+| S2 | Bloqueio no comércio | perda proporcional à interdição sobre a escolta, no comércio por par e no suprimento | só no suprimento da frente |
+| S3 | Guerra submarina irrestrita | o jogador escolhe; atacar navios neutros dá causa aos neutros (registro de quebras) e custa boa vontade, como em 1917 | os submarinos só atacam o inimigo |
+| S4 | Alvo do bombardeio | o jogador escolhe a classe de alvo (indústria, transporte e combustível, cidades) | alvo automático pela indústria de guerra do inimigo |
+| S5 | Ar | aviões repartidos pela regra entre as frentes; o jogador só escolhe o alvo estratégico | o jogador designa cada ala |
+
 ## O que falta para ligar ao tick
 
 O contrato, os dados e as funções estão prontos e testados. Nada roda ainda. Quando a fase 5
