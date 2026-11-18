@@ -902,6 +902,15 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
                     accept,
                 }));
             }
+            if let Some((war, honour)) = res.call_answer {
+                // Honoured, the country enters a war; refused, the breach is on the record.
+                state.restore_point_before(shared, Reason::War);
+                state.sim.send(Command::Issue(GameCommand::AnswerCall {
+                    tag: tag.clone(),
+                    war,
+                    honour,
+                }));
+            }
             if let Some((crisis, war)) = res.declare {
                 state.restore_point_before(shared, Reason::War);
                 state

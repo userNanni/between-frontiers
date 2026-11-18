@@ -38,7 +38,6 @@ crisis-needed-never = nunca: é existencial
 crisis-yields = Resposta esperada: cede
 crisis-refuses = Resposta esperada: recusa
 crisis-third-parties = Quem entraria e por qual cláusula
-crisis-third-parties-later = A definir: depende dos acordos de defesa, ofensiva e neutralidade dos tratados.
 crisis-accept = Aceitar…
 crisis-refuse = Recusar…
 crisis-accept-confirm = Aceitar executa as cláusulas como tratado na semana que vem. Antes, fica salvo um ponto de restauração.
@@ -80,3 +79,44 @@ crisis-demand-confirm = Enviar a exigência a { $country }?
 crisis-demand-final = Recusada, cabe a nós declarar guerra ou recuar. Antes de enviar, fica salvo um ponto de restauração.
 crisis-demand-send = Enviar a exigência
 crisis-share-all = o país inteiro
+crisis-third-parties-off = Sem acordos em vigor nesta campanha: ninguém é chamado (os acordos estão desligados nas regras).
+crisis-third-parties-none = Nenhum acordo em vigor chama terceiros nesta crise.
+crisis-agreement = { $name }, { $year }
+crisis-duty-defend = { $party } — defesa ({ $agreement }) — { $article ->
+    [o] com o
+    [a] com a
+    [os] com os
+    [as] com as
+   *[other] com
+} { $partner }
+crisis-duty-attack = { $party } — ofensiva ({ $agreement }) — { $article ->
+    [o] com o
+    [a] com a
+    [os] com os
+    [as] com as
+   *[other] com
+} { $partner }
+crisis-duty-neutral = { $party } — neutralidade ({ $agreement }): não entra contra { $partner }
+crisis-duty-not-attack = Declarar quebra a não agressão { $article ->
+    [o] com o
+    [a] com a
+    [os] com os
+    [as] com as
+   *[other] com
+} { $partner } ({ $agreement })
+crisis-duty-suspended = suspensa: o parceiro quebrou o acordo antes
+crisis-duty-barred = barrada: uma neutralidade impede
+call-title = { $ally } chama: { $enemy } o atacou
+call-by = Pelo acordo: { $agreement }
+call-deadline = { $count ->
+    [one] Falta { $left } semana; sem resposta, conta como honrar
+   *[other] Faltam { $left } semanas; sem resposta, conta como honrar
+}
+call-honour-means = Honrar
+call-honour-what = entrar na guerra: reserva chamada e custo semanal
+call-refuse-means = Não honrar
+call-refuse-what = a quebra fica registrada, e custa { $price } (um ano das forças)
+call-honour = Honrar…
+call-refuse = Não honrar…
+call-honour-confirm = Honrar entra na guerra e não se desfaz. Antes, fica salvo um ponto de restauração.
+call-refuse-confirm = Não honrar grava a quebra do acordo. Antes, fica salvo um ponto de restauração.
