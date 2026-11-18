@@ -63,6 +63,8 @@ pub struct GameData {
     pub border_rules: Arc<crate::borders::BorderRules>,
     /// Who did not recognise whom on the start date, when `recognition.ron` exists.
     pub recognition: Option<crate::treaty::RecognitionFile>,
+    /// Independence by movement (`data/borders/independence.ron`).
+    pub independence: Option<crate::borders::independence::IndependenceRules>,
 }
 
 fn read<T: serde::de::DeserializeOwned>(path: &Path) -> Result<T, String> {
@@ -175,6 +177,7 @@ impl GameData {
             candidates,
             influence: optional(&data.join("diplomacy/influence.ron"))?,
             clauses,
+            independence: optional(&data.join("borders/independence.ron"))?,
             war_debts: optional(&scenario.join("war_debts.ron"))?,
             recognition: optional(&scenario.join("recognition.ron"))?,
         };
@@ -207,23 +210,45 @@ impl GameData {
 
     /// The rules the schedule runs with, with these switches.
     pub fn rules_with(&self, switches: crate::game::Switches) -> crate::game::Rules {
+        let influence = self.influence.clone().map(|rules| {
+            Arc::new(crate::influence::InfluenceSetup {
+                rules,
+                table: self.community_table.clone(),
+                colonial: self
+                    .politics
+                    .as_ref()
+                    .map(|p| p.groups.iter().map(|g| g.colonial).collect())
+                    .unwrap_or_default(),
+            })
+        });
+        let independence = match (&self.independence, &self.politics) {
+            (Some(rules), Some(politics)) => {
+                Some(Arc::new(crate::borders::independence::IndependenceSetup {
+                    rules: crate::borders::independence::IndependenceRules {
+                        enabled: switches.independence,
+                        ..rules.clone()
+                    },
+                    borders: Arc::clone(&self.border_rules),
+                    politics: Arc::clone(politics),
+                    cat: Arc::clone(&self.catalogue),
+                    clauses: self.clauses.clone().map(Arc::new),
+                    influence: influence.clone(),
+                    trusteeship: politics.law("trusteeship").map(|l| l as u16),
+                    services: (
+                        self.catalogue.building("school"),
+                        self.catalogue.building("hospital"),
+                    ),
+                }))
+            }
+            _ => None,
+        };
         crate::game::Rules {
             catalogue: Arc::clone(&self.catalogue),
             tree: self.tree.clone(),
             politics: self.politics.clone(),
             communities: self.community_table.clone(),
             borders: Some(Arc::clone(&self.border_rules)),
-            influence: self.influence.clone().map(|rules| {
-                Arc::new(crate::influence::InfluenceSetup {
-                    rules,
-                    table: self.community_table.clone(),
-                    colonial: self
-                        .politics
-                        .as_ref()
-                        .map(|p| p.groups.iter().map(|g| g.colonial).collect())
-                        .unwrap_or_default(),
-                })
-            }),
+            influence,
             war: self.war_rules(switches.forces),
             trade: switches.trade_by_pair.then(|| self.trade_geography()),
             switches,
@@ -242,6 +267,7 @@ impl GameData {
                 }
                 _ => None,
             },
+            independence,
         }
     }
 

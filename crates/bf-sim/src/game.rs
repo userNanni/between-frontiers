@@ -128,6 +128,10 @@ pub struct GameWorld {
     /// Schooling by cohort and level and the adult literacy campaigns (`demography::education`).
     #[serde(default)]
     pub education: crate::demography::education::EducationState,
+    /// Colonial units and their independence movements (`docs/borders.pt-BR.md`, section 11);
+    /// empty when independence by movement is off.
+    #[serde(default)]
+    pub independence: crate::borders::independence::IndependenceState,
 }
 
 impl HashState for GameWorld {
@@ -184,6 +188,11 @@ impl HashState for GameWorld {
             h.section("education");
             self.education.hash_state(h);
         }
+        // Worlds without colonial units keep their hash.
+        if !self.independence.is_empty() {
+            h.section("independence");
+            self.independence.hash_state(h);
+        }
     }
 }
 
@@ -204,6 +213,7 @@ impl GameWorld {
             foreign: Default::default(),
             influence: Default::default(),
             education: Default::default(),
+            independence: Default::default(),
             demography: crate::demography::DemographyState::default(),
             treaties: Default::default(),
             war: crate::war::WarState::default(),
@@ -301,6 +311,13 @@ pub enum GameCommand {
     /// screen asks the player to confirm. Unknown tags are no-ops. Last in the list: saved
     /// command logs keep their variants' places.
     LiteracyCampaign { tag: String, on: bool },
+    /// The answer of a player metropole to the demand of colonial unit `unit` (the candidate's
+    /// tag): self-rule, a dominion, independence by agreement, or a refusal. Acted on the same
+    /// day by the `independence` system; an answer to no pending demand is a no-op.
+    AnswerDemand {
+        unit: String,
+        answer: crate::borders::independence::Answer,
+    },
 }
 
 impl Command<GameWorld> for GameCommand {
@@ -447,6 +464,9 @@ impl Command<GameWorld> for GameCommand {
                     0
                 };
             }
+            GameCommand::AnswerDemand { unit, answer } => {
+                world.independence.answers.push((unit.clone(), *answer))
+            }
             GameCommand::Borders { op } => world.borders.pending.push(op.clone()),
             GameCommand::Liberate {
                 by,
@@ -556,6 +576,9 @@ pub struct Rules {
     /// Schooling of 1925 and the literacy campaign; without them literacy follows the yearly rule
     /// of the economy.
     pub education: Option<Arc<crate::demography::education::EducationRules>>,
+    /// Independence by movement (`data/borders/independence.ron`); without it colonies only
+    /// grow their movement.
+    pub independence: Option<Arc<crate::borders::independence::IndependenceSetup>>,
 }
 
 /// Rules that can be switched on, all off by default: a rule enters the main switched off, with
@@ -591,11 +614,14 @@ pub struct Switches {
     /// docs/treaties.pt-BR.md): what was paid and written off, and a line that ends stays in
     /// `Ledger::closed`. Off, a line that ends leaves the ledger and nothing is recorded.
     pub ledger_record: bool,
+    /// Independence by movement (`borders::independence`, docs/borders.pt-BR.md section 11):
+    /// colonial units demand, the metropole answers by account, a refusal can end in revolt.
+    pub independence: bool,
 }
 
 impl Switches {
     /// The names `switch_on` knows, in the order of the fields.
-    pub const NAMES: [&'static str; 7] = [
+    pub const NAMES: [&'static str; 8] = [
         "trade_by_pair",
         "jobs_follow_use",
         "small_market_wage_floor",
@@ -603,6 +629,7 @@ impl Switches {
         "schooling",
         "forces",
         "ledger_record",
+        "independence",
     ];
 
     /// Switches one rule on by name; unknown names are refused.
@@ -615,6 +642,7 @@ impl Switches {
             "schooling" => self.schooling = true,
             "forces" => self.forces = true,
             "ledger_record" => self.ledger_record = true,
+            "independence" => self.independence = true,
             other => {
                 return Err(format!(
                     "unknown rule switch {other} (known: {})",
@@ -653,6 +681,7 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
         trade,
         switches,
         education,
+        independence,
     }) = rules
     {
         if let Some(p) = &politics {
@@ -707,6 +736,9 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
         // Last in the day: an operation sees the day's results and the next day sees its own.
         if let Some(setup) = influence {
             s.add(crate::influence::InfluenceSystem { setup });
+        }
+        if let Some(setup) = independence {
+            s.add(crate::borders::independence::IndependenceSystem { setup });
         }
         if let Some(rules) = borders {
             s.add(crate::borders::op::Borders { rules });
@@ -1062,6 +1094,24 @@ mod tests {
             treaties: Treaties15<'a>,
             war: WarV8<'a>,
         }
+        /// Version 11: this build's world without the independence state, its last field.
+        #[derive(Serialize)]
+        struct BeforeIndependence<'a> {
+            scenario: &'a String,
+            player: &'a Option<Id<Country>>,
+            countries: &'a Table<Country, CountryState>,
+            census: &'a Vec<CensusRecord>,
+            econ: &'a crate::econ::Economy,
+            research: &'a crate::research::ResearchState,
+            politics: &'a crate::polity::PoliticsState,
+            demography: &'a crate::demography::DemographyState,
+            borders: &'a crate::borders::BordersState,
+            foreign: &'a crate::foreign_stakes::ForeignState,
+            influence: &'a crate::influence::InfluenceState,
+            treaties: &'a crate::treaty::TreatyState,
+            war: &'a crate::war::WarState,
+            education: &'a crate::demography::education::EducationState,
+        }
         /// Version 7: version 8 without the treaty state, its last field, and its economy.
         #[derive(Serialize)]
         struct BeforeTreaties<'a> {
@@ -1193,9 +1243,28 @@ mod tests {
             hash_of(&with_ledger)
         );
         assert_eq!(
-            hash_of(&headed(16, &encode_snapshot(&with_ledger).unwrap())),
+            hash_of(&headed(17, &encode_snapshot(&with_ledger).unwrap())),
             hash_of(&with_ledger)
         );
+        // Version 16, before the independence state: this build's fields without the last one.
+        let before_independence = encode_snapshot(&BeforeIndependence {
+            scenario: &with_ledger.scenario,
+            player: &with_ledger.player,
+            countries: &with_ledger.countries,
+            census: &with_ledger.census,
+            econ: &with_ledger.econ,
+            research: &with_ledger.research,
+            politics: &with_ledger.politics,
+            demography: &with_ledger.demography,
+            borders: &with_ledger.borders,
+            foreign: &with_ledger.foreign,
+            influence: &with_ledger.influence,
+            treaties: &with_ledger.treaties,
+            war: &with_ledger.war,
+            education: &with_ledger.education,
+        })
+        .unwrap();
+        assert_eq!(headed(16, &before_independence), with_ledger);
         // Version 15, before the record of each line and the agreements.
         let before_agreements = encode_snapshot(&BeforeAgreements {
             scenario: &with_ledger.scenario,
