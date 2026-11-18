@@ -768,6 +768,7 @@ pub struct V22 {
     borders: crate::borders::BordersState,
     foreign: crate::foreign_stakes::ForeignState,
     influence: crate::influence::InfluenceState,
+    #[serde(deserialize_with = "treaties_before_reputation")]
     treaties: crate::treaty::TreatyState,
     war: crate::war::state::WarStateBeforeCalls,
     education: crate::demography::education::EducationState,
@@ -792,6 +793,58 @@ pub fn v22_to_v23(w: V22) -> GameWorld {
         influence: w.influence,
         treaties: w.treaties,
         war: w.war.into(),
+        education: w.education,
+        independence: w.independence,
+        levers: w.levers,
+    }
+}
+
+/// Format 22 wrote the treaty state without the reputation.
+fn treaties_before_reputation<'de, D: serde::Deserializer<'de>>(
+    d: D,
+) -> Result<crate::treaty::TreatyState, D::Error> {
+    crate::treaty::TreatyStateBeforeReputation::deserialize(d).map(Into::into)
+}
+
+/// Version 23: the calls of third parties to war (#184), before the reputation.
+#[derive(Deserialize)]
+pub struct V23 {
+    scenario: String,
+    player: Option<Id<Country>>,
+    countries: Table<Country, CountryState>,
+    census: Vec<CensusRecord>,
+    econ: crate::econ::Economy,
+    research: crate::research::ResearchState,
+    politics: crate::polity::PoliticsState,
+    demography: crate::demography::DemographyState,
+    borders: crate::borders::BordersState,
+    foreign: crate::foreign_stakes::ForeignState,
+    influence: crate::influence::InfluenceState,
+    #[serde(deserialize_with = "treaties_before_reputation")]
+    treaties: crate::treaty::TreatyState,
+    war: crate::war::WarState,
+    education: crate::demography::education::EducationState,
+    independence: crate::borders::independence::IndependenceState,
+    levers: crate::econ::levers::LeversState,
+}
+
+/// 23 → 24: the reputation of breaches (`TreatyState::reputation`), empty and not kept: a world
+/// without it hashes as before.
+pub fn v23_to_v24(w: V23) -> GameWorld {
+    GameWorld {
+        scenario: w.scenario,
+        player: w.player,
+        countries: w.countries,
+        census: w.census,
+        econ: w.econ,
+        research: w.research,
+        politics: w.politics,
+        demography: w.demography,
+        borders: w.borders,
+        foreign: w.foreign,
+        influence: w.influence,
+        treaties: w.treaties,
+        war: w.war,
         education: w.education,
         independence: w.independence,
         levers: w.levers,

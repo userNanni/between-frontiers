@@ -122,11 +122,13 @@ commit, como `0.0.1+92093bd4e`), para a mensagem de erro.
 | 19 | reservada, nunca gravada | — |
 | 20 | crises e guerras (`WarState::conflicts`, #157); vazias em paz | `compat::V20` |
 | 21 | fila de obras públicas: a ordem que o governo fixou e as obras pedidas (`LeversState::works_order`, `requests`); vazias na migração | `compat::V21` |
-| 22 | quebras de cláusulas em vigor e as causas que dão (`TreatyState::breaches`, `causes`); vazias na migração, e com elas vazias o hash é o de antes | `GameWorld` |
+| 22 | quebras de cláusulas em vigor e as causas que dão (`TreatyState::breaches`, `causes`); vazias na migração, e com elas vazias o hash é o de antes | `compat::V22` |
+| 23 | chamadas de terceiros à guerra (`Conflicts::calls`, #184); vazias na migração | `compat::V23` |
+| 24 | reputação das quebras (`TreatyState::reputation`, `reputation_on`); vazia e desligada na migração | `GameWorld` |
 
 `decode_world` lê a versão e aplica a cadeia até a atual: `v0_to_v1 → v1_to_v2 → v2_to_now`
 (a economia da 2 converte direto para a da 5: `v2_to_v5`), `v4_to_v5` (a 3 lê direto como a 4) e
-`v5_to_v6`, `v6_to_v7`, `v7_to_v8`, `v8_to_v9`, `v9_to_v10`, `v10_to_v11`, `v11_to_v14`, `v14_to_v15`, `v15_to_v16`, `v16_to_v17` `v17_to_v18`, `v18_to_v20` e `v20_to_v21`, `v21_to_v22` (o comércio por par começa vazio; com a chave
+`v5_to_v6`, `v6_to_v7`, `v7_to_v8`, `v8_to_v9`, `v9_to_v10`, `v10_to_v11`, `v11_to_v14`, `v14_to_v15`, `v15_to_v16`, `v16_to_v17` `v17_to_v18`, `v18_to_v20` e `v20_to_v21`, `v21_to_v22`, `v22_to_v23`, `v23_to_v24` (o comércio por par começa vazio; com a chave
 ligada, se preenche na primeira semana; o ensino também começa vazio). Da 5 à 15 o livro de
 dívidas é lido no formato de antes do registro das linhas (`treaty::LedgerBeforeObligations`,
 por `deserialize_with`), com toda linha aberta e nada pago, e o estado dos tratados da 8 à 15

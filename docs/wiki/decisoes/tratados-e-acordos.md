@@ -136,7 +136,7 @@ cláusulas.
   tela mostra essa conta à vítima. Denunciar pelo prazo e aviso do próprio acordo não é quebra.
 - **Como é na vida real:** promessa sem sanção quebra quando o equilíbrio muda (a não agressão
   polaco-soviética de 1932, rompida em 1939; Locarno, rompido com a Renânia em 1936).
-- **Estado:** desenhado; o preço próprio da traição na guerra, em desenho.
+- **Estado:** no jogo, desligado: o registro, a causa e a suspensão (#181); a reputação, abaixo.
 - **Onde está o detalhe:** [seção 9](../../treaties.pt-BR.md#9-quando-se-quebra).
 
 ### Duas reputações: a de segurança e a geral
@@ -158,8 +158,9 @@ cláusulas.
 - **Como é na vida real:** quem abandona aliado forma menos alianças depois (Gibler, 2008); a
   reputação do devedor se prende ao pagamento, não às alianças (Tomz, 2007); e a de aliança se
   prende a quem governa.
-- **Estado:** decidido; o contrato `Reputation { general, security }` foi combinado entre a guerra
-  e os tratados e entra na fatia dos tratados.
+- **Estado:** no jogo, desligado (`reputation` em `data/rules.ron`): cada quebra soma o seu valor à
+  reputação da espécie, um décimo se esquece a cada janeiro, a troca da forma de governo corta a de
+  segurança pela metade, e a mesa desconta a promessa pela reputação sobre o PIB de quem promete.
 - **Onde está o detalhe:** [`war.pt-BR.md`](../../war.pt-BR.md) (as três escolhas do dono) e
   [`treaties.pt-BR.md`, seção 9](../../treaties.pt-BR.md#9-quando-se-quebra).
 

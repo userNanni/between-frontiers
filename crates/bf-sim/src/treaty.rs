@@ -653,8 +653,9 @@ pub struct EvalInputs<'a> {
     pub discount: Fixed,
     /// Yearly GDP of each party, reference units.
     pub gdp: &'a BTreeMap<Tag, Fixed>,
-    /// Breach memory of each party (0: clean).
-    pub reputation: &'a BTreeMap<Tag, Fixed>,
+    /// Breach memory of each party by kind (0: clean), reference units
+    /// (`TreatyState::reputation`); discounted over the party's GDP.
+    pub reputation: &'a BTreeMap<Tag, Reputation>,
     pub live: &'a [Front],
 }
 
@@ -730,9 +731,19 @@ pub fn evaluate(
             let mut value = Fixed::ZERO;
             if receives && !receivers.is_empty() {
                 // Promises paid later are discounted by the payer's breaches.
+                // Each clause by the reputation of its kind (owner's decision P1), as a share
+                // of the promiser's yearly GDP.
+                let security = is_security(&c.kind);
                 let trust = givers
                     .iter()
-                    .map(|g| inputs.reputation.get(*g).copied().unwrap_or_default())
+                    .map(|g| {
+                        let r = inputs.reputation.get(*g).copied().unwrap_or_default();
+                        let held = if security { r.security } else { r.general };
+                        match inputs.gdp.get(*g) {
+                            Some(y) if *y > Fixed::ZERO => held / *y,
+                            _ => Fixed::ZERO,
+                        }
+                    })
                     .max()
                     .unwrap_or_default();
                 let kept = (Fixed::ONE - trust).clamp(Fixed::ZERO, Fixed::ONE);
@@ -1483,6 +1494,44 @@ pub struct TreatyState {
     pub breaches: Vec<Breach>,
     /// What each breach gave the parties it harmed (9.3): a cause against the one who broke.
     pub causes: Vec<Cause>,
+    /// The memory of each country's breaches (9.4), by kind of clause, in reference units: what
+    /// its broken promises were worth, losing a tenth a year. Kept only with
+    /// `Switches::reputation` (`reputation_on`).
+    pub reputation: BTreeMap<Tag, Reputation>,
+    /// Breaches raise the reputation (`Switches::reputation`, off; set when the world is made).
+    pub reputation_on: bool,
+}
+
+/// What a country's broken promises weigh, by kind (owner's decision P1, 2026-11-18): `security`
+/// for the clauses of war ([`is_security`]), `general` for the others. The debt of the ledger
+/// keeps its own memory (`Money::default_history`). Reference units; a promise is discounted by
+/// this over the promiser's yearly GDP (`evaluate`).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Reputation {
+    pub general: Fixed,
+    pub security: Fixed,
+}
+
+impl HashState for Reputation {
+    fn hash_state(&self, h: &mut StateHasher) {
+        self.general.hash_state(h);
+        self.security.hash_state(h);
+    }
+}
+
+/// The clauses whose breach weighs on the security reputation (owner's decision P1): defence,
+/// offence, neutrality, non-aggression, consultation, border guarantee and troops quota.
+pub fn is_security(kind: &ClauseKind) -> bool {
+    matches!(
+        kind,
+        ClauseKind::Defence
+            | ClauseKind::Offence { .. }
+            | ClauseKind::Neutrality
+            | ClauseKind::NonAggression
+            | ClauseKind::Consultation
+            | ClauseKind::BorderGuarantee
+            | ClauseKind::TroopsQuota
+    )
 }
 
 impl TreatyState {
@@ -1569,6 +1618,7 @@ impl TreatyState {
         if !a.side(&c.giver).contains(&by) {
             return None;
         }
+        let security = is_security(&c.kind);
         let harmed: Vec<Tag> = a
             .side(&c.receiver)
             .into_iter()
@@ -1598,7 +1648,34 @@ impl TreatyState {
             date,
             cause,
         });
+        // 9.4: the breach weighs on the reputation of its kind.
+        if self.reputation_on {
+            let r = self.reputation.entry(by.to_owned()).or_default();
+            if security {
+                r.security += value.max(Fixed::ZERO);
+            } else {
+                r.general += value.max(Fixed::ZERO);
+            }
+        }
         Some(id)
+    }
+
+    /// A year of forgetting: every reputation loses `decay` (a fraction; 10 %, `Weights`).
+    pub fn decay_reputation(&mut self, decay: Fixed) {
+        for r in self.reputation.values_mut() {
+            r.general -= r.general * decay;
+            r.security -= r.security * decay;
+        }
+        self.reputation
+            .retain(|_, r| r.general > Fixed::ZERO || r.security > Fixed::ZERO);
+    }
+
+    /// A change of regime in `tag` halves its security reputation (owner's decision P3,
+    /// Gibler 2008: the memory of an alliance clings to who governs).
+    pub fn new_regime(&mut self, tag: &str) {
+        if let Some(r) = self.reputation.get_mut(tag) {
+            r.security = r.security.mul_ratio(1, 2);
+        }
     }
 
     /// Whether clause `clause` of `agreement` is suspended for `by`: another party broke a
@@ -1795,6 +1872,31 @@ impl HashState for Cause {
     }
 }
 
+/// The treaty state of format 22: breaches and causes, no reputation.
+#[derive(Default, Serialize, Deserialize)]
+pub(crate) struct TreatyStateBeforeReputation {
+    recognition: Recognition,
+    agreements: Vec<Agreement>,
+    ended: Vec<Agreement>,
+    next_agreement: u32,
+    breaches: Vec<Breach>,
+    causes: Vec<Cause>,
+}
+
+impl From<TreatyStateBeforeReputation> for TreatyState {
+    fn from(t: TreatyStateBeforeReputation) -> Self {
+        TreatyState {
+            recognition: t.recognition,
+            agreements: t.agreements,
+            ended: t.ended,
+            next_agreement: t.next_agreement,
+            breaches: t.breaches,
+            causes: t.causes,
+            ..Default::default()
+        }
+    }
+}
+
 /// The treaty state of formats 16 to 21: no breaches nor causes.
 #[derive(Default, Serialize, Deserialize)]
 pub(crate) struct TreatyStateBeforeBreaches {
@@ -1899,6 +2001,15 @@ impl HashState for TreatyState {
         if !self.breaches.is_empty() {
             self.breaches.hash_state(h);
             self.causes.hash_state(h);
+        }
+        // And worlds without a reputation kept.
+        if self.reputation_on || !self.reputation.is_empty() {
+            h.write_u8(u8::from(self.reputation_on));
+            h.write_len(self.reputation.len());
+            for (t, r) in &self.reputation {
+                h.write_str(t);
+                r.hash_state(h);
+            }
         }
     }
 }

@@ -633,6 +633,24 @@ fecha.
 - **Custo:** um mês percorre os acordos em vigor e as cláusulas de tributo. Sem acordos, o sistema
   volta na primeira linha.
 
+### Feito: a reputação (9.4), desligada
+
+- **Decisões do dono de 2026-11-18**, as três como recomendado:
+  - **P1:** duas reputações, `security` e `general` ([`treaty::is_security`]);
+  - **P2:** a chamada sem resposta no prazo conta como honrar (regra da guerra);
+  - **P3:** a troca de regime corta a de segurança pela metade.
+- **Onde:** `TreatyState::reputation`, por sigla, em unidades de referência. Atrás de `reputation`
+  em `data/rules.ron` (`false`), guardada em `reputation_on` quando o mundo é criado. Desligada,
+  a quebra grava e dá causa, mas não pesa em reputação, e o hash é o de antes.
+- **Sobe:** `record_breach` soma o valor da quebra à reputação da espécie da cláusula.
+- **Esquece:** um décimo por ano (`Weights::reputation_decay`), em janeiro.
+- **Troca de regime:** o passo mensal (`treaty_system`) lê as mudanças de lei do grupo da forma
+  de governo desde a última passagem, e corta pela metade a reputação de segurança de cada país
+  que mudou.
+- **Na mesa:** `evaluate` desconta a promessa de cada cláusula pela reputação da sua espécie, sobre
+  o PIB de quem promete (`EvalInputs::reputation`).
+- **Save:** versão 24.
+
 ## 13. Interface: a mesa de negociação, em Agendas
 
 A mesa não é um painel à parte: é uma **decisão rara da janela de Agendas (J)**, como libertar

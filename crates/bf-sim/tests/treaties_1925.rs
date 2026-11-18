@@ -349,7 +349,15 @@ fn the_account_is_open_and_even() {
     // The same proposal in the same world gives the same account.
     assert_eq!(treaty::evaluate(&d.cat, &inputs, &p, "GER"), ger);
     // A debtor that broke promises is worth less to its creditors.
-    let bad: BTreeMap<String, Fixed> = [("GER".to_string(), Fixed::from_ratio(1, 2))].into();
+    // Broken promises of the general kind worth half of Germany's GDP (owner's decision P1).
+    let bad: BTreeMap<String, treaty::Reputation> = [(
+        "GER".to_string(),
+        treaty::Reputation {
+            general: Fixed::from_int(25_000),
+            security: Fixed::ZERO,
+        },
+    )]
+    .into();
     let doubtful = EvalInputs {
         reputation: &bad,
         ..inputs.clone()
@@ -357,6 +365,20 @@ fn the_account_is_open_and_even() {
     let fra_doubt = treaty::evaluate(&d.cat, &doubtful, &p, "FRA");
     assert!(fra_doubt.total < fra.total);
     assert!(fra_doubt.term(ValueTerm::Trust) < Fixed::ZERO);
+    // A betrayed alliance does not discount a debt: each clause reads the reputation of its kind.
+    let traitor: BTreeMap<String, treaty::Reputation> = [(
+        "GER".to_string(),
+        treaty::Reputation {
+            general: Fixed::ZERO,
+            security: Fixed::from_int(25_000),
+        },
+    )]
+    .into();
+    let only_security = EvalInputs {
+        reputation: &traitor,
+        ..inputs.clone()
+    };
+    assert_eq!(treaty::evaluate(&d.cat, &only_security, &p, "FRA"), fra);
     // Without the ledger live, the debt itself sleeps.
     let asleep = EvalInputs {
         live: &[Front::Politics],

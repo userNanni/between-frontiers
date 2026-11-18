@@ -49,6 +49,10 @@
     // (`docs/treaties.pt-BR.md`, "o registro de cada linha"): what was paid and written off, and a
     // line that ends stays closed in the record. Off: a line that ends leaves the ledger.
     ledger_record: false,
+    // The reputation of each country's breaches (`docs/treaties.pt-BR.md` 9.4, the owner's
+    // decisions P1–P3 of 2026-11-18): security and general, a tenth forgotten a year, halved by a
+    // change of regime, read by the table. Off: breaches give causes, nothing more.
+    reputation: false,
     // Schooling by cohort and level, and the adult literacy campaign
     // (`docs/population.pt-BR.md`, "Ensino por coorte"). Off: literacy follows the economy's
     // yearly rule and mothers' schooling the 240-month lag.
