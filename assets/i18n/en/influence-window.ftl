@@ -26,5 +26,6 @@ influence-goodwill = goodwill: { $part }
 influence-front-foreign-capital = comes with foreign capital crossing borders
 influence-front-bilateral-trade = comes with trade by partner
 influence-front-war = comes with forces and war
+influence-front-rules-off = switched off in the game's rules
 influence-front-unknown = not measured yet
 influence-note = Values of this month of the game. A proposal's term reads the map of the last 16th, so the two may differ by up to a month.
