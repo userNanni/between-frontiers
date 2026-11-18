@@ -847,7 +847,7 @@ pub struct Switches {
 
 impl Switches {
     /// The names `switch_on` knows, in the order of the fields.
-    pub const NAMES: [&'static str; 13] = [
+    pub const NAMES: [&'static str; 14] = [
         "crisis",
         "fiscal_capacity",
         "forces",
