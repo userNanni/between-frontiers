@@ -29,8 +29,9 @@ pub struct Settlement {
     pub ops: Vec<Operation>,
     /// (from, to, amount): payments between treasuries, reference units.
     pub payments: Vec<(Tag, Tag, Fixed)>,
-    /// (creditor, treaty key, terms): revisions of the creditor's lines of that treaty.
-    pub revisions: Vec<(Tag, String, DebtTerms)>,
+    /// (creditor, treaty key, terms, debtors): revisions of the creditor's lines of that
+    /// treaty owed by those debtors (the clause's receivers).
+    pub revisions: Vec<(Tag, String, DebtTerms, Vec<Tag>)>,
     /// The clauses that hold while the agreement is in force.
     pub kept: Vec<Clause>,
     /// The record of the agreement (`TreatyState::agreements`), written by [`queue`].
@@ -163,9 +164,14 @@ pub fn settle(cat: &ClauseCatalogue, proposal: &Proposal, key: &str) -> Result<S
                 }
             }
             ClauseKind::ReviseDebt { treaty, terms } => {
+                let debtors: Vec<Tag> = receivers.iter().map(|r| (*r).into()).collect();
                 for g in &givers {
-                    out.revisions
-                        .push(((*g).into(), treaty.clone(), terms.clone()));
+                    out.revisions.push((
+                        (*g).into(),
+                        treaty.clone(),
+                        terms.clone(),
+                        debtors.clone(),
+                    ));
                 }
             }
             _ => out.kept.push(cl.clone()),
@@ -209,18 +215,19 @@ pub fn queue(world: &mut GameWorld, s: &Settlement, year: i32) -> Option<u32> {
             world.econ.markets[b].treasury += *amount;
         }
     }
-    for (creditor, key, terms) in &s.revisions {
+    for (creditor, key, terms, debtors) in &s.revisions {
         let Some(c) = index(world, creditor) else {
             continue;
         };
+        // Only the lines owed by the clause's receivers: a creditor revising one debtor's
+        // reparation leaves the others' under the same treaty as they were.
+        let owing: Vec<usize> = debtors.iter().filter_map(|t| index(world, t)).collect();
         let record = world.econ.ledger.record;
-        for d in world
-            .econ
-            .ledger
-            .debts
-            .iter_mut()
-            .filter(|d| usize::from(d.creditor) == c && d.treaty == *key)
-        {
+        for d in world.econ.ledger.debts.iter_mut().filter(|d| {
+            usize::from(d.creditor) == c
+                && d.treaty == *key
+                && owing.contains(&usize::from(d.debtor))
+        }) {
             d.rate = terms.rate;
             d.annuity = terms.annuity;
             d.years_left = terms.years;

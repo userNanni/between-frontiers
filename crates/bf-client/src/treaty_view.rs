@@ -118,7 +118,7 @@ pub fn weigh(
     sending: bool,
 ) -> Weighed {
     let n = proposal.clauses.len();
-    let treaty_table::Inputs { gdp, live } = treaty_table::Inputs::of(world);
+    let treaty_table::Inputs { gdp, live, .. } = treaty_table::Inputs::of(world);
     let mut notes: Vec<ClauseNote> = proposal
         .clauses
         .iter()

@@ -721,6 +721,33 @@ fecha.
   (1935-03-01, os quinze anos de Versalhes, art. 49), porque os acordos não copiam o fim do
   tratado.
 
+### A fazer: a paz entre coalizões na mesa
+
+A paz da guerra terrestre (#206) já sai pela mesa (`a_peace_signed_at_the_table_ends_the_war`).
+A guerra lê a proposta assinada entre os **líderes** dos dois lados, e a paz em separado de um
+aliado fica para depois. Para uma paz com vários de cada lado (Versalhes, Saint-Germain, Paris
+de 1947), a mesa precisa de cinco coisas:
+
+1. **Quem responde:** hoje a proposta tem um só `to`, e só ele responde. Numa paz entre
+   coalizões, cada país do outro lado responde, e a proposta só é assinada quando todos aceitam
+   (o tratado de Versalhes foi assinado por cada aliado). Recusa ou contraproposta de um membro
+   devolve a mesa ao proponente.
+2. **A conta de cada membro:** `evaluate` já conta cada parte pelas linhas que lhe tocam, e a
+   reparação dividida pelos pares (`settle` divide por `n`). Falta a mesa somar a resposta de
+   todos.
+3. **Cessão com vários lados:** a ponte recusa cessão ou união com mais de um dador ou recebedor.
+   Numa paz de coalizão cada cessão precisa nomear o país (`Side::Parties([..])` com um só país
+   de cada lado), e a tela tem de obrigar isso.
+4. **A paz em separado:** um membro que assina sozinho com o inimigo sai da guerra. A guerra
+   (`war::fight`) precisa ler a proposta assinada entre quaisquer membros dos dois lados, e não
+   só entre os líderes, e tirar da guerra quem assinou. Se a coalizão tinha uma cláusula de não
+   paz em separado (o Pacto de Londres de 1914), a paz em separado é quebra dela.
+5. **A cláusula de não paz em separado:** a cláusula não existe no catálogo. Seria uma cláusula
+   contínua, de segurança, entre aliados: quem assina sozinho a quebra.
+
+Nada disso muda o hash enquanto `negotiation` e `war` estiverem desligadas. É uma fatia própria,
+com a guerra.
+
 ## 13. Interface: a mesa de negociação, em Agendas
 
 A mesa não é um painel à parte: é uma **decisão rara da janela de Agendas (J)**, como libertar
