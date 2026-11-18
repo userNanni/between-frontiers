@@ -282,63 +282,126 @@ pub fn clear_good(
     preference: impl Fn(usize, usize) -> Fixed,
 ) -> Flows {
     let (ns, nb) = (offered.len(), sought.len());
-    let mut flow = vec![vec![Fixed::ZERO; nb]; ns];
-    let mut left_offer = offered.to_vec();
-    let mut left_want = sought.to_vec();
-    // Two passes: the orders as the preferences place them, then what is left of each buyer's
-    // demand among the sellers that still have something.
-    let mut asked = vec![vec![Fixed::ZERO; nb]; ns];
-    let (mut weights, mut parts, mut sent) = (
-        vec![Fixed::ZERO; ns],
-        vec![Fixed::ZERO; ns],
-        vec![Fixed::ZERO; nb],
-    );
-    let mut rest = Vec::with_capacity(ns.max(nb));
-    for _ in 0..2 {
-        for row in asked.iter_mut() {
-            row.fill(Fixed::ZERO);
-        }
-        for b in 0..nb {
-            if left_want[b] <= Fixed::ZERO {
-                continue;
-            }
-            for (s, w) in weights.iter_mut().enumerate() {
-                *w = if left_offer[s] > Fixed::ZERO {
-                    left_offer[s] * preference(s, b).max(Fixed::ZERO)
-                } else {
-                    Fixed::ZERO
-                };
-            }
-            split_exact_into(left_want[b], &weights, &mut parts, &mut rest);
-            for (s, q) in parts.iter().enumerate() {
-                asked[s][b] = *q;
-            }
-        }
+    let mut pref = vec![Fixed::ZERO; ns * nb];
+    for b in 0..nb {
         for s in 0..ns {
-            let requested: Fixed = asked[s].iter().copied().sum();
-            if requested <= Fixed::ZERO {
-                continue;
-            }
-            // A seller asked for more than it has cuts every order in proportion.
-            if requested > left_offer[s] {
-                split_exact_into(left_offer[s], &asked[s], &mut sent, &mut rest);
-            } else {
-                sent.copy_from_slice(&asked[s]);
-            }
-            for (b, q) in sent.iter().enumerate() {
-                flow[s][b] += *q;
-            }
-        }
-        for s in 0..ns {
-            let sent: Fixed = flow[s].iter().copied().sum();
-            left_offer[s] = (offered[s] - sent).max(Fixed::ZERO);
-        }
-        for b in 0..nb {
-            let got: Fixed = (0..ns).map(|s| flow[s][b]).sum();
-            left_want[b] = (sought[b] - got).max(Fixed::ZERO);
+            pref[b * ns + s] = preference(s, b);
         }
     }
-    flow
+    let mut buf = ClearBuffers::default();
+    clear_good_flat(offered, sought, &pref, &mut buf);
+    (0..ns)
+        .map(|s| buf.flow[s * nb..(s + 1) * nb].to_vec())
+        .collect()
+}
+
+/// What the clearing of one good leaves, and its scratch, kept from good to good so that the
+/// week allocates once (`clear_good_flat`).
+#[derive(Default)]
+pub struct ClearBuffers {
+    /// What seller `s` sends buyer `b`, at `s × buyers + b`.
+    pub flow: Vec<Fixed>,
+    /// What each seller exports and each buyer imports: the sums of `flow`'s rows and columns.
+    pub exports: Vec<Fixed>,
+    pub imports: Vec<Fixed>,
+    /// Each pass's orders, `s × buyers + b`.
+    asked: Vec<Fixed>,
+    requested: Vec<Fixed>,
+    left_offer: Vec<Fixed>,
+    left_want: Vec<Fixed>,
+    weights: Vec<Fixed>,
+    parts: Vec<Fixed>,
+    sellers: Vec<usize>,
+    sent: Vec<Fixed>,
+    rest: Vec<(i128, usize)>,
+}
+
+/// `clear_good` on flat tables: `pref[b × sellers + s]` is how much buyer `b` leans toward
+/// seller `s`; the flows land in `buf`. Two passes: the orders as the preferences place them,
+/// then what is left of each buyer's demand among the sellers that still have something. The
+/// sums of each seller's and each buyer's flows are kept as they are written, in the order the
+/// columns and rows would add them: the same integers as summing the matrix after.
+pub fn clear_good_flat(
+    offered: &[Fixed],
+    sought: &[Fixed],
+    pref: &[Fixed],
+    buf: &mut ClearBuffers,
+) {
+    let (ns, nb) = (offered.len(), sought.len());
+    let reset = |v: &mut Vec<Fixed>, n: usize| {
+        v.clear();
+        v.resize(n, Fixed::ZERO);
+    };
+    reset(&mut buf.flow, ns * nb);
+    reset(&mut buf.exports, ns);
+    reset(&mut buf.imports, nb);
+    reset(&mut buf.asked, ns * nb);
+    reset(&mut buf.sent, nb);
+    buf.left_offer.clear();
+    buf.left_offer.extend_from_slice(offered);
+    buf.left_want.clear();
+    buf.left_want.extend_from_slice(sought);
+    for pass in 0..2 {
+        if pass > 0 {
+            buf.asked.fill(Fixed::ZERO);
+        }
+        reset(&mut buf.requested, ns);
+        for b in 0..nb {
+            if buf.left_want[b] <= Fixed::ZERO {
+                continue;
+            }
+            buf.sellers.clear();
+            buf.weights.clear();
+            let row = &pref[b * ns..(b + 1) * ns];
+            for s in 0..ns {
+                if buf.left_offer[s] > Fixed::ZERO && row[s] > Fixed::ZERO {
+                    buf.sellers.push(s);
+                    buf.weights.push(buf.left_offer[s] * row[s]);
+                }
+            }
+            buf.parts.clear();
+            buf.parts.resize(buf.weights.len(), Fixed::ZERO);
+            split_exact_into(
+                buf.left_want[b],
+                &buf.weights,
+                &mut buf.parts,
+                &mut buf.rest,
+            );
+            for (k, &s) in buf.sellers.iter().enumerate() {
+                let q = buf.parts[k];
+                buf.asked[s * nb + b] = q;
+                buf.requested[s] += q;
+            }
+        }
+        for s in 0..ns {
+            if buf.requested[s] <= Fixed::ZERO {
+                continue;
+            }
+            let row = &buf.asked[s * nb..(s + 1) * nb];
+            // A seller asked for more than it has cuts every order in proportion.
+            let sent: &[Fixed] = if buf.requested[s] > buf.left_offer[s] {
+                split_exact_into(buf.left_offer[s], row, &mut buf.sent, &mut buf.rest);
+                &buf.sent
+            } else {
+                row
+            };
+            let flow = &mut buf.flow[s * nb..(s + 1) * nb];
+            let mut total = Fixed::ZERO;
+            for b in 0..nb {
+                let q = sent[b];
+                flow[b] += q;
+                total += q;
+                buf.imports[b] += q;
+            }
+            buf.exports[s] += total;
+        }
+        for s in 0..ns {
+            buf.left_offer[s] = (offered[s] - buf.exports[s]).max(Fixed::ZERO);
+        }
+        for b in 0..nb {
+            buf.left_want[b] = (sought[b] - buf.imports[b]).max(Fixed::ZERO);
+        }
+    }
 }
 
 /// `total` split by `weights` exactly into `out` (`rest` is scratch): the floor of each share in
