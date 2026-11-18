@@ -44,7 +44,7 @@ pub struct CrisisRules {
     /// Weeks a third party called to war by an agreement has to answer (W4).
     #[serde(default = "default_call_weeks")]
     pub call_weeks: u16,
-    /// A call left to lapse is honoured (recommended to the owner, P2) or betrayed.
+    /// A call left to lapse is honoured (owner's decision P2) or betrayed.
     #[serde(default = "default_true")]
     pub lapsed_call_honours: bool,
 }

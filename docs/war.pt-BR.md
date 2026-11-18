@@ -842,7 +842,7 @@ A tela da crise mostra, antes de declarar, quem entraria e por qual cláusula.
   `AnswerCall { honour }`. Honrar entra na guerra; não honrar grava a quebra
   (`record_breach(..., CallUnanswered { war })`), cujo valor é o custo de um ano das forças dele
   aos preços da semana: a ajuda que ele deixou de dar. O prazo vencido honra
-  (`lapsed_call_honours`, recomendação P2, que espera o dono).
+  (P2, decidido pelo dono; `lapsed_call_honours` em `crisis.ron`).
 
 A tela lê `war::third::who_would_join(world, quem declara, quem recebe)`, a mesma conta, linha a
 linha: quem, por qual acordo e cláusula, de que lado, e se está suspenso ou barrado.
@@ -914,12 +914,13 @@ pelo crédito.
 - O contrato entra na fatia dos tratados depois do #158. A fatia B desenha contra essa
   assinatura e a chama quando ela estiver no main.
 
-**Três escolhas para o dono:**
-1. **Reputação:** separada (recomendado) ou uma só.
-2. **Prazo da chamada vencido:** conta como honrar (recomendado: a cláusula obriga, e quem não
-   responde cumpre o tratado), ou como não honrar, como a exigência vencida conta como recusa (W2).
-3. **Troca de regime:** reduz a reputação de segurança à metade (recomendado, Gibler 2008: a
-   reputação de aliança se prende a quem governa) ou não mexe nela.
+**Decidido pelo dono (P1–P3, 2026-11-18), com as recomendações:**
+1. **P1, reputação:** duas, `security` e `general`. A reputação é dos tratados; a guerra só grava
+   a quebra.
+2. **P2, prazo da chamada vencido:** conta como honrar. "Trair é decisão, honrar é o natural":
+   não honrar é um comando explícito do jogador na entrada da chamada, decisão rara com
+   confirmação em dois passos e ponto de restauração; sem resposta, o país entra na guerra.
+3. **P3, troca de regime:** corta a reputação de segurança pela metade (tratados).
 
 **Medida de controle.** Na literatura, as alianças são honradas em cerca de 75 % dos casos em que
 a cláusula as chama (Leeds, Long e Mitchell, 2000). Quando a IA decidir (fase 6), a taxa de
