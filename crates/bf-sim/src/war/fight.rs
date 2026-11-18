@@ -496,9 +496,9 @@ pub fn bury(world: &mut GameWorld, country: u16, killed: u64) {
             let band: i64 = ages[4..8].iter().sum();
             if band > 0 {
                 let mut left = taken;
-                for k in 4..8 {
-                    let d = (taken * ages[k] / band).min(ages[k]).min(left);
-                    ages[k] -= d;
+                for a in &mut ages[4..8] {
+                    let d = (taken * *a / band).min(*a).min(left);
+                    *a -= d;
                     left -= d;
                 }
                 ages[4] = (ages[4] - left).max(0);
