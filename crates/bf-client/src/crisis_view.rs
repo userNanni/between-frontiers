@@ -39,6 +39,39 @@ pub struct CrisisLine {
     /// Men under arms on land of each side.
     pub land_by: i64,
     pub land_target: i64,
+    /// Who would join if the side that demanded declared, by the agreements in force (W4);
+    /// `None` with no agreement in force at all (nothing to read).
+    pub joiners: Option<Vec<Joiner>>,
+}
+
+/// A third party an agreement in force would call, or bar, at the declaration.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Joiner {
+    pub party: String,
+    pub kind: bf_sim::treaty::DutyKind,
+    /// The agreement's key (`treaty-<key>`) and year of signature.
+    pub agreement: String,
+    pub signed: i32,
+    /// The country of the crisis it is tied to by that clause.
+    pub partner: String,
+    pub suspended: bool,
+    pub barred: bool,
+}
+
+/// A call on the player to honour an agreement in a war (W4).
+#[derive(Clone, Debug, PartialEq)]
+pub struct CallLine {
+    pub war: u32,
+    pub side: bf_sim::war::third::CallSide,
+    /// Who the player would fight beside, and against.
+    pub ally: String,
+    pub enemy: String,
+    pub agreement: String,
+    pub signed: i32,
+    pub weeks_left: u16,
+    pub call_weeks: u16,
+    /// What not honouring costs: a year of the forces' cost, real dollars.
+    pub price: f64,
 }
 
 /// A war the player is in.
@@ -54,19 +87,22 @@ pub struct WarLine {
 pub struct CrisisView {
     pub crises: Vec<CrisisLine>,
     pub wars: Vec<WarLine>,
+    /// Calls on the player to join a war by an agreement.
+    pub calls: Vec<CallLine>,
     /// The weeks a demand gives by the rules (W2).
     pub deadline_weeks: u16,
     /// What the conflicts looked like when read: a change reads them again.
     pub signature: Vec<(u32, u8, u16)>,
 }
 
-/// What the conflicts look like, cheaply: each crisis's id, stage and weeks, then each war.
+/// What the conflicts look like, cheaply: each crisis's id, stage and weeks, each war, each call.
 pub fn signature(world: &GameWorld) -> Vec<(u32, u8, u16)> {
     let c = &world.war.conflicts;
     c.crises
         .iter()
         .map(|k| (k.id, k.stage as u8, k.weeks_left))
         .chain(c.wars.iter().map(|w| (w.id, 9, 0)))
+        .chain(c.calls.iter().map(|k| (k.war, 10, k.weeks_left)))
         .collect()
 }
 
@@ -100,8 +136,48 @@ fn line(
         weighing: bf_sim::war::weigh_crisis(setup, mil, world, k),
         land_by: bf_sim::war::crisis::land_men(mil, &world.war, usize::from(k.by)),
         land_target: bf_sim::war::crisis::land_men(mil, &world.war, usize::from(k.target)),
+        joiners: joiners(world, &tag(k.by), &tag(k.target)),
         demand: k.demand.clone(),
     }
+}
+
+/// The agreement of id `id`: its key and year of signature.
+fn agreement(world: &GameWorld, id: u32) -> (String, i32) {
+    world
+        .treaties
+        .agreements
+        .iter()
+        .find(|a| a.id == id)
+        .map_or_else(|| (String::new(), 0), |a| (a.key.clone(), a.signed))
+}
+
+/// Who would join if `by` declared on `target`; `None` with no agreement in force at all.
+fn joiners(world: &GameWorld, by: &str, target: &str) -> Option<Vec<Joiner>> {
+    use bf_sim::treaty::DutyKind;
+    if world.treaties.agreements.is_empty() {
+        return None;
+    }
+    Some(
+        bf_sim::war::third::who_would_join(world, by, target)
+            .into_iter()
+            .map(|e| {
+                let (key, signed) = agreement(world, e.agreement);
+                let partner = match e.kind {
+                    DutyKind::JoinAttacker => by,
+                    _ => target,
+                };
+                Joiner {
+                    partner: partner.to_owned(),
+                    party: e.party,
+                    kind: e.kind,
+                    agreement: key,
+                    signed,
+                    suspended: e.suspended,
+                    barred: e.barred,
+                }
+            })
+            .collect(),
+    )
 }
 
 /// The player's crises and wars; `None` without a player or with the crisis switch off.
@@ -150,9 +226,35 @@ pub fn read(
             since: w.since,
         })
         .collect();
+    let first = |v: &[u16]| tags(&v[..v.len().min(1)]).pop().unwrap_or_default();
+    let calls = c
+        .calls
+        .iter()
+        .filter(|k| k.party == me)
+        .filter_map(|k| {
+            let w = c.wars.iter().find(|w| w.id == k.war)?;
+            let (beside, against) = match k.side {
+                bf_sim::war::third::CallSide::Defender => (&w.side_b, &w.side_a),
+                bf_sim::war::third::CallSide::Attacker => (&w.side_a, &w.side_b),
+            };
+            let (key, signed) = agreement(world, k.agreement);
+            Some(CallLine {
+                war: k.war,
+                side: k.side,
+                ally: first(beside),
+                enemy: first(against),
+                agreement: key,
+                signed,
+                weeks_left: k.weeks_left,
+                call_weeks: setup.rules.call_weeks,
+                price: bf_sim::war::third::forces_cost_year(world, me).to_f64_lossy(),
+            })
+        })
+        .collect();
     Some(CrisisView {
         crises,
         wars,
+        calls,
         deadline_weeks: setup.rules.deadline_weeks,
         signature: signature(world),
     })

@@ -106,6 +106,17 @@ impl Levers {
         self.deficit_cap = self.deficit_cap.map(|v| clamp(DEFICIT_CAP_MILLE, v));
         self.purchases = self.purchases.map(|v| clamp(PURCHASES_MILLE, v));
         self.military = self.military.map(|v| clamp(MILITARY_MILLE, v));
+        // D9: the three shares add up to 1000; all zero is the rule.
+        self.issuance = self.issuance.and_then(|s| {
+            let total: u32 = s.iter().map(|&v| u32::from(v)).sum();
+            if total == 0 {
+                return None;
+            }
+            let mut out = s.map(|v| (u32::from(v) * 1000 / total) as u16);
+            let sum: u16 = out.iter().sum();
+            out[0] += 1000 - sum;
+            Some(out)
+        });
         self
     }
 
@@ -129,6 +140,12 @@ impl Levers {
     /// The deficit target over GDP, when fixed (D5).
     pub fn deficit_cap(&self) -> Option<Fixed> {
         self.deficit_cap.map(|v| milli(i64::from(v)))
+    }
+
+    /// The issue split fixed (D9), as shares of 1: home, abroad in the own currency, abroad in
+    /// dollars.
+    pub fn issuance_shares(&self) -> Option<[Fixed; 3]> {
+        self.issuance.map(|s| s.map(|v| milli(i64::from(v))))
     }
 
     /// Servants and clergy per thousand people, when fixed (D1).
@@ -377,6 +394,39 @@ pub fn purchases_view(m: &Market, cat: &super::catalogue::Catalogue) -> Purchase
         },
         budget,
         military_room: room,
+    }
+}
+
+/// Where the treasury issues (D9), as the money and debt screen shows it.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct IssuanceView {
+    /// The fixed split of new bonds, shares of 1: home, abroad in the own currency, abroad in
+    /// dollars. `None` on the rule (home savers first, then the bank, then abroad, and lenders
+    /// abroad take the dollar share they demand).
+    pub fixed: Option<[f64; 3]>,
+    /// Last week with the split fixed, in real units: sold at home (savers and a subordinate
+    /// bank), sold abroad in the own currency and in dollars, left unsold at home and abroad,
+    /// and the share of local bonds lenders abroad would take (`1 − fx_share`).
+    pub home: f64,
+    pub abroad_local: f64,
+    pub abroad_fx: f64,
+    pub unsold_home: f64,
+    pub unsold_abroad: f64,
+    pub local_limit: f64,
+}
+
+/// What the money and debt screen reads of where country market `m` issues (D9).
+pub fn issuance_view(m: &Market) -> IssuanceView {
+    let f = |v: Fixed| v.raw() as f64 / 1000.0;
+    let i = m.issue_last.unwrap_or_default();
+    IssuanceView {
+        fixed: m.levers.issuance_shares().map(|s| s.map(f)),
+        home: f(i.home),
+        abroad_local: f(i.abroad_local),
+        abroad_fx: f(i.abroad_fx),
+        unsold_home: f(i.unsold_home),
+        unsold_abroad: f(i.unsold_abroad),
+        local_limit: f(i.local_limit),
     }
 }
 
