@@ -2951,14 +2951,20 @@ fn disband_forces() {
                 .role(egui::accesskit::Role::Button)
                 .label(if en { "Disband" } else { "Dissolver" })
         };
-        h.query_all(yes()).next().expect("the confirming button").scroll_to_me();
+        h.query_all(yes())
+            .next()
+            .expect("the confirming button")
+            .scroll_to_me();
         h.run_steps(4);
         let name = format!("151-disband-land-{tag}");
         shot(&mut h, &name);
         keep(&name);
         h.query_all(ask()).last().expect("a disband button").click();
         h.run_steps(4);
-        h.query_all(yes()).next().expect("the confirming button").scroll_to_me();
+        h.query_all(yes())
+            .next()
+            .expect("the confirming button")
+            .scroll_to_me();
         h.run_steps(4);
         let name = format!("152-disband-service-{tag}");
         shot(&mut h, &name);
@@ -2975,8 +2981,7 @@ fn disband_forces() {
         let before = snap(&h).forces.expect("forces").stock;
         h.key_press(egui::Key::Space);
         let started = std::time::Instant::now();
-        while snap(&h).forces.expect("forces").stock == before && started.elapsed().as_secs() < 30
-        {
+        while snap(&h).forces.expect("forces").stock == before && started.elapsed().as_secs() < 30 {
             std::thread::sleep(std::time::Duration::from_millis(50));
             h.run_steps(1);
         }
@@ -2992,7 +2997,8 @@ fn disband_forces() {
             before,
             "the disband was carried out"
         );
-        h.get_by_label(if en { "Types" } else { "Tipos" }).scroll_to_me();
+        h.get_by_label(if en { "Types" } else { "Tipos" })
+            .scroll_to_me();
         h.run_steps(4);
         let name = format!("153-disband-done-{tag}");
         shot(&mut h, &name);
