@@ -859,13 +859,24 @@ impl Week {
             let lambda = Fixed::from_f64_lossy(f64::from(cat.trade.monthly_step));
             super::trade::step(&econ.trade.pref, &eq, lambda)
         });
-        let pref_table = super::trade::dense(trade_pref.as_deref().unwrap_or(&econ.trade.pref), nm);
+        let prefs = trade_pref.as_deref().unwrap_or(&econ.trade.pref);
+        let pref_rows = prefs.len();
+        let pref_table = super::trade::dense_flat(prefs, nm);
+        // The pairs closed this week, once (the closures compare dates as text).
+        let closed = geo.and_then(|g| g.closed_on(&date, nm));
+        let is_closed = |s: usize, b: usize| closed.as_ref().is_some_and(|c| c[s * nm + b]);
+        let (mut sellers, mut offered, mut buyers, mut sought) =
+            (Vec::new(), Vec::new(), Vec::new(), Vec::new());
+        let mut pref: Vec<Fixed> = Vec::new();
+        let mut clear = super::trade::ClearBuffers::default();
         for gi in 0..g {
             if !cat.goods[gi].tradable {
                 continue;
             }
-            let (mut sellers, mut offered, mut buyers, mut sought) =
-                (Vec::new(), Vec::new(), Vec::new(), Vec::new());
+            sellers.clear();
+            offered.clear();
+            buyers.clear();
+            sought.clear();
             for mi in 0..nm {
                 let gap = supply[mi][gi] - demand[mi][gi];
                 if gap > Fixed::ZERO {
@@ -883,35 +894,45 @@ impl Week {
             // good's group; a buyer with none toward any seller of the good leans equally.
             let base = cat.goods[gi].base_price;
             let k = cat.good_group[gi].map(usize::from);
-            let mut pref: Vec<Vec<Fixed>> = sellers
-                .iter()
-                .map(|&sm| {
-                    buyers
-                        .iter()
-                        .map(|&bm| {
-                            // A closed pair trades nothing from the week it closes.
-                            if geo.is_some_and(|g| g.closed(sm, bm, &date)) {
-                                return Fixed::ZERO;
-                            }
-                            k.and_then(|k| pref_table.get(bm * groups + k))
-                                .map_or(Fixed::ONE, |row| row[sm])
-                        })
-                        .collect()
-                })
-                .collect();
-            for b in 0..buyers.len() {
-                if pref.iter().all(|row| row[b] <= Fixed::ZERO) {
-                    for (s, row) in pref.iter_mut().enumerate() {
-                        if !geo.is_some_and(|g| g.closed(sellers[s], buyers[b], &date)) {
-                            row[b] = Fixed::ONE;
+            // By buyer, then seller (`trade::clear_good_flat`).
+            let (ns, nb) = (sellers.len(), buyers.len());
+            pref.clear();
+            pref.resize(ns * nb, Fixed::ZERO);
+            for (b, &bm) in buyers.iter().enumerate() {
+                let row = &mut pref[b * ns..(b + 1) * ns];
+                let table = k
+                    .map(|k| bm * groups + k)
+                    .filter(|&r| r < pref_rows)
+                    .map(|r| &pref_table[r * nm..(r + 1) * nm]);
+                let mut any = false;
+                for (s, &sm) in sellers.iter().enumerate() {
+                    // A closed pair trades nothing from the week it closes.
+                    if is_closed(sm, bm) {
+                        continue;
+                    }
+                    let v = table.map_or(Fixed::ONE, |t| t[sm]);
+                    row[s] = v;
+                    any |= v > Fixed::ZERO;
+                }
+                if !any {
+                    for (s, &sm) in sellers.iter().enumerate() {
+                        if !is_closed(sm, bm) {
+                            row[s] = Fixed::ONE;
                         }
                     }
                 }
+                // Scaled so that the favourite seller has 1.
+                let top = row.iter().copied().max().unwrap_or(Fixed::ZERO);
+                if top > Fixed::ZERO {
+                    for v in row.iter_mut() {
+                        *v /= top;
+                    }
+                }
             }
-            super::trade::normalize(&mut pref);
-            let flow = super::trade::clear_good(&offered, &sought, |s, b| pref[s][b]);
-            let (exports, imports) = super::trade::totals(&flow, buyers.len());
-            for (s, row) in flow.iter().enumerate() {
+            super::trade::clear_good_flat(&offered, &sought, &pref, &mut clear);
+            let (exports, imports) = (&clear.exports, &clear.imports);
+            for s in 0..ns {
+                let row = &clear.flow[s * nb..(s + 1) * nb];
                 for (b, q) in row.iter().enumerate() {
                     if *q > Fixed::ZERO {
                         trade_value[sellers[s] * nm + buyers[b]] += *q * base;

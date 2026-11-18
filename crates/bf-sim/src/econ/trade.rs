@@ -75,29 +75,42 @@ pub fn equilibrium(
         })
         .collect();
     let reference = i64::from(cat.trade.reference_km.max(1));
+    // What depends only on the pair, once a month: whether it is closed, the km, the carry and
+    // the tariff (the treaties in force on the date, filtered once).
+    let closed = geo.and_then(|g| g.closed_on(date, n));
+    let relations: Vec<&TariffRelation> = geo.map_or_else(Vec::new, |g| g.relations_on(date));
+    let mut pair: Vec<Option<(i64, Fixed, Fixed)>> = vec![None; n];
     let mut out = vec![vec![Fixed::ZERO; n]; n * groups];
     for b in 0..n {
+        // The tariff is charged on the value with freight: one charged alike on every seller
+        // cancels out; only a treaty's discrimination moves the shares.
+        let own = markets[b]
+            .laws
+            .effects
+            .first()
+            .map_or(Fixed::ZERO, |e| e.tariff);
+        for (s, p) in pair.iter_mut().enumerate() {
+            // A closed pair has no equilibrium: its preference decays (`step`).
+            *p = (s != b && !closed.as_ref().is_some_and(|c| c[s * n + b])).then(|| {
+                let km = i64::from(geo.map_or(0, |g| g.km(s, b)));
+                let tariff = if geo.is_some() {
+                    tariff_by(&relations, b, s, own)
+                } else {
+                    own
+                };
+                (km, factors.of_pair(geo, s, b), tariff)
+            });
+        }
         for k in 0..groups {
             let row = &mut out[b * groups + k];
-            for s in 0..n {
-                // A closed pair has no equilibrium: its preference decays (`step`).
-                if s == b || geo.is_some_and(|g| g.closed(s, b, date)) {
+            for (s, p) in pair.iter().enumerate() {
+                let Some((km, carry, tariff)) = *p else {
                     continue;
-                }
-                let km = geo.map_or(0, |g| g.km(s, b));
-                // The tariff is charged on the value with freight: one charged alike on every
-                // seller cancels out; only a treaty's discrimination moves the shares.
-                let own = markets[b]
-                    .laws
-                    .effects
-                    .first()
-                    .map_or(Fixed::ZERO, |e| e.tariff);
-                let tariff = geo.map_or(own, |g| g.tariff(b, s, own, date));
-                let carry = factors.of_pair(geo, s, b);
+                };
                 row[s] = power(
                     cat,
                     index[s][k]
-                        * (Fixed::ONE + freight[k] * i64::from(km) * carry / reference)
+                        * (Fixed::ONE + freight[k] * km * carry / reference)
                         * (Fixed::ONE + tariff),
                 );
             }
@@ -159,6 +172,21 @@ pub fn step(old: &[Vec<(u16, u16)>], eq: &[Vec<Fixed>], step: Fixed) -> Vec<Vec<
                 .collect()
         })
         .collect()
+}
+
+/// The preferences as one flat table, `(buyer × groups + group) × n + seller`, in shares of the
+/// buyer's favourite: what `dense` gives, in a single allocation.
+pub fn dense_flat(pref: &[Vec<(u16, u16)>], n: usize) -> Vec<Fixed> {
+    let mut out = vec![Fixed::ZERO; pref.len() * n];
+    for (row, list) in pref.iter().enumerate() {
+        for &(s, v) in list {
+            let s = usize::from(s);
+            if s < n {
+                out[row * n + s] = Fixed::from_ratio(i64::from(v), i64::from(u16::MAX));
+            }
+        }
+    }
+    out
 }
 
 /// The preferences as a dense table, `buyer × groups + group`, then by seller, in shares of the
@@ -254,88 +282,181 @@ pub fn clear_good(
     preference: impl Fn(usize, usize) -> Fixed,
 ) -> Flows {
     let (ns, nb) = (offered.len(), sought.len());
-    let mut flow = vec![vec![Fixed::ZERO; nb]; ns];
-    let mut left_offer = offered.to_vec();
-    let mut left_want = sought.to_vec();
-    // Two passes: the orders as the preferences place them, then what is left of each buyer's
-    // demand among the sellers that still have something.
-    for _ in 0..2 {
-        let mut asked = vec![vec![Fixed::ZERO; nb]; ns];
-        for b in 0..nb {
-            if left_want[b] <= Fixed::ZERO {
-                continue;
-            }
-            let weights: Vec<Fixed> = (0..ns)
-                .map(|s| {
-                    if left_offer[s] > Fixed::ZERO {
-                        left_offer[s] * preference(s, b).max(Fixed::ZERO)
-                    } else {
-                        Fixed::ZERO
-                    }
-                })
-                .collect();
-            for (s, q) in split_exact(left_want[b], &weights).into_iter().enumerate() {
-                asked[s][b] = q;
-            }
-        }
+    let mut pref = vec![Fixed::ZERO; ns * nb];
+    for b in 0..nb {
         for s in 0..ns {
-            let requested: Fixed = asked[s].iter().copied().sum();
-            if requested <= Fixed::ZERO {
-                continue;
-            }
-            // A seller asked for more than it has cuts every order in proportion.
-            let sent = if requested > left_offer[s] {
-                split_exact(left_offer[s], &asked[s])
-            } else {
-                asked[s].clone()
-            };
-            for (b, q) in sent.into_iter().enumerate() {
-                flow[s][b] += q;
-            }
-        }
-        for s in 0..ns {
-            let sent: Fixed = flow[s].iter().copied().sum();
-            left_offer[s] = (offered[s] - sent).max(Fixed::ZERO);
-        }
-        for b in 0..nb {
-            let got: Fixed = (0..ns).map(|s| flow[s][b]).sum();
-            left_want[b] = (sought[b] - got).max(Fixed::ZERO);
+            pref[b * ns + s] = preference(s, b);
         }
     }
-    flow
+    let mut buf = ClearBuffers::default();
+    clear_good_flat(offered, sought, &pref, &mut buf);
+    (0..ns)
+        .map(|s| buf.flow[s * nb..(s + 1) * nb].to_vec())
+        .collect()
 }
 
-/// `total` split by `weights` exactly: the floor of each share in raw units, and the units left
-/// to the largest remainders (ties to the lower index), so the parts add up to `total` to the
-/// last unit and never past it.
-fn split_exact(total: Fixed, weights: &[Fixed]) -> Vec<Fixed> {
+/// What the clearing of one good leaves, and its scratch, kept from good to good so that the
+/// week allocates once (`clear_good_flat`).
+#[derive(Default)]
+pub struct ClearBuffers {
+    /// What seller `s` sends buyer `b`, at `s × buyers + b`.
+    pub flow: Vec<Fixed>,
+    /// What each seller exports and each buyer imports: the sums of `flow`'s rows and columns.
+    pub exports: Vec<Fixed>,
+    pub imports: Vec<Fixed>,
+    /// Each pass's orders, `s × buyers + b`.
+    asked: Vec<Fixed>,
+    requested: Vec<Fixed>,
+    left_offer: Vec<Fixed>,
+    left_want: Vec<Fixed>,
+    weights: Vec<Fixed>,
+    parts: Vec<Fixed>,
+    sellers: Vec<usize>,
+    sent: Vec<Fixed>,
+    rest: Vec<(i128, usize)>,
+}
+
+/// `clear_good` on flat tables: `pref[b × sellers + s]` is how much buyer `b` leans toward
+/// seller `s`; the flows land in `buf`. Two passes: the orders as the preferences place them,
+/// then what is left of each buyer's demand among the sellers that still have something. The
+/// sums of each seller's and each buyer's flows are kept as they are written, in the order the
+/// columns and rows would add them: the same integers as summing the matrix after.
+pub fn clear_good_flat(
+    offered: &[Fixed],
+    sought: &[Fixed],
+    pref: &[Fixed],
+    buf: &mut ClearBuffers,
+) {
+    let (ns, nb) = (offered.len(), sought.len());
+    let reset = |v: &mut Vec<Fixed>, n: usize| {
+        v.clear();
+        v.resize(n, Fixed::ZERO);
+    };
+    reset(&mut buf.flow, ns * nb);
+    reset(&mut buf.exports, ns);
+    reset(&mut buf.imports, nb);
+    reset(&mut buf.asked, ns * nb);
+    reset(&mut buf.sent, nb);
+    buf.left_offer.clear();
+    buf.left_offer.extend_from_slice(offered);
+    buf.left_want.clear();
+    buf.left_want.extend_from_slice(sought);
+    for pass in 0..2 {
+        if pass > 0 {
+            buf.asked.fill(Fixed::ZERO);
+        }
+        reset(&mut buf.requested, ns);
+        for b in 0..nb {
+            if buf.left_want[b] <= Fixed::ZERO {
+                continue;
+            }
+            buf.sellers.clear();
+            buf.weights.clear();
+            let row = &pref[b * ns..(b + 1) * ns];
+            for s in 0..ns {
+                if buf.left_offer[s] > Fixed::ZERO && row[s] > Fixed::ZERO {
+                    buf.sellers.push(s);
+                    buf.weights.push(buf.left_offer[s] * row[s]);
+                }
+            }
+            buf.parts.clear();
+            buf.parts.resize(buf.weights.len(), Fixed::ZERO);
+            split_exact_into(
+                buf.left_want[b],
+                &buf.weights,
+                &mut buf.parts,
+                &mut buf.rest,
+            );
+            for (k, &s) in buf.sellers.iter().enumerate() {
+                let q = buf.parts[k];
+                buf.asked[s * nb + b] = q;
+                buf.requested[s] += q;
+            }
+        }
+        for s in 0..ns {
+            if buf.requested[s] <= Fixed::ZERO {
+                continue;
+            }
+            let row = &buf.asked[s * nb..(s + 1) * nb];
+            // A seller asked for more than it has cuts every order in proportion.
+            let sent: &[Fixed] = if buf.requested[s] > buf.left_offer[s] {
+                split_exact_into(buf.left_offer[s], row, &mut buf.sent, &mut buf.rest);
+                &buf.sent
+            } else {
+                row
+            };
+            let flow = &mut buf.flow[s * nb..(s + 1) * nb];
+            let mut total = Fixed::ZERO;
+            for b in 0..nb {
+                let q = sent[b];
+                flow[b] += q;
+                total += q;
+                buf.imports[b] += q;
+            }
+            buf.exports[s] += total;
+        }
+        for s in 0..ns {
+            buf.left_offer[s] = (offered[s] - buf.exports[s]).max(Fixed::ZERO);
+        }
+        for b in 0..nb {
+            buf.left_want[b] = (sought[b] - buf.imports[b]).max(Fixed::ZERO);
+        }
+    }
+}
+
+/// `total` split by `weights` exactly into `out` (`rest` is scratch): the floor of each share in
+/// raw units, and the units left to the largest remainders (ties to the lower index), so the
+/// parts add up to `total` to the last unit and never past it. Fewer units are left than there
+/// are weights, so only that many of the largest remainders take one: they are selected, not
+/// sorted (the same ones, the order being total).
+fn split_exact_into(
+    total: Fixed,
+    weights: &[Fixed],
+    out: &mut [Fixed],
+    rest: &mut Vec<(i128, usize)>,
+) {
     let sum: i128 = weights.iter().map(|w| i128::from(w.raw().max(0))).sum();
     if total <= Fixed::ZERO || sum <= 0 {
-        return vec![Fixed::ZERO; weights.len()];
+        out.fill(Fixed::ZERO);
+        return;
     }
     let t = i128::from(total.raw());
-    let mut parts: Vec<i128> = Vec::with_capacity(weights.len());
-    let mut rest: Vec<(i128, usize)> = Vec::with_capacity(weights.len());
+    rest.clear();
+    let mut given: i128 = 0;
+    // Most products fit in 64 bits: divide there, in hardware, instead of in the 128-bit
+    // software routine (the same integers). A zero weight gets nothing and leaves no remainder:
+    // it is never among the remainders that take a unit, so it is left out of them.
+    let small = i64::try_from(sum).ok();
     for (i, w) in weights.iter().enumerate() {
-        let num = t * i128::from(w.raw().max(0));
-        parts.push(num / sum);
-        rest.push((num % sum, i));
-    }
-    let mut left = t - parts.iter().sum::<i128>();
-    rest.sort_by(|a, b| b.0.cmp(&a.0).then(a.1.cmp(&b.1)));
-    for (r, i) in rest {
-        if left <= 0 {
-            break;
+        let w = w.raw().max(0);
+        if w == 0 {
+            out[i] = Fixed::ZERO;
+            continue;
         }
+        let (part, r) = match (small, total.raw().checked_mul(w)) {
+            (Some(d), Some(num)) => (i128::from(num / d), i128::from(num % d)),
+            _ => {
+                let num = t * i128::from(w);
+                (num / sum, num % sum)
+            }
+        };
+        given += part;
+        out[i] = Fixed::from_raw(part as i64);
+        rest.push((r, i));
+    }
+    let left = (t - given) as usize;
+    if left == 0 {
+        return;
+    }
+    let order = |a: &(i128, usize), b: &(i128, usize)| b.0.cmp(&a.0).then(a.1.cmp(&b.1));
+    if left < rest.len() {
+        rest.select_nth_unstable_by(left - 1, order);
+    }
+    for &(r, i) in &rest[..left.min(rest.len())] {
         if r > 0 {
-            parts[i] += 1;
-            left -= 1;
+            out[i] = Fixed::from_raw(out[i].raw() + 1);
         }
     }
-    parts
-        .into_iter()
-        .map(|p| Fixed::from_raw(p as i64))
-        .collect()
 }
 
 /// Scales each buyer's preferences (`pref[s][b]`) so that its favourite seller has 1: the weights
@@ -359,6 +480,24 @@ pub fn totals(flow: &Flows, buyers: usize) -> (Vec<Fixed>, Vec<Fixed>) {
         .map(|b| flow.iter().map(|row| row[b]).sum())
         .collect();
     (exports, imports)
+}
+
+/// The tariff `buyer` charges on `seller`'s goods under `relations` (those in force), from the
+/// buyer's own `tariff`: a customs union takes it to zero, a preference lowers it by a margin, a
+/// cap holds it under a ceiling, in the order of the treaties.
+fn tariff_by(relations: &[&TariffRelation], buyer: usize, seller: usize, tariff: Fixed) -> Fixed {
+    let mut t = tariff;
+    for r in relations
+        .iter()
+        .filter(|r| r.giver == buyer && r.receiver == seller)
+    {
+        t = match r.rule {
+            TariffRule::Union => Fixed::ZERO,
+            TariffRule::Margin(m) => (t - m).max(Fixed::ZERO),
+            TariffRule::Cap(c) => t.min(c),
+        };
+    }
+    t
 }
 
 /// Effective distance between countries for freight, in km of land haul, fixed for the
@@ -643,19 +782,33 @@ impl Geography {
     /// The tariff `buyer` charges on `seller`'s goods on `date`, from the buyer's own `tariff`
     /// and the treaties between them.
     pub fn tariff(&self, buyer: usize, seller: usize, tariff: Fixed, date: &str) -> Fixed {
-        let mut t = tariff;
-        for r in self.relations.iter().filter(|r| {
-            r.giver == buyer
-                && r.receiver == seller
-                && crate::diplomacy::covers(&r.from, r.until.as_deref(), date)
-        }) {
-            t = match r.rule {
-                TariffRule::Union => Fixed::ZERO,
-                TariffRule::Margin(m) => (t - m).max(Fixed::ZERO),
-                TariffRule::Cap(c) => t.min(c),
-            };
+        tariff_by(&self.relations_on(date), buyer, seller, tariff)
+    }
+
+    /// The tariff relations in force on `date`, in the order of the treaties.
+    fn relations_on(&self, date: &str) -> Vec<&TariffRelation> {
+        self.relations
+            .iter()
+            .filter(|r| crate::diplomacy::covers(&r.from, r.until.as_deref(), date))
+            .collect()
+    }
+
+    /// The pairs among `n` markets closed on `date` (either way), as an `n × n` table, as
+    /// `closed` answers them; `None` when none is.
+    pub fn closed_on(&self, date: &str, n: usize) -> Option<Vec<bool>> {
+        let mut out: Option<Vec<bool>> = None;
+        for c in self
+            .closures
+            .iter()
+            .filter(|c| crate::diplomacy::covers(&c.from, c.until.as_deref(), date))
+        {
+            if c.a < n && c.b < n {
+                let t = out.get_or_insert_with(|| vec![false; n * n]);
+                t[c.a * n + c.b] = true;
+                t[c.b * n + c.a] = true;
+            }
         }
-        t
+        out
     }
 
     /// Effective km from `a` to `b`.
