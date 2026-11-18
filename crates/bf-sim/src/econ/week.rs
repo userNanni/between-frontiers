@@ -759,10 +759,33 @@ fn settle_region<const SKIP_IDLE: bool, const ABROAD: bool>(
 fn world_pool(cat: &Catalogue, supply: &[Vec<Fixed>], demand: &[Vec<Fixed>]) -> Vec<Vec<Fixed>> {
     let g = cat.goods.len();
     let nm = supply.len();
+    // Each good on its own: its column, worked out in its own task, in market order.
+    let columns: Vec<Option<Vec<Fixed>>> = (0..g)
+        .into_par_iter()
+        .map(|gi| good_trade(cat, supply, demand, gi))
+        .collect();
     let mut trade = vec![vec![Fixed::ZERO; g]; nm];
-    for gi in 0..g {
+    for (gi, column) in columns.into_iter().enumerate() {
+        if let Some(column) = column {
+            for (mi, t) in column.into_iter().enumerate() {
+                trade[mi][gi] = t;
+            }
+        }
+    }
+    trade
+}
+
+/// One good's trade with the world pool, by market; `None` when nothing is traded.
+fn good_trade(
+    cat: &Catalogue,
+    supply: &[Vec<Fixed>],
+    demand: &[Vec<Fixed>],
+    gi: usize,
+) -> Option<Vec<Fixed>> {
+    let nm = supply.len();
+    {
         if !cat.goods[gi].tradable {
-            continue;
+            return None;
         }
         let mut offered = Fixed::ZERO;
         let mut sought = Fixed::ZERO;
@@ -776,18 +799,21 @@ fn world_pool(cat: &Catalogue, supply: &[Vec<Fixed>], demand: &[Vec<Fixed>]) -> 
         }
         let traded = offered.min(sought);
         if traded <= Fixed::ZERO {
-            continue;
+            return None;
         }
-        for mi in 0..nm {
-            let gap = supply[mi][gi] - demand[mi][gi];
-            trade[mi][gi] = if gap > Fixed::ZERO {
-                -(gap * TRADE_REACH * traded / offered)
-            } else {
-                -gap * TRADE_REACH * traded / sought
-            };
-        }
+        Some(
+            (0..nm)
+                .map(|mi| {
+                    let gap = supply[mi][gi] - demand[mi][gi];
+                    if gap > Fixed::ZERO {
+                        -(gap * TRADE_REACH * traded / offered)
+                    } else {
+                        -gap * TRADE_REACH * traded / sought
+                    }
+                })
+                .collect(),
+        )
     }
-    trade
 }
 
 /// What trade by pair hands the week: the trade of each market by good, the exports by pair
@@ -954,15 +980,26 @@ impl System<GameWorld> for Week {
             .map(|r| region_orders::<true>(cat, econ, r, exists, &national[r.market as usize]))
             .collect();
         let g = cat.goods.len();
-        let mut demand = vec![vec![Fixed::ZERO; g]; econ.markets.len()];
-        let mut supply = vec![vec![Fixed::ZERO; g]; econ.markets.len()];
-        for (r, o) in econ.regions.iter().zip(&orders) {
-            let mi = r.market as usize;
-            for gi in 0..g {
-                demand[mi][gi] += o.demand[gi];
-                supply[mi][gi] += o.supply[gi];
-            }
+        // Each market sums its own states, in state order, in its own task.
+        let mut by_market = vec![Vec::new(); econ.markets.len()];
+        for (ri, r) in econ.regions.iter().enumerate() {
+            by_market[r.market as usize].push(ri);
         }
+        let (mut demand, mut supply): (Vec<Vec<Fixed>>, Vec<Vec<Fixed>>) = by_market
+            .par_iter()
+            .map(|states| {
+                let mut d = vec![Fixed::ZERO; g];
+                let mut s = vec![Fixed::ZERO; g];
+                for &ri in states {
+                    let o = &orders[ri];
+                    for gi in 0..g {
+                        d[gi] += o.demand[gi];
+                        s[gi] += o.supply[gi];
+                    }
+                }
+                (d, s)
+            })
+            .unzip();
         // Local goods clear state by state first; the country-wide buyers get what is left.
         let region_demand: Vec<&[Fixed]> = orders.iter().map(|o| &o.demand[..]).collect();
         let region_supply: Vec<&[Fixed]> = orders.iter().map(|o| &o.supply[..]).collect();
@@ -984,10 +1021,14 @@ impl System<GameWorld> for Week {
         } else {
             (world_pool(cat, &supply, &demand), Vec::new(), None)
         };
-        let upkeep: Vec<_> = econ.markets.iter().map(|m| upkeep_orders(cat, m)).collect();
+        let upkeep: Vec<_> = econ
+            .markets
+            .par_iter()
+            .map(|m| upkeep_orders(cat, m))
+            .collect();
         let (mut markets, state_orders): (Vec<Market>, Vec<_>) = econ
             .markets
-            .iter()
+            .par_iter()
             .enumerate()
             .map(|(mi, m)| {
                 let (d, s, t) = (&demand[mi], &supply[mi], &trade[mi]);
@@ -1062,6 +1103,7 @@ impl System<GameWorld> for Week {
         };
         // World price: average of the market prices weighted by volume.
         let world_price = (0..g)
+            .into_par_iter()
             .map(|gi| {
                 let mut num = Fixed::ZERO;
                 let mut den = Fixed::ZERO;
