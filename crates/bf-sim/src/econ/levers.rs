@@ -435,7 +435,19 @@ pub struct WorkLine {
     /// Weeks left at the pace of the last week's deliveries (the queue got `buy_ratio` of the
     /// points it asked for), never fewer than at the full weekly share.
     pub weeks: i64,
+    /// Weeks left once the bottleneck clears: at the full weekly share (a work takes at least
+    /// `construction::MIN_WEEKS`).
+    pub weeks_full: i64,
     pub bottleneck: Bottleneck,
+    /// How tight the bottleneck is, 0–1: the share of the cement or steel the building trade
+    /// sought that it got last week, the share of its pay the treasury met (`Cash`), or the base
+    /// price of construction points over today's (`Price`); 1 with no bottleneck.
+    pub met: f64,
+    /// With `Cash`: the money the treasury lacks to pay in full again (up to
+    /// `public::PAY_RESERVE_WEEKS` of revenue), in real units.
+    pub short: Option<f64>,
+    /// Share of the points the queue asked for that it got last week, 0–1.
+    pub pace: f64,
     /// Placed by the government's order (D8) rather than by arrival.
     pub fixed: bool,
 }
@@ -474,17 +486,40 @@ pub fn works(
     } else {
         Bottleneck::None
     };
+    let f = |x: Fixed| x.raw() as f64 / 1000.0;
+    let (met, short) = match bottleneck {
+        Bottleneck::Cash => (
+            f(super::public::pay_share(m)),
+            Some(f((m.budget.revenue_avg * super::public::PAY_RESERVE_WEEKS
+                - m.treasury)
+                .max(Fixed::ZERO))),
+        ),
+        Bottleneck::Cement => (f(share("cement")), None),
+        Bottleneck::Steel => (f(share("steel")), None),
+        Bottleneck::Price => (
+            kinds.construction.map_or(1.0, |cg| {
+                f(cat.goods[cg as usize].base_price) / f(m.price[cg as usize]).max(1e-9)
+            }),
+            None,
+        ),
+        Bottleneck::None => (1.0, None),
+    };
+    let ceil = |x: Fixed| (x + Fixed::ONE - Fixed::EPSILON).to_int_floor().max(1);
     let listed = |k: &WorkKey| order.is_some_and(|o| o.contains(k));
     m.queue
         .iter()
         .filter(|p| p.public)
         .map(|p| {
             let key = WorkKey::of(p);
-            let per_week = super::construction::want(p) * pace;
+            let full = super::construction::want(p);
+            let per_week = full * pace;
             let weeks = if per_week > Fixed::ZERO {
-                (p.left / per_week + Fixed::ONE - Fixed::EPSILON)
-                    .to_int_floor()
-                    .max(1)
+                ceil(p.left / per_week)
+            } else {
+                0
+            };
+            let weeks_full = if full > Fixed::ZERO {
+                ceil(p.left / full)
             } else {
                 0
             };
@@ -497,7 +532,11 @@ pub fn works(
                     1.0
                 },
                 weeks,
+                weeks_full,
                 bottleneck,
+                met,
+                short,
+                pace: f(pace),
                 fixed: listed(&key),
             }
         })
