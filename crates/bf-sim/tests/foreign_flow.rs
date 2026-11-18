@@ -89,6 +89,7 @@ fn capital_abroad_moves_money_between_funds_and_keeps_the_stakes_consistent() {
     let inv = Investment {
         cat: rules.catalogue.clone(),
         tree: rules.tree.clone(),
+        wage_floor: false,
         foreign_flow: true,
     };
     let before = pools(&w);
@@ -145,6 +146,7 @@ fn the_foreign_share_of_profit_leaves_for_the_owners_fund() {
         tree: rules.tree.clone(),
         geo: None,
         by_pair: false,
+        wage_floor: false,
         foreign_flow: true,
     };
     // The plant with the largest profit last week, of a kind with owners.
