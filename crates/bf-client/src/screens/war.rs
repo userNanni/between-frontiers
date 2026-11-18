@@ -309,7 +309,23 @@ fn front(
                     i18n.int(f.week_losses(1) as i64),
                 ),
             );
-            bf_ui_kit::stat_row(ui, &i18n.tr("war-advance"), &km(i18n, f.advance_km()));
+            // The sum over the segments, not a distance on the map: said on hover.
+            ui.horizontal(|ui| {
+                ui.label(
+                    RichText::new(i18n.tr("war-advance"))
+                        .font(sans(size::BODY))
+                        .color(color::TEXT_MUTED),
+                )
+                .on_hover_text(bf_ui_kit::tooltip_text(&i18n.tr("war-advance-tip")));
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    ui.label(
+                        RichText::new(km(i18n, f.advance_km()))
+                            .font(bf_ui_kit::theme::sans_medium(size::BODY))
+                            .color(color::TEXT),
+                    )
+                    .on_hover_text(bf_ui_kit::tooltip_text(&i18n.tr("war-advance-tip")));
+                });
+            });
         }
         bf_ui_kit::stat_row(
             ui,

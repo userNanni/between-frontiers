@@ -186,6 +186,7 @@ war-men = Homens na frente
 war-power = Poder de fogo
 war-week-losses = Baixas na semana
 war-advance = Avanço na semana
+war-advance-tip = Soma, em km, do que a frente avançou ou recuou em cada segmento nesta semana; não é uma distância no mapa. Cada segmento avança até a profundidade do estado vizinho, e aí o estado muda de mãos.
 war-enemy-losses = Baixas do inimigo desde o início
 war-our-losses = Nossas baixas em terra desde o início
 war-km-gained = ganhamos { $km } km

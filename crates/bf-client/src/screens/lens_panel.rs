@@ -1139,12 +1139,19 @@ fn war_legend(ui: &mut Ui, i18n: &I18n, world: &World) {
         bf_ui_kit::small(ui, &i18n.tr("legend-war-none"));
         return;
     };
-    let sample = [150, 70, 60, 255];
+    // The samples take the colour of a country at war on the map, so they read as it does;
+    // outside the wars, a neutral grey faded the same way.
+    let c = v
+        .at_war
+        .first()
+        .and_then(|t| world.countries.iter().find(|c| c.tag() == t))
+        .map_or((120, 112, 98), |c| c.def.color);
+    let sample = [c.0, c.1, c.2, 255];
     swatch(ui, sample, false, &i18n.tr("legend-war-at-war"));
     swatch(ui, sample, true, &i18n.tr("legend-war-occupied"));
     swatch(
         ui,
-        lens::faded((150, 70, 60)),
+        lens::faded((150, 150, 150)),
         false,
         &i18n.tr("legend-war-outside"),
     );

@@ -186,6 +186,7 @@ war-men = Men at the front
 war-power = Firepower
 war-week-losses = Losses this week
 war-advance = Advance this week
+war-advance-tip = Sum, in km, of what the front gained or lost on each segment this week; not a distance on the map. Each segment advances up to the depth of the next state, which then changes hands.
 war-enemy-losses = Enemy losses since the start
 war-our-losses = Our land losses since the start
 war-km-gained = gained { $km } km
