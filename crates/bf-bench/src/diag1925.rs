@@ -224,6 +224,72 @@ pub fn main() -> Result<(), String> {
         }
         return Ok(());
     }
+    // Customs revenue by country (`BF_DIAG_DUTIES=TAG,TAG[:years]`), with `customs_duties` on:
+    // by year, the tariff in force, the duties over the imports at the buyers' price (against
+    // the 1925 rate of `diplomacy.ron`) and over GDP, and the imports over GDP.
+    if let Ok(spec) = std::env::var("BF_DIAG_DUTIES") {
+        use laplace_schelling::Fixed;
+        let (tags, years) = spec.split_once(':').unwrap_or((spec.as_str(), "11"));
+        let years: i32 = years.parse().unwrap_or(11);
+        let duties = data.duties();
+        let idx: Vec<(String, usize)> = tags
+            .split(',')
+            .filter_map(|t| {
+                let t = t.trim();
+                data.countries
+                    .countries
+                    .iter()
+                    .position(|c| c.tag == t)
+                    .map(|i| (t.to_string(), i))
+            })
+            .collect();
+        let n = data.countries.countries.len();
+        let end = Date::new(1925 + years, 1, 1);
+        let mut d = Date::new(1925, 1, 5);
+        let (mut year, mut weeks) = (1925, 0u32);
+        let (mut paid, mut bought) = (vec![0f64; n], vec![0f64; n]);
+        while d < end {
+            d = Date::from_days(d.to_days() + 7);
+            s.sim.run_until(d);
+            let e = &s.world().econ;
+            let rates: Vec<Fixed> = e
+                .markets
+                .iter()
+                .enumerate()
+                .map(|(mi, m)| duties.rate(mi, m))
+                .collect();
+            let p = bf_sim::econ::customs::duties(&cat, &e.markets, &rates);
+            let b = bf_sim::econ::customs::duties(&cat, &e.markets, &vec![Fixed::ONE; rates.len()]);
+            for i in 0..n.min(p.len()) {
+                paid[i] += p[i].to_f64_lossy();
+                bought[i] += b[i].to_f64_lossy();
+            }
+            weeks += 1;
+            if d.year != year {
+                let k = 52.0 / f64::from(weeks);
+                for (tag, i) in &idx {
+                    let m = &e.markets[*i];
+                    let gdp = m.gdp_last_year.to_f64_lossy().max(1.0);
+                    let r1925 = data
+                        .diplomacy
+                        .as_ref()
+                        .and_then(|dp| dp.tariff(tag))
+                        .map_or(f32::NAN, |t| t.rate);
+                    println!(
+                        "{year} {tag}: tariff {:.1} % (1925 ref {:.1} %), duties {:.1} % of imports, {:.2} % of GDP; imports {:.2} % of GDP",
+                        rates[*i].to_f64_lossy() * 100.0,
+                        f64::from(r1925) * 100.0,
+                        paid[*i] / bought[*i].max(1.0) * 100.0,
+                        paid[*i] * k / gdp * 100.0,
+                        bought[*i] * k / gdp * 100.0
+                    );
+                }
+                (paid, bought) = (vec![0f64; n], vec![0f64; n]);
+                (year, weeks) = (d.year, 0);
+            }
+        }
+        return Ok(());
+    }
     // What a tariff protects (`BF_DIAG_PROTECT=TAG[:years]`, docs/trade.pt-BR.md, section 13):
     // run with `BF_LAWS=TAG=free_trade` and then `protective_tariffs`, with and without
     // `customs_duties`. Printed by year, for the goods the country imported most in the first
