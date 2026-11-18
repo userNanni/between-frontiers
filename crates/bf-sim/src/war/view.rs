@@ -77,15 +77,7 @@ pub fn orders_view(
     let price = |list: &[(u16, Fixed)]| -> Fixed {
         list.iter().map(|(g, q)| *q * m.price[*g as usize]).sum()
     };
-    let weight: i64 = cat
-        .state_basket
-        .iter()
-        .filter(|(g, _)| cat.goods[*g as usize].category == "military")
-        .map(|(_, w)| *w)
-        .sum();
-    let room = crate::econ::public::goods_budget(m)
-        .max(Fixed::ZERO)
-        .mul_ratio(m.levers.military.map_or(weight, i64::from), 1000);
+    let room = crate::econ::public::military_room(m, cat);
     let needs = price(&needs_of(mil, peace, c).0);
     let wage = crate::econ::monthly::market_wages(&world.econ, wage_floor)
         .get(country)
