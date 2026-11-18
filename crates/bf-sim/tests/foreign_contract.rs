@@ -210,6 +210,7 @@ fn the_plants_profit_leaves_for_the_old_metropole_the_next_monday() {
         wage_floor: false,
         // Stakes are read whenever either rule can make them.
         foreign_flow: true,
+        fiscal_capacity: false,
     };
     let at = TickCtx {
         tick: 1,

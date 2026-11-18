@@ -348,13 +348,41 @@ fn new_session(data: &GameData, seed: u64, threads: usize) -> Session {
             m.pool = m.pool.mul_ratio(1000 + n, 1000);
         }
     }
-    Session::new(
+    let mut s = Session::new(
         world,
         seed,
         Date::new(1925, 1, 1),
         threads,
         Some(rules(data)),
-    )
+    );
+    // `BF_LEVERS=TAG`: the budget levers' counterfactual (`docs/state.pt-BR.md`, "Testes, por
+    // alavanca"): the country's levers set against the rule from 1925 on, half its servants,
+    // public pay as the private wage, twice the reserve, the surplus to repaying and no deficit.
+    if let Ok(tag) = std::env::var("BF_LEVERS") {
+        use bf_sim::game::GameCommand as C;
+        for c in [
+            C::SetPayroll {
+                tag: tag.clone(),
+                per_mille: Some([6, 5]),
+            },
+            C::SetPublicPay {
+                tag: tag.clone(),
+                per_mille: Some(1000),
+            },
+            C::SetTreasury {
+                tag: tag.clone(),
+                reserve_weeks: Some(26),
+                surplus: Some(bf_sim::econ::levers::SurplusUse::Repay),
+            },
+            C::SetDeficitCap {
+                tag,
+                per_mille_gdp: Some(0),
+            },
+        ] {
+            s.submit(c);
+        }
+    }
+    s
 }
 
 fn snapshot(data: &GameData, s: &Session, ms: f64, log: &mut InflationLog) -> Decade {

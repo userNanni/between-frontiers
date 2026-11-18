@@ -116,11 +116,13 @@ commit, como `0.0.1+92093bd4e`), para a mensagem de erro.
 | 12 e 13 | nunca gravadas | — |
 | 14 | capital que cruza fronteira: obras pagas de fora e lucro reinvestido (`ForeignState::building`, `retained`, #117). Vazios enquanto a chave `foreign_flow` estiver desligada | `compat::V14` |
 | 15 | encomendas das forças (`CountryWar::queue`, `Formation::raised`, #151) | `compat::V15` |
-| 16 | registro de cada linha do livro de dívidas (`paid`, `written_off`, `status`; a linha encerrada vai para `Ledger::closed`) e os acordos assinados em jogo (`TreatyState::agreements`). Sem registro enquanto a chave `ledger_record` estiver desligada | `GameWorld` |
+| 16 | registro de cada linha do livro de dívidas (`paid`, `written_off`, `status`; a linha encerrada vai para `Ledger::closed`) e os acordos assinados em jogo (`TreatyState::agreements`). Sem registro enquanto a chave `ledger_record` estiver desligada | `compat::V16` |
+| 17 | independência por movimento (`GameWorld::independence`, #136); vazia com a chave `independence` desligada | `compat::V17` |
+| 18 | alavancas do orçamento (`GameWorld::levers`); vazias na migração: todos na regra, mesmo hash | `GameWorld` |
 
 `decode_world` lê a versão e aplica a cadeia até a atual: `v0_to_v1 → v1_to_v2 → v2_to_now`
 (a economia da 2 converte direto para a da 5: `v2_to_v5`), `v4_to_v5` (a 3 lê direto como a 4) e
-`v5_to_v6`, `v6_to_v7`, `v7_to_v8`, `v8_to_v9`, `v9_to_v10`, `v10_to_v11`, `v11_to_v14`, `v14_to_v15` e `v15_to_v16` (o comércio por par começa vazio; com a chave
+`v5_to_v6`, `v6_to_v7`, `v7_to_v8`, `v8_to_v9`, `v9_to_v10`, `v10_to_v11`, `v11_to_v14`, `v14_to_v15`, `v15_to_v16`, `v16_to_v17` e `v17_to_v18` (o comércio por par começa vazio; com a chave
 ligada, se preenche na primeira semana; o ensino também começa vazio). Da 5 à 15 o livro de
 dívidas é lido no formato de antes do registro das linhas (`treaty::LedgerBeforeObligations`,
 por `deserialize_with`), com toda linha aberta e nada pago, e o estado dos tratados da 8 à 15

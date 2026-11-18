@@ -89,6 +89,26 @@ const PLAYER: &[Surface] = &[
         files: &["screens/forces.rs"],
     },
     Surface {
+        variant: "SetPayroll",
+        command: id::TAB_BUDGET,
+        files: &["screens/levers.rs"],
+    },
+    Surface {
+        variant: "SetPublicPay",
+        command: id::TAB_BUDGET,
+        files: &["screens/levers.rs"],
+    },
+    Surface {
+        variant: "SetTreasury",
+        command: id::TAB_BUDGET,
+        files: &["screens/levers.rs"],
+    },
+    Surface {
+        variant: "SetDeficitCap",
+        command: id::TAB_BUDGET,
+        files: &["screens/levers.rs"],
+    },
+    Surface {
         variant: "Mobilize",
         command: id::JOURNAL,
         files: &["screens/game.rs", "screens/journal.rs"],

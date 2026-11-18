@@ -147,6 +147,14 @@ pub struct Market {
     /// Currency, central bank and public debt.
     #[serde(default)]
     pub money: super::money::Money,
+    /// The country's levers over the budget's rule, copied from `GameWorld::levers` (saved and
+    /// hashed there, not here).
+    #[serde(skip)]
+    pub levers: super::levers::Levers,
+    /// Last week's taxes not collected for lack of servants, with `Switches::fiscal_capacity`
+    /// on; `None` off. An output for the screen: not saved, not hashed.
+    #[serde(skip)]
+    pub uncollected: Option<Fixed>,
 }
 
 /// The country's laws that the economy reads.
@@ -299,6 +307,8 @@ impl Market {
             budget: Budget::default(),
             laws: Laws::default(),
             money: super::money::Money::default(),
+            levers: Default::default(),
+            uncollected: None,
         }
     }
 }

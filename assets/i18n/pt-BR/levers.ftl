@@ -1,0 +1,31 @@
+# Alavancas do orçamento na aba Orçamento.
+
+lever-heading = Folha e Tesouro
+lever-basis = Cada linha segue a regra histórica até o governo fixar um valor. O decreto vale no mês seguinte e o efeito anda no ritmo real: contratar e demitir leva meses.
+lever-rule = Regra histórica
+lever-fixed = Fixado
+lever-limits = De { $floor } a { $ceiling }
+lever-per-mille-people = { $n } por mil habitantes
+lever-payroll = Folha do Estado
+lever-payroll-rule = Regra histórica: servidores { $servants }, clero { $clergy }. O Estado contrata um décimo da diferença por mês e não demite.
+lever-payroll-note = Abaixo do fixado, a folha cresce como na regra; acima, encolhe aos poucos: aposentadoria, vaga congelada e demissão até um teto por mês.
+lever-pay = Salário público
+lever-pay-rule = Regra histórica: { $share } do salário privado da profissão.
+lever-pay-note = Abaixo do privado, a vaga demora a encher e parte dos servidores sai para o privado; acima, enche mais rápido.
+lever-treasury = Reserva do Tesouro
+lever-treasury-rule = Regra histórica: { $weeks } semanas de receita em caixa antes de começar obra; acima do dobro, gasta um décimo do excesso por semana, e paga dívida se ela passar de 60 % do PIB.
+lever-treasury-note = Reserva maior adia a obra pública; menor aproxima o atraso da folha, que começa abaixo de 8 semanas.
+lever-surplus = Excesso
+lever-surplus-spend = Gastar
+lever-surplus-repay = Pagar dívida
+lever-surplus-keep = Guardar
+lever-deficit = Teto de déficit
+lever-deficit-rule = Regra histórica: alvo de { $share } do PIB por ano, freado pela dívida e pelos juros.
+lever-deficit-note = O freio da dívida e dos juros continua: o mercado não compra mais título porque o governo quer.
+lever-servants = Servidores por mil habitantes
+lever-clergy = Clero pago pelo Tesouro, por mil
+lever-reserve = Reserva, em semanas de receita
+lever-pay-fixed = Fixado, % do salário privado
+lever-deficit-fixed = Fixado, % do PIB por ano
+lever-week-effect = Na semana, contra a regra: { $amount } no caixa
+lever-uncollected = Faltam servidores para cobrar: { $share } dos impostos da semana não foram arrecadados.

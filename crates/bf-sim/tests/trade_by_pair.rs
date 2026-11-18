@@ -67,6 +67,7 @@ fn switches_parse_by_name() {
             && all.foreign_flow
             && all.schooling
             && all.forces
+            && all.fiscal_capacity
     );
 }
 

@@ -185,6 +185,7 @@ fn labour_region(
     soldiers: Option<i64>,
     qualified: Option<[Fixed; 3]>,
     jobs_follow_use: bool,
+    payroll: Option<[i64; 2]>,
 ) -> LabourChange {
     let mut required = [0i64; P];
     // Self-employment is sized below, from the labourers the plants leave idle.
@@ -204,7 +205,14 @@ fn labour_region(
     // The state hires toward its share of the population.
     let total: i64 = pops.iter().map(|p| p.0).sum();
     for (pi, per_mille) in STATE_SHARE {
-        let target = total * per_mille / 1000;
+        // A payroll the government fixed (`econ::levers`, D1) replaces the rule's share of
+        // servants and clergy; the soldiers keep theirs.
+        let fixed = match (pi, payroll) {
+            (prof::CIVIL_SERVANT, Some([s, _])) => Some(s),
+            (prof::CLERGY, Some([_, c])) => Some(c),
+            _ => None,
+        };
+        let target = total * fixed.unwrap_or(per_mille) / 1000;
         // With forces, the soldiers are their men, hired and sent home (`war::place_soldiers`).
         let target = match (pi, soldiers) {
             (prof::SOLDIER, Some(men)) => {
@@ -213,6 +221,15 @@ fn labour_region(
             _ => target,
         };
         let gap = target - pops[pi].0;
+        // Above a fixed payroll, the excess leaves gradually (retirements, frozen posts,
+        // lay-offs) and joins the town's labourers.
+        if gap < 0 && fixed.is_some() {
+            let n = (-gap / super::levers::PAYROLL_CUT_PER_MONTH)
+                .max(1)
+                .min(pops[pi].0);
+            pops[pi].0 -= n;
+            pops[prof::LABORER].0 += n;
+        }
         if gap < 0 && pi == prof::SOLDIER && soldiers.is_some() {
             let n = (-gap / 10).max(1).min(pops[pi].0);
             pops[pi].0 -= n;
@@ -402,6 +419,7 @@ impl System<GameWorld> for Labour {
                     world.war.soldiers(ri),
                     qualified,
                     self.jobs_follow_use,
+                    world.econ.markets[r.market as usize].levers.payroll(),
                 );
                 c.pioneers = pioneers(&self.cat, r, &world.econ.markets[r.market as usize]);
                 c

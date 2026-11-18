@@ -60,11 +60,12 @@ pub const WORLD_MAGIC: [u8; 4] = *b"BFWD";
 /// 15. the orders of forces (`CountryWar::queue`, `Formation::raised`);
 /// 16. the record of each line of the ledger (`paid`, `written_off`, `status`, closed lines in
 ///     `Ledger::closed`) and the agreements signed in play (`TreatyState::agreements`);
-/// 17. the independence state (`GameWorld::independence`), the last field of the world.
+/// 17. the independence state (`GameWorld::independence`);
+/// 18. the budget's levers (`GameWorld::levers`), the last field of the world.
 ///
 /// Versions 12 and 13 were held for the orders and the independence PRs; 14 landed first, so
 /// the orders came after it, and 12 and 13 were never written.
-pub const WORLD_VERSION: u32 = 17;
+pub const WORLD_VERSION: u32 = 18;
 
 /// Why a snapshot does not read.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -156,6 +157,11 @@ pub fn decode(bytes: &[u8]) -> Result<(GameWorld, Option<CatalogKeys>), WorldErr
             .map(|w| (w, None))
             .map_err(WorldError::Malformed),
     }
+    .map(|(mut w, keys)| {
+        // The markets carry a copy of the levers, not saved.
+        w.levers.sync(&mut w.econ.markets);
+        (w, keys)
+    })
 }
 
 /// [`decode`] without the keys.
@@ -194,7 +200,8 @@ pub fn migrate(v: u32, body: &[u8]) -> Result<GameWorld, SaveError> {
         14 => return Ok(v15_to_v16(v14_to_v15(decode_snapshot(body)?))),
         15 => return Ok(v15_to_v16(decode_snapshot(body)?)),
         16 => return Ok(v16_to_v17(decode_snapshot(body)?)),
-        17 => return decode_snapshot(body),
+        17 => return Ok(v17_to_v18(decode_snapshot(body)?)),
+        18 => return decode_snapshot(body),
         _ => return Err(SaveError::Malformed(format!("unknown world version {v}"))),
     };
     Ok(v15_to_v16(v14_to_v15(v11_to_v14(v11))))
