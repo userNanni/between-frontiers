@@ -853,13 +853,19 @@ fn influence_legend(ui: &mut Ui, i18n: &I18n, world: &World, on: bool) {
             } else {
                 "legend-influence-unit-over"
             },
-            &[("country", Arg::String(focus.clone()))],
+            &[
+                ("country", Arg::String(focus.clone())),
+                (
+                    "article",
+                    Arg::String(crate::text::country_article(i18n, &v.tag)),
+                ),
+            ],
         ),
     );
     // The ramp with a mark at each decade: 0.01 %, 0.1 %, 1 %, 10 %.
     let w = ui.available_width();
-    let (rect, _) = ui.allocate_exact_size(Vec2::new(w, 26.0), Sense::hover());
-    let bar = Rect::from_min_size(rect.min, Vec2::new(w, 9.0));
+    let (rect, _) = ui.allocate_exact_size(Vec2::new(w, 22.0), Sense::hover());
+    let bar = Rect::from_min_size(rect.min, Vec2::new(w, 7.0));
     let steps = 24;
     let painter = ui.painter();
     for k in 0..steps {
@@ -890,7 +896,7 @@ fn influence_legend(ui: &mut Ui, i18n: &I18n, world: &World, on: bool) {
             _ => Align2::CENTER_TOP,
         };
         painter.text(
-            Pos2::new(x, bar.bottom() + 3.0),
+            Pos2::new(x, bar.bottom() + 2.0),
             align,
             decade(i18n, *share),
             sans(11.0),
@@ -912,6 +918,7 @@ fn influence_legend(ui: &mut Ui, i18n: &I18n, world: &World, on: bool) {
             &i18n.tr("legend-influence-nothing"),
         );
     });
+    bf_ui_kit::small(ui, &i18n.tr("legend-influence-scope"));
 }
 
 /// A mark of the influence ramp: 0,01 %, 0,1 %, 1 %, 10 %.
@@ -958,12 +965,15 @@ fn blocs_legend(ui: &mut Ui, i18n: &I18n, world: &World, kind: usize) {
             }
         });
     ui.horizontal_wrapped(|ui| {
-        swatch(
-            ui,
-            lens::bloc_color(0, false),
-            false,
-            &i18n.tr("legend-blocs-member"),
-        );
+        // The tones only differ where a bloc has a leader.
+        if order.iter().any(|b| v.blocs[*b].leader.is_some()) {
+            swatch(
+                ui,
+                lens::bloc_color(0, false),
+                false,
+                &i18n.tr("legend-blocs-member"),
+            );
+        }
         if kind == 0 {
             ui.add_space(space::SM);
             swatch(
@@ -991,7 +1001,13 @@ pub fn bloc_name(i18n: &I18n, b: &crate::blocs_view::BlocLine) -> String {
     match &b.leader {
         Some(l) => i18n.tr_args(
             &format!("bloc-name-{kind}"),
-            &[("leader", Arg::String(crate::text::country_name(i18n, l)))],
+            &[
+                ("leader", Arg::String(crate::text::country_name(i18n, l))),
+                (
+                    "article",
+                    Arg::String(crate::text::country_article(i18n, l)),
+                ),
+            ],
         ),
         None => b
             .members
@@ -1004,7 +1020,11 @@ pub fn bloc_name(i18n: &I18n, b: &crate::blocs_view::BlocLine) -> String {
 
 fn bloc_line(i18n: &I18n, b: &crate::blocs_view::BlocLine) -> String {
     i18n.tr_args(
-        "legend-bloc-line",
+        if b.leader.is_some() {
+            "legend-bloc-line"
+        } else {
+            "legend-bloc-leaderless"
+        },
         &[
             ("name", Arg::String(bloc_name(i18n, b))),
             ("members", Arg::String(b.members.len().to_string())),
