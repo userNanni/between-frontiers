@@ -266,6 +266,33 @@ pub fn respond(
     }
 }
 
+/// When `from` proposing `p` to `to` is blocked by an identical refusal: the date it was refused
+/// (or lapsed) and the date it may come back. For the table's screen.
+pub fn blocked(world: &GameWorld, from: &str, to: &str, p: &Proposal) -> Option<(Date, Date)> {
+    world
+        .treaties
+        .table
+        .closed
+        .iter()
+        .rev()
+        .find(|c| {
+            c.from == from
+                && c.to == to
+                && c.proposal == *p
+                && matches!(c.outcome, Outcome::Refused(_) | Outcome::Lapsed)
+        })
+        .map(|c| {
+            let back = Date::from_days(c.date.to_days() + i64::from(COOLDOWN_MONTHS) * 30);
+            (c.date, back)
+        })
+}
+
+/// The front a clause of kind `kind` waits for in `world` (`None`: it acts), the same reading
+/// the account uses. For the "sem efeito até…" of the table's screen.
+pub fn dormant(world: &GameWorld, cat: &ClauseCatalogue, kind: &ClauseKind) -> Option<Front> {
+    cat.dormant(kind.key(), &Inputs::of(world).live)
+}
+
 /// Whether `tag` is governed by a player (`GameWorld::player`).
 fn is_player(world: &GameWorld, tag: &str) -> bool {
     world

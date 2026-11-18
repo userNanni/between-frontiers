@@ -127,6 +127,19 @@ fn a_refused_proposal_waits_six_months() {
         c.outcome
     );
     assert_eq!(w.treaties.table.propose("GBR", "FRA", p.clone(), D0), None);
+    let (when, back) = bf_sim::treaty_table::blocked(&w, "GBR", "FRA", &p).unwrap();
+    assert_eq!(when, D0);
+    assert!(back > Date::new(1925, 6, 30) && back < Date::new(1925, 7, 10));
+    // A clause of war waits for its front; a payment acts.
+    use bf_sim::treaty::Front;
+    assert_eq!(
+        bf_sim::treaty_table::dormant(&w, cat(), &ClauseKind::Defence),
+        Some(Front::War)
+    );
+    assert_eq!(
+        bf_sim::treaty_table::dormant(&w, cat(), &p.clauses[0].kind),
+        None
+    );
     // Six months later it may come back.
     let later = Date::new(1925, 8, 4);
     week(&mut w, cat(), later);
