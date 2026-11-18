@@ -563,9 +563,27 @@ fn snapshot_of(
                 r.education.as_deref().map(|e| (e, price))
             }),
         )
+        .map(|mut g| {
+            // The purchases' view needs the catalogue, which the government's reading has not.
+            g.purchases = purchases_of(session, rules);
+            g
+        })
         .map(Arc::new),
         laws: crate::laws_view::Live::read(session.world(), session.player()).map(Arc::new),
     }
+}
+
+/// The player's purchases lever (D3), read with the government's view.
+fn purchases_of(session: &Session, rules: &Rules) -> Option<bf_sim::econ::levers::PurchasesView> {
+    let w = session.world();
+    let ci = w
+        .player_tag()
+        .and_then(|t| w.countries.iter().position(|(_, c)| c.tag == t))?;
+    let m = w.econ.markets.get(ci)?;
+    Some(bf_sim::econ::levers::purchases_view(
+        m,
+        &rules.as_ref()?.catalogue,
+    ))
 }
 
 fn local_view(session: &Session) -> Vec<[f32; 2]> {

@@ -2998,6 +2998,11 @@ fn budget_levers() {
         tag: "GBR".into(),
         per_mille: Some([10, 5]),
     });
+    session.submit(GameCommand::SetStatePurchases {
+        tag: "GBR".into(),
+        goods: Some(900),
+        military: Some(500),
+    });
     session.submit(GameCommand::SetDeficitCap {
         tag: "GBR".into(),
         per_mille_gdp: Some(30),
@@ -3042,6 +3047,15 @@ fn budget_levers() {
         }
         h.run_steps(4);
         shot(&mut h, &format!("161-levers-treasury-{tag}"));
+        // The purchases (D3): the goods budget and its military share, fixed.
+        let military = if en {
+            "Military share of purchases"
+        } else {
+            "Parte militar das compras"
+        };
+        h.get_by_label(military).scroll_to_me();
+        h.run_steps(4);
+        shot(&mut h, &format!("162-levers-purchases-{tag}"));
     }
     let _ = std::fs::remove_dir_all(&user);
 }

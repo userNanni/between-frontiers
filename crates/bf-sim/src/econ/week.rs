@@ -55,6 +55,19 @@ fn state_orders(
     exists: &[bool],
     military: Option<&[(GoodIx, Fixed)]>,
 ) -> Vec<(GoodIx, Fixed)> {
+    // With the military share fixed (D3), the basket's weights move between its civilian and
+    // military goods; on the rule they are the basket's own.
+    if let Some(fixed) = public::fixed_basket(cat, m) {
+        let budget = public::goods_budget(m);
+        let goods = fixed.into_iter().filter(|(g, _)| exists[*g as usize]);
+        let Some(military) = military else {
+            return goods
+                .map(|(g, w)| (g, budget.mul_ratio(w, 1_000_000) / m.price[g as usize]))
+                .collect();
+        };
+        let room = public::military_room(m, cat);
+        return crate::war::state_purchases_fixed(cat, goods, military, budget, room, &m.price);
+    }
     let goods = cat.state_basket.iter().filter(|(g, _)| exists[*g as usize]);
     let Some(military) = military else {
         return basket_orders(goods, public::goods_budget(m), &m.price);

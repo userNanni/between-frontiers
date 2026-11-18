@@ -85,7 +85,7 @@ pub fn orders_view(
         .sum();
     let room = crate::econ::public::goods_budget(m)
         .max(Fixed::ZERO)
-        .mul_ratio(weight, 1000);
+        .mul_ratio(m.levers.military.map_or(weight, i64::from), 1000);
     let needs = price(&needs_of(mil, peace, c).0);
     let wage = crate::econ::monthly::market_wages(&world.econ, wage_floor)
         .get(country)

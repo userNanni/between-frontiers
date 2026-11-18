@@ -352,6 +352,16 @@ Forma combinada com o thread da guerra (#115):
 - **A ordem dentro do teto** é da guerra: necessidade das forças, encomenda (D13), geração nova e
   depósito.
 
+- **No código (fatia D3):** `SetStatePurchases { tag, goods, military }`, os dois em milésimos e
+  `None` de volta à regra. `goods` multiplica o orçamento de bens da regra (`public::goods_budget`,
+  de 250 a 2000); `military` é a parcela militar dele (de 0 a 800). Com a parcela fixada, os bens
+  civis da cesta repartem `1000 − parcela` pelos seus pesos e os militares a parcela
+  (`public::fixed_basket`); na regra, a cesta segue com os seus pesos e o hash é o do `main`.
+  `public::military_room` é o teto militar da semana, e a guerra lê a mesma parcela. A tela lê
+  `levers::purchases_view` (o fator e a parcela, com a regra, o fixado, piso, teto e o efeito de uma
+  semana; o orçamento de bens e o teto militar da semana). O `save` não muda: os campos já
+  estavam em `Levers` desde a fatia 1.
+
 ### D4. Excedente e reserva do Tesouro
 
 - **Regra:**
