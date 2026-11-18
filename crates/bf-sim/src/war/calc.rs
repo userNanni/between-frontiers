@@ -563,7 +563,7 @@ pub struct LandSide {
 }
 
 /// The factors of a side's power; their product is the power.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct LandTerms {
     /// Thousands of men.
     pub number: Fixed,
@@ -604,7 +604,7 @@ impl LandTerms {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct LandOutcome {
     pub engaged: bool,
     pub terms: [LandTerms; 2],

@@ -265,6 +265,13 @@ pub enum GameCommand {
     /// Cancels the country's order at `index` of its queue: what it built goes to the depot,
     /// the men it raised stay.
     CancelOrder { tag: String, index: u32 },
+    /// Sets the posture of the country's front against `enemy`: attack (`true`) or hold. The
+    /// AI's postures are worked out each week (G5); the player's default is to hold.
+    SetPosture {
+        tag: String,
+        enemy: String,
+        attack: bool,
+    },
     /// Disbands `elements` whole elements of the country's formation at `formation` (its index in
     /// `CountryWar::formations`, as the forces tab lists them): ships and aircraft leave service,
     /// land elements go home. Their equipment goes to the depot; the men of a raised land
@@ -550,6 +557,14 @@ impl Command<GameWorld> for GameCommand {
                     for (g, q) in o.built {
                         crate::war::add_goods(&mut c.depot, g, q);
                     }
+                }
+            }
+            GameCommand::SetPosture { tag, enemy, attack } => {
+                let index = |t: &str| world.countries.iter().position(|(_, c)| c.tag == t);
+                if let (Some(me), Some(e)) = (index(tag), index(enemy))
+                    && world.war.conflicts.at_war(me as u16, e as u16)
+                {
+                    world.war.fighting.set_posture(me as u16, e as u16, *attack);
                 }
             }
             GameCommand::DisbandForces {
@@ -870,6 +885,9 @@ pub struct Rules {
     /// Crises and declaration (slice B): their rules and the clause catalogue that carries out
     /// a demand accepted. Only with forces.
     pub crisis: Option<Arc<crate::war::CrisisSetup>>,
+    /// The war on land (slice C): the map's neighbours and the states' depth. Only with forces
+    /// and `Switches::war`.
+    pub fight: Option<Arc<crate::war::fight::FightSetup>>,
     /// Distances for the freight of trade; without them trade pays no freight.
     pub trade: Option<Arc<crate::econ::trade::Geography>>,
     /// Rules that change everyone's results, each off by default until a PR of its own
@@ -965,6 +983,10 @@ pub struct Switches {
     /// clause of an agreement in force (`TreatyState::customs_unions`), services and finance
     /// trade by pair like the tradable goods. Off: they are sold only at home.
     pub union_services: bool,
+    /// The war on land in the tick (`war::fight`, docs/war.pt-BR.md, "A guerra no tick"):
+    /// fronts, combat, advance and control. Needs `forces`; a declared war without it only
+    /// mobilizes.
+    pub war: bool,
 }
 
 impl Switches {
@@ -1005,6 +1027,7 @@ impl Switches {
         "trade_by_pair",
         "treaties_in_force",
         "union_services",
+        "war",
     ];
 
     /// Switches one rule on by name; unknown names are refused.
@@ -1028,6 +1051,7 @@ impl Switches {
             "trade_by_pair" => self.trade_by_pair = true,
             "treaties_in_force" => self.treaties_in_force = true,
             "union_services" => self.union_services = true,
+            "war" => self.war = true,
             other => {
                 return Err(format!(
                     "unknown rule switch {other} (known: {})",
@@ -1069,6 +1093,7 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
         independence,
         crisis,
         treaties,
+        fight,
     }) = rules
     {
         if let Some(p) = &politics {
@@ -1084,6 +1109,7 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
                 peace,
                 politics.clone(),
                 crisis,
+                fight,
             ));
         }
         s.add(crate::econ::week::Week {
@@ -1462,7 +1488,7 @@ mod tests {
             foreign: &'a crate::foreign_stakes::ForeignState,
             influence: &'a crate::influence::InfluenceState,
             treaties: Treaties24<'a>,
-            war: &'a crate::war::WarState,
+            war: WarV25<'a>,
             education: &'a crate::demography::education::EducationState,
             independence: &'a crate::borders::independence::IndependenceState,
             levers: &'a crate::econ::levers::LeversState,
@@ -1492,7 +1518,7 @@ mod tests {
             foreign: &'a crate::foreign_stakes::ForeignState,
             influence: &'a crate::influence::InfluenceState,
             treaties: Treaties22<'a>,
-            war: &'a crate::war::WarState,
+            war: WarV25<'a>,
             education: &'a crate::demography::education::EducationState,
             independence: &'a crate::borders::independence::IndependenceState,
             levers: &'a crate::econ::levers::LeversState,
@@ -1754,9 +1780,50 @@ mod tests {
             hash_of(&with_ledger)
         );
         assert_eq!(
-            hash_of(&headed(25, &encode_snapshot(&with_ledger).unwrap())),
+            hash_of(&headed(26, &encode_snapshot(&with_ledger).unwrap())),
             hash_of(&with_ledger)
         );
+        // Version 25, before the war on land: the forces without `fighting`.
+        #[derive(Serialize)]
+        struct BeforeFighting<'a> {
+            scenario: &'a String,
+            player: &'a Option<Id<Country>>,
+            countries: &'a Table<Country, CountryState>,
+            census: &'a Vec<CensusRecord>,
+            econ: &'a crate::econ::Economy,
+            research: &'a crate::research::ResearchState,
+            politics: &'a crate::polity::PoliticsState,
+            demography: &'a crate::demography::DemographyState,
+            borders: &'a crate::borders::BordersState,
+            foreign: &'a crate::foreign_stakes::ForeignState,
+            influence: &'a crate::influence::InfluenceState,
+            treaties: &'a crate::treaty::TreatyState,
+            war: WarV25<'a>,
+            education: &'a crate::demography::education::EducationState,
+            independence: &'a crate::borders::independence::IndependenceState,
+            levers: &'a crate::econ::levers::LeversState,
+        }
+        let w = &with_ledger;
+        let v25 = encode_snapshot(&BeforeFighting {
+            scenario: &w.scenario,
+            player: &w.player,
+            countries: &w.countries,
+            census: &w.census,
+            econ: &w.econ,
+            research: &w.research,
+            politics: &w.politics,
+            demography: &w.demography,
+            borders: &w.borders,
+            foreign: &w.foreign,
+            influence: &w.influence,
+            treaties: &w.treaties,
+            war: war_v25(w),
+            education: &w.education,
+            independence: &w.independence,
+            levers: &w.levers,
+        })
+        .unwrap();
+        assert_eq!(hash_of(&headed(25, &v25)), hash_of(&with_ledger));
         // Version 24, before the negotiation table.
         let t = &with_ledger.treaties;
         let before_table = encode_snapshot(&BeforeTable {
@@ -1781,7 +1848,7 @@ mod tests {
                 reputation: &t.reputation,
                 reputation_on: t.reputation_on,
             },
-            war: &with_ledger.war,
+            war: war_v25(&with_ledger),
             education: &with_ledger.education,
             independence: &with_ledger.independence,
             levers: &with_ledger.levers,
@@ -1812,7 +1879,7 @@ mod tests {
                 breaches: &t.breaches,
                 causes: &t.causes,
             },
-            war: &with_ledger.war,
+            war: war_v25(&with_ledger),
             education: &with_ledger.education,
             independence: &with_ledger.independence,
             levers: &with_ledger.levers,
@@ -1827,6 +1894,20 @@ mod tests {
             crises: &'a Vec<crate::war::Crisis>,
             wars: &'a Vec<crate::war::WarOn>,
             next_id: u32,
+        }
+        // Versions 23 to 25, before the war on land: the forces without `fighting`.
+        #[derive(Serialize)]
+        struct WarV25<'a> {
+            countries: &'a Vec<crate::war::CountryWar>,
+            soldiers: &'a Vec<i64>,
+            conflicts: &'a crate::war::Conflicts,
+        }
+        fn war_v25(w: &GameWorld) -> WarV25<'_> {
+            WarV25 {
+                countries: &w.war.countries,
+                soldiers: &w.war.soldiers,
+                conflicts: &w.war.conflicts,
+            }
         }
         #[derive(Serialize)]
         struct WarV22<'a> {

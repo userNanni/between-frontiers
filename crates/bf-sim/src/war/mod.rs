@@ -18,6 +18,7 @@ pub mod calc;
 pub mod catalogue;
 pub mod crisis;
 pub mod doctrine;
+pub mod fight;
 pub mod forces;
 pub mod ledger;
 pub mod nuclear;

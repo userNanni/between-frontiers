@@ -78,7 +78,7 @@ pub fn orders_view(
         list.iter().map(|(g, q)| *q * m.price[*g as usize]).sum()
     };
     let room = crate::econ::public::military_room(m, cat);
-    let needs = price(&needs_of(mil, peace, c).0);
+    let needs = price(&needs_of(mil, peace, c, false).0);
     let wage = crate::econ::monthly::market_wages(&world.econ, wage_floor)
         .get(country)
         .copied()

@@ -822,7 +822,7 @@ pub struct V23 {
     influence: crate::influence::InfluenceState,
     #[serde(deserialize_with = "treaties_before_reputation")]
     treaties: crate::treaty::TreatyState,
-    war: crate::war::WarState,
+    war: crate::war::state::WarStateBeforeFighting,
     education: crate::demography::education::EducationState,
     independence: crate::borders::independence::IndependenceState,
     levers: crate::econ::levers::LeversState,
@@ -844,7 +844,7 @@ pub fn v23_to_v24(w: V23) -> GameWorld {
         foreign: w.foreign,
         influence: w.influence,
         treaties: w.treaties,
-        war: w.war,
+        war: w.war.into(),
         education: w.education,
         independence: w.independence,
         levers: w.levers,
@@ -874,7 +874,7 @@ pub struct V24 {
     influence: crate::influence::InfluenceState,
     #[serde(deserialize_with = "treaties_before_table")]
     treaties: crate::treaty::TreatyState,
-    war: crate::war::WarState,
+    war: crate::war::state::WarStateBeforeFighting,
     education: crate::demography::education::EducationState,
     independence: crate::borders::independence::IndependenceState,
     levers: crate::econ::levers::LeversState,
@@ -896,7 +896,50 @@ pub fn v24_to_v25(w: V24) -> GameWorld {
         foreign: w.foreign,
         influence: w.influence,
         treaties: w.treaties,
-        war: w.war,
+        war: w.war.into(),
+        education: w.education,
+        independence: w.independence,
+        levers: w.levers,
+    }
+}
+
+/// Version 25: the negotiation table (#196), before the war on land (slice C).
+#[derive(Deserialize)]
+pub struct V25 {
+    scenario: String,
+    player: Option<Id<Country>>,
+    countries: Table<Country, CountryState>,
+    census: Vec<CensusRecord>,
+    econ: crate::econ::Economy,
+    research: crate::research::ResearchState,
+    politics: crate::polity::PoliticsState,
+    demography: crate::demography::DemographyState,
+    borders: crate::borders::BordersState,
+    foreign: crate::foreign_stakes::ForeignState,
+    influence: crate::influence::InfluenceState,
+    treaties: crate::treaty::TreatyState,
+    war: crate::war::state::WarStateBeforeFighting,
+    education: crate::demography::education::EducationState,
+    independence: crate::borders::independence::IndependenceState,
+    levers: crate::econ::levers::LeversState,
+}
+
+/// 25 → 26: the war on land (`WarState::fighting`), empty: a world in peace hashes as before.
+pub fn v25_to_v26(w: V25) -> GameWorld {
+    GameWorld {
+        scenario: w.scenario,
+        player: w.player,
+        countries: w.countries,
+        census: w.census,
+        econ: w.econ,
+        research: w.research,
+        politics: w.politics,
+        demography: w.demography,
+        borders: w.borders,
+        foreign: w.foreign,
+        influence: w.influence,
+        treaties: w.treaties,
+        war: w.war.into(),
         education: w.education,
         independence: w.independence,
         levers: w.levers,

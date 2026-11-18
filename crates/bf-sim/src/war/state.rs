@@ -158,6 +158,8 @@ pub struct WarState {
     pub soldiers: Vec<i64>,
     /// Crises open and wars under way (slice B); empty in peace, and out of the hash then.
     pub conflicts: super::crisis::Conflicts,
+    /// The war on land (slice C): control, advance, postures, losses; empty in peace.
+    pub fighting: super::fight::Fighting,
 }
 
 impl WarState {
@@ -210,6 +212,7 @@ impl WarState {
             countries,
             soldiers: Vec::new(),
             conflicts: Default::default(),
+            fighting: Default::default(),
         }
     }
 
@@ -325,6 +328,9 @@ impl HashState for WarState {
         if !self.conflicts.is_empty() {
             self.conflicts.hash_state(h);
         }
+        if !self.fighting.is_empty() {
+            self.fighting.hash_state(h);
+        }
     }
 }
 
@@ -341,6 +347,7 @@ impl From<WarStateBeforeCrises> for WarState {
             countries: w.countries,
             soldiers: w.soldiers,
             conflicts: Default::default(),
+            fighting: Default::default(),
         }
     }
 }
@@ -412,6 +419,7 @@ impl From<WarStateBeforeOrders> for WarState {
                 .collect(),
             soldiers: w.soldiers,
             conflicts: Default::default(),
+            fighting: Default::default(),
         }
     }
 }
@@ -454,6 +462,7 @@ impl From<WarStateBeforeCalls> for WarState {
                 next_id: w.conflicts.next_id,
                 calls: Vec::new(),
             },
+            fighting: Default::default(),
         }
     }
 }
@@ -514,4 +523,23 @@ pub fn disband(c: &mut CountryWar, index: usize, elements: u32) -> Fixed {
         c.formations.remove(index);
     }
     n
+}
+
+/// [`WarState`] as versions 23 to 25 of the world wrote it, before the war on land (slice C).
+#[derive(Default, Deserialize)]
+pub(crate) struct WarStateBeforeFighting {
+    countries: Vec<CountryWar>,
+    soldiers: Vec<i64>,
+    conflicts: super::crisis::Conflicts,
+}
+
+impl From<WarStateBeforeFighting> for WarState {
+    fn from(w: WarStateBeforeFighting) -> Self {
+        Self {
+            countries: w.countries,
+            soldiers: w.soldiers,
+            conflicts: w.conflicts,
+            fighting: Default::default(),
+        }
+    }
 }

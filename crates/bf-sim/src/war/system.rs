@@ -26,12 +26,15 @@ pub struct Forces {
     pub infantry: Option<u16>,
     /// Crises (slice B); `None` without `crisis.ron`.
     pub crisis: Option<Arc<super::crisis::CrisisSetup>>,
+    /// The war on land (slice C); `None` with `Switches::war` off.
+    pub fight: Option<Arc<super::fight::FightSetup>>,
 }
 
 pub struct ForcesChanges {
     countries: Vec<CountryWar>,
     soldiers: Option<Vec<i64>>,
     crises: Option<super::crisis::CrisisWeek>,
+    fight: Option<super::fight::FightWeek>,
 }
 
 /// Merges a list of (good, quantity) into a sorted list.
@@ -136,14 +139,27 @@ pub type Goods = Vec<(u16, Fixed)>;
 
 /// What the forces of `c` need this week: what they consume, and the replacement of what they
 /// lack over `replace_weeks`; the second list is the replacement alone.
-pub fn needs_of(mil: &Military, peace: &PeaceRules, c: &CountryWar) -> (Goods, Goods) {
+pub fn needs_of(
+    mil: &Military,
+    peace: &PeaceRules,
+    c: &CountryWar,
+    combat: bool,
+) -> (Goods, Goods) {
     let weeks = i64::from(peace.replace_weeks.max(1));
     let mut orders: Vec<(u16, Fixed)> = Vec::new();
     let mut repair: Vec<(u16, Fixed)> = Vec::new();
     for f in &c.formations {
         let spec = mil.spec(f.unit, f.generation as usize);
+        // At war on land, the land forces fire `combat_ammunition` times their training rounds.
+        let in_combat =
+            combat && mil.types[f.unit as usize].domain == super::catalogue::Domain::Land;
         for (g, q) in &spec.upkeep {
-            add(&mut orders, *g, *q * f.elements * peace.upkeep_scale);
+            let q = if in_combat && *g == mil.rules.ammunition {
+                *q * mil.rules.combat_ammunition
+            } else {
+                *q
+            };
+            add(&mut orders, *g, q * f.elements * peace.upkeep_scale);
         }
         for (g, per) in &spec.equipment {
             let have = f
@@ -183,6 +199,7 @@ impl Forces {
         peace: Arc<PeaceRules>,
         politics: Option<Arc<Politics>>,
         crisis: Option<Arc<super::crisis::CrisisSetup>>,
+        fight: Option<Arc<super::fight::FightSetup>>,
     ) -> Self {
         let basket: Vec<(u16, i64)> = cat
             .state_basket
@@ -199,6 +216,7 @@ impl Forces {
             basket,
             infantry,
             crisis,
+            fight,
         }
     }
 
@@ -667,7 +685,15 @@ impl Forces {
         let price = |list: &[(u16, Fixed)]| -> Fixed {
             list.iter().map(|(g, q)| *q * m.price[*g as usize]).sum()
         };
-        let needs = |c: &CountryWar| needs_of(mil, &self.peace, c);
+        // At war on land (`Switches::war`), the forces order the ammunition of combat.
+        let combat = self.fight.is_some()
+            && world
+                .war
+                .conflicts
+                .wars
+                .iter()
+                .any(|w| w.side_a.contains(&(ci as u16)) || w.side_b.contains(&(ci as u16)));
+        let needs = |c: &CountryWar| needs_of(mil, &self.peace, c, combat);
         let (first, _) = needs(&c);
         let mut spare = room - price(&first);
         let before: Vec<(Fixed, Fixed)> = c
@@ -837,6 +863,7 @@ impl System<GameWorld> for Forces {
                 countries: Vec::new(),
                 soldiers: None,
                 crises: None,
+                fight: None,
             };
         }
         let countries: Vec<CountryWar> = world
@@ -856,10 +883,17 @@ impl System<GameWorld> for Forces {
                 !world.war.conflicts.crises.is_empty() || !world.war.conflicts.calls.is_empty()
             })
             .map(|setup| super::crisis::crisis_week(setup, &self.military, world));
+        // The war on land, only while a war is under way.
+        let fight = self
+            .fight
+            .as_ref()
+            .filter(|_| !world.war.conflicts.wars.is_empty())
+            .map(|setup| super::fight::fight_week(setup, &self.military, world, ctx.date));
         ForcesChanges {
             countries,
             soldiers,
             crises,
+            fight,
         }
     }
 
@@ -868,6 +902,41 @@ impl System<GameWorld> for Forces {
             return;
         }
         world.war.countries = changes.countries;
+        if let Some(week) = changes.fight {
+            for (c, share) in &week.lost_share {
+                if let Some(cw) = world.war.countries.get_mut(*c as usize) {
+                    super::fight::take_losses(&self.military, cw, *share);
+                }
+            }
+            for (c, men) in &week.lost_men {
+                let killed = (*men as i64 * super::fight::KILLED_PER_MILLE / 1000).max(0) as u64;
+                super::fight::bury(world, *c, killed);
+            }
+            world.war.fighting = week.fighting;
+            // A peace signed at the table ends its war: the sides go home from mobilization.
+            let ended = &week.ended;
+            let gone: Vec<u16> = world
+                .war
+                .conflicts
+                .wars
+                .iter()
+                .filter(|w| ended.contains(&w.id))
+                .flat_map(|w| w.side_a.iter().chain(&w.side_b).copied())
+                .collect();
+            world.war.conflicts.wars.retain(|w| !ended.contains(&w.id));
+            for c in gone {
+                if !world
+                    .war
+                    .conflicts
+                    .wars
+                    .iter()
+                    .any(|w| w.side_a.contains(&c) || w.side_b.contains(&c))
+                    && let Some(cw) = world.war.countries.get_mut(c as usize)
+                {
+                    cw.mobilized = false;
+                }
+            }
+        }
         if let Some(s) = changes.soldiers {
             world.war.soldiers = s;
         }
