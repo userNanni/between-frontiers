@@ -990,6 +990,104 @@ tem "honrar" e "não honrar", com o preço à vista.
 - W3: a força pesa contra a parcela pedida; o existencial nunca cede;
 - W4: entra quem a cláusula obriga; trair é possível e caro.
 
+## A guerra no tick (fatia C, desenho)
+
+A fatia C põe no tick a guerra declarada pela crise (fatia B) e a guerra colonial que nasce da
+revolta (decisão I3 do dono, opção A). Só terra nesta fatia: o termo "ar" do combate em terra fica
+neutro, e mar e ar entram na fatia C2. Chave `war` em `data/rules.ron`, desligada; precisa de
+`forces`. Sem guerra declarada, nada muda e o hash é o da `main`.
+
+### Estado
+
+Guardado e no hash só quando há guerra:
+- **controle por estado:** quem ocupa cada estado. A ocupação muda o controle, não o dono; o dono
+  muda só pela paz (`treaty_exec`);
+- **por frente:** objetivo (um estado inimigo ou nenhum) e postura (atacar, manter, recuar),
+  dados pelo jogador ou pela IA;
+- **por segmento:** avanço acumulado em km;
+- **por guerra:** a conta (`WarLedger`) e a exaustão de cada lado;
+- a data do último registro de revolta lido (guerra colonial, abaixo).
+
+A frente e o segmento não são estado: saem toda semana da vizinhança dos estados, pelo controle.
+
+### Passo semanal
+
+No sistema das forças, depois do passo de paz, para cada guerra:
+1. **frentes:** toda fronteira contínua de terra entre estados controlados por lados opostos;
+   cada par de estados vizinhos é um segmento;
+2. **repartição:** os elementos de terra de cada país vão às frentes pelo peso de cada frente, e
+   dentro da frente aos segmentos por `allocate` (regra aberta, decisão 1);
+3. **combate:** `land_step` por segmento, com o terreno de `state_terrain`, o suprimento de
+   `supply` desde o depósito e a fortificação do defensor; a decomposição fica para a tela;
+4. **perdas:** os elementos perdidos saem das formações; os mortos e os inválidos saem da
+   pirâmide, na faixa de serviço (decisão 7); o equipamento perdido volta como reposição;
+5. **avanço:** o avanço de cada segmento soma; passada a profundidade do estado (raio da área),
+   o controle muda para o atacante e a frente se refaz na semana seguinte;
+6. **ocupação:** o estado ocupado produz e paga imposto ao ocupante com eficiência reduzida (C3);
+7. **conta e exaustão:** `WarLedger` soma gente, bens, dinheiro, produção perdida e preços;
+   `exhaustion` dá a exaustão de cada lado, termo a termo.
+
+### Fim
+
+- **Paz negociada:** o lado mais exausto oferece parte da exigência da crise (as cláusulas que
+  ainda estão na mesa). O outro aceita quando continuar vale menos que a oferta: o que ainda pode
+  tomar, menos as semanas de exaustão a mais. O jogador propõe e responde em Agendas.
+- **Rendição:** com a exaustão no limite (C4), o lado aceita a exigência inteira.
+- Nos dois casos a paz é um `treaty::Proposal` que os tratados executam (`settle`, `queue`), e o
+  acordo fica em `agreements` com as cláusulas contínuas (ocupação, limite de armas), testadas
+  todo mês. A guerra termina com o acordo gravado.
+- **Terceiros no meio da guerra:** quando um país entra ou é atacado durante a guerra, as
+  chamadas dos acordos dele seguem a regra W4 (P2: sem resposta, entra; não honrar é comando
+  explícito).
+
+### Guerra colonial (I3, opção A)
+
+Combinado com o thread das fronteiras (seção 11 de `borders.pt-BR.md`, "A revolta e a guerra"):
+a revolta é uma **proclamação seguida de guerra**, como a da Indonésia de 1945 a 1949.
+- **Gatilho, sem mudar a regra deles:** a metrópole recusa a exigência e a mobilização da unidade
+  passa a marca da revolta. A independência faz o `Secede` sem acordo e grava o `Record` de
+  revolta com o índice do país novo (`country`, no #173). A independência só age no 2 de
+  janeiro, e a fila de fronteiras roda no mesmo dia.
+- **Com `war` ligada,** a guerra lê os `Record` de revolta mais novos que a data guardada e abre
+  a guerra: de um lado o antigo dono, com a exigência `Union` da unidade de volta; do outro o país
+  novo, sem reconhecimento.
+- **Tropas:** o país novo forma unidades irregulares (`irregular`) do tamanho da mobilização vezes
+  os homens em idade de serviço da unidade; as formações coloniais do dono que estão ali lutam
+  pelo dono. O tipo do vínculo (colônia, protetorado) vem de `IndependenceSetup::bond_of`.
+- **Custo e desgaste:** os mesmos da guerra comum. A guerra longa desgasta a metrópole mesmo
+  quando ela ganha batalhas: semanas, gasto e preços entram na exaustão.
+- **Fim:** o dono exausto aceita a paz por acordo de independência (reconhecimento e as cláusulas
+  de independência dos tratados); o país novo vencido volta ao dono pela `Union`, executada como
+  tratado.
+- **Com `war` desligada,** a revolta segue como hoje (separação sem acordo), sem mudar o hash.
+
+### Tela (esboço, para o thread de interface depois das decisões)
+
+- **Guerra:** os lados, as semanas de guerra, a exaustão de cada lado termo a termo, a conta.
+- **Frente:** a lista das frentes; por frente, objetivo, postura, elementos engajados e a razão de
+  poder decomposta ("número 1,8×, equipamento 0,9×, suprimento 0,6×, terreno 0,7×"); por
+  segmento, o avanço.
+- **Lente no mapa:** controle, ocupação e a linha da frente.
+- **O que o jogador decide durante a guerra:** objetivo e postura por frente; mobilizar e
+  encomendar (já existem); propor ou aceitar a paz, em Agendas, com dois passos e ponto de
+  restauração; responder às chamadas dos aliados.
+
+### Custo de CPU
+
+Decisão 6: a guerra mundial de 1939, com todos os segmentos ativos, abaixo de 15 % do tick. A
+fatia mede com uma guerra de teste de cinco grandes países, porque a IA não declara.
+
+### Decisões para o dono
+
+| # | Escolha | Recomendado | Alternativa |
+|---|---|---|---|
+| C1 | Escopo | só terra; mar e ar na C2 | as três juntas |
+| C2 | Comando | o jogador dá objetivo e postura por frente; as formações se repartem pela regra aberta (decisão 1) | o jogador também designa formações por frente |
+| C3 | Ocupação | o estado ocupado produz e paga imposto ao ocupante com eficiência de 50 % (valor de desenho); a resistência vira movimento numa fatia depois | o ocupado não produz para ninguém |
+| C4 | Rendição | exaustão de 1.000 ‰; a capital ocupada soma um termo grande | rendição só com a capital e a maior parte da população ocupadas |
+| C5 | IA na guerra | defende; contra-ataca com 1,5 vez o poder do outro no segmento; pede paz quando a sua exaustão passa a do outro; continua sem declarar até a fase 6 | a IA só defende |
+| C6 | Guerra colonial | proclamação seguida de guerra entre dois países (reaproveita o `Secede` e a guerra comum) | guerra antes da separação, com a unidade ainda dentro do dono (mais fiel à Argélia, mas pede um lado sem país e uma regra de insurgência) |
+
 ## O que falta para ligar ao tick
 
 O contrato, os dados e as funções estão prontos e testados. Nada roda ainda. Quando a fase 5
