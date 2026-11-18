@@ -40,6 +40,12 @@ pub struct IndependenceRules {
     pub enabled: bool,
     /// Mobilization (per mille) at which a unit demands an answer.
     pub demand: u16,
+    /// How much a unit's literacy raises the bound of the self-rule condition of the cause, per
+    /// mille of literacy (decision I1 of the study of the wave): the educated few ask for more the
+    /// more they are, so self-rule slows the movement and does not end it. Zero keeps the bound
+    /// of `movements.ron`.
+    #[serde(default)]
+    pub self_rule_per_literacy: u32,
     /// Mobilization (per mille) at which a refused unit breaks away.
     pub revolt: u16,
     /// Months a player metropole has to answer.
@@ -207,6 +213,9 @@ pub struct IndependenceSetup {
     pub trusteeship: Option<u16>,
     /// The buildings `school` and `hospital`, resolved at load.
     pub services: (Option<usize>, Option<usize>),
+    /// The effect `colonial_self_rule`, resolved at load: the condition whose bound literacy
+    /// raises (`IndependenceRules::self_rule_per_literacy`).
+    pub self_rule_effect: Option<u8>,
 }
 
 /// The colonial units of the world as it stands: every candidate without an end, with states,
@@ -317,6 +326,7 @@ fn advance(
     row: &[u16; P],
     effects: &[i32],
     legitimacy: i32,
+    self_rule: Option<(u8, u32)>,
 ) -> u16 {
     let people = f.population();
     let recruits: i64 = (0..P)
@@ -329,6 +339,15 @@ fn advance(
             Measure::Indicator(x) if usize::from(x) == measure::LEGITIMACY => Some(legitimacy),
             Measure::Indicator(x) => f.indicator(usize::from(x), row),
             Measure::Effect(e) => effects.get(usize::from(e)).copied(),
+        };
+        // Self-rule slows, not ends (decision I1): the bound rises with the unit's literacy.
+        let b = match (m, b, self_rule) {
+            (Measure::Effect(e), crate::politics::Bound::AtMost(t), Some((s, k))) if e == s => {
+                let lit = f.indicator(measure::LITERACY, row).unwrap_or(0);
+                let lift = (i64::from(lit) * i64::from(k) / 1000) as i32;
+                crate::politics::Bound::AtMost(t + lift)
+            }
+            _ => b,
         };
         let mg = value.map_or(0, |v| margin(b, v, m.range()));
         if mg < pressure {
@@ -776,6 +795,8 @@ impl System<GameWorld> for IndependenceSystem {
                     &recruits(kind),
                     &effects,
                     legitimacy,
+                    s.self_rule_effect
+                        .map(|e| (e, s.rules.self_rule_per_literacy)),
                 );
                 let m = *materials
                     .entry(u.owner)

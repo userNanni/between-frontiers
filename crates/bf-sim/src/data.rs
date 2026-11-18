@@ -245,6 +245,8 @@ impl GameData {
                     clauses: self.clauses.clone().map(Arc::new),
                     influence: influence.clone(),
                     trusteeship: politics.law("trusteeship").map(|l| l as u16),
+                    self_rule_effect: crate::politics::effect_index("colonial_self_rule")
+                        .map(|e| e as u8),
                     services: (
                         self.catalogue.building("school"),
                         self.catalogue.building("hospital"),

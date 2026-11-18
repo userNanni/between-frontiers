@@ -179,6 +179,12 @@ pub struct Ties {
     pub exports: Vec<Fixed>,
     /// Foreign capital by pair; `None` without the economy catalogue (investment dormant).
     pub owned: Option<crate::foreign_stakes::OwnedShares>,
+    /// The ledger by pair, built once a pass (`None`: each pair scans the ledger, the contract
+    /// tests' way). Same sums in the same order: the values do not change.
+    pub ledger: Option<LedgerIndex>,
+    /// B's people by culture, built once a pass for the affinity's people term (`None`: each
+    /// pair walks the regions).
+    pub people: Option<PeopleIndex>,
 }
 
 impl Ties {
@@ -205,16 +211,22 @@ impl Ties {
             running,
             exports,
             owned: cat.map(|c| crate::foreign_stakes::owned_shares(world, c, year)),
+            ledger: Some(LedgerIndex::of(world)),
+            people: None,
         }
     }
 
     /// The ties the rules let the channels read: the world's with `live_ties`, none without.
+    /// Either way, the ledger and the people by culture are indexed once for the pass.
     pub fn under(setup: &InfluenceSetup, world: &GameWorld, year: i32) -> Self {
-        if setup.rules.live_ties {
+        let mut t = if setup.rules.live_ties {
             Self::of(world, setup.catalogue.as_deref(), year)
         } else {
             Self::default()
-        }
+        };
+        t.ledger = Some(LedgerIndex::of(world));
+        t.people = setup.table.as_deref().map(|tb| PeopleIndex::of(world, tb));
+        t
     }
 
     /// Exports of `from` to `to` in the year read, base prices.
@@ -245,6 +257,58 @@ impl Ties {
             out.extend(o.pair.keys().copied());
         }
         out
+    }
+}
+
+/// The ledger of debts between governments by pair, for one pass over the pairs: what each debtor
+/// owes each creditor and what it owes them all (principal and arrears), summed in the ledger's
+/// order as `dependence` sums them.
+#[derive(Clone, Debug, Default)]
+pub struct LedgerIndex {
+    /// (debtor, creditor) → owed.
+    pub owed: BTreeMap<(u16, u16), Fixed>,
+    /// debtor → owed to every creditor (`Ledger::owed_by`).
+    pub owed_by: BTreeMap<u16, Fixed>,
+}
+
+impl LedgerIndex {
+    pub fn of(world: &GameWorld) -> Self {
+        let mut ix = Self::default();
+        for d in &world.econ.ledger.debts {
+            let v = d.principal + d.arrears;
+            *ix.owed.entry((d.debtor, d.creditor)).or_default() += v;
+            *ix.owed_by.entry(d.debtor).or_default() += v;
+        }
+        ix
+    }
+}
+
+/// Each market's people by culture (all its regions, colonies too), for the affinity's people
+/// term: one pass over the regions instead of one per pair.
+#[derive(Clone, Debug, Default)]
+pub struct PeopleIndex {
+    pub all: Vec<i64>,
+    pub by_culture: Vec<BTreeMap<u16, i64>>,
+}
+
+impl PeopleIndex {
+    pub fn of(world: &GameWorld, table: &CommunityTable) -> Self {
+        let n = world.econ.markets.len();
+        let mut ix = Self {
+            all: vec![0; n],
+            by_culture: vec![BTreeMap::new(); n],
+        };
+        for (r, rows) in world.econ.regions.iter().zip(&world.demography.communities) {
+            let m = usize::from(r.market);
+            if m >= n {
+                continue;
+            }
+            for (id, people) in rows.by_community() {
+                ix.all[m] += people;
+                *ix.by_culture[m].entry(table.culture(id)).or_default() += people;
+            }
+        }
+        ix
     }
 }
 
@@ -285,12 +349,19 @@ pub fn dependence(
     year: i32,
 ) -> Dependence {
     let ledger = &world.econ.ledger;
-    let owed: Fixed = ledger
-        .debts
-        .iter()
-        .filter(|d| usize::from(d.debtor) == b && usize::from(d.creditor) == a)
-        .map(|d| d.principal + d.arrears)
-        .sum();
+    let owed: Fixed = match &ties.ledger {
+        Some(ix) => ix
+            .owed
+            .get(&(b as u16, a as u16))
+            .copied()
+            .unwrap_or(Fixed::ZERO),
+        None => ledger
+            .debts
+            .iter()
+            .filter(|d| usize::from(d.debtor) == b && usize::from(d.creditor) == a)
+            .map(|d| d.principal + d.arrears)
+            .sum(),
+    };
     let market = world.econ.markets.get(b).map_or(Fixed::ZERO, |m| {
         if m.money.excluded_until > year {
             Fixed::ZERO
@@ -298,7 +369,11 @@ pub fn dependence(
             m.money.debt_abroad + m.money.debt_fx
         }
     });
-    let creditors = ledger.owed_by(b as u16) + market;
+    let owed_by = match &ties.ledger {
+        Some(ix) => ix.owed_by.get(&(b as u16)).copied().unwrap_or(Fixed::ZERO),
+        None => ledger.owed_by(b as u16),
+    };
+    let creditors = owed_by + market;
     let credit = share(owed, gdp(world, b)) * share(owed, creditors);
     let mut d = Dependence {
         credit: Channel::Live(credit),
@@ -389,6 +464,22 @@ pub fn affinity(
     a: usize,
     b: usize,
 ) -> Affinity {
+    affinity_indexed(world, rules, table, None, cultures, colonial, a, b)
+}
+
+/// [`affinity`] with B's people by culture indexed once for a pass over many pairs
+/// ([`PeopleIndex`]); the same value.
+#[allow(clippy::too_many_arguments)]
+pub fn affinity_indexed(
+    world: &GameWorld,
+    rules: &InfluenceRules,
+    table: Option<&CommunityTable>,
+    people_ix: Option<&PeopleIndex>,
+    cultures: &[Option<u16>],
+    colonial: &[bool],
+    a: usize,
+    b: usize,
+) -> Affinity {
     let p = &world.politics;
     let regime = match (p.laws.get(a), p.laws.get(b)) {
         (Some(la), Some(lb)) => {
@@ -413,6 +504,21 @@ pub fn affinity(
         _ => Fixed::ZERO,
     };
     let people = match (table, cultures.get(a).copied().flatten()) {
+        (Some(_), Some(culture)) if people_ix.is_some() => {
+            let ix = people_ix.unwrap();
+            let all = ix.all.get(b).copied().unwrap_or(0);
+            let of = ix
+                .by_culture
+                .get(b)
+                .and_then(|m| m.get(&culture))
+                .copied()
+                .unwrap_or(0);
+            if all > 0 {
+                Fixed::from_ratio(of, all)
+            } else {
+                Fixed::ZERO
+            }
+        }
         (Some(table), Some(culture)) => {
             let (mut of, mut all) = (0i64, 0i64);
             for (r, rows) in world.econ.regions.iter().zip(&world.demography.communities) {
@@ -522,7 +628,16 @@ impl InfluenceMap {
             let i = interest(
                 dependence(world, rules, ties, ai, bi, year),
                 goodwill.get(&(a, b)).copied().unwrap_or_default(),
-                affinity(world, rules, table, &cultures, colonial, ai, bi),
+                affinity_indexed(
+                    world,
+                    rules,
+                    table,
+                    ties.people.as_ref(),
+                    &cultures,
+                    colonial,
+                    ai,
+                    bi,
+                ),
             );
             let w = self::worth(rules, &i, gdp(world, bi));
             if w.iter().any(|v| *v > Fixed::ZERO) {
@@ -1408,10 +1523,11 @@ pub fn channels(
             .get(&key)
             .copied()
             .unwrap_or_default(),
-        affinity(
+        affinity_indexed(
             world,
             rules,
             setup.table.as_deref(),
+            ties.people.as_ref(),
             &cultures,
             &setup.colonial,
             a,
@@ -1472,10 +1588,11 @@ fn influence_pair(
             .get(&(a as u16, b as u16))
             .copied()
             .unwrap_or_default(),
-        affinity(
+        affinity_indexed(
             world,
             rules,
             setup.table.as_deref(),
+            ties.people.as_ref(),
             cultures,
             &setup.colonial,
             a,
