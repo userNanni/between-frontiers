@@ -120,7 +120,7 @@ const DEBT_RISK: Fixed = pct(40);
 const DEBT_SAFE: Fixed = milli(600);
 const INFLATION_RISK: Fixed = milli(200);
 const FX_RISK: Fixed = pct(60);
-const DEFAULT_RISK: Fixed = pct(40);
+pub const DEFAULT_RISK: Fixed = pct(40);
 const SAVINGS_DISCOUNT: Fixed = pct(10);
 const SAVINGS_DISCOUNT_MAX: Fixed = pct(30);
 /// Lowest rate on bonds.
@@ -565,7 +565,12 @@ struct Plan {
 
 /// The weekly money step: prices, central banks, bonds, interest and defaults, for every
 /// market. Runs after taxes and spending are in the treasuries.
-pub fn week(econ: &mut Economy, activity: &[Activity], year: i32) {
+pub fn week(
+    econ: &mut Economy,
+    activity: &[Activity],
+    year: i32,
+    declared: &[super::levers::DeclaredDefault],
+) {
     let nm = econ.markets.len();
     let mut idle = vec![Fixed::ZERO; nm];
     let mut people = vec![0i64; nm];
@@ -664,7 +669,18 @@ pub fn week(econ: &mut Economy, activity: &[Activity], year: i32) {
             i.unsold_abroad = plan.need;
             i.local_limit = Fixed::ONE - plan.fx_share;
         }
-        let (paid, lost, cut) = settle_week(m, plan, year, treaty_debt[mi]);
+        // A default the government declared (D6) comes before the week's settlement, which then
+        // has no automatic default of its own.
+        let declared_here = declared
+            .iter()
+            .find(|d| usize::from(d.market) == mi)
+            .and_then(|d| declare_default(m, d, year));
+        let (paid, mut lost, mut cut) =
+            settle_week(m, plan, year, treaty_debt[mi], declared_here.is_some());
+        if let Some((l, c)) = declared_here {
+            lost += l;
+            cut = cut.max(c);
+        }
         cuts[mi] = cut;
         paid_abroad += paid;
         written_off += lost;
@@ -954,6 +970,7 @@ fn settle_week(
     plan: &Plan,
     year: i32,
     treaty: (Fixed, Fixed),
+    declared: bool,
 ) -> (Fixed, Fixed, Fixed) {
     let (treaty_owed, treaty_service) = treaty;
     let gdp_week = m.gdp_last_year / 52;
@@ -1012,7 +1029,11 @@ fn settle_week(
             || treaty_owed > Fixed::ZERO);
     let crushing = m.budget.interest + treaty_service / 52 > m.budget.revenue_avg * INTEREST_LIMIT;
     let mut cut = Fixed::ZERO;
-    if crushing && m.money.excluded_until - EXCLUSION_YEARS < year {
+    // Honouring the debt at any cost (D6, owner's decision O3), or a default declared this week:
+    // no automatic default nor restructuring. The gap stays in the treasury, where arrears
+    // (`public::pay_share`, down to its floor) and austerity (`public::austerity`) carry it.
+    let automatic = !m.levers.honour && !declared;
+    if automatic && crushing && m.money.excluded_until - EXCLUSION_YEARS < year {
         // Restructuring of the whole debt held outside the central bank.
         let home = m.money.debt_home * RESTRUCTURING;
         let abroad = m.money.debt_abroad * RESTRUCTURING;
@@ -1025,7 +1046,8 @@ fn settle_week(
         m.money.defaults += 1;
         m.money.default_history += Fixed::ONE;
         m.money.excluded_until = year + EXCLUSION_YEARS;
-    } else if (unpayable || arrears) && m.money.excluded_until - EXCLUSION_YEARS < year {
+    } else if automatic && (unpayable || arrears) && m.money.excluded_until - EXCLUSION_YEARS < year
+    {
         lost = m.money.debt_fx * HAIRCUT;
         m.money.debt_fx -= lost;
         if arrears {
@@ -1040,6 +1062,60 @@ fn settle_week(
     }
     m.budget.debt = m.money.total_debt();
     (paid, lost, cut)
+}
+
+/// Would the automatic default or restructuring happen this week (D6, the screen's warning)?
+/// The same tests as `settle_week`, on last week's sums.
+pub fn default_at_risk(m: &Market, year: i32) -> bool {
+    if m.money.excluded_until - EXCLUSION_YEARS >= year {
+        return false;
+    }
+    let yearly_revenue = m.budget.revenue_avg * 52;
+    let service = m
+        .money
+        .debt_fx_local()
+        .mul_div(m.money.cost_fx + AMORTIZATION, Fixed::from_int(100));
+    let unpayable =
+        yearly_revenue > Fixed::ZERO && percent_of(service, yearly_revenue) > DEFAULT_LIMIT;
+    let arrears = m.treasury < -yearly_revenue.mul_ratio(1, 4)
+        && (m.money.debt_fx > Fixed::ZERO || m.money.debt_abroad > Fixed::ZERO);
+    let crushing = m.budget.interest > m.budget.revenue_avg * INTEREST_LIMIT;
+    unpayable || arrears || crushing
+}
+
+/// A default the government declared (D6): writes off `haircut` of the debt it names, shuts the
+/// country out of foreign lending for the years its size costs, and adds to the history the risk
+/// premium reads. Returns what foreign holders lost and the share of the debts between
+/// governments written off; `None` if refused (a haircut the table does not have, or a country
+/// still shut out by an earlier default).
+fn declare_default(
+    m: &mut Market,
+    d: &super::levers::DeclaredDefault,
+    year: i32,
+) -> Option<(Fixed, Fixed)> {
+    let (years, history) = super::levers::default_cost(d.target, d.haircut)?;
+    if m.money.excluded_until > year {
+        return None;
+    }
+    let h = milli(i64::from(d.haircut));
+    let (lost, cut) = match d.target {
+        super::levers::DebtTarget::Foreign => {
+            let fx = m.money.debt_fx * h;
+            let abroad = m.money.debt_abroad * h;
+            m.money.debt_fx -= fx;
+            m.money.debt_abroad -= abroad;
+            m.money.excluded_until = year + years;
+            (fx + abroad, h)
+        }
+        super::levers::DebtTarget::Home => {
+            m.money.debt_home -= m.money.debt_home * h;
+            (Fixed::ZERO, Fixed::ZERO)
+        }
+    };
+    m.money.defaults += 1;
+    m.money.default_history += milli(history);
+    m.budget.debt = m.money.total_debt();
+    Some((lost, cut))
 }
 
 /// On January 1st: last year's inflation, the decay of the default history, and the historical
@@ -1153,12 +1229,18 @@ mod tests {
         };
         let mut free = market(1_000_000);
         let p = plan(&mut free);
-        let (_, _, cut) = settle_week(&mut free, &p, 1950, (Fixed::ZERO, Fixed::ZERO));
+        let (_, _, cut) = settle_week(&mut free, &p, 1950, (Fixed::ZERO, Fixed::ZERO), false);
         assert_eq!(cut, Fixed::ZERO);
         let mut bound = market(1_000_000);
         let p = plan(&mut bound);
         let yearly_revenue = bound.budget.revenue_avg * 52;
-        let (_, _, cut) = settle_week(&mut bound, &p, 1950, (yearly_revenue, yearly_revenue));
+        let (_, _, cut) = settle_week(
+            &mut bound,
+            &p,
+            1950,
+            (yearly_revenue, yearly_revenue),
+            false,
+        );
         assert!(cut > Fixed::ZERO);
         assert_eq!(bound.money.defaults, 1);
     }
@@ -1219,7 +1301,7 @@ mod tests {
             1950,
             Fixed::ZERO,
         );
-        settle_week(&mut m, &plan, 1950, (Fixed::ZERO, Fixed::ZERO));
+        settle_week(&mut m, &plan, 1950, (Fixed::ZERO, Fixed::ZERO), false);
         assert!(m.money.debt_bank > bank + Fixed::from_int(4000));
         assert!(m.money.monetized > Fixed::ZERO);
     }
@@ -1263,14 +1345,14 @@ mod tests {
             abroad_interest: Fixed::ZERO,
             local_abroad: None,
         };
-        let (_, lost, _) = settle_week(&mut m, &plan, 1950, (Fixed::ZERO, Fixed::ZERO));
+        let (_, lost, _) = settle_week(&mut m, &plan, 1950, (Fixed::ZERO, Fixed::ZERO), false);
         assert_eq!(lost, Fixed::from_int(20_000));
         assert_eq!(m.money.defaults, 1);
         assert_eq!(m.money.excluded_until, 1953);
         // The same debt in the country's own currency, held at home, does not default.
         let mut japan = market(52_000);
         japan.money.debt_home = Fixed::from_int(100_000);
-        let (_, lost, _) = settle_week(&mut japan, &plan, 1950, (Fixed::ZERO, Fixed::ZERO));
+        let (_, lost, _) = settle_week(&mut japan, &plan, 1950, (Fixed::ZERO, Fixed::ZERO), false);
         assert_eq!(lost, Fixed::ZERO);
         assert_eq!(japan.money.defaults, 0);
     }
@@ -1330,8 +1412,14 @@ mod tests {
             abroad_interest: Fixed::ZERO,
             local_abroad: None,
         };
-        settle_week(&mut japan, &plan, 1990, (Fixed::ZERO, Fixed::ZERO));
-        settle_week(&mut argentina, &plan, 1990, (Fixed::ZERO, Fixed::ZERO));
+        settle_week(&mut japan, &plan, 1990, (Fixed::ZERO, Fixed::ZERO), false);
+        settle_week(
+            &mut argentina,
+            &plan,
+            1990,
+            (Fixed::ZERO, Fixed::ZERO),
+            false,
+        );
         assert_eq!(japan.money.defaults, 0);
         assert_eq!(argentina.money.defaults, 1);
         // The default raises the premium for years.

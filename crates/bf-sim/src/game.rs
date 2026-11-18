@@ -382,6 +382,19 @@ pub enum GameCommand {
         tag: String,
         shares: Option<[u16; 3]>,
     },
+    /// Declares a default (D6, a rare decision in the Agendas): writes off `haircut` per mille
+    /// (250, 500 or 750) of the debt `target` names, at the next week. A foreign default shuts
+    /// the country out of foreign lending for the years its size costs
+    /// (`econ::levers::DEFAULT_TERMS`); either adds to the default history the premium reads.
+    /// Refused while the country is still shut out, or with another haircut.
+    DeclareDefault {
+        tag: String,
+        target: crate::econ::levers::DebtTarget,
+        haircut: u16,
+    },
+    /// Honours the debt at any cost (`on`), or goes back to the rule (D6, owner's decision O3):
+    /// no automatic default nor restructuring; arrears and austerity carry the gap.
+    SetHonourDebt { tag: String, on: bool },
     /// Fixes the order of the country's public works (D8): the points of each week go to them in
     /// this order; works not listed follow, in arrival order. `None` hands the order back to
     /// arrival. Private works keep their places (owner's decision O2).
@@ -632,6 +645,42 @@ impl Command<GameWorld> for GameCommand {
             GameCommand::SetIssuance { tag, shares } => {
                 let v = *shares;
                 set_levers(world, tag, |l| l.issuance = v);
+            }
+            GameCommand::DeclareDefault {
+                tag,
+                target,
+                haircut,
+            } => {
+                let Some(ci) = world.countries.iter().position(|(_, c)| c.tag == *tag) else {
+                    return;
+                };
+                let known = crate::econ::levers::default_cost(*target, *haircut).is_some();
+                let free = world
+                    .econ
+                    .markets
+                    .get(ci)
+                    .is_some_and(|m| m.money.excluded_until <= ctx.date.year);
+                if known
+                    && free
+                    && !world
+                        .levers
+                        .declared
+                        .iter()
+                        .any(|d| usize::from(d.market) == ci)
+                {
+                    world
+                        .levers
+                        .declared
+                        .push(crate::econ::levers::DeclaredDefault {
+                            market: ci as u16,
+                            target: *target,
+                            haircut: *haircut,
+                        });
+                }
+            }
+            GameCommand::SetHonourDebt { tag, on } => {
+                let v = *on;
+                set_levers(world, tag, |l| l.honour = v);
             }
             GameCommand::SetWorksOrder { tag, order } => {
                 let Some(ci) = world.countries.iter().position(|(_, c)| c.tag == *tag) else {
@@ -1565,7 +1614,7 @@ mod tests {
             hash_of(&with_ledger)
         );
         assert_eq!(
-            hash_of(&headed(22, &encode_snapshot(&with_ledger).unwrap())),
+            hash_of(&headed(23, &encode_snapshot(&with_ledger).unwrap())),
             hash_of(&with_ledger)
         );
         // Version 21, before the breaches of clauses.
@@ -1880,9 +1929,37 @@ mod tests {
         assert_eq!(loaded, on_the_rule, "version 17");
         // Version 20, before the order of the public works: the levers without it.
         #[derive(Serialize)]
-        struct LeversV18<'a> {
-            countries: &'a Vec<crate::econ::levers::Levers>,
+        struct LeversV18 {
+            countries: Vec<LeversItemV22>,
         }
+        // One country's levers before honouring the debt (version 23).
+        #[derive(Serialize)]
+        struct LeversItemV22 {
+            payroll: Option<[u16; 2]>,
+            public_pay: Option<u16>,
+            purchases: Option<u16>,
+            military: Option<u16>,
+            reserve_weeks: Option<u16>,
+            surplus: Option<crate::econ::levers::SurplusUse>,
+            deficit_cap: Option<u16>,
+            issuance: Option<[u16; 3]>,
+        }
+        let old_items = |w: &GameWorld| -> Vec<LeversItemV22> {
+            w.levers
+                .countries
+                .iter()
+                .map(|l| LeversItemV22 {
+                    payroll: l.payroll,
+                    public_pay: l.public_pay,
+                    purchases: l.purchases,
+                    military: l.military,
+                    reserve_weeks: l.reserve_weeks,
+                    surplus: l.surplus,
+                    deficit_cap: l.deficit_cap,
+                    issuance: l.issuance,
+                })
+                .collect()
+        };
         #[derive(Serialize)]
         struct BeforeWorks<'a> {
             scenario: &'a String,
@@ -1900,7 +1977,7 @@ mod tests {
             war: &'a crate::war::WarState,
             education: &'a crate::demography::education::EducationState,
             independence: &'a crate::borders::independence::IndependenceState,
-            levers: LeversV18<'a>,
+            levers: LeversV18,
         }
         let mut fixed = data.new_world();
         let mut markets = std::mem::take(&mut fixed.econ.markets);
@@ -1925,7 +2002,7 @@ mod tests {
             education: &fixed.education,
             independence: &fixed.independence,
             levers: LeversV18 {
-                countries: &fixed.levers.countries,
+                countries: old_items(&fixed),
             },
         })
         .unwrap();

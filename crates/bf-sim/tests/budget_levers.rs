@@ -77,6 +77,10 @@ fn levers_back_on_the_rule_keep_the_hash() {
                 tag: "BRA".into(),
                 shares: None,
             },
+            GameCommand::SetHonourDebt {
+                tag: "BRA".into(),
+                on: false,
+            },
             GameCommand::SetPayroll {
                 tag: "BRA".into(),
                 per_mille: None,
@@ -336,4 +340,117 @@ fn where_the_treasury_issues() {
         None
     );
     assert_ne!(rule.state_hash(), s.state_hash());
+}
+
+/// The first country with debt held abroad.
+fn foreign_debtor(s: &Session) -> (String, usize) {
+    let w = s.sim.world();
+    let ci = w
+        .econ
+        .markets
+        .iter()
+        .position(|m| {
+            m.money.debt_abroad + m.money.debt_fx_local() > laplace_schelling::Fixed::ZERO
+        })
+        .expect("somebody owes abroad");
+    (w.countries.iter().nth(ci).unwrap().1.tag.clone(), ci)
+}
+
+/// D6: a declared foreign default writes off its share of the debt held abroad and shuts the
+/// country out for the years its size costs; a second one is refused; a home default cuts the
+/// debt held at home and shuts nobody out. The Agendas read the price before the click.
+#[test]
+fn a_declared_default() {
+    let d = data();
+    let mut s = run(&d, vec![], Date::new(1925, 6, 1));
+    let (tag, ci) = foreign_debtor(&s);
+    let before = s.sim.world().econ.markets[ci].money.clone();
+    let terms = bf_sim::econ::levers::default_terms(&s.sim.world().econ.markets[ci], 1925);
+    assert_eq!(terms[2].years_out, 5);
+    assert!(terms[2].debt_cut > terms[0].debt_cut && !terms[2].refused);
+    assert!(terms[2].premium_added > terms[0].premium_added);
+    s.submit(GameCommand::DeclareDefault {
+        tag: tag.clone(),
+        target: bf_sim::econ::levers::DebtTarget::Foreign,
+        haircut: 750,
+    });
+    while s.clock().date < Date::new(1925, 6, 15) {
+        s.sim.step();
+    }
+    let after = &s.sim.world().econ.markets[ci].money;
+    assert_eq!(after.defaults, before.defaults + 1);
+    assert_eq!(after.excluded_until, 1930);
+    assert!(after.debt_abroad + after.debt_fx < before.debt_abroad + before.debt_fx);
+    assert!(after.default_history > before.default_history);
+    let terms = bf_sim::econ::levers::default_terms(&s.sim.world().econ.markets[ci], 1925);
+    assert!(terms.iter().all(|t| t.refused), "shut out: refused");
+    // A second declaration while shut out does nothing.
+    let defaults = after.defaults;
+    s.submit(GameCommand::DeclareDefault {
+        tag: tag.clone(),
+        target: bf_sim::econ::levers::DebtTarget::Home,
+        haircut: 500,
+    });
+    while s.clock().date < Date::new(1925, 6, 29) {
+        s.sim.step();
+    }
+    assert_eq!(s.sim.world().econ.markets[ci].money.defaults, defaults);
+    // A haircut the table does not have is refused.
+    let mut h = run(&d, vec![], Date::new(1925, 6, 1));
+    let home_before = h.sim.world().econ.markets[ci].money.debt_home;
+    h.submit(GameCommand::DeclareDefault {
+        tag: tag.clone(),
+        target: bf_sim::econ::levers::DebtTarget::Home,
+        haircut: 300,
+    });
+    h.submit(GameCommand::DeclareDefault {
+        tag,
+        target: bf_sim::econ::levers::DebtTarget::Home,
+        haircut: 500,
+    });
+    while h.clock().date < Date::new(1925, 6, 15) {
+        h.sim.step();
+    }
+    let m = &h.sim.world().econ.markets[ci].money;
+    assert!(
+        m.debt_home < home_before.mul_ratio(6, 10),
+        "half the home debt written off"
+    );
+    assert_eq!(m.excluded_until, 0, "a home default shuts nobody out");
+}
+
+/// D6: honouring the debt at any cost — an unpayable dollar service defaults on the rule, and does
+/// not with the stance on; the Agendas see the risk.
+#[test]
+fn honouring_the_debt() {
+    let d = data();
+    let crisis = |honour: bool| {
+        let mut s = run(&d, vec![], Date::new(1925, 6, 1));
+        let (tag, ci) = foreign_debtor(&s);
+        if honour {
+            s.submit(GameCommand::SetHonourDebt { tag, on: true });
+        }
+        s.sim.step();
+        let m = &mut s.sim.world_mut().econ.markets[ci];
+        // A dollar debt whose service takes far more than 30 % of revenue.
+        m.money.debt_fx += m.budget.revenue_avg * 52 * 10;
+        let v = bf_sim::econ::levers::honour_view(m, 1925);
+        assert!(v.at_risk, "an unpayable dollar service");
+        assert_eq!(v.on, honour);
+        let before = m.money.defaults;
+        while s.clock().date < Date::new(1925, 6, 20) {
+            s.sim.step();
+        }
+        let m = &s.sim.world().econ.markets[ci];
+        (
+            m.money.defaults - before,
+            bf_sim::econ::levers::honour_view(m, 1925),
+        )
+    };
+    let (rule, _) = crisis(false);
+    let (honoured, v) = crisis(true);
+    assert_eq!(rule, 1, "the rule defaults");
+    assert_eq!(honoured, 0, "honoured: no default");
+    assert!(v.on && v.at_risk, "still unpayable, still honoured");
+    assert!((v.pay_floor..=1.0).contains(&v.pay_share));
 }

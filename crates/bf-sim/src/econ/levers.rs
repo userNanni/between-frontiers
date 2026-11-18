@@ -45,6 +45,53 @@ pub struct Levers {
     pub deficit_cap: Option<u16>,
     /// D9: shares of new issues at home, abroad in the own currency and abroad in dollars.
     pub issuance: Option<[u16; 3]>,
+    /// D6: honour the debt at any cost (owner's decision O3): the automatic default and
+    /// restructuring do not happen; arrears and austerity carry the gap instead.
+    pub honour: bool,
+}
+
+/// Which debt a declared default writes off (D6).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum DebtTarget {
+    /// The debt held abroad, in the own currency and in dollars (and the debts between
+    /// governments, in the same proportion).
+    Foreign,
+    /// The debt held at home outside the central bank: the savers who hold the bonds lose.
+    Home,
+}
+
+/// A default a government declared (`GameCommand::DeclareDefault`), applied at the next week.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DeclaredDefault {
+    pub market: u16,
+    pub target: DebtTarget,
+    /// Share written off, per mille: 250, 500 or 750.
+    pub haircut: u16,
+}
+
+/// What a declared default costs, by its size (D6): years shut out of foreign lending, and what
+/// it adds to the default history the risk premium reads (`money::DEFAULT_RISK` a unit), per
+/// mille. Design values that grow with the haircut as Cruces and Trebesch (2013, AEJ: Macro 5(3))
+/// measured: larger haircuts, longer exclusion and higher spreads after; the middle one is the
+/// automatic default's (half, three years, one unit). The table to check them against is theirs,
+/// before the screen switches the decision on.
+pub const DEFAULT_TERMS: [(u16, i32, i64); 3] = [(250, 2, 500), (500, 3, 1000), (750, 5, 1500)];
+/// A default on the debt held at home: no foreign lending lost, half a unit of history.
+pub const HOME_DEFAULT_HISTORY: i64 = 500;
+
+/// The terms of a declared default of `haircut` per mille on `target`: (years shut out, history
+/// added per mille); `None` for a haircut the table does not have.
+pub fn default_cost(target: DebtTarget, haircut: u16) -> Option<(i32, i64)> {
+    match target {
+        DebtTarget::Foreign => DEFAULT_TERMS
+            .iter()
+            .find(|t| t.0 == haircut)
+            .map(|t| (t.1, t.2)),
+        DebtTarget::Home => DEFAULT_TERMS
+            .iter()
+            .any(|t| t.0 == haircut)
+            .then_some((0, HOME_DEFAULT_HISTORY)),
+    }
 }
 
 /// Share of the taxes a region's servants can collect (`Switches::fiscal_capacity`, owner's
@@ -164,6 +211,9 @@ pub struct LeversState {
     /// D8: public works the governments asked for this month (`GameCommand::AddWork`); the
     /// investment system checks each against what the state may build and queues it.
     pub requests: Vec<WorkRequest>,
+    /// D6: defaults declared this week (`GameCommand::DeclareDefault`), applied by the money
+    /// step of the next week.
+    pub declared: Vec<DeclaredDefault>,
 }
 
 /// A work in a country's queue, by what it is: its state, building, method and cost in points.
@@ -227,6 +277,7 @@ impl LeversState {
         self.countries.iter().all(Levers::is_rule)
             && self.works_order.iter().all(Option::is_none)
             && self.requests.is_empty()
+            && self.declared.is_empty()
     }
 
     /// The order country `ci` fixed for its public works (D8).
@@ -292,6 +343,7 @@ impl HashState for LeversState {
                 }
             }
             h.write_i64(l.surplus.map_or(-1, |s| s as i64));
+            h.write_u8(u8::from(l.honour));
         }
         h.write_u64(self.works_order.len() as u64);
         for o in &self.works_order {
@@ -313,6 +365,12 @@ impl HashState for LeversState {
             h.write_u16(r.market);
             h.write_u32(r.region);
             h.write_u16(r.kind);
+        }
+        h.write_u64(self.declared.len() as u64);
+        for d in &self.declared {
+            h.write_u16(d.market);
+            h.write_u8(d.target as u8);
+            h.write_u16(d.haircut);
         }
     }
 }
@@ -427,6 +485,78 @@ pub fn issuance_view(m: &Market) -> IssuanceView {
         unsold_home: f(i.unsold_home),
         unsold_abroad: f(i.unsold_abroad),
         local_limit: f(i.local_limit),
+    }
+}
+
+/// A declared default's price before the click (D6, the Agendas).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct DefaultTerms {
+    pub target: DebtTarget,
+    /// Share written off, 0–1.
+    pub haircut: f64,
+    /// Years shut out of foreign lending (0 for a home default).
+    pub years_out: i32,
+    /// Points the risk premium rises at once (the history it adds times `money::DEFAULT_RISK`);
+    /// the history then loses a tenth a year.
+    pub premium_added: f64,
+    /// Debt written off, real units.
+    pub debt_cut: f64,
+    /// The country is still shut out by an earlier default: the declaration would be refused.
+    pub refused: bool,
+}
+
+/// The four declared defaults the Agendas offer for country market `m`, in this order: foreign
+/// 25 %, 50 %, 75 %, and home 50 % (D6).
+pub fn default_terms(m: &Market, year: i32) -> [DefaultTerms; 4] {
+    let f = |v: Fixed| v.raw() as f64 / 1000.0;
+    let refused = m.money.excluded_until > year;
+    let foreign = m.money.debt_fx_local() + m.money.debt_abroad;
+    let one = |target: DebtTarget, haircut: u16| {
+        let (years, history) = default_cost(target, haircut).unwrap_or((0, 0));
+        let h = f64::from(haircut) / 1000.0;
+        let base = match target {
+            DebtTarget::Foreign => f(foreign),
+            DebtTarget::Home => f(m.money.debt_home),
+        };
+        DefaultTerms {
+            target,
+            haircut: h,
+            years_out: years,
+            premium_added: f(super::money::DEFAULT_RISK) * history as f64 / 1000.0,
+            debt_cut: base * h,
+            refused,
+        }
+    };
+    [
+        one(DebtTarget::Foreign, 250),
+        one(DebtTarget::Foreign, 500),
+        one(DebtTarget::Foreign, 750),
+        one(DebtTarget::Home, 500),
+    ]
+}
+
+/// "Honour the debt at any cost" as the Agendas show it (D6).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct HonourView {
+    pub on: bool,
+    /// The automatic default or restructuring would happen this week on the rule.
+    pub at_risk: bool,
+    /// What the treasury pays of its payroll now, and its floor (`public::PAY_FLOOR`).
+    pub pay_share: f64,
+    pub pay_floor: f64,
+    /// What the state buys of its planned purchases now (`public::austerity`; floor a quarter).
+    pub purchases_share: f64,
+}
+
+/// What the Agendas read of honouring the debt for country market `m` (D6).
+pub fn honour_view(m: &Market, year: i32) -> HonourView {
+    let f = |v: Fixed| v.raw() as f64 / 1000.0;
+    HonourView {
+        on: m.levers.honour,
+        at_risk: super::money::default_at_risk(m, year),
+        pay_share: f(super::public::pay_share(m)),
+        pay_floor: f(super::public::PAY_FLOOR),
+        purchases_share: f(super::public::austerity(m)),
     }
 }
 

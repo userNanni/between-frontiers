@@ -1257,7 +1257,9 @@ impl System<GameWorld> for Week {
         econ.markets = markets;
         econ.world_price = changes.world_price;
         // Prices, central banks and bonds: the treasury's gap becomes debt.
-        super::money::week(econ, &activity, ctx.date.year);
+        // Defaults the governments declared last week (D6) go in this week's money step.
+        let declared = std::mem::take(&mut world.levers.declared);
+        super::money::week(econ, &activity, ctx.date.year, &declared);
         // Finished works start running; one paid from abroad becomes its owner's stake.
         for p in done {
             let r = &mut econ.regions[p.region as usize];

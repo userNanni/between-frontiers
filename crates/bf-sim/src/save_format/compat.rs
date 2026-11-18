@@ -646,13 +646,61 @@ pub fn v18_to_v20(w: V18) -> GameWorld {
 /// The budget's levers as versions 18 and 20 saved them, before the order of the public works.
 #[derive(Deserialize)]
 pub struct LeversV18 {
-    countries: Vec<crate::econ::levers::Levers>,
+    countries: Vec<LeversItemV22>,
 }
 
 impl From<LeversV18> for crate::econ::levers::LeversState {
     fn from(l: LeversV18) -> Self {
         Self {
-            countries: l.countries,
+            countries: l.countries.into_iter().map(Into::into).collect(),
+            ..Default::default()
+        }
+    }
+}
+
+/// One country's levers as versions 18 to 22 saved them, before honouring the debt (D6).
+#[derive(Deserialize)]
+pub struct LeversItemV22 {
+    payroll: Option<[u16; 2]>,
+    public_pay: Option<u16>,
+    purchases: Option<u16>,
+    military: Option<u16>,
+    reserve_weeks: Option<u16>,
+    surplus: Option<crate::econ::levers::SurplusUse>,
+    deficit_cap: Option<u16>,
+    issuance: Option<[u16; 3]>,
+}
+
+impl From<LeversItemV22> for crate::econ::levers::Levers {
+    fn from(l: LeversItemV22) -> Self {
+        Self {
+            payroll: l.payroll,
+            public_pay: l.public_pay,
+            purchases: l.purchases,
+            military: l.military,
+            reserve_weeks: l.reserve_weeks,
+            surplus: l.surplus,
+            deficit_cap: l.deficit_cap,
+            issuance: l.issuance,
+            honour: false,
+        }
+    }
+}
+
+/// The budget's levers as versions 21 and 22 saved them, before the declared defaults (D6).
+#[derive(Deserialize)]
+pub struct LeversV22 {
+    countries: Vec<LeversItemV22>,
+    works_order: Vec<Option<Vec<crate::econ::levers::WorkKey>>>,
+    requests: Vec<crate::econ::levers::WorkRequest>,
+}
+
+impl From<LeversV22> for crate::econ::levers::LeversState {
+    fn from(l: LeversV22) -> Self {
+        Self {
+            countries: l.countries.into_iter().map(Into::into).collect(),
+            works_order: l.works_order,
+            requests: l.requests,
             ..Default::default()
         }
     }
@@ -728,7 +776,7 @@ pub struct V21 {
     war: crate::war::WarState,
     education: crate::demography::education::EducationState,
     independence: crate::borders::independence::IndependenceState,
-    levers: crate::econ::levers::LeversState,
+    levers: LeversV22,
 }
 
 /// 21 → 22: the breaches of clauses and the causes they give (`TreatyState::breaches`,
@@ -750,6 +798,50 @@ pub fn v21_to_v22(w: V21) -> GameWorld {
         war: w.war,
         education: w.education,
         independence: w.independence,
-        levers: w.levers,
+        levers: w.levers.into(),
+    }
+}
+
+/// Version 22: the breaches of clauses (#181), before honouring the debt and the declared
+/// defaults (D6).
+#[derive(Deserialize)]
+pub struct V22 {
+    scenario: String,
+    player: Option<Id<Country>>,
+    countries: Table<Country, CountryState>,
+    census: Vec<CensusRecord>,
+    econ: crate::econ::Economy,
+    research: crate::research::ResearchState,
+    politics: crate::polity::PoliticsState,
+    demography: crate::demography::DemographyState,
+    borders: crate::borders::BordersState,
+    foreign: crate::foreign_stakes::ForeignState,
+    influence: crate::influence::InfluenceState,
+    treaties: crate::treaty::TreatyState,
+    war: crate::war::WarState,
+    education: crate::demography::education::EducationState,
+    independence: crate::borders::independence::IndependenceState,
+    levers: LeversV22,
+}
+
+/// 22 → 23: nobody honours the debt at any cost and no default is declared; the levers stay.
+pub fn v22_to_v23(w: V22) -> GameWorld {
+    GameWorld {
+        scenario: w.scenario,
+        player: w.player,
+        countries: w.countries,
+        census: w.census,
+        econ: w.econ,
+        research: w.research,
+        politics: w.politics,
+        demography: w.demography,
+        borders: w.borders,
+        foreign: w.foreign,
+        influence: w.influence,
+        treaties: w.treaties,
+        war: w.war,
+        education: w.education,
+        independence: w.independence,
+        levers: w.levers.into(),
     }
 }
