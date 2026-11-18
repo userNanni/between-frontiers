@@ -157,6 +157,25 @@ condição, ou o jogador libertando o próprio território.
   batalha.
 - **Onde está o detalhe:** [`borders.pt-BR.md`, seção 11](../../borders.pt-BR.md#11-parte-c-independência-por-movimento-desenho-decisões-i1-a-i5-tomadas-em-2026-11-17).
 
+### Governo próprio freia a independência, não a apaga
+
+- **Decisão (2026-11-18, I1 e I2 do estudo da onda, #173):**
+  - **I1:** conceder governo próprio não segura a colônia para sempre: o limite que ele impõe à
+    causa sobe com a alfabetização da colônia.
+  - **I2:** o governo próprio continua sendo decidido por dono, mas vale por tipo de vínculo
+    (colônia, protetorado, mandato, domínio), e não para todas as unidades do dono de uma vez.
+- **O que o autor pensou:** aceitou a recomendação do I1. No I2: "depende do tipo de vínculo que os
+  países têm entre si".
+- **Como o jogo funciona por causa disso:** com a lei de 1925 como estava, 73 das 83 colônias
+  ficavam paradas para sempre. Com o limite subindo com a alfabetização, a colônia que estuda volta
+  a pressionar. A metrópole pode dar governo próprio aos mandatos sem dar às colônias.
+- **Como é na vida real:** as leis de autogoverno ganharam tempo sem segurar (as leis indianas de
+  1919 e 1935, a lei-quadro francesa de 1956), e quem as levou à independência foi uma elite
+  alfabetizada. O regime de um mandato não era o de uma colônia.
+- **Estado:** a regra segue desligada. O I1 está no código do #173 (rascunho), e o I2 está com o
+  thread das fronteiras.
+- **Onde está o detalhe:** [`borders.pt-BR.md`, seção 11](../../borders.pt-BR.md#11-parte-c-independência-por-movimento-desenho-decisões-i1-a-i5-tomadas-em-2026-11-17).
+
 ## O que ainda não existe
 
 - **Independência por movimento:** decidida e desenhada (acima), ainda sem código.

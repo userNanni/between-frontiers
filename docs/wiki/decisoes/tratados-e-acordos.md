@@ -139,6 +139,30 @@ cláusulas.
 - **Estado:** desenhado; o preço próprio da traição na guerra, em desenho.
 - **Onde está o detalhe:** [seção 9](../../treaties.pt-BR.md#9-quando-se-quebra).
 
+### Duas reputações: a de segurança e a geral
+
+- **Decisão (2026-11-18, P1 a P3):**
+  - **P1:** cada país tem duas reputações. A de segurança sobe com a quebra de cláusula militar
+    (defesa, não agressão, consulta, garantia de fronteira, cota de tropas, ofensiva,
+    neutralidade); a geral, com a quebra de pagamento, tarifa ou capital. A mesa desconta cada
+    cláusula pela reputação da sua espécie.
+  - **P2:** a chamada de um aliado com o prazo vencido e sem resposta conta como honrar.
+  - **P3:** a troca de regime corta a reputação de segurança pela metade.
+- **O que o autor pensou:** sobre o prazo, "trair é decisão; honrar é o natural". Sobre o regime:
+  "um país que trocou de governo pode passar a não honrar o que o outro honrava, mudar de aliados e
+  tudo, como a história mostra".
+- **Como o jogo funciona por causa disso:** a França depois de Munique acha menos quem prometa
+  defendê-la, mas não paga juros mais altos pelo crédito. O jogador que deixa passar o prazo de uma
+  chamada entra na guerra ao lado do aliado; não entrar é um ato dele, em Agendas. Um governo novo
+  herda metade da desconfiança militar do antigo, e a mesa volta a ouvi-lo mais cedo.
+- **Como é na vida real:** quem abandona aliado forma menos alianças depois (Gibler, 2008); a
+  reputação do devedor se prende ao pagamento, não às alianças (Tomz, 2007); e a de aliança se
+  prende a quem governa.
+- **Estado:** decidido; o contrato `Reputation { general, security }` foi combinado entre a guerra
+  e os tratados e entra na fatia dos tratados.
+- **Onde está o detalhe:** [`war.pt-BR.md`](../../war.pt-BR.md) (as três escolhas do dono) e
+  [`treaties.pt-BR.md`, seção 9](../../treaties.pt-BR.md#9-quando-se-quebra).
+
 ### Toda dívida de acordo se renegocia, e todo acordo pode não ser cumprido
 
 - **Decisão:** duas regras gerais, que valem para qualquer acordo: a dívida criada por um acordo
