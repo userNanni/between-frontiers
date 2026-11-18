@@ -32,6 +32,8 @@ pub struct GovernmentView {
     pub levers: Option<bf_sim::econ::levers::LeversView>,
     /// The state's purchases and their military share (D3); filled where the catalogue is known.
     pub purchases: Option<bf_sim::econ::levers::PurchasesView>,
+    /// Where the treasury issues (D9).
+    pub issuance: Option<bf_sim::econ::levers::IssuanceView>,
     pub money: Money,
     pub laws: Laws,
     /// Cash in the treasury (negative: bills nobody would lend for).
@@ -196,6 +198,7 @@ pub fn read(
             .map_or(0.0, |g| f(m.laws.effects[0].public_share(usize::from(g)))),
         levers: Some(bf_sim::econ::levers::view(m)),
         purchases: None,
+        issuance: Some(bf_sim::econ::levers::issuance_view(m)),
         campaign: education.and_then(|(rules, price)| {
             bf_sim::demography::education::campaign_outlook(world, rules, price, ci)
         }),
@@ -243,6 +246,7 @@ mod tests {
             campaign: None,
             levers: None,
             purchases: None,
+            issuance: None,
         }
     }
 
