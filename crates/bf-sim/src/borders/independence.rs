@@ -12,6 +12,7 @@
 //! Everything is integer fixed point and free of randomness. Runs every January 2nd, after the
 //! politics has moved the movements of the country on the 1st.
 
+use crate::scenario::SubjectKind;
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
@@ -30,6 +31,23 @@ use crate::treaty::{Clause, ClauseCatalogue, ClauseKind, Proposal, Side};
 
 /// The state of the independence movements by unit.
 pub const INDEPENDENCE: ResourceId = ResourceId(18);
+
+/// The bond of each colonial unit to its owner in 1925 (`data/borders/colonial_bonds.ron`):
+/// the same kinds as the subjects'. A concession of self-rule holds for the owner's units of one
+/// kind (decision I2 of 2026-11-18).
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ColonialBondsFile {
+    pub bonds: Vec<ColonialBond>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ColonialBond {
+    pub unit: String,
+    pub kind: SubjectKind,
+    pub source: String,
+    #[serde(default)]
+    pub note: Option<String>,
+}
 
 /// Rules and design values (`data/borders/independence.ron`).
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -143,11 +161,23 @@ pub struct IndependenceState {
     /// Answers given by command and not yet acted on: (unit, answer).
     #[serde(default)]
     pub answers: Vec<(String, Answer)>,
+    /// Self-rule granted, by owner and bond (decision I2): it holds for every unit of that owner
+    /// with that bond, in order.
+    #[serde(default)]
+    pub self_rule: Vec<(u16, SubjectKind)>,
 }
 
 impl IndependenceState {
     pub fn is_empty(&self) -> bool {
-        self.units.is_empty() && self.history.is_empty() && self.answers.is_empty()
+        self.units.is_empty()
+            && self.history.is_empty()
+            && self.answers.is_empty()
+            && self.self_rule.is_empty()
+    }
+
+    /// Whether `owner` granted self-rule to its units with bond `kind`.
+    pub fn self_rule_granted(&self, owner: u16, kind: &SubjectKind) -> bool {
+        self.self_rule.iter().any(|(o, k)| *o == owner && k == kind)
     }
 }
 
@@ -197,6 +227,14 @@ impl laplace_schelling::hash::HashState for IndependenceState {
             h.write_str(u);
             h.write_u8(*a as u8);
         }
+        // Worlds without a grant keep their hash.
+        if !self.self_rule.is_empty() {
+            h.write_len(self.self_rule.len());
+            for (o, k) in &self.self_rule {
+                h.write_u16(*o);
+                h.write_u8(k.clone() as u8);
+            }
+        }
     }
 }
 
@@ -216,6 +254,18 @@ pub struct IndependenceSetup {
     /// The effect `colonial_self_rule`, resolved at load: the condition whose bound literacy
     /// raises (`IndependenceRules::self_rule_per_literacy`).
     pub self_rule_effect: Option<u8>,
+    /// The bond of each unit (`colonial_bonds.ron`); a unit missing is a crown colony.
+    pub bonds: BTreeMap<String, SubjectKind>,
+}
+
+impl IndependenceSetup {
+    /// The bond of unit `key` to its owner.
+    pub fn bond_of(&self, key: &str) -> SubjectKind {
+        self.bonds
+            .get(key)
+            .cloned()
+            .unwrap_or(SubjectKind::CrownColony)
+    }
 }
 
 /// The colonial units of the world as it stands: every candidate without an end, with states,
@@ -560,6 +610,8 @@ pub struct Changes {
     state: Option<IndependenceState>,
     /// Laws to ask for: (country, law).
     laws: Vec<(u16, u16)>,
+    /// Self-rule granted this day: (owner, bond).
+    grants: Vec<(u16, SubjectKind)>,
     ops: Vec<Operation>,
     settlements: Vec<crate::treaty_exec::Settlement>,
     /// Goodwill acts: ((holder, country), value).
@@ -606,10 +658,11 @@ impl IndependenceSystem {
         gone: &mut BTreeSet<String>,
     ) {
         match a {
+            // Self-rule for the owner's units of this unit's bond (decision I2), not the law of
+            // every colony: the law stays the owner's, and the movement reads the grant.
             Answer::SelfRule => {
-                if let Some(l) = trusteeship {
-                    out.laws.push((u.owner, l));
-                }
+                let _ = trusteeship;
+                out.grants.push((u.owner, self.setup.bond_of(&u.key)));
             }
             Answer::Dominion | Answer::Independence => {
                 let how = if a == Answer::Dominion {
@@ -733,8 +786,25 @@ impl System<GameWorld> for IndependenceSystem {
             .and_then(|id| world.countries.iter().position(|(i, _)| i == id));
         let p = &*s.politics;
         let trusteeship = s.trusteeship;
-        let self_rule =
-            |c: usize| trusteeship.is_some_and(|l| world.politics.laws[c].contains(&Some(l)));
+        // Self-rule holds for a unit when its owner's law says so (every colony) or the owner
+        // granted it to the unit's bond (decision I2).
+        let self_rule = |c: usize, key: &str| {
+            trusteeship.is_some_and(|l| world.politics.laws[c].contains(&Some(l)))
+                || state.self_rule_granted(c as u16, &s.bond_of(key))
+        };
+        // The colonial laws a unit lives under: the owner's, with self-rule in place of its
+        // colonial law where granted to the unit's bond.
+        let laws_of = |o: usize, key: &str| -> Vec<Option<u16>> {
+            let mut laws = world.politics.laws[o].clone();
+            if let Some(l) = trusteeship
+                && state.self_rule_granted(o as u16, &s.bond_of(key))
+                && let Some(g) = p.laws.get(usize::from(l)).map(|x| usize::from(x.group))
+                && g < laws.len()
+            {
+                laws[g] = Some(l);
+            }
+            laws
+        };
         let mut units = if yearly {
             units_of(s, world, &state.units)
         } else {
@@ -785,7 +855,7 @@ impl System<GameWorld> for IndependenceSystem {
                     f.gdp_growth = of[1].gdp_growth;
                     f.immigrant_share = of[1].immigrant_share;
                 }
-                let effects = p.effects(&world.politics.laws[o], Scope::Colonies);
+                let effects = p.effects(&laws_of(o, &u.key), Scope::Colonies);
                 let legitimacy =
                     i32::from(world.politics.legitimacy.get(o).copied().unwrap_or(1000));
                 u.mobilized = advance(
@@ -849,7 +919,7 @@ impl System<GameWorld> for IndependenceSystem {
                     }
                     continue;
                 }
-                let a = answer(&acc, self_rule(o));
+                let a = answer(&acc, self_rule(o, &u.key));
                 u.demand = Some(Demand {
                     since: date,
                     answer: a,
@@ -868,10 +938,17 @@ impl System<GameWorld> for IndependenceSystem {
             }
         }
         units.retain(|u| !gone.contains(&u.key));
+        let mut self_rule = state.self_rule.clone();
+        for g in out.grants.drain(..) {
+            if !self_rule.contains(&g) {
+                self_rule.push(g);
+            }
+        }
         out.state = Some(IndependenceState {
             units,
             history,
             answers: Vec::new(),
+            self_rule,
         });
         out
     }

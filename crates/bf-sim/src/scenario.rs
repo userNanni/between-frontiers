@@ -166,6 +166,9 @@ pub enum SubjectKind {
     Satellite,
     /// British Raj style: a separate administration under the overlord's crown.
     CrownColony,
+    /// A territory that is in law part of the metropole (the départements of Algeria): a bond of
+    /// colonial units only, never of a subject country.
+    Integrated,
 }
 
 #[cfg(test)]
