@@ -134,12 +134,88 @@ impl Levers {
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LeversState {
     pub countries: Vec<Levers>,
+    /// D8: the order the government fixed for its public works, by market (`None` or missing:
+    /// arrival order). Works missing from the list come after it, in arrival order.
+    pub works_order: Vec<Option<Vec<WorkKey>>>,
+    /// D8: public works the governments asked for this month (`GameCommand::AddWork`); the
+    /// investment system checks each against what the state may build and queues it.
+    pub requests: Vec<WorkRequest>,
+}
+
+/// A work in a country's queue, by what it is: its state, building, method and cost in points.
+/// Two works with the same key are the same work twice, and either may stand for the other.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+pub struct WorkKey {
+    pub region: u32,
+    pub kind: u16,
+    pub method: u8,
+    pub points: Fixed,
+}
+
+impl WorkKey {
+    pub fn of(p: &super::state::Project) -> Self {
+        Self {
+            region: p.region,
+            kind: p.kind,
+            method: p.method,
+            points: p.points,
+        }
+    }
+}
+
+/// A public work a government asked for (`GameCommand::AddWork`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct WorkRequest {
+    pub market: u16,
+    pub region: u32,
+    pub kind: u16,
+}
+
+/// Puts the public works of `m`'s queue in `order`, in the slots the public works already take:
+/// the private works keep their places and their arrival order (owner's decision O2: the
+/// government has no hand in them). Public works not in `order` follow the listed ones, in their
+/// arrival order; a key listed twice takes two works with that key.
+pub fn order_queue(m: &mut Market, order: &[WorkKey]) {
+    let slots: Vec<usize> = (0..m.queue.len()).filter(|&i| m.queue[i].public).collect();
+    if slots.len() < 2 {
+        return;
+    }
+    let mut public: Vec<Option<super::state::Project>> =
+        slots.iter().map(|&i| Some(m.queue[i].clone())).collect();
+    let mut sorted = Vec::with_capacity(slots.len());
+    for key in order {
+        if let Some(j) = public
+            .iter()
+            .position(|p| p.as_ref().is_some_and(|p| WorkKey::of(p) == *key))
+        {
+            sorted.push(public[j].take().expect("found above"));
+        }
+    }
+    sorted.extend(public.into_iter().flatten());
+    for (slot, p) in slots.into_iter().zip(sorted) {
+        m.queue[slot] = p;
+    }
 }
 
 impl LeversState {
     /// No lever fixed anywhere: the state stays out of the hash.
     pub fn is_empty(&self) -> bool {
         self.countries.iter().all(Levers::is_rule)
+            && self.works_order.iter().all(Option::is_none)
+            && self.requests.is_empty()
+    }
+
+    /// The order country `ci` fixed for its public works (D8).
+    pub fn order(&self, ci: usize) -> Option<&[WorkKey]> {
+        self.works_order.get(ci).and_then(|o| o.as_deref())
+    }
+
+    /// Fixes (or, with `None`, hands back to arrival) the order of country `ci`'s public works.
+    pub fn set_order(&mut self, ci: usize, order: Option<Vec<WorkKey>>) {
+        if self.works_order.len() <= ci {
+            self.works_order.resize(ci + 1, None);
+        }
+        self.works_order[ci] = order;
     }
 
     /// The levers of country `ci`.
@@ -192,6 +268,27 @@ impl HashState for LeversState {
                 }
             }
             h.write_i64(l.surplus.map_or(-1, |s| s as i64));
+        }
+        h.write_u64(self.works_order.len() as u64);
+        for o in &self.works_order {
+            match o {
+                Some(keys) => {
+                    h.write_u64(keys.len() as u64);
+                    for k in keys {
+                        h.write_u32(k.region);
+                        h.write_u16(k.kind);
+                        h.write_u8(k.method);
+                        h.write_i64(k.points.raw());
+                    }
+                }
+                None => h.write_i64(-1),
+            }
+        }
+        h.write_u64(self.requests.len() as u64);
+        for r in &self.requests {
+            h.write_u16(r.market);
+            h.write_u32(r.region);
+            h.write_u16(r.kind);
         }
     }
 }
@@ -310,6 +407,130 @@ pub fn view(m: &Market) -> LeversView {
             deficit_effect,
         ),
     }
+}
+
+/// What holds a public work back this week (D8, the works screen).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Bottleneck {
+    /// Nothing: the work gets its full weekly share of points.
+    None,
+    /// The treasury is below its reserve: the state pays in arrears and starts nothing new.
+    Cash,
+    /// The building trade lacked cement or steel last week (`Market::buy_ratio` of the good).
+    Cement,
+    Steel,
+    /// Construction points cost more than 110 % of their base price: the queue is long.
+    Price,
+}
+
+/// One public work of the queue, as the works screen shows it.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct WorkLine {
+    pub key: WorkKey,
+    /// Its public category (`public::INFRASTRUCTURE`…), if the state builds this building.
+    pub category: Option<usize>,
+    /// Share of its points delivered, 0–1.
+    pub progress: f64,
+    /// Weeks left at the pace of the last week's deliveries (the queue got `buy_ratio` of the
+    /// points it asked for), never fewer than at the full weekly share.
+    pub weeks: i64,
+    pub bottleneck: Bottleneck,
+    /// Placed by the government's order (D8) rather than by arrival.
+    pub fixed: bool,
+}
+
+/// The public works of market `m`'s queue, in queue order (D8). Private works are not listed:
+/// the government has no hand in them (owner's decision O2).
+pub fn works(
+    cat: &super::catalogue::Catalogue,
+    m: &Market,
+    order: Option<&[WorkKey]>,
+) -> Vec<WorkLine> {
+    let kinds = super::public::PublicKinds::new(cat);
+    let share = |key: &str| {
+        cat.good(key)
+            .and_then(|g| m.buy_ratio.get(g as usize).copied())
+            .unwrap_or(Fixed::ONE)
+    };
+    let pace = kinds
+        .construction
+        .and_then(|cg| m.buy_ratio.get(cg as usize).copied())
+        .unwrap_or(Fixed::ONE)
+        .max(milli(10));
+    let dear = kinds
+        .construction
+        .is_some_and(|cg| m.price[cg as usize] > cat.goods[cg as usize].base_price * milli(1100));
+    let bottleneck = if m.treasury < m.budget.revenue_avg * m.levers.reserve_weeks() {
+        Bottleneck::Cash
+    } else if share("cement") < Fixed::ONE {
+        Bottleneck::Cement
+    } else if share("steel") < Fixed::ONE {
+        Bottleneck::Steel
+    } else if dear {
+        Bottleneck::Price
+    } else {
+        Bottleneck::None
+    };
+    let listed = |k: &WorkKey| order.is_some_and(|o| o.contains(k));
+    m.queue
+        .iter()
+        .filter(|p| p.public)
+        .map(|p| {
+            let key = WorkKey::of(p);
+            let per_week = super::construction::want(p) * pace;
+            let weeks = if per_week > Fixed::ZERO {
+                (p.left / per_week + Fixed::ONE - Fixed::EPSILON)
+                    .to_int_floor()
+                    .max(1)
+            } else {
+                0
+            };
+            WorkLine {
+                key,
+                category: kinds.category_of(usize::from(p.kind)),
+                progress: if p.points > Fixed::ZERO {
+                    1.0 - (p.left.raw() as f64 / p.points.raw() as f64)
+                } else {
+                    1.0
+                },
+                weeks,
+                bottleneck,
+                fixed: listed(&key),
+            }
+        })
+        .collect()
+}
+
+/// The public works the government of country `ci` may ask for, by state (D8, `AddWork`): each
+/// building with the cost of one level at today's price of construction points. The tick checks a
+/// request against the same list (`public::buildable_in`).
+pub fn buildable(
+    cat: &super::catalogue::Catalogue,
+    world: &crate::game::GameWorld,
+    tree: Option<&crate::research::TechTree>,
+    year: i32,
+    ci: usize,
+) -> Vec<(u32, Vec<(u16, Fixed)>)> {
+    let econ = &world.econ;
+    let Some(m) = econ.markets.get(ci) else {
+        return Vec::new();
+    };
+    let price = super::public::PublicKinds::new(cat)
+        .construction
+        .map_or(Fixed::ZERO, |cg| m.price[cg as usize]);
+    let unlocks = super::Unlocks::new(cat, year, tree, &world.research);
+    econ.regions
+        .iter()
+        .enumerate()
+        .filter(|(_, r)| usize::from(r.market) == ci)
+        .map(|(ri, _)| {
+            let kinds = super::public::buildable_in(cat, econ, &unlocks, ci, ri)
+                .into_iter()
+                .map(|(k, _, points)| (k as u16, points * price))
+                .collect();
+            (ri as u32, kinds)
+        })
+        .collect()
 }
 
 #[cfg(test)]

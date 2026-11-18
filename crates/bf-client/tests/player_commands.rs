@@ -116,10 +116,24 @@ const PLAYER: &[Surface] = &[
 ];
 
 /// Variants the player does not give from a screen with a key, and why.
-const EXCEPTIONS: &[(&str, &str)] = &[(
-    "Borders",
-    "issued by treaties, peace, tests and tools; the player frees its land with Liberate",
-)];
+const EXCEPTIONS: &[(&str, &str)] = &[
+    (
+        "Borders",
+        "issued by treaties, peace, tests and tools; the player frees its land with Liberate",
+    ),
+    (
+        "SetWorksOrder",
+        "the works queue of the budget levers (docs/state.pt-BR.md, D8): the works tab comes from the client thread on econ::levers::works and buildable",
+    ),
+    (
+        "AddWork",
+        "the works queue of the budget levers (docs/state.pt-BR.md, D8): the works tab comes from the client thread on econ::levers::works and buildable",
+    ),
+    (
+        "CancelWork",
+        "the works queue of the budget levers (docs/state.pt-BR.md, D8): the works tab comes from the client thread on econ::levers::works and buildable",
+    ),
+];
 
 fn variants() -> BTreeSet<String> {
     let mut tracer = Tracer::new(TracerConfig::default());

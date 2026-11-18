@@ -595,3 +595,55 @@ pub fn v17_to_v18(w: V17) -> GameWorld {
         levers: Default::default(),
     }
 }
+
+/// The budget's levers as version 18 saved them, before the order of the public works.
+#[derive(Deserialize)]
+pub struct LeversV18 {
+    countries: Vec<crate::econ::levers::Levers>,
+}
+
+/// Version 18: the budget's levers (#165), before the order of the public works.
+#[derive(Deserialize)]
+pub struct V18 {
+    scenario: String,
+    player: Option<Id<Country>>,
+    countries: Table<Country, CountryState>,
+    census: Vec<CensusRecord>,
+    econ: crate::econ::Economy,
+    research: crate::research::ResearchState,
+    politics: crate::polity::PoliticsState,
+    demography: crate::demography::DemographyState,
+    borders: crate::borders::BordersState,
+    foreign: crate::foreign_stakes::ForeignState,
+    influence: crate::influence::InfluenceState,
+    treaties: crate::treaty::TreatyState,
+    war: crate::war::WarState,
+    education: crate::demography::education::EducationState,
+    independence: crate::borders::independence::IndependenceState,
+    levers: LeversV18,
+}
+
+/// 18 → 19: no order fixed for the public works and none asked for; the levers stay.
+pub fn v18_to_v19(w: V18) -> GameWorld {
+    GameWorld {
+        scenario: w.scenario,
+        player: w.player,
+        countries: w.countries,
+        census: w.census,
+        econ: w.econ,
+        research: w.research,
+        politics: w.politics,
+        demography: w.demography,
+        borders: w.borders,
+        foreign: w.foreign,
+        influence: w.influence,
+        treaties: w.treaties,
+        war: w.war,
+        education: w.education,
+        independence: w.independence,
+        levers: crate::econ::levers::LeversState {
+            countries: w.levers.countries,
+            ..Default::default()
+        },
+    }
+}

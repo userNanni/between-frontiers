@@ -61,11 +61,13 @@ pub const WORLD_MAGIC: [u8; 4] = *b"BFWD";
 /// 16. the record of each line of the ledger (`paid`, `written_off`, `status`, closed lines in
 ///     `Ledger::closed`) and the agreements signed in play (`TreatyState::agreements`);
 /// 17. the independence state (`GameWorld::independence`);
-/// 18. the budget's levers (`GameWorld::levers`), the last field of the world.
+/// 18. the budget's levers (`GameWorld::levers`);
+/// 19. the order of the public works and the works asked for (`LeversState::works_order`,
+///     `requests`), the last fields of the world.
 ///
 /// Versions 12 and 13 were held for the orders and the independence PRs; 14 landed first, so
 /// the orders came after it, and 12 and 13 were never written.
-pub const WORLD_VERSION: u32 = 18;
+pub const WORLD_VERSION: u32 = 19;
 
 /// Why a snapshot does not read.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -201,7 +203,8 @@ pub fn migrate(v: u32, body: &[u8]) -> Result<GameWorld, SaveError> {
         15 => return Ok(v15_to_v16(decode_snapshot(body)?)),
         16 => return Ok(v16_to_v17(decode_snapshot(body)?)),
         17 => return Ok(v17_to_v18(decode_snapshot(body)?)),
-        18 => return decode_snapshot(body),
+        18 => return Ok(v18_to_v19(decode_snapshot(body)?)),
+        19 => return decode_snapshot(body),
         _ => return Err(SaveError::Malformed(format!("unknown world version {v}"))),
     };
     Ok(v15_to_v16(v14_to_v15(v11_to_v14(v11))))

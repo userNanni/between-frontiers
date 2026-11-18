@@ -347,6 +347,22 @@ pub enum GameCommand {
         tag: String,
         per_mille_gdp: Option<u16>,
     },
+    /// Fixes the order of the country's public works (D8): the points of each week go to them in
+    /// this order; works not listed follow, in arrival order. `None` hands the order back to
+    /// arrival. Private works keep their places (owner's decision O2).
+    SetWorksOrder {
+        tag: String,
+        order: Option<Vec<crate::econ::levers::WorkKey>>,
+    },
+    /// Asks for a public work of building `kind` in state `region` (D8). The investment system
+    /// queues it at the start of the next month if the state may build it there
+    /// (`econ::public::buildable_in`), at the rule's cost; otherwise it is dropped.
+    AddWork { tag: String, region: u32, kind: u16 },
+    /// Takes a public work out of the queue (D8); the points already paid are lost.
+    CancelWork {
+        tag: String,
+        work: crate::econ::levers::WorkKey,
+    },
 }
 
 /// Changes the levers of the country `tag` (`econ::levers`); unknown tags are no-ops.
@@ -504,6 +520,49 @@ impl Command<GameWorld> for GameCommand {
             GameCommand::SetDeficitCap { tag, per_mille_gdp } => {
                 let v = *per_mille_gdp;
                 set_levers(world, tag, |l| l.deficit_cap = v);
+            }
+            GameCommand::SetWorksOrder { tag, order } => {
+                let Some(ci) = world.countries.iter().position(|(_, c)| c.tag == *tag) else {
+                    return;
+                };
+                if ci < world.econ.markets.len() {
+                    world.levers.set_order(ci, order.clone());
+                }
+            }
+            GameCommand::AddWork { tag, region, kind } => {
+                let Some(ci) = world.countries.iter().position(|(_, c)| c.tag == *tag) else {
+                    return;
+                };
+                let theirs = world
+                    .econ
+                    .regions
+                    .get(*region as usize)
+                    .is_some_and(|r| usize::from(r.market) == ci);
+                if theirs {
+                    world
+                        .levers
+                        .requests
+                        .push(crate::econ::levers::WorkRequest {
+                            market: ci as u16,
+                            region: *region,
+                            kind: *kind,
+                        });
+                }
+            }
+            GameCommand::CancelWork { tag, work } => {
+                let Some(ci) = world.countries.iter().position(|(_, c)| c.tag == *tag) else {
+                    return;
+                };
+                let Some(m) = world.econ.markets.get_mut(ci) else {
+                    return;
+                };
+                if let Some(i) = m
+                    .queue
+                    .iter()
+                    .position(|p| p.public && crate::econ::levers::WorkKey::of(p) == *work)
+                {
+                    m.queue.remove(i);
+                }
             }
             GameCommand::LiteracyCampaign { tag, on } => {
                 // Without schooling (the rule off) there is nothing to teach with.
@@ -1332,7 +1391,7 @@ mod tests {
             hash_of(&with_ledger)
         );
         assert_eq!(
-            hash_of(&headed(18, &encode_snapshot(&with_ledger).unwrap())),
+            hash_of(&headed(19, &encode_snapshot(&with_ledger).unwrap())),
             hash_of(&with_ledger)
         );
         // Version 16, before the independence state: this build's fields without the last one.
@@ -1570,6 +1629,64 @@ mod tests {
         let loaded = headed(17, &before_levers);
         assert_eq!(hash_of(&loaded), hash_of(&on_the_rule));
         assert_eq!(loaded, on_the_rule, "version 17");
+        // Version 18, before the order of the public works: the levers without it.
+        #[derive(Serialize)]
+        struct LeversV18<'a> {
+            countries: &'a Vec<crate::econ::levers::Levers>,
+        }
+        #[derive(Serialize)]
+        struct BeforeWorks<'a> {
+            scenario: &'a String,
+            player: &'a Option<Id<Country>>,
+            countries: &'a Table<Country, CountryState>,
+            census: &'a Vec<CensusRecord>,
+            econ: &'a crate::econ::Economy,
+            research: &'a crate::research::ResearchState,
+            politics: &'a crate::polity::PoliticsState,
+            demography: &'a crate::demography::DemographyState,
+            borders: &'a crate::borders::BordersState,
+            foreign: &'a crate::foreign_stakes::ForeignState,
+            influence: &'a crate::influence::InfluenceState,
+            treaties: &'a crate::treaty::TreatyState,
+            war: &'a crate::war::WarState,
+            education: &'a crate::demography::education::EducationState,
+            independence: &'a crate::borders::independence::IndependenceState,
+            levers: LeversV18<'a>,
+        }
+        let mut fixed = data.new_world();
+        let mut markets = std::mem::take(&mut fixed.econ.markets);
+        fixed
+            .levers
+            .set(&mut markets, 0, |l| l.public_pay = Some(900));
+        fixed.econ.markets = markets;
+        let before_works = encode_snapshot(&BeforeWorks {
+            scenario: &fixed.scenario,
+            player: &fixed.player,
+            countries: &fixed.countries,
+            census: &fixed.census,
+            econ: &fixed.econ,
+            research: &fixed.research,
+            politics: &fixed.politics,
+            demography: &fixed.demography,
+            borders: &fixed.borders,
+            foreign: &fixed.foreign,
+            influence: &fixed.influence,
+            treaties: &fixed.treaties,
+            war: &fixed.war,
+            education: &fixed.education,
+            independence: &fixed.independence,
+            levers: LeversV18 {
+                countries: &fixed.levers.countries,
+            },
+        })
+        .unwrap();
+        let loaded = headed(18, &before_works);
+        assert_eq!(hash_of(&loaded), hash_of(&fixed));
+        assert_eq!(
+            loaded.econ.markets[0].levers.public_pay,
+            Some(900),
+            "version 18"
+        );
         // Version 10, before schooling by cohort: this build's fields without `education`.
         #[derive(Serialize)]
         struct BeforeEducation<'a> {
