@@ -166,3 +166,74 @@ no mundo ou em qualquer parte dele) é uma versão nova:
 
 Dois PRs que sobem a versão ao mesmo tempo colidem no número e no esquema: quem entra depois faz
 rebase, sobe para o número seguinte e regrava o esquema.
+
+## Save por funcionalidade (F1, desenho)
+
+**Decisão do autor (2026-11-18):** a migração deixa de andar por um número em série do mundo
+inteiro. Problema medido: dois PRs abertos ao mesmo tempo disputavam o mesmo `WORLD_VERSION`, e
+quem entrava depois renumerava e refazia a cadeia (8, 9, 10, 15 e 17 em dois dias). Objetivo: um PR
+acrescenta o seu bloco de estado sem tocar em número global nem conflitar com outro PR que faz o
+mesmo.
+
+### Recomendado: seções nomeadas, cada uma com versão própria
+
+A versão 23 é a última do número em série. Dela em diante o snapshot é uma lista de seções:
+
+```
+| "BFWD" | 23: u32 LE | n: u32 LE | postcard(Option<CatalogKeys>) |
+| seções: u32 LE | para cada seção, em ordem de nome:
+|   nome: str | versão: u32 LE | tamanho: u32 LE | postcard(dados da seção) |
+```
+
+- **Uma seção por bloco de estado**, com nome estável: `core` (cenário, jogador, países, censo),
+  `econ`, `research`, `politics`, `demography`, `borders`, `foreign`, `influence`, `treaties`,
+  `war`, `education`, `independence`, `levers`. Cada uma declara, numa linha do registro
+  `save_format::SECTIONS` (ordenado por nome), o nome, a versão atual e as funções de gravar e
+  ler sobre o `GameWorld`.
+- **Seção ausente lê como vazia** (`Default`): um save gravado antes da funcionalidade abre com
+  ela vazia, como hoje faz a migração. Toda seção nova nasce com a regra de sempre: vazia, o hash
+  é o de antes.
+- **Seção desconhecida não abre.** É um save de um jogo mais novo ou de outro ramo; lê-la como
+  vazia perderia o estado em silêncio no próximo salvamento. A tela de Campanhas diz qual seção
+  falta, como já diz a versão. Seção com versão mais nova que a do jogo também não abre.
+- **A versão é por seção.** Mudar o que uma seção grava sobe só a versão dela, com o layout
+  antigo congelado ao lado do módulo (`treaty::compat::V1`) e o degrau `v1 → v2` dela. Dois PRs
+  só colidem se mudarem a mesma seção.
+- **Estado novo de um sistema que já existe vai, por padrão, numa seção nova**, não num campo a
+  mais da seção do sistema: a fila de obras seria `levers.works`, as quebras de cláusula
+  `treaties.breaches`, o comércio por par `econ.trade`. A seção nova lê e grava só esses campos;
+  na struct do sistema eles ficam fora do postcard da seção-mãe (`#[serde(skip)]`). Assim, a
+  maioria dos casos que colidiram (comércio, fila de obras, quebras) não tocaria nem a versão da
+  seção-mãe.
+- **O hash não muda.** O hash do estado vem de `HashState`, não dos bytes do save: o mesmo mundo
+  dá o mesmo hash gravado em série ou por seção.
+- **Esquema por seção:** `tests/schema/<seção>-v<N>.txt`. O teste traça o `GameWorld` uma vez e
+  grava, de cada seção, só os tipos que ela alcança. Mudar uma seção sem subir a versão dela
+  falha só no arquivo dela; dois PRs com seções diferentes escrevem arquivos diferentes.
+- **As versões de 0 a 22 continuam pela cadeia de hoje** até o `GameWorld`, sem mudança; o teste
+  `every_version_loads_with_its_hash` fica e ganha a 23. Quando uma seção mudar depois, a struct
+  congelada da 22 passa a usar o layout antigo dessa seção, como hoje se faz com
+  `EconomyBeforeLedger`.
+
+O que um PR toca para acrescentar estado: o campo no `GameWorld` (ou na struct do sistema), uma
+linha em `SECTIONS`, uma linha no `HashState`, e um arquivo novo de esquema. As três primeiras são
+linhas próprias, que o git junta sem conflito quando dois PRs acrescentam seções diferentes, salvo
+se caírem lado a lado.
+
+**Custo:** cerca de 20 bytes por seção no save (13 seções, menos de 300 bytes), e uma passada a
+mais para separar as seções na leitura. Desprezível perto do mundo inteiro.
+
+### Alternativa: número em série, com a cadeia montada por registro
+
+Cada funcionalidade se inscreve numa linha própria de um registro ordenado por nome, e o número
+global é a posição. Tira o conflito de texto em `migrate`, mas não o problema: o número continua
+global, a ordem por nome muda o número das funcionalidades que já entraram quando outra nova cai
+no meio, e um save não diz quais funcionalidades tinha. Na prática, essa alternativa acaba
+virando seções. Não recomendo.
+
+### Em aberto
+
+- **Seção desconhecida:** recusar (recomendado) ou ignorar com aviso. Ignorar deixa abrir o save
+  de outro ramo e perde aquele estado.
+- **Granularidade:** o padrão "estado novo em seção nova" dá seções pequenas. Uma faxina pode
+  juntá-las mais tarde, com um degrau só.
