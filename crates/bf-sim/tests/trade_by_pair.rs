@@ -40,6 +40,7 @@ fn off_by_default_the_trade_state_stays_empty() {
 fn switched_on_a_short_run_trades_by_pair() {
     let on = run(Switches {
         trade_by_pair: true,
+        ..Switches::default()
     });
     let t = &on.world().econ.trade;
     assert!(!t.is_empty());

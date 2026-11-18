@@ -514,16 +514,26 @@ pub struct Switches {
     /// Trade by pair (`econ::trade`, docs/trade.pt-BR.md): each buyer splits what it seeks among
     /// the sellers by the cost of arrival. Off, the world pool shares trade pro rata.
     pub trade_by_pair: bool,
+    /// Jobs follow use (`econ::monthly::LAYOFF_PER_MONTH`): a plant that sells less than it
+    /// could make lays off part of its crew each month. Off, every level employs its full crew
+    /// whatever it sells.
+    pub jobs_follow_use: bool,
+    /// The wage floor of a small market (`econ::monthly::MIN_HANDS_FOR_A_WAGE`): a market with
+    /// too few plant workers to have a wage of its own reads the lowest of the others.
+    pub small_market_wage_floor: bool,
 }
 
 impl Switches {
-    /// The switches named in a comma-separated list (`trade_by_pair`), on; unknown names are
+    /// The switches named in a comma-separated list (`trade_by_pair`,
+    /// `jobs_follow_use`, `small_market_wage_floor`), on; unknown names are
     /// refused.
     pub fn parse(names: &str) -> Result<Self, String> {
         let mut s = Self::default();
         for name in names.split(',').map(str::trim).filter(|n| !n.is_empty()) {
             match name {
                 "trade_by_pair" => s.trade_by_pair = true,
+                "jobs_follow_use" => s.jobs_follow_use = true,
+                "small_market_wage_floor" => s.small_market_wage_floor = true,
                 other => return Err(format!("unknown rule switch {other}")),
             }
         }
@@ -566,9 +576,11 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
             tree: tree.clone(),
             geo: trade.filter(|_| switches.trade_by_pair),
             by_pair: switches.trade_by_pair,
+            wage_floor: switches.small_market_wage_floor,
         });
         s.add(crate::econ::monthly::Labour {
             cat: Arc::clone(&cat),
+            jobs_follow_use: switches.jobs_follow_use,
         });
         s.add(
             crate::demography::Demography::new(Arc::clone(&cat), politics)
@@ -578,14 +590,20 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
         s.add(crate::econ::monthly::Investment {
             cat: Arc::clone(&cat),
             tree: tree.clone(),
+            wage_floor: switches.small_market_wage_floor,
         });
         if let Some(tree) = &tree {
             s.add(crate::research_system::Research {
                 cat: Arc::clone(&cat),
                 tree: Arc::clone(tree),
+                wage_floor: switches.small_market_wage_floor,
             });
         }
-        s.add(crate::econ::yearly::Yearly { cat, tree });
+        s.add(crate::econ::yearly::Yearly {
+            cat,
+            tree,
+            wage_floor: switches.small_market_wage_floor,
+        });
         // Last in the day: an operation sees the day's results and the next day sees its own.
         if let Some(setup) = influence {
             s.add(crate::influence::InfluenceSystem { setup });

@@ -203,11 +203,13 @@ const MAX_PUBLIC_BUILDS: usize = 200;
 const SCARCE_PRICE: Fixed = milli(1100);
 
 /// Public works each country starts this month, from the treasury above its reserve.
+/// `wage_floor`: the floor of a small market's wage (`game::Switches::small_market_wage_floor`).
 pub fn public_works(
     cat: &Catalogue,
     econ: &Economy,
     unlocks: &super::Unlocks<'_>,
     schools: Option<&[[i64; 3]]>,
+    wage_floor: bool,
 ) -> Vec<Project> {
     let kinds = PublicKinds::new(cat);
     let Some(cg) = kinds.construction else {
@@ -217,6 +219,7 @@ pub fn public_works(
     for (ri, r) in econ.regions.iter().enumerate() {
         by_market[r.market as usize].push(ri);
     }
+    let wages = super::monthly::market_wages(econ, wage_floor);
     let lists: Vec<Vec<Project>> = econ
         .markets
         .par_iter()
@@ -232,6 +235,7 @@ pub fn public_works(
                 &by_market[mi],
                 unlocks,
                 schools,
+                wages[mi],
             )
         })
         .collect();
@@ -252,6 +256,7 @@ fn market_works(
     regions: &[usize],
     unlocks: &super::Unlocks<'_>,
     schools: Option<&[[i64; 3]]>,
+    wage: Fixed,
 ) -> Vec<Project> {
     let price = m.price[cg as usize];
     let committed: Fixed = m
@@ -378,8 +383,9 @@ fn market_works(
             cands[INFRASTRUCTURE].push((score, ri, kind, method as u8, Fixed::ZERO));
         }
     }
-    let research_levels =
-        research_candidates(cat, econ, kinds, mi, regions, unlocks, &queued, &mut cands);
+    let research_levels = research_candidates(
+        cat, econ, kinds, mi, regions, unlocks, &queued, &mut cands, wage,
+    );
     let weights: Vec<i64> = (0..PUBLIC_CATEGORIES)
         .map(|c| {
             if cands[c].is_empty() {
@@ -642,6 +648,7 @@ fn research_candidates(
     unlocks: &super::Unlocks<'_>,
     queued: &dyn Fn(usize, usize) -> i64,
     cands: &mut [Vec<Candidate>; PUBLIC_CATEGORIES],
+    wage: Fixed,
 ) -> usize {
     let (Some(kind), Some(good)) = (kinds.laboratory, cat.research) else {
         return 0;
@@ -650,7 +657,7 @@ fn research_candidates(
     let _ = good;
     // A researcher costs what the country pays an engineer this month, plus his instruments at
     // today's prices: a rich country pays dear, a poor one cheap (`research_level_cost`).
-    let cost = research_level_cost(cat, econ, mi, kind);
+    let cost = research_level_cost(cat, econ, mi, kind, wage);
     if cost <= Fixed::ZERO {
         return 0;
     }
@@ -686,13 +693,15 @@ fn research_candidates(
 /// What a level of laboratory costs market `mi` in a year at today's prices: its staff at the
 /// country's market wage (weighted by profession, as plants pay) and its instruments at market
 /// prices.
-pub fn research_level_cost(cat: &Catalogue, econ: &Economy, mi: usize, kind: usize) -> Fixed {
+pub fn research_level_cost(
+    cat: &Catalogue,
+    econ: &Economy,
+    mi: usize,
+    kind: usize,
+    wage: Fixed,
+) -> Fixed {
     let m = &econ.markets[mi];
     let method = &cat.buildings[kind].methods[0];
-    let wage = super::monthly::market_wages(econ)
-        .get(mi)
-        .copied()
-        .unwrap_or(Fixed::ZERO);
     // The instruments, like any plant's inputs, scale with the productivity of the place:
     // the population-weighted mean over the metropole.
     let b = &cat.buildings[kind];

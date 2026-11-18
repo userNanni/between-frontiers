@@ -53,6 +53,8 @@ const ADOPTION_YEARS: i64 = 15;
 pub struct Research {
     pub cat: Arc<Catalogue>,
     pub tree: Arc<TechTree>,
+    /// `game::Switches::small_market_wage_floor`.
+    pub wage_floor: bool,
 }
 
 pub struct ResearchChanges {
@@ -170,7 +172,7 @@ impl System<GameWorld> for Research {
         let world_gdp: Fixed = facts.iter().map(|f| f.gdp).sum::<Fixed>().max(milli(1));
         // The yardstick of a researcher's quality: the wage of the best-paid economy among those
         // with at least 1 % of world output (a microstate does not set it).
-        let wages = crate::econ::monthly::market_wages(&world.econ);
+        let wages = crate::econ::monthly::market_wages(&world.econ, self.wage_floor);
         let world_wage = wages
             .iter()
             .zip(&facts)

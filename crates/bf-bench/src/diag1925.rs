@@ -613,6 +613,54 @@ pub fn main() -> Result<(), String> {
         }
         (at1, at_tfp, wsum)
     };
+    // Small countries: plants and pay of each profession, at a few dates.
+    if let Ok(list) = std::env::var("BF_DIAG_SMALL") {
+        let mis: Vec<usize> = list
+            .split(',')
+            .filter_map(|t| tags.iter().position(|x| x == t))
+            .collect();
+        for y in [1925, 1926, 1927, 1930] {
+            s.sim.run_until(Date::new(y, 2, 1));
+            let e = &s.world().econ;
+            let wages = bf_sim::econ::monthly::market_wages(e, false);
+            for &mi in &mis {
+                let m = &e.markets[mi];
+                println!(
+                    "{y} {}: gdp {:.0}, wage {:.2}, pool {:.0}",
+                    tags[mi],
+                    m.gdp_last_year.to_f64_lossy(),
+                    wages[mi].to_f64_lossy(),
+                    m.pool.to_f64_lossy()
+                );
+                for r in e.regions.iter().filter(|r| r.market as usize == mi) {
+                    for (pi, p) in r.pops.iter().enumerate() {
+                        if p.size > 0 {
+                            println!(
+                                "   pop {pi}: size {} employed {} income {:.1}",
+                                p.size,
+                                p.employed,
+                                p.income.to_f64_lossy()
+                            );
+                        }
+                    }
+                    for pl in &r.plants {
+                        let b = &cat.buildings[pl.kind as usize];
+                        println!(
+                            "   plant {}: levels {} method {} staffing {:.2} util {:.2} input {:.2} workers/level {}",
+                            b.key,
+                            pl.levels,
+                            pl.method,
+                            pl.staffing.to_f64_lossy(),
+                            pl.utilization.to_f64_lossy(),
+                            pl.input_ratio.to_f64_lossy(),
+                            b.methods[pl.method as usize].workers
+                        );
+                    }
+                }
+            }
+        }
+        return Ok(());
+    }
     // Why a country's industry does or does not grow: every 10 years.
     if let Ok(tag) = std::env::var("BF_DIAG_COUNTRY") {
         let mi = tags.iter().position(|t| *t == tag).ok_or("tag")?;
@@ -642,7 +690,7 @@ pub fn main() -> Result<(), String> {
                 idle as f64 / 1e6,
                 people as f64 / 1e6,
                 bf_sim::econ::monthly::hurdle(m).to_f64_lossy(),
-                bf_sim::econ::monthly::market_wages(e)[mi].to_f64_lossy()
+                bf_sim::econ::monthly::market_wages(e, false)[mi].to_f64_lossy()
             );
             for (g, (u, l, w)) in &by {
                 print!(

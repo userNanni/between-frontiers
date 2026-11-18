@@ -466,6 +466,57 @@ bem, PIB e consumo por habitante dentro das faixas dos dados históricos. Para c
 `bf-bench --diag-1925` (PIB alvo e medido por país, onde o valor adicionado se perde, demanda de
 cada bem por origem, produção contra `industry.ron`; `BF_DIAG_YEARS=N` acompanha N anos).
 
+## Microestados: o salário de quem é menor que o grão
+
+**Diagnóstico (main 7d851c1).** Um nível de fábrica emprega de 870 a 990 pessoas. San Marino
+tem 5 160 trabalhadores, e o setup pede para ele, em níveis fracionários, comércio 1,22, moradia
+0,97, banco 0,88, construção 0,38, ferrovia 0,37 e fazendas de 0,1 cada. Arredondado, sobram um
+comércio e uma ferrovia, porque os serviços locais arredondam para cima estado por estado. Em uma
+semana as duas rodam no piso de uso (5 %) e seguem com a tripulação inteira: o emprego segue os
+níveis, não o uso. Daí o salário de mercado em 1927 de 1,3 por semana em San Marino, 0,3 em
+Liechtenstein e 0 em Andorra, contra 127 na Colômbia, lido como trabalho de graça pela folha do
+Estado, pela escolha de método e pelo retorno das obras. Nos países grandes o mesmo acontece nos
+estados pequenos, mas a média do mercado esconde. O dado do cenário não está errado.
+
+**O piso de salário, desligado** (`game::Switches::small_market_wage_floor`,
+`monthly::market_wages`). Um mercado com menos de `MIN_HANDS_FOR_A_WAGE` (10 mil) trabalhadores
+em fábricas, uns dez níveis, lê o menor salário entre os mercados com leitura quando o seu é
+menor: a gente de lá trabalha do outro lado da fronteira. É inteiro abaixo de 5 mil trabalhadores
+e some linearmente até 10 mil, para que o mercado que cruza o limite não veja salto de salário.
+Ligado contra a base da main 36b2ef5 em 101 anos (determinismo e save de 1975 conferidos), o PIB
+mundial fica no ruído (−0,05 % a +1,4 % até 1985), mas a mudança não fica nos microestados: em
+1930 só San Marino muda mais de 5 % no PIB (+9 %), em 1945 já são 12 países (Itália +8 %,
+Tchecoslováquia +8 %, Polônia −8 %, Nova Zelândia −9 %), 33 em 1965 e 21 de 81 em 2025 (Polônia
++140 %, Hungria +95 %, Países Baixos −52 %). É o modelo amplificando um empurrão pequeno, a mesma
+sensibilidade da faixa de reembaralhamento, mas espalha a mudança além dos mercados pequenos e
+dos vizinhos; por isso entra desligado e vai para a fila de equilíbrio com a regra abaixo.
+Mônaco (uns 7 mil trabalhadores em fábricas) fica na faixa parcial; com salário acima do piso,
+o piso não o alcança.
+
+**Achado principal: instabilidade de trajetória.** Um empurrão que em 1930 só move San Marino
+desloca 21 de 81 países em mais de 5 % no PIB de 2025 (Polônia +140 %, Países Baixos −52 %), com
+o PIB mundial no ruído. O modelo amplifica diferenças pequenas país a país sem mudar o agregado:
+é o primeiro item da fila de equilíbrio, antes de ligar qualquer das duas regras. Hipótese, não
+investigada: a realimentação vem de decisões discretas em cascata — nível de fábrica inteiro e
+troca de método quando o lucro cruza um limiar (`best_method`) —, reforçadas pelo investimento,
+que vai para o maior retorno e faz o vencedor ganhar mais, e pela migração, que segue o salário.
+
+**Regra desligada: o emprego acompanha o uso** (`game::Switches::jobs_follow_use`,
+`monthly::LAYOFF_PER_MONTH`). A fábrica contrata de imediato o que o uso pede e demite 15 % do
+excesso por mês (meia-vida de uns quatro meses): retenção de mão de obra, com ajuste do emprego
+ao produto em alguns meses (Hamermesh, *Labor Demand*, 1993; Fay e Medoff, AER 75(4), 1985). Ligada
+contra a main, 16 de 82 países mudam mais de 5 % no PIB em 10 anos (PIB mundial +1,8 %) e 53 de 82
+em 51 anos (+4 %), nos dois sentidos: Estônia +74 %, Irlanda +38 %, Finlândia +37 %, Hungria +30 %,
+Portugal −36 %, Egito −14 %. O efeito é grande demais para entrar sem estudo do processo: quem
+recebe os demitidos (campo, informal, migração), e por que uns ganham e outros perdem. Fica na
+fila de equilíbrio. Sozinha ela não conserta os microestados: San Marino sobe para 18 por semana,
+mas Andorra e Liechtenstein seguem com o PIB desabando.
+
+**O que fica de fora.** A economia real deles vivia dentro do mercado do vizinho: união aduaneira
+de San Marino com a Itália, de Liechtenstein com a Suíça (1924) e de Mônaco com a França, além de
+turismo, selos, cassino e remessas. É assunto de blocos e comércio; até lá o PIB deles fica
+pequeno.
+
 ## Aberto
 
 - **Eletricidade de 1925 (0,48 da referência).** As plantas nascem no primeiro método de cada

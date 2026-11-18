@@ -103,6 +103,22 @@ pub(crate) const STATE_SHARE: [(usize, i64); 3] = [
 
 pub struct Labour {
     pub cat: Arc<Catalogue>,
+    /// Jobs follow use (`game::Switches::jobs_follow_use`): a plant that sells less than it
+    /// could make lays off part of its crew each month, toward the jobs of its levels ×
+    /// utilization, instead of paying a full crew out of what it sells.
+    pub jobs_follow_use: bool,
+}
+
+/// Share of the gap between the crew a plant has and the crew its use needs that it lays off
+/// in a month: 15 %, a half-life of about four months. Firms hoard labour when orders fall
+/// (training, firing costs, hope of recovery) and adjust employment to output with a lag of a
+/// few months in manufacturing (Hamermesh, *Labor Demand*, 1993, on dynamic labour demand; Fay and Medoff, AER
+/// 75(4), 1985, on labour hoarding in US plants). A design value within that range.
+pub const LAYOFF_PER_MONTH: Fixed = milli(150);
+
+/// Jobs a plant fills at its use: the jobs of its levels × utilization, rounded up.
+pub(crate) fn jobs_in_use(jobs: i64, utilization: Fixed) -> i64 {
+    -(Fixed::from_int(-jobs) * utilization.min(Fixed::ONE)).to_int_floor()
 }
 
 pub struct LabourChange {
@@ -125,12 +141,50 @@ fn move_people(pops: &mut [(i64, i64)], from: usize, to: usize, workers_moved: i
     pops[to].0 += people;
 }
 
+/// Jobs follow use (`game::Switches::jobs_follow_use`): by profession, the plants hire at once
+/// up to the jobs their use needs and lay off a share of the excess a month
+/// (`LAYOFF_PER_MONTH`), never above the jobs of their levels.
+fn jobs_after_layoffs(cat: &Catalogue, r: &Region, required: &mut [i64; P]) {
+    let mut in_use = [0i64; P];
+    let mut informal = [0i64; P];
+    for p in &r.plants {
+        let m = &cat.buildings[p.kind as usize].methods[p.method as usize];
+        let own = Some(p.kind) == cat.informal;
+        for (pi, n) in &m.jobs {
+            if own {
+                informal[*pi as usize] += *n * p.levels;
+            } else {
+                in_use[*pi as usize] += jobs_in_use(*n * p.levels, p.utilization);
+            }
+        }
+    }
+    for pi in 0..P {
+        if required[pi] == 0 {
+            continue;
+        }
+        // The crew the plants held last month, without the self-employed.
+        let held = (r.pops[pi].employed - informal[pi]).clamp(0, required[pi]);
+        required[pi] = crew_next_month(held, in_use[pi]);
+    }
+}
+
+/// The crew a plant keeps next month: up to what its use needs at once, down by a share of the
+/// excess (`LAYOFF_PER_MONTH`, rounded up so that the last worker goes too).
+fn crew_next_month(held: i64, target: i64) -> i64 {
+    if target >= held {
+        target
+    } else {
+        held - jobs_in_use(held - target, LAYOFF_PER_MONTH)
+    }
+}
+
 fn labour_region(
     cat: &Catalogue,
     r: &Region,
     moves: &super::migration::Moves,
     soldiers: Option<i64>,
     qualified: Option<[Fixed; 3]>,
+    jobs_follow_use: bool,
 ) -> LabourChange {
     let mut required = [0i64; P];
     // Self-employment is sized below, from the labourers the plants leave idle.
@@ -139,6 +193,9 @@ fn labour_region(
         for (pi, n) in &m.jobs {
             required[*pi as usize] += *n * p.levels;
         }
+    }
+    if jobs_follow_use {
+        jobs_after_layoffs(cat, r, &mut required);
     }
     let mut pops: Vec<(i64, i64)> = r.pops.iter().map(|p| (p.size, 0)).collect();
     // Migration first: idle peasants who left for town, and newcomers from other states.
@@ -338,7 +395,14 @@ impl System<GameWorld> for Labour {
             .enumerate()
             .map(|(ri, (r, mv))| {
                 let qualified = crate::demography::education::qualified(world, ri);
-                let mut c = labour_region(&self.cat, r, mv, world.war.soldiers(ri), qualified);
+                let mut c = labour_region(
+                    &self.cat,
+                    r,
+                    mv,
+                    world.war.soldiers(ri),
+                    qualified,
+                    self.jobs_follow_use,
+                );
                 c.pioneers = pioneers(&self.cat, r, &world.econ.markets[r.market as usize]);
                 c
             })
@@ -408,6 +472,8 @@ const LOSING_WEEKS_TO_CLOSE: u16 = 13;
 pub struct Investment {
     pub cat: Arc<Catalogue>,
     pub tree: Option<Arc<crate::research::TechTree>>,
+    /// `game::Switches::small_market_wage_floor`.
+    pub wage_floor: bool,
 }
 
 pub struct Build {
@@ -466,7 +532,9 @@ pub fn method_score(m: &super::catalogue::Method, profit: Fixed) -> Fixed {
 }
 
 /// Average weekly pay of a worker in each market: what a method that needs fewer hands saves.
-pub fn market_wages(econ: &crate::econ::Economy) -> Vec<Fixed> {
+/// With `floor` (`game::Switches::small_market_wage_floor`), a market too small to have a wage
+/// of its own reads the lowest of the others.
+pub fn market_wages(econ: &crate::econ::Economy, floor: bool) -> Vec<Fixed> {
     let mut pay = vec![Fixed::ZERO; econ.markets.len()];
     let mut hands = vec![0i64; econ.markets.len()];
     for r in &econ.regions {
@@ -486,11 +554,52 @@ pub fn market_wages(econ: &crate::econ::Economy) -> Vec<Fixed> {
             hands[r.market as usize] += p.employed;
         }
     }
-    pay.iter()
-        .zip(hands)
-        .map(|(p, h)| if h > 0 { *p / h } else { Fixed::ZERO })
-        .collect()
+    let mut wages: Vec<Fixed> = pay
+        .iter()
+        .zip(&hands)
+        .map(|(p, h)| if *h > 0 { *p / *h } else { Fixed::ZERO })
+        .collect();
+    // A market with fewer workers than a few plant levels (San Marino, Andorra, Liechtenstein
+    // in 1925) has no wage of its own to read: its two or three plants run at the floor of use
+    // with full crews and pay almost nothing. Its people could work across the border, so it
+    // reads the lowest wage among the markets with a reading when its own is lower.
+    if !floor {
+        return wages;
+    }
+    let floor = wages
+        .iter()
+        .zip(&hands)
+        .filter(|(w, h)| **h >= MIN_HANDS_FOR_A_WAGE && **w > Fixed::ZERO)
+        .map(|(w, _)| *w)
+        .min();
+    // In full below half the threshold, fading linearly to nothing at it: a market that grows
+    // past it from one month to the next sees no jump in its wage.
+    if let Some(floor) = floor {
+        for (w, h) in wages.iter_mut().zip(&hands) {
+            *w = small_market_wage(*w, floor, *h);
+        }
+    }
+    wages
 }
+
+/// The wage a market with `hands` plant workers reads, its own pay being `own`: the floor in
+/// full below half of `MIN_HANDS_FOR_A_WAGE`, fading linearly to its own pay at it.
+fn small_market_wage(own: Fixed, floor: Fixed, hands: i64) -> Fixed {
+    if own >= floor || hands >= MIN_HANDS_FOR_A_WAGE {
+        return own;
+    }
+    let half = MIN_HANDS_FOR_A_WAGE / 2;
+    let weight = if hands <= half {
+        Fixed::ONE
+    } else {
+        Fixed::from_ratio(MIN_HANDS_FOR_A_WAGE - hands, half)
+    };
+    own + (floor - own) * weight
+}
+
+/// Workers in plants below which a market's average pay is not read in full as its wage
+/// (`market_wages`): about ten plant levels.
+pub const MIN_HANDS_FOR_A_WAGE: i64 = 10_000;
 
 /// Best method a building can use at market prices, with its weekly owners' profit per level:
 /// value added less the market wage of the workers it needs. Mechanizing pays where labour is
@@ -613,7 +722,7 @@ impl System<GameWorld> for Investment {
             &world.research,
             econ.markets.len(),
         );
-        let wages = market_wages(econ);
+        let wages = market_wages(econ, self.wage_floor);
         let mut closes = Vec::new();
         for (ri, r) in econ.regions.iter().enumerate() {
             for p in &r.plants {
@@ -829,7 +938,8 @@ impl System<GameWorld> for Investment {
                     .map(|ri| crate::demography::education::places_needed(world, ri))
                     .collect()
             });
-        let public = super::public::public_works(cat, econ, &unlocks, schools.as_deref());
+        let public =
+            super::public::public_works(cat, econ, &unlocks, schools.as_deref(), self.wage_floor);
         InvestmentChanges {
             builds,
             leftover,
@@ -910,5 +1020,51 @@ mod capital_tests {
         assert!(
             method_score(&gas, Fixed::from_int(25)) > method_score(&nuclear, Fixed::from_int(74))
         );
+    }
+}
+
+#[cfg(test)]
+mod layoff_tests {
+    use super::*;
+
+    #[test]
+    fn a_plant_at_the_floor_of_use_lays_off_gradually() {
+        // A level of 1,000 jobs at 5 % use needs 50: the crew falls 15 % of the excess a month.
+        let target = jobs_in_use(1000, milli(50));
+        assert_eq!(target, 50);
+        let mut crew = 1000;
+        let mut months = 0;
+        while crew > target + 100 {
+            crew = crew_next_month(crew, target);
+            months += 1;
+        }
+        // About four months of half-life: within 100 of the need in a year or so, not in a week.
+        assert!((10..=14).contains(&months), "{months} months");
+        assert_eq!(crew_next_month(1000, 1000), 1000);
+        assert_eq!(crew_next_month(51, 50), 50, "the last worker goes too");
+    }
+
+    #[test]
+    fn the_wage_floor_of_a_small_market_fades_without_a_jump() {
+        let (own, floor) = (milli(1_000), Fixed::from_int(20));
+        assert_eq!(small_market_wage(own, floor, 2_000), floor);
+        assert_eq!(small_market_wage(own, floor, 5_000), floor);
+        let mid = small_market_wage(own, floor, 7_500);
+        assert!(mid > own && mid < floor);
+        // One worker either side of the threshold: no jump.
+        let below = small_market_wage(own, floor, MIN_HANDS_FOR_A_WAGE - 1);
+        assert!(below - own < milli(10), "{}", below.to_f64_lossy());
+        assert_eq!(small_market_wage(own, floor, MIN_HANDS_FOR_A_WAGE), own);
+        assert_eq!(
+            small_market_wage(Fixed::from_int(30), floor, 100),
+            Fixed::from_int(30)
+        );
+    }
+
+    #[test]
+    fn hiring_up_to_the_use_is_at_once() {
+        assert_eq!(crew_next_month(200, 900), 900);
+        assert_eq!(jobs_in_use(1000, Fixed::ONE), 1000);
+        assert_eq!(jobs_in_use(999, milli(500)), 500, "rounded up");
     }
 }
