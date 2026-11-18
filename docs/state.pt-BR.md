@@ -251,7 +251,7 @@ impostos.
   do jogador não entra desligada: o seletor aparece sempre. Entram atrás de chave em
   `data/rules.ron` só as mudanças de regra que valem para todos com a alavanca em `None`: o clero
   pago conforme a lei de religião (`clergy_by_law`) e a capacidade de cobrar pelos servidores
-  (`fiscal_capacity`, pergunta 1).
+  (`fiscal_capacity`, decisão O1).
 - **Um comando por alavanca**, no padrão de `SetTaxRates` e `SetPolicyRate`: `Option`, com `None`
   de volta à regra histórica. Valores em milésimos. Cada um ganha uma linha no
   `player_commands.rs`.
@@ -319,11 +319,11 @@ impostos.
   - A curva entre um caso e outro é `church_privilege`, de 100 a 500.
   - Casos para o teste: França depois de 1905 (separação, nada pelo Tesouro), Bélgica (o Estado
     paga), Alemanha (imposto da Igreja cobrado pelo Estado e repassado: conta como dos fiéis).
-- **O que o servidor faz.** Hoje o servidor só custa. Sem efeito, cortar a folha é dinheiro de
-  graça. Proponho a **capacidade de cobrar**: abaixo dos servidores que a regra pediria para a
-  renda do país, a arrecadação cai na proporção que falta, e acima deles não sobe. É a ideia de
-  capacidade fiscal de Besley e Persson (2009, AER 99(4)). A elasticidade sai calibrada, com a
-  conta, no PR. **Decisão pendente (pergunta 1).**
+- **O que o servidor faz: capacidade de cobrar** (decisão do autor de 2026-11-17, O1). Sem efeito,
+  cortar a folha seria dinheiro de graça. Abaixo dos servidores que a regra pediria para a renda do
+  país, a arrecadação cai na proporção que falta; acima deles, não sobe. É a ideia de capacidade
+  fiscal de Besley e Persson (2009, AER 99(4)). Entra como `fiscal_capacity` em `data/rules.ron`,
+  desligada, e o PR traz a elasticidade e a conta.
 
 ### D2. Salário público
 
@@ -391,7 +391,7 @@ Decisão rara, nas Agendas, com ponto de restauração antes (motivo "dívida").
   e a poupança das famílias que tinha título perde junto.
 - **Honrar a todo custo** (postura, `SetHonourDebt`, guardada em `Money::honour: bool`): o gatilho automático vira austeridade
   forçada, até a folha cair ao piso. É a Romênia de 1981 a 1989, que pagou a dívida externa
-  cortando o consumo. **Decisão pendente (pergunta 3).**
+  cortando o consumo. Existe (decisão do autor de 2026-11-17, O3): é uma postura nas Agendas.
 
 ### D7. Câmbio
 
@@ -421,8 +421,8 @@ Nota do autor: "uma lista de prioridades que o jogador define e em que pode orde
   nova da regra; o jogador continua acrescentando com `AddWork`.
 - **Gradual:** reordenar muda quem recebe os pontos da semana. A obra continua com o teto de 1/26
   por semana, e os pontos do país são os que a construção civil produz.
-- **Ponto de desenho:** a obra privada fica na ordem de chegada ou entra na lista. **Decisão
-  pendente (pergunta 2).**
+- **A obra privada fica fora da lista** (decisão do autor de 2026-11-17, O2: "o governo não tem
+  acesso a essas decisões"). Ela segue na ordem de chegada; o jogador ordena só as obras públicas.
 
 ### D9. Dívida interna ou externa
 

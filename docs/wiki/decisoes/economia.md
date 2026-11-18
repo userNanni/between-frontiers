@@ -117,3 +117,23 @@ detalhe está em [`economy.pt-BR.md`](../../economy.pt-BR.md) e em
 - **Estado:** no jogo (#91).
 - **Onde está o detalhe:** [`data/scenario/1925/LAND.md`](../../../data/scenario/1925/LAND.md), "Licença do
   HYDE"; [`README.pt-BR.md`, "Licença"](../../../README.pt-BR.md#licença).
+
+### O que o servidor faz, a obra privada e honrar a dívida (alavancas do orçamento)
+
+- **Decisão (2026-11-17):** três pontos do desenho das alavancas do orçamento e da dívida, todos
+  como a coordenação propôs.
+  1. **O servidor dá capacidade de cobrar.** Abaixo dos servidores que a regra pediria para a
+     renda do país, a arrecadação cai na proporção que falta; acima, não sobe. Entra desligada
+     (`fiscal_capacity`).
+  2. **A obra privada fica fora da fila ordenável.** O jogador ordena só as obras públicas; a
+     privada segue na ordem de chegada.
+  3. **"Honrar a dívida a todo custo" existe** como postura nas Agendas: o calote automático vira
+     austeridade forçada, até a folha cair ao piso.
+- **O que o autor pensou:** sem efeito, cortar servidores seria dinheiro de graça (Besley e
+  Persson, 2009, sobre capacidade fiscal). Sobre a obra privada: "o governo não tem acesso a essas
+  decisões". Honrar a todo custo é uma escolha histórica real (a Romênia de 1981 a 1989 pagou a
+  dívida externa cortando o consumo).
+- **Como o jogo funciona por causa disso:** a folha tem custo e benefício, e um Estado pequeno
+  demais arrecada menos; a fila de obras do jogador mexe só no que o Estado paga; quem quer evitar
+  o calote pode, pagando com austeridade.
+- **Estado:** desenho ([`state.pt-BR.md`, "Alavancas do orçamento e da dívida"](../../state.pt-BR.md#alavancas-do-orçamento-e-da-dívida-desenho)); o código entra em quatro fatias.
