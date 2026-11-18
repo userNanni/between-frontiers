@@ -824,6 +824,10 @@ pub struct Switches {
     /// Crises and declaration (`docs/war.pt-BR.md`, "Crise e declaração"): demands with a
     /// deadline, answered by the AI by the force against the share asked for, and war declared
     /// on a refusal. Needs `forces`. Off: no crisis opens.
+    /// The monthly step of the agreements in force (`treaty_system`, docs/treaties.pt-BR.md):
+    /// tribute paid and tested, and the agreements whose fixed term ran out end in January.
+    /// Off: agreements never end by their term and nothing is paid.
+    pub clause_tests: bool,
     pub crisis: bool,
     /// The servants' capacity to collect (`econ::levers::collection`, owner's decision O1): a
     /// region with fewer servants than the rule asks for collects that much less tax.
@@ -878,6 +882,7 @@ impl Switches {
     /// length is not part of the type, so two PRs that each add a switch merge without breaking
     /// the build. `tests/trade_by_pair.rs` checks it against the fields and `data/rules.ron`.
     pub const NAMES: &'static [&'static str] = &[
+        "clause_tests",
         "crisis",
         "fiscal_capacity",
         "forces",
@@ -897,6 +902,7 @@ impl Switches {
     /// Switches one rule on by name; unknown names are refused.
     pub fn switch_on(&mut self, name: &str) -> Result<(), String> {
         match name {
+            "clause_tests" => self.clause_tests = true,
             "crisis" => self.crisis = true,
             "fiscal_capacity" => self.fiscal_capacity = true,
             "forces" => self.forces = true,
@@ -1015,6 +1021,10 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
             wage_floor: switches.small_market_wage_floor,
             foreign_contract: switches.foreign_contract,
         });
+        // The agreements in force: tribute paid and tested, terms run out (off by default).
+        if switches.clause_tests {
+            s.add(crate::treaty_system::TreatyMonth);
+        }
         // Last in the day: an operation sees the day's results and the next day sees its own.
         if let Some(setup) = influence {
             s.add(crate::influence::InfluenceSystem { setup });
