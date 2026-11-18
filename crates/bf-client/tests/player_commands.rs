@@ -39,6 +39,11 @@ const PLAYER: &[Surface] = &[
         files: &["screens/budget.rs"],
     },
     Surface {
+        variant: "LiteracyCampaign",
+        command: id::TAB_BUDGET,
+        files: &["screens/budget.rs"],
+    },
+    Surface {
         variant: "SetMigrationLaw",
         command: id::TAB_BUDGET,
         files: &["screens/budget.rs"],

@@ -84,6 +84,7 @@ pub fn main() -> Result<(), String> {
             tree: None,
             politics: None,
             communities: None,
+            education: None,
             borders: None,
             influence: None,
             war: None,

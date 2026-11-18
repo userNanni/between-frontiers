@@ -632,7 +632,17 @@ fn advanced_session_of(
     tag: &str,
     until: laplace_schelling::calendar::Date,
 ) -> bf_sim::game::Session {
-    let data = bf_sim::data::GameData::load(&root()).expect("game data");
+    advanced_session_with(tag, until, bf_sim::data::RuleSwitches::default())
+}
+
+/// [`advanced_session_of`] with rules of `data/rules.ron` switched on.
+fn advanced_session_with(
+    tag: &str,
+    until: laplace_schelling::calendar::Date,
+    switches: bf_sim::data::RuleSwitches,
+) -> bf_sim::game::Session {
+    let mut data = bf_sim::data::GameData::load(&root()).expect("game data");
+    data.switches = switches;
     let mut session = bf_sim::game::Session::new(
         data.new_world(),
         1925,
@@ -2622,6 +2632,92 @@ fn armed_forces() {
         let name = format!("103-forces-mobilizing-{tag}");
         shot(&mut h, &name);
         keep(&name);
+    }
+    let _ = std::fs::remove_dir_all(&user);
+}
+
+/// Schooling (`demography::education`): the population panel's section with the pyramid by level,
+/// for Brazil in 1930 (the country, then its largest state), and the adult literacy campaign in
+/// the budget, before and at its confirmation step; in Portuguese at 1600 × 900 and in English
+/// at 1280 × 720.
+#[test]
+#[ignore = "needs a GPU (or software Vulkan) and the generated map; run with --ignored"]
+fn schooling_screens() {
+    use laplace_schelling::calendar::Date;
+    let user = std::env::temp_dir().join(format!("bf-shots-school-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&user);
+    let bra = advanced_session_with(
+        "BRA",
+        Date::new(1930, 3, 1),
+        bf_sim::data::RuleSwitches { schooling: true },
+    );
+    let save = write_campaign(&user, &bra, "Brasil 1930", "BRA", &[]);
+    for (locale, size, tag, schooling, budget, campaign, start, yes) in [
+        (
+            "pt-BR",
+            egui::vec2(1600.0, 900.0),
+            "pt",
+            "Educação:",
+            "Orçamento",
+            "Campanha de alfabetização de adultos",
+            "Começar campanha…",
+            "Confirmar",
+        ),
+        (
+            "en",
+            egui::vec2(1280.0, 720.0),
+            "en-1280",
+            "Schooling:",
+            "Budget",
+            "Adult literacy campaign",
+            "Start a campaign…",
+            "Confirm",
+        ),
+    ] {
+        let mut h = harness_sized(user.join(tag), locale, size);
+        let ctx = h.ctx.clone();
+        h.state_mut().apply(Transition::Game(save.clone()), &ctx);
+        h.run_steps(4);
+        run_until(&mut h, 120, |s| {
+            s.population.as_ref().is_some_and(|p| p.schooling.is_some())
+        });
+        h.key_press(egui::Key::Y);
+        h.run_steps(4);
+        let to = |h: &mut Harness<'_, App>, text: &str| {
+            h.get_all(egui_kittest::kittest::by().label_contains(text))
+                .next()
+                .unwrap_or_else(|| panic!("{text}"))
+                .scroll_to_me();
+            h.run_steps(4);
+        };
+        to(&mut h, schooling);
+        shot(&mut h, &format!("96-schooling-bra-1930-{tag}"));
+        h.get_by_label("›").click();
+        h.run_steps(3);
+        shot(
+            &mut h,
+            &format!("96-schooling-bra-1930-pyramid-state-{tag}"),
+        );
+        to(&mut h, schooling);
+        shot(&mut h, &format!("96-schooling-bra-1930-state-{tag}"));
+        h.key_press(egui::Key::Y);
+        h.run_steps(3);
+        h.key_press(egui::Key::G);
+        h.run_steps(4);
+        h.get_by_label(budget).click();
+        h.run_steps(4);
+        to(&mut h, campaign);
+        shot(&mut h, &format!("97-campaign-bra-1930-{tag}"));
+        h.get_by_label(start).click();
+        h.run_steps(4);
+        assert!(
+            h.get_all(egui_kittest::kittest::by().label(yes))
+                .next()
+                .is_some(),
+            "the campaign's confirmation step"
+        );
+        to(&mut h, campaign);
+        shot(&mut h, &format!("97-campaign-bra-1930-confirm-{tag}"));
     }
     let _ = std::fs::remove_dir_all(&user);
 }

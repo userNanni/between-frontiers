@@ -70,6 +70,7 @@ fn body(ui: &mut Ui, i18n: &I18n, world: &World, view: &PopulationView, scope: &
     pyramid_section(ui, i18n, world, view, scope);
     class_section(ui, i18n, world, view, *scope);
     community_section(ui, i18n, world, view, *scope);
+    schooling_section(ui, i18n, world, view, *scope);
     bf_ui_kit::divider(ui);
     for part in &view.parts {
         rates_section(ui, i18n, part, view.parts.len() > 1);
@@ -163,8 +164,142 @@ fn pyramid_section(
         0 => &view.pyramid,
         i => &states[i - 1].1,
     };
-    pyramid(ui, i18n, ages);
+    // Coloured by schooling when there is schooling: a bar per level, from none to tertiary.
+    let levels = match scope.0 {
+        None => view.schooling.as_ref().map(|s| &s.by_age),
+        Some(st) => view
+            .state_schooling
+            .iter()
+            .find(|(x, _)| *x == st)
+            .map(|(_, s)| &s.by_age),
+    };
+    pyramid(ui, i18n, ages, levels);
+    if levels.is_some() {
+        level_legend(ui, i18n);
+    }
     bf_ui_kit::caption(ui, &i18n.tr("population-no-sexes"));
+}
+
+/// Colours of the levels of schooling in the pyramid: none, reads without school, primary,
+/// secondary, tertiary (a ramp from grey to light gold).
+const LEVEL_COLOURS: [egui::Color32; 5] = [
+    color::BORDER_STRONG,
+    color::TEXT_FAINT,
+    color::ACCENT_PRESSED,
+    color::ACCENT,
+    color::ACCENT_HOVER,
+];
+const LEVEL_KEYS: [&str; 5] = [
+    "population-level-none",
+    "population-level-reads",
+    "population-level-primary",
+    "population-level-secondary",
+    "population-level-tertiary",
+];
+
+fn level_legend(ui: &mut Ui, i18n: &I18n) {
+    ui.horizontal_wrapped(|ui| {
+        ui.spacing_mut().item_spacing.x = space::SM;
+        for (c, k) in LEVEL_COLOURS.iter().zip(LEVEL_KEYS) {
+            let (r, _) = ui.allocate_exact_size(vec2(10.0, 10.0), Sense::hover());
+            ui.painter().rect_filled(r, 1.0, *c);
+            ui.label(
+                RichText::new(i18n.tr(k))
+                    .font(sans(size::CAPTION))
+                    .color(color::TEXT_MUTED),
+            );
+        }
+    });
+}
+
+/// Schooling of the country or of the state the pyramid shows: literacy, pupils by level and
+/// the share of their ages, mean years, and jobs waiting for graduates.
+fn schooling_section(ui: &mut Ui, i18n: &I18n, world: &World, view: &PopulationView, scope: Scope) {
+    let (place, s) = match scope.0 {
+        None => (i18n.tr("population-whole-country"), view.schooling.as_ref()),
+        Some(st) => (
+            state_name(i18n, world, st),
+            view.state_schooling
+                .iter()
+                .find(|(x, _)| *x == st)
+                .map(|(_, s)| s),
+        ),
+    };
+    if view.schooling.is_none() {
+        return;
+    }
+    ui.add_space(space::XS);
+    ui.label(
+        RichText::new(i18n.tr_args("population-schooling", &[("place", Arg::String(place))]))
+            .font(sans_medium(size::BODY))
+            .color(color::TEXT),
+    )
+    .on_hover_text(i18n.tr("population-schooling-note"));
+    let Some(s) = s else {
+        bf_ui_kit::muted(ui, &i18n.tr("population-no-data"));
+        return;
+    };
+    bf_ui_kit::stat_row(
+        ui,
+        &i18n.tr("population-literacy"),
+        &format!("{} %", i18n.decimal(s.literacy * 100.0, 1)),
+    );
+    for (l, key) in [
+        "population-pupils-primary",
+        "population-pupils-secondary",
+        "population-pupils-tertiary",
+    ]
+    .iter()
+    .enumerate()
+    {
+        bf_ui_kit::stat_row(
+            ui,
+            &i18n.tr(key),
+            &i18n.tr_args(
+                "population-pupils-value",
+                &[
+                    ("pupils", Arg::String(i18n.compact(s.pupils[l] as f64))),
+                    (
+                        "share",
+                        Arg::String(i18n.decimal(s.enrolment[l] * 100.0, 1)),
+                    ),
+                ],
+            ),
+        );
+    }
+    bf_ui_kit::stat_row(
+        ui,
+        &i18n.tr("population-mean-years"),
+        &i18n.tr_args(
+            "population-years",
+            &[("n", Arg::String(i18n.decimal(s.mean_years, 1)))],
+        ),
+    );
+    let missing: i64 = s.missing_graduates.iter().sum();
+    if missing > 0 {
+        ui.label(
+            RichText::new(i18n.tr_args(
+                "population-missing-graduates",
+                &[
+                    (
+                        "primary",
+                        Arg::String(i18n.compact(s.missing_graduates[0] as f64)),
+                    ),
+                    (
+                        "secondary",
+                        Arg::String(i18n.compact(s.missing_graduates[1] as f64)),
+                    ),
+                    (
+                        "tertiary",
+                        Arg::String(i18n.compact(s.missing_graduates[2] as f64)),
+                    ),
+                ],
+            ))
+            .font(sans(size::SMALL))
+            .color(color::DANGER),
+        );
+    }
+    bf_ui_kit::small(ui, &i18n.tr("population-schooling-short"));
 }
 
 /// Who lives here: the largest communities (culture and religion) of the country or of the state
@@ -360,7 +495,12 @@ fn class_section(ui: &mut Ui, i18n: &I18n, world: &World, view: &PopulationView,
 }
 
 /// One bar per five-year group, the oldest on top, with its share of the people.
-fn pyramid(ui: &mut Ui, i18n: &I18n, ages: &[i64; AGE_GROUPS]) {
+fn pyramid(
+    ui: &mut Ui,
+    i18n: &I18n,
+    ages: &[i64; AGE_GROUPS],
+    levels: Option<&[[i64; 5]; AGE_GROUPS]>,
+) {
     let total: i64 = ages.iter().sum();
     let width = ui.available_width();
     let (rect, _) = ui.allocate_exact_size(vec2(width, ROW * AGE_GROUPS as f32), Sense::hover());
@@ -387,11 +527,31 @@ fn pyramid(ui: &mut Ui, i18n: &I18n, ages: &[i64; AGE_GROUPS]) {
         );
         let x0 = rect.left() + LABEL + space::SM;
         let len = bar_w * n as f32 / max;
-        p.rect_filled(
-            Rect::from_min_size(egui::pos2(x0, y + 1.5), vec2(len.max(1.0), ROW - 3.0)),
-            1.0,
-            color::ACCENT,
-        );
+        match levels {
+            Some(l) => {
+                // Stacked by level, in proportion to the group's people.
+                let row_total: i64 = l[g].iter().sum::<i64>().max(1);
+                let mut x = x0;
+                for (k, c) in LEVEL_COLOURS.iter().enumerate() {
+                    let w = len * l[g][k] as f32 / row_total as f32;
+                    if w > 0.0 {
+                        p.rect_filled(
+                            Rect::from_min_size(egui::pos2(x, y + 1.5), vec2(w, ROW - 3.0)),
+                            0.0,
+                            *c,
+                        );
+                    }
+                    x += w;
+                }
+            }
+            None => {
+                p.rect_filled(
+                    Rect::from_min_size(egui::pos2(x0, y + 1.5), vec2(len.max(1.0), ROW - 3.0)),
+                    1.0,
+                    color::ACCENT,
+                );
+            }
+        }
         p.text(
             egui::pos2(rect.right(), y + ROW / 2.0),
             Align2::RIGHT_CENTER,

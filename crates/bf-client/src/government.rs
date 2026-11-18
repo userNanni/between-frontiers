@@ -49,6 +49,8 @@ pub struct GovernmentView {
     /// and what the firms' fund paid, and the treasury's legal share (`research_state_share`).
     pub research: [f64; 2],
     pub research_state_share: f64,
+    /// The adult literacy campaign, running or possible; `None` without schooling data.
+    pub campaign: Option<bf_sim::demography::education::CampaignOutlook>,
 }
 
 /// The budget rule that sets the state's purchases (`econ::public::goods_budget`), term by
@@ -136,6 +138,7 @@ pub fn read(
     tag: Option<&str>,
     date: Date,
     research: Option<u16>,
+    education: Option<(&bf_sim::demography::education::EducationRules, f64)>,
 ) -> Option<GovernmentView> {
     let tag = tag?;
     let ci = world.countries.iter().position(|(_, c)| c.tag == tag)?;
@@ -187,6 +190,9 @@ pub fn read(
         },
         research_state_share: research
             .map_or(0.0, |g| f(m.laws.effects[0].public_share(usize::from(g)))),
+        campaign: education.and_then(|(rules, price)| {
+            bf_sim::demography::education::campaign_outlook(world, rules, price, ci)
+        }),
         goods_rule: {
             use bf_sim::econ::public::{GOODS_PER_PAYROLL, austerity, goods_budget};
             let b = &m.budget;
@@ -228,6 +234,7 @@ mod tests {
             goods_rule: GoodsRule::default(),
             research: [0.0; 2],
             research_state_share: 0.0,
+            campaign: None,
         }
     }
 

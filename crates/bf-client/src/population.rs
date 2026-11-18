@@ -85,6 +85,84 @@ impl ClassSum {
     }
 }
 
+/// Schooling of a place (country or state), summed over its regions.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Schooling {
+    /// Share of those 15 and over who read.
+    pub literacy: f64,
+    /// Pupils of primary, secondary and higher education, and the share of the ages each level
+    /// enrols that they are.
+    pub pupils: [i64; 3],
+    pub enrolment: [f64; 3],
+    /// Mean years of schooling of those 25–64.
+    pub mean_years: f64,
+    /// People of each age group by highest level: none, reads without school, primary,
+    /// secondary, tertiary.
+    pub by_age: [[i64; 5]; AGE_GROUPS],
+    /// Open jobs waiting for graduates, by level asked (primary, secondary, tertiary).
+    pub missing_graduates: [i64; 3],
+}
+
+#[derive(Default)]
+struct SchoolingSum {
+    s: Schooling,
+    ages_of_level: [i64; 3],
+    years: (f64, f64),
+    adults: (i64, i64),
+}
+
+impl SchoolingSum {
+    fn add(
+        &mut self,
+        sc: &bf_sim::demography::education::Schooling,
+        ages: &[i64; AGE_GROUPS],
+        missing: [i64; 3],
+    ) {
+        use bf_sim::demography::education as ed;
+        let people = sc.people(ages);
+        for (g, row) in people.iter().enumerate() {
+            for k in 0..5 {
+                self.s.by_age[g][k] += row[k];
+            }
+            if g >= ed::ADULT {
+                self.adults.0 += row.iter().sum::<i64>();
+                self.adults.1 += row[1..].iter().sum::<i64>();
+            }
+        }
+        for (l, p) in sc.pupils(ages).iter().enumerate() {
+            self.s.pupils[l] += p;
+            self.ages_of_level[l] += ed::ENROLS[l].clone().map(|g| ages[g].max(0)).sum::<i64>();
+        }
+        let working: f64 = ed::WORKING.map(|g| ages[g] as f64).sum();
+        self.years.0 += sc.mean_years(ages) * working;
+        self.years.1 += working;
+        for (m, x) in self.s.missing_graduates.iter_mut().zip(missing) {
+            *m += x;
+        }
+    }
+
+    fn done(mut self) -> Schooling {
+        self.s.literacy = if self.adults.0 > 0 {
+            self.adults.1 as f64 / self.adults.0 as f64
+        } else {
+            0.0
+        };
+        self.s.enrolment = std::array::from_fn(|l| {
+            if self.ages_of_level[l] > 0 {
+                self.s.pupils[l] as f64 / self.ages_of_level[l] as f64
+            } else {
+                0.0
+            }
+        });
+        self.s.mean_years = if self.years.1 > 0.0 {
+            self.years.0 / self.years.1
+        } else {
+            0.0
+        };
+        self.s
+    }
+}
+
 /// Communities listed by name in the composition; the rest are summed.
 pub const COMMUNITIES: usize = 8;
 
@@ -186,6 +264,9 @@ pub struct PopulationView {
     /// People by community, of the country and by map state id; empty without communities.
     pub communities: Vec<CommunityLine>,
     pub state_communities: Vec<(u16, Vec<CommunityLine>)>,
+    /// Schooling of the country and by map state id; `None` without schooling.
+    pub schooling: Option<Schooling>,
+    pub state_schooling: Vec<(u16, Schooling)>,
     pub parts: Vec<Part>,
     /// Communities of foreign origin living here, by origin, largest first.
     pub immigrants: Vec<Road>,
@@ -207,10 +288,11 @@ pub fn read(
     tag: Option<&str>,
     date: Date,
     table: Option<&CommunityTable>,
+    cat: Option<&bf_sim::econ::Catalogue>,
 ) -> Option<PopulationView> {
     let tag = tag?;
     let c = world.countries.iter().position(|(_, c)| c.tag == tag)?;
-    read_country(world, c, date, table)
+    read_country(world, c, date, table, cat)
 }
 
 /// Reads country `c` (index in the simulation's order).
@@ -219,6 +301,7 @@ pub fn read_country(
     c: usize,
     date: Date,
     table: Option<&CommunityTable>,
+    cat: Option<&bf_sim::econ::Catalogue>,
 ) -> Option<PopulationView> {
     let d = &world.demography;
     let econ = &world.econ;
@@ -261,6 +344,43 @@ pub fn read_country(
         by_state.entry(r.state).or_default().add(r, &v.tfr_by_class);
     }
     let classes = country.lines();
+    // Schooling, with the jobs waiting for graduates.
+    let (schooling, state_schooling) = if world.education.regions.len() == econ.regions.len() {
+        let mut all = SchoolingSum::default();
+        let mut by_state: BTreeMap<u16, SchoolingSum> = BTreeMap::new();
+        for (ri, ((r, sc), ages)) in econ
+            .regions
+            .iter()
+            .zip(&world.education.regions)
+            .zip(&d.ages)
+            .enumerate()
+        {
+            if usize::from(r.market) != c {
+                continue;
+            }
+            let missing = match (cat, bf_sim::demography::education::qualified(world, ri)) {
+                (Some(cat), Some(q)) => {
+                    let by_prof = bf_sim::econ::monthly::graduates_missing(cat, r, q);
+                    let mut out = [0i64; 3];
+                    for (pi, n) in by_prof.iter().enumerate() {
+                        if let Some(l) = bf_sim::econ::monthly::SCHOOLING_ASKED[pi] {
+                            out[l] += n;
+                        }
+                    }
+                    out
+                }
+                _ => [0; 3],
+            };
+            all.add(sc, ages, missing);
+            by_state.entry(r.state).or_default().add(sc, ages, missing);
+        }
+        (
+            Some(all.done()),
+            by_state.into_iter().map(|(s, x)| (s, x.done())).collect(),
+        )
+    } else {
+        (None, Vec::new())
+    };
     let (communities, state_communities) = match table {
         Some(t) if d.communities.len() == econ.regions.len() => {
             let mut all: BTreeMap<u16, i64> = BTreeMap::new();
@@ -409,6 +529,8 @@ pub fn read_country(
         state_classes,
         communities,
         state_communities,
+        schooling,
+        state_schooling,
         parts,
         immigrants,
         emigrants,

@@ -1,0 +1,10 @@
+// Rules of the game that a PR adds switched off. A rule that changes every country's numbers
+// enters here off, so that the main keeps its hash; switching it on is a PR of its own, judged
+// by the world's aggregates (owner's decision of 2026-11-17, `docs/architecture.pt-BR.md`).
+// `bf-bench --rule NAME` switches one on for a run.
+(
+    // Schooling by cohort and level, and the adult literacy campaign
+    // (`docs/population.pt-BR.md`, "Ensino por coorte"). Off: literacy follows the economy's
+    // yearly rule and mothers' schooling the 240-month lag.
+    schooling: false,
+)

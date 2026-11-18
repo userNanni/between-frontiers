@@ -76,6 +76,16 @@ pub struct Territory {
     /// woman.
     pub class_share: Vec<Vec<f64>>,
     pub class_fertility: Vec<Vec<f64>>,
+    /// Schooling (`demography::education`) on 1 January: pupils of primary, secondary and
+    /// tertiary; the same as a share of the ages each level enrols; people 15–64 by highest
+    /// level (none, reads without school, primary, secondary, tertiary) as shares; mean years
+    /// of schooling of those 25–64; adults in a literacy campaign that year. Empty without
+    /// schooling.
+    pub pupils: Vec<[f64; 3]>,
+    pub enrolment: Vec<[f64; 3]>,
+    pub attainment_15_64: Vec<[f64; 5]>,
+    pub mean_years: Vec<f64>,
+    pub campaign: Vec<f64>,
 }
 
 /// Public accounts and prices of one country (metropole and colonies together).
@@ -542,7 +552,61 @@ impl History {
             st.life_expectancy.push(mean(4));
             st.fertility.push(mean(5));
         }
+        // Schooling by territory.
+        let nt = rep.territories.len();
+        let mut pupils = vec![[0f64; 3]; nt];
+        let mut ages_l = vec![[0f64; 3]; nt];
+        let mut attain = vec![[0f64; 5]; nt];
+        let mut years = vec![(0f64, 0f64); nt];
+        let mut campaign = vec![0f64; nt];
+        let schooled = w.education.regions.len() == w.econ.regions.len();
+        if schooled {
+            use bf_sim::demography::education as ed;
+            for (ri, (s, ages)) in w
+                .education
+                .regions
+                .iter()
+                .zip(&w.demography.ages)
+                .enumerate()
+            {
+                let t = self.unit[ri].index();
+                for (l, p) in s.pupils(ages).iter().enumerate() {
+                    pupils[t][l] += *p as f64;
+                    ages_l[t][l] += ed::ENROLS[l].clone().map(|g| ages[g] as f64).sum::<f64>();
+                }
+                for row in &s.people(ages)[3..=12] {
+                    for k in 0..5 {
+                        attain[t][k] += row[k] as f64;
+                    }
+                }
+                let working: f64 = ed::WORKING.map(|g| ages[g] as f64).sum();
+                years[t].0 += s.mean_years(ages) * working;
+                years[t].1 += working;
+                campaign[t] += s.campaign as f64;
+            }
+        }
         for t in 0..rep.territories.len() {
+            if schooled {
+                let ter = &mut rep.territories[t];
+                ter.pupils.push(pupils[t]);
+                ter.enrolment.push(std::array::from_fn(|l| {
+                    if ages_l[t][l] > 0.0 {
+                        pupils[t][l] / ages_l[t][l]
+                    } else {
+                        0.0
+                    }
+                }));
+                let n: f64 = attain[t].iter().sum();
+                ter.attainment_15_64.push(std::array::from_fn(|k| {
+                    if n > 0.0 { attain[t][k] / n } else { 0.0 }
+                }));
+                ter.mean_years.push(if years[t].1 > 0.0 {
+                    years[t].0 / years[t].1
+                } else {
+                    0.0
+                });
+                ter.campaign.push(campaign[t]);
+            }
             {
                 let (a, b) = (&self.jan[t], &dec[t]);
                 let pop = (a.population + b.population) / 2.0;

@@ -844,6 +844,9 @@ fn run(
     }
 }
 
+/// Rules of `data/rules.ron` switched on by `--rule`.
+pub static RULES_ON: std::sync::Mutex<Vec<String>> = std::sync::Mutex::new(Vec::new());
+
 pub fn main(
     years: u32,
     seed: u64,
@@ -854,6 +857,11 @@ pub fn main(
     save_at: &[Date],
 ) -> Result<(), String> {
     let mut data = GameData::load(&root())?;
+    for name in RULES_ON.lock().map_err(|e| e.to_string())?.iter() {
+        if !data.switches.switch_on(name) {
+            return Err(format!("--rule {name}: no such rule in data/rules.ron"));
+        }
+    }
     // `BF_INFLUENCE_WEIGHT=N`: the `proposal_weight` of the rules of influence (0 checks that a
     // world where nobody holds influence keeps the hash of a build without the system).
     if let (Some(rules), Some(w)) = (

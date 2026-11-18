@@ -17,6 +17,8 @@ use crate::resources::{DepositsFile, LandFile};
 use crate::scenario::{CountriesFile, MapFile};
 
 pub struct GameData {
+    /// Rules a PR added switched off (`data/rules.ron`).
+    pub switches: RuleSwitches,
     pub catalogue: Arc<Catalogue>,
     pub countries: CountriesFile,
     pub map: MapFile,
@@ -61,6 +63,25 @@ pub struct GameData {
     pub border_rules: Arc<crate::borders::BorderRules>,
     /// Who did not recognise whom on the start date, when `recognition.ron` exists.
     pub recognition: Option<crate::treaty::RecognitionFile>,
+}
+
+/// Rules a PR added switched off (`data/rules.ron`); a missing file or field is off.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Deserialize)]
+#[serde(default)]
+pub struct RuleSwitches {
+    /// Schooling by cohort and level (`demography::education`).
+    pub schooling: bool,
+}
+
+impl RuleSwitches {
+    /// Switches one rule on by name; `false` for an unknown name.
+    pub fn switch_on(&mut self, name: &str) -> bool {
+        match name {
+            "schooling" => self.schooling = true,
+            _ => return false,
+        }
+        true
+    }
 }
 
 fn read<T: serde::de::DeserializeOwned>(path: &Path) -> Result<T, String> {
@@ -146,6 +167,7 @@ impl GameData {
         let diplomacy: Option<DiplomacyFile> = optional(&scenario.join("diplomacy.ron"))?;
         let mut data = Self {
             trade_geography: std::sync::OnceLock::new(),
+            switches: optional(&data.join("rules.ron"))?.unwrap_or_default(),
             border_rules,
             war,
             tree,
@@ -229,6 +251,21 @@ impl GameData {
             war: self.war_rules(),
             trade: switches.trade_by_pair.then(|| self.trade_geography()),
             switches,
+            education: match (&self.education_1925, &self.literacy_campaign) {
+                (Some(start), Some(campaign)) => {
+                    Some(Arc::new(crate::demography::education::EducationRules {
+                        start: start.clone(),
+                        campaign: campaign.clone(),
+                        enabled: self.switches.schooling,
+                        kinds: [
+                            self.catalogue.building("school"),
+                            self.catalogue.building("secondary_school"),
+                            self.catalogue.building("university"),
+                        ],
+                    }))
+                }
+                _ => None,
+            },
         }
     }
 

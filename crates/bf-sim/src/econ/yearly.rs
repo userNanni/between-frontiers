@@ -126,10 +126,16 @@ impl System<GameWorld> for Yearly {
         // Schooling: literacy closes part of its gap each year, faster where people are richer
         // and where schools reach more of the children.
         let school = cat.building("school");
+        // With schooling by cohort (`demography::education`), literacy comes from it in the
+        // demography's January; this rule runs only without it.
+        let by_cohort = world.education.regions.len() == econ.regions.len();
         let literacy = econ
             .regions
             .iter()
             .map(|r| {
+                if by_cohort {
+                    return r.literacy;
+                }
                 let total = r.population().max(1);
                 let comfort: Fixed = r
                     .pops

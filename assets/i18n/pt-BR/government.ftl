@@ -190,3 +190,14 @@ gov-foreign-assets = Títulos de outros países
 gov-tip-foreign-assets = O que os poupadores do país emprestaram a outros Estados.
 gov-waiting = As contas aparecem quando o primeiro dia passar.
 gov-no-player = Nenhum país para governar nesta campanha.
+
+gov-campaign = Campanha de alfabetização de adultos
+gov-campaign-offer = { $illiterate } adultos de 15 a 49 anos não leem. Uma campanha de cinco anos matricula { $enrolled } por ano, e { $readers } deles ficam alfabetizados de vez. Custa { $cost } por ano.
+gov-campaign-running = Em curso, faltam { $years } anos. No último ano letivo, { $taught } adultos aprenderam a ler. Custa { $cost } por ano.
+gov-campaign-note = Metade evade, metade dos que ficam passa e parte esquece sem prática (Abadzi 2003). O efeito chega no ano letivo seguinte, em janeiro.
+gov-campaign-start = Começar campanha…
+gov-campaign-stop = Encerrar campanha…
+gov-campaign-confirm-start = Começar a campanha? Custa { $cost } por ano durante cinco anos.
+gov-campaign-confirm-stop = Encerrar a campanha? Quem já aprendeu continua lendo.
+gov-campaign-yes = Confirmar
+gov-campaign-no = Cancelar

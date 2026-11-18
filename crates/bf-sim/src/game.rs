@@ -125,6 +125,9 @@ pub struct GameWorld {
     /// "Forças em paz").
     #[serde(default)]
     pub war: crate::war::WarState,
+    /// Schooling by cohort and level and the adult literacy campaigns (`demography::education`).
+    #[serde(default)]
+    pub education: crate::demography::education::EducationState,
 }
 
 impl HashState for GameWorld {
@@ -176,6 +179,11 @@ impl HashState for GameWorld {
             h.section("war");
             self.war.hash_state(h);
         }
+        // Worlds without schooling keep their hash.
+        if !self.education.is_empty() {
+            h.section("education");
+            self.education.hash_state(h);
+        }
     }
 }
 
@@ -195,6 +203,7 @@ impl GameWorld {
             borders: crate::borders::BordersState::default(),
             foreign: Default::default(),
             influence: Default::default(),
+            education: Default::default(),
             demography: crate::demography::DemographyState::default(),
             treaties: Default::default(),
             war: crate::war::WarState::default(),
@@ -274,6 +283,11 @@ pub enum GameCommand {
         tag: Option<String>,
         subject: bool,
     },
+    /// Starts (`on`) or stops the adult literacy campaign of a country, a budget programme of
+    /// `data/economy/literacy_campaign.ron`'s years and cost (`demography::education`). The
+    /// screen asks the player to confirm. Unknown tags are no-ops. Last in the list: saved
+    /// command logs keep their variants' places.
+    LiteracyCampaign { tag: String, on: bool },
 }
 
 impl Command<GameWorld> for GameCommand {
@@ -363,6 +377,25 @@ impl Command<GameWorld> for GameCommand {
                 }
             }
             GameCommand::SwitchCountry { .. } => {}
+            GameCommand::LiteracyCampaign { tag, on } => {
+                // Without schooling (the rule off) there is nothing to teach with.
+                if world.education.regions.is_empty() {
+                    return;
+                }
+                let Some(ci) = world.countries.iter().position(|(_, c)| c.tag == *tag) else {
+                    return;
+                };
+                let c = &mut world.education.campaigns;
+                if c.len() <= ci {
+                    c.resize(ci + 1, 0);
+                }
+                // The demography turns the start mark into the campaign's years.
+                c[ci] = if *on {
+                    crate::demography::education::CAMPAIGN_STARTS
+                } else {
+                    0
+                };
+            }
             GameCommand::Borders { op } => world.borders.pending.push(op.clone()),
             GameCommand::Liberate {
                 by,
@@ -469,6 +502,9 @@ pub struct Rules {
     /// Rules that change everyone's results, each off by default until a PR of its own
     /// switches it on.
     pub switches: Switches,
+    /// Schooling of 1925 and the literacy campaign; without them literacy follows the yearly rule
+    /// of the economy.
+    pub education: Option<Arc<crate::demography::education::EducationRules>>,
 }
 
 /// Rules that can be switched on, all off by default: a rule enters the main switched off, with
@@ -508,6 +544,7 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
         war,
         trade,
         switches,
+        education,
     }) = rules
     {
         if let Some(p) = &politics {
@@ -535,7 +572,8 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
         });
         s.add(
             crate::demography::Demography::new(Arc::clone(&cat), politics)
-                .with_communities(communities),
+                .with_communities(communities)
+                .with_education(education),
         );
         s.add(crate::econ::monthly::Investment {
             cat: Arc::clone(&cat),
@@ -964,7 +1002,7 @@ mod tests {
             hash_of(&with_ledger)
         );
         assert_eq!(
-            hash_of(&headed(10, &encode_snapshot(&with_ledger).unwrap())),
+            hash_of(&headed(11, &encode_snapshot(&with_ledger).unwrap())),
             hash_of(&with_ledger)
         );
         fn no_trade(w: &GameWorld) -> EconomyNoTrade<'_> {
@@ -995,6 +1033,44 @@ mod tests {
         .unwrap();
         assert_eq!(headed(9, &before_trade), with_ledger);
         // Version 8, before the forces: no forces then.
+        // Version 10, before schooling by cohort: this build's fields without `education`.
+        #[derive(Serialize)]
+        struct BeforeEducation<'a> {
+            scenario: &'a String,
+            player: &'a Option<Id<Country>>,
+            countries: &'a Table<Country, CountryState>,
+            census: &'a Vec<CensusRecord>,
+            econ: &'a crate::econ::Economy,
+            research: &'a crate::research::ResearchState,
+            politics: &'a crate::polity::PoliticsState,
+            demography: &'a crate::demography::DemographyState,
+            borders: &'a crate::borders::BordersState,
+            foreign: &'a crate::foreign_stakes::ForeignState,
+            influence: &'a crate::influence::InfluenceState,
+            treaties: &'a crate::treaty::TreatyState,
+            war: &'a crate::war::WarState,
+        }
+        let no_schooling = data.new_world();
+        assert!(no_schooling.education.is_empty());
+        let before_education = encode_snapshot(&BeforeEducation {
+            scenario: &no_schooling.scenario,
+            player: &no_schooling.player,
+            countries: &no_schooling.countries,
+            census: &no_schooling.census,
+            econ: &no_schooling.econ,
+            research: &no_schooling.research,
+            politics: &no_schooling.politics,
+            demography: &no_schooling.demography,
+            borders: &no_schooling.borders,
+            foreign: &no_schooling.foreign,
+            influence: &no_schooling.influence,
+            treaties: &no_schooling.treaties,
+            war: &no_schooling.war,
+        })
+        .unwrap();
+        let loaded = headed(10, &before_education);
+        assert_eq!(hash_of(&loaded), hash_of(&no_schooling));
+        assert_eq!(loaded, no_schooling, "version 10");
         let mut no_forces = data.new_world();
         no_forces.war = Default::default();
         assert!(!no_forces.treaties.is_empty());

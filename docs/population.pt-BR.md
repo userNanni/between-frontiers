@@ -288,8 +288,9 @@ território, e a relevância, são lidas do novo dono na conta de janeiro.
 
 ## Ensino por coorte
 
-Estado: **dados e contrato** (`crates/bf-sim/src/demography/education.rs`, regras puras com
-testes); a ligação com a simulação vem no PR seguinte. Pedido do dono em 2026-11-17: níveis de
+Estado: **no jogo, com a regra desligada** (`data/rules.ron`, `schooling: false`; `bf-bench --rule schooling` liga numa rodada). Desligada, o hash é o do `main` e a alfabetização segue a regra anual da economia; um save de campanha feita com a regra ligada continua com o ensino. Ligar é um PR à parte, com a recalibração da natalidade (a rodada com a regra ligada fecha 2025 com 6,74 bi). Contrato e dados no #106; o ano letivo no tick, a tela e a campanha no PR da
+simulação do ensino (`crates/bf-sim/src/demography/education.rs`, no sistema `demography`, no
+mês de janeiro; estado salvo em `GameWorld::education`, versão 11 do mundo). Pedido do dono em 2026-11-17: níveis de
 ensino, quantos estão na escola, e a escola que só vira escolaridade nos anos seguintes.
 
 **O que se guarda, por estado.** Para cada um dos 17 grupos de idade da pirâmide, a parcela de
@@ -341,6 +342,43 @@ média na parcela com escola dos 15–64, nas 94 unidades: 0,3 ponto
 
 **Referência do placar:** `data/history/education.csv`, Lee e Lee (2016), 111 países, de 1870 a
 2010, matrícula por nível e escolaridade dos 15–64.
+
+**No tick (PR da simulação).**
+
+- **Matrícula e renda.** As vagas de cada nível são as dos prédios públicos (`school`,
+  `secondary_school`, `university`) e, como piso, a escola de missão nas colônias. Além delas, as
+  famílias põem os filhos em escolas de igreja, comunitárias e particulares, que não são prédios
+  do jogo, na medida da renda do país: uma logística no log do PIB por habitante ajustada a Lee e
+  Lee (2016) contra Maddison (2023), 1950–2010, 111 países, 1 361 países-ano (erro quadrático
+  médio 0,18 no fundamental e no médio, 0,13 no superior), tabelada de 500 a 64 000 dólares de
+  2011 (`education::demand`). A US$ 1 000 por habitante pede 46 % no fundamental, 8 % no médio e
+  1 % no superior; a US$ 16 000, 94 %, 70 % e 28 %. A matrícula anda até o maior entre as vagas e
+  esse pedido menos a distância do estado.
+- **A distância de 1925.** A curva foi ajustada a 1950–2010; os países de 1925 estavam abaixo dela
+  (a Índia tinha 14 % no fundamental, a curva pede 46 %). Cada estado guarda a distância da
+  partida, que fecha 3 % ao ano (calibrado; metade em 23 anos).
+- **Obras públicas por nível.** A categoria "educação" do orçamento tem os três prédios; o Estado
+  constrói até o maior entre a meta da lei do nível e o pedido pela renda, e os candidatos dos três
+  níveis disputam pela falta de vagas vezes o custo por aluno.
+- **A partida.** No primeiro janeiro, cada estado ganha os níveis de escola, liceu e universidade
+  que a matrícula de 1925 enche (a economia de 1925 dimensionava a escola pela alfabetização e não
+  tinha liceu nem universidade como prédio).
+- **Alfabetização derivada.** `Region::literacy` passa a ser a alfabetização de 15 anos ou mais da
+  escolaridade; a regra anual da economia só roda sem escolaridade.
+- **Escolaridade das mães.** A alfabetização das mulheres de 15–49 da coorte (com a lacuna das
+  meninas), sem o atraso de 240 meses: a coorte é o atraso.
+- **Profissões que pedem estudo.** Operário qualificado, funcionário e servidor pedem
+  fundamental; gerente, médio; engenheiro e profissional liberal, superior
+  (`econ::monthly::SCHOOLING_ASKED`). A promoção a elas fica limitada pelos trabalhadores de 15–64
+  com o nível que ainda não estão nessas profissões; vagas que esperam por eles aparecem na tela
+  como "faltam formados".
+- **Campanha de alfabetização.** Comando `GameCommand::LiteracyCampaign`, decidido na aba de
+  orçamento com confirmação; custa a parcela dos analfabetos alcançada vezes o custo por
+  participante, um doze avos por mês, e ensina no ano letivo seguinte (janeiro).
+- **Estudantes fora da força de trabalho.** Ainda não: a força de trabalho continua 40 % de cada
+  pop. A rodada mede o tamanho do efeito para o PR seguinte.
+- **Para outros sistemas.** `education::human_capital(&world, região)`: anos médios de estudo de
+  25–64 e parcela com superior (pesquisa, produtividade).
 
 ## Demografia
 

@@ -17,6 +17,7 @@ Atalhos do perfil padrão; todos se mudam no editor de atalhos (Configurações 
 | Impostos por classe, ou regra automática | `SetTaxRates` | Governo → Orçamento | G abre; B a aba | no jogo |
 | Prioridades das obras públicas | `SetPublicPriority` | Governo → Orçamento | G, B | no jogo |
 | Lei de migração | `SetMigrationLaw` | Governo → Orçamento | G, B | no jogo |
+| Campanha de alfabetização de adultos: começar ou parar | `LiteracyCampaign` | Governo → Orçamento → "Campanha de alfabetização", com confirmação; só com a regra do ensino ligada (`data/rules.ron`) | G, B | no jogo, regra desligada (PR do ensino) |
 | Taxa de juros do banco central, ou regra automática | `SetPolicyRate` | Governo → Moeda e dívida | G abre; M a aba | no jogo |
 | Banco central: histórico, autônomo ou subordinado | `SetCentralBank` | Governo → Moeda e dívida | G, M | no jogo |
 | Propor uma lei | `SetLaw` | Governo → Leis: escolher a lei e "Propor" | G, L; Ctrl+Enter propõe | no jogo |
@@ -31,7 +32,6 @@ de ferramentas; o jogador liberta a própria terra com `Liberate`.
 | Decisão | Comando | Onde fica | Estado |
 |---|---|---|---|
 | Mobilizar e desmobilizar | `Mobilize { on }` | Agendas, decisão em dois passos, com ponto de restauração antes (motivo "guerra") | em revisão (#115) |
-| Campanha de alfabetização | (do PR do ensino) | a definir com o thread do ensino | em rascunho |
 
 ## Desenhadas, sem comando ainda
 

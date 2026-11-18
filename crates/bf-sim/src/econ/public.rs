@@ -131,6 +131,8 @@ pub fn goods_budget(m: &Market) -> Fixed {
 /// Building indices the state works with.
 pub struct PublicKinds {
     pub school: Option<usize>,
+    /// Primary, secondary and higher education buildings.
+    pub schools: [Option<usize>; 3],
     pub hospital: Option<usize>,
     pub housing: Option<usize>,
     pub laboratory: Option<usize>,
@@ -143,6 +145,11 @@ impl PublicKinds {
     pub fn new(cat: &Catalogue) -> Self {
         Self {
             school: cat.building("school"),
+            schools: [
+                cat.building("school"),
+                cat.building("secondary_school"),
+                cat.building("university"),
+            ],
             hospital: cat.building("hospital"),
             housing: cat.building("urban_housing"),
             laboratory: cat.building("laboratory"),
@@ -196,7 +203,12 @@ const MAX_PUBLIC_BUILDS: usize = 200;
 const SCARCE_PRICE: Fixed = milli(1100);
 
 /// Public works each country starts this month, from the treasury above its reserve.
-pub fn public_works(cat: &Catalogue, econ: &Economy, unlocks: &super::Unlocks<'_>) -> Vec<Project> {
+pub fn public_works(
+    cat: &Catalogue,
+    econ: &Economy,
+    unlocks: &super::Unlocks<'_>,
+    schools: Option<&[[i64; 3]]>,
+) -> Vec<Project> {
     let kinds = PublicKinds::new(cat);
     let Some(cg) = kinds.construction else {
         return Vec::new();
@@ -209,7 +221,19 @@ pub fn public_works(cat: &Catalogue, econ: &Economy, unlocks: &super::Unlocks<'_
         .markets
         .par_iter()
         .enumerate()
-        .map(|(mi, m)| market_works(cat, econ, &kinds, cg, mi, m, &by_market[mi], unlocks))
+        .map(|(mi, m)| {
+            market_works(
+                cat,
+                econ,
+                &kinds,
+                cg,
+                mi,
+                m,
+                &by_market[mi],
+                unlocks,
+                schools,
+            )
+        })
         .collect();
     lists.into_iter().flatten().collect()
 }
@@ -227,6 +251,7 @@ fn market_works(
     m: &Market,
     regions: &[usize],
     unlocks: &super::Unlocks<'_>,
+    schools: Option<&[[i64; 3]]>,
 ) -> Vec<Project> {
     let price = m.price[cg as usize];
     let committed: Fixed = m
@@ -251,11 +276,38 @@ fn market_works(
     };
     // Candidates per category: (score, region, kind, method, need met by one level).
     let mut cands: [Vec<Candidate>; PUBLIC_CATEGORIES] = std::array::from_fn(|_| Vec::new());
+    // Schools by level, with schooling by cohort: the places each level needs to reach its law's
+    // target (`demography::education::places_needed`), scored by the money they lack, so that
+    // the three levels compete within the category by what they cost.
+    if let Some(needs) = schools {
+        for (l, kind) in kinds.schools.iter().enumerate() {
+            let Some(kind) = *kind else { continue };
+            let price = cat.buildings[kind].methods[0]
+                .outputs
+                .first()
+                .map_or(Fixed::ONE, |(g, _)| cat.goods[*g as usize].base_price);
+            for &ri in regions {
+                let r = &econ.regions[ri];
+                let per_level = level_output(cat, r, kind, 0);
+                if per_level <= Fixed::ZERO {
+                    continue;
+                }
+                let have = yearly_output(cat, r, kind) + per_level * queued(ri, kind);
+                let gap = Fixed::from_int(needs.get(ri).map_or(0, |n| n[l])) - have;
+                if gap > Fixed::ZERO {
+                    cands[EDUCATION].push((gap * price, ri, kind, 0, per_level));
+                }
+            }
+        }
+    }
     for (cat_ix, kind, per_person) in [
         (EDUCATION, kinds.school, PUPILS_PER_PERSON),
         (HEALTH, kinds.hospital, CARE_PER_PERSON),
     ] {
         let Some(kind) = kind else { continue };
+        if cat_ix == EDUCATION && schools.is_some() {
+            continue;
+        }
         for &ri in regions {
             let r = &econ.regions[ri];
             let per_level = level_output(cat, r, kind, 0);
