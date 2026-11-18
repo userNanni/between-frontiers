@@ -158,5 +158,22 @@
         // foreign one at the same cost of arrival. Calibrated so that world trade (exports plus
         // imports) is near 14.8 % of world GDP in 1925 (Klasing and Milionis, 2014).
         home_bias: 36.0,
+        // Customs duties (`econ::customs`, switch `customs_duties` in data/rules.ron), each of the
+        // owner's decisions a datum.
+        customs: (
+            // The duty goes to the treasury (CT3): the tariff on the value of what the country
+            // imported, at the price its buyers paid. Measured against the customs revenue over
+            // imports of 1925 (`diplomacy.ron`, `tariffs`: the Clemens-Williamson measure).
+            revenue: true,
+            // How much less a country seeks abroad for a higher tariff (CT4): `1 / (1 + e t)`,
+            // a price elasticity of imports of e at a zero tariff. Long-run price elasticities of
+            // imports run from about 0.3 to 1.6 among the G-7 (Hooper, Johnson and Marquez,
+            // "Trade elasticities for the G-7 countries", Princeton Studies in International
+            // Economics 87, 2000); 1 is the design value. Zero: no effect.
+            elasticity: 1.0,
+            // Each country's 1925 rate of `diplomacy.ron` instead of the step of its trade law,
+            // the law moving it from there (CT5).
+            rates_1925: true,
+        ),
     ),
 )

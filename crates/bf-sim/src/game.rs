@@ -890,6 +890,9 @@ pub struct Rules {
     pub fight: Option<Arc<crate::war::fight::FightSetup>>,
     /// Distances for the freight of trade; without them trade pays no freight.
     pub trade: Option<Arc<crate::econ::trade::Geography>>,
+    /// Customs duties (`Switches::customs_duties`): each country's 1925 gap; without them the
+    /// tariff collects nothing.
+    pub duties: Option<Arc<crate::econ::customs::Duties>>,
     /// Rules that change everyone's results, each off by default until a PR of its own
     /// switches it on.
     pub switches: Switches,
@@ -923,6 +926,11 @@ pub struct Switches {
     /// Off: agreements never end by their term and nothing is paid.
     pub clause_tests: bool,
     pub crisis: bool,
+    /// Customs duties (`econ::customs`, docs/trade.pt-BR.md, section 13): the tariff is
+    /// collected by the treasury and makes imports dearer, and the 1925 rate of each country
+    /// comes from `diplomacy.ron`, each by its datum in `purchases.ron` (`trade.customs`).
+    /// Needs `trade_by_pair`. Off: the tariff only weighs on the choice between sellers.
+    pub customs_duties: bool,
     /// The servants' capacity to collect (`econ::levers::collection`, owner's decision O1): a
     /// region with fewer servants than the rule asks for collects that much less tax.
     pub fiscal_capacity: bool,
@@ -1020,6 +1028,7 @@ impl Switches {
     pub const NAMES: &'static [&'static str] = &[
         "clause_tests",
         "crisis",
+        "customs_duties",
         "fiscal_capacity",
         "forces",
         "foreign_contract",
@@ -1045,6 +1054,7 @@ impl Switches {
         match name {
             "clause_tests" => self.clause_tests = true,
             "crisis" => self.crisis = true,
+            "customs_duties" => self.customs_duties = true,
             "fiscal_capacity" => self.fiscal_capacity = true,
             "forces" => self.forces = true,
             "foreign_contract" => self.foreign_contract = true,
@@ -1099,6 +1109,7 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
         influence,
         war,
         trade,
+        duties,
         switches,
         education,
         independence,
@@ -1129,6 +1140,7 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
             geo: trade.filter(|_| switches.trade_by_pair),
             by_pair: switches.trade_by_pair,
             treaty_tariffs: switches.treaties_in_force && switches.trade_by_pair,
+            duties,
             union_services: switches.union_services && switches.trade_by_pair,
             gross: switches.trade_gross && switches.trade_by_pair,
             wage_floor: switches.small_market_wage_floor,

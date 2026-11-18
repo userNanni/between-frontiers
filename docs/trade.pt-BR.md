@@ -303,6 +303,46 @@ Recomendação: 1, com 3 para Andorra. É o processo real e serve além dos micr
   código (o PIB, o caixa e o fundo de cada país são do mercado). Separar os dois é uma refatoração
   grande, para quatro países com menos de 60 mil pessoas.
 
+## 13. A tarifa que vale (passo 1 das decisões de comércio)
+
+Até aqui a tarifa só pesava na escolha entre vendedores estrangeiros (seção 3): não arrecadava
+nada e não protegia nada. Com a chave `customs_duties` (desligada, `data/rules.ron`; precisa de
+`trade_by_pair`), ela passa a fazer as duas coisas da vida real.
+
+**A taxa de cada país.** É a da lei de comércio (`free_trade` 2 %, `revenue_tariffs` 10 %,
+`protective_tariffs` 25 %, `autarky` 60 %), deslocada pela diferença entre a taxa de 1925 do país
+(`diplomacy.ron`, `tariffs`: direitos sobre o valor de todas as importações, a medida de Clemens e
+Williamson) e o degrau da lei que ele tinha em 1925. Em 1925 cada país cobra a sua taxa histórica;
+mudar a lei move a taxa a partir dali pelo tamanho do degrau, nunca abaixo de zero
+(`customs::Duties`).
+
+**O que a tarifa faz.**
+- **Receita.** Toda semana o país recolhe a taxa sobre o valor do que importou, ao preço que os
+  compradores pagaram. O dinheiro sai do fundo do mercado, para onde foi o pagamento das
+  importações, e entra no Tesouro, contado na receita da semana (`customs::pay`). Nada se cria:
+  a soma mundial de fundos e tesouros não muda (teste `customs_duties.rs`).
+- **Procura de importação.** O país procura fora `1 / (1 + ε t)` do que procuraria sem tarifa
+  (`customs::import_factor`). Com ε = 1, a tarifa de 25 % corta 20 % da procura externa; a de 60 %,
+  37 %. O que não vem de fora fica como falta no mercado de casa, sobe o preço local e puxa o
+  produtor nacional: é a proteção.
+- **Preço de chegada × (1 + t).** O importador paga o bem e a tarifa: no dinheiro, pela receita
+  que sai do fundo; na quantidade, pela procura menor. O preço de mercado do bem não é tocado
+  diretamente, porque cada mercado tem um preço por bem, que mistura o nacional e o importado.
+
+**Os dados, um por decisão do dono** (`data/economy/purchases.ron`, `trade.customs`):
+- `revenue` (CT3): a receita vai ao Tesouro;
+- `elasticity` (CT4): a elasticidade-preço da importação. As de longo prazo do G-7 vão de cerca de
+  0,3 a 1,6 (Hooper, Johnson e Marquez, 2000); 1 é valor de projeto. Zero desliga o efeito;
+- `rates_1925` (CT5): a taxa de 1925 de cada país em vez do degrau da lei.
+
+**Ainda não.** A tabela por grupo de bens, o comando do jogador e a tela são o passo 2. O embargo
+e a guerra fecham o par pelo encaixe que já existe (`Geography::closures`, seção 11): os tratados
+vão dar `TreatyState::embargoes` e a guerra `war_pairs`. É o passo 3, depois da resposta do dono.
+
+**Para julgar.** A receita aduaneira sobre as importações, por país e no mundo, contra a taxa de
+1925 (`BF_DIAG_CONSERVE=<anos>` imprime a média mundial com a chave ligada). O custo é medido pelo
+relógio no trecho.
+
 ## 14. O volume do comércio
 
 **O problema.** Com o comércio por par (#203), o comércio mundial (exportação mais importação) era
@@ -397,6 +437,8 @@ porque fazia tecido. No real, a maior parte do comércio é de variedades do mes
 
 ## Fontes
 
+- Clemens, M. A.; Williamson, J. G. "Why did the tariff–growth correlation change after 1950?".
+  *Journal of Economic Growth* 9 (1), 2004, pp. 5–46.
 - Gallaway, M. P.; McDaniel, C. A.; Rivera, S. A. "Short-run and long-run industry-level estimates
   of U.S. Armington elasticities". *North American Journal of Economics and Finance* 14 (1), 2003,
   pp. 49–68.
@@ -404,5 +446,7 @@ porque fazia tecido. No real, a maior parte do comércio é de variedades do mes
   International Economics*, vol. 4, 2014.
 - Hirschman, A. O. *National Power and the Structure of Foreign Trade*. University of California
   Press, 1945.
+- Hooper, P.; Johnson, K.; Marquez, J. "Trade elasticities for the G-7 countries". *Princeton
+  Studies in International Economics* 87, 2000.
 - Klasing, M. J.; Milionis, P. "Quantifying the evolution of world trade, 1870–1949". *Journal
   of International Economics* 92 (1), 2014, pp. 185–197 (via Our World in Data, CC BY 4.0).

@@ -236,6 +236,11 @@ pub fn main() -> Result<(), String> {
         let mut d = Date::new(1925, 1, 5);
         let (mut year, mut goods, mut made, mut volume, mut margin, mut weeks) =
             (1925, 0f64, 0f64, 0f64, 0f64, 0u32);
+        // With customs duties on: what the treasuries collected over the value of the imports
+        // at the buyers' price, the world's average tariff as Clemens and Williamson measure it.
+        let customs =
+            (data.switches.customs_duties && data.switches.trade_by_pair).then(|| data.duties());
+        let (mut collected, mut imported) = (0f64, 0f64);
         while d < end {
             d = Date::from_days(d.to_days() + 7);
             s.sim.run_until(d);
@@ -255,6 +260,23 @@ pub fn main() -> Result<(), String> {
                 }
                 goods = goods.max((net * base).abs().to_f64_lossy());
             }
+            if let Some(dt) = &customs {
+                let rates: Vec<Fixed> = e
+                    .markets
+                    .iter()
+                    .enumerate()
+                    .map(|(mi, m)| dt.rate(mi, m))
+                    .collect();
+                collected += bf_sim::econ::customs::duties(&cat, &e.markets, &rates)
+                    .iter()
+                    .map(|t| t.to_f64_lossy())
+                    .sum::<f64>();
+                imported +=
+                    bf_sim::econ::customs::duties(&cat, &e.markets, &vec![Fixed::ONE; rates.len()])
+                        .iter()
+                        .map(|t| t.to_f64_lossy())
+                        .sum::<f64>();
+            }
             made += bf_sim::econ::week::margin_transfers(&cat, &e.markets)
                 .iter()
                 .map(|t| t.to_f64_lossy())
@@ -272,7 +294,15 @@ pub fn main() -> Result<(), String> {
                     volume * 52.0 / f64::from(weeks) / gdp * 100.0,
                     margin / volume.max(1.0) * 100.0
                 );
+                if customs.is_some() {
+                    println!(
+                        "{year}: duties {:.1} % of imports, {:.2} % of GDP",
+                        collected / imported.max(1.0) * 100.0,
+                        collected * 52.0 / f64::from(weeks) / gdp * 100.0
+                    );
+                }
                 (year, goods, made, volume, margin, weeks) = (d.year, 0.0, 0.0, 0.0, 0.0, 0);
+                (collected, imported) = (0.0, 0.0);
             }
         }
         return Ok(());

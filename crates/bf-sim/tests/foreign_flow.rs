@@ -147,6 +147,7 @@ fn the_foreign_share_of_profit_leaves_for_the_owners_fund() {
         geo: None,
         by_pair: false,
         treaty_tariffs: false,
+        duties: None,
         union_services: false,
         gross: false,
         wage_floor: false,

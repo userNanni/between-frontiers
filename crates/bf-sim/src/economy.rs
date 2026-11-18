@@ -180,10 +180,35 @@ pub struct TradeDef {
     /// with gross trade (`game::Switches::trade_gross`).
     #[serde(default = "one")]
     pub home_bias: f32,
+    /// Customs duties (`econ::customs`, `Switches::customs_duties`).
+    #[serde(default)]
+    pub customs: CustomsDef,
 }
 
 fn one() -> f32 {
     1.0
+}
+
+/// The data of customs duties (`econ::customs`): each of the owner's decisions a datum.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct CustomsDef {
+    /// The duty goes to the treasury (CT3).
+    pub revenue: bool,
+    /// How much less a country seeks abroad for a higher tariff, `1 / (1 + ε t)` (CT4; zero,
+    /// none).
+    pub elasticity: f32,
+    /// Each country's 1925 rate of `diplomacy.ron`, moved by its trade law from there (CT5).
+    pub rates_1925: bool,
+}
+
+impl Default for CustomsDef {
+    fn default() -> Self {
+        Self {
+            revenue: true,
+            elasticity: 1.0,
+            rates_1925: true,
+        }
+    }
 }
 
 impl Default for TradeDef {
@@ -196,6 +221,7 @@ impl Default for TradeDef {
             sea_per_land: 1.0 / 3.0,
             land_detour: 1.2,
             home_bias: 1.0,
+            customs: CustomsDef::default(),
         }
     }
 }

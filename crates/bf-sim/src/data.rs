@@ -335,6 +335,41 @@ impl GameData {
         }))
     }
 
+    /// Each country's gap between its 1925 tariff (`diplomacy.ron`, `tariffs`) and the tariff of
+    /// its trade law of 1925, in market order (`econ::customs::Duties`); none without
+    /// `trade.customs.rates_1925`.
+    pub fn duties(&self) -> crate::econ::customs::Duties {
+        use laplace_schelling::Fixed;
+        let n = self.countries.countries.len();
+        if !self.catalogue.trade.customs.rates_1925 {
+            return crate::econ::customs::Duties {
+                offset: vec![Fixed::ZERO; n],
+            };
+        }
+        let rates: Vec<Option<Fixed>> = self
+            .countries
+            .countries
+            .iter()
+            .map(|c| {
+                self.diplomacy
+                    .as_ref()
+                    .and_then(|d| d.tariff(&c.tag))
+                    .map(|t| Fixed::from_f64_lossy(f64::from(t.rate)))
+            })
+            .collect();
+        let tariff = crate::politics::effect_index("tariff");
+        let law: Vec<Fixed> = (0..n)
+            .map(|ci| match (&self.politics, &self.laws_1925, tariff) {
+                (Some(p), Some(laws), Some(e)) => laws.laws.get(ci).map_or(Fixed::ZERO, |set| {
+                    let v = p.effects(set, crate::politics::Scope::Metropole)[e];
+                    Fixed::from_ratio(i64::from(v), 1000)
+                }),
+                _ => Fixed::ZERO,
+            })
+            .collect();
+        crate::econ::customs::Duties::new(&rates, &law)
+    }
+
     /// The rules the schedule runs with, with the switches of `data/rules.ron` (and `BF_RULES`).
     pub fn rules(&self) -> crate::game::Rules {
         self.rules_with(self.switches)
@@ -441,6 +476,8 @@ impl GameData {
             crisis,
             fight,
             trade: switches.trade_by_pair.then(|| self.trade_geography()),
+            duties: (switches.customs_duties && switches.trade_by_pair)
+                .then(|| Arc::new(self.duties())),
             treaties: (switches.clause_tests || switches.reputation || switches.negotiation).then(
                 || {
                     Arc::new(crate::treaty_system::TreatySetup {

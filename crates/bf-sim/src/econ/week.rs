@@ -97,6 +97,8 @@ pub struct Week {
     /// Gross trade (`game::Switches::trade_gross`): every market buys abroad a share of what it
     /// both makes and uses, not only its shortage.
     pub gross: bool,
+    /// Customs duties (`game::Switches::customs_duties`): each country's 1925 gap; `None` off.
+    pub duties: Option<Arc<super::customs::Duties>>,
     /// `game::Switches::small_market_wage_floor`.
     pub wage_floor: bool,
     /// `game::Switches::fiscal_capacity`: a state short of servants collects less
@@ -893,6 +895,17 @@ impl Week {
         // The pairs closed this week, once (the closures compare dates as text).
         let closed = geo.and_then(|g| g.closed_on(&date, nm));
         let is_closed = |s: usize, b: usize| closed.as_ref().is_some_and(|c| c[s * nm + b]);
+        // Customs duties: what each market seeks abroad at its tariff (`customs::import_factor`).
+        let import_factor: Option<Vec<Fixed>> = self.duties.as_ref().and_then(|d| {
+            let e = Fixed::from_f64_lossy(f64::from(cat.trade.customs.elasticity));
+            (e > Fixed::ZERO).then(|| {
+                econ.markets
+                    .iter()
+                    .enumerate()
+                    .map(|(mi, m)| super::customs::import_factor(d.rate(mi, m), e))
+                    .collect()
+            })
+        });
         // Each tradable good clears on its own, in parallel: the flows are merged after, in the
         // order of the goods, so the sums are the same integers as one good after the other.
         let sparse = prefs;
@@ -919,7 +932,12 @@ impl Week {
                         buf.offered.push(gap * reach);
                     } else if gap < Fixed::ZERO {
                         buf.buyers.push(mi);
-                        buf.sought.push(-gap * reach);
+                        // A tariff makes imports dearer: the country seeks less abroad.
+                        let want = -gap * reach;
+                        buf.sought.push(match &import_factor {
+                            Some(f) => want * f[mi],
+                            None => want,
+                        });
                     }
                 }
                 let mut value = Vec::new();
@@ -1362,6 +1380,19 @@ impl System<GameWorld> for Week {
         let construction_good = cat.construction;
         let mut done = Vec::new();
         let transfers = margin_transfers(cat, &markets);
+        // Customs duties (`customs::duties`): from the importers' money to the treasury.
+        let duties: Option<Vec<Fixed>> = self
+            .duties
+            .as_ref()
+            .filter(|_| cat.trade.customs.revenue)
+            .map(|d| {
+                let rates: Vec<Fixed> = markets
+                    .iter()
+                    .enumerate()
+                    .map(|(mi, m)| d.rate(mi, m))
+                    .collect();
+                super::customs::duties(cat, &markets, &rates)
+            });
         for (mi, m) in markets.iter_mut().enumerate() {
             m.pool += transfers[mi];
             // The state pays for the goods it got and for what its schools and hospitals made.
@@ -1391,6 +1422,9 @@ impl System<GameWorld> for Week {
             m.budget.revenue_indirect = Fixed::ZERO;
             m.budget.revenue_firms = Fixed::ZERO;
             m.budget.payroll = Fixed::ZERO;
+            if let Some(d) = &duties {
+                super::customs::pay(m, d[mi]);
+            }
             m.uncollected = self.fiscal_capacity.then_some(Fixed::ZERO);
             // The building trade delivers points to the queue of works.
             m.budget.works = Fixed::ZERO;
