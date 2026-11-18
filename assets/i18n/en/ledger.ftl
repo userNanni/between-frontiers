@@ -52,4 +52,5 @@ ledger-moratorium = Suspended until
 ledger-history = Revisions
 ledger-history-last = Made or last revised by: { $treaty }. Earlier revisions will show here once the ledger keeps them.
 ledger-renegotiate = Renegotiate
-ledger-renegotiate-tip = Comes with the negotiating table in the Agendas.
+ledger-renegotiate-tip = With the negotiation table on, opens the table in the Agendas with this debt's revision.
+ledger-renegotiate-open = Opens the negotiation table in the Agendas with this debt's revision, from today's terms.
