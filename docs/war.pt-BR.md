@@ -990,6 +990,261 @@ tem "honrar" e "não honrar", com o preço à vista.
 - W3: a força pesa contra a parcela pedida; o existencial nunca cede;
 - W4: entra quem a cláusula obriga; trair é possível e caro.
 
+## A guerra no tick (fatia C, desenho)
+
+A fatia C põe no tick a guerra declarada pela crise (fatia B) e a guerra colonial que nasce da
+revolta (decisão I3 do dono, opção A). Só terra nesta fatia: o termo "ar" do combate em terra fica
+neutro, e mar e ar entram na fatia C2. Chave `war` em `data/rules.ron`, desligada; precisa de
+`forces`. Sem guerra declarada, nada muda e o hash é o da `main`.
+
+### Estado
+
+Guardado e no hash só quando há guerra:
+- **controle por estado:** quem ocupa cada estado. A ocupação muda o controle, não o dono; o dono
+  muda só pela paz (`treaty_exec`);
+- **por frente:** objetivo (um estado inimigo ou nenhum) e postura (atacar, manter, recuar),
+  dados pelo jogador ou pela IA;
+- **por segmento:** avanço acumulado em km;
+- **por guerra:** a conta (`WarLedger`) e a exaustão de cada lado;
+- a data do último registro de revolta lido (guerra colonial, abaixo).
+
+A frente e o segmento não são estado: saem toda semana da vizinhança dos estados, pelo controle.
+
+### Passo semanal
+
+No sistema das forças, depois do passo de paz, para cada guerra:
+1. **frentes:** toda fronteira contínua de terra entre estados controlados por lados opostos;
+   cada par de estados vizinhos é um segmento;
+2. **repartição:** os elementos de terra de cada país vão às frentes pelo peso de cada frente, e
+   dentro da frente aos segmentos por `allocate` (regra aberta, decisão 1);
+3. **combate:** `land_step` por segmento, com o terreno de `state_terrain`, o suprimento de
+   `supply` desde o depósito e a fortificação do defensor; a decomposição fica para a tela;
+4. **perdas:** os elementos perdidos saem das formações; os mortos e os inválidos saem da
+   pirâmide, na faixa de serviço (decisão 7); o equipamento perdido volta como reposição;
+5. **avanço:** o avanço de cada segmento soma; passada a profundidade do estado (raio da área),
+   o controle muda para o atacante e a frente se refaz na semana seguinte;
+6. **ocupação:** o ocupado paga ao ocupante, com guarnição e devastação (G3, abaixo);
+7. **conta, exaustão e apoio:** `WarLedger` soma gente, bens, dinheiro, produção perdida e preços;
+   `exhaustion` dá a exaustão material; o apoio à guerra (G4) decide a paz.
+
+### Fim
+
+Quem decide a paz e a rendição é o **apoio à guerra** (G4, abaixo), não a exaustão.
+- **Paz negociada:** o lado cujo apoio cai abaixo do limiar de paz oferece parte da exigência da
+  crise; o outro aceita quando o que ainda pode tomar vale menos que a oferta. O jogador propõe e
+  responde em Agendas.
+- **Rendição:** com o apoio no fundo, o lado aceita a exigência inteira.
+- Nos dois casos a paz é um `treaty::Proposal` executado pela mesa de tratados (`settle`, `queue`),
+  e o acordo fica em `agreements` com as cláusulas contínuas (ocupação, limite de armas), testadas
+  todo mês. A guerra termina com o acordo gravado.
+- **A exaustão material fica** como insumo do apoio (privação, gasto) e como limite físico: sem
+  homens, munição ou combustível, a frente não ataca, por mais apoio que haja.
+- **Terceiros no meio da guerra:** quando um país entra ou é atacado durante a guerra, as chamadas
+  dos acordos dele seguem a regra W4 (P2: sem resposta, entra; não honrar é comando explícito).
+
+### Guerra colonial (I3, opção A)
+
+Combinado com o thread das fronteiras (seção 11 de `borders.pt-BR.md`, "A revolta e a guerra"):
+a revolta é uma **proclamação seguida de guerra**, como a da Indonésia de 1945 a 1949.
+- **Gatilho, sem mudar a regra deles:** a metrópole recusa a exigência e a mobilização da unidade
+  passa a marca da revolta. A independência faz o `Secede` sem acordo e grava o `Record` de
+  revolta com o índice do país novo (`country`, no #173). A independência só age no 2 de
+  janeiro, e a fila de fronteiras roda no mesmo dia.
+- **Com `war` ligada,** a guerra lê os `Record` de revolta mais novos que a data guardada e abre
+  a guerra: de um lado o antigo dono, com a exigência `Union` da unidade de volta; do outro o país
+  novo, sem reconhecimento.
+- **Tropas:** o país novo forma unidades irregulares (`irregular`) do tamanho da mobilização vezes
+  os homens em idade de serviço da unidade; as formações coloniais do dono que estão ali lutam
+  pelo dono. O tipo do vínculo (colônia, protetorado) vem de `IndependenceSetup::bond_of`.
+- **Custo e desgaste:** os mesmos da guerra comum. A guerra longa desgasta a metrópole mesmo
+  quando ela ganha batalhas: semanas, gasto e preços entram na exaustão.
+- **Fim:** o dono sem apoio à guerra aceita a paz por acordo de independência (reconhecimento e
+  as cláusulas de independência dos tratados); se a colônia perde, **a metrópole reconquista** o
+  território pela `Union`, executada como tratado (G6).
+- **Com `war` desligada,** a revolta segue como hoje (separação sem acordo), sem mudar o hash.
+
+### Tela (esboço, para o thread de interface depois das decisões)
+
+- **Guerra:** os lados, as semanas de guerra, o **apoio à guerra** de cada lado termo a termo e
+  grupo a grupo, a exaustão material e a conta.
+- **Frente:** a lista das frentes; por frente, objetivo, postura, elementos engajados e a razão de
+  poder decomposta ("número 1,8×, equipamento 0,9×, suprimento 0,6×, terreno 0,7×"); por
+  segmento, o avanço.
+- **Lente no mapa:** controle, ocupação e a linha da frente.
+- **O que o jogador decide durante a guerra:** objetivo e postura por frente; mobilizar e
+  encomendar (já existem); propor ou aceitar a paz, em Agendas, com dois passos e ponto de
+  restauração; responder às chamadas dos aliados.
+
+### Custo de CPU
+
+Decisão 6: a guerra mundial de 1939, com todos os segmentos ativos, abaixo de 15 % do tick. A
+fatia mede com uma guerra de teste de cinco grandes países, porque a IA não declara.
+
+### Decidido pelo dono (G1–G6, 2026-11-18)
+
+| # | Decisão | O que o dono disse |
+|---|---|---|
+| G1 | só terra nesta fatia; mar e ar na C2 | "A terrestre é a mais importante, mar e ar podem vir depois." |
+| G2 | objetivo e postura por frente; formações pela regra aberta | "Em segundo momento podemos ir pensando em táticas melhores": o desenho fica aberto a mais comando (formações por frente, eixo, reserva) |
+| G3 | o território ocupado produz e paga ao ocupante, com três acréscimos: a parcela calibrada pela vida real, a devastação e a guarnição | abaixo, "Ocupação" |
+| G4 | **mudou:** a rendição e a paz são decididas pelo apoio à guerra, não pela exaustão | "um país pode estar exausto e ainda batalhar, ou pode nem ter cansado e desistir; a medida é apoio de guerra, como a Alemanha na Primeira Guerra e os Estados Unidos no Vietnã" |
+| G5 | a IA defende e contra-ataca com 1,5 vez o poder; **pede paz quando não tem mais apoio à guerra** | — |
+| G6 | proclamação e guerra entre dois países; **se a colônia perder, a metrópole reconquista** | — |
+
+### Apoio à guerra (G4, desenho para confirmar antes de codar)
+
+Um número por país em guerra, de 0 a 1.000 por mil, feito do apoio de cada **grupo de interesse**
+(`politics`), pesado pela influência do grupo (`clout`). É o que a tela da guerra mostra em
+primeiro lugar, termo a termo e grupo a grupo.
+
+**Ponto de partida, na declaração** (dados, valores de desenho):
+- atacado: 800 (o efeito de união em torno da bandeira; Mueller, 1973);
+- atacante com causa registrada (`casus_belli`): 600; sem causa: 400;
+- guerra colonial: metrópole 550; o país novo começa com a mobilização do movimento.
+- Cada grupo parte daí com o seu viés: o militar acima; os trabalhadores e os camponeses, que dão
+  os soldados, abaixo; os negócios conforme a sua parte na indústria de guerra.
+
+**O que puxa para baixo, toda semana:**
+- **baixas:** pelo logaritmo dos mortos acumulados sobre a população; o apoio cai com o log das
+  baixas acumuladas (Mueller, 1973; Coreia e Vietnã), e mais quando a taxa de baixas sobe
+  (Gartner e Segura, 1998);
+- **duração:** um tanto por ano de guerra;
+- **privação civil:** a parte das necessidades básicas dos pops que não é atendida (comida,
+  aquecimento) e a alta de preços; o inverno do nabo de 1916–17 e as greves de 1918 na Alemanha
+  (Offer, 1989);
+- **território:** a parcela da própria população sob ocupação (depois do primeiro efeito de união);
+- **resultado:** a frente que recua tira apoio, a que avança devolve; a expectativa de vitória pesa
+  mais que o número de mortos (Gelpi, Feaver e Reifler, 2009).
+
+**O que puxa para cima:** vitórias (a frente avança, o inimigo perde território), o fim da
+privação, e uma exigência menor na mesa.
+
+**Regime e censura:** o efeito `censorship` da lei de imprensa e o `franchise` mudam a
+sensibilidade. Com censura, o apoio cai mais devagar, mas a queda abaixo do limiar de colapso faz
+crescer o movimento `regime_change` (fase 3d); é a queda súbita da Rússia de 1917 e da Alemanha de
+1918. Com eleições livres, cai mais depressa e o governo sente antes (Reiter e Stam, 2002).
+
+**Decisão:**
+- abaixo de 300 por mil (limiar de paz), o governo da IA pede paz, oferecendo parte da exigência;
+- abaixo de 100 (colapso), a rendição: aceita a exigência inteira;
+- o jogador vê o apoio e decide. Com o apoio abaixo do limiar de paz, continuar custa
+  legitimidade e faz crescer o movimento contra a guerra. **Recomendado:** no colapso, a
+  rendição é forçada também para o jogador, como a Alemanha em novembro de 1918.
+  **Alternativa:** o jogador nunca é forçado; só paga legitimidade e movimento.
+
+### Ocupação: o que se extrai, a devastação e a guarnição (G3, desenho para confirmar)
+
+**(a) O que o ocupante extrai.** A França ocupada pagou "custos de ocupação" de 400 milhões de
+francos por dia a partir de agosto de 1940, 300 milhões a partir de maio de 1941 e 500 milhões a
+partir de novembro de 1942, além de requisições e do trabalho forçado (o STO mandou cerca de 650
+mil trabalhadores à Alemanha). Somado, o que a Alemanha tirou chegou perto de um terço da renda
+nacional francesa em 1943, e a produção industrial francesa caiu a cerca de metade da de 1938 em
+1944 (Milward, 1970; Occhino, Oosterlinck e White, 2008).
+- **Recomendado:** o ocupante leva uma parcela do PIB do território ocupado, que sobe com o tempo
+  de ocupação de 20 % no primeiro ano até um teto de 33 % (dados), vezes a eficiência da guarnição
+  (c); a produção do ocupado cai pela devastação (b), pelos homens tirados e pela resistência. O
+  "50 %" do desenho anterior fica acima do caso francês.
+- **Alternativa:** parcela fixa (simples, sem curva no tempo).
+
+**(b) Devastação.** O combate que passa por um estado destrói capital, infraestrutura e gente, e o
+estado produz menos depois. A União Soviética perdeu cerca de um quarto do capital reprodutível
+na Segunda Guerra, e a Polônia mais de um terço da riqueza nacional (Harrison, 1998).
+- **Recomendado:** cada semana de combate num segmento destrói uma parcela dos níveis de edifício
+  e do transporte dos dois estados do segmento, proporcional à intensidade (o fogo dos dois lados),
+  com teto, e mata civis por idade, mais nas cidades; a fila de obras reconstrói. É gradual, como
+  a frente que demora.
+- **Alternativa:** um golpe único quando o controle muda.
+- **A terra arrasada** (destruir ao recuar, como a União Soviética em 1941) fica para depois,
+  como ordem de postura.
+
+**(c) Guarnição e polícia militar.** O ocupante precisa de tropa no território para manter o
+controle. A referência é Quinlivan (1995): cerca de 20 homens de segurança por mil habitantes para
+uma população hostil, de 2 a 4 para uma calma. A Alemanha mantinha cerca de 100 mil homens na
+França em 1941, para uns 40 milhões, algo como 2,5 por mil.
+- **Recomendado:** a exigência de guarnição de cada estado ocupado é de 2 por mil da população,
+  subindo até 20 por mil com a resistência (o movimento no estado). O ocupante destaca
+  formações de terra (o tipo `garrison` existe no catálogo) e paga homens e manutenção. Com
+  guarnição abaixo da exigência, a parcela extraída cai na mesma proporção e a resistência cresce;
+  com falta grande, nascem guerrilhas (`irregular`), numa fatia depois.
+- **Alternativa:** um custo fixo de guarnição, sem exigência nem consequência.
+
+**Dado novo:** nenhum arquivo de fonte além destas referências; as parcelas, as taxas e as
+exigências são valores de desenho em `data/military/war.ron`, com as fontes no comentário.
+
+Fontes: Mueller, J. (1973), *War, Presidents and Public Opinion*; Gartner, S. e Segura, G. (1998),
+"War, Casualties, and Public Opinion", *Journal of Conflict Resolution* 42(3); Gelpi, C., Feaver,
+P. e Reifler, J. (2009), *Paying the Human Costs of War*; Reiter, D. e Stam, A. (2002), *Democracies
+at War*; Offer, A. (1989), *The First World War: An Agrarian Interpretation*; Milward, A. (1970),
+*The New Order and the French Economy*; Occhino, F., Oosterlinck, K. e White, E. (2008), "How Much
+Can a Victor Force the Vanquished to Pay?", *Journal of Economic History* 68(1); Harrison, M.
+(1998), *The Economics of World War II*; Quinlivan, J. (1995), "Force Requirements in Stability
+Operations", *Parameters* 25(4).
+
+## Mar e ar (fatia C2, desenho)
+
+A fatia C2 traz para a guerra da fatia C o mar e o ar: `naval_step` e `air_step` (já escritos e
+testados) no tick, sobre as 63 zonas marítimas do `SeaGraph` (`map-pipeline.pt-BR.md`, "Zonas
+marítimas") e sobre as zonas aéreas das frentes. Mesma chave `war`; vem depois da C.
+
+### Mar
+
+- **Frotas por zona:** as formações de mar de cada país ficam numa zona marítima, com uma
+  **missão**: controlar a zona, escoltar comboios, bloquear, ou atacar o comércio (submarinos). O
+  jogador dá a missão por zona; a IA mantém as frotas nas zonas dos seus portos (C5).
+- **Encontro:** numa zona com frotas dos dois lados, `naval_step` resolve a semana: canhão e
+  torpedo contra a superfície, antissubmarino contra os submarinos, aviões a bordo; perdas por
+  navio inteiro e avaria. A decomposição vai para a tela, como em terra.
+- **Controle da zona:** quem tem mais poder de superfície na zona no fim da semana controla. O
+  controle decide quem passa.
+- **Bloqueio e comboio:** o trecho de uma rota (`SeaGraph::route`) que passa por zona
+  controlada ou disputada pelo inimigo perde uma parcela do que leva, proporcional ao poder de
+  interdição (submarino, superfície, ar de patrulha) sobre o de escolta. A perda vale para o
+  suprimento da frente (`supply`, pernas marítimas) e para o comércio (por par, quando
+  `trade_by_pair` estiver ligada; senão, a importação do país bloqueado cai pela mesma parcela).
+- **Desembarque:** transporte com tropa sai de um porto, atravessa as zonas e desembarca num
+  estado costeiro inimigo; chega com o que sobrou do passo de mar e luta em terra com o fator de
+  terreno `amphibious`.
+- **Casos:** o bloqueio da Alemanha de 1914–19 (importação de comida e de nitrato cortada); a
+  Batalha do Atlântico (comboio contra submarino, a escolta e a patrulha aérea que viraram o jogo
+  em 1943); a Normandia (desembarque sobre controle do mar e do ar).
+
+### Ar
+
+- **Zonas aéreas:** a zona de cada frente, e a de cada estado bombardeado.
+- **Superioridade:** `air_step` disputa a zona; a superioridade de um lado é o seu poder ar-ar
+  sobre a soma dos dois. Ela entra no termo "ar" do combate em terra (neutro na fatia C) e no
+  passo de mar.
+- **Ataque ao solo:** soma ao fogo da frente, vezes a superioridade.
+- **Bombardeio estratégico:** tira níveis de edifício (fábrica, usina, ferrovia) do estado alvo,
+  vezes a superioridade, e a fila de obras reconstrói (devastação, "Perdas que voltam para o
+  mundo"). Mata civis por idade na pirâmide.
+- **Repartição:** os aviões de cada país vão às zonas pelo peso da frente, pela mesma regra aberta
+  da terra; o jogador escolhe o alvo do bombardeio estratégico (C2-S4).
+- **Casos:** a Batalha da Inglaterra (superioridade sem invasão); o bombardeio da Alemanha
+  (USSBS 1945: a produção alemã de armas subiu até o meio de 1944, e o golpe que contou foi no
+  combustível e no transporte).
+
+### Estado
+
+Guardado só quando há guerra: a zona e a missão de cada frota, o controle de cada zona marítima,
+e o alvo de bombardeio escolhido. A superioridade não é estado: sai da semana.
+
+### Custo de CPU
+
+63 zonas marítimas, poucas com dois lados ao mesmo tempo, e as zonas aéreas das frentes: o custo
+fica abaixo do da terra. A meta segue a decisão 6 (a guerra mundial de 1939 abaixo de 15 % do
+tick, terra, mar e ar juntos).
+
+### Decisões para o dono
+
+| # | Escolha | Recomendado | Alternativa |
+|---|---|---|---|
+| S1 | Comando no mar | missão por zona (controlar, escoltar, bloquear, atacar o comércio); as frotas se repartem pela regra | o jogador move cada frota |
+| S2 | Bloqueio no comércio | perda proporcional à interdição sobre a escolta, no comércio por par e no suprimento | só no suprimento da frente |
+| S3 | Guerra submarina irrestrita | o jogador escolhe; atacar navios neutros dá causa aos neutros (registro de quebras) e custa boa vontade, como em 1917 | os submarinos só atacam o inimigo |
+| S4 | Alvo do bombardeio | o jogador escolhe a classe de alvo (indústria, transporte e combustível, cidades) | alvo automático pela indústria de guerra do inimigo |
+| S5 | Ar | aviões repartidos pela regra entre as frentes; o jogador só escolhe o alvo estratégico | o jogador designa cada ala |
+
 ## O que falta para ligar ao tick
 
 O contrato, os dados e as funções estão prontos e testados. Nada roda ainda. Quando a fase 5
