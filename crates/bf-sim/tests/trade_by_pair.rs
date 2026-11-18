@@ -71,6 +71,27 @@ fn switches_parse_by_name() {
     );
 }
 
+/// `Switches::NAMES` names every field of `Switches`, once: switching every name on leaves no
+/// field off, and there are as many names as fields.
+#[test]
+fn every_switch_field_has_its_name() {
+    let all = Switches::parse(&Switches::NAMES.join(",")).unwrap();
+    let text = ron::to_string(&all).unwrap();
+    assert!(
+        !text.contains("false"),
+        "a field without a name in NAMES: {text}"
+    );
+    assert_eq!(
+        text.matches("true").count(),
+        Switches::NAMES.len(),
+        "{text}"
+    );
+    let mut names = Switches::NAMES.to_vec();
+    names.sort_unstable();
+    names.dedup();
+    assert_eq!(names.len(), Switches::NAMES.len(), "a name twice in NAMES");
+}
+
 /// `data/rules.ron` names every switch, and all of them ship off: the main keeps its hash.
 #[test]
 fn rules_file_names_every_switch_and_ships_them_off() {
