@@ -582,6 +582,7 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
             geo: trade.filter(|_| switches.trade_by_pair),
             by_pair: switches.trade_by_pair,
             wage_floor: switches.small_market_wage_floor,
+            foreign_flow: switches.foreign_flow,
         });
         s.add(crate::econ::monthly::Labour {
             cat: Arc::clone(&cat),

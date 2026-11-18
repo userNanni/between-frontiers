@@ -145,6 +145,7 @@ fn the_foreign_share_of_profit_leaves_for_the_owners_fund() {
         tree: rules.tree.clone(),
         geo: None,
         by_pair: false,
+        foreign_flow: true,
     };
     // The plant with the largest profit last week, of a kind with owners.
     let cat = &rules.catalogue;
