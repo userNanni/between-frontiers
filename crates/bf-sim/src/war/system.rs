@@ -22,8 +22,6 @@ pub struct Forces {
     pub politics: Option<Arc<Politics>>,
     /// The military goods of the state's basket and their weights over 1,000, resolved at load.
     pub basket: Vec<(u16, i64)>,
-    /// Their weights summed: the military budget's share of the goods budget.
-    pub military_weight: i64,
     /// The type the reservists report to.
     pub infantry: Option<u16>,
     /// Crises (slice B); `None` without `crisis.ron`.
@@ -189,10 +187,9 @@ impl Forces {
         let basket: Vec<(u16, i64)> = cat
             .state_basket
             .iter()
-            .filter(|(g, _)| cat.goods[*g as usize].category == "military")
+            .filter(|(g, _)| cat.military.get(*g as usize).copied().unwrap_or(false))
             .copied()
             .collect();
-        let military_weight = basket.iter().map(|(_, w)| *w).sum();
         let infantry = military.unit("infantry");
         Self {
             cat,
@@ -200,7 +197,6 @@ impl Forces {
             peace,
             politics,
             basket,
-            military_weight,
             infantry,
             crisis,
         }
@@ -665,11 +661,8 @@ impl Forces {
         // the civilian basket's, as before the forces. It pays first what the forces consume and
         // what makes good their equipment; with room left, part of the force moves to a newer
         // generation, and what is still left buys equipment above the needs.
-        // The military share the government fixed (D3), or the basket's.
-        let share = m.levers.military.map_or(self.military_weight, i64::from);
-        let room = crate::econ::public::goods_budget(m)
-            .max(Fixed::ZERO)
-            .mul_ratio(share, 1000);
+        // The ceiling of lever D3: the military share the government fixed, or the basket's.
+        let room = crate::econ::public::military_room(m, &self.cat);
         let weeks = i64::from(self.peace.replace_weeks.max(1));
         let price = |list: &[(u16, Fixed)]| -> Fixed {
             list.iter().map(|(g, q)| *q * m.price[*g as usize]).sum()
