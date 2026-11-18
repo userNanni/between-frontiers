@@ -102,6 +102,59 @@ pub fn main() -> Result<(), String> {
     // that no movement undoes them.
     let forced = forced_laws(&data)?;
     force(&mut s, &forced, 1925);
+    // Conservation of trade, week by week (`BF_DIAG_CONSERVE=<years>`): for every tradable
+    // good the world's net imports add up to zero, and the margins' transfers between the
+    // pools (`week::margin_transfers`) add up to zero, so trade makes no money. Printed by
+    // year: the largest residual of goods (at base prices) in a week, the money the transfers
+    // would make in the year over GDP, trade over GDP and the margin over trade.
+    if let Ok(years) = std::env::var("BF_DIAG_CONSERVE") {
+        use laplace_schelling::Fixed;
+        let years: i32 = years.parse().unwrap_or(5);
+        let end = Date::new(1925 + years, 1, 1);
+        let mut d = Date::new(1925, 1, 5);
+        let (mut year, mut goods, mut made, mut volume, mut margin, mut weeks) =
+            (1925, 0f64, 0f64, 0f64, 0f64, 0u32);
+        while d < end {
+            d = Date::from_days(d.to_days() + 7);
+            s.sim.run_until(d);
+            let e = &s.world().econ;
+            for gi in 0..cat.goods.len() {
+                let base = cat.goods[gi].base_price;
+                let mut net = Fixed::ZERO;
+                for m in &e.markets {
+                    let n = m.net_import[gi];
+                    net += n;
+                    if n > Fixed::ZERO {
+                        volume += (n * base).to_f64_lossy();
+                        margin += (n * m.sell_ratio[gi] * m.price[gi]).to_f64_lossy();
+                    } else if n < Fixed::ZERO {
+                        margin += (n * m.buy_ratio[gi] * m.price[gi]).to_f64_lossy();
+                    }
+                }
+                goods = goods.max((net * base).abs().to_f64_lossy());
+            }
+            made += bf_sim::econ::week::margin_transfers(&cat, &e.markets)
+                .iter()
+                .map(|t| t.to_f64_lossy())
+                .sum::<f64>();
+            weeks += 1;
+            if d.year != year {
+                let gdp: f64 = e
+                    .markets
+                    .iter()
+                    .map(|m| m.gdp_last_year.to_f64_lossy())
+                    .sum();
+                println!(
+                    "{year}: goods residual {goods:.3}, money made by the margins {:.4} % of GDP, trade {:.2} % of GDP, margin {:.1} % of trade",
+                    made / gdp * 100.0,
+                    volume * 52.0 / f64::from(weeks) / gdp * 100.0,
+                    margin / volume.max(1.0) * 100.0
+                );
+                (year, goods, made, volume, margin, weeks) = (d.year, 0.0, 0.0, 0.0, 0.0, 0);
+            }
+        }
+        return Ok(());
+    }
     // World trade over world GDP every ten years (data/history/trade_openness.csv): exports
     // plus imports at base prices, a week in July times 52, over the GDP of the last year.
     if std::env::var_os("BF_DIAG_TRADE").is_some() {

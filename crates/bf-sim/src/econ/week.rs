@@ -929,6 +929,47 @@ impl Week {
     }
 }
 
+/// What trade's margins move into each market's pool in a week. Importers collected their own
+/// price for the goods that came in and exporters were paid theirs for the goods that left, so
+/// the world is left with a balance; each market keeps its own balance less its share of the
+/// world's by its volume of trade. The shares are taken with one rounding in 128 bits
+/// (`Fixed::mul_div`: the product of the world's balance and a large market's volume is far
+/// beyond `Fixed`'s range, and the saturated shares used to leave most of the balance in the
+/// pools, about 0.7 % of world GDP a year made out of nothing), and the rounding left over goes
+/// to the market with the largest volume: the transfers add up to zero exactly.
+pub fn margin_transfers(cat: &Catalogue, markets: &[Market]) -> Vec<Fixed> {
+    let mut balance = vec![Fixed::ZERO; markets.len()];
+    let mut volume = vec![Fixed::ZERO; markets.len()];
+    for (mi, m) in markets.iter().enumerate() {
+        for gi in 0..cat.goods.len() {
+            let n = m.net_import[gi];
+            if n > Fixed::ZERO {
+                balance[mi] += n * m.sell_ratio[gi] * m.price[gi];
+                volume[mi] += n * m.price[gi];
+            } else if n < Fixed::ZERO {
+                balance[mi] += n * m.buy_ratio[gi] * m.price[gi];
+                volume[mi] -= n * m.price[gi];
+            }
+        }
+    }
+    let total_balance: Fixed = balance.iter().copied().sum();
+    let total_volume: Fixed = volume.iter().copied().sum();
+    if total_volume <= Fixed::ZERO {
+        return balance;
+    }
+    let mut transfers: Vec<Fixed> = balance
+        .iter()
+        .zip(&volume)
+        .map(|(b, v)| *b - total_balance.mul_div(*v, total_volume))
+        .collect();
+    let left: Fixed = transfers.iter().copied().sum();
+    let largest = (0..volume.len())
+        .max_by(|&a, &b| volume[a].cmp(&volume[b]).then(b.cmp(&a)))
+        .unwrap_or(0);
+    transfers[largest] -= left;
+    transfers
+}
+
 impl System<GameWorld> for Week {
     type Changes = WeekChanges;
 
@@ -1120,33 +1161,13 @@ impl System<GameWorld> for Week {
             }
         }
         let mut markets = changes.markets;
-        // Trade margins: importers collected more than exporters were paid. Each market keeps
-        // its balance, minus its share of the world total, so no money is created.
-        let mut balance = vec![Fixed::ZERO; markets.len()];
-        let mut volume = vec![Fixed::ZERO; markets.len()];
+        // Trade margins: importers collected more than exporters were paid; the difference goes
+        // back to the markets by their volume, so no money is created (`margin_transfers`).
         let construction_good = cat.construction;
         let mut done = Vec::new();
-        for (mi, m) in markets.iter().enumerate() {
-            for gi in 0..cat.goods.len() {
-                let n = m.net_import[gi];
-                if n > Fixed::ZERO {
-                    balance[mi] += n * m.sell_ratio[gi] * m.price[gi];
-                    volume[mi] += n * m.price[gi];
-                } else if n < Fixed::ZERO {
-                    balance[mi] += n * m.buy_ratio[gi] * m.price[gi];
-                    volume[mi] -= n * m.price[gi];
-                }
-            }
-        }
-        let total_balance: Fixed = balance.iter().copied().sum();
-        let total_volume: Fixed = volume.iter().copied().sum();
+        let transfers = margin_transfers(cat, &markets);
         for (mi, m) in markets.iter_mut().enumerate() {
-            let share = if total_volume > Fixed::ZERO {
-                total_balance * volume[mi] / total_volume
-            } else {
-                Fixed::ZERO
-            };
-            m.pool += balance[mi] - share;
+            m.pool += transfers[mi];
             // The state pays for the goods it got and for what its schools and hospitals made.
             let goods: Fixed = changes.state_orders[mi]
                 .iter()
