@@ -45,6 +45,9 @@ pub struct Fighting {
     pub postures: Vec<(u16, u16, bool)>,
     /// (country, men): land casualties since its first war, killed, wounded and captured.
     pub losses: Vec<(u16, u64)>,
+    /// The segments of the last week and what happened on each: what moved the front, for the
+    /// war screen to read without working the week out again.
+    pub last_week: Vec<SegmentWeek>,
 }
 
 impl Fighting {
@@ -53,6 +56,7 @@ impl Fighting {
             && self.advance.is_empty()
             && self.postures.is_empty()
             && self.losses.is_empty()
+            && self.last_week.is_empty()
     }
 
     /// The market controlling region `r`, whose owner is `owner`.
@@ -97,7 +101,7 @@ impl Fighting {
 }
 
 /// One segment of a front this week, for the screen and the tests.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SegmentWeek {
     /// The region held by side A, and the one held by side B.
     pub from: u32,
@@ -193,6 +197,7 @@ pub fn fight_week(setup: &FightSetup, mil: &Military, world: &GameWorld) -> Figh
     segments.sort();
     segments.dedup();
     if segments.is_empty() {
+        out.fighting.last_week.clear();
         return out;
     }
     // Each country's land strength, spread evenly over its segments.
@@ -317,6 +322,7 @@ pub fn fight_week(setup: &FightSetup, mil: &Military, world: &GameWorld) -> Figh
             f.advance.retain(|(x, y, _)| *x != into && *y != into);
         }
     }
+    out.fighting.last_week = out.segments.clone();
     // Losses: a share of each country's land elements.
     for (c, l) in lost {
         if l == 0 {
@@ -372,6 +378,22 @@ impl HashState for Fighting {
         for (c, l) in &self.losses {
             h.write_u16(*c);
             h.write_u64(*l);
+        }
+        h.write_len(self.last_week.len());
+        for g in &self.last_week {
+            h.write_u32(g.from);
+            h.write_u32(g.into);
+            h.write_u16(g.a);
+            h.write_u16(g.b);
+            let o = &g.outcome;
+            o.engaged.hash_state(h);
+            for p in o.power {
+                p.hash_state(h);
+            }
+            for l in o.losses {
+                h.write_u64(l);
+            }
+            o.advance_km.hash_state(h);
         }
     }
 }

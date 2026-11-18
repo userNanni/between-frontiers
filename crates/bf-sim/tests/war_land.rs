@@ -100,6 +100,17 @@ fn the_player_attacks_and_both_sides_lose_men() {
         enemy: "CZE".into(),
         attack: true,
     });
+    s.sim.run_until(Date::new(1925, 4, 7));
+    // The screen reads the week the tick fought, without working it out again.
+    assert!(
+        s.world()
+            .war
+            .fighting
+            .last_week
+            .iter()
+            .any(|g| (g.a, g.b) == (hun.min(cze), hun.max(cze)) && g.outcome.engaged),
+        "the last week's segments are kept"
+    );
     s.sim.run_until(Date::new(1925, 6, 1));
     let w = s.world();
     assert_eq!(w.war.fighting.posture(hun, cze), Some(true));
