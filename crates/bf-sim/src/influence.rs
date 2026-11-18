@@ -1318,6 +1318,9 @@ pub struct InfluenceSetup {
     /// The economy catalogue, for the value of foreign plants (investment channel); `None`
     /// leaves the channel dormant.
     pub catalogue: Option<std::sync::Arc<crate::econ::catalogue::Catalogue>>,
+    /// The overlords of the start date (`BorderRules::subjects`), read by the lenses while the
+    /// world has not changed a border yet.
+    pub borders: Option<std::sync::Arc<crate::borders::BorderRules>>,
 }
 
 /// A dependence channel by name, for the influence window.
@@ -1475,10 +1478,11 @@ fn influence_pair(
     .influence
 }
 
-/// The pairs that can hold influence today: a creditor over its debtor in the ledger, every pair
-/// with goodwill recorded, and the pairs of trade and foreign capital the ties read. Every other
+/// The pairs the lenses read: a creditor over its debtor in the ledger, every pair with goodwill
+/// recorded, the pairs of trade and foreign capital the ties read, and every overlord over its
+/// subjects (with no channel measured, its reading names the fronts it waits for). Every other
 /// pair is zero.
-fn live_pairs(world: &GameWorld, ties: &Ties) -> BTreeSet<(u16, u16)> {
+fn live_pairs(world: &GameWorld, setup: &InfluenceSetup, ties: &Ties) -> BTreeSet<(u16, u16)> {
     let mut pairs: BTreeSet<(u16, u16)> = world
         .econ
         .ledger
@@ -1488,6 +1492,14 @@ fn live_pairs(world: &GameWorld, ties: &Ties) -> BTreeSet<(u16, u16)> {
         .collect();
     pairs.extend(world.influence.goodwill.keys().copied());
     pairs.extend(ties.pairs(world));
+    // Every overlord over its subjects, measured or not: the lens shows the pair with its
+    // channels (dormant ones with their front), never as "nothing measured".
+    if let Some(b) = &setup.borders {
+        pairs.extend(
+            (0..world.countries.len())
+                .filter_map(|c| b.overlord_of(world, c).map(|o| (o as u16, c as u16))),
+        );
+    }
     pairs.retain(|(a, b)| a != b);
     pairs
 }
@@ -1507,7 +1519,7 @@ pub fn influence_over(
         .map(|t| main_cultures(world, t))
         .unwrap_or_default();
     let ties = Ties::under(setup, world, year);
-    live_pairs(world, &ties)
+    live_pairs(world, setup, &ties)
         .into_iter()
         .filter(|(x, _)| usize::from(*x) == a)
         .map(|(_, b)| {
@@ -1532,7 +1544,7 @@ pub fn influence_on(
         .map(|t| main_cultures(world, t))
         .unwrap_or_default();
     let ties = Ties::under(setup, world, year);
-    live_pairs(world, &ties)
+    live_pairs(world, setup, &ties)
         .into_iter()
         .filter(|(_, y)| usize::from(*y) == b)
         .map(|(a, _)| {
@@ -1570,6 +1582,7 @@ impl laplace_schelling::schedule::System<GameWorld> for InfluenceSystem {
             .read(crate::econ::week::ECON)
             .read(crate::polity::POLITY)
             .read(crate::demography::DEMOGRAPHY)
+            .read(crate::foreign_stakes::FOREIGN)
             .write(INFLUENCE)
     }
 

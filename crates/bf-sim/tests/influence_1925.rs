@@ -447,3 +447,23 @@ fn with_zero_weights_the_new_channels_leave_the_map_as_it_was() {
     let without = build(&influence::Ties::default());
     assert_eq!(with, without);
 }
+
+/// The lens reads every overlord over its subjects, measured or not: Britain over the Raj is in
+/// `influence_over` (zero while its channels are dormant), not left out as "nothing measured".
+#[test]
+fn the_lens_reads_the_overlord_over_its_subjects() {
+    let d = data();
+    let w = world();
+    let rules = d.rules();
+    let setup = rules.influence.as_deref().unwrap();
+    let gbr = ix("GBR");
+    let subjects: Vec<u16> = (0..w.countries.len())
+        .filter(|c| d.border_rules.overlord_of(w, *c) == Some(gbr))
+        .map(|c| c as u16)
+        .collect();
+    assert!(!subjects.is_empty(), "Britain has subjects in 1925");
+    let over = influence::influence_over(w, setup, gbr, 1925);
+    for s in subjects {
+        assert!(over.iter().any(|(b, _)| *b == s), "subject {s} left out");
+    }
+}

@@ -22,6 +22,8 @@ fn run(weight: Option<u32>) -> Session {
     let d = data();
     let mut rules = d.rules_with(bf_sim::game::Switches {
         trade_by_pair: true,
+        foreign_flow: true,
+        ..Default::default()
     });
     match weight {
         None => rules.influence = None,
