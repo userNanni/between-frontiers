@@ -617,9 +617,15 @@ impl Forces {
         let new_year = ctx.date.month == 1 && ctx.date.day <= 7;
         if new_year && self.peace.peace_size == PeaceSize::ShareOfServiceAge && !c.mobilized {
             let of_age = self.men_of_service_age(world, ci);
-            // Forces raised by an order stay outside the size in peace.
+            // Forces raised by an order stay outside the size in peace, and so do the colonial
+            // ones: a colonial army was set by the metropole's budget and policy, not by its
+            // men of service age (scaled by them, the colonies lost hands as the metropole
+            // grew: docs/war.pt-BR.md, "Forças em paz").
             let land = |f: &Formation| {
-                mil.types[f.unit as usize].domain == Domain::Land && !f.called_up && !f.raised
+                mil.types[f.unit as usize].domain == Domain::Land
+                    && !f.called_up
+                    && !f.raised
+                    && !f.colonial
             };
             let land_men: i64 = c
                 .formations

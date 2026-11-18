@@ -640,7 +640,7 @@ curto é completado com listas vazias (`game::decode_world`). Sem forças, o est
 | Peça | Como é na vida real | No jogo | Muda a simulação? |
 |---|---|---|---|
 | Soldados nos pops | o exército tira homens do trabalho; quem sai do serviço volta à profissão | os soldados de cada região são os homens das formações (decisão 1), repartidos pela população: os coloniais nas colônias, o resto na metrópole. O `Labour` contrata e devolve um décimo da diferença por mês, como já fazia com os servidores | sim: em 1926 o mundo tem 6,3 milhões de soldados trabalhando, contra 8,0 milhões pela regra antiga de 1 % da população |
-| Tamanho em paz | muda devagar, por lei e por orçamento | cada janeiro, os homens em serviço em terra seguem a parcela de 1925 sobre os homens em idade de serviço da metrópole, vezes a razão do efeito da lei de conscrição sobre o de 1925 (decisão 2); trocável em `peace.ron` | sim, devagar: a população cresce, o exército acompanha |
+| Tamanho em paz | muda devagar, por lei e por orçamento; o exército colonial (KNIL, exército da Índia) ficou de tamanho quase igual nas décadas de 1920 e 1930, fixado pela metrópole | cada janeiro, os homens em serviço em terra **na metrópole** seguem a parcela de 1925 sobre os homens em idade de serviço da metrópole, vezes a razão do efeito da lei de conscrição sobre o de 1925 (decisão 2); as formações coloniais ficam fora da regra e mantêm o tamanho; trocável em `peace.ron` | sim, devagar: a população cresce, o exército da metrópole acompanha |
 | Treino | por coorte de recrutas; o treino se acumula durante o serviço | sobe 1/semanas-de-treino do tipo por semana até o completo; recruta novo entra sem treino e dilui a média da formação | só no combate (fatia C); a tela mostra o estoque |
 | Mobilização | a reserva se apresenta em dias ou semanas, por classe, e sai do trabalho | comando (`Mobilize`, decisão de Agenda com dois passos): a cada semana se apresenta um quarto do que resta, no mínimo mil homens; os reservistas chegam com 70 % de treino e sem equipamento, que é comprado aos poucos. Desmobilizar devolve todos de uma vez | sim: tira homens do trabalho enquanto dura |
 | Reposição de equipamento | gradual, pela produção e pelo orçamento | a falta de cada formação é comprada em 26 semanas (`replace_weeks`) | sim: é demanda à indústria bélica |
@@ -706,6 +706,13 @@ de cada país (`politics`). Até lá o teto fica o herdado, sem calibrar. A sér
 é a do SIPRI, via Banco Mundial (`MS.MIL.XPND.GD.ZS`, de 1960). Ela está em `fetch.py --only
 military`, só local, porque os termos do SIPRI ainda não foram lidos (`data/history/SOURCES.md`,
 "Left out").
+
+**Por que o exército colonial fica fora da regra de janeiro.** Escalado pelos homens da
+metrópole, o exército colonial crescia com a população da metrópole e tirava gente das colônias.
+Com as forças ligadas, isso levou a Holanda a −64 % e a Índia britânica a −48 % do PIB em 2024,
+contra a faixa de oito amostras da `main` (b2acc61). Com o exército colonial fixo, as duas ficam
+em −1 % e −3 %, e o PIB mundial volta à faixa (+1,6 %, 2σ ±2,2 %). Experimentos E1 a E4 do PR de
+ligar as forças.
 
 **Chave: as forças entram desligadas.** Decisão de 2026-11-17: regra que muda o hash de todos os
 países entra desligada, e ligá-la é um PR pequeno, julgado sozinho pelos agregados. A chave é
