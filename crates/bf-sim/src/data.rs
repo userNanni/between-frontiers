@@ -189,6 +189,12 @@ impl GameData {
         self.switches.forces = true;
     }
 
+    /// Switches crises and declaration on (`switches.crisis`), with the forces they need.
+    pub fn enable_crisis(&mut self) {
+        self.switches.forces = true;
+        self.switches.crisis = true;
+    }
+
     /// The distances of trade by pair, built on the first call: a game with trade by pair
     /// switched off never pays for them.
     pub fn trade_geography(&self) -> Arc<crate::econ::trade::Geography> {
@@ -247,6 +253,20 @@ impl GameData {
             }
             _ => None,
         };
+        let war = self.war_rules(switches.forces);
+        // Crises follow the forces' switch: built from the war rules already made.
+        let crisis = self
+            .war
+            .as_ref()
+            .and_then(|w| w.crisis.clone())
+            .filter(|_| switches.crisis && war.is_some())
+            .map(|rules| {
+                Arc::new(crate::war::CrisisSetup {
+                    rules,
+                    clauses: self.clauses.clone(),
+                    state_ids: self.border_rules.state_ids.clone(),
+                })
+            });
         crate::game::Rules {
             catalogue: Arc::clone(&self.catalogue),
             tree: self.tree.clone(),
@@ -254,7 +274,8 @@ impl GameData {
             communities: self.community_table.clone(),
             borders: Some(Arc::clone(&self.border_rules)),
             influence,
-            war: self.war_rules(switches.forces),
+            war,
+            crisis,
             trade: switches.trade_by_pair.then(|| self.trade_geography()),
             switches,
             education: match (&self.education_1925, &self.literacy_campaign) {

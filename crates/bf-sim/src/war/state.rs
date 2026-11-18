@@ -156,6 +156,8 @@ pub struct WarState {
     pub countries: Vec<CountryWar>,
     /// Soldiers (workers) each region holds, by region index; set every month.
     pub soldiers: Vec<i64>,
+    /// Crises open and wars under way (slice B); empty in peace, and out of the hash then.
+    pub conflicts: super::crisis::Conflicts,
 }
 
 impl WarState {
@@ -207,6 +209,7 @@ impl WarState {
         Self {
             countries,
             soldiers: Vec::new(),
+            conflicts: Default::default(),
         }
     }
 
@@ -319,6 +322,26 @@ impl HashState for WarState {
             c.hash_state(h);
         }
         h.write_i64_slice(&self.soldiers);
+        if !self.conflicts.is_empty() {
+            self.conflicts.hash_state(h);
+        }
+    }
+}
+
+/// [`WarState`] as versions 15 to 19 of the world wrote it, before the crises (slice B).
+#[derive(Default, Deserialize)]
+pub(crate) struct WarStateBeforeCrises {
+    countries: Vec<CountryWar>,
+    soldiers: Vec<i64>,
+}
+
+impl From<WarStateBeforeCrises> for WarState {
+    fn from(w: WarStateBeforeCrises) -> Self {
+        Self {
+            countries: w.countries,
+            soldiers: w.soldiers,
+            conflicts: Default::default(),
+        }
     }
 }
 
@@ -387,6 +410,17 @@ impl From<WarStateBeforeOrders> for WarState {
                     queue: Vec::new(),
                 })
                 .collect(),
+            soldiers: w.soldiers,
+            conflicts: Default::default(),
+        }
+    }
+}
+
+impl From<WarStateBeforeOrders> for WarStateBeforeCrises {
+    fn from(w: WarStateBeforeOrders) -> Self {
+        let w: WarState = w.into();
+        Self {
+            countries: w.countries,
             soldiers: w.soldiers,
         }
     }

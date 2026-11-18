@@ -1,0 +1,14 @@
+// Between Frontiers: crisis and declaration (phase 5, slice B, draft). Contract:
+// crates/bf-sim/src/war/crisis.rs (CrisisRules); reasoning in docs/war.pt-BR.md, "Crise e
+// declaração". Licence: CC BY-SA 4.0.
+//
+// Owner's decisions of 2026-11-17: W2, a deadline of 4 weeks; W3, the force weighs against the
+// share asked for, and an existential demand is never yielded. Design values.
+(
+    deadline_weeks: 4,
+    // A peripheral demand is yielded to three times the target's land force.
+    yield_ratio: 3000,
+    // From half the country (its people in the states asked for, or the money over its GDP),
+    // the demand is existential.
+    existential_share: 500,
+)

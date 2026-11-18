@@ -483,7 +483,7 @@ pub struct V15 {
     influence: crate::influence::InfluenceState,
     #[serde(deserialize_with = "treaties_before_agreements")]
     treaties: crate::treaty::TreatyState,
-    war: crate::war::WarState,
+    war: crate::war::state::WarStateBeforeCrises,
     education: crate::demography::education::EducationState,
 }
 
@@ -504,7 +504,7 @@ pub fn v15_to_v16(w: V15) -> GameWorld {
         foreign: w.foreign,
         influence: w.influence,
         treaties: w.treaties,
-        war: w.war,
+        war: w.war.into(),
         education: w.education,
         independence: Default::default(),
         levers: Default::default(),
@@ -527,7 +527,7 @@ pub struct V16 {
     foreign: crate::foreign_stakes::ForeignState,
     influence: crate::influence::InfluenceState,
     treaties: crate::treaty::TreatyState,
-    war: crate::war::WarState,
+    war: crate::war::state::WarStateBeforeCrises,
     education: crate::demography::education::EducationState,
 }
 
@@ -546,7 +546,7 @@ pub fn v16_to_v17(w: V16) -> GameWorld {
         foreign: w.foreign,
         influence: w.influence,
         treaties: w.treaties,
-        war: w.war,
+        war: w.war.into(),
         education: w.education,
         independence: Default::default(),
         levers: Default::default(),
@@ -568,7 +568,7 @@ pub struct V17 {
     foreign: crate::foreign_stakes::ForeignState,
     influence: crate::influence::InfluenceState,
     treaties: crate::treaty::TreatyState,
-    war: crate::war::WarState,
+    war: crate::war::state::WarStateBeforeCrises,
     education: crate::demography::education::EducationState,
     independence: crate::borders::independence::IndependenceState,
 }
@@ -589,9 +589,53 @@ pub fn v17_to_v18(w: V17) -> GameWorld {
         foreign: w.foreign,
         influence: w.influence,
         treaties: w.treaties,
-        war: w.war,
+        war: w.war.into(),
         education: w.education,
         independence: w.independence,
         levers: Default::default(),
+    }
+}
+
+/// Version 18: the budget's levers (#165), before the crises (slice B). 19 was held and is
+/// never written.
+#[derive(Deserialize)]
+pub struct V18 {
+    scenario: String,
+    player: Option<Id<Country>>,
+    countries: Table<Country, CountryState>,
+    census: Vec<CensusRecord>,
+    econ: crate::econ::Economy,
+    research: crate::research::ResearchState,
+    politics: crate::polity::PoliticsState,
+    demography: crate::demography::DemographyState,
+    borders: crate::borders::BordersState,
+    foreign: crate::foreign_stakes::ForeignState,
+    influence: crate::influence::InfluenceState,
+    treaties: crate::treaty::TreatyState,
+    war: crate::war::state::WarStateBeforeCrises,
+    education: crate::demography::education::EducationState,
+    independence: crate::borders::independence::IndependenceState,
+    levers: crate::econ::levers::LeversState,
+}
+
+/// 18 → 20: crises and wars (`WarState::conflicts`), empty: a world in peace hashes as before.
+pub fn v18_to_v20(w: V18) -> GameWorld {
+    GameWorld {
+        scenario: w.scenario,
+        player: w.player,
+        countries: w.countries,
+        census: w.census,
+        econ: w.econ,
+        research: w.research,
+        politics: w.politics,
+        demography: w.demography,
+        borders: w.borders,
+        foreign: w.foreign,
+        influence: w.influence,
+        treaties: w.treaties,
+        war: w.war.into(),
+        education: w.education,
+        independence: w.independence,
+        levers: w.levers,
     }
 }

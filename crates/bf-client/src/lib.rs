@@ -2,6 +2,7 @@
 
 pub mod app;
 pub mod blocs_view;
+pub mod crisis_view;
 pub mod demands_view;
 pub mod flags;
 pub mod forces_view;

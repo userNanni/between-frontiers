@@ -2,6 +2,7 @@
 
 pub mod budget;
 pub mod country_panel;
+pub mod crisis;
 pub mod demand;
 pub mod forces;
 pub mod game;
