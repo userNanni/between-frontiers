@@ -47,13 +47,13 @@ com as telas da fatia, e a exceção sai com elas.
 | Encomendar tropas, navios e aviões | `OrderForces` | Governo → Forças → "Nova encomenda": tipo, elementos, colonial; o custo de construir e o de todo ano; a encomenda grande pede um segundo clique | em revisão |
 | Cancelar uma encomenda | `CancelOrder` | Governo → Forças → "Encomendas": "Cancelar" e confirmação; o construído vai ao depósito | em revisão |
 | Dissolver tropas, dar baixa em navios e aviões | `DisbandForces` | Governo → Forças → "Dissolver…" na linha do tipo: quantos elementos, o que volta ao depósito (valor e bens), quantos homens vão à reserva ou para casa, e o aviso de que o exército de paz volta ao tamanho de paz em janeiro; "Dissolver" confirma, com ponto de restauração antes (motivo "dissolver forças"). Tira primeiro as formações encomendadas. Reservistas chamados voltam por `Mobilize` | em revisão |
+| Propor um acordo a outro país | `ProposeTreaty` | Agendas → Decisões → "Propor acordo a {país selecionado}…": a mesa, com o que cada lado dá em sua coluna (cláusulas do catálogo, parâmetros dentro dos limites), prazo e aviso, a conta de cada lado por termo, a resposta provável do outro, e por que a proposta não pode ir (limite, reconhecimento, igual recusada há menos de 6 meses); ponto de restauração antes (motivo "tratado"). Só com a regra `negotiation` | J abre; T a mesa; A e S acrescentam cláusula, K escolhe, R tira, V muda parâmetro, W prazo e aviso, P propõe | em revisão, regra desligada |
+| Aceitar, recusar ou contrapropor um acordo recebido | `AnswerProposal` | Agendas → Decisões → "{país} propõe um acordo (N semanas)": o que cada lado dá, a conta do jogador, o prazo; aceitar e recusar em dois passos, contrapropor na mesma mesa (até a terceira rodada); ponto de restauração antes de aceitar ou contrapropor | J; P escolhe a proposta; A, R, C; Y confirma | em revisão, regra desligada |
 
 ## Desenhadas, sem comando ainda
 
 | Decisão | Onde deve ficar | Depende de |
 |---|---|---|
-| Propor um tratado | mesa de negociação em Agendas | comando `ProposeTreaty` na simulação, atrás de `negotiation` (desligada); falta a tela |
-| Assinar, recusar ou contrapropor um tratado proposto | Agendas | comando `AnswerProposal`, atrás de `negotiation`; falta a tela |
 | Renegociar uma dívida | Governo → Dívidas entre governos → "Renegociar" (hoje desligado) | mesa de negociação |
 | Denunciar um tratado | Agendas, sem aviso em dois passos e com ponto de restauração | comando `Denounce`, atrás de `negotiation`; falta a tela |
 | Honrar ou não um pacto de defesa | Agendas, decisão com ponto de restauração | registro de quebras |

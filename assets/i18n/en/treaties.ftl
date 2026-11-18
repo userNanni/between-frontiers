@@ -96,3 +96,88 @@ bundle-protectorate = Protectorate
 bundle-mandate = Mandate
 bundle-dominion = Dominion
 bundle-satellite = Satellite
+
+## The negotiation table (Agendas): propose, answer, counter
+table-title = Propose an agreement…
+table-propose-to = Propose an agreement to { $country }…
+table-counter-title = Counterproposal
+table-off = The negotiation table is off in this game.
+table-pick-country = Pick on the map the country to propose to.
+table-parties = { $me } and { $other }
+table-gives = { $country } gives
+table-gives-nothing = Nothing yet.
+table-add = Add a clause…
+table-once = Once, on signature
+table-in-force = While the agreement is in force
+table-remove = Remove
+table-param-amount = Amount
+table-param-yearly = Per year
+table-param-principal = Principal
+table-param-rate = Interest
+table-param-years = Term of the debt
+table-param-deferrable = Deferrable share
+table-param-share = Share
+table-param-margin = Margin
+table-per-year = { $money } a year
+table-annuity = Annuity: { $money }
+table-recognition-border = With today's borders
+table-out-of-limits = { $param } outside the catalogue's limit.
+table-unrecognised = The parties do not recognise each other: this clause cannot be signed without mutual recognition.
+table-clause-value = Worth { $me } to you, { $other } to the other side.
+table-clause-mine = Worth { $value } to you.
+table-states = { $count ->
+    [one] { $n } state
+   *[other] { $n } states
+}
+table-states-pick = Pick states…
+table-term = Term of the agreement
+table-term-none = No term
+table-term-tip = How long the agreement is in force
+table-years = { $n } years
+table-notice = Notice to denounce
+table-notice-tip = Years of notice to leave the agreement without a breach
+table-notice-some = With notice, either side may leave at the end of the notice, without a breach.
+table-notice-none = Without notice, leaving the agreement before its term is a breach.
+table-account = Account of { $country }:
+table-account-empty = Nothing to weigh yet.
+table-likely-accept = Likely answer: { $country } accepts.
+table-likely-counter = Likely answer: { $country } counters, with { $count ->
+    [one] { $n } clause
+   *[other] { $n } clauses
+}.
+table-likely-refuse = Likely answer: { $country } refuses; { $term } weighed most.
+table-term-unknown = the whole
+table-blocked = An identical proposal was refused on { $refused }; it may come back to the table on { $back }.
+table-deadline = { $country } has { $weeks } weeks to answer; its government answers the next Monday.
+table-refusal-empty = Add a clause to propose.
+table-refusal-recognition = Remove the marked clauses: without mutual recognition, only recognition and one-off exchanges may be signed.
+table-refusal-limits = Adjust the marked parameters: they are outside the catalogue's limits.
+table-refusal-cooldown = Change the proposal: the identical one is blocked.
+table-weighing = Weighing…
+table-propose = Propose
+table-send-counter = Send the counterproposal
+table-counter-drop = Drop the counterproposal
+table-received-title = Proposal from { $country }
+table-round = Round { $round } of 3.
+table-answer-by = Answer by { $date }; without an answer the proposal lapses as refused.
+table-accept = Accept
+table-refuse = Refuse
+table-counter = Counter…
+table-accept-confirm = Accepting signs the agreement: the one-off clauses act on signature, the others hold while it is in force.
+table-refuse-confirm = Refusing closes the proposal; an identical one may come back only in 6 months.
+table-accept-yes = Sign the agreement
+table-refuse-yes = Refuse the proposal
+table-answer-back = Back
+table-last-round = Third round: no more counterproposals.
+table-received = { $country } proposes an agreement ({ $count ->
+    [one] { $weeks } week
+   *[other] { $weeks } weeks
+})
+table-section = Negotiation table
+table-outgoing = Proposal to { $country } on { $date }: waiting for the answer.
+table-closed-signed = Agreement with { $country } signed on { $date }.
+table-closed-refused-them = { $country } refused on { $date }; { $term } weighed most.
+table-closed-refused-me = You refused the proposal from { $country } on { $date }.
+table-closed-countered = Counterproposal in the round with { $country } on { $date }.
+table-closed-lapsed = The proposal with { $country } lapsed on { $date }.
+table-closed-failed = The proposal with { $country } could not be carried out ({ $date }).

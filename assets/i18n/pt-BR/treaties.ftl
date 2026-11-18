@@ -96,3 +96,94 @@ bundle-protectorate = Protetorado
 bundle-mandate = Mandato
 bundle-dominion = Domínio
 bundle-satellite = Satélite
+
+## A mesa de negociação (Agendas): propor, responder, contrapropor
+table-title = Propor acordo…
+table-propose-to = Propor acordo { $article ->
+    [o] ao
+    [a] à
+    [os] aos
+    [as] às
+   *[other] a
+} { $country }…
+table-counter-title = Contraproposta
+table-off = A mesa de negociação está desligada nesta partida.
+table-pick-country = Selecione no mapa o país a quem propor.
+table-parties = { $me } e { $other }
+table-gives = { $country } dá
+table-gives-nothing = Nada por enquanto.
+table-add = Acrescentar cláusula…
+table-once = De uma vez, na assinatura
+table-in-force = Enquanto o acordo vigorar
+table-remove = Tirar
+table-param-amount = Valor
+table-param-yearly = Por ano
+table-param-principal = Principal
+table-param-rate = Juro
+table-param-years = Prazo da dívida
+table-param-deferrable = Parte adiável
+table-param-share = Parcela
+table-param-margin = Margem
+table-per-year = { $money } por ano
+table-annuity = Anuidade: { $money }
+table-recognition-border = Com as fronteiras de hoje
+table-out-of-limits = { $param } fora do limite do catálogo.
+table-unrecognised = As partes não se reconhecem: esta cláusula não pode ser assinada sem reconhecimento mútuo.
+table-clause-value = Vale { $me } para você, { $other } para a outra parte.
+table-clause-mine = Vale { $value } para você.
+table-states = { $count ->
+    [one] { $n } estado
+   *[other] { $n } estados
+}
+table-states-pick = Escolher estados…
+table-term = Prazo do acordo
+table-term-none = Sem prazo
+table-term-tip = Quanto tempo o acordo vigora
+table-years = { $n } anos
+table-notice = Aviso para denunciar
+table-notice-tip = Anos de aviso para sair do acordo sem quebra
+table-notice-some = Com aviso, cada lado pode sair no fim do aviso, sem quebra.
+table-notice-none = Sem aviso, sair do acordo antes do prazo é quebra.
+table-account = Conta para { $country }:
+table-account-empty = Nada a pesar ainda.
+table-likely-accept = Resposta provável: { $country } aceita.
+table-likely-counter = Resposta provável: { $country } faz uma contraproposta, com { $count ->
+    [one] { $n } cláusula
+   *[other] { $n } cláusulas
+}.
+table-likely-refuse = Resposta provável: { $country } recusa; pesou { $term }.
+table-term-unknown = o conjunto
+table-blocked = Uma proposta igual foi recusada em { $refused }; ela só volta à mesa em { $back }.
+table-deadline = { $country } tem { $weeks } semanas para responder; o governo responde na segunda-feira seguinte.
+table-refusal-empty = Acrescente uma cláusula para propor.
+table-refusal-recognition = Tire as cláusulas marcadas: sem reconhecimento mútuo, só cabem reconhecimento e trocas de uma vez.
+table-refusal-limits = Ajuste os parâmetros marcados: estão fora dos limites do catálogo.
+table-refusal-cooldown = Mude a proposta: a igual está bloqueada.
+table-weighing = Fazendo a conta…
+table-propose = Propor
+table-send-counter = Enviar a contraproposta
+table-counter-drop = Desistir da contraproposta
+table-received-title = Proposta recebida: { $country }
+table-round = Rodada { $round } de 3.
+table-answer-by = Responda até { $date }; sem resposta, a proposta vence e fica recusada.
+table-accept = Aceitar
+table-refuse = Recusar
+table-counter = Contrapropor…
+table-accept-confirm = Aceitar assina o acordo: as cláusulas de uma vez agem na assinatura, as outras valem enquanto o acordo vigorar.
+table-refuse-confirm = Recusar fecha a proposta; uma igual só volta à mesa daqui a 6 meses.
+table-accept-yes = Assinar o acordo
+table-refuse-yes = Recusar a proposta
+table-answer-back = Voltar
+table-last-round = Terceira rodada: não cabe mais contraproposta.
+table-received = { $country } propõe um acordo ({ $count ->
+    [one] { $weeks } semana
+   *[other] { $weeks } semanas
+})
+table-section = Mesa de negociação
+table-outgoing = Proposta a { $country } em { $date }: aguardando resposta.
+table-closed-signed = Acordo com { $country } assinado em { $date }.
+table-closed-refused-them = { $country } recusou em { $date }; pesou { $term }.
+table-closed-refused-me = Você recusou a proposta recebida ({ $country }) em { $date }.
+table-closed-countered = Contraproposta na rodada com { $country } em { $date }.
+table-closed-lapsed = A proposta com { $country } venceu em { $date }.
+table-closed-failed = A proposta com { $country } não pôde ser cumprida ({ $date }).
