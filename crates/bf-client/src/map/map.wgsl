@@ -140,6 +140,13 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
         let rim = 1.0 - smoothstep(0.0, 0.10, field.g);
         col = mix(col, col * 0.72, rim * 0.55);
         col *= 0.95 + grain * 0.07;
+        if (textureLoad(palette, table_coord(id), 0).a < 0.75) {
+            // A lens asks for hatching (customs ties in the blocs lens): stripes the other way
+            // from the colonies', so both read where they meet.
+            let stripe = fract((in.pos.x - in.pos.y) / 7.0);
+            let ink = smoothstep(0.30, 0.38, stripe) * (1.0 - smoothstep(0.62, 0.70, stripe));
+            col = mix(col, col * 0.62, ink * 0.85);
+        }
         if (is_colony(id)) {
             // Colonies: same colour as the owner, with diagonal hatching in screen space.
             let stripe = fract((in.pos.x + in.pos.y) / 9.0);

@@ -11,9 +11,9 @@ use crate::map::MapView;
 use crate::map::lens::{self, Lens};
 use crate::world::World;
 
-// Wide enough for the six families in English and Portuguese, as the kit draws them
+// Wide enough for the seven families in English and Portuguese, as the kit draws them
 // (`the_lens_families_fit_across_the_panel` measures them).
-const WIDTH: f32 = 560.0;
+const WIDTH: f32 = 592.0;
 /// Sets the map's lens and recolours it, open picker or not (a command calls this; the
 /// `map.mode_*` commands can pass the family's first lens).
 pub fn choose(view: &mut MapView, world: &World, lens: Lens, year: i32) {
@@ -32,6 +32,37 @@ enum Family {
     Farms,
     Infrastructure,
     Sea,
+    /// Ties between countries: influence and blocs.
+    Ties,
+}
+
+/// The ties family's list: influence both ways, then the blocs in the order of
+/// `blocs_view::KINDS` (`lens-ties-*`).
+const TIES_ITEMS: [&str; 5] = [
+    "influence_over",
+    "influence_on",
+    "military",
+    "monetary",
+    "subjects",
+];
+
+/// Index of a ties lens in [`TIES_ITEMS`].
+fn ties_index(lens: Lens) -> Option<usize> {
+    match lens {
+        Lens::Influence { on, .. } => Some(usize::from(on)),
+        Lens::Blocs(k) => Some(2 + k),
+        _ => None,
+    }
+}
+
+fn ties_lens(i: usize) -> Lens {
+    match i {
+        0 | 1 => Lens::Influence {
+            issue: 0,
+            on: i == 1,
+        },
+        k => Lens::Blocs(k - 2),
+    }
 }
 
 fn family(lens: Lens) -> Family {
@@ -42,6 +73,7 @@ fn family(lens: Lens) -> Family {
         Lens::Farm(_) => Family::Farms,
         Lens::Local(_) => Family::Infrastructure,
         Lens::Sea => Family::Sea,
+        Lens::Influence { .. } | Lens::Blocs(_) => Family::Ties,
     }
 }
 
@@ -50,6 +82,7 @@ fn items(fam: Family) -> &'static [&'static str] {
         Family::Resources => RESOURCES,
         Family::Farms => FARMS,
         Family::Infrastructure => &lens::LOCAL_GOODS,
+        Family::Ties => &TIES_ITEMS,
         _ => &[],
     }
 }
@@ -87,6 +120,7 @@ fn legend_h(ctx: &egui::Context, lens: Lens) -> f32 {
         Family::Political => 0.0,
         Family::Climate => 7.0 * 20.0,
         Family::Sea => 96.0,
+        Family::Ties => 80.0,
         _ => 56.0,
     };
     ctx.data(|d| d.get_temp(legend_id(lens))).unwrap_or(guess)
@@ -184,6 +218,8 @@ pub fn family_labels(i18n: &I18n) -> Vec<String> {
         "lens-climate",
         "lens-farms",
         "lens-infrastructure",
+        "lens-sea",
+        "lens-ties",
     ]
     .iter()
     .map(|k| i18n.tr(k))
@@ -197,7 +233,18 @@ pub fn all_lenses() -> Vec<Lens> {
     out.extend((0..FARMS.len()).map(Lens::Farm));
     out.extend((0..lens::LOCAL_GOODS.len()).map(Lens::Local));
     out.push(Lens::Sea);
+    out.extend((0..TIES_ITEMS.len()).map(ties_lens));
     out
+}
+
+/// A list item's name.
+fn item_label(i18n: &I18n, fam: Family, key: &str) -> String {
+    match fam {
+        Family::Resources => i18n.tr(&format!("resource-{key}")),
+        Family::Infrastructure => i18n.tr(&format!("good-{key}")),
+        Family::Ties => i18n.tr(&format!("lens-ties-{key}")),
+        _ => i18n.tr(&format!("building-{key}")),
+    }
 }
 
 /// The lens in words: its family, and the resource, crop or good when it has one.
@@ -209,6 +256,7 @@ pub fn name(i18n: &I18n, lens: Lens) -> String {
         Family::Farms => "lens-farms",
         Family::Infrastructure => "lens-infrastructure",
         Family::Sea => "lens-sea",
+        Family::Ties => "lens-ties",
     };
     let fam = i18n.tr(fam);
     let item = match lens {
@@ -217,6 +265,9 @@ pub fn name(i18n: &I18n, lens: Lens) -> String {
         Lens::Local(i) => lens::LOCAL_GOODS
             .get(i)
             .map(|k| i18n.tr(&format!("good-{k}"))),
+        Lens::Influence { .. } | Lens::Blocs(_) => ties_index(lens)
+            .and_then(|i| TIES_ITEMS.get(i))
+            .map(|k| item_label(i18n, Family::Ties, k)),
         _ => None,
     };
     match item {
@@ -277,7 +328,8 @@ pub fn button(ui: &mut Ui, rect: Rect, i18n: &I18n, lens: Lens, open: bool) -> b
 }
 
 /// The lens a map mode command picks: the family's first lens, or the one in use when it is
-/// already of that family.
+/// already of that family. The influence and blocs commands switch their lens on and off: a
+/// second press goes back to the political map.
 pub fn mode_lens(mode: usize, current: Lens) -> Lens {
     let lens = match mode {
         0 => Lens::Political,
@@ -285,12 +337,21 @@ pub fn mode_lens(mode: usize, current: Lens) -> Lens {
         2 => Lens::Climate,
         3 => Lens::Farm(0),
         4 => Lens::Local(lens::LOCAL_DEFAULT),
-        _ => Lens::Sea,
+        5 => Lens::Sea,
+        6 => Lens::Influence {
+            issue: 0,
+            on: false,
+        },
+        _ => Lens::Blocs(0),
     };
-    if family(lens) == family(current) {
-        current
-    } else {
-        lens
+    // The ties commands switch: a second press goes back to the political map.
+    match (lens, current) {
+        (Lens::Influence { .. }, Lens::Influence { .. }) | (Lens::Blocs(_), Lens::Blocs(_)) => {
+            Lens::Political
+        }
+        (Lens::Influence { .. } | Lens::Blocs(_), _) => lens,
+        _ if family(lens) == family(current) => current,
+        _ => lens,
     }
 }
 
@@ -367,6 +428,7 @@ pub fn show(
             (Family::Farms, i18n.tr("lens-farms")),
             (Family::Infrastructure, i18n.tr("lens-infrastructure")),
             (Family::Sea, i18n.tr("lens-sea")),
+            (Family::Ties, i18n.tr("lens-ties")),
         ];
         let tips = [
             Tip::Command(id::MODE_POLITICAL),
@@ -375,6 +437,7 @@ pub fn show(
             Tip::Command(id::MODE_FARMS),
             Tip::Command(id::MODE_INFRASTRUCTURE),
             Tip::Command(id::MODE_SEA),
+            Tip::Command(id::MODE_INFLUENCE),
         ];
         // The keys of these commands are read by the game screen, folded or not.
         let changed = keys::segmented(&mut ui, &mut f, &options, &tips);
@@ -391,6 +454,7 @@ pub fn show(
                 Family::Farms => Lens::Farm(0),
                 Family::Infrastructure => Lens::Local(lens::LOCAL_DEFAULT),
                 Family::Sea => Lens::Sea,
+                Family::Ties => ties_lens(0),
             };
         }
     }
@@ -399,6 +463,7 @@ pub fn show(
     if let Some(area) = lay.list {
         let selected = match current {
             Lens::Resource(i) | Lens::Farm(i) | Lens::Local(i) => i,
+            Lens::Influence { .. } | Lens::Blocs(_) => ties_index(current).unwrap_or(usize::MAX),
             _ => usize::MAX,
         };
         let mut ui = region(ui, area);
@@ -426,11 +491,7 @@ pub fn show(
                     );
                     let id = ui.make_persistent_id(("lens-item", i));
                     let resp = ui.interact(r, id, Sense::click());
-                    let label = match fam {
-                        Family::Resources => i18n.tr(&format!("resource-{key}")),
-                        Family::Infrastructure => i18n.tr(&format!("good-{key}")),
-                        _ => i18n.tr(&format!("building-{key}")),
-                    };
+                    let label = item_label(i18n, fam, key);
                     resp.widget_info(|| {
                         egui::WidgetInfo::labeled(egui::Role::Button, true, label.clone())
                     });
@@ -465,6 +526,7 @@ pub fn show(
                         next = match fam {
                             Family::Resources => Lens::Resource(i),
                             Family::Infrastructure => Lens::Local(i),
+                            Family::Ties => ties_lens(i),
                             _ => Lens::Farm(i),
                         };
                     }
@@ -548,6 +610,15 @@ fn legend(ui: &mut Ui, i18n: &I18n, current: Lens, world: &World) {
         sea_legend(ui, i18n);
         return;
     }
+    if let Lens::Influence { issue, on } = current {
+        let _ = issue;
+        influence_legend(ui, i18n, world, on);
+        return;
+    }
+    if let Lens::Blocs(kind) = current {
+        blocs_legend(ui, i18n, world, kind);
+        return;
+    }
     if let Lens::Local(_) = current {
         if world.live_local.is_empty() {
             bf_ui_kit::small(ui, &i18n.tr("lens-no-data"));
@@ -611,7 +682,7 @@ fn legend(ui: &mut Ui, i18n: &I18n, current: Lens, world: &World) {
                 );
             }
         }
-        Lens::Political | Lens::Local(_) | Lens::Sea => {}
+        Lens::Political | Lens::Local(_) | Lens::Sea | Lens::Influence { .. } | Lens::Blocs(_) => {}
     }
 }
 
@@ -665,6 +736,8 @@ pub fn tooltip_line(
 ) -> Option<String> {
     match lens {
         Lens::Political | Lens::Sea => None,
+        Lens::Influence { issue, on } => influence_tip(i18n, world, state, issue, on),
+        Lens::Blocs(kind) => blocs_tip(i18n, world, state, kind),
         Lens::Local(i) => {
             let v = world.live_local.get(state)?.get(i).copied()?;
             if v < 0.0 {
@@ -725,4 +798,313 @@ pub fn tooltip_line(
             ))
         }
     }
+}
+
+/// A share of GDP as a percentage: two decimals, influence is small.
+fn gdp_pct(i18n: &I18n, x: f64) -> String {
+    format!("{} %", i18n.decimal(x * 100.0, 2))
+}
+
+/// A colour swatch with its label beside it: every colour of a legend says what it is.
+fn swatch(ui: &mut Ui, fill: [u8; 4], hatch: bool, label: &str) {
+    ui.horizontal(|ui| {
+        let (r, _) = ui.allocate_exact_size(Vec2::new(16.0, 12.0), Sense::hover());
+        ui.painter()
+            .rect_filled(r, 2, Color32::from_rgb(fill[0], fill[1], fill[2]));
+        if hatch {
+            for k in 0..3 {
+                let x = r.left() + 2.0 + k as f32 * 5.0;
+                ui.painter().line_segment(
+                    [Pos2::new(x, r.top()), Pos2::new(x + 5.0, r.bottom())],
+                    Stroke::new(1.2, Color32::from_black_alpha(140)),
+                );
+            }
+        }
+        ui.painter().rect_stroke(
+            r,
+            2,
+            Stroke::new(1.0, color::BORDER),
+            egui::StrokeKind::Inside,
+        );
+        ui.add(
+            egui::Label::new(
+                egui::RichText::new(label)
+                    .font(sans(11.5))
+                    .color(color::TEXT),
+            )
+            .wrap(),
+        );
+    });
+}
+
+/// The influence lens: its unit, the ramp with its marks, the country in focus and "nothing
+/// measured". The largest issue and its channels are in the tooltip.
+fn influence_legend(ui: &mut Ui, i18n: &I18n, world: &World, on: bool) {
+    let Some(v) = world.live_influence.as_deref() else {
+        bf_ui_kit::small(ui, &i18n.tr("lens-influence-none"));
+        return;
+    };
+    let focus = crate::text::country_name(i18n, &v.tag);
+    bf_ui_kit::small(
+        ui,
+        &i18n.tr_args(
+            if on {
+                "legend-influence-unit-on"
+            } else {
+                "legend-influence-unit-over"
+            },
+            &[("country", Arg::String(focus.clone()))],
+        ),
+    );
+    // The ramp with a mark at each decade: 0.01 %, 0.1 %, 1 %, 10 %.
+    let w = ui.available_width();
+    let (rect, _) = ui.allocate_exact_size(Vec2::new(w, 26.0), Sense::hover());
+    let bar = Rect::from_min_size(rect.min, Vec2::new(w, 9.0));
+    let steps = 24;
+    let painter = ui.painter();
+    for k in 0..steps {
+        let t0 = k as f32 / steps as f32;
+        let t1 = (k + 1) as f32 / steps as f32;
+        let share = 10f64.powf(f64::from(t0) * 3.0 - 4.0);
+        let c = lens::influence_color(share);
+        painter.rect_filled(
+            Rect::from_min_max(
+                Pos2::new(bar.left() + t0 * w, bar.top()),
+                Pos2::new(bar.left() + t1 * w, bar.bottom()),
+            ),
+            0,
+            Color32::from_rgb(c[0], c[1], c[2]),
+        );
+    }
+    painter.rect_stroke(
+        bar,
+        2,
+        Stroke::new(1.0, color::BORDER),
+        egui::StrokeKind::Inside,
+    );
+    for (k, share) in lens::INFLUENCE_DECADES.iter().enumerate() {
+        let x = bar.left() + lens::influence_t(*share) * w;
+        let align = match k {
+            0 => Align2::LEFT_TOP,
+            3 => Align2::RIGHT_TOP,
+            _ => Align2::CENTER_TOP,
+        };
+        painter.text(
+            Pos2::new(x, bar.bottom() + 3.0),
+            align,
+            decade(i18n, *share),
+            sans(11.0),
+            color::TEXT_MUTED,
+        );
+    }
+    ui.horizontal_wrapped(|ui| {
+        swatch(
+            ui,
+            [lens::FOCUS[0], lens::FOCUS[1], lens::FOCUS[2], 255],
+            false,
+            &i18n.tr_args("legend-influence-focus", &[("country", Arg::String(focus))]),
+        );
+        ui.add_space(space::SM);
+        swatch(
+            ui,
+            [lens::EMPTY[0], lens::EMPTY[1], lens::EMPTY[2], 255],
+            false,
+            &i18n.tr("legend-influence-nothing"),
+        );
+    });
+}
+
+/// A mark of the influence ramp: 0,01 %, 0,1 %, 1 %, 10 %.
+fn decade(i18n: &I18n, share: f64) -> String {
+    let pct = share * 100.0;
+    let digits = if pct >= 1.0 {
+        0
+    } else {
+        (-pct.log10()).ceil() as usize
+    };
+    format!("{} %", i18n.decimal(pct, digits))
+}
+
+/// Rows of blocs the legend shows before it scrolls.
+const BLOC_ROWS: f32 = 3.0;
+
+/// The blocs lens: each bloc of the kind with its colour, name, leader and members; the
+/// leader's tone and the customs hatching.
+fn blocs_legend(ui: &mut Ui, i18n: &I18n, world: &World, kind: usize) {
+    let Some(v) = world.live_blocs.as_deref() else {
+        bf_ui_kit::small(ui, &i18n.tr("lens-blocs-none"));
+        return;
+    };
+    let order = lens::blocs_of_kind(v, kind);
+    if order.is_empty() {
+        bf_ui_kit::small(ui, &i18n.tr("lens-blocs-empty"));
+        return;
+    }
+    // Every bloc with its colour and name, in a short list that scrolls: no colour without
+    // its label.
+    egui::ScrollArea::vertical()
+        .id_salt(("lens-blocs", kind))
+        .max_height(BLOC_ROWS * 18.0)
+        .auto_shrink([false, true])
+        .show(ui, |ui| {
+            ui.spacing_mut().item_spacing.y = 2.0;
+            for (i, b) in order.iter().enumerate() {
+                swatch(
+                    ui,
+                    lens::bloc_color(i, true),
+                    false,
+                    &bloc_line(i18n, &v.blocs[*b]),
+                );
+            }
+        });
+    ui.horizontal_wrapped(|ui| {
+        swatch(
+            ui,
+            lens::bloc_color(0, false),
+            false,
+            &i18n.tr("legend-blocs-member"),
+        );
+        if kind == 0 {
+            ui.add_space(space::SM);
+            swatch(
+                ui,
+                [lens::EMPTY[0], lens::EMPTY[1], lens::EMPTY[2], 255],
+                true,
+                &i18n.tr("legend-blocs-customs"),
+            );
+        }
+    });
+}
+
+/// A bloc's name: the organization's when it has one, else by kind and leader, else by members.
+pub fn bloc_name(i18n: &I18n, b: &crate::blocs_view::BlocLine) -> String {
+    let org = format!("org-{}", b.key);
+    if i18n.has(&org) {
+        return i18n.tr(&org);
+    }
+    let kind = match b.kind {
+        bf_sim::influence::BlocKind::Military => "military",
+        bf_sim::influence::BlocKind::Monetary => "monetary",
+        bf_sim::influence::BlocKind::Subjects => "subjects",
+        bf_sim::influence::BlocKind::Customs => "customs",
+    };
+    match &b.leader {
+        Some(l) => i18n.tr_args(
+            &format!("bloc-name-{kind}"),
+            &[("leader", Arg::String(crate::text::country_name(i18n, l)))],
+        ),
+        None => b
+            .members
+            .iter()
+            .map(|t| crate::text::country_name(i18n, t))
+            .collect::<Vec<_>>()
+            .join(", "),
+    }
+}
+
+fn bloc_line(i18n: &I18n, b: &crate::blocs_view::BlocLine) -> String {
+    i18n.tr_args(
+        "legend-bloc-line",
+        &[
+            ("name", Arg::String(bloc_name(i18n, b))),
+            ("members", Arg::String(b.members.len().to_string())),
+            ("count", Arg::Num(b.members.len() as f64)),
+        ],
+    )
+}
+
+fn owner_tag(world: &World, state: usize) -> Option<&str> {
+    let c = world.states.get(state)?.owner?;
+    Some(world.countries.get(c)?.tag())
+}
+
+/// The influence under the pointer: the share, the largest issue and its channels.
+fn influence_tip(
+    i18n: &I18n,
+    world: &World,
+    state: usize,
+    issue: usize,
+    on: bool,
+) -> Option<String> {
+    let v = world.live_influence.as_deref()?;
+    let tag = owner_tag(world, state)?;
+    if tag == v.tag {
+        return Some(i18n.tr("tip-influence-focus"));
+    }
+    let pairs = if on { &v.on } else { &v.over };
+    let Some(p) = pairs.iter().find(|p| p.other == tag) else {
+        return Some(i18n.tr("tip-influence-nothing"));
+    };
+    let k = if issue == 0 {
+        p.issues
+            .iter()
+            .enumerate()
+            .max_by(|a, b| a.1.influence.total_cmp(&b.1.influence))
+            .map_or(0, |(k, _)| k)
+    } else {
+        issue - 1
+    };
+    let row = p.issues.get(k)?;
+    let mut parts: Vec<String> = row
+        .channels
+        .iter()
+        .filter(|c| c.part > 0.0)
+        .map(|c| {
+            format!(
+                "{} {}",
+                i18n.tr(super::influence::CHANNEL_KEYS[c.kind.min(3)]),
+                gdp_pct(i18n, c.part)
+            )
+        })
+        .collect();
+    if row.goodwill > 0.0 {
+        parts.push(i18n.tr_args(
+            "influence-goodwill",
+            &[("part", Arg::String(gdp_pct(i18n, row.goodwill)))],
+        ));
+    }
+    Some(i18n.tr_args(
+        "tip-influence",
+        &[
+            ("share", Arg::String(gdp_pct(i18n, row.influence))),
+            (
+                "issue",
+                Arg::String(i18n.tr(super::influence::ISSUE_KEYS[k.min(4)])),
+            ),
+            ("channels", Arg::String(parts.join(" · "))),
+        ],
+    ))
+}
+
+/// The bloc under the pointer, and the others of the kind it is in.
+fn blocs_tip(i18n: &I18n, world: &World, state: usize, kind: usize) -> Option<String> {
+    let v = world.live_blocs.as_deref()?;
+    let tag = owner_tag(world, state)?;
+    let k = *crate::blocs_view::KINDS.get(kind)?;
+    let mut lines: Vec<String> = v
+        .blocs
+        .iter()
+        .filter(|b| b.kind == k && b.members.iter().any(|m| m == tag))
+        .map(|b| {
+            if b.leader.as_deref() == Some(tag) {
+                i18n.tr_args(
+                    "tip-bloc-leader",
+                    &[("name", Arg::String(bloc_name(i18n, b)))],
+                )
+            } else {
+                bloc_name(i18n, b)
+            }
+        })
+        .collect();
+    if kind == 0
+        && v.blocs.iter().any(|b| {
+            b.kind == bf_sim::influence::BlocKind::Customs && b.members.iter().any(|m| m == tag)
+        })
+    {
+        lines.push(i18n.tr("legend-blocs-customs"));
+    }
+    if lines.is_empty() {
+        return Some(i18n.tr("tip-bloc-none"));
+    }
+    Some(lines.join(" · "))
 }

@@ -48,6 +48,13 @@ pub struct State {
     live_month: Option<(i32, u8)>,
     /// Figures the HUD shows, as last read from the simulation.
     live_figures: Option<std::sync::Arc<crate::live::LiveFigures>>,
+    /// The influence and blocs the map was last coloured with.
+    lens_seen: (
+        Option<std::sync::Arc<crate::influence_view::InfluenceView>>,
+        Option<std::sync::Arc<crate::blocs_view::BlocsView>>,
+    ),
+    /// The country the influence lens was last asked to look at.
+    lens_focus: Option<String>,
     last_autosave: laplace_schelling::calendar::Date,
     /// Saves the simulation is writing while the interface keeps drawing.
     writing: Vec<Writing>,
@@ -105,7 +112,13 @@ impl State {
             session
         };
         let repaint = ctx.clone();
-        let sim = SimHandle::start(session, rules.clone(), move || repaint.request_repaint());
+        let extras = crate::sim::Extras {
+            diplomacy: data.diplomacy.clone().map(std::sync::Arc::new),
+            focus: None,
+        };
+        let sim = SimHandle::start(session, rules.clone(), extras, move || {
+            repaint.request_repaint()
+        });
         let state = Self {
             last_autosave: save.meta.date,
             writing: Vec::new(),
@@ -130,6 +143,8 @@ impl State {
             research_camera: None,
             live_month: None,
             live_figures: None,
+            lens_seen: (None, None),
+            lens_focus: None,
         };
         if !path.is_file() {
             state.sim.save(path, state.save.meta.name.clone())?;
@@ -386,13 +401,33 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
                 .map(|f| crate::world::FigureTable::live(&world.countries, f));
             state.live_figures = snap.figures.clone();
         }
+        world.live_influence = snap.lens_influence.clone();
+        world.live_blocs = snap.blocs.clone();
         let month = (snap.date.year, snap.date.month);
-        if let Some(view) = &mut shared.map_view
-            && matches!(view.lens, crate::map::lens::Lens::Local(_))
-            && state.live_month != Some(month)
-        {
-            view.set_palette(crate::map::lens::palette(world, view.lens, snap.date.year));
+        let lens_data_new = !same(&snap.lens_influence, &state.lens_seen.0)
+            || !same(&snap.blocs, &state.lens_seen.1);
+        if let Some(view) = &mut shared.map_view {
+            use crate::map::lens::Lens;
+            let live = match view.lens {
+                Lens::Local(_) => state.live_month != Some(month),
+                Lens::Influence { .. } | Lens::Blocs(_) => lens_data_new,
+                _ => false,
+            };
+            if live {
+                view.set_palette(crate::map::lens::palette(world, view.lens, snap.date.year));
+            }
+            // The influence lens looks at the selected country, or the player's.
+            let focus = matches!(view.lens, Lens::Influence { .. })
+                .then(|| state.selected.or(player))
+                .flatten()
+                .and_then(|c| world.countries.get(c))
+                .map(|c| c.tag().to_owned());
+            if focus != state.lens_focus {
+                state.lens_focus.clone_from(&focus);
+                state.sim.send(crate::sim::Command::LensFocus(focus));
+            }
         }
+        state.lens_seen = (snap.lens_influence.clone(), snap.blocs.clone());
         state.live_month = Some(month);
     }
     // Border changes: owners, new countries, the map's colours and borders, the flags.
@@ -1497,4 +1532,12 @@ fn load_sea(
     }
     shared.sea_texture = Some(layer.textures(ctx));
     Ok(std::sync::Arc::new(layer))
+}
+
+/// The same shared value, or both absent.
+fn same<T>(a: &Option<std::sync::Arc<T>>, b: &Option<std::sync::Arc<T>>) -> bool {
+    match (a, b) {
+        (Some(a), Some(b)) => std::sync::Arc::ptr_eq(a, b),
+        (a, b) => a.is_none() && b.is_none(),
+    }
 }
