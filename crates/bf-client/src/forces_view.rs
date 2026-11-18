@@ -108,34 +108,38 @@ impl ForcesView {
     /// The most elements of row `row` a disband can take (called-up reservists go home by
     /// demobilization, not here).
     pub fn disbandable(&self, row: usize) -> u32 {
-        self.formations
+        let total: Fixed = self
+            .formations
             .iter()
             .filter(|f| f.row == row && !f.called_up)
-            .map(|f| f.elements.to_f64_lossy().ceil().max(0.0) as u32)
-            .sum()
+            .map(|f| f.elements.max(Fixed::ZERO))
+            .sum();
+        total.to_f64_lossy().ceil() as u32
     }
 
     /// Disbanding `count` elements of row `row`: raised formations first (their men keep their
-    /// training in the reserve, and the peace army would come back in January), then the
-    /// others, each in whole elements. `None` when nothing would leave.
+    /// training in the reserve, and the peace army would come back in January), the largest
+    /// first, so the count is met in whole elements and a sliver left by modernization does not
+    /// take an element's place. `None` when nothing would leave.
     pub fn disband(&self, row: usize, count: u32) -> Option<Disband> {
         let mut of: Vec<&FormationRef> = self
             .formations
             .iter()
             .filter(|f| f.row == row && !f.called_up && f.elements.is_positive())
             .collect();
-        of.sort_by_key(|f| (!f.raised, std::cmp::Reverse(f.index)));
-        let mut left = count;
+        of.sort_by(|a, b| (b.raised, b.elements, b.index).cmp(&(a.raised, a.elements, a.index)));
+        let mut left = Fixed::from_int(i64::from(count));
         let mut d = Disband::default();
         let mut goods: Vec<(u16, Fixed)> = Vec::new();
         for f in of {
-            if left == 0 {
+            if !left.is_positive() {
                 break;
             }
-            let whole = f.elements.to_f64_lossy().ceil().max(1.0) as u32;
-            let n = left.min(whole);
-            left -= n;
-            let taken = f.elements.to_f64_lossy().min(f64::from(n));
+            // `DisbandForces` takes whole elements, as many as the formation holds at most.
+            let n = left.min(f.elements).to_f64_lossy().ceil().max(1.0) as u32;
+            let taken = f.elements.min(Fixed::from_int(i64::from(n)));
+            left -= taken;
+            let taken = taken.to_f64_lossy();
             d.elements += taken;
             let men = (taken * f64::from(f.men_each)).round() as i64;
             if self.rows.get(row).map(|r| r.domain) == Some(Domain::Land) {
@@ -376,6 +380,22 @@ mod tests {
         assert!((d.goods[0].1 - 90.0).abs() < 1e-6, "{:?}", d.goods);
         assert!((d.value - 180.0).abs() < 1e-6);
         assert!(v.disband(0, 0).is_none());
+    }
+
+    #[test]
+    fn a_sliver_does_not_take_an_elements_place() {
+        // A peace formation of 3 and a sliver of 0.25 left by modernization.
+        let mut sliver = formation(0, false, 1);
+        sliver.elements = Fixed::from_ratio(1, 4);
+        let v = view(vec![formation(3, false, 30), sliver]);
+        assert_eq!(v.disbandable(0), 4);
+        let d = v.disband(0, 1).unwrap();
+        assert_eq!(d.commands, vec![(0, 1)]);
+        assert!((d.elements - 1.0).abs() < 1e-9);
+        // All of it: the sliver goes in one asked element.
+        let d = v.disband(0, 4).unwrap();
+        assert_eq!(d.commands, vec![(1, 1), (0, 3)]);
+        assert!((d.elements - 3.25).abs() < 1e-9);
     }
 
     #[test]

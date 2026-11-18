@@ -2893,8 +2893,8 @@ fn force_orders() {
 
 /// Disbanding forces (phase 5, slice A2): Britain five months after ordering six thousand
 /// infantry. The forces tab with a "Disband…" on each row; the first land type asked, with what
-/// goes back to the depot and where the men go; the last type of the table (a ship or aircraft,
-/// which leave service for good) asked; and the table after the confirming click. Portuguese at
+/// goes back to the depot and where the men go; the last type of the table (aircraft, which
+/// leave service for good) asked; and the table after its confirming click and a day. Portuguese at
 /// 1600 × 900, English at 1280 × 720; copies in `target/screenshots/disband/`.
 #[test]
 #[ignore = "needs a GPU (or software Vulkan) and the generated map; run with --ignored"]
@@ -2959,7 +2959,12 @@ fn disband_forces() {
         let name = format!("151-disband-land-{tag}");
         shot(&mut h, &name);
         keep(&name);
-        h.query_all(ask()).last().expect("a disband button").click();
+        h.query_all(ask())
+            .last()
+            .expect("a disband button")
+            .scroll_to_me();
+        h.run_steps(4);
+        h.query_all(ask()).last().unwrap().click();
         h.run_steps(4);
         h.query_all(yes())
             .next()
@@ -2969,9 +2974,7 @@ fn disband_forces() {
         let name = format!("152-disband-service-{tag}");
         shot(&mut h, &name);
         keep(&name);
-        // The land type disbanded: the next tick carries it out and the table reads it anew.
-        h.query_all(ask()).next().unwrap().click();
-        h.run_steps(4);
+        // The last type confirmed: the next tick carries it out and the table reads it anew.
         h.query_all(yes()).next().unwrap().click();
         h.run_steps(2);
         let snap = |h: &Harness<'_, App>| match &h.state().screen {
@@ -2992,13 +2995,14 @@ fn disband_forces() {
             h.run_steps(1);
         }
         h.run_steps(4);
-        assert_ne!(
-            snap(&h).forces.expect("forces").stock,
-            before,
-            "the disband was carried out"
+        let after = snap(&h).forces.expect("forces");
+        assert_ne!(after.stock, before, "the disband was carried out");
+        assert!(
+            after.stock.2 <= before.2 - laplace_schelling::Fixed::ONE,
+            "one element less: {before:?} → {:?}",
+            after.stock
         );
-        h.get_by_label(if en { "Types" } else { "Tipos" })
-            .scroll_to_me();
+        h.query_all(ask()).last().unwrap().scroll_to_me();
         h.run_steps(4);
         let name = format!("153-disband-done-{tag}");
         shot(&mut h, &name);
