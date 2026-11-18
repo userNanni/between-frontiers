@@ -23,4 +23,5 @@ pub mod scenario;
 pub mod sea;
 pub mod treaty;
 pub mod treaty_exec;
+pub mod treaty_system;
 pub mod war;

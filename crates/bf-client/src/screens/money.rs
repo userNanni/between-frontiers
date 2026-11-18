@@ -228,6 +228,10 @@ fn bank(ui: &mut Ui, cx: &mut TabContext<'_>, v: &GovernmentView) {
         cx.drafts.rate = Some(Some(new));
     }
     pending_note(ui, cx);
+    if let Some(issue) = v.issuance {
+        bf_ui_kit::gap(ui, space::MD);
+        super::issuance::show(ui, cx, &issue);
+    }
 }
 
 fn debt(ui: &mut Ui, i18n: &I18n, v: &GovernmentView) {

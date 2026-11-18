@@ -614,6 +614,25 @@ fecha.
   sigla (a guerra passa `world.countries` → sigla).
 - **Save:** versão 22 (`saves.pt-BR.md`).
 
+### Feito: o passo mensal dos acordos (desligado)
+
+- **Onde:** `treaty_system::TreatyMonth`, no dia 2 de cada mês, atrás de `clause_tests` em
+  `data/rules.ron` (`false`). Desligado, o sistema não entra no agendador, e o hash é o da `main`.
+- **Prazo:** em janeiro, `TreatyState::expire` encerra os acordos de prazo fixo vencido e os passa
+  para `ended`.
+- **Tributo** (`tribute`): quem dá paga, todo mês, um doze avos do valor anual a cada parte que
+  recebe, de Tesouro para Tesouro. A soma dos Tesouros não muda. O Tesouro que não tem o valor do
+  mês não paga, e isso é quebra (`ServiceUnpaid`), no máximo uma por ano por cláusula e por quem
+  dá. A quebra dá ao recebedor uma causa do valor do mês.
+- **As outras cláusulas contínuas** esperam o que medir (seção 14):
+  - `capital_protection`: quem perdeu as fábricas na expropriação;
+  - `demilitarized` e `arms_limit`: onde estão as forças e quantas são;
+  - `tariff_cap` e as outras tarifas: a tarifa no comércio.
+
+  Até lá, o teste delas não grava quebra.
+- **Custo:** um mês percorre os acordos em vigor e as cláusulas de tributo. Sem acordos, o sistema
+  volta na primeira linha.
+
 ## 13. Interface: a mesa de negociação, em Agendas
 
 A mesa não é um painel à parte: é uma **decisão rara da janela de Agendas (J)**, como libertar

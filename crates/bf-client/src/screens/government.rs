@@ -83,6 +83,8 @@ pub struct Drafts {
     pub campaign_confirm: bool,
     /// The budget levers as the player set them this tick (shown before the tick applies them).
     pub levers: Option<bf_sim::econ::levers::Levers>,
+    /// Where the treasury issues, as the player set it this tick (`Some(None)`: the rule).
+    pub issuance: Option<Option<[u16; 3]>>,
     /// The order of the public works the player set this tick (`Some(None)`: back to arrival).
     pub works_order: Option<Option<Vec<bf_sim::econ::levers::WorkKey>>>,
 }
