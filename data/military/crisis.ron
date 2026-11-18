@@ -11,4 +11,8 @@
     // From half the country (its people in the states asked for, or the money over its GDP),
     // the demand is existential.
     existential_share: 500,
+    // Third parties (W4): weeks the player has to answer a call to war by an agreement in force,
+    // and whether a call left to lapse is honoured (recommended to the owner, P2) or betrayed.
+    call_weeks: 2,
+    lapsed_call_honours: true,
 )

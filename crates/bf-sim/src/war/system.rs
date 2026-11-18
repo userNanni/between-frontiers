@@ -851,7 +851,9 @@ impl System<GameWorld> for Forces {
         let crises = self
             .crisis
             .as_ref()
-            .filter(|_| !world.war.conflicts.crises.is_empty())
+            .filter(|_| {
+                !world.war.conflicts.crises.is_empty() || !world.war.conflicts.calls.is_empty()
+            })
             .map(|setup| super::crisis::crisis_week(setup, &self.military, world));
         ForcesChanges {
             countries,
@@ -872,6 +874,13 @@ impl System<GameWorld> for Forces {
             world.war.conflicts = week.conflicts;
             for s in &week.settled {
                 crate::treaty_exec::queue(world, s, ctx.date.year);
+            }
+            for (call, honour) in &week.lapsed {
+                if *honour {
+                    super::third::join(world, call.war, call.party, call.side);
+                } else {
+                    super::third::betray(world, call, ctx.date);
+                }
             }
         }
     }

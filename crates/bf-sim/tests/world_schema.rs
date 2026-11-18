@@ -44,6 +44,7 @@ fn schema() -> String {
         bf_sim::borders::independence::How,
         bf_sim::econ::levers::SurplusUse,
         bf_sim::war::Stage,
+        bf_sim::war::third::CallSide,
     );
     let registry = tracer
         .registry()

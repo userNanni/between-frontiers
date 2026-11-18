@@ -283,6 +283,9 @@ pub enum GameCommand {
     },
     /// The side that demanded, refused, declares war (`true`) or backs down (`false`).
     Declare { tag: String, crisis: u32, war: bool },
+    /// The player, called to war `war` by an agreement in force (W4), honours the call and goes
+    /// to war (`true`) or does not, a breach of the clause unless it stands suspended.
+    AnswerCall { tag: String, war: u32, honour: bool },
     /// Points the country's research at a technology (index in the tree), or back to choosing
     /// by itself with `None`. Unknown tags and indices are no-ops.
     SetResearch { tag: String, tech: Option<u16> },
@@ -540,7 +543,8 @@ impl Command<GameWorld> for GameCommand {
                     // `None` takes the rules' deadline in the forces system's next week.
                     weeks_left: weeks.unwrap_or(crate::war::crisis::RULES_DEADLINE),
                     stage: crate::war::Stage::Waiting,
-                    casus_belli: false,
+                    // A cause from a breach the target committed against the one who demands.
+                    casus_belli: world.treaties.cause(tag, target).is_positive(),
                 });
             }
             GameCommand::AnswerCrisis {
@@ -566,8 +570,13 @@ impl Command<GameWorld> for GameCommand {
             }
             GameCommand::Declare { tag, crisis, war } => {
                 let me = world.countries.iter().position(|(_, c)| c.tag == *tag);
-                let date = (ctx.date.year, ctx.date.month, ctx.date.day);
-                crate::war::crisis_decide(&mut world.war, *crisis, me, *war, date);
+                crate::war::crisis_decide(world, *crisis, me, *war, ctx.date);
+            }
+            GameCommand::AnswerCall { tag, war, honour } => {
+                let me = world.countries.iter().position(|(_, c)| c.tag == *tag);
+                if let Some(me) = me {
+                    crate::war::third::answer(world, *war, me as u16, *honour, ctx.date);
+                }
             }
             GameCommand::SetLaw { tag, law } => {
                 let Some(ci) = world.countries.iter().position(|(_, c)| c.tag == *tag) else {
@@ -1289,7 +1298,7 @@ mod tests {
             foreign: &'a crate::foreign_stakes::ForeignState,
             influence: &'a crate::influence::InfluenceState,
             treaties: Treaties21<'a>,
-            war: &'a crate::war::WarState,
+            war: WarV22<'a>,
             education: &'a crate::demography::education::EducationState,
             independence: &'a crate::borders::independence::IndependenceState,
             levers: &'a crate::econ::levers::LeversState,
@@ -1531,9 +1540,73 @@ mod tests {
             hash_of(&with_ledger)
         );
         assert_eq!(
-            hash_of(&headed(22, &encode_snapshot(&with_ledger).unwrap())),
+            hash_of(&headed(23, &encode_snapshot(&with_ledger).unwrap())),
             hash_of(&with_ledger)
         );
+        // Versions 20 to 22, before the calls of third parties: the conflicts without `calls`.
+        #[derive(Serialize)]
+        struct ConflictsV22<'a> {
+            crises: &'a Vec<crate::war::Crisis>,
+            wars: &'a Vec<crate::war::WarOn>,
+            next_id: u32,
+        }
+        #[derive(Serialize)]
+        struct WarV22<'a> {
+            countries: &'a Vec<crate::war::CountryWar>,
+            soldiers: &'a Vec<i64>,
+            conflicts: ConflictsV22<'a>,
+        }
+        fn war_v22(w: &GameWorld) -> WarV22<'_> {
+            WarV22 {
+                countries: &w.war.countries,
+                soldiers: &w.war.soldiers,
+                conflicts: ConflictsV22 {
+                    crises: &w.war.conflicts.crises,
+                    wars: &w.war.conflicts.wars,
+                    next_id: w.war.conflicts.next_id,
+                },
+            }
+        }
+        #[derive(Serialize)]
+        struct BeforeCalls<'a> {
+            scenario: &'a String,
+            player: &'a Option<Id<Country>>,
+            countries: &'a Table<Country, CountryState>,
+            census: &'a Vec<CensusRecord>,
+            econ: &'a crate::econ::Economy,
+            research: &'a crate::research::ResearchState,
+            politics: &'a crate::polity::PoliticsState,
+            demography: &'a crate::demography::DemographyState,
+            borders: &'a crate::borders::BordersState,
+            foreign: &'a crate::foreign_stakes::ForeignState,
+            influence: &'a crate::influence::InfluenceState,
+            treaties: &'a crate::treaty::TreatyState,
+            war: WarV22<'a>,
+            education: &'a crate::demography::education::EducationState,
+            independence: &'a crate::borders::independence::IndependenceState,
+            levers: &'a crate::econ::levers::LeversState,
+        }
+        let w = &with_ledger;
+        let v22 = encode_snapshot(&BeforeCalls {
+            scenario: &w.scenario,
+            player: &w.player,
+            countries: &w.countries,
+            census: &w.census,
+            econ: &w.econ,
+            research: &w.research,
+            politics: &w.politics,
+            demography: &w.demography,
+            borders: &w.borders,
+            foreign: &w.foreign,
+            influence: &w.influence,
+            treaties: &w.treaties,
+            war: war_v22(w),
+            education: &w.education,
+            independence: &w.independence,
+            levers: &w.levers,
+        })
+        .unwrap();
+        assert_eq!(hash_of(&headed(22, &v22)), hash_of(&with_ledger));
         // Version 21, before the breaches of clauses.
         let before_breaches = encode_snapshot(&BeforeBreaches {
             scenario: &with_ledger.scenario,
@@ -1548,7 +1621,7 @@ mod tests {
             foreign: &with_ledger.foreign,
             influence: &with_ledger.influence,
             treaties: treaties21(&with_ledger.treaties),
-            war: &with_ledger.war,
+            war: war_v22(&with_ledger),
             education: &with_ledger.education,
             independence: &with_ledger.independence,
             levers: &with_ledger.levers,
@@ -1863,7 +1936,7 @@ mod tests {
             foreign: &'a crate::foreign_stakes::ForeignState,
             influence: &'a crate::influence::InfluenceState,
             treaties: Treaties21<'a>,
-            war: &'a crate::war::WarState,
+            war: WarV22<'a>,
             education: &'a crate::demography::education::EducationState,
             independence: &'a crate::borders::independence::IndependenceState,
             levers: LeversV18<'a>,
@@ -1887,7 +1960,7 @@ mod tests {
             foreign: &fixed.foreign,
             influence: &fixed.influence,
             treaties: treaties21(&fixed.treaties),
-            war: &fixed.war,
+            war: war_v22(&fixed),
             education: &fixed.education,
             independence: &fixed.independence,
             levers: LeversV18 {

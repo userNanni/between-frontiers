@@ -41,6 +41,20 @@ pub struct CrisisRules {
     pub yield_ratio: u32,
     /// Share of the country, per mille, from which a demand is existential and never yielded.
     pub existential_share: u32,
+    /// Weeks a third party called to war by an agreement has to answer (W4).
+    #[serde(default = "default_call_weeks")]
+    pub call_weeks: u16,
+    /// A call left to lapse is honoured (recommended to the owner, P2) or betrayed.
+    #[serde(default = "default_true")]
+    pub lapsed_call_honours: bool,
+}
+
+fn default_call_weeks() -> u16 {
+    2
+}
+
+fn default_true() -> bool {
+    true
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -88,11 +102,13 @@ pub struct Conflicts {
     pub wars: Vec<War>,
     /// Id of the next crisis or war.
     pub next_id: u32,
+    /// Calls to war the player has to answer (W4, `third`).
+    pub calls: Vec<super::third::Call>,
 }
 
 impl Conflicts {
     pub fn is_empty(&self) -> bool {
-        self.crises.is_empty() && self.wars.is_empty() && self.next_id == 0
+        self.crises.is_empty() && self.wars.is_empty() && self.next_id == 0 && self.calls.is_empty()
     }
 
     pub fn at_war(&self, a: u16, b: u16) -> bool {
@@ -231,6 +247,8 @@ pub struct CrisisWeek {
     pub conflicts: Conflicts,
     /// Demands accepted, to carry out as treaties.
     pub settled: Vec<crate::treaty_exec::Settlement>,
+    /// Calls whose deadline ran out, honoured (`true`) or betrayed by the rule `lapsed_call_honours`.
+    pub lapsed: Vec<(super::third::Call, bool)>,
 }
 
 /// A week of crises: deadlines run, the AI answers as the target (W3) and backs down when it
@@ -244,7 +262,22 @@ pub fn crisis_week(setup: &CrisisSetup, mil: &Military, world: &GameWorld) -> Cr
     let mut out = CrisisWeek {
         conflicts: world.war.conflicts.clone(),
         settled: Vec::new(),
+        lapsed: Vec::new(),
     };
+    // Calls to war: the deadline runs; lapsed, they are honoured or betrayed by the rules.
+    let mut calls = Vec::new();
+    for mut c in std::mem::take(&mut out.conflicts.calls) {
+        if c.weeks_left == RULES_DEADLINE {
+            c.weeks_left = setup.rules.call_weeks;
+        }
+        if c.weeks_left == 0 {
+            out.lapsed.push((c, setup.rules.lapsed_call_honours));
+        } else {
+            c.weeks_left -= 1;
+            calls.push(c);
+        }
+    }
+    out.conflicts.calls = calls;
     let mut keep = Vec::new();
     for mut k in std::mem::take(&mut out.conflicts.crises) {
         if k.weeks_left == RULES_DEADLINE {
@@ -283,15 +316,16 @@ pub fn crisis_week(setup: &CrisisSetup, mil: &Military, world: &GameWorld) -> Cr
 }
 
 /// The side that demanded crisis `id` and heard a refusal declares war or backs down. Declared,
-/// both sides call up their reserve; the demand stays at stake in the war.
+/// both sides call up their reserve; the demand stays at stake in the war; the agreements in
+/// force call in third parties (W4, `third::on_declaration`).
 pub fn crisis_decide(
-    war: &mut WarState,
+    world: &mut GameWorld,
     id: u32,
     by: Option<usize>,
     declare: bool,
-    date: (i32, u8, u8),
+    date: laplace_schelling::Date,
 ) {
-    let c = &mut war.conflicts;
+    let c = &mut world.war.conflicts;
     let Some(i) = c
         .crises
         .iter()
@@ -311,13 +345,14 @@ pub fn crisis_decide(
         side_b: vec![k.target],
         crisis: k.id,
         demand: k.demand,
-        since: date,
+        since: (date.year, date.month, date.day),
     });
     for s in [k.by, k.target] {
-        if let Some(cw) = war.countries.get_mut(s as usize) {
+        if let Some(cw) = world.war.countries.get_mut(s as usize) {
             cw.mobilized = true;
         }
     }
+    super::third::on_declaration(world, wid, RULES_DEADLINE, date);
 }
 
 impl HashState for Proposal {
@@ -361,6 +396,13 @@ impl HashState for Conflicts {
             h.write_u8(w.since.2);
         }
         h.write_u32(self.next_id);
+        // Only when there are any: a crisis run without third parties hashes as before them.
+        if !self.calls.is_empty() {
+            h.write_len(self.calls.len());
+            for c in &self.calls {
+                c.hash_state(h);
+            }
+        }
     }
 }
 
@@ -373,6 +415,8 @@ mod tests {
             deadline_weeks: 4,
             yield_ratio: 3000,
             existential_share: 500,
+            call_weeks: 2,
+            lapsed_call_honours: true,
         }
     }
 
