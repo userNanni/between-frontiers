@@ -84,6 +84,11 @@ const PLAYER: &[Surface] = &[
         files: &["screens/forces.rs"],
     },
     Surface {
+        variant: "DisbandForces",
+        command: id::TAB_FORCES,
+        files: &["screens/forces.rs"],
+    },
+    Surface {
         variant: "CancelOrder",
         command: id::TAB_FORCES,
         files: &["screens/forces.rs"],
@@ -162,12 +167,6 @@ const PLAYER: &[Surface] = &[
 
 /// Variants the player does not give from a screen with a key, and why.
 const EXCEPTIONS: &[(&str, &str)] = &[
-    // Draft of slice A2's last part: the "Dissolver" of the forces tab comes with the interface
-    // PR stacked on this one; this line leaves with it.
-    (
-        "DisbandForces",
-        "draft: the forces tab's disband is being made",
-    ),
     (
         "Borders",
         "issued by treaties, peace, tests and tools; the player frees its land with Liberate",

@@ -38,6 +38,7 @@ points-reason-accept = Antes de aceitar um acordo
 points-reason-war = Antes de declarar guerra
 points-reason-treaty = Antes de assinar um tratado
 points-reason-load = Antes de voltar a outro ponto
+points-reason-disband = Antes de dissolver forças
 points-load = Voltar a este ponto
 points-rename = Renomear
 points-delete = Apagar

@@ -797,6 +797,14 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
             &mut gov_place,
         );
         keep_window_place(shared, "government", gov_place, res.place_done);
+        // Ships and aircraft disbanded leave service for good: a point to come back to first.
+        if res
+            .commands
+            .iter()
+            .any(|c| matches!(c, GameCommand::DisbandForces { .. }))
+        {
+            state.restore_point_before(shared, Reason::Disband);
+        }
         for c in res.commands {
             if matches!(c, GameCommand::SetLaw { .. }) {
                 state.restore_point_before(shared, Reason::Law);

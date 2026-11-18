@@ -46,6 +46,7 @@ com as telas da fatia, e a exceção sai com elas.
 | Mobilizar e desmobilizar | `Mobilize { on }` | Agendas, decisão em dois passos, com ponto de restauração antes (motivo "guerra") | em revisão (#115) |
 | Encomendar tropas, navios e aviões | `OrderForces` | Governo → Forças → "Nova encomenda": tipo, elementos, colonial; o custo de construir e o de todo ano; a encomenda grande pede um segundo clique | em revisão |
 | Cancelar uma encomenda | `CancelOrder` | Governo → Forças → "Encomendas": "Cancelar" e confirmação; o construído vai ao depósito | em revisão |
+| Dissolver tropas, dar baixa em navios e aviões | `DisbandForces` | Governo → Forças → "Dissolver…" na linha do tipo: quantos elementos, o que volta ao depósito (valor e bens), quantos homens vão à reserva ou para casa, e o aviso de que o exército de paz volta ao tamanho de paz em janeiro; "Dissolver" confirma, com ponto de restauração antes (motivo "dissolver forças"). Tira primeiro as formações encomendadas. Reservistas chamados voltam por `Mobilize` | em revisão |
 
 ## Desenhadas, sem comando ainda
 

@@ -1,6 +1,7 @@
 //! Government tab: the armed forces. What is under arms by unit type, with its equipment and
-//! training, the reserve and what it costs each week. Reading only: mobilizing is a decision of
-//! the journal's agendas, with a confirmation step.
+//! training, the reserve and what it costs each week; the orders of new forces, and disbanding
+//! some of a type, with what goes back to the depot shown before the confirming click.
+//! Mobilizing is a decision of the journal's agendas, with a confirmation step.
 
 use bf_i18n::{Arg, I18n};
 use bf_sim::game::GameCommand;
@@ -39,7 +40,8 @@ pub fn show(ui: &mut Ui, cx: &mut TabContext<'_>) {
     bf_ui_kit::gap(ui, space::SM);
     summary(ui, i18n, f, cx.view.map_or(0.0, |v| v.gdp_last_year));
     bf_ui_kit::gap(ui, space::MD);
-    table(ui, i18n, f);
+    table(ui, i18n, f, cx.orders);
+    disband(ui, cx);
     bf_ui_kit::gap(ui, space::MD);
     orders(ui, cx);
     bf_ui_kit::gap(ui, space::MD);
@@ -98,10 +100,10 @@ fn summary(ui: &mut Ui, i18n: &I18n, f: &ForcesView, gdp: f64) {
     bf_ui_kit::small(ui, &state);
 }
 
-fn table(ui: &mut Ui, i18n: &I18n, f: &ForcesView) {
+fn table(ui: &mut Ui, i18n: &I18n, f: &ForcesView, st: &mut OrdersUi) {
     bf_ui_kit::heading(ui, &i18n.tr("forces-units"));
     egui::Grid::new("forces-units")
-        .num_columns(7)
+        .num_columns(8)
         .striped(true)
         .show(ui, |ui| {
             for key in [
@@ -115,8 +117,9 @@ fn table(ui: &mut Ui, i18n: &I18n, f: &ForcesView) {
             ] {
                 ui.strong(i18n.tr(key));
             }
+            ui.label("");
             ui.end_row();
-            for r in &f.rows {
+            for (i, r) in f.rows.iter().enumerate() {
                 let mut name = i18n.tr(&format!("unit-{}", r.unit));
                 if r.called_up {
                     name = i18n.tr_args("forces-called-up", &[("unit", arg(name))]);
@@ -128,6 +131,28 @@ fn table(ui: &mut Ui, i18n: &I18n, f: &ForcesView) {
                 ui.label(i18n.int(r.men));
                 ui.label(pct(i18n, r.equipment * 100.0, 0));
                 ui.label(pct(i18n, r.training * 100.0, 0));
+                if f.disbandable(i) > 0 {
+                    let open = st.disband.as_ref().is_some_and(|d| d.row == i);
+                    let label = i18n.tr("forces-disband");
+                    let b = if open {
+                        Button::secondary(&label)
+                    } else {
+                        Button::ghost(&label)
+                    }
+                    .size(ButtonSize::Small)
+                    .show(ui);
+                    let id = format!("forces.disband.{}.{}", r.unit, r.generation);
+                    if b.clicked() || keys::item(ui, 'D', id, &(i + 1).to_string(), b.rect) {
+                        st.disband = (!open).then(|| DisbandUi {
+                            row: i,
+                            unit: r.unit.clone(),
+                            generation: r.generation,
+                            count: 1,
+                        });
+                    }
+                } else {
+                    ui.label("");
+                }
                 ui.end_row();
             }
         });
@@ -145,6 +170,190 @@ pub struct OrdersUi {
     pub confirming: bool,
     /// The queue index whose cancellation waits for its second click.
     pub cancel: Option<u32>,
+    /// The type whose disband is being weighed.
+    pub disband: Option<DisbandUi>,
+    /// The forces as they stood when a disband was sent: the step waits for the simulation to
+    /// carry it out before taking another (the formations' indices move).
+    pub disband_sent: Option<crate::forces_view::Stock>,
+}
+
+/// The disband step of one row of the forces' table.
+#[derive(Clone, Debug, PartialEq)]
+pub struct DisbandUi {
+    pub row: usize,
+    /// The row's type and generation, to find it again when the table is read anew.
+    pub unit: String,
+    pub generation: u8,
+    /// Elements to disband.
+    pub count: u32,
+}
+
+/// The disband step, below the table: how many elements, what goes to the depot and where the
+/// men go, then the confirming click. Sends one `DisbandForces` per formation touched.
+fn disband(ui: &mut Ui, cx: &mut TabContext<'_>) {
+    let i18n = cx.i18n;
+    let Some(f) = cx.snap.forces.as_deref() else {
+        return;
+    };
+    let st = &mut *cx.orders;
+    if st.disband_sent.is_some_and(|s| s != f.stock) {
+        st.disband_sent = None;
+    }
+    let Some(mut d) = st.disband.clone() else {
+        return;
+    };
+    // The table read anew may have moved the row, or the type may be gone.
+    match f
+        .rows
+        .iter()
+        .position(|r| r.unit == d.unit && r.generation == d.generation && !r.called_up)
+    {
+        Some(row) => d.row = row,
+        None => {
+            st.disband = None;
+            return;
+        }
+    }
+    let max = f.disbandable(d.row);
+    if max == 0 {
+        st.disband = None;
+        return;
+    }
+    d.count = d.count.clamp(1, max);
+    let Some(plan) = f.disband(d.row, d.count) else {
+        st.disband = None;
+        return;
+    };
+    let r = &f.rows[d.row];
+    let name = unit_name(i18n, &r.unit);
+    let waiting = st.disband_sent.is_some();
+    let (mut close, mut sent) = (false, false);
+    bf_ui_kit::gap(ui, space::SM);
+    bf_ui_kit::card_frame().show(ui, |ui| {
+        ui.spacing_mut().item_spacing.y = space::XS;
+        bf_ui_kit::heading(
+            ui,
+            &i18n.tr_args("forces-disband-title", &[("unit", arg(name.clone()))]),
+        );
+        ui.horizontal(|ui| {
+            ui.label(i18n.tr("forces-disband-count"));
+            let step = super::gov_ui::stepper(
+                ui,
+                &d.count.to_string(),
+                &i18n.tr("forces-disband-count-tip"),
+                d.count > 1,
+                d.count < max,
+                super::gov_ui::StepTips {
+                    family: 'Q',
+                    id: "forces.disband.count",
+                    row: 1,
+                },
+            );
+            if step != 0 {
+                d.count = (d.count as i32 + step).clamp(1, max as i32) as u32;
+            }
+            ui.label(amount(i18n, r.domain, plan.elements, men_each(f, d.row)));
+        });
+        // Where the men go.
+        if plan.to_reserve > 0 {
+            bf_ui_kit::stat_row(
+                ui,
+                &i18n.tr("forces-disband-reserve"),
+                &i18n.int(plan.to_reserve),
+            );
+        }
+        if plan.home > 0 {
+            bf_ui_kit::stat_row(ui, &i18n.tr("forces-disband-home"), &i18n.int(plan.home));
+        }
+        bf_ui_kit::stat_row(
+            ui,
+            &i18n.tr("forces-disband-depot"),
+            &money(i18n, plan.value),
+        );
+        if plan.goods.is_empty() {
+            bf_ui_kit::small(ui, &i18n.tr("forces-disband-no-goods"));
+        } else {
+            let shown: Vec<String> = plan
+                .goods
+                .iter()
+                .take(GOODS_SHOWN)
+                .map(|(g, _, v)| {
+                    i18n.tr_args(
+                        "forces-disband-good",
+                        &[
+                            ("good", arg(good_name(i18n, cx.catalogue, *g))),
+                            ("value", arg(money(i18n, *v))),
+                        ],
+                    )
+                })
+                .collect();
+            let mut line = shown.join(" · ");
+            if plan.goods.len() > GOODS_SHOWN {
+                line = i18n.tr_args(
+                    "forces-disband-goods-more",
+                    &[
+                        ("goods", arg(line)),
+                        ("n", arg(i18n.int((plan.goods.len() - GOODS_SHOWN) as i64))),
+                        ("count", Arg::Num((plan.goods.len() - GOODS_SHOWN) as f64)),
+                    ],
+                );
+            }
+            ui.add(egui::Label::new(line).wrap());
+        }
+        let note = match r.domain {
+            Domain::Land if plan.home > 0 => "forces-disband-note-peace",
+            Domain::Land => "forces-disband-note-raised",
+            _ => "forces-disband-note-service",
+        };
+        bf_ui_kit::small(ui, &i18n.tr(note));
+        if waiting {
+            bf_ui_kit::small(ui, &i18n.tr("forces-disband-waiting"));
+        }
+        ui.horizontal(|ui| {
+            let yes = Button::danger(&i18n.tr("forces-disband-yes"))
+                .size(ButtonSize::Medium)
+                .enabled(!waiting)
+                .show(ui);
+            if (yes.clicked() || keys::single(ui, "forces.disband.yes", 'Y', yes.rect)) && !waiting
+            {
+                for (formation, elements) in &plan.commands {
+                    cx.commands.push(GameCommand::DisbandForces {
+                        tag: cx.tag.to_owned(),
+                        formation: *formation,
+                        elements: *elements,
+                    });
+                }
+                sent = true;
+            }
+            let no = Button::ghost(&i18n.tr("forces-disband-no"))
+                .size(ButtonSize::Medium)
+                .show(ui);
+            if no.clicked() || keys::single(ui, "forces.disband.no", 'N', no.rect) {
+                close = true;
+            }
+        });
+    });
+    if sent {
+        st.disband_sent = Some(f.stock);
+    }
+    st.disband = (!close && !sent).then_some(d);
+}
+
+/// Goods named in the disband step; the rest are counted.
+const GOODS_SHOWN: usize = 4;
+
+fn good_name(i18n: &I18n, cat: &bf_sim::econ::Catalogue, g: u16) -> String {
+    cat.goods
+        .get(g as usize)
+        .map_or_else(String::new, |x| i18n.tr(&format!("good-{}", x.key)))
+}
+
+/// Men in one element of the row's formations.
+fn men_each(f: &ForcesView, row: usize) -> u32 {
+    f.formations
+        .iter()
+        .find(|x| x.row == row)
+        .map_or(0, |x| x.men_each)
 }
 
 /// Most elements one order takes.

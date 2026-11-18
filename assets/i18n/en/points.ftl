@@ -38,6 +38,7 @@ points-reason-accept = Before accepting an agreement
 points-reason-war = Before declaring war
 points-reason-treaty = Before signing a treaty
 points-reason-load = Before going back to another point
+points-reason-disband = Before disbanding forces
 points-load = Go back to this point
 points-rename = Rename
 points-delete = Delete

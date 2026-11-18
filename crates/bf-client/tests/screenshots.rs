@@ -2891,6 +2891,116 @@ fn force_orders() {
     let _ = std::fs::remove_dir_all(&user);
 }
 
+/// Disbanding forces (phase 5, slice A2): Britain five months after ordering six thousand
+/// infantry. The forces tab with a "Disband…" on each row; the first land type asked, with what
+/// goes back to the depot and where the men go; the last type of the table (a ship or aircraft,
+/// which leave service for good) asked; and the table after the confirming click. Portuguese at
+/// 1600 × 900, English at 1280 × 720; copies in `target/screenshots/disband/`.
+#[test]
+#[ignore = "needs a GPU (or software Vulkan) and the generated map; run with --ignored"]
+fn disband_forces() {
+    use bf_sim::game::GameCommand;
+    use laplace_schelling::calendar::Date;
+    // SAFETY: the screenshot tests run one at a time (`RUST_TEST_THREADS=1`).
+    unsafe { std::env::set_var("BF_RULES", "forces") };
+    let user = std::env::temp_dir().join(format!("bf-shots-disband-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&user);
+    let forces = bf_sim::game::Switches::parse("forces").expect("switches");
+    let mut session = advanced_session_with("GBR", Date::new(1925, 1, 2), forces);
+    session.submit(GameCommand::OrderForces {
+        tag: "GBR".into(),
+        unit: "infantry".into(),
+        elements: 6,
+        colonial: false,
+    });
+    while session.clock().date < Date::new(1925, 6, 1) {
+        session.sim.step();
+    }
+    let save = write_campaign(&user, &session, "Dissolver", "GBR", &[]);
+    let dir = root().join("target/screenshots/disband");
+    std::fs::create_dir_all(&dir).unwrap();
+    let keep = |name: &str| {
+        let from = out_dir().join(format!("{name}.png"));
+        std::fs::copy(&from, dir.join(format!("{name}.png"))).unwrap();
+    };
+    for (locale, size, tag) in [
+        ("pt-BR", egui::vec2(1600.0, 900.0), "pt"),
+        ("en", egui::vec2(1280.0, 720.0), "en-1280"),
+    ] {
+        let en = locale == "en";
+        let mut h = harness_sized(user.join(locale), locale, size);
+        let ctx = h.ctx.clone();
+        h.state_mut().apply(Transition::Game(save.clone()), &ctx);
+        h.run_steps(4);
+        h.key_press(egui::Key::G);
+        h.run_steps(4);
+        h.get_by_label(if en { "Forces" } else { "Forças" }).click();
+        h.run_steps(4);
+        let ask = || {
+            egui_kittest::kittest::by()
+                .role(egui::accesskit::Role::Button)
+                .label(if en { "Disband…" } else { "Dissolver…" })
+        };
+        let name = format!("150-disband-table-{tag}");
+        shot(&mut h, &name);
+        keep(&name);
+        h.query_all(ask()).next().expect("a disband button").click();
+        h.run_steps(4);
+        let yes = || {
+            egui_kittest::kittest::by()
+                .role(egui::accesskit::Role::Button)
+                .label(if en { "Disband" } else { "Dissolver" })
+        };
+        h.query_all(yes()).next().expect("the confirming button").scroll_to_me();
+        h.run_steps(4);
+        let name = format!("151-disband-land-{tag}");
+        shot(&mut h, &name);
+        keep(&name);
+        h.query_all(ask()).last().expect("a disband button").click();
+        h.run_steps(4);
+        h.query_all(yes()).next().expect("the confirming button").scroll_to_me();
+        h.run_steps(4);
+        let name = format!("152-disband-service-{tag}");
+        shot(&mut h, &name);
+        keep(&name);
+        // The land type disbanded: the next tick carries it out and the table reads it anew.
+        h.query_all(ask()).next().unwrap().click();
+        h.run_steps(4);
+        h.query_all(yes()).next().unwrap().click();
+        h.run_steps(2);
+        let snap = |h: &Harness<'_, App>| match &h.state().screen {
+            Screen::Game(g) => g.snapshot(),
+            _ => panic!("not in a campaign"),
+        };
+        let before = snap(&h).forces.expect("forces").stock;
+        h.key_press(egui::Key::Space);
+        let started = std::time::Instant::now();
+        while snap(&h).forces.expect("forces").stock == before && started.elapsed().as_secs() < 30
+        {
+            std::thread::sleep(std::time::Duration::from_millis(50));
+            h.run_steps(1);
+        }
+        h.key_press(egui::Key::Space);
+        let paused_at = std::time::Instant::now();
+        while !snap(&h).paused && paused_at.elapsed().as_secs() < 10 {
+            std::thread::sleep(std::time::Duration::from_millis(50));
+            h.run_steps(1);
+        }
+        h.run_steps(4);
+        assert_ne!(
+            snap(&h).forces.expect("forces").stock,
+            before,
+            "the disband was carried out"
+        );
+        h.get_by_label(if en { "Types" } else { "Tipos" }).scroll_to_me();
+        h.run_steps(4);
+        let name = format!("153-disband-done-{tag}");
+        shot(&mut h, &name);
+        keep(&name);
+    }
+    let _ = std::fs::remove_dir_all(&user);
+}
+
 /// Answering a demand of independence: Nigeria's demand pending on the United Kingdom, from the
 /// red button in the Agendas to the screen with the four answers, the refusal chosen and the
 /// review before confirming; in Portuguese at 1600 × 900 and in English at 1280 × 720.

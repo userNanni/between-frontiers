@@ -21,7 +21,26 @@ forces-col-men = Men
 forces-col-equipment = Equipment
 forces-col-training = Training
 forces-called-up = { $unit } (reservists)
-forces-decision-hint = Mobilizing is a decision of the journal, under Agendas, with a confirmation.
+forces-decision-hint = Mobilizing is a decision of the journal, in Agendas, with a confirmation step. Disbanding takes whole elements of a type: pick how many and confirm.
+forces-disband = Disband…
+forces-disband-title = Disband: { $unit }
+forces-disband-count = Elements
+forces-disband-count-tip = Elements to disband: 1,000 men on land, one ship, one aircraft, one weapon
+forces-disband-reserve = Men who join the reserve
+forces-disband-home = Men who go home
+forces-disband-depot = Back to the depot
+forces-disband-good = { $good } { $value }
+forces-disband-goods-more = { $goods } and { $count ->
+    [one] { $n } more good
+   *[other] { $n } more goods
+}
+forces-disband-no-goods = No equipment: nothing goes back to the depot.
+forces-disband-note-peace = The peace army comes back to its size in peace in January: disbanding now eases the budget until then. To be smaller for good, change the military service law.
+forces-disband-note-raised = The men ordered join the reserve, with the training they had; their equipment stays in the depot for the next order.
+forces-disband-note-service = They leave service and do not come back: what can be used of them goes to the depot. A new order takes months.
+forces-disband-waiting = Disband sent; the table updates next week.
+forces-disband-yes = Disband
+forces-disband-no = Keep
 forces-domain-land = Land
 forces-domain-sea = Sea
 forces-domain-air = Air
