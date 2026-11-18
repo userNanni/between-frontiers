@@ -277,24 +277,27 @@ impl GameData {
             war,
             crisis,
             trade: switches.trade_by_pair.then(|| self.trade_geography()),
-            treaties: (switches.clause_tests || switches.reputation).then(|| {
-                Arc::new(crate::treaty_system::TreatySetup {
-                    decay: self
-                        .clauses
-                        .as_ref()
-                        .map_or(laplace_schelling::Fixed::ZERO, |c| {
-                            c.weights.reputation_decay
-                        }),
-                    government: self
-                        .politics
-                        .as_ref()
-                        .and_then(|p| {
-                            let g = p.group(crate::politics::GOVERNMENT_GROUP)?;
-                            Some(p.groups[g].laws.clone())
-                        })
-                        .unwrap_or_default(),
-                })
-            }),
+            treaties: (switches.clause_tests || switches.reputation || switches.negotiation).then(
+                || {
+                    Arc::new(crate::treaty_system::TreatySetup {
+                        decay: self
+                            .clauses
+                            .as_ref()
+                            .map_or(laplace_schelling::Fixed::ZERO, |c| {
+                                c.weights.reputation_decay
+                            }),
+                        government: self
+                            .politics
+                            .as_ref()
+                            .and_then(|p| {
+                                let g = p.group(crate::politics::GOVERNMENT_GROUP)?;
+                                Some(p.groups[g].laws.clone())
+                            })
+                            .unwrap_or_default(),
+                        clauses: self.clauses.clone().map(Arc::new),
+                    })
+                },
+            ),
             switches,
             education: match (&self.education_1925, &self.literacy_campaign) {
                 (Some(start), Some(campaign)) => {

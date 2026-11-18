@@ -22,6 +22,7 @@ fn setup() -> TreatySetup {
     TreatySetup {
         decay: Fixed::from_ratio(1, 10),
         government: Vec::new(),
+        clauses: None,
     }
 }
 

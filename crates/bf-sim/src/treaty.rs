@@ -1500,6 +1500,8 @@ pub struct TreatyState {
     pub reputation: BTreeMap<Tag, Reputation>,
     /// Breaches raise the reputation (`Switches::reputation`, off; set when the world is made).
     pub reputation_on: bool,
+    /// The negotiation table: proposals open and closed (`treaty_table`).
+    pub table: crate::treaty_table::Table,
 }
 
 /// What a country's broken promises weigh, by kind (owner's decision P1, 2026-11-18): `security`
@@ -1536,7 +1538,7 @@ pub fn is_security(kind: &ClauseKind) -> bool {
 
 impl TreatyState {
     pub fn is_empty(&self) -> bool {
-        self.recognition.is_empty() && self.next_agreement == 0
+        self.recognition.is_empty() && self.next_agreement == 0 && self.table.is_empty()
     }
 
     /// Records a signed agreement; returns its id.
@@ -1589,6 +1591,15 @@ impl TreatyState {
                 kept,
                 status: AgreementStatus::InForce,
             });
+        }
+    }
+
+    /// Ends agreement `id` in `year` and moves it to `ended` (a denunciation).
+    pub fn end(&mut self, id: u32, year: i32) {
+        if let Some(i) = self.agreements.iter().position(|a| a.id == id) {
+            let mut a = self.agreements.remove(i);
+            a.status = AgreementStatus::Ended { year };
+            self.ended.push(a);
         }
     }
 
@@ -1807,6 +1818,8 @@ pub enum BreachCause {
     Repudiated,
     /// A war started against a party promised non-aggression.
     Attacked { war: u32 },
+    /// The agreement denounced without the notice it asks for (`treaty_table`).
+    Denounced,
 }
 
 /// A cause one party holds against another for a breach (9.3).
@@ -1857,6 +1870,7 @@ impl HashState for Breach {
             BreachCause::TestFailed => (2, 0),
             BreachCause::Repudiated => (3, 0),
             BreachCause::Attacked { war } => (4, war),
+            BreachCause::Denounced => (5, 0),
         };
         h.write_u8(k);
         h.write_u32(w);
@@ -1869,6 +1883,35 @@ impl HashState for Cause {
         h.write_str(&self.against);
         self.value.hash_state(h);
         h.write_u32(self.breach);
+    }
+}
+
+/// The treaty state of format 24: the reputation, no negotiation table.
+#[derive(Default, Serialize, Deserialize)]
+pub(crate) struct TreatyStateBeforeTable {
+    recognition: Recognition,
+    agreements: Vec<Agreement>,
+    ended: Vec<Agreement>,
+    next_agreement: u32,
+    breaches: Vec<Breach>,
+    causes: Vec<Cause>,
+    reputation: BTreeMap<Tag, Reputation>,
+    reputation_on: bool,
+}
+
+impl From<TreatyStateBeforeTable> for TreatyState {
+    fn from(t: TreatyStateBeforeTable) -> Self {
+        TreatyState {
+            recognition: t.recognition,
+            agreements: t.agreements,
+            ended: t.ended,
+            next_agreement: t.next_agreement,
+            breaches: t.breaches,
+            causes: t.causes,
+            reputation: t.reputation,
+            reputation_on: t.reputation_on,
+            ..Default::default()
+        }
     }
 }
 
@@ -2001,6 +2044,11 @@ impl HashState for TreatyState {
         if !self.breaches.is_empty() {
             self.breaches.hash_state(h);
             self.causes.hash_state(h);
+        }
+        // And worlds with nothing on the table.
+        if !self.table.is_empty() {
+            let bytes = laplace_schelling::save::encode_snapshot(&self.table).unwrap_or_default();
+            h.write_bytes(&bytes);
         }
         // And worlds without a reputation kept.
         if self.reputation_on || !self.reputation.is_empty() {
