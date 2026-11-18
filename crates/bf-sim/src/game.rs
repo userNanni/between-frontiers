@@ -790,7 +790,7 @@ pub struct Rules {
 /// `bf-bench --rule NAME` for a run.
 /// The fields are in alphabetical order (as `NAMES`, `switch_on` and `data/rules.ron`): a new
 /// rule goes in its place, not at the end.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Deserialize)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Switches {
     /// Crises and declaration (`docs/war.pt-BR.md`, "Crise e declaração"): demands with a
@@ -846,8 +846,10 @@ pub struct Switches {
 }
 
 impl Switches {
-    /// The names `switch_on` knows, in the order of the fields.
-    pub const NAMES: [&'static str; 14] = [
+    /// The names `switch_on` knows, in the order of the fields. A slice, not an array: its
+    /// length is not part of the type, so two PRs that each add a switch merge without breaking
+    /// the build. `tests/trade_by_pair.rs` checks it against the fields and `data/rules.ron`.
+    pub const NAMES: &'static [&'static str] = &[
         "crisis",
         "fiscal_capacity",
         "forces",
