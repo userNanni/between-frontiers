@@ -30,7 +30,7 @@ cláusulas.
   de negociação, desenhada.
 - **Onde está o detalhe:** [seção 3](../../treaties.pt-BR.md#3-o-acordo),
   [seção 4](../../treaties.pt-BR.md#4-catálogo-de-cláusulas),
-  [seção 13](../../treaties.pt-BR.md#13-interface-a-mesa-de-negociação); `data/diplomacy/clauses.ron`.
+  [seção 13](../../treaties.pt-BR.md#13-interface-a-mesa-de-negociação-em-agendas); `data/diplomacy/clauses.ron`.
 
 ### Dívida entre Estados com nome e calendário
 
