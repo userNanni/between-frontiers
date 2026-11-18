@@ -155,6 +155,10 @@ pub struct Market {
     /// on; `None` off. An output for the screen: not saved, not hashed.
     #[serde(skip)]
     pub uncollected: Option<Fixed>,
+    /// Last week's new bonds with the issue split fixed (D9); `None` on the rule. An output for
+    /// the screen: not saved, not hashed.
+    #[serde(skip)]
+    pub issue_last: Option<super::money::IssueWeek>,
 }
 
 /// The country's laws that the economy reads.
@@ -309,6 +313,7 @@ impl Market {
             money: super::money::Money::default(),
             levers: Default::default(),
             uncollected: None,
+            issue_last: None,
         }
     }
 }
