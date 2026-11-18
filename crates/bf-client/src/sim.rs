@@ -60,6 +60,11 @@ pub struct Snapshot {
     /// The ways the player's country can free land (the decision "Libertar território"), read
     /// once a month and when the borders or the player change.
     pub liberation: Option<Arc<LiberationView>>,
+    /// The influence around the country the "Influence" lens looks at, read once a month and when
+    /// that country changes; `None` without the lens on or without influence.
+    pub lens_influence: Option<Arc<crate::influence_view::InfluenceView>>,
+    /// The blocs, read once a month, for the "Blocs" lens.
+    pub blocs: Option<Arc<crate::blocs_view::BlocsView>>,
     /// The player's armed forces, read once a month; `None` without forces.
     pub forces: Option<Arc<crate::forces_view::ForcesView>>,
 }
@@ -133,6 +138,8 @@ fn research_view(session: &Session) -> Option<ResearchView> {
 
 pub enum Command {
     SetPaused(bool),
+    /// The country the "Influence" lens looks at (`None`: the lens is off).
+    LensFocus(Option<String>),
     SetSpeed(u8),
     Issue(GameCommand),
     /// Writes the engine save to `path`; replies with the error text on failure.
@@ -270,6 +277,66 @@ struct Monthly {
     owners: Option<Arc<bf_sim::borders::op::OwnersView>>,
     liberation: Option<Arc<LiberationView>>,
     forces: Option<Arc<crate::forces_view::ForcesView>>,
+    lens_influence: Option<Arc<crate::influence_view::InfluenceView>>,
+    blocs: Option<Arc<crate::blocs_view::BlocsView>>,
+}
+
+/// What the monthly views read besides the session: the scenario's treaties (for the blocs)
+/// and the country the influence lens looks at.
+#[derive(Default)]
+pub struct Extras {
+    pub diplomacy: Option<Arc<bf_sim::diplomacy::DiplomacyFile>>,
+    pub focus: Option<String>,
+}
+
+/// The influence around the lens's country: the player's own view when it is the player.
+fn lens_influence_of(
+    session: &Session,
+    rules: &Rules,
+    focus: Option<&str>,
+    player: &Option<Arc<crate::influence_view::InfluenceView>>,
+    last: &Option<Arc<crate::influence_view::InfluenceView>>,
+) -> Option<Arc<crate::influence_view::InfluenceView>> {
+    let focus = focus?;
+    let date = session.clock().date;
+    for v in [player, last].into_iter().flatten() {
+        if v.month == (date.year, date.month) && v.tag == focus {
+            return Some(Arc::clone(v));
+        }
+    }
+    crate::influence_view::read(
+        session.world(),
+        rules.as_ref().and_then(|r| r.influence.as_deref()),
+        Some(focus),
+        date,
+    )
+    .map(Arc::new)
+}
+
+/// The blocs, read again when the month or the borders changed since `last`.
+fn blocs_of(
+    session: &Session,
+    rules: &Rules,
+    extras: &Extras,
+    last: &Option<Arc<crate::blocs_view::BlocsView>>,
+) -> Option<Arc<crate::blocs_view::BlocsView>> {
+    let date = session.clock().date;
+    let changes = session.world().borders.changes.len();
+    match last {
+        Some(b) if b.month == (date.year, date.month) && b.changes == changes => {
+            Some(Arc::clone(b))
+        }
+        _ => {
+            let borders = rules.as_ref()?.borders.as_deref()?;
+            let diplomacy = extras.diplomacy.as_deref()?;
+            Some(Arc::new(crate::blocs_view::read(
+                session.world(),
+                diplomacy,
+                borders,
+                date,
+            )))
+        }
+    }
 }
 
 /// The owners, read again only when a border operation ran since `last`.
@@ -292,13 +359,22 @@ fn owners_of(
 }
 
 impl Monthly {
-    fn read(session: &Session, rules: &Rules, last: &Monthly) -> Self {
+    fn read(session: &Session, rules: &Rules, extras: &Extras, last: &Monthly) -> Self {
+        let influence = influence_of(session, rules, &last.influence);
         Self {
+            lens_influence: lens_influence_of(
+                session,
+                rules,
+                extras.focus.as_deref(),
+                &influence,
+                &last.lens_influence,
+            ),
+            blocs: blocs_of(session, rules, extras, &last.blocs),
             figures: figures_of(session, &last.figures),
             journal: journal_of(session, rules, &last.journal),
             population: population_of(session, rules, &last.population),
             ledger: ledger_of(session, &last.ledger),
-            influence: influence_of(session, rules, &last.influence),
+            influence,
             owners: owners_of(session, rules, &last.owners),
             liberation: liberation_of(session, rules, &last.liberation),
             forces: forces_of(session, rules, &last.forces),
@@ -331,6 +407,8 @@ fn snapshot_of(
         owners: monthly.owners,
         liberation: monthly.liberation,
         forces: monthly.forces,
+        lens_influence: monthly.lens_influence,
+        blocs: monthly.blocs,
         government: crate::government::read(
             session.world(),
             session.player(),
@@ -378,8 +456,13 @@ fn local_view(session: &Session) -> Vec<[f32; 2]> {
 }
 
 impl SimHandle {
-    pub fn start(session: Session, rules: Rules, repaint: impl Fn() + Send + 'static) -> Self {
-        let monthly = Monthly::read(&session, &rules, &Monthly::default());
+    pub fn start(
+        session: Session,
+        rules: Rules,
+        extras: Extras,
+        repaint: impl Fn() + Send + 'static,
+    ) -> Self {
+        let monthly = Monthly::read(&session, &rules, &extras, &Monthly::default());
         let hash = short(&session.state_hash());
         let snapshot = Arc::new(Mutex::new(snapshot_of(
             &session,
@@ -393,7 +476,7 @@ impl SimHandle {
         let shared = Arc::clone(&snapshot);
         std::thread::Builder::new()
             .name("simulation".into())
-            .spawn(move || run(session, rules, monthly, rx, shared, repaint))
+            .spawn(move || run(session, rules, extras, monthly, rx, shared, repaint))
             .expect("spawn simulation thread");
         Self {
             commands: tx,
@@ -467,6 +550,8 @@ struct Control {
     changed: bool,
     /// The played country changed: the monthly views are read again now.
     reread: bool,
+    /// The influence lens's country, as the last `LensFocus` set it.
+    focus: Option<String>,
 }
 
 /// Applies one command.
@@ -479,6 +564,12 @@ fn apply(session: &mut Session, ctl: &mut Control, command: Command) {
         Command::SetSpeed(s) => {
             ctl.speed = s.clamp(1, 5);
             ctl.changed = true;
+        }
+        Command::LensFocus(tag) => {
+            if ctl.focus != tag {
+                ctl.focus = tag;
+                ctl.changed = true;
+            }
         }
         // Applies at the start of the next tick and enters the history then.
         Command::Issue(c) => {
@@ -519,6 +610,7 @@ fn drain(session: &mut Session, ctl: &mut Control, rx: &Receiver<Command>) -> bo
 fn run(
     mut session: Session,
     rules: Rules,
+    mut extras: Extras,
     mut monthly: Monthly,
     rx: Receiver<Command>,
     shared: Arc<Mutex<Snapshot>>,
@@ -529,6 +621,7 @@ fn run(
         speed: 2,
         changed: false,
         reread: false,
+        focus: extras.focus.clone(),
     };
     // The hash shown, and the tick it belongs to: computed only when a snapshot shows a new
     // one (on pause, and on the first of the month).
@@ -583,7 +676,8 @@ fn run(
             if std::mem::take(&mut ctl.reread) {
                 monthly = Monthly::default();
             }
-            monthly = Monthly::read(&session, &rules, &monthly);
+            extras.focus.clone_from(&ctl.focus);
+            monthly = Monthly::read(&session, &rules, &extras, &monthly);
             let snap = snapshot_of(
                 &session,
                 ctl.paused,

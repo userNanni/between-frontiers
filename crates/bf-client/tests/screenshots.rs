@@ -2721,3 +2721,66 @@ fn schooling_screens() {
     }
     let _ = std::fs::remove_dir_all(&user);
 }
+
+/// The influence and blocs lenses (`docs/influence.pt-BR.md`, section 8): Britain's influence
+/// over the others and the others' over Britain, the military blocs of 1925 with the customs
+/// hatching, and the subjects. Portuguese at 1600 × 900, English at 1280 × 720.
+#[test]
+#[ignore = "needs a GPU (or software Vulkan) and the generated map; run with --ignored"]
+fn influence_and_bloc_lenses() {
+    use bf_client::map::lens::Lens;
+    let user = std::env::temp_dir().join(format!("bf-shots-lenses-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&user);
+    let session = advanced_session_of("GBR", laplace_schelling::calendar::Date::new(1925, 3, 1));
+    let save = write_campaign(&user, &session, "Lentes 1925", "GBR", &[]);
+    for (locale, size, tag) in [
+        ("pt-BR", egui::vec2(1600.0, 900.0), "pt"),
+        ("en", egui::vec2(1280.0, 720.0), "en-1280"),
+    ] {
+        let mut h = harness_sized(user.join(tag), locale, size);
+        let ctx = h.ctx.clone();
+        h.state_mut().apply(Transition::Game(save.clone()), &ctx);
+        h.run_steps(4);
+        let set_lens = |h: &mut Harness<'_, App>, lens: Lens| {
+            let app = h.state_mut();
+            if let (Some(view), Some(world)) = (&mut app.shared.map_view, &app.shared.world) {
+                bf_client::screens::lens_panel::choose(view, world, lens, 1925);
+            }
+            // The simulation thread reads the lens's country, then the map recolours.
+            for _ in 0..40 {
+                std::thread::sleep(std::time::Duration::from_millis(25));
+                h.run_steps(1);
+            }
+        };
+        let look = |h: &mut Harness<'_, App>, lon: f64, lat: f64, zoom: f32| {
+            let app = h.state_mut();
+            let meta = app.shared.world.as_ref().unwrap().map.meta.clone();
+            let (x, y) = bf_client::world::project(&meta, lon, lat).unwrap();
+            let view = app.shared.map_view.as_mut().unwrap();
+            view.camera
+                .as_mut()
+                .unwrap()
+                .look_at(egui::pos2(x, y), zoom);
+            h.run_steps(4);
+        };
+        set_lens(
+            &mut h,
+            Lens::Influence {
+                issue: 0,
+                on: false,
+            },
+        );
+        h.key_press(egui::Key::V);
+        h.run_steps(6);
+        shot(&mut h, &format!("150-lens-influence-over-{tag}"));
+        set_lens(&mut h, Lens::Influence { issue: 0, on: true });
+        shot(&mut h, &format!("151-lens-influence-on-{tag}"));
+        set_lens(&mut h, Lens::Blocs(0));
+        look(&mut h, 18.0, 47.0, size.x / 1600.0 * 2.2);
+        shot(&mut h, &format!("152-lens-blocs-military-{tag}"));
+        set_lens(&mut h, Lens::Blocs(2));
+        look(&mut h, 20.0, 15.0, size.x / 1600.0 * 0.9);
+        shot(&mut h, &format!("153-lens-blocs-subjects-{tag}"));
+    }
+    let _ = std::fs::remove_dir_all(&user);
+}

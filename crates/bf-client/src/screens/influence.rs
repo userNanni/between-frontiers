@@ -39,7 +39,7 @@ pub struct Response {
     pub place_done: bool,
 }
 
-const ISSUE_KEYS: [&str; ISSUES] = [
+pub const ISSUE_KEYS: [&str; ISSUES] = [
     "influence-issue-money",
     "influence-issue-trade",
     "influence-issue-territory",
@@ -47,7 +47,7 @@ const ISSUE_KEYS: [&str; ISSUES] = [
     "influence-issue-sovereignty",
 ];
 
-const CHANNEL_KEYS: [&str; 4] = [
+pub const CHANNEL_KEYS: [&str; 4] = [
     "influence-channel-credit",
     "influence-channel-investment",
     "influence-channel-trade",

@@ -247,6 +247,10 @@ pub struct World {
     /// Live from the simulation: share of the demand for transport and power met in each state
     /// (index into [`World::states`]), `-1` where unknown. Empty outside a game.
     pub live_local: std::sync::Arc<Vec<[f32; 2]>>,
+    /// Live: the influence around the country the "Influence" lens looks at.
+    pub live_influence: Option<std::sync::Arc<crate::influence_view::InfluenceView>>,
+    /// Live: the blocs, for the "Blocs" lens.
+    pub live_blocs: Option<std::sync::Arc<crate::blocs_view::BlocsView>>,
     /// Border changes of the simulation already applied to the owners (`apply_owners`).
     pub owners_seen: usize,
     /// Countries that may be born (`data/borders/candidates.ron`); empty when the file is missing.
@@ -371,6 +375,8 @@ impl World {
             states,
             map,
             live_local: std::sync::Arc::default(),
+            live_influence: None,
+            live_blocs: None,
             owners_seen: 0,
             candidates: Vec::new(),
             scenario_countries: 0,
@@ -581,6 +587,8 @@ impl World {
     pub fn clear_live(&mut self) {
         self.live = None;
         self.live_local = std::sync::Arc::default();
+        self.live_influence = None;
+        self.live_blocs = None;
     }
 
     /// Tooltip text for a province: the state name (the province name on maps without states)
