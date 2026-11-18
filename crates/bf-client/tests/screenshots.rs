@@ -3183,3 +3183,65 @@ fn crisis_screens() {
     }
     let _ = std::fs::remove_dir_all(&user);
 }
+
+/// The public works' queue (D8): Britain in 1925 with its public works, one moved to the top of
+/// the government's order and a new school asked for; the region list and its buildings.
+/// Portuguese at 1600 × 900, English at 1280 × 720.
+#[test]
+#[ignore = "needs a GPU (or software Vulkan) and the generated map; run with --ignored"]
+fn works_tab() {
+    use laplace_schelling::calendar::Date;
+    let user = std::env::temp_dir().join(format!("bf-shots-works-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&user);
+    let session = advanced_session_of("GBR", Date::new(1925, 3, 1));
+    let save = write_campaign(&user, &session, "Obras", "GBR", &[]);
+    for (locale, size, tag) in [
+        ("pt-BR", egui::vec2(1600.0, 900.0), "pt"),
+        ("en", egui::vec2(1280.0, 720.0), "en-1280"),
+    ] {
+        let en = locale == "en";
+        let mut h = harness_sized(user.join(tag), locale, size);
+        let ctx = h.ctx.clone();
+        h.state_mut().apply(Transition::Game(save.clone()), &ctx);
+        h.run_steps(4);
+        h.key_press(egui::Key::G);
+        h.run_steps(4);
+        h.get_by_label(if en { "Works" } else { "Obras" }).click();
+        h.run_steps(4);
+        shot(&mut h, &format!("180-works-{tag}"));
+        // The third work moved up: the order becomes the government's.
+        if let Some(b) = h.query_all(egui_kittest::kittest::by().label("↑")).nth(1) {
+            b.click();
+        }
+        h.run_steps(4);
+        shot(&mut h, &format!("181-works-moved-{tag}"));
+        // A new work: the first region, its buildings and costs.
+        let new = if en { "New work" } else { "Nova obra" };
+        h.get_by_label(new).scroll_to_me();
+        h.run_steps(4);
+        // London's buildings and their costs.
+        let london = if en { "London" } else { "Londres" };
+        let found = match h
+            .query_all(egui_kittest::kittest::by().label(london))
+            .find(|n| n.accesskit_node().role() == egui::accesskit::Role::Button)
+        {
+            Some(b) => {
+                b.click();
+                true
+            }
+            None => false,
+        };
+        if found {
+            h.run_steps(4);
+        }
+        if let Some(n) = h
+            .query_all(egui_kittest::kittest::by().label_contains(" · "))
+            .rfind(|n| n.accesskit_node().role() == egui::accesskit::Role::Button)
+        {
+            n.scroll_to_me();
+        }
+        h.run_steps(4);
+        shot(&mut h, &format!("182-works-new-{tag}"));
+    }
+    let _ = std::fs::remove_dir_all(&user);
+}

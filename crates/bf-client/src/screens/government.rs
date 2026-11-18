@@ -28,10 +28,19 @@ pub enum Tab {
     /// Debts between governments.
     Ledger,
     Forces,
+    /// The public works' queue (D8).
+    Works,
 }
 
 impl Tab {
-    pub const ALL: [Tab; 5] = [Tab::Budget, Tab::Money, Tab::Ledger, Tab::Laws, Tab::Forces];
+    pub const ALL: [Tab; 6] = [
+        Tab::Budget,
+        Tab::Works,
+        Tab::Money,
+        Tab::Ledger,
+        Tab::Laws,
+        Tab::Forces,
+    ];
 
     /// The command that opens the window on this tab.
     pub fn command(self) -> &'static str {
@@ -41,6 +50,7 @@ impl Tab {
             Tab::Laws => id::TAB_LAWS,
             Tab::Ledger => id::TAB_LEDGER,
             Tab::Forces => id::TAB_FORCES,
+            Tab::Works => id::TAB_WORKS,
         }
     }
 
@@ -51,6 +61,7 @@ impl Tab {
             Tab::Laws => "gov-tab-laws",
             Tab::Ledger => "gov-tab-ledger",
             Tab::Forces => "gov-tab-forces",
+            Tab::Works => "gov-tab-works",
         }
     }
 }
@@ -72,6 +83,8 @@ pub struct Drafts {
     pub campaign_confirm: bool,
     /// The budget levers as the player set them this tick (shown before the tick applies them).
     pub levers: Option<bf_sim::econ::levers::Levers>,
+    /// The order of the public works the player set this tick (`Some(None)`: back to arrival).
+    pub works_order: Option<Option<Vec<bf_sim::econ::levers::WorkKey>>>,
 }
 
 impl Drafts {
@@ -96,6 +109,8 @@ pub struct Window {
     pub ledger: super::ledger::LedgerUi,
     /// The forces tab's order being made and the cancellation being confirmed.
     pub orders: super::forces::OrdersUi,
+    /// The works tab's cancellation and new work.
+    pub works: super::works::WorksUi,
 }
 
 /// What a tab gets to draw with.
@@ -115,6 +130,7 @@ pub struct TabContext<'a> {
     /// The debts tab's selection.
     pub ledger: &'a mut super::ledger::LedgerUi,
     pub orders: &'a mut super::forces::OrdersUi,
+    pub works: &'a mut super::works::WorksUi,
     /// The principal each 1925 debt was signed with.
     pub signed: &'a crate::ledger_view::Signed,
 }
@@ -126,6 +142,9 @@ pub struct GovernmentResponse {
     pub place_done: bool,
     pub commands: Vec<GameCommand>,
 }
+
+/// Width of the head below which the title gives its room to the tabs.
+const TITLE_ROOM: f32 = 960.0;
 
 /// Space kept clear of the scroll bar on the right of the window's body.
 const SCROLL_GUTTER: f32 = 16.0;
@@ -183,11 +202,15 @@ pub fn show(
         drafts,
         ledger,
         orders,
+        works,
     } = window;
     region(ui, rect.shrink(space::XL), |ui| {
         ui.horizontal(|ui| {
-            bf_ui_kit::title(ui, &i18n.tr("gov-title"));
-            ui.add_space(space::LG);
+            // On a narrow window the tabs need the title's room.
+            if ui.available_width() >= TITLE_ROOM {
+                bf_ui_kit::title(ui, &i18n.tr("gov-title"));
+                ui.add_space(space::LG);
+            }
             let options: Vec<(Tab, String)> = Tab::ALL
                 .iter()
                 .map(|t| (*t, i18n.tr(t.label_key())))
@@ -219,6 +242,7 @@ pub fn show(
             commands: &mut out.commands,
             ledger,
             orders,
+            works,
             signed,
         };
         egui::ScrollArea::vertical()
@@ -233,6 +257,7 @@ pub fn show(
                     Tab::Laws => super::laws::show(ui, &mut cx),
                     Tab::Ledger => super::ledger::show(ui, &mut cx),
                     Tab::Forces => super::forces::show(ui, &mut cx),
+                    Tab::Works => super::works::show(ui, &mut cx),
                 }
             });
     });

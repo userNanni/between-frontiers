@@ -293,6 +293,7 @@ pub mod id {
     pub const TAB_LAWS: &str = "gov.tab_laws";
     pub const TAB_LEDGER: &str = "gov.tab_ledger";
     pub const TAB_FORCES: &str = "gov.tab_forces";
+    pub const TAB_WORKS: &str = "gov.tab_works";
     pub const PROPOSE_LAW: &str = "gov.propose_law";
     pub const RESEARCH_FIT: &str = "research.fit";
     pub const RESEARCH_PREV_ERA: &str = "research.prev_era";
@@ -411,6 +412,9 @@ fn builtin() -> Vec<CommandDef> {
         CommandDef::new(TAB_FORCES, Government)
             .keys([k(KeyT)])
             .hint('T'),
+        CommandDef::new(TAB_WORKS, Government)
+            .keys([k(KeyB).shift()])
+            .hint('W'),
         CommandDef::new(PROPOSE_LAW, Government)
             .keys([k(Enter).ctrl()])
             .hint('E'),

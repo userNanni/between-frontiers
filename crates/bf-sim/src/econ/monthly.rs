@@ -1014,8 +1014,31 @@ impl System<GameWorld> for Investment {
                     .map(|ri| crate::demography::education::places_needed(world, ri))
                     .collect()
             });
-        let public =
+        let mut public =
             super::public::public_works(cat, econ, &unlocks, schools.as_deref(), self.wage_floor);
+        // Works the governments asked for (D8, `GameCommand::AddWork`), each checked against what
+        // the state may build there; one it may not build is dropped.
+        for q in &world.levers.requests {
+            let found = super::public::buildable_in(
+                cat,
+                econ,
+                &unlocks,
+                usize::from(q.market),
+                q.region as usize,
+            )
+            .into_iter()
+            .find(|x| x.0 == usize::from(q.kind));
+            if let Some((_, method, points)) = found {
+                public.push(super::state::Project {
+                    region: q.region,
+                    kind: q.kind,
+                    method,
+                    public: true,
+                    points,
+                    left: points,
+                });
+            }
+        }
         InvestmentChanges {
             builds,
             leftover,
@@ -1077,6 +1100,7 @@ impl System<GameWorld> for Investment {
             let market = econ.regions[p.region as usize].market as usize;
             econ.markets[market].queue.push(p);
         }
+        world.levers.requests.clear();
         // Earnings kept for an expansion that did not come go home bit by bit.
         let release: Vec<(u16, u16, Fixed)> = foreign
             .retained

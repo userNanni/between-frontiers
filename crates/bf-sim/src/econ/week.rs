@@ -1092,6 +1092,7 @@ impl System<GameWorld> for Week {
     fn apply(&self, ctx: &TickCtx, changes: WeekChanges, world: &mut GameWorld) {
         let cat = &*self.cat;
         let econ = &mut world.econ;
+        let levers = &world.levers;
         // Off, the trade state stays empty and out of the world's hash.
         if self.by_pair {
             let nm = econ.markets.len();
@@ -1165,6 +1166,10 @@ impl System<GameWorld> for Week {
             m.budget.works = Fixed::ZERO;
             if let Some(cg) = construction_good {
                 let cg = cg as usize;
+                // The public works in the order the government fixed (D8).
+                if let Some(order) = levers.order(mi) {
+                    super::levers::order_queue(m, order);
+                }
                 let d = super::construction::deliver(m, m.buy_ratio[cg], m.price[cg]);
                 m.pool -= d.private_cost;
                 m.treasury -= d.public_cost;

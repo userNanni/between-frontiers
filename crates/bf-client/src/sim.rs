@@ -69,6 +69,9 @@ pub struct Snapshot {
     pub crises: Option<Arc<crate::crisis_view::CrisisView>>,
     /// The demand the player is drafting, weighed as its target would weigh it.
     pub crisis_draft: Option<Arc<crate::crisis_view::DraftWeighing>>,
+    /// The player's public works and what could be built, read once a month and when the queue
+    /// or its order changes (the government's works tab).
+    pub works: Option<Arc<crate::works_view::WorksView>>,
     /// The blocs, read once a month, for the "Blocs" lens.
     pub blocs: Option<Arc<crate::blocs_view::BlocsView>>,
     /// The player's armed forces, read once a month; `None` without forces.
@@ -334,6 +337,32 @@ struct Monthly {
     blocs: Option<Arc<crate::blocs_view::BlocsView>>,
     crises: Option<Arc<crate::crisis_view::CrisisView>>,
     crisis_draft: Option<Arc<crate::crisis_view::DraftWeighing>>,
+    works: Option<Arc<crate::works_view::WorksView>>,
+}
+
+/// The player's works, read again on a new month or when the queue or its order changed.
+fn works_of(
+    session: &Session,
+    rules: &Rules,
+    last: &Option<Arc<crate::works_view::WorksView>>,
+) -> Option<Arc<crate::works_view::WorksView>> {
+    let date = session.clock().date;
+    let w = session.world();
+    let ci = w
+        .player_tag()
+        .and_then(|t| w.countries.iter().position(|(_, c)| c.tag == t))?;
+    match last {
+        Some(v)
+            if v.month == (date.year, date.month)
+                && v.signature == crate::works_view::signature(w, ci) =>
+        {
+            Some(Arc::clone(v))
+        }
+        _ => {
+            let r = rules.as_ref()?;
+            crate::works_view::read(w, &r.catalogue, r.tree.as_deref(), date).map(Arc::new)
+        }
+    }
 }
 
 /// What the monthly views read besides the session: the scenario's treaties (for the blocs)
@@ -474,6 +503,7 @@ impl Monthly {
             blocs: blocs_of(session, rules, extras, &last.blocs),
             crises: crises_of(session, rules, &last.crises),
             crisis_draft: draft_of(session, rules, extras, &last.crisis_draft),
+            works: works_of(session, rules, &last.works),
             figures: figures_of(session, &last.figures),
             journal: journal_of(session, rules, &last.journal),
             population: population_of(session, rules, &last.population),
@@ -517,6 +547,7 @@ fn snapshot_of(
         blocs: monthly.blocs,
         crises: monthly.crises,
         crisis_draft: monthly.crisis_draft,
+        works: monthly.works,
         government: crate::government::read(
             session.world(),
             session.player(),

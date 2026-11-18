@@ -745,3 +745,94 @@ fn the_country_is_chosen_by_keyboard() {
     }
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
+
+/// The works tab with a long queue: Britain with every public work the rule allows asked for,
+/// a hundred and more, fits every size in both languages. (The tabs' line is the debts test's: the
+/// order's own choice reads as tabs to `close_beside_tabs`.)
+#[test]
+fn the_works_tab_holds_a_long_queue() {
+    use laplace_schelling::calendar::Date;
+    let data = bf_sim::data::GameData::load(&root()).expect("game data");
+    let rules = data.rules();
+    let mut session = bf_sim::game::Session::new(
+        data.new_world(),
+        7,
+        Date::new(1925, 1, 1),
+        1,
+        Some(rules.clone()),
+    );
+    session.submit(bf_sim::game::GameCommand::ChoosePlayer { tag: "GBR".into() });
+    session.sim.step();
+    let ci = session
+        .world()
+        .countries
+        .iter()
+        .position(|(_, c)| c.tag == "GBR")
+        .unwrap();
+    let asked: Vec<(u32, u16)> = bf_sim::econ::levers::buildable(
+        &rules.catalogue,
+        session.world(),
+        rules.tree.as_deref(),
+        1925,
+        ci,
+    )
+    .into_iter()
+    .flat_map(|(r, kinds)| kinds.into_iter().map(move |(k, _)| (r, k)))
+    .take(170)
+    .collect();
+    for (region, kind) in asked {
+        session.submit(bf_sim::game::GameCommand::AddWork {
+            tag: "GBR".into(),
+            region,
+            kind,
+        });
+    }
+    while session.clock().date < Date::new(1925, 2, 3) {
+        session.sim.step();
+    }
+    let queue = session.world().econ.markets[ci]
+        .queue
+        .iter()
+        .filter(|p| p.public)
+        .count();
+    let mut failures = Vec::new();
+    if queue < 100 {
+        failures.push(format!("only {queue} public works in the queue"));
+    }
+    for locale in ["pt-BR", "en"] {
+        let user =
+            std::env::temp_dir().join(format!("bf-matrix-works-{locale}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&user);
+        let mut save =
+            saves::create(&user.join("saves"), "Obras", 7, Date::new(1925, 1, 1)).unwrap();
+        save.meta.player = Some("GBR".into());
+        std::fs::write(
+            save.dir.join(saves::WORLD_FILE),
+            session.save("test", "works").unwrap(),
+        )
+        .unwrap();
+        saves::write(&save).unwrap();
+        let mut h = app(user.clone(), locale, egui::vec2(1600.0, 900.0));
+        steps(&mut h);
+        let ctx = h.ctx.clone();
+        h.state_mut().apply(Transition::Game(save), &ctx);
+        steps(&mut h);
+        h.key_press(egui::Key::G);
+        steps(&mut h);
+        click(&mut h, if locale == "en" { "Works" } else { "Obras" });
+        for (w, hh) in [
+            (960.0, 540.0),
+            (1280.0, 720.0),
+            (1600.0, 900.0),
+            (3840.0, 2160.0),
+        ] {
+            h.set_size(egui::vec2(w, hh));
+            steps(&mut h);
+            let case = format!("{locale} {w}×{hh} works");
+            failures.extend(check(&h, &case));
+            failures.extend(no_overlapping_text(&h, &case));
+        }
+        let _ = std::fs::remove_dir_all(&user);
+    }
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
