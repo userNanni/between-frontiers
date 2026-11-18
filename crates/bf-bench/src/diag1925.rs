@@ -224,6 +224,70 @@ pub fn main() -> Result<(), String> {
         }
         return Ok(());
     }
+    // What a tariff protects (`BF_DIAG_PROTECT=TAG[:years]`, docs/trade.pt-BR.md, section 13):
+    // run with `BF_LAWS=TAG=free_trade` and then `protective_tariffs`, with and without
+    // `customs_duties`. Printed by year, for the goods the country imported most in the first
+    // weeks and for all goods: imports, domestic output and the price over the base price, as
+    // weekly means.
+    if let Ok(spec) = std::env::var("BF_DIAG_PROTECT") {
+        let (tag, years) = spec.split_once(':').unwrap_or((spec.as_str(), "10"));
+        let years: i32 = years.parse().unwrap_or(10);
+        let mi = data
+            .countries
+            .countries
+            .iter()
+            .position(|c| c.tag == tag)
+            .ok_or_else(|| format!("BF_DIAG_PROTECT: no country {tag}"))?;
+        let ng = cat.goods.len();
+        let end = Date::new(1925 + years, 1, 1);
+        let mut d = Date::new(1925, 1, 5);
+        let mut top: Vec<usize> = Vec::new();
+        let (mut imp, mut out, mut price) = (vec![0f64; ng], vec![0f64; ng], vec![0f64; ng]);
+        let (mut year, mut weeks) = (1925, 0u32);
+        let rate =
+            (data.switches.customs_duties && data.switches.trade_by_pair).then(|| data.duties());
+        while d < end {
+            d = Date::from_days(d.to_days() + 7);
+            s.sim.run_until(d);
+            let m = &s.world().econ.markets[mi];
+            for gi in 0..ng {
+                let n = m.net_import[gi].max(laplace_schelling::Fixed::ZERO);
+                let base = cat.goods[gi].base_price;
+                imp[gi] += (n * base).to_f64_lossy();
+                out[gi] += ((m.supply[gi] - n) * base).to_f64_lossy();
+                price[gi] += (m.price[gi] / base).to_f64_lossy();
+            }
+            weeks += 1;
+            if d.year != year {
+                let w = f64::from(weeks);
+                if top.is_empty() {
+                    let mut o: Vec<usize> = (0..ng).filter(|&g| imp[g] > 0.0).collect();
+                    o.sort_by(|a, b| imp[*b].total_cmp(&imp[*a]));
+                    o.truncate(6);
+                    top = o;
+                }
+                let t = rate.as_ref().map_or(0.0, |r| r.rate(mi, m).to_f64_lossy());
+                println!(
+                    "{year} {tag} tariff {:.1} %: imports {:.4e}, output {:.4e} (all goods, base prices, a week)",
+                    t * 100.0,
+                    imp.iter().sum::<f64>() / w,
+                    out.iter().sum::<f64>() / w
+                );
+                for &g in &top {
+                    println!(
+                        "    {:<16} imports {:.4e}  output {:.4e}  price/base {:.3}",
+                        cat.goods[g].key,
+                        imp[g] / w,
+                        out[g] / w,
+                        price[g] / w
+                    );
+                }
+                (imp, out, price) = (vec![0f64; ng], vec![0f64; ng], vec![0f64; ng]);
+                (year, weeks) = (d.year, 0);
+            }
+        }
+        return Ok(());
+    }
     // Conservation of trade, week by week (`BF_DIAG_CONSERVE=<years>`): for every tradable
     // good the world's net imports add up to zero, and the margins' transfers between the
     // pools (`week::margin_transfers`) add up to zero, so trade makes no money. Printed by

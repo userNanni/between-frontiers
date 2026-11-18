@@ -328,6 +328,8 @@ mudar a lei move a taxa a partir dali pelo tamanho do degrau, nunca abaixo de ze
 - **Preço de chegada × (1 + t).** O importador paga o bem e a tarifa: no dinheiro, pela receita
   que sai do fundo; na quantidade, pela procura menor. O preço de mercado do bem não é tocado
   diretamente, porque cada mercado tem um preço por bem, que mistura o nacional e o importado.
+  Ter o preço separado (fase de equilíbrio) custa um segundo preço por bem e mercado, guardado no
+  save, e a divisão da procura entre nacional e importado (Armington) em cada mercado toda semana.
 
 **Os dados, um por decisão do dono** (`data/economy/purchases.ron`, `trade.customs`):
 - `revenue` (CT3): a receita vai ao Tesouro;
@@ -338,6 +340,32 @@ mudar a lei move a taxa a partir dali pelo tamanho do degrau, nunca abaixo de ze
 **Ainda não.** A tabela por grupo de bens, o comando do jogador e a tela são o passo 2. O embargo
 e a guerra fecham o par pelo encaixe que já existe (`Geography::closures`, seção 11): os tratados
 vão dar `TreatyState::embargoes` e a guerra `war_pairs`. É o passo 3, depois da resposta do dono.
+
+**A tarifa protege?** Medida com `BF_DIAG_PROTECT=TAG:10` e `BF_LAWS`, com a chave ligada: o
+mesmo país sob `free_trade` e sob `protective_tariffs`, por 10 anos. Desligada, mudar a lei não
+muda nada.
+
+| | Reino Unido (9 % → 32 %) | Argentina (7 % → 30 %) |
+|---|---|---|
+| importação total, 1925 | −15 % | −17 % |
+| importação total, 1930 | −12 % | −16 % |
+| importação total, 1934 | −3 % | −22 % |
+| preço do bem mais importado, 1925 | madeira +4 % | carvão +18 % |
+| produção protegida, 1930 | têxteis +7 % (a importação vai a zero) | aço −14 % |
+| produção protegida, 1934 | têxteis +5 % | aço −3 %, roupas +3 %, pescado +3 % |
+| produção total, 1934 | −1,6 % | −1,7 % |
+
+A importação cai logo e o preço de casa sobe pela falta. A produção reage devagar e só onde o país
+já tinha plantas: o têxtil britânico cresce, porque já existia. Na madeira britânica e no carvão
+argentino não há oferta em casa (o carvão argentino é zero), então a falta só encarece. O aço
+argentino queima esse carvão: produz menos, e a importação de aço até sobe em 1930. A produção
+total cai um pouco, porque o insumo importado ficou mais caro para todos. Há três razões
+para a reação ser pequena:
+- a planta nova sai do investimento, que leva anos (`construction`);
+- a tarifa é uma só para todos os bens até o passo 2 (a tabela por grupo), e protege o insumo
+  junto com o produto;
+- o comércio é pequeno (1,5 % do PIB, docs/economy.pt-BR.md, "Aberto"), então a falta que a tarifa
+  cria pesa pouco no preço.
 
 **Para julgar.** A receita aduaneira sobre as importações, por país e no mundo, contra a taxa de
 1925 (`BF_DIAG_CONSERVE=<anos>` imprime a média mundial com a chave ligada). O custo é medido pelo
