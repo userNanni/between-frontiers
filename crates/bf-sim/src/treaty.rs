@@ -2125,7 +2125,11 @@ mod tests {
         assert!(l.debts.is_empty());
         let d = &l.closed[0];
         assert_eq!(start - tr[0], d.paid);
-        assert!(matches!(d.status, Obligation::Closed { .. }), "{:?}", d.status);
+        assert!(
+            matches!(d.status, Obligation::Closed { .. }),
+            "{:?}",
+            d.status
+        );
         // A closed line stays in the record, and owes nothing.
         assert_eq!(l.owed_by(0), Fixed::ZERO);
         assert_eq!(l.claims_of(1), Fixed::ZERO);
@@ -2192,7 +2196,10 @@ mod tests {
         assert_eq!(t.agreements.len(), 2);
         t.expire(1936);
         assert_eq!(
-            t.agreements.iter().map(|a| a.key.as_str()).collect::<Vec<_>>(),
+            t.agreements
+                .iter()
+                .map(|a| a.key.as_str())
+                .collect::<Vec<_>>(),
             ["y"]
         );
         assert_eq!(t.ended[0].status, AgreementStatus::Ended { year: 1936 });
