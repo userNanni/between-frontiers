@@ -191,3 +191,4 @@ table-revise-of = Dívida: { $treaty }
 table-annuity-label = Anuidade
 table-param-grace_years = Carência
 table-renegotiate-title = Renegociar a dívida
+table-peace-title = Propor a paz

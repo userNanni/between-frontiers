@@ -151,6 +151,7 @@ orders-yearly-parts = Por ano: { $pay } de soldo e { $upkeep } de manutenção e
 
 ## A guerra em terra (fatia C): a janela da guerra
 cmd-window-war = Guerra
+    .short = Guerra
 war-title = Guerra
 war-off = A guerra em terra está desligada nesta partida.
 war-none = O país não está em guerra.
