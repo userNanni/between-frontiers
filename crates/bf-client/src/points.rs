@@ -36,6 +36,8 @@ pub enum Reason {
     Load,
     /// An answer to a colony's demand of independence.
     Demand,
+    /// Forces disbanded.
+    Disband,
 }
 
 impl Reason {
@@ -48,6 +50,7 @@ impl Reason {
             Reason::Treaty => "points-reason-treaty",
             Reason::Load => "points-reason-load",
             Reason::Demand => "points-reason-demand",
+            Reason::Disband => "points-reason-disband",
         }
     }
 }

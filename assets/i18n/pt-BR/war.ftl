@@ -21,7 +21,26 @@ forces-col-men = Homens
 forces-col-equipment = Equipamento
 forces-col-training = Treino
 forces-called-up = { $unit } (reservistas)
-forces-decision-hint = Mobilizar é decisão do diário, em Agendas, com confirmação.
+forces-decision-hint = Mobilizar é decisão do diário, em Agendas, com confirmação. Dissolver tira elementos inteiros de um tipo: escolha o número e confirme.
+forces-disband = Dissolver…
+forces-disband-title = Dissolver: { $unit }
+forces-disband-count = Elementos
+forces-disband-count-tip = Elementos a dissolver: 1.000 homens em terra, um navio, um avião, uma arma
+forces-disband-reserve = Homens que vão para a reserva
+forces-disband-home = Homens que voltam para casa
+forces-disband-depot = Volta ao depósito
+forces-disband-good = { $good } { $value }
+forces-disband-goods-more = { $goods } e mais { $count ->
+    [one] { $n } bem
+   *[other] { $n } bens
+}
+forces-disband-no-goods = Sem equipamento: nada volta ao depósito.
+forces-disband-note-peace = O exército de paz volta ao tamanho de paz em janeiro: dissolver agora alivia o orçamento até lá. Para ficar menor de vez, mude a lei do serviço militar.
+forces-disband-note-raised = Os homens encomendados vão para a reserva, com o treino que tinham; o equipamento fica no depósito para a próxima encomenda.
+forces-disband-note-service = Saem de serviço e não voltam: o que se aproveita deles vai para o depósito. Uma nova encomenda leva meses.
+forces-disband-waiting = Dissolução enviada; a tabela se atualiza na próxima semana.
+forces-disband-yes = Dissolver
+forces-disband-no = Manter
 forces-domain-land = Terra
 forces-domain-sea = Mar
 forces-domain-air = Ar

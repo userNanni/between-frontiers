@@ -268,15 +268,16 @@ fn forces_of(
     last: &Option<Arc<crate::forces_view::ForcesView>>,
 ) -> Option<Arc<crate::forces_view::ForcesView>> {
     let date = session.clock().date;
-    // An order placed or cancelled shows at once, not at the turn of the month.
-    let queue = || {
+    // An order placed or cancelled, or a formation disbanded, shows at once, not at the turn of
+    // the month.
+    let stock = || {
         let w = session.world();
         let tag = w.player_tag()?;
         let ci = w.countries.iter().position(|(_, c)| c.tag == tag)?;
-        w.war.countries.get(ci).map(|c| c.queue.len())
+        w.war.countries.get(ci).map(crate::forces_view::stock)
     };
     match last {
-        Some(f) if f.month == (date.year, date.month) && queue() == Some(f.queue_len) => {
+        Some(f) if f.month == (date.year, date.month) && stock() == Some(f.stock) => {
             Some(Arc::clone(f))
         }
         _ => {
