@@ -732,7 +732,7 @@ os chama.
 6. conservação quebrada (população, dinheiro, dívida, plantas) em qualquer separação;
 7. o hash com `enabled: false` diferente do da `main`.
 
-### Ligar a regra: estudo da onda (rascunho, decisões abertas)
+### Ligar a regra: estudo da onda (rascunho; I1 a I3 decididas em 2026-11-18)
 
 Rodada de 101 anos no `main` `ca21e5a` com `--rule independence`. A referência é a década do
 `born` de `candidates.ron` das mesmas 83 unidades de 1925, sem forçar data:
@@ -780,7 +780,7 @@ metrópole–anticolonial; com mais países anticoloniais, há mais pares. Preci
 que liga a regra, por exemplo gravando só quando o valor muda além de um limiar, ou fundindo o
 ato no ano.
 
-**Decisões para o dono (recomendação primeiro):**
+**Decisões do dono (2026-11-18):** I1 como recomendado. Na I2, o dono acrescentou que a concessão depende do tipo de vínculo (detalhe abaixo, "Tipos de vínculo"). Na I3, opção A. A redação das três recomendações, como foram levadas:
 1. **O governo próprio freia, não apaga.** Recomendação: a condição de governo próprio sobe com a
    alfabetização da unidade, porque a elite educada pede mais quanto mais cresce. Na prática, o
    limite passa a 400 + alfabetização × 500 por mil.
@@ -830,3 +830,45 @@ ato no ano.
   1. o país novo nasce com a técnica limitada e sem fundo de investimento;
   2. as fábricas da metrópole na colônia param ou mudam de dono (C6a a C6c);
   3. a demanda dos países novos cai no comércio mundial e puxa as exportações das metrópoles.
+
+### Tipos de vínculo (decisão I2 do dono, 2026-11-18)
+
+- **Um tipo só para colônias e súditos:** `SubjectKind`, com colônia da Coroa, protetorado,
+  mandato, domínio e satélite, ganha `Integrated`, o território que é parte da metrópole em lei
+  (os departamentos da Argélia). A fatia de súditos e protetorados usa o mesmo tipo.
+- **Dado novo:** `data/borders/colonial_bonds.ron` dá o tipo de cada uma das 83 unidades em
+  1925, com a fonte (os artigos da Wikipédia de cada território).
+  - Uma unidade que mistura tipos fica com o tipo da maior parte da gente, anotado: a Nigéria e a
+    Serra Leoa como protetorado; a Indochina, por Anam e Tonquim; a Malásia, pelos Estados
+    Malaios.
+  - Um condomínio (Sudão anglo-egípcio, Novas Hébridas) é lido como protetorado.
+  - Ficam 50 colônias da Coroa, 22 protetorados, 10 mandatos e 1 integrada.
+- **A concessão:** quando a metrópole responde "governo próprio", grava o par (dono, tipo) no
+  estado da independência. A partir daí, toda unidade do dono com esse tipo mede o movimento sob
+  a lei `trusteeship` no lugar da lei colonial do dono.
+  - A lei do país não muda, então o tributo e os outros efeitos econômicos da lei colonial ficam
+    os do dono. Lei colonial por tipo na economia seria uma frente nova.
+  - Se o próprio dono adota `trusteeship` (política ou jogador), vale para todas as colônias,
+    como antes.
+- **Save:** o estado da independência ganha a lista de concessões e o tipo ganha uma variante,
+  então o PR pede um número de versão do mundo.
+
+### A revolta e a guerra (decisão I3 do dono, 2026-11-18: opção A)
+
+- **Sem regra simplificada de revolta.** Com a recusa e a mobilização acima da marca, a separação
+  sem acordo segue como hoje (`Secede`, sem reconhecimento da metrópole, com o `Record` de
+  `How::Revolt`).
+- **Proposta do thread da guerra, combinada:** a revolta é uma proclamação seguida de guerra, no
+  caso de referência da Indonésia de 1945 a 1949. Com `war` ligada, a guerra lê os `Record` novos
+  de revolta e abre a guerra colonial:
+  - de um lado, o antigo dono, que exige a unidade de volta (`Union`);
+  - do outro, o país novo, com formações irregulares do tamanho da mobilização vezes os homens em
+    idade de serviço da unidade.
+  - A paz decide: independência por acordo, ou a volta ao dono.
+- **Do lado das fronteiras:**
+  - **a sigla do país novo** passa a ir no `Record`, num campo `country`;
+  - **a ordem no tick é determinística:** a independência roda no dia 2 de janeiro, antes da
+    semana da guerra, que lê o registro na semana seguinte;
+  - **com `war` desligada, nada muda**, nem o hash.
+- **Dependência no placar:** sem guerra, a onda sai mais pacífica e menor que a real. A falta das
+  guerras coloniais fica anotada como dependência da fatia C da guerra, não como meta.

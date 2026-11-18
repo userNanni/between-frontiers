@@ -157,9 +157,45 @@ condição, ou o jogador libertando o próprio território.
   batalha.
 - **Onde está o detalhe:** [`borders.pt-BR.md`, seção 11](../../borders.pt-BR.md#11-parte-c-independência-por-movimento-desenho-decisões-i1-a-i5-tomadas-em-2026-11-17).
 
+### Ao ligar a independência: o governo próprio freia, vale por tipo de vínculo, e a revolta espera a guerra
+
+- **Decisão (dono, 2026-11-18):** três regras para ligar a independência por movimento.
+  - **I1:** o governo próprio freia o movimento e não o apaga. O limite da causa sobe com a
+    alfabetização da colônia: 400 mais metade da alfabetização, em ‰.
+  - **I2:** a concessão de governo próprio é do dono e vale para todas as suas colônias com o
+    mesmo tipo de vínculo, e não para as dos outros tipos. Na frase do dono: "depende do tipo de
+    vínculo que os países têm entre si". Os tipos são os mesmos dos súditos: colônia da Coroa,
+    protetorado, mandato, domínio, satélite, e o território integrado à metrópole.
+  - **I3 (opção A):** sem regra simplificada de revolta. Quando a metrópole recusa, a pressão
+    segue subindo, e a separação por revolta fica como hoje. A guerra colonial entra com a guerra
+    no tick (fase 5, fatia C).
+- **O que o autor pensou:** o estudo da onda mostrou o erro da regra antiga. Conceder governo
+  próprio a uma colônia apagava a causa em todas as colônias do dono, e só 10 das 83 colônias de
+  1925 se tornavam independentes, a última em 1963. O dono quis o governo próprio como degrau e
+  acrescentou que a concessão depende do tipo de vínculo.
+- **Como o jogo funciona por causa disso:**
+  - cada colônia tem o seu tipo de vínculo em 1925, em `data/borders/colonial_bonds.ron`, com a
+    fonte de cada uma: 50 colônias da Coroa, 22 protetorados, 10 mandatos e a Argélia integrada;
+  - o governo próprio concedido aos protetorados franceses não chega à África Ocidental nem à
+    Argélia;
+  - com governo próprio, a colônia continua pedindo mais à medida que mais gente lê;
+  - a recusa não abre guerra até a fase 5. Por isso a onda sai mais pacífica e menor que a real, e
+    isso fica anotado como dependência no placar, não como meta.
+- **Como é na vida real:**
+  - a lei-quadro francesa de 1956 valeu para a África negra francesa, não para os departamentos da
+    Argélia nem para os protetorados do Marrocos e da Tunísia;
+  - os domínios britânicos tinham governo próprio antes de 1925, e a Índia e as colônias africanas
+    não;
+  - o governo próprio veio antes da independência: a Costa do Ouro em 1951, independente em 1957;
+    a Nigéria em 1954, independente em 1960;
+  - as recusas levaram à guerra: Indochina, Indonésia, Argélia, Quênia, as colônias portuguesas.
+- **Estado:** I1 e I2 em código, desligados, no #173. A onda espera a faixa nova do `main`, depois
+  do conserto do vazamento de dinheiro no comércio. A I3 é dependência da fatia C da guerra.
+- **Onde está o detalhe:** [`borders.pt-BR.md`, seção 11, "Ligar a regra"](../../borders.pt-BR.md#ligar-a-regra-estudo-da-onda-rascunho-decisões-abertas).
+
 ## O que ainda não existe
 
-- **Independência por movimento:** decidida e desenhada (acima), ainda sem código.
+- **Independência por movimento:** no `main`, desligada (#136). Para ligar, falta julgar a onda (#173).
 - **Fábricas da metrópole na independência:** decididas (viram capital estrangeiro), ainda sem
   código; ver [Capital entre países](capital-entre-paises.md#as-fábricas-da-metrópole-na-independência-ficam-como-capital-estrangeiro).
 - **Divisão por ocupação** (Alemanha e Coreia em 1945): fica com a paz da fase 5.
