@@ -73,6 +73,10 @@ fn levers_back_on_the_rule_keep_the_hash() {
                 tag: "BRA".into(),
                 per_mille_gdp: None,
             },
+            GameCommand::SetIssuance {
+                tag: "BRA".into(),
+                shares: None,
+            },
             GameCommand::SetPayroll {
                 tag: "BRA".into(),
                 per_mille: None,
@@ -281,4 +285,55 @@ fn fixed_purchases_and_military_share() {
     assert!(v.military.week_effect.unwrap() > 0.0);
     let rv = bf_sim::econ::levers::purchases_view(&r.econ.markets[mex], cat);
     assert!(rv.military.rule > 0.0 && rv.military.fixed.is_none());
+}
+
+/// D9: everything issued at home sells nothing abroad; a poor country asking all abroad in its own
+/// currency sells only what lenders accept and leaves the rest unsold, with no switch to dollars
+/// and no subordinate bank stepping in; the shares are scaled to add up to 1000.
+#[test]
+fn where_the_treasury_issues() {
+    let d = data();
+    let until = Date::new(1925, 4, 1);
+    let s = run(
+        &d,
+        vec![
+            GameCommand::SetIssuance {
+                tag: "GBR".into(),
+                shares: Some([1, 0, 0]),
+            },
+            GameCommand::SetIssuance {
+                tag: "IND".into(),
+                shares: Some([0, 1000, 0]),
+            },
+            GameCommand::SetIssuance {
+                tag: "BRA".into(),
+                shares: Some([500, 250, 250]),
+            },
+        ],
+        until,
+    );
+    let w = s.sim.world();
+    let gbr = market(&s, "GBR");
+    let v = bf_sim::econ::levers::issuance_view(&w.econ.markets[gbr]);
+    assert_eq!(v.fixed, Some([1.0, 0.0, 0.0]), "scaled to 1000");
+    assert_eq!(v.abroad_local + v.abroad_fx, 0.0, "nothing sold abroad");
+    let bra = market(&s, "BRA");
+    let v = bf_sim::econ::levers::issuance_view(&w.econ.markets[bra]);
+    assert_eq!(v.fixed, Some([0.5, 0.25, 0.25]));
+    assert!(v.local_limit > 0.0 && v.local_limit <= 1.0);
+    // Somebody poor asks all abroad in its own currency: some of it stays unsold.
+    if let Some(ind) = w.countries.iter().position(|(_, c)| c.tag == "IND") {
+        let v = bf_sim::econ::levers::issuance_view(&w.econ.markets[ind]);
+        assert_eq!(v.abroad_fx, 0.0, "no switch to dollars");
+        assert_eq!(v.home, 0.0, "nothing meant for home");
+        if v.abroad_local + v.unsold_abroad > 0.0 {
+            assert!(v.local_limit < 1.0);
+        }
+    }
+    let rule = run(&d, vec![], until);
+    assert_eq!(
+        bf_sim::econ::levers::issuance_view(&rule.sim.world().econ.markets[gbr]).fixed,
+        None
+    );
+    assert_ne!(rule.state_hash(), s.state_hash());
 }

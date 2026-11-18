@@ -533,6 +533,19 @@ pub fn real_rate(m: &Market) -> Fixed {
 }
 
 /// What one market asks from foreign lenders this week.
+/// One week's new bonds with the issue split fixed (D9), for the screen: sold at home (savers
+/// and a subordinate bank), sold abroad in the country's own currency and in dollars, and left
+/// unsold at home and abroad; and the share of local bonds lenders abroad would take.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct IssueWeek {
+    pub home: Fixed,
+    pub abroad_local: Fixed,
+    pub abroad_fx: Fixed,
+    pub unsold_home: Fixed,
+    pub unsold_abroad: Fixed,
+    pub local_limit: Fixed,
+}
+
 struct Plan {
     /// Still to be financed after home savers and the central bank's rule: asked abroad, then
     /// of a subordinate bank.
@@ -545,6 +558,9 @@ struct Plan {
     fx_share: Fixed,
     /// Interest paid to foreign holders this week.
     abroad_interest: Fixed,
+    /// With the issue split fixed (D9): the share of what is asked abroad meant for bonds in the
+    /// country's own currency (the rest in dollars). `None` on the rule: the market splits.
+    local_abroad: Option<Fixed>,
 }
 
 /// The weekly money step: prices, central banks, bonds, interest and defaults, for every
@@ -622,13 +638,32 @@ pub fn week(econ: &mut Economy, activity: &[Activity], year: i32) {
         } else {
             Fixed::ZERO
         };
-        let fx = abroad * plan.fx_share;
+        // On the rule the lenders take the dollar share they demand (`fx_share`). With the split
+        // fixed (D9), the government asks a local share; the lenders take local bonds only up to
+        // `1 − fx_share`, and the local bonds they leave are not sold (no switch to dollars).
+        let (fx, local) = match plan.local_abroad {
+            None => {
+                let fx = abroad * plan.fx_share;
+                (fx, abroad - fx)
+            }
+            Some(d) => (
+                abroad * (Fixed::ONE - d),
+                abroad * d.min(Fixed::ONE - plan.fx_share),
+            ),
+        };
+        let sold = fx + local;
         let real_fx = m.money.real_exchange();
         m.money.debt_fx += fx.mul_div(INDEX_BASE, real_fx);
-        m.money.debt_abroad += abroad - fx;
-        m.treasury += abroad;
-        plan.need -= abroad;
-        lent += abroad;
+        m.money.debt_abroad += local;
+        m.treasury += sold;
+        plan.need -= sold;
+        lent += sold;
+        if let Some(i) = &mut m.issue_last {
+            i.abroad_local = local;
+            i.abroad_fx = fx;
+            i.unsold_abroad = plan.need;
+            i.local_limit = Fixed::ONE - plan.fx_share;
+        }
         let (paid, lost, cut) = settle_week(m, plan, year, treaty_debt[mi]);
         cuts[mi] = cut;
         paid_abroad += paid;
@@ -818,6 +853,15 @@ fn home_step(
     // The treasury tops its cash up to the reserve (the rule's weeks, or the fixed ones, D4).
     let reserve = m.budget.revenue_avg * m.levers.reserve_weeks();
     let mut need = (reserve - m.treasury).max(Fixed::ZERO);
+    // Where the treasury issues (D9): fixed, home savers and the central bank see only the home
+    // share, and what is meant for abroad goes abroad; what a place does not buy is not sold
+    // elsewhere. On the rule, home savers first, then the bank, then abroad.
+    let split = m.levers.issuance_shares();
+    let mut abroad_asked = Fixed::ZERO;
+    if let Some([home_s, local_s, fx_s]) = split {
+        abroad_asked = need * (local_s + fx_s);
+        need *= home_s;
+    }
     // 1. Savers at home: idle household savings, then banks and capitalists (the pool).
     let depth = if w.income > Fixed::ZERO {
         let rich = (income / (w.income * 2)).min(Fixed::ONE);
@@ -875,13 +919,27 @@ fn home_step(
     m.budget.issued = lent_to_treasury;
     m.budget.beyond_rule = beyond_rule;
     let fx_share = fx_share(m, income, w);
+    let local_abroad = split.map(|[_, local_s, fx_s]| {
+        let abroad = local_s + fx_s;
+        if abroad > Fixed::ZERO {
+            local_s / abroad
+        } else {
+            Fixed::ZERO
+        }
+    });
+    m.issue_last = split.map(|_| IssueWeek {
+        home: home + lent_to_treasury,
+        unsold_home: need,
+        ..Default::default()
+    });
     Plan {
-        need,
+        need: if split.is_some() { abroad_asked } else { need },
         from_households,
         idle,
         lendable: (idle - from_households).max(Fixed::ZERO) * FOREIGN_ABSORB,
         fx_share,
         abroad_interest,
+        local_abroad,
     }
 }
 
@@ -900,7 +958,8 @@ fn settle_week(
     let (treaty_owed, treaty_service) = treaty;
     let gdp_week = m.gdp_last_year / 52;
     let mut forced = Fixed::ZERO;
-    if plan.need > Fixed::ZERO && m.money.subordinate(year) {
+    // With the split fixed (D9), the bank does not cover what was meant for abroad.
+    if plan.need > Fixed::ZERO && m.money.subordinate(year) && plan.local_abroad.is_none() {
         m.money.debt_bank += plan.need;
         m.treasury += plan.need;
         m.budget.issued += plan.need;
@@ -1202,6 +1261,7 @@ mod tests {
             lendable: Fixed::ZERO,
             fx_share: Fixed::ZERO,
             abroad_interest: Fixed::ZERO,
+            local_abroad: None,
         };
         let (_, lost, _) = settle_week(&mut m, &plan, 1950, (Fixed::ZERO, Fixed::ZERO));
         assert_eq!(lost, Fixed::from_int(20_000));
@@ -1268,6 +1328,7 @@ mod tests {
             lendable: Fixed::ZERO,
             fx_share: Fixed::ZERO,
             abroad_interest: Fixed::ZERO,
+            local_abroad: None,
         };
         settle_week(&mut japan, &plan, 1990, (Fixed::ZERO, Fixed::ZERO));
         settle_week(&mut argentina, &plan, 1990, (Fixed::ZERO, Fixed::ZERO));
