@@ -3092,12 +3092,6 @@ fn negotiation_table() {
     while countered.clock().date < Date::new(1925, 2, 12) {
         countered.sim.step();
     }
-    let t = &countered.world().treaties.table;
-    eprintln!(
-        "table: open {:?}, closed {:?}",
-        t.open.len(),
-        t.closed.iter().map(|c| &c.outcome).collect::<Vec<_>>()
-    );
     let save_draft = write_campaign(&user.join("draft"), &drafting, "Mesa", "GBR", &[]);
     let save_counter = write_campaign(
         &user.join("counter"),
