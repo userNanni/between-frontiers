@@ -9,6 +9,10 @@
 //
 // In alphabetical order, as `game::Switches`: a new rule goes in its place, not at the end.
 (
+    // Crises and declaration (`docs/war.pt-BR.md`, "Crise e declaração"): a demand with a
+    // deadline, the AI answering by the force against the share asked for, war on a refusal.
+    // Needs `forces`. Off: no crisis opens.
+    crisis: false,
     // The servants' capacity to collect (`docs/state.pt-BR.md`, D1, owner's decision O1): a
     // region with fewer servants than the rule asks for collects that much less tax.
     fiscal_capacity: false,
