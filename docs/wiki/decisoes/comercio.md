@@ -114,6 +114,25 @@ preferência, e o valor comerciado por par fica gravado.
   fica para a próxima rodada de performance.
 - **Onde está o detalhe:** `trade.pt-BR.md`, seção 8a.
 
+### Na união aduaneira, o serviço atravessa a fronteira (microestados)
+
+- **Decisão:** entre dois países ligados pela cláusula de união aduaneira de um acordo em vigor,
+  serviço e finança são vendidos de um ao outro pelo comércio com parceiro, como os bens
+  comerciáveis. Fora de uma união, continuam vendidos só em casa.
+- **O que o autor pensou:** pediu que a economia dos microestados funcionasse. O orquestrador
+  escolheu esta opção entre três (A), e a união negociada na mesa vale igual à de 1925, porque a
+  regra lê o acordo em vigor.
+- **Como o jogo funciona por causa disso:** o banco de Liechtenstein serve a Suíça e o comércio
+  de Mônaco atende a França. San Marino, em união com a Itália desde 1862, entra com a regra
+  ligada. Andorra não tinha união e fica de fora.
+- **Como é na vida real:** Mônaco vivia de turismo e cassino para estrangeiros, e Liechtenstein
+  entrou no território aduaneiro suíço em 1924. O serviço vendido ao vizinho é a economia de um
+  microestado.
+- **Estado:** no código, desligado (`union_services`). Ligar é um PR próprio, junto com a união de
+  San Marino, julgado pela faixa. As alternativas, trabalho que atravessa a fronteira (B) e
+  microestado dentro do mercado do vizinho (C), estão anotadas com o porquê.
+- **Onde está o detalhe:** `trade.pt-BR.md`, seção 12.
+
 ## Fontes
 
 - Gallaway, M. P.; McDaniel, C. A.; Rivera, S. A. "Short-run and long-run industry-level estimates of

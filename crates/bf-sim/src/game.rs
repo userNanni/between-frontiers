@@ -960,6 +960,11 @@ pub struct Switches {
     /// reads to call third parties, and what a breach is recorded against. Off: only the
     /// agreements signed in play are kept.
     pub treaties_in_force: bool,
+    /// Services across a customs union in force (`econ::week::union_services`,
+    /// docs/trade.pt-BR.md, section 12): between two countries bound by the customs union
+    /// clause of an agreement in force (`TreatyState::customs_unions`), services and finance
+    /// trade by pair like the tradable goods. Off: they are sold only at home.
+    pub union_services: bool,
 }
 
 impl Switches {
@@ -999,6 +1004,7 @@ impl Switches {
         "small_market_wage_floor",
         "trade_by_pair",
         "treaties_in_force",
+        "union_services",
     ];
 
     /// Switches one rule on by name; unknown names are refused.
@@ -1021,6 +1027,7 @@ impl Switches {
             "small_market_wage_floor" => self.small_market_wage_floor = true,
             "trade_by_pair" => self.trade_by_pair = true,
             "treaties_in_force" => self.treaties_in_force = true,
+            "union_services" => self.union_services = true,
             other => {
                 return Err(format!(
                     "unknown rule switch {other} (known: {})",
@@ -1085,6 +1092,7 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
             geo: trade.filter(|_| switches.trade_by_pair),
             by_pair: switches.trade_by_pair,
             treaty_tariffs: switches.treaties_in_force && switches.trade_by_pair,
+            union_services: switches.union_services && switches.trade_by_pair,
             wage_floor: switches.small_market_wage_floor,
             // The week reads the stakes whenever a rule can make them: the funds abroad, or the
             // colony's plants at independence.

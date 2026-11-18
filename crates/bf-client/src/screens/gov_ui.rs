@@ -122,11 +122,43 @@ pub struct StepTips<'a> {
     pub row: usize,
 }
 
+/// Width of a stepper's value: a number with its unit.
+pub const STEP_VALUE_W: f32 = 64.0;
+
 /// `−  value  +`: returns −1, 0 or +1. The value sits in a fixed width so stacked steppers
 /// line up.
 pub fn stepper(
     ui: &mut Ui,
     value: &str,
+    tip: &str,
+    can_down: bool,
+    can_up: bool,
+    tips: StepTips<'_>,
+) -> i32 {
+    stepper_wide(ui, value, STEP_VALUE_W, tip, can_down, can_up, tips)
+}
+
+/// The width a stepper's value needs to hold the longest of `values` with room on each side, at
+/// least [`STEP_VALUE_W`]: steppers whose value is a word ("No term") stay clear of − and +.
+pub fn step_width(ui: &Ui, values: &[String]) -> f32 {
+    let font = sans_medium(size::BODY);
+    let widest = values
+        .iter()
+        .map(|v| {
+            ui.painter()
+                .layout_no_wrap(v.clone(), font.clone(), color::TEXT)
+                .size()
+                .x
+        })
+        .fold(0.0f32, f32::max);
+    (widest + 2.0 * space::MD).max(STEP_VALUE_W).ceil()
+}
+
+/// [`stepper`] with the value `width` wide.
+pub fn stepper_wide(
+    ui: &mut Ui,
+    value: &str,
+    width: f32,
     tip: &str,
     can_down: bool,
     can_up: bool,
@@ -144,7 +176,7 @@ pub fn stepper(
             match part {
                 0 => {
                     let (rect, response) =
-                        ui.allocate_exact_size(Vec2::new(64.0, ROW_H), Sense::hover());
+                        ui.allocate_exact_size(Vec2::new(width, ROW_H), Sense::hover());
                     ui.painter().text(
                         rect.center(),
                         Align2::CENTER_CENTER,
