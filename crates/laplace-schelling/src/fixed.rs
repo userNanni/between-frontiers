@@ -822,12 +822,17 @@ mod tests {
         assert_eq!(shares, Fixed::MAX);
         let report = super::saturation::report();
         assert!(
-            report
-                .iter()
-                .any(|&(f, l, op, n)| f.ends_with("fixed.rs") && l == line && op == "mul" && n >= 1),
+            report.iter().any(|&(f, l, op, n)| f.ends_with("fixed.rs")
+                && l == line
+                && op == "mul"
+                && n >= 1),
             "{report:?}"
         );
-        assert!(report.iter().any(|&(_, l, op, _)| l == line + 2 && op == "mul_div"));
+        assert!(
+            report
+                .iter()
+                .any(|&(_, l, op, _)| l == line + 2 && op == "mul_div")
+        );
     }
 
     #[test]
