@@ -1977,6 +1977,20 @@ mod tests {
         })
         .unwrap();
         assert_eq!(headed(16, &before_independence), with_ledger);
+        fn before_agreements_world(data: &crate::data::GameData) -> GameWorld {
+            let mut w = data.new_world();
+            w.treaties.agreements.clear();
+            w.treaties.next_agreement = 0;
+            w
+        }
+        // The worlds of format 15 and before had no agreements: the treaties of 1925 in force
+        // (shipped on since `treaties_in_force`) are not in them.
+        let with_ledger = {
+            let mut w = with_ledger;
+            w.treaties.agreements.clear();
+            w.treaties.next_agreement = 0;
+            w
+        };
         // Version 15, before the record of each line and the agreements.
         let before_agreements = encode_snapshot(&BeforeAgreements {
             scenario: &with_ledger.scenario,
@@ -2170,7 +2184,7 @@ mod tests {
             education: &'a crate::demography::education::EducationState,
             independence: &'a crate::borders::independence::IndependenceState,
         }
-        let on_the_rule = data.new_world();
+        let on_the_rule = before_agreements_world(&data);
         assert!(on_the_rule.levers.is_empty());
         let before_levers = encode_snapshot(&BeforeLevers {
             scenario: &on_the_rule.scenario,
@@ -2217,7 +2231,7 @@ mod tests {
             independence: &'a crate::borders::independence::IndependenceState,
             levers: LeversV18<'a>,
         }
-        let mut fixed = data.new_world();
+        let mut fixed = before_agreements_world(&data);
         let mut markets = std::mem::take(&mut fixed.econ.markets);
         fixed
             .levers
@@ -2268,7 +2282,7 @@ mod tests {
             treaties: Treaties15<'a>,
             war: WarV8<'a>,
         }
-        let no_schooling = data.new_world();
+        let no_schooling = before_agreements_world(&data);
         assert!(no_schooling.education.is_empty());
         let before_education = encode_snapshot(&BeforeEducation {
             scenario: &no_schooling.scenario,
@@ -2291,7 +2305,7 @@ mod tests {
         let loaded = headed(10, &before_education);
         assert_eq!(hash_of(&loaded), hash_of(&no_schooling));
         assert_eq!(loaded, no_schooling, "version 10");
-        let mut no_forces = data.new_world();
+        let mut no_forces = before_agreements_world(&data);
         no_forces.war = Default::default();
         assert!(!no_forces.treaties.is_empty());
         let before_forces = encode_snapshot(&BeforeForces {
@@ -2357,7 +2371,7 @@ mod tests {
         assert_eq!(headed(6, &before_influence), no_forces);
         assert_eq!(decode_world(&before_influence).unwrap(), no_forces);
         // Older layouts: the world of then had no ledger, no treaty state and no forces.
-        let mut world = data.new_world();
+        let mut world = before_agreements_world(&data);
         world.econ.ledger = Default::default();
         world.treaties = Default::default();
         world.war = Default::default();
