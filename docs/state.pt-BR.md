@@ -463,6 +463,16 @@ Nota do autor: "o mercado decide quem compra; o jogador escolhe onde emite".
 - **Gradual:** a escolha muda só a emissão nova. O estoque troca de mãos quando vence, no ritmo de
   cinco anos que o custo já usa.
 
+- **No código (fatia D9):** `SetIssuance { tag, shares: Option<[u16; 3]> }`, as parcelas em
+  milésimos de casa, de fora em moeda própria e de fora em dólar (escaladas para somar 1000).
+  Com a divisão fixada, a poupança de casa e o banco central subordinado veem só a parte de casa;
+  os estrangeiros veem a de fora e levam títulos em moeda própria só até `1 − fx_share`; o que uma
+  praça não compra fica sem vender (não passa a outra praça nem ao banco central), e o caixa cai.
+  Na regra, o caminho de antes e o hash do `main`. O `save` não muda (o campo `issuance` já estava
+  em `Levers`). A tela lê `levers::issuance_view` (a divisão fixada e, da semana passada, o vendido
+  em casa, fora em moeda própria e em dólar, o que ficou sem vender em casa e fora, e a parcela em
+  moeda própria que os estrangeiros aceitam).
+
 ### D13. Construir tropas de propósito
 
 É do thread da guerra (#115, A2). Daqui sai só `military_room` (D3). A encomenda come o espaço que

@@ -1113,6 +1113,7 @@ pub fn build(cat: &Catalogue, inp: &Inputs) -> Economy {
             money: super::money::Money::start(fx(target_gdp)),
             levers: Default::default(),
             uncollected: None,
+            issue_last: None,
             budget: super::state::Budget {
                 revenue_avg: revenue,
                 payroll: fx(payroll),
