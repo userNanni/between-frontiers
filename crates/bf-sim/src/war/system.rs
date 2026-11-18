@@ -139,14 +139,27 @@ pub type Goods = Vec<(u16, Fixed)>;
 
 /// What the forces of `c` need this week: what they consume, and the replacement of what they
 /// lack over `replace_weeks`; the second list is the replacement alone.
-pub fn needs_of(mil: &Military, peace: &PeaceRules, c: &CountryWar) -> (Goods, Goods) {
+pub fn needs_of(
+    mil: &Military,
+    peace: &PeaceRules,
+    c: &CountryWar,
+    combat: bool,
+) -> (Goods, Goods) {
     let weeks = i64::from(peace.replace_weeks.max(1));
     let mut orders: Vec<(u16, Fixed)> = Vec::new();
     let mut repair: Vec<(u16, Fixed)> = Vec::new();
     for f in &c.formations {
         let spec = mil.spec(f.unit, f.generation as usize);
+        // At war on land, the land forces fire `combat_ammunition` times their training rounds.
+        let in_combat =
+            combat && mil.types[f.unit as usize].domain == super::catalogue::Domain::Land;
         for (g, q) in &spec.upkeep {
-            add(&mut orders, *g, *q * f.elements * peace.upkeep_scale);
+            let q = if in_combat && *g == mil.rules.ammunition {
+                *q * mil.rules.combat_ammunition
+            } else {
+                *q
+            };
+            add(&mut orders, *g, q * f.elements * peace.upkeep_scale);
         }
         for (g, per) in &spec.equipment {
             let have = f
@@ -672,7 +685,15 @@ impl Forces {
         let price = |list: &[(u16, Fixed)]| -> Fixed {
             list.iter().map(|(g, q)| *q * m.price[*g as usize]).sum()
         };
-        let needs = |c: &CountryWar| needs_of(mil, &self.peace, c);
+        // At war on land (`Switches::war`), the forces order the ammunition of combat.
+        let combat = self.fight.is_some()
+            && world
+                .war
+                .conflicts
+                .wars
+                .iter()
+                .any(|w| w.side_a.contains(&(ci as u16)) || w.side_b.contains(&(ci as u16)));
+        let needs = |c: &CountryWar| needs_of(mil, &self.peace, c, combat);
         let (first, _) = needs(&c);
         let mut spare = room - price(&first);
         let before: Vec<(Fixed, Fixed)> = c
@@ -886,6 +907,10 @@ impl System<GameWorld> for Forces {
                 if let Some(cw) = world.war.countries.get_mut(*c as usize) {
                     super::fight::take_losses(&self.military, cw, *share);
                 }
+            }
+            for (c, men) in &week.lost_men {
+                let killed = (*men as i64 * super::fight::KILLED_PER_MILLE / 1000).max(0) as u64;
+                super::fight::bury(world, *c, killed);
             }
             world.war.fighting = week.fighting;
             // A peace signed at the table ends its war: the sides go home from mobilization.

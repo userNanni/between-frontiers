@@ -228,3 +228,69 @@ fn a_peace_signed_at_the_table_ends_the_war() {
     assert!(!w.war.countries[hun as usize].mobilized);
     assert!(!w.war.countries[cze as usize].mobilized);
 }
+
+/// The killed leave the soldiers' pops and the pyramid's groups of 20 to 39, where the country's
+/// soldiers are; the population falls by them.
+#[test]
+fn the_killed_leave_the_population() {
+    let s = at_war();
+    let mut w = s.world().clone();
+    let hun = index(&w, "HUN");
+    let people = |w: &GameWorld| -> i64 {
+        w.econ
+            .regions
+            .iter()
+            .filter(|r| r.market == hun)
+            .map(|r| r.population())
+            .sum()
+    };
+    let young = |w: &GameWorld| -> i64 {
+        w.econ
+            .regions
+            .iter()
+            .enumerate()
+            .filter(|(_, r)| r.market == hun)
+            .filter_map(|(i, _)| w.demography.ages.get(i))
+            .map(|a| a[4..8].iter().sum::<i64>())
+            .sum()
+    };
+    let (before, young_before) = (people(&w), young(&w));
+    bf_sim::war::fight::bury(&mut w, hun, 1000);
+    assert_eq!(people(&w), before - 1000);
+    assert_eq!(young(&w), young_before - 1000);
+}
+
+/// At war, the forces order the ammunition of combat, and the side's supply is the share of it
+/// the market delivered.
+#[test]
+fn at_war_the_forces_order_the_ammunition_of_combat() {
+    let d = data();
+    let mil = &d.war.as_ref().unwrap().military;
+    let s = at_war();
+    let w = s.world();
+    let hun = index(w, "HUN") as usize;
+    let c = &w.war.countries[hun];
+    let (peace, _) = bf_sim::war::needs_of(
+        mil,
+        &d.war.as_ref().unwrap().peace.clone().unwrap(),
+        c,
+        false,
+    );
+    let (war, _) = bf_sim::war::needs_of(
+        mil,
+        &d.war.as_ref().unwrap().peace.clone().unwrap(),
+        c,
+        true,
+    );
+    let ammo = |l: &[(u16, Fixed)]| {
+        l.iter()
+            .find(|(g, _)| *g == mil.rules.ammunition)
+            .map_or(Fixed::ZERO, |(_, q)| *q)
+    };
+    assert!(
+        ammo(&war) > ammo(&peace) * 5,
+        "{:?} {:?}",
+        ammo(&war),
+        ammo(&peace)
+    );
+}

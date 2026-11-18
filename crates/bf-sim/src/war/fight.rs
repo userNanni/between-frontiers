@@ -129,6 +129,8 @@ pub struct FightWeek {
     pub ended: Vec<u32>,
     /// (country, share of its land elements lost this week).
     pub lost_share: Vec<(u16, Fixed)>,
+    /// (country, men lost this week): killed, wounded and captured.
+    pub lost_men: Vec<(u16, u64)>,
     pub segments: Vec<SegmentWeek>,
 }
 
@@ -348,6 +350,20 @@ pub fn fight_week(
                 .unwrap_or(Fixed::ZERO),
         }
     };
+    let supply: BTreeMap<u16, Fixed> = count
+        .keys()
+        .map(|&c| {
+            let fill = world
+                .econ
+                .markets
+                .get(c as usize)
+                .and_then(|m| m.buy_ratio.get(mil.rules.ammunition as usize))
+                .copied()
+                .unwrap_or(Fixed::ONE)
+                .clamp(Fixed::ZERO, Fixed::ONE);
+            (c, fill)
+        })
+        .collect();
     let side = |c: u16, men_here: u64, attack: bool| -> LandSide {
         let s = &strengths[&c];
         let part = if s.men > 0 {
@@ -360,7 +376,8 @@ pub fn fight_week(
             fire: s.fire * part,
             protection: s.protection,
             training: s.training,
-            supply: Fixed::ONE,
+            // The share of the ammunition of combat the market delivered last week.
+            supply: supply.get(&c).copied().unwrap_or(Fixed::ONE),
             // Neutral until the air enters (slice C2).
             air: Fixed::from_ratio(1, 2),
             posture: if attack {
@@ -437,12 +454,57 @@ pub fn fight_week(
         let total = strengths[&c].men.max(1);
         out.lost_share
             .push((c, Fixed::from_ratio(l.min(total) as i64, total as i64)));
+        out.lost_men.push((c, l.min(total)));
         match out.fighting.losses.binary_search_by_key(&c, |(k, _)| *k) {
             Ok(i) => out.fighting.losses[i].1 += l,
             Err(i) => out.fighting.losses.insert(i, (c, l)),
         }
     }
     out
+}
+
+/// Of land casualties (killed, wounded and captured), the killed: about one in four, the order
+/// of the First World War's armies, with some three wounded for each death (Clodfelter, *Warfare
+/// and Armed Conflicts*). The wounded go back; the invalids among them come with the ledger.
+pub const KILLED_PER_MILLE: i64 = 250;
+
+/// Takes `killed` men of `country` out of the population: from the soldiers' pops of the
+/// regions where its soldiers are, by the soldiers each holds, and from the pyramid's groups of
+/// 20 to 39 years in the same regions.
+pub fn bury(world: &mut GameWorld, country: u16, killed: u64) {
+    use crate::econ::prof;
+    let regions: Vec<usize> = (0..world.econ.regions.len())
+        .filter(|&i| world.econ.regions[i].market == country)
+        .collect();
+    let weights: Vec<Fixed> = regions
+        .iter()
+        .map(|&i| Fixed::from_int(world.war.soldiers.get(i).copied().unwrap_or(0).max(0)))
+        .collect();
+    if !weights.iter().any(|w| w.is_positive()) {
+        return;
+    }
+    for (&ri, dead) in regions.iter().zip(apportion(killed, &weights)) {
+        let dead = dead as i64;
+        if dead == 0 {
+            continue;
+        }
+        let pop = &mut world.econ.regions[ri].pops[prof::SOLDIER];
+        let taken = dead.min(pop.size.max(0));
+        pop.size -= taken;
+        if let Some(ages) = world.demography.ages.get_mut(ri) {
+            // Groups 4 to 7: 20 to 39 years.
+            let band: i64 = ages[4..8].iter().sum();
+            if band > 0 {
+                let mut left = taken;
+                for k in 4..8 {
+                    let d = (taken * ages[k] / band).min(ages[k]).min(left);
+                    ages[k] -= d;
+                    left -= d;
+                }
+                ages[4] = (ages[4] - left).max(0);
+            }
+        }
+    }
 }
 
 /// Takes `share` of every land formation of `c`, elements and equipment alike.
