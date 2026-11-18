@@ -39,14 +39,46 @@ fn state_name(i18n: &I18n, world: Option<&crate::world::World>, state: u16) -> S
         .map_or_else(|| "—".into(), |s| crate::text::state_name(i18n, &s.def))
 }
 
-fn bottleneck_key(b: Bottleneck) -> Option<&'static str> {
-    match b {
-        Bottleneck::None => None,
-        Bottleneck::Cash => Some("works-held-cash"),
-        Bottleneck::Cement => Some("works-held-cement"),
-        Bottleneck::Steel => Some("works-held-steel"),
-        Bottleneck::Price => Some("works-held-price"),
-    }
+/// What holds a work back, with how much is missing and when it clears.
+fn bottleneck_line(i18n: &I18n, r: &WorkRow) -> Option<String> {
+    let share = |x: f64| format!("{} %", i18n.decimal(x * 100.0, 0));
+    let key = match r.bottleneck {
+        Bottleneck::None => return None,
+        Bottleneck::Cement => "works-held-cement",
+        Bottleneck::Steel => "works-held-steel",
+        Bottleneck::Price => {
+            // `met` is the base price over today's: today's is its inverse.
+            let over = if r.met > 0.0 { 1.0 / r.met } else { 0.0 };
+            return Some(i18n.tr_args(
+                "works-held-price",
+                &[
+                    ("price", arg(share(over))),
+                    ("weeks", arg(r.weeks.to_string())),
+                    ("full", arg(r.weeks_full.to_string())),
+                ],
+            ));
+        }
+        Bottleneck::Cash => {
+            return Some(i18n.tr_args(
+                "works-held-cash",
+                &[
+                    ("paid", arg(share(r.met))),
+                    (
+                        "short",
+                        arg(r.short.map_or_else(|| "—".into(), |m| money(i18n, m))),
+                    ),
+                ],
+            ));
+        }
+    };
+    Some(i18n.tr_args(
+        key,
+        &[
+            ("met", arg(share(r.met))),
+            ("weeks", arg(r.weeks.to_string())),
+            ("full", arg(r.weeks_full.to_string())),
+        ],
+    ))
 }
 
 /// The rows in the order shown: the order the player set this tick, then the simulation's.
@@ -181,14 +213,15 @@ pub fn show(ui: &mut Ui, cx: &mut TabContext<'_>) {
         });
         let mut parts = vec![i18n.tr_args(
             "works-progress",
-            &[
-                (
-                    "done",
-                    arg(format!("{} %", i18n.decimal(r.progress * 100.0, 0))),
-                ),
-                ("weeks", arg(r.weeks.to_string())),
-            ],
+            &[(
+                "done",
+                arg(format!("{} %", i18n.decimal(r.progress * 100.0, 0))),
+            )],
         )];
+        // With a bottleneck the weeks come in its line, at this pace and once it clears.
+        if r.bottleneck == Bottleneck::None {
+            parts.push(i18n.tr_args("works-weeks", &[("weeks", arg(r.weeks.to_string()))]));
+        }
         if let Some(c) = r.category {
             parts.push(i18n.tr_args(&format!("gov-cat-{c}"), &[("share", arg(String::new()))]));
         }
@@ -197,9 +230,9 @@ pub fn show(ui: &mut Ui, cx: &mut TabContext<'_>) {
         }
         super::journal::bar(ui, r.progress as f32, color::ACCENT, width.min(360.0));
         bf_ui_kit::small(ui, &parts.join(" · ").replace(" ()", ""));
-        if let Some(k) = bottleneck_key(r.bottleneck) {
+        if let Some(line) = bottleneck_line(i18n, r) {
             ui.label(
-                RichText::new(i18n.tr(k))
+                RichText::new(line)
                     .font(bf_ui_kit::theme::sans(bf_ui_kit::tokens::size::SMALL))
                     .color(color::DANGER),
             );
