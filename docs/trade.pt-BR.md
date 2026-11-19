@@ -337,9 +337,9 @@ mudar a lei move a taxa a partir dali pelo tamanho do degrau, nunca abaixo de ze
   0,3 a 1,6 (Hooper, Johnson e Marquez, 2000); 1 é valor de projeto. Zero desliga o efeito;
 - `rates_1925` (CT5): a taxa de 1925 de cada país em vez do degrau da lei.
 
-**Ainda não.** A tabela por grupo de bens, o comando do jogador e a tela são o passo 2. O embargo
-e a guerra fecham o par pelo encaixe que já existe (`Geography::closures`, seção 11): os tratados
-vão dar `TreatyState::embargoes` e a guerra `war_pairs`. É o passo 3, depois da resposta do dono.
+**Ainda não.** A tabela por bem (CT1, uns 60), o comando do jogador e a tela são o passo 2. O
+embargo e a guerra fecham o par pelo encaixe que já existe (`Geography::closures`, seção 11): o
+embargo por comando (CT6) e a guerra por `war::fight::war_pairs` (CT7). É o passo 3.
 
 **A tarifa protege?** Medida com `BF_DIAG_PROTECT=TAG:10` e `BF_LAWS`, com a chave ligada: o
 mesmo país sob `free_trade` e sob `protective_tariffs`, por 10 anos. Desligada, mudar a lei não
