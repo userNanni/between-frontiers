@@ -21,7 +21,7 @@ fn the_state_panel_fits() {
         session.sim.step();
     }
     let mut failures = Vec::new();
-    for (locale, unemployment) in [("pt-BR", "Sem trabalho"), ("en", "Without work")] {
+    for (locale, unemployment) in [("pt-BR", "Desemprego"), ("en", "Unemployment")] {
         let user =
             std::env::temp_dir().join(format!("bf-matrix-state-{locale}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&user);
@@ -131,9 +131,7 @@ fn a_state_line_of_the_economy_window_opens_its_panel() {
         "the economy window stayed open"
     );
     assert!(
-        labels
-            .iter()
-            .any(|l| l.eq_ignore_ascii_case("Sem trabalho")),
+        labels.iter().any(|l| l.eq_ignore_ascii_case("Desemprego")),
         "no state panel"
     );
     let _ = std::fs::remove_dir_all(&user);

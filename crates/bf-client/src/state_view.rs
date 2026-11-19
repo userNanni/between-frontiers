@@ -7,6 +7,8 @@ use bf_sim::econ::Catalogue;
 use bf_sim::game::GameWorld;
 use laplace_schelling::calendar::Date;
 
+const PEASANT: usize = bf_sim::econ::prof::PEASANT;
+
 /// Professions the state employs directly.
 const GOVERNMENT: [usize; 3] = [
     bf_sim::econ::prof::CIVIL_SERVANT,
@@ -33,11 +35,18 @@ pub struct StateFigures {
     pub market: u16,
     pub colony: bool,
     pub population: i64,
-    /// People of working age (`econ::workers`) and those with work: in a plant, or for the
-    /// state (servants, soldiers, clergy). Peasants without land work on no plant and count as
-    /// without work, as in the simulation's subsistence (`week::unemployed_people`).
+    /// The labour force: each profession's working share (`econ::WORKER_SHARE`, 40 % of its
+    /// people, dependents being the rest).
     pub workforce: i64,
+    /// Of it, those at work in a plant or for the state (servants, soldiers, clergy).
     pub employed: i64,
+    /// Peasants of the labour force with no job in a plant: they live off their own plot
+    /// (`week::subsistence_food`).
+    pub subsistence: i64,
+    /// The rest of the labour force (every profession but peasants), and the jobless in it:
+    /// the unemployment the simulation has.
+    pub others: i64,
+    pub jobless: i64,
     /// Households' income over a year, after tax, at last week's pace.
     pub income: f64,
     pub literacy: f64,
@@ -54,8 +63,14 @@ pub struct StateFigures {
 }
 
 impl StateFigures {
+    /// Share of the labour force at work in a plant or for the state.
+    pub fn employed_share(&self) -> Option<f64> {
+        (self.workforce > 0).then(|| self.employed as f64 / self.workforce as f64)
+    }
+
+    /// Jobless share of the labour force outside the peasantry.
     pub fn unemployment(&self) -> Option<f64> {
-        (self.workforce > 0).then(|| 1.0 - self.employed as f64 / self.workforce as f64)
+        (self.others > 0).then(|| self.jobless as f64 / self.others as f64)
     }
 
     pub fn income_per_head(&self) -> Option<f64> {
@@ -118,24 +133,37 @@ pub fn read(world: &GameWorld, cat: &Catalogue, date: Date) -> Option<StatesView
             works[usize::from(!p.public)] += 1;
         }
         let population = r.population();
+        // Each profession's labour force and those of it at work; the state's servants,
+        // soldiers and clergy work for it, not in a plant.
+        let workforce: Vec<i64> = r
+            .pops
+            .iter()
+            .map(|p| bf_sim::econ::workers(p.size))
+            .collect();
+        let at_work: Vec<i64> = r
+            .pops
+            .iter()
+            .enumerate()
+            .map(|(i, p)| {
+                if GOVERNMENT.contains(&i) {
+                    workforce[i]
+                } else {
+                    p.employed.min(workforce[i])
+                }
+            })
+            .collect();
         *slot = StateFigures {
             known: true,
             market: r.market,
             colony: r.colony,
             population,
-            workforce: r.pops.iter().map(|p| bf_sim::econ::workers(p.size)).sum(),
-            // The state's servants, soldiers and clergy work for it, not in a plant.
-            employed: r
-                .pops
-                .iter()
-                .enumerate()
-                .map(|(i, p)| {
-                    if GOVERNMENT.contains(&i) {
-                        bf_sim::econ::workers(p.size)
-                    } else {
-                        p.employed
-                    }
-                })
+            workforce: workforce.iter().sum(),
+            employed: at_work.iter().sum(),
+            subsistence: workforce[PEASANT] - at_work[PEASANT],
+            others: workforce.iter().sum::<i64>() - workforce[PEASANT],
+            jobless: (0..workforce.len())
+                .filter(|&i| i != PEASANT)
+                .map(|i| workforce[i] - at_work[i])
                 .sum(),
             income: r
                 .pops

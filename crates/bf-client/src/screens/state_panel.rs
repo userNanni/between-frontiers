@@ -94,18 +94,40 @@ pub fn show(
                 .income_per_head()
                 .map_or_else(|| "—".into(), |x| crate::text::money_exact(i18n, x));
             bf_ui_kit::stat_block(ui, &i18n.tr("state-panel-income"), &income, None);
+            let employed = i18n.tr_args(
+                "state-panel-employed-share",
+                &[(
+                    "share",
+                    Arg::String(
+                        f.employed_share()
+                            .map_or_else(|| "—".into(), |x| pct(i18n, x)),
+                    ),
+                )],
+            );
+            bf_ui_kit::stat_block(
+                ui,
+                &i18n.tr("state-panel-employed"),
+                &i18n.compact(f.employed as f64),
+                Some(&employed),
+            );
+            ui.end_row();
+            bf_ui_kit::stat_block(
+                ui,
+                &i18n.tr("state-panel-subsistence"),
+                &i18n.compact(f.subsistence as f64),
+                Some(&i18n.tr("state-panel-subsistence-note")),
+            );
             let jobless = f
                 .unemployment()
                 .map_or_else(|| "—".into(), |x| pct(i18n, x));
-            let detail = i18n.tr_args(
-                "state-panel-employed",
-                &[("n", Arg::String(i18n.compact(f.employed as f64)))],
-            );
             bf_ui_kit::stat_block(
                 ui,
                 &i18n.tr("state-panel-unemployment"),
                 &jobless,
-                Some(&detail),
+                Some(&i18n.tr_args(
+                    "state-panel-unemployment-note",
+                    &[("n", Arg::String(i18n.compact(f.jobless as f64)))],
+                )),
             );
             ui.end_row();
             bf_ui_kit::stat_block(ui, &i18n.tr("bar-literacy"), &pct(i18n, f.literacy), None);
