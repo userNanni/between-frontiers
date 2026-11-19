@@ -98,6 +98,11 @@ pub struct BuildingDef {
     /// value added goes entirely to wages.
     #[serde(default)]
     pub public: bool,
+    /// A state firm (the weapon core plant, U2): its whole profit goes to the treasury, so its
+    /// product costs the country what it took to make (inputs, wages, the works), whatever the
+    /// price.
+    #[serde(default)]
+    pub state_firm: bool,
     /// Urban self-employment (street trade, domestic service, workshops): nobody builds it; the
     /// labour market sizes it to the town's jobless each month, and all its value added is the
     /// pay of those who work it.

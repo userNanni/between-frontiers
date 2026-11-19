@@ -90,10 +90,12 @@ pub fn occupied(world: &GameWorld, country: u16) -> u32 {
 }
 
 /// Removes `n` warheads from `c`'s formations, from the last formation back.
-fn spend_warheads(mil: &Military, c: &mut CountryWar, mut n: u32) {
+/// The equivalent megatons per mille of each warhead spent (U3).
+fn spend_warheads(mil: &Military, c: &mut CountryWar, mut n: u32) -> Vec<i64> {
     let Some(ty) = mil.unit("nuclear_warhead") else {
-        return;
+        return Vec::new();
     };
+    let mut spent = Vec::new();
     for f in c.formations.iter_mut().rev().filter(|f| f.unit == ty) {
         if n == 0 {
             break;
@@ -101,9 +103,12 @@ fn spend_warheads(mil: &Military, c: &mut CountryWar, mut n: u32) {
         let take = f.elements.to_int_floor().clamp(0, i64::from(n));
         f.elements -= Fixed::from_int(take);
         n -= take as u32;
+        let emt = mil.spec(ty, usize::from(f.generation)).emt_mille();
+        spent.extend(std::iter::repeat_n(emt, take as usize));
     }
     c.formations
         .retain(|f| f.unit != ty || f.elements > Fixed::ZERO);
+    spent
 }
 
 /// The men of `c`'s land formations.
@@ -148,7 +153,7 @@ pub fn strike(mil: &Military, world: &mut GameWorld, u: &Use, date: Date) -> Opt
     if launched == 0 {
         return None;
     }
-    spend_warheads(mil, &mut world.war.countries[by], launched);
+    let spent = spend_warheads(mil, &mut world.war.countries[by], launched);
     let stopped = world
         .war
         .countries
@@ -174,12 +179,14 @@ pub fn strike(mil: &Military, world: &mut GameWorld, u: &Use, date: Date) -> Opt
         .filter(|(p, _)| *p > 0)
         .collect();
     regions.sort_unstable_by(|a, b| b.cmp(a));
-    let per = u64::from(n.killed_per_warhead);
-    let per = match u.mode {
-        Mode::Countervalue => per,
-        Mode::Counterforce => per * u64::from(n.counterforce_civilians) / 1000,
+    // U3: a warhead kills `killed_per_warhead` an equivalent megaton of its power.
+    let per_emt = u64::from(n.killed_per_warhead);
+    let per_emt = match u.mode {
+        Mode::Countervalue => per_emt,
+        Mode::Counterforce => per_emt * u64::from(n.counterforce_civilians) / 1000,
     };
     for k in 0..delivered as usize {
+        let per = per_emt * spent.get(k).copied().unwrap_or(1000).max(0) as u64 / 1000;
         let Some(&(_, ri)) = regions.get(k % regions.len().max(1)) else {
             break;
         };

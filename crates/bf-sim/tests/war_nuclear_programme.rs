@@ -112,7 +112,7 @@ fn plants_and_warheads() {
     });
     let mil = &d.war.as_ref().unwrap().military;
     let warhead = mil.unit("nuclear_warhead").unwrap();
-    let plant = d.catalogue.building("nuclear_fuel_plant").unwrap();
+    let plant = d.catalogue.building("weapon_core_plant").unwrap();
     let mut first = None;
     for wk in 0..156 {
         week(&mut s);
@@ -136,7 +136,7 @@ fn plants_and_warheads() {
                 .filter(|p| usize::from(p.kind) == plant)
                 .map(|p| u32::try_from(p.levels).unwrap_or(0))
                 .sum();
-            let fuel = usize::from(d.catalogue.good("nuclear_fuel").unwrap());
+            let fuel = usize::from(d.catalogue.good("weapon_cores").unwrap());
             let m = &w.econ.markets[usa];
             eprintln!(
                 "week {}: plants {levels}, warheads {n:.0}, fissile price {:.0}, delivered {:.2}",
@@ -200,7 +200,7 @@ fn the_pace_from_1940() {
     let mil = &d.war.as_ref().unwrap().military;
     let warhead = mil.unit("nuclear_warhead").unwrap();
     let elec = usize::from(d.catalogue.good("electricity").unwrap());
-    let fuel = usize::from(d.catalogue.good("nuclear_fuel").unwrap());
+    let fuel = usize::from(d.catalogue.good("weapon_cores").unwrap());
     for tag in ["USA", "GER", "GBR"] {
         eprintln!(
             "== {tag}: year | fission enrichment bomb | warheads | fissile price | electricity with/without"
@@ -225,5 +225,107 @@ fn the_pace_from_1940() {
                 wo.econ.markets[c].price[elec].to_f64_lossy()
             );
         }
+    }
+}
+
+/// U2: the weapon core plant is a state firm. Its profit, or its loss, goes whole to the
+/// treasury: with no other state firm (the ownership law at nothing in 1925), the week's firm
+/// revenue of the United States is exactly what its core plants made. The core costs the country
+/// its inputs, wages and works, whatever the price.
+#[test]
+fn the_core_plants_profit_is_the_treasurys() {
+    let d = data();
+    let mut world = d.new_world();
+    let usa = index(&world, "USA");
+    for k in ["nuclear_fission", "uranium_enrichment", "atomic_bomb"] {
+        world.research.stage[usa][tech(d, k)] = Stage::Industrial;
+    }
+    let mut s = Session::new(world, 1925, Date::new(1925, 1, 1), 2, Some(d.rules()));
+    s.submit(GameCommand::NuclearProgramme {
+        tag: "USA".into(),
+        share: Some(20),
+    });
+    let plant = d.catalogue.building("weapon_core_plant").unwrap();
+    let mut checked = 0;
+    for _ in 0..156 {
+        week(&mut s);
+        let w = s.world();
+        let profit: Fixed = w
+            .econ
+            .regions
+            .iter()
+            .filter(|r| usize::from(r.market) == usa)
+            .flat_map(|r| r.plants.iter())
+            .filter(|p| usize::from(p.kind) == plant)
+            .map(|p| p.profit)
+            .sum();
+        let m = &w.econ.markets[usa];
+        let firms = m.budget.revenue_firms;
+        let no_other = m
+            .laws
+            .effects
+            .iter()
+            .all(|e| e.state_ownership == Fixed::ZERO);
+        if profit != Fixed::ZERO && no_other {
+            assert_eq!(
+                firms, profit,
+                "the week's firm revenue is the core plants' profit"
+            );
+            checked += 1;
+        }
+    }
+    eprintln!("weeks with a core plant's profit checked: {checked}");
+    assert!(checked > 0, "a core plant ran");
+}
+
+/// With `war` off, no country builds a weapon core plant: a state firm is built only when the
+/// state asks for it (no programme without the war). Also who reaches the production reactor, and
+/// when. A measure for the PR: run in the slot.
+#[test]
+#[ignore = "long: a century with war off"]
+fn no_core_plant_without_a_programme() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let d = GameData::load(&root).unwrap_or_else(|e| panic!("{e}"));
+    assert!(!d.switches.war);
+    let mut s = Session::new(
+        d.new_world(),
+        1925,
+        Date::new(1925, 1, 1),
+        2,
+        Some(d.rules()),
+    );
+    let plant = d.catalogue.building("weapon_core_plant").unwrap();
+    let reactor = tech(&d, "production_reactor");
+    for year in [1950, 1975, 2025] {
+        s.sim.run_until(Date::new(year, 1, 1));
+        let w = s.world();
+        let levels: i64 = w
+            .econ
+            .regions
+            .iter()
+            .flat_map(|r| r.plants.iter())
+            .filter(|p| usize::from(p.kind) == plant)
+            .map(|p| p.levels)
+            .sum();
+        let reached: Vec<String> = w
+            .countries
+            .iter()
+            .enumerate()
+            .filter(|(i, _)| w.research.stage[*i][reactor] > Stage::Unknown)
+            .map(|(_, (_, c))| c.tag.clone())
+            .collect();
+        let bomb = tech(&d, "atomic_bomb");
+        let with_bomb = (0..w.countries.len())
+            .filter(|&i| w.research.stage[i][bomb] >= Stage::Science)
+            .count();
+        eprintln!(
+            "{year}: weapon core plant levels in the world {levels}; production reactor known in {} countries; the atomic bomb understood or beyond in {with_bomb}",
+            reached.len(),
+        );
+        assert_eq!(levels, 0, "no core plant without a programme");
+        assert!(
+            reached.is_empty(),
+            "no production reactor without a programme"
+        );
     }
 }

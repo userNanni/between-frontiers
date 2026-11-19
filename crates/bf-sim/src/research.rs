@@ -134,6 +134,11 @@ pub struct TechnologyDef {
     /// The state can carry it across the valley of death as the buyer (arms, space, nuclear).
     #[serde(default)]
     pub state_buyer: bool,
+    /// A weapon's technique: it enters the research of a country only with a nuclear programme,
+    /// paid and pushed by it (the production reactor); no civil research, prototype or imitation
+    /// reaches it otherwise.
+    #[serde(default)]
+    pub programme_only: bool,
     /// Stage on 1 January 1925; omitted means unknown everywhere.
     #[serde(default)]
     pub start: Option<Start>,
@@ -167,6 +172,8 @@ pub struct Tech {
     /// (index into EFFECTS, per mille).
     pub effects: Vec<(u8, u16)>,
     pub state_buyer: bool,
+    /// Reached only by a country with a nuclear programme (`TechDef::programme_only`).
+    pub programme_only: bool,
     pub start: Option<Start>,
 }
 
@@ -338,6 +345,7 @@ impl TechTree {
                 productivity: d.productivity.clone(),
                 effects,
                 state_buyer: d.state_buyer,
+                programme_only: d.programme_only,
                 start: d.start.clone(),
             });
         }

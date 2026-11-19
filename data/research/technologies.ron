@@ -445,9 +445,29 @@
             demonstrated: 1944,
             industrialized: 1945,
             cost: 315,
-            methods: ["nuclear_fuel_plant.gaseous_diffusion"],
-            goods: ["nuclear_fuel"],
+            methods: ["nuclear_fuel_plant.gaseous_diffusion", "weapon_core_plant.high_enrichment"],
+            goods: ["nuclear_fuel", "weapon_cores"],
             state_buyer: true,
+        ),
+        (
+            // U2: the production reactor and the reprocessing of its plutonium: the first pile
+            // critical in December 1942 (Chicago), the Hanford B in September 1944 (DOE, B
+            // Reactor Fact Sheet; DOE, Plutonium: The First 50 Years, 9.1.1). The cost is an
+            // estimate, that of enrichment. Historically only the nuclear programmes built
+            // production reactors.
+            key: "production_reactor",
+            field: "energy",
+            era: 1,
+            requires: ["nuclear_fission"],
+            demonstrated: 1942,
+            industrialized: 1944,
+            cost: 315,
+            methods: ["weapon_core_plant.production_reactor"],
+            goods: ["weapon_cores"],
+            state_buyer: true,
+            // A weapon's technique: only a nuclear programme researches it (no civil research,
+            // prototype or imitation without one).
+            programme_only: true,
         ),
         (
             key: "arc_welding",
