@@ -94,6 +94,42 @@ pub fn shortcut(ctx: &Context, cmd: &str) -> Option<String> {
     frame(ctx).static_info.labels.get(cmd).cloned()
 }
 
+/// The command's own key printed in the top right corner of its button or tab, so that it can
+/// be read without the leader key. Nothing when the command has no key.
+pub fn badge(ui: &Ui, rect: Rect, cmd: &str) {
+    badge_at(ui, rect, cmd, false);
+}
+
+/// [`badge`] centred on the top edge, for tabs side by side: it stays over its own tab.
+pub fn badge_centred(ui: &Ui, rect: Rect, cmd: &str) {
+    badge_at(ui, rect, cmd, true);
+}
+
+fn badge_at(ui: &Ui, rect: Rect, cmd: &str, centred: bool) {
+    use bf_ui_kit::tokens::{color, radius};
+    let Some(key) = shortcut(ui.ctx(), cmd) else {
+        return;
+    };
+    let painter = ui.painter();
+    let galley =
+        painter.layout_no_wrap(key, bf_ui_kit::theme::sans_semibold(9.5), color::TEXT_MUTED);
+    let size = galley.size() + egui::vec2(6.0, 1.0);
+    let left = if centred {
+        rect.center().x - size.x / 2.0
+    } else {
+        rect.right() - size.x + 2.0
+    };
+    let at = Rect::from_min_size(egui::pos2(left, rect.top() - size.y + 4.0), size);
+    painter.rect(
+        at,
+        radius::SM,
+        color::SURFACE_SUNKEN,
+        egui::Stroke::new(1.0, color::BORDER),
+        egui::StrokeKind::Inside,
+    );
+    painter.galley(at.min + egui::vec2(3.0, 0.5), galley, color::TEXT_MUTED);
+}
+
 /// `text (key)`, or `text` when the command has no key.
 pub fn tip(ctx: &Context, text: &str, cmd: &str) -> String {
     match shortcut(ctx, cmd) {
@@ -185,7 +221,10 @@ pub fn segmented<T: PartialEq + Clone>(
     let (mut changed, rects) = bf_ui_kit::segmented_rects(ui, value, options);
     for (i, rect) in rects.into_iter().enumerate() {
         let typed = match tips.get(i) {
-            Some(Tip::Command(cmd)) => target(ui, cmd, rect),
+            Some(Tip::Command(cmd)) => {
+                badge_centred(ui, rect, cmd);
+                target(ui, cmd, rect)
+            }
             Some(Tip::Item(family, id, key)) => item(ui, *family, id.clone(), key, rect),
             None => false,
         };

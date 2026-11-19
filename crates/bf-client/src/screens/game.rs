@@ -28,6 +28,8 @@ pub struct State {
     /// The principal each 1925 debt between governments was signed with.
     signed: crate::ledger_view::Signed,
     research_open: bool,
+    /// The sheet of keys (F1), over everything.
+    keys_sheet: Option<super::keys_sheet::Sheet>,
     /// The government window while it is open.
     government: Option<super::government::Window>,
     /// The journal window while it is open.
@@ -147,6 +149,7 @@ impl State {
             rules: data.rules(),
             signed: crate::ledger_view::signed_1925(&data),
             research_open: false,
+            keys_sheet: None,
             government: None,
             journal: None,
             influence: None,
@@ -189,6 +192,27 @@ impl State {
             );
             shared.toast(msg, now);
         }
+    }
+
+    /// Which windows are open, by name (tests): "economy", "war", "influence", "keys-sheet".
+    pub fn open_windows(&self) -> Vec<&'static str> {
+        let mut out = Vec::new();
+        if self.economy.is_some() {
+            out.push("economy");
+        }
+        if self.war.is_some() {
+            out.push("war");
+        }
+        if self.influence.is_some() {
+            out.push("influence");
+        }
+        if self.government.is_some() {
+            out.push("government");
+        }
+        if self.keys_sheet.is_some() {
+            out.push("keys-sheet");
+        }
+        out
     }
 
     /// Tab of the government window, while it is open.
@@ -1306,7 +1330,17 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
 
     // Keyboard: every key arrives as a command.
     let ctx = ui.ctx().clone();
-    let fired = |cmd: &str| keys::fired(&ctx, cmd);
+    // The sheet of keys answers Back first, and F1 opens or closes it from anywhere.
+    let sheet_back = state.keys_sheet.is_some() && keys::fired(&ctx, id::BACK);
+    if sheet_back {
+        state.keys_sheet = None;
+    } else if keys::fired(&ctx, id::KEYS_SHEET) {
+        state.keys_sheet = match state.keys_sheet {
+            Some(_) => None,
+            None => Some(Default::default()),
+        };
+    }
+    let fired = |cmd: &str| keys::fired(&ctx, cmd) && !(sheet_back && cmd == id::BACK);
     if !state.menu_open {
         if fired(id::RESEARCH) {
             state.research_open = !state.research_open;
@@ -1546,6 +1580,11 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
         if keep {
             state.naming = Some(name);
         }
+    }
+    if let Some(mut sheet) = state.keys_sheet.take()
+        && super::keys_sheet::show(ui, rect, shared, &mut sheet)
+    {
+        state.keys_sheet = Some(sheet);
     }
     out
 }
