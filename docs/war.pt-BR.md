@@ -698,8 +698,9 @@ Está em `war::nuclear_use`, atrás de `war`, no save 39. Os parâmetros ficam e
   - mata `killed_per_warhead` (185 mil, o mesmo número do dano inaceitável) nas regiões
     metropolitanas mais populosas, uma ogiva por região, em ciclo;
   - derruba níveis de edifício no dobro da parcela da população morta (`wreck_factor`).
-  - Fonte de escala (RERF): Hiroshima, 70 a 140 mil mortos até o fim de 1945, de cerca de 350
-    mil; Nagasaki, 40 a 70 mil.
+  - Fonte de escala (RERF, FAQ, Q1, mortos agudos nos dois a quatro primeiros meses):
+    Hiroshima, 90 a 166 mil de 340 a 350 mil; Nagasaki, 60 a 80 mil de 250 a 270 mil. O texto
+    anterior dava 70 a 140 mil e 40 a 70 mil, números que a RERF não confirma.
 - **Contraforça:** mata um décimo disso (`counterforce_civilians`) e põe 20 mil homens das forças
   de terra do alvo fora da guerra por ogiva (`counterforce_men`), em proporção em cada formação.
 - **Apoio (N6):**
