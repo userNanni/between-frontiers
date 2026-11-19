@@ -6,6 +6,7 @@ pub mod country_find;
 pub mod country_panel;
 pub mod crisis;
 pub mod demand;
+pub mod economy;
 pub mod embargo;
 pub mod forces;
 pub mod game;

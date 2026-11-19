@@ -46,6 +46,7 @@ pub struct BarResponse {
     pub open_research: bool,
     pub open_government: bool,
     pub open_journal: bool,
+    pub open_economy: bool,
     pub open_population: bool,
     /// A block was clicked: the screen its figure comes from.
     pub open: Option<super::tiles::Open>,
@@ -82,7 +83,7 @@ fn date_width(screen: Rect) -> f32 {
 
 const TIME_BUTTON: f32 = 32.0;
 const TIME_SMALL: f32 = 28.0;
-const TIME_FIXED: f32 = TIME_SMALL * 2.0 + TIME_BUTTON * 6.0 + space::SM * 8.0;
+const TIME_FIXED: f32 = TIME_SMALL * 2.0 + TIME_BUTTON * 7.0 + space::SM * 9.0;
 
 /// Size of the date and speed panel on `screen`.
 pub fn time_size(screen: Rect) -> Vec2 {
@@ -223,17 +224,48 @@ fn extra_items(i18n: &I18n, x: &Extra<'_>) -> Vec<(&'static str, Item)> {
         None,
         vec![i18n.tr("tile-taxes-tip")],
     ));
-    out.push(simple(
+    // The public debt in dollars, as the owner asked to see it; the share of GDP, who holds it
+    // and the interest of a year on hover.
+    let mut debt = simple(
         "debt",
-        g.map_or(unknown.clone(), |g| share_of_gdp(fx(g.budget.debt))),
+        g.map_or(unknown.clone(), |g| {
+            money_short(i18n, fx(g.money.total_debt()))
+        }),
         None,
         vec![
             i18n.tr("tile-debt-tip"),
             g.map_or(String::new(), |g| {
-                crate::text::money(i18n, fx(g.budget.debt))
+                i18n.tr_args(
+                    "tile-debt-total",
+                    &[
+                        (
+                            "amount",
+                            Arg::String(crate::text::money(i18n, fx(g.money.total_debt()))),
+                        ),
+                        ("gdp", Arg::String(share_of_gdp(fx(g.money.total_debt())))),
+                    ],
+                )
             }),
         ],
-    ));
+    );
+    if let Some(g) = g {
+        let m = &g.money;
+        debt.1.tip.breakdown = [
+            ("gov-debt-home", fx(m.debt_home)),
+            ("gov-debt-bank", fx(m.debt_bank)),
+            ("gov-debt-abroad", fx(m.debt_abroad)),
+            ("gov-debt-fx", fx(m.debt_fx_local())),
+        ]
+        .into_iter()
+        .filter(|(_, v)| *v > 0.0)
+        .map(|(k, v)| (i18n.tr(k), money_short(i18n, v)))
+        .chain(std::iter::once((
+            i18n.tr("tile-debt-interest"),
+            money_short(i18n, fx(g.budget.interest) * WEEKS),
+        )))
+        .collect();
+    }
+    out.push(debt);
     out.push(simple(
         "inflation",
         g.map_or(unknown.clone(), |g| percent(fx(g.money.inflation))),
@@ -737,7 +769,7 @@ fn corner_panel(
 ) {
     let (row1, row2, row3) = items(i18n, world, p);
     // Every block by its key; the panel takes the ones chosen, in their order.
-    let mut all: Vec<(&'static str, Item)> = super::tiles::DEFAULT
+    let mut all: Vec<(&'static str, Item)> = super::tiles::FIGURES
         .iter()
         .copied()
         .zip(row1.into_iter().chain(row2).chain(row3))
@@ -1083,6 +1115,7 @@ fn time_panel(
     let plus_rect = next(small, small);
     let pause_rect = next(button, button);
     let government_rect = next(button, button);
+    let economy_rect = next(button, button);
     let journal_rect = next(button, button);
     let population_rect = next(button, button);
     let research_rect = next(button, button);
@@ -1136,6 +1169,12 @@ fn time_panel(
         let text = i18n.tr("bar-government");
         if command(ui, Icon::Shield, button, &text, id::GOVERNMENT, false) {
             out.open_government = true;
+        }
+    });
+    at(economy_rect, &mut |ui| {
+        let text = i18n.tr("bar-economy");
+        if command(ui, Icon::Coins, button, &text, id::ECONOMY, false) {
+            out.open_economy = true;
         }
     });
     at(journal_rect, &mut |ui| {

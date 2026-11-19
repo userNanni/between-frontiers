@@ -199,3 +199,29 @@ fn english_percentages_have_no_space() {
         found.join("\n")
     );
 }
+
+/// Portuguese writes a space between the number and the percent sign ("12,5 %"), as `gov-pct`
+/// does; English writes none (`english_percentages_have_no_space`).
+#[test]
+fn portuguese_percentages_have_a_space() {
+    let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/i18n/pt-BR");
+    let mut found = Vec::new();
+    for file in std::fs::read_dir(&dir).unwrap() {
+        let file = file.unwrap().path();
+        let text = std::fs::read_to_string(&file).unwrap();
+        for (n, line) in text.lines().enumerate() {
+            let tight = line.contains("}%")
+                || line
+                    .char_indices()
+                    .any(|(i, c)| c.is_ascii_digit() && line[i + 1..].starts_with('%'));
+            if tight {
+                found.push(format!("{}:{}", file.display(), n + 1));
+            }
+        }
+    }
+    assert!(
+        found.is_empty(),
+        "no space before % in Portuguese:\n{}",
+        found.join("\n")
+    );
+}

@@ -820,6 +820,46 @@ fn the_works_tab_holds_a_long_queue() {
         h.key_press(egui::Key::G);
         steps(&mut h);
         click(&mut h, if locale == "en" { "Works" } else { "Obras" });
+        // The private works opened, and a building picked: its states and costs. A click
+        // reaches only what is on screen: down to them first.
+        let en = locale == "en";
+        for _ in 0..12 {
+            h.key_press_modifiers(egui::Modifiers::SHIFT, egui::Key::PageDown);
+            steps(&mut h);
+        }
+        for part in [
+            if en {
+                "private works of"
+            } else {
+                "obras privadas da"
+            },
+            if en {
+                " states · from "
+            } else {
+                " estados · desde "
+            },
+        ] {
+            let found = match h
+                .query_all(egui_kittest::kittest::by().label_contains(part))
+                .next()
+            {
+                Some(n) => {
+                    n.click();
+                    true
+                }
+                None => false,
+            };
+            if found {
+                steps(&mut h);
+            } else {
+                failures.push(format!("{locale}: no {part}"));
+            }
+        }
+        // Back to the top: what scrolled above the window is not on screen.
+        for _ in 0..40 {
+            h.key_press_modifiers(egui::Modifiers::SHIFT, egui::Key::PageUp);
+            steps(&mut h);
+        }
         for (w, hh) in [
             (960.0, 540.0),
             (1280.0, 720.0),
@@ -829,6 +869,85 @@ fn the_works_tab_holds_a_long_queue() {
             h.set_size(egui::vec2(w, hh));
             steps(&mut h);
             let case = format!("{locale} {w}×{hh} works");
+            failures.extend(check(&h, &case));
+            failures.extend(no_overlapping_text(&h, &case));
+        }
+        let _ = std::fs::remove_dir_all(&user);
+    }
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+/// The economy window (Shift+E) with Britain's buildings, a kind opened on its states, after a
+/// month with a long queue of works (levels under construction show beside the built ones).
+#[test]
+fn the_economy_window_fits() {
+    use laplace_schelling::calendar::Date;
+    let data = bf_sim::data::GameData::load(&root()).expect("game data");
+    let rules = data.rules();
+    let mut session = bf_sim::game::Session::new(
+        data.new_world(),
+        7,
+        Date::new(1925, 1, 1),
+        1,
+        Some(rules.clone()),
+    );
+    session.submit(bf_sim::game::GameCommand::ChoosePlayer { tag: "GBR".into() });
+    while session.clock().date < Date::new(1925, 2, 3) {
+        session.sim.step();
+    }
+    let mut failures = Vec::new();
+    for (locale, all, first) in [("pt-BR", "Todos", "Níveis ↓"), ("en", "All", "Levels ↓")] {
+        let user =
+            std::env::temp_dir().join(format!("bf-matrix-economy-{locale}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&user);
+        let mut save =
+            saves::create(&user.join("saves"), "Economia", 7, Date::new(1925, 1, 1)).unwrap();
+        save.meta.player = Some("GBR".into());
+        std::fs::write(
+            save.dir.join(saves::WORLD_FILE),
+            session.save("test", "economy").unwrap(),
+        )
+        .unwrap();
+        saves::write(&save).unwrap();
+        let mut h = app(user.clone(), locale, egui::vec2(1600.0, 900.0));
+        steps(&mut h);
+        let ctx = h.ctx.clone();
+        h.state_mut().apply(Transition::Game(save), &ctx);
+        steps(&mut h);
+        h.key_press_modifiers(egui::Modifiers::SHIFT, egui::Key::E);
+        steps(&mut h);
+        if !nodes(&h).iter().any(|n| n.label == "economy") {
+            failures.push(format!("{locale}: no economy window"));
+            continue;
+        }
+        for label in [all, first] {
+            if h.query_all(egui_kittest::kittest::by().label(label))
+                .next()
+                .is_none()
+            {
+                failures.push(format!("{locale}: no {label}"));
+            }
+        }
+        // The first kind (most levels) opens on its states.
+        if let Some(row) = h
+            .query_all(egui_kittest::kittest::by().label_contains("+ "))
+            .next()
+        {
+            row.click();
+        }
+        steps(&mut h);
+        if !nodes(&h).iter().any(|n| n.label.starts_with("− ")) {
+            failures.push(format!("{locale}: the first building did not open"));
+        }
+        for (w, hh) in [
+            (960.0, 540.0),
+            (1280.0, 720.0),
+            (1600.0, 900.0),
+            (3840.0, 2160.0),
+        ] {
+            h.set_size(egui::vec2(w, hh));
+            steps(&mut h);
+            let case = format!("{locale} {w}×{hh} economy");
             failures.extend(check(&h, &case));
             failures.extend(no_overlapping_text(&h, &case));
         }

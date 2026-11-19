@@ -312,6 +312,7 @@ pub mod id {
 
     pub const POPULATION: &str = "window.population";
     pub const INFLUENCE: &str = "window.influence";
+    pub const ECONOMY: &str = "window.economy";
     pub const WAR: &str = "window.war";
     /// Scroll the open window's page down or up: what lies below the fold is reachable without
     /// the mouse (its key tips show once it is in view).
@@ -320,6 +321,8 @@ pub mod id {
     pub const UI_SCALE_UP: &str = "system.ui_scale_up";
     pub const UI_SCALE_DOWN: &str = "system.ui_scale_down";
     pub const UI_STREAM: &str = "system.ui_stream";
+    /// Full screen on or off.
+    pub const FULLSCREEN: &str = "system.fullscreen";
     pub const HUD_CENTER_BAND: &str = "hud.center_band";
 }
 
@@ -392,6 +395,9 @@ fn builtin() -> Vec<CommandDef> {
         CommandDef::new(JOURNAL, Windows).keys([k(KeyJ)]).hint('J'),
         CommandDef::new(POPULATION, Windows).keys([k(KeyY)]),
         CommandDef::new(INFLUENCE, Windows).keys([k(KeyI).shift()]),
+        CommandDef::new(ECONOMY, Windows)
+            .keys([k(KeyE).shift()])
+            .hint('E'),
         CommandDef::new(WAR, Windows).keys([k(KeyW).shift()]),
         CommandDef::new(SCROLL_DOWN, Windows).keys([k(PageDown).shift()]),
         CommandDef::new(SCROLL_UP, Windows).keys([k(PageUp).shift()]),
@@ -494,6 +500,7 @@ fn builtin() -> Vec<CommandDef> {
     out.push(CommandDef::new(UI_SCALE_UP, System).keys([k(Equal).ctrl()]));
     out.push(CommandDef::new(UI_SCALE_DOWN, System).keys([k(Minus).ctrl()]));
     out.push(CommandDef::new(UI_STREAM, System).hint('T'));
+    out.push(CommandDef::new(FULLSCREEN, System).keys([k(F11), k(Enter).alt()]));
     out.push(CommandDef::new(HUD_CENTER_BAND, Windows));
     out
 }

@@ -273,12 +273,16 @@ fn blocks_are_put_in_moved_and_taken_out_by_dragging() {
         None,
         "the standard set"
     );
-    // The public debt from the tray to the head of the large row.
-    let debt = button_rect(&h, "Dívida pública");
+    // The treasury from the tray to the head of the large row.
+    let treasury = button_rect(&h, "Caixa do Tesouro");
     let first = button_rect(&h, "Qualidade de vida");
-    pointer_drag(&mut h, debt.center(), first.left_center() + vec2(4.0, 0.0));
+    pointer_drag(
+        &mut h,
+        treasury.center(),
+        first.left_center() + vec2(4.0, 0.0),
+    );
     let tiles = h.state().hud.layout.tiles();
-    assert_eq!(tiles[0], "debt", "{tiles:?}");
+    assert_eq!(tiles[0], "treasury", "{tiles:?}");
     assert_eq!(tiles.len(), 16);
     assert!(h.state().saved);
     // Inflation clicked in from the tray: it goes at the end.
@@ -293,7 +297,7 @@ fn blocks_are_put_in_moved_and_taken_out_by_dragging() {
     assert_eq!(h.state().hud.layout.tiles().last(), Some(&"inflation"));
     // The subjects out to the tray.
     let subjects = button_rect(&h, "Súditos");
-    let tray = button_rect(&h, "Caixa do Tesouro");
+    let tray = button_rect(&h, "Impostos");
     pointer_drag(&mut h, subjects.center(), tray.center());
     let tiles = h.state().hud.layout.tiles();
     assert!(!tiles.contains(&"subjects"), "{tiles:?}");
