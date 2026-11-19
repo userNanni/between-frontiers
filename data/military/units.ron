@@ -326,8 +326,11 @@
                     equipment: Some([("military_aircraft", 80), ("electrical_equipment", 20)]),
                     upkeep: Some([("fuel", 3)]),
                     roles: Some([(Recon, 500), (AntiShip, 250), (Asw, 250)])),
+                // The avionics of the first jet patrol aircraft ran on vacuum tubes (radar and radio
+                // sets), electrical equipment then; electronic components come in 1950. The
+                // quantity is kept (estimate).
                 (requires: ["jet_engine"],
-                    equipment: Some([("military_aircraft", 500), ("electronic_components", 100)]),
+                    equipment: Some([("military_aircraft", 500), ("electrical_equipment", 100)]),
                     upkeep: Some([("fuel", 6)])),
             ],
         ),
@@ -419,8 +422,11 @@
             // published.
             key: "nuclear_warhead", domain: Strategic, mobility: Static, requires: ["atomic_bomb"],
             men: 5, training_weeks: 10,
-            equipment: [("weapon_cores", 1), ("explosives", 2), ("electronic_components", 50)],
-            upkeep: [("electronic_components", "0.1")],
+            // The fuzing and firing of 1945 (radar altimeters, barometric and clock switches, the
+            // detonators; Sublette, Nuclear Weapons FAQ, 8.1.3) as electrical equipment, which
+            // exists then; electronic components come in 1950. The quantity is kept (estimate).
+            equipment: [("weapon_cores", 1), ("explosives", 2), ("electrical_equipment", 50)],
+            upkeep: [("electrical_equipment", "0.1")],
             roles: [(Strategic, 1000)],
             yield_kt: 21,
             generations: [
