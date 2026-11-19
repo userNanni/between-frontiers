@@ -483,5 +483,5 @@ strike-confirm-line = { $n ->
 # A precipitação (N8)
 war-fallout = Precipitação nuclear
 war-fallout-basis = A produtividade que cada estado perdeu para a precipitação. A perda cai com o césio-137: metade em 30 anos.
-war-fallout-ours = { $state }: perdemos { $share } da produtividade
-war-fallout-theirs = { $state }: eles perderam { $share } da produtividade
+war-fallout-ours = { $state }: perdemos { $share } da produtividade; cai à metade em { $half } anos, abaixo de 1 % em { $year }
+war-fallout-theirs = { $state }: eles perderam { $share } da produtividade; cai à metade em { $half } anos, abaixo de 1 % em { $year }

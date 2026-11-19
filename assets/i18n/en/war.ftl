@@ -471,5 +471,5 @@ strike-confirm-line = { $n ->
 # The fallout (N8)
 war-fallout = Nuclear fallout
 war-fallout-basis = The productivity each state lost to the fallout. The loss falls with caesium-137: half in 30 years.
-war-fallout-ours = { $state }: we lost { $share } of the productivity
-war-fallout-theirs = { $state }: they lost { $share } of the productivity
+war-fallout-ours = { $state }: we lost { $share } of the productivity; it halves in { $half } years, under 1% in { $year }
+war-fallout-theirs = { $state }: they lost { $share } of the productivity; it halves in { $half } years, under 1% in { $year }

@@ -394,3 +394,112 @@ fn the_fallout_takes_productivity_and_decays() {
     assert_eq!(left, 97);
     assert!(back > now, "it comes back");
 }
+
+/// N8, the measure for the PR (no target): France strikes Germany with ten warheads on its
+/// cities in March 1925, and Germany's GDP five, ten and thirty years on, with the fallout's loss
+/// at 0 (the strike alone), 5 % and 10 % a warhead (the neighbours three tenths of it, as in the
+/// data).
+#[test]
+#[ignore = "long: the N8 measure, thirty years three times; run in the slot"]
+fn fallout_gdp_measure() {
+    for loss in [0u32, 50, 100] {
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let mut d = GameData::load(&root).unwrap_or_else(|e| panic!("{e}"));
+        d.enable_crisis();
+        d.switches.war = true;
+        let n = &mut d.war.as_mut().unwrap().military.rules.nuclear;
+        n.fallout_loss = loss;
+        let mut w = d.new_world();
+        let ty = d
+            .war
+            .as_ref()
+            .unwrap()
+            .military
+            .unit("nuclear_warhead")
+            .unwrap();
+        let bomber = d
+            .war
+            .as_ref()
+            .unwrap()
+            .military
+            .unit("strategic_bomber")
+            .unwrap();
+        let fra = w
+            .countries
+            .iter()
+            .position(|(_, c)| c.tag == "FRA")
+            .unwrap();
+        for (unit, n) in [(ty, 10), (bomber, 10)] {
+            w.war.countries[fra].formations.push(Formation {
+                unit,
+                generation: 0,
+                elements: Fixed::from_int(n),
+                colonial: false,
+                called_up: false,
+                equipment: Vec::new(),
+                training: Fixed::ONE,
+                raised: true,
+            });
+        }
+        let mut s = Session::new(w, 1925, Date::new(1925, 1, 1), 2, Some(d.rules()));
+        s.submit(GameCommand::ChoosePlayer { tag: "FRA".into() });
+        s.sim.run_until(Date::new(1925, 3, 2));
+        s.submit(GameCommand::Demand {
+            tag: "FRA".into(),
+            target: "GER".into(),
+            demand: Proposal {
+                side_a: vec!["FRA".into()],
+                side_b: vec!["GER".into()],
+                clauses: vec![Clause {
+                    kind: ClauseKind::Union,
+                    giver: Side::Junior,
+                    receiver: Side::Senior,
+                    until: None,
+                    note: None,
+                }],
+                term_years: None,
+                notice_years: 0,
+            },
+            weeks: None,
+        });
+        s.sim.run_until(Date::new(1925, 3, 20));
+        let id = s.world().war.conflicts.crises[0].id;
+        s.submit(GameCommand::Declare {
+            tag: "FRA".into(),
+            crisis: id,
+            war: true,
+        });
+        s.sim.run_until(Date::new(1925, 3, 24));
+        s.submit(GameCommand::NuclearUse {
+            tag: "FRA".into(),
+            target: "GER".into(),
+            mode: Mode::Countervalue,
+            warheads: 10,
+        });
+        let ger = s
+            .world()
+            .countries
+            .iter()
+            .position(|(_, c)| c.tag == "GER")
+            .unwrap();
+        let gdp = |s: &Session| s.world().econ.markets[ger].gdp_last_year.to_f64_lossy() / 1e9;
+        s.sim.run_until(Date::new(1926, 1, 10));
+        let g0 = gdp(&s);
+        let mut line = format!("N8 loss {loss}: GDP of Germany, billions: 1925 {g0:.1}");
+        for year in [1930, 1935, 1955] {
+            s.sim.run_until(Date::new(year, 1, 10));
+            let stock: u32 = s
+                .world()
+                .war
+                .nuclear
+                .fallout
+                .iter()
+                .filter(|(r, _)| usize::from(s.world().econ.regions[*r as usize].market) == ger)
+                .map(|(_, l)| *l)
+                .max()
+                .unwrap_or(0);
+            line += &format!(" | {} {:.1} (worst region {stock}‰)", year - 1, gdp(&s));
+        }
+        eprintln!("{line}");
+    }
+}

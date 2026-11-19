@@ -180,6 +180,10 @@ pub struct Fallout {
     pub ours: bool,
     /// Per mille of the productivity lost.
     pub per_mille: u32,
+    /// Years for the loss to halve, at the rule's yearly decay.
+    pub half_years: u32,
+    /// The January in which the loss falls under 1 % (10 per mille), as the simulation decays it.
+    pub under_1pc: i32,
 }
 
 /// One war of the player's.
@@ -565,6 +569,25 @@ pub fn read(
                     })
                 })
                 .collect();
+            let keep = mil.map_or(977, |m| m.rules.nuclear.fallout_keep).min(999);
+            let year = laplace_schelling::calendar::Date::from_days(days).year;
+            // As `nuclear_use::fallout_year` decays it: each January, `keep` per mille is left.
+            let half_years = {
+                let (mut l, mut n) = (1_000_000u64, 0u32);
+                while l > 500_000 && n < 1000 {
+                    l = l * u64::from(keep) / 1000;
+                    n += 1;
+                }
+                n
+            };
+            let under_1pc = |per_mille: u32| {
+                let (mut l, mut n) = (per_mille, 0i32);
+                while l >= 10 && n < 1000 {
+                    l = l * keep / 1000;
+                    n += 1;
+                }
+                year + n
+            };
             let mut fallout: Vec<Fallout> = world
                 .war
                 .nuclear
@@ -583,6 +606,8 @@ pub fn read(
                         state: st,
                         ours: side,
                         per_mille,
+                        half_years,
+                        under_1pc: under_1pc(per_mille),
                     })
                 })
                 .collect();

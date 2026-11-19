@@ -762,6 +762,18 @@ Está em `war::nuclear_use::fallout`, atrás de `war`, no save 40.
 - **A tela:** a janela "Guerra" lista, estado por estado, quanto da produtividade cada lado perdeu,
   com a meia-vida.
 - **Fica de fora:** a saúde (os mortos tardios por câncer, Semipalatinsk) e o vento.
+- **A perda chega à produção:** a `tfp` da região é a que todas as usinas leem (`econ::plant_tfp`).
+  A região produz menos com os mesmos trabalhadores. A população que sobra continua consumindo, e
+  o mercado fecha pelo preço. Nada é criado nem destruído pela regra; só a produtividade muda.
+- **Conferência de sanidade, sem ajuste:**
+  - Hiroshima e Nagasaki se reconstruíram em cerca de uma década. As duas foram explosões no ar,
+    com pouca precipitação local.
+  - A premissa do césio-137 segura a perda por 30 anos.
+  - A regra de hoje não distingue explosão no ar de explosão no solo, e isso pesa para
+    superestimar a perda num ataque a cidade.
+  - **Passo futuro:** a parcela de precipitação local por tipo de explosão, com a fonte de
+    Glasstone e Dolan, cap. IX ("Residual Nuclear Radiation and Fallout"). A página está a
+    conferir.
 - **Teste** (`the_fallout_takes_productivity_and_decays`, Alemanha contra a Polônia):
   - uma ogiva leva a região atingida a 0,900 da produtividade do mundo sem o ataque;
   - os vizinhos perdem 30‰, inclusive um estado alemão;

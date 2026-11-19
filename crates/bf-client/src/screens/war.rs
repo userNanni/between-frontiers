@@ -1104,6 +1104,9 @@ fn fallout(ui: &mut Ui, i18n: &I18n, world: Option<&World>, list: &[crate::war_v
                     "share",
                     arg(super::budget::pct(i18n, f64::from(f.per_mille) / 10.0, 1)),
                 ),
+                ("half", arg(i18n.int(i64::from(f.half_years)))),
+                ("n", Arg::Num(f64::from(f.half_years))),
+                ("year", arg(f.under_1pc.to_string())),
             ],
         );
         ui.add(egui::Label::new(RichText::new(line).font(sans(size::SMALL))).wrap());
