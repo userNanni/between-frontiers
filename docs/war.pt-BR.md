@@ -549,7 +549,11 @@ Agora pede 3.600 nas duas gerações, contadas pelo minério que um núcleo real
 - **Termonuclear:** fica igual à fissão até haver fonte para o físsil de um primário
   (**estimativa**, não medida).
 - **Rota do plutônio:** falta. Não há reator de produção nem reprocessamento. Toda ogiva do jogo
-  sai do enriquecimento, que é a rota mais cara em minério.
+  sai do enriquecimento.
+  - Por núcleo, o plutônio quase não poupa minério. O Fat Man levou cerca de 6 kg de Pu, e um
+    reator de baixa queima dá cerca de 0,2 a 0,25 kg de Pu por t de urânio natural: umas 25 a 30
+    t de urânio por núcleo (**estimativa sem fonte conferida**).
+  - É uma rota alternativa, de quem não tem difusão, e não uma economia de minério.
 - **Teste:** `tests/warhead_cost.rs` lê a razão da usina e confere que cada geração custa de 14,0 a
   28,5 t de U3O8. Hoje dá 21,1 t.
 
@@ -586,8 +590,8 @@ Reino Unido a 0,4% do PIB desde 1940-01-01; o dinheiro está em dólares de 2011
   - **Sem estoque de minério rico:** o Projeto tinha cerca de 6.000 t de óxido no fim de 1944
     (pp. 291–292). No jogo, as minas de 1925 extraem dezenas de toneladas.
   - **As minas não respondem à demanda:** o preço do minério sobe, mas nenhuma mina abre por isso.
-  - **Sem a rota do plutônio:** a maior parte do estoque real depois de agosto de 1945 é de
-    plutônio.
+  - **Sem a rota do plutônio:** depois de agosto de 1945, a produção real seguiu também pelo
+    plutônio, a rota alternativa ao enriquecimento.
 
 **Ordem de grandeza na década de 1960:**
 - O jogo extrai cerca de 3.500 t de U3O8 por ano no mundo em 1960, o bastante para cerca de 165
@@ -597,9 +601,12 @@ Reino Unido a 0,4% do PIB desde 1940-01-01; o dinheiro está em dólares de 2011
   ainda por conferir. Isso daria umas 1.700 a 1.900 ogivas por ano.
 - O estoque americano subiu cerca de 3.000 por ano entre 1955 e 1960. Dezenas de milhares de
   ogivas **não cabem** no minério nem do mundo real com núcleos só de urânio a 21 t cada.
-- A diferença é a lacuna do plutônio e dos núcleos menores: um núcleo de plutônio pede poucos
-  quilos de físsil. Ela fica anotada para a fatia do plutônio e das minas que respondem à
-  demanda.
+- A diferença é o **núcleo menor das gerações seguintes** (reforço, núcleo composto).
+  - O arsenal real usou da ordem de 7 a 10 t de U3O8 por ogiva, contra 21 do Little Boy
+    (**estimativa sem fonte conferida**).
+  - O plutônio é rota alternativa, não a explicação.
+  - Fica anotada para a fatia do físsil: o físsil por geração (U3), a rota do plutônio (U2) e as
+    minas que o programa encomenda (U1).
 
 ### O degrau nuclear na crise (passo 3, depois das respostas)
 - **Exigência:** quem exige vê o seu teto contra o alvo. Teto abaixo de `War` quer dizer que a
