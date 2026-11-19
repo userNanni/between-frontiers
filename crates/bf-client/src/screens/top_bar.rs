@@ -130,6 +130,25 @@ struct Tip {
     summary: Vec<String>,
     breakdown: Vec<(String, String)>,
     footer: Vec<String>,
+    /// The figure's closed years, for a chart under the summary.
+    series: Option<Series>,
+}
+
+/// A figure year by year (`live::YearPoint`), and the lines under its chart, written.
+struct Series {
+    points: Vec<(i32, f64)>,
+    /// "Lowest … · highest … · in the year …", and what the record counts.
+    lines: Vec<String>,
+    /// The least span the chart's height shows: a change of a tenth of a point does not fill
+    /// it (five points for a share, a tenth of the highest value otherwise).
+    floor: f64,
+}
+
+#[derive(Clone, Copy)]
+enum SeriesKind {
+    Count,
+    Money,
+    Share,
 }
 
 struct Item {
@@ -174,6 +193,7 @@ fn extra_items(i18n: &I18n, x: &Extra<'_>) -> Vec<(&'static str, Item)> {
                     summary,
                     breakdown: Vec::new(),
                     footer: vec![i18n.tr("tile-click")],
+                    series: None,
                 },
                 value,
             },
@@ -356,6 +376,7 @@ fn items(i18n: &I18n, world: &World, p: usize) -> (Vec<Item>, Vec<Item>, Vec<Ite
         summary,
         breakdown,
         footer,
+        series: None,
     };
 
     // Row 1: headline indicators with bars.
@@ -721,6 +742,14 @@ fn items(i18n: &I18n, world: &World, p: usize) -> (Vec<Item>, Vec<Item>, Vec<Ite
             value: subjects_value,
         },
     ];
+    // The figures the simulation keeps year by year get their chart.
+    let (mut row1, mut row2, row3) = (row1, row2, row3);
+    let chart_of = |which: Figure| figure_series(i18n, table, p, which);
+    row1[1].tip.series = chart_of(Figure::Literacy);
+    row1[3].tip.series = chart_of(Figure::Urban);
+    row1[4].tip.series = chart_of(Figure::GdpPerCapita);
+    row2[0].tip.series = chart_of(Figure::Gdp);
+    row2[1].tip.series = chart_of(Figure::Population);
     (row1, row2, row3)
 }
 
@@ -955,6 +984,9 @@ fn tooltip(ui: &mut Ui, icon: Icon, tip: &Tip) {
                 );
             });
         });
+    }
+    if let Some(series) = &tip.series {
+        chart(ui, series);
     }
     let footer: Vec<&String> = tip.footer.iter().filter(|l| !l.is_empty()).collect();
     if !footer.is_empty() {
@@ -1258,5 +1290,170 @@ fn time_panel(
         .clicked()
     {
         out.toggle_pause = true;
+    }
+}
+
+/// The chart of a figure's closed years: a line over a faint band, the first and last years under
+/// it, and the lines written for it.
+fn chart(ui: &mut Ui, series: &Series) {
+    ui.add_space(space::XS);
+    if series.points.len() >= 2 {
+        let (rect, _) =
+            ui.allocate_exact_size(egui::vec2(ui.available_width(), 56.0), egui::Sense::hover());
+        let p = ui.painter();
+        p.rect_filled(rect, radius::SM, color::SURFACE_SUNKEN);
+        let lo = series
+            .points
+            .iter()
+            .map(|x| x.1)
+            .fold(f64::INFINITY, f64::min);
+        let hi = series
+            .points
+            .iter()
+            .map(|x| x.1)
+            .fold(f64::NEG_INFINITY, f64::max);
+        // At least the floor's span, centred on the values: a flat figure draws flat.
+        let span = (hi - lo).max(series.floor).max(f64::EPSILON);
+        let lo = (lo + hi) / 2.0 - span / 2.0;
+        let (first, last) = (series.points[0].0, series.points[series.points.len() - 1].0);
+        let years = f64::from((last - first).max(1));
+        let inner = rect.shrink2(egui::vec2(6.0, 6.0));
+        let at = |(y, v): (i32, f64)| {
+            egui::pos2(
+                inner.left() + inner.width() * (f64::from(y - first) / years) as f32,
+                inner.bottom() - inner.height() * ((v - lo) / span) as f32,
+            )
+        };
+        let line: Vec<egui::Pos2> = series.points.iter().map(|x| at(*x)).collect();
+        p.add(egui::Shape::line(
+            line.clone(),
+            egui::Stroke::new(1.5, color::ACCENT),
+        ));
+        if let Some(end) = line.last() {
+            p.circle_filled(*end, 2.5, color::ACCENT);
+        }
+    }
+    for l in &series.lines {
+        ui.label(
+            egui::RichText::new(l)
+                .font(sans(size::CAPTION))
+                .color(color::TEXT_MUTED),
+        );
+    }
+}
+
+/// A figure the simulation records each year (`live::YearPoint`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Figure {
+    Population,
+    Gdp,
+    GdpPerCapita,
+    Literacy,
+    Urban,
+}
+
+/// The chart of a figure of country `p`, built from its closed years; `None` outside a
+/// campaign. The yearly record counts the whole market: with colonies it is not the metropole
+/// the blocks show, and a chart of it would mislead, so a country with colonies gets a line
+/// saying so instead (until the simulation records the metropole apart).
+fn figure_series(
+    i18n: &I18n,
+    table: &crate::world::FigureTable,
+    p: usize,
+    which: Figure,
+) -> Option<Series> {
+    if !matches!(table.source, Source::Live { .. }) {
+        return None;
+    }
+    if table
+        .countries
+        .get(p)
+        .is_some_and(|f| f.colonial_population > 0.0)
+    {
+        return Some(Series {
+            points: Vec::new(),
+            lines: vec![i18n.tr("hud-series-colonies")],
+            floor: 0.0,
+        });
+    }
+    let history = table.history.get(p).map(Vec::as_slice).unwrap_or(&[]);
+    let (kind, value): (SeriesKind, fn(&crate::live::YearPoint) -> f64) = match which {
+        Figure::Population => (SeriesKind::Count, |h| h.population),
+        Figure::Gdp => (SeriesKind::Money, |h| h.gdp),
+        Figure::GdpPerCapita => (SeriesKind::Money, |h| {
+            if h.population > 0.0 {
+                h.gdp / h.population
+            } else {
+                0.0
+            }
+        }),
+        Figure::Literacy => (SeriesKind::Share, |h| h.literacy),
+        Figure::Urban => (SeriesKind::Share, |h| h.urban),
+    };
+    let write = |v: f64| match kind {
+        SeriesKind::Count => i18n.compact(v),
+        SeriesKind::Money => crate::text::money_short(i18n, v),
+        SeriesKind::Share => pct(i18n, v),
+    };
+    let points: Vec<(i32, f64)> = history.iter().map(|h| (h.year, value(h))).collect();
+    let mut lines = Vec::new();
+    if points.len() >= 2 {
+        let lo = points.iter().map(|p| p.1).fold(f64::INFINITY, f64::min);
+        let hi = points.iter().map(|p| p.1).fold(f64::NEG_INFINITY, f64::max);
+        let (last, before) = (points[points.len() - 1].1, points[points.len() - 2].1);
+        let sign = |d: f64| if d >= 0.0 { "+" } else { "−" };
+        let change = match kind {
+            // A share moves in points; a count or a sum in percent.
+            SeriesKind::Share => {
+                let d = (last - before) * 100.0;
+                format!("{}{} p.p.", sign(d), i18n.decimal(d.abs(), 1))
+            }
+            _ if before > 0.0 => {
+                let d = (last / before - 1.0) * 100.0;
+                format!(
+                    "{}{}",
+                    sign(d),
+                    crate::text::pct_text(i18n, i18n.decimal(d.abs(), 1))
+                )
+            }
+            _ => "—".into(),
+        };
+        lines.push(i18n.tr_args(
+            "hud-series-stats",
+            &[
+                ("low", Arg::String(write(lo))),
+                ("high", Arg::String(write(hi))),
+                ("year", Arg::String(points[points.len() - 1].0.to_string())),
+                ("change", Arg::String(change)),
+            ],
+        ));
+        lines.push(i18n.tr_args(
+            "hud-series-scope",
+            &[
+                ("from", Arg::String(points[0].0.to_string())),
+                ("to", Arg::String(points[points.len() - 1].0.to_string())),
+            ],
+        ));
+    } else {
+        lines.push(i18n.tr("hud-series-few"));
+    }
+    let top = points.iter().map(|p| p.1.abs()).fold(0.0, f64::max);
+    let floor = match kind {
+        SeriesKind::Share => 0.05,
+        _ => top * 0.1,
+    };
+    Some(Series {
+        points,
+        lines,
+        floor,
+    })
+}
+
+/// The chart of a figure, as the HUD's tips draw it, for another panel's hover (the country
+/// panel's headline numbers); nothing outside a campaign.
+pub fn figure_chart(ui: &mut Ui, i18n: &I18n, world: &World, p: usize, which: Figure) {
+    if let Some(s) = figure_series(i18n, world.figures(), p, which) {
+        ui.set_max_width(340.0);
+        chart(ui, &s);
     }
 }

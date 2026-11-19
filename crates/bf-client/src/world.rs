@@ -138,6 +138,8 @@ impl Figures {
 pub struct FigureTable {
     pub source: Source,
     pub countries: Vec<Figures>,
+    /// Each country's closed years, in the map's order; empty outside a campaign.
+    pub history: Vec<Vec<crate::live::YearPoint>>,
     pub world_population: f64,
     pub world_gdp: f64,
 }
@@ -172,6 +174,7 @@ impl FigureTable {
             source,
             world_population: countries.iter().map(Figures::total_population).sum(),
             world_gdp: countries.iter().map(Figures::total_gdp).sum(),
+            history: Vec::new(),
             countries,
         }
     }
@@ -219,12 +222,23 @@ impl FigureTable {
                 }
             })
             .collect();
-        Self::new(
+        let mut table = Self::new(
             Source::Live {
                 gdp_year: live.gdp_year,
             },
             rows,
-        )
+        );
+        table.history = countries
+            .iter()
+            .map(|c| {
+                live.countries
+                    .iter()
+                    .position(|l| l.tag == c.def.tag)
+                    .and_then(|i| live.history.get(i).cloned())
+                    .unwrap_or_default()
+            })
+            .collect();
+        table
     }
 }
 
