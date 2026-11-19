@@ -350,6 +350,9 @@ fn war(
     if let Some(f) = &v.fleet {
         fleet(ui, i18n, f);
     }
+    if !v.cut_ours.is_empty() {
+        cut_ours(ui, i18n, &v.cut_ours);
+    }
     if let Some(e) = &w.expedition {
         expedition(ui, i18n, world, v, w.id, e, &mut window.expedition, out);
     }
@@ -1048,51 +1051,132 @@ fn expedition(
 
 /// The player's navy (slice C2): where it is, with the fixed mission "control", why there, and
 /// what it blockades. The command of the fleet (S1) comes with the next slice.
+/// Pairs of a blockade listed by name, the largest first; the rest are counted.
+const PAIRS_SHOWN: usize = 6;
+
 fn fleet(ui: &mut Ui, i18n: &I18n, f: &crate::war_view::FleetLine) {
     bf_ui_kit::gap(ui, space::XS);
     bf_ui_kit::heading(ui, &i18n.tr("war-fleet"));
     let zone = i18n.tr(&format!("sea-zone-{}", f.zone));
-    bf_ui_kit::small(
+    bf_ui_kit::stat_row(ui, &i18n.tr("war-fleet-ships"), &i18n.int(f.ships as i64));
+    bf_ui_kit::stat_row(
         ui,
-        &i18n.tr_args(
-            "war-fleet-where",
-            &[
-                ("ships", arg(i18n.int(f.ships as i64))),
-                ("zone", arg(zone.clone())),
-            ],
-        ),
+        &i18n.tr("war-fleet-zone"),
+        &i18n.tr_args("war-fleet-zone-value", &[("zone", arg(zone))]),
+    );
+    bf_ui_kit::stat_row(
+        ui,
+        &i18n.tr("war-fleet-week"),
+        &i18n.tr(if f.holds {
+            "war-fleet-holds-short"
+        } else {
+            "war-fleet-contested-short"
+        }),
     );
     let why = match (&f.against, &f.stronger) {
         (Some(e), _) => i18n.tr_args(
             "war-fleet-blockading",
-            &[("country", arg(country_name(i18n, e)))],
+            &[
+                ("country", arg(country_name(i18n, e))),
+                ("article", arg(crate::text::country_article(i18n, e))),
+            ],
         ),
-        (None, Some(e)) => {
-            i18n.tr_args("war-fleet-home", &[("country", arg(country_name(i18n, e)))])
-        }
+        (None, Some(e)) => i18n.tr_args(
+            "war-fleet-home",
+            &[
+                ("country", arg(country_name(i18n, e))),
+                ("article", arg(crate::text::country_article(i18n, e))),
+            ],
+        ),
         (None, None) => i18n.tr("war-fleet-home-alone"),
     };
     bf_ui_kit::small(ui, &why);
-    bf_ui_kit::small(
-        ui,
-        &i18n.tr(if f.holds {
-            "war-fleet-holds"
-        } else {
-            "war-fleet-contested"
-        }),
-    );
     if !f.blockades.is_empty() {
         let who: Vec<String> = f.blockades.iter().map(|t| country_name(i18n, t)).collect();
-        bf_ui_kit::small(
+        bf_ui_kit::caption(
             ui,
             &i18n.tr_args(
-                "war-fleet-blockades",
+                "war-fleet-blockade-head",
                 &[
                     ("countries", arg(who.join(", "))),
                     ("pairs", arg(i18n.int(f.cut as i64))),
+                    ("count", Arg::Num(f.cut as f64)),
+                ],
+            ),
+        );
+        for (a, b, value) in f.pairs.iter().take(PAIRS_SHOWN) {
+            bf_ui_kit::stat_row(
+                ui,
+                &i18n.tr_args(
+                    "war-fleet-pair",
+                    &[
+                        ("a", arg(country_name(i18n, a))),
+                        ("b", arg(country_name(i18n, b))),
+                    ],
+                ),
+                &pair_value(i18n, *value),
+            );
+        }
+        if f.pairs.len() > PAIRS_SHOWN {
+            let more = f.pairs.len() - PAIRS_SHOWN;
+            bf_ui_kit::small(
+                ui,
+                &i18n.tr_args(
+                    "war-fleet-pairs-more",
+                    &[
+                        ("n", arg(i18n.int(more as i64))),
+                        ("count", Arg::Num(more as f64)),
+                    ],
+                ),
+            );
+        }
+        bf_ui_kit::small(ui, &i18n.tr("war-fleet-blockade-note"));
+    }
+    bf_ui_kit::small(ui, &i18n.tr("war-fleet-command-later"));
+}
+
+/// What a pair traded in a year, both ways; a dash when nothing.
+fn pair_value(i18n: &I18n, value: f64) -> String {
+    if value > 0.0 {
+        i18n.tr_args(
+            "war-fleet-pair-value",
+            &[("value", arg(crate::text::money(i18n, value)))],
+        )
+    } else {
+        "—".into()
+    }
+}
+
+/// The player's trade cut at sea by an enemy's blockade: each partner and what they traded.
+fn cut_ours(ui: &mut Ui, i18n: &I18n, cut: &[(String, f64)]) {
+    bf_ui_kit::gap(ui, space::XS);
+    bf_ui_kit::heading(ui, &i18n.tr("war-blockaded"));
+    let total: f64 = cut.iter().map(|(_, v)| v).sum();
+    bf_ui_kit::small(
+        ui,
+        &i18n.tr_args(
+            "war-blockaded-basis",
+            &[
+                ("pairs", arg(i18n.int(cut.len() as i64))),
+                ("count", Arg::Num(cut.len() as f64)),
+                ("total", arg(crate::text::money(i18n, total))),
+            ],
+        ),
+    );
+    for (partner, value) in cut.iter().take(PAIRS_SHOWN) {
+        bf_ui_kit::stat_row(ui, &country_name(i18n, partner), &pair_value(i18n, *value));
+    }
+    if cut.len() > PAIRS_SHOWN {
+        let more = cut.len() - PAIRS_SHOWN;
+        bf_ui_kit::small(
+            ui,
+            &i18n.tr_args(
+                "war-fleet-pairs-more",
+                &[
+                    ("n", arg(i18n.int(more as i64))),
+                    ("count", Arg::Num(more as f64)),
                 ],
             ),
         );
     }
-    bf_ui_kit::small(ui, &i18n.tr("war-fleet-command-later"));
 }

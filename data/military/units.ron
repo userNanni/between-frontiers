@@ -407,15 +407,23 @@
             roles: [(Strategic, 900)],
         ),
         (
-            // One warhead in the stockpile.
+            // One warhead in the stockpile. Its fissile material in the game's "kg enriched" of
+            // `nuclear_fuel` (reactor-grade units, 5.87 kg of U3O8 each by the gaseous diffusion
+            // method of buildings.ron), counted by the ore it takes: a Little Boy core (64 kg at
+            // about 80 % U-235) took 12 to 24 t of natural uranium, with tails of 0.3 to 0.5 %
+            // (derived from Wellerstein, 2025, after the Manhattan District History); that is 14.1
+            // to 28.3 t of U3O8, or 2,400 to 4,800 kg enriched; the middle, 3,600 (derived). The
+            // thermonuclear generation keeps the same until a source for the fissile material of
+            // a primary is found (estimate). The plutonium route (production reactors and
+            // reprocessing) is missing: docs/war.pt-BR.md.
             key: "nuclear_warhead", domain: Strategic, mobility: Static, requires: ["atomic_bomb"],
             men: 5, training_weeks: 10,
-            equipment: [("nuclear_fuel", 60), ("explosives", 2), ("electronic_components", 50)],
+            equipment: [("nuclear_fuel", 3600), ("explosives", 2), ("electronic_components", 50)],
             upkeep: [("electronic_components", "0.1")],
             roles: [(Strategic, 1000)],
             generations: [
                 (requires: ["thermonuclear_weapon"],
-                    equipment: Some([("nuclear_fuel", 30), ("explosives", 1), ("electronic_components", 100)])),
+                    equipment: Some([("nuclear_fuel", 3600), ("explosives", 1), ("electronic_components", 100)])),
             ],
         ),
         (
