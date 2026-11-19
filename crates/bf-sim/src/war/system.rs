@@ -1016,6 +1016,10 @@ impl System<GameWorld> for Forces {
                 if let Some(m) = world.econ.markets.get_mut(*by as usize) {
                     m.treasury += *amount;
                 }
+                let (o, b) = (*owner as usize, *by as usize);
+                if o.max(b) < world.econ.markets.len() {
+                    world.payments.transfer(o, b, ctx.date.year, *amount);
+                }
             }
             for (r, levels) in &week.devastation.levels {
                 super::occupation::wreck(world, *r, *levels);

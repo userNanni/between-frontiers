@@ -147,6 +147,9 @@ pub fn apply_month(world: &mut GameWorld, m: Month, date: laplace_schelling::Dat
     for (from, to, amount) in m.payments {
         world.econ.markets[usize::from(from)].treasury -= amount;
         world.econ.markets[usize::from(to)].treasury += amount;
+        world
+            .payments
+            .transfer(usize::from(from), usize::from(to), date.year, amount);
     }
     for (agreement, clause, by, value) in m.unpaid {
         world.treaties.record_breach(
