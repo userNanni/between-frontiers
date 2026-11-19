@@ -213,6 +213,7 @@ pub fn queue(world: &mut GameWorld, s: &Settlement, year: i32) -> Option<u32> {
         if a != b && a < world.econ.markets.len() && b < world.econ.markets.len() {
             world.econ.markets[a].treasury -= *amount;
             world.econ.markets[b].treasury += *amount;
+            world.payments.transfer(a, b, year, *amount);
         }
     }
     for (creditor, key, terms, debtors) in &s.revisions {

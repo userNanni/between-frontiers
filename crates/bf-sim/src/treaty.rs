@@ -1232,6 +1232,9 @@ impl HashState for Ledger {
 pub struct Service {
     pub paid: Fixed,
     pub deferred: Fixed,
+    /// The part of `paid` that repaid principal; the rest is interest, arrears included (the
+    /// balance of payments, `econ::payments`).
+    pub principal: Fixed,
 }
 
 impl Ledger {
@@ -1314,6 +1317,7 @@ impl Ledger {
                 // paid goes to arrears; amortization not paid stays in the principal.
                 let on_schedule = paid.min(scheduled);
                 let on_interest = on_schedule.min(interest);
+                s.principal = ((on_schedule - on_interest) * ex).min(s.paid);
                 d.principal = (d.principal - (on_schedule - on_interest)).max(Fixed::ZERO);
                 d.arrears += interest - on_interest;
                 d.arrears = (d.arrears - (paid - on_schedule)).max(Fixed::ZERO);

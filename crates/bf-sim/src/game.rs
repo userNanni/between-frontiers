@@ -141,6 +141,11 @@ pub struct GameWorld {
     /// follows the historical rule.
     #[serde(default)]
     pub tariffs: crate::econ::customs::TariffState,
+    /// The balance of payments by country: goods, services, income, transfers and the financial
+    /// account, by week and year (`econ::payments`). A record: no rule reads it, and the hash
+    /// leaves it out.
+    #[serde(default)]
+    pub payments: crate::econ::payments::PaymentsState,
 }
 
 impl HashState for GameWorld {
@@ -212,6 +217,7 @@ impl HashState for GameWorld {
             h.section("tariffs");
             self.tariffs.hash_state(h);
         }
+        // `payments` is a record of what moved, read by no rule: out of the hash.
     }
 }
 
@@ -235,6 +241,7 @@ impl GameWorld {
             independence: Default::default(),
             levers: Default::default(),
             tariffs: Default::default(),
+            payments: Default::default(),
             demography: crate::demography::DemographyState::default(),
             treaties: Default::default(),
             war: crate::war::WarState::default(),
@@ -1943,9 +1950,56 @@ mod tests {
             hash_of(&with_ledger)
         );
         assert_eq!(
-            hash_of(&headed(31, &encode_snapshot(&with_ledger).unwrap())),
+            hash_of(&headed(32, &encode_snapshot(&with_ledger).unwrap())),
             hash_of(&with_ledger)
         );
+        // Version 31, before the balance of payments: the world without `payments`.
+        {
+            #[derive(Serialize)]
+            struct BeforePayments<'a> {
+                scenario: &'a String,
+                player: &'a Option<Id<Country>>,
+                countries: &'a Table<Country, CountryState>,
+                census: &'a Vec<CensusRecord>,
+                econ: &'a crate::econ::Economy,
+                research: &'a crate::research::ResearchState,
+                politics: &'a crate::polity::PoliticsState,
+                demography: &'a crate::demography::DemographyState,
+                borders: &'a crate::borders::BordersState,
+                foreign: &'a crate::foreign_stakes::ForeignState,
+                influence: &'a crate::influence::InfluenceState,
+                treaties: &'a crate::treaty::TreatyState,
+                war: &'a crate::war::state::WarState,
+                education: &'a crate::demography::education::EducationState,
+                independence: &'a crate::borders::independence::IndependenceState,
+                levers: &'a crate::econ::levers::LeversState,
+                tariffs: &'a crate::econ::customs::TariffState,
+            }
+            let w = &with_ledger;
+            let v31 = encode_snapshot(&BeforePayments {
+                scenario: &w.scenario,
+                player: &w.player,
+                countries: &w.countries,
+                census: &w.census,
+                econ: &w.econ,
+                research: &w.research,
+                politics: &w.politics,
+                demography: &w.demography,
+                borders: &w.borders,
+                foreign: &w.foreign,
+                influence: &w.influence,
+                treaties: &w.treaties,
+                war: &w.war,
+                education: &w.education,
+                independence: &w.independence,
+                levers: &w.levers,
+                tariffs: &w.tariffs,
+            })
+            .unwrap();
+            let old = headed(31, &v31);
+            assert_eq!(hash_of(&old), hash_of(&with_ledger));
+            assert_eq!(old, *w, "version 31 reads as this world, its record empty");
+        }
         // Version 30, before the embargoes: `tariffs` without `embargoes`.
         {
             #[derive(Serialize)]
