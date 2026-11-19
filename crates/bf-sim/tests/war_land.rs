@@ -705,3 +705,44 @@ fn no_bucket_passes_its_target_to_1946() {
 fn no_bucket_passes_its_target_to_1960() {
     no_bucket_passes_its_target(1960);
 }
+
+/// A country born in play (here Nigeria, separated from Britain) gets its entry in the forces:
+/// without it, it had no forces, no military budget and no war support.
+#[test]
+fn a_country_born_in_play_gets_its_forces_entry() {
+    use bf_sim::borders::{Operation, Terms};
+    let d = data();
+    let mut s = Session::new(
+        d.new_world(),
+        1925,
+        Date::new(1925, 1, 1),
+        2,
+        Some(d.rules()),
+    );
+    let before = s.world().countries.len();
+    s.submit(GameCommand::Borders {
+        op: Operation::Secede {
+            from: "GBR".into(),
+            states: [
+                "NGA-BENUE-NIGER",
+                "NGA-BORNU-ADAMAWA",
+                "NGA-EASTERN",
+                "NGA-KANO-SOKOTO",
+                "NGA-WESTERN",
+            ]
+            .iter()
+            .map(|x| (*x).to_owned())
+            .collect(),
+            tag: "NGA".into(),
+            overlord: None,
+            signatories: Vec::new(),
+            terms: Terms::default(),
+        },
+    });
+    s.sim.run_until(Date::new(1925, 2, 1));
+    let w = s.world();
+    assert_eq!(w.countries.len(), before + 1, "Nigeria was born");
+    assert_eq!(w.war.countries.len(), w.countries.len());
+    let nga = index(w, "NGA") as usize;
+    assert!(w.war.countries[nga].formations.is_empty());
+}
