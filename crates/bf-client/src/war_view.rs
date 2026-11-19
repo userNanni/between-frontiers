@@ -163,6 +163,27 @@ pub struct WarLine {
     /// The nuclear balance with the other side's leader, as the player reads it; `None` when
     /// neither holds a warhead.
     pub nuclear: Option<crate::nuclear_view::Panel>,
+    /// The expedition, when this is a colonial war of the player's metropole (G6).
+    pub expedition: Option<Expedition>,
+}
+
+/// The player's expedition to a colony in revolt: what it landed, toward what, and what it ties.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Expedition {
+    pub colony: String,
+    pub landed: u64,
+    /// This week's goal and the cap (`expedition_cap` of the land men).
+    pub goal: u64,
+    pub cap: u64,
+    /// The player's order; `None`: the AI's rule (the cover of O3).
+    pub wanted: Option<u64>,
+    /// The garrison and the landed men in the unit, and that share of the land army (‰).
+    pub tied: u64,
+    pub share: u16,
+    /// The enemy's irregulars under arms.
+    pub armed: u64,
+    /// No cap: the colony is reached by land.
+    pub by_land: bool,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -487,6 +508,22 @@ pub fn read(
                         .first()
                         .and_then(|&e| crate::nuclear_view::read(world, m, me, e))
                 }),
+                expedition: world
+                    .war
+                    .colonial
+                    .iter()
+                    .find(|k| k.war == w.id && k.owner == me && !k.peace)
+                    .map(|k| Expedition {
+                        colony: tag_of(k.colony),
+                        landed: k.landed,
+                        goal: k.goal,
+                        cap: k.cap,
+                        wanted: k.wanted,
+                        tied: k.tied,
+                        share: k.commitment,
+                        armed: k.armed,
+                        by_land: k.by_land,
+                    }),
             })
         })
         .collect();

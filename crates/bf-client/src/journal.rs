@@ -171,6 +171,8 @@ pub enum Kind {
     Forces {
         mobilized: bool,
     },
+    /// A country born in revolt, at war with its metropole (G6), by its tag.
+    Revolt(String),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -206,6 +208,7 @@ impl Kind {
             ),
             Kind::LawChanges => "law-changes".into(),
             Kind::Forces { .. } => "forces".into(),
+            Kind::Revolt(tag) => format!("revolt-{tag}"),
         }
     }
 }
@@ -358,6 +361,7 @@ pub fn read_country(world: &GameWorld, c: usize, date: Date, rules: Rules<'_>) -
     }
     if let Some(mil) = rules.military {
         forces_entry(world, c, mil, &mut entries);
+        revolt_entries(world, mil, &mut entries);
     }
     for e in &mut entries {
         e.id = e.kind.id(rules.politics);
@@ -368,6 +372,59 @@ pub fn read_country(world: &GameWorld, c: usize, date: Date, rules: Rules<'_>) -
         works,
         research,
     })
+}
+
+/// A country born in revolt (G6): the colonial war under way, its irregulars and the men the
+/// metropole landed, with the way to play the new country (switch countries in the "⋯" of the
+/// Campaigns screen, decision C4). Every player sees it.
+fn revolt_entries(world: &GameWorld, mil: &bf_sim::war::Military, out: &mut Vec<Entry>) {
+    let tag = |m: u16| {
+        world
+            .countries
+            .iter()
+            .nth(usize::from(m))
+            .map(|(_, c)| c.tag.clone())
+    };
+    for k in world.war.colonial.iter().filter(|k| !k.peace) {
+        let (Some(colony), Some(owner)) = (tag(k.colony), tag(k.owner)) else {
+            continue;
+        };
+        let mut e = entry(
+            Kind::Revolt(colony.clone()),
+            Tone::Warning,
+            label("journal-revolt-title").key("country", format!("country-{colony}")),
+            label("journal-revolt-cause")
+                .key("country", format!("country-{colony}"))
+                .key("owner", format!("country-{owner}")),
+            Screen::Forces,
+        );
+        let (men, armed) = world
+            .war
+            .countries
+            .get(usize::from(k.colony))
+            .map_or((0, 0), |cw| {
+                bf_sim::war::colonial::irregulars(mil, mil.unit("irregular"), cw)
+            });
+        e.forces.push(Force {
+            label: label("journal-revolt-irregulars"),
+            value: Some(Value::Count(men as i64)),
+            helps: false,
+        });
+        e.forces.push(Force {
+            label: label("journal-revolt-armed"),
+            value: Some(Value::Count(armed as i64)),
+            helps: false,
+        });
+        if !k.by_land {
+            e.forces.push(Force {
+                label: label("journal-revolt-landed"),
+                value: Some(Value::Count(k.landed as i64)),
+                helps: true,
+            });
+        }
+        e.completes = Some(label("journal-revolt-switch"));
+        out.push(e);
+    }
 }
 
 fn entry(kind: Kind, tone: Tone, title: Label, cause: Label, screen: Screen) -> Entry {

@@ -207,6 +207,9 @@ pub struct IndependenceSetup {
     pub trusteeship: Option<u16>,
     /// The buildings `school` and `hospital`, resolved at load.
     pub services: (Option<usize>, Option<usize>),
+    /// The colonial war (G6), with `Switches::war`: men per thousand people that hold a state at
+    /// the revolt, and the states with a port. The metropole keeps what its garrison holds.
+    pub partition: Option<(u32, Arc<BTreeSet<u16>>)>,
 }
 
 /// The colonial units of the world as it stands: every candidate without an end, with states,
@@ -617,6 +620,21 @@ impl IndependenceSystem {
     /// Carry out an answer that lets the unit go.
     fn release(&self, world: &GameWorld, u: &Unit, how: How, out: &mut Changes) {
         let owner = Self::tag(world, usize::from(u.owner));
+        // A revolt in a colonial war (G6): the movement proclaims only where the garrison does
+        // not hold (`war::colonial::partition`).
+        let split;
+        let u = match (&self.setup.partition, how) {
+            (Some((garrison, coastal)), How::Revolt) => {
+                let (_, released) =
+                    crate::war::colonial::partition(world, &u.regions, coastal, *garrison);
+                split = Unit {
+                    regions: released,
+                    ..u.clone()
+                };
+                &split
+            }
+            _ => u,
+        };
         let states = self.states_of(world, u);
         if states.is_empty() {
             return;
@@ -907,6 +925,11 @@ pub struct DemandView {
     pub account: Account,
     /// `indicator-<key>` or `law-effect-<key>`: what holds the movement back.
     pub weakest: Option<String>,
+    /// With the colonial war (G6): a revolt now would split the unit into the states the
+    /// current garrison holds and those the movement proclaims (`state-<key>`).
+    pub held: Option<(Vec<String>, Vec<String>)>,
+    /// The port the metropole keeps whatever its garrison (`war::colonial::first_port`).
+    pub port: Option<String>,
 }
 
 fn add_months(d: Date, months: u8) -> Date {
@@ -955,6 +978,25 @@ pub fn demands_of(setup: &IndependenceSetup, world: &GameWorld, owner: u16) -> V
                 answer: d.answer,
                 account: d.account.clone(),
                 weakest: kind.and_then(|k| weakest_key(k, u.movement.weakest)),
+                held: setup.partition.as_ref().map(|(garrison, coastal)| {
+                    let (kept, released) =
+                        crate::war::colonial::partition(world, &u.regions, coastal, *garrison);
+                    let names = |rs: Vec<u32>| -> Vec<String> {
+                        rs.iter()
+                            .filter_map(|&ri| {
+                                ids.get(&world.econ.regions[ri as usize].state)
+                                    .map(|s| (*s).clone())
+                            })
+                            .collect()
+                    };
+                    (names(kept), names(released))
+                }),
+                port: setup.partition.as_ref().and_then(|(_, coastal)| {
+                    crate::war::colonial::first_port(world, &u.regions, coastal).and_then(|ri| {
+                        ids.get(&world.econ.regions[ri as usize].state)
+                            .map(|s| (*s).clone())
+                    })
+                }),
             })
         })
         .collect()

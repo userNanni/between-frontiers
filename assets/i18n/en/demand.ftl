@@ -17,3 +17,6 @@ demand-closeness-far = Far from the revolt: refused today, the colony stays for 
 demand-closeness-number = Mobilization { $mobilized } ‰ of 1000; a refusal turns into a revolt from { $revolt } ‰.
 demand-refusal-revolt-now = Refused, the colony breaks away without an agreement: it is already mobilized enough ({ $mobilized } ‰; { $mark } ‰ is enough).
 demand-refusal-revolt-later = Refused, the colony stays for now; it breaks away without an agreement if mobilization reaches { $mark } ‰ (now { $mobilized } ‰).
+demand-colonial-war = Refused, the revolt becomes a colonial war (a restore point is written before the answer). With the troops you have now you hold { $held }; { $proclaimed } proclaims.
+demand-colonial-war-none = Refused, the revolt becomes a colonial war (a restore point is written before the answer). The troops you have now hold no state; { $proclaimed } proclaims.
+demand-colonial-port = You keep at least the port of { $port }: the administration and the fleet are there, and the troops land through it.

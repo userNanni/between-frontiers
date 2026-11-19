@@ -1233,26 +1233,241 @@ Quem decide a paz e a rendição é o **apoio à guerra** (G4, abaixo), não a e
 - **Terceiros no meio da guerra:** quando um país entra ou é atacado durante a guerra, as chamadas
   dos acordos dele seguem a regra W4 (P2: sem resposta, entra; não honrar é comando explícito).
 
-### Guerra colonial (I3, opção A)
+### Guerra colonial (I3, opção A; G6)
 
 Combinado com o thread das fronteiras (seção 11 de `borders.pt-BR.md`, "A revolta e a guerra"):
-a revolta é uma **proclamação seguida de guerra**, como a da Indonésia de 1945 a 1949.
-- **Gatilho, sem mudar a regra deles:** a metrópole recusa a exigência e a mobilização da unidade
-  passa a marca da revolta. A independência faz o `Secede` sem acordo e grava o `Record` de
-  revolta com o índice do país novo (`country`, no #173). A independência só age no 2 de
-  janeiro, e a fila de fronteiras roda no mesmo dia.
-- **Com `war` ligada,** a guerra lê os `Record` de revolta mais novos que a data guardada e abre
-  a guerra: de um lado o antigo dono, com a exigência `Union` da unidade de volta; do outro o país
-  novo, sem reconhecimento.
-- **Tropas:** o país novo forma unidades irregulares (`irregular`) do tamanho da mobilização vezes
-  os homens em idade de serviço da unidade; as formações coloniais do dono que estão ali lutam
-  pelo dono. O tipo do vínculo (colônia, protetorado) vem de `IndependenceSetup::bond_of`.
-- **Custo e desgaste:** os mesmos da guerra comum. A guerra longa desgasta a metrópole mesmo
-  quando ela ganha batalhas: semanas, gasto e preços entram na exaustão.
-- **Fim:** o dono sem apoio à guerra aceita a paz por acordo de independência (reconhecimento e
-  as cláusulas de independência dos tratados); se a colônia perde, **a metrópole reconquista** o
-  território pela `Union`, executada como tratado (G6).
-- **Com `war` desligada,** a revolta segue como hoje (separação sem acordo), sem mudar o hash.
+a revolta é uma **proclamação seguida de guerra**, como a da Indonésia de 1945 a 1949. Está
+atrás de `war`. Com `war` desligada, a revolta segue como antes, uma separação sem acordo, e o
+hash não muda. O código está em `crates/bf-sim/src/war/colonial.rs`, os números em `colonial`
+de `data/military/war.ron`.
+
+**Partição na revolta.** A independência continua decidindo a revolta com a regra do thread de
+fronteiras: recusa e a mobilização passando a marca. O que muda é o `release(How::Revolt)`: ele
+passa ao `Secede` só os estados que a guarnição não segura.
+- A guarnição são os soldados da metrópole nas regiões da unidade (`war.soldiers`).
+- Cada estado custa 2 homens por mil habitantes, o mínimo de O3 para população calma (Quinlivan,
+  1995). O dono fica primeiro com os estados com porto e depois com os mais populosos, enquanto a
+  guarnição pagar.
+- **O primeiro porto fica sempre com a metrópole,** mesmo sem guarnição que pague: é o mais
+  populoso, onde estão a administração e a frota (`first_port`). Sem ele, a Malásia de 1925
+  proclamava inteira, e o Reino Unido não tinha por onde desembarcar. A tela da recusa avisa: "você
+  mantém ao menos o porto de X".
+- O movimento leva sempre ao menos um estado: o último nessa ordem.
+- Na Argélia de 1925, a guarnição segura Argel, Constantina e Orã, e o Saara (`DZA-SUD`) proclama.
+  A granularidade por estado é grossa: a guerrilha que nasce no interior de um estado segurado
+  pela costa (o Aurès, em Constantina) depende da fatia seguinte, a guerrilha por guarnição
+  faltante.
+
+**Gatilho.** Toda segunda-feira o sistema de forças lê os `Record` de revolta dos sete dias
+anteriores e abre a guerra pelo `open_war`, extraído de `crisis_decide`.
+- Lado A é a metrópole, com a exigência `Union`. Lado B é o país novo.
+- A abertura não chama terceiros pelos acordos. Eles só leem a guerra; a entrada deles fica para
+  a fase 6.
+- A guerra fica registrada em `WarState::colonial`: a unidade, os estados mantidos, os homens
+  desembarcados e se a metrópole chega por terra. Save 34.
+- O `Record` da independência não mudou de formato.
+
+**Teto da expedição.** Nos segmentos contra a colônia, a metrópole luta só com a guarnição que
+ainda tem na unidade mais os homens desembarcados. O resto do exército fica nas outras frentes.
+- A cada semana desembarcam `men_per_port_week` (1.000) homens por porto que ela segura e
+  controla na unidade, até `expedition_cap` (500‰) dos seus homens de terra.
+- Fonte (Horne, 1977): na Argélia, cerca de 80 mil homens em novembro de 1954 e cerca de
+  400 mil em 1956–57, por Argel, Orã e Bône. São 320 mil em dois anos, uns 3.000 por semana, cerca
+  de 1.000 por porto.
+- 500‰ é a metade do exército. Os 400 mil da Argélia exigiram a convocação dos reservistas e o
+  serviço de 27 meses (1956). No jogo, a França de 1925 já mobilizada tem 742 mil homens de terra,
+  e o teto fica em 371 mil, abaixo dos 400 mil. A diferença é **mobilização que falta** (a lei de
+  serviço em guerra, o prazo de serviço maior), não um teto a inflar.
+- Colônia alcançável por terra (busca sobre `neighbours` a partir da metrópole) não tem teto.
+- Sem porto, não chega reforço.
+- **Quanto mandar.**
+  - A IA da metrópole dosa: manda até cobrir 20 por mil da população que segura na unidade (O3,
+    população hostil; `cover_target` 1000), nunca acima do teto.
+  - O jogador decide com `GameCommand::SetExpedition`, na janela "Guerra", seção "Expedição a X".
+    Ele dá a ordem em passos de 10 mil ou volta à regra.
+  - Os homens desembarcam, ou voltam, pelos portos, no ritmo de cada semana.
+  - Sem a dosagem, a IA desembarcava sem critério até o teto: o Reino Unido punha 217 mil na
+    Malásia.
+
+**Irregulares.** O país novo luta com a unidade `irregular`.
+- Combatentes = apoio à guerra do país × `armed_share` (20‰) × homens em idade de serviço de
+  **toda a unidade**, inclusive dos estados que a metrópole segura: o movimento recruta lá também.
+- **Mobilização e apoio são grandezas diferentes.**
+  - A mobilização é a parte do povo que apoia o movimento antes da proclamação. É ela que decide
+    se há exigência e revolta (independência).
+  - Depois da proclamação, o movimento é um Estado em guerra. A parte que luta e recruta passa a
+    ser o apoio à guerra dele (G4), que cai com as baixas e com a duração como o de qualquer país.
+    Por isso o apoio substitui a mobilização no alvo de combatentes.
+  - A marca da revolta (200‰) dava 8 mil na Argélia, abaixo da fonte. O apoio, que começa em 800,
+    dá o número da fonte.
+- Começam com `initial_share` (100‰) dos combatentes e metade das armas (GC3).
+- A cada semana recrutam `recruit_week` (25‰) da distância até os combatentes, freados pela
+  parte armada: sem armas, os recrutas esperam. As armas chegam pelas compras e pelo depósito da
+  fatia A2, ou seja, pelo orçamento.
+- Por GC1, as formações coloniais da metrópole passam para o país novo na proporção da
+  população colonial que a unidade tem vezes a mobilização.
+
+| Conferência (absoluta) | Jogo | Fonte |
+|---|---|---|
+| Argélia, combatentes com apoio 800 | 21.198 com a gente de 1925; ×1,6 até 1954 dá cerca de 34 mil | ALN, 15 a 40 mil (NWC, DTIC ADA422710) |
+| Malásia, idem | 13.403 com a gente de 1925 | MNLA, 5 a 10 mil, pico de 7 a 8 mil (IWM) |
+
+A Malásia passa porque o jogo não separa a base étnica. O MNLA recrutava quase só na comunidade
+chinesa, cerca de 38%. Com essa parte, ficaria por volta de 5 mil. Fica anotado para a
+calibração; não é meta.
+
+**Guerrilha.** Perder a frente não extingue o movimento. Nos estados da unidade que a metrópole
+segura ou controla, toda semana:
+- Os armados dali, isto é, os armados vezes a parte da população da unidade que vive lá,
+  emboscam. A metrópole perde `ambush` (5‰) deles por semana em baixas.
+- Os irregulares perdem as baixas da metrópole vezes a razão de troca, que é 2 + 1,6 × a
+  cobertura.
+  - Cobertura: os homens da metrópole na unidade sobre 20 por mil da população que ela segura lá
+    (O3, população hostil).
+  - A reta passa pelos dois casos: Malásia, troca ≈ 3,6 com cobertura ≈ 1; Argélia, troca ≈ 5,5
+    com cobertura ≈ 2,2.
+- A taxa de emboscada é um valor de desenho entre a Argélia (≈ 10‰) e a Malásia (≈ 2‰). A
+  dispersão é de seis vezes, e fica anotada.
+- As baixas entram nas perdas que o apoio lê (G4) e são enterradas.
+- A guarnição e os desembarcados ficam **amarrados** na unidade (`Colonial::tied`), e a série
+  mostra quanto do exército isso é.
+- Enquanto tiver armados, o país novo não é "overrun", e o território perdido não pesa no apoio
+  dele: a guerrilha não se mede por terra segurada.
+
+**Apoio.** A metrópole começa em `support.colonial` (550), o valor do arquivo que até agora não
+era lido. O país novo começa em 800 (GC2, o mesmo de um país atacado). O resto do apoio segue a
+regra G4.
+
+**Fins.** São dois, e cada um tem o seu teste em `tests/war_colonial.rs`:
+- **A metrópole desiste** (apoio < 300, o caminho `withdrawn`). Os estados que ela ainda tem na
+  unidade passam ao país novo por `Transfer`, sem deixar enclave, e ela reconhece o país novo.
+- **A colônia perde** quando o apoio dela cai abaixo de 300 **ou** quando os armados chegam a
+  zero. Ela não é mais tomada por território. A `Union` sai pela ponte dos tratados (`treaty_exec`), sem
+  passar pela mesa. A IA da metrópole avaliava a união do Saara como negativa e recusava a paz
+  pela qual lutava.
+  - Se a metrópole é do jogador, a proposta vai à mesa como numa guerra comum e precisa de
+    `negotiation`.
+  - Uma semana depois, as regiões da unidade voltam a ser colônia. O movimento recomeça em
+    `movement_after_reconquest` (500‰) da marca da revolta, ou seja, 100‰ (GC5, em dado).
+- Nos dois testes, no dia em que a fronteira muda, a população e o dinheiro do mundo fecham
+  iguais e nenhuma região fica sem dono vivo.
+
+**Conferências até o fim (G6), série por ano.** A revolta é posta à mão em fevereiro de 1925
+(`war_colonial.rs`, testes `#[ignore]`, rodados no slot). A IA dosa a expedição à cobertura O3.
+As colunas são: apoio dos dois lados, regiões controladas (metrópole/país novo), armados,
+desembarcados, homens amarrados (e a parcela do exército, em ‰) e baixas acumuladas.
+
+*Argélia (FRA × DZA)*:
+- Sem G8, a França desiste em set/1929, depois de 4,6 anos: perto da faixa de 5 a 8 anos.
+- **Com G8 (fator 3), desiste em jan/1931, depois de 5,9 anos: dentro da faixa.**
+
+| data | apoio FRA/DZA | regiões | armados | desembarcados | amarrados (‰) | baixas FRA/DZA |
+|---|---|---|---|---|---|---|
+| 1926-02 | 587 / 492 | 4/0 | 7.455 | 135.222 | 143.616 (193) | 2.547 / 7.248 |
+| 1927-02 | 458 / 516 | 4/0 | 4.220 | 137.312 | 145.724 (196) | 4.102 / 12.821 |
+| 1928-02 | 405 / 476 | 4/0 | 5.664 | 139.447 | 147.875 (199) | 5.426 / 17.564 |
+| 1929-02 | 362 / 439 | 4/0 | 5.689 | 141.620 | 150.064 (202) | 6.939 / 22.988 |
+| 1930-02 | 328 / 401 | 4/0 | 5.494 | 143.836 | 152.297 (205) | 8.382 / 28.156 |
+| 1931-01 | desiste | 0/4 | 4.777 | — | — | 9.570 / 32.417 |
+
+*Malásia (GBR × MYS)*, com o porto mantido em MYS-FMS:
+- Sem G8, o Reino Unido desiste em nov/1929 (4,8 anos); com G8 (fator 3), em out/1930
+  (5,7 anos).
+- **O critério de mais de 10 anos não passa:** fica como dependência anotada, não como meta.
+
+| data | apoio GBR/MYS | regiões | armados | desembarcados | amarrados (‰) | baixas GBR/MYS |
+|---|---|---|---|---|---|---|
+| 1926-02 | 562 / 570 | 5/0 | 5.655 | 53.000 | 53.073 (121) | 1.178 / 3.244 |
+| 1927-02 | 463 / 535 | 5/0 | 5.562 | 93.849 | 93.922 (215) | 2.666 / 8.186 |
+| 1928-02 | 411 / 493 | 5/0 | 5.175 | 95.661 | 95.735 (219) | 4.054 / 13.161 |
+| 1929-02 | 359 / 457 | 5/0 | 4.864 | 97.565 | 97.639 (224) | 5.352 / 17.824 |
+| 1930-02 | 321 / 421 | 5/0 | 4.582 | 99.515 | 99.589 (228) | 6.574 / 22.192 |
+| 1930-10 | desiste | 0/5 | 4.467 | — | — | 7.333 / 24.911 |
+
+O que as séries mostram:
+- A frente acaba no primeiro ano: o país novo perde o território. A guerra continua como guerrilha,
+  com os armados entre 4 e 7 mil.
+- A metrópole perde primeiro porque começa mais perto do limiar: 550 contra 800. Os dois lados
+  caem por baixas e por duração em ritmos parecidos.
+- Os armados nunca chegam a zero. O recrutamento (25‰ da distância por semana) repõe as perdas,
+  e o equilíbrio fica em uns 60% do alvo.
+- Na Malásia, a cobertura O3 só se faz com homens da metrópole, cerca de 100 mil (22% do exército
+  de terra). Na história eram uns 40 mil britânicos mais as forças locais. Por isso a guerra pesa
+  e custa baixas de mais.
+
+**Forças locais e a política contra a base do movimento (desenho para a fatia depois do C2).**
+É uma fatia só, com a guerrilha por falta de guarnição fora da guerra colonial (a ocupação comum).
+
+*O que conta como força local:*
+- polícia e guarda doméstica recrutadas na própria unidade, ou no território ocupado;
+- tropa nativa regular sob comando da metrópole.
+
+Casos: a polícia da Malásia (≈ 70 mil) e a guarda doméstica (≈ 250 mil); os harkis na Argélia
+(60 a 150 mil); os auxiliares das ocupações (a Schutzmannschaft no Leste).
+
+*De onde vêm:*
+- da parte da população da unidade que não apoia o movimento: 1 − apoio do proclamado, ou a
+  resistência baixa da ocupação;
+- recrutadas aos poucos, uma parcela por semana, com teto em uma fração dos homens em idade de
+  serviço dessa parte.
+
+*Quanto custam:*
+- soldo e equipamento leve (a unidade `garrison`), pagos pelo orçamento militar da metrópole;
+- contam na cobertura com um peso menor que o da tropa da metrópole (design: 1/2);
+- não entram no exército de terra para a G8: não amarram a metrópole nem pesam na duração da
+  guerra;
+- o jogo também os torna alvo: a guerrilha mata mais deles, e o movimento ganha apoio quando a
+  milícia é dura (a resistência sobe pela extração, como em O1).
+
+*A política contra a base:* o reassentamento (plano Briggs, 1950–52, cerca de 500 mil
+moradores de áreas rurais nas "novas aldeias") e o reagrupamento na Argélia (≈ 2 milhões).
+- O efeito: corta o recrutamento do movimento numa parte da população.
+- O custo: dinheiro e o apoio do proclamado, que sobe entre os reassentados.
+- É uma decisão de Agendas, com prazo e custo.
+
+*O que o jogador decide:* quantas forças locais recrutar (ordem com teto, como a expedição) e se
+aplica o reassentamento.
+
+*Conferência que a fatia deve passar:* a Malásia em reconquista, com o apoio britânico acima de
+300 por mais de 10 anos, sem forçar o número.
+
+**G8, duração pelo empenho (decidida pelo dono em 2026-11-19, opção A).** O peso da duração no
+apoio passa a ser a parcela do exército de terra empenhada na guerra × `commitment_factor` (3, em
+dados), até 1. A regra é geral, atrás de `support.duration_by_commitment`, ligada dentro de
+`war`.
+- Hoje ela só reduz o peso da metrópole cujas guerras são todas coloniais. Qualquer outra guerra
+  empenha o exército inteiro e pesa 1.
+- A Alemanha de 1914–18 não muda.
+- **Vietnã:** 540 mil de cerca de 1,5 milhão é uma parcela de 0,36, que com fator 3 dá peso 1. O
+  alvo fica em 308 no ano 5 e em 273 no ano 6: a paz vem entre o quinto e o sexto ano, como no
+  caso do dono.
+- Com fator 2 o peso era 0,72, e a paz só vinha no oitavo ano.
+- O teste `duration_by_commitment_keeps_the_owners_cases` imprime os dois fatores e assere o
+  caso do dono com o fator dos dados.
+
+**IA da metrópole.** Luta até o apoio cair abaixo de 300 e então desiste. Não abandona cedo nem
+dosa a expedição; isso fica anotado para a fase 6.
+
+**Jogador.**
+- Na tela de exigência, a recusa avisa que a revolta vira guerra colonial e que há ponto de
+  restauração antes da resposta (o `Reason::Demand` que já existia). Também diz quais estados as
+  tropas atuais seguram e qual proclama (`DemandView::held`).
+- O diário (Agendas, grupo Forças) mostra "Um país nasceu em revolta", com os combatentes, os
+  armados e os desembarcados. Também lembra que a troca de país fica no ⋯ da tela de Campanhas
+  (C4).
+- A expedição é decisão nova: `SetExpedition`, com tela na janela "Guerra" e linha em
+  `player_commands` e na wiki ("O que o jogador decide"). A postura nos segmentos usa o comando de
+  sempre.
+
+**Decididas pelo dono em 2026-11-19, todas na recomendação:**
+- GC1: as formações coloniais desertam pela mobilização (`defect: true`).
+- GC2: o país novo começa em 800 de apoio.
+- GC3: metade das armas no nascimento.
+- GC5: o movimento após a reconquista é dado, 500‰ da marca.
+
+**Código das fronteiras tocado** (o thread está em pausa): `independence.rs` ganhou
+`IndependenceSetup::partition` (com `war`), o corte em `release(How::Revolt)` e
+`DemandView::held`.
 
 ### Tela (esboço, para o thread de interface)
 

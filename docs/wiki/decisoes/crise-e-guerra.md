@@ -182,12 +182,25 @@ termo a termo.
   colônia perde, a metrópole reconquista o território (G6, e I3 opção A das fronteiras).
 - **O que o autor pensou:** a revolta não ganha regra simplificada antes da guerra; ela nasce na
   fatia C.
-- **Como o jogo funciona por causa disso:** a independência separa a unidade, como hoje, e a guerra
-  abre entre os dois países; a paz por acordo de independência ou a reconquista decide.
-- **Como é na vida real:** a Indonésia de 1945–49 (a república proclamada, a guerra com a Holanda,
-  a Mesa Redonda).
-- **Estado:** decidido (2026-11-18); desenhado com o thread das fronteiras.
-- **Onde está o detalhe:** [`war.pt-BR.md`, "Guerra colonial"](../../war.pt-BR.md#guerra-colonial-i3-opção-a) e
+- **Como o jogo funciona por causa disso:**
+  - Na revolta, a metrópole fica com os estados que a guarnição segura: primeiro os portos, a
+    2 homens por mil habitantes. O resto proclama.
+  - A metrópole luta na colônia só com a guarnição e com os homens que desembarca, 1.000 por
+    porto por semana, até a metade do seu exército. Uma colônia alcançável por terra não tem teto.
+  - O país novo luta com irregulares: 20‰ dos homens em idade de serviço, vezes o seu apoio à
+    guerra, recrutados aos poucos e freados pelas armas.
+  - Se a metrópole desiste, entrega o que ainda segura e reconhece o país novo. Se a colônia
+    perde, a união a devolve à condição de colônia, e o movimento recomeça em metade da marca.
+- **Decidido pelo dono (2026-11-19, todas na recomendação):**
+  - GC1: as formações coloniais passam ao país novo pela mobilização;
+  - GC2: o país novo começa com 800 de apoio;
+  - GC3: metade das armas no nascimento;
+  - GC5: o movimento após a reconquista é dado, 500‰ da marca.
+- **A duração pesa pelo empenho (G8, decidida, fator 3):** a guerra longa desgasta conforme a
+  parcela do exército de terra empenhada. Uma expedição distante de profissionais pesa pouco; a
+  guerra total pesa inteira. Detalhe em [`war.pt-BR.md`, G8](../../war.pt-BR.md).
+- **Estado:** decidido (2026-11-18 e 2026-11-19); no #241, atrás de `war`.
+- **Onde está o detalhe:** [`war.pt-BR.md`, "Guerra colonial"](../../war.pt-BR.md#guerra-colonial-i3-opção-a-g6) e
   [`borders.pt-BR.md`, seção 11](../../borders.pt-BR.md).
 
 ### Objetivo por frente, e a doutrina como estado do exército

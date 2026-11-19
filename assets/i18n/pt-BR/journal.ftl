@@ -163,3 +163,10 @@ journal-noworks-completes = As obras públicas voltam a começar, pelos pesos do
 journal-bottleneck-cash = Sem verba para obra pública nova: o caixa acima da reserva não cobre a fila
 outliner-research-focus-tip = O governo escolheu esta tecnologia na tela de Pesquisa (R).
 outliner-research-auto-tip = Sem foco: o país distribui o esforço de pesquisa sozinho. Escolha um foco na tela de Pesquisa (R).
+
+journal-revolt-title = Um país nasceu em revolta: { $country }
+journal-revolt-cause = { $owner } recusou a independência e { $country } se proclamou sem acordo. Começou uma guerra colonial: a metrópole quer a união de volta e luta com a guarnição e os homens que desembarca; o país novo luta com irregulares, armados aos poucos.
+journal-revolt-irregulars = Combatentes irregulares
+journal-revolt-armed = Desses, armados
+journal-revolt-landed = Homens desembarcados pela metrópole
+journal-revolt-switch = Para jogar pelo país novo ou pela metrópole, troque de país no ⋯ da tela de Campanhas.

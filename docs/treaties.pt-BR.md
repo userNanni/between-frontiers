@@ -748,6 +748,25 @@ de 1947), a mesa precisa de cinco coisas:
 Nada disso muda o hash enquanto `negotiation` e `war` estiverem desligadas. É uma fatia própria,
 com a guerra.
 
+### A fazer: a IA recusa a própria vitória (pendência do thread dos tratados, aberta pela guerra)
+
+A IA avalia a proposta de paz só pela conta da cláusula (`treaty_table::respond`, que chama
+`account`), sem olhar a guerra que ela própria está fazendo pela mesma exigência. Por isso pode
+recusar exatamente a vitória pela qual luta.
+- **Caso reproduzível** (`crates/bf-sim/tests/war_colonial.rs`, com o contorno desligado):
+  1. A Argélia se revolta contra a França em 1925.
+  2. O Saara (`DZA-SUD`) proclama.
+  3. O apoio do país novo cai abaixo de 300, e ele propõe à França a `Union`, que é a exigência
+     da própria guerra.
+  4. A conta da França dá a união do Saara como negativa: a soberania e o custo de uma região
+     pobre. A resposta é `Refused(None)`.
+  5. A recusa entra no período de espera, e a guerra não acaba.
+- **Contorno no #241:** na guerra colonial, a rendição da colônia executa a demanda direto por
+  `treaty_exec`, sem passar pela mesa. Na guerra comum o defeito continua.
+- **Correção proposta, para o thread dos tratados:** a parte que declarou aceita a sua demanda, ou
+  uma parte dela (`part_of`), quando a recebe como paz da guerra em curso. A conta dela deve somar
+  o fim da guerra (o custo semanal que para e o apoio que deixa de cair), e não só a cláusula.
+
 ## 13. Interface: a mesa de negociação, em Agendas
 
 A mesa não é um painel à parte: é uma **decisão rara da janela de Agendas (J)**, como libertar

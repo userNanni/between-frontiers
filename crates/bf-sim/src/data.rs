@@ -393,6 +393,19 @@ impl GameData {
                 borders: Some(Arc::clone(&self.border_rules)),
             })
         });
+        // The colonial war (G6), with the war switched on and its rules in `war.ron`.
+        let colonial_rules = self
+            .war
+            .as_ref()
+            .filter(|_| switches.war)
+            .and_then(|w| w.conduct.as_ref())
+            .and_then(|c| c.colonial.clone());
+        let coastal: Arc<std::collections::BTreeSet<u16>> = Arc::new(
+            self.seas
+                .as_ref()
+                .map(|g| g.file.ports.iter().map(|p| p.state).collect())
+                .unwrap_or_default(),
+        );
         let independence = match (&self.independence, &self.politics) {
             (Some(rules), Some(politics)) => {
                 Some(Arc::new(crate::borders::independence::IndependenceSetup {
@@ -410,6 +423,9 @@ impl GameData {
                         self.catalogue.building("school"),
                         self.catalogue.building("hospital"),
                     ),
+                    partition: colonial_rules
+                        .as_ref()
+                        .map(|k| (k.garrison, Arc::clone(&coastal))),
                 }))
             }
             _ => None,
@@ -475,6 +491,32 @@ impl GameData {
                         .as_ref()?
                         .tech(&w.military.rules.command.doctrine_tech)
                         .map(|t| t as u16)
+                }),
+                colonial: colonial_rules.clone().map(|rules| {
+                    let b = &self.border_rules;
+                    Arc::new(crate::war::colonial::ColonialSetup {
+                        rules,
+                        coastal: (*coastal).clone(),
+                        candidates: b
+                            .candidates
+                            .countries
+                            .iter()
+                            .filter(|c| c.ended.is_none() && c.rename_of.is_none())
+                            .map(|c| {
+                                (
+                                    c.tag.clone(),
+                                    c.states
+                                        .iter()
+                                        .filter_map(|s| b.state_ids.get(s).copied())
+                                        .collect(),
+                                )
+                            })
+                            .collect(),
+                        neighbours: Arc::new(b.neighbours.clone()),
+                        revolt: self.independence.as_ref().map_or(0, |r| r.revolt),
+                        irregular: self.war.as_ref().and_then(|w| w.military.unit("irregular")),
+                        names: b.state_ids.iter().map(|(k, v)| (*v, k.clone())).collect(),
+                    })
                 }),
             })
         });

@@ -487,6 +487,14 @@ pub enum GameCommand {
         tag: String,
         composition: Option<[u16; 2]>,
     },
+    /// `tag`, the metropole of colonial war `war`, orders `men` to the colony, landed by its ports
+    /// a week's capacity at a time and never past the cap; `None` returns to the AI's rule (the
+    /// cover of O3). `docs/war.pt-BR.md`, "Guerra colonial".
+    SetExpedition {
+        tag: String,
+        war: u32,
+        men: Option<u64>,
+    },
 }
 
 /// Changes the levers of the country `tag` (`econ::levers`); unknown tags are no-ops.
@@ -646,6 +654,17 @@ impl Command<GameWorld> for GameCommand {
                         buying: Vec::new(),
                         stalled: 0,
                     });
+                }
+            }
+            GameCommand::SetExpedition { tag, war, men } => {
+                if let Some(ci) = world.countries.iter().position(|(_, c)| c.tag == *tag)
+                    && let Some(c) = world
+                        .war
+                        .colonial
+                        .iter_mut()
+                        .find(|c| c.war == *war && c.owner as usize == ci && !c.peace)
+                {
+                    c.wanted = *men;
                 }
             }
             GameCommand::SetComposition { tag, composition } => {
@@ -1950,9 +1969,71 @@ mod tests {
             hash_of(&with_ledger)
         );
         assert_eq!(
-            hash_of(&headed(33, &encode_snapshot(&with_ledger).unwrap())),
+            hash_of(&headed(34, &encode_snapshot(&with_ledger).unwrap())),
             hash_of(&with_ledger)
         );
+        // Version 33, the generation of the armies (#230), before the colonial war: `war`
+        // without `colonial`.
+        {
+            #[derive(Serialize)]
+            struct WarV33<'a> {
+                countries: &'a Vec<crate::war::CountryWar>,
+                soldiers: &'a Vec<i64>,
+                conflicts: &'a crate::war::Conflicts,
+                fighting: &'a crate::war::fight::Fighting,
+                composition: &'a crate::war::composition::CompositionState,
+            }
+            #[derive(Serialize)]
+            struct BeforeColonial33<'a> {
+                scenario: &'a String,
+                player: &'a Option<Id<Country>>,
+                countries: &'a Table<Country, CountryState>,
+                census: &'a Vec<CensusRecord>,
+                econ: &'a crate::econ::Economy,
+                research: &'a crate::research::ResearchState,
+                politics: &'a crate::polity::PoliticsState,
+                demography: &'a crate::demography::DemographyState,
+                borders: &'a crate::borders::BordersState,
+                foreign: &'a crate::foreign_stakes::ForeignState,
+                influence: &'a crate::influence::InfluenceState,
+                treaties: &'a crate::treaty::TreatyState,
+                war: WarV33<'a>,
+                education: &'a crate::demography::education::EducationState,
+                independence: &'a crate::borders::independence::IndependenceState,
+                levers: &'a crate::econ::levers::LeversState,
+                tariffs: &'a crate::econ::customs::TariffState,
+                payments: &'a crate::econ::payments::PaymentsState,
+            }
+            let w = &with_ledger;
+            let v33 = encode_snapshot(&BeforeColonial33 {
+                scenario: &w.scenario,
+                player: &w.player,
+                countries: &w.countries,
+                census: &w.census,
+                econ: &w.econ,
+                research: &w.research,
+                politics: &w.politics,
+                demography: &w.demography,
+                borders: &w.borders,
+                foreign: &w.foreign,
+                influence: &w.influence,
+                treaties: &w.treaties,
+                war: WarV33 {
+                    countries: &w.war.countries,
+                    soldiers: &w.war.soldiers,
+                    conflicts: &w.war.conflicts,
+                    fighting: &w.war.fighting,
+                    composition: &w.war.composition,
+                },
+                education: &w.education,
+                independence: &w.independence,
+                levers: &w.levers,
+                tariffs: &w.tariffs,
+                payments: &w.payments,
+            })
+            .unwrap();
+            assert_eq!(hash_of(&headed(33, &v33)), hash_of(&with_ledger));
+        }
         // Version 32, the balance of payments (#247), before the generation of the armies.
         {
             #[derive(Serialize)]

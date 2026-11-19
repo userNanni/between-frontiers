@@ -197,7 +197,7 @@ fn group_key(kind: &Kind) -> &'static str {
         Kind::Research => "journal-group-research",
         Kind::Fiscal(_) => "journal-group-fiscal",
         Kind::Movement(_) | Kind::PendingLaw(_) | Kind::LawChanges => "journal-group-politics",
-        Kind::Forces { .. } => "journal-group-forces",
+        Kind::Forces { .. } | Kind::Revolt(_) => "journal-group-forces",
     }
 }
 
