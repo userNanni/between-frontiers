@@ -185,6 +185,17 @@ fn the_expedition_lands_by_the_ports() {
         c.landed,
         colonial::theatre_men(w, c)
     );
+    let mil = &d.war.as_ref().unwrap().military;
+    let land: i64 = w.war.countries[c.owner as usize]
+        .formations
+        .iter()
+        .filter(|f| mil.types[f.unit as usize].domain == bf_sim::war::Domain::Land)
+        .map(|f| bf_sim::war::men(mil, f))
+        .sum();
+    eprintln!(
+        "France's land men {land}; the cap {}",
+        land * i64::from(k.rules.expedition_cap) / 1000
+    );
     assert!(!c.by_land, "Algeria is overseas");
     assert!(c.landed > landed0, "men land");
     assert!(c.landed - landed0 <= 9 * ports * u64::from(k.rules.men_per_port_week));

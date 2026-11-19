@@ -1271,8 +1271,9 @@ ainda tem na unidade mais os homens desembarcados. O resto do exército fica nas
   400 mil em 1956–57, por Argel, Orã e Bône. São 320 mil em dois anos, uns 3.000 por semana, cerca
   de 1.000 por porto.
 - 500‰ é a metade do exército. Os 400 mil da Argélia exigiram a convocação dos reservistas e o
-  serviço de 27 meses (1956). Se o exército de paz do jogo não chegar a 800 mil, o teto não chega
-  a 400 mil. Isso é **mobilização que falta** (a lei de serviço em guerra), não um teto a inflar.
+  serviço de 27 meses (1956). No jogo, a França de 1925 já mobilizada tem 742 mil homens de terra,
+  e o teto fica em 371 mil, abaixo dos 400 mil. A diferença é **mobilização que falta** (a lei de
+  serviço em guerra, o prazo de serviço maior), não um teto a inflar.
 - Colônia alcançável por terra (busca sobre `neighbours` a partir da metrópole) não tem teto.
 - Sem porto, não chega reforço.
 
