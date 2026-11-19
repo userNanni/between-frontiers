@@ -28,6 +28,9 @@ pub struct CompositionRule {
     pub wheels_unit: String,
     pub tracks_unit: String,
     pub from_unit: String,
+    /// The goods that make a formation move on wheels or tracks (lorries, armoured vehicles):
+    /// a formation counts as motorized by how many of them it holds over what its type needs.
+    pub vehicles: Vec<String>,
 }
 
 /// A conversion under way: `ordered` elements of `from` becoming `unit`.
@@ -139,10 +142,10 @@ pub fn target(
 }
 
 /// The land elements of `c` at home on wheels and on tracks as far as they hold their
-/// equipment (each formation counts by the value of its equipment over what its type needs, at
+/// vehicles (each formation counts by the vehicles it holds over the vehicles its type needs, at
 /// most whole), and all of them: what the army moves on, not what it was ordered to be. A
-/// formation converted without the money or the vehicles to equip it counts for what it has.
-pub fn equipped(mil: &Military, c: &CountryWar) -> (Fixed, Fixed, Fixed) {
+/// formation converted without lorries counts for the lorries it has, whatever rifles it kept.
+pub fn equipped(mil: &Military, vehicles: &[u16], c: &CountryWar) -> (Fixed, Fixed, Fixed) {
     let (mut wheels, mut tracks, mut all) = (Fixed::ZERO, Fixed::ZERO, Fixed::ZERO);
     for f in &c.formations {
         if mil.types[f.unit as usize].domain != Domain::Land || f.called_up || f.colonial {
@@ -150,24 +153,38 @@ pub fn equipped(mil: &Military, c: &CountryWar) -> (Fixed, Fixed, Fixed) {
         }
         all += f.elements;
         let spec = mil.spec(f.unit, f.generation as usize);
+        if !matches!(spec.mobility, Mobility::Wheeled | Mobility::Tracked) {
+            continue;
+        }
         let need: Vec<(u16, Fixed)> = spec
             .equipment
             .iter()
+            .filter(|(g, _)| vehicles.contains(g))
             .map(|(g, q)| (*g, *q * f.elements))
+            .collect();
+        let held: Vec<(u16, Fixed)> = f
+            .equipment
+            .iter()
+            .filter(|(g, _)| vehicles.contains(g))
+            .copied()
             .collect();
         let need = mil.value_lots(&need);
         let fill = if need.is_positive() {
-            (mil.value_lots(&f.equipment) / need).min(Fixed::ONE)
+            (mil.value_lots(&held) / need).min(Fixed::ONE)
         } else {
             Fixed::ONE
         };
         match spec.mobility {
             Mobility::Wheeled => wheels += f.elements * fill,
-            Mobility::Tracked => tracks += f.elements * fill,
-            _ => {}
+            _ => tracks += f.elements * fill,
         }
     }
     (wheels, tracks, all)
+}
+
+/// The goods of `rule.vehicles`, by index.
+pub fn vehicle_goods(rule: &CompositionRule, cat: &crate::econ::Catalogue) -> Vec<u16> {
+    rule.vehicles.iter().filter_map(|k| cat.good(k)).collect()
 }
 
 /// The year's new conversions of `country` toward the target: the government's when fixed,

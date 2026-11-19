@@ -452,6 +452,7 @@ fn composition_check_1939_and_1944() {
     let mil = &base.war.as_ref().unwrap().military;
     let auto = base.catalogue.good("automobiles").unwrap() as usize;
     let armored = base.catalogue.good("armored_vehicles").unwrap() as usize;
+    let vehicles = vec![auto as u16, armored as u16];
     for (label, d) in [("rule", base), ("no rule", &off)] {
         let mut s = Session::new(
             d.new_world(),
@@ -473,7 +474,7 @@ fn composition_check_1939_and_1944() {
                 // By type of formation (what the target counts) and by the equipment that
                 // arrived (what the generation counts).
                 let (wt, tt, at) = land_shares(w, mil, ci);
-                let (we, te, ae) = bf_sim::war::composition::equipped(mil, c);
+                let (we, te, ae) = bf_sim::war::composition::equipped(mil, &vehicles, c);
                 let pc = |x: Fixed| (x * 1000 / ae.max(Fixed::ONE)).to_f64_lossy() / 10.0;
                 let waiting: Fixed = w
                     .war
@@ -513,9 +514,9 @@ fn composition_check_1939_and_1944() {
     }
 }
 
-/// The composition shown counts each formation by the equipment it holds: a formation
-/// converted without its vehicles moves on foot, whatever it was ordered to be (the defect the
-/// first check found: a poor country "motorized" as fast as the powers).
+/// The composition shown counts each formation by the vehicles it holds: a formation converted
+/// without its lorries moves on foot, whatever it was ordered to be or the rifles it kept (the
+/// defect the first checks found: a poor country "motorized" as fast as the powers).
 #[test]
 fn a_converted_formation_counts_by_the_equipment_it_holds() {
     use bf_sim::war::Formation;
@@ -545,8 +546,24 @@ fn a_converted_formation_counts_by_the_equipment_it_holds() {
         formations: vec![f(full.iter().map(|(g, q)| (*g, *q / 2)).collect())],
         ..Default::default()
     };
-    let (w0, _, a0) = bf_sim::war::composition::equipped(mil, &empty);
-    let (w1, _, _) = bf_sim::war::composition::equipped(mil, &half);
+    let cat = &data().catalogue;
+    let vehicles = vec![
+        cat.good("automobiles").unwrap() as u16,
+        cat.good("armored_vehicles").unwrap() as u16,
+    ];
+    let (w0, _, a0) = bf_sim::war::composition::equipped(mil, &vehicles, &empty);
+    let (w1, _, _) = bf_sim::war::composition::equipped(mil, &vehicles, &half);
+    // The rifles and guns the infantry brought do not make it move: only the lorries count.
+    let rifles_only = bf_sim::war::CountryWar {
+        formations: vec![f(full
+            .iter()
+            .filter(|(g, _)| !vehicles.contains(g))
+            .copied()
+            .collect())],
+        ..Default::default()
+    };
+    let (w2, _, _) = bf_sim::war::composition::equipped(mil, &vehicles, &rifles_only);
+    assert_eq!(w2, Fixed::ZERO);
     assert_eq!(a0, Fixed::from_int(10));
     assert_eq!(w0, Fixed::ZERO);
     assert_eq!(w1, Fixed::from_int(5));

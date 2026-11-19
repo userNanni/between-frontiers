@@ -54,6 +54,8 @@
         wheels_unit: "mechanized",
         tracks_unit: "armor",
         from_unit: "infantry",
+        // A formation counts as moving on wheels or tracks by these goods it holds.
+        vehicles: ["automobiles", "armored_vehicles"],
     )),
     build_weeks: [
         ("battleship", 156), ("carrier", 156), ("cruiser", 104), ("destroyer", 52),
