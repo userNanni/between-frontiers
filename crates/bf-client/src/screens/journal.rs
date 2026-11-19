@@ -41,6 +41,8 @@ pub struct Window {
     pub table: super::treaty_table::TableUi,
     /// The agreements screen: a denunciation being weighed.
     pub agreements: super::agreements::AgreementsUi,
+    /// The embargo decision: the country picked, a lift asked.
+    pub embargo: super::embargo::EmbargoUi,
 }
 
 /// The id the decision "Libertar território" takes in `Window::picked`.
@@ -57,6 +59,8 @@ pub const CALL: &str = "call:";
 pub const OPEN_WAR: &str = "open:war";
 /// The id the agreements screen takes in `Window::picked`.
 pub const AGREEMENTS: &str = "decision:agreements";
+/// The id the embargo decision takes in `Window::picked`.
+pub const EMBARGO: &str = "decision:embargo";
 /// The id the negotiation table takes in `Window::picked`.
 pub const TABLE: &str = "decision:treaty";
 /// The prefix of a proposal received in `Window::picked`, before its id.
@@ -101,6 +105,8 @@ pub struct Response {
     pub open_war: bool,
     /// The player confirmed denouncing this agreement.
     pub denounce: Option<u32>,
+    /// The player confirmed imposing (`true`) or lifting an embargo on this country.
+    pub embargo: Option<(String, bool)>,
     /// The proposal on the negotiation table, to weigh (`None` off the table).
     pub treaty_draft: Option<(String, bf_sim::treaty::Proposal)>,
 }
@@ -115,6 +121,8 @@ pub struct TableInput<'a> {
     pub today: Option<laplace_schelling::calendar::Date>,
     /// The player's agreements, breaches and reputations.
     pub agreements: Option<&'a crate::agreements_view::AgreementsView>,
+    /// The player's trade by partner and embargoes (the embargo decision).
+    pub trade: Option<&'a crate::tariff_view::TariffView>,
 }
 
 /// What the journal shows of crises: the player's, the draft's weighing, and the country picked
@@ -460,6 +468,29 @@ pub fn show(
                 });
             return;
         }
+        // The embargo decision takes the whole window too.
+        if let Some(view) = table
+            .trade
+            .filter(|_| window.picked.as_deref() == Some(EMBARGO))
+        {
+            let back = Button::ghost(&format!("←  {}", i18n.tr("journal-agendas")))
+                .size(ButtonSize::Small)
+                .show(ui);
+            if back.clicked() || keys::single(ui, "journal.decision.back", 'B', back.rect) {
+                window.picked = None;
+                window.embargo = Default::default();
+                return;
+            }
+            egui::ScrollArea::vertical()
+                .id_salt("embargo")
+                .auto_shrink([false, false])
+                .show(ui, |ui| {
+                    ui.set_max_width(ui.available_width() - space::LG);
+                    super::scroll_keys(ui);
+                    super::embargo::show(ui, i18n, world, view, &mut window.embargo, &mut out);
+                });
+            return;
+        }
         // The negotiation table and a proposal received take the whole window too.
         let picked_received = window
             .picked
@@ -616,6 +647,17 @@ pub fn show(
                 if b.clicked() || keys::single(ui, "journal.decision.agreements", 'O', b.rect) {
                     window.picked = Some(AGREEMENTS.to_owned());
                     window.agreements = Default::default();
+                }
+            }
+            // Embargoes: imposing one, and those in force by the country and on it.
+            if let Some(t) = table.trade {
+                let b = Button::secondary(&super::embargo::open_label(i18n, t))
+                    .size(ButtonSize::Small)
+                    .show(ui);
+                if b.clicked() || keys::single(ui, "journal.decision.embargo", 'M', b.rect) {
+                    window.picked = Some(EMBARGO.to_owned());
+                    window.embargo.target = None;
+                    window.embargo.lift = None;
                 }
             }
             // With the negotiation rule on: propose an agreement to the country picked on the map,

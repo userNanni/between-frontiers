@@ -30,6 +30,15 @@ pub struct TradeState {
 /// Smallest preference kept, in 65,535ths of the buyer's favourite.
 const PREF_FLOOR: u16 = 66;
 
+/// What [`equilibrium`] charges a pair: the home bias, the duties' rule, the governments'
+/// tables, and the pairs closed (embargoes, war).
+pub type Charges<'a> = (
+    Option<Fixed>,
+    Option<&'a super::customs::Duties>,
+    Option<&'a super::customs::TariffState>,
+    Option<&'a [bool]>,
+);
+
 /// The equilibrium preferences of the month: for every buyer, group and seller, the cost of
 /// arrival to the power −σ, the cost being the seller's price index in the group (price over
 /// base price, averaged over its tradable goods) times one plus the group's freight over the
@@ -42,12 +51,7 @@ pub fn equilibrium(
     factors: &FreightFactors,
     date: &str,
     links: Option<&[crate::treaty::TariffLink]>,
-    (home, duties, tables, closed): (
-        Option<Fixed>,
-        Option<&super::customs::Duties>,
-        Option<&super::customs::TariffState>,
-        Option<&[bool]>,
-    ),
+    (home, duties, tables, closed): Charges<'_>,
 ) -> Vec<Vec<Fixed>> {
     let groups = crate::economy::BUILDING_GROUPS.len();
     let n = markets.len();
