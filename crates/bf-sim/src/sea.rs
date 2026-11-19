@@ -301,6 +301,47 @@ impl SeaGraph {
         !o.closed.contains(&strait) && s.opened.as_deref().is_none_or(|d| d <= o.date.as_str())
     }
 
+    /// Distances (km) and the zone before each on the shortest way, from `sources` (zones, at 0
+    /// km) to every zone, never entering a zone of `blocked` (a source in it does not start).
+    /// For the war at sea: who reaches whom with the enemy's zones closed. Unreached: `u32::MAX`.
+    pub fn reach(
+        &self,
+        sources: &[u16],
+        blocked: &BTreeSet<u16>,
+        o: &RouteOptions,
+    ) -> (Vec<u32>, Vec<Option<u16>>) {
+        let n = self.file.zones.len();
+        let mut dist = vec![u32::MAX; n + 1];
+        let mut prev: Vec<Option<u16>> = vec![None; n + 1];
+        let mut heap = BinaryHeap::new();
+        for &z in sources {
+            if (z as usize) <= n && !blocked.contains(&z) && self.zone_open(z, o) {
+                dist[z as usize] = 0;
+                heap.push(Reverse((0u32, z)));
+            }
+        }
+        while let Some(Reverse((d, z))) = heap.pop() {
+            if d > dist[z as usize] {
+                continue;
+            }
+            for &(y, km, strait) in &self.adjacency[z as usize] {
+                if blocked.contains(&y)
+                    || !self.zone_open(y, o)
+                    || strait.is_some_and(|s| !self.strait_open(s, o))
+                {
+                    continue;
+                }
+                let nd = d.saturating_add(km);
+                if nd < dist[y as usize] || (nd == dist[y as usize] && prev[y as usize] > Some(z)) {
+                    dist[y as usize] = nd;
+                    prev[y as usize] = Some(z);
+                    heap.push(Reverse((nd, y)));
+                }
+            }
+        }
+        (dist, prev)
+    }
+
     /// The shortest sea route between two states' ports, or `None` when no open port of one
     /// reaches an open port of the other. Ties go to the lower zone id.
     pub fn route(&self, from: u16, to: u16, o: &RouteOptions) -> Option<Route> {

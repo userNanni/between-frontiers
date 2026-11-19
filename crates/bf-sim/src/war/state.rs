@@ -168,6 +168,8 @@ pub struct WarState {
     pub composition: super::composition::CompositionState,
     /// The colonial wars under way (G6), by war; empty without one.
     pub colonial: Vec<super::colonial::Colonial>,
+    /// The war at sea of the last week (slice C2): fleets, control, blockades; empty in peace.
+    pub sea: super::sea::SeaWar,
 }
 
 impl WarState {
@@ -223,6 +225,7 @@ impl WarState {
             fighting: Default::default(),
             composition: Default::default(),
             colonial: Vec::new(),
+            sea: Default::default(),
         }
     }
 
@@ -350,6 +353,34 @@ impl HashState for WarState {
                 c.hash_state(h);
             }
         }
+        if !self.sea.is_empty() {
+            self.sea.hash_state(h);
+        }
+    }
+}
+
+/// [`WarState`] as version 30 of the world wrote it, before the war at sea.
+#[derive(Default, Deserialize)]
+pub(crate) struct WarStateBeforeSea {
+    countries: Vec<CountryWar>,
+    soldiers: Vec<i64>,
+    conflicts: super::crisis::Conflicts,
+    fighting: super::fight::Fighting,
+    composition: super::composition::CompositionState,
+    colonial: Vec<super::colonial::Colonial>,
+}
+
+impl From<WarStateBeforeSea> for WarState {
+    fn from(w: WarStateBeforeSea) -> Self {
+        Self {
+            countries: w.countries,
+            soldiers: w.soldiers,
+            conflicts: w.conflicts,
+            fighting: w.fighting,
+            composition: w.composition,
+            colonial: w.colonial,
+            sea: Default::default(),
+        }
     }
 }
 
@@ -372,6 +403,7 @@ impl From<WarStateBeforeColonial> for WarState {
             fighting: w.fighting,
             composition: w.composition,
             colonial: Vec::new(),
+            sea: Default::default(),
         }
     }
 }
@@ -394,6 +426,7 @@ impl From<WarStateBeforeComposition> for WarState {
             fighting: w.fighting.into(),
             composition: Default::default(),
             colonial: Vec::new(),
+            sea: Default::default(),
         }
     }
 }
@@ -416,6 +449,7 @@ impl From<WarStateBeforeStill> for WarState {
             fighting: w.fighting.into(),
             composition: Default::default(),
             colonial: Vec::new(),
+            sea: Default::default(),
         }
     }
 }
@@ -439,6 +473,7 @@ impl From<WarStateBeforeDoctrine> for WarState {
             fighting: w.fighting.into(),
             composition: w.composition,
             colonial: Vec::new(),
+            sea: Default::default(),
         }
     }
 }
@@ -461,6 +496,7 @@ impl From<WarStateBeforeSupport> for WarState {
             fighting: w.fighting.into(),
             composition: Default::default(),
             colonial: Vec::new(),
+            sea: Default::default(),
         }
     }
 }
@@ -481,6 +517,7 @@ impl From<WarStateBeforeCrises> for WarState {
             fighting: Default::default(),
             composition: Default::default(),
             colonial: Vec::new(),
+            sea: Default::default(),
         }
     }
 }
@@ -555,6 +592,7 @@ impl From<WarStateBeforeOrders> for WarState {
             fighting: Default::default(),
             composition: Default::default(),
             colonial: Vec::new(),
+            sea: Default::default(),
         }
     }
 }
@@ -600,6 +638,7 @@ impl From<WarStateBeforeCalls> for WarState {
             fighting: Default::default(),
             composition: Default::default(),
             colonial: Vec::new(),
+            sea: Default::default(),
         }
     }
 }
@@ -679,6 +718,7 @@ impl From<WarStateBeforeFighting> for WarState {
             fighting: Default::default(),
             composition: Default::default(),
             colonial: Vec::new(),
+            sea: Default::default(),
         }
     }
 }

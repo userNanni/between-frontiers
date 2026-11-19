@@ -86,6 +86,8 @@ pub struct ColonialSetup {
     pub irregular: Option<u16>,
     /// The key of each state, by id.
     pub names: BTreeMap<u16, String>,
+    /// The sea zones (slice C2): the men land only by an open sea route.
+    pub seas: Option<std::sync::Arc<crate::sea::SeaGraph>>,
 }
 
 /// A colonial war under way (`WarState::colonial`).
@@ -122,6 +124,9 @@ pub struct Colonial {
     /// This week's goal of the landed men and their cap, for the screen.
     pub goal: u64,
     pub cap: u64,
+    /// The sea route is cut (slice C2): (the metropole's port state, the kept port state, the
+    /// zone the enemy holds on the way). No man lands while it is.
+    pub cut: Option<(u16, u16, u16)>,
 }
 
 impl HashState for Colonial {
@@ -157,6 +162,11 @@ impl HashState for Colonial {
         }
         h.write_u64(self.goal);
         h.write_u64(self.cap);
+        if let Some((a, b, z)) = self.cut {
+            h.write_u16(a);
+            h.write_u16(b);
+            h.write_u16(z);
+        }
     }
 }
 
@@ -487,6 +497,7 @@ pub fn open(setup: &ColonialSetup, mil: &Military, world: &mut GameWorld, date: 
             wanted: None,
             goal: 0,
             cap: 0,
+            cut: None,
         });
     }
 }
@@ -591,7 +602,7 @@ fn birth_forces(
 
 /// A week of every colonial war: the metropole lands men by its ports, the proclaimed country
 /// recruits irregulars toward its combatants, drawn by its support and held back by its arms.
-pub fn week(setup: &ColonialSetup, mil: &Military, world: &mut GameWorld) {
+pub fn week(setup: &ColonialSetup, mil: &Military, world: &mut GameWorld, date: &str) {
     let r = &setup.rules;
     let wars = std::mem::take(&mut world.war.colonial);
     let mut out = Vec::with_capacity(wars.len());
@@ -645,8 +656,14 @@ pub fn week(setup: &ColonialSetup, mil: &Military, world: &mut GameWorld) {
             goal = goal.min(cap);
             c.cap = cap;
             c.goal = goal;
-            // Men land (or sail home) by the ports, a week's capacity at a time.
-            let pace = ports * u64::from(r.men_per_port_week);
+            // Men land (or sail home) by the ports, a week's capacity at a time, and only by
+            // an open sea route (slice C2).
+            c.cut = route_cut(setup, world, &c, date);
+            let pace = if c.cut.is_some() {
+                0
+            } else {
+                ports * u64::from(r.men_per_port_week)
+            };
             c.landed = if c.landed < goal {
                 (c.landed + pace).min(goal)
             } else {
@@ -702,6 +719,74 @@ pub fn week(setup: &ColonialSetup, mil: &Military, world: &mut GameWorld) {
         out.push(c);
     }
     world.war.colonial = out;
+}
+
+/// Where the sea route from the metropole to the ports it keeps in the unit is cut: (its port
+/// state, the kept port state, the zone the enemy holds on the shortest way). `None` when a
+/// route is open, or without the sea zones.
+pub fn route_cut(
+    setup: &ColonialSetup,
+    world: &GameWorld,
+    c: &Colonial,
+    date: &str,
+) -> Option<(u16, u16, u16)> {
+    let g = setup.seas.as_deref()?;
+    let blocked: BTreeSet<u16> = world
+        .war
+        .sea
+        .control
+        .iter()
+        .filter(|&&(_, h)| world.war.conflicts.at_war(h, c.owner))
+        .map(|&(z, _)| z)
+        .collect();
+    if blocked.is_empty() {
+        return None;
+    }
+    let rs = &world.econ.regions;
+    let home: Vec<(u16, u16)> = rs
+        .iter()
+        .filter(|r| r.market == c.owner && !r.colony)
+        .flat_map(|r| g.ports_of(r.state).iter().map(move |(z, _)| (r.state, *z)))
+        .collect();
+    let kept: Vec<(u16, u16)> = c
+        .regions
+        .iter()
+        .filter(|&&ri| {
+            let reg = &rs[ri as usize];
+            reg.market == c.owner && world.war.fighting.controller(ri, reg.market) == c.owner
+        })
+        .flat_map(|&ri| {
+            let st = rs[ri as usize].state;
+            g.ports_of(st).iter().map(move |(z, _)| (st, *z))
+        })
+        .collect();
+    let sources: Vec<u16> = home.iter().map(|x| x.1).collect();
+    let o = crate::sea::RouteOptions::open(date);
+    let (dist, _) = g.reach(&sources, &blocked, &o);
+    if kept.iter().any(|(_, z)| dist[*z as usize] != u32::MAX) {
+        return None;
+    }
+    // Cut: the zone the enemy holds on the shortest way without it.
+    let (free, prev) = g.reach(&sources, &BTreeSet::new(), &o);
+    let &(to, end) = kept
+        .iter()
+        .filter(|(_, z)| free[*z as usize] != u32::MAX)
+        .min_by_key(|(s, z)| (free[*z as usize], *z, *s))?;
+    let mut at = Some(end);
+    let (mut zone, mut start) = (end, end);
+    while let Some(z) = at {
+        if blocked.contains(&z) {
+            zone = z;
+        }
+        start = z;
+        at = prev[z as usize];
+    }
+    let from = home
+        .iter()
+        .filter(|(_, z)| *z == start)
+        .map(|x| x.0)
+        .min()?;
+    Some((from, to, zone))
 }
 
 /// A week of the guerrilla in the unit's regions the metropole holds (G6, the orchestrator's

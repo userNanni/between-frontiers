@@ -380,3 +380,15 @@ army-hold-regime = The form of government changed: the officer corps answers to 
     [one] { $years } more year
    *[other] { $years } more years
 }.
+
+war-expedition-cut = Landing stopped: the route { $from }–{ $to } is cut at { $zone }, a zone the enemy controls.
+
+war-fleet = Fleet
+war-fleet-where = { $ships } ships in { $zone }, mission: control the zone.
+war-fleet-blockading = Stronger on the surface than { $country }: it holds the way out of its sea and cuts the trade that passes there.
+war-fleet-home = Weaker on the surface than { $country }: it stays at its own way out to sea, a fleet in being, without seeking battle.
+war-fleet-home-alone = The enemy has no fleet: yours stays at its own way out to sea.
+war-fleet-holds = At the end of the week, the zone is yours.
+war-fleet-contested = At the end of the week, the zone is not yours: the enemy has more surface power there.
+war-fleet-blockades = Blockading { $countries }: { $pairs } sea trade pairs cut. Pairs by land, and routes that do not pass the zones you control, stay open.
+war-fleet-command-later = The command of the fleet (the mission by zone) comes with the next slice; until then the fleet follows the rule above.

@@ -184,6 +184,27 @@ pub struct Expedition {
     pub armed: u64,
     /// No cap: the colony is reached by land.
     pub by_land: bool,
+    /// The sea route is cut (slice C2): the metropole's port state, the kept port state and the
+    /// key of the zone the enemy holds; no man lands while it is.
+    pub cut: Option<(u16, u16, String)>,
+}
+
+/// The player's navy this week (slice C2): where it is, why, and what it blockades. The mission
+/// is fixed ("control"); the player's command (S1) comes with the next slice.
+#[derive(Clone, Debug, PartialEq)]
+pub struct FleetLine {
+    /// The zone's key (`sea-zone-<key>`).
+    pub zone: String,
+    pub ships: u64,
+    /// The enemy whose gateway it holds (stronger on the surface); `None`: at home (weaker).
+    pub against: Option<String>,
+    /// The enemy it measured itself against when it stays home.
+    pub stronger: Option<String>,
+    /// It holds the zone at the end of the week.
+    pub holds: bool,
+    /// The countries it blockades, and the trade pairs cut.
+    pub blockades: Vec<String>,
+    pub cut: usize,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -202,6 +223,8 @@ pub struct WarView {
     pub dig_weeks: u16,
     /// What the fighting looked like when read: a change reads it again.
     pub signature: Signature,
+    /// The player's navy, while at war and with ships.
+    pub fleet: Option<FleetLine>,
 }
 
 pub type Signature = (usize, usize, usize, usize, i64);
@@ -312,6 +335,14 @@ pub fn read(
     };
     let fighting = &world.war.fighting;
     let regions = &world.econ.regions;
+    // A sea zone's key, from the war at sea's graph; its number without it.
+    let zone_key = |z: u16| {
+        setup
+            .sea
+            .as_ref()
+            .and_then(|s| s.graph.file.zones.get(usize::from(z).wrapping_sub(1)))
+            .map_or_else(|| z.to_string(), |x| x.key.clone())
+    };
     let lost_of = |c: u16| {
         fighting
             .losses
@@ -523,6 +554,7 @@ pub fn read(
                         share: k.commitment,
                         armed: k.armed,
                         by_land: k.by_land,
+                        cut: k.cut.map(|(a, b, z)| (a, b, zone_key(z))),
                     }),
             })
         })
@@ -542,6 +574,40 @@ pub fn read(
         full_line_men_km: front.map_or(0.0, |r| f(r.full_line_men_km)),
         dig_weeks,
         signature: signature(world, days),
+        fleet: {
+            let sea = &world.war.sea;
+            sea.fleets.iter().find(|f| f.country == me).map(|f| {
+                let blockades: Vec<u16> = sea
+                    .blockades
+                    .iter()
+                    .filter(|(a, _)| *a == me)
+                    .map(|(_, b)| *b)
+                    .collect();
+                // The strongest enemy at sea, for the reason of staying home.
+                let stronger = (f.against.is_none())
+                    .then(|| {
+                        sea.fleets
+                            .iter()
+                            .filter(|x| world.war.conflicts.at_war(me, x.country))
+                            .max_by_key(|x| (x.ships, std::cmp::Reverse(x.country)))
+                            .map(|x| tag_of(x.country))
+                    })
+                    .flatten();
+                FleetLine {
+                    zone: zone_key(f.zone),
+                    ships: f.ships,
+                    against: f.against.map(tag_of),
+                    stronger,
+                    holds: sea.holder(f.zone) == Some(me),
+                    cut: sea
+                        .cut
+                        .iter()
+                        .filter(|(x, y)| blockades.contains(x) || blockades.contains(y))
+                        .count(),
+                    blockades: blockades.into_iter().map(tag_of).collect(),
+                }
+            })
+        },
     })
 }
 

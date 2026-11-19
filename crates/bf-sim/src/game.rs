@@ -1969,9 +1969,72 @@ mod tests {
             hash_of(&with_ledger)
         );
         assert_eq!(
-            hash_of(&headed(34, &encode_snapshot(&with_ledger).unwrap())),
+            hash_of(&headed(35, &encode_snapshot(&with_ledger).unwrap())),
             hash_of(&with_ledger)
         );
+        // Version 34, the colonial war (#241), before the war at sea: `war` without `sea`.
+        {
+            #[derive(Serialize)]
+            struct WarV34<'a> {
+                countries: &'a Vec<crate::war::CountryWar>,
+                soldiers: &'a Vec<i64>,
+                conflicts: &'a crate::war::Conflicts,
+                fighting: &'a crate::war::fight::Fighting,
+                composition: &'a crate::war::composition::CompositionState,
+                colonial: &'a Vec<crate::war::colonial::Colonial>,
+            }
+            #[derive(Serialize)]
+            struct BeforeSea34<'a> {
+                scenario: &'a String,
+                player: &'a Option<Id<Country>>,
+                countries: &'a Table<Country, CountryState>,
+                census: &'a Vec<CensusRecord>,
+                econ: &'a crate::econ::Economy,
+                research: &'a crate::research::ResearchState,
+                politics: &'a crate::polity::PoliticsState,
+                demography: &'a crate::demography::DemographyState,
+                borders: &'a crate::borders::BordersState,
+                foreign: &'a crate::foreign_stakes::ForeignState,
+                influence: &'a crate::influence::InfluenceState,
+                treaties: &'a crate::treaty::TreatyState,
+                war: WarV34<'a>,
+                education: &'a crate::demography::education::EducationState,
+                independence: &'a crate::borders::independence::IndependenceState,
+                levers: &'a crate::econ::levers::LeversState,
+                tariffs: &'a crate::econ::customs::TariffState,
+                payments: &'a crate::econ::payments::PaymentsState,
+            }
+            let w = &with_ledger;
+            let v34 = encode_snapshot(&BeforeSea34 {
+                scenario: &w.scenario,
+                player: &w.player,
+                countries: &w.countries,
+                census: &w.census,
+                econ: &w.econ,
+                research: &w.research,
+                politics: &w.politics,
+                demography: &w.demography,
+                borders: &w.borders,
+                foreign: &w.foreign,
+                influence: &w.influence,
+                treaties: &w.treaties,
+                war: WarV34 {
+                    countries: &w.war.countries,
+                    soldiers: &w.war.soldiers,
+                    conflicts: &w.war.conflicts,
+                    fighting: &w.war.fighting,
+                    composition: &w.war.composition,
+                    colonial: &w.war.colonial,
+                },
+                education: &w.education,
+                independence: &w.independence,
+                levers: &w.levers,
+                tariffs: &w.tariffs,
+                payments: &w.payments,
+            })
+            .unwrap();
+            assert_eq!(hash_of(&headed(34, &v34)), hash_of(&with_ledger));
+        }
         // Version 33, the generation of the armies (#230), before the colonial war: `war`
         // without `colonial`.
         {
