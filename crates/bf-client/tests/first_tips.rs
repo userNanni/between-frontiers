@@ -24,6 +24,8 @@ fn the_first_campaign_lights_the_tips_once() {
     let user = std::env::temp_dir().join(format!("bf-first-tips-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&user);
     let mut h = app(user.clone(), "en", egui::vec2(1600.0, 900.0));
+    // As in a debug build: two widgets with one id fail the test in release too.
+    h.ctx.options_mut(|o| o.warn_on_id_clash = true);
     h.run_steps(4);
     let mut save = saves::create(
         &user.join("saves"),
