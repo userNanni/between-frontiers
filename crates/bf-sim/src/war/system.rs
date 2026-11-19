@@ -1373,8 +1373,8 @@ impl System<GameWorld> for Forces {
             }
         }
         // The nuclear tests asked for, and the crises the nuclear ceiling blocks (N3, war on).
-        if self.fight.is_some() {
-            nuclear_week(&self.military, world, ctx.date);
+        if let Some(f) = &self.fight {
+            nuclear_week(&self.military, world, ctx.date, &f.neighbours);
         }
         // The colonial wars (G6): a revolt of the last seven days opens one; under way, the
         // metropole lands men and the new country recruits.
@@ -1390,11 +1390,18 @@ impl System<GameWorld> for Forces {
 /// A week of the nuclear rung: the tests asked for go through for a country holding a warhead
 /// (N3: its arsenal is known to all from then on), and every crisis whose demander's ceiling
 /// against its target is below war, as the demander reads the balance, is marked blocked.
-fn nuclear_week(mil: &Military, world: &mut GameWorld, date: laplace_schelling::Date) {
+fn nuclear_week(
+    mil: &Military,
+    world: &mut GameWorld,
+    date: laplace_schelling::Date,
+    neighbours: &std::collections::BTreeMap<u16, Vec<u16>>,
+) {
     use super::nuclear_use as nu;
     // N7: the taboo of the year that ended, in the first week of January.
     if date.month == 1 && date.day <= 7 {
         nu::taboo_year(mil, world, date.year);
+        // N8: the fallout of the years before decays, and the productivity comes back.
+        nu::fallout_year(mil, world);
     }
     // The uses: last week's commands and answers, then the AI's first uses (N7); each strike
     // the AI receives is answered the next week (N5).
@@ -1407,10 +1414,11 @@ fn nuclear_week(mil: &Military, world: &mut GameWorld, date: laplace_schelling::
     uses.extend(nu::first_uses(mil, world, player));
     let mut answers = Vec::new();
     for u in &uses {
-        if let Some(s) = nu::strike(mil, world, u, date)
-            && let Some(a) = nu::answer(mil, world, u, &s, player)
-        {
-            answers.push(a);
+        if let Some(s) = nu::strike(mil, world, u, date) {
+            nu::fallout(mil, world, neighbours, &s.hit);
+            if let Some(a) = nu::answer(mil, world, u, &s, player) {
+                answers.push(a);
+            }
         }
     }
     world.war.nuclear.uses = answers;

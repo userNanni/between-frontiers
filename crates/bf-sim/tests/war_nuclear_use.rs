@@ -350,3 +350,47 @@ fn the_ai_uses_first_when_overrun() {
         "the taboo whole holds"
     );
 }
+
+/// N8: a warhead's fallout takes a tenth of the productivity of the region it falls on and
+/// three hundredths of the neighbours', kept as a stock that decays with the years (half in
+/// 30), the productivity coming back with it.
+#[test]
+fn the_fallout_takes_productivity_and_decays() {
+    let mut w = data().new_world();
+    bombers(&mut w, "GER", 4);
+    let mut used = at_war(w.clone());
+    let mut plain = at_war(w);
+    launch(&mut used, Mode::Countervalue, 1);
+    let d = later(&plain, 8);
+    plain.sim.run_until(d);
+    let n = &used.world().war.nuclear;
+    let pol = index(used.world(), "POL");
+    // The region the warhead fell on: a home region of Poland's with the whole loss.
+    let hit = n
+        .fallout
+        .iter()
+        .find(|&&(r, l)| l == 100 && used.world().econ.regions[r as usize].market == pol)
+        .map(|&(r, _)| r)
+        .unwrap();
+    eprintln!("fallout {:?}", n.fallout);
+    assert_eq!(n.fallout_of(hit), 100);
+    assert!(
+        n.fallout.iter().any(|&(r, l)| r != hit && l == 30),
+        "the neighbours take three tenths"
+    );
+    let ratio = |a: &Session, b: &Session, r: u32| {
+        a.world().econ.regions[r as usize].tfp.to_f64_lossy()
+            / b.world().econ.regions[r as usize].tfp.to_f64_lossy()
+    };
+    let now = ratio(&used, &plain, hit);
+    eprintln!("productivity of the region hit: {now:.3} of the world without the strike");
+    assert!((now - 0.9).abs() < 0.005);
+    // A year on, the stock decays and the productivity comes back with it.
+    used.sim.run_until(Date::new(1926, 1, 20));
+    plain.sim.run_until(Date::new(1926, 1, 20));
+    let left = used.world().war.nuclear.fallout_of(hit);
+    let back = ratio(&used, &plain, hit);
+    eprintln!("a year on: fallout {left} per mille, productivity {back:.3}");
+    assert_eq!(left, 97);
+    assert!(back > now, "it comes back");
+}

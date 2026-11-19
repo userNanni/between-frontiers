@@ -172,6 +172,16 @@ pub struct Wreck {
     pub civilians: u64,
 }
 
+/// N8: a region's productivity lost to a nuclear strike's fallout, a stock that decays.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Fallout {
+    pub state: u16,
+    /// The player's side's land.
+    pub ours: bool,
+    /// Per mille of the productivity lost.
+    pub per_mille: u32,
+}
+
 /// One war of the player's.
 #[derive(Clone, Debug, PartialEq)]
 pub struct WarLine {
@@ -194,6 +204,8 @@ pub struct WarLine {
     pub support: [Option<SupportLine>; 2],
     pub occupied: Vec<Occupied>,
     pub wrecks: Vec<Wreck>,
+    /// N8: the fallout on either side's land, the worst first.
+    pub fallout: Vec<Fallout>,
     /// The nuclear balance with the other side's leader, as the player reads it; `None` when
     /// neither holds a warhead.
     pub nuclear: Option<crate::nuclear_view::Panel>,
@@ -553,6 +565,28 @@ pub fn read(
                     })
                 })
                 .collect();
+            let mut fallout: Vec<Fallout> = world
+                .war
+                .nuclear
+                .fallout
+                .iter()
+                .filter_map(|&(r, per_mille)| {
+                    let (st, owner) = state(r)?;
+                    let side = if ours.contains(&owner) {
+                        true
+                    } else if theirs.contains(&owner) {
+                        false
+                    } else {
+                        return None;
+                    };
+                    Some(Fallout {
+                        state: st,
+                        ours: side,
+                        per_mille,
+                    })
+                })
+                .collect();
+            fallout.sort_by(|a, b| b.per_mille.cmp(&a.per_mille).then(a.state.cmp(&b.state)));
             let rules = setup.conduct.as_ref().map(|c| &c.rules.support);
             let support = [
                 support_line(world, politics, rules, me, tag.to_owned()),
@@ -575,6 +609,7 @@ pub fn read(
                 support,
                 occupied,
                 wrecks,
+                fallout,
                 nuclear: mil.and_then(|m| {
                     theirs.first().and_then(|&e| {
                         let mut p = crate::nuclear_view::read(world, m, me, e)?;

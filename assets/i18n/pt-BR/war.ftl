@@ -479,3 +479,9 @@ strike-confirm-line = { $n ->
     [one] { $warheads } ogiva
    *[other] { $warheads } ogivas
 } sobre { $country }, cerca de { $dead } mortos. Não se desfaz. Um ponto de restauração é gravado antes.
+
+# A precipitação (N8)
+war-fallout = Precipitação nuclear
+war-fallout-basis = A produtividade que cada estado perdeu para a precipitação. A perda cai com o césio-137: metade em 30 anos.
+war-fallout-ours = { $state }: perdemos { $share } da produtividade
+war-fallout-theirs = { $state }: eles perderam { $share } da produtividade

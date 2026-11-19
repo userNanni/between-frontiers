@@ -467,3 +467,9 @@ strike-confirm-line = { $n ->
     [one] { $warheads } warhead
    *[other] { $warheads } warheads
 } on { $country }, about { $dead } dead. It cannot be undone. A restore point is saved first.
+
+# The fallout (N8)
+war-fallout = Nuclear fallout
+war-fallout-basis = The productivity each state lost to the fallout. The loss falls with caesium-137: half in 30 years.
+war-fallout-ours = { $state }: we lost { $share } of the productivity
+war-fallout-theirs = { $state }: they lost { $share } of the productivity
