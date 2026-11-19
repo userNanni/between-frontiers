@@ -142,6 +142,88 @@ pub fn main() -> Result<(), String> {
         }
         return Ok(());
     }
+    // Trade's volume (`BF_DIAG_VOLUME=<years>`, docs/trade.pt-BR.md, section 14): by year, the
+    // world's exports plus imports by pair over GDP, imports over the use of tradable goods, the
+    // margin over trade, world GDP, and the trade over GDP of the five largest economies.
+    if let Ok(years) = std::env::var("BF_DIAG_VOLUME") {
+        let years: i32 = years.parse().unwrap_or(11);
+        let end = Date::new(1925 + years, 1, 1);
+        let mut d = Date::new(1925, 1, 5);
+        let ng = cat.goods.len();
+        let (mut year, mut weeks) = (1925, 0u32);
+        let (mut used, mut margin, mut volume) = (vec![0f64; 300], 0f64, 0f64);
+        let mut top: Vec<usize> = Vec::new();
+        while d < end {
+            d = Date::from_days(d.to_days() + 7);
+            s.sim.run_until(d);
+            let e = &s.world().econ;
+            if used.len() != e.markets.len() {
+                used = vec![0f64; e.markets.len()];
+            }
+            for (mi, m) in e.markets.iter().enumerate() {
+                for gi in 0..ng {
+                    if !cat.goods[gi].tradable {
+                        continue;
+                    }
+                    let base = cat.goods[gi].base_price;
+                    used[mi] +=
+                        (m.demand[gi].max(laplace_schelling::Fixed::ZERO) * base).to_f64_lossy();
+                    let n = m.net_import[gi];
+                    if n > laplace_schelling::Fixed::ZERO {
+                        volume += (n * base).to_f64_lossy();
+                        margin += (n * m.sell_ratio[gi] * m.price[gi]).to_f64_lossy();
+                    } else if n < laplace_schelling::Fixed::ZERO {
+                        margin += (n * m.buy_ratio[gi] * m.price[gi]).to_f64_lossy();
+                    }
+                }
+            }
+            weeks += 1;
+            if d.year != year {
+                let n = e.markets.len();
+                let t = &e.trade;
+                let v = |a: usize, b: usize| {
+                    t.last_year.get(a * n + b).map_or(0.0, |x| x.to_f64_lossy())
+                };
+                let gdp: Vec<f64> = e
+                    .markets
+                    .iter()
+                    .map(|m| m.gdp_last_year.to_f64_lossy())
+                    .collect();
+                if top.is_empty() {
+                    let mut o: Vec<usize> = (0..n).collect();
+                    o.sort_by(|a, b| gdp[*b].total_cmp(&gdp[*a]));
+                    o.truncate(5);
+                    top = o;
+                }
+                let world: f64 = (0..n)
+                    .flat_map(|a| (0..n).map(move |b| (a, b)))
+                    .map(|(a, b)| v(a, b))
+                    .sum();
+                let wg: f64 = gdp.iter().sum();
+                let imp_all: f64 = world;
+                let use_all: f64 = used.iter().sum::<f64>() * 52.0 / f64::from(weeks);
+                let mut line = format!(
+                    "{} world: trade {:.2} % of GDP, imports {:.1} % of tradable use, margin {:.1} % of trade, GDP {:.4e};",
+                    year - 1 + 1,
+                    2.0 * world / wg * 100.0,
+                    imp_all / use_all.max(1.0) * 100.0,
+                    margin / volume.max(1.0) * 100.0,
+                    wg
+                );
+                for &i in &top {
+                    let x: f64 = (0..n).map(|b| v(i, b)).sum();
+                    let m: f64 = (0..n).map(|a| v(a, i)).sum();
+                    let tag = &data.countries.countries[i].tag;
+                    line += &format!(" {tag} {:.1} %", (x + m) / gdp[i].max(1.0) * 100.0);
+                }
+                println!("{line}");
+                used.iter_mut().for_each(|u| *u = 0.0);
+                (margin, volume) = (0.0, 0.0);
+                (year, weeks) = (d.year, 0);
+            }
+        }
+        return Ok(());
+    }
     // Conservation of trade, week by week (`BF_DIAG_CONSERVE=<years>`): for every tradable
     // good the world's net imports add up to zero, and the margins' transfers between the
     // pools (`week::margin_transfers`) add up to zero, so trade makes no money. Printed by
