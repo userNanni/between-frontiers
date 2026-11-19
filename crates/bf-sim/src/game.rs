@@ -827,7 +827,30 @@ impl Command<GameWorld> for GameCommand {
                     world.politics.request(ci as u16, *law);
                 }
             }
-            GameCommand::SwitchCountry { .. } => {}
+            // The switch moves the control: the new country is the player's (crises, the
+            // treaties' table, the front's posture and third parties answer to it), and the
+            // country left goes back to the AI's rules from the next week: its postures and its
+            // expedition orders are dropped.
+            GameCommand::SwitchCountry { tag } => {
+                let Some(id) = world.country_by_tag(tag) else {
+                    return;
+                };
+                let index = |id| {
+                    world
+                        .countries
+                        .iter()
+                        .position(|(x, _)| x == id)
+                        .map(|i| i as u16)
+                };
+                let left = world.player.filter(|old| *old != id).and_then(index);
+                world.player = Some(id);
+                if let Some(old) = left {
+                    world.war.fighting.postures.retain(|(c, _, _)| *c != old);
+                    for c in world.war.colonial.iter_mut().filter(|c| c.owner == old) {
+                        c.wanted = None;
+                    }
+                }
+            }
             GameCommand::SetPayroll { tag, per_mille } => {
                 let v = *per_mille;
                 set_levers(world, tag, |l| l.payroll = v);
