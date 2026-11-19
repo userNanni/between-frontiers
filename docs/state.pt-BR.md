@@ -682,14 +682,143 @@ a Índia deve 13 % do PIB fora em 1930. O sinal do comércio ainda está errado 
 Índia com déficit de 3 a 5 % do PIB, os Estados Unidos com superávit de 2 % contra cerca de 1 % da
 conta corrente real). Nada disso se liga antes das fatias 3 e 4 e de o comércio acertar o sinal.
 
+### Fatia 3: o regime de câmbio e a regra do ouro (PO2, PO3, PO4, PO6, PO7), desligada
+
+Chave `gold_standard` (`data/rules.ron`, desligada; só corre com `payments_settle`;
+`econ::gold`). Save 37: `GameWorld::gold`, a situação de cada país (no hash quando a regra já
+correu) e o registro das mudanças de regime (fora do hash). A 36 fica congelada em
+`save_format::compat::V36`.
+
+**Regime por país.** Flutuante (o câmbio anda para a paridade de poder de compra, como antes), no
+ouro numa paridade (o câmbio que o país segura contra a unidade de referência, no índice de
+`Money::exchange_rate`), ou a paridade segura por controle cambial (sem a regra da cobertura e sem
+saída por ela; o que o país não paga fica bloqueado fora na moeda dele).
+
+**Quem está no ouro em 1925** (`data/economy/gold.ron`). O índice 100 é o câmbio médio de 1924,
+antes das voltas de 1925; a paridade de antes da guerra é a média de 1924 sobre a paridade, em
+centavos de dólar (Federal Reserve Bulletin, jan. 1929, p. 35; igual à tabela 173 de *Banking and
+Monetary Statistics*). As datas: Bernanke e James (NBER, 1991), tabela 2.1, do *Statistical
+Year-Book* da Liga das Nações, e as datas *de jure* do Federal Reserve Bulletin, ago. 1928, p. 562.
+As voltas de abril e maio de 1925 valem desde janeiro.
+
+| | volta | paridade (índice) | sobrevalorização contra 1924 |
+|---|---|---|---|
+| Estados Unidos | 1879 (jun. 1919 depois do embargo) | 100,0 | — |
+| Suécia | abr. 1924, paridade de antes da guerra | 99,0 | 1 % |
+| Alemanha | out. 1924, Reichsmark (padrão divisa-ouro), a 4,20 por dólar | 100,0 | — |
+| Reino Unido | 28 abr. 1925, US$ 4,8665 | 90,8 | 9,2 % (os "10 %" de Keynes) |
+| Holanda | 28 abr. 1925, paridade de antes da guerra | 95,1 | 4,9 % |
+| Suíça | 1925, paridade de antes da guerra | 94,4 | 5,6 % |
+| Áustria | jan. 1923 (*de jure*) | 100,0 | — |
+| Hungria | ligada à libra desde ago. 1924, *de jure* abr. 1925 | 100,0 | — |
+| Austrália, África do Sul | abr. e mai. 1925, com a libra | 90,8 | 9,2 % |
+
+Sem fonte própria: o câmbio de 1924 da Austrália e da África do Sul (tomei o da libra). Fora da
+volta pela regra: Espanha (a peseta flutuou), China (prata), União Soviética. O jogador pode
+aderir à paridade de antes da guerra de 14 países (a mesma conta: França 27,1, Itália 22,6,
+Bélgica 24,1, Dinamarca 62,4, Noruega 52,0, Japão 82,6, Argentina 81,0, Brasil 33,7) ou ao câmbio
+do dia.
+
+**A regra no ouro (PO4).**
+- O câmbio fica na paridade (`money::week` lê a paridade em lugar de `exchange_target`).
+- **Cobertura** = reserva líquida (ouro e divisas menos a moeda do país guardada fora, o `owed` da
+  fatia 2) ao câmbio real, sobre o dinheiro que o banco central emitiu: os títulos que comprou
+  (`debt_bank`) mais o que emprestou aos bancos (`credit`). Cobertura legal, do Federal Reserve
+  Bulletin, ago. 1928, p. 563: Estados Unidos 40 % (Federal Reserve Act, art. 16), Alemanha,
+  Itália, Suíça, Bélgica e Polônia 40 %, França 35 %, Holanda 20 % (a regra de 40 % suspensa desde
+  1914), Dinamarca 50 %; onde a regra era emissão fiduciária, a parte da circulação que ela pedia:
+  Inglaterra 30 % (£ 260 milhões fiduciários contra uns £ 370 milhões de notas), Suécia 40 %. Os
+  demais, 35 % (escolha do jogo). O piso é metade da cobertura legal.
+- Abaixo da cobertura legal: juro acima da regra de Taylor, **0,3 ponto por ponto de cobertura
+  que falta**, até 6 pontos; o banco não emite moeda nem empresta ao Tesouro (também o banco
+  subordinado). Depois de **26 semanas** abaixo, retira ao menos 1 ponto do PIB ao ano. O que deixa
+  de emitir e o que retira entram com sinal negativo no "dinheiro além da regra" que a inflação
+  lê (no máximo a emissão neutra mais a retirada: até −3,75 pontos de inflação).
+- Calibração do juro: o Reino Unido de 1925 sai a 5,2 % de média enquanto está no ouro (Taylor
+  2,6 + 2,5 pela cobertura), contra a taxa do Banco da Inglaterra de 5 % de março a agosto de 1925
+  e 4 a 4,5 % depois (Bank of England, série da Bank Rate). Com 0,15 ponto por ponto dava 3,6 %.
+  Moggridge (1972) não foi consultado.
+
+**Sair (PO3), pela regra.** 13 semanas seguidas abaixo do piso, ou a saída do emissor de um quarto
+ou mais das reservas do país (o contágio da libra em 1931). Ao sair: a taxa volta à regra de
+Taylor, o câmbio flutua para a paridade de poder de compra, o prêmio de risco sobe 1 ponto e cai a
+zero em três anos, e quem sai com dívida em moeda estrangeira acima de 10 % do PIB segura a
+paridade por controle cambial (Alemanha, Áustria e Hungria em 1931). Com a postura "defender", o
+país segura a paridade depois do piso até a reserva acabar; com "desvalorizar", a paridade sobe
+10 % em vez de sair.
+
+**Quem guarda a moeda perde (PO7).** Toda semana, depois dos bancos centrais, a divisa de cada
+moeda vale o que o câmbio do emissor andou desde a última vez: quem guarda a moeda que cai perde, e
+o emissor passa a dever o mesmo tanto a menos. A reserva líquida do mundo não muda (o recorte de
+zeros não conta como queda).
+
+**Voltar (PO2), pela regra da IA.** Um país flutuante (fora da lista dos de fora e sem escolha do
+jogador) volta ao ouro no câmbio do dia quando a inflação, a de agora e a do último ano, fica a
+menos de 3 pontos de zero por 104 semanas, a reserva líquida é positiva e a cobertura chega à
+legal. A IA não escolhe a paridade de antes da guerra; o jogador escolhe na fatia 5.
+
+**Comandos (PO6), só a simulação:** `SetGoldStandard { tag, choice }` (`Prewar`, `Market`,
+`Float`, `Control`, ou `None` para voltar à regra) e `SetGoldPosture { tag, posture }` (`Rule`,
+`Defend`, `Devalue`), cumpridos na semana econômica seguinte. Estão na lista de exceções de
+`crates/bf-client/tests/player_commands.rs`; a tela é a fatia 5.
+
+**Testes:** `econ::gold` (a taxa sobe e a emissão para abaixo da cobertura; a saída depois das
+semanas e o contágio; a defesa até a reserva acabar; a perda de quem guarda a moeda que cai, igual
+ao que o emissor deixa de dever; a volta no câmbio do dia), `econ::money` (o primeiro caso do
+trilema: no ouro, com a reserva caindo, a taxa não fica na de Taylor) e `tests/gold_standard.rs`
+(40 semanas do mundo: a reserva líquida do mundo só muda pelo ouro novo, nenhuma reserva negativa,
+banco abaixo da cobertura não emite; o Reino Unido sem reserva sai depois de 13 semanas e a libra
+cai; o jogador adere à paridade de antes da guerra e volta a flutuar; salvar e recarregar mantém o
+hash; desligada, ou sem a liquidação, ninguém tem regime). Desligada, o hash de 10 anos é o da
+fatia 2.
+
+**A medida** (`BF_DIAG_GOLD=TAG,...[:anos]`, saída em `target/gold/diag.txt`; médias do ano da
+taxa e da cobertura):
+
+| | regime no fim do ano | cobertura | taxa = Taylor + cobertura | inflação |
+|---|---|---|---|---|
+| Reino Unido 1925 | sai em nov. 1925 | 20 % (legal 30) | 5,18 = 2,63 + 2,54 | +1,4 % |
+| Reino Unido 1926 a 1932 | flutua (102 → 100) | negativa | Taylor, 0,2 a 1,4 | 0 a +0,9 % |
+| Estados Unidos | ouro | 74 a 83 % | Taylor | +2,6 a −0,2 % |
+| Suécia | ouro até nov. 1928 | 40 → 30 % | 0 = −3,0 + 3,0 (1927) | −2,0 a −4,6 % |
+| Holanda | ouro o tempo todo | 33 → 14 → 23 % | até 0,33 = −1,5 + 1,9 | +1,9 a −5,0 % |
+| Argentina | volta em dez. 1926 | 130 → 21 % | 0 = −4,2 + 4,2 (1931) | −0,8 a −7,0 % |
+| Alemanha | sai em abr. 1925 | negativa | Taylor | +1,5 a −0,6 % |
+| França, Japão, Itália | flutuam | negativa ou abaixo da legal | Taylor | ~0 a +2 % |
+
+**Quem sai e quem volta, contra a história:**
+
+| | no jogo | história |
+|---|---|---|
+| Áustria, Hungria | saem em mar. 1925 | controle cambial em 1931 |
+| Alemanha | sai em abr. 1925 | controle cambial em jul. 1931 |
+| Suíça | sai em out. 1925 | set. 1936 |
+| Reino Unido | sai em nov. 1925 | set. 1931 |
+| Suécia | sai em nov. 1928 | set. 1931 |
+| Argentina, Brasil, Noruega, Chile, Colômbia e mais 23 | voltam todos em dez. 1926 | Brasil dez. 1926, Argentina ago. 1927, Noruega mai. 1928 |
+| França, Bélgica, Itália, Dinamarca, Polônia, Japão | não voltam até 1932 | 1926 a 1930 |
+| Canadá | volta em dez. 1931 | jul. 1926 a out. 1931 |
+
+O que se vê:
+- **A regra faz o que deve** onde a reserva aguenta: os Estados Unidos acumulam e seguem Taylor; a
+  Suécia, a Holanda e a Argentina, abaixo da cobertura, sobem o juro acima de Taylor (até 4 pontos)
+  e entram em deflação de 2 a 7 % ao ano, o mecanismo dos "grilhões de ouro".
+- **Quem sai cedo sai pelo comércio, não pela regra:** sem capital que siga o juro (fatia 4), o
+  juro mais alto não traz reserva, e os déficits que a fatia 2 mediu (com o sinal do comércio ainda
+  errado em casos grandes) esvaziam a reserva do Reino Unido, da Alemanha, da Áustria, da Hungria e
+  da Suíça em meses. A reserva de 1925 é só ouro: as divisas dos bancos do padrão divisa-ouro
+  (a Alemanha, a Áustria) começam em zero.
+- **O dinheiro emitido cresce rápido:** 5 a 9 % do PIB em 1925 e 18 a 28 % em 1932, porque
+  `credit` é o dinheiro largo (sem multiplicador bancário). A cobertura cai com ele mesmo sem perda
+  de reserva; a cobertura legal da fonte é sobre notas. Achado para a fatia 4 ou para a calibração:
+  medir a cobertura contra a base monetária, não contra todo o crédito.
+- **As voltas vêm juntas:** a inflação do jogo em 1925 é baixa em toda parte, então todo flutuante
+  com reserva completa os dois anos calmos na mesma semana (dez. 1926). A França e a Itália de
+  1925 a 1926 tinham inflação alta, que o jogo não tem; com ela, as voltas se espalhariam.
+- Nada disso se liga antes da fatia 4, do sinal do comércio e da cobertura contra a base.
+
 ### Fatias seguintes (aprovadas, por fazer)
 
-3. **Regime e regra (PO2, PO3, PO4, PO6).** Quem está no ouro em 1925 e a que paridade é dado com
-   fonte (Eichengreen, *Golden Fetters*, 1992; Liga das Nações, *Statistical Year-Book*). Abaixo da
-   cobertura, juro acima da regra de Taylor por ponto que falta e, se a falta continua, moeda
-   retirada: deflação, juro real alto, importação menor. A IA volta ao ouro e sai dele pela regra
-   (cobertura abaixo do piso por meses seguidos, ou a saída do principal país-reserva); as datas
-   históricas ficam como conferência. Aderir e sair são decisão rara, em Agendas.
 4. **Capital que segue o juro (PO5).** O credor escolhe o país pelo juro e pela confiança; controle
    de capital fecha a conta financeira do país (a renda continua paga), com prêmio. É o trilema:
    câmbio fixo e capital livre pedem o juro do mundo.
