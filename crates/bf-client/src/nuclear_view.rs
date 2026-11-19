@@ -49,6 +49,8 @@ pub struct StrikeView {
     pub per_counterforce: u64,
     /// Men of the target's land forces a counterforce warhead puts out.
     pub counterforce_men: u64,
+    /// The target's people: no strike kills more.
+    pub target_people: u64,
     /// The stain on the security reputation, in years of our forces' cost, per mille.
     pub stain: u32,
     /// The taboo, per mille, and the years since the last use in the world (N7).
@@ -89,6 +91,13 @@ pub fn strike_view(
         per_countervalue: per,
         per_counterforce: per * u64::from(n.counterforce_civilians) / 1000,
         counterforce_men: u64::from(n.counterforce_men),
+        target_people: world
+            .econ
+            .regions
+            .iter()
+            .filter(|r| r.market == other)
+            .map(|r| r.population().max(0) as u64)
+            .sum(),
         stain: n.use_stain,
         taboo: nuc.taboo,
         years_since: nuc.last_use.map(|(y, m, d)| {

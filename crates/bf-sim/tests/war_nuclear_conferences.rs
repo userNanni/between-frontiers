@@ -372,7 +372,7 @@ fn deterrence_with_real_arsenals() {
         },
     ];
     eprintln!(
-        "U3 case | warheads | delivered after the other's first strike | EMT each, delivered | dead by the rule | a quarter of the target | deters"
+        "U3 case | warheads | delivered after the other's first strike | EMT each, delivered | dead by the rule (capped at the people) | a quarter of the target | deters"
     );
     for c in &cases {
         let mut w = d.new_world();
@@ -399,7 +399,7 @@ fn deterrence_with_real_arsenals() {
         } else {
             0.0
         };
-        let dead = delivered * emt * f64::from(n.killed_per_warhead);
+        let dead_raw = delivered * emt * f64::from(n.killed_per_warhead);
         let people: i64 = w
             .econ
             .regions
@@ -407,15 +407,19 @@ fn deterrence_with_real_arsenals() {
             .filter(|r| r.market == b)
             .map(|r| r.population())
             .sum();
+        // No attack kills more than the target's people.
+        let dead = dead_raw.min(people as f64);
         let quarter = people as f64 * f64::from(n.unacceptable_share) / 1000.0;
+        assert_eq!(bal.deterrence.secure[0], dead >= quarter, "{}", c.name);
         eprintln!(
-            "U3 {} | {} | {:.0} | {:.3}, {:.1} | {:.1} M | {:.1} M | {}",
+            "U3 {} | {} | {:.0} | {:.3}, {:.1} | {:.1} M (uncapped {:.1} M) | {:.1} M | {}",
             c.name,
             bal.sides[0].warheads,
             delivered,
             emt,
             delivered * emt,
             dead / 1e6,
+            dead_raw / 1e6,
             quarter / 1e6,
             bal.deterrence.secure[0]
         );

@@ -1179,11 +1179,13 @@ fn strike(
         d.asked = false;
     }
     let n = u64::from(d.warheads);
-    let dead = n * if d.countervalue {
+    // No strike kills more than the target's people.
+    let dead = (n * if d.countervalue {
         s.per_countervalue
     } else {
         s.per_counterforce
-    };
+    })
+    .min(s.target_people);
     bf_ui_kit::stat_row(ui, &i18n.tr("strike-ready"), &int(s.deliverable));
     bf_ui_kit::stat_row(ui, &i18n.tr("strike-dead"), &int(dead));
     if !d.countervalue {
