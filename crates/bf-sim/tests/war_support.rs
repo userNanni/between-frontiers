@@ -438,3 +438,25 @@ fn a_war_is_not_left_open_without_a_front() {
     );
     assert!(w.war.fighting.control.is_empty(), "the occupation ended");
 }
+
+/// The pairs at war for the trade (CT7): Hungary against Czechoslovakia and the allies that
+/// joined it, each pair once with the lower index first; none in peace.
+#[test]
+fn the_pairs_at_war_for_the_trade() {
+    let d = data(|_| {});
+    let s0 = Session::new(
+        d.new_world(),
+        1925,
+        Date::new(1925, 1, 1),
+        2,
+        Some(d.rules()),
+    );
+    assert!(bf_sim::war::fight::war_pairs(s0.world()).is_empty());
+    let s = at_war(&d);
+    let w = s.world();
+    let (hun, cze) = (index(w, "HUN"), index(w, "CZE"));
+    let pairs = bf_sim::war::fight::war_pairs(w);
+    assert!(pairs.contains(&(hun.min(cze), hun.max(cze))), "{pairs:?}");
+    assert!(pairs.windows(2).all(|x| x[0] < x[1]));
+    assert!(pairs.iter().all(|(a, b)| a < b));
+}

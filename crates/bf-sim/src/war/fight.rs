@@ -241,6 +241,28 @@ pub fn peace_signed(world: &GameWorld, date: laplace_schelling::Date) -> Vec<u32
         .collect()
 }
 
+/// The pairs of countries at war, (a, b) with a < b, sorted and without repeats: every member
+/// of one side of a war against every member of the other, the allies that joined by a call
+/// included. Empty in peace. The trade reads it once a week to close these pairs (owner's
+/// decision CT7; `econ::trade::Geography::closures`).
+pub fn war_pairs(world: &GameWorld) -> Vec<(u16, u16)> {
+    let mut out: Vec<(u16, u16)> = world
+        .war
+        .conflicts
+        .wars
+        .iter()
+        .flat_map(|w| {
+            w.side_a
+                .iter()
+                .flat_map(move |&a| w.side_b.iter().map(move |&b| (a.min(b), a.max(b))))
+        })
+        .filter(|(a, b)| a != b)
+        .collect();
+    out.sort_unstable();
+    out.dedup();
+    out
+}
+
 /// After a peace, the occupation between the sides ends: the regions one side held of the
 /// other go back to their owner (what the peace ceded changed owner by the treaty's bridge),
 /// and the advances and postures between them are forgotten.

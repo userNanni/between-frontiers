@@ -1161,7 +1161,7 @@ regiões ocupadas e uma frente de 18 segmentos, toda entrincheirada.
 | G5 | a IA defende e contra-ataca com 1,5 vez o poder; **pede paz quando não tem mais apoio à guerra** | — |
 | G6 | proclamação e guerra entre dois países; **se a colônia perder, a metrópole reconquista** | — |
 
-### Apoio à guerra (G4, em rascunho com os recomendados; A1–A3 com o dono)
+### Apoio à guerra (G4; o dono decidiu A1–A3 na recomendada, 2026-11-18)
 
 Um número por país em guerra, de 0 a 1.000 por mil, feito do apoio de cada **grupo de interesse**
 (`politics`), pesado pela influência do grupo (`clout`). É o que a tela da guerra mostra em
@@ -1243,7 +1243,7 @@ guerra entrar.
    território perdido. O apoio fica acima de 300 aos três anos e abaixo aos seis, sem chegar
    ao colapso: o país pede paz sem derrota militar.
 
-### Ocupação: o que se extrai, a devastação e a guarnição (G3, em rascunho; O1–O3 com o dono)
+### Ocupação: o que se extrai, a devastação e a guarnição (G3; o dono decidiu O1–O3 na recomendada, 2026-11-18)
 
 **(a) O que o ocupante extrai.** A França ocupada pagou "custos de ocupação" de 400 milhões de
 francos por dia a partir de agosto de 1940, 300 milhões a partir de maio de 1941 e 500 milhões a

@@ -2,8 +2,8 @@
 // draft). Contract: crates/bf-sim/src/war/support.rs (ConductFile); reasoning in
 // docs/war.pt-BR.md, "Apoio à guerra" and "Ocupação". Licence: CC BY-SA 4.0.
 //
-// Behind the switch `war`. Design values, each choice of the owner (A1–A3, O1–O3) kept here
-// so that changing it is changing data. Per mille unless named otherwise.
+// Behind the switch `war`. The owner chose the recommended option in A1–A3 and O1–O3
+// (2026-11-18); each is kept here as data. Per mille unless named otherwise.
 (
     support: (
         // At the declaration: rallying round the flag for the country attacked (Mueller, 1973,
