@@ -151,29 +151,92 @@ fn programme(ui: &mut Ui, cx: &mut TabContext<'_>) {
             ],
         ),
     );
-    // N3: the test makes the arsenal known to all; it needs a warhead.
+    // N3: the test makes the arsenal known to all; it needs a warhead. The test and the end
+    // are rare decisions: a second click that says what changes, and a restore point before
+    // (written where the commands are sent, `screens/game.rs`), as in the Agendas.
+    let st = &mut *cx.orders;
     if p.tested {
         bf_ui_kit::small(ui, &i18n.tr("programme-tested"));
     } else if p.test_asked {
         bf_ui_kit::small(ui, &i18n.tr("programme-test-asked"));
-    } else if p.warheads >= 1.0 {
-        let t = Button::secondary(&i18n.tr("programme-test"))
+    } else if p.warheads >= 1.0 && st.programme_confirm != Some(false) {
+        if st.programme_confirm == Some(true) {
+            match confirm_step(
+                ui,
+                i18n,
+                "journal-programme-test-explain",
+                "journal-programme-test-confirm",
+                "forces.programme.test",
+            ) {
+                Some(true) => {
+                    cx.commands
+                        .push(GameCommand::NuclearTest { tag: tag.clone() });
+                    st.programme_confirm = None;
+                }
+                Some(false) => st.programme_confirm = None,
+                None => {}
+            }
+        } else {
+            let t = Button::secondary(&i18n.tr("journal-programme-test"))
+                .size(ButtonSize::Small)
+                .show(ui);
+            if t.clicked() || keys::item(ui, 'U', "forces.programme.test".into(), "t", t.rect) {
+                st.programme_confirm = Some(true);
+            }
+            bf_ui_kit::small(ui, &i18n.tr("programme-test-note"));
+        }
+    }
+    if st.programme_confirm == Some(false) {
+        match confirm_step(
+            ui,
+            i18n,
+            "journal-programme-end-explain",
+            "journal-programme-end-confirm",
+            "forces.programme.end",
+        ) {
+            Some(true) => {
+                cx.commands
+                    .push(GameCommand::NuclearProgramme { tag, share: None });
+                st.programme_confirm = None;
+            }
+            Some(false) => st.programme_confirm = None,
+            None => {}
+        }
+    } else if st.programme_confirm.is_none() {
+        let end = Button::ghost(&i18n.tr("journal-programme-end"))
             .size(ButtonSize::Small)
             .show(ui);
-        if t.clicked() || keys::item(ui, 'U', "forces.programme.test".into(), "t", t.rect) {
-            cx.commands
-                .push(GameCommand::NuclearTest { tag: tag.clone() });
+        if end.clicked() || keys::item(ui, 'U', "forces.programme.end".into(), "e", end.rect) {
+            st.programme_confirm = Some(false);
         }
-        bf_ui_kit::small(ui, &i18n.tr("programme-test-note"));
-    }
-    let end = Button::ghost(&i18n.tr("programme-end"))
-        .size(ButtonSize::Small)
-        .show(ui);
-    if end.clicked() || keys::item(ui, 'U', "forces.programme.end".into(), "e", end.rect) {
-        cx.commands
-            .push(GameCommand::NuclearProgramme { tag, share: None });
     }
     bf_ui_kit::small(ui, &i18n.tr("programme-note"));
+}
+
+/// The second step of a rare decision: what changes, in red, then the confirming button (Y)
+/// and the way back (N) side by side. `Some(true)` confirmed, `Some(false)` kept.
+fn confirm_step(ui: &mut Ui, i18n: &I18n, explain: &str, sure: &str, id: &str) -> Option<bool> {
+    ui.add(
+        egui::Label::new(
+            egui::RichText::new(i18n.tr(explain))
+                .font(bf_ui_kit::theme::sans(bf_ui_kit::tokens::size::SMALL))
+                .color(color::DANGER),
+        )
+        .wrap(),
+    );
+    ui.horizontal(|ui| {
+        let yes = Button::danger(&i18n.tr(sure))
+            .size(ButtonSize::Small)
+            .show(ui);
+        if yes.clicked() || keys::single(ui, &format!("{id}.yes"), 'Y', yes.rect) {
+            return Some(true);
+        }
+        let no = Button::ghost(&i18n.tr("forces-keep"))
+            .size(ButtonSize::Small)
+            .show(ui);
+        (no.clicked() || keys::single(ui, &format!("{id}.no"), 'N', no.rect)).then_some(false)
+    })
+    .inner
 }
 
 /// The composition of the land forces: on wheels and on tracks now, the target (the historical
@@ -447,6 +510,9 @@ pub struct OrdersUi {
     pub cancel: Option<u32>,
     /// The type whose disband is being weighed.
     pub disband: Option<DisbandUi>,
+    /// The nuclear programme's rare decision waiting for its second click: `true` the test,
+    /// `false` the end.
+    pub programme_confirm: Option<bool>,
     /// The forces as they stood when a disband was sent: the step waits for the simulation to
     /// carry it out before taking another (the formations' indices move).
     pub disband_sent: Option<crate::forces_view::Stock>,

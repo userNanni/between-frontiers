@@ -450,7 +450,7 @@ programme-plants = Usinas de enriquecimento
 programme-fissile = Material físsil
 programme-fissile-value = { $price } a unidade; o mercado entregou { $delivered } do que se pediu
 programme-end = Encerrar o programa
-programme-note = O teste, a doutrina e o uso vêm nas próximas fatias. Sem minério de urânio, a usina não roda, e o estoque para no material físsil.
+programme-note = Sem minério de urânio, a usina não roda, e o estoque para no material físsil. Hoje o material físsil vem do mercado, ao preço do dia; de onde ele vem muda com a próxima fatia, a do núcleo de ogiva.
 
 programme-test = Testar a arma
 programme-test-note = O teste torna o arsenal conhecido de todos: até ele, os outros contam metade das suas ogivas. Ele é ouvido no mundo inteiro e não se desfaz.
