@@ -212,9 +212,20 @@ o par.
   se desfaz.
 - **Reabrir não volta de uma vez.** Na reabertura a preferência sobe de onde decaiu, um λ por mês,
   como o comércio depois de uma guerra.
-- **Hoje dormente:** as cláusulas de embargo e sanção ainda não existem no catálogo (do thread dos
-  tratados), a guerra não tem estado no mundo e a rota é fixa na carga; o fecho entra pela mesma
-  porta (`Geography::closed`) quando cada um existir.
+- **O que fecha o par hoje.** Toda semana o comércio junta, num só conjunto de pares fechados
+  que vale para a partilha da semana e para o equilíbrio do mês (`Geography::closed_with`):
+  - os fechamentos datados da geografia;
+  - os **embargos** que um governo ordenou (CT6, `GameCommand::Embargo`, `TariffState::embargoes`,
+    save 32): unilaterais, fecham os dois sentidos; levantados, a preferência sobe um λ por mês;
+  - com a chave `war`, os **pares em guerra** (CT7, `war::fight::war_pairs`: cada membro de um lado
+    contra cada membro do outro, o aliado chamado só depois de entrar) e, de cada país
+    **bloqueado** (`war::fight::blockaded`), todo par cujo caminho mais barato até ele é por mar.
+    O bloqueio vem da guerra no mar (fatia C2); até lá a lista é vazia. A paz tira o par da lista
+    na semana em que é assinada, e ele reabre devagar como o embargo levantado.
+- **Ainda dormente:** a cláusula de embargo coletivo ou sanção de um acordo (thread dos tratados,
+  em pausa). O encaixe é o mesmo: os pares que a cláusula fecha entram em `extra` de
+  `closed_with`, como os embargos por comando. O não reconhecimento e o estreito fechado também
+  entram por ali quando existirem.
 
 ## 12. Serviço e bem local dentro da união aduaneira (microestados)
 
