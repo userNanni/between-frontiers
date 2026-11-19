@@ -59,7 +59,7 @@ crisis-demand-from = Exigir { $article ->
     [as] das
    *[other] de
 } { $country }…
-crisis-demand-pick-target = Selecione no mapa o país de quem exigir.
+crisis-demand-pick-target = Selecione no mapa o país de quem exigir, ou escolha pelo nome.
 crisis-demand-of = { $article ->
     [o] Do
     [a] Da

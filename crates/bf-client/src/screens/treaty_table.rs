@@ -100,6 +100,8 @@ pub struct TableUi {
     /// The title of a draft opened from another screen (`table-renegotiate-title`,
     /// `table-peace-title`).
     pub title: Option<&'static str>,
+    /// The search for the other party by name (keyboard).
+    pub find: super::country_find::FindUi,
 }
 
 /// The proposal with the sides swapped: the orientation the other party sent it in, or the
@@ -305,6 +307,19 @@ pub fn show_table(
         bf_ui_kit::muted(ui, &i18n.tr("table-off"));
         return None;
     };
+    // The other party found by name (keyboard): a new draft with it, fixed against the map.
+    if !countering
+        && st.title.is_none()
+        && let Some(world) = world
+        && let Some(tag) =
+            super::country_find::show(ui, i18n, world, me, &mut st.find, "treaty.table", 'C')
+    {
+        *st = TableUi {
+            draft: Some((tag.clone(), empty(me, &tag))),
+            fixed: true,
+            ..TableUi::default()
+        };
+    }
     // A new other party starts a new draft; a counter keeps its own.
     if !countering && !st.fixed {
         match other {
@@ -704,10 +719,16 @@ fn clause(
         }
         if let ClauseKind::Recognition { border } = &c.kind {
             let mut on = *border;
-            if ui
-                .checkbox(&mut on, i18n.tr("table-recognition-border"))
-                .changed()
-            {
+            let b = ui.checkbox(&mut on, i18n.tr("table-recognition-border"));
+            if keys::item(
+                ui,
+                'B',
+                format!("treaty.border.{ci}"),
+                &(ci + 1).to_string(),
+                b.rect,
+            ) {
+                edit.border = Some((ci, !*border));
+            } else if b.changed() {
                 edit.border = Some((ci, on));
             }
         }
@@ -843,17 +864,23 @@ fn states(
         .auto_shrink([false, true])
         .show(ui, |ui| {
             ui.horizontal_wrapped(|ui| {
-                for s in country
+                for (k, s) in country
                     .states
                     .iter()
                     .chain(&country.colonial_states)
                     .filter_map(|s| world.states.get(*s))
+                    .enumerate()
                 {
                     let mut on = picked.contains(s.def.key.as_str());
-                    if ui
-                        .checkbox(&mut on, crate::text::state_name(i18n, &s.def))
-                        .changed()
-                    {
+                    let b = ui.checkbox(&mut on, crate::text::state_name(i18n, &s.def));
+                    let typed = keys::item(
+                        ui,
+                        'G',
+                        format!("treaty.state.{ci}.{}", s.def.key),
+                        &(k + 1).to_string(),
+                        b.rect,
+                    );
+                    if b.changed() || typed {
                         edit.toggle_state = Some((ci, s.def.key.clone()));
                     }
                 }

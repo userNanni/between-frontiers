@@ -259,6 +259,7 @@ pub fn show(
                 // Room on the right for the scroll bar.
                 let width = ui.available_width() - SCROLL_GUTTER;
                 ui.set_max_width(width);
+                super::scroll_keys(ui);
                 match *tab {
                     Tab::Budget => super::budget::show(ui, &mut cx),
                     Tab::Money => super::money::show(ui, &mut cx),

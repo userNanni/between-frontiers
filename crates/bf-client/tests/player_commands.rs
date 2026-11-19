@@ -187,8 +187,6 @@ const PLAYER: &[Surface] = &[
 
 /// Variants the player does not give from a screen with a key, and why.
 const EXCEPTIONS: &[(&str, &str)] = &[
-    // Draft of slice C: the front's posture comes with the war screen of the interface PR
-    // stacked on this one; this line leaves with it.
     (
         "Borders",
         "issued by treaties, peace, tests and tools; the player frees its land with Liberate",
