@@ -1752,8 +1752,9 @@ type PrefRows<'a> = (&'a [Fixed], usize, &'a [Vec<(u16, u16)>]);
 /// makes and uses, it buys abroad the share its preferences give the foreign sellers against its
 /// own product (Armington: each seller weighed by what it makes and the buyer's preference, the
 /// buyer's own product by the home bias in the month's preference), spread over those sellers
-/// by the same weights. It moves no good on net: what a market sends of a good is matched by
-/// what it keeps of its own, so only the balances clear physically (`trade::clear_good_flat`).
+/// by the same weights; of each pair it keeps the part that goes both ways (the smaller of the
+/// two directions), so each pair moves no good and no money on net, and only the balances clear
+/// physically (`trade::clear_good_flat`).
 /// It counts as trade: the pair's flows, the tariff and the influence read it, and a closed pair
 /// has none.
 fn swap(
@@ -1767,6 +1768,9 @@ fn swap(
         return;
     };
     let nm = supply.len();
+    // Each buyer's purchases abroad by seller, `(seller, buyer, quantity)`; only the part of a
+    // pair that goes both ways is kept (below).
+    let mut wants: Vec<(usize, usize, Fixed)> = Vec::new();
     let mut weights: Vec<(usize, Fixed)> = Vec::new();
     for b in 0..nm {
         let both = supply[b][gi].min(demand[b][gi]);
@@ -1801,8 +1805,88 @@ fn swap(
                 _ => abroad * (w / foreign),
             };
             if q > Fixed::ZERO {
-                value.push((sm * nm + b, q * base));
+                wants.push((sm, b, q));
             }
         }
+    }
+    // The exchange of varieties is the trade that overlaps in a pair: each side sells the other
+    // as much of the good as the other sells it, the smaller of the two wants (intra-industry
+    // trade, Grubel and Lloyd, 1975). What one side wants beyond that is a balance, which the
+    // clearing of shortages already trades; kept here it made a phantom deficit for the market
+    // small against its partners and a surplus for the large one (docs/trade.pt-BR.md, section
+    // 14). Each pair moves no good and no money on net.
+    wants.sort_unstable_by_key(|&(s, b, _)| (s.min(b), s.max(b), s));
+    let mut i = 0;
+    while i < wants.len() {
+        let (s, b, q) = wants[i];
+        let pair = (s.min(b), s.max(b));
+        match wants.get(i + 1) {
+            Some(&(s2, b2, q2)) if (s2.min(b2), s2.max(b2)) == pair => {
+                let both = q.min(q2) * base;
+                if both > Fixed::ZERO {
+                    value.push((s * nm + b, both));
+                    value.push((s2 * nm + b2, both));
+                }
+                i += 2;
+            }
+            _ => i += 1,
+        }
+    }
+}
+
+#[cfg(test)]
+mod swap_tests {
+    use super::*;
+
+    #[test]
+    fn the_exchange_of_varieties_goes_both_ways_in_every_pair() {
+        // Three markets, one good, one group: a large one, a middle one and a small one, all
+        // making and using the good; every buyer likes every seller alike.
+        let n = 3;
+        let supply = vec![
+            vec![Fixed::from_int(1000)],
+            vec![Fixed::from_int(100)],
+            vec![Fixed::from_int(10)],
+        ];
+        let demand = supply.clone();
+        let table = vec![Fixed::ONE; n * n];
+        let sparse: Vec<Vec<(u16, u16)>> = (0..n)
+            .map(|_| (0..n as u16).map(|s| (s, u16::MAX)).collect())
+            .collect();
+        let mut value = Vec::new();
+        swap(
+            (0, Fixed::ONE, Some((0, 1))),
+            (&supply, &demand),
+            (&table, n, &sparse),
+            &|_, _| false,
+            &mut value,
+        );
+        assert!(!value.is_empty(), "some exchange");
+        let mut flow = vec![Fixed::ZERO; n * n];
+        for (pair, v) in &value {
+            flow[*pair] += *v;
+        }
+        for a in 0..n {
+            for b in 0..n {
+                assert_eq!(
+                    flow[a * n + b],
+                    flow[b * n + a],
+                    "pair {a}-{b} moves value on net"
+                );
+            }
+            let sold: Fixed = (0..n).map(|b| flow[a * n + b]).sum();
+            let bought: Fixed = (0..n).map(|s| flow[s * n + a]).sum();
+            assert_eq!(sold, bought, "market {a} has a balance from the exchange");
+        }
+        // A closed pair exchanges nothing.
+        let mut closed = Vec::new();
+        swap(
+            (0, Fixed::ONE, Some((0, 1))),
+            (&supply, &demand),
+            (&table, n, &sparse),
+            &|s, b| (s, b) == (0, 2) || (s, b) == (2, 0),
+            &mut closed,
+        );
+        assert!(closed.iter().all(|(p, _)| *p != 2 && *p != 2 * n));
     }
 }
