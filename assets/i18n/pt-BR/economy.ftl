@@ -333,3 +333,20 @@ need-savings = Poupança e crédito
 need-automobile = Automóvel
 need-luxury = Luxo
 need-urban_housing = Moradia urbana
+
+## Comércio por parceiro (painel do país)
+trade-title = Comércio
+trade-year = Em { $year }, a preços de base.
+trade-year-so-far = Em { $year } até agora, a preços de base (o primeiro ano ainda não fechou).
+trade-exports = Exportações
+trade-imports = Importações
+trade-tariff = Tarifa própria
+trade-none = Ainda sem comércio com outros países.
+trade-partners = Principais parceiros
+trade-flows = Vende { $sold } · compra { $bought }
+trade-union = União aduaneira
+trade-preference = preferência de { $points } pontos
+trade-cap = teto de { $rate }
+trade-we-charge = Na tarifa sobre ele: { $terms }
+trade-they-charge = Na tarifa dele sobre este país: { $terms }
+trade-basis = A parcela é do comércio do país (vendas e compras). Os acordos em vigor mudam a tarifa entre o par; sem acordo, vale a tarifa própria de quem compra.

@@ -3484,6 +3484,76 @@ fn war_window() {
     let _ = std::fs::remove_dir_all(&user);
 }
 
+/// Trade by partner in the country panel: Britain in February 1926 (the first full year
+/// closed), with its largest partners and the agreements' terms on the tariff between them, and
+/// Belgium, in a customs union with Luxembourg. Portuguese at 1600 × 900, English at
+/// 1280 × 720; copies in `target/screenshots/trade/`.
+#[test]
+#[ignore = "needs a GPU (or software Vulkan) and the generated map; run with --ignored"]
+fn trade_partners() {
+    use laplace_schelling::calendar::Date;
+    let user = std::env::temp_dir().join(format!("bf-shots-trade-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&user);
+    // The rules as the game ships them (`data/rules.ron`: trade by pair, agreements in force).
+    let shipped = bf_sim::data::GameData::load(&root())
+        .expect("game data")
+        .switches;
+    let session = advanced_session_with("GBR", Date::new(1926, 2, 1), shipped);
+    let save = write_campaign(&user.join("save"), &session, "Comércio", "GBR", &[]);
+    let dir = root().join("target/screenshots/trade");
+    std::fs::create_dir_all(&dir).unwrap();
+    let keep = |name: &str| {
+        let from = out_dir().join(format!("{name}.png"));
+        std::fs::copy(&from, dir.join(format!("{name}.png"))).unwrap();
+    };
+    for (locale, size, tag) in [
+        ("pt-BR", egui::vec2(1600.0, 900.0), "pt"),
+        ("en", egui::vec2(1280.0, 720.0), "en-1280"),
+    ] {
+        let en = locale == "en";
+        let wait = |h: &mut Harness<'_, App>| {
+            for _ in 0..30 {
+                std::thread::sleep(std::time::Duration::from_millis(25));
+                h.run_steps(1);
+            }
+        };
+        let mut h = harness_sized(user.join(tag), locale, size);
+        let ctx = h.ctx.clone();
+        h.state_mut().apply(Transition::Game(save.clone()), &ctx);
+        wait(&mut h);
+        let started = std::time::Instant::now();
+        while h.state().shared.world.is_none() && started.elapsed().as_secs() < 20 {
+            wait(&mut h);
+        }
+        for (country, n) in [("GBR", 200), ("BEL", 201)] {
+            let i = h
+                .state()
+                .shared
+                .world
+                .as_ref()
+                .and_then(|w| w.countries.iter().position(|c| c.tag() == country));
+            assert!(i.is_some(), "{country} on the map");
+            if let Screen::Game(g) = &mut h.state_mut().screen {
+                g.select(i);
+            }
+            wait(&mut h);
+            h.query_all(egui_kittest::kittest::by().label(if en {
+                "LARGEST PARTNERS"
+            } else {
+                "PRINCIPAIS PARCEIROS"
+            }))
+            .next()
+            .expect("the partners")
+            .scroll_to_me();
+            wait(&mut h);
+            let name = format!("{n}-trade-{}-{tag}", country.to_lowercase());
+            shot(&mut h, &name);
+            keep(&name);
+        }
+    }
+    let _ = std::fs::remove_dir_all(&user);
+}
+
 /// Answering a demand of independence: Nigeria's demand pending on the United Kingdom, from the
 /// red button in the Agendas to the screen with the four answers, the refusal chosen and the
 /// review before confirming; in Portuguese at 1600 × 900 and in English at 1280 × 720.
