@@ -59,6 +59,8 @@ pub struct GovernmentView {
     pub campaign: Option<bf_sim::demography::education::CampaignOutlook>,
     /// Last week's customs duties (`econ::customs`), inside `Budget::revenue`.
     pub customs: f64,
+    /// The balance of payments of the last full year (`econ::payments::view`).
+    pub payments: bf_sim::econ::payments::PaymentsView,
 }
 
 /// The budget rule that sets the state's purchases (`econ::public::goods_budget`), term by
@@ -210,6 +212,7 @@ pub fn read(
             bf_sim::demography::education::campaign_outlook(world, rules, price, ci)
         }),
         customs: world.tariffs.revenue.get(ci).map_or(0.0, |r| f(*r)),
+        payments: bf_sim::econ::payments::view(world, ci),
         goods_rule: {
             use bf_sim::econ::public::{GOODS_PER_PAYROLL, austerity, goods_budget};
             let b = &m.budget;
@@ -253,6 +256,7 @@ mod tests {
             research_state_share: 0.0,
             campaign: None,
             customs: 0.0,
+            payments: Default::default(),
             levers: None,
             purchases: None,
             issuance: None,
