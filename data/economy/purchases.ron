@@ -156,8 +156,10 @@
         land_detour: 1.2,
         // Gross trade (`trade_gross`): how much a buyer leans toward its own product against a
         // foreign one at the same cost of arrival. Calibrated so that world trade (exports plus
-        // imports) is near 14.8 % of world GDP in 1925 (Klasing and Milionis, 2014).
-        home_bias: 36.0,
+        // imports) is near 14.8 % of world GDP in 1925 (Klasing and Milionis, 2014), with the
+        // exchange of varieties keeping only what each pair trades both ways: 12 gives 13.2 %,
+        // 6 gives 17.4 % (36 before, when one-way purchases counted).
+        home_bias: 9.0,
         // Customs duties (`econ::customs`, switch `customs_duties` in data/rules.ron), each of the
         // owner's decisions a datum.
         customs: (
