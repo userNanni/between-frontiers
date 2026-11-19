@@ -157,8 +157,9 @@ pub fn no_overlapping_text(h: &Harness<'_, App>, case: &str) -> Vec<String> {
         });
         if n.rect.width() + 1.0 < wide {
             out.push(format!(
-                "{case}: {:?} cut to {:.0} of {:.0} px",
+                "{case}: {:?} {:?} cut to {:.0} of {:.0} px",
                 n.label,
+                n.rect,
                 n.rect.width(),
                 wide
             ));

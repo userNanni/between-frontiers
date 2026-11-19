@@ -243,3 +243,31 @@ fn every_player_command_has_a_key_and_a_screen() {
     }
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
+
+/// The wiki's list of the player's decisions names every command of the player and every
+/// exception, so the page and `PLAYER` cannot drift apart.
+#[test]
+fn the_wiki_lists_every_player_command() {
+    let wiki =
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../docs/wiki/o-que-o-jogador-decide.md");
+    let text = std::fs::read_to_string(&wiki).expect("reading the wiki page");
+    let in_game = text
+        .split("## No jogo")
+        .nth(1)
+        .and_then(|rest| rest.split("\n## ").next())
+        .expect("the wiki page has a section \"No jogo\"");
+    let missing: Vec<&str> = PLAYER
+        .iter()
+        .map(|s| s.variant)
+        .chain(EXCEPTIONS.iter().map(|(v, _)| *v))
+        .filter(|v| !in_game.contains(&format!("`{v}`")))
+        .collect();
+    assert!(
+        missing.is_empty(),
+        "docs/wiki/o-que-o-jogador-decide.md, section \"No jogo\", does not name {missing:?}"
+    );
+    assert!(
+        !in_game.contains("em revisão"),
+        "a decision in \"No jogo\" is still marked \"em revisão\""
+    );
+}

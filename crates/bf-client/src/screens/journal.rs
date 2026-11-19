@@ -206,7 +206,9 @@ fn is_agenda(kind: &Kind) -> bool {
 }
 
 /// One line of text no wider than `width`, ended with "…" when it does not fit; the flag
-/// says whether it was cut.
+/// says whether it was cut. A number is never cut: when the text holds one, the "…" falls in
+/// the words before it ("Fábrica de máq… em 55 estados"), unless the number's part alone does
+/// not fit.
 pub fn one_line(
     p: &egui::Painter,
     text: &str,
@@ -214,16 +216,73 @@ pub fn one_line(
     tint: Color32,
     width: f32,
 ) -> (std::sync::Arc<egui::Galley>, bool) {
-    let mut job = egui::text::LayoutJob::simple_singleline(text.to_owned(), font, tint);
-    job.wrap = egui::text::TextWrapping {
-        max_width: width.max(10.0),
-        max_rows: 1,
-        break_anywhere: false,
-        overflow_character: Some('…'),
+    let cut_job = |text: &str, width: f32| {
+        let mut job = egui::text::LayoutJob::simple_singleline(text.to_owned(), font.clone(), tint);
+        job.wrap = egui::text::TextWrapping {
+            max_width: width.max(10.0),
+            max_rows: 1,
+            break_anywhere: false,
+            overflow_character: Some('…'),
+        };
+        p.layout_job(job)
     };
-    let galley = p.layout_job(job);
-    let cut = galley.text() != text;
-    (galley, cut)
+    // The galley keeps the whole text when it elides: the width says whether it fits.
+    let fits = p
+        .layout_no_wrap(text.to_owned(), font.clone(), tint)
+        .size()
+        .x
+        <= width.max(10.0);
+    let galley = cut_job(text, width);
+    if fits {
+        return (galley, false);
+    }
+    if let Some(at) = number_tail(text) {
+        let tail = &text[at..];
+        let tail_w = p
+            .layout_no_wrap(tail.to_owned(), font.clone(), tint)
+            .size()
+            .x;
+        let room = width - tail_w;
+        if room >= 24.0 {
+            let head = fit_words(p, &text[..at], &font, tint, room);
+            // The tail starts at a space: "Fábrica de máq…" + " em 55 estados".
+            return (p.layout_no_wrap(format!("{head}{tail}"), font, tint), true);
+        }
+    }
+    (galley, true)
+}
+
+/// The longest start of `text`, by characters, that with "…" fits in `width`.
+fn fit_words(
+    p: &egui::Painter,
+    text: &str,
+    font: &egui::FontId,
+    tint: Color32,
+    width: f32,
+) -> String {
+    let chars: Vec<char> = text.chars().collect();
+    let mut n = chars.len();
+    loop {
+        let head: String = chars[..n].iter().collect::<String>().trim_end().to_owned() + "…";
+        if n == 0 || p.layout_no_wrap(head.clone(), font.clone(), tint).size().x <= width {
+            return head;
+        }
+        n -= 1;
+    }
+}
+
+/// Where the part of `text` that holds its first number starts, at the space before it: the
+/// word with the first digit, with a short word before it (" em 55 estados"); `None` without
+/// a digit or when the number opens the text.
+pub fn number_tail(text: &str) -> Option<usize> {
+    let digit = text.find(|c: char| c.is_ascii_digit())?;
+    let word = text[..digit].rfind(' ').map_or(0, |i| i + 1);
+    if word == 0 {
+        return None;
+    }
+    let before = text[..word - 1].rfind(' ').map_or(0, |i| i + 1);
+    let short = text[before..word - 1].chars().count() <= 3 && before > 0;
+    Some(if short { before - 1 } else { word - 1 })
 }
 
 /// The mark at the head of a line: drawn, since the fonts lack the geometric glyphs.
@@ -1100,5 +1159,20 @@ fn entry_detail(
     if let Some(c) = &e.completes {
         section(ui, i18n, "journal-completes");
         bf_ui_kit::small(ui, &text(i18n, world, c));
+    }
+}
+
+#[cfg(test)]
+mod number_tail_tests {
+    use super::number_tail;
+
+    #[test]
+    fn the_number_and_its_short_word_stay() {
+        let t = "Fábrica de máquinas em 55 estados";
+        assert_eq!(&t[number_tail(t).unwrap()..], " em 55 estados");
+        let t = "Usina elétrica ×12 · Budapeste";
+        assert_eq!(&t[number_tail(t).unwrap()..], " ×12 · Budapeste");
+        assert_eq!(number_tail("Ferrovia · Budapeste"), None);
+        assert_eq!(number_tail("55 estados"), None);
     }
 }
