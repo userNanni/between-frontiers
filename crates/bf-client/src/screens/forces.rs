@@ -151,6 +151,21 @@ fn programme(ui: &mut Ui, cx: &mut TabContext<'_>) {
             ],
         ),
     );
+    // N3: the test makes the arsenal known to all; it needs a warhead.
+    if p.tested {
+        bf_ui_kit::small(ui, &i18n.tr("programme-tested"));
+    } else if p.test_asked {
+        bf_ui_kit::small(ui, &i18n.tr("programme-test-asked"));
+    } else if p.warheads >= 1.0 {
+        let t = Button::secondary(&i18n.tr("programme-test"))
+            .size(ButtonSize::Small)
+            .show(ui);
+        if t.clicked() || keys::item(ui, 'U', "forces.programme.test".into(), "t", t.rect) {
+            cx.commands
+                .push(GameCommand::NuclearTest { tag: tag.clone() });
+        }
+        bf_ui_kit::small(ui, &i18n.tr("programme-test-note"));
+    }
     let end = Button::ghost(&i18n.tr("programme-end"))
         .size(ButtonSize::Small)
         .show(ui);

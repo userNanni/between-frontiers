@@ -160,6 +160,10 @@ fn weighing(ui: &mut Ui, i18n: &I18n, l: &CrisisLine) {
         &w.needed
             .map_or_else(|| i18n.tr("crisis-needed-never"), ratio),
     );
+    // N4: a one-sided secure arsenal coerces on the periphery.
+    if w.coerced {
+        bf_ui_kit::small(ui, &i18n.tr("crisis-coerced"));
+    }
     let (key, c) = if w.yields {
         ("crisis-yields", color::POSITIVE)
     } else {
@@ -279,6 +283,15 @@ pub fn show_crisis(
     let Some((yes, no, yes_sure, no_sure)) = choice else {
         return;
     };
+    // The nuclear ceiling blocks the declaration: only backing down is left.
+    let blocked = l.role == Role::Demander && l.blocked;
+    if blocked {
+        ui.label(
+            RichText::new(i18n.tr("crisis-declare-blocked"))
+                .font(sans(size::SMALL))
+                .color(color::DANGER),
+        );
+    }
     match st.confirm {
         Some((id, pick)) if id == l.id => {
             bf_ui_kit::small(ui, &i18n.tr(if pick { yes_sure } else { no_sure }));
@@ -305,8 +318,9 @@ pub fn show_crisis(
             ui.horizontal(|ui| {
                 let a = Button::secondary(&i18n.tr(yes))
                     .size(ButtonSize::Medium)
+                    .enabled(!blocked)
                     .show(ui);
-                if a.clicked() || keys::single(ui, "crisis.yes", 'A', a.rect) {
+                if !blocked && (a.clicked() || keys::single(ui, "crisis.yes", 'A', a.rect)) {
                     st.confirm = Some((l.id, true));
                 }
                 let b = Button::secondary(&i18n.tr(no))

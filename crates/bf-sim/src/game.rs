@@ -514,6 +514,9 @@ pub enum GameCommand {
     /// with `None` (or 0). The forces cap it at the programme rule's `max_share`
     /// (`docs/war.pt-BR.md`, "Arma nuclear na escada de crise").
     NuclearProgramme { tag: String, share: Option<u16> },
+    /// `tag` tests a nuclear weapon (N3): its arsenal is known to all from then on. Checked the
+    /// next week against the warheads it holds; without one, nothing happens.
+    NuclearTest { tag: String },
 }
 
 /// Changes the levers of the country `tag` (`econ::levers`); unknown tags are no-ops.
@@ -684,6 +687,17 @@ impl Command<GameWorld> for GameCommand {
                         .find(|c| c.war == *war && c.owner as usize == ci && !c.peace)
                 {
                     c.wanted = *men;
+                }
+            }
+            GameCommand::NuclearTest { tag } => {
+                if world.war.is_empty() {
+                    return;
+                }
+                if let Some(ci) = world.countries.iter().position(|(_, c)| c.tag == *tag) {
+                    let r = &mut world.war.nuclear.test_requests;
+                    if !r.contains(&(ci as u16)) {
+                        r.push(ci as u16);
+                    }
                 }
             }
             GameCommand::NuclearProgramme { tag, share } => {
@@ -2016,9 +2030,85 @@ mod tests {
             hash_of(&with_ledger)
         );
         assert_eq!(
-            hash_of(&headed(37, &encode_snapshot(&with_ledger).unwrap())),
+            hash_of(&headed(38, &encode_snapshot(&with_ledger).unwrap())),
             hash_of(&with_ledger)
         );
+        // Version 37, the nuclear programmes (#257), before the tests and the crisis rung:
+        // `nuclear` with its programmes only.
+        {
+            #[derive(Serialize)]
+            struct NuclearV37<'a> {
+                programmes: &'a Vec<crate::war::programme::Programme>,
+            }
+            #[derive(Serialize)]
+            struct WarV37<'a> {
+                countries: &'a Vec<crate::war::CountryWar>,
+                soldiers: &'a Vec<i64>,
+                conflicts: &'a crate::war::Conflicts,
+                fighting: &'a crate::war::fight::Fighting,
+                composition: &'a crate::war::composition::CompositionState,
+                colonial: &'a Vec<crate::war::colonial::Colonial>,
+                sea: &'a crate::war::sea::SeaWar,
+                nuclear: NuclearV37<'a>,
+            }
+            #[derive(Serialize)]
+            struct BeforeTests37<'a> {
+                scenario: &'a String,
+                player: &'a Option<Id<Country>>,
+                countries: &'a Table<Country, CountryState>,
+                census: &'a Vec<CensusRecord>,
+                econ: &'a crate::econ::Economy,
+                research: &'a crate::research::ResearchState,
+                politics: &'a crate::polity::PoliticsState,
+                demography: &'a crate::demography::DemographyState,
+                borders: &'a crate::borders::BordersState,
+                foreign: &'a crate::foreign_stakes::ForeignState,
+                influence: &'a crate::influence::InfluenceState,
+                treaties: &'a crate::treaty::TreatyState,
+                war: WarV37<'a>,
+                education: &'a crate::demography::education::EducationState,
+                independence: &'a crate::borders::independence::IndependenceState,
+                levers: &'a crate::econ::levers::LeversState,
+                tariffs: &'a crate::econ::customs::TariffState,
+                payments: &'a crate::econ::payments::PaymentsState,
+                reserves: &'a crate::econ::payments::ReservesState,
+            }
+            let w = &with_ledger;
+            let v37 = encode_snapshot(&BeforeTests37 {
+                scenario: &w.scenario,
+                player: &w.player,
+                countries: &w.countries,
+                census: &w.census,
+                econ: &w.econ,
+                research: &w.research,
+                politics: &w.politics,
+                demography: &w.demography,
+                borders: &w.borders,
+                foreign: &w.foreign,
+                influence: &w.influence,
+                treaties: &w.treaties,
+                war: WarV37 {
+                    countries: &w.war.countries,
+                    soldiers: &w.war.soldiers,
+                    conflicts: &w.war.conflicts,
+                    fighting: &w.war.fighting,
+                    composition: &w.war.composition,
+                    colonial: &w.war.colonial,
+                    sea: &w.war.sea,
+                    nuclear: NuclearV37 {
+                        programmes: &w.war.nuclear.programmes,
+                    },
+                },
+                education: &w.education,
+                independence: &w.independence,
+                levers: &w.levers,
+                tariffs: &w.tariffs,
+                payments: &w.payments,
+                reserves: &w.reserves,
+            })
+            .unwrap();
+            assert_eq!(hash_of(&headed(37, &v37)), hash_of(&with_ledger));
+        }
         // Version 36, the reserves of settlement (#254), before the nuclear programmes: `war`
         // without `nuclear`.
         {

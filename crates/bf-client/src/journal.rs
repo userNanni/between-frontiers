@@ -173,8 +173,11 @@ pub enum Kind {
     },
     /// A country born in revolt, at war with its metropole (G6), by its tag.
     Revolt(String),
-    /// The nuclear programme under way (N1).
-    NuclearProgramme,
+    /// The nuclear programme under way (N1); whether a test may be asked (N3: a warhead, no test
+    /// yet, none asked).
+    NuclearProgramme {
+        can_test: bool,
+    },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -211,7 +214,7 @@ impl Kind {
             Kind::LawChanges => "law-changes".into(),
             Kind::Forces { .. } => "forces".into(),
             Kind::Revolt(tag) => format!("revolt-{tag}"),
-            Kind::NuclearProgramme => "nuclear-programme".into(),
+            Kind::NuclearProgramme { .. } => "nuclear-programme".into(),
         }
     }
 }
@@ -453,7 +456,9 @@ fn programme_entry(
         return;
     }
     let mut e = entry(
-        Kind::NuclearProgramme,
+        Kind::NuclearProgramme {
+            can_test: v.warheads >= 1.0 && !v.tested && !v.test_asked,
+        },
         Tone::Neutral,
         label("journal-programme-title"),
         label("journal-programme-cause").value("share", Value::Percent(f64::from(v.share) / 10.0)),

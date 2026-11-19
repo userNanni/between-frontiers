@@ -655,14 +655,28 @@ Reino Unido a 0,4% do PIB desde 1940-01-01; o dinheiro está em dólares de 2011
   - Fica anotada para a fatia do físsil: o físsil por geração (U3), a rota do plutônio (U2) e as
     minas que o programa encomenda (U1).
 
-### O degrau nuclear na crise (passo 3, decidido: N3, N4, N9)
-- **Exigência:** quem exige vê o seu teto contra o alvo. Teto abaixo de `War` quer dizer que a
-  exigência não pode virar guerra. A IA não a faz; o jogador pode, mas a declaração vem bloqueada
-  e com o motivo.
-- **Resposta (W3):** contra quem pode coagir (segundo golpe de um lado só), a razão para ceder cai
-  (N4). O existencial continua sem ceder nunca. Contra dissuasão mútua, a coerção não tem crédito.
-- **Declaração:** entre dois lados com segundo golpe garantido, a guerra carrega
-  `escalation_risk_per_week`. É um custo esperado que a IA pesa e que o jogador vê; não é sorteio.
+### Passo 3, feito: o degrau nuclear na crise (N3, N4, N9)
+Atrás de `war`, com estado em `NuclearState` (save 38).
+
+- **N3, o teste:** `GameCommand::NuclearTest` (aba Forças, "Testar a arma") marca o país como
+  testado na semana seguinte, se ele tiver ao menos uma ogiva. Daí em diante, o arsenal conta
+  inteiro para todos; antes, os outros contam a metade (`opaque_weight`). O teste não se desfaz.
+- **N4, a coerção:** quando quem exige tem segundo golpe garantido e o alvo não, segundo a leitura
+  do alvo (a de um arsenal não testado conta a metade), a razão de força para ceder um pedido
+  periférico cai para `nuclear_coercion` (500‰, em `crisis.ron`). O existencial nunca cede.
+  - A tela da crise diz quando há coerção.
+  - Teste `coercion_lowers_the_ratio_on_the_periphery_only`: a razão cai de 3,0× para 1,5×.
+- **O teto bloqueia a declaração:** toda semana, o sistema de forças marca as crises em que o
+  teto de quem exige contra o alvo, segundo a própria leitura, fica abaixo de `War`
+  (`NuclearState::blocked`).
+  - A declaração dessas crises não sai; a crise fica, e só resta recuar.
+  - A tela mostra o motivo e desativa o botão de declarar.
+  - A IA, que hoje não exige, recua como antes.
+- **N9 na crise:** o guarda-chuva entra pelo balanço. A França, obrigada a defender a
+  Tchecoslováquia e com segundo golpe garantido, bloqueia a declaração da Hungria
+  (`the_umbrella_blocks_the_declaration`).
+- **Fica para o passo 4:** o risco semanal de escalada entre dois lados com segundo golpe garantido
+  pesando na decisão da IA de declarar, e o custo de reputação do teste com os não nucleares.
 
 ### O uso e a consequência (passo 4, decidido: N5, N6, N7)
 1. **Mortos e destruição:** por ogiva, uma parcela da população morre por idade

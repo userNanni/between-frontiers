@@ -443,3 +443,8 @@ programme-fissile = Material físsil
 programme-fissile-value = { $price } a unidade; o mercado entregou { $delivered } do que se pediu
 programme-end = Encerrar o programa
 programme-note = O teste, a doutrina e o uso vêm nas próximas fatias. Sem minério de urânio, a usina não roda, e o estoque para no material físsil.
+
+programme-test = Testar a arma
+programme-test-note = O teste torna o arsenal conhecido de todos: até ele, os outros contam metade das suas ogivas. Ele é ouvido no mundo inteiro e não se desfaz.
+programme-test-asked = Teste marcado: acontece na semana que vem.
+programme-tested = Arma testada: o arsenal é conhecido de todos.

@@ -431,3 +431,8 @@ programme-fissile = Fissile material
 programme-fissile-value = { $price } a unit; the market delivered { $delivered } of what was asked
 programme-end = End the programme
 programme-note = The test, the doctrine and the use come in the next slices. Without uranium ore the plant does not run, and the stock stops at the fissile material.
+
+programme-test = Test the weapon
+programme-test-note = The test makes the arsenal known to all: until it, the others count half your warheads. The whole world hears it, and it cannot be undone.
+programme-test-asked = Test set: it happens next week.
+programme-tested = Weapon tested: the arsenal is known to all.

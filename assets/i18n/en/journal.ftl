@@ -179,3 +179,6 @@ journal-programme-months = Months of the step under way, at last month's pace
 journal-programme-end = End the programme…
 journal-programme-end-confirm = Confirm the end of the programme
 journal-programme-end-explain = The money stops at once; the research already done stays, the warheads built stay, and the plants keep running for the market. A restore point is saved first.
+journal-programme-test = Test the weapon…
+journal-programme-test-confirm = Confirm the test
+journal-programme-test-explain = The test makes the arsenal known to all: until it, the others count half your warheads. The whole world hears it, and it cannot be undone. A restore point is saved first.

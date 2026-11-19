@@ -47,6 +47,15 @@ pub struct CrisisRules {
     /// A call left to lapse is honoured (owner's decision P2) or betrayed.
     #[serde(default = "default_true")]
     pub lapsed_call_honours: bool,
+    /// N4: against a demander that can coerce (a secure second strike the target lacks), the
+    /// ratio it takes to yield a peripheral demand is multiplied by this, per mille. The
+    /// existential never yields.
+    #[serde(default = "default_coercion")]
+    pub nuclear_coercion: u32,
+}
+
+fn default_coercion() -> u32 {
+    1000
 }
 
 fn default_call_weeks() -> u16 {
@@ -130,6 +139,9 @@ pub struct Weighing {
     /// The ratio it takes to yield at this share; `None` when the demand is existential.
     pub needed: Option<i64>,
     pub yields: bool,
+    /// N4: the demander can coerce (a secure second strike the target lacks): the ratio needed
+    /// fell by `nuclear_coercion`.
+    pub coerced: bool,
 }
 
 /// The target yields when the demand is not existential and the force against it reaches the
@@ -142,6 +154,7 @@ pub fn weigh(rules: &CrisisRules, ratio: i64, share: i64, union: bool) -> Weighi
             share,
             needed: None,
             yields: false,
+            coerced: false,
         };
     }
     let needed = i64::from(rules.yield_ratio) * existential / (existential - share);
@@ -150,6 +163,7 @@ pub fn weigh(rules: &CrisisRules, ratio: i64, share: i64, union: bool) -> Weighi
         share,
         needed: Some(needed),
         yields: ratio >= needed,
+        coerced: false,
     }
 }
 
@@ -238,7 +252,19 @@ pub fn weigh_crisis(
     } else {
         0
     };
-    weigh(&setup.rules, ratio, people.max(money), union)
+    let mut w = weigh(&setup.rules, ratio, people.max(money), union);
+    // N4: the target reads the demander's arsenal (opaque if never tested); one-sided, it
+    // coerces on the periphery.
+    if let Some(needed) = w.needed
+        && let Some(b) = super::balance::balance(mil, world, k.by, k.target, Some(k.target))
+        && b.deterrence.first_strike_incentive[0]
+    {
+        let n = needed * i64::from(setup.rules.nuclear_coercion) / 1000;
+        w.needed = Some(n);
+        w.yields = w.ratio >= n;
+        w.coerced = true;
+    }
+    w
 }
 
 /// What a week of crises does to the world, worked out from it in the forces system's compute.
@@ -333,6 +359,16 @@ pub fn crisis_decide(
     else {
         return;
     };
+    // The nuclear ceiling (war::balance): a declaration it blocks does not go; the crisis stays,
+    // with its reason on the screen, until the demander backs down.
+    if declare
+        && world
+            .war
+            .nuclear
+            .blocked(c.crises[i].by, c.crises[i].target)
+    {
+        return;
+    }
     let k = c.crises.remove(i);
     if !declare {
         return;
@@ -444,6 +480,7 @@ mod tests {
             existential_share: 500,
             call_weeks: 2,
             lapsed_call_honours: true,
+            nuclear_coercion: 500,
         }
     }
 

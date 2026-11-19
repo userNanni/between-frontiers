@@ -45,6 +45,8 @@ pub struct CrisisLine {
     /// The nuclear balance with the other side, as the player reads it; `None` when neither
     /// holds a warhead.
     pub nuclear: Option<crate::nuclear_view::Panel>,
+    /// The nuclear ceiling blocks the demander's declaration (`NuclearState::blocked`).
+    pub blocked: bool,
 }
 
 /// A third party an agreement in force would call, or bar, at the declaration.
@@ -144,6 +146,7 @@ fn line(
         land_target: bf_sim::war::crisis::land_men(mil, &world.war, usize::from(k.target)),
         joiners: joiners(world, &tag(k.by), &tag(k.target)),
         demand: k.demand.clone(),
+        blocked: world.war.nuclear.blocked(k.by, k.target),
         nuclear: {
             let me = world
                 .countries
