@@ -4460,3 +4460,89 @@ fn composition_section() {
     }
     let _ = std::fs::remove_dir_all(&user);
 }
+
+/// The budget and the works at the floor of 960 × 540, in both languages: the budget's top, its
+/// levers all fixed, and the works in the player's order. Copies in
+/// `target/screenshots/budget-floor/`.
+#[test]
+#[ignore = "needs a GPU (or software Vulkan) and the generated map; run with --ignored"]
+fn budget_and_works_at_the_floor() {
+    use laplace_schelling::calendar::Date;
+    // SAFETY: the screenshot tests run one at a time (`RUST_TEST_THREADS=1`).
+    unsafe { std::env::set_var("BF_RULES", "forces") };
+    let switches = bf_sim::game::Switches::parse("forces").expect("switches");
+    let user = std::env::temp_dir().join(format!("bf-shots-floor-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&user);
+    let s = advanced_session_with("HUN", Date::new(1926, 2, 1), switches);
+    let save = write_campaign(&user.join("save"), &s, "Piso", "HUN", &[]);
+    let dir = root().join("target/screenshots/budget-floor");
+    std::fs::create_dir_all(&dir).unwrap();
+    let keep = |h: &mut Harness<'_, App>, name: &str| {
+        shot(h, name);
+        std::fs::copy(
+            out_dir().join(format!("{name}.png")),
+            dir.join(format!("{name}.png")),
+        )
+        .unwrap();
+    };
+    let act = |h: &mut Harness<'_, App>, id: &str| {
+        for _ in 0..10 {
+            leader(h);
+            if let Some(code) = h.state().shared.keys.code_of(id).map(str::to_owned) {
+                for c in code.chars() {
+                    tip(h, egui::Key::from_name(&c.to_string()).expect("key"));
+                }
+                h.key_press(egui::Key::Escape);
+                h.run_steps(3);
+                return;
+            }
+            h.key_press(egui::Key::Escape);
+            h.run_steps(2);
+            h.key_press_modifiers(egui::Modifiers::SHIFT, egui::Key::PageDown);
+            h.run_steps(4);
+        }
+    };
+    let pages = |h: &mut Harness<'_, App>, key: egui::Key, n: usize| {
+        for _ in 0..n {
+            h.key_press_modifiers(egui::Modifiers::SHIFT, key);
+            h.run_steps(3);
+        }
+    };
+    for (locale, tag) in [("pt-BR", "pt"), ("en", "en")] {
+        let mut h = harness_sized(user.join(tag), locale, egui::vec2(960.0, 540.0));
+        let ctx = h.ctx.clone();
+        h.state_mut().apply(Transition::Game(save.clone()), &ctx);
+        for _ in 0..30 {
+            std::thread::sleep(std::time::Duration::from_millis(25));
+            h.run_steps(1);
+        }
+        h.key_press(egui::Key::G);
+        h.run_steps(4);
+        h.key_press(egui::Key::B);
+        h.run_steps(8);
+        keep(&mut h, &format!("250-budget-top-{tag}"));
+        for lever in [
+            "payroll",
+            "pay",
+            "treasury",
+            "deficit",
+            "purchases",
+            "military",
+        ] {
+            act(&mut h, &format!("gov.lever.{lever}.fixed"));
+        }
+        pages(&mut h, egui::Key::PageUp, 12);
+        for k in 1..=6 {
+            pages(&mut h, egui::Key::PageDown, 1);
+            keep(&mut h, &format!("251-budget-page{k}-{tag}"));
+        }
+        h.key_press_modifiers(egui::Modifiers::SHIFT, egui::Key::B);
+        h.run_steps(8);
+        act(&mut h, "works.order.mine");
+        pages(&mut h, egui::Key::PageUp, 12);
+        keep(&mut h, &format!("252-works-top-{tag}"));
+        pages(&mut h, egui::Key::PageDown, 2);
+        keep(&mut h, &format!("253-works-down-{tag}"));
+    }
+    let _ = std::fs::remove_dir_all(&user);
+}

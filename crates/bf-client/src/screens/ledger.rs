@@ -81,7 +81,7 @@ pub fn show(ui: &mut Ui, cx: &mut TabContext<'_>) {
     let wide = ui.available_width() > 760.0;
     if wide {
         ui.spacing_mut().item_spacing.x = space::XL;
-        ui.columns(2, |cols| {
+        bf_ui_kit::columns(ui, 2, |cols| {
             tables(&mut cols[0], cx, v);
             detail(&mut cols[1], cx, v);
         });

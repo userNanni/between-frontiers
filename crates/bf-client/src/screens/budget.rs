@@ -112,7 +112,7 @@ pub fn show(ui: &mut Ui, cx: &mut TabContext<'_>) {
     bf_ui_kit::small(ui, &cx.i18n.tr("gov-budget-basis"));
     bf_ui_kit::gap(ui, space::SM);
     ui.spacing_mut().item_spacing.x = space::XXL;
-    ui.columns(2, |cols| {
+    bf_ui_kit::columns(ui, 2, |cols| {
         for c in cols.iter_mut() {
             c.spacing_mut().item_spacing = egui::vec2(space::SM, space::XS);
         }

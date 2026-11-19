@@ -231,15 +231,19 @@ pub fn stepper_wide(
 }
 
 /// A labelled control row: label on the left, the control on the right.
+/// The control is laid out first; a label longer than what is left wraps under itself instead
+/// of running under the control.
 pub fn control_row<R>(ui: &mut Ui, label: &str, add: impl FnOnce(&mut Ui) -> R) -> R {
-    ui.horizontal(|ui| {
-        ui.label(
-            egui::RichText::new(label)
-                .font(sans(size::BODY))
-                .color(color::TEXT_MUTED),
-        );
-        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), add)
-            .inner
-    })
-    .inner
+    let (_, out) = egui::containers::Sides::new().shrink_left().wrap().show(
+        ui,
+        |ui| {
+            ui.label(
+                egui::RichText::new(label)
+                    .font(sans(size::BODY))
+                    .color(color::TEXT_MUTED),
+            );
+        },
+        add,
+    );
+    out
 }
