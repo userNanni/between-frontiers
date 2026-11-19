@@ -394,7 +394,7 @@ country-LBN-capital = Beirut
 
 country-VNMX = Empire of Vietnam
     .article = the
-country-VNMX-capital = Huế
+country-VNMX-capital = Hué
 
 country-KHMX = Kingdom of Kampuchea
     .article = the
@@ -710,7 +710,7 @@ country-GNQ-capital = Santa Isabel
 
 country-TON = Tonga
     .article = {""}
-country-TON-capital = Nukuʻalofa
+country-TON-capital = Nuku'alofa
 
 country-FJI = Fiji
     .article = {""}

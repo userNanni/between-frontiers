@@ -92,3 +92,43 @@ fn every_state_has_a_name() {
         assert!(missing.is_empty(), "{locale} lacks names for: {missing:?}");
     }
 }
+
+/// Every character of every text in every locale has a glyph in the game's fonts: a character
+/// none of them draws shows as a box on screen (the "⋯" of an early text of the colonial war).
+#[test]
+fn every_character_has_a_glyph() {
+    let ctx = egui::Context::default();
+    bf_ui_kit::install(&ctx);
+    // The fonts load on the first frame.
+    let _ = ctx.run_pass(egui::RawInput::default(), |_| {});
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/i18n");
+    let mut missing = Vec::new();
+    for locale in std::fs::read_dir(&root).unwrap() {
+        let locale = locale.unwrap().path();
+        for file in std::fs::read_dir(&locale).unwrap() {
+            let file = file.unwrap().path();
+            if file.extension().is_none_or(|x| x != "ftl") {
+                continue;
+            }
+            let text = std::fs::read_to_string(&file).unwrap();
+            for (n, line) in text.lines().enumerate() {
+                if line.trim_start().starts_with('#') {
+                    continue;
+                }
+                for c in line.chars() {
+                    let font = egui::FontId::proportional(14.0);
+                    let has = ctx.fonts_mut(|f| f.has_glyph(&font, c));
+                    if !has {
+                        missing.push(format!(
+                            "{}:{}: {c:?} (U+{:04X})",
+                            file.display(),
+                            n + 1,
+                            c as u32
+                        ));
+                    }
+                }
+            }
+        }
+    }
+    assert!(missing.is_empty(), "no glyph for:\n{}", missing.join("\n"));
+}
