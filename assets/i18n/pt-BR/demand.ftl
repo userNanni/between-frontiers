@@ -17,3 +17,5 @@ demand-closeness-far = Longe da revolta: recusada hoje, a colônia fica por ora.
 demand-closeness-number = Mobilização de { $mobilized } ‰ em 1000; a recusa vira revolta a partir de { $revolt } ‰.
 demand-refusal-revolt-now = Recusada, a colônia se separa sem acordo: já está mobilizada o bastante ({ $mobilized } ‰; bastam { $mark } ‰).
 demand-refusal-revolt-later = Recusada, a colônia fica por ora; ela se separa sem acordo se a mobilização chegar a { $mark } ‰ (hoje { $mobilized } ‰).
+demand-colonial-war = Recusada, a revolta vira guerra colonial (há um ponto de restauração antes da resposta). Com as tropas atuais você segura { $held }; { $proclaimed } proclama.
+demand-colonial-war-none = Recusada, a revolta vira guerra colonial (há um ponto de restauração antes da resposta). As tropas atuais não seguram nenhum estado; { $proclaimed } proclama.

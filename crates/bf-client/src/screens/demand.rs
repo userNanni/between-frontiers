@@ -172,12 +172,12 @@ pub fn show(
             });
             right.with_layout(plain, |ui| {
                 ui.spacing_mut().item_spacing.y = space::SM;
-                answers(ui, i18n, d, &unit, state, out);
+                answers(ui, i18n, world, d, &unit, state, out);
             });
         });
     } else {
         situation(ui, i18n, world, tags, d);
-        answers(ui, i18n, d, &unit, state, out);
+        answers(ui, i18n, world, d, &unit, state, out);
     }
 }
 
@@ -219,6 +219,7 @@ fn situation(ui: &mut Ui, i18n: &I18n, world: Option<&World>, tags: &[String], d
 fn answers(
     ui: &mut Ui,
     i18n: &I18n,
+    world: Option<&World>,
     d: &Demand,
     unit: &str,
     state: &mut DemandUi,
@@ -251,7 +252,7 @@ fn answers(
             }
             // The price shows in the frame of the click, so the scroll below sees it.
             if state.option == Some(k) {
-                price(ui, i18n, d, k);
+                price(ui, i18n, world, d, k);
             }
         }
         let next = Button::secondary(&i18n.tr("demand-review"))
@@ -288,7 +289,7 @@ fn answers(
             ],
         ),
     );
-    price(ui, i18n, d, k);
+    price(ui, i18n, world, d, k);
     bf_ui_kit::small(ui, &i18n.tr("demand-final"));
     ui.horizontal(|ui| {
         let yes = Button::danger(&i18n.tr("demand-yes"))
@@ -314,7 +315,7 @@ fn answers(
 }
 
 /// The account after answer `k`, and for a refusal how far the revolt is.
-fn price(ui: &mut Ui, i18n: &I18n, d: &Demand, k: usize) {
+fn price(ui: &mut Ui, i18n: &I18n, world: Option<&World>, d: &Demand, k: usize) {
     let Some(Some(e)) = d.effects.get(k) else {
         return;
     };
@@ -333,6 +334,40 @@ fn price(ui: &mut Ui, i18n: &I18n, d: &Demand, k: usize) {
         }
         if ANSWERS[k] == Answer::SelfRule {
             bf_ui_kit::small(ui, &i18n.tr("demand-self-rule-note"));
+        }
+        // With the colonial war (G6): the revolt becomes a war, and the current garrison decides
+        // where the front falls.
+        if ANSWERS[k] == Answer::Refused
+            && let Some((kept, released)) = &d.view.held
+        {
+            let list = |keys: &[String]| {
+                keys.iter()
+                    .map(|s| state_name(i18n, world, s))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            };
+            let line = if kept.is_empty() {
+                i18n.tr_args(
+                    "demand-colonial-war-none",
+                    &[("proclaimed", Arg::String(list(released)))],
+                )
+            } else {
+                i18n.tr_args(
+                    "demand-colonial-war",
+                    &[
+                        ("held", Arg::String(list(kept))),
+                        ("proclaimed", Arg::String(list(released))),
+                    ],
+                )
+            };
+            ui.add(
+                egui::Label::new(
+                    RichText::new(line)
+                        .font(sans(size::SMALL))
+                        .color(color::DANGER),
+                )
+                .wrap(),
+            );
         }
     });
 }

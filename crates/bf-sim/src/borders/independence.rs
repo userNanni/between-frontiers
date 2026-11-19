@@ -925,6 +925,9 @@ pub struct DemandView {
     pub account: Account,
     /// `indicator-<key>` or `law-effect-<key>`: what holds the movement back.
     pub weakest: Option<String>,
+    /// With the colonial war (G6): a revolt now would split the unit into the states the
+    /// current garrison holds and those the movement proclaims (`state-<key>`).
+    pub held: Option<(Vec<String>, Vec<String>)>,
 }
 
 fn add_months(d: Date, months: u8) -> Date {
@@ -973,6 +976,19 @@ pub fn demands_of(setup: &IndependenceSetup, world: &GameWorld, owner: u16) -> V
                 answer: d.answer,
                 account: d.account.clone(),
                 weakest: kind.and_then(|k| weakest_key(k, u.movement.weakest)),
+                held: setup.partition.as_ref().map(|(garrison, coastal)| {
+                    let (kept, released) =
+                        crate::war::colonial::partition(world, &u.regions, coastal, *garrison);
+                    let names = |rs: Vec<u32>| -> Vec<String> {
+                        rs.iter()
+                            .filter_map(|&ri| {
+                                ids.get(&world.econ.regions[ri as usize].state)
+                                    .map(|s| (*s).clone())
+                            })
+                            .collect()
+                    };
+                    (names(kept), names(released))
+                }),
             })
         })
         .collect()

@@ -163,3 +163,10 @@ journal-noworks-completes = Public works start again, by the weights of the budg
 journal-bottleneck-cash = No money for new public works: cash above the reserve does not cover the queue
 outliner-research-focus-tip = The government chose this technology in the Research screen (R).
 outliner-research-auto-tip = No focus: the country spreads its research effort by itself. Choose a focus in the Research screen (R).
+
+journal-revolt-title = A country born in revolt: { $country }
+journal-revolt-cause = { $owner } refused independence and { $country } proclaimed itself without an agreement. A colonial war has begun: the metropole wants the union back and fights with its garrison and the men it lands; the new country fights with irregulars, armed little by little.
+journal-revolt-irregulars = Irregular combatants
+journal-revolt-armed = Of them, armed
+journal-revolt-landed = Men landed by the metropole
+journal-revolt-switch = To play the new country or the metropole, switch countries in the ⋯ of the Campaigns screen.
