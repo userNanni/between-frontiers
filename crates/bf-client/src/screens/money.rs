@@ -8,7 +8,7 @@ use bf_ui_kit::tokens::{color, space};
 use egui::Ui;
 
 use super::budget::{WEEKS, of_gdp, pct, pending_note};
-use super::gov_ui::{Account, StepTips, control_row, stepper};
+use super::gov_ui::{Account, StepTips, control_row};
 use super::government::TabContext;
 use crate::government::GovernmentView;
 use crate::keys::{self, Tip};
@@ -206,9 +206,10 @@ fn bank(ui: &mut Ui, cx: &mut TabContext<'_>, v: &GovernmentView) {
     let max = (fx(MAX_RATE) * 10.0).round() as u16;
     let tip = i18n.tr("gov-tip-rate-step");
     let step = control_row(ui, &i18n.tr("gov-policy-rate"), |ui| {
-        stepper(
+        super::gov_ui::stepper_typed(
             ui,
             &p(f64::from(shown) / 10.0, 1),
+            super::gov_ui::STEP_VALUE_W,
             &tip,
             shown > 0,
             shown < max,
@@ -217,10 +218,11 @@ fn bank(ui: &mut Ui, cx: &mut TabContext<'_>, v: &GovernmentView) {
                 id: "gov.rate",
                 row: 0,
             },
+            super::gov_ui::typed_pct(i18n, f64::from(shown) / 10.0, 0.0, f64::from(max) / 10.0, 1),
         )
     });
-    if step != 0 {
-        let new = (i32::from(shown) + step * RATE_STEP).clamp(0, i32::from(max)) as u16;
+    if let Some(new) = super::gov_ui::step_to(step, shown.into(), RATE_STEP, 10.0, 0, max.into()) {
+        let new = new as u16;
         cx.commands.push(GameCommand::SetPolicyRate {
             tag: cx.tag.to_owned(),
             rate: Some(new),

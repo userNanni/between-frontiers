@@ -581,9 +581,10 @@ fn disband(ui: &mut Ui, cx: &mut TabContext<'_>) {
         );
         ui.horizontal(|ui| {
             ui.label(i18n.tr("forces-disband-count"));
-            let step = super::gov_ui::stepper(
+            let step = super::gov_ui::stepper_typed(
                 ui,
                 &d.count.to_string(),
+                super::gov_ui::STEP_VALUE_W,
                 &i18n.tr("forces-disband-count-tip"),
                 d.count > 1,
                 d.count < max,
@@ -592,9 +593,10 @@ fn disband(ui: &mut Ui, cx: &mut TabContext<'_>) {
                     id: "forces.disband.count",
                     row: 1,
                 },
+                super::gov_ui::typed_int(i18n, d.count.into(), 1, max.into()),
             );
-            if step != 0 {
-                d.count = (d.count as i32 + step).clamp(1, max as i32) as u32;
+            if let Some(to) = super::gov_ui::step_to(step, d.count as i32, 1, 1.0, 1, max as i32) {
+                d.count = to as u32;
             }
             ui.label(amount(i18n, r.domain, plan.elements, men_each(f, d.row)));
         });
@@ -940,9 +942,10 @@ fn new_order(
     bf_ui_kit::gap(ui, space::SM);
     ui.horizontal(|ui| {
         ui.label(i18n.tr("orders-count"));
-        let d = super::gov_ui::stepper(
+        let d = super::gov_ui::stepper_typed(
             ui,
             &count.to_string(),
+            super::gov_ui::STEP_VALUE_W,
             &i18n.tr("orders-count-tip"),
             count > 1,
             count < MAX_COUNT,
@@ -951,9 +954,10 @@ fn new_order(
                 id: "orders.count",
                 row: 0,
             },
+            super::gov_ui::typed_int(i18n, count.into(), 1, MAX_COUNT.into()),
         );
-        if d != 0 {
-            st.count = (count as i32 + d).clamp(1, MAX_COUNT as i32) as u32;
+        if let Some(to) = super::gov_ui::step_to(d, count as i32, 1, 1.0, 1, MAX_COUNT as i32) {
+            st.count = to as u32;
             st.confirming = false;
         }
         ui.label(amount(i18n, o.domain, f64::from(count), o.men));
