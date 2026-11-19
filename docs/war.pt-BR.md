@@ -1883,7 +1883,7 @@ tick, terra, mar e ar juntos).
 ## Mar e ar mínimos (fatia C2, feito, atrás de `war`)
 
 O recorte combinado com o orquestrador (2026-11-19). O código está em `war/sea.rs`, no ar de
-`fight_week` e na rota de `colonial::route_cut`; o save é o 32 (`WarState::sea`). Tudo roda só
+`fight_week` e na rota de `colonial::route_cut`; o save é o 35 (`WarState::sea`). Tudo roda só
 com uma guerra aberta: com `war` ligada e em paz, o custo é zero.
 
 **Frotas.**
