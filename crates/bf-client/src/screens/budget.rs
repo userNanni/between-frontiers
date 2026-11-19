@@ -12,7 +12,9 @@ use bf_sim::game::GameCommand;
 use bf_ui_kit::tokens::{color, space};
 use egui::Ui;
 
-use super::gov_ui::{Account, StepTips, control_row, stepper};
+use super::gov_ui::{
+    Account, STEP_VALUE_W, StepTips, control_row, step_to, stepper_typed, typed_int, typed_pct,
+};
 use super::government::TabContext;
 use crate::government::{GovernmentView, Work};
 use crate::keys::{self, Tip};
@@ -430,9 +432,10 @@ fn controls(ui: &mut Ui, cx: &mut TabContext<'_>, v: &GovernmentView) {
         let now = rates[c];
         let max = milli(MAX_TAX);
         let step = control_row(ui, &i18n.tr(&format!("gov-class-{c}")), |ui| {
-            stepper(
+            stepper_typed(
                 ui,
                 &pct(i18n, f64::from(now) / 10.0, 1),
+                STEP_VALUE_W,
                 &tip,
                 now > 0,
                 now < max,
@@ -441,11 +444,12 @@ fn controls(ui: &mut Ui, cx: &mut TabContext<'_>, v: &GovernmentView) {
                     id: &format!("gov.tax.{c}"),
                     row: c,
                 },
+                typed_pct(i18n, f64::from(now) / 10.0, 0.0, f64::from(max) / 10.0, 1),
             )
         });
-        if step != 0 {
+        if let Some(to) = step_to(step, now.into(), TAX_STEP, 10.0, 0, max.into()) {
             let mut new = rates;
-            new[c] = (i32::from(now) + step * TAX_STEP).clamp(0, i32::from(max)) as u16;
+            new[c] = to as u16;
             cx.commands.push(GameCommand::SetTaxRates {
                 tag: cx.tag.to_owned(),
                 rates: Some(new),
@@ -521,9 +525,10 @@ fn controls(ui: &mut Ui, cx: &mut TabContext<'_>, v: &GovernmentView) {
             &[("share", arg(pct(i18n, share, 0)))],
         );
         let step = control_row(ui, &label, |ui| {
-            stepper(
+            stepper_typed(
                 ui,
                 &weights[k].to_string(),
+                STEP_VALUE_W,
                 &tip,
                 weights[k] > 0,
                 weights[k] < MAX_PRIORITY,
@@ -532,11 +537,12 @@ fn controls(ui: &mut Ui, cx: &mut TabContext<'_>, v: &GovernmentView) {
                     id: &format!("gov.priority.{k}"),
                     row: k,
                 },
+                typed_int(i18n, weights[k].into(), 0, MAX_PRIORITY.into()),
             )
         });
-        if step != 0 {
+        if let Some(to) = step_to(step, weights[k].into(), 1, 1.0, 0, MAX_PRIORITY.into()) {
             let mut new = weights;
-            new[k] = (i32::from(weights[k]) + step).clamp(0, i32::from(MAX_PRIORITY)) as u8;
+            new[k] = to as u8;
             cx.commands.push(GameCommand::SetPublicPriority {
                 tag: cx.tag.to_owned(),
                 weights: new,
