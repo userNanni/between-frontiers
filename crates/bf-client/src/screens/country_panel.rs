@@ -46,34 +46,64 @@ pub fn show(shared: &Shared, ui: &mut Ui, country: usize) {
         .max_col_width(half)
         .spacing([space::LG, space::LG])
         .show(ui, |ui| {
-            bf_ui_kit::stat_block(
-                ui,
-                &i18n.tr("stat-population"),
-                &i18n.compact(f.population),
-                Some(&i18n.tr_args(
-                    "stat-rank-population",
-                    &[("rank", Arg::String(f.rank_population.to_string()))],
-                )),
-            );
-            bf_ui_kit::stat_block(
-                ui,
-                &i18n.tr("stat-gdp"),
-                &money(i18n, f.gdp),
-                Some(&i18n.tr_args(
-                    "stat-rank-gdp",
-                    &[("rank", Arg::String(f.rank_gdp.to_string()))],
-                )),
-            );
+            // The figure's closed years, on hover.
+            let r = ui.scope(|ui| {
+                bf_ui_kit::stat_block(
+                    ui,
+                    &i18n.tr("stat-population"),
+                    &i18n.compact(f.population),
+                    Some(&i18n.tr_args(
+                        "stat-rank-population",
+                        &[("rank", Arg::String(f.rank_population.to_string()))],
+                    )),
+                );
+            });
+            r.response.on_hover_ui(|ui| {
+                super::top_bar::figure_chart(
+                    ui,
+                    i18n,
+                    world,
+                    country,
+                    super::top_bar::Figure::Population,
+                )
+            });
+            // The figure's closed years, on hover.
+            let r = ui.scope(|ui| {
+                bf_ui_kit::stat_block(
+                    ui,
+                    &i18n.tr("stat-gdp"),
+                    &money(i18n, f.gdp),
+                    Some(&i18n.tr_args(
+                        "stat-rank-gdp",
+                        &[("rank", Arg::String(f.rank_gdp.to_string()))],
+                    )),
+                );
+            });
+            r.response.on_hover_ui(|ui| {
+                super::top_bar::figure_chart(ui, i18n, world, country, super::top_bar::Figure::Gdp)
+            });
             ui.end_row();
-            bf_ui_kit::stat_block(
-                ui,
-                &i18n.tr("stat-gdp-per-capita"),
-                &money_exact(i18n, f.gdp_per_capita()),
-                Some(&match table.source {
-                    Source::Scenario => i18n.tr("stat-gdp-unit"),
-                    Source::Live { .. } => i18n.tr("stat-gdp-unit-live"),
-                }),
-            );
+            // The figure's closed years, on hover.
+            let r = ui.scope(|ui| {
+                bf_ui_kit::stat_block(
+                    ui,
+                    &i18n.tr("stat-gdp-per-capita"),
+                    &money_exact(i18n, f.gdp_per_capita()),
+                    Some(&match table.source {
+                        Source::Scenario => i18n.tr("stat-gdp-unit"),
+                        Source::Live { .. } => i18n.tr("stat-gdp-unit-live"),
+                    }),
+                );
+            });
+            r.response.on_hover_ui(|ui| {
+                super::top_bar::figure_chart(
+                    ui,
+                    i18n,
+                    world,
+                    country,
+                    super::top_bar::Figure::GdpPerCapita,
+                )
+            });
             bf_ui_kit::stat_block(
                 ui,
                 &i18n.tr("stat-area"),

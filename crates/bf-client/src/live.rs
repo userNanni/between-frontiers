@@ -36,6 +36,19 @@ pub struct LiveFigures {
     pub gdp_year: Option<i32>,
     /// In the simulation's country order.
     pub countries: Vec<LiveCountry>,
+    /// Each country's closed years (`econ.history`), oldest first, in the same order: the whole
+    /// market, colonies included.
+    pub history: Vec<Vec<YearPoint>>,
+}
+
+/// One closed year of a country, for the figures' charts.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct YearPoint {
+    pub year: i32,
+    pub population: f64,
+    pub gdp: f64,
+    pub literacy: f64,
+    pub urban: f64,
 }
 
 #[derive(Default)]
@@ -113,10 +126,26 @@ pub fn read(world: &GameWorld, date: Date) -> Option<LiveFigures> {
             }
         })
         .collect();
+    let mut history: Vec<Vec<YearPoint>> = vec![Vec::new(); n];
+    for h in &econ.history {
+        if let Some(v) = history.get_mut(usize::from(h.market)) {
+            v.push(YearPoint {
+                year: h.year,
+                population: h.population as f64,
+                gdp: h.gdp.to_f64_lossy(),
+                literacy: h.literacy.to_f64_lossy(),
+                urban: h.urban.to_f64_lossy(),
+            });
+        }
+    }
+    for v in &mut history {
+        v.sort_by_key(|p| p.year);
+    }
     Some(LiveFigures {
         month: (date.year, date.month),
         gdp_year,
         countries,
+        history,
     })
 }
 
