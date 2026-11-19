@@ -1,9 +1,10 @@
 //! The screens that came after the layout matrix fit the screen, in both languages, and each
 //! is reached by its key tip: Hungary in its first week of war with Czechoslovakia after a demand,
-//! with Austria's proposal of an agreement on the table. The walk opens the government's budget (every lever fixed), forces,
-//! works and debts tabs, the Agendas with the demand, the negotiation table and the agreements,
-//! the war window from its line in the Agendas and its peace table, and the country panel with
-//! its trade partners; every element lies on the screen and inside its window, no number is cut,
+//! with Austria's proposal of an agreement on the table. The walk opens the government's budget
+//! (every lever fixed), forces, works, debts and trade tabs, the Agendas with the demand, the
+//! negotiation table and the agreements, the war window from its line in the Agendas and its peace
+//! table, and the country panel with its trade partners; every element lies on the screen and
+//! inside its window, no number is cut,
 //! and, where one window stands alone, no text runs into another.
 //! Its own binary: the rules switch on through `BF_RULES`, which only a process alone may write.
 
@@ -240,6 +241,7 @@ fn the_late_screens_fit_and_answer_their_keys() {
             (egui::Key::T, false, "forces"),
             (egui::Key::B, true, "works"),
             (egui::Key::M, true, "debts"),
+            (egui::Key::T, true, "trade"),
         ] {
             if shift {
                 h.key_press_modifiers(egui::Modifiers::SHIFT, key);
@@ -255,6 +257,11 @@ fn the_late_screens_fit_and_answer_their_keys() {
                 failures.extend(check_sizes(&mut h, locale, "government works mine"));
             }
         }
+        // The trade tab with a category open: its goods, the group's controls, the partners.
+        need(&mut h, "gov.tariff.cat.industrial", &mut failures);
+        failures.extend(check_sizes(&mut h, locale, "government trade goods"));
+        need(&mut h, "gov.tariff.good.steel.fixed", &mut failures);
+        failures.extend(check_sizes(&mut h, locale, "government trade fixed"));
         need(&mut h, "gov.close", &mut failures);
         // The Agendas: the demand, the table with Austria selected, the agreements, the crisis.
         h.key_press(egui::Key::J);

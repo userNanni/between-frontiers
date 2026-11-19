@@ -54,6 +54,16 @@ const PLAYER: &[Surface] = &[
         files: &["screens/budget.rs"],
     },
     Surface {
+        variant: "SetGoodsTariff",
+        command: id::TAB_TRADE,
+        files: &["screens/tariffs.rs"],
+    },
+    Surface {
+        variant: "SetPartnerTariff",
+        command: id::TAB_TRADE,
+        files: &["screens/tariffs.rs"],
+    },
+    Surface {
         variant: "SetPolicyRate",
         command: id::TAB_MONEY,
         files: &["screens/money.rs"],

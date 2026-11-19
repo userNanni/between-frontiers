@@ -29,6 +29,7 @@ pub mod research;
 pub mod saves;
 pub mod sea_lens;
 pub mod settings;
+pub mod tariffs;
 pub mod tiles;
 pub mod top_bar;
 pub mod trade;

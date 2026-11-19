@@ -21,6 +21,10 @@ gov-state-firms = Lucro de estatais
 gov-tip-state-firms =
     O Estado é dono de { $ownership } da indústria; { $paid } do que essa parte rende vai ao Tesouro, pela lei de propriedade em vigor.
     Última semana: { $week }.
+gov-customs = Receita aduaneira
+gov-tip-customs =
+    A tarifa sobre cada bem comprado de fora, parceiro a parceiro: a tarifa do bem (a regra histórica ou a fixada pelo governo, mais os pontos do parceiro, dentro dos acordos em vigor) vezes o que se importou, a preços de base, somada.
+    Última semana: { $week } × 52 = { $year } ({ $gdp } do PIB).
 gov-revenue-total = Receita total
 gov-class-0 = Classe baixa
 gov-class-1 = Classe média

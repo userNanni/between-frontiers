@@ -21,6 +21,10 @@ gov-state-firms = Profit of state firms
 gov-tip-state-firms =
     The state owns { $ownership } of industry; { $paid } of what that share earns goes to the treasury, by the ownership law in force.
     Last week: { $week }.
+gov-customs = Customs revenue
+gov-tip-customs =
+    The tariff on every good bought abroad, partner by partner: each good's rate (the historical rule or the one the government fixed, plus the partner's points, under the agreements in force) times what was imported, at base prices, summed.
+    Last week: { $week } × 52 = { $year } ({ $gdp } of GDP).
 gov-revenue-total = Total revenue
 gov-class-0 = Lower class
 gov-class-1 = Middle class

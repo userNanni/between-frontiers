@@ -508,6 +508,7 @@ pub fn v15_to_v16(w: V15) -> GameWorld {
         education: w.education,
         independence: Default::default(),
         levers: Default::default(),
+        tariffs: Default::default(),
     }
 }
 
@@ -551,6 +552,7 @@ pub fn v16_to_v17(w: V16) -> GameWorld {
         education: w.education,
         independence: Default::default(),
         levers: Default::default(),
+        tariffs: Default::default(),
     }
 }
 
@@ -595,6 +597,7 @@ pub fn v17_to_v18(w: V17) -> GameWorld {
         education: w.education,
         independence: w.independence,
         levers: Default::default(),
+        tariffs: Default::default(),
     }
 }
 
@@ -640,6 +643,7 @@ pub fn v18_to_v20(w: V18) -> GameWorld {
         education: w.education,
         independence: w.independence,
         levers: w.levers.into(),
+        tariffs: Default::default(),
     }
 }
 
@@ -699,6 +703,7 @@ pub fn v20_to_v21(w: V20) -> GameWorld {
         education: w.education,
         independence: w.independence,
         levers: w.levers.into(),
+        tariffs: Default::default(),
     }
 }
 
@@ -751,6 +756,7 @@ pub fn v21_to_v22(w: V21) -> GameWorld {
         education: w.education,
         independence: w.independence,
         levers: w.levers,
+        tariffs: Default::default(),
     }
 }
 
@@ -796,6 +802,7 @@ pub fn v22_to_v23(w: V22) -> GameWorld {
         education: w.education,
         independence: w.independence,
         levers: w.levers,
+        tariffs: Default::default(),
     }
 }
 
@@ -848,6 +855,7 @@ pub fn v23_to_v24(w: V23) -> GameWorld {
         education: w.education,
         independence: w.independence,
         levers: w.levers,
+        tariffs: Default::default(),
     }
 }
 
@@ -900,6 +908,7 @@ pub fn v24_to_v25(w: V24) -> GameWorld {
         education: w.education,
         independence: w.independence,
         levers: w.levers,
+        tariffs: Default::default(),
     }
 }
 
@@ -943,6 +952,7 @@ pub fn v25_to_v26(w: V25) -> GameWorld {
         education: w.education,
         independence: w.independence,
         levers: w.levers,
+        tariffs: Default::default(),
     }
 }
 
@@ -986,6 +996,7 @@ pub fn v26_to_v27(w: V26) -> GameWorld {
         education: w.education,
         independence: w.independence,
         levers: w.levers,
+        tariffs: Default::default(),
     }
 }
 
@@ -1029,6 +1040,7 @@ pub fn v27_to_v28(w: V27) -> GameWorld {
         education: w.education,
         independence: w.independence,
         levers: w.levers,
+        tariffs: Default::default(),
     }
 }
 
@@ -1072,5 +1084,50 @@ pub fn v28_to_v29(w: V28) -> GameWorld {
         education: w.education,
         independence: w.independence,
         levers: w.levers,
+        tariffs: Default::default(),
+    }
+}
+
+/// Version 29: the composition of the forces (#235), before the tariff tables.
+#[derive(Deserialize)]
+pub struct V29 {
+    scenario: String,
+    player: Option<Id<Country>>,
+    countries: Table<Country, CountryState>,
+    census: Vec<CensusRecord>,
+    econ: crate::econ::Economy,
+    research: crate::research::ResearchState,
+    politics: crate::polity::PoliticsState,
+    demography: crate::demography::DemographyState,
+    borders: crate::borders::BordersState,
+    foreign: crate::foreign_stakes::ForeignState,
+    influence: crate::influence::InfluenceState,
+    treaties: crate::treaty::TreatyState,
+    war: crate::war::state::WarState,
+    education: crate::demography::education::EducationState,
+    independence: crate::borders::independence::IndependenceState,
+    levers: crate::econ::levers::LeversState,
+}
+
+/// 29 → 30: the tariff tables (`GameWorld::tariffs`), every country on the historical rule.
+pub fn v29_to_v30(w: V29) -> GameWorld {
+    GameWorld {
+        scenario: w.scenario,
+        player: w.player,
+        countries: w.countries,
+        census: w.census,
+        econ: w.econ,
+        research: w.research,
+        politics: w.politics,
+        demography: w.demography,
+        borders: w.borders,
+        foreign: w.foreign,
+        influence: w.influence,
+        treaties: w.treaties,
+        war: w.war,
+        education: w.education,
+        independence: w.independence,
+        levers: w.levers,
+        tariffs: Default::default(),
     }
 }

@@ -24,6 +24,7 @@ pub mod saves;
 pub mod screens;
 pub mod settings;
 pub mod sim;
+pub mod tariff_view;
 pub mod text;
 pub mod trade_view;
 pub mod treaty_view;
