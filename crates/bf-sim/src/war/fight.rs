@@ -379,16 +379,6 @@ pub fn blockaded_pairs(world: &GameWorld) -> Vec<(u16, u16)> {
     world.war.sea.cut.clone()
 }
 
-/// The trade pairs a blockade cuts this week, (blockaded, partner) with the lower index first,
-/// sorted and without repeats: the pairs whose cheaper way is by sea (`Geography::by_sea`) and
-/// whose every sea route passes a zone the blockader controls (`SeaGraph`, with those zones
-/// closed). A pair that goes by land, or that has a free route (Germany and Sweden by the
-/// Baltic while the North Sea is British), stays open. The trade closes and reopens them
-/// (owner's decision CT7). Empty until the war at sea (slice C2).
-pub fn blockaded_pairs(_world: &GameWorld) -> Vec<(u16, u16)> {
-    Vec::new()
-}
-
 /// A month of the command culture and the generation of every army (step 4; decision G7):
 /// the officers formed in the schools' doctrine a class a year (in January), the experience of war
 /// decaying, a defeat that opens a reform, and the generation moving up or down with its gap.
