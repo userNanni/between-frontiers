@@ -558,7 +558,7 @@ pagamentos de tratado e o dinheiro de ocupação. Registro fora do hash (`GameWo
 | Índia | +2,9 a −1,3 | 0 | +1,1 a +4,7 | +3,3 a +3,9 | 0 | −3,3 a −3,9 | sem série |
 
 Conta corrente real: Jones e Obstfeld (NBER, *Saving, Investment, and Gold*, 1997), série original
-(`CAO`) sobre o PIB. Três achados:
+(`CAO`) sobre o PIB. O que se vê:
 - **O dinheiro que mudaria de país é grande:** 3 a 7 % do PIB por ano nos países da tabela. Ligar a
   liquidação (fatia 2) muda muito o mundo, e por isso a conservação e essa medida vêm antes de
   qualquer agregado.
