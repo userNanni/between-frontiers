@@ -451,6 +451,7 @@ fn composition_check_1939_and_1944() {
         .composition = None;
     let mil = &base.war.as_ref().unwrap().military;
     let auto = base.catalogue.good("automobiles").unwrap() as usize;
+    let armored = base.catalogue.good("armored_vehicles").unwrap() as usize;
     for (label, d) in [("rule", base), ("no rule", &off)] {
         let mut s = Session::new(
             d.new_world(),
@@ -468,32 +469,107 @@ fn composition_check_1939_and_1944() {
                 let Some(ci) = w.countries.iter().position(|(_, c)| c.tag == tag) else {
                     continue;
                 };
-                let (_, _, all) = land_shares(w, mil, ci);
-                let (we, te, ae) = bf_sim::war::composition::equipped(mil, &w.war.countries[ci]);
-                let wh = (we * 1000 / ae.max(Fixed::ONE)).to_f64_lossy() * all as f64 / 1000.0;
-                let tr = (te * 1000 / ae.max(Fixed::ONE)).to_f64_lossy() * all as f64 / 1000.0;
+                let c = &w.war.countries[ci];
+                // By type of formation (what the target counts) and by the equipment that
+                // arrived (what the generation counts).
+                let (wt, tt, at) = land_shares(w, mil, ci);
+                let (we, te, ae) = bf_sim::war::composition::equipped(mil, c);
+                let pc = |x: Fixed| (x * 1000 / ae.max(Fixed::ONE)).to_f64_lossy() / 10.0;
                 let waiting: Fixed = w
                     .war
                     .composition
                     .of(ci as u16)
                     .map(|x| x.ordered - x.delivered)
                     .sum();
-                let stalled = w
-                    .war
-                    .composition
-                    .of(ci as u16)
-                    .map(|x| x.stalled)
-                    .max()
-                    .unwrap_or(0);
+                // What holds the gap: the equipment the formations lack (the military budget
+                // cut the replacement to its room), or a market that does not deliver (a buy
+                // ratio under one).
+                let lack: Fixed = c
+                    .formations
+                    .iter()
+                    .map(|f| {
+                        let spec = mil.spec(f.unit, f.generation as usize);
+                        let need: Vec<(u16, Fixed)> = spec
+                            .equipment
+                            .iter()
+                            .map(|(g, q)| (*g, *q * f.elements))
+                            .collect();
+                        (mil.value_lots(&need) - mil.value_lots(&f.equipment)).max(Fixed::ZERO)
+                    })
+                    .sum();
                 let m = &w.econ.markets[ci];
                 println!(
-                    "{label} {year} {tag}: equipped on wheels {:.1}% on tracks {:.1}% of {all} | waiting {waiting:?} (stalled {stalled} wk) | automobiles price {:?} bought {:?}",
-                    wh * 100.0 / all.max(1) as f64,
-                    tr * 100.0 / all.max(1) as f64,
-                    m.price[auto],
+                    "{label} {year} {tag}: by type wheels {:.1}% tracks {:.1}% | equipped wheels {:.1}% tracks {:.1}% | of {at} men | waiting {waiting:?} | lacking {lack:?} lots | bought automobiles {:?} armored {:?} | automobiles price {:?}",
+                    wt as f64 * 100.0 / at.max(1) as f64,
+                    tt as f64 * 100.0 / at.max(1) as f64,
+                    pc(we),
+                    pc(te),
                     m.buy_ratio[auto],
+                    m.buy_ratio[armored],
+                    m.price[auto],
                 );
             }
         }
+    }
+}
+
+/// The composition shown counts each formation by the equipment it holds: a formation
+/// converted without its vehicles moves on foot, whatever it was ordered to be (the defect the
+/// first check found: a poor country "motorized" as fast as the powers).
+#[test]
+fn a_converted_formation_counts_by_the_equipment_it_holds() {
+    use bf_sim::war::Formation;
+    let mil = &data().war.as_ref().unwrap().military;
+    let mech = mil.unit("mechanized").unwrap();
+    let full: Vec<(u16, Fixed)> = mil
+        .spec(mech, 0)
+        .equipment
+        .iter()
+        .map(|(g, q)| (*g, *q * Fixed::from_int(10)))
+        .collect();
+    let f = |equipment: Vec<(u16, Fixed)>| Formation {
+        unit: mech,
+        generation: 0,
+        elements: Fixed::from_int(10),
+        colonial: false,
+        called_up: false,
+        equipment,
+        training: Fixed::ONE,
+        raised: false,
+    };
+    let empty = bf_sim::war::CountryWar {
+        formations: vec![f(Vec::new())],
+        ..Default::default()
+    };
+    let half = bf_sim::war::CountryWar {
+        formations: vec![f(full.iter().map(|(g, q)| (*g, *q / 2)).collect())],
+        ..Default::default()
+    };
+    let (w0, _, a0) = bf_sim::war::composition::equipped(mil, &empty);
+    let (w1, _, _) = bf_sim::war::composition::equipped(mil, &half);
+    assert_eq!(a0, Fixed::from_int(10));
+    assert_eq!(w0, Fixed::ZERO);
+    assert_eq!(w1, Fixed::from_int(5));
+}
+
+/// A conversion ends when less than ten men are left: the rounding of the classes does not
+/// keep it open and "stalled" for years (the second defect of the first check).
+#[test]
+fn conversions_end_and_do_not_linger() {
+    let d = data();
+    let mut s = Session::new(
+        d.new_world(),
+        1925,
+        Date::new(1925, 1, 1),
+        2,
+        Some(d.rules()),
+    );
+    s.sim.run_until(Date::new(1926, 12, 20));
+    for x in &s.world().war.composition.conversions {
+        assert!(
+            x.ordered - x.delivered >= Fixed::from_ratio(1, 100),
+            "{x:?}"
+        );
+        assert!(x.stalled < 52, "{x:?}");
     }
 }
