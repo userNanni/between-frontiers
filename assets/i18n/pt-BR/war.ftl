@@ -286,16 +286,32 @@ war-wreck-theirs = { $state } (deles): { $share } dos edifícios destruídos, { 
 
 composition-title = Composição das forças
 composition-basis = Uma vez por ano, a infantaria troca de equipamento rumo à parcela-alvo sobre rodas e em lagarta: no máximo 2 % dos homens de terra por ano, pagos com a sobra do orçamento militar. O exército não cresce: os homens são os mesmos, com o treino que tinham.
-composition-now = Hoje: { $wheels } sobre rodas e { $tracks } em lagarta, contando as conversões em curso.
-composition-target-rule = Alvo pela regra histórica: { $wheels } sobre rodas e { $tracks } em lagarta.
-composition-target-fixed = Alvo fixado pelo governo: { $wheels } sobre rodas e { $tracks } em lagarta.
 composition-target-none = Sem alvo: o país ainda não faz o equipamento da infantaria.
-composition-converting = Em conversão para { $unit }: { $done } de { $of } mil homens.
-composition-stalled = Parada há { $weeks } semanas: falta sobra no orçamento militar ou veículo no mercado.
+composition-wheels-now = Sobre rodas hoje
+composition-tracks-now = Em lagarta hoje
+composition-target = Alvo da composição
+composition-rule-line = Regra histórica: { $wheels } sobre rodas e { $tracks } em lagarta, pelo que o país já sabe fazer.
+composition-fixed-note = O governo fixa as duas parcelas; a conversão anda no mesmo ritmo, só muda o destino.
+composition-step-tip = Um ponto percentual por clique; as duas parcelas somam no máximo 100 %.
+composition-converting = Em conversão para { $unit }
+composition-converting-done = { $done } de { $of } mil homens
+composition-stall-maker = Parada há { $count ->
+    [one] { $weeks } semana
+   *[other] { $weeks } semanas
+}: o país ainda não sabe fazer o equipamento deste tipo.
+composition-stall-room = Parada há { $count ->
+    [one] { $weeks } semana
+   *[other] { $weeks } semanas
+}: o teto militar das compras do Estado vai todo para abastecer as forças e as encomendas; não sobra para converter.
+composition-stall-infantry = Parada há { $count ->
+    [one] { $weeks } semana
+   *[other] { $weeks } semanas
+}: não há mais infantaria em casa para converter.
+composition-stall-prices = Parada há { $count ->
+    [one] { $weeks } semana
+   *[other] { $weeks } semanas
+}: a sobra do orçamento militar não paga os veículos aos preços de hoje no mercado.
 composition-no-wheels = Nenhum tipo sobre rodas que o país equipe: a parte sobre rodas do alvo fica sem converter.
 composition-no-tracks = Nenhum tipo em lagarta que o país equipe: a parte em lagarta do alvo fica sem converter.
-composition-rule = Regra histórica
-composition-fixed = Fixado pelo governo
 composition-wheels = Sobre rodas
 composition-tracks = Em lagarta
-composition-apply = Aplicar
