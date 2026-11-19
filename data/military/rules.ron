@@ -267,6 +267,25 @@
         command: 900,
         interceptors_per_site: 100,
         interceptor_kill: 500,
+        // The use (docs/war.pt-BR.md, "O uso e a consequência"; N5, N6, N7). Design parameters,
+        // estimates to be checked against the sources the doc cites:
+        // - a counterforce warhead kills a tenth of the civilians of a countervalue one, and puts
+        //   20,000 men of the target's land forces out of the war;
+        // - a countervalue warhead destroys twice the share of plant levels that it kills of
+        //   the region's people;
+        // - a use stains the security reputation by two years of the user's forces' cost (a
+        //   defence call not answered is one);
+        // - N7: the taboo grows whole in 20 years without use with warheads in the world
+        //   (Tannenwald, The Nuclear Taboo, 2007: settled by the 1960s), each use takes half;
+        //   the AI uses first with 30 % of its home occupied when there is no taboo, all of it
+        //   when the taboo is whole.
+        counterforce_civilians: 100,
+        counterforce_men: 20000,
+        wreck_factor: 2000,
+        use_stain: 2000,
+        taboo_years: 20,
+        taboo_cut: 500,
+        first_use_occupied: 300,
     ),
 
     // The reserve reports in four weeks, at seven tenths of full training (a reservist keeps

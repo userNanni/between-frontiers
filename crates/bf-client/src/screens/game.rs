@@ -898,6 +898,11 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
         for c in res.commands {
             state.sim.send(Command::Issue(c));
         }
+        if let Some(c) = res.nuclear_use {
+            // A use cannot be undone: a point to come back to first.
+            state.restore_point_before(shared, Reason::War);
+            state.sim.send(Command::Issue(c));
+        }
         // Peace goes through the negotiation table, in the Agendas, with the enemy fixed.
         if let (Some(enemy), Some(me)) = (res.peace, snap.player.clone()) {
             state.war = None;

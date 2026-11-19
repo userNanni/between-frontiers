@@ -50,6 +50,7 @@ fn schema() -> String {
         bf_sim::war::Stage,
         bf_sim::war::third::CallSide,
         bf_sim::war::support::Fall,
+        bf_sim::war::nuclear_use::Mode,
     );
     let registry = tracer
         .registry()

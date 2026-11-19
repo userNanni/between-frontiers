@@ -43,6 +43,26 @@ pub struct Window {
     /// The expedition's goal the player set, by war, until the tick applies it (`None` inside:
     /// back to the rule).
     pub expedition: Option<(u32, Option<u64>)>,
+    /// The nuclear use being drafted (step 4).
+    pub strike: StrikeDraft,
+}
+
+/// A use being drafted: the aim, the warheads, and whether the first click asked.
+#[derive(Clone, Debug)]
+pub struct StrikeDraft {
+    pub countervalue: bool,
+    pub warheads: u32,
+    pub asked: bool,
+}
+
+impl Default for StrikeDraft {
+    fn default() -> Self {
+        Self {
+            countervalue: false,
+            warheads: 1,
+            asked: false,
+        }
+    }
 }
 
 #[derive(Default)]
@@ -52,6 +72,8 @@ pub struct Response {
     pub commands: Vec<GameCommand>,
     /// Propose peace to this country at the negotiation table.
     pub peace: Option<String>,
+    /// A nuclear use confirmed: a restore point first, then the command.
+    pub nuclear_use: Option<GameCommand>,
 }
 
 fn names(i18n: &I18n, tags: &[String]) -> String {
@@ -349,6 +371,9 @@ fn war(
     }
     if let Some(p) = &w.nuclear {
         super::nuclear::show(ui, i18n, p);
+        if let Some(s) = &p.strike {
+            strike(ui, i18n, v, s, &mut window.strike, out);
+        }
     }
     if let Some(f) = &v.fleet {
         fleet(ui, i18n, f);
@@ -1058,11 +1083,157 @@ fn expedition(
     bf_ui_kit::small(ui, &i18n.tr("war-expedition-note"));
 }
 
-/// The player's navy (slice C2): where it is, with the fixed mission "control", why there, and
-/// what it blockades. The command of the fleet (S1) comes with the next slice.
+/// The nuclear use (step 4; N5–N7): a rare decision. The aim and the warheads, what it would do
+/// (the dead, the stain, the answer, the taboo), and two steps to launch, with a restore point.
+fn strike(
+    ui: &mut Ui,
+    i18n: &I18n,
+    v: &WarView,
+    s: &crate::nuclear_view::StrikeView,
+    d: &mut StrikeDraft,
+    out: &mut Response,
+) {
+    use bf_sim::war::nuclear_use::Mode;
+    bf_ui_kit::gap(ui, space::XS);
+    bf_ui_kit::heading(ui, &i18n.tr("strike-title"));
+    let int = |x: u64| i18n.int(x as i64);
+    d.warheads = d.warheads.clamp(1, s.deliverable.max(1) as u32);
+    ui.horizontal(|ui| {
+        for (cv, key, k) in [
+            (false, "strike-counterforce", "f"),
+            (true, "strike-countervalue", "v"),
+        ] {
+            let label = i18n.tr(key);
+            let b = if d.countervalue == cv {
+                Button::primary(&label)
+            } else {
+                Button::ghost(&label)
+            }
+            .size(ButtonSize::Small)
+            .show(ui);
+            if b.clicked() || keys::item(ui, 'N', format!("war.strike.{k}"), k, b.rect) {
+                d.countervalue = cv;
+                d.asked = false;
+            }
+        }
+    });
+    let step = super::gov_ui::control_row(ui, &i18n.tr("strike-warheads"), |ui| {
+        super::gov_ui::stepper(
+            ui,
+            &int(u64::from(d.warheads)),
+            &i18n.tr("strike-warheads-tip"),
+            d.warheads > 1,
+            u64::from(d.warheads) < s.deliverable,
+            super::gov_ui::StepTips {
+                family: 'N',
+                id: "war.strike.warheads",
+                row: 0,
+            },
+        )
+    });
+    if step != 0 {
+        d.warheads = (d.warheads as i64 + i64::from(step)).clamp(1, s.deliverable as i64) as u32;
+        d.asked = false;
+    }
+    let n = u64::from(d.warheads);
+    let dead = n * if d.countervalue {
+        s.per_countervalue
+    } else {
+        s.per_counterforce
+    };
+    bf_ui_kit::stat_row(ui, &i18n.tr("strike-ready"), &int(s.deliverable));
+    bf_ui_kit::stat_row(ui, &i18n.tr("strike-dead"), &int(dead));
+    if !d.countervalue {
+        bf_ui_kit::stat_row(ui, &i18n.tr("strike-men"), &int(n * s.counterforce_men));
+    }
+    let small = |ui: &mut Ui, text: String| {
+        ui.add(egui::Label::new(RichText::new(text).font(sans(size::SMALL))).wrap());
+    };
+    small(
+        ui,
+        i18n.tr_args(
+            "strike-stain",
+            &[("years", arg(i18n.decimal(f64::from(s.stain) / 1000.0, 1)))],
+        ),
+    );
+    small(ui, i18n.tr("strike-answer"));
+    small(
+        ui,
+        match s.years_since {
+            Some(y) => i18n.tr_args(
+                "strike-taboo-since",
+                &[
+                    (
+                        "taboo",
+                        arg(super::budget::pct(i18n, f64::from(s.taboo) / 10.0, 0)),
+                    ),
+                    ("years", arg(i18n.int(y))),
+                    ("n", Arg::Num(y as f64)),
+                ],
+            ),
+            None => i18n.tr_args(
+                "strike-taboo-never",
+                &[(
+                    "taboo",
+                    arg(super::budget::pct(i18n, f64::from(s.taboo) / 10.0, 0)),
+                )],
+            ),
+        },
+    );
+    let mode = if d.countervalue {
+        Mode::Countervalue
+    } else {
+        Mode::Counterforce
+    };
+    if d.asked {
+        ui.label(
+            RichText::new(i18n.tr_args(
+                "strike-confirm-line",
+                &[
+                    ("n", Arg::Num(n as f64)),
+                    ("warheads", arg(int(n))),
+                    ("country", arg(country_name(i18n, &s.target))),
+                    ("dead", arg(int(dead))),
+                ],
+            ))
+            .font(sans(size::SMALL))
+            .color(color::DANGER),
+        );
+        ui.horizontal(|ui| {
+            let yes = Button::danger(&i18n.tr("strike-confirm"))
+                .size(ButtonSize::Small)
+                .show(ui);
+            if yes.clicked() || keys::single(ui, "war.strike.yes", 'Y', yes.rect) {
+                out.nuclear_use = Some(GameCommand::NuclearUse {
+                    tag: v.me.clone(),
+                    target: s.target.clone(),
+                    mode,
+                    warheads: d.warheads,
+                });
+                d.asked = false;
+            }
+            let no = Button::ghost(&i18n.tr("journal-decision-cancel"))
+                .size(ButtonSize::Small)
+                .show(ui);
+            if no.clicked() || keys::single(ui, "war.strike.no", 'N', no.rect) {
+                d.asked = false;
+            }
+        });
+    } else {
+        let b = Button::danger(&i18n.tr("strike-launch"))
+            .size(ButtonSize::Small)
+            .show(ui);
+        if b.clicked() || keys::item(ui, 'N', "war.strike.launch".into(), "l", b.rect) {
+            d.asked = true;
+        }
+    }
+}
+
 /// Pairs of a blockade listed by name, the largest first; the rest are counted.
 const PAIRS_SHOWN: usize = 6;
 
+/// The player's navy (slice C2): where it is, with the fixed mission "control", why there, and
+/// what it blockades. The command of the fleet (S1) comes with the next slice.
 fn fleet(ui: &mut Ui, i18n: &I18n, f: &crate::war_view::FleetLine) {
     bf_ui_kit::gap(ui, space::XS);
     bf_ui_kit::heading(ui, &i18n.tr("war-fleet"));

@@ -517,6 +517,15 @@ pub enum GameCommand {
     /// `tag` tests a nuclear weapon (N3): its arsenal is known to all from then on. Checked the
     /// next week against the warheads it holds; without one, nothing happens.
     NuclearTest { tag: String },
+    /// `tag` launches `warheads` on `target`, a country it is at war with (step 4; N5–N7):
+    /// counterforce or countervalue. Carried out the next week by the forces, with what its
+    /// launchers can carry.
+    NuclearUse {
+        tag: String,
+        target: String,
+        mode: crate::war::nuclear_use::Mode,
+        warheads: u32,
+    },
 }
 
 /// Changes the levers of the country `tag` (`econ::levers`); unknown tags are no-ops.
@@ -698,6 +707,26 @@ impl Command<GameWorld> for GameCommand {
                     if !r.contains(&(ci as u16)) {
                         r.push(ci as u16);
                     }
+                }
+            }
+            GameCommand::NuclearUse {
+                tag,
+                target,
+                mode,
+                warheads,
+            } => {
+                if world.war.is_empty() || *warheads == 0 {
+                    return;
+                }
+                let at = |t: &str| world.countries.iter().position(|(_, c)| c.tag == t);
+                if let (Some(by), Some(on)) = (at(tag), at(target)) {
+                    world.war.nuclear.uses.push(crate::war::nuclear_use::Use {
+                        by: by as u16,
+                        target: on as u16,
+                        mode: *mode,
+                        warheads: *warheads,
+                        answer: false,
+                    });
                 }
             }
             GameCommand::NuclearProgramme { tag, share } => {
@@ -2053,9 +2082,91 @@ mod tests {
             hash_of(&with_ledger)
         );
         assert_eq!(
-            hash_of(&headed(38, &encode_snapshot(&with_ledger).unwrap())),
+            hash_of(&headed(39, &encode_snapshot(&with_ledger).unwrap())),
             hash_of(&with_ledger)
         );
+        // Version 38, the nuclear tests and the crisis rung, before the use: `nuclear` without the
+        // taboo, the last use, the dead and the uses.
+        {
+            #[derive(Serialize)]
+            struct NuclearV38<'a> {
+                programmes: &'a Vec<crate::war::programme::Programme>,
+                tested: &'a Vec<u16>,
+                test_requests: &'a Vec<u16>,
+                blocked: &'a Vec<(u16, u16)>,
+            }
+            #[derive(Serialize)]
+            struct WarV38<'a> {
+                countries: &'a Vec<crate::war::CountryWar>,
+                soldiers: &'a Vec<i64>,
+                conflicts: &'a crate::war::Conflicts,
+                fighting: &'a crate::war::fight::Fighting,
+                composition: &'a crate::war::composition::CompositionState,
+                colonial: &'a Vec<crate::war::colonial::Colonial>,
+                sea: &'a crate::war::sea::SeaWar,
+                nuclear: NuclearV38<'a>,
+            }
+            #[derive(Serialize)]
+            struct BeforeUse38<'a> {
+                scenario: &'a String,
+                player: &'a Option<Id<Country>>,
+                countries: &'a Table<Country, CountryState>,
+                census: &'a Vec<CensusRecord>,
+                econ: &'a crate::econ::Economy,
+                research: &'a crate::research::ResearchState,
+                politics: &'a crate::polity::PoliticsState,
+                demography: &'a crate::demography::DemographyState,
+                borders: &'a crate::borders::BordersState,
+                foreign: &'a crate::foreign_stakes::ForeignState,
+                influence: &'a crate::influence::InfluenceState,
+                treaties: &'a crate::treaty::TreatyState,
+                war: WarV38<'a>,
+                education: &'a crate::demography::education::EducationState,
+                independence: &'a crate::borders::independence::IndependenceState,
+                levers: &'a crate::econ::levers::LeversState,
+                tariffs: &'a crate::econ::customs::TariffState,
+                payments: &'a crate::econ::payments::PaymentsState,
+                reserves: &'a crate::econ::payments::ReservesState,
+            }
+            let w = &with_ledger;
+            let v38 = encode_snapshot(&BeforeUse38 {
+                scenario: &w.scenario,
+                player: &w.player,
+                countries: &w.countries,
+                census: &w.census,
+                econ: &w.econ,
+                research: &w.research,
+                politics: &w.politics,
+                demography: &w.demography,
+                borders: &w.borders,
+                foreign: &w.foreign,
+                influence: &w.influence,
+                treaties: &w.treaties,
+                war: WarV38 {
+                    countries: &w.war.countries,
+                    soldiers: &w.war.soldiers,
+                    conflicts: &w.war.conflicts,
+                    fighting: &w.war.fighting,
+                    composition: &w.war.composition,
+                    colonial: &w.war.colonial,
+                    sea: &w.war.sea,
+                    nuclear: NuclearV38 {
+                        programmes: &w.war.nuclear.programmes,
+                        tested: &w.war.nuclear.tested,
+                        test_requests: &w.war.nuclear.test_requests,
+                        blocked: &w.war.nuclear.blocked,
+                    },
+                },
+                education: &w.education,
+                independence: &w.independence,
+                levers: &w.levers,
+                tariffs: &w.tariffs,
+                payments: &w.payments,
+                reserves: &w.reserves,
+            })
+            .unwrap();
+            assert_eq!(hash_of(&headed(38, &v38)), hash_of(&with_ledger));
+        }
         // Version 37, the nuclear programmes (#257), before the tests and the crisis rung:
         // `nuclear` with its programmes only.
         {

@@ -1237,6 +1237,13 @@ pub(crate) mod tests {
                 command: 900,
                 interceptors_per_site: 100,
                 interceptor_kill: 500,
+                counterforce_civilians: 100,
+                counterforce_men: 20_000,
+                wreck_factor: 2000,
+                use_stain: 2000,
+                taboo_years: 20,
+                taboo_cut: 500,
+                first_use_occupied: 300,
             },
         }
     }

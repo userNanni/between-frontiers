@@ -456,3 +456,26 @@ programme-test = Testar a arma
 programme-test-note = O teste torna o arsenal conhecido de todos: até ele, os outros contam metade das suas ogivas. Ele é ouvido no mundo inteiro e não se desfaz.
 programme-test-asked = Teste marcado: acontece na semana que vem.
 programme-tested = Arma testada: o arsenal é conhecido de todos.
+
+# O uso da arma nuclear (passo 4; N5, N6, N7)
+strike-title = Uso nuclear
+strike-counterforce = Contraforça
+strike-countervalue = Contravalor
+strike-warheads = Ogivas
+strike-warheads-tip = Quantas ogivas lançar, até as que os lançadores carregam
+strike-ready = Ogivas prontas nos lançadores
+strike-dead = Mortos estimados, se todas chegarem
+strike-men = Homens das forças de terra do inimigo postos fora da guerra
+strike-stain = A reputação de segurança perde o equivalente a { $years } anos do custo das nossas forças.
+strike-answer = Se o inimigo tiver ogivas prontas, responde na semana seguinte no mesmo degrau e com o mesmo número; sem forças de terra, com tudo nas cidades.
+strike-taboo-since = Tabu: { $taboo }; { $years ->
+    [one] { $years } ano desde o último uso no mundo
+   *[other] { $years } anos desde o último uso no mundo
+}. Cada uso derruba o tabu à metade, para todos.
+strike-taboo-never = Tabu: { $taboo }; a arma nunca foi usada no mundo. Cada uso derruba o tabu à metade, para todos.
+strike-launch = Lançar…
+strike-confirm = Confirmar o lançamento
+strike-confirm-line = { $n ->
+    [one] { $warheads } ogiva
+   *[other] { $warheads } ogivas
+} sobre { $country }, cerca de { $dead } mortos. Não se desfaz. Um ponto de restauração é gravado antes.

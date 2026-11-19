@@ -576,9 +576,11 @@ pub fn read(
                 occupied,
                 wrecks,
                 nuclear: mil.and_then(|m| {
-                    theirs
-                        .first()
-                        .and_then(|&e| crate::nuclear_view::read(world, m, me, e))
+                    theirs.first().and_then(|&e| {
+                        let mut p = crate::nuclear_view::read(world, m, me, e)?;
+                        p.strike = crate::nuclear_view::strike_view(world, m, me, e, days);
+                        Some(p)
+                    })
                 }),
                 expedition: world
                     .war

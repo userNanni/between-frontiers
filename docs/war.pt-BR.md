@@ -678,17 +678,61 @@ Atrás de `war`, com estado em `NuclearState` (save 38).
 - **Fica para o passo 4:** o risco semanal de escalada entre dois lados com segundo golpe garantido
   pesando na decisão da IA de declarar, e o custo de reputação do teste com os não nucleares.
 
-### O uso e a consequência (passo 4, decidido: N5, N6, N7)
-1. **Mortos e destruição:** por ogiva, uma parcela da população morre por idade
-   (`kill_civilians`), e níveis de edifício caem (`wreck`).
-   - Fonte (RERF): Hiroshima, 70 a 140 mil mortos até o fim de 1945, de cerca de 350 mil;
-     Nagasaki, 40 a 70 mil.
-   - Contraforça mata menos civis que contravalor.
-2. **Apoio à guerra:** do atingido, as mortes entram no termo de baixas da G4. Do lado de quem usa,
-   nada direto (N6).
-3. **Terceiros:** perda de reputação com todos, chamado aos aliados do atingido (W4) e a retaliação
-   (N5).
-4. **O tabu (N7).**
+### Passo 4, em rascunho: o uso e a consequência (N5, N6, N7)
+Está em `war::nuclear_use`, atrás de `war`, no save 39. Os parâmetros ficam em `rules.ron`
+(`nuclear`) e são estimativas de desenho, a conferir contra as fontes.
+- **O comando `NuclearUse`:** dá o alvo (um país em guerra com quem usa), o modo e o número de
+  ogivas.
+  - Sai na semana seguinte, com o que os lançadores carregam (as ogivas sem lançador ficam no
+    depósito).
+  - A defesa antimíssil do alvo para a sua parcela. Cada ogiva que chega é um efeito.
+  - O uso conta como teste (N3).
+- **Contravalor:**
+  - mata `killed_per_warhead` (185 mil, o mesmo número do dano inaceitável) nas regiões
+    metropolitanas mais populosas, uma ogiva por região, em ciclo;
+  - derruba níveis de edifício no dobro da parcela da população morta (`wreck_factor`).
+  - Fonte de escala (RERF): Hiroshima, 70 a 140 mil mortos até o fim de 1945, de cerca de 350
+    mil; Nagasaki, 40 a 70 mil.
+- **Contraforça:** mata um décimo disso (`counterforce_civilians`) e põe 20 mil homens das forças
+  de terra do alvo fora da guerra por ogiva (`counterforce_men`), em proporção em cada formação.
+- **Apoio (N6):**
+  - Os mortos de cada país atingido ficam em `NuclearState::dead` e entram no termo de baixas do
+    seu apoio à guerra, somados aos da frente.
+  - O apoio de quem usa não lê nada do uso.
+  - Medido no teste: 8 ogivas de contravalor sobre a Polônia levam o apoio dela de 779 a 742 em
+    cinco semanas, e o da Alemanha fica igual (288).
+- **Reputação:** quem usa leva uma mancha na reputação de segurança de dois anos do custo das suas
+  forças (`use_stain`). Para comparar: uma chamada de defesa não atendida vale um ano.
+  - Fica de fora o chamado aos aliados do atingido. Os aliados com cláusula de defesa já entraram
+    na declaração (W4), e o uso não chama de novo.
+- **Retaliação proporcional (N5):**
+  - A IA atingida, com ogivas prontas, responde na semana seguinte no mesmo degrau e com o mesmo
+    número.
+  - Sem forças de terra, responde com tudo, em contravalor.
+  - A resposta não é respondida de novo.
+  - O risco semanal de subir entre dois lados seguros fica para a IA da fase 6.
+- **O tabu (N7):**
+  - É um estoque mundial de 0 a 1.000.
+  - Cresce um vigésimo (`taboo_years` 20) a cada janeiro em que há ogiva no mundo e o ano anterior
+    não teve uso.
+  - Cada uso o corta à metade (`taboo_cut`).
+  - A IA atacada usa primeiro só com a população metropolitana sob o inimigo acima de uma linha.
+    A linha vai de 30% sem tabu (`first_use_occupied`) a 100% com o tabu inteiro (Tannenwald,
+    *The Nuclear Taboo*, 2007).
+- **A tela:** a janela "Guerra", sob o painel de dissuasão, mostra:
+  - o modo e as ogivas;
+  - os mortos estimados e os homens postos fora da guerra;
+  - a mancha, a resposta esperada e o tabu, com os anos desde o último uso.
+  "Lançar…" pede a confirmação, que diz a frase do que muda, com ponto de restauração antes.
+- **Testes** (`tests/war_nuclear_use.rs`, Alemanha jogada contra a Polônia):
+  - contravalor com mortos, edifícios e mancha;
+  - contraforça com menos civis e homens fora;
+  - sem lançador, nada sai;
+  - a resposta no mesmo degrau;
+  - os mortos pesam só no atingido;
+  - o tabu cresce e cai;
+  - a IA só usa primeiro depois da linha.
+- **A precipitação (N8)** vem na fatia seguinte.
 
 ### Decisões do jogador, cada uma com tela e `player_commands`
 - `NuclearProgram` (Agendas → Forças): parcela, anos estimados, custo.
@@ -702,18 +746,54 @@ Atrás de `war`, com estado em `NuclearState` (save 38).
     tabu.
   - Confirmação dupla e ponto de restauração automático.
 
-### Conferências (passo 5)
-- **Cuba, 1962:** ninguém usa e os dois recuam (Allison e Zelikow, *Essence of Decision*, 2ª ed.,
-  1999; Norris e Kristensen 2010). O jogo deve dar:
-  - segundo golpe americano garantido, e o soviético não, com a Europa como refém pelo guarda-chuva;
-  - a URSS cede a exigência "retirar os mísseis";
-  - os EUA não declaram guerra.
-- **Coreia, 1950–53:** os EUA têm a arma e não usam (Dingman, "Atomic Diplomacy During the Korean
-  War", *International Security* 13(3), 1988–89; Tannenwald, *The Nuclear Taboo*, 2007). O ganho
-  na frente é menor que a soma de três custos:
-  - a reputação com os aliados;
-  - o tabu;
-  - a reserva exigida contra a URSS.
+### Conferências (passo 5), medidas
+`tests/war_nuclear_conferences.rs` põe as forças de cada época no mapa de 1925, com a população de
+1925, e lê o que as regras dão. É medida, não meta.
+
+**Fontes das forças:**
+- Norris, "The Cuban Missile Crisis: A Nuclear Order of Battle", Wilson Center, 24/10/2012 (versão
+  aberta do Nuclear Notebook, *Bulletin* 68(6), 2012):
+  - EUA: cerca de 3.500 ogivas prontas (p. 15); 182 ICBMs (p. 15); 7 submarinos Polaris com 112
+    mísseis em patrulha (p. 17); 1.479 bombardeiros prontos em 4/11 (p. 22).
+  - URSS: cerca de 300 ogivas prontas (p. 15); 42 ICBMs (p. 25, segundo Karlov); cerca de 160
+    bombardeiros pesados (p. 27). Os submarinos de mísseis não tiveram papel (p. 25).
+- 1950: 369 ogivas americanas e 5 soviéticas (Norris e Kristensen, 2010, a tabela anual). Sem
+  mísseis.
+  - Os bombardeiros capazes não têm fonte conferida. O caso dá um bombardeiro por duas ogivas
+    (**estimativa**).
+- Coreia: Truman disse em 30/11/1950 que o uso esteve "em consideração ativa", e a Casa Branca
+  disse no mesmo dia que nenhuma autorização foi dada (FRUS 1950, vol. VII, doc. 909, p. 1262).
+
+**Cuba, outubro de 1962 (medido):**
+- **Segundo golpe dos EUA garantido:** 1.589 ogivas entregues depois de um primeiro golpe
+  soviético, contra 191 que a URSS tem por inaceitáveis.
+  - A URSS não tem segundo golpe: entrega 0 contra 174.
+  - Teto: EUA no uso nuclear, URSS na crise. A dissuasão não é mútua.
+- **A exigência periférica dos EUA à URSS** ("retirar os mísseis", posta como um pagamento
+  pequeno): há coerção, e a razão pedida cai à metade, para 1,5×. Ainda assim a URSS **não
+  cede**, porque a força de terra americana é 0,25 da soviética.
+- **Os EUA podem declarar guerra:** nada os bloqueia.
+- **Diferenças com a história, sem ajuste:**
+  1. **O ceder lê a força de terra.** A coerção nuclear só divide a razão. Na crise real, a
+     assimetria nuclear (17:1, Gribkov, p. 8) pesou sozinha. **Leitura minha:** a coerção
+     precisaria somar a assimetria nuclear à razão de forças, e não só reduzir o limiar.
+  2. **Os EUA não são contidos.** Falta a "Europa como refém": a URSS ameaçando os aliados
+     europeus dos EUA com força de terra e mísseis de alcance médio, ou seja, o guarda-chuva ao
+     contrário. Falta também o peso do risco de escalada na decisão, que é da IA da fase 6.
+  3. **Com um oitavo dos bombardeiros em alerta**, como na crise, nada muda: o segundo golpe vem
+     dos submarinos e dos bombardeiros que sobrevivem.
+  4. **A população é a de 1925** (URSS ~147 milhões), não a de 1962.
+
+**Coreia, 1950–53 (medido):**
+- Com 369 ogivas, os EUA têm segundo golpe garantido contra a URSS, que tem 5 ogivas e nenhum.
+  Contra a China, o teto é coerção nuclear.
+- **Em guerra com a China, a IA americana não usa primeiro** com tabu 0, 200 ou 1.000.
+- **Leitura minha:**
+  - O resultado bate com a história, mas pelo motivo errado. A regra de primeiro uso (N7) só olha
+    a ocupação da metrópole, e os EUA não são ocupados.
+  - A ponderação de três custos que explica o não uso (a reputação com os aliados, o tabu e a
+    reserva contra a URSS; Dingman, Tannenwald) não existe na IA. Fica para a IA da fase 6.
+  - Um jogador americano pode usar a arma. A tela mostra a mancha, a resposta esperada e o tabu.
 
 ### Decisões do dono (2026-11-19, todas na recomendação levada pelo orquestrador)
 - **N1:** o programa é decisão explícita, com orçamento e anos (feito no passo 2).
