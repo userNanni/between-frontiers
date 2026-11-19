@@ -102,6 +102,46 @@ pub fn main() -> Result<(), String> {
     // that no movement undoes them.
     let forced = forced_laws(&data)?;
     force(&mut s, &forced, 1925);
+    // Weekly prices and quantities (`BF_DIAG_WEEKLY=TAG,TAG[:weeks]`), to see whether trade
+    // makes them oscillate: one CSV line per market, tradable good and week (price over base,
+    // supply, demand and net imports at base prices).
+    if let Ok(spec) = std::env::var("BF_DIAG_WEEKLY") {
+        let (tags, weeks) = spec.split_once(':').unwrap_or((spec.as_str(), "104"));
+        let weeks: i32 = weeks.parse().unwrap_or(104);
+        let idx: Vec<(String, usize)> = tags
+            .split(',')
+            .filter_map(|t| {
+                let t = t.trim();
+                data.countries
+                    .countries
+                    .iter()
+                    .position(|c| c.tag == t)
+                    .map(|i| (t.to_string(), i))
+            })
+            .collect();
+        println!("week,tag,good,price,supply,demand,net");
+        let mut d = Date::new(1925, 1, 5);
+        for w in 0..weeks {
+            d = Date::from_days(d.to_days() + 7);
+            s.sim.run_until(d);
+            let e = &s.world().econ;
+            for (tag, i) in &idx {
+                let m = &e.markets[*i];
+                for (gi, good) in cat.goods.iter().enumerate().filter(|(_, g)| g.tradable) {
+                    let b = good.base_price;
+                    println!(
+                        "{w},{tag},{},{:.5},{:.6e},{:.6e},{:.6e}",
+                        good.key,
+                        (m.price[gi] / b).to_f64_lossy(),
+                        (m.supply[gi] * b).to_f64_lossy(),
+                        (m.demand[gi] * b).to_f64_lossy(),
+                        (m.net_import[gi] * b).to_f64_lossy()
+                    );
+                }
+            }
+        }
+        return Ok(());
+    }
     // Conservation of trade, week by week (`BF_DIAG_CONSERVE=<years>`): for every tradable
     // good the world's net imports add up to zero, and the margins' transfers between the
     // pools (`week::margin_transfers`) add up to zero, so trade makes no money. Printed by
