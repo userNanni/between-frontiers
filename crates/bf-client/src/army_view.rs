@@ -85,10 +85,11 @@ pub fn read(
     mil: &bf_sim::war::Military,
     politics: Option<&bf_sim::politics::Politics>,
     tree: Option<&bf_sim::research::TechTree>,
+    vehicles: &[u16],
     country: usize,
     today: i64,
 ) -> ArmyView {
-    let r = army_reading(world, mil, politics, tree, country, today);
+    let r = army_reading(world, mil, politics, tree, vehicles, country, today);
     let d = &mil.rules.doctrine;
     let f = |x: laplace_schelling::Fixed| x.to_f64_lossy();
     let i = &r.inputs;

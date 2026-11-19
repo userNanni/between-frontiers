@@ -315,11 +315,18 @@ fn forces_of(
                 let w = session.world();
                 let tag = w.player_tag()?;
                 let ci = w.countries.iter().position(|(_, c)| c.tag == tag)?;
+                // The goods that make a vehicle: what counts as wheels and tracks.
+                let vehicles = peace
+                    .composition
+                    .as_ref()
+                    .map(|rule| bf_sim::war::composition::vehicle_goods(rule, &r.catalogue))
+                    .unwrap_or_default();
                 v.army = Some(crate::army_view::read(
                     w,
                     mil,
                     r.politics.as_deref(),
                     r.tree.as_deref(),
+                    &vehicles,
                     ci,
                     date.to_days(),
                 ));
