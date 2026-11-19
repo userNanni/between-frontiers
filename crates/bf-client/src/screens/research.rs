@@ -18,6 +18,7 @@ use egui::{Align2, Color32, Pos2, Rect, Sense, Shape, Stroke, Ui, Vec2};
 
 use crate::keys::{self, Tip, id};
 use crate::sim::ResearchView;
+use bf_sim::war::Military;
 
 /// Card size and gaps, in tree units (pixels at zoom 1).
 const NODE: Vec2 = Vec2::new(212.0, 66.0);
@@ -210,6 +211,11 @@ pub struct TreeCamera {
     layout: Option<TreeLayout>,
     /// Era to bring into view on the next frame.
     jump: Option<u8>,
+    /// What the player searched: a technology, or a building, method, good or unit it opens.
+    pub query: String,
+    /// The technologies the search found, for `found_for`.
+    found: BTreeSet<usize>,
+    found_for: String,
 }
 
 impl TreeCamera {
@@ -221,6 +227,9 @@ impl TreeCamera {
             field: None,
             layout: None,
             jump: Some(era),
+            query: String::new(),
+            found: BTreeSet::new(),
+            found_for: String::new(),
         }
     }
 
@@ -252,12 +261,14 @@ impl TreeCamera {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn show(
     ui: &mut Ui,
     screen: Rect,
     i18n: &I18n,
     tree: &TechTree,
     cat: &Catalogue,
+    military: Option<&Military>,
     view: &ResearchView,
     camera: &mut TreeCamera,
 ) -> ResearchResponse {
@@ -385,13 +396,47 @@ pub fn show(
                 camera.field = if on { None } else { Some(f as u8) };
             }
         }
+        // The way back: from what the player wants to the technology behind it.
+        ui.add_space(space::MD);
+        let search = ui.add(
+            egui::TextEdit::singleline(&mut camera.query)
+                .id(ui.make_persistent_id("research-search"))
+                .font(sans(12.5))
+                .hint_text(i18n.tr("research-search-hint"))
+                .desired_width(260.0),
+        );
+        if keys::item(ui, 'Z', "research.search".into(), "search", search.rect) {
+            search.request_focus();
+        }
+        if !camera.query.trim().is_empty() {
+            let n = camera.found.len();
+            bf_ui_kit::small(
+                ui,
+                &i18n.tr_args("research-search-found", &[("n", Arg::Num(n as f64))]),
+            );
+        }
     });
+    if camera.found_for != camera.query {
+        camera.found = super::tech_unlocks::search(i18n, tree, cat, military, &camera.query);
+        camera.found_for = camera.query.clone();
+        // The first found in view.
+        if let Some(&t) = camera
+            .found
+            .iter()
+            .min_by_key(|&&t| (tree.techs[t].level, t))
+        {
+            let canvas = ui.max_rect();
+            camera.pan = canvas.size() * 0.5
+                - layout.pos[t].to_vec2() * camera.zoom
+                - Vec2::new(0.0, canvas.height() * 0.2);
+        }
+    }
 
     let canvas = Rect::from_min_max(
         Pos2::new(ui.max_rect().left(), ui.cursor().top() + space::XS),
         ui.max_rect().max,
     );
-    if let Some(f) = graph(ui, canvas, i18n, tree, cat, view, camera, &layout) {
+    if let Some(f) = graph(ui, canvas, i18n, tree, cat, military, view, camera, &layout) {
         out.focus = Some(f);
     }
     camera.layout = Some(layout);
@@ -405,6 +450,7 @@ fn graph(
     i18n: &I18n,
     tree: &TechTree,
     cat: &Catalogue,
+    military: Option<&Military>,
     view: &ResearchView,
     camera: &mut TreeCamera,
     layout: &TreeLayout,
@@ -511,9 +557,12 @@ fn graph(
     });
     let lit = |t: usize| chain.as_ref().is_none_or(|c| c.contains(&t));
     let in_field = |t: usize| camera.field.is_none_or(|f| tree.techs[t].field == f);
+    let searching = !camera.query.trim().is_empty();
     let faded = |t: usize| {
         if hovered.is_some() {
             !lit(t)
+        } else if searching {
+            !camera.found.contains(&t)
         } else {
             !in_field(t)
         }
@@ -590,6 +639,8 @@ fn graph(
             ui.make_persistent_id(("tech", t)),
             Sense::click(),
         );
+        let name = i18n.tr(&format!("tech-{}", tree.techs[t].key));
+        response.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, &name));
         if let Some(f) = card(
             ui,
             &painter,
@@ -605,7 +656,7 @@ fn graph(
         ) {
             picked = Some(f);
         }
-        response.on_hover_ui(|ui| tooltip(ui, i18n, tree, cat, view, t));
+        response.on_hover_ui(|ui| tooltip(ui, i18n, tree, cat, military, view, t));
     }
 
     // Level headers, pinned to the top.
@@ -967,6 +1018,7 @@ fn tooltip(
     i18n: &I18n,
     tree: &TechTree,
     cat: &Catalogue,
+    military: Option<&Military>,
     view: &ResearchView,
     t: usize,
 ) {
@@ -1030,6 +1082,59 @@ fn tooltip(
             )
             .font(sans(12.5)),
         );
+    }
+    use super::tech_unlocks as tu;
+    let line = |ui: &mut Ui, key: &str, list: Vec<String>| {
+        if !list.is_empty() {
+            ui.label(
+                egui::RichText::new(i18n.tr_args(key, &[("list", Arg::String(names(list)))]))
+                    .font(sans(12.5)),
+            );
+        }
+    };
+    if let Some(m) = military {
+        let units = tu::units(m, t)
+            .into_iter()
+            .map(|(k, g)| tu::unit_label(i18n, &k, g))
+            .collect();
+        line(ui, "research-units", units);
+    }
+    line(ui, "research-gains", tu::gains(i18n, tree, t));
+    let next = tu::leads_to(tree, t)
+        .into_iter()
+        .map(|d| i18n.tr(&format!("tech-{}", tree.techs[d].key)))
+        .collect();
+    line(ui, "research-leads-to", next);
+    // The way there: what this country still has to research first.
+    if view.stages[t] == Stage::Unknown {
+        let missing = tu::missing(tree, &view.stages, t);
+        if missing.is_empty() {
+            ui.label(
+                egui::RichText::new(i18n.tr("research-missing-none"))
+                    .font(sans(12.5))
+                    .color(color::POSITIVE),
+            );
+        } else {
+            let cost: u32 = missing.iter().map(|&x| tree.techs[x].cost).sum();
+            let list = names(
+                missing
+                    .iter()
+                    .map(|&x| i18n.tr(&format!("tech-{}", tree.techs[x].key)))
+                    .collect(),
+            );
+            ui.label(
+                egui::RichText::new(i18n.tr_args(
+                    "research-missing",
+                    &[
+                        ("n", Arg::Num(missing.len() as f64)),
+                        ("cost", Arg::String(i18n.int(i64::from(cost)))),
+                        ("list", Arg::String(list)),
+                    ],
+                ))
+                .font(sans(12.5))
+                .color(color::ACCENT),
+            );
+        }
     }
     ui.label(
         egui::RichText::new(i18n.tr_args(
