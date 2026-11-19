@@ -16,7 +16,7 @@ O caminho inteiro da crise à paz (exigir, declarar depois da recusa, atacar num
 | Decisão | Comando | Onde fica | Atalho | Estado |
 |---|---|---|---|---|
 | Escolher o país da campanha | `ChoosePlayer` | Tela de escolha de país: clique no mapa, ou "Procurar país" (lista com busca pelo nome ou pela sigla), e "Começar" | Ctrl+F abre a lista; Enter escolhe o primeiro; S começa | no jogo (#8; teclado #137) |
-| Jogar com outro país | `SwitchCountry` | Campanhas → "…" da campanha → "Jogar com outro país" | Shift+F10 abre o "…"; J escolhe | no jogo (#96, #108) |
+| Jogar com outro país | `SwitchCountry` | Campanhas → "…" da campanha → "Jogar com outro país". A troca passa o controle: o país novo responde às crises, à mesa, às chamadas e à postura das frentes; o deixado volta às regras da IA na semana seguinte (as posturas e a ordem de expedição dele caem) | Shift+F10 abre o "…"; J escolhe | no jogo (#96, #108) |
 | Pesquisa: foco | `SetResearch` | Pesquisa: clique numa tecnologia; "Limpar foco" | R abre; Delete limpa o foco | no jogo |
 | Impostos por classe, ou regra automática | `SetTaxRates` | Governo → Orçamento | G abre; B a aba | no jogo |
 | Prioridades das obras públicas | `SetPublicPriority` | Governo → Orçamento | G, B | no jogo |
