@@ -370,7 +370,7 @@ pub fn show_table(
         );
     };
     if wide {
-        ui.columns(2, |cols| {
+        bf_ui_kit::columns(ui, 2, |cols| {
             column(&mut cols[0], true);
             column(&mut cols[1], false);
         });
@@ -388,7 +388,7 @@ pub fn show_table(
         bf_ui_kit::gap(ui, space::SM);
         let accounts = |ui: &mut Ui, tag: &str, a: &Account| account(ui, i18n, tag, a);
         if wide {
-            ui.columns(2, |cols| {
+            bf_ui_kit::columns(ui, 2, |cols| {
                 accounts(&mut cols[0], me, &w.me);
                 accounts(&mut cols[1], &other, &w.other_account);
             });
@@ -1097,7 +1097,7 @@ pub fn show_received(
         }
     };
     if wide {
-        ui.columns(2, |cols| {
+        bf_ui_kit::columns(ui, 2, |cols| {
             column(&mut cols[0], true);
             column(&mut cols[1], false);
         });

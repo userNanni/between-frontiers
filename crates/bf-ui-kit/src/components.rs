@@ -807,3 +807,39 @@ pub fn lever_rule_line(ui: &mut Ui, rule: &str, note: Option<&str>) {
         );
     }
 }
+
+/// [`Ui::columns`] whose columns lay out top-down without justifying: a wrapped paragraph keeps
+/// its words at their spacing instead of stretching each line to the column's edge.
+pub fn columns<R>(ui: &mut Ui, n: usize, add: impl FnOnce(&mut [Ui]) -> R) -> R {
+    let spacing = ui.spacing().item_spacing.x;
+    let total_spacing = spacing * (n as f32 - 1.0);
+    let width = (ui.available_width() - total_spacing) / (n as f32);
+    let top_left = ui.cursor().min;
+    let mut cols: Vec<Ui> = (0..n)
+        .map(|i| {
+            let pos = top_left + egui::vec2(i as f32 * (width + spacing), 0.0);
+            let rect =
+                egui::Rect::from_min_max(pos, egui::pos2(pos.x + width, ui.max_rect().bottom()));
+            let mut c = ui.new_child(
+                egui::UiBuilder::new()
+                    .max_rect(rect)
+                    .layout(egui::Layout::top_down(egui::Align::LEFT)),
+            );
+            c.set_width(width);
+            c
+        })
+        .collect();
+    let out = add(&mut cols[..]);
+    let mut widest = width;
+    let mut tallest = 0.0f32;
+    for c in &cols {
+        widest = widest.max(c.min_rect().width());
+        tallest = tallest.max(c.min_size().y);
+    }
+    let size = egui::vec2(
+        ui.available_width().max(total_spacing + widest * n as f32),
+        tallest,
+    );
+    ui.advance_cursor_after_rect(egui::Rect::from_min_size(top_left, size));
+    out
+}

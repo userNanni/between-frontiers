@@ -1301,7 +1301,7 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
             if keys::pressed(ui, id::SAVE, &save) {
                 state.write(shared, now, true);
             }
-            ui.columns(2, |cols| {
+            bf_ui_kit::columns(ui, 2, |cols| {
                 let quick = Button::secondary(&shared.tr("game-menu-quick-save"))
                     .width(f32::INFINITY)
                     .show(&mut cols[0]);

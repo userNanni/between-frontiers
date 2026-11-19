@@ -162,7 +162,7 @@ pub fn show(
         .wrap(),
     );
     if ui.available_width() >= TWO_COLUMNS {
-        ui.columns(2, |cols| {
+        bf_ui_kit::columns(ui, 2, |cols| {
             let [left, right] = cols else { return };
             // Plain left-aligned text: the columns' own layout would justify it.
             let plain = egui::Layout::top_down(egui::Align::Min);
