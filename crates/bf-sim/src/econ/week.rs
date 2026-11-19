@@ -998,7 +998,8 @@ impl Week {
                 if self.gross {
                     let rows = (&pref_table[..], pref_rows, sparse);
                     let at = (gi, cat.goods[gi].base_price, k.map(|k| (k, groups)));
-                    swap(at, (supply, demand), rows, &is_closed, &mut value);
+                    let scratch = (&mut buf.want, &mut buf.touched, &mut buf.weights);
+                    swap(at, (supply, demand), rows, &is_closed, scratch, &mut value);
                 }
                 if buf.sellers.is_empty() || buf.buyers.is_empty() {
                     return (!value.is_empty()).then(|| GoodFlows {
@@ -1731,6 +1732,10 @@ struct GoodBuffers {
     sought: Vec<Fixed>,
     pref: Vec<Fixed>,
     clear: super::trade::ClearBuffers,
+    /// Gross trade's wants by pair (`seller × markets + buyer`), zero outside `touched`.
+    want: Vec<Fixed>,
+    touched: Vec<usize>,
+    weights: Vec<(usize, Fixed)>,
 }
 
 /// What one good's clearing leaves: each seller's exports and each buyer's imports, and the
@@ -1762,16 +1767,20 @@ fn swap(
     (supply, demand): (&[Vec<Fixed>], &[Vec<Fixed>]),
     (table, rows, sparse): PrefRows<'_>,
     closed: &dyn Fn(usize, usize) -> bool,
+    (want, touched, weights): (&mut Vec<Fixed>, &mut Vec<usize>, &mut Vec<(usize, Fixed)>),
     value: &mut Vec<(usize, Fixed)>,
 ) {
     let Some((k, groups)) = group else {
         return;
     };
     let nm = supply.len();
-    // Each buyer's purchases abroad by seller, `(seller, buyer, quantity)`; only the part of a
-    // pair that goes both ways is kept (below).
-    let mut wants: Vec<(usize, usize, Fixed)> = Vec::new();
-    let mut weights: Vec<(usize, Fixed)> = Vec::new();
+    // Each buyer's purchases abroad by seller, in a dense scratch (`seller × markets + buyer`)
+    // left at zero outside `touched`; only the part of a pair that goes both ways is kept.
+    if want.len() != nm * nm {
+        want.clear();
+        want.resize(nm * nm, Fixed::ZERO);
+    }
+    touched.clear();
     for b in 0..nm {
         let both = supply[b][gi].min(demand[b][gi]);
         let r = b * groups + k;
@@ -1799,13 +1808,14 @@ fn swap(
         // `abroad × w / foreign` in one rounding (raw units: `a × w / f`), the reciprocal of
         // `foreign` taken once by buyer and good (`trade::Divisor`).
         let d = super::trade::Divisor::new(foreign.raw() as u64);
-        for &(sm, w) in &weights {
+        for &(sm, w) in weights.iter() {
             let q = match abroad.raw().checked_mul(w.raw()) {
                 Some(n) if n >= 0 => Fixed::from_raw(d.div_round(n as u64) as i64),
                 _ => abroad * (w / foreign),
             };
             if q > Fixed::ZERO {
-                wants.push((sm, b, q));
+                want[sm * nm + b] = q;
+                touched.push(sm * nm + b);
             }
         }
     }
@@ -1815,22 +1825,21 @@ fn swap(
     // clearing of shortages already trades; kept here it made a phantom deficit for the market
     // small against its partners and a surplus for the large one (docs/trade.pt-BR.md, section
     // 14). Each pair moves no good and no money on net.
-    wants.sort_unstable_by_key(|&(s, b, _)| (s.min(b), s.max(b), s));
-    let mut i = 0;
-    while i < wants.len() {
-        let (s, b, q) = wants[i];
-        let pair = (s.min(b), s.max(b));
-        match wants.get(i + 1) {
-            Some(&(s2, b2, q2)) if (s2.min(b2), s2.max(b2)) == pair => {
-                let both = q.min(q2) * base;
-                if both > Fixed::ZERO {
-                    value.push((s * nm + b, both));
-                    value.push((s2 * nm + b2, both));
-                }
-                i += 2;
-            }
-            _ => i += 1,
+    // Each pair once, from its lower seller, in the order the wants were found (by buyer, then
+    // seller): the same order whatever the threads.
+    for &kk in touched.iter() {
+        let (s, b) = (kk / nm, kk % nm);
+        if s > b && want[b * nm + s] > Fixed::ZERO {
+            continue;
         }
+        let both = want[kk].min(want[b * nm + s]) * base;
+        if both > Fixed::ZERO {
+            value.push((kk, both));
+            value.push((b * nm + s, both));
+        }
+    }
+    for &kk in touched.iter() {
+        want[kk] = Fixed::ZERO;
     }
 }
 
@@ -1859,6 +1868,7 @@ mod swap_tests {
             (&supply, &demand),
             (&table, n, &sparse),
             &|_, _| false,
+            (&mut Vec::new(), &mut Vec::new(), &mut Vec::new()),
             &mut value,
         );
         assert!(!value.is_empty(), "some exchange");
@@ -1885,6 +1895,7 @@ mod swap_tests {
             (&supply, &demand),
             (&table, n, &sparse),
             &|s, b| (s, b) == (0, 2) || (s, b) == (2, 0),
+            (&mut Vec::new(), &mut Vec::new(), &mut Vec::new()),
             &mut closed,
         );
         assert!(closed.iter().all(|(p, _)| *p != 2 && *p != 2 * n));
