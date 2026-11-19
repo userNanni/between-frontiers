@@ -380,3 +380,15 @@ army-hold-regime = A forma de governo mudou: o corpo de oficiais responde à pol
     [one] { $years } ano
    *[other] { $years } anos
 }.
+
+war-expedition-cut = Desembarque parado: a rota { $from }–{ $to } está cortada em { $zone }, zona que o inimigo controla.
+
+war-fleet = Frota
+war-fleet-where = { $ships } navios em { $zone }, missão: controlar a zona.
+war-fleet-blockading = Mais forte na superfície que { $country }: guarda a saída do mar dele e corta o comércio que passa por ali.
+war-fleet-home = Mais fraca na superfície que { $country }: fica na própria saída do mar, como frota em potência, sem buscar batalha.
+war-fleet-home-alone = O inimigo não tem frota: a sua fica na própria saída do mar.
+war-fleet-holds = No fim da semana, a zona é sua.
+war-fleet-contested = No fim da semana, a zona não é sua: o inimigo tem mais poder de superfície ali.
+war-fleet-blockades = Bloqueia { $countries }: { $pairs } pares de comércio por mar cortados. Pares por terra e rotas que não passam pelas zonas que você controla seguem abertos.
+war-fleet-command-later = O comando da frota (a missão por zona) vem na próxima fatia; por ora a frota segue a regra acima.

@@ -15,7 +15,8 @@ use laplace_schelling::hash::{HashState, StateHasher};
 use serde::{Deserialize, Serialize};
 
 use super::calc::{
-    LandField, LandSide, Posture, Segment, TerrainMix, apportion, land_step, pursuit_km,
+    AirGroup, AirSide, LandField, LandSide, Posture, Segment, TerrainMix, air_step, apportion,
+    land_step, pursuit_km,
 };
 use super::catalogue::{Domain, Military, Mobility, Terrain};
 use super::doctrine::Generation;
@@ -58,6 +59,8 @@ pub struct FightSetup {
     pub vehicles: Vec<u16>,
     /// The colonial war (G6), when `war.ron` has its rules.
     pub colonial: Option<Arc<super::colonial::ColonialSetup>>,
+    /// The war at sea (slice C2), when the sea zones exist.
+    pub sea: Option<Arc<super::sea::SeaSetup>>,
 }
 
 /// The war on land, saved and hashed only when not empty.
@@ -210,6 +213,8 @@ pub struct FightWeek {
     pub lost_share: Vec<(u16, Fixed)>,
     /// (country, men lost this week): killed, wounded and captured.
     pub lost_men: Vec<(u16, u64)>,
+    /// Aircraft lost over the fronts this week, (country, type, generation, aircraft).
+    pub air_lost: Vec<(u16, u16, u8, Fixed)>,
     pub segments: Vec<SegmentWeek>,
     /// What the support decided: governments fallen, peace asked for, wars given up.
     pub support: super::support::SupportOut,
@@ -359,10 +364,9 @@ pub fn war_pairs(world: &GameWorld) -> Vec<(u16, u16)> {
 }
 
 /// The blockades at sea this week, (blockader, blockaded), sorted: who holds the sea lanes of
-/// whom, for the screen. The trade closes the pairs of [`blockaded_pairs`]. Empty until the war
-/// at sea (slice C2).
-pub fn blockaded(_world: &GameWorld) -> Vec<(u16, u16)> {
-    Vec::new()
+/// whom, for the screen. The trade closes the pairs of [`blockaded_pairs`] (`war::sea`).
+pub fn blockaded(world: &GameWorld) -> Vec<(u16, u16)> {
+    world.war.sea.blockades.clone()
 }
 
 /// The trade pairs a blockade cuts this week, (blockaded, partner) with the lower index first,
@@ -370,9 +374,9 @@ pub fn blockaded(_world: &GameWorld) -> Vec<(u16, u16)> {
 /// whose every sea route passes a zone the blockader controls (`SeaGraph`, with those zones
 /// closed). A pair that goes by land, or that has a free route (Germany and Sweden by the
 /// Baltic while the North Sea is British), stays open. The trade closes and reopens them
-/// (owner's decision CT7). Empty until the war at sea (slice C2).
-pub fn blockaded_pairs(_world: &GameWorld) -> Vec<(u16, u16)> {
-    Vec::new()
+/// (owner's decision CT7).
+pub fn blockaded_pairs(world: &GameWorld) -> Vec<(u16, u16)> {
+    world.war.sea.cut.clone()
 }
 
 /// A month of the command culture and the generation of every army (step 4; decision G7):
@@ -777,6 +781,73 @@ pub fn fight_week(
             (c, fill)
         })
         .collect();
+    // The air over the fronts (slice C2): each country's aircraft spread evenly over its
+    // segments; on each, `air_step` gives the superiority the land step reads.
+    let mut air_segs: BTreeMap<u16, u64> = BTreeMap::new();
+    for &(_, _, a, b) in &segments {
+        *air_segs.entry(a).or_default() += 1;
+        *air_segs.entry(b).or_default() += 1;
+    }
+    type Wing = (u16, u8, AirGroup);
+    let wings: BTreeMap<u16, (Vec<Wing>, Fixed)> = air_segs
+        .keys()
+        .filter_map(|&c| {
+            let cw = world.war.countries.get(c as usize)?;
+            let (mut trained, mut planes) = (Fixed::ZERO, 0i64);
+            let groups: Vec<Wing> = cw
+                .formations
+                .iter()
+                .filter(|f| mil.types[f.unit as usize].domain == Domain::Air)
+                .filter_map(|f| {
+                    let n = f.elements.to_int_floor().max(0) as u64;
+                    trained += f.training * n as i64;
+                    planes += n as i64;
+                    (n > 0).then(|| {
+                        (
+                            f.unit,
+                            f.generation,
+                            mil.air_group(f.unit, f.generation as usize, n),
+                        )
+                    })
+                })
+                .collect();
+            let training = if planes > 0 {
+                trained / Fixed::from_int(planes)
+            } else {
+                Fixed::ONE
+            };
+            (!groups.is_empty()).then_some((c, (groups, training)))
+        })
+        .collect();
+    let air_side = |c: u16| -> (AirSide, Vec<(u16, u8)>) {
+        let n = air_segs.get(&c).copied().unwrap_or(1).max(1);
+        let mut groups = Vec::new();
+        let mut keys = Vec::new();
+        let mut training = Fixed::ONE;
+        if let Some((ws, t)) = wings.get(&c) {
+            training = *t;
+            for (u, g, w) in ws {
+                let here = w.count / n;
+                if here > 0 {
+                    groups.push(AirGroup {
+                        count: here,
+                        ..w.clone()
+                    });
+                    keys.push((*u, *g));
+                }
+            }
+        }
+        (
+            AirSide {
+                groups,
+                training,
+                // Fuel is not followed yet: full.
+                supply: Fixed::ONE,
+            },
+            keys,
+        )
+    };
+    let mut air_lost: BTreeMap<(u16, u16, u8), u64> = BTreeMap::new();
     let side = |c: u16, men_here: u64, attack: bool, dug: Fixed, on_focus: bool| -> LandSide {
         let s = &strengths[&c];
         let part = if s.men > 0 {
@@ -836,10 +907,24 @@ pub fn fight_week(
             focus_of.get(&ka) == Some(&ia),
             focus_of.get(&kb) == Some(&ib),
         );
-        let (sa, sb) = (
+        let (mut sa, mut sb) = (
             side(a, ma, att_a, dug, fa_focus),
             side(b, mb, att_b, dug, fb_focus),
         );
+        // The air over this segment: neutral (one half each) when neither side flies.
+        if wings.contains_key(&a) || wings.contains_key(&b) {
+            let ((xa, a_keys), (xb, b_keys)) = (air_side(a), air_side(b));
+            let o = air_step(&mil.rules, [&xa, &xb]);
+            sa.air = o.superiority[0];
+            sb.air = o.superiority[1];
+            for (c, keys, lost) in [(a, &a_keys, &o.losses[0]), (b, &b_keys, &o.losses[1])] {
+                for ((u, g), n) in keys.iter().zip(lost) {
+                    if *n > 0 {
+                        *air_lost.entry((c, *u, *g)).or_default() += n;
+                    }
+                }
+            }
+        }
         let field = field_of(from, into, att_a || !att_b);
         let mut o = land_step(&mil.rules, &field, [&sa, &sb]);
         // Pursuit (step 6): the side that advanced here last week and attacks with the ratio
@@ -957,6 +1042,10 @@ pub fn fight_week(
     out.fighting.still.dedup_by_key(|x| (x.0, x.1));
     out.fighting.last_week = out.segments.clone();
     conduct_week(setup, world, &mut out, held.as_ref(), player);
+    out.air_lost = air_lost
+        .into_iter()
+        .map(|((c, u, g), n)| (c, u, g, Fixed::from_int(n as i64)))
+        .collect();
     // Losses: a share of each country's land elements.
     for (c, l) in lost {
         if l == 0 {

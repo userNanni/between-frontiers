@@ -344,8 +344,11 @@ fn war(
     if let Some(p) = &w.nuclear {
         super::nuclear::show(ui, i18n, p);
     }
+    if let Some(f) = &v.fleet {
+        fleet(ui, i18n, f);
+    }
     if let Some(e) = &w.expedition {
-        expedition(ui, i18n, v, w.id, e, out);
+        expedition(ui, i18n, world, v, w.id, e, out);
     }
     // The fronts, and the generation our army fights with.
     bf_ui_kit::gap(ui, space::XS);
@@ -883,6 +886,7 @@ const EXPEDITION_STEP: u64 = 10_000;
 fn expedition(
     ui: &mut Ui,
     i18n: &I18n,
+    world: Option<&World>,
     v: &WarView,
     war: u32,
     e: &crate::war_view::Expedition,
@@ -927,6 +931,24 @@ fn expedition(
     if e.by_land {
         return;
     }
+    // Stopped by the sea (slice C2): where the route is cut.
+    if let Some((from, to, zone)) = &e.cut {
+        ui.add(
+            egui::Label::new(
+                RichText::new(i18n.tr_args(
+                    "war-expedition-cut",
+                    &[
+                        ("from", arg(state_name(i18n, world, *from))),
+                        ("to", arg(state_name(i18n, world, *to))),
+                        ("zone", arg(i18n.tr(&format!("sea-zone-{zone}")))),
+                    ],
+                ))
+                .font(sans(size::SMALL))
+                .color(color::DANGER),
+            )
+            .wrap(),
+        );
+    }
     ui.horizontal(|ui| {
         let now = e.wanted.unwrap_or(e.goal);
         let less = Button::ghost(&i18n.tr("war-expedition-less"))
@@ -964,4 +986,55 @@ fn expedition(
         }
     });
     bf_ui_kit::small(ui, &i18n.tr("war-expedition-note"));
+}
+
+/// The player's navy (slice C2): where it is, with the fixed mission "control", why there, and
+/// what it blockades. The command of the fleet (S1) comes with the next slice.
+fn fleet(ui: &mut Ui, i18n: &I18n, f: &crate::war_view::FleetLine) {
+    bf_ui_kit::gap(ui, space::XS);
+    bf_ui_kit::heading(ui, &i18n.tr("war-fleet"));
+    let zone = i18n.tr(&format!("sea-zone-{}", f.zone));
+    bf_ui_kit::small(
+        ui,
+        &i18n.tr_args(
+            "war-fleet-where",
+            &[
+                ("ships", arg(i18n.int(f.ships as i64))),
+                ("zone", arg(zone.clone())),
+            ],
+        ),
+    );
+    let why = match (&f.against, &f.stronger) {
+        (Some(e), _) => i18n.tr_args(
+            "war-fleet-blockading",
+            &[("country", arg(country_name(i18n, e)))],
+        ),
+        (None, Some(e)) => {
+            i18n.tr_args("war-fleet-home", &[("country", arg(country_name(i18n, e)))])
+        }
+        (None, None) => i18n.tr("war-fleet-home-alone"),
+    };
+    bf_ui_kit::small(ui, &why);
+    bf_ui_kit::small(
+        ui,
+        &i18n.tr(if f.holds {
+            "war-fleet-holds"
+        } else {
+            "war-fleet-contested"
+        }),
+    );
+    if !f.blockades.is_empty() {
+        let who: Vec<String> = f.blockades.iter().map(|t| country_name(i18n, t)).collect();
+        bf_ui_kit::small(
+            ui,
+            &i18n.tr_args(
+                "war-fleet-blockades",
+                &[
+                    ("countries", arg(who.join(", "))),
+                    ("pairs", arg(i18n.int(f.cut as i64))),
+                ],
+            ),
+        );
+    }
+    bf_ui_kit::small(ui, &i18n.tr("war-fleet-command-later"));
 }

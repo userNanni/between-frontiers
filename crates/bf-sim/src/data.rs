@@ -492,6 +492,12 @@ impl GameData {
                         .tech(&w.military.rules.command.doctrine_tech)
                         .map(|t| t as u16)
                 }),
+                sea: self.seas.as_ref().map(|g| {
+                    Arc::new(crate::war::sea::SeaSetup {
+                        graph: Arc::new(g.clone()),
+                        geo: self.trade_geography(),
+                    })
+                }),
                 colonial: colonial_rules.clone().map(|rules| {
                     let b = &self.border_rules;
                     Arc::new(crate::war::colonial::ColonialSetup {
@@ -516,6 +522,7 @@ impl GameData {
                         revolt: self.independence.as_ref().map_or(0, |r| r.revolt),
                         irregular: self.war.as_ref().and_then(|w| w.military.unit("irregular")),
                         names: b.state_ids.iter().map(|(k, v)| (*v, k.clone())).collect(),
+                        seas: self.seas.clone().map(Arc::new),
                     })
                 }),
             })
