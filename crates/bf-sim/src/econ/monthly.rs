@@ -857,7 +857,8 @@ impl System<GameWorld> for Investment {
                 let idle: i64 = idle_of(prof::PEASANT) + idle_of(prof::LABORER) + informal;
                 let mut out = Vec::new();
                 for (kind, b) in cat.buildings.iter().enumerate() {
-                    if b.public || b.informal {
+                    // A state firm (U2) is built only when the state asks for it.
+                    if b.public || b.informal || b.state_firm {
                         continue;
                     }
                     let current = r.plants.iter().find(|p| p.kind as usize == kind);
@@ -1293,7 +1294,9 @@ fn abroad(
                 .buildings
                 .iter()
                 .enumerate()
-                .filter(|(kind, b)| !b.public && !b.informal && b.farm.is_none() && busy[o][*kind])
+                .filter(|(kind, b)| {
+                    !b.public && !b.informal && !b.state_firm && b.farm.is_none() && busy[o][*kind]
+                })
                 .filter_map(|(kind, _)| method_of[o][kind].map(|(l, m)| (l, kind, m)))
                 .collect();
             kinds.sort_by(|a, b| b.0.cmp(&a.0).then(a.1.cmp(&b.1)));
