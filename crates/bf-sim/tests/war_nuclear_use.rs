@@ -268,8 +268,10 @@ fn the_dead_weigh_on_the_target_only() {
         support(&used, "GER"),
         support(&plain, "GER")
     );
-    assert!(support(&used, "POL") < support(&plain, "POL"));
-    assert!(support(&used, "GER") >= support(&plain, "GER"));
+    // The target's support falls by its dead; the user's moves only with the course of the war
+    // (a few points either way), not by a term of its own.
+    assert!(support(&plain, "POL") - support(&used, "POL") > 20);
+    assert!((support(&used, "GER") - support(&plain, "GER")).abs() <= 5);
 }
 
 /// N7: the taboo grows a twentieth each January while a warhead exists and the year before had no

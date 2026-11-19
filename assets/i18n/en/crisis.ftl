@@ -79,5 +79,7 @@ call-refuse = Do not honour…
 call-honour-confirm = Honouring enters the war and cannot be undone. A restore point is saved first.
 call-refuse-confirm = Not honouring records the breach of the agreement. A restore point is saved first.
 
-crisis-coerced = The demander can coerce: it holds a secure second strike and the target does not. On the periphery the target yields to half the force; the existential it never yields.
+crisis-coerced = The demander can coerce: it holds a secure second strike and the target does not. On the periphery its nuclear advantage adds to the force; the existential the target never yields.
+crisis-nuclear-term = Nuclear advantage added to the force
+crisis-deterred = The target holds a secure second strike and the demander does not: the target's nuclear advantage is taken from the demander's force.
 crisis-declare-blocked = The declaration is blocked: the target (or who protects it by a defence clause) holds a secure second strike, and you do not. Against it the ceiling is the crisis; only backing down is left.

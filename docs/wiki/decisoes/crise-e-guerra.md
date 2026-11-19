@@ -199,6 +199,13 @@ termo a termo.
 - **A duração pesa pelo empenho (G8, decidida, fator 3):** a guerra longa desgasta conforme a
   parcela do exército de terra empenhada. Uma expedição distante de profissionais pesa pouco; a
   guerra total pesa inteira. Detalhe em [`war.pt-BR.md`, G8](../../war.pt-BR.md).
+- **A ocupação conta pelo avanço (G9, decidida, opção (b)):**
+  - A população de um estado conta como sob o inimigo na proporção do avanço inimigo sobre a
+    profundidade do estado, antes de ele trocar de dono.
+  - O limiar continua 500‰ com a capital tomada.
+  - Na medida, a queda do governo vem mais cedo: a Alemanha contra a Polônia cai na semana 9, e
+    não na 12. A Argélia não muda.
+  - A tela de ocupação mostra o valor proporcional.
 - **Estado:** decidido (2026-11-18 e 2026-11-19); no #241, atrás de `war`.
 - **Onde está o detalhe:** [`war.pt-BR.md`, "Guerra colonial"](../../war.pt-BR.md#guerra-colonial-i3-opção-a-g6) e
   [`borders.pt-BR.md`, seção 11](../../borders.pt-BR.md).
@@ -285,6 +292,13 @@ termo a termo.
   - **N8:** a precipitação tira produtividade da terra e da saúde por anos, numa fatia depois do
     uso.
   - **N9:** o guarda-chuva vem do aliado com cláusula de defesa.
+  - **N10 (decidida em seguida, opção (a), simétrica):** na exigência periférica, a vantagem
+    nuclear de um lado só (o que o segundo golpe entrega sobre o dano inaceitável do outro) soma à
+    razão de força de quem exige, e a do alvo é descontada. Na medida:
+    - em Cuba (1962), a URSS cede;
+    - em Berlim (1961), os EUA não cedem e a URSS não pode declarar;
+    - na Coreia (1950), a China não cede.
+    O teatro (quem leva forças até o lugar) fica para uma fatia futura.
 - **Como o jogo funciona por causa disso:** o dinheiro do programa compra o laboratório e adianta a
   cadeia (fissão, enriquecimento, bomba). Depois da bomba, ele mantém a encomenda de ogivas, que
   depende do material físsil do mercado. O painel de dissuasão lê o arsenal alheio pela metade até

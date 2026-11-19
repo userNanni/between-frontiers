@@ -619,8 +619,17 @@ pub fn read(
                     continue;
                 }
                 all += r.population();
+                // G9: the people under the enemy as the support reads them, in proportion to
+                // the advance before the state changes hands.
+                taken += bf_sim::war::support::under_enemy(
+                    rules,
+                    fighting,
+                    &setup.depth_km,
+                    r,
+                    ri as u32,
+                    lost,
+                );
                 if lost {
-                    taken += r.population();
                     capital_taken |= Some(r.state) == capital;
                 }
             }

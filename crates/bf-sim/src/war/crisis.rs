@@ -47,15 +47,12 @@ pub struct CrisisRules {
     /// A call left to lapse is honoured (owner's decision P2) or betrayed.
     #[serde(default = "default_true")]
     pub lapsed_call_honours: bool,
-    /// N4: against a demander that can coerce (a secure second strike the target lacks), the
-    /// ratio it takes to yield a peripheral demand is multiplied by this, per mille. The
-    /// existential never yields.
-    #[serde(default = "default_coercion")]
-    pub nuclear_coercion: u32,
-}
-
-fn default_coercion() -> u32 {
-    1000
+    /// N4 with N10 (the owner, 2026-11-19: (a), symmetric): on a peripheral demand, the
+    /// one-sided nuclear advantage of the demander (what its second strike delivers over the
+    /// target's unacceptable damage) adds to the ratio of force, and the target's own subtracts
+    /// from it. The existential never yields.
+    #[serde(default)]
+    pub nuclear_term: bool,
 }
 
 fn default_call_weeks() -> u16 {
@@ -139,9 +136,11 @@ pub struct Weighing {
     /// The ratio it takes to yield at this share; `None` when the demand is existential.
     pub needed: Option<i64>,
     pub yields: bool,
-    /// N4: the demander can coerce (a secure second strike the target lacks): the ratio needed
-    /// fell by `nuclear_coercion`.
+    /// N4 and N10: the demander can coerce (a secure second strike the target lacks).
     pub coerced: bool,
+    /// N10: the nuclear term added to the ratio, per mille: the demander's one-sided advantage
+    /// less the target's.
+    pub nuclear: i64,
 }
 
 /// The target yields when the demand is not existential and the force against it reaches the
@@ -155,6 +154,7 @@ pub fn weigh(rules: &CrisisRules, ratio: i64, share: i64, union: bool) -> Weighi
             needed: None,
             yields: false,
             coerced: false,
+            nuclear: 0,
         };
     }
     let needed = i64::from(rules.yield_ratio) * existential / (existential - share);
@@ -164,6 +164,7 @@ pub fn weigh(rules: &CrisisRules, ratio: i64, share: i64, union: bool) -> Weighi
         needed: Some(needed),
         yields: ratio >= needed,
         coerced: false,
+        nuclear: 0,
     }
 }
 
@@ -253,16 +254,26 @@ pub fn weigh_crisis(
         0
     };
     let mut w = weigh(&setup.rules, ratio, people.max(money), union);
-    // N4: the target reads the demander's arsenal (opaque if never tested); one-sided, it
-    // coerces on the periphery.
-    if let Some(needed) = w.needed
+    // N4 with N10: the target reads both arsenals (the demander's opaque if never tested). On
+    // the periphery, a one-sided advantage weighs as force: what the side's second strike
+    // delivers over the other's unacceptable damage, the demander's added, the target's taken
+    // away.
+    if setup.rules.nuclear_term
+        && let Some(needed) = w.needed
         && let Some(b) = super::balance::balance(mil, world, k.by, k.target, Some(k.target))
-        && b.deterrence.first_strike_incentive[0]
     {
-        let n = needed * i64::from(setup.rules.nuclear_coercion) / 1000;
-        w.needed = Some(n);
-        w.yields = w.ratio >= n;
-        w.coerced = true;
+        let term = |i: usize| -> i64 {
+            if b.deterrence.secure[i] && !b.deterrence.secure[1 - i] {
+                let u = b.sides[1 - i].unacceptable.max(Fixed::ONE);
+                (b.deterrence.second_strike[i].delivered.mul_ratio(1000, 1) / u).to_int_floor()
+            } else {
+                0
+            }
+        };
+        let (by, target) = (term(0), term(1));
+        w.nuclear = by - target;
+        w.coerced = by > 0;
+        w.yields = w.ratio + w.nuclear >= needed;
     }
     w
 }
@@ -480,7 +491,7 @@ mod tests {
             existential_share: 500,
             call_weeks: 2,
             lapsed_call_honours: true,
-            nuclear_coercion: 500,
+            nuclear_term: true,
         }
     }
 

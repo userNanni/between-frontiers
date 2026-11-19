@@ -216,34 +216,53 @@ fn surface(w: &GameWorld, tag: &str) -> f64 {
         .sum()
 }
 
-/// How a theatre is reached by each side.
-#[derive(Clone, Copy, Debug)]
-enum Reach {
-    /// Overseas for both: the side that holds the sea brings its land forces, the other none.
-    Overseas,
-    /// Inside the demander's land: the demander brings its land forces, the target none beyond
-    /// the garrison (not counted).
-    Enclosed,
-    /// By land for the target, by sea for the demander.
-    TargetByLand,
+/// A peripheral demand of `by` on `target` (a small payment).
+fn peripheral(w: &GameWorld, by: &str, target: &str) -> Crisis {
+    Crisis {
+        id: 0,
+        by: index(w, by),
+        target: index(w, target),
+        demand: Proposal {
+            side_a: vec![by.into()],
+            side_b: vec![target.into()],
+            clauses: vec![Clause {
+                kind: ClauseKind::Payment {
+                    amount: Fixed::from_int(1_000_000),
+                },
+                giver: Side::Junior,
+                receiver: Side::Senior,
+                until: None,
+                note: None,
+            }],
+            term_years: None,
+            notice_years: 0,
+        },
+        weeks_left: 4,
+        stage: Stage::Waiting,
+        casus_belli: false,
+    }
 }
 
-/// N10 (to the owner, measured): two ways for a peripheral demand to weigh the nuclear weapon
-/// and the theatre. (a) the one-sided nuclear advantage, delivered over the other's unacceptable,
-/// adds to the ratio of land forces (and the target's own subtracts); (b) the ratio is that of
-/// the forces each side can bring to the theatre. Prints who yields, and whether the demander
-/// may declare.
+/// N10 (the owner, 2026-11-19: (a), symmetric): on a peripheral demand, the demander's one-sided
+/// nuclear advantage adds to the ratio of land force and the target's subtracts. Cuba 1962: the
+/// Soviet Union yields; Berlin 1961: the United States does not, and the Soviet Union cannot
+/// declare; Korea 1950: China does not yield.
+///
+/// The inputs: the land armies and navies are the game's of 1925, not those of the dates; Berlin
+/// 1961 takes the 1962 arsenals (an estimate: 1961 has no source here); the bombers of 1950 are
+/// an estimate. The theatre variant (b), measured and left for a later slice, is printed: the
+/// side that holds the sea of an overseas theatre brings its land forces, the other none.
 #[test]
 fn n10_coercion_and_theatre() {
     let d = data();
     let setup = d.rules().crisis.clone().unwrap();
-    let yield_ratio = i64::from(setup.rules.yield_ratio);
     struct Case {
         name: &'static str,
         by: &'static str,
         target: &'static str,
         forces: [(&'static str, Forces); 2],
-        reach: Reach,
+        yields: bool,
+        may_declare: bool,
     }
     let cases = [
         Case {
@@ -251,26 +270,28 @@ fn n10_coercion_and_theatre() {
             by: "USA",
             target: "SOV",
             forces: [("USA", (3500, 182, 7, 1479)), ("SOV", (300, 42, 0, 160))],
-            reach: Reach::Overseas,
+            yields: true,
+            may_declare: true,
         },
         Case {
-            // The 1962 forces as a stand-in for 1961 (an estimate: 1961 has no source here).
-            name: "Berlin 1961 (1962 forces, estimate)",
+            name: "Berlin 1961 (1962 arsenals, estimate)",
             by: "SOV",
             target: "USA",
             forces: [("USA", (3500, 182, 7, 1479)), ("SOV", (300, 42, 0, 160))],
-            reach: Reach::Enclosed,
+            yields: false,
+            may_declare: false,
         },
         Case {
             name: "Korea 1950",
             by: "USA",
             target: "CHN",
             forces: [("USA", (369, 0, 0, 185)), ("SOV", (5, 0, 0, 3))],
-            reach: Reach::TargetByLand,
+            yields: false,
+            may_declare: true,
         },
     ];
     eprintln!(
-        "N10 case | land ratio | nuclear term by / target | (a) ratio, yields | (b) theatre ratio, yields | demander may declare"
+        "N10 case | land ratio | nuclear term | yields | demander may declare | sea by / target"
     );
     for c in &cases {
         let mut w = d.new_world();
@@ -278,62 +299,25 @@ fn n10_coercion_and_theatre() {
             arm(&mut w, t, f);
         }
         test_both(&mut w, &["USA", "SOV"]);
-        let (by, target) = (index(&w, c.by), index(&w, c.target));
-        let land = |m: u16| bf_sim::war::crisis::land_men(mil(), &w.war, m as usize);
-        let ratio = land(by) * 1000 / land(target).max(1);
-        let b = balance(mil(), &w, by, target, Some(target));
-        let term = |i: usize| -> i64 {
-            b.as_ref().map_or(0, |b| {
-                if b.deterrence.secure[i] && !b.deterrence.secure[1 - i] {
-                    let u = b.sides[1 - i].unacceptable.to_f64_lossy().max(1.0);
-                    (b.deterrence.second_strike[i].delivered.to_f64_lossy() / u * 1000.0) as i64
-                } else {
-                    0
-                }
-            })
-        };
-        let (nb, nt) = (term(0), term(1));
-        let a = ratio + nb - nt;
-        let (sb, st) = (surface(&w, c.by), surface(&w, c.target));
-        let theatre = match c.reach {
-            Reach::Overseas => {
-                if sb > st {
-                    i64::MAX
-                } else {
-                    0
-                }
-            }
-            Reach::Enclosed => i64::MAX,
-            Reach::TargetByLand => {
-                if sb > st {
-                    ratio
-                } else {
-                    0
-                }
-            }
-        };
+        let k = peripheral(&w, c.by, c.target);
+        let wg = weigh_crisis(&setup, mil(), &w, &k);
+        let b = balance(mil(), &w, k.by, k.target, Some(k.by));
         let declare = b
             .as_ref()
             .is_none_or(|b| b.limits.ceiling[0] >= bf_sim::war::Rung::War);
         eprintln!(
-            "N10 {} ({} on {}) | {} | {} / {} | {}, {} | {}, {} | {} (sea {:.0} / {:.0})",
+            "N10 {} ({} on {}) | {} | {} | {} | {} | {:.0} / {:.0}",
             c.name,
             c.by,
             c.target,
-            ratio,
-            nb,
-            nt,
-            a,
-            a >= yield_ratio,
-            if theatre == i64::MAX {
-                "all / none".to_owned()
-            } else {
-                theatre.to_string()
-            },
-            theatre >= yield_ratio,
+            wg.ratio,
+            wg.nuclear,
+            wg.yields,
             declare,
-            sb,
-            st
+            surface(&w, c.by),
+            surface(&w, c.target)
         );
+        assert_eq!(wg.yields, c.yields, "{}: {wg:?}", c.name);
+        assert_eq!(declare, c.may_declare, "{}", c.name);
     }
 }

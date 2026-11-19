@@ -597,10 +597,15 @@ Agora pede 3.600 nas duas gerações, contadas pelo minério que um núcleo real
   (**estimativa**, não medida).
 - **Rota do plutônio:** falta. Não há reator de produção nem reprocessamento. Toda ogiva do jogo
   sai do enriquecimento.
-  - Por núcleo, o plutônio quase não poupa minério. O Fat Man levou cerca de 6 kg de Pu, e um
-    reator de baixa queima dá cerca de 0,2 a 0,25 kg de Pu por t de urânio natural: umas 25 a 30
-    t de urânio por núcleo (**estimativa sem fonte conferida**).
-  - É uma rota alternativa, de quem não tem difusão, e não uma economia de minério.
+  - **O plutônio poupa minério**, de duas a três vezes. O texto anterior dizia o contrário, a
+    partir de uma estimativa minha sem fonte (0,2 a 0,25 kg de Pu por t), e estava errado.
+  - O núcleo do Fat Man era de 6,15 kg de liga de Pu-Ga (Sublette, *Nuclear Weapons FAQ*, §8.1.1.1,
+    a partir de LA-3067, p. 45).
+  - Um reator de baixa queima dá cerca de 0,9 kg de Pu por t de urânio natural: 9,2 kg de 10,2 t
+    de combustível no exemplo do CIRUS (IPFM, *Global Fissile Material Report 2006*, p. 27).
+  - Isso dá cerca de 6,8 t de urânio natural por núcleo (**conta minha**), contra 12 a 24 t do
+    Little Boy.
+  - É a rota de quem não tem difusão, e também a mais barata em minério.
 - **Teste:** `tests/warhead_cost.rs` lê a razão da usina e confere que cada geração custa de 14,0 a
   28,5 t de U3O8. Hoje dá 21,1 t.
 
@@ -651,7 +656,8 @@ Reino Unido a 0,4% do PIB desde 1940-01-01; o dinheiro está em dólares de 2011
 - A diferença é o **núcleo menor das gerações seguintes** (reforço, núcleo composto).
   - O arsenal real usou da ordem de 7 a 10 t de U3O8 por ogiva, contra 21 do Little Boy
     (**estimativa sem fonte conferida**).
-  - O plutônio é rota alternativa, não a explicação.
+  - O plutônio também conta: poupa de duas a três vezes o minério por núcleo (ver acima, com a
+    fonte).
   - Fica anotada para a fatia do físsil: o físsil por geração (U3), a rota do plutônio (U2) e as
     minas que o programa encomenda (U1).
 
@@ -665,7 +671,8 @@ Atrás de `war`, com estado em `NuclearState` (save 38).
   do alvo (a de um arsenal não testado conta a metade), a razão de força para ceder um pedido
   periférico cai para `nuclear_coercion` (500‰, em `crisis.ron`). O existencial nunca cede.
   - A tela da crise diz quando há coerção.
-  - Teste `coercion_lowers_the_ratio_on_the_periphery_only`: a razão cai de 3,0× para 1,5×.
+  - Com a N10 (abaixo), a metade fixa deu lugar ao termo nuclear somado à razão. O teste é
+    `coercion_weighs_on_the_periphery_only`.
 - **O teto bloqueia a declaração:** toda semana, o sistema de forças marca as crises em que o
   teto de quem exige contra o alvo, segundo a própria leitura, fica abaixo de `War`
   (`NuclearState::blocked`).
@@ -691,8 +698,9 @@ Está em `war::nuclear_use`, atrás de `war`, no save 39. Os parâmetros ficam e
   - mata `killed_per_warhead` (185 mil, o mesmo número do dano inaceitável) nas regiões
     metropolitanas mais populosas, uma ogiva por região, em ciclo;
   - derruba níveis de edifício no dobro da parcela da população morta (`wreck_factor`).
-  - Fonte de escala (RERF): Hiroshima, 70 a 140 mil mortos até o fim de 1945, de cerca de 350
-    mil; Nagasaki, 40 a 70 mil.
+  - Fonte de escala (RERF, FAQ, Q1, mortos agudos nos dois a quatro primeiros meses):
+    Hiroshima, 90 a 166 mil de 340 a 350 mil; Nagasaki, 60 a 80 mil de 250 a 270 mil. O texto
+    anterior dava 70 a 140 mil e 40 a 70 mil, números que a RERF não confirma.
 - **Contraforça:** mata um décimo disso (`counterforce_civilians`) e põe 20 mil homens das forças
   de terra do alvo fora da guerra por ogiva (`counterforce_men`), em proporção em cada formação.
 - **Apoio (N6):**
@@ -794,6 +802,34 @@ Está em `war::nuclear_use`, atrás de `war`, no save 39. Os parâmetros ficam e
   - A ponderação de três custos que explica o não uso (a reputação com os aliados, o tabu e a
     reserva contra a URSS; Dingman, Tannenwald) não existe na IA. Fica para a IA da fase 6.
   - Um jogador americano pode usar a arma. A tela mostra a mancha, a resposta esperada e o tabu.
+
+### Regras decididas depois das medidas: G9 e N10
+- **G9 (o dono, 2026-11-19: opção (b)):** com `occupation_by_advance`, a população de um estado
+  conta como sob o inimigo na proporção do avanço inimigo sobre a profundidade do estado
+  (`war::support::under_enemy`). O estado só troca de dono no fim do avanço.
+  - O limiar continua: 500‰ com a capital tomada, 900‰ sem ela.
+  - A tela de ocupação (#266) lê a mesma conta.
+  - Medida (`tests/war_g9.rs`, Alemanha jogada contra a Polônia, sem tratados): a população sob o
+    inimigo aparece desde a primeira semana. O governo cai na semana 9, contra a 12 de antes. A
+    Hungria contra a Tchecoslováquia cai em uma a duas semanas nas duas regras.
+  - A Argélia (G6) não muda: 5,9 anos, porque a metrópole não é ocupada.
+  - Alemanha 1914–18 e Vietnã não leem a ocupação.
+- **N10 (o dono, 2026-11-19: opção (a), simétrica):** na exigência periférica, `weigh_crisis` soma
+  à razão de força de terra a vantagem nuclear de um lado só de quem exige. Essa vantagem é o que
+  o seu segundo golpe entrega sobre o dano inaceitável do alvo, na leitura do alvo. A vantagem do
+  alvo, contada do mesmo jeito, é descontada (`Weighing::nuclear`).
+  - O existencial continua sem ceder.
+  - A tela da crise mostra o termo e quem coage ou dissuade.
+  - Testes (`n10_coercion_and_theatre`):
+    - Cuba 1962: a URSS cede, com termo de +8,3×.
+    - Berlim 1961: os EUA não cedem, com termo de −8,3×, e a URSS não pode declarar.
+    - Coreia 1950: a China não cede.
+  - **Ressalva das entradas:**
+    - os exércitos e as marinhas são os de 1925 do jogo;
+    - Berlim usa os arsenais de 1962 (estimativa, porque 1961 não tem fonte aqui);
+    - os bombardeiros de 1950 são estimativa.
+  - **Fica para uma fatia futura:** a variante (b), a razão no teatro, pelo que cada lado leva até
+    lá com o controle do mar e do ar da zona. Ela pede o controle de zona lido em tempo de crise.
 
 ### Decisões do dono (2026-11-19, todas na recomendação levada pelo orquestrador)
 - **N1:** o programa é decisão explícita, com orçamento e anos (feito no passo 2).
