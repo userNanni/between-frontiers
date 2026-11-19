@@ -377,3 +377,7 @@ find-country-count = { $n ->
     [one] 1 país
    *[other] { $n } países
 }
+cmd-window-scroll-down = Rolar a janela para baixo
+    .short = Rolar ↓
+cmd-window-scroll-up = Rolar a janela para cima
+    .short = Rolar ↑

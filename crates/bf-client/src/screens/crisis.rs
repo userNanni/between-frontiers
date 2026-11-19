@@ -331,9 +331,7 @@ pub fn show_demand(
 ) -> Option<(String, Proposal)> {
     ui.spacing_mut().item_spacing.y = space::SM;
     bf_ui_kit::title(ui, &i18n.tr("crisis-demand-title"));
-    let Some(world) = world else {
-        return None;
-    };
+    let world = world?;
     // The target: found by name, or selected on the map; the search works from the keyboard.
     if let Some(tag) =
         super::country_find::show(ui, i18n, world, me, &mut d.find, "crisis.demand", 'C')

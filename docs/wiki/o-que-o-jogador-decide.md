@@ -5,7 +5,9 @@ atalho. O teste `crates/bf-client/tests/player_commands.rs` garante que nenhum c
 novo chega sem tela e sem atalho: comando novo em `GameCommand` falha nele até ter os dois, ou até
 entrar na lista de exceções com a razão. Quando esta tabela muda, o teste muda junto.
 
-Atalhos do perfil padrão; todos se mudam no editor de atalhos (Configurações → Editar atalhos).
+Atalhos do perfil padrão; todos se mudam no editor de atalhos (Configurações → Editar atalhos). Numa janela mais alta que a tela, Shift+PageDown e Shift+PageUp rolam a página, e as dicas de tecla do que entrou à vista aparecem.
+
+O caminho inteiro da crise à paz (exigir, declarar depois da recusa, atacar numa frente, propor a paz pela mesa) se faz só pelo teclado; o teste de tela `crisis_to_peace_by_keyboard` o percorre.
 
 ## No jogo
 
@@ -24,13 +26,13 @@ Atalhos do perfil padrão; todos se mudam no editor de atalhos (Configurações 
 | Libertar território | `Liberate` | Agendas → Decisões → "Libertar território", com confirmação | J abre as Agendas | no jogo (#96) |
 | Mobilizar e desmobilizar a reserva | `Mobilize` | Agendas → "Forças armadas em paz" → "Mobilizar a reserva…" (ou desmobilizar), com confirmação e ponto de restauração; a aba Forças do governo (T) mostra os reservistas que se apresentam | J abre as Agendas | em revisão (#115) |
 | Responder à exigência de independência de uma colônia: governo próprio, domínio, independência ou recusar | `AnswerDemand` | Agendas → Decisões → "{colônia} exige uma resposta": mobilização contra as marcas, o que segura o movimento, a conta de manter a colônia, o preço de cada resposta, o prazo e confirmação; ponto de restauração antes (motivo "exigência") | J abre as Agendas; a dica de tecla escolhe a exigência, 1 a 4 a resposta, R revisa, Y confirma | no jogo (#136 e a tela empilhada nele) |
+| Exigir de outro país: estados, o país inteiro, pagamento, tributo | `Demand` | Agendas → Decisões → "Exigir de {país}…": o país selecionado no mapa ou escolhido pelo nome ("Escolher país pelo nome…", C, digitar e Enter); a conta do alvo, o prazo, revisar e enviar; ponto de restauração antes (motivo "guerra"). Só com a regra `crisis` | J; E abre; C procura o país; U o país inteiro; S + número os estados; M muda pagamento e tributo; R revisa; Y envia | no jogo, regra desligada |
+| Aceitar ou recusar uma exigência feita ao país | `AnswerCrisis` | Agendas → Crises → "{país} exige…": o que pede, o prazo, a resposta provável; em dois passos, com ponto de restauração | J; K + número abre; A aceita, R recusa; Y confirma | no jogo, regra desligada |
+| Depois da recusa: declarar guerra ou recuar | `Declare` | Agendas → Crises → a crise recusada: declarar ou recuar, em dois passos, com ponto de restauração; quem entraria pelos acordos | J; K + número; A declara, R recua; Y confirma | no jogo, regra desligada |
+| Honrar ou não a chamada de um aliado à guerra | `AnswerCall` | Agendas → Crises → "{aliado} chama…": as duas saídas e o preço de cada uma; em dois passos, com ponto de restauração | J; H + número; H honra, R recusa; Y confirma | no jogo, regra desligada |
 
 Exceção: `Borders` (operação de fronteira) não é do jogador. Vem de tratados, da paz, de testes e
 de ferramentas; o jogador liberta a própria terra com `Liberate`.
-
-Exceção provisória: `Demand`, `AnswerCrisis` e `Declare` (crise e declaração, fatia B, rascunho)
-ainda não têm tela. A entrada da crise no diário e as decisões de exigir e declarar em Agendas vêm
-com as telas da fatia, e a exceção sai com elas.
 
 ## Em PR
 
@@ -57,8 +59,6 @@ com as telas da fatia, e a exceção sai com elas.
 
 | Decisão | Onde deve ficar | Depende de |
 |---|---|---|
-| Honrar ou não um pacto de defesa | Agendas, decisão com ponto de restauração | registro de quebras |
-| Exigir e declarar guerra | Agendas, com ponto de restauração (motivo "guerra") | fase 5 |
 | Entrar e sair de um bloco | Agendas | blocos como rótulo sobre tratados (#132) e proposta no tick |
 | Vetar capital estrangeiro e impor embargo | Governo | fluxo de capital (#117) e comércio por par (#113) |
 | Abrir missão diplomática | Agendas | serviço exterior (#112) |
