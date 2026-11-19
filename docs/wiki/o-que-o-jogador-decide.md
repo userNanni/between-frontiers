@@ -63,6 +63,21 @@ de ferramentas; o jogador liberta a própria terra com `Liberate`.
 | Câmbio (D7) | Governo → Moeda e dívida | padrão-ouro (fase 4) |
 | Abrir missão diplomática | Agendas | serviço exterior (#112) |
 
+### Comércio: o que o dono decidiu (2026-11-18)
+
+Desenho em `docs/trade.pt-BR.md`, seção 13. Tudo entra atrás de chave. A ordem é CT3, CT4 e CT5
+(#220), depois a tabela por bem com a tela, depois embargo e guerra.
+
+| | Decisão | Simulação | Tela |
+|---|---|---|---|
+| CT1 | A tarifa é por bem, uns 60, não por grupo. Na "Regra histórica" vale a taxa da lei, igual para todos os bens; em "Fixado pelo governo" o jogador dá a taxa de cada bem. | thread do comércio | Governo → Comércio, os bens agrupados pelos 13 grupos |
+| CT2 | O jogador dá sobretaxa ou preferência a um parceiro dentro do que os acordos em vigor permitem. Passar de um teto é quebra de cláusula, com o preço de reputação. | thread do comércio, com o dos tratados | Governo → Comércio |
+| CT3 | A receita aduaneira vai ao Tesouro, numa linha nova do orçamento. | #220 | Orçamento |
+| CT4 | A tarifa encarece o importado e reduz a importação, com a elasticidade da literatura. | #220 | — |
+| CT5 | O ponto de partida é a taxa de 1925 de cada país (`diplomacy.ron`); a lei move a taxa a partir dela. | #220 | — |
+| CT6 | Embargo unilateral por comando, nos dois sentidos, que reabre devagar. Decisão rara, em Agendas, com ponto de restauração. | thread do comércio (`Geography::closures`) | Agendas |
+| CT7 | A guerra fecha o comércio entre os beligerantes. | thread da guerra (`war_pairs`) e do comércio (o fechamento do par) | — |
+
 ## O que o país decide por regra
 
 Estas decisões o país toma sozinho, por uma regra, sem alavanca do jogador. Se alguma virar decisão
