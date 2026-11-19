@@ -277,3 +277,48 @@ fn the_core_plants_profit_is_the_treasurys() {
     eprintln!("weeks with a core plant's profit checked: {checked}");
     assert!(checked > 0, "a core plant ran");
 }
+
+/// With `war` off, no country builds a weapon core plant: a state firm is built only when the
+/// state asks for it (no programme without the war). Also who reaches the production reactor, and
+/// when. A measure for the PR: run in the slot.
+#[test]
+#[ignore = "long: a century with war off"]
+fn no_core_plant_without_a_programme() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let d = GameData::load(&root).unwrap_or_else(|e| panic!("{e}"));
+    assert!(!d.switches.war);
+    let mut s = Session::new(
+        d.new_world(),
+        1925,
+        Date::new(1925, 1, 1),
+        2,
+        Some(d.rules()),
+    );
+    let plant = d.catalogue.building("weapon_core_plant").unwrap();
+    let reactor = tech(&d, "production_reactor");
+    for year in [1950, 1975, 2025] {
+        s.sim.run_until(Date::new(year, 1, 1));
+        let w = s.world();
+        let levels: i64 = w
+            .econ
+            .regions
+            .iter()
+            .flat_map(|r| r.plants.iter())
+            .filter(|p| usize::from(p.kind) == plant)
+            .map(|p| p.levels)
+            .sum();
+        let reached: Vec<String> = w
+            .countries
+            .iter()
+            .enumerate()
+            .filter(|(i, _)| w.research.stage[*i][reactor] >= Stage::Industrial)
+            .map(|(_, (_, c))| c.tag.clone())
+            .collect();
+        eprintln!(
+            "{year}: weapon core plant levels in the world {levels}; production reactor industrial in {} countries: {:?}",
+            reached.len(),
+            reached.iter().take(12).collect::<Vec<_>>()
+        );
+        assert_eq!(levels, 0, "no core plant without a programme");
+    }
+}
