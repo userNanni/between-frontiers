@@ -53,24 +53,51 @@ pub fn import_factor(t: Fixed, elasticity: Fixed) -> Fixed {
     Fixed::ONE / (Fixed::ONE + elasticity * t)
 }
 
-/// The duty each market collects in a week: its tariff on the value of what it imported, at
-/// the price its buyers paid. It leaves the importers' money (the market's pool, where the sale
-/// of the imports went) for the treasury: the world's money is the same.
-pub fn duties(cat: &Catalogue, markets: &[Market], rates: &[Fixed]) -> Vec<Fixed> {
+/// The duty each market collects in a week: its tariff on the value of what it imported. With
+/// trade by pair, `imports` holds each buyer's imports of the week from every partner at base
+/// prices (`Week::trade_by_pair`, the world price at the border), gross trade's exchange of
+/// varieties included; without it, the net imports at the price its buyers paid. It leaves the
+/// importers' money (the market's pool, where the sale of the imports went) for the treasury:
+/// the world's money is the same.
+pub fn duties(
+    cat: &Catalogue,
+    markets: &[Market],
+    rates: &[Fixed],
+    imports: Option<&[Fixed]>,
+) -> Vec<Fixed> {
     markets
         .iter()
         .zip(rates)
-        .map(|(m, &t)| {
+        .enumerate()
+        .map(|(mi, (m, &t))| {
             if t <= Fixed::ZERO {
                 return Fixed::ZERO;
             }
-            let value: Fixed = (0..cat.goods.len())
-                .filter(|&g| m.net_import[g] > Fixed::ZERO)
-                .map(|g| m.net_import[g] * m.sell_ratio[g] * m.price[g])
-                .sum();
+            let value: Fixed = match imports {
+                Some(by_buyer) => by_buyer.get(mi).copied().unwrap_or(Fixed::ZERO),
+                None => (0..cat.goods.len())
+                    .filter(|&g| m.net_import[g] > Fixed::ZERO)
+                    .map(|g| m.net_import[g] * m.sell_ratio[g] * m.price[g])
+                    .sum(),
+            };
             value * t
         })
         .collect()
+}
+
+/// Each buyer's imports from every other market, from the pair values `seller × n + buyer`.
+pub fn imports_by_buyer(pairs: &[Fixed], n: usize) -> Vec<Fixed> {
+    let mut out = vec![Fixed::ZERO; n];
+    if n == 0 || pairs.len() != n * n {
+        return out;
+    }
+    for (k, v) in pairs.iter().enumerate() {
+        let (s, b) = (k / n, k % n);
+        if s != b && *v > Fixed::ZERO {
+            out[b] += *v;
+        }
+    }
+    out
 }
 
 /// Market `m` pays `duty`: from its pool, where the importers' money went, to its treasury,

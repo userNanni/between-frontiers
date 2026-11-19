@@ -1391,7 +1391,12 @@ impl System<GameWorld> for Week {
                     .enumerate()
                     .map(|(mi, m)| d.rate(mi, m))
                     .collect();
-                super::customs::duties(cat, &markets, &rates)
+                // With trade by pair, the duty is on every partner's goods, gross trade's
+                // varieties included.
+                let imports = self
+                    .by_pair
+                    .then(|| super::customs::imports_by_buyer(&changes.trade_value, markets.len()));
+                super::customs::duties(cat, &markets, &rates, imports.as_deref())
             });
         for (mi, m) in markets.iter_mut().enumerate() {
             m.pool += transfers[mi];

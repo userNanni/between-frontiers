@@ -225,10 +225,9 @@ pub fn main() -> Result<(), String> {
         return Ok(());
     }
     // Customs revenue by country (`BF_DIAG_DUTIES=TAG,TAG[:years]`), with `customs_duties` on:
-    // by year, the tariff in force, the duties over the imports at the buyers' price (against
-    // the 1925 rate of `diplomacy.ron`) and over GDP, and the imports over GDP.
+    // by year, the tariff in force (against the 1925 rate of `diplomacy.ron`), the duties over
+    // GDP and the imports from every partner over GDP (gross trade included, at base prices).
     if let Ok(spec) = std::env::var("BF_DIAG_DUTIES") {
-        use laplace_schelling::Fixed;
         let (tags, years) = spec.split_once(':').unwrap_or((spec.as_str(), "11"));
         let years: i32 = years.parse().unwrap_or(11);
         let duties = data.duties();
@@ -243,50 +242,39 @@ pub fn main() -> Result<(), String> {
                     .map(|i| (t.to_string(), i))
             })
             .collect();
-        let n = data.countries.countries.len();
         let end = Date::new(1925 + years, 1, 1);
         let mut d = Date::new(1925, 1, 5);
-        let (mut year, mut weeks) = (1925, 0u32);
-        let (mut paid, mut bought) = (vec![0f64; n], vec![0f64; n]);
+        let mut year = 1925;
         while d < end {
             d = Date::from_days(d.to_days() + 7);
             s.sim.run_until(d);
+            if d.year == year {
+                continue;
+            }
+            // The year just ended: each country's imports from every partner (gross trade
+            // included, at base prices) and the tariff in force at its end.
             let e = &s.world().econ;
-            let rates: Vec<Fixed> = e
-                .markets
-                .iter()
-                .enumerate()
-                .map(|(mi, m)| duties.rate(mi, m))
-                .collect();
-            let p = bf_sim::econ::customs::duties(&cat, &e.markets, &rates);
-            let b = bf_sim::econ::customs::duties(&cat, &e.markets, &vec![Fixed::ONE; rates.len()]);
-            for i in 0..n.min(p.len()) {
-                paid[i] += p[i].to_f64_lossy();
-                bought[i] += b[i].to_f64_lossy();
+            let n = e.markets.len();
+            let imports = bf_sim::econ::customs::imports_by_buyer(&e.trade.last_year, n);
+            for (tag, i) in &idx {
+                let m = &e.markets[*i];
+                let rate = duties.rate(*i, m);
+                let gdp = m.gdp_last_year.to_f64_lossy().max(1.0);
+                let bought = imports.get(*i).map_or(0.0, |v| v.to_f64_lossy());
+                let r1925 = data
+                    .diplomacy
+                    .as_ref()
+                    .and_then(|dp| dp.tariff(tag))
+                    .map_or(f32::NAN, |t| t.rate);
+                println!(
+                    "{year} {tag}: tariff {:.1} % (1925 ref {:.1} %), duties {:.2} % of GDP; imports {:.2} % of GDP",
+                    rate.to_f64_lossy() * 100.0,
+                    f64::from(r1925) * 100.0,
+                    rate.to_f64_lossy() * bought / gdp * 100.0,
+                    bought / gdp * 100.0
+                );
             }
-            weeks += 1;
-            if d.year != year {
-                let k = 52.0 / f64::from(weeks);
-                for (tag, i) in &idx {
-                    let m = &e.markets[*i];
-                    let gdp = m.gdp_last_year.to_f64_lossy().max(1.0);
-                    let r1925 = data
-                        .diplomacy
-                        .as_ref()
-                        .and_then(|dp| dp.tariff(tag))
-                        .map_or(f32::NAN, |t| t.rate);
-                    println!(
-                        "{year} {tag}: tariff {:.1} % (1925 ref {:.1} %), duties {:.1} % of imports, {:.2} % of GDP; imports {:.2} % of GDP",
-                        rates[*i].to_f64_lossy() * 100.0,
-                        f64::from(r1925) * 100.0,
-                        paid[*i] / bought[*i].max(1.0) * 100.0,
-                        paid[*i] * k / gdp * 100.0,
-                        bought[*i] * k / gdp * 100.0
-                    );
-                }
-                (paid, bought) = (vec![0f64; n], vec![0f64; n]);
-                (year, weeks) = (d.year, 0);
-            }
+            year = d.year;
         }
         return Ok(());
     }
@@ -367,10 +355,12 @@ pub fn main() -> Result<(), String> {
         let (mut year, mut goods, mut made, mut volume, mut margin, mut weeks) =
             (1925, 0f64, 0f64, 0f64, 0f64, 0u32);
         // With customs duties on: what the treasuries collected over the value of the imports
-        // at the buyers' price, the world's average tariff as Clemens and Williamson measure it.
+        // from every partner, the world's average tariff as Clemens and Williamson measure it.
         let customs =
             (data.switches.customs_duties && data.switches.trade_by_pair).then(|| data.duties());
         let (mut collected, mut imported) = (0f64, 0f64);
+        // The pairs' running totals of the year (`trade.year`), for the week's imports.
+        let mut before: Vec<Fixed> = Vec::new();
         while d < end {
             d = Date::from_days(d.to_days() + 7);
             s.sim.run_until(d);
@@ -397,15 +387,27 @@ pub fn main() -> Result<(), String> {
                     .enumerate()
                     .map(|(mi, m)| dt.rate(mi, m))
                     .collect();
-                collected += bf_sim::econ::customs::duties(&cat, &e.markets, &rates)
-                    .iter()
-                    .map(|t| t.to_f64_lossy())
-                    .sum::<f64>();
-                imported +=
-                    bf_sim::econ::customs::duties(&cat, &e.markets, &vec![Fixed::ONE; rates.len()])
+                // The week's pair values: the year's totals less last week's (from zero when
+                // the year turned over).
+                let now = &e.trade.year;
+                let turned =
+                    before.len() != now.len() || now.iter().zip(&before).any(|(a, b)| a < b);
+                let week: Vec<Fixed> = if turned {
+                    now.clone()
+                } else {
+                    now.iter().zip(&before).map(|(a, b)| *a - *b).collect()
+                };
+                before = now.clone();
+                let n = e.markets.len();
+                let imports = bf_sim::econ::customs::imports_by_buyer(&week, n);
+                let owed = |r: &[Fixed]| -> f64 {
+                    bf_sim::econ::customs::duties(&cat, &e.markets, r, Some(&imports))
                         .iter()
                         .map(|t| t.to_f64_lossy())
-                        .sum::<f64>();
+                        .sum()
+                };
+                collected += owed(&rates);
+                imported += owed(&vec![Fixed::ONE; rates.len()]);
             }
             made += bf_sim::econ::week::margin_transfers(&cat, &e.markets)
                 .iter()

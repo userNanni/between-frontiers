@@ -67,7 +67,7 @@ fn the_duties_leave_the_importers_for_the_treasuries() {
         .enumerate()
         .map(|(mi, m)| duties.rate(mi, m))
         .collect();
-    let owed = customs::duties(&d.catalogue, markets, &rates);
+    let owed = customs::duties(&d.catalogue, markets, &rates, None);
     let total: Fixed = owed.iter().copied().sum();
     assert!(total > Fixed::ZERO, "no duty collected");
     let mut after = markets.clone();
