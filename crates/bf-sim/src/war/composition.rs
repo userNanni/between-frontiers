@@ -332,7 +332,7 @@ pub fn convert_week(
             .min(avail);
         if unit_cost.is_positive() && money.is_positive() {
             n = n.min(money * weeks / unit_cost);
-        } else if unit_cost.is_positive() {
+        } else if unit_cost.is_positive() || !money.is_positive() {
             n = Fixed::ZERO;
         }
         if !n.is_positive() {

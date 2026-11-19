@@ -591,3 +591,40 @@ fn conversions_end_and_do_not_linger() {
         assert!(x.stalled < 52, "{x:?}");
     }
 }
+
+/// Without room in the military budget the infantry does not motorize: the conversion waits,
+/// stalled, and nothing moves on wheels (the country poor in its military budget, made so by
+/// the budget's lever D3 at zero for arms).
+#[test]
+fn without_room_the_infantry_does_not_motorize() {
+    let d = data();
+    let mil = &d.war.as_ref().unwrap().military;
+    let cat = &d.catalogue;
+    let vehicles = vec![
+        cat.good("automobiles").unwrap(),
+        cat.good("armored_vehicles").unwrap(),
+    ];
+    let mut s = Session::new(
+        d.new_world(),
+        1925,
+        Date::new(1925, 1, 1),
+        2,
+        Some(d.rules()),
+    );
+    s.submit(GameCommand::SetStatePurchases {
+        tag: "GBR".into(),
+        goods: None,
+        military: Some(0),
+    });
+    s.sim.run_until(Date::new(1926, 6, 1));
+    let w = s.world();
+    let gbr = index(w, "GBR");
+    let (wheels, tracks, _) =
+        bf_sim::war::composition::equipped(mil, &vehicles, &w.war.countries[gbr as usize]);
+    assert_eq!(wheels + tracks, Fixed::ZERO);
+    assert!(
+        w.war.composition.of(gbr).count() > 0,
+        "the rule asked for conversions"
+    );
+    assert!(w.war.composition.of(gbr).all(|x| x.stalled > 0));
+}

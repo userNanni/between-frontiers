@@ -735,8 +735,9 @@ impl Forces {
         if spare.is_positive() && !c.queue.is_empty() {
             spare = self.place_orders(world, ci, &mut c, spare, &m.price);
         }
-        // The conversions of the composition, from what the orders left.
-        if spare.is_positive() && !conversions.is_empty() {
+        // The conversions of the composition, from what the orders left; without it they wait,
+        // and count the week as stalled.
+        if !conversions.is_empty() {
             spare = super::composition::convert_week(
                 mil,
                 &mut c,
