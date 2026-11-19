@@ -153,10 +153,11 @@ pub struct PaymentsState {
     /// The calendar year `Period::year` holds; 0 before the first record.
     pub year: i32,
     pub markets: Vec<Period>,
-    /// What debtors paid on bonds held abroad that no lender received, as a lender would have
-    /// (`interest_received`, `principal_received`); negative where lenders received more. The
-    /// lenders' share is rounded to a thousandth (`money::week`), and a week with no claims
-    /// abroad pays nobody: with it, every line adds up to zero over the world.
+    /// What debtors owed on bonds held abroad in a week when nobody held a claim abroad, as a
+    /// lender would have recorded it (`interest_received`, `principal_received`): it stays with
+    /// the debtors (`money::AbroadFlows::unreceived`) and is out of every other line. The
+    /// lenders receive what the debtors pay to the last unit, so every line adds up to zero
+    /// over the world without it.
     pub unreceived: Period,
 }
 

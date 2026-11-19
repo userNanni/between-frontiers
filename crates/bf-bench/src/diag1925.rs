@@ -6,7 +6,7 @@
 //! `industry.ron` gives against what the plants made.
 
 use bf_sim::data::GameData;
-use bf_sim::econ::{Economy, plant_tfp};
+use bf_sim::econ::{Economy, payments, plant_tfp};
 use bf_sim::game::Session;
 use laplace_schelling::Date;
 
@@ -298,8 +298,8 @@ pub fn main() -> Result<(), String> {
                     pct(l.not_settled(), gdp),
                 );
             }
-            // The world: each line's sum over every country (with what no lender received),
-            // in % of world GDP.
+            // The world: each line's sum over every country, in % of world GDP, and what the
+            // debtors kept in weeks when nobody held a claim abroad.
             let world_gdp: f64 = w
                 .econ
                 .markets
@@ -307,12 +307,12 @@ pub fn main() -> Result<(), String> {
                 .map(|m| m.gdp_last_year.to_f64_lossy())
                 .sum::<f64>()
                 .max(1.0);
-            let mut t = p.unreceived.last_year;
+            let mut t = payments::Lines::default();
             for m in &p.markets {
                 t += m.last_year;
             }
             println!(
-                "{year} world: {:+.4} {:+.4} | {:+.4} {:+.4} {:+.4} | {:+.4} | {:+.4} | {:+.4} | {:+.4}; exports {:.2} % of GDP, no lender received {:.6} % of GDP",
+                "{year} world: {:+.4} {:+.4} | {:+.4} {:+.4} {:+.4} | {:+.4} | {:+.4} | {:+.4} | {:+.4}; exports {:.2} % of GDP, kept for want of a lender {:.6} % of GDP",
                 pct(t.goods(), world_gdp),
                 pct(t.services(), world_gdp),
                 pct(t.interest(), world_gdp),
