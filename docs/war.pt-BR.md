@@ -1233,26 +1233,109 @@ Quem decide a paz e a rendição é o **apoio à guerra** (G4, abaixo), não a e
 - **Terceiros no meio da guerra:** quando um país entra ou é atacado durante a guerra, as chamadas
   dos acordos dele seguem a regra W4 (P2: sem resposta, entra; não honrar é comando explícito).
 
-### Guerra colonial (I3, opção A)
+### Guerra colonial (I3, opção A; G6)
 
 Combinado com o thread das fronteiras (seção 11 de `borders.pt-BR.md`, "A revolta e a guerra"):
-a revolta é uma **proclamação seguida de guerra**, como a da Indonésia de 1945 a 1949.
-- **Gatilho, sem mudar a regra deles:** a metrópole recusa a exigência e a mobilização da unidade
-  passa a marca da revolta. A independência faz o `Secede` sem acordo e grava o `Record` de
-  revolta com o índice do país novo (`country`, no #173). A independência só age no 2 de
-  janeiro, e a fila de fronteiras roda no mesmo dia.
-- **Com `war` ligada,** a guerra lê os `Record` de revolta mais novos que a data guardada e abre
-  a guerra: de um lado o antigo dono, com a exigência `Union` da unidade de volta; do outro o país
-  novo, sem reconhecimento.
-- **Tropas:** o país novo forma unidades irregulares (`irregular`) do tamanho da mobilização vezes
-  os homens em idade de serviço da unidade; as formações coloniais do dono que estão ali lutam
-  pelo dono. O tipo do vínculo (colônia, protetorado) vem de `IndependenceSetup::bond_of`.
-- **Custo e desgaste:** os mesmos da guerra comum. A guerra longa desgasta a metrópole mesmo
-  quando ela ganha batalhas: semanas, gasto e preços entram na exaustão.
-- **Fim:** o dono sem apoio à guerra aceita a paz por acordo de independência (reconhecimento e
-  as cláusulas de independência dos tratados); se a colônia perde, **a metrópole reconquista** o
-  território pela `Union`, executada como tratado (G6).
-- **Com `war` desligada,** a revolta segue como hoje (separação sem acordo), sem mudar o hash.
+a revolta é uma **proclamação seguida de guerra**, como a da Indonésia de 1945 a 1949. Está
+atrás de `war`. Com `war` desligada, a revolta segue como antes, uma separação sem acordo, e o
+hash não muda. O código está em `crates/bf-sim/src/war/colonial.rs`, os números em `colonial`
+de `data/military/war.ron`.
+
+**Partição na revolta.** A independência continua decidindo a revolta com a regra do thread de
+fronteiras: recusa e a mobilização passando a marca. O que muda é o `release(How::Revolt)`: ele
+passa ao `Secede` só os estados que a guarnição não segura.
+- A guarnição são os soldados da metrópole nas regiões da unidade (`war.soldiers`).
+- Cada estado custa 2 homens por mil habitantes, o mínimo de O3 para população calma (Quinlivan,
+  1995). O dono fica primeiro com os estados com porto e depois com os mais populosos, enquanto a
+  guarnição pagar.
+- O movimento leva sempre ao menos um estado: o último nessa ordem.
+- Na Argélia de 1925, a guarnição segura Argel, Constantina e Orã, e o Saara (`DZA-SUD`) proclama.
+  A granularidade por estado é grossa: a guerrilha que nasce no interior de um estado segurado
+  pela costa (o Aurès, em Constantina) depende da fatia seguinte, a guerrilha por guarnição
+  faltante.
+
+**Gatilho.** Toda segunda-feira o sistema de forças lê os `Record` de revolta dos sete dias
+anteriores e abre a guerra pelo `open_war`, extraído de `crisis_decide`.
+- Lado A é a metrópole, com a exigência `Union`. Lado B é o país novo.
+- A abertura não chama terceiros pelos acordos. Eles só leem a guerra; a entrada deles fica para
+  a fase 6.
+- A guerra fica registrada em `WarState::colonial`: a unidade, os estados mantidos, os homens
+  desembarcados e se a metrópole chega por terra. Save 30.
+- O `Record` da independência não mudou de formato.
+
+**Teto da expedição.** Nos segmentos contra a colônia, a metrópole luta só com a guarnição que
+ainda tem na unidade mais os homens desembarcados. O resto do exército fica nas outras frentes.
+- A cada semana desembarcam `men_per_port_week` (1.000) homens por porto que ela segura e
+  controla na unidade, até `expedition_cap` (500‰) dos seus homens de terra.
+- Fonte (Horne, 1977): na Argélia, cerca de 80 mil homens em novembro de 1954 e cerca de
+  400 mil em 1956–57, por Argel, Orã e Bône. São 320 mil em dois anos, uns 3.000 por semana, cerca
+  de 1.000 por porto.
+- 500‰ é a metade do exército. Os 400 mil da Argélia exigiram a convocação dos reservistas e o
+  serviço de 27 meses (1956). Se o exército de paz do jogo não chegar a 800 mil, o teto não chega
+  a 400 mil. Isso é **mobilização que falta** (a lei de serviço em guerra), não um teto a inflar.
+- Colônia alcançável por terra (busca sobre `neighbours` a partir da metrópole) não tem teto.
+- Sem porto, não chega reforço.
+
+**Irregulares.** O país novo luta com a unidade `irregular`.
+- Combatentes = apoio à guerra do país × `armed_share` (20‰) × homens em idade de serviço dos
+  seus estados.
+- O apoio à guerra entra no lugar da mobilização. A marca da revolta (200‰) dava 8 mil na
+  Argélia, abaixo da fonte.
+- Começam com `initial_share` (100‰) dos combatentes e metade das armas (GC3).
+- A cada semana recrutam `recruit_week` (25‰) da distância até os combatentes, freados pela
+  parte armada: sem armas, os recrutas esperam. As armas chegam pelas compras e pelo depósito da
+  fatia A2, ou seja, pelo orçamento.
+- Por GC1, as formações coloniais da metrópole passam para o país novo na proporção da
+  população colonial que a unidade tem vezes a mobilização.
+
+| Conferência (absoluta) | Jogo | Fonte |
+|---|---|---|
+| Argélia, combatentes com apoio 800 | 21.198 com a gente de 1925; ×1,6 até 1954 dá cerca de 34 mil | ALN, 15 a 40 mil (NWC, DTIC ADA422710) |
+| Malásia, idem | 13.403 com a gente de 1925 | MNLA, 5 a 10 mil, pico de 7 a 8 mil (IWM) |
+
+A Malásia passa porque o jogo não separa a base étnica. O MNLA recrutava quase só na comunidade
+chinesa, cerca de 38%. Com essa parte, ficaria por volta de 5 mil. Fica anotado para a
+calibração; não é meta.
+
+**Apoio.** A metrópole começa em `support.colonial` (550), o valor do arquivo que até agora não
+era lido. O país novo começa em 800 (GC2, o mesmo de um país atacado). O resto do apoio segue a
+regra G4.
+
+**Fins.** São dois, e cada um tem o seu teste em `tests/war_colonial.rs`:
+- **A metrópole desiste** (apoio < 300, o caminho `withdrawn`). Os estados que ela ainda tem na
+  unidade passam ao país novo por `Transfer`, sem deixar enclave, e ela reconhece o país novo.
+- **A colônia perde** (apoio < 300). A `Union` sai pela ponte dos tratados (`treaty_exec`), sem
+  passar pela mesa. A IA da metrópole avaliava a união do Saara como negativa e recusava a paz
+  pela qual lutava.
+  - Se a metrópole é do jogador, a proposta vai à mesa como numa guerra comum e precisa de
+    `negotiation`.
+  - Uma semana depois, as regiões da unidade voltam a ser colônia. O movimento recomeça em
+    `movement_after_reconquest` (500‰) da marca da revolta, ou seja, 100‰ (GC5, em dado).
+- Nos dois testes, no dia em que a fronteira muda, a população e o dinheiro do mundo fecham
+  iguais e nenhuma região fica sem dono vivo.
+
+**IA da metrópole.** Luta até o apoio cair abaixo de 300 e então desiste. Não abandona cedo nem
+dosa a expedição; isso fica anotado para a fase 6.
+
+**Jogador.**
+- Na tela de exigência, a recusa avisa que a revolta vira guerra colonial e que há ponto de
+  restauração antes da resposta (o `Reason::Demand` que já existia). Também diz quais estados as
+  tropas atuais seguram e qual proclama (`DemandView::held`).
+- O diário (Agendas, grupo Forças) mostra "Um país nasceu em revolta", com os combatentes, os
+  armados e os desembarcados. Também lembra que a troca de país fica no ⋯ da tela de Campanhas
+  (C4).
+- Não há decisão nova, então nada entra em `player_commands`. A postura nos segmentos usa o
+  comando de sempre.
+
+**Perguntas ao dono, com a recomendação já no dado:**
+- GC1: as formações coloniais desertam pela mobilização (`defect: true`).
+- GC2: o país novo começa em 800 de apoio.
+- GC3: metade das armas no nascimento.
+- GC5: o movimento após a reconquista é dado, 500‰ da marca.
+
+**Código das fronteiras tocado** (o thread está em pausa): `independence.rs` ganhou
+`IndependenceSetup::partition` (com `war`), o corte em `release(How::Revolt)` e
+`DemandView::held`.
 
 ### Tela (esboço, para o thread de interface)
 
