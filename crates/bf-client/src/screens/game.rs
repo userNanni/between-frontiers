@@ -1091,6 +1091,13 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
                     share: None,
                 }));
         }
+        if let (true, Some(tag)) = (res.nuclear_test, state.save.meta.player.clone()) {
+            // The test cannot be undone: the arsenal is known to all from then on.
+            state.restore_point_before(shared, Reason::War);
+            state
+                .sim
+                .send(Command::Issue(GameCommand::NuclearTest { tag }));
+        }
         if res.open_war {
             toggle_war(state);
         }

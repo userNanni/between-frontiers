@@ -179,3 +179,6 @@ journal-programme-months = Meses do passo em curso, no ritmo do último mês
 journal-programme-end = Encerrar o programa…
 journal-programme-end-confirm = Confirmar o fim do programa
 journal-programme-end-explain = O dinheiro para na hora; a pesquisa feita fica, as ogivas prontas ficam, e as usinas seguem rodando para o mercado. Um ponto de restauração é gravado antes.
+journal-programme-test = Testar a arma…
+journal-programme-test-confirm = Confirmar o teste
+journal-programme-test-explain = O teste torna o arsenal conhecido de todos: até ele, os outros contam metade das suas ogivas. Ele é ouvido no mundo inteiro e não se desfaz. Um ponto de restauração é gravado antes.
