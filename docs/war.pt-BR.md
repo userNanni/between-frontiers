@@ -746,18 +746,54 @@ Está em `war::nuclear_use`, atrás de `war`, no save 39. Os parâmetros ficam e
     tabu.
   - Confirmação dupla e ponto de restauração automático.
 
-### Conferências (passo 5)
-- **Cuba, 1962:** ninguém usa e os dois recuam (Allison e Zelikow, *Essence of Decision*, 2ª ed.,
-  1999; Norris e Kristensen 2010). O jogo deve dar:
-  - segundo golpe americano garantido, e o soviético não, com a Europa como refém pelo guarda-chuva;
-  - a URSS cede a exigência "retirar os mísseis";
-  - os EUA não declaram guerra.
-- **Coreia, 1950–53:** os EUA têm a arma e não usam (Dingman, "Atomic Diplomacy During the Korean
-  War", *International Security* 13(3), 1988–89; Tannenwald, *The Nuclear Taboo*, 2007). O ganho
-  na frente é menor que a soma de três custos:
-  - a reputação com os aliados;
-  - o tabu;
-  - a reserva exigida contra a URSS.
+### Conferências (passo 5), medidas
+`tests/war_nuclear_conferences.rs` põe as forças de cada época no mapa de 1925, com a população de
+1925, e lê o que as regras dão. É medida, não meta.
+
+**Fontes das forças:**
+- Norris, "The Cuban Missile Crisis: A Nuclear Order of Battle", Wilson Center, 24/10/2012 (versão
+  aberta do Nuclear Notebook, *Bulletin* 68(6), 2012):
+  - EUA: cerca de 3.500 ogivas prontas (p. 15); 182 ICBMs (p. 15); 7 submarinos Polaris com 112
+    mísseis em patrulha (p. 17); 1.479 bombardeiros prontos em 4/11 (p. 22).
+  - URSS: cerca de 300 ogivas prontas (p. 15); 42 ICBMs (p. 25, segundo Karlov); cerca de 160
+    bombardeiros pesados (p. 27). Os submarinos de mísseis não tiveram papel (p. 25).
+- 1950: 369 ogivas americanas e 5 soviéticas (Norris e Kristensen, 2010, a tabela anual). Sem
+  mísseis.
+  - Os bombardeiros capazes não têm fonte conferida. O caso dá um bombardeiro por duas ogivas
+    (**estimativa**).
+- Coreia: Truman disse em 30/11/1950 que o uso esteve "em consideração ativa", e a Casa Branca
+  disse no mesmo dia que nenhuma autorização foi dada (FRUS 1950, vol. VII, doc. 909, p. 1262).
+
+**Cuba, outubro de 1962 (medido):**
+- **Segundo golpe dos EUA garantido:** 1.589 ogivas entregues depois de um primeiro golpe
+  soviético, contra 191 que a URSS tem por inaceitáveis.
+  - A URSS não tem segundo golpe: entrega 0 contra 174.
+  - Teto: EUA no uso nuclear, URSS na crise. A dissuasão não é mútua.
+- **A exigência periférica dos EUA à URSS** ("retirar os mísseis", posta como um pagamento
+  pequeno): há coerção, e a razão pedida cai à metade, para 1,5×. Ainda assim a URSS **não
+  cede**, porque a força de terra americana é 0,25 da soviética.
+- **Os EUA podem declarar guerra:** nada os bloqueia.
+- **Diferenças com a história, sem ajuste:**
+  1. **O ceder lê a força de terra.** A coerção nuclear só divide a razão. Na crise real, a
+     assimetria nuclear (17:1, Gribkov, p. 8) pesou sozinha. **Leitura minha:** a coerção
+     precisaria somar a assimetria nuclear à razão de forças, e não só reduzir o limiar.
+  2. **Os EUA não são contidos.** Falta a "Europa como refém": a URSS ameaçando os aliados
+     europeus dos EUA com força de terra e mísseis de alcance médio, ou seja, o guarda-chuva ao
+     contrário. Falta também o peso do risco de escalada na decisão, que é da IA da fase 6.
+  3. **Com um oitavo dos bombardeiros em alerta**, como na crise, nada muda: o segundo golpe vem
+     dos submarinos e dos bombardeiros que sobrevivem.
+  4. **A população é a de 1925** (URSS ~147 milhões), não a de 1962.
+
+**Coreia, 1950–53 (medido):**
+- Com 369 ogivas, os EUA têm segundo golpe garantido contra a URSS, que tem 5 ogivas e nenhum.
+  Contra a China, o teto é coerção nuclear.
+- **Em guerra com a China, a IA americana não usa primeiro** com tabu 0, 200 ou 1.000.
+- **Leitura minha:**
+  - O resultado bate com a história, mas pelo motivo errado. A regra de primeiro uso (N7) só olha
+    a ocupação da metrópole, e os EUA não são ocupados.
+  - A ponderação de três custos que explica o não uso (a reputação com os aliados, o tabu e a
+    reserva contra a URSS; Dingman, Tannenwald) não existe na IA. Fica para a IA da fase 6.
+  - Um jogador americano pode usar a arma. A tela mostra a mancha, a resposta esperada e o tabu.
 
 ### Decisões do dono (2026-11-19, todas na recomendação levada pelo orquestrador)
 - **N1:** o programa é decisão explícita, com orçamento e anos (feito no passo 2).
