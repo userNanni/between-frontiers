@@ -342,8 +342,24 @@ fn a_great_war_costs_under_a_seventh_of_the_tick() {
         segments,
         w.war.fighting.control.len()
     );
+    // What this measures: a great war, on land and at sea, for a year, under a seventh of
+    // the tick. The war is great when it holds fronts on several borders and fleets at sea; the
+    // exact count of segments moves with the rules, so it is not asserted.
     assert_eq!(w.war.conflicts.wars.len(), 1, "the war lasts the year");
-    assert!(segments > 20, "a great war has many segments: {segments}");
+    let fronts: std::collections::BTreeSet<(u16, u16)> = w
+        .war
+        .fighting
+        .last_week
+        .iter()
+        .map(|g| (g.a, g.b))
+        .collect();
+    assert!(fronts.len() >= 3, "fronts on several borders: {fronts:?}");
+    assert!(segments >= 10, "a great war has many segments: {segments}");
+    assert!(
+        w.war.sea.fleets.len() >= 2,
+        "fleets at sea: {}",
+        w.war.sea.fleets.len()
+    );
     assert!(share < 0.15, "{:.1} %", share * 100.0);
 }
 

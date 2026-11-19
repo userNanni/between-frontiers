@@ -137,6 +137,15 @@ fn the_blockade_of_germany() {
         !cut.contains(&swe),
         "Germany and Sweden trade across the Baltic"
     );
+    // A limit, not a target: Norway stays open by the Kattegat. In 1914–18 its trade with
+    // Germany did go on, but along its territorial waters (the Leads), which the zones do not
+    // see; the British closed them by mining in 1918. The model leaves Norway open for the
+    // sea-zone reason, not the territorial-waters one.
+    let nor = index(w, "NOR");
+    assert!(
+        !cut.contains(&nor),
+        "Norway open by the Kattegat (the limit above)"
+    );
 }
 
 /// Jutland: the German fleet does not change who holds the North Sea; the control stays British
