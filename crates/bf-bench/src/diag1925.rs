@@ -333,6 +333,116 @@ pub fn main() -> Result<(), String> {
         }
         return Ok(());
     }
+    // The gold standard (`BF_DIAG_GOLD=TAG,TAG[:years]`, `econ::gold`, with `gold_standard` and
+    // `payments_settle` on): by year and country, the regime and parity at the end of the year,
+    // the reserves (gross, and net of what is owed abroad) in % of GDP, the cover against the
+    // legal one, the central bank's rate against the Taylor rule (yearly averages of the weekly
+    // values) and the year's inflation; then every change of regime with its date.
+    if let Ok(spec) = std::env::var("BF_DIAG_GOLD") {
+        let (tags, years) = spec.split_once(':').unwrap_or((spec.as_str(), "8"));
+        let years: i32 = years.parse().unwrap_or(8);
+        let rules = data
+            .gold
+            .clone()
+            .ok_or("BF_DIAG_GOLD: data/economy/gold.ron is not loaded")?;
+        let idx: Vec<(String, usize)> = tags
+            .split(',')
+            .filter_map(|t| {
+                let t = t.trim();
+                data.countries
+                    .countries
+                    .iter()
+                    .position(|c| c.tag == t)
+                    .map(|i| (t.to_string(), i))
+            })
+            .collect();
+        let f = |v: laplace_schelling::Fixed| v.to_f64_lossy();
+        let mut d = Date::new(1925, 1, 5);
+        let mut year = 1925;
+        // Weekly sums: rate, its points over Taylor, cover; and the weeks counted.
+        let mut sums = vec![(0.0f64, 0.0f64, 0.0f64); idx.len()];
+        let mut weeks = 0.0f64;
+        println!(
+            "gold standard, by year: regime parity | reserves gross/net % GDP | money the bank issued % GDP | cover vs legal | rate (Taylor + cover's points), yearly mean | inflation of the year"
+        );
+        while year < 1925 + years {
+            d = Date::from_days(d.to_days() + 7);
+            s.sim.run_until(d);
+            let w = s.world();
+            if w.gold.is_empty() {
+                continue;
+            }
+            if d.year > year {
+                let net = w.reserves.net();
+                for (k, (tag, i)) in idx.iter().enumerate() {
+                    let m = &w.econ.markets[*i];
+                    let st = &w.gold.countries[*i];
+                    let gdp = f(m.gdp_last_year).max(1.0);
+                    let gross = w.reserves.markets.get(*i).map_or(0.0, |r| f(r.total()));
+                    let (rate, add, cover) = sums[k];
+                    let n = weeks.max(1.0);
+                    println!(
+                        "{year} {tag}: {:?} {:.1} | reserves {:.2}/{:.2} | issued {:.1} | cover {:.0} % (legal {:.0} %) | rate {:.2} = Taylor {:.2} + {:.2} | inflation {:+.1} %",
+                        st.regime,
+                        if st.regime == bf_sim::econ::gold::Regime::Float {
+                            f(m.money.exchange_rate)
+                        } else {
+                            f(st.parity)
+                        },
+                        gross / gdp * 100.0,
+                        f(net[*i]) / gdp * 100.0,
+                        f(m.money.debt_bank + m.money.credit) / gdp * 100.0,
+                        cover / n * 100.0,
+                        f(rules.legal_cover[*i]) * 100.0,
+                        rate / n,
+                        (rate - add) / n,
+                        add / n,
+                        f(m.money.inflation_last_year),
+                    );
+                }
+                sums.iter_mut().for_each(|x| *x = (0.0, 0.0, 0.0));
+                weeks = 0.0;
+                year = d.year;
+            }
+            // This week's values (the economy week ran on Monday).
+            for (k, (_, i)) in idx.iter().enumerate() {
+                let m = &w.econ.markets[*i];
+                let st = &w.gold.countries[*i];
+                let add = if st.regime == bf_sim::econ::gold::Regime::Gold {
+                    ((f(rules.legal_cover[*i]) - f(st.cover)).max(0.0)
+                        * 100.0
+                        * f(rules.rate_per_point))
+                    .min(f(rules.max_add))
+                } else {
+                    0.0
+                };
+                sums[k].0 += f(m.money.policy_rate);
+                sums[k].1 += add;
+                sums[k].2 += f(st.cover);
+            }
+            weeks += 1.0;
+        }
+        let w = s.world();
+        let tag = |mi: usize| {
+            data.countries
+                .countries
+                .get(mi)
+                .map_or_else(|| format!("#{mi}"), |c| c.tag.to_string())
+        };
+        println!("changes of regime:");
+        for e in &w.gold.events {
+            println!(
+                "{}-{:02} {}: {:?} -> {:?} at {:.1}",
+                e.year,
+                e.month,
+                tag(usize::from(e.market)),
+                e.change,
+                e.regime,
+                f(e.parity)
+            );
+        }
+        return Ok(());
+    }
     // Settlement in money and reserves (`BF_DIAG_SETTLE=TAG,TAG[:years]`,
     // `econ::payments::settle`). By year, in % of GDP:
     // - where each country's "not settled" sits: goods and services, trade's margins split into

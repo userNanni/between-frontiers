@@ -1,0 +1,123 @@
+// The gold standard's regimes and rule (`econ::gold`, `game::Switches::gold_standard`, which
+// needs `payments_settle`; docs/state.pt-BR.md, "Padrão-ouro, reservas e balanço de pagamentos",
+// slice 3). Read only with the switch on.
+//
+// A parity is the exchange rate a country holds against the reference unit, as the game's
+// index (`Money::exchange_rate`: local units per reference unit, 1925 = 100), in thousandths.
+// The index is 100 at the market rate of 1924, before the returns of 1925 moved it: a return at
+// the prewar parity is the 1924 average over the prewar par, in US cents, and the gap to 100 is
+// the overvaluation (the pound, 441.71 against 486.65 cents: 90.8, the "10 per cent" of Keynes,
+// *The Economic Consequences of Mr. Churchill*, 1925).
+//
+// Sources:
+// - Dates of return and of suspension: Bernanke and James, "The Gold Standard, Deflation, and
+//   Financial Crisis in the Great Depression", in Hubbard (ed.), *Financial Markets and
+//   Financial Crises* (NBER, 1991), Table 2.1, p. 37, from the League of Nations' *Statistical
+//   Year-Book*; https://www.nber.org/system/files/chapters/c11482/c11482.pdf. The de jure
+//   dates: Federal Reserve Bulletin, August 1928, p. 562, "The return to gold — summary by
+//   countries" (FRASER; US government, public domain). Eichengreen, *Golden Fetters* (1992),
+//   gives the same dates (his table of the returns follows the League's).
+// - Exchange rates, 1924 averages and the par of exchange, in US cents: Federal Reserve
+//   Bulletin, January 1929, p. 35, "Foreign exchange rates, 1922–1928, yearly averages"
+//   (FRASER; public domain); the same as Board of Governors, *Banking and Monetary Statistics
+//   1914–1941* (1943), Table 173.
+// - Legal cover: Federal Reserve Bulletin, August 1928, p. 563, "Legal reserve requirements of
+//   foreign central banks"; the Federal Reserve's own from the Federal Reserve Act, section 16
+//   (40 % gold against notes). Where a bank's rule was a fiduciary issue (100 % gold above a
+//   fixed sum of notes), the cover here is the share of the circulation that rule asked for,
+//   marked below.
+// - The Bank of England's Bank Rate, against which the rule's rate is calibrated: Bank of
+//   England, Bank Rate history (baserate.xls, "HISTORICAL SINCE 1694"): 5 % from March 1925,
+//   4 to 4.5 % from August 1925 to February 1929, 5.5 to 6.5 % in 1929.
+(
+    // The floor, as a share of the legal cover: a country on gold whose cover stays below it
+    // for `exit_weeks` in a row leaves (PO3).
+    floor: 500,
+    // Points of rate above the Taylor rule per point of cover missing, and the most the cover
+    // adds (PO4). Calibrated so that the Bank of England's 4 to 5 % of 1925–1929 comes out
+    // (docs/state.pt-BR.md, the measure of slice 3).
+    rate_per_point: 300,
+    max_add: 6000,
+    // After this many weeks short of the legal cover the bank withdraws money, at least this
+    // many thousandths of a point of GDP a year.
+    withdraw_weeks: 26,
+    withdraw: 1000,
+    exit_weeks: 13,
+    // A country whose reserves are at least this share in one currency leaves when its issuer
+    // does (sterling, September 1931).
+    contagion: 250,
+    // A country leaving with debt in foreign currency above this share of GDP holds its parity
+    // behind exchange control instead of floating (Germany, Austria and Hungary, 1931).
+    control_debt: 100,
+    // Points of premium an exit adds, fading over this many weeks.
+    exit_premium: 1000,
+    premium_weeks: 156,
+    // Return by the AI's rule (PO2): inflation within this many points of zero, now and over
+    // the last year, for this many weeks, and a cover of this share of the legal one.
+    calm_inflation: 3000,
+    calm_weeks: 104,
+    return_cover: 1000,
+    // The parity a devaluation within the standard moves (the posture "devalue").
+    devaluation: 100,
+    // Legal cover of a bank the list does not name: the game's choice, between the Bank of
+    // France's 35 % and the 40 % of most of the 1920s statutes.
+    legal_cover: 350,
+    covers: [
+        ("USA", 400), // Federal Reserve Act, s. 16: 40 % gold against notes (35 % on deposits)
+        // Bank of England: 100 % gold above a fiduciary issue of £260 million (Currency and Bank
+        // Notes Act 1928), against some £370 million of notes in circulation: about 30 %.
+        ("GBR", 300),
+        ("GER", 400), // 40 % in gold and foreign exchange, at least 30 % in gold
+        ("FRA", 350), // on notes and demand liabilities (1928)
+        ("ITA", 400), // in gold and foreign exchange, on notes and deposits (1927)
+        ("NLD", 200), // the 40 % rule suspended since 1914: 20 %
+        ("CHE", 400),
+        // Riksbank: 50 % above a fiduciary issue of 125 million kronor, against some 550 million
+        // of notes: about 40 %.
+        ("SWE", 400),
+        ("DEN", 500), // 30 % in gold, 50 % in gold and foreign exchange
+        ("BEL", 400), // 30 % in gold, 40 % in gold and foreign exchange
+        ("POL", 400), // 30 % in gold, 40 % in gold and foreign exchange
+    ],
+    // On gold in 1925, from the start of the game (the returns of April and May 1925 are taken
+    // from January): (tag, parity).
+    gold_1925: [
+        ("USA", 100000), // since 1879 (June 1919 after the war's embargo); the reference unit
+        ("SWE", 98964), // April 1924, prewar par: 26.5223 / 26.80 cents
+        // Germany: the Reichsmark of the Bank Act of 30 August 1924 (gold exchange standard),
+        // at the prewar mark's 4.20 to the dollar, already the 1924 rate.
+        ("GER", 100000),
+        ("GBR", 90765), // 28 April 1925, prewar par: 441.7064 / 486.65 cents
+        ("NLD", 95052), // 28 April 1925, prewar par: 38.2109 / 40.20 cents
+        ("CHE", 94419), // during 1925, prewar par: 18.2228 / 19.30 cents
+        ("AUT", 100000), // stabilized in 1922, de jure 3 January 1923, at the 1924 rate
+        ("HUN", 100000), // tied to sterling from August 1924, de jure 28 April 1925
+        // The dominions that returned with sterling, at its par: Australia (28 April 1925) and
+        // South Africa (18 May 1925, Federal Reserve Bulletin 1928). Their pound is taken at
+        // sterling's 1924 rate; the table gives no rate of their own.
+        ("AUS", 90765),
+        ("SAF", 90765),
+    ],
+    // Prewar parities the player may adhere at (PO6): the 1924 average over the prewar par.
+    // The later returns of the table are not forced: the AI returns at the day's rate, and the
+    // dates are the check (docs/state.pt-BR.md).
+    prewar: [
+        ("USA", 100000),
+        ("GER", 100000),
+        ("GBR", 90765),
+        ("SWE", 98964),
+        ("NLD", 95052),
+        ("CHE", 94419),
+        ("FRA", 27134), // 5.2368 / 19.30 (France returned in 1926–28 at 3.92 cents)
+        ("ITA", 22580), // 4.3580 / 19.30 (Italy returned in 1927 at 5.26 cents)
+        ("BEL", 24061), // 4.6438 / 19.30 (Belgium returned in 1926 at 13.90 cents a belga)
+        ("DEN", 62399), // 16.7228 / 26.80 (Denmark returned in 1927 at par)
+        ("NOR", 52016), // 13.9403 / 26.80 (Norway returned in 1928 at par)
+        ("JAP", 82619), // 41.1857 / 49.85 (Japan returned in 1930 at par)
+        ("ARG", 80981), // 78.1308 / 96.48 (Argentina reopened the Caja de Conversión in 1927)
+        ("BRA", 33725), // 10.9403 / 32.44 (Brazil returned in 1926 at 11.96 cents)
+    ],
+    // Never taken back to gold by the rule: Spain (the peseta floated through the period),
+    // China (on silver) and the Soviet Union (a planned economy's currency).
+    outside: ["ESP", "CHN", "SOV"],
+)

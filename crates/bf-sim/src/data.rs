@@ -71,6 +71,101 @@ pub struct GameData {
     /// The 1925 reserves and the share of new gold that goes to them, when
     /// `data/economy/reserves.ron` exists (read with `Switches::payments_settle`).
     pub settle: Option<Arc<crate::econ::payments::SettleRules>>,
+    /// The 1925 regimes and the gold standard's rule, when `data/economy/gold.ron` exists (read
+    /// with `Switches::gold_standard`).
+    pub gold: Option<Arc<crate::econ::gold::GoldRules>>,
+}
+
+/// Format of `data/economy/gold.ron`; every rate in thousandths, every parity an exchange-rate
+/// index (local units per reference unit, 1925 = 100) in thousandths.
+#[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct GoldFile {
+    floor: i64,
+    rate_per_point: i64,
+    max_add: i64,
+    withdraw_weeks: u16,
+    withdraw: i64,
+    exit_weeks: u16,
+    contagion: i64,
+    control_debt: i64,
+    exit_premium: i64,
+    premium_weeks: u16,
+    calm_inflation: i64,
+    calm_weeks: u16,
+    return_cover: i64,
+    devaluation: i64,
+    /// Legal cover of a central bank the list does not name.
+    legal_cover: i64,
+    /// (tag, legal cover).
+    covers: Vec<(String, i64)>,
+    /// (tag, parity) of the countries on gold in 1925.
+    gold_1925: Vec<(String, i64)>,
+    /// (tag, prewar parity).
+    prewar: Vec<(String, i64)>,
+    /// Tags the rule never takes back to gold.
+    outside: Vec<String>,
+}
+
+impl GoldFile {
+    fn resolve(&self, countries: &CountriesFile) -> Result<crate::econ::gold::GoldRules, String> {
+        use crate::econ::gold::Regime;
+        let n = countries.countries.len();
+        let index = |tag: &str| {
+            countries
+                .countries
+                .iter()
+                .position(|c| c.tag == tag)
+                .ok_or_else(|| format!("economy/gold.ron: unknown tag {tag}"))
+        };
+        let milli = |v: i64| Fixed::from_raw(v);
+        let parity = |v: i64| {
+            if v > 0 {
+                Ok(milli(v))
+            } else {
+                Err(format!("economy/gold.ron: parity {v} is not positive"))
+            }
+        };
+        let mut start = vec![(Regime::Float, crate::econ::money::INDEX_BASE); n];
+        for (tag, p) in &self.gold_1925 {
+            start[index(tag)?] = (Regime::Gold, parity(*p)?);
+        }
+        let mut prewar = vec![Fixed::ZERO; n];
+        for (tag, p) in &self.prewar {
+            prewar[index(tag)?] = parity(*p)?;
+        }
+        let mut legal_cover = vec![milli(self.legal_cover); n];
+        for (tag, c) in &self.covers {
+            legal_cover[index(tag)?] = milli(*c);
+        }
+        let mut outside = vec![false; n];
+        for tag in &self.outside {
+            outside[index(tag)?] = true;
+        }
+        if !(0..=1000).contains(&self.floor) || self.calm_weeks == 0 || self.exit_weeks == 0 {
+            return Err("economy/gold.ron: floor, calm_weeks or exit_weeks out of range".into());
+        }
+        Ok(crate::econ::gold::GoldRules {
+            start,
+            prewar,
+            legal_cover,
+            outside,
+            floor: milli(self.floor),
+            rate_per_point: milli(self.rate_per_point),
+            max_add: milli(self.max_add),
+            withdraw_weeks: self.withdraw_weeks,
+            withdraw: milli(self.withdraw),
+            exit_weeks: self.exit_weeks,
+            contagion: milli(self.contagion),
+            control_debt: milli(self.control_debt),
+            exit_premium: milli(self.exit_premium),
+            premium_weeks: self.premium_weeks,
+            calm_inflation: milli(self.calm_inflation),
+            calm_weeks: self.calm_weeks,
+            return_cover: milli(self.return_cover),
+            devaluation: milli(self.devaluation),
+        })
+    }
 }
 
 /// Format of `data/economy/reserves.ron`.
@@ -207,8 +302,12 @@ impl GameData {
         let settle = optional::<ReservesFile>(&data.join("economy/reserves.ron"))?
             .map(|f| f.resolve(&catalogue, &countries).map(Arc::new))
             .transpose()?;
+        let gold = optional::<GoldFile>(&data.join("economy/gold.ron"))?
+            .map(|f| f.resolve(&countries).map(Arc::new))
+            .transpose()?;
         let data = Self {
             settle,
+            gold,
             trade_geography: std::sync::OnceLock::new(),
             switches: optional::<crate::game::Switches>(&data.join("rules.ron"))?
                 .unwrap_or_default()
@@ -641,6 +740,10 @@ impl GameData {
             },
             independence,
             settle: self.settle.clone().filter(|_| switches.payments_settle),
+            gold: self
+                .gold
+                .clone()
+                .filter(|_| switches.gold_standard && switches.payments_settle),
         }
     }
 

@@ -150,6 +150,10 @@ pub struct GameWorld {
     /// (`econ::payments::settle`, `Switches::payments_settle`); empty while it is off.
     #[serde(default)]
     pub reserves: crate::econ::payments::ReservesState,
+    /// Each country's exchange regime under the gold standard and the record of its changes
+    /// (`econ::gold`, `Switches::gold_standard`); empty while it is off.
+    #[serde(default)]
+    pub gold: crate::econ::gold::GoldState,
 }
 
 impl HashState for GameWorld {
@@ -232,6 +236,11 @@ impl HashState for GameWorld {
                 p.week.hash_state(h);
             }
         }
+        // Worlds where the gold standard never ran keep their hash.
+        if !self.gold.is_empty() {
+            h.section("gold");
+            self.gold.hash_state(h);
+        }
     }
 }
 
@@ -257,6 +266,7 @@ impl GameWorld {
             tariffs: Default::default(),
             payments: Default::default(),
             reserves: Default::default(),
+            gold: Default::default(),
             demography: crate::demography::DemographyState::default(),
             treaties: Default::default(),
             war: crate::war::WarState::default(),
@@ -526,6 +536,22 @@ pub enum GameCommand {
         mode: crate::war::nuclear_use::Mode,
         warheads: u32,
     },
+    /// The gold standard (PO6, `econ::gold`): adhere at the prewar parity or the day's exchange
+    /// rate, float, or hold the day's rate behind exchange control; `None` hands the regime back
+    /// to the rule (the AI's return). Carried out at the next economy week; a no-op while the
+    /// rule is off, or for `Prewar` without a prewar parity in the data. Sim side only: the
+    /// screen comes with slice 5.
+    SetGoldStandard {
+        tag: String,
+        choice: Option<crate::econ::gold::GoldChoice>,
+    },
+    /// On gold, how the country meets a cover below the floor (PO6): by the rule (leaves),
+    /// defending (holds with the rate until the reserves run out) or devaluing (moves the
+    /// parity). A no-op while the rule is off.
+    SetGoldPosture {
+        tag: String,
+        posture: crate::econ::gold::Posture,
+    },
 }
 
 /// Changes the levers of the country `tag` (`econ::levers`); unknown tags are no-ops.
@@ -652,6 +678,23 @@ impl Command<GameWorld> for GameCommand {
                 };
                 if let Some(m) = world.econ.markets.get_mut(ci) {
                     m.money.bank = *bank;
+                }
+            }
+            GameCommand::SetGoldStandard { tag, choice } => {
+                let Some(ci) = world.countries.iter().position(|(_, c)| c.tag == *tag) else {
+                    return;
+                };
+                if let Some(st) = world.gold.countries.get_mut(ci) {
+                    st.chosen = choice.is_some();
+                    st.pending = *choice;
+                }
+            }
+            GameCommand::SetGoldPosture { tag, posture } => {
+                let Some(ci) = world.countries.iter().position(|(_, c)| c.tag == *tag) else {
+                    return;
+                };
+                if let Some(st) = world.gold.countries.get_mut(ci) {
+                    st.posture = *posture;
                 }
             }
             GameCommand::Mobilize { tag, on } => {
@@ -1171,6 +1214,9 @@ pub struct Rules {
     /// Settlement in money and reserves (`Switches::payments_settle`): the 1925 reserves and
     /// the share of new gold that goes to them; without it trade settles nothing.
     pub settle: Option<Arc<crate::econ::payments::SettleRules>>,
+    /// The gold standard (`Switches::gold_standard`, with `payments_settle`): the 1925 regimes
+    /// and the cover rule; without it every currency floats.
+    pub gold: Option<Arc<crate::econ::gold::GoldRules>>,
 }
 
 /// Rules that can be switched on, all off by default: a rule enters the main switched off, with
@@ -1213,6 +1259,12 @@ pub struct Switches {
     /// Technique through the foreign plant (`docs/foreign-capital.pt-BR.md`, C5): imitation and
     /// diffusion of a technology run faster where foreign owners hold the levels it serves.
     pub foreign_technique: bool,
+    /// The gold standard's regimes and rule (`econ::gold`, docs/state.pt-BR.md, gold standard
+    /// slice 3): who is on gold in 1925 and at what parity (`data/economy/gold.ron`), the cover
+    /// rule that raises the rate and withdraws money, exits by the floor and by contagion,
+    /// returns by the AI's rule, and the loss of who holds a falling currency. Needs
+    /// `payments_settle`; off (or without it) every currency floats as before.
+    pub gold_standard: bool,
     /// Independence by movement (`borders::independence`, docs/borders.pt-BR.md section 11):
     /// colonial units demand, the metropole answers by account, a refusal can end in revolt.
     pub independence: bool,
@@ -1305,6 +1357,7 @@ impl Switches {
         "foreign_contract",
         "foreign_flow",
         "foreign_technique",
+        "gold_standard",
         "independence",
         "influence_ties",
         "jobs_follow_use",
@@ -1332,6 +1385,7 @@ impl Switches {
             "foreign_contract" => self.foreign_contract = true,
             "foreign_flow" => self.foreign_flow = true,
             "foreign_technique" => self.foreign_technique = true,
+            "gold_standard" => self.gold_standard = true,
             "independence" => self.independence = true,
             "influence_ties" => self.influence_ties = true,
             "jobs_follow_use" => self.jobs_follow_use = true,
@@ -1390,6 +1444,7 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
         treaties,
         fight,
         settle,
+        gold,
     }) = rules
     {
         if let Some(p) = &politics {
@@ -1424,6 +1479,7 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
             // colony's plants at independence.
             foreign_flow: switches.foreign_flow || switches.foreign_contract,
             fiscal_capacity: switches.fiscal_capacity,
+            gold: gold.filter(|_| switches.gold_standard && switches.payments_settle),
             settle: settle.filter(|_| switches.payments_settle),
         });
         s.add(crate::econ::monthly::Labour {
@@ -2082,9 +2138,58 @@ mod tests {
             hash_of(&with_ledger)
         );
         assert_eq!(
-            hash_of(&headed(40, &encode_snapshot(&with_ledger).unwrap())),
+            hash_of(&headed(41, &encode_snapshot(&with_ledger).unwrap())),
             hash_of(&with_ledger)
         );
+        // Version 40, the fallout, before the gold standard: the world without `gold`.
+        {
+            #[derive(Serialize)]
+            struct BeforeGold40<'a> {
+                scenario: &'a String,
+                player: &'a Option<Id<Country>>,
+                countries: &'a Table<Country, CountryState>,
+                census: &'a Vec<CensusRecord>,
+                econ: &'a crate::econ::Economy,
+                research: &'a crate::research::ResearchState,
+                politics: &'a crate::polity::PoliticsState,
+                demography: &'a crate::demography::DemographyState,
+                borders: &'a crate::borders::BordersState,
+                foreign: &'a crate::foreign_stakes::ForeignState,
+                influence: &'a crate::influence::InfluenceState,
+                treaties: &'a crate::treaty::TreatyState,
+                war: &'a crate::war::WarState,
+                education: &'a crate::demography::education::EducationState,
+                independence: &'a crate::borders::independence::IndependenceState,
+                levers: &'a crate::econ::levers::LeversState,
+                tariffs: &'a crate::econ::customs::TariffState,
+                payments: &'a crate::econ::payments::PaymentsState,
+                reserves: &'a crate::econ::payments::ReservesState,
+            }
+            let w = &with_ledger;
+            let v40 = encode_snapshot(&BeforeGold40 {
+                scenario: &w.scenario,
+                player: &w.player,
+                countries: &w.countries,
+                census: &w.census,
+                econ: &w.econ,
+                research: &w.research,
+                politics: &w.politics,
+                demography: &w.demography,
+                borders: &w.borders,
+                foreign: &w.foreign,
+                influence: &w.influence,
+                treaties: &w.treaties,
+                war: &w.war,
+                education: &w.education,
+                independence: &w.independence,
+                levers: &w.levers,
+                tariffs: &w.tariffs,
+                payments: &w.payments,
+                reserves: &w.reserves,
+            })
+            .unwrap();
+            assert_eq!(hash_of(&headed(40, &v40)), hash_of(&with_ledger));
+        }
         // Version 39, the nuclear use, before the fallout: `nuclear` without the fallout.
         {
             #[derive(Serialize)]

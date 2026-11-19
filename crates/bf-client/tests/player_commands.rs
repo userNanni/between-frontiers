@@ -226,10 +226,22 @@ const PLAYER: &[Surface] = &[
 ];
 
 /// Variants the player does not give from a screen with a key, and why.
-const EXCEPTIONS: &[(&str, &str)] = &[(
-    "Borders",
-    "issued by treaties, peace, tests and tools; the player frees its land with Liberate",
-)];
+const EXCEPTIONS: &[(&str, &str)] = &[
+    (
+        "Borders",
+        "issued by treaties, peace, tests and tools; the player frees its land with Liberate",
+    ),
+    (
+        "SetGoldStandard",
+        "the gold standard's simulation (slice 3, gold_standard off); its screen, in the \
+         Agendas, is slice 5",
+    ),
+    (
+        "SetGoldPosture",
+        "the gold standard's simulation (slice 3, gold_standard off); its screen, in the \
+         Agendas, is slice 5",
+    ),
+];
 
 fn variants() -> BTreeSet<String> {
     let mut tracer = Tracer::new(TracerConfig::default());

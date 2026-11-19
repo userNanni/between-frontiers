@@ -217,6 +217,7 @@ fn the_plants_profit_leaves_for_the_old_metropole_the_next_monday() {
         foreign_flow: true,
         fiscal_capacity: false,
         settle: None,
+        gold: None,
     };
     let at = TickCtx {
         tick: 1,
