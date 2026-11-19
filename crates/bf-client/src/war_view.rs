@@ -31,6 +31,20 @@ pub struct Segment {
     /// the state's depth (the state changes hands at 1).
     pub into_theirs: f64,
     pub into_ours: f64,
+    /// Width of the segment, km (the border between its two states); zero when unknown, and the
+    /// density then does not count.
+    pub width_km: f64,
+    /// Weeks the segment has held still, and how dug in its defenders are, 0 to 1 (full at
+    /// `front.dig_weeks`).
+    pub still_weeks: u16,
+    pub dug: f64,
+}
+
+impl Segment {
+    /// Men per km of front of each side, ours first; `None` when the width is unknown.
+    pub fn density(&self) -> Option<[f64; 2]> {
+        (self.width_km > 0.0).then(|| [self.men[0] / self.width_km, self.men[1] / self.width_km])
+    }
 }
 
 /// The front against one enemy country.
@@ -60,6 +74,70 @@ impl Front {
     }
 }
 
+/// One side's support for the war (G4), per mille, as the tick wrote it.
+#[derive(Clone, Debug, PartialEq)]
+pub struct SupportLine {
+    pub country: String,
+    pub value: i32,
+    /// What moved it this week: (term key, per mille), in the order the screen shows them.
+    pub terms: Vec<(&'static str, i32)>,
+    /// Where the terms pull it.
+    pub target: i32,
+    /// (interest group key, support per mille, clout per mille), the weightiest first.
+    pub groups: Vec<(String, i32, u16)>,
+    pub weeks: u32,
+    /// Weeks before the government falls, below the collapse.
+    pub countdown: Option<u16>,
+    pub fallen: Option<Fallen>,
+    /// The franchise and the censorship of the laws in force, per mille, and the share of the
+    /// gap to the target the support closes in a week (`support::speed`: a free vote hastens
+    /// it, censorship slows it).
+    pub franchise: i32,
+    pub censorship: i32,
+    pub speed: i64,
+}
+
+/// How a government fell in the war.
+#[derive(Clone, Debug, PartialEq)]
+pub enum Fallen {
+    /// A new form of government (law keys): the security reputation is halved.
+    Regime { from: String, to: String },
+    /// A republic's cabinet.
+    Cabinet,
+}
+
+/// An occupied region between the war's sides.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Occupied {
+    pub state: u16,
+    pub by: String,
+    /// The player's side holds it.
+    pub ours: bool,
+    pub weeks: u32,
+    /// Per mille.
+    pub resistance: i32,
+    /// Per mille of the garrison needed that is kept.
+    pub garrison: i32,
+    /// What the occupier took this week, real dollars.
+    pub taken: f64,
+    /// Per mille of the region's output the occupier takes: the extraction of its weeks
+    /// (`occupation::extraction`, rising to the cap) cut by the garrison kept; and the cap.
+    pub extraction: i32,
+    pub extraction_cap: i32,
+}
+
+/// A region the war wrecked.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Wreck {
+    pub state: u16,
+    /// The player's side's land.
+    pub ours: bool,
+    /// Per mille of the building levels destroyed.
+    pub share: i32,
+    pub owed: f64,
+    pub civilians: u64,
+}
+
 /// One war of the player's.
 #[derive(Clone, Debug, PartialEq)]
 pub struct WarLine {
@@ -77,6 +155,11 @@ pub struct WarLine {
     /// side (map state ids).
     pub lost: Vec<u16>,
     pub taken: Vec<u16>,
+    /// The support of the player's country and of the enemy's leader; `None` before the tick
+    /// wrote it (or without the war's conduct data).
+    pub support: [Option<SupportLine>; 2],
+    pub occupied: Vec<Occupied>,
+    pub wrecks: Vec<Wreck>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -85,6 +168,14 @@ pub struct WarView {
     pub wars: Vec<WarLine>,
     /// Land casualties of the player's country since its first war.
     pub losses: u64,
+    /// The support's thresholds, per mille: peace and collapse.
+    pub thresholds: Option<(i32, i32)>,
+    /// Weeks from the collapse to the government's fall.
+    pub revolution_weeks: u16,
+    /// The pace of the fronts (`front` of the military rules): men per km of a full line, and
+    /// the weeks a still segment takes to dig in fully.
+    pub full_line_men_km: f64,
+    pub dig_weeks: u16,
     /// What the fighting looked like when read: a change reads it again.
     pub signature: Signature,
 }
@@ -106,8 +197,85 @@ fn f(x: Fixed) -> f64 {
     x.to_f64_lossy()
 }
 
+fn support_line(
+    world: &GameWorld,
+    politics: Option<&bf_sim::politics::Politics>,
+    rules: Option<&bf_sim::war::support::SupportRules>,
+    country: u16,
+    tag: String,
+) -> Option<SupportLine> {
+    let s = world.war.fighting.support_of(country)?;
+    let (franchise, censorship) = politics.map_or((0, 0), |p| {
+        let e = bf_sim::polity::effects_in_force(
+            p,
+            &world.politics,
+            usize::from(country),
+            bf_sim::politics::Scope::Metropole,
+        );
+        let at = |k: &str| {
+            bf_sim::politics::effect_index(k)
+                .and_then(|i| e.get(i))
+                .copied()
+                .unwrap_or(0)
+        };
+        (at("franchise"), at("censorship"))
+    });
+    let speed = rules.map_or(0, |r| bf_sim::war::support::speed(r, franchise, censorship));
+    let t = &s.terms;
+    let clout = world.politics.clout.get(usize::from(country));
+    let mut groups: Vec<(String, i32, u16)> = s
+        .groups
+        .iter()
+        .enumerate()
+        .filter_map(|(g, v)| {
+            let key = politics?.interest_groups.get(g)?.key.clone();
+            let c = clout.and_then(|c| c.get(g)).copied().unwrap_or(0);
+            Some((key, *v, c))
+        })
+        .collect();
+    groups.sort_by(|a, b| b.2.cmp(&a.2).then(a.0.cmp(&b.0)));
+    let law = |i: u16| {
+        politics
+            .and_then(|p| p.laws.get(usize::from(i)))
+            .map_or_else(|| i.to_string(), |l| l.key.clone())
+    };
+    Some(SupportLine {
+        country: tag,
+        value: s.value,
+        terms: vec![
+            ("start", t.start),
+            ("casualties", t.casualties),
+            ("duration", t.duration),
+            ("deprivation", t.deprivation),
+            ("territory", t.territory),
+            ("result", t.result),
+        ],
+        target: t.target,
+        groups,
+        weeks: s.weeks,
+        countdown: s.countdown,
+        fallen: s.fallen.map(|f| match f {
+            bf_sim::war::support::Fall::Regime { from, to } => Fallen::Regime {
+                from: law(from),
+                to: law(to),
+            },
+            bf_sim::war::support::Fall::Cabinet => Fallen::Cabinet,
+        }),
+        franchise,
+        censorship,
+        speed,
+    })
+}
+
 /// The player's wars; `None` without a player or without the war rule.
-pub fn read(world: &GameWorld, setup: &FightSetup, days: i64) -> Option<WarView> {
+pub fn read(
+    world: &GameWorld,
+    setup: &FightSetup,
+    politics: Option<&bf_sim::politics::Politics>,
+    front: Option<&bf_sim::war::FrontRule>,
+    days: i64,
+) -> Option<WarView> {
+    let dig_weeks = front.map_or(0, |r| r.dig_weeks);
     let tag = world.player_tag()?;
     let me = world.countries.iter().position(|(_, c)| c.tag == tag)? as u16;
     let tag_of = |i: u16| {
@@ -202,6 +370,21 @@ pub fn read(world: &GameWorld, setup: &FightSetup, days: i64) -> Option<WarView>
                                 },
                                 into_theirs: share(r_ours, r_theirs),
                                 into_ours: share(r_theirs, r_ours),
+                                width_km: {
+                                    let (x, y) = (state(g.from), state(g.into));
+                                    setup
+                                        .width_km
+                                        .get(&(x.min(y), x.max(y)))
+                                        .map_or(0.0, |w| f(*w))
+                                },
+                                still_weeks: fighting.still_weeks(g.from, g.into),
+                                dug: if dig_weeks > 0 {
+                                    (f64::from(fighting.still_weeks(g.from, g.into))
+                                        / f64::from(dig_weeks))
+                                    .min(1.0)
+                                } else {
+                                    0.0
+                                },
                             })
                         })
                         .collect();
@@ -226,6 +409,60 @@ pub fn read(world: &GameWorld, setup: &FightSetup, days: i64) -> Option<WarView>
                     taken.push(region.state);
                 }
             }
+            let state = |r: u32| regions.get(r as usize).map(|x| (x.state, x.market));
+            let occupation = setup.conduct.as_ref().map(|c| &c.rules.occupation);
+            let occupied = fighting
+                .occupied
+                .iter()
+                .filter_map(|o| {
+                    let (st, owner) = state(o.region)?;
+                    let mine = ours.contains(&o.by) && theirs.contains(&owner);
+                    let theirs_ = theirs.contains(&o.by) && ours.contains(&owner);
+                    (mine || theirs_).then(|| Occupied {
+                        state: st,
+                        by: tag_of(o.by),
+                        ours: mine,
+                        weeks: o.weeks,
+                        resistance: o.resistance,
+                        garrison: o.garrison,
+                        taken: f(o.taken),
+                        extraction: occupation.map_or(0, |r| {
+                            (i64::from(bf_sim::war::occupation::extraction(r, o.weeks))
+                                * i64::from(o.garrison)
+                                / 1000) as i32
+                        }),
+                        extraction_cap: occupation.map_or(0, |r| r.extraction_cap),
+                    })
+                })
+                .collect();
+            let wrecks = fighting
+                .wrecks
+                .iter()
+                .filter_map(|k| {
+                    let (st, owner) = state(k.region)?;
+                    let side = if ours.contains(&owner) {
+                        true
+                    } else if theirs.contains(&owner) {
+                        false
+                    } else {
+                        return None;
+                    };
+                    Some(Wreck {
+                        state: st,
+                        ours: side,
+                        share: k.share,
+                        owed: f(k.owed),
+                        civilians: k.civilians,
+                    })
+                })
+                .collect();
+            let rules = setup.conduct.as_ref().map(|c| &c.rules.support);
+            let support = [
+                support_line(world, politics, rules, me, tag.to_owned()),
+                theirs
+                    .first()
+                    .and_then(|e| support_line(world, politics, rules, *e, tag_of(*e))),
+            ];
             let since = laplace_schelling::calendar::Date::new(w.since.0, w.since.1, w.since.2);
             Some(WarLine {
                 id: w.id,
@@ -238,6 +475,9 @@ pub fn read(world: &GameWorld, setup: &FightSetup, days: i64) -> Option<WarView>
                 fronts,
                 lost,
                 taken,
+                support,
+                occupied,
+                wrecks,
             })
         })
         .collect();
@@ -245,6 +485,16 @@ pub fn read(world: &GameWorld, setup: &FightSetup, days: i64) -> Option<WarView>
         me: tag.to_owned(),
         wars,
         losses: lost_of(me),
+        thresholds: setup
+            .conduct
+            .as_ref()
+            .map(|c| (c.rules.support.peace, c.rules.support.collapse)),
+        revolution_weeks: setup
+            .conduct
+            .as_ref()
+            .map_or(0, |c| c.rules.support.revolution_weeks),
+        full_line_men_km: front.map_or(0.0, |r| f(r.full_line_men_km)),
+        dig_weeks,
         signature: signature(world, days),
     })
 }

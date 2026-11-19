@@ -214,5 +214,72 @@ war-term-terrain = Terrain
 war-term-air = Air
 war-into-theirs = We advanced { $share } into their state; at 100 % it passes to us.
 war-into-ours = They advanced { $share } into our state; at 100 % it passes to them.
+war-segment-density = Front of { $width } km · { $ours } men per km us, { $theirs } them · full line: { $full } per km
+war-segment-density-tip = The denser the defender, the slower the attacker advances: against a full line, at the base speed; against a line five times as dense, 25 times slower; against a thin line, up to 1.75 times faster. The width is the border between the two states.
+war-segment-dug = Dug in { $share }: still for { $weeks ->
+    [one] { $weeks } week
+   *[other] { $weeks } weeks
+}; full at { $full } weeks, when the defender's terrain counts double.
 war-peace = Propose peace to { $country }…
 war-peace-note = Peace is an agreement at the negotiation table, in the Agendas; signed between the leaders, the war ends and the occupation between them ends.
+war-support-thresholds = On the bar, the light tick is peace and the red one, collapse. An AI government below { $peace } asks for peace; below { $collapse }, it counts down to its fall.
+war-support-you = { $country } (you)
+war-support-tends-down = Support tends to fall to { $target }, from:
+war-support-tends-up = Support tends to rise to { $target }, from:
+war-support-tends-still = Support tends to stay at { $target }, from:
+war-support-why-start = cause of the war
+war-support-why-casualties = the dead
+war-support-why-duration = a long war
+war-support-why-deprivation = hardship at home
+war-support-why-territory-lost = land lost
+war-support-why-territory-won = land taken
+war-support-why-result-down = a front falling back
+war-support-why-result-up = a front moving forward
+war-support-pace = It moves slowly: { $count ->
+    [one] { $weeks } week
+   *[other] { $weeks } weeks
+} to go half the way
+war-support-censored = censorship slows the change
+war-support-censored-fall = censorship slows the fall
+war-support-vote-wide = with a wide vote, support reacts faster
+war-support-vote-narrow = with a narrow vote, opinion weighs in slowly
+war-support-you-thresholds = For you: below { $peace } the AI would ask for peace, but you decide; below { $collapse }, the government falls in { $count ->
+    [one] { $weeks } week
+   *[other] { $weeks } weeks
+} and the new one asks for peace.
+war-devastation-ours = Our side
+war-devastation-theirs = Their side
+war-devastation-total = { $count ->
+    [one] { $civilians } civilian killed
+   *[other] { $civilians } civilians killed
+} in { $n ->
+    [one] { $regions } region
+   *[other] { $regions } regions
+}
+war-devastation-more = and { $count ->
+    [one] { $n } more region with a smaller loss
+   *[other] { $n } more regions with smaller losses
+}
+war-support-term = { $term } { $value }
+war-support-group = { $group } { $value } (weight { $clout })
+war-support-speed-tip = The support moves toward its target little by little. A free vote makes opinion weigh in faster; the censorship of the laws in force slows it. Changing the press or the voting law changes this speed.
+war-support-countdown = Below the collapse: the government falls in { $count ->
+    [one] { $weeks } week
+   *[other] { $weeks } weeks
+}; until then, peace may still be made on its own terms.
+war-support-fallen-regime = The government fell and another form of government came ({ $form }); the new government asks for peace. The security reputation was halved.
+war-support-fallen-cabinet = The cabinet fell; the new government asks for peace.
+war-occupied-line = { $state } — held by { $by } for { $count ->
+    [one] { $weeks } week
+   *[other] { $weeks } weeks
+}; resistance { $resistance }, garrison { $garrison } of what is needed; takes { $extraction } of the output ({ $taken } a week; rising to { $cap })
+war-occupied-tip = Resistance rises with what the occupier takes and with a short garrison; the garrison is the share kept of the troops the territory asks for. The occupier takes a share of the output that grows with the weeks up to the cap, cut when the garrison runs short.
+war-devastation = Devastation
+war-wreck-ours = { $state } (ours): { $share } of the buildings destroyed, { $count ->
+    [one] { $civilians } civilian killed
+   *[other] { $civilians } civilians killed
+}
+war-wreck-theirs = { $state } (theirs): { $share } of the buildings destroyed, { $count ->
+    [one] { $civilians } civilian killed
+   *[other] { $civilians } civilians killed
+}
