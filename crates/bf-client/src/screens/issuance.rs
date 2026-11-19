@@ -25,7 +25,7 @@ fn arg(s: String) -> Arg<'static> {
 const STEP: i32 = 50;
 
 fn pct(i18n: &I18n, share: f64) -> String {
-    format!("{} %", i18n.decimal(share * 100.0, 0))
+    crate::text::pct_text(i18n, i18n.decimal(share * 100.0, 0))
 }
 
 /// The fixed split as the command carries it, from the view's shares of 1.

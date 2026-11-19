@@ -242,7 +242,7 @@ fn schooling_section(ui: &mut Ui, i18n: &I18n, world: &World, view: &PopulationV
     bf_ui_kit::stat_row(
         ui,
         &i18n.tr("population-literacy"),
-        &format!("{} %", i18n.decimal(s.literacy * 100.0, 1)),
+        &crate::text::pct_text(i18n, i18n.decimal(s.literacy * 100.0, 1)),
     );
     for (l, key) in [
         "population-pupils-primary",
@@ -387,7 +387,7 @@ fn community_section(ui: &mut Ui, i18n: &I18n, world: &World, view: &PopulationV
         p.text(
             egui::pos2(share_x, y),
             Align2::RIGHT_CENTER,
-            format!("{} %", i18n.decimal(l.share * 100.0, 1)),
+            crate::text::pct_text(i18n, i18n.decimal(l.share * 100.0, 1)),
             sans_medium(size::SMALL),
             color::TEXT,
         );
@@ -473,7 +473,7 @@ fn class_section(ui: &mut Ui, i18n: &I18n, world: &World, view: &PopulationView,
         p.text(
             egui::pos2(share_x, y),
             Align2::RIGHT_CENTER,
-            format!("{} %", i18n.decimal(l.share * 100.0, 1)),
+            crate::text::pct_text(i18n, i18n.decimal(l.share * 100.0, 1)),
             sans(size::SMALL),
             color::TEXT_MUTED,
         );
@@ -555,7 +555,7 @@ fn pyramid(
         p.text(
             egui::pos2(rect.right(), y + ROW / 2.0),
             Align2::RIGHT_CENTER,
-            format!("{} %", i18n.decimal(n as f64 * 100.0 / total as f64, 1)),
+            crate::text::pct_text(i18n, i18n.decimal(n as f64 * 100.0 / total as f64, 1)),
             sans(size::CAPTION),
             color::TEXT_MUTED,
         );

@@ -115,7 +115,7 @@ fn groups(ui: &mut Ui, i18n: &I18n, view: &LawsView, picked: &mut Picked) {
         pair_line(
             ui,
             &i18n.tr("laws-legitimacy"),
-            &format!("{} %", percent(i18n, i32::from(live.legitimacy))),
+            &crate::text::pct_text(i18n, percent(i18n, i32::from(live.legitimacy))),
             color::TEXT,
         );
         if live.movements.is_empty() {

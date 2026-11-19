@@ -93,6 +93,6 @@ saves-cause-wrong-game = the file is a save of another game
 saves-cause-malformed = a part of the file does not decode
 saves-damaged-short = Damaged file
 settings-autosave-cost = Time it takes from the simulation (measured in 2025): { $costs }.
-settings-autosave-cost-one = { $option } ~{ $percent } %
+settings-autosave-cost-one = { $option } ~{ $percent }%
 points-reason-denounce = Before denouncing an agreement
 points-reason-embargo = Before imposing an embargo

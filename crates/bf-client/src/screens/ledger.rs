@@ -25,7 +25,7 @@ pub fn treaty_name(i18n: &I18n, key: &str) -> String {
 }
 
 fn pct(i18n: &I18n, x: f64) -> String {
-    format!("{} %", i18n.decimal(x * 100.0, 1))
+    crate::text::pct_text(i18n, i18n.decimal(x * 100.0, 1))
 }
 
 fn standing_color(s: Standing) -> egui::Color32 {
