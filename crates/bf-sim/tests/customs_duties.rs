@@ -1,6 +1,6 @@
 //! Customs duties (`econ::customs`, switch `customs_duties`, docs/trade.pt-BR.md, section 13):
-//! the tariff makes the world import less, and its money leaves the importers for the
-//! treasuries, the world's money the same.
+//! a higher tariff makes a country buy less from its partners, and its money leaves the importers
+//! for the treasuries, the world's money the same.
 
 use std::path::PathBuf;
 use std::sync::OnceLock;
@@ -28,31 +28,58 @@ fn run(customs_duties: bool) -> Session {
     s
 }
 
-fn imports(s: &Session) -> Fixed {
-    let cat = &data().catalogue;
-    s.world()
-        .econ
-        .markets
-        .iter()
-        .map(|m| {
-            (0..cat.goods.len())
-                .filter(|&g| m.net_import[g] > Fixed::ZERO)
-                .map(|g| m.net_import[g] * cat.goods[g].base_price)
-                .sum::<Fixed>()
-        })
+/// What market `mi` bought from every partner so far this year, at base prices (`trade.year`).
+fn bought(s: &Session, mi: usize) -> Fixed {
+    let t = &s.world().econ.trade;
+    let n = s.world().econ.markets.len();
+    (0..n)
+        .filter(|&a| a != mi)
+        .map(|a| t.year.get(a * n + mi).copied().unwrap_or(Fixed::ZERO))
         .sum()
 }
 
+/// Britain under `law` from the first day, customs duties on, to the end of June 1925.
+fn britain_under(law: &str) -> (Session, usize) {
+    let d = data();
+    let p = d.politics.as_ref().unwrap();
+    let mut s = Session::new(
+        d.new_world(),
+        1925,
+        Date::new(1925, 1, 1),
+        2,
+        Some(d.rules_with(Switches {
+            customs_duties: true,
+            ..Switches::shipped()
+        })),
+    );
+    let gbr = s
+        .world()
+        .countries
+        .iter()
+        .position(|(_, c)| c.tag == "GBR")
+        .unwrap();
+    s.submit(bf_sim::game::GameCommand::SetLaw {
+        tag: "GBR".into(),
+        law: p.law(law).unwrap() as u16,
+    });
+    s.sim.run_until(Date::new(1925, 6, 29));
+    (s, gbr)
+}
+
 #[test]
-fn off_by_default_and_on_the_world_imports_less() {
+fn off_by_default_and_a_higher_tariff_buys_less_abroad() {
     assert!(!data().rules().switches.customs_duties, "ships off");
     let (off, on) = (run(false), run(true));
     assert_ne!(off.state_hash(), on.state_hash());
+    // The tariff works through the price of arrival (gross trade's split between home and
+    // foreign sellers), not a cut in the quantity: the protective law buys less abroad.
+    let (free, gbr) = britain_under("free_trade");
+    let (protect, _) = britain_under("protective_tariffs");
     assert!(
-        imports(&on) < imports(&off),
-        "imports on {} off {}",
-        imports(&on),
-        imports(&off)
+        bought(&protect, gbr) < bought(&free, gbr),
+        "protective {} free {}",
+        bought(&protect, gbr),
+        bought(&free, gbr)
     );
 }
 
