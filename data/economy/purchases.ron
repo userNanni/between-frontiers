@@ -132,8 +132,12 @@
     ],
     // Trade with a partner (docs/trade.pt-BR.md). Design values, to calibrate after phase 6.
     trade: (
-        // Share of a surplus or a shortage that reaches the world in a week (the 85 % of before).
-        reach: 0.85,
+        // Share of a surplus or a shortage that reaches the world in a week. It was 0.85 from the
+        // phase-1 pool (#29), "so that local prices still carry part of the signal (distance,
+        // ports, habits)", before freight and the partner's preference existed. Those now carry
+        // that signal, and 0.85 left a weekly rest of shortage and surplus whose price gap became
+        // margin (55 % of trade in 1925) and halved trade (docs/trade.pt-BR.md, section 14).
+        reach: 1.0,
         // Substitution between origins (Armington), long run: about 5 (Head and Mayer, 2014,
         // Handbook of International Economics vol. 4).
         sigma: 5,
