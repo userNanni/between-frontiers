@@ -8,14 +8,14 @@
 //!   debts between governments (`treaty::Ledger::service_week`), and the profit foreign owners
 //!   take home (`week::settle_region`, and the earnings kept for an expansion that did not
 //!   come, released by `monthly::Investment`).
-//! - **Transfers**: trade's margins spread back to the markets (`week::margin_transfers`), and
-//!   the money one treasury pays another by treaty or occupation.
+//! - **Transfers**: the money one treasury pays another by treaty or occupation. Trade's margins
+//!   go back to each market's own pool (`week::margin_transfers`) and cross no border.
 //! - **Financial account**: bonds sold and bought abroad, the principal repaid on them and on the
 //!   debts between governments, and the works foreign funds pay for (`monthly::Investment`).
 //!   Defaults, write-offs and the erosion of claims change what a claim is worth, not what
 //!   moves: they are valuation and stay out.
 //! - **Not settled**: `−(current account + financial account)`. Trade moves no money between
-//!   countries (each market buys and sells at its own price, only the margins are spread), so
+//!   countries (each market buys and sells at its own price), so
 //!   the balance does not close with reserves; this line is what would have to move if trade
 //!   settled (the owner's open question PO1).
 //!
@@ -62,7 +62,7 @@ lines! {
     remittances_received,
     /// Profit of plants here sent to their owners abroad.
     remittances_paid,
-    /// Trade's margins spread back by volume (`week::margin_transfers`), net: positive in.
+    /// Trade's margins between countries: none, each market's own pool gets them (zero).
     margins,
     /// Money another treasury paid this one by treaty or occupation.
     transfers_received,
@@ -256,20 +256,6 @@ impl PaymentsState {
         }
         for (mi, l) in lines.into_iter().enumerate() {
             self.add(mi, year, l);
-        }
-    }
-
-    /// Trade's margins spread back to the markets (`week::margin_transfers`).
-    pub fn record_margins(&mut self, year: i32, transfers: &[Fixed]) {
-        for (mi, &t) in transfers.iter().enumerate() {
-            self.add(
-                mi,
-                year,
-                Lines {
-                    margins: t,
-                    ..Lines::default()
-                },
-            );
         }
     }
 
