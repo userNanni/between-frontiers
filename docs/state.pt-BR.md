@@ -569,17 +569,121 @@ Conta corrente real: Jones e Obstfeld (NBER, *Saving, Investment, and Gold*, 199
 - **A renda quase não existe:** os juros de títulos no exterior ficam perto de zero, e o livro entre
   Estados (as reparações e as dívidas de guerra) aparece só como principal. A renda britânica de 1925
   era cerca de 5 % do PIB (Feinstein, 1972).
-- Os credores recebem um pouco menos do que os devedores pagam (a fatia de cada credor é arredondada
-  a 0,001, e numa semana sem credor ninguém recebe): cerca de 0,1 % dos juros pagos ao exterior,
-  anotado numa linha mundial (`unreceived`) e a consertar na fatia 2.
+- Os credores recebiam um pouco menos do que os devedores pagavam (a fatia de cada credor era
+  arredondada a 0,001): consertado na fatia 2.
+
+### Fatia 2: liquidação em dinheiro e reserva (PO1, PO7, PO8), desligada
+
+Chave `payments_settle` (`data/rules.ron`, desligada; `econ::payments::settle`). Save 36 (34 e 35
+ficam para os PRs da guerra): `GameWorld::reserves`, no hash quando a liquidação já correu, junto
+com as linhas da semana do balanço que a liquidação seguinte lê.
+
+**Antes, dois consertos que mudam o hash da `main` sem a chave.** Cada credor recebe a sua parte dos
+juros e do principal pagos ao exterior pelo maior resto (`trade::split_exact_into`), e cada mercado
+empresta a sua parte dos títulos vendidos fora do mesmo jeito: toda linha do balanço fecha no
+mundo na unidade crua, toda semana (`tests/payments.rs`, sem tolerância). Numa semana em que
+ninguém tem crédito no exterior, o que os devedores separaram volta ao Tesouro deles e fica anotado
+à parte (`unreceived`), fora das linhas. Hash de 10 anos com a chave desligada: `ae74a191…` (antes,
+`f9744b7c…`).
+
+**Onde mora o "não liquidado" hoje** (`BF_DIAG_SETTLE`, % do PIB, 1925 a 1930). As margens do
+comércio, que a fatia 1 registrou como transferência vinda de fora, são quase todas o próprio
+dinheiro do importador: a compensação do mercado tira dos compradores o que pagaram pela importação
+líquida e paga aos vendedores a exportação líquida, e `margin_transfers` devolve a cada mercado esse
+saldo próprio menos uma parte do saldo do mundo pelo volume. Assim, por país:
+
+| | bens e serviços | margens: saldo próprio | margens: parte do mundo | resto | não liquidado |
+|---|---|---|---|---|---|
+| Reino Unido | −1,6 a +1,2 | +2,0 a −0,5 | 0,3 a 0,5 | −0,3 | +0,2 a 0,0 |
+| Estados Unidos | +2,0 a +2,7 | −1,9 a −2,5 | 0,15 a 0,28 | +0,15 | −0,06 a 0,0 |
+| Alemanha | −1,0 a +1,3 | +1,8 a +0,4 | 0,5 a 0,7 | −0,8 a −0,9 | +0,55 a −0,17 |
+| França | −2,2 a +0,8 | +2,5 a −0,4 | 0,3 a 0,45 | +0,4 a +0,5 | −0,4 a −0,5 |
+| Argentina | −0,3 a −2,6 | +0,5 a +2,9 | 0,33 a 0,44 | 0 | 0,0 a +0,2 |
+| Índia | −1,1 a −4,8 | +1,4 a +5,1 | 0,4 a 0,6 | 0 | +0,1 a +0,4 |
+| Japão | −3,3 a +1,4 | +3,5 a −1,2 | 0,3 a 0,5 | 0 | +0,1 a +0,25 |
+| Itália | −3,8 a +0,6 | +4,5 a +0,4 | 0,4 a 0,6 | +0,2 | −0,5 a −0,75 |
+
+- **O saldo próprio anula o comércio:** bens a preço de base contra o mesmo saldo a preço do
+  mercado. A diferença entre os dois é avaliação, não dinheiro que falta.
+- **A parte do mundo era dinheiro que sumia:** cada mercado perdia a sua parte (0,15 a 0,7 % do PIB
+  ao ano) sem contrapartida; no mundo, 0,35 a 0,5 % do PIB mundial por ano. Consertado no #256: a
+  compensação devolve a cada mercado o saldo próprio inteiro, e as margens deixaram de cruzar a
+  fronteira (a linha `margins` fica em zero). A tabela acima é de antes do conserto.
+- **O resto já mudou de país quando aconteceu** (juros e principal do livro, pagamentos de Tesouro a
+  Tesouro): o Reino Unido paga −0,3 de juros do livro, a Alemanha −0,8 a −0,9 de principal, a
+  França recebe +0,4 a +0,5. O não liquidado os conta de novo.
+
+Liquidar o não liquidado, como estava no desenho, cobraria duas vezes o que já se moveu e quase nada
+do comércio. A liquidação faz assim:
+
+- **Os bens e serviços mudam de fundo** a preço de base: o fundo do exportador recebe, o do
+  importador paga (`Lines::trade`). A soma do mundo é zero na unidade crua.
+- **A reserva muda pelo balanço inteiro sem as margens** (`Lines::reserve_flow`): conta corrente e
+  financeira, inclusive os fluxos que já tinham movido dinheiro (são pagos em unidade de
+  referência, isto é, em reserva). Quem tem superávit recebe, quem tem déficit paga da reserva, em
+  ouro e divisas na proporção que guarda.
+- **A reserva nunca fica negativa.** O que o déficit não paga da reserva ele paga na própria moeda:
+  os países em superávit a guardam como divisa (`Reserve::fx`, por moeda emissora) e ela é o que o
+  país deve fora (`ReservesState::owed`, o "não pago" que a regra da fatia 3 vai ler). O fundo paga o
+  comércio de qualquer jeito, então o dinheiro do mundo se conserva; o que falta é reserva, não
+  dinheiro. A moeda volta para casa quando o país tem superávit e outro paga com ela.
+- **Ouro novo (PO8):** 62,5 % da produção semanal do bem `gold` de cada país vai ao banco central, a
+  preço de base, comprado das minas com dinheiro do mesmo fundo (o fundo não muda). Fonte: Liga das
+  Nações, *Report of the Gold Delegation* (1932), §121(a): de 1926 a 1929, pouco mais de US$ 250
+  milhões por ano às reservas e menos de US$ 150 milhões ao uso não monetário. O ouro físico continua
+  vendido ao mercado nesta fatia (conta dupla pequena: 0,04 % do PIB mundial por ano).
+- **Conservação** (`tests/payments_settle.rs`): toda semana, com a chave ligada, a soma dos fundos não
+  muda pela liquidação, a reserva líquida de cada país (reserva menos o que deve fora) muda pelo seu
+  balanço mais o ouro novo, a do mundo só pelo ouro novo, nenhuma reserva fica negativa e nenhum
+  credor fica sem receber; salvar e recarregar mantém o hash. Desligada, ninguém tem reserva.
+
+**Reservas de 1925** (`data/economy/reserves.ron`): ouro dos bancos centrais e governos em dezembro de
+1925, Board of Governors of the Federal Reserve System, *Banking and Monetary Statistics 1914–1941*
+(1943), tabela 160, p. 544 a 551, em milhões de dólares a US$ 20,67 a onça (FRASER; domínio
+público), convertidos em quilos e avaliados ao preço de base do ouro do catálogo. Os oito da medida:
+
+| | US$ milhões | % do PIB do jogo |
+|---|---|---|
+| Estados Unidos | 3 985,4 | 3,9 |
+| França (com Argélia e Marrocos) | 717,3 | 2,7 |
+| Reino Unido | 694,8 | 2,1 |
+| Japão | 575,8 | 3,3 |
+| Argentina | 450,6 | 9,3 |
+| Alemanha | 287,8 | 1,1 |
+| Itália | 221,6 | 1,6 |
+| Índia | 108,6 | 0,4 |
+
+47 entradas no arquivo, soma US$ 8 998 milhões (a tabela dá 8 997,6 no total). **Faltam:** China,
+Equador, Guatemala, Danzig, Albânia, Turquia, Sião, Pérsia e o Congo Belga (sem número em dezembro de
+1925), e as **divisas** de todos os bancos centrais (a tabela é só ouro): começam em zero. A fonte
+para elas é a Liga das Nações, *Memorandum on Currency and Central Banks*.
+
+**A medida, com a chave ligada** (`BF_DIAG_SETTLE`, saída em `target/settle/diag.txt`; reserva bruta
+em % do PIB no início e no fim do ano):
+
+| | 1925 | 1926 | 1927 | 1928 | 1929 | 1930 |
+|---|---|---|---|---|---|---|
+| Dinheiro que mudou de país: metade da soma de \|balanço\| (% do PIB mundial) | 1,38 | 1,39 | 1,16 | 0,98 | 0,93 | 0,90 |
+| Não pago da reserva (% do PIB mundial) | 0,73 | 1,24 | 1,12 | 0,93 | 0,83 | 0,81 |
+| Reino Unido | 2,1 → 0,2 | 0,2 → 0 | 0 | 0 → 0,1 | 0,1 → 1,0 | 1,0 → 1,9 |
+| Estados Unidos | 3,9 → 6,0 | 5,9 → 8,1 | 7,9 → 10,0 | 9,5 → 11,6 | 11,2 → 13,3 | 12,5 → 14,5 |
+| Alemanha | 1,1 → 0 | 0 | 0 | 0 → 0,3 | 0,3 → 0,15 | 0,14 → 0 |
+| França | 2,7 → 1,1 | 1,05 → 0 | 0 | 0 | 0 → 0,4 | 0,35 → 1,35 |
+| Argentina | 9,3 → 9,0 | 8,9 → 8,6 | 8,3 → 8,1 | 7,7 → 6,6 | 6,5 → 4,3 | 4,1 → 1,6 |
+| Índia | 0,4 → 0 | 0 | 0 | 0 | 0 | 0 |
+| Japão | 3,3 → 0,1 | 0,1 → 0 | 0 | 0 | 0 → 0,8 | 0,75 → 2,1 |
+| Itália | 1,6 → 0 | 0 | 0 | 0 → 0,06 | 0,06 → 0,4 | 0,4 → 0,6 |
+
+O que se vê: sem regra que defenda a reserva (fatia 3) e sem capital que siga o juro (fatia 4), os
+déficits de comércio esvaziam as reservas em um ou dois anos (Reino Unido, Alemanha, França, Japão,
+Itália, Índia) e os Estados Unidos acumulam 2 pontos do PIB por ano, contra um estoque de ouro quase
+parado no real de 1925 a 1929 (tabela 160). O que o déficit não paga vira dívida em moeda própria:
+a Índia deve 13 % do PIB fora em 1930. O sinal do comércio ainda está errado em casos grandes (a
+Índia com déficit de 3 a 5 % do PIB, os Estados Unidos com superávit de 2 % contra cerca de 1 % da
+conta corrente real). Nada disso se liga antes das fatias 3 e 4 e de o comércio acertar o sinal.
 
 ### Fatias seguintes (aprovadas, por fazer)
 
-2. **Liquidação em dinheiro e reserva (PO1, PO7, PO8).** O saldo de bens de cada par passa de um
-   fundo ao outro a preço de base; quem tem déficit paga com reserva ou com capital que entra.
-   Reserva = ouro + divisas (créditos na moeda de um país-reserva; quem guarda a moeda que
-   desvaloriza perde). Ouro novo pela produção das minas de cada país, com fonte. Antes de qualquer
-   agregado: conservação testada e a medida de quanto dinheiro muda de país por ano.
 3. **Regime e regra (PO2, PO3, PO4, PO6).** Quem está no ouro em 1925 e a que paridade é dado com
    fonte (Eichengreen, *Golden Fetters*, 1992; Liga das Nações, *Statistical Year-Book*). Abaixo da
    cobertura, juro acima da regra de Taylor por ponto que falta e, se a falta continua, moeda

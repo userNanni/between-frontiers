@@ -110,6 +110,9 @@ pub struct Week {
     /// Capital crosses borders (`game::Switches::foreign_flow`); off, the week runs as before
     /// it: no foreign owner is read, no profit is remitted, no work becomes a stake.
     pub foreign_flow: bool,
+    /// Settlement in money and reserves (`game::Switches::payments_settle`,
+    /// `econ::payments::settle`); `None` off.
+    pub settle: Option<Arc<super::payments::SettleRules>>,
 }
 
 /// What a pop wants to buy this week.
@@ -1209,6 +1212,27 @@ fn union_services(
     }
 }
 
+/// Each market's own balance of its net trade in the week, at its prices (what its buyers paid
+/// for the goods that came in, less what its sellers were paid for the goods that left), and
+/// its volume of trade.
+pub fn trade_balances(cat: &Catalogue, markets: &[Market]) -> (Vec<Fixed>, Vec<Fixed>) {
+    let mut balance = vec![Fixed::ZERO; markets.len()];
+    let mut volume = vec![Fixed::ZERO; markets.len()];
+    for (mi, m) in markets.iter().enumerate() {
+        for gi in 0..cat.goods.len() {
+            let n = m.net_import[gi];
+            if n > Fixed::ZERO {
+                balance[mi] += n * m.sell_ratio[gi] * m.price[gi];
+                volume[mi] += n * m.price[gi];
+            } else if n < Fixed::ZERO {
+                balance[mi] += n * m.buy_ratio[gi] * m.price[gi];
+                volume[mi] -= n * m.price[gi];
+            }
+        }
+    }
+    (balance, volume)
+}
+
 /// What trade gives back to each market's pool in a week. The clearing makes buyers pay for the
 /// goods that came in, which no plant of the market sold, and pays the plants for the goods that
 /// left, which no buyer of the market bought: by itself it takes each market's balance (imports
@@ -1219,21 +1243,7 @@ fn union_services(
 /// money: 0.35 to 0.5 % of world GDP a year (docs/trade.pt-BR.md, section 14). Paying for what
 /// changes country is the settlement's (`payments::settle`).
 pub fn margin_transfers(cat: &Catalogue, markets: &[Market]) -> Vec<Fixed> {
-    markets
-        .iter()
-        .map(|m| {
-            let mut balance = Fixed::ZERO;
-            for gi in 0..cat.goods.len() {
-                let n = m.net_import[gi];
-                if n > Fixed::ZERO {
-                    balance += n * m.sell_ratio[gi] * m.price[gi];
-                } else if n < Fixed::ZERO {
-                    balance += n * m.buy_ratio[gi] * m.price[gi];
-                }
-            }
-            balance
-        })
-        .collect()
+    trade_balances(cat, markets).0
 }
 
 impl System<GameWorld> for Week {
@@ -1422,6 +1432,17 @@ impl System<GameWorld> for Week {
         let econ = &mut world.econ;
         let levers = &world.levers;
         let year = ctx.date.year;
+        // Settlement of the week before (`econ::payments::settle`), before its lines are
+        // cleared: the reserves move now, the pools with this week's below.
+        let settled = self.settle.as_ref().map(|rules| {
+            super::payments::settle(
+                rules,
+                &econ.markets,
+                &world.payments,
+                &mut world.reserves,
+                year,
+            )
+        });
         // The balance of payments: a record, out of the hash (`econ::payments`).
         let payments = &mut world.payments;
         payments.begin_week(econ.markets.len(), year);
@@ -1445,6 +1466,11 @@ impl System<GameWorld> for Week {
             );
         }
         let mut markets = changes.markets;
+        if let Some(pools) = settled {
+            for (m, p) in markets.iter_mut().zip(pools) {
+                m.pool += p;
+            }
+        }
         // What the clearing took out of each market for its trade goes back to it
         // (`margin_transfers`): trade makes and destroys no money.
         let construction_good = cat.construction;

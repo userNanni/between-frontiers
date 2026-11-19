@@ -61,6 +61,12 @@
     // in the first week by the account the player sees, counterproposals and denunciations.
     // Off: proposals wait on the table.
     negotiation: false,
+    // Settlement in money and reserves (`docs/state.pt-BR.md`, "Padrão-ouro, reservas e balanço
+    // de pagamentos", slice 2): each week goods and services move between the pools at base
+    // prices, the balance of payments moves the reserves (gold and foreign exchange, the 1925
+    // gold of `data/economy/reserves.ron`), and a share of each country's gold output joins them.
+    // Off: trade moves no money between countries and nobody holds reserves.
+    payments_settle: false,
     // The reputation of each country's breaches (`docs/treaties.pt-BR.md` 9.4, the owner's
     // decisions P1–P3 of 2026-11-18): security and general, a tenth forgotten a year, halved by a
     // change of regime, read by the table. Off: breaches give causes, nothing more.
