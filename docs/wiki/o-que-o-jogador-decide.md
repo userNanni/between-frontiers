@@ -65,8 +65,9 @@ de ferramentas; o jogador liberta a própria terra com `Liberate`.
 
 ### Comércio: o que o dono decidiu (2026-11-18)
 
-Desenho em `docs/trade.pt-BR.md`, seção 13. Tudo entra atrás de chave. A ordem é CT3, CT4 e CT5
-(#220), depois a tabela por bem com a tela, depois embargo e guerra.
+Desenho em `docs/trade.pt-BR.md`, seções 13 e 14. Tudo entra atrás de chave. A ordem é o alcance a
+100 %, o comércio bruto, CT3, CT4 e CT5 (#220), depois a tabela por bem com a tela, depois embargo
+e guerra.
 
 | | Decisão | Simulação | Tela |
 |---|---|---|---|
@@ -77,6 +78,7 @@ Desenho em `docs/trade.pt-BR.md`, seção 13. Tudo entra atrás de chave. A orde
 | CT5 | O ponto de partida é a taxa de 1925 de cada país (`diplomacy.ron`); a lei move a taxa a partir dela. | #220 | — |
 | CT6 | Embargo unilateral por comando, nos dois sentidos, que reabre devagar. Decisão rara, em Agendas, com ponto de restauração. | thread do comércio (`Geography::closures`) | Agendas |
 | CT7 | A guerra fecha o comércio entre os beligerantes. | thread da guerra (`war_pairs`) e do comércio (o fechamento do par) | — |
+| V1 | O volume do comércio se trata agora (opção A): o saldo chega inteiro ao mundo (alcance a 100 %) e cada mercado também troca variedades do que produz e consome (comércio bruto), calibrado para uns 15 % do PIB mundial em 1925, com o custo no tick otimizado. | thread do comércio | — |
 
 ## O que o país decide por regra
 
