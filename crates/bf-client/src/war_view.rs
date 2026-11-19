@@ -317,6 +317,7 @@ fn support_line(
 /// The player's wars; `None` without a player or without the war rule.
 pub fn read(
     world: &GameWorld,
+    tag: &str,
     setup: &FightSetup,
     politics: Option<&bf_sim::politics::Politics>,
     front: Option<&bf_sim::war::FrontRule>,
@@ -324,7 +325,6 @@ pub fn read(
     days: i64,
 ) -> Option<WarView> {
     let dig_weeks = front.map_or(0, |r| r.dig_weeks);
-    let tag = world.player_tag()?;
     let me = world.countries.iter().position(|(_, c)| c.tag == tag)? as u16;
     let tag_of = |i: u16| {
         world

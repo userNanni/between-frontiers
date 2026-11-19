@@ -65,11 +65,11 @@ pub fn signature(world: &GameWorld, ci: usize) -> (usize, usize) {
 /// The player's public works, or `None` without a player.
 pub fn read(
     world: &GameWorld,
+    tag: &str,
     cat: &Catalogue,
     tree: Option<&TechTree>,
     date: Date,
 ) -> Option<WorksView> {
-    let tag = world.player_tag()?;
     let ci = world.countries.iter().position(|(_, c)| c.tag == tag)?;
     let m = world.econ.markets.get(ci)?;
     let order = world.levers.order(ci);

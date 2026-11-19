@@ -92,11 +92,17 @@ fn rule_of(world: &GameWorld, ci: usize, duties: Option<&Duties>) -> Option<Fixe
 }
 
 /// Whether a view read before still holds: the same player, rule and table, within the week.
-pub fn fresh(last: &TariffView, world: &GameWorld, date: Date, src: &Sources<'_>) -> bool {
+pub fn fresh(
+    last: &TariffView,
+    tag: &str,
+    world: &GameWorld,
+    date: Date,
+    src: &Sources<'_>,
+) -> bool {
     let Some(ci) = world.countries.iter().position(|(_, c)| c.tag == last.tag) else {
         return false;
     };
-    world.player_tag() == Some(last.tag.as_str())
+    tag == last.tag.as_str()
         && date.to_days() < last.days + 7
         && rule_of(world, ci, src.duties) == Some(last.rule)
         && world.tariffs.countries.get(ci).cloned().unwrap_or_default() == last.table
@@ -122,8 +128,8 @@ fn embargoes_of(world: &GameWorld, ci: usize) -> Vec<(String, String)> {
 }
 
 /// The player's tariffs; `None` without a player or an economy.
-pub fn read(world: &GameWorld, date: Date, src: &Sources<'_>) -> Option<TariffView> {
-    let tag = world.player_tag()?.to_owned();
+pub fn read(world: &GameWorld, tag: &str, date: Date, src: &Sources<'_>) -> Option<TariffView> {
+    let tag = tag.to_owned();
     let ci = world.countries.iter().position(|(_, c)| c.tag == tag)?;
     let m = world.econ.markets.get(ci)?;
     let cat = src.catalogue;
