@@ -170,3 +170,12 @@ journal-revolt-irregulars = Irregular combatants
 journal-revolt-armed = Of them, armed
 journal-revolt-landed = Men landed by the metropole
 journal-revolt-switch = To play the new country or the metropole, switch countries in the campaign's “…” menu, on the Campaigns screen.
+
+journal-programme-title = Nuclear programme
+journal-programme-cause = { $share } of GDP a year for the Project: the money moves fission, enrichment and the bomb ahead, and then keeps the warhead order going, which depends on the fissile material on the market. The controls are in the Forces tab.
+journal-programme-progress = { $done } of { $total } steps in production
+journal-programme-warheads = Warheads ready
+journal-programme-months = Months of the step under way, at last month's pace
+journal-programme-end = End the programme…
+journal-programme-end-confirm = Confirm the end of the programme
+journal-programme-end-explain = The money stops at once; the research already done stays, the warheads built stay, and the plants keep running for the market. A restore point is saved first.

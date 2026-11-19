@@ -1018,6 +1018,9 @@ impl System<GameWorld> for Investment {
             super::public::public_works(cat, econ, &unlocks, schools.as_deref(), self.wage_floor);
         // Works the governments asked for (D8, `GameCommand::AddWork`), each checked against what
         // the state may build there; one it may not build is dropped.
+        // The enrichment plant is the state's (a nuclear programme asks for it, `war::programme`):
+        // it may be asked for wherever its method is known.
+        let enrichment = cat.building("nuclear_fuel_plant");
         for q in &world.levers.requests {
             let found = super::public::buildable_in(
                 cat,
@@ -1027,7 +1030,21 @@ impl System<GameWorld> for Investment {
                 q.region as usize,
             )
             .into_iter()
-            .find(|x| x.0 == usize::from(q.kind));
+            .find(|x| x.0 == usize::from(q.kind))
+            .or_else(|| {
+                (Some(usize::from(q.kind)) == enrichment)
+                    .then(|| {
+                        super::public::state_plant_in(
+                            cat,
+                            econ,
+                            &unlocks,
+                            usize::from(q.market),
+                            q.region as usize,
+                            usize::from(q.kind),
+                        )
+                    })
+                    .flatten()
+            });
             if let Some((_, method, points)) = found {
                 public.push(super::state::Project {
                     region: q.region,

@@ -170,3 +170,12 @@ journal-revolt-irregulars = Combatentes irregulares
 journal-revolt-armed = Desses, armados
 journal-revolt-landed = Homens desembarcados pela metrópole
 journal-revolt-switch = Para jogar pelo país novo ou pela metrópole, troque de país no menu “…” da campanha, na tela de Campanhas.
+
+journal-programme-title = Programa nuclear
+journal-programme-cause = { $share } do PIB por ano para o Projeto: o dinheiro adianta a fissão, o enriquecimento e a bomba, e depois mantém a encomenda de ogivas, que depende do material físsil do mercado. Os controles ficam na aba Forças.
+journal-programme-progress = { $done } de { $total } passos em produção
+journal-programme-warheads = Ogivas prontas
+journal-programme-months = Meses do passo em curso, no ritmo do último mês
+journal-programme-end = Encerrar o programa…
+journal-programme-end-confirm = Confirmar o fim do programa
+journal-programme-end-explain = O dinheiro para na hora; a pesquisa feita fica, as ogivas prontas ficam, e as usinas seguem rodando para o mercado. Um ponto de restauração é gravado antes.

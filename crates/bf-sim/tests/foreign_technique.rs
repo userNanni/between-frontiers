@@ -102,6 +102,7 @@ fn the_foreign_share_of_the_levels_speeds_the_diffusion_by_as_much() {
         tree: tree.clone(),
         wage_floor: false,
         foreign_technique: on,
+        programme: None,
     };
     let plain = gain(&research(true), &w, c, t);
     let faster = gain(&research(true), &with, c, t);

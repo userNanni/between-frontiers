@@ -30,6 +30,9 @@ pub struct Forces {
     pub fight: Option<Arc<super::fight::FightSetup>>,
 }
 
+/// The nuclear programmes after a week, and the plants they ask for (market, region, kind).
+type ProgrammesWeek = (Vec<super::programme::Programme>, Vec<(u16, u32, u16)>);
+
 pub struct ForcesChanges {
     countries: Vec<CountryWar>,
     soldiers: Option<Vec<i64>>,
@@ -39,6 +42,8 @@ pub struct ForcesChanges {
     conversions: Option<Vec<super::composition::Conversion>>,
     /// The week at sea (slice C2), while a war is under way.
     sea: Option<super::sea::SeaWeek>,
+    /// The nuclear programmes' week, and the plants they ask for (market, region, kind).
+    programmes: Option<ProgrammesWeek>,
 }
 
 /// [`join`], for the conversions of the composition.
@@ -246,6 +251,167 @@ impl Forces {
             return 0;
         }
         crate::polity::effects_in_force(p, &world.politics, country, Scope::Metropole)[e]
+    }
+
+    /// The warhead type key a country's programme orders, while it has one.
+    fn programme_unit<'a>(&'a self, world: &GameWorld, ci: usize) -> Option<&'a str> {
+        let rule = self.peace.nuclear_programme.as_ref()?;
+        (self.fight.is_some() && world.war.nuclear.of(ci as u16).is_some())
+            .then_some(rule.warhead.as_str())
+    }
+
+    /// A week of every nuclear programme (`war::programme`): last week's deliveries credited,
+    /// this week's money spent on the laboratory's goods and, once the bomb can be built, on the
+    /// warhead order; a plant asked for when the fissile material runs short.
+    fn programmes_week(&self, world: &GameWorld, countries: &mut [CountryWar]) -> ProgrammesWeek {
+        use super::programme::{basket_buy, weekly_money};
+        let Some(rule) = self.peace.nuclear_programme.as_ref() else {
+            return (Vec::new(), Vec::new());
+        };
+        let mil = &self.military;
+        let basket: Vec<(u16, u32)> = rule
+            .basket
+            .iter()
+            .filter_map(|(k, w)| self.cat.good(k).map(|g| (g, *w)))
+            .collect();
+        let warhead = mil.unit(&rule.warhead);
+        let plant = self.cat.building(&rule.plant);
+        let fuel = mil.unit(&rule.warhead).and_then(|ty| {
+            mil.spec(ty, 0)
+                .equipment
+                .iter()
+                .max_by_key(|(_, q)| *q)
+                .map(|(g, _)| *g)
+        });
+        // The enrichment: the second technology of the chain, resolved at load.
+        let enrichment = self
+            .fight
+            .as_ref()
+            .and_then(|f| f.programme.as_ref())
+            .and_then(|p| p.chain.get(1).copied());
+        let mut out = Vec::new();
+        let mut requests = Vec::new();
+        for p in &world.war.nuclear.programmes {
+            let ci = usize::from(p.country);
+            let (Some(m), Some(c)) = (world.econ.markets.get(ci), countries.get_mut(ci)) else {
+                continue;
+            };
+            let mut q = p.clone();
+            q.share = q.share.min(rule.max_share as u16);
+            // Last week's purchases, as the market delivered them.
+            let delivered = |list: &[(u16, Fixed)]| -> Fixed {
+                list.iter()
+                    .map(|(g, x)| {
+                        *x * m.price[*g as usize]
+                            * m.buy_ratio.get(*g as usize).copied().unwrap_or(Fixed::ZERO)
+                    })
+                    .sum()
+            };
+            let research = delivered(&p.research);
+            let all = delivered(&p.buying);
+            q.month = q.month * 3 / 4 + research;
+            q.spent += all;
+            // This week's money.
+            let money = weekly_money(m.gdp_last_year, q.share);
+            let ready = warhead.is_some_and(|ty| can_equip(mil, world, ci, ty, 0));
+            let for_stock = if ready {
+                money.mul_ratio(i64::from(rule.stock_share), 1000)
+            } else {
+                Fixed::ZERO
+            };
+            q.research = basket_buy(&basket, money - for_stock, &m.price);
+            q.buying = q.research.clone();
+            if let (true, Some(ty)) = (ready, warhead) {
+                let k = match c
+                    .queue
+                    .iter()
+                    .position(|o| o.unit == rule.warhead && o.ordered > o.delivered)
+                {
+                    Some(k) => k,
+                    None => {
+                        c.queue.push(super::state::ForceOrder {
+                            unit: rule.warhead.clone(),
+                            generation: None,
+                            colonial: false,
+                            ordered: Fixed::from_int(i64::from(rule.batch.max(1))),
+                            delivered: Fixed::ZERO,
+                            built: Vec::new(),
+                            buying: Vec::new(),
+                            stalled: 0,
+                        });
+                        c.queue.len() - 1
+                    }
+                };
+                let o = &mut c.queue[k];
+                if o.generation.is_none() {
+                    o.generation = self.newest(world, ci, ty);
+                }
+                if let Some(generation) = o.generation {
+                    let per = &mil.spec(ty, generation as usize).equipment;
+                    let left = o.ordered - o.delivered;
+                    // What the order still lacks, by good, and its value.
+                    let lacks: Vec<(u16, Fixed)> = per
+                        .iter()
+                        .map(|(g, x)| (*g, (*x * left - held(&o.built, *g)).max(Fixed::ZERO)))
+                        .filter(|(_, x)| x.is_positive())
+                        .collect();
+                    let value: Fixed = lacks.iter().map(|(g, x)| *x * m.price[*g as usize]).sum();
+                    o.buying.clear();
+                    if value.is_positive() {
+                        let scale = (for_stock / value).min(Fixed::ONE);
+                        for (g, x) in lacks {
+                            let buy = x * scale;
+                            if buy.is_positive() {
+                                o.buying.push((g, buy));
+                                add(&mut q.buying, g, buy);
+                            }
+                        }
+                    }
+                }
+            }
+            // Plants: once enrichment is industrial, a level when there is none, and another
+            // when the fissile material runs short; one at a time.
+            q.plant_wait = q.plant_wait.saturating_sub(1);
+            let industrial = enrichment.is_some_and(|t| {
+                world
+                    .research
+                    .stage
+                    .get(ci)
+                    .and_then(|s| s.get(t))
+                    .is_some_and(|&st| st >= crate::research::Stage::Industrial)
+            });
+            if let (true, 0, Some(kind)) = (industrial, q.plant_wait, plant) {
+                let mine: Vec<usize> = (0..world.econ.regions.len())
+                    .filter(|&i| usize::from(world.econ.regions[i].market) == ci)
+                    .collect();
+                let levels: u32 = mine
+                    .iter()
+                    .flat_map(|&i| world.econ.regions[i].plants.iter())
+                    .filter(|p| usize::from(p.kind) == kind)
+                    .map(|p| u32::try_from(p.levels).unwrap_or(0))
+                    .sum();
+                let queued = m.queue.iter().any(|w| usize::from(w.kind) == kind);
+                let short = fuel.is_some_and(|g| {
+                    m.buy_ratio.get(g as usize).copied().unwrap_or(Fixed::ONE)
+                        < Fixed::from_ratio(i64::from(rule.plant_shortage), 1000)
+                });
+                if !queued && (levels == 0 || (short && ready)) {
+                    let at = mine
+                        .iter()
+                        .copied()
+                        .filter(|&i| !world.econ.regions[i].colony)
+                        .max_by_key(|&i| {
+                            (world.econ.regions[i].population(), std::cmp::Reverse(i))
+                        });
+                    if let Some(r) = at {
+                        requests.push((p.country, r as u32, kind as u16));
+                        q.plant_wait = rule.plant_weeks;
+                    }
+                }
+            }
+            out.push(q);
+        }
+        (out, requests)
     }
 
     /// Men of service age in the metropole: the army in peace is drawn from them.
@@ -466,7 +632,12 @@ impl Forces {
         let weeks = i64::from(self.peace.replace_weeks.max(1));
         let mut raised = Vec::new();
         let CountryWar { queue, depot, .. } = c;
+        let programme_unit = self.programme_unit(world, ci);
         for o in queue.iter_mut() {
+            // The nuclear programme pays its warhead order itself, outside the budget.
+            if programme_unit == Some(o.unit.as_str()) {
+                continue;
+            }
             o.buying.clear();
             let Some(ty) = mil.unit(&o.unit) else {
                 continue;
@@ -952,12 +1123,13 @@ impl System<GameWorld> for Forces {
                 fight: None,
                 conversions: None,
                 sea: None,
+                programmes: None,
             };
         }
         // A country born since (a separation, a liberation, a revolt) gets its forces' entry,
         // empty: without it, it had no forces, no military budget and no war support.
         let empty = CountryWar::default();
-        let (countries, conversions): (Vec<CountryWar>, Vec<_>) =
+        let (mut countries, conversions): (Vec<CountryWar>, Vec<_>) =
             (0..world.countries.len().max(world.war.countries.len()))
                 .map(|ci| {
                     let cw = world.war.countries.get(ci).unwrap_or(&empty);
@@ -993,6 +1165,9 @@ impl System<GameWorld> for Forces {
             .and_then(|f| f.sea.as_ref())
             .filter(|_| !world.war.conflicts.wars.is_empty())
             .map(|s| super::sea::sea_week(s, &self.military, world, &date));
+        // The nuclear programmes (N1), with the war switched on.
+        let programmes = (self.fight.is_some() && !world.war.nuclear.is_empty())
+            .then(|| self.programmes_week(world, &mut countries));
         ForcesChanges {
             countries,
             soldiers,
@@ -1000,6 +1175,7 @@ impl System<GameWorld> for Forces {
             fight,
             conversions,
             sea,
+            programmes,
         }
     }
 
@@ -1024,6 +1200,31 @@ impl System<GameWorld> for Forces {
             && !world.war.colonial.is_empty()
         {
             super::colonial::reconquered(k, world);
+        }
+        if let Some((progs, requests)) = changes.programmes {
+            // A command may have changed a programme this tick: keep its share, or its end.
+            for p in progs {
+                if let Some(q) = world
+                    .war
+                    .nuclear
+                    .programmes
+                    .iter_mut()
+                    .find(|q| q.country == p.country)
+                {
+                    let share = q.share;
+                    *q = super::programme::Programme { share, ..p };
+                }
+            }
+            for (market, region, kind) in requests {
+                world
+                    .levers
+                    .requests
+                    .push(crate::econ::levers::WorkRequest {
+                        market,
+                        region,
+                        kind,
+                    });
+            }
         }
         if let Some(c) = changes.conversions {
             world.war.composition.conversions = c;

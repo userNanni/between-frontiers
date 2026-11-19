@@ -1081,6 +1081,16 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
                 .sim
                 .send(Command::Issue(GameCommand::Mobilize { tag, on }));
         }
+        if let (true, Some(tag)) = (res.programme_end, state.save.meta.player.clone()) {
+            // Ending the programme stops the money and the warhead order at once: a point first.
+            state.restore_point_before(shared, Reason::War);
+            state
+                .sim
+                .send(Command::Issue(GameCommand::NuclearProgramme {
+                    tag,
+                    share: None,
+                }));
+        }
         if res.open_war {
             toggle_war(state);
         }

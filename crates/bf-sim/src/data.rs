@@ -578,6 +578,15 @@ impl GameData {
                         seas: self.seas.clone().map(Arc::new),
                     })
                 }),
+                programme: self
+                    .war
+                    .as_ref()
+                    .and_then(|w| w.peace.as_ref())
+                    .and_then(|p| p.nuclear_programme.clone())
+                    .zip(self.tree.as_ref())
+                    .map(|(rule, tree)| {
+                        Arc::new(crate::war::programme::ProgrammeSetup::new(rule, tree))
+                    }),
             })
         });
         crate::game::Rules {

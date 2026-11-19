@@ -27,6 +27,7 @@ pub mod forces;
 pub mod ledger;
 pub mod nuclear;
 pub mod occupation;
+pub mod programme;
 pub mod sea;
 pub mod state;
 pub mod support;

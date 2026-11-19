@@ -267,5 +267,31 @@ termo a termo.
   combate.
 - **O que o autor pensou:** o autor concordou e pediu que a dissuasão se apoiasse nos trabalhos
   sobre a diplomacia dos mísseis (Wohlstetter, Brodie, Schelling, Kahn).
-- **Estado:** desenhado.
+- **Estado:** o balanço de dissuasão está no jogo (#246, só leitura) e o programa no PR do
+  programa nuclear. O degrau na crise e o uso vêm depois.
 - **Onde está o detalhe:** [`war.pt-BR.md`, "Arma nuclear"](../../war.pt-BR.md#arma-nuclear-dissuasão-medida).
+
+### A bomba se faz com programa, e a posse só conta inteira depois do teste (N1 a N9)
+
+- **Decisão (dono, 2026-11-19, todas na recomendação):**
+  - **N1:** o programa nuclear é decisão explícita, com parcela do PIB e anos.
+  - **N2:** as armas são imitadas mais devagar, e a partilha entre aliados vem por cláusula.
+  - **N3:** sem teste, o arsenal conta a metade para os outros.
+  - **N4:** contra quem coage de um lado só, o alvo cede mais fácil no periférico, e nunca no
+    existencial.
+  - **N5:** a retaliação é proporcional, no mesmo degrau.
+  - **N6:** quem usa não perde apoio interno direto.
+  - **N7:** o tabu é um estoque que cresce com os anos sem uso e cai a cada uso.
+  - **N8:** a precipitação tira produtividade da terra e da saúde por anos, numa fatia depois do
+    uso.
+  - **N9:** o guarda-chuva vem do aliado com cláusula de defesa.
+- **Como o jogo funciona por causa disso:** o dinheiro do programa compra o laboratório e adianta a
+  cadeia (fissão, enriquecimento, bomba). Depois da bomba, ele mantém a encomenda de ogivas, que
+  depende do material físsil do mercado. O painel de dissuasão lê o arsenal alheio pela metade até
+  o teste.
+- **Como é na vida real:** o Projeto Manhattan custou cerca de 0,4% do PIB americano por ano entre
+  1942 e 1945. A imitação soviética foi acelerada pela espionagem. O tabu de usar a arma cresceu
+  nas décadas sem uso (Tannenwald).
+- **Estado:** decidido (2026-11-19). N1 e N2 estão no PR do programa nuclear, N3 e N9 no #246. N4 a
+  N8 vêm nas fatias do degrau na crise e do uso.
+- **Onde está o detalhe:** [`war.pt-BR.md`, "Arma nuclear na escada de crise"](../../war.pt-BR.md).

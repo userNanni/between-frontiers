@@ -308,6 +308,30 @@ pub fn buildable_in(
     out
 }
 
+/// A level of `kind` (not a public service: a plant the state builds itself, the enrichment of
+/// a nuclear programme) in region `ri` of market `mi`: its newest method known there and its
+/// cost in points; `None` when no method is known or the region is not the market's.
+pub fn state_plant_in(
+    cat: &Catalogue,
+    econ: &Economy,
+    unlocks: &super::Unlocks<'_>,
+    mi: usize,
+    ri: usize,
+    kind: usize,
+) -> Option<(usize, u8, Fixed)> {
+    let cg = PublicKinds::new(cat).construction?;
+    let r = econ.regions.get(ri)?;
+    if usize::from(r.market) != mi {
+        return None;
+    }
+    let b = cat.buildings.get(kind)?;
+    let method = (0..b.methods.len())
+        .rev()
+        .find(|&me| unlocks.method(cat, mi, kind, me))?;
+    let points = level_points(cat, kind, cg, super::plant_tfp(r, &econ.markets[mi], b));
+    (points > Fixed::ZERO).then_some((kind, method as u8, points))
+}
+
 /// Units a level of `kind` makes in a year here, at full staff (first output).
 pub fn level_output(cat: &Catalogue, r: &Region, kind: usize, method: usize) -> Fixed {
     let b = &cat.buildings[kind];
