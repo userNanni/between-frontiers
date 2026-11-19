@@ -11,6 +11,8 @@
 //!   step of its trade law, the law moving it from there (CT5).
 
 use laplace_schelling::Fixed;
+use laplace_schelling::hash::{HashState, StateHasher};
+use serde::{Deserialize, Serialize};
 
 use super::catalogue::Catalogue;
 use super::state::Market;
@@ -132,5 +134,132 @@ mod tests {
         assert_eq!(d.rate_of(0, milli(250)), milli(320));
         let low = Duties::new(&[Some(Fixed::ZERO)], &[milli(250)]);
         assert_eq!(low.rate_of(0, milli(20)), Fixed::ZERO);
+    }
+}
+
+/// What a government fixed of its tariff (owner's decision CT1 and CT2, docs/trade.pt-BR.md,
+/// section 13): the goods it took off the historical rule, each with its rate, and the points it
+/// adds to (surcharge) or takes off (preference) the tariff of every good for a partner. Empty:
+/// every good on the rule, no partner apart.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TariffTable {
+    /// `(good, rate in thousandths)`, ordered by good, one entry per good fixed.
+    pub goods: Vec<(u16, u16)>,
+    /// `(partner market, points in thousandths)`, ordered by partner: positive a surcharge,
+    /// negative a preference.
+    pub partners: Vec<(u16, i16)>,
+}
+
+impl TariffTable {
+    pub fn is_rule(&self) -> bool {
+        self.goods.is_empty() && self.partners.is_empty()
+    }
+
+    /// The rate fixed for `good`, if any.
+    pub fn good(&self, good: usize) -> Option<Fixed> {
+        let g = u16::try_from(good).ok()?;
+        self.goods
+            .binary_search_by_key(&g, |&(k, _)| k)
+            .ok()
+            .map(|i| Fixed::from_ratio(i64::from(self.goods[i].1), 1000))
+    }
+
+    /// The points added for `partner` (zero when none).
+    pub fn partner(&self, partner: usize) -> Fixed {
+        u16::try_from(partner)
+            .ok()
+            .and_then(|p| self.partners.binary_search_by_key(&p, |&(k, _)| k).ok())
+            .map_or(Fixed::ZERO, |i| {
+                Fixed::from_ratio(i64::from(self.partners[i].1), 1000)
+            })
+    }
+
+    /// Fixes `good` at `per_mille`, or with `None` hands it back to the rule.
+    pub fn set_good(&mut self, good: u16, per_mille: Option<u16>) {
+        set_sorted(&mut self.goods, good, per_mille);
+    }
+
+    /// Sets the points for `partner`, or with `None` (or zero) drops them.
+    pub fn set_partner(&mut self, partner: u16, per_mille: Option<i16>) {
+        set_sorted(&mut self.partners, partner, per_mille.filter(|&v| v != 0));
+    }
+}
+
+fn set_sorted<V: Copy>(list: &mut Vec<(u16, V)>, key: u16, value: Option<V>) {
+    match (list.binary_search_by_key(&key, |&(k, _)| k), value) {
+        (Ok(i), Some(v)) => list[i].1 = v,
+        (Ok(i), None) => {
+            list.remove(i);
+        }
+        (Err(i), Some(v)) => list.insert(i, (key, v)),
+        (Err(_), None) => {}
+    }
+}
+
+/// The governments' tariff tables, by market, and the customs revenue each collected last week
+/// (the budget's line, owner's decision CT3). `GameWorld::tariffs`.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TariffState {
+    pub countries: Vec<TariffTable>,
+    /// Last week's duties, by market; a record for the budget, read by nothing in the tick.
+    pub revenue: Vec<Fixed>,
+}
+
+impl TariffState {
+    /// Whether every government is on the rule: such a world hashes as before the tables.
+    pub fn is_empty(&self) -> bool {
+        self.countries.iter().all(TariffTable::is_rule)
+    }
+
+    pub fn table(&self, mi: usize) -> Option<&TariffTable> {
+        self.countries.get(mi).filter(|t| !t.is_rule())
+    }
+
+    /// Market `mi`'s table, grown to hold it.
+    pub fn table_mut(&mut self, mi: usize) -> &mut TariffTable {
+        if self.countries.len() <= mi {
+            self.countries.resize(mi + 1, TariffTable::default());
+        }
+        &mut self.countries[mi]
+    }
+}
+
+/// The tables only: last week's revenue is a record that no rule reads.
+impl HashState for TariffState {
+    fn hash_state(&self, h: &mut StateHasher) {
+        h.write_u64(self.countries.len() as u64);
+        for t in &self.countries {
+            h.write_u64(t.goods.len() as u64);
+            for &(g, r) in &t.goods {
+                h.write_u64(u64::from(g));
+                h.write_u64(u64::from(r));
+            }
+            h.write_u64(t.partners.len() as u64);
+            for &(p, v) in &t.partners {
+                h.write_u64(u64::from(p));
+                h.write_i64(i64::from(v));
+            }
+        }
+    }
+}
+
+/// What a week's duties read: each market's rate by the rule, the governments' tables and the
+/// relations in force by pair. The duty on a flow of good `g` from `seller` to `buyer` is its
+/// value times the buyer's rate for `g` (fixed, or the rule's), plus the seller's points, under
+/// the agreements in force (a customs union pays none), never below zero.
+pub struct Charge<'a> {
+    pub rule: Vec<Fixed>,
+    pub tables: &'a TariffState,
+    pub pairs: super::trade::PairRules,
+}
+
+impl Charge<'_> {
+    pub fn rate(&self, seller: usize, buyer: usize, good: usize) -> Fixed {
+        let rule = self.rule.get(buyer).copied().unwrap_or(Fixed::ZERO);
+        let own = match self.tables.table(buyer) {
+            Some(t) => (t.good(good).unwrap_or(rule) + t.partner(seller)).max(Fixed::ZERO),
+            None => rule,
+        };
+        self.pairs.apply(seller, buyer, own)
     }
 }

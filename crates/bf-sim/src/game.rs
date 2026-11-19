@@ -136,6 +136,11 @@ pub struct GameWorld {
     /// country follows the rule. Each market carries a copy (`Market::levers`).
     #[serde(default)]
     pub levers: crate::econ::levers::LeversState,
+    /// The governments' tariff tables by good and partner, and last week's customs revenue
+    /// (`econ::customs::TariffState`, owner's decisions CT1 to CT3); empty while every country
+    /// follows the historical rule.
+    #[serde(default)]
+    pub tariffs: crate::econ::customs::TariffState,
 }
 
 impl HashState for GameWorld {
@@ -202,6 +207,11 @@ impl HashState for GameWorld {
             h.section("levers");
             self.levers.hash_state(h);
         }
+        // Worlds where every country keeps the historical tariff keep their hash.
+        if !self.tariffs.is_empty() {
+            h.section("tariffs");
+            self.tariffs.hash_state(h);
+        }
     }
 }
 
@@ -224,6 +234,7 @@ impl GameWorld {
             education: Default::default(),
             independence: Default::default(),
             levers: Default::default(),
+            tariffs: Default::default(),
             demography: crate::demography::DemographyState::default(),
             treaties: Default::default(),
             war: crate::war::WarState::default(),
@@ -374,6 +385,22 @@ pub enum GameCommand {
     },
     /// Fixes public pay over the private wage, in thousandths (the rule is 700; D2).
     SetPublicPay { tag: String, per_mille: Option<u16> },
+    /// Fixes the tariff of `goods` at `per_mille` thousandths, or with `None` hands them back
+    /// to the historical rule (owner's decision CT1; the screen sends a whole category at once).
+    /// Unknown tags are no-ops.
+    SetGoodsTariff {
+        tag: String,
+        goods: Vec<u16>,
+        per_mille: Option<u16>,
+    },
+    /// Adds `per_mille` thousandths of points to the tariff of every good for `partner`
+    /// (negative: a preference), or with `None` drops them (CT2). The agreements in force still
+    /// cap the result (`trade::tariff_by`). Unknown tags are no-ops.
+    SetPartnerTariff {
+        tag: String,
+        partner: String,
+        per_mille: Option<i16>,
+    },
     /// Fixes the weeks of revenue the treasury keeps and what its surplus is for (D4).
     SetTreasury {
         tag: String,
@@ -676,6 +703,31 @@ impl Command<GameWorld> for GameCommand {
             GameCommand::SetPublicPay { tag, per_mille } => {
                 let v = *per_mille;
                 set_levers(world, tag, |l| l.public_pay = v);
+            }
+            GameCommand::SetGoodsTariff {
+                tag,
+                goods,
+                per_mille,
+            } => {
+                if let Some(ci) = world.countries.iter().position(|(_, c)| c.tag == *tag) {
+                    let t = world.tariffs.table_mut(ci);
+                    for &g in goods {
+                        t.set_good(g, *per_mille);
+                    }
+                }
+            }
+            GameCommand::SetPartnerTariff {
+                tag,
+                partner,
+                per_mille,
+            } => {
+                let pos = |t: &str| world.countries.iter().position(|(_, c)| c.tag == t);
+                if let (Some(ci), Some(pi)) = (pos(tag), pos(partner))
+                    && ci != pi
+                    && let Ok(p) = u16::try_from(pi)
+                {
+                    world.tariffs.table_mut(ci).set_partner(p, *per_mille);
+                }
             }
             GameCommand::SetTreasury {
                 tag,
@@ -1818,9 +1870,52 @@ mod tests {
             hash_of(&with_ledger)
         );
         assert_eq!(
-            hash_of(&headed(29, &encode_snapshot(&with_ledger).unwrap())),
+            hash_of(&headed(31, &encode_snapshot(&with_ledger).unwrap())),
             hash_of(&with_ledger)
         );
+        // Version 29, before the tariff tables: the world without `tariffs`.
+        {
+            #[derive(Serialize)]
+            struct BeforeTariffs<'a> {
+                scenario: &'a String,
+                player: &'a Option<Id<Country>>,
+                countries: &'a Table<Country, CountryState>,
+                census: &'a Vec<CensusRecord>,
+                econ: &'a crate::econ::Economy,
+                research: &'a crate::research::ResearchState,
+                politics: &'a crate::polity::PoliticsState,
+                demography: &'a crate::demography::DemographyState,
+                borders: &'a crate::borders::BordersState,
+                foreign: &'a crate::foreign_stakes::ForeignState,
+                influence: &'a crate::influence::InfluenceState,
+                treaties: &'a crate::treaty::TreatyState,
+                war: &'a crate::war::state::WarState,
+                education: &'a crate::demography::education::EducationState,
+                independence: &'a crate::borders::independence::IndependenceState,
+                levers: &'a crate::econ::levers::LeversState,
+            }
+            let w = &with_ledger;
+            let v29 = encode_snapshot(&BeforeTariffs {
+                scenario: &w.scenario,
+                player: &w.player,
+                countries: &w.countries,
+                census: &w.census,
+                econ: &w.econ,
+                research: &w.research,
+                politics: &w.politics,
+                demography: &w.demography,
+                borders: &w.borders,
+                foreign: &w.foreign,
+                influence: &w.influence,
+                treaties: &w.treaties,
+                war: &w.war,
+                education: &w.education,
+                independence: &w.independence,
+                levers: &w.levers,
+            })
+            .unwrap();
+            assert_eq!(hash_of(&headed(29, &v29)), hash_of(&with_ledger));
+        }
         // Version 28, before the composition of the forces: `war` without `composition`.
         {
             #[derive(Serialize)]
