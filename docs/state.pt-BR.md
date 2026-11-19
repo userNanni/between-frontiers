@@ -801,7 +801,7 @@ taxa e da cobertura):
 
 O que se vê:
 - **A regra faz o que deve** onde a reserva aguenta: os Estados Unidos acumulam e seguem Taylor; a
-  Suécia, a Holanda e a Argentina, abaixo da cobertura, sobem o juro acima de Taylor (até 4 pontos)
+  Suécia, a Holanda e a Argentina, abaixo da cobertura, sobem o juro acima de Taylor (até 5 pontos)
   e entram em deflação de 2 a 7 % ao ano, o mecanismo dos "grilhões de ouro".
 - **Quem sai cedo sai pelo comércio, não pela regra:** sem capital que siga o juro (fatia 4), o
   juro mais alto não traz reserva, e os déficits que a fatia 2 mediu (com o sinal do comércio ainda
