@@ -160,6 +160,9 @@ pub struct WarLine {
     pub support: [Option<SupportLine>; 2],
     pub occupied: Vec<Occupied>,
     pub wrecks: Vec<Wreck>,
+    /// The nuclear balance with the other side's leader, as the player reads it; `None` when
+    /// neither holds a warhead.
+    pub nuclear: Option<crate::nuclear_view::Panel>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -273,6 +276,7 @@ pub fn read(
     setup: &FightSetup,
     politics: Option<&bf_sim::politics::Politics>,
     front: Option<&bf_sim::war::FrontRule>,
+    mil: Option<&bf_sim::war::Military>,
     days: i64,
 ) -> Option<WarView> {
     let dig_weeks = front.map_or(0, |r| r.dig_weeks);
@@ -478,6 +482,11 @@ pub fn read(
                 support,
                 occupied,
                 wrecks,
+                nuclear: mil.and_then(|m| {
+                    theirs
+                        .first()
+                        .and_then(|&e| crate::nuclear_view::read(world, m, me, e))
+                }),
             })
         })
         .collect();

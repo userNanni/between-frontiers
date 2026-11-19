@@ -460,6 +460,148 @@ Control Association.
 Teste da regra da casa: `deterrence_is_mutual_only_with_secure_second_strikes`. Bombardeiros sem
 alerta não dão segundo golpe; com alerta, dão. Trocar os lados troca o resultado.
 
+## Arma nuclear na escada de crise (fases 4 e 5): desenho, com o passo 1 feito
+
+O que segue foi combinado com o orquestrador em 2026-11-19. Só o passo 1 (a ponte e o painel,
+leitura) está no código. O resto espera as respostas do dono (N1 a N9).
+
+### O que o código tinha e o que falta
+- **Árvore (`technologies.ron`), toda com `state_buyer`:** fissão (1938/1944), enriquecimento
+  (1944/1945, o bem `nuclear_fuel` e a usina `nuclear_fuel_plant`), bomba atômica (1945),
+  termonuclear (1952/1954), míssil balístico (1957/1959), submarino nuclear e defesa antimíssil.
+- **Tipos:** `nuclear_warhead` (60 de `nuclear_fuel`; 30 na termonuclear), `ballistic_missile`,
+  `missile_submarine`, `missile_defense` e o `strategic_bomber`. As forças de 1925 não têm nenhum.
+- **`war::nuclear`:** puro, testado e, até aqui, chamado por ninguém. Faz o segundo golpe por base,
+  a dissuasão e o teto de cada lado na escada.
+- **A crise do #157:** exigência, prazo, recusa, declaração. A resposta é pela W3, sem ler a arma.
+- **Faltava ou falta:**
+  - a ponte formações → `NuclearSide`: **feita** (`war::balance`);
+  - o painel: **feito**;
+  - o programa;
+  - o teste e a doutrina;
+  - o degrau na crise;
+  - o uso e as consequências;
+  - os comandos do jogador.
+  A escada de hostilidade (tensão, rivalidade, corrida) só existe em `history-rails.pt-BR.md`.
+
+### Passo 1, feito: a ponte e o painel "Balanço de dissuasão"
+`war::balance::balance(mil, world, a, b, viewer)` monta os dois lados:
+- As ogivas vão aos lançadores: submarinos primeiro (os que mais sobrevivem), depois mísseis,
+  depois bombardeiros. Cada lançador recebe até o que carrega (`warheads_per_submarine` 16,
+  `_missile` 1, `_bomber` 2). Sem lançador, a ogiva não conta.
+- Os submarinos têm metade no mar (`submarine_alert` 500); os bombardeiros, nenhum em alerta até
+  a doutrina.
+- Defesa: `missile_defense` × 100 interceptores × 50% sobre o que chega.
+- Comando: 90% sobrevive.
+- Todo lançador alcança: ainda não há alcance no mapa.
+- **Dano inaceitável:** 25% da população, a 185 mil mortos por ogiva de 1 Mt equivalente.
+  - Fonte: Enthoven e Smith, *How Much Is Enough?* (1971), a destruição assegurada de McNamara,
+    com 400 megatons equivalentes para cerca de um quarto a um terço dos soviéticos.
+- **N3 (aberta, já no valor recomendado):** um arsenal não testado conta `opaque_weight` (500‰)
+  para quem lê; o próprio conta inteiro. Como ainda não há teste no jogo, todo arsenal alheio é
+  opaco.
+- **N9 (aberta, já no valor recomendado):** com `umbrella`, os protetores que uma cláusula de
+  defesa chamaria (`third::who_would_join`) somam os arsenais ao lado protegido.
+- O painel aparece na tela da crise e na janela "Guerra". Mostra, para cada lado:
+  - as ogivas como o jogador as lê;
+  - o guarda-chuva;
+  - quanto ainda entrega depois do primeiro golpe, contra o que o outro tem por inaceitável;
+  - se o segundo golpe é garantido e se há incentivo ao primeiro golpe;
+  - o teto na escada;
+  - e, para o par, o risco por semana de guerra direta quando a dissuasão é mútua.
+- É só leitura: o hash não muda.
+- Testes (`war_nuclear_balance.rs`, `bf-client/tests/nuclear_panel.rs`):
+  - sem ogiva, sem balanço;
+  - dissuasão de um lado só, com os tetos uso e crise, e a leitura opaca do outro lado;
+  - bombardeiros no chão não dão segundo golpe, e os submarinos no mar dão;
+  - dissuasão mútua com o risco;
+  - o guarda-chuva da França sobre a Tchecoslováquia pelos tratados de 1925.
+
+### O arsenal como estoque gradual (passo 2, em rascunho até N1 e N2)
+- **Programa (decisão do jogador, Agendas):** uma parcela do orçamento por ano para o "Projeto".
+  - O dinheiro acelera fissão → enriquecimento → bomba pelo canal `state_buyer`.
+  - Põe as usinas de enriquecimento na fila de obras.
+  - A tela mostra os anos estimados e o custo acumulado.
+- **Material físsil:** o `nuclear_fuel` reservado pelo programa compete com as usinas elétricas
+  pelo mesmo bem. Será medido o efeito no preço da energia de um país que arma depressa.
+- **Ogivas:** ordens A2 de `nuclear_warhead`, limitadas pelo físsil. **Vetores:** pela árvore.
+- **Ritmo, conferido por rodada e não por conta** (Norris e Kristensen, "Global nuclear weapons
+  inventories, 1945–2010", *Bulletin of the Atomic Scientists* 66(4), 2010):
+  - primeiro teste: 1945, 1949, 1952, 1960, 1964;
+  - estoque americano: 2 em 1945, ~300 em 1950, ~2.400 em 1955, ~18.600 em 1960;
+  - critério: primeira bomba em 3 a 5 anos com base industrial, e o estoque subindo uma ordem de
+    grandeza a cada 5 anos;
+  - se a pesquisa do jogo atrasar, o número fica anotado e não é forçado.
+
+### O degrau nuclear na crise (passo 3, depois das respostas)
+- **Exigência:** quem exige vê o seu teto contra o alvo. Teto abaixo de `War` quer dizer que a
+  exigência não pode virar guerra. A IA não a faz; o jogador pode, mas a declaração vem bloqueada
+  e com o motivo.
+- **Resposta (W3):** contra quem pode coagir (segundo golpe de um lado só), a razão para ceder cai
+  (N4). O existencial continua sem ceder nunca. Contra dissuasão mútua, a coerção não tem crédito.
+- **Declaração:** entre dois lados com segundo golpe garantido, a guerra carrega
+  `escalation_risk_per_week`. É um custo esperado que a IA pesa e que o jogador vê; não é sorteio.
+
+### O uso e a consequência (passo 4, depois das respostas)
+1. **Mortos e destruição:** por ogiva, uma parcela da população morre por idade
+   (`kill_civilians`), e níveis de edifício caem (`wreck`).
+   - Fonte (RERF): Hiroshima, 70 a 140 mil mortos até o fim de 1945, de cerca de 350 mil;
+     Nagasaki, 40 a 70 mil.
+   - Contraforça mata menos civis que contravalor.
+2. **Apoio à guerra:** do atingido, as mortes entram no termo de baixas da G4. Do lado de quem usa,
+   nada direto (N6).
+3. **Terceiros:** perda de reputação com todos, chamado aos aliados do atingido (W4) e a retaliação
+   (N5).
+4. **O tabu (N7).**
+
+### Decisões do jogador, cada uma com tela e `player_commands`
+- `NuclearProgram` (Agendas → Forças): parcela, anos estimados, custo.
+- `NuclearTest` (Agendas, com confirmação): torna a posse pública (N3); custa reputação com os não
+  nucleares.
+- `NuclearDoctrine` (aba Forças): sem primeiro uso ou primeiro uso, mais o nível de alerta.
+- `NuclearUse`: decisão rara, na janela "Guerra".
+  - O jogador escolhe o alvo (contraforça numa frente, ou contravalor em estados) e o número de
+    ogivas.
+  - Antes de confirmar, a tela mostra os mortos estimados, a reputação, a retaliação esperada e o
+    tabu.
+  - Confirmação dupla e ponto de restauração automático.
+
+### Conferências (passo 5)
+- **Cuba, 1962:** ninguém usa e os dois recuam (Allison e Zelikow, *Essence of Decision*, 2ª ed.,
+  1999; Norris e Kristensen 2010). O jogo deve dar:
+  - segundo golpe americano garantido, e o soviético não, com a Europa como refém pelo guarda-chuva;
+  - a URSS cede a exigência "retirar os mísseis";
+  - os EUA não declaram guerra.
+- **Coreia, 1950–53:** os EUA têm a arma e não usam (Dingman, "Atomic Diplomacy During the Korean
+  War", *International Security* 13(3), 1988–89; Tannenwald, *The Nuclear Taboo*, 2007). O ganho
+  na frente é menor que a soma de três custos:
+  - a reputação com os aliados;
+  - o tabu;
+  - a reserva exigida contra a URSS.
+
+### Perguntas do dono (abertas)
+
+| # | Pergunta | Recomendado pela guerra | Alternativa |
+|---|---|---|---|
+| N1 | Programa | decisão explícita com orçamento e anos | só o foco de pesquisa |
+| N2 | Imitação de armas | sim, mais lenta, e por cláusula de partilha entre aliados | nenhuma |
+| N3 | Posse conhecida | só depois do teste; opaca conta 500‰ (no dado) | sempre pública |
+| N4 | Coerção de um lado só | a razão W3 cai à metade no periférico; o existencial nunca cede | a arma não muda a W3 |
+| N5 | Retaliação da IA | contravalor automático se tiver segundo golpe | **proporcional, recomendada pelo orquestrador:** resposta no mesmo degrau (contraforça por contraforça, cidade por cidade), com o risco semanal de subir. O contravalor total fica para quem recebeu contravalor ou perdeu a capacidade de responder de outro jeito. As duas ficam em dado. |
+| N6 | Apoio interno de quem usa | nada direto | queda pelos grupos |
+| N7 | Tabu | o primeiro uso sobe o risco de todos os pares, de vez | **estoque, recomendado pelo orquestrador:** o limiar sobe devagar com os anos sem uso no mundo e cai a cada uso, para todos (Tannenwald), com a tela mostrando os anos desde o último uso. As duas ficam em dado. |
+| N8 | Precipitação e efeitos longos | fora nesta fatia | perda de produtividade da terra por anos |
+| N9 | Guarda-chuva | os protetores somam os arsenais ao lado protegido (no dado) | só o próprio território |
+
+### Para a IA da fase 6
+- proliferação: quem começa o programa e quem fica sob guarda-chuva;
+- corrida armamentista;
+- doutrina e alerta;
+- brinkmanship;
+- dissuasão estendida como cláusula de aliança;
+- os tratados como cláusulas (LTBT, TNP, SALT/ABM/INF/START, com o modo de verificação), que são do
+  thread dos tratados.
+
 ## Como começa e como acaba
 
 1. **Escada de crise** (`history-rails.pt-BR.md`): tensão, rivalidade, corrida armamentista, crise

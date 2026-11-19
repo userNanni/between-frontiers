@@ -42,6 +42,9 @@ pub struct CrisisLine {
     /// Who would join if the side that demanded declared, by the agreements in force (W4);
     /// `None` with no agreement in force at all (nothing to read).
     pub joiners: Option<Vec<Joiner>>,
+    /// The nuclear balance with the other side, as the player reads it; `None` when neither
+    /// holds a warhead.
+    pub nuclear: Option<crate::nuclear_view::Panel>,
 }
 
 /// A third party an agreement in force would call, or bar, at the declaration.
@@ -138,6 +141,16 @@ fn line(
         land_target: bf_sim::war::crisis::land_men(mil, &world.war, usize::from(k.target)),
         joiners: joiners(world, &tag(k.by), &tag(k.target)),
         demand: k.demand.clone(),
+        nuclear: {
+            let me = world
+                .player_tag()
+                .and_then(|t| world.countries.iter().position(|(_, c)| c.tag == t))
+                .map(|i| i as u16);
+            me.and_then(|me| {
+                let other = if me == k.by { k.target } else { k.by };
+                crate::nuclear_view::read(world, mil, me, other)
+            })
+        },
     }
 }
 

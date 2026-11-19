@@ -206,6 +206,25 @@
         bomber_penetration: 600,
         // Half a percent a week of direct war between two secure nuclear powers.
         escalation_risk_per_week: 5,
+        // The balance read from the forces (docs/war.pt-BR.md, "Arma nuclear na escada de
+        // crise"). N3 (to the owner): an untested arsenal counts half for the others.
+        opaque_weight: 500,
+        // N9 (to the owner): the protectors bound by a defence clause add their arsenals.
+        umbrella: true,
+        // Unacceptable damage: a quarter of the people, at 185,000 dead a warhead of 1 Mt
+        // equivalent (McNamara's assured destruction; Enthoven and Smith, 1971, How Much Is
+        // Enough?).
+        unacceptable_share: 250,
+        killed_per_warhead: 185000,
+        warheads_per_bomber: 2,
+        warheads_per_missile: 1,
+        warheads_per_submarine: 16,
+        // Half the missile submarines at sea; no bomber on alert until the doctrine says so.
+        bomber_alert: 0,
+        submarine_alert: 500,
+        command: 900,
+        interceptors_per_site: 100,
+        interceptor_kill: 500,
     ),
 
     // The reserve reports in four weeks, at seven tenths of full training (a reservist keeps

@@ -14,6 +14,7 @@
 //!   it leaves open.
 //! - [`ledger`]: the war's cost, week by week and in total.
 
+pub mod balance;
 pub mod calc;
 pub mod catalogue;
 pub mod composition;

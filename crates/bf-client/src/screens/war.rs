@@ -336,6 +336,9 @@ fn war(
             );
         }
     }
+    if let Some(p) = &w.nuclear {
+        super::nuclear::show(ui, i18n, p);
+    }
     // The fronts.
     bf_ui_kit::gap(ui, space::XS);
     bf_ui_kit::heading(ui, &i18n.tr("war-fronts"));

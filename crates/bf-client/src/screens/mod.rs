@@ -23,6 +23,7 @@ pub mod levers;
 pub mod liberate;
 pub mod menu;
 pub mod money;
+pub mod nuclear;
 pub mod outliner;
 pub mod pick;
 pub mod population;
