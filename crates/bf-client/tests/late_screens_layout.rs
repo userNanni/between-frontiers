@@ -257,6 +257,11 @@ fn the_late_screens_fit_and_answer_their_keys() {
                 failures.extend(check_sizes(&mut h, locale, "government works mine"));
             }
         }
+        // The trade tab with a category open: its goods, the group's controls, the partners.
+        need(&mut h, "gov.tariff.cat.industrial", &mut failures);
+        failures.extend(check_sizes(&mut h, locale, "government trade goods"));
+        need(&mut h, "gov.tariff.good.steel.fixed", &mut failures);
+        failures.extend(check_sizes(&mut h, locale, "government trade fixed"));
         need(&mut h, "gov.close", &mut failures);
         // The Agendas: the demand, the table with Austria selected, the agreements, the crisis.
         h.key_press(egui::Key::J);

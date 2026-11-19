@@ -310,18 +310,34 @@ fn category(
     let open = cx.tariffs.open.as_deref() == Some(c.key.as_str());
     let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), ROW_H), Sense::click());
     let name = i18n.tr(&format!("good-category-{}", c.key));
-    let head = format!(
-        "{} {name} ({})",
-        if open { "▾" } else { "▸" },
-        c.goods.len()
-    );
+    let head = format!("{name} ({})", c.goods.len());
     resp.widget_info(|| egui::WidgetInfo::selected(egui::Role::Button, true, open, &head));
     let painter = ui.painter();
     if resp.hovered() {
         painter.rect_filled(rect, radius::SM, color::SURFACE_HOVER);
     }
+    // The disclosure triangle: down when open, right when closed.
+    let at = rect.left_center() + vec2(space::XS + 5.0, 0.0);
+    let tri = if open {
+        vec![
+            at + vec2(-5.0, -3.0),
+            at + vec2(5.0, -3.0),
+            at + vec2(0.0, 4.0),
+        ]
+    } else {
+        vec![
+            at + vec2(-3.0, -5.0),
+            at + vec2(4.0, 0.0),
+            at + vec2(-3.0, 5.0),
+        ]
+    };
+    painter.add(egui::Shape::convex_polygon(
+        tri,
+        color::TEXT_MUTED,
+        egui::Stroke::NONE,
+    ));
     let left = painter.text(
-        rect.left_center() + vec2(space::XS, 0.0),
+        rect.left_center() + vec2(space::XS + 16.0, 0.0),
         egui::Align2::LEFT_CENTER,
         &head,
         sans_medium(size::BODY),
