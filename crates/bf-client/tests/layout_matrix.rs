@@ -855,6 +855,11 @@ fn the_works_tab_holds_a_long_queue() {
                 failures.push(format!("{locale}: no {part}"));
             }
         }
+        // Back to the top: what scrolled above the window is not on screen.
+        for _ in 0..40 {
+            h.key_press_modifiers(egui::Modifiers::SHIFT, egui::Key::PageUp);
+            steps(&mut h);
+        }
         for (w, hh) in [
             (960.0, 540.0),
             (1280.0, 720.0),
