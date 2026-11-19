@@ -912,6 +912,60 @@ impl System<GameWorld> for Forces {
                 let killed = (*men as i64 * super::fight::KILLED_PER_MILLE / 1000).max(0) as u64;
                 super::fight::bury(world, *c, killed);
             }
+            // Occupation money, from the owner's treasury to the occupier's (G3).
+            for (owner, by, amount) in &week.transfers {
+                if let Some(m) = world.econ.markets.get_mut(*owner as usize) {
+                    m.treasury -= *amount;
+                }
+                if let Some(m) = world.econ.markets.get_mut(*by as usize) {
+                    m.treasury += *amount;
+                }
+            }
+            for (r, levels) in &week.devastation.levels {
+                super::occupation::wreck(world, *r, *levels);
+            }
+            for (r, n) in &week.devastation.civilians {
+                super::occupation::kill_civilians(world, *r, *n);
+            }
+            // A government fallen at the end of a collapse (G4): a new form of government is a
+            // change of regime, which the treaties read (owner's decision P3).
+            if let Some(k) = self.fight.as_ref().and_then(|f| f.conduct.as_ref()) {
+                for (c, fall) in &week.support.falls {
+                    if let (super::support::Fall::Regime { from, to }, Some(g)) =
+                        (fall, k.government)
+                        && let Some(slot) = world
+                            .politics
+                            .laws
+                            .get_mut(*c as usize)
+                            .and_then(|v| v.get_mut(g))
+                    {
+                        *slot = Some(*to);
+                        world.politics.changes.push(crate::polity::LawChangeRecord {
+                            date: ctx.date,
+                            country: *c,
+                            from: *from,
+                            to: *to,
+                            by: crate::polity::Enactor::Movement(k.regime_change.unwrap_or(0)),
+                        });
+                    }
+                }
+            }
+            let tag = |m: u16| {
+                world
+                    .countries
+                    .iter()
+                    .nth(m as usize)
+                    .map(|(_, c)| c.tag.clone())
+            };
+            let asks: Vec<_> = week
+                .support
+                .proposals
+                .iter()
+                .filter_map(|(from, to, p)| Some((tag(*from)?, tag(*to)?, p.clone())))
+                .collect();
+            for (from, to, p) in asks {
+                world.treaties.table.propose(&from, &to, p, ctx.date);
+            }
             world.war.fighting = week.fighting;
             // A peace signed at the table ends its war: the sides go home from mobilization.
             let ended = &week.ended;
@@ -924,6 +978,15 @@ impl System<GameWorld> for Forces {
                 .flat_map(|w| w.side_a.iter().chain(&w.side_b).copied())
                 .collect();
             world.war.conflicts.wars.retain(|w| !ended.contains(&w.id));
+            // Out of the war, out of the support; in peace, no front.
+            let wars = &world.war.conflicts.wars;
+            if wars.is_empty() {
+                world.war.fighting.last_week.clear();
+            }
+            world.war.fighting.support.retain(|x| {
+                wars.iter()
+                    .any(|w| w.side_a.contains(&x.country) || w.side_b.contains(&x.country))
+            });
             for c in gone {
                 if !world
                     .war

@@ -354,6 +354,26 @@ impl From<WarStateBeforeStill> for WarState {
     }
 }
 
+/// [`WarState`] as version 27 of the world wrote it, before the war support and the occupation.
+#[derive(Default, Deserialize)]
+pub(crate) struct WarStateBeforeSupport {
+    countries: Vec<CountryWar>,
+    soldiers: Vec<i64>,
+    conflicts: super::crisis::Conflicts,
+    fighting: super::fight::FightingBeforeSupport,
+}
+
+impl From<WarStateBeforeSupport> for WarState {
+    fn from(w: WarStateBeforeSupport) -> Self {
+        Self {
+            countries: w.countries,
+            soldiers: w.soldiers,
+            conflicts: w.conflicts,
+            fighting: w.fighting.into(),
+        }
+    }
+}
+
 /// [`WarState`] as versions 15 to 19 of the world wrote it, before the crises (slice B).
 #[derive(Default, Deserialize)]
 pub(crate) struct WarStateBeforeCrises {

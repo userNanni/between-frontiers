@@ -1780,9 +1780,81 @@ mod tests {
             hash_of(&with_ledger)
         );
         assert_eq!(
-            hash_of(&headed(27, &encode_snapshot(&with_ledger).unwrap())),
+            hash_of(&headed(28, &encode_snapshot(&with_ledger).unwrap())),
             hash_of(&with_ledger)
         );
+        // Version 27, before the war support and the occupation: `fighting` with `still`.
+        {
+            #[derive(Serialize)]
+            struct FightingV27<'a> {
+                control: &'a Vec<(u32, u16)>,
+                advance: &'a Vec<(u32, u32, laplace_schelling::Fixed)>,
+                postures: &'a Vec<(u16, u16, bool)>,
+                losses: &'a Vec<(u16, u64)>,
+                last_week: &'a Vec<crate::war::fight::SegmentWeek>,
+                still: &'a Vec<(u32, u32, u16)>,
+            }
+            #[derive(Serialize)]
+            struct WarV27<'a> {
+                countries: &'a Vec<crate::war::CountryWar>,
+                soldiers: &'a Vec<i64>,
+                conflicts: &'a crate::war::Conflicts,
+                fighting: FightingV27<'a>,
+            }
+            #[derive(Serialize)]
+            struct BeforeSupport<'a> {
+                scenario: &'a String,
+                player: &'a Option<Id<Country>>,
+                countries: &'a Table<Country, CountryState>,
+                census: &'a Vec<CensusRecord>,
+                econ: &'a crate::econ::Economy,
+                research: &'a crate::research::ResearchState,
+                politics: &'a crate::polity::PoliticsState,
+                demography: &'a crate::demography::DemographyState,
+                borders: &'a crate::borders::BordersState,
+                foreign: &'a crate::foreign_stakes::ForeignState,
+                influence: &'a crate::influence::InfluenceState,
+                treaties: &'a crate::treaty::TreatyState,
+                war: WarV27<'a>,
+                education: &'a crate::demography::education::EducationState,
+                independence: &'a crate::borders::independence::IndependenceState,
+                levers: &'a crate::econ::levers::LeversState,
+            }
+            let w = &with_ledger;
+            let f = &w.war.fighting;
+            let v27 = encode_snapshot(&BeforeSupport {
+                scenario: &w.scenario,
+                player: &w.player,
+                countries: &w.countries,
+                census: &w.census,
+                econ: &w.econ,
+                research: &w.research,
+                politics: &w.politics,
+                demography: &w.demography,
+                borders: &w.borders,
+                foreign: &w.foreign,
+                influence: &w.influence,
+                treaties: &w.treaties,
+                war: WarV27 {
+                    countries: &w.war.countries,
+                    soldiers: &w.war.soldiers,
+                    conflicts: &w.war.conflicts,
+                    fighting: FightingV27 {
+                        control: &f.control,
+                        advance: &f.advance,
+                        postures: &f.postures,
+                        losses: &f.losses,
+                        last_week: &f.last_week,
+                        still: &f.still,
+                    },
+                },
+                education: &w.education,
+                independence: &w.independence,
+                levers: &w.levers,
+            })
+            .unwrap();
+            assert_eq!(hash_of(&headed(27, &v27)), hash_of(&with_ledger));
+        }
         // Version 26, before the entrenchment: `fighting` without `still`.
         #[derive(Serialize)]
         struct FightingV26<'a> {

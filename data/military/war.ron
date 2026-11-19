@@ -1,0 +1,95 @@
+// Between Frontiers: the conduct of the war, war support and occupation (phase 5, slice C,
+// draft). Contract: crates/bf-sim/src/war/support.rs (ConductFile); reasoning in
+// docs/war.pt-BR.md, "Apoio à guerra" and "Ocupação". Licence: CC BY-SA 4.0.
+//
+// Behind the switch `war`. The owner chose the recommended option in A1–A3 and O1–O3
+// (2026-11-18); each is kept here as data. Per mille unless named otherwise.
+(
+    support: (
+        // At the declaration: rallying round the flag for the country attacked (Mueller, 1973,
+        // *War, Presidents and Public Opinion*); a cause on record helps the one that declared.
+        attacked: 800,
+        attacker_cause: 600,
+        attacker_no_cause: 400,
+        colonial: 550,
+        // A1, by interest group (recommended): the military above, those who give the soldiers
+        // below. The mean weighs each group by its clout.
+        groups: [
+            ("military", 150),
+            ("officialdom", 50),
+            ("landed_estates", 50),
+            ("business", 0),
+            ("churches", 0),
+            ("professional_classes", -20),
+            ("workers", -80),
+            ("peasantry", -60),
+        ],
+        // The log of the killed (Mueller, 1973; Gartner and Segura, 1998, *Journal of Conflict
+        // Resolution* 42(3)): per tenfold of the killed per million.
+        casualties_per_decade: 60,
+        duration_per_year: 30,
+        // Civilian deprivation counts (orchestrator, 2026-11-18): the share of the basic needs
+        // met before the war that are no longer met. Germany's turnip winter of 1916–17 and the
+        // strikes of 1918 (Offer, 1989, *The First World War: An Agrarian Interpretation*).
+        deprivation: 600,
+        territory: 500,
+        // The expectation of victory weighs more than the dead (Gelpi, Feaver and Reifler,
+        // 2009, *Paying the Human Costs of War*): the front's course, km a week, smoothed.
+        result_per_km: 30,
+        result_cap: 150,
+        result_weeks: 13,
+        // A2: free elections hasten the fall (Reiter and Stam, 2002, *Democracies at War*);
+        // censorship slows it, and the fall comes all at once at the end.
+        speed: 40,
+        free_vote: 500,
+        censorship: 600,
+        peace: 300,
+        collapse: 100,
+        ask_weeks: 8,
+        // From the collapse to the fall: Ludendorff asked for an armistice at the end of
+        // September 1918, the Kaiser abdicated on 9 November.
+        revolution_weeks: 6,
+        // A country overrun falls at once: nine tenths of its metropolitan people under the
+        // enemy, or half of them with the capital (Hungary in August 1919: the Romanian army in
+        // Budapest, Kun fled). An ally fighting on, or a colony not taken, keeps the war going.
+        overrun: 900,
+        capital_overrun: 500,
+        // The form a war revolution brings in. A form not listed (the republics) keeps itself
+        // and only the cabinet falls: the new government asks for peace all the same, without
+        // a change of regime.
+        revolution: [
+            ("absolute_monarchy", "parliamentary_republic"),
+            ("constitutional_monarchy", "parliamentary_republic"),
+            ("one_party_state", "military_dictatorship"),
+        ],
+        // A3, recommended: the countdown runs for the player too. "The player is never forced"
+        // is `false`.
+        player_forced: true,
+    ),
+    occupation: (
+        // O1: occupied France paid occupation costs of 400 million francs a day from August
+        // 1940, 300 million from May 1941 and 500 million from November 1942, besides the
+        // requisitions and the STO's 650,000 workers; all told about a third of the French
+        // national income in 1943 (Milward, 1970, *The New Order and the French Economy*;
+        // Occhino, Oosterlinck and White, 2008, *Journal of Economic History* 68(1)).
+        extraction_start: 200,
+        extraction_cap: 330,
+        extraction_weeks: 156,
+        // O3: some 20 security men per thousand people for a hostile population, 2 to 4 for a
+        // calm one (Quinlivan, 1995, *Parameters* 25(4)); Germany held some 2.5 per thousand
+        // in France in 1941.
+        garrison_calm: 2,
+        garrison_hostile: 20,
+        garrison_cap: 500,
+        resistance_start: 50,
+        resistance_per_extraction: 20,
+        resistance_per_shortfall: 40,
+        resistance_calm: 5,
+        // O2: the Soviet Union lost about a quarter of its reproducible capital, Poland more
+        // than a third of its wealth (Harrison, 1998, *The Economics of World War II*).
+        devastation_per_week: 4,
+        devastation_full_losses: 5000,
+        devastation_cap: 400,
+        civilians_per_million: 20,
+    ),
+)

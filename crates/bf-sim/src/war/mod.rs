@@ -22,7 +22,9 @@ pub mod fight;
 pub mod forces;
 pub mod ledger;
 pub mod nuclear;
+pub mod occupation;
 pub mod state;
+pub mod support;
 pub mod system;
 pub mod terrain;
 pub mod third;
@@ -66,6 +68,8 @@ pub struct War {
     pub crisis: Option<CrisisRules>,
     /// The km of border between neighbouring states, when `assets/map/borders.ron` exists.
     pub borders: Option<BordersFile>,
+    /// War support and occupation, when `data/military/war.ron` exists (slice C).
+    pub conduct: Option<support::ConductFile>,
 }
 
 fn read<T: serde::de::DeserializeOwned>(path: &Path) -> Result<T, String> {
@@ -123,6 +127,12 @@ pub fn load(
     } else {
         None
     };
+    let conduct_path = data.join("military/war.ron");
+    let conduct = if conduct_path.is_file() {
+        Some(read::<support::ConductFile>(&conduct_path)?)
+    } else {
+        None
+    };
     Ok(Some(War {
         military,
         forces_1925,
@@ -130,5 +140,6 @@ pub fn load(
         peace,
         crisis,
         borders,
+        conduct,
     }))
 }

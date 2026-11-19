@@ -89,6 +89,23 @@ como já faz com os impostos.
 
 **Ficam por regra:** a correção fiscal, o recorte de zeros e a bolsa colonial.
 
+### Apoio à guerra e ocupação: o que o autor decidiu (2026-11-18)
+
+O autor ficou com a recomendada nas seis escolhas. Cada uma é dado em `data/military/war.ron`, e
+trocar uma é trocar o dado (#217).
+
+| | Decisão | Referência |
+|---|---|---|
+| A1 | O apoio à guerra é medido por grupo de interesse, pesado pela influência de cada grupo. | Grupos de interesse e influência da fase 3d (`politics`). |
+| A2 | A censura atrasa a queda do apoio. Abaixo do colapso, ela alimenta o movimento de troca de regime: a queda vem de repente. | Rússia de 1917 e Alemanha de 1918 (Reiter e Stam, 2002). |
+| A3 | Com o apoio abaixo de 100 por mil, o país cede mesmo com o jogador. A rendição passa pela política: o movimento de troca de regime vence, e o governo novo pede a paz. Numa república cai só o gabinete, sem corte de reputação. | Novembro de 1918; a P3 lê a troca de forma de governo. |
+| O1 | O ocupante leva do território ocupado de 20 % do PIB no primeiro ano até o teto de 33 %, como na França ocupada, vezes a eficiência da guarnição. | Milward, 1970; Occhino, Oosterlinck e White, 2008. |
+| O2 | O combate devasta toda semana, em proporção ao fogo, os dois lados da frente, com mortes civis. A fila de obras reconstrói. | Harrison, 1998. |
+| O3 | A guarnição vai de 2 a 20 homens por mil habitantes, conforme a resistência. Faltando guarnição, a extração cai na mesma proporção e a resistência cresce. | Quinlivan, 1995. |
+
+**Também decidido (CT7):** a guerra fecha o comércio entre os países em guerra. A guerra informa
+os pares (`war::fight::war_pairs`), e o comércio fecha o par (`econ::trade::Geography::closures`).
+
 ### A lista de regras de hoje
 
 - **Tamanho da folha do Estado:** servidores, soldados e clero são uma fração fixa da população: 1,2 %, 1 % e 0,5 % (`econ::monthly::STATE_SHARE`). O Estado não contrata nem demite.
