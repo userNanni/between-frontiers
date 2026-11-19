@@ -169,6 +169,8 @@ pub struct WeekChanges {
     upkeep: Vec<Vec<(GoodIx, Fixed)>>,
     /// Exports by pair this week at base prices, seller × markets + buyer.
     trade_value: Vec<Fixed>,
+    /// The part of `trade_value` that is services across a customs union (`union_services`).
+    services_value: Option<Vec<Fixed>>,
     /// The preferences of trade after a month of inertia, in the first week of a month.
     trade_pref: Option<Vec<Vec<(u16, u16)>>>,
     /// The week's customs duties by market, by good and pair (`customs::Charge`).
@@ -820,12 +822,14 @@ fn world_pool(cat: &Catalogue, supply: &[Vec<Fixed>], demand: &[Vec<Fixed>]) -> 
 
 /// What trade by pair hands the week: the trade of each market by good, the exports by pair
 /// at base prices (seller × markets + buyer) and the month's preferences in its first week.
-/// Trade by good, the pairs' values, the month's preferences (first week) and the week's
-/// customs duties by market (with `customs_duties` and its revenue).
+/// Trade by good, the pairs' values, the month's preferences (first week), the week's customs
+/// duties by market (with `customs_duties` and its revenue) and the part of the pairs' values
+/// that is services across a customs union (with `union_services` and a union in force).
 type PairTrade = (
     Vec<Vec<Fixed>>,
     Vec<Fixed>,
     Option<Vec<Vec<(u16, u16)>>>,
+    Option<Vec<Fixed>>,
     Option<Vec<Fixed>>,
 );
 
@@ -1074,6 +1078,7 @@ impl Week {
                 trade[mi][f.gi] += f.imports[k];
             }
         }
+        let mut services_value = None;
         if self.union_services {
             let tags: Vec<String> = world.countries.iter().map(|(_, c)| c.tag.clone()).collect();
             let pairs = world.treaties.customs_unions(&tags, &date);
@@ -1084,10 +1089,15 @@ impl Week {
                     closed: &is_closed,
                     reach,
                 };
-                union_services(cat, (supply, demand), &view, &mut trade, &mut trade_value);
+                let mut services = vec![Fixed::ZERO; nm * nm];
+                union_services(cat, (supply, demand), &view, &mut trade, &mut services);
+                for (v, s) in trade_value.iter_mut().zip(&services) {
+                    *v += *s;
+                }
+                services_value = Some(services);
             }
         }
-        (trade, trade_value, trade_pref, duties)
+        (trade, trade_value, trade_pref, duties, services_value)
     }
 }
 
@@ -1105,13 +1115,14 @@ struct UnionView<'a> {
 /// docs/trade.pt-BR.md, section 12): services and finance, which no market sells abroad, trade by
 /// pair between two countries bound by a customs union, as the tradable goods do between all.
 /// Only the pairs of a union trade them, and only their own surpluses and shortages: Monaco's
-/// bank serves France, and nobody else.
+/// bank serves France, and nobody else. `services_value`: the pairs' values of the week's
+/// services, seller × markets + buyer, at base prices (they join the pairs' trade values).
 fn union_services(
     cat: &Catalogue,
     (supply, demand): (&[Vec<Fixed>], &[Vec<Fixed>]),
     view: &UnionView<'_>,
     trade: &mut [Vec<Fixed>],
-    trade_value: &mut [Fixed],
+    services_value: &mut [Fixed],
 ) {
     let nm = supply.len();
     let groups = crate::economy::BUILDING_GROUPS.len();
@@ -1184,7 +1195,7 @@ fn union_services(
         for s in 0..ns {
             for (b, q) in clear.flow[s * nb..(s + 1) * nb].iter().enumerate() {
                 if *q > Fixed::ZERO {
-                    trade_value[sellers[s] * nm + buyers[b]] += *q * base;
+                    services_value[sellers[s] * nm + buyers[b]] += *q * base;
                 }
             }
         }
@@ -1301,10 +1312,16 @@ impl System<GameWorld> for Week {
             }
         }
         // Trade between markets: by pair when switched on, else the world pool.
-        let (trade, trade_value, trade_pref, duties) = if self.by_pair {
+        let (trade, trade_value, trade_pref, duties, services_value) = if self.by_pair {
             self.trade_by_pair(ctx, world, &supply, &demand)
         } else {
-            (world_pool(cat, &supply, &demand), Vec::new(), None, None)
+            (
+                world_pool(cat, &supply, &demand),
+                Vec::new(),
+                None,
+                None,
+                None,
+            )
         };
         let upkeep: Vec<_> = econ.markets.iter().map(|m| upkeep_orders(cat, m)).collect();
         let (mut markets, state_orders): (Vec<Market>, Vec<_>) = econ
@@ -1407,6 +1424,7 @@ impl System<GameWorld> for Week {
             local,
             upkeep,
             trade_value,
+            services_value,
             trade_pref,
             duties,
         }
@@ -1416,6 +1434,10 @@ impl System<GameWorld> for Week {
         let cat = &*self.cat;
         let econ = &mut world.econ;
         let levers = &world.levers;
+        let year = ctx.date.year;
+        // The balance of payments: a record, out of the hash (`econ::payments`).
+        let payments = &mut world.payments;
+        payments.begin_week(econ.markets.len(), year);
         // Off, the trade state stays empty and out of the world's hash.
         if self.by_pair {
             let nm = econ.markets.len();
@@ -1428,6 +1450,12 @@ impl System<GameWorld> for Week {
                     econ.trade.add(k / nm, k % nm, *v);
                 }
             }
+            payments.record_trade(
+                year,
+                nm,
+                &changes.trade_value,
+                changes.services_value.as_deref(),
+            );
         }
         let mut markets = changes.markets;
         // Trade margins: importers collected more than exporters were paid; the difference goes
@@ -1435,6 +1463,7 @@ impl System<GameWorld> for Week {
         let construction_good = cat.construction;
         let mut done = Vec::new();
         let transfers = margin_transfers(cat, &markets);
+        payments.record_margins(year, &transfers);
         // Customs duties (`customs::duties`): from the importers' money to the treasury.
         let duties: Option<Vec<Fixed>> = changes.duties.clone().or_else(|| {
             self.duties
@@ -1566,6 +1595,7 @@ impl System<GameWorld> for Week {
             }
         }
         for (owner, host, out, kept) in remitted {
+            payments.record_remittance(year, owner as usize, host as usize, out);
             markets[owner as usize].pool += out;
             if kept > Fixed::ZERO {
                 world.foreign.retain(owner, host, kept);
@@ -1578,7 +1608,8 @@ impl System<GameWorld> for Week {
         econ.markets = markets;
         econ.world_price = changes.world_price;
         // Prices, central banks and bonds: the treasury's gap becomes debt.
-        super::money::week(econ, &activity, ctx.date.year);
+        let abroad = super::money::week(econ, &activity, ctx.date.year);
+        payments.record_money(year, &abroad);
         // Finished works start running; one paid from abroad becomes its owner's stake.
         for p in done {
             let r = &mut econ.regions[p.region as usize];
