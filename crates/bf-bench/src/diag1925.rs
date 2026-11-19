@@ -265,20 +265,20 @@ pub fn main() -> Result<(), String> {
                     .map(|i| (t.to_string(), i))
             })
             .collect();
-        let end = Date::new(1925 + years, 1, 8);
         let mut d = Date::new(1925, 1, 5);
         let mut year = 1925;
         println!(
             "year tag: goods services | interest ledger remit | transfers | current | financial | not settled  (% of GDP)"
         );
-        while d < end {
+        while year < 1925 + years {
             d = Date::from_days(d.to_days() + 7);
             s.sim.run_until(d);
-            if d.year == year {
-                continue;
-            }
+            // The record closes its year in the first economy week of January.
             let w = s.world();
             let p = &w.payments;
+            if p.year <= year {
+                continue;
+            }
             let pct = |v: laplace_schelling::Fixed, gdp: f64| v.to_f64_lossy() / gdp * 100.0;
             for (tag, i) in &idx {
                 let Some(l) = p.markets.get(*i).map(|x| x.last_year) else {
@@ -329,7 +329,7 @@ pub fn main() -> Result<(), String> {
                     world_gdp
                 ),
             );
-            year = d.year;
+            year = p.year;
         }
         return Ok(());
     }
