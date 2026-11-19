@@ -89,6 +89,7 @@ pub fn main() -> Result<(), String> {
             influence: None,
             war: None,
             trade: None,
+            duties: None,
             switches: Default::default(),
             independence: None,
             crisis: None,

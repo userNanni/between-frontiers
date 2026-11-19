@@ -17,6 +17,11 @@
     // deadline, the AI answering by the force against the share asked for, war on a refusal.
     // Needs `forces`. Off: no crisis opens.
     crisis: false,
+    // Customs duties (`docs/trade.pt-BR.md`, section 13): the tariff is collected by the
+    // treasury and makes imports dearer, and each country's 1925 rate comes from `diplomacy.ron`,
+    // each by its datum in `data/economy/purchases.ron` (`trade.customs`). Needs `trade_by_pair`.
+    // Off: the tariff only weighs on the choice between sellers.
+    customs_duties: false,
     // The servants' capacity to collect (`docs/state.pt-BR.md`, D1, owner's decision O1): a
     // region with fewer servants than the rule asks for collects that much less tax.
     fiscal_capacity: false,

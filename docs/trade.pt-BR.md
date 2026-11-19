@@ -303,6 +303,95 @@ Recomendação: 1, com 3 para Andorra. É o processo real e serve além dos micr
   código (o PIB, o caixa e o fundo de cada país são do mercado). Separar os dois é uma refatoração
   grande, para quatro países com menos de 60 mil pessoas.
 
+## 13. A tarifa que vale (passo 1 das decisões de comércio)
+
+Até aqui a tarifa só pesava na escolha entre vendedores estrangeiros (seção 3): não arrecadava
+nada e não protegia nada. Com a chave `customs_duties` (desligada, `data/rules.ron`; precisa de
+`trade_by_pair`), ela passa a fazer as duas coisas da vida real.
+
+**A taxa de cada país.** É a da lei de comércio (`free_trade` 2 %, `revenue_tariffs` 10 %,
+`protective_tariffs` 25 %, `autarky` 60 %), deslocada pela diferença entre a taxa de 1925 do país
+(`diplomacy.ron`, `tariffs`: direitos sobre o valor de todas as importações, a medida de Clemens e
+Williamson) e o degrau da lei que ele tinha em 1925. Em 1925 cada país cobra a sua taxa histórica;
+mudar a lei move a taxa a partir dali pelo tamanho do degrau, nunca abaixo de zero
+(`customs::Duties`).
+
+**O que a tarifa faz.**
+- **Receita.** Toda semana o país recolhe a taxa sobre o valor do que importou de cada parceiro,
+  a troca de variedades do comércio bruto incluída, a preço de base (o preço mundial na fronteira;
+  `customs::imports_by_buyer`). Sem o comércio por par, sobre a importação líquida ao preço que os
+  compradores pagaram. O dinheiro sai do fundo do mercado, para onde foi o pagamento das
+  importações, e entra no Tesouro, contado na receita da semana (`customs::pay`). Nada se cria:
+  a soma mundial de fundos e tesouros não muda (teste `customs_duties.rs`).
+- **Procura de importação.** O país procura fora `1 / (1 + ε t)` do que procuraria sem tarifa
+  (`customs::import_factor`). Com ε = 1, a tarifa de 25 % corta 20 % da procura externa; a de 60 %,
+  37 %. O que não vem de fora fica como falta no mercado de casa, sobe o preço local e puxa o
+  produtor nacional: é a proteção.
+- **Preço de chegada × (1 + t).** O importador paga o bem e a tarifa: no dinheiro, pela receita
+  que sai do fundo; na quantidade, pela procura menor. O preço de mercado do bem não é tocado
+  diretamente, porque cada mercado tem um preço por bem, que mistura o nacional e o importado.
+  Ter o preço separado (fase de equilíbrio) custa um segundo preço por bem e mercado, guardado no
+  save, e a divisão da procura entre nacional e importado (Armington) em cada mercado toda semana.
+
+**Os dados, um por decisão do dono** (`data/economy/purchases.ron`, `trade.customs`):
+- `revenue` (CT3): a receita vai ao Tesouro;
+- `elasticity` (CT4): a elasticidade-preço da importação. As de longo prazo do G-7 vão de cerca de
+  0,3 a 1,6 (Hooper, Johnson e Marquez, 2000); 1 é valor de projeto. Zero desliga o efeito;
+- `rates_1925` (CT5): a taxa de 1925 de cada país em vez do degrau da lei.
+
+**Ainda não.** A tabela por bem (CT1, uns 60), o comando do jogador e a tela são o passo 2. O
+embargo e a guerra fecham o par pelo encaixe que já existe (`Geography::closures`, seção 11): o
+embargo por comando (CT6) e a guerra por `war::fight::war_pairs` (CT7). É o passo 3.
+
+**A tarifa protege?** Medida com `BF_DIAG_PROTECT=TAG:10` e `BF_LAWS`, com a chave ligada: o
+mesmo país sob `free_trade` e sob `protective_tariffs`, por 10 anos. Desligada, mudar a lei não
+muda nada.
+
+| | Reino Unido (9 % → 32 %) | Argentina (7 % → 30 %) |
+|---|---|---|
+| importação total, 1925 | −15 % | −17 % |
+| importação total, 1930 | −12 % | −16 % |
+| importação total, 1934 | −3 % | −22 % |
+| preço do bem mais importado, 1925 | madeira +4 % | carvão +18 % |
+| produção protegida, 1930 | têxteis +7 % (a importação vai a zero) | aço −14 % |
+| produção protegida, 1934 | têxteis +5 % | aço −3 %, roupas +3 %, pescado +3 % |
+| produção total, 1934 | −1,6 % | −1,7 % |
+
+A importação cai logo e o preço de casa sobe pela falta. A produção reage devagar e só onde o país
+já tinha plantas: o têxtil britânico cresce, porque já existia. Na madeira britânica e no carvão
+argentino não há oferta em casa (o carvão argentino é zero), então a falta só encarece. O aço
+argentino queima esse carvão: produz menos, e a importação de aço até sobe em 1930. A produção
+total cai um pouco, porque o insumo importado ficou mais caro para todos. Há três razões
+para a reação ser pequena:
+- a planta nova sai do investimento, que leva anos (`construction`);
+- a tarifa é uma só para todos os bens até o passo 2 (a tabela por grupo), e protege o insumo
+  junto com o produto;
+- a tarifa age sobre a falta (o saldo); a troca de variedades do comércio bruto já responde à tarifa
+  da lei pela preferência entre origens (σ = 5), com a chave desligada ou ligada. No Reino Unido,
+  `free_trade` → `protective_tariffs` leva o comércio de 15,0 % a 12,6 % do PIB em 1926 com a chave
+  desligada e a 11,6 % ligada: os dois canais se somam pouco, sem contar a proteção duas vezes.
+
+**A receita, com o volume de comércio novo** (`BF_DIAG_DUTIES`, 1926, chave ligada):
+
+| país | tarifa | receita / PIB | importação / PIB |
+|---|---|---|---|
+| Brasil | 26 % | 4,33 % | 16,6 % |
+| Argentina | 15 % | 1,99 % | 13,3 % |
+| Austrália | 16 % | 1,36 % | 8,5 % |
+| Índia | 15 % | 0,91 % | 6,1 % |
+| Itália | 8 % | 0,72 % | 9,0 % |
+| Reino Unido | 9 % | 0,71 % | 7,9 % |
+| Japão | 7 % | 0,45 % | 6,5 % |
+| França | 7 % | 0,43 % | 6,2 % |
+| Alemanha | 6 % | 0,40 % | 6,6 % |
+| Estados Unidos | 14 % | 0,12 % | 0,9 % |
+| mundo (`BF_DIAG_CONSERVE`) | 10,8 % | 0,83 % | — |
+
+A referência é de 1 a 3 % do PIB nos anos 1920 nos países com dado, e cerca de 0,6 % nos Estados
+Unidos. A taxa é a de 1925 de cada país; o que falta é importação: os Estados Unidos importam 0,9 %
+do PIB contra perto de 4,5 % reais, e o Reino Unido 7,9 % contra perto de 25 %. É a distribuição do
+comércio bruto entre países (seção 14), não a tarifa.
+
 ## 14. O volume do comércio
 
 **O problema.** Com o comércio por par (#203), o comércio mundial (exportação mais importação) era
@@ -397,6 +486,8 @@ porque fazia tecido. No real, a maior parte do comércio é de variedades do mes
 
 ## Fontes
 
+- Clemens, M. A.; Williamson, J. G. "Why did the tariff–growth correlation change after 1950?".
+  *Journal of Economic Growth* 9 (1), 2004, pp. 5–46.
 - Gallaway, M. P.; McDaniel, C. A.; Rivera, S. A. "Short-run and long-run industry-level estimates
   of U.S. Armington elasticities". *North American Journal of Economics and Finance* 14 (1), 2003,
   pp. 49–68.
@@ -404,5 +495,7 @@ porque fazia tecido. No real, a maior parte do comércio é de variedades do mes
   International Economics*, vol. 4, 2014.
 - Hirschman, A. O. *National Power and the Structure of Foreign Trade*. University of California
   Press, 1945.
+- Hooper, P.; Johnson, K.; Marquez, J. "Trade elasticities for the G-7 countries". *Princeton
+  Studies in International Economics* 87, 2000.
 - Klasing, M. J.; Milionis, P. "Quantifying the evolution of world trade, 1870–1949". *Journal
   of International Economics* 92 (1), 2014, pp. 185–197 (via Our World in Data, CC BY 4.0).
