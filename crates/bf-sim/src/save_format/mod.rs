@@ -71,11 +71,12 @@ pub const WORLD_MAGIC: [u8; 4] = *b"BFWD";
 /// 23. the calls of third parties to war (`Conflicts::calls`);
 /// 24. the reputation of breaches (`TreatyState::reputation`, `reputation_on`);
 /// 25. the negotiation table (`TreatyState::table`: proposals open and closed);
-/// 26. the war on land (`WarState::fighting`: control, advance, postures, losses).
+/// 26. the war on land (`WarState::fighting`: control, advance, postures, losses);
+/// 29. the composition of the forces (`WarState::composition`).
 ///
 /// Versions 12 and 13 were held for the orders and the independence PRs; 14 landed first, so
 /// the orders came after it, and 12 and 13 were never written.
-pub const WORLD_VERSION: u32 = 28;
+pub const WORLD_VERSION: u32 = 29;
 
 /// Why a snapshot does not read.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -220,7 +221,8 @@ pub fn migrate(v: u32, body: &[u8]) -> Result<GameWorld, SaveError> {
         25 => return Ok(v25_to_v26(decode_snapshot(body)?)),
         26 => return Ok(v26_to_v27(decode_snapshot(body)?)),
         27 => return Ok(v27_to_v28(decode_snapshot(body)?)),
-        28 => return decode_snapshot(body),
+        28 => return Ok(v28_to_v29(decode_snapshot(body)?)),
+        29 => return decode_snapshot(body),
         _ => return Err(SaveError::Malformed(format!("unknown world version {v}"))),
     };
     Ok(v15_to_v16(v14_to_v15(v11_to_v14(v11))))

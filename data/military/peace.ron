@@ -36,6 +36,25 @@
     raise_weeks: 12,
     // Weeks from laying down to delivery, peacetime pace, for the types that join whole
     // (docs/war.pt-BR.md, "Encomenda de forças"); a type not listed takes 52.
+    // The historical rule of the forces' composition (docs/war.pt-BR.md, "Composição das
+    // forças"): once a year the infantry converts toward a share of the land men on wheels and on
+    // tracks, the target of the newest generation of the infantry's equipment the country makes.
+    // Design values; the calibration adjusts them, the structure stays.
+    //   - Generation 0 (1925's): 150 on wheels and 50 on tracks, inside the range of the
+    //     sources for 1939-44: about a seventh of the German divisions in 1939 and 52 of 322 in
+    //     November 1943; the French 7 motorized, 3 light mechanized and 3 armoured divisions of
+    //     some 90 in May 1940; the American 14 armoured and 5 motorized of 73 at the end of 1942.
+    //   - Generation 1 (mass production of arms): halfway, 300 and 100.
+    //   - Generation 2 (guided missiles, from about 1960): the large armies all on wheels or
+    //     tracks (the US Army's ROAD divisions of 1961, the mechanized infantry among them).
+    // At most 20 per mille of the land men a year (a class of equipment).
+    composition: Some((
+        targets: [(0, 150, 50), (1, 300, 100), (2, 650, 350)],
+        per_year: 20,
+        wheels_unit: "mechanized",
+        tracks_unit: "armor",
+        from_unit: "infantry",
+    )),
     build_weeks: [
         ("battleship", 156), ("carrier", 156), ("cruiser", 104), ("destroyer", 52),
         ("submarine", 65), ("escort", 39), ("coastal", 39), ("mine_warfare", 26),

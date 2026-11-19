@@ -346,3 +346,82 @@ fn the_army_moves_at_the_pace_of_most_of_its_men() {
     );
     assert_eq!(majority_mobility(mil, &[]), Mobility::Foot);
 }
+
+fn land_shares(w: &GameWorld, mil: &bf_sim::war::Military, ci: usize) -> (i64, i64, i64) {
+    use bf_sim::war::catalogue::{Domain, Mobility};
+    let (mut wheels, mut tracks, mut all) = (0i64, 0i64, 0i64);
+    for f in &w.war.countries[ci].formations {
+        if mil.types[f.unit as usize].domain != Domain::Land || f.called_up || f.colonial {
+            continue;
+        }
+        let n = bf_sim::war::men(mil, f);
+        all += n;
+        match mil.spec(f.unit, f.generation as usize).mobility {
+            Mobility::Wheeled => wheels += n,
+            Mobility::Tracked => tracks += n,
+            _ => {}
+        }
+    }
+    (wheels, tracks, all)
+}
+
+/// The composition of the forces: in January the historical rule converts infantry toward its
+/// target, at most a class a year; the men come from the infantry (the army does not grow)
+/// and show in conversion until the year's class has moved.
+#[test]
+fn the_infantry_converts_a_class_a_year() {
+    let d = data();
+    let mil = &d.war.as_ref().unwrap().military;
+    let mut s = Session::new(
+        d.new_world(),
+        1925,
+        Date::new(1925, 1, 1),
+        2,
+        Some(d.rules()),
+    );
+    let gbr = index(s.world(), "GBR") as usize;
+    s.sim.run_until(Date::new(1925, 1, 10));
+    let w = s.world();
+    let ordered: Fixed = w.war.composition.of(gbr as u16).map(|x| x.ordered).sum();
+    let (_, _, all) = land_shares(w, mil, gbr);
+    assert!(ordered.is_positive(), "Britain converts in 1925");
+    // At most 20 per mille of the land men.
+    assert!(
+        ordered * 1000 <= Fixed::from_int(all) * 20 / 1000 + Fixed::ONE,
+        "{ordered:?} of {all}"
+    );
+    s.sim.run_until(Date::new(1925, 6, 1));
+    let w = s.world();
+    let (wheels, tracks, all2) = land_shares(w, mil, gbr);
+    assert!(wheels + tracks > 0);
+    // The army changed equipment, it did not grow from the conversion (the size in peace moves
+    // it only in January).
+    assert!((all2 - all).abs() * 100 <= all, "{all} -> {all2}");
+}
+
+/// The government's target in place of the rule; `None` returns to the rule.
+#[test]
+fn the_government_fixes_the_composition() {
+    let d = data();
+    let mut s = Session::new(
+        d.new_world(),
+        1925,
+        Date::new(1925, 1, 1),
+        2,
+        Some(d.rules()),
+    );
+    s.submit(GameCommand::SetComposition {
+        tag: "GBR".into(),
+        composition: Some([900, 400]),
+    });
+    s.sim.run_until(Date::new(1925, 1, 3));
+    let gbr = index(s.world(), "GBR");
+    // Clamped: together at most 1,000.
+    assert_eq!(s.world().war.composition.fixed_of(gbr), Some([900, 100]));
+    s.submit(GameCommand::SetComposition {
+        tag: "GBR".into(),
+        composition: None,
+    });
+    s.sim.run_until(Date::new(1925, 1, 4));
+    assert_eq!(s.world().war.composition.fixed_of(gbr), None);
+}

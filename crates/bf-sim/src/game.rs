@@ -433,6 +433,14 @@ pub enum GameCommand {
     },
     /// `tag` denounces agreement `agreement`: by its notice, or now as a breach.
     Denounce { tag: String, agreement: u32 },
+    /// `tag` fixes the composition of its army: land men on wheels and on tracks, per mille
+    /// (each at most 1,000, together at most 1,000); `None` returns to the historical rule. The
+    /// infantry converts toward it a class of equipment a year (`docs/war.pt-BR.md`,
+    /// "Composição das forças").
+    SetComposition {
+        tag: String,
+        composition: Option<[u16; 2]>,
+    },
 }
 
 /// Changes the levers of the country `tag` (`econ::levers`); unknown tags are no-ops.
@@ -544,6 +552,11 @@ impl Command<GameWorld> for GameCommand {
                         buying: Vec::new(),
                         stalled: 0,
                     });
+                }
+            }
+            GameCommand::SetComposition { tag, composition } => {
+                if let Some(ci) = world.countries.iter().position(|(_, c)| c.tag == *tag) {
+                    world.war.composition.set(ci as u16, *composition);
                 }
             }
             GameCommand::CancelOrder { tag, index } => {
@@ -1804,9 +1817,64 @@ mod tests {
             hash_of(&with_ledger)
         );
         assert_eq!(
-            hash_of(&headed(28, &encode_snapshot(&with_ledger).unwrap())),
+            hash_of(&headed(29, &encode_snapshot(&with_ledger).unwrap())),
             hash_of(&with_ledger)
         );
+        // Version 28, before the composition of the forces: `war` without `composition`.
+        {
+            #[derive(Serialize)]
+            struct WarV28<'a> {
+                countries: &'a Vec<crate::war::CountryWar>,
+                soldiers: &'a Vec<i64>,
+                conflicts: &'a crate::war::Conflicts,
+                fighting: &'a crate::war::fight::Fighting,
+            }
+            #[derive(Serialize)]
+            struct BeforeComposition<'a> {
+                scenario: &'a String,
+                player: &'a Option<Id<Country>>,
+                countries: &'a Table<Country, CountryState>,
+                census: &'a Vec<CensusRecord>,
+                econ: &'a crate::econ::Economy,
+                research: &'a crate::research::ResearchState,
+                politics: &'a crate::polity::PoliticsState,
+                demography: &'a crate::demography::DemographyState,
+                borders: &'a crate::borders::BordersState,
+                foreign: &'a crate::foreign_stakes::ForeignState,
+                influence: &'a crate::influence::InfluenceState,
+                treaties: &'a crate::treaty::TreatyState,
+                war: WarV28<'a>,
+                education: &'a crate::demography::education::EducationState,
+                independence: &'a crate::borders::independence::IndependenceState,
+                levers: &'a crate::econ::levers::LeversState,
+            }
+            let w = &with_ledger;
+            let v28 = encode_snapshot(&BeforeComposition {
+                scenario: &w.scenario,
+                player: &w.player,
+                countries: &w.countries,
+                census: &w.census,
+                econ: &w.econ,
+                research: &w.research,
+                politics: &w.politics,
+                demography: &w.demography,
+                borders: &w.borders,
+                foreign: &w.foreign,
+                influence: &w.influence,
+                treaties: &w.treaties,
+                war: WarV28 {
+                    countries: &w.war.countries,
+                    soldiers: &w.war.soldiers,
+                    conflicts: &w.war.conflicts,
+                    fighting: &w.war.fighting,
+                },
+                education: &w.education,
+                independence: &w.independence,
+                levers: &w.levers,
+            })
+            .unwrap();
+            assert_eq!(hash_of(&headed(28, &v28)), hash_of(&with_ledger));
+        }
         // Version 27, before the war support and the occupation: `fighting` with `still`.
         {
             #[derive(Serialize)]

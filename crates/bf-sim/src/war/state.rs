@@ -41,6 +41,9 @@ pub struct PeaceRules {
     /// order, by unit type key; the types not listed take [`DEFAULT_BUILD_WEEKS`].
     #[serde(default)]
     pub build_weeks: Vec<(String, u32)>,
+    /// The historical rule of the forces' composition; `None`: no conversion.
+    #[serde(default)]
+    pub composition: Option<super::composition::CompositionRule>,
 }
 
 fn default_raise_weeks() -> u32 {
@@ -160,6 +163,9 @@ pub struct WarState {
     pub conflicts: super::crisis::Conflicts,
     /// The war on land (slice C): control, advance, postures, losses; empty in peace.
     pub fighting: super::fight::Fighting,
+    /// The composition the governments fixed and the conversions under way; empty while the
+    /// war is switched off.
+    pub composition: super::composition::CompositionState,
 }
 
 impl WarState {
@@ -213,6 +219,7 @@ impl WarState {
             soldiers: Vec::new(),
             conflicts: Default::default(),
             fighting: Default::default(),
+            composition: Default::default(),
         }
     }
 
@@ -331,6 +338,30 @@ impl HashState for WarState {
         if !self.fighting.is_empty() {
             self.fighting.hash_state(h);
         }
+        if !self.composition.is_empty() {
+            self.composition.hash_state(h);
+        }
+    }
+}
+
+/// [`WarState`] as version 28 of the world wrote it, before the composition of the forces.
+#[derive(Default, Deserialize)]
+pub(crate) struct WarStateBeforeComposition {
+    countries: Vec<CountryWar>,
+    soldiers: Vec<i64>,
+    conflicts: super::crisis::Conflicts,
+    fighting: super::fight::Fighting,
+}
+
+impl From<WarStateBeforeComposition> for WarState {
+    fn from(w: WarStateBeforeComposition) -> Self {
+        Self {
+            countries: w.countries,
+            soldiers: w.soldiers,
+            conflicts: w.conflicts,
+            fighting: w.fighting,
+            composition: Default::default(),
+        }
     }
 }
 
@@ -350,6 +381,7 @@ impl From<WarStateBeforeStill> for WarState {
             soldiers: w.soldiers,
             conflicts: w.conflicts,
             fighting: w.fighting.into(),
+            composition: Default::default(),
         }
     }
 }
@@ -370,6 +402,7 @@ impl From<WarStateBeforeSupport> for WarState {
             soldiers: w.soldiers,
             conflicts: w.conflicts,
             fighting: w.fighting.into(),
+            composition: Default::default(),
         }
     }
 }
@@ -388,6 +421,7 @@ impl From<WarStateBeforeCrises> for WarState {
             soldiers: w.soldiers,
             conflicts: Default::default(),
             fighting: Default::default(),
+            composition: Default::default(),
         }
     }
 }
@@ -460,6 +494,7 @@ impl From<WarStateBeforeOrders> for WarState {
             soldiers: w.soldiers,
             conflicts: Default::default(),
             fighting: Default::default(),
+            composition: Default::default(),
         }
     }
 }
@@ -503,6 +538,7 @@ impl From<WarStateBeforeCalls> for WarState {
                 calls: Vec::new(),
             },
             fighting: Default::default(),
+            composition: Default::default(),
         }
     }
 }
@@ -580,6 +616,7 @@ impl From<WarStateBeforeFighting> for WarState {
             soldiers: w.soldiers,
             conflicts: w.conflicts,
             fighting: Default::default(),
+            composition: Default::default(),
         }
     }
 }

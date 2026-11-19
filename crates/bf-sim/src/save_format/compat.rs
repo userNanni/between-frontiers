@@ -1031,3 +1031,46 @@ pub fn v27_to_v28(w: V27) -> GameWorld {
         levers: w.levers,
     }
 }
+
+/// Version 28: the war support and the occupation (#217), before the composition of the forces.
+#[derive(Deserialize)]
+pub struct V28 {
+    scenario: String,
+    player: Option<Id<Country>>,
+    countries: Table<Country, CountryState>,
+    census: Vec<CensusRecord>,
+    econ: crate::econ::Economy,
+    research: crate::research::ResearchState,
+    politics: crate::polity::PoliticsState,
+    demography: crate::demography::DemographyState,
+    borders: crate::borders::BordersState,
+    foreign: crate::foreign_stakes::ForeignState,
+    influence: crate::influence::InfluenceState,
+    treaties: crate::treaty::TreatyState,
+    war: crate::war::state::WarStateBeforeComposition,
+    education: crate::demography::education::EducationState,
+    independence: crate::borders::independence::IndependenceState,
+    levers: crate::econ::levers::LeversState,
+}
+
+/// 28 → 29: the composition of the forces (`WarState::composition`), empty.
+pub fn v28_to_v29(w: V28) -> GameWorld {
+    GameWorld {
+        scenario: w.scenario,
+        player: w.player,
+        countries: w.countries,
+        census: w.census,
+        econ: w.econ,
+        research: w.research,
+        politics: w.politics,
+        demography: w.demography,
+        borders: w.borders,
+        foreign: w.foreign,
+        influence: w.influence,
+        treaties: w.treaties,
+        war: w.war.into(),
+        education: w.education,
+        independence: w.independence,
+        levers: w.levers,
+    }
+}
