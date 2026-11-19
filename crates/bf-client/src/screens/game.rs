@@ -890,6 +890,7 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
             &shared.i18n,
             shared.world.as_ref(),
             snap.war.as_deref(),
+            snap.forces.as_deref().and_then(|f| f.army.as_ref()),
             state.war.as_mut().expect("war open"),
             &mut place,
         );

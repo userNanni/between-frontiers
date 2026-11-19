@@ -39,6 +39,10 @@ pub fn show(ui: &mut Ui, cx: &mut TabContext<'_>) {
     bf_ui_kit::small(ui, &i18n.tr("forces-basis"));
     bf_ui_kit::gap(ui, space::SM);
     summary(ui, i18n, f, cx.view.map_or(0.0, |v| v.gdp_last_year));
+    if let Some(a) = &f.army {
+        bf_ui_kit::gap(ui, space::MD);
+        army(ui, i18n, a);
+    }
     bf_ui_kit::gap(ui, space::MD);
     table(ui, i18n, f, cx.orders);
     disband(ui, cx);
@@ -863,5 +867,96 @@ fn new_order(
         } else {
             commands.push(order);
         }
+    }
+}
+
+/// The generation and how far the readiness is from the next step, in one line.
+pub fn generation_line(i18n: &I18n, a: &crate::army_view::ArmyView) -> String {
+    let n = |x: u32| i18n.int(i64::from(x));
+    if a.generation >= 3 {
+        i18n.tr_args(
+            "army-third",
+            &[("total", arg(n(a.total))), ("down", arg(n(a.down)))],
+        )
+    } else {
+        i18n.tr_args(
+            "army-second",
+            &[
+                ("total", arg(n(a.total))),
+                ("up", arg(n(a.up))),
+                ("short", arg(n(a.short_of_up()))),
+            ],
+        )
+    }
+}
+
+/// The army's generation (`docs/war.pt-BR.md`, "Geração do exército"): the readiness on a bar
+/// with the two thresholds, then each term with its points, what holds it back, and what the
+/// country does in peace to move it.
+fn army(ui: &mut Ui, i18n: &I18n, a: &crate::army_view::ArmyView) {
+    use crate::army_view::HoldView;
+    bf_ui_kit::heading(ui, &i18n.tr("army-heading"));
+    bf_ui_kit::small(ui, &i18n.tr("army-basis"));
+    ui.add(
+        egui::Label::new(
+            egui::RichText::new(generation_line(i18n, a))
+                .font(bf_ui_kit::theme::sans_medium(bf_ui_kit::tokens::size::BODY)),
+        )
+        .wrap(),
+    );
+    // The readiness out of 1,000, a light tick where it falls back, a gold one where it moves up.
+    let width = ui.available_width().min(420.0);
+    let (rect, _) = ui.allocate_exact_size(egui::vec2(width, 8.0), egui::Sense::hover());
+    let p = ui.painter();
+    p.rect_filled(rect, 3.0, color::SURFACE_SUNKEN);
+    let mut fill = rect;
+    fill.set_width(rect.width() * (a.total.min(1000) as f32 / 1000.0));
+    p.rect_filled(fill, 3.0, color::ACCENT);
+    for (t, c) in [(a.down, color::TEXT_MUTED), (a.up, color::ACCENT_HOVER)] {
+        let x = rect.left() + rect.width() * (t.min(1000) as f32 / 1000.0);
+        p.vline(x, rect.expand(3.0).y_range(), egui::Stroke::new(1.5, c));
+    }
+    bf_ui_kit::gap(ui, space::XS);
+    for t in &a.terms {
+        let taken = t.key == "central_control";
+        if taken && t.points == 0 && t.hold.is_none() {
+            continue;
+        }
+        let value = i18n.tr_args(
+            if taken {
+                "army-points-taken"
+            } else {
+                "army-points"
+            },
+            &[
+                ("points", arg(i18n.int(i64::from(t.points)))),
+                ("most", arg(i18n.int(i64::from(t.most)))),
+            ],
+        );
+        bf_ui_kit::stat_row(ui, &i18n.tr(&format!("army-term-{}", t.key)), &value);
+        let (text, tint) = match &t.hold {
+            Some(h) => {
+                let args: Vec<(&str, Arg<'_>)> = match h {
+                    HoldView::SchoolWithoutDoctrine(stage) => {
+                        vec![("stage", arg(i18n.tr(&format!("tech-stage-{stage}"))))]
+                    }
+                    HoldView::RegimeChange { years_left } => vec![
+                        ("years", arg(years_left.to_string())),
+                        ("count", Arg::Num(f64::from(*years_left))),
+                    ],
+                    _ => Vec::new(),
+                };
+                (i18n.tr_args(h.key(), &args), color::ACCENT)
+            }
+            None => (i18n.tr(&format!("army-do-{}", t.key)), color::TEXT_MUTED),
+        };
+        ui.add(
+            egui::Label::new(
+                egui::RichText::new(text)
+                    .font(bf_ui_kit::theme::sans(bf_ui_kit::tokens::size::SMALL))
+                    .color(tint),
+            )
+            .wrap(),
+        );
     }
 }

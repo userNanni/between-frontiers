@@ -350,3 +350,33 @@ war-expedition-less = −10 mil
 war-expedition-more = +10 mil
 war-expedition-to-rule = Voltar à regra
 war-expedition-note = Mais homens cobrem melhor a unidade (a guerrilha perde mais por baixa sua), mas amarram o exército e, com a G8, pesam mais na duração da guerra.
+composition-apply = Aplicar
+army-heading = Geração do exército
+army-basis = Um exército de segunda geração luta em frente linear, pelo fogo e pelo desgaste, com o comando no centro; um de terceira age pela intenção do comandante, concentra num ponto, rompe e aproveita. A geração sai da prontidão, somada termo a termo e lida no começo de cada mês.
+army-second = 2ª geração · prontidão { $total } de 1.000; passa à 3ª em { $up } (faltam { $short })
+army-third = 3ª geração · prontidão { $total } de 1.000; volta à 2ª abaixo de { $down }
+army-war-tip = A geração com que o nosso exército luta. Na 3ª, a frente põe seis décimos dos homens livres no segmento mais fraco, manda para lá as tropas móveis e rompe quando tem o triplo do poder. O caminho até ela está na aba Forças do Governo.
+army-points = { $points } de { $most }
+army-points-taken = −{ $points } de { $most }
+army-term-officer_education = Oficiais formados para agir pela intenção
+army-term-training = Treino
+army-term-radio = Rádio
+army-term-motorization = Motorização
+army-term-experience = Experiência de guerra
+army-term-central_control = Controle político dos oficiais
+army-do-officer_education = Uma turma de oficiais por ano sai formada no que a escola ensina, na medida do treino.
+army-do-training = Manter o exército treinado; recrutas novos diluem o treino.
+army-do-radio = A sobra do orçamento militar troca o equipamento pela geração nova, que traz o rádio.
+army-do-motorization = Encomendar formações mecanizadas e blindadas.
+army-do-experience = Só vem da guerra; some pela metade a cada cinco anos.
+army-do-central_control = Trocar a forma de governo põe o corpo de oficiais sob a política por cinco anos.
+army-hold-school = A escola ainda não ensina a doutrina: a guerra blindada está em { $stage }. Pesquisá-la até o estágio industrial faz as turmas novas saírem formadas nela.
+army-hold-tradition = Sem tradição registrada: conta metade da alfabetização do povo. Alfabetizar sobe este termo.
+army-hold-training = Treino incompleto: recrutas novos diluem o treino.
+army-hold-equipment = Nenhuma formação em equipamento mais novo que o de 1925; a sobra do orçamento militar moderniza aos poucos.
+army-hold-motorized = Nenhuma formação em roda ou lagarta; encomende mecanizadas ou blindadas na Nova encomenda.
+army-hold-experience = Sem experiência de guerra: este termo só vem da guerra.
+army-hold-regime = A forma de governo mudou: o corpo de oficiais responde à política por mais { $count ->
+    [one] { $years } ano
+   *[other] { $years } anos
+}.

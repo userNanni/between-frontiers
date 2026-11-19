@@ -2,6 +2,7 @@
 
 pub mod agreements_view;
 pub mod app;
+pub mod army_view;
 pub mod blocs_view;
 pub mod crisis_view;
 pub mod demands_view;

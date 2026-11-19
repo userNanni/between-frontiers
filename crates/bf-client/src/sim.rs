@@ -302,15 +302,36 @@ fn forces_of(
         _ => {
             let r = rules.as_ref()?;
             let (mil, peace) = r.war.as_ref()?;
-            crate::forces_view::read(
+            let mut v = crate::forces_view::read(
                 session.world(),
                 date,
                 &r.catalogue,
                 mil,
                 peace,
                 r.switches.small_market_wage_floor,
-            )
-            .map(Arc::new)
+            )?;
+            // The army's generation lives only with the war rule.
+            if r.switches.war {
+                let w = session.world();
+                let tag = w.player_tag()?;
+                let ci = w.countries.iter().position(|(_, c)| c.tag == tag)?;
+                // The goods that make a vehicle: what counts as wheels and tracks.
+                let vehicles = peace
+                    .composition
+                    .as_ref()
+                    .map(|rule| bf_sim::war::composition::vehicle_goods(rule, &r.catalogue))
+                    .unwrap_or_default();
+                v.army = Some(crate::army_view::read(
+                    w,
+                    mil,
+                    r.politics.as_deref(),
+                    r.tree.as_deref(),
+                    &vehicles,
+                    ci,
+                    date.to_days(),
+                ));
+            }
+            Some(Arc::new(v))
         }
     }
 }
