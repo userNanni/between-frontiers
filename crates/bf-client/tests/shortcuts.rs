@@ -29,6 +29,8 @@ fn the_keys_are_found_and_answer() {
     let user = std::env::temp_dir().join(format!("bf-shortcuts-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&user);
     let mut h = app(user.clone(), "en", egui::vec2(1600.0, 900.0));
+    // As in a debug build: two widgets with one id fail the test in release too.
+    h.ctx.options_mut(|o| o.warn_on_id_clash = true);
     h.run_steps(4);
     let mut save = saves::create(
         &user.join("saves"),

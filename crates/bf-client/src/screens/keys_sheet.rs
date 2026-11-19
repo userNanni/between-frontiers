@@ -118,6 +118,7 @@ pub fn show(ui: &mut Ui, screen: Rect, shared: &Shared, sheet: &mut Sheet) -> bo
             bf_ui_kit::muted(ui, &i18n.tr("keys-sheet-none"));
         }
         egui::ScrollArea::vertical()
+            .id_salt("keys-sheet-rows")
             .auto_shrink([false, false])
             .show(ui, |ui| {
                 let width = ui.available_width();
