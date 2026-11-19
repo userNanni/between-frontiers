@@ -29,3 +29,4 @@ settings-display-wayland = No Wayland não há troca de resolução: a tela chei
 settings-display-monitor = Este monitor: { $w } × { $h }. Para jogar em outro monitor, leve a janela até ele e escolha aqui.
 settings-display-keep-ask = Manter esta tela? Volta à anterior em { $seconds } s.
 cmd-system-fullscreen = Tela cheia (liga e desliga)
+    .short = Tela cheia

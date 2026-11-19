@@ -29,3 +29,4 @@ settings-display-wayland = Wayland has no resolution change: full screen is the 
 settings-display-monitor = This monitor: { $w } × { $h }. To play on another monitor, move the window to it and choose here.
 settings-display-keep-ask = Keep this display? It goes back to the previous one in { $seconds } s.
 cmd-system-fullscreen = Full screen (on and off)
+    .short = Full screen
