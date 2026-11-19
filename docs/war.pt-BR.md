@@ -469,7 +469,8 @@ leitura) está no código. O resto espera as respostas do dono (N1 a N9).
 - **Árvore (`technologies.ron`), toda com `state_buyer`:** fissão (1938/1944), enriquecimento
   (1944/1945, o bem `nuclear_fuel` e a usina `nuclear_fuel_plant`), bomba atômica (1945),
   termonuclear (1952/1954), míssil balístico (1957/1959), submarino nuclear e defesa antimíssil.
-- **Tipos:** `nuclear_warhead` (60 de `nuclear_fuel`; 30 na termonuclear), `ballistic_missile`,
+- **Tipos:** `nuclear_warhead` (3.600 de `nuclear_fuel` nas duas gerações; ver "O custo da ogiva
+em minério"), `ballistic_missile`,
   `missile_submarine`, `missile_defense` e o `strategic_bomber`. As forças de 1925 não têm nenhum.
 - **`war::nuclear`:** puro, testado e, até aqui, chamado por ninguém. Faz o segundo golpe por base,
   a dissuasão e o teto de cada lado na escada.
@@ -532,6 +533,73 @@ leitura) está no código. O resto espera as respostas do dono (N1 a N9).
   - critério: primeira bomba em 3 a 5 anos com base industrial, e o estoque subindo uma ordem de
     grandeza a cada 5 anos;
   - se a pesquisa do jogo atrasar, o número fica anotado e não é forçado.
+
+### O custo da ogiva em minério (PR de dados)
+A ogiva pedia 60 "kg enriched" de `nuclear_fuel` (30 na termonuclear), cerca de 350 kg de U3O8.
+Agora pede 3.600 nas duas gerações, contadas pelo minério que um núcleo real consumiu.
+- **Unidade do jogo:** o `nuclear_fuel` é medido em "kg enriched", combustível de reator. A
+  difusão gasosa do `buildings.ron` faz 34.100 com 200.000 kg de U3O8, uma razão de 5,87 kg de
+  minério por unidade.
+- **Núcleo de referência:** o do Little Boy, 64 kg a cerca de 80% de U-235 (Wellerstein, 2025,
+  a partir do *Manhattan District History*).
+  - Com rejeito de 0,3 a 0,5%, isso pede de 12 a 24 t de urânio natural. **Conta minha** pelo
+    balanço de massa do enriquecimento.
+  - Em U3O8, são 14,1 a 28,3 t, ou 2.400 a 4.800 "kg enriched" (**derivado**).
+  - O meio da faixa, **3.600**, é o valor do dado (**derivado**), igual a 21,1 t de U3O8 por ogiva.
+- **Termonuclear:** fica igual à fissão até haver fonte para o físsil de um primário
+  (**estimativa**, não medida).
+- **Rota do plutônio:** falta. Não há reator de produção nem reprocessamento. Toda ogiva do jogo
+  sai do enriquecimento, que é a rota mais cara em minério.
+- **Teste:** `tests/warhead_cost.rs` lê a razão da usina e confere que cada geração custa de 14,0 a
+  28,5 t de U3O8. Hoje dá 21,1 t.
+
+**Conferência de 1940 com o custo novo** (medida, não meta; sobre o #257, com EUA, Alemanha e
+Reino Unido a 0,4% do PIB desde 1940-01-01; o dinheiro está em dólares de 2011):
+- **Estoque americano no fim do ano:**
+
+  | | 1945 | 1946 | 1947 | 1954 | 1955 | 1960 |
+  |---|---|---|---|---|---|---|
+  | Jogo | 0 | 0 | 0 | 100 | 110 | 520 |
+  | Real | 2 | 9 | 13 | — | ~2.400 | ~18.600 |
+
+  - O real vem de Norris e Kristensen (2010) e, para 1945–47, do DOE (1993).
+  - Reino Unido e Alemanha têm o primeiro lote de 10 em 1946 e 1947.
+- **Pesquisa:** a bomba fica industrial nos EUA em 1943; a real ficou pronta em 1945.
+- **Usinas:** os EUA chegam a 24 níveis em 1945 e a 34 em 1950. Sem minério, todos fecham no ano
+  seguinte e são reconstruídos.
+- **Minério:** a extração mundial do jogo é de 311 t de U3O8 em 1945. Os 24 níveis pediriam
+  cerca de 250.000 t por ano.
+- **Custo da primeira ogiva** (os EUA, até o primeiro lote em 1954):
+  - Um nível custa cerca de 68 milhões de dólares de 2011, ou uns 5,4 milhões de 1945 pelo CPI-U
+    (fator de cerca de 12,5, **conta minha**).
+  - Os níveis vistos de um fim de ano ao outro somam pelo menos 84 construídos. São cerca de 5,7
+    bilhões de 2011, ou uns 460 milhões de 1945 (**conta minha** a partir da medida).
+  - A operação de um lote de 10 compra 36.000 "kg enriched", a 2.000–2.600 por unidade: 72 a 94
+    milhões de 2011.
+  - Na fonte, Y-12, K-25 e S-50 custaram cerca de 770 milhões de dólares de 1945 em construção
+    até dezembro de 1945 (Hewlett e Anderson, *The New World*, 1962, p. 723).
+  - O programa inteiro gastou 29 bilhões de 2011 até 1945 e 52 bilhões até 1954. O Projeto
+    Manhattan custou cerca de 2 bilhões de 1945, uns 25 bilhões de 2011.
+- **Diferenças anotadas, sem ajuste:**
+  - **Tamanho do nível civil:** em minério, um nível vale cerca de três Oak Ridges. Uma usina
+    sozinha bastaria se houvesse minério.
+  - **Sem estoque de minério rico:** o Projeto tinha cerca de 6.000 t de óxido no fim de 1944
+    (pp. 291–292). No jogo, as minas de 1925 extraem dezenas de toneladas.
+  - **As minas não respondem à demanda:** o preço do minério sobe, mas nenhuma mina abre por isso.
+  - **Sem a rota do plutônio:** a maior parte do estoque real depois de agosto de 1945 é de
+    plutônio.
+
+**Ordem de grandeza na década de 1960:**
+- O jogo extrai cerca de 3.500 t de U3O8 por ano no mundo em 1960, o bastante para cerca de 165
+  ogivas por ano a 21,1 t cada (medido).
+- O mundo livre extraía cerca de 35.000 a 40.000 t por ano entre 1959 e 1961. A fonte é a tabela
+  do *Minerals Yearbook* do US Bureau of Mines, em toneladas curtas, com o ano de cada coluna
+  ainda por conferir. Isso daria umas 1.700 a 1.900 ogivas por ano.
+- O estoque americano subiu cerca de 3.000 por ano entre 1955 e 1960. Dezenas de milhares de
+  ogivas **não cabem** no minério nem do mundo real com núcleos só de urânio a 21 t cada.
+- A diferença é a lacuna do plutônio e dos núcleos menores: um núcleo de plutônio pede poucos
+  quilos de físsil. Ela fica anotada para a fatia do plutônio e das minas que respondem à
+  demanda.
 
 ### O degrau nuclear na crise (passo 3, depois das respostas)
 - **Exigência:** quem exige vê o seu teto contra o alvo. Teto abaixo de `War` quer dizer que a
