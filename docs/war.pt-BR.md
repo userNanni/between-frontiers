@@ -665,7 +665,8 @@ Atrás de `war`, com estado em `NuclearState` (save 38).
   do alvo (a de um arsenal não testado conta a metade), a razão de força para ceder um pedido
   periférico cai para `nuclear_coercion` (500‰, em `crisis.ron`). O existencial nunca cede.
   - A tela da crise diz quando há coerção.
-  - Teste `coercion_lowers_the_ratio_on_the_periphery_only`: a razão cai de 3,0× para 1,5×.
+  - Com a N10 (abaixo), a metade fixa deu lugar ao termo nuclear somado à razão. O teste é
+    `coercion_weighs_on_the_periphery_only`.
 - **O teto bloqueia a declaração:** toda semana, o sistema de forças marca as crises em que o
   teto de quem exige contra o alvo, segundo a própria leitura, fica abaixo de `War`
   (`NuclearState::blocked`).
@@ -794,6 +795,34 @@ Está em `war::nuclear_use`, atrás de `war`, no save 39. Os parâmetros ficam e
   - A ponderação de três custos que explica o não uso (a reputação com os aliados, o tabu e a
     reserva contra a URSS; Dingman, Tannenwald) não existe na IA. Fica para a IA da fase 6.
   - Um jogador americano pode usar a arma. A tela mostra a mancha, a resposta esperada e o tabu.
+
+### Regras decididas depois das medidas: G9 e N10
+- **G9 (o dono, 2026-11-19: opção (b)):** com `occupation_by_advance`, a população de um estado
+  conta como sob o inimigo na proporção do avanço inimigo sobre a profundidade do estado
+  (`war::support::under_enemy`). O estado só troca de dono no fim do avanço.
+  - O limiar continua: 500‰ com a capital tomada, 900‰ sem ela.
+  - A tela de ocupação (#266) lê a mesma conta.
+  - Medida (`tests/war_g9.rs`, Alemanha jogada contra a Polônia, sem tratados): a população sob o
+    inimigo aparece desde a primeira semana. O governo cai na semana 9, contra a 12 de antes. A
+    Hungria contra a Tchecoslováquia cai em uma a duas semanas nas duas regras.
+  - A Argélia (G6) não muda: 5,9 anos, porque a metrópole não é ocupada.
+  - Alemanha 1914–18 e Vietnã não leem a ocupação.
+- **N10 (o dono, 2026-11-19: opção (a), simétrica):** na exigência periférica, `weigh_crisis` soma
+  à razão de força de terra a vantagem nuclear de um lado só de quem exige. Essa vantagem é o que
+  o seu segundo golpe entrega sobre o dano inaceitável do alvo, na leitura do alvo. A vantagem do
+  alvo, contada do mesmo jeito, é descontada (`Weighing::nuclear`).
+  - O existencial continua sem ceder.
+  - A tela da crise mostra o termo e quem coage ou dissuade.
+  - Testes (`n10_coercion_and_theatre`):
+    - Cuba 1962: a URSS cede, com termo de +8,3×.
+    - Berlim 1961: os EUA não cedem, com termo de −8,3×, e a URSS não pode declarar.
+    - Coreia 1950: a China não cede.
+  - **Ressalva das entradas:**
+    - os exércitos e as marinhas são os de 1925 do jogo;
+    - Berlim usa os arsenais de 1962 (estimativa, porque 1961 não tem fonte aqui);
+    - os bombardeiros de 1950 são estimativa.
+  - **Fica para uma fatia futura:** a variante (b), a razão no teatro, pelo que cada lado leva até
+    lá com o controle do mar e do ar da zona. Ela pede o controle de zona lido em tempo de crise.
 
 ### Decisões do dono (2026-11-19, todas na recomendação levada pelo orquestrador)
 - **N1:** o programa é decisão explícita, com orçamento e anos (feito no passo 2).

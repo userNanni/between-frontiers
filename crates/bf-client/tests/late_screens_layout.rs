@@ -38,6 +38,11 @@ fn clause(kind: ClauseKind, giver: Side, receiver: Side) -> Clause {
 fn session() -> bf_sim::game::Session {
     let mut data = bf_sim::data::GameData::load(&root()).expect("game data");
     data.switches = data.switches.with(RULES).expect("switches");
+    // The screens need a war past its first week of combat. With G9 (the people under the enemy
+    // by the advance) Hungary's government falls in that week; counted all at once, it holds.
+    if let Some(c) = data.war.as_mut().and_then(|w| w.conduct.as_mut()) {
+        c.support.occupation_by_advance = false;
+    }
     let mut s = bf_sim::game::Session::new(
         data.new_world(),
         1925,

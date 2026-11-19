@@ -16,8 +16,9 @@
     // honouring the default) or betrayed.
     call_weeks: 2,
     lapsed_call_honours: true,
-    // N4 (the owner, 2026-11-19): against a demander that can coerce (a secure second strike the
-    // target lacks, as the target reads it), a peripheral demand is yielded to half the ratio of
-    // force; an existential one never.
-    nuclear_coercion: 500,
+    // N4 with N10 (the owner, 2026-11-19: (a), symmetric): on a peripheral demand, the one-sided
+    // nuclear advantage of the demander (its second strike's delivered warheads over the
+    // target's unacceptable damage, as the target reads it) adds to the ratio of force, and the
+    // target's own subtracts; an existential demand is never yielded.
+    nuclear_term: true,
 )

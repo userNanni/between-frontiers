@@ -52,6 +52,11 @@ pub struct SupportRules {
     pub duration_by_commitment: bool,
     #[serde(default = "default_commitment_factor")]
     pub commitment_factor: u32,
+    /// G9 (the owner, 2026-11-19: on): the people of a state the enemy advances into count as
+    /// under the enemy in proportion to the advance over the state's depth, before the state
+    /// changes hands; off, the whole state counts at once when it changes hands.
+    #[serde(default)]
+    pub occupation_by_advance: bool,
     /// Support lost at a full loss of the basic needs met before the war.
     pub deprivation: i32,
     /// Support lost with the whole population under occupation.
@@ -335,7 +340,7 @@ pub fn part_of(demand: &Proposal) -> Proposal {
 /// peace. `segments` is this week's combat, `ended` the wars a peace ended this week.
 pub fn support_week(
     c: &Conduct,
-    capitals: &std::collections::BTreeMap<String, u16>,
+    map: &super::fight::FightSetup,
     world: &GameWorld,
     f: &mut Fighting,
     segments: &[SegmentWeek],
@@ -412,17 +417,16 @@ pub fn support_week(
             e.1 += i128::from(p.size) * i128::from(p.satisfaction[0].raw());
         }
         let taken = f.controller(ri as u32, m) != m;
-        if taken {
-            e.2 += reg.population();
-        }
+        let under = under_enemy(r, f, &map.depth_km, reg, ri as u32, taken);
+        e.2 += under;
         let h = home.entry(m).or_default();
         if reg.colony {
             h.3 |= !taken;
         } else {
             h.0 += reg.population();
+            h.1 += under;
             if taken {
-                h.1 += reg.population();
-                h.2 |= tag_of(m).and_then(|t| capitals.get(t)) == Some(&reg.state);
+                h.2 |= tag_of(m).and_then(|t| map.capitals.get(t)) == Some(&reg.state);
             }
         }
     }
@@ -679,6 +683,41 @@ pub fn support_week(
         }
     }
     out
+}
+
+/// G9 (the owner, 2026-11-19: (b)): the people of `reg` (region `ri`) under the enemy. All of
+/// them when the region changed hands (`taken`); before that, with `occupation_by_advance`, the
+/// share the enemy's advance into it has gone over its state's depth.
+pub fn under_enemy(
+    r: &SupportRules,
+    f: &Fighting,
+    depth: &std::collections::BTreeMap<u16, Fixed>,
+    reg: &crate::econ::Region,
+    ri: u32,
+    taken: bool,
+) -> i64 {
+    if taken {
+        return reg.population();
+    }
+    if !r.occupation_by_advance {
+        return 0;
+    }
+    let km = f
+        .advance
+        .iter()
+        .filter(|(_, into, _)| *into == ri)
+        .map(|(_, _, km)| *km)
+        .max()
+        .unwrap_or(Fixed::ZERO);
+    let d = depth
+        .get(&reg.state)
+        .copied()
+        .unwrap_or(Fixed::from_int(100));
+    if km.is_positive() && d.is_positive() {
+        (Fixed::from_int(reg.population()) * (km / d).min(Fixed::ONE)).to_int_floor()
+    } else {
+        0
+    }
 }
 
 /// log10(n) × 1,000, from the digits and a table of the mantissa: deterministic, within a few

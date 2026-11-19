@@ -122,10 +122,10 @@ fn crisis(w: &GameWorld, by: &str, target: &str, demand: Proposal) -> Crisis {
     }
 }
 
-/// N4: against a one-sided secure arsenal, the target yields a peripheral demand at a lower
-/// ratio of force; an existential demand never.
+/// N4 with N10: against a one-sided secure arsenal, the demander's nuclear advantage adds to the
+/// ratio of force and the target yields a peripheral demand; an existential demand never.
 #[test]
-fn coercion_lowers_the_ratio_on_the_periphery_only() {
+fn coercion_weighs_on_the_periphery_only() {
     let d = data();
     let setup = d.rules().crisis.clone().unwrap();
     let mut w = d.new_world();
@@ -141,11 +141,13 @@ fn coercion_lowers_the_ratio_on_the_periphery_only() {
     arm(&mut w, "GER");
     let coerced = weigh_crisis(&setup, mil(), &w, &k);
     eprintln!(
-        "needed {:?} plain, {:?} under coercion",
-        plain.needed, coerced.needed
+        "ratio {} needed {:?}: plain {} yields {}; coerced term {} yields {}",
+        plain.ratio, plain.needed, plain.nuclear, plain.yields, coerced.nuclear, coerced.yields
     );
     assert!(coerced.coerced);
-    assert!(coerced.needed.unwrap() < plain.needed.unwrap());
+    assert_eq!(plain.nuclear, 0);
+    assert!(coerced.nuclear > 0);
+    assert!(!plain.yields && coerced.yields);
     let whole = crisis(
         &w,
         "GER",

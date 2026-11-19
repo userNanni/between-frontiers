@@ -160,9 +160,17 @@ fn weighing(ui: &mut Ui, i18n: &I18n, l: &CrisisLine) {
         &w.needed
             .map_or_else(|| i18n.tr("crisis-needed-never"), ratio),
     );
-    // N4: a one-sided secure arsenal coerces on the periphery.
-    if w.coerced {
-        bf_ui_kit::small(ui, &i18n.tr("crisis-coerced"));
+    // N4 with N10: a one-sided secure arsenal weighs as force on the periphery, for either side.
+    if w.nuclear != 0 {
+        bf_ui_kit::stat_row(ui, &i18n.tr("crisis-nuclear-term"), &ratio(w.nuclear));
+        bf_ui_kit::small(
+            ui,
+            &i18n.tr(if w.coerced {
+                "crisis-coerced"
+            } else {
+                "crisis-deterred"
+            }),
+        );
     }
     let (key, c) = if w.yields {
         ("crisis-yields", color::POSITIVE)

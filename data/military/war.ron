@@ -35,6 +35,10 @@
         // most whole: with 3, Vietnam (some 0.36 of the army) weighs whole and the owner's case
         // stands; Malaya (some 0.05) weighs about 0.15.
         commitment_factor: 3000,
+        // G9 (the owner, 2026-11-19: on, the threshold of 500 per mille with the capital kept):
+        // a state's people count as under the enemy in proportion to the enemy's advance over
+        // the state's depth, before the state changes hands; off, all at once when it does.
+        occupation_by_advance: true,
         // Civilian deprivation counts (orchestrator, 2026-11-18): the share of the basic needs
         // met before the war that are no longer met. Germany's turnip winter of 1916–17 and the
         // strikes of 1918 (Offer, 1989, *The First World War: An Agrarian Interpretation*).

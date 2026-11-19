@@ -1171,7 +1171,7 @@ fn conduct_week(
     );
     out.support = super::support::support_week(
         k,
-        &setup.capitals,
+        setup,
         world,
         &mut out.fighting,
         &out.segments,

@@ -644,3 +644,15 @@ fn the_player_orders_the_expedition() {
     assert_eq!(k.wanted, None);
     assert!(k.goal > 20_000, "the rule again: {}", k.goal);
 }
+
+/// G9: Algeria to the end with the people under the enemy counted all at once, the rule before
+/// the owner's (b) (measured 2026-11-19: the same 5.9 years either way).
+#[test]
+#[ignore = "long: the G9 conference, run in the slot"]
+fn algeria_to_the_end_g9() {
+    let d = load(|d| {
+        let c = d.war.as_mut().unwrap().conduct.as_mut().unwrap();
+        c.support.occupation_by_advance = false;
+    });
+    to_the_end(&d, "DZA", "FRA", 15);
+}
