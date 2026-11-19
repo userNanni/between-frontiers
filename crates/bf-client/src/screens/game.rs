@@ -844,6 +844,10 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
             if matches!(c, GameCommand::SetLaw { .. }) {
                 state.restore_point_before(shared, Reason::Law);
             }
+            // Breaking an agreement's tariff clause on purpose (CT2): a point to go back to.
+            if matches!(c, GameCommand::SetPartnerTariff { breach: true, .. }) {
+                state.restore_point_before(shared, Reason::Treaty);
+            }
             state.sim.send(Command::Issue(c));
         }
         if res.close {

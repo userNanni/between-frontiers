@@ -395,11 +395,16 @@ pub enum GameCommand {
     },
     /// Adds `per_mille` thousandths of points to the tariff of every good for `partner`
     /// (negative: a preference), or with `None` drops them (CT2). The agreements in force still
-    /// cap the result (`trade::tariff_by`). Unknown tags are no-ops.
+    /// cap the result (`trade::tariff_by`) unless `breach`: then every tariff clause `tag` gives
+    /// `partner` in an agreement in force (customs union, preference, cap) is broken
+    /// (`TreatyState::record_breach`, a test failed), worth the points on last year's imports
+    /// from the partner; the general reputation weighs it and the clause no longer holds the
+    /// tariff between them. Unknown tags are no-ops.
     SetPartnerTariff {
         tag: String,
         partner: String,
         per_mille: Option<i16>,
+        breach: bool,
     },
     /// Fixes the weeks of revenue the treasury keeps and what its surplus is for (D4).
     SetTreasury {
@@ -471,6 +476,54 @@ pub enum GameCommand {
 }
 
 /// Changes the levers of the country `tag` (`econ::levers`); unknown tags are no-ops.
+/// `by` breaks every tariff clause it gives `partner` in the agreements in force (CT2): worth the
+/// points on last year's imports from the partner, a test failed.
+fn break_tariff_clauses(
+    world: &mut GameWorld,
+    date: Date,
+    (by, bi): (&str, usize),
+    (partner, pi): (&str, usize),
+    per_mille: Option<i16>,
+) {
+    use crate::treaty::ClauseKind;
+    let t = &world.econ.trade;
+    let n = usize::from(t.n);
+    let bought = t
+        .last_year
+        .get(pi * n + bi)
+        .copied()
+        .unwrap_or(laplace_schelling::Fixed::ZERO);
+    let value =
+        bought * laplace_schelling::Fixed::from_ratio(i64::from(per_mille.unwrap_or(0)), 1000);
+    let clauses: Vec<(u32, usize)> = world
+        .treaties
+        .agreements
+        .iter()
+        .flat_map(|a| {
+            a.kept.iter().enumerate().filter_map(move |(i, c)| {
+                let tariff = matches!(
+                    c.kind,
+                    ClauseKind::CustomsUnion
+                        | ClauseKind::TariffPreference { .. }
+                        | ClauseKind::TariffCap { rate: Some(_) }
+                );
+                (tariff && a.side(&c.giver).contains(&by) && a.side(&c.receiver).contains(&partner))
+                    .then_some((a.id, i))
+            })
+        })
+        .collect();
+    for (agreement, clause) in clauses {
+        world.treaties.record_breach(
+            agreement,
+            clause,
+            by,
+            value,
+            date,
+            crate::treaty::BreachCause::TestFailed,
+        );
+    }
+}
+
 fn set_levers(world: &mut GameWorld, tag: &str, f: impl FnOnce(&mut crate::econ::levers::Levers)) {
     let Some(ci) = world.countries.iter().position(|(_, c)| c.tag == tag) else {
         return;
@@ -720,6 +773,7 @@ impl Command<GameWorld> for GameCommand {
                 tag,
                 partner,
                 per_mille,
+                breach,
             } => {
                 let pos = |t: &str| world.countries.iter().position(|(_, c)| c.tag == t);
                 if let (Some(ci), Some(pi)) = (pos(tag), pos(partner))
@@ -727,6 +781,9 @@ impl Command<GameWorld> for GameCommand {
                     && let Ok(p) = u16::try_from(pi)
                 {
                     world.tariffs.table_mut(ci).set_partner(p, *per_mille);
+                    if *breach && per_mille.is_some_and(|v| v > 0) {
+                        break_tariff_clauses(world, ctx.date, (tag, ci), (partner, pi), *per_mille);
+                    }
                 }
             }
             GameCommand::SetTreasury {

@@ -32,6 +32,9 @@ pub struct TariffUi {
     pub find: FindUi,
     /// Partners picked by name, listed after the largest.
     pub picked: Vec<String>,
+    /// Points asked for a partner past what the agreement allows, waiting for the player to
+    /// confirm the breach of the clause: `(partner, per_mille)`.
+    pub confirm: Option<(String, i16)>,
 }
 
 /// A good's rate: steps of one percentage point, from zero to 200 %.
@@ -83,8 +86,12 @@ fn cell<R>(ui: &mut Ui, width: f32, right: bool, add: impl FnOnce(&mut Ui) -> R)
     } else {
         Layout::left_to_right(Align::Center)
     };
-    ui.allocate_ui_with_layout(vec2(width, ROW_H), layout, add)
-        .inner
+    ui.allocate_ui_with_layout(vec2(width, ROW_H), layout, |ui| {
+        // The cell keeps its width even when its content is narrower, so columns line up.
+        ui.set_min_size(vec2(width, ROW_H));
+        add(ui)
+    })
+    .inner
 }
 
 fn text_cell(ui: &mut Ui, width: f32, right: bool, text: RichText) {
@@ -108,6 +115,7 @@ fn body(text: String) -> RichText {
 /// Widths of the goods' columns, from the right: imports, rate, the stepper, the rule's
 /// choice; the name takes what is left.
 struct GoodCols {
+    revenue: f32,
     imports: f32,
     rate: f32,
     step_value: f32,
@@ -133,6 +141,14 @@ fn good_cols(ui: &Ui, i18n: &I18n) -> GoodCols {
     .fold(0.0, f32::max)
     .ceil()
         + 4.0;
+    let revenue = [
+        small(&money_short(i18n, 999_000_000_000.0)),
+        text_w(ui, &i18n.tr("tariff-col-revenue"), sans(size::CAPTION)),
+    ]
+    .into_iter()
+    .fold(0.0, f32::max)
+    .ceil()
+        + 4.0;
     let rate = [
         small(&pct(i18n, 200.0, 1)),
         text_w(ui, &i18n.tr("tariff-col-rate"), sans(size::CAPTION)),
@@ -146,8 +162,9 @@ fn good_cols(ui: &Ui, i18n: &I18n) -> GoodCols {
     let stepper = step_value + 2.0 * (control::HEIGHT_SM + space::XS) + 4.0;
     let seg = |t: String| text_w(ui, &t, sans_medium(size::SMALL + 1.0)) + space::LG * 2.0;
     let choice = seg(i18n.tr("lever-rule")) + seg(i18n.tr("lever-fixed")) + 12.0;
-    let used = imports + rate + stepper + choice + 4.0 * GAP;
+    let used = revenue + imports + rate + stepper + choice + 5.0 * GAP;
     GoodCols {
+        revenue,
         imports,
         rate,
         step_value,
@@ -268,7 +285,26 @@ fn goods_header(ui: &mut Ui, i18n: &I18n, c: &GoodCols) {
             ui.add(egui::Label::new(faint(i18n.tr("tariff-col-imports"))).truncate())
                 .on_hover_text(bf_ui_kit::tooltip_text(&i18n.tr("tariff-imports-tip")));
         });
+        cell(ui, c.revenue, true, |ui| {
+            ui.add(egui::Label::new(faint(i18n.tr("tariff-col-revenue"))).truncate())
+                .on_hover_text(bf_ui_kit::tooltip_text(&i18n.tr("tariff-revenue-col-tip")));
+        });
     });
+}
+
+/// A year of a good's imports and of what its rate would collect on them.
+fn good_year(v: &TariffView, table: &TariffTable, g: &crate::tariff_view::GoodLine) -> (f64, f64) {
+    let imports = g.imports * WEEKS;
+    let r = good_rate(table, v.rule, usize::from(g.good)).to_f64_lossy();
+    (imports, imports * r)
+}
+
+fn money_or_dash(i18n: &I18n, v: f64) -> String {
+    if v > 0.0 {
+        money_short(i18n, v)
+    } else {
+        "—".into()
+    }
 }
 
 /// "26,0 %" or "26,0 % a 40,0 %", and how many goods are fixed.
@@ -355,15 +391,33 @@ fn category(
         sans_medium(size::BODY),
         color::TEXT,
     );
+    // The range of rates and the goods fixed end at the rate column; the year's imports and
+    // revenue sit in their columns, as in the goods' rows.
     let summary = category_summary(i18n, v, c, table);
-    let right = rect.right() - space::XS;
-    if right - left.right() > 2.0 * GAP {
+    let rate_right = rect.left() + cols.name + cols.choice + cols.stepper + cols.rate + 3.0 * GAP;
+    let imports_right = rate_right + GAP + cols.imports;
+    let revenue_right = imports_right + GAP + cols.revenue;
+    if rate_right - left.right() > 2.0 * GAP {
         painter.text(
-            egui::pos2(right, rect.center().y),
+            egui::pos2(rate_right, rect.center().y),
             egui::Align2::RIGHT_CENTER,
             &summary,
             sans(size::SMALL),
             color::TEXT_MUTED,
+        );
+    }
+    let (imports, revenue) = c
+        .goods
+        .iter()
+        .map(|g| good_year(v, table, g))
+        .fold((0.0, 0.0), |(a, b), (x, y)| (a + x, b + y));
+    for (x, value) in [(imports_right, imports), (revenue_right, revenue)] {
+        painter.text(
+            egui::pos2(x, rect.center().y),
+            egui::Align2::RIGHT_CENTER,
+            money_or_dash(i18n, value),
+            sans(size::BODY),
+            color::TEXT,
         );
     }
     let typed = keys::item(ui, 'K', format!("gov.tariff.cat.{}", c.key), &c.key, rect);
@@ -486,12 +540,9 @@ fn category(
                 true,
                 body(rate(i18n, good_rate(table, v.rule, gi))),
             );
-            let imports = if g.imports > 0.0 {
-                money_short(i18n, g.imports * WEEKS)
-            } else {
-                "—".into()
-            };
-            text_cell(ui, cols.imports, true, body(imports));
+            let (imports, revenue) = good_year(v, table, g);
+            text_cell(ui, cols.imports, true, body(money_or_dash(i18n, imports)));
+            text_cell(ui, cols.revenue, true, body(money_or_dash(i18n, revenue)));
         });
     }
     bf_ui_kit::gap(ui, space::XS);
@@ -622,19 +673,90 @@ fn partners(
                 if d != 0 {
                     let to = (pm + d * POINT_STEP).clamp(-POINT_MAX, POINT_MAX) as i16;
                     let to = (to != 0).then_some(to);
+                    let mut after = table.clone();
                     if let Ok(pi) = u16::try_from(p.country) {
-                        table.set_partner(pi, to);
+                        after.set_partner(pi, to);
                     }
-                    out.push(GameCommand::SetPartnerTariff {
-                        tag: cx.tag.to_owned(),
-                        partner: p.tag.clone(),
-                        per_mille: to,
-                    });
+                    // Past what an agreement allows, and further than before: a breach, asked
+                    // first (CT2).
+                    let breaks = d > 0
+                        && v.limit(&after, p).is_some()
+                        && v.effective(&after, p) == v.effective(table, p);
+                    if breaks {
+                        cx.tariffs.confirm = to.map(|t| (p.tag.clone(), t));
+                    } else {
+                        *table = after;
+                        out.push(GameCommand::SetPartnerTariff {
+                            tag: cx.tag.to_owned(),
+                            partner: p.tag.clone(),
+                            per_mille: to,
+                            breach: false,
+                        });
+                    }
                 }
             });
             text_cell(ui, c.rate, true, body(rate(i18n, v.effective(table, p))));
         });
-        if let Some(cap) = v.limit(table, p) {
+        if let Some((who, to)) = cx.tariffs.confirm.clone()
+            && who == p.tag
+        {
+            let name = country_name(i18n, &p.tag);
+            let cap = v.limit(table, p).unwrap_or(Fixed::ZERO);
+            let text = i18n.tr_args(
+                if cap == Fixed::ZERO {
+                    "tariff-breach-union"
+                } else {
+                    "tariff-breach-cap"
+                },
+                &[
+                    ("partner", arg(name)),
+                    ("rate", arg(rate(i18n, cap))),
+                    ("points", arg(points(i18n, i32::from(to)))),
+                ],
+            );
+            egui::Frame::new()
+                .fill(color::DANGER_SOFT)
+                .corner_radius(radius::SM)
+                .inner_margin(space::SM)
+                .show(ui, |ui| {
+                    ui.add(
+                        egui::Label::new(
+                            RichText::new(text)
+                                .font(sans(size::SMALL))
+                                .color(color::TEXT),
+                        )
+                        .wrap(),
+                    );
+                });
+            ui.horizontal(|ui| {
+                ui.add_space(space::LG);
+                let yes = Button::danger(&i18n.tr("tariff-breach-confirm"))
+                    .size(ButtonSize::Small)
+                    .show(ui);
+                if yes.clicked()
+                    || keys::item(ui, 'P', "gov.tariff.breach.confirm".into(), "y", yes.rect)
+                {
+                    if let Ok(pi) = u16::try_from(p.country) {
+                        table.set_partner(pi, Some(to));
+                    }
+                    out.push(GameCommand::SetPartnerTariff {
+                        tag: cx.tag.to_owned(),
+                        partner: p.tag.clone(),
+                        per_mille: Some(to),
+                        breach: true,
+                    });
+                    cx.tariffs.confirm = None;
+                }
+                let no = Button::ghost(&i18n.tr("tariff-breach-cancel"))
+                    .size(ButtonSize::Small)
+                    .show(ui);
+                if no.clicked()
+                    || keys::item(ui, 'P', "gov.tariff.breach.cancel".into(), "n", no.rect)
+                {
+                    cx.tariffs.confirm = None;
+                }
+            });
+        } else if let Some(cap) = v.limit(table, p) {
             let note = if cap == Fixed::ZERO {
                 i18n.tr("tariff-limit-union")
             } else {

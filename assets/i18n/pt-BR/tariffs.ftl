@@ -14,6 +14,8 @@ tariff-col-rule = Regra
 tariff-col-rate = Tarifa
 tariff-col-imports = Importação/ano
 tariff-imports-tip = Por bem: a importação líquida da semana passada (o que o país comprou de fora menos o que vendeu), × 52, a preços de base. Um bem que o país exporta mais do que importa mostra um traço. Por parceiro: o que se comprou dele no ano.
+tariff-col-revenue = Receita/ano
+tariff-revenue-col-tip = A tarifa do bem sobre a importação líquida da coluna ao lado: o que ela cobraria num ano. A receita do país, no topo, conta a importação de todos os parceiros, a troca de variedades incluída, e por isso é maior que a soma desta coluna.
 tariff-range = { $low } a { $high }
 tariff-fixed-count = { $n } de { $of } { $n ->
     [one] fixado
@@ -40,3 +42,7 @@ tariff-points-none = sem ajuste
 tariff-points-tip = Pontos sobre a tarifa de cada bem para este parceiro: positivos, uma sobretaxa; negativos, uma preferência. De −100 a +100 pontos. A tarifa efetiva é a média dos bens, já dentro dos acordos em vigor.
 tariff-limit-cap = O acordo limita a tarifa a { $rate }: a sobretaxa acima disso não vale.
 tariff-limit-union = A união aduaneira não cobra tarifa deste parceiro: a sobretaxa não vale.
+tariff-breach-cap = Passar de { $rate } com { $partner } ({ $points }) quebra a cláusula de tarifa do acordo em vigor: a sua reputação geral de honrar acordos cai, { $partner } ganha uma causa contra você e a cláusula deixa de valer entre os dois. Um ponto de restauração é gravado antes.
+tariff-breach-union = Cobrar tarifa de { $partner } ({ $points }) quebra a união aduaneira do acordo em vigor: a sua reputação geral de honrar acordos cai, { $partner } ganha uma causa contra você e a união deixa de valer entre os dois. Um ponto de restauração é gravado antes.
+tariff-breach-confirm = Quebrar a cláusula
+tariff-breach-cancel = Cancelar

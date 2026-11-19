@@ -3566,6 +3566,44 @@ fn trade_partners() {
     let _ = std::fs::remove_dir_all(&user);
 }
 
+/// Activates the element `id` by its key tip, scrolling the open window down until its tip
+/// shows (`late_screens_layout::act`); whether it was found.
+fn act_by_tip(h: &mut Harness<'_, App>, id: &str) -> bool {
+    let steps = |h: &mut Harness<'_, App>| h.run_steps(4);
+    if !h.state().shared.keys.hint_mode() {
+        h.key_press(egui::Key::AltLeft);
+        h.run_steps(3);
+    }
+    let mut scrolled = 0;
+    let code = loop {
+        if let Some(code) = h.state().shared.keys.code_of(id).map(str::to_owned) {
+            break code;
+        }
+        if scrolled == 8 {
+            h.key_press(egui::Key::Escape);
+            h.run_steps(2);
+            return false;
+        }
+        h.key_press(egui::Key::Escape);
+        h.run_steps(2);
+        h.key_press_modifiers(egui::Modifiers::SHIFT, egui::Key::PageDown);
+        steps(h);
+        h.key_press(egui::Key::AltLeft);
+        h.run_steps(3);
+        scrolled += 1;
+    };
+    for c in code.chars() {
+        h.key_press(egui::Key::from_name(&c.to_string()).expect("a key for the code"));
+        steps(h);
+    }
+    steps(h);
+    if h.state().shared.keys.hint_mode() {
+        h.key_press(egui::Key::Escape);
+        h.run_steps(2);
+    }
+    true
+}
+
 /// The government's trade tab (tariff by good and partner, owner's decisions CT1 and CT2):
 /// Britain in February 1926, as the game ships (the tariff that counts off, said in one line),
 /// with steel fixed at 30 %, then a category open. Portuguese and English at 1280 × 720; copies
@@ -3578,8 +3616,9 @@ fn trade_tab() {
     let user = std::env::temp_dir().join(format!("bf-shots-tariffs-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&user);
     let data = bf_sim::data::GameData::load(&root()).expect("game data");
+    let data_switches = || data.switches;
     let steel = data.catalogue.good("steel").expect("steel");
-    let mut s = advanced_session_with("GBR", Date::new(1926, 1, 25), data.switches);
+    let mut s = advanced_session_with("GBR", Date::new(1926, 1, 25), data_switches());
     s.submit(GameCommand::SetGoodsTariff {
         tag: "GBR".into(),
         goods: vec![steel],
@@ -3593,8 +3632,14 @@ fn trade_tab() {
         let from = out_dir().join(format!("{name}.png"));
         std::fs::copy(&from, dir.join(format!("{name}.png"))).unwrap();
     };
-    for (locale, tag) in [("pt-BR", "pt-1280"), ("en", "en-1280")] {
-        let mut h = harness_sized(user.join(tag), locale, egui::vec2(1280.0, 720.0));
+    for (locale, size, tag) in [
+        ("pt-BR", egui::vec2(1280.0, 720.0), "pt-1280"),
+        ("en", egui::vec2(1280.0, 720.0), "en-1280"),
+        ("pt-BR", egui::vec2(960.0, 540.0), "pt-960"),
+        ("en", egui::vec2(960.0, 540.0), "en-960"),
+    ] {
+        let en = locale == "en";
+        let mut h = harness_sized(user.join(tag), locale, size);
         let ctx = h.ctx.clone();
         h.state_mut().apply(Transition::Game(save.clone()), &ctx);
         h.run_steps(4);
@@ -3605,9 +3650,49 @@ fn trade_tab() {
         let name = format!("210-trade-tab-{tag}");
         shot(&mut h, &name);
         keep(&name);
-        h.key_press(egui::Key::K);
+        // The industrial inputs open: steel fixed at 30 %, the group's controls.
+        let category = if en {
+            "Industrial goods (13)"
+        } else {
+            "Insumos industriais (13)"
+        };
+        h.get_by_label(category).click();
         h.run_steps(8);
+        h.get_by_label(category).scroll_to_me();
+        h.run_steps(4);
         let name = format!("211-trade-tab-category-{tag}");
+        shot(&mut h, &name);
+        keep(&name);
+        // Below: the partners, their agreements, the points and the search.
+        h.get_by_label(if en { "BY PARTNER" } else { "POR PARCEIRO" })
+            .scroll_to_me();
+        h.run_steps(4);
+        let name = format!("212-trade-tab-partners-{tag}");
+        shot(&mut h, &name);
+        keep(&name);
+    }
+    // Belgium, in a customs union with Luxembourg: a surcharge on Luxembourg asks first, the
+    // breach of the union and the general reputation in words, a restore point on confirming.
+    let bel = advanced_session_with("BEL", Date::new(1926, 2, 1), data_switches());
+    let save = write_campaign(&user.join("save-bel"), &bel, "Tarifas", "BEL", &[]);
+    for (locale, size, tag) in [
+        ("pt-BR", egui::vec2(1280.0, 720.0), "pt-1280"),
+        ("en", egui::vec2(1280.0, 720.0), "en-1280"),
+    ] {
+        let mut h = harness_sized(user.join(format!("bel-{tag}")), locale, size);
+        let ctx = h.ctx.clone();
+        h.state_mut().apply(Transition::Game(save.clone()), &ctx);
+        h.run_steps(4);
+        h.key_press(egui::Key::G);
+        h.run_steps(4);
+        h.key_press_modifiers(egui::Modifiers::SHIFT, egui::Key::T);
+        h.run_steps(8);
+        assert!(
+            act_by_tip(&mut h, "gov.tariff.partner.LUX.up"),
+            "Luxembourg's surcharge"
+        );
+        h.run_steps(8);
+        let name = format!("213-trade-tab-breach-{tag}");
         shot(&mut h, &name);
         keep(&name);
     }
