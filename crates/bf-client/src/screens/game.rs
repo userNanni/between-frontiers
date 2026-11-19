@@ -932,6 +932,10 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
             ) {
                 state.restore_point_before(shared, Reason::War);
             }
+            // Capital controls freeze every position abroad: a point first.
+            if matches!(c, GameCommand::SetCapitalControls { .. }) {
+                state.restore_point_before(shared, Reason::Exchange);
+            }
             // Breaking an agreement's tariff clause on purpose (CT2): a point to go back to.
             if matches!(c, GameCommand::SetPartnerTariff { breach: true, .. }) {
                 state.restore_point_before(shared, Reason::Treaty);

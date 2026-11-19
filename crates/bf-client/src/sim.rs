@@ -878,6 +878,14 @@ fn snapshot_of(
         .map(|mut g| {
             // The purchases' view needs the catalogue, which the government's reading has not.
             g.purchases = purchases_of(session, rules);
+            let w = session.world();
+            g.gold = session
+                .player()
+                .and_then(|t| w.countries.iter().position(|(_, c)| c.tag == t))
+                .and_then(|ci| {
+                    let r = rules.as_ref()?;
+                    crate::gold_view::read(w, ci, r.gold.as_deref(), r.capital.as_deref())
+                });
             g
         })
         .map(Arc::new),
