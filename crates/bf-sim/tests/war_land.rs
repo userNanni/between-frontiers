@@ -425,3 +425,68 @@ fn the_government_fixes_the_composition() {
     s.sim.run_until(Date::new(1925, 1, 4));
     assert_eq!(s.world().war.composition.fixed_of(gbr), None);
 }
+
+/// The check of the composition against 1939 and 1944 (`docs/war.pt-BR.md`, "Composição das
+/// forças"): the share of land men on wheels and on tracks, the conversions waiting, and the
+/// price and the households' share of automobiles, with the rule and without it. Ignored: two
+/// runs of 19 years; run in a bench slot and read the table it prints.
+#[test]
+#[ignore]
+fn composition_check_1939_and_1944() {
+    let base = data();
+    let mut off = {
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let mut d = GameData::load(&root).unwrap_or_else(|e| panic!("{e}"));
+        d.enable_crisis();
+        d.switches.war = true;
+        no_overrun(&mut d);
+        d
+    };
+    off.war
+        .as_mut()
+        .unwrap()
+        .peace
+        .as_mut()
+        .unwrap()
+        .composition = None;
+    let mil = &base.war.as_ref().unwrap().military;
+    let auto = base.catalogue.good("automobiles").unwrap() as usize;
+    for (label, d) in [("rule", base), ("no rule", &off)] {
+        let mut s = Session::new(
+            d.new_world(),
+            1925,
+            Date::new(1925, 1, 1),
+            2,
+            Some(d.rules()),
+        );
+        for year in [1939, 1944] {
+            s.sim.run_until(Date::new(year, 6, 1));
+            let w = s.world();
+            for tag in ["GER", "FRA", "SOV", "USA", "GBR", "CHN", "BRA", "ETH"] {
+                let ci = index(w, tag) as usize;
+                let (wh, tr, all) = land_shares(w, mil, ci);
+                let waiting: Fixed = w
+                    .war
+                    .composition
+                    .of(ci as u16)
+                    .map(|x| x.ordered - x.delivered)
+                    .sum();
+                let stalled = w
+                    .war
+                    .composition
+                    .of(ci as u16)
+                    .map(|x| x.stalled)
+                    .max()
+                    .unwrap_or(0);
+                let m = &w.econ.markets[ci];
+                println!(
+                    "{label} {year} {tag}: wheels {:.1}% tracks {:.1}% of {all} | waiting {waiting:?} (stalled {stalled} wk) | automobiles price {:?} bought {:?}",
+                    wh as f64 * 100.0 / all.max(1) as f64,
+                    tr as f64 * 100.0 / all.max(1) as f64,
+                    m.price[auto],
+                    m.buy_ratio[auto],
+                );
+            }
+        }
+    }
+}
