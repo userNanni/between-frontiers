@@ -1131,3 +1131,48 @@ pub fn v29_to_v30(w: V29) -> GameWorld {
         tariffs: Default::default(),
     }
 }
+
+/// Version 30: the tariff tables (#242), before the embargoes.
+#[derive(Deserialize)]
+pub struct V30 {
+    scenario: String,
+    player: Option<Id<Country>>,
+    countries: Table<Country, CountryState>,
+    census: Vec<CensusRecord>,
+    econ: crate::econ::Economy,
+    research: crate::research::ResearchState,
+    politics: crate::polity::PoliticsState,
+    demography: crate::demography::DemographyState,
+    borders: crate::borders::BordersState,
+    foreign: crate::foreign_stakes::ForeignState,
+    influence: crate::influence::InfluenceState,
+    treaties: crate::treaty::TreatyState,
+    war: crate::war::state::WarState,
+    education: crate::demography::education::EducationState,
+    independence: crate::borders::independence::IndependenceState,
+    levers: crate::econ::levers::LeversState,
+    tariffs: crate::econ::customs::TariffStateBeforeEmbargoes,
+}
+
+/// 30 → 31: the embargoes (`TariffState::embargoes`), none.
+pub fn v30_to_v31(w: V30) -> GameWorld {
+    GameWorld {
+        scenario: w.scenario,
+        player: w.player,
+        countries: w.countries,
+        census: w.census,
+        econ: w.econ,
+        research: w.research,
+        politics: w.politics,
+        demography: w.demography,
+        borders: w.borders,
+        foreign: w.foreign,
+        influence: w.influence,
+        treaties: w.treaties,
+        war: w.war,
+        education: w.education,
+        independence: w.independence,
+        levers: w.levers,
+        tariffs: w.tariffs.into(),
+    }
+}

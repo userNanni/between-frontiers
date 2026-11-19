@@ -42,10 +42,11 @@ pub fn equilibrium(
     factors: &FreightFactors,
     date: &str,
     links: Option<&[crate::treaty::TariffLink]>,
-    (home, duties, tables): (
+    (home, duties, tables, closed): (
         Option<Fixed>,
         Option<&super::customs::Duties>,
         Option<&super::customs::TariffState>,
+        Option<&[bool]>,
     ),
 ) -> Vec<Vec<Fixed>> {
     let groups = crate::economy::BUILDING_GROUPS.len();
@@ -83,7 +84,7 @@ pub fn equilibrium(
     let reference = i64::from(cat.trade.reference_km.max(1));
     // What depends only on the pair, once a month: whether it is closed, the km, the carry and
     // the tariff (the treaties in force on the date, filtered once).
-    let closed = geo.and_then(|g| g.closed_on(date, n));
+    let closed = closed.map(<[bool]>::to_vec);
     // From the agreements in force when they are kept (`links`), else from the treaties of
     // `diplomacy.ron` in force on the date: the same relations in 1925, in the same order.
     let owned: Vec<TariffRelation> = links.map_or_else(Vec::new, |l| {
@@ -921,6 +922,38 @@ impl Geography {
 
     /// The pairs among `n` markets closed on `date` (either way), as an `n × n` table, as
     /// `closed` answers them; `None` when none is.
+    /// The pairs closed on `date` by the dated closures, plus `extra` (both ways) and, for each
+    /// blockaded market of `by_sea`, every pair whose cheaper way to it runs by sea. `None` when
+    /// nothing is closed.
+    pub fn closed_with(
+        &self,
+        date: &str,
+        n: usize,
+        extra: &[(u16, u16)],
+        by_sea: &[u16],
+    ) -> Option<Vec<bool>> {
+        let mut out = self.closed_on(date, n);
+        let mut close = |a: usize, b: usize| {
+            if a < n && b < n && a != b {
+                let t = out.get_or_insert_with(|| vec![false; n * n]);
+                t[a * n + b] = true;
+                t[b * n + a] = true;
+            }
+        };
+        for &(a, b) in extra {
+            close(usize::from(a), usize::from(b));
+        }
+        for &bl in by_sea {
+            let bl = usize::from(bl);
+            for x in 0..n {
+                if self.by_sea(x, bl) {
+                    close(x, bl);
+                }
+            }
+        }
+        out
+    }
+
     pub fn closed_on(&self, date: &str, n: usize) -> Option<Vec<bool>> {
         let mut out: Option<Vec<bool>> = None;
         for c in self

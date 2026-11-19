@@ -244,14 +244,46 @@ fn set_sorted<V: Copy>(list: &mut Vec<(u16, V)>, key: u16, value: Option<V>) {
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TariffState {
     pub countries: Vec<TariffTable>,
+    /// Embargoes ordered by a government (owner's decision CT6): `(by, on)` market indices,
+    /// sorted. Trade between the two is closed both ways while it stands; lifted, the partners'
+    /// preference climbs back a step a month (`trade::step`).
+    pub embargoes: Vec<(u16, u16)>,
     /// Last week's duties, by market; a record for the budget, read by nothing in the tick.
     pub revenue: Vec<Fixed>,
+}
+
+/// The tariff state of world 30, before the embargoes (`save_format::compat::V30`).
+#[derive(Deserialize)]
+pub struct TariffStateBeforeEmbargoes {
+    countries: Vec<TariffTable>,
+    revenue: Vec<Fixed>,
+}
+
+impl From<TariffStateBeforeEmbargoes> for TariffState {
+    fn from(t: TariffStateBeforeEmbargoes) -> Self {
+        Self {
+            countries: t.countries,
+            embargoes: Vec::new(),
+            revenue: t.revenue,
+        }
+    }
 }
 
 impl TariffState {
     /// Whether every government is on the rule: such a world hashes as before the tables.
     pub fn is_empty(&self) -> bool {
-        self.countries.iter().all(TariffTable::is_rule)
+        self.countries.iter().all(TariffTable::is_rule) && self.embargoes.is_empty()
+    }
+
+    /// Imposes (`on`) or lifts the embargo of `by` on `on_whom`.
+    pub fn set_embargo(&mut self, by: u16, on_whom: u16, on: bool) {
+        match (self.embargoes.binary_search(&(by, on_whom)), on) {
+            (Err(i), true) => self.embargoes.insert(i, (by, on_whom)),
+            (Ok(i), false) => {
+                self.embargoes.remove(i);
+            }
+            _ => {}
+        }
     }
 
     pub fn table(&self, mi: usize) -> Option<&TariffTable> {
@@ -281,6 +313,14 @@ impl HashState for TariffState {
             for &(p, v) in &t.partners {
                 h.write_u64(u64::from(p));
                 h.write_i64(i64::from(v));
+            }
+        }
+        // Worlds without an embargo hash as before the embargoes.
+        if !self.embargoes.is_empty() {
+            h.write_u64(self.embargoes.len() as u64);
+            for &(a, b) in &self.embargoes {
+                h.write_u64(u64::from(a));
+                h.write_u64(u64::from(b));
             }
         }
     }

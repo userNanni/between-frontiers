@@ -94,6 +94,9 @@ pub struct Week {
     pub treaty_tariffs: bool,
     /// Services across a customs union in force (`game::Switches::union_services`).
     pub union_services: bool,
+    /// War closes trade between belligerents, and a blockade the blockaded country's sea pairs
+    /// (`game::Switches::war`, owner's decision CT7; `war::fight::war_pairs`, `blockaded`).
+    pub war_closes: bool,
     /// Gross trade (`game::Switches::trade_gross`): every market buys abroad a share of what it
     /// both makes and uses, not only its shortage.
     pub gross: bool,
@@ -849,6 +852,21 @@ impl Week {
         let geo = self.geo.as_deref();
         let groups = crate::economy::BUILDING_GROUPS.len();
         let date = ctx.date.to_string();
+        // The pairs closed this week, once (the closures compare dates as text): the dated
+        // closures, the embargoes ordered by governments (CT6) and, with war on, the pairs at war
+        // and the blockaded countries' sea pairs (CT7).
+        let closed = geo.and_then(|g| {
+            let (mut extra, mut by_sea) = (world.tariffs.embargoes.clone(), Vec::new());
+            if self.war_closes {
+                extra.extend(crate::war::fight::war_pairs(world));
+                by_sea.extend(
+                    crate::war::fight::blockaded(world)
+                        .into_iter()
+                        .map(|(_, b)| b),
+                );
+            }
+            g.closed_with(&date, nm, &extra, &by_sea)
+        });
         let trade_pref = (ctx.date.day <= 7 || econ.trade.pref.is_empty()).then(|| {
             let trade_ix = crate::research::EFFECTS
                 .iter()
@@ -893,7 +911,12 @@ impl Week {
                 &factors,
                 &date,
                 links.as_deref(),
-                (home, self.duties.as_deref(), Some(&world.tariffs)),
+                (
+                    home,
+                    self.duties.as_deref(),
+                    Some(&world.tariffs),
+                    closed.as_deref(),
+                ),
             );
             let lambda = Fixed::from_f64_lossy(f64::from(cat.trade.monthly_step));
             super::trade::step(&econ.trade.pref, &eq, lambda)
@@ -901,8 +924,6 @@ impl Week {
         let prefs = trade_pref.as_deref().unwrap_or(&econ.trade.pref);
         let pref_rows = prefs.len();
         let pref_table = super::trade::dense_flat(prefs, nm);
-        // The pairs closed this week, once (the closures compare dates as text).
-        let closed = geo.and_then(|g| g.closed_on(&date, nm));
         let is_closed = |s: usize, b: usize| closed.as_ref().is_some_and(|c| c[s * nm + b]);
         // Customs duties: what each market seeks abroad at its tariff (`customs::import_factor`).
         let import_factor: Option<Vec<Fixed>> = self.duties.as_ref().and_then(|d| {
