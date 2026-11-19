@@ -40,6 +40,9 @@ pub struct Window {
     pub war: Option<u32>,
     /// The fronts whose segments are open, by enemy tag.
     pub open: Vec<String>,
+    /// The expedition's goal the player set, by war, until the tick applies it (`None` inside:
+    /// back to the rule).
+    pub expedition: Option<(u32, Option<u64>)>,
 }
 
 #[derive(Default)]
@@ -348,7 +351,7 @@ fn war(
         fleet(ui, i18n, f);
     }
     if let Some(e) = &w.expedition {
-        expedition(ui, i18n, world, v, w.id, e, out);
+        expedition(ui, i18n, world, v, w.id, e, &mut window.expedition, out);
     }
     // The fronts, and the generation our army fights with.
     bf_ui_kit::gap(ui, space::XS);
@@ -881,8 +884,10 @@ fn segment(ui: &mut Ui, i18n: &I18n, world: Option<&World>, v: &WarView, s: &Seg
 /// Men a step of the expedition's order moves.
 const EXPEDITION_STEP: u64 = 10_000;
 
-/// The expedition to a colony in revolt (G6): men landed toward the goal, the cap, the men tied
-/// there, and the order: fewer, more, or back to the AI's rule (the cover of O3).
+/// The expedition to a colony in revolt (G6): the men landed on a bar against the cap with the
+/// goal ticked, the men tied there, the irregulars, where the sea cuts the route, and the goal as
+/// a lever: the AI's rule (the cover of O3) or fixed by the government in steps up to the cap.
+#[allow(clippy::too_many_arguments)]
 fn expedition(
     ui: &mut Ui,
     i18n: &I18n,
@@ -890,8 +895,16 @@ fn expedition(
     v: &WarView,
     war: u32,
     e: &crate::war_view::Expedition,
+    draft: &mut Option<(u32, Option<u64>)>,
     out: &mut Response,
 ) {
+    // What the player set wins over the view until the tick applies it.
+    if let Some((w, wanted)) = *draft
+        && (w != war || wanted == e.wanted)
+    {
+        *draft = None;
+    }
+    let wanted = draft.map_or(e.wanted, |(_, x)| x);
     bf_ui_kit::gap(ui, space::XS);
     bf_ui_kit::heading(
         ui,
@@ -904,17 +917,30 @@ fn expedition(
     if e.by_land {
         bf_ui_kit::small(ui, &i18n.tr("war-expedition-by-land"));
     } else {
-        bf_ui_kit::stat_row(ui, &i18n.tr("war-expedition-landed"), &int(e.landed));
-        bf_ui_kit::stat_row(ui, &i18n.tr("war-expedition-goal"), &int(e.goal));
-        bf_ui_kit::stat_row(ui, &i18n.tr("war-expedition-cap"), &int(e.cap));
-        bf_ui_kit::small(
+        // Landed against the cap, as a stock that fills week by week toward the goal.
+        bf_ui_kit::stat_row(
             ui,
-            &i18n.tr(if e.wanted.is_some() {
-                "war-expedition-ordered"
-            } else {
-                "war-expedition-rule"
-            }),
+            &i18n.tr("war-expedition-landed"),
+            &i18n.tr_args(
+                "war-expedition-landed-value",
+                &[("landed", arg(int(e.landed))), ("cap", arg(int(e.cap)))],
+            ),
         );
+        let width = ui.available_width().min(420.0);
+        let (rect, _) = ui.allocate_exact_size(egui::vec2(width, 8.0), egui::Sense::hover());
+        let p = ui.painter();
+        p.rect_filled(rect, 3.0, color::SURFACE_SUNKEN);
+        if e.cap > 0 {
+            let mut fill = rect;
+            fill.set_width(rect.width() * (e.landed.min(e.cap) as f32 / e.cap as f32));
+            p.rect_filled(fill, 3.0, color::ACCENT);
+            let x = rect.left() + rect.width() * (e.goal.min(e.cap) as f32 / e.cap as f32);
+            p.vline(
+                x,
+                rect.expand(3.0).y_range(),
+                egui::Stroke::new(1.5, color::TEXT_MUTED),
+            );
+        }
     }
     bf_ui_kit::stat_row(
         ui,
@@ -949,42 +975,74 @@ fn expedition(
             .wrap(),
         );
     }
-    ui.horizontal(|ui| {
-        let now = e.wanted.unwrap_or(e.goal);
-        let less = Button::ghost(&i18n.tr("war-expedition-less"))
-            .size(ButtonSize::Small)
-            .show(ui);
-        if less.clicked() || keys::item(ui, 'E', "war.expedition.less".into(), "1", less.rect) {
+    // The goal as a lever: the rule's (the AI's cover) or the government's, in steps of ten
+    // thousand men up to the cap.
+    bf_ui_kit::gap(ui, space::XS);
+    let mut fixed = wanted.is_some();
+    let (changed, rects) = bf_ui_kit::lever_header(
+        ui,
+        &i18n.tr("war-expedition-goal"),
+        &mut fixed,
+        &i18n.tr("lever-rule"),
+        &i18n.tr("lever-fixed"),
+    );
+    let mut typed = false;
+    for (r, (key, on)) in rects.into_iter().zip([("rule", false), ("fixed", true)]) {
+        if keys::item(ui, 'E', format!("war.expedition.{key}"), key, r) && fixed != on {
+            fixed = on;
+            typed = true;
+        }
+    }
+    if changed || typed {
+        let men = fixed.then_some(e.goal);
+        *draft = Some((war, men));
+        out.commands.push(GameCommand::SetExpedition {
+            tag: v.me.clone(),
+            war,
+            men,
+        });
+    }
+    bf_ui_kit::lever_rule_line(
+        ui,
+        // Fixed, this week's goal is the government's: the rule is said without its number.
+        &if fixed {
+            i18n.tr("war-expedition-rule-line-fixed")
+        } else {
+            i18n.tr_args("war-expedition-rule-line", &[("goal", arg(int(e.goal)))])
+        },
+        fixed.then(|| i18n.tr("war-expedition-ordered")).as_deref(),
+    );
+    if fixed {
+        let now = wanted.unwrap_or(e.goal);
+        let d = super::gov_ui::control_row(ui, &i18n.tr("war-expedition-men"), |ui| {
+            super::gov_ui::stepper_wide(
+                ui,
+                &int(now),
+                super::gov_ui::step_width(ui, &[int(e.cap.max(now))]),
+                &i18n.tr("war-expedition-step-tip"),
+                now > 0,
+                now < e.cap,
+                super::gov_ui::StepTips {
+                    family: 'E',
+                    id: "war.expedition.men",
+                    row: 0,
+                },
+            )
+        });
+        if d != 0 {
+            let men = if d < 0 {
+                now.saturating_sub(EXPEDITION_STEP)
+            } else {
+                (now + EXPEDITION_STEP).min(e.cap)
+            };
+            *draft = Some((war, Some(men)));
             out.commands.push(GameCommand::SetExpedition {
                 tag: v.me.clone(),
                 war,
-                men: Some(now.saturating_sub(EXPEDITION_STEP)),
+                men: Some(men),
             });
         }
-        let more = Button::ghost(&i18n.tr("war-expedition-more"))
-            .size(ButtonSize::Small)
-            .show(ui);
-        if more.clicked() || keys::item(ui, 'E', "war.expedition.more".into(), "2", more.rect) {
-            out.commands.push(GameCommand::SetExpedition {
-                tag: v.me.clone(),
-                war,
-                men: Some((now + EXPEDITION_STEP).min(e.cap)),
-            });
-        }
-        let rule = Button::ghost(&i18n.tr("war-expedition-to-rule"))
-            .size(ButtonSize::Small)
-            .enabled(e.wanted.is_some())
-            .show(ui);
-        if (rule.clicked() || keys::item(ui, 'E', "war.expedition.rule".into(), "3", rule.rect))
-            && e.wanted.is_some()
-        {
-            out.commands.push(GameCommand::SetExpedition {
-                tag: v.me.clone(),
-                war,
-                men: None,
-            });
-        }
-    });
+    }
     bf_ui_kit::small(ui, &i18n.tr("war-expedition-note"));
 }
 
