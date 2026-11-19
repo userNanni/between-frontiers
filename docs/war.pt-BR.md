@@ -597,10 +597,15 @@ Agora pede 3.600 nas duas gerações, contadas pelo minério que um núcleo real
   (**estimativa**, não medida).
 - **Rota do plutônio:** falta. Não há reator de produção nem reprocessamento. Toda ogiva do jogo
   sai do enriquecimento.
-  - Por núcleo, o plutônio quase não poupa minério. O Fat Man levou cerca de 6 kg de Pu, e um
-    reator de baixa queima dá cerca de 0,2 a 0,25 kg de Pu por t de urânio natural: umas 25 a 30
-    t de urânio por núcleo (**estimativa sem fonte conferida**).
-  - É uma rota alternativa, de quem não tem difusão, e não uma economia de minério.
+  - **O plutônio poupa minério**, de duas a três vezes. O texto anterior dizia o contrário, a
+    partir de uma estimativa minha sem fonte (0,2 a 0,25 kg de Pu por t), e estava errado.
+  - O núcleo do Fat Man era de 6,15 kg de liga de Pu-Ga (Sublette, *Nuclear Weapons FAQ*, §8.1.1.1,
+    a partir de LA-3067, p. 45).
+  - Um reator de baixa queima dá cerca de 0,9 kg de Pu por t de urânio natural: 9,2 kg de 10,2 t
+    de combustível no exemplo do CIRUS (IPFM, *Global Fissile Material Report 2006*, p. 27).
+  - Isso dá cerca de 6,8 t de urânio natural por núcleo (**conta minha**), contra 12 a 24 t do
+    Little Boy.
+  - É a rota de quem não tem difusão, e também a mais barata em minério.
 - **Teste:** `tests/warhead_cost.rs` lê a razão da usina e confere que cada geração custa de 14,0 a
   28,5 t de U3O8. Hoje dá 21,1 t.
 
@@ -651,7 +656,8 @@ Reino Unido a 0,4% do PIB desde 1940-01-01; o dinheiro está em dólares de 2011
 - A diferença é o **núcleo menor das gerações seguintes** (reforço, núcleo composto).
   - O arsenal real usou da ordem de 7 a 10 t de U3O8 por ogiva, contra 21 do Little Boy
     (**estimativa sem fonte conferida**).
-  - O plutônio é rota alternativa, não a explicação.
+  - O plutônio também conta: poupa de duas a três vezes o minério por núcleo (ver acima, com a
+    fonte).
   - Fica anotada para a fatia do físsil: o físsil por geração (U3), a rota do plutônio (U2) e as
     minas que o programa encomenda (U1).
 
