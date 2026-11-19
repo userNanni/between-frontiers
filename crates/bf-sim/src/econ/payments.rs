@@ -62,8 +62,7 @@ lines! {
     remittances_received,
     /// Profit of plants here sent to their owners abroad.
     remittances_paid,
-    /// Trade's margins between countries: none since the clearing's balance goes back to each
-    /// market's own pool (`week::margin_transfers`); kept at zero in the record.
+    /// Trade's margins between countries: none, each market's own pool gets them (zero).
     margins,
     /// Money another treasury paid this one by treaty or occupation.
     transfers_received,
