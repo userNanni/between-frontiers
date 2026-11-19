@@ -838,6 +838,7 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
             &shared.i18n,
             tree,
             &state.rules.catalogue,
+            state.rules.war.as_ref().map(|(m, _)| m.as_ref()),
             view,
             camera,
         );
