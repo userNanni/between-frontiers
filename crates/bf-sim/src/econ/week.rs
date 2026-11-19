@@ -110,6 +110,9 @@ pub struct Week {
     /// Capital crosses borders (`game::Switches::foreign_flow`); off, the week runs as before
     /// it: no foreign owner is read, no profit is remitted, no work becomes a stake.
     pub foreign_flow: bool,
+    /// Settlement in money and reserves (`game::Switches::payments_settle`,
+    /// `econ::payments::settle`); `None` off.
+    pub settle: Option<Arc<super::payments::SettleRules>>,
 }
 
 /// What a pop wants to buy this week.
@@ -1422,6 +1425,17 @@ impl System<GameWorld> for Week {
         let econ = &mut world.econ;
         let levers = &world.levers;
         let year = ctx.date.year;
+        // Settlement of the week before (`econ::payments::settle`), before its lines are
+        // cleared: the reserves move now, the pools with this week's below.
+        let settled = self.settle.as_ref().map(|rules| {
+            super::payments::settle(
+                rules,
+                &econ.markets,
+                &world.payments,
+                &mut world.reserves,
+                year,
+            )
+        });
         // The balance of payments: a record, out of the hash (`econ::payments`).
         let payments = &mut world.payments;
         payments.begin_week(econ.markets.len(), year);
@@ -1445,6 +1459,11 @@ impl System<GameWorld> for Week {
             );
         }
         let mut markets = changes.markets;
+        if let Some(pools) = settled {
+            for (m, p) in markets.iter_mut().zip(pools) {
+                m.pool += p;
+            }
+        }
         // What the clearing took out of each market for its trade goes back to it
         // (`margin_transfers`): trade makes and destroys no money.
         let construction_good = cat.construction;
