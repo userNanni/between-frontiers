@@ -132,13 +132,19 @@ fn to_the_end(d: &GameData, unit: &str, owner: &str, years: i32) {
     let (mut s, kept, released) = revolt_of(d, unit, owner);
     let w = s.world();
     let names = |rs: &[u32]| rs.iter().map(|&r| state_key(d, w, r)).collect::<Vec<_>>();
-    eprintln!("{unit}: kept {:?}, proclaimed {:?}", names(&kept), names(&released));
+    eprintln!(
+        "{unit}: kept {:?}, proclaimed {:?}",
+        names(&kept),
+        names(&released)
+    );
     let o = index(w, owner);
     let c = index(w, unit);
     let all: Vec<u32> = kept.iter().chain(&released).copied().collect();
     let k = setup(d);
     let mil = &d.war.as_ref().unwrap().military;
-    eprintln!("date | support {owner} {unit} | regions {owner}/{unit} | irregulars (armed) | landed | tied (‰ of the army ×2) | casualties {owner} {unit}");
+    eprintln!(
+        "date | support {owner} {unit} | regions {owner}/{unit} | irregulars (armed) | landed | tied (‰ of the army ×2) | casualties {owner} {unit}"
+    );
     let mut end = None;
     for week_n in 0..(52 * years) {
         week(&mut s);
@@ -148,7 +154,12 @@ fn to_the_end(d: &GameData, unit: &str, owner: &str, years: i32) {
             let sup = |m: u16| w.war.fighting.support_of(m).map_or(-1, |x| x.value);
             let held = |m: u16| {
                 all.iter()
-                    .filter(|&&r| w.war.fighting.controller(r, w.econ.regions[r as usize].market) == m)
+                    .filter(|&&r| {
+                        w.war
+                            .fighting
+                            .controller(r, w.econ.regions[r as usize].market)
+                            == m
+                    })
                     .count()
             };
             let (men, armed) = w
@@ -191,8 +202,14 @@ fn to_the_end(d: &GameData, unit: &str, owner: &str, years: i32) {
         }
     }
     let w = s.world();
-    let owner_holds = all.iter().filter(|&&r| w.econ.regions[r as usize].market == o).count();
-    eprintln!("{unit}: ended {end:?}; {owner} owns {owner_holds} of {} regions", all.len());
+    let owner_holds = all
+        .iter()
+        .filter(|&&r| w.econ.regions[r as usize].market == o)
+        .count();
+    eprintln!(
+        "{unit}: ended {end:?}; {owner} owns {owner_holds} of {} regions",
+        all.len()
+    );
 }
 
 fn g8() -> &'static GameData {
@@ -526,11 +543,18 @@ fn the_guerrilla_goes_on_after_the_front() {
     let w = s.world();
     let (fra, dza) = (index(w, "FRA"), index(w, "DZA"));
     let before = lost(w, fra);
-    let c = w.war.colonial.iter().find(|c| c.colony == dza).expect("still at war");
+    let c = w
+        .war
+        .colonial
+        .iter()
+        .find(|c| c.colony == dza)
+        .expect("still at war");
     assert!(
-        c.regions
-            .iter()
-            .all(|&r| w.war.fighting.controller(r, w.econ.regions[r as usize].market) == fra),
+        c.regions.iter().all(|&r| w
+            .war
+            .fighting
+            .controller(r, w.econ.regions[r as usize].market)
+            == fra),
         "France holds the whole unit"
     );
     assert!(c.armed > 0 && c.tied > 0);

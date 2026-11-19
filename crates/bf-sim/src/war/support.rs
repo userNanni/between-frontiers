@@ -424,12 +424,13 @@ pub fn support_week(
             .any(|k| !k.peace && k.colony == m && k.armed > 0)
     };
     let overrun = |m: u16| {
-        !guerrilla(m) && home.get(&m).is_some_and(|&(size, taken, capital, colony)| {
-            let share = if size > 0 { taken * 1000 / size } else { 0 };
-            !colony
-                && (share >= i64::from(r.overrun)
-                    || (capital && share >= i64::from(r.capital_overrun)))
-        })
+        !guerrilla(m)
+            && home.get(&m).is_some_and(|&(size, taken, capital, colony)| {
+                let share = if size > 0 { taken * 1000 / size } else { 0 };
+                !colony
+                    && (share >= i64::from(r.overrun)
+                        || (capital && share >= i64::from(r.capital_overrun)))
+            })
     };
     // An ally still fighting: someone on the same side of a war who is not overrun.
     let ally_fights = |m: u16| {
@@ -532,7 +533,11 @@ pub fn support_week(
             if colonial.is_empty() || other {
                 s.weeks
             } else {
-                let c = colonial.iter().map(|k| u32::from(k.commitment)).sum::<u32>().min(1000);
+                let c = colonial
+                    .iter()
+                    .map(|k| u32::from(k.commitment))
+                    .sum::<u32>()
+                    .min(1000);
                 s.weeks * c / 1000
             }
         } else {
@@ -625,9 +630,7 @@ pub fn support_week(
             .iter()
             .any(|k| k.war == w.id && !k.peace && k.armed == 0);
         let wants_out = |s: &Support, m: u16| {
-            s.fallen.is_some()
-                || (player != Some(m) && s.value < r.peace)
-                || (m == b && disarmed)
+            s.fallen.is_some() || (player != Some(m) && s.value < r.peace) || (m == b && disarmed)
         };
         if wants_out(&sa, a) {
             out.withdrawn.push(w.id);
@@ -856,7 +859,7 @@ mod tests {
             },
         );
         assert!(germany.target < r.collapse, "{germany:?}");
-        let commitment = (540_000u64 * 2 * 1000 / 1_500_000).min(1000) as u32;
+        let commitment = (540_000u64 * 2 * 1000 / 1_500_000) as u32;
         let at = |years: u32, killed: u64| {
             terms(
                 &r,
@@ -877,7 +880,10 @@ mod tests {
             "Vietnam with G8 ({commitment} per mille): year 6 {}, year 7 {}, year 8 {}",
             t6.target, t7.target, t8.target
         );
-        assert!(t7.target > r.peace, "G8 moves the peace past the seventh year: {t7:?}");
+        assert!(
+            t7.target > r.peace,
+            "G8 moves the peace past the seventh year: {t7:?}"
+        );
         assert!(t8.target < r.peace, "{t8:?}");
         assert!(t8.target > r.collapse, "{t8:?}");
     }

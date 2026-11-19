@@ -507,9 +507,11 @@ fn birth_forces(
         };
         let mut gone = Vec::new();
         if let Some(cw) = world.war.countries.get_mut(owner as usize) {
-            for f in cw.formations.iter_mut().filter(|f| {
-                f.colonial && mil.types[f.unit as usize].domain == Domain::Land
-            }) {
+            for f in cw
+                .formations
+                .iter_mut()
+                .filter(|f| f.colonial && mil.types[f.unit as usize].domain == Domain::Land)
+            {
                 let take = f.elements * share;
                 if !take.is_positive() {
                     continue;
@@ -580,17 +582,13 @@ pub fn week(setup: &ColonialSetup, mil: &Military, world: &mut GameWorld) {
             out.push(c);
             continue;
         }
-        let land_men: i64 = world
-            .war
-            .countries
-            .get(c.owner as usize)
-            .map_or(0, |cw| {
-                cw.formations
-                    .iter()
-                    .filter(|f| mil.types[f.unit as usize].domain == Domain::Land)
-                    .map(|f| men(mil, f))
-                    .sum()
-            });
+        let land_men: i64 = world.war.countries.get(c.owner as usize).map_or(0, |cw| {
+            cw.formations
+                .iter()
+                .filter(|f| mil.types[f.unit as usize].domain == Domain::Land)
+                .map(|f| men(mil, f))
+                .sum()
+        });
         // Landing: by the ports the metropole still holds and controls in the unit.
         if !c.by_land {
             let ports = c
@@ -641,10 +639,10 @@ pub fn week(setup: &ColonialSetup, mil: &Military, world: &mut GameWorld) {
                 } else {
                     Fixed::ONE
                 };
-                let n = (Fixed::from_int(
-                    (u128::from(gap) * u128::from(r.recruit_week) / 1000) as i64,
-                ) * arms)
-                    .to_int_trunc();
+                let n =
+                    (Fixed::from_int((u128::from(gap) * u128::from(r.recruit_week) / 1000) as i64)
+                        * arms)
+                        .to_int_trunc();
                 if n > 0 {
                     let add = Fixed::from_ratio(n, i64::from(mil.spec(ty, 0).men.max(1)));
                     match cw.formations.iter_mut().find(|f| f.unit == ty) {
@@ -679,13 +677,27 @@ pub fn week(setup: &ColonialSetup, mil: &Military, world: &mut GameWorld) {
 /// as many times the metropole's as the exchange, which rises with the cover (O3). Both go into
 /// the losses that war support reads (G4), and are buried. Also records the men the metropole
 /// keeps tied in the unit and the weight of duration (G8).
-fn guerrilla(setup: &ColonialSetup, mil: &Military, world: &mut GameWorld, c: &mut Colonial, land: i64) {
+fn guerrilla(
+    setup: &ColonialSetup,
+    mil: &Military,
+    world: &mut GameWorld,
+    c: &mut Colonial,
+    land: i64,
+) {
     let r = &setup.rules;
     c.tied = theatre_men(world, c).unwrap_or_else(|| {
         c.regions
             .iter()
             .filter(|&&ri| world.econ.regions[ri as usize].market == c.owner)
-            .map(|&ri| world.war.soldiers.get(ri as usize).copied().unwrap_or(0).max(0) as u64)
+            .map(|&ri| {
+                world
+                    .war
+                    .soldiers
+                    .get(ri as usize)
+                    .copied()
+                    .unwrap_or(0)
+                    .max(0) as u64
+            })
             .sum()
     });
     c.commitment = if land > 0 {
@@ -722,7 +734,10 @@ fn guerrilla(setup: &ColonialSetup, mil: &Military, world: &mut GameWorld, c: &m
         lose(world, c.owner, theirs_men);
     }
     if irregular_men > 0 {
-        if let (Some(ty), Some(cw)) = (setup.irregular, world.war.countries.get_mut(c.colony as usize)) {
+        if let (Some(ty), Some(cw)) = (
+            setup.irregular,
+            world.war.countries.get_mut(c.colony as usize),
+        ) {
             let share = Fixed::from_ratio(irregular_men as i64, men_now as i64);
             for f in cw.formations.iter_mut().filter(|f| f.unit == ty) {
                 let keep = Fixed::ONE - share;
