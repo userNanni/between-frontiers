@@ -141,7 +141,7 @@ pub fn show(
         };
         if wide {
             ui.spacing_mut().item_spacing.x = space::XL;
-            ui.columns(2, |cols| {
+            bf_ui_kit::columns(ui, 2, |cols| {
                 list(&mut cols[0], window);
                 let sel = window
                     .selected
