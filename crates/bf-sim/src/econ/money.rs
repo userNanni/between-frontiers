@@ -745,18 +745,18 @@ pub fn week(econ: &mut Economy, activity: &[Activity], year: i32) -> AbroadFlows
             *p = Fixed::ZERO;
         }
     }
+    // What the borrowers sold abroad, lent by each market's savers to the last unit.
+    if lendable > Fixed::ZERO {
+        let weights: Vec<Fixed> = plans.iter().map(|p| p.lendable).collect();
+        super::trade::split_exact_into(lent, &weights, &mut flows.lent, &mut Vec::new());
+    }
     let mut take = vec![Fixed::ZERO; nm];
     for (mi, (m, plan)) in econ.markets.iter_mut().zip(&plans).enumerate() {
         if claims > Fixed::ZERO {
             m.pool += flows.interest_received[mi] + flows.principal_received[mi];
             m.money.foreign_assets -= written_off * (claim[mi] / claims);
         }
-        let out = if lendable > Fixed::ZERO {
-            lent.mul_div(plan.lendable, lendable)
-        } else {
-            Fixed::ZERO
-        };
-        flows.lent[mi] = out;
+        let out = flows.lent[mi];
         m.money.foreign_assets = (m.money.foreign_assets + out).max(Fixed::ZERO);
         // Banks lend what is left of this week's share to the investment pool.
         let to_pool = (plan.idle * BANK_LENDING - plan.from_households - out).max(Fixed::ZERO);
