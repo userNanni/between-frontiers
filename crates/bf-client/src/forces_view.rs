@@ -75,12 +75,39 @@ pub struct CompositionView {
     /// The target that applies (the government's or the rule's), per mille; `None` without the
     /// rule or before the country makes the infantry's first generation.
     pub target: Option<(u32, u32)>,
-    /// (unit key, elements ordered, delivered, weeks stalled) of each conversion.
-    pub converting: Vec<(String, f64, f64, u32)>,
+    /// The rule's target, per mille, whether or not the government fixed its own.
+    pub rule_target: Option<(u32, u32)>,
+    pub converting: Vec<Converting>,
     /// A type the country equips moves on wheels, and one on tracks: without one, that part
     /// of the target stays unconverted.
     pub wheels_type: bool,
     pub tracks_type: bool,
+}
+
+/// A conversion under way.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Converting {
+    pub unit: String,
+    /// Elements ordered and delivered.
+    pub ordered: f64,
+    pub delivered: f64,
+    /// Weeks in a row it got nothing, and the likeliest reason, read from the forces as they
+    /// stand (the simulation keeps only the count).
+    pub stalled: u32,
+    pub why: Option<Stall>,
+}
+
+/// Why a conversion gets nothing.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Stall {
+    /// The country cannot yet equip the new type.
+    NoMaker,
+    /// Nothing left of the military budget after the forces' needs and the orders.
+    NoRoom,
+    /// No infantry left to convert.
+    NoInfantry,
+    /// The room left does not pay the vehicles at this week's prices.
+    Prices,
 }
 
 /// The queue and the formations of `c`, to know when the forces changed.
@@ -327,9 +354,36 @@ pub fn read(
             tracks: share(t),
             fixed,
             target: bf_sim::war::composition::target(rule, fixed, newest),
+            rule_target: bf_sim::war::composition::target(rule, None, newest),
             converting: list
                 .iter()
-                .map(|x| (x.unit.clone(), f(x.ordered), f(x.delivered), x.stalled))
+                .map(|x| {
+                    let source: Fixed = military.unit(&x.from).map_or(Fixed::ZERO, |ty| {
+                        c.formations
+                            .iter()
+                            .filter(|g| g.unit == ty)
+                            .map(|g| g.elements)
+                            .sum()
+                    });
+                    let why = (x.stalled > 0).then(|| {
+                        if x.generation.is_none() {
+                            Stall::NoMaker
+                        } else if !source.is_positive() {
+                            Stall::NoInfantry
+                        } else if orders.as_ref().is_none_or(|o| o.spare_week <= 0.0) {
+                            Stall::NoRoom
+                        } else {
+                            Stall::Prices
+                        }
+                    });
+                    Converting {
+                        unit: x.unit.clone(),
+                        ordered: f(x.ordered),
+                        delivered: f(x.delivered),
+                        stalled: x.stalled,
+                        why,
+                    }
+                })
                 .collect(),
         }
     });

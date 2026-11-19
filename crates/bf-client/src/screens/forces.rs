@@ -6,7 +6,7 @@
 use bf_i18n::{Arg, I18n};
 use bf_sim::game::GameCommand;
 use bf_sim::war::Domain;
-use bf_ui_kit::tokens::space;
+use bf_ui_kit::tokens::{color, space};
 use bf_ui_kit::{Button, ButtonSize};
 use egui::Ui;
 
@@ -53,7 +53,14 @@ pub fn show(ui: &mut Ui, cx: &mut TabContext<'_>) {
 /// The composition of the land forces: on wheels and on tracks now, the target (the historical
 /// rule's or the government's), the infantry in conversion, and the choice between the rule
 /// and a target the government fixes (`GameCommand::SetComposition`).
+/// Per-mille steps of the composition's targets: one percentage point.
+const COMPOSITION_STEP: i32 = 10;
+
+/// The composition of the forces, as the budget's levers: today's shares, the target by the
+/// historical rule or fixed by the government (two steppers, wheels and tracks, each sent as it
+/// changes), and the conversions under way with what holds a stalled one, in words.
 fn composition(ui: &mut Ui, cx: &mut TabContext<'_>) {
+    use crate::forces_view::Stall;
     let i18n = cx.i18n;
     let Some(cv) = cx
         .snap
@@ -63,102 +70,129 @@ fn composition(ui: &mut Ui, cx: &mut TabContext<'_>) {
     else {
         return;
     };
-    bf_ui_kit::heading(ui, &i18n.tr("composition-title"));
-    bf_ui_kit::small(ui, &i18n.tr("composition-basis"));
     let p = |x: f64| pct(i18n, x * 100.0, 1);
     let pm = |x: u32| pct(i18n, f64::from(x) / 10.0, 0);
-    ui.label(i18n.tr_args(
-        "composition-now",
-        &[("wheels", arg(p(cv.wheels))), ("tracks", arg(p(cv.tracks)))],
-    ));
-    let target = match cv.target {
-        Some((w, t)) => i18n.tr_args(
-            if cv.fixed.is_some() {
-                "composition-target-fixed"
-            } else {
-                "composition-target-rule"
-            },
-            &[("wheels", arg(pm(w))), ("tracks", arg(pm(t)))],
-        ),
-        None => i18n.tr("composition-target-none"),
+    bf_ui_kit::heading(ui, &i18n.tr("composition-title"));
+    bf_ui_kit::small(ui, &i18n.tr("composition-basis"));
+    bf_ui_kit::stat_row(ui, &i18n.tr("composition-wheels-now"), &p(cv.wheels));
+    bf_ui_kit::stat_row(ui, &i18n.tr("composition-tracks-now"), &p(cv.tracks));
+    let Some((rule_w, rule_t)) = cv.rule_target else {
+        bf_ui_kit::small(ui, &i18n.tr("composition-target-none"));
+        return;
     };
-    ui.label(target);
-    if cv.target.is_some() && !cv.wheels_type {
-        bf_ui_kit::small(ui, &i18n.tr("composition-no-wheels"));
+    // What the player set wins over the view until the tick applies it.
+    let st = &mut *cx.orders;
+    if st.composition.is_some() && st.composition == cv.fixed {
+        st.composition = None;
     }
-    if cv.target.is_some() && !cv.tracks_type {
-        bf_ui_kit::small(ui, &i18n.tr("composition-no-tracks"));
-    }
-    for (unit, ordered, delivered, stalled) in &cv.converting {
-        let mut line = i18n.tr_args(
-            "composition-converting",
-            &[
-                ("unit", arg(unit_name(i18n, unit))),
-                ("done", arg(i18n.decimal(*delivered, 1))),
-                ("of", arg(i18n.decimal(*ordered, 1))),
-            ],
-        );
-        if *stalled > 0 {
-            line.push(' ');
-            line.push_str(&i18n.tr_args(
-                "composition-stalled",
-                &[("weeks", arg(i18n.int(i64::from(*stalled))))],
-            ));
+    let shown = st.composition.or(cv.fixed);
+    let mut fixed = shown.is_some();
+    bf_ui_kit::gap(ui, space::SM);
+    let (changed, rects) = bf_ui_kit::lever_header(
+        ui,
+        &i18n.tr("composition-target"),
+        &mut fixed,
+        &i18n.tr("lever-rule"),
+        &i18n.tr("lever-fixed"),
+    );
+    let mut typed = false;
+    for (r, (key, on)) in rects.into_iter().zip([("rule", false), ("fixed", true)]) {
+        if keys::item(ui, 'K', format!("forces.composition.{key}"), key, r) && fixed != on {
+            fixed = on;
+            typed = true;
         }
-        bf_ui_kit::small(ui, &line);
     }
     let tag = cx.tag.to_owned();
-    let st = &mut *cx.orders;
-    ui.horizontal(|ui| {
-        if ui
-            .radio(
-                cv.fixed.is_none() && st.composition.is_none(),
-                i18n.tr("composition-rule"),
-            )
-            .clicked()
+    let mut send: Option<Option<[u16; 2]>> = None;
+    if changed || typed {
+        send = Some(fixed.then_some([rule_w as u16, rule_t as u16]));
+    }
+    bf_ui_kit::lever_rule_line(
+        ui,
+        &i18n.tr_args(
+            "composition-rule-line",
+            &[("wheels", arg(pm(rule_w))), ("tracks", arg(pm(rule_t)))],
+        ),
+        fixed.then(|| i18n.tr("composition-fixed-note")).as_deref(),
+    );
+    if fixed && let Some([w, t]) = send.flatten().or(shown) {
+        let mut now = [w, t];
+        for (k, key) in ["composition-wheels", "composition-tracks"]
+            .into_iter()
+            .enumerate()
         {
-            st.composition = None;
-            cx.commands.push(GameCommand::SetComposition {
-                tag: tag.clone(),
-                composition: None,
+            let other = now[1 - k];
+            let room = 1000u16.saturating_sub(other);
+            let d = super::gov_ui::control_row(ui, &i18n.tr(key), |ui| {
+                super::gov_ui::stepper(
+                    ui,
+                    &pm(u32::from(now[k])),
+                    &i18n.tr("composition-step-tip"),
+                    now[k] > 0,
+                    now[k] < room,
+                    super::gov_ui::StepTips {
+                        family: 'K',
+                        id: &format!("forces.composition.{k}"),
+                        row: k,
+                    },
+                )
             });
+            if d != 0 {
+                now[k] =
+                    (i32::from(now[k]) + d * COMPOSITION_STEP).clamp(0, i32::from(room)) as u16;
+                send = Some(Some(now));
+            }
         }
-        if ui
-            .radio(
-                cv.fixed.is_some() || st.composition.is_some(),
-                i18n.tr("composition-fixed"),
-            )
-            .clicked()
-            && st.composition.is_none()
-        {
-            let (w, t) = cv.target.unwrap_or((150, 50));
-            st.composition = Some(cv.fixed.unwrap_or([w as u16, t as u16]));
-        }
-    });
-    if let Some([w, t]) = st.composition.as_mut() {
-        ui.horizontal(|ui| {
-            ui.label(i18n.tr("composition-wheels"));
-            ui.add(
-                egui::DragValue::new(w)
-                    .range(0..=1000)
-                    .speed(10)
-                    .suffix(" ‰"),
-            );
-            ui.label(i18n.tr("composition-tracks"));
-            ui.add(
-                egui::DragValue::new(t)
-                    .range(0..=1000)
-                    .speed(10)
-                    .suffix(" ‰"),
-            );
+    }
+    if let Some(c) = send {
+        st.composition = c;
+        cx.commands.push(GameCommand::SetComposition {
+            tag,
+            composition: c,
         });
-        let value = [*w, (*t).min(1000 - (*w).min(1000))];
-        if ui.button(i18n.tr("composition-apply")).clicked() {
-            cx.commands.push(GameCommand::SetComposition {
-                tag,
-                composition: Some(value),
-            });
-            st.composition = None;
+    }
+    if !cv.wheels_type {
+        bf_ui_kit::small(ui, &i18n.tr("composition-no-wheels"));
+    }
+    if !cv.tracks_type {
+        bf_ui_kit::small(ui, &i18n.tr("composition-no-tracks"));
+    }
+    for x in &cv.converting {
+        bf_ui_kit::stat_row(
+            ui,
+            &i18n.tr_args(
+                "composition-converting",
+                &[("unit", arg(unit_name(i18n, &x.unit)))],
+            ),
+            &i18n.tr_args(
+                "composition-converting-done",
+                &[
+                    ("done", arg(i18n.decimal(x.delivered, 1))),
+                    ("of", arg(i18n.decimal(x.ordered, 1))),
+                ],
+            ),
+        );
+        if let Some(why) = x.why {
+            let key = match why {
+                Stall::NoMaker => "composition-stall-maker",
+                Stall::NoRoom => "composition-stall-room",
+                Stall::NoInfantry => "composition-stall-infantry",
+                Stall::Prices => "composition-stall-prices",
+            };
+            ui.add(
+                egui::Label::new(
+                    egui::RichText::new(i18n.tr_args(
+                        key,
+                        &[
+                            ("weeks", arg(i18n.int(i64::from(x.stalled)))),
+                            ("count", Arg::Num(f64::from(x.stalled))),
+                        ],
+                    ))
+                    .font(bf_ui_kit::theme::sans(bf_ui_kit::tokens::size::SMALL))
+                    .color(color::ACCENT),
+                )
+                .wrap(),
+            );
         }
     }
 }
