@@ -174,3 +174,28 @@ fn no_text_names_a_decision_code() {
         found.join("\n")
     );
 }
+
+/// English writes the percent sign against the number ("12.5%"), as `gov-pct` does.
+#[test]
+fn english_percentages_have_no_space() {
+    let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/i18n/en");
+    let mut found = Vec::new();
+    for file in std::fs::read_dir(&dir).unwrap() {
+        let file = file.unwrap().path();
+        let text = std::fs::read_to_string(&file).unwrap();
+        for (n, line) in text.lines().enumerate() {
+            let spaced = line.contains("} %")
+                || line
+                    .char_indices()
+                    .any(|(i, c)| c.is_ascii_digit() && line[i + 1..].starts_with(" %"));
+            if spaced {
+                found.push(format!("{}:{}", file.display(), n + 1));
+            }
+        }
+    }
+    assert!(
+        found.is_empty(),
+        "a space before % in English:\n{}",
+        found.join("\n")
+    );
+}
