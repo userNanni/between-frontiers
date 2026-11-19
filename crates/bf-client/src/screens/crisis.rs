@@ -255,6 +255,9 @@ pub fn show_crisis(
     }
     bf_ui_kit::gap(ui, space::SM);
     weighing(ui, i18n, l);
+    if let Some(p) = &l.nuclear {
+        super::nuclear::show(ui, i18n, p);
+    }
     bf_ui_kit::gap(ui, space::SM);
     // The choice: the target answers while the deadline runs; the side that demanded decides
     // after a refusal.

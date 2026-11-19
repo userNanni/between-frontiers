@@ -1221,6 +1221,18 @@ pub(crate) mod tests {
                 soft_kill: 900,
                 bomber_penetration: 600,
                 escalation_risk_per_week: 5,
+                opaque_weight: 500,
+                umbrella: true,
+                unacceptable_share: 250,
+                killed_per_warhead: 185_000,
+                warheads_per_bomber: 2,
+                warheads_per_missile: 1,
+                warheads_per_submarine: 16,
+                bomber_alert: 0,
+                submarine_alert: 500,
+                command: 900,
+                interceptors_per_site: 100,
+                interceptor_kill: 500,
             },
         }
     }
