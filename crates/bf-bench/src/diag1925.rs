@@ -247,6 +247,92 @@ pub fn main() -> Result<(), String> {
         }
         return Ok(());
     }
+    // The balance of payments (`BF_DIAG_PAYMENTS=TAG,TAG[:years]`, `econ::payments`): by year,
+    // each country's goods, services, income (bond interest, the ledger's interest,
+    // remittances), transfers (trade's margins, treaties, occupation), financial account and
+    // what is not settled, in % of its GDP; then the world's sums, which must be about zero.
+    if let Ok(spec) = std::env::var("BF_DIAG_PAYMENTS") {
+        let (tags, years) = spec.split_once(':').unwrap_or((spec.as_str(), "6"));
+        let years: i32 = years.parse().unwrap_or(6);
+        let idx: Vec<(String, usize)> = tags
+            .split(',')
+            .filter_map(|t| {
+                let t = t.trim();
+                data.countries
+                    .countries
+                    .iter()
+                    .position(|c| c.tag == t)
+                    .map(|i| (t.to_string(), i))
+            })
+            .collect();
+        let end = Date::new(1925 + years, 1, 8);
+        let mut d = Date::new(1925, 1, 5);
+        let mut year = 1925;
+        println!(
+            "year tag: goods services | interest ledger remit | transfers | current | financial | not settled  (% of GDP)"
+        );
+        while d < end {
+            d = Date::from_days(d.to_days() + 7);
+            s.sim.run_until(d);
+            if d.year == year {
+                continue;
+            }
+            let w = s.world();
+            let p = &w.payments;
+            let pct = |v: laplace_schelling::Fixed, gdp: f64| v.to_f64_lossy() / gdp * 100.0;
+            for (tag, i) in &idx {
+                let Some(l) = p.markets.get(*i).map(|x| x.last_year) else {
+                    continue;
+                };
+                let gdp = w.econ.markets[*i].gdp_last_year.to_f64_lossy().max(1.0);
+                println!(
+                    "{year} {tag}: {:+.2} {:+.2} | {:+.2} {:+.2} {:+.2} | {:+.2} | {:+.2} | {:+.2} | {:+.2}",
+                    pct(l.goods(), gdp),
+                    pct(l.services(), gdp),
+                    pct(l.interest(), gdp),
+                    pct(l.ledger_interest(), gdp),
+                    pct(l.remittances(), gdp),
+                    pct(l.transfers(), gdp),
+                    pct(l.current_account(), gdp),
+                    pct(l.financial_account(), gdp),
+                    pct(l.not_settled(), gdp),
+                );
+            }
+            // The world: each line's sum over every country (with what no lender received),
+            // in % of world GDP.
+            let world_gdp: f64 = w
+                .econ
+                .markets
+                .iter()
+                .map(|m| m.gdp_last_year.to_f64_lossy())
+                .sum::<f64>()
+                .max(1.0);
+            let mut t = p.unreceived.last_year;
+            for m in &p.markets {
+                t += m.last_year;
+            }
+            println!(
+                "{year} world: {:+.4} {:+.4} | {:+.4} {:+.4} {:+.4} | {:+.4} | {:+.4} | {:+.4} | {:+.4}; exports {:.2} % of GDP, no lender received {:.6} % of GDP",
+                pct(t.goods(), world_gdp),
+                pct(t.services(), world_gdp),
+                pct(t.interest(), world_gdp),
+                pct(t.ledger_interest(), world_gdp),
+                pct(t.remittances(), world_gdp),
+                pct(t.transfers(), world_gdp),
+                pct(t.current_account(), world_gdp),
+                pct(t.financial_account(), world_gdp),
+                pct(t.not_settled(), world_gdp),
+                pct(t.exports, world_gdp),
+                pct(
+                    p.unreceived.last_year.interest_received
+                        + p.unreceived.last_year.principal_received,
+                    world_gdp
+                ),
+            );
+            year = d.year;
+        }
+        return Ok(());
+    }
     // Customs revenue by country (`BF_DIAG_DUTIES=TAG,TAG[:years]`), with `customs_duties` on:
     // by year, the tariff in force (against the 1925 rate of `diplomacy.ron`), the duties over
     // GDP and the imports from every partner over GDP (gross trade included, at base prices).
