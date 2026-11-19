@@ -33,6 +33,7 @@ pub mod research;
 pub mod saves;
 pub mod sea_lens;
 pub mod settings;
+pub mod shortcuts_chip;
 pub mod state_panel;
 pub mod tariffs;
 pub mod tech_unlocks;

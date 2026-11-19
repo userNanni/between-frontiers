@@ -63,6 +63,13 @@ pub struct Settings {
     pub warn_mb: u32,
     /// The window: windowed, borderless or full screen, and its size (`display`).
     pub display: crate::display::Display,
+    /// The key tips lit by themselves once, in the first campaign started.
+    pub first_tips_done: bool,
+    /// Times the player turned the key tips on or opened the sheet of keys, from the first
+    /// campaign; `None` before it. The shortcuts' chip fades after a few.
+    pub shortcut_uses: Option<u32>,
+    /// The shortcuts' chip kept for good.
+    pub shortcut_chip_pinned: bool,
 }
 
 impl Default for Settings {
@@ -79,6 +86,9 @@ impl Default for Settings {
             points_cap: 30,
             warn_mb: 1000,
             display: crate::display::Display::default(),
+            first_tips_done: false,
+            shortcut_uses: None,
+            shortcut_chip_pinned: false,
         }
     }
 }

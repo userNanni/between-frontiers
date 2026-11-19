@@ -305,7 +305,10 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
                     // A new country for a saved campaign goes back to the campaigns: the game
                     // takes it when the campaign opens.
                     Ok(()) if state.switching => out = Some(Transition::Saves),
-                    Ok(()) => out = Some(Transition::Game(state.save.clone())),
+                    Ok(()) => {
+                        shared.first_tips = !shared.settings.first_tips_done;
+                        out = Some(Transition::Game(state.save.clone()));
+                    }
                     Err(e) => {
                         let now = ui.input(|i| i.time);
                         let msg = shared.i18n.tr_args(
