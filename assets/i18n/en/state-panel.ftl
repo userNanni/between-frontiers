@@ -1,0 +1,19 @@
+## State panel: the state clicked on the map, with its country above
+state-panel-country = { $country } ›
+state-panel-up = Back to the country
+state-panel-none = The simulation does not run this state.
+state-panel-colony = Colony
+state-panel-gdp = GDP (estimated)
+state-panel-gdp-note = share of the country's GDP by household income
+state-panel-income = Income per head
+state-panel-unemployment = Without work
+state-panel-employed = { $n } at work (plants and state)
+state-panel-urban = Urbanization
+state-panel-buildings = Buildings: { $levels } levels, { $output } of output a year
+state-panel-no-buildings = No buildings.
+state-panel-plant = { $levels } levels · { $workers } workers
+state-panel-more = and { $n } more kinds of building (Economy › Buildings)
+state-panel-works = Under construction here: { $public } public, { $private } private
+state-panel-deposits = Known deposits
+state-panel-no-deposits = No known deposits.
+state-panel-deposit = { $resource } { $size }/5

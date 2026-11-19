@@ -85,6 +85,27 @@ fn f(x: Fixed) -> f64 {
     x.to_f64_lossy()
 }
 
+/// A plant's workers and a year's output at the market's prices, as the week runs it
+/// (`week::plant_run`): levels × staffing × productivity × utilization × inputs obtained.
+pub fn plant_figures(
+    b: &bf_sim::econ::Building,
+    method: &bf_sim::econ::catalogue::Method,
+    r: &bf_sim::econ::Region,
+    m: &bf_sim::econ::Market,
+    p: &bf_sim::econ::Plant,
+) -> (f64, f64) {
+    let tfp = bf_sim::econ::plant_tfp(r, m, b);
+    let scale = Fixed::from_int(p.levels) * p.staffing * tfp * p.utilization * p.input_ratio;
+    let price = |g: u16| m.price.get(usize::from(g)).copied().unwrap_or(Fixed::ZERO);
+    let output: Fixed = method
+        .outputs
+        .iter()
+        .map(|(g, q)| *q * scale * price(*g))
+        .sum();
+    let workers = method.workers as f64 * p.levels as f64 * f(p.staffing);
+    (workers, f(output) * 52.0)
+}
+
 /// The player's buildings, or `None` without a player or an economy.
 pub fn read(world: &GameWorld, tag: &str, cat: &Catalogue, date: Date) -> Option<BuildingsView> {
     let ci = world.countries.iter().position(|(_, c)| c.tag == tag)?;
@@ -94,87 +115,76 @@ pub fn read(world: &GameWorld, tag: &str, cat: &Catalogue, date: Date) -> Option
     for p in &m.queue {
         *queued.entry((p.region, p.kind)).or_default() += 1;
     }
-    let price = |g: u16| m.price.get(usize::from(g)).copied().unwrap_or(Fixed::ZERO);
-    let mut add = |ri: u32,
-                   r: &bf_sim::econ::Region,
-                   kind: u16,
-                   plant: Option<&bf_sim::econ::Plant>| {
-        let Some(b) = cat.buildings.get(usize::from(kind)) else {
-            return;
-        };
-        let building = queued.get(&(ri, kind)).copied().unwrap_or(0);
-        let (levels, row) = match plant {
-            Some(p) if p.levels > 0 => {
-                let Some(method) = b.methods.get(usize::from(p.method)) else {
-                    return;
-                };
-                let tfp = bf_sim::econ::plant_tfp(r, m, b);
-                let scale =
-                    Fixed::from_int(p.levels) * p.staffing * tfp * p.utilization * p.input_ratio;
-                let output: Fixed = method
-                    .outputs
-                    .iter()
-                    .map(|(g, q)| *q * scale * price(*g))
-                    .sum();
-                let workers = method.workers as f64 * p.levels as f64 * f(p.staffing);
-                (
-                    p.levels,
+    let mut add =
+        |ri: u32, r: &bf_sim::econ::Region, kind: u16, plant: Option<&bf_sim::econ::Plant>| {
+            let Some(b) = cat.buildings.get(usize::from(kind)) else {
+                return;
+            };
+            let building = queued.get(&(ri, kind)).copied().unwrap_or(0);
+            let (levels, row) = match plant {
+                Some(p) if p.levels > 0 => {
+                    let Some(method) = b.methods.get(usize::from(p.method)) else {
+                        return;
+                    };
+                    let (workers, output) = plant_figures(b, method, r, m, p);
+                    (
+                        p.levels,
+                        StateRow {
+                            region: ri,
+                            state: r.state,
+                            levels: p.levels,
+                            building,
+                            method: method.key.clone(),
+                            workers,
+                            output,
+                            profit: f(p.profit) * 52.0,
+                            utilization: f(p.utilization),
+                            staffing: f(p.staffing),
+                            inputs: f(p.input_ratio),
+                        },
+                    )
+                }
+                _ if building > 0 => (
+                    0,
                     StateRow {
                         region: ri,
                         state: r.state,
-                        levels: p.levels,
+                        levels: 0,
                         building,
-                        method: method.key.clone(),
-                        workers,
-                        output: f(output) * 52.0,
-                        profit: f(p.profit) * 52.0,
-                        utilization: f(p.utilization),
-                        staffing: f(p.staffing),
-                        inputs: f(p.input_ratio),
+                        method: String::new(),
+                        workers: 0.0,
+                        output: 0.0,
+                        profit: 0.0,
+                        utilization: 0.0,
+                        staffing: 0.0,
+                        inputs: 0.0,
                     },
-                )
-            }
-            _ if building > 0 => (
-                0,
-                StateRow {
-                    region: ri,
-                    state: r.state,
-                    levels: 0,
-                    building,
-                    method: String::new(),
-                    workers: 0.0,
-                    output: 0.0,
-                    profit: 0.0,
-                    utilization: 0.0,
-                    staffing: 0.0,
-                    inputs: 0.0,
-                },
-            ),
-            _ => return,
+                ),
+                _ => return,
+            };
+            let k = kinds[usize::from(kind)].get_or_insert_with(|| KindRow {
+                kind,
+                key: b.key.clone(),
+                group: b.group_ix,
+                public: b.public,
+                levels: 0,
+                building: 0,
+                workers: 0.0,
+                output: 0.0,
+                profit: 0.0,
+                utilization: 0.0,
+                staffing: 0.0,
+                states: Vec::new(),
+            });
+            k.levels += levels;
+            k.building += row.building;
+            k.workers += row.workers;
+            k.output += row.output;
+            k.profit += row.profit;
+            k.utilization += row.utilization * levels as f64;
+            k.staffing += row.staffing * levels as f64;
+            k.states.push(row);
         };
-        let k = kinds[usize::from(kind)].get_or_insert_with(|| KindRow {
-            kind,
-            key: b.key.clone(),
-            group: b.group_ix,
-            public: b.public,
-            levels: 0,
-            building: 0,
-            workers: 0.0,
-            output: 0.0,
-            profit: 0.0,
-            utilization: 0.0,
-            staffing: 0.0,
-            states: Vec::new(),
-        });
-        k.levels += levels;
-        k.building += row.building;
-        k.workers += row.workers;
-        k.output += row.output;
-        k.profit += row.profit;
-        k.utilization += row.utilization * levels as f64;
-        k.staffing += row.staffing * levels as f64;
-        k.states.push(row);
-    };
     for (ri, r) in world.econ.regions.iter().enumerate() {
         if usize::from(r.market) != ci {
             continue;

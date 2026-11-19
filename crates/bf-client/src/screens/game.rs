@@ -20,6 +20,9 @@ pub struct State {
     save: Save,
     sim: SimHandle,
     selected: Option<usize>,
+    /// The state clicked on the map (index into the map's states); its panel shows in the
+    /// country panel's place, with its country above it.
+    selected_state: Option<usize>,
     menu_open: bool,
     rules: bf_sim::game::Rules,
     /// The principal each 1925 debt between governments was signed with.
@@ -139,6 +142,7 @@ impl State {
             save,
             sim,
             selected: None,
+            selected_state: None,
             menu_open: false,
             rules: data.rules(),
             signed: crate::ledger_view::signed_1925(&data),
@@ -195,6 +199,14 @@ impl State {
     /// Selects a country (index into the map's countries), as a click on it does (tests).
     pub fn select(&mut self, country: Option<usize>) {
         self.selected = country;
+        self.selected_state = None;
+    }
+
+    /// Selects a state (index into the map's states) and its owner, as a click on it does
+    /// (tests).
+    pub fn select_state(&mut self, world: &crate::world::World, state: usize) {
+        self.selected = world.states.get(state).and_then(|s| s.owner);
+        self.selected_state = self.selected.is_some().then_some(state);
     }
 
     /// The sea lens' route and preview (tests and commands set them).
@@ -516,7 +528,10 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
                 state.sea.pick(layer, world.states[s].def.id);
             }
         } else if let Some(id) = response.clicked_province {
-            state.selected = world.provinces[id as usize - 1].owner;
+            // A click picks the state; its panel leads up to the country.
+            let p = &world.provinces[id as usize - 1];
+            state.selected = p.owner;
+            state.selected_state = p.state.filter(|_| p.owner.is_some());
         }
         if let (Some(layer), Some(texture), Some(camera)) = (&sea_layer, &sea_texture, view.camera)
             && !state.research_open
@@ -551,6 +566,7 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
         }
         if response.clicked_sea {
             state.selected = None;
+            state.selected_state = None;
         }
         // Nothing of the map shows through the research screen.
         if !state.research_open
@@ -636,6 +652,7 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
     );
     if bar_out.open_country {
         state.selected = player;
+        state.selected_state = None;
     }
     if bar_out.toggle_pause {
         state.sim.send(Command::SetPaused(!snap.paused));
@@ -672,7 +689,8 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
         state.sim.send(Command::SetPaused(true));
     }
 
-    // Country panel for the clicked country.
+    // Country panel for the clicked country, or the clicked state's panel.
+    let mut go_up = false;
     if let (Some(country), Some(side)) = (
         state.selected.or(player.filter(|_| state.edit.on)),
         place(PanelId::CountryPanel),
@@ -687,13 +705,38 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
             egui::ScrollArea::vertical()
                 .auto_shrink([false, false])
                 .show(ui, |ui| {
-                    country_panel::show(shared, ui, country);
-                    // Its trade by partner, with trade by pair on.
-                    if let (Some(view), Some(world)) = (&snap.trade, &shared.world) {
-                        super::trade::show(ui, &shared.i18n, world, view, country);
+                    let state_shown = match (state.selected_state, &shared.world) {
+                        (Some(s), Some(world)) if !state.edit.on => {
+                            let figures = snap.states.as_ref().and_then(|v| v.states.get(s));
+                            let res = super::state_panel::show(
+                                ui,
+                                &shared.i18n,
+                                world,
+                                &shared.flags,
+                                s,
+                                figures,
+                                snap.date.year,
+                            );
+                            if res.to_country {
+                                go_up = true;
+                            }
+                            true
+                        }
+                        _ => false,
+                    };
+                    if !state_shown {
+                        country_panel::show(shared, ui, country);
+                        // Its trade by partner, with trade by pair on.
+                        if let (Some(view), Some(world)) = (&snap.trade, &shared.world) {
+                            super::trade::show(ui, &shared.i18n, world, view, country);
+                        }
                     }
                 });
         });
+    }
+
+    if go_up {
+        state.selected_state = None;
     }
 
     // The player's population, read once a month.
@@ -1285,6 +1328,7 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
         }
         if fired(id::COUNTRY) {
             state.selected = player;
+            state.selected_state = None;
         }
         if fired(id::PAUSE) {
             state.sim.send(Command::SetPaused(!snap.paused));
@@ -1318,8 +1362,12 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
                 state.influence = None;
                 state.economy = None;
                 state.war = None;
+            } else if state.selected_state.is_some() {
+                // Up from the state to its country.
+                state.selected_state = None;
             } else if state.selected.is_some() {
                 state.selected = None;
+                state.selected_state = None;
             } else {
                 state.menu_open = true;
                 state.sim.send(Command::SetPaused(true));
@@ -1592,10 +1640,12 @@ fn toggle_population(state: &mut State, shared: &mut Shared, screen: Rect) {
     if crowded && open {
         // Hidden behind the country panel: show it instead of closing it.
         state.selected = None;
+        state.selected_state = None;
         return;
     }
     if crowded {
         state.selected = None;
+        state.selected_state = None;
     }
     crate::hud::toggle_panel(&mut shared.hud, PanelId::Population);
 }
