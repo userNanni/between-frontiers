@@ -884,8 +884,10 @@ fn segment(ui: &mut Ui, i18n: &I18n, world: Option<&World>, v: &WarView, s: &Seg
 /// Men a step of the expedition's order moves.
 const EXPEDITION_STEP: u64 = 10_000;
 
-/// The expedition to a colony in revolt (G6): men landed toward the goal, the cap, the men tied
-/// there, and the order: fewer, more, or back to the AI's rule (the cover of O3).
+/// The expedition to a colony in revolt (G6): the men landed on a bar against the cap with the
+/// goal ticked, the men tied there, the irregulars, where the sea cuts the route, and the goal as
+/// a lever: the AI's rule (the cover of O3) or fixed by the government in steps up to the cap.
+#[allow(clippy::too_many_arguments)]
 fn expedition(
     ui: &mut Ui,
     i18n: &I18n,
