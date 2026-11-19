@@ -1,0 +1,39 @@
+// Private capital that follows interest, and capital controls (`econ::capital`,
+// `game::Switches::capital_follows_rate`, which needs `payments_settle`; docs/state.pt-BR.md,
+// "Padrão-ouro, reservas e balanço de pagamentos", slice 4, owner's decision PO5). Read only with
+// the switch on. Every value in thousandths, the paces in weeks.
+//
+// Sources: NONE OF THESE NUMBERS WAS READ FROM A SOURCE. They are design values, estimates to be
+// checked. The order of magnitude of the stock of foreign assets (about 8 % of world GDP in
+// 1930 and 18 % in 1914, Obstfeld and Taylor, *Global Capital Markets: Integration, Crisis, and
+// Growth*, 2004, table 2.1) is recalled, not read; Eichengreen's work on interwar flows
+// (*Golden Fetters*, 1992) and Moggridge (1972) were not read either. The real dates the rule is
+// measured against: the United Kingdom left gold in September 1931; Germany's exchange control
+// came in July 1931; the gold bloc (France, the Netherlands, Switzerland, Belgium) held until
+// 1935–36.
+(
+    // Share of a lender's wealth (its investment pool plus its claims abroad) held abroad when
+    // every country's expected return is the same: long-term and short-term ("hot money"). With
+    // the pools of 1925 (about 10 % of world GDP) the claims start near 8 % of world GDP, the
+    // order of the 1930 stock recalled from Obstfeld and Taylor (not read).
+    long_share: 400,
+    short_share: 50,
+    // Semi-elasticity of the logit, per point of expected return a year: a point more
+    // multiplies a borrower's weight by about e^beta. Short-term capital answers more.
+    long_beta: 300,
+    short_beta: 500,
+    // Weeks a claim takes to close its gap to the target (it closes 1/weeks of it a week):
+    // long-term capital in about two years, hot money in two months.
+    long_weeks: 104,
+    short_weeks: 8,
+    // Points of return a point of risk premium takes off, beyond what the premium pays.
+    risk_aversion: 500,
+    // Points of return a floating currency takes off (the exchange risk).
+    float_risk: 1000,
+    // Points of depreciation a year lenders expect of a parity at its floor; the risk starts
+    // at the floor times (1 + risk_band) and grows linearly to the floor (`gold::at_risk`).
+    devaluation: 10000,
+    risk_band: 250,
+    // Points of premium capital controls add (the same as an exit from gold, gold.ron).
+    control_premium: 1000,
+)

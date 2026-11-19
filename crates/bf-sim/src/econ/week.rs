@@ -116,6 +116,10 @@ pub struct Week {
     /// The gold standard's regimes and rule (`game::Switches::gold_standard`, `econ::gold`);
     /// `None` off, and always with `settle` off.
     pub gold: Option<Arc<super::gold::GoldRules>>,
+    /// Private capital that follows the returns, and capital controls
+    /// (`game::Switches::capital_follows_rate`, `econ::capital`); `None` off, and always with
+    /// `settle` off.
+    pub capital: Option<Arc<super::capital::CapitalRules>>,
 }
 
 /// What a pop wants to buy this week.
@@ -1656,8 +1660,46 @@ impl System<GameWorld> for Week {
                     ctx.date,
                 )
             });
+        // Private capital (`econ::capital`): the controls of the week, the rule's where the
+        // country holds its parity behind exchange control, and the risk of each parity.
+        let capital = self
+            .capital
+            .as_ref()
+            .filter(|_| self.settle.is_some())
+            .map(|rules| {
+                let n = econ.markets.len();
+                let control: Vec<bool> = (0..n)
+                    .map(|mi| {
+                        world
+                            .gold
+                            .countries
+                            .get(mi)
+                            .is_some_and(|s| s.regime == super::gold::Regime::Control)
+                    })
+                    .collect();
+                let seed = world.capital.begin(n, &control);
+                let mut risk = match (&self.gold, pegs.is_some()) {
+                    (Some(g), true) => super::gold::at_risk(g, &world.gold, rules.risk_band),
+                    _ => Vec::new(),
+                };
+                risk.resize(n, Fixed::ZERO);
+                (rules, risk, seed)
+            });
         // Prices, central banks and bonds: the treasury's gap becomes debt.
-        let abroad = super::money::week(econ, &activity, ctx.date.year, pegs.as_deref());
+        let abroad = super::money::week(
+            econ,
+            &activity,
+            ctx.date.year,
+            pegs.as_deref(),
+            capital
+                .as_ref()
+                .map(|(rules, risk, seed)| super::money::CapitalWeek {
+                    rules,
+                    state: &mut world.capital,
+                    risk,
+                    seed: *seed,
+                }),
+        );
         payments.record_money(year, &abroad);
         if pegs.is_some() {
             // Foreign exchange is worth what its currency's exchange rate moved (PO7).

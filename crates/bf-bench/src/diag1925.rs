@@ -337,7 +337,9 @@ pub fn main() -> Result<(), String> {
     // `payments_settle` on): by year and country, the regime and parity at the end of the year,
     // the reserves (gross, and net of what is owed abroad) in % of GDP, the cover against the
     // legal one, the central bank's rate against the Taylor rule (yearly averages of the weekly
-    // values) and the year's inflation; then every change of regime with its date.
+    // values) and the year's inflation; with `capital_follows_rate` on, the year's private
+    // capital (long and short, net inflow) and its income in % of GDP, and whether capital
+    // controls are on; then every change of regime with its date.
     if let Ok(spec) = std::env::var("BF_DIAG_GOLD") {
         let (tags, years) = spec.split_once(':').unwrap_or((spec.as_str(), "8"));
         let years: i32 = years.parse().unwrap_or(8);
@@ -363,7 +365,7 @@ pub fn main() -> Result<(), String> {
         let mut sums = vec![(0.0f64, 0.0f64, 0.0f64); idx.len()];
         let mut weeks = 0.0f64;
         println!(
-            "gold standard, by year: regime parity | reserves gross/net % GDP | money the bank issued % GDP | cover vs legal | rate (Taylor + cover's points), yearly mean | inflation of the year"
+            "gold standard, by year: regime parity | reserves gross/net % GDP | money the bank issued % GDP | cover vs legal | rate (Taylor + cover's points), yearly mean | inflation of the year | private capital long/short net inflow and income, % GDP [controls]"
         );
         while year < 1925 + years {
             d = Date::from_days(d.to_days() + 7);
@@ -381,8 +383,36 @@ pub fn main() -> Result<(), String> {
                     let gross = w.reserves.markets.get(*i).map_or(0.0, |r| f(r.total()));
                     let (rate, add, cover) = sums[k];
                     let n = weeks.max(1.0);
+                    let l = w
+                        .payments
+                        .markets
+                        .get(*i)
+                        .map(|p| {
+                            // The economy week of the new year may not have run yet.
+                            if w.payments.year == year {
+                                p.year
+                            } else {
+                                p.last_year
+                            }
+                        })
+                        .unwrap_or_default();
+                    let capital = if w.capital.is_empty() {
+                        String::new()
+                    } else {
+                        format!(
+                            " | capital {:+.2}/{:+.2}, income {:+.2}{}",
+                            f(l.capital_long()) / gdp * 100.0,
+                            f(l.capital_short()) / gdp * 100.0,
+                            f(l.capital_income()) / gdp * 100.0,
+                            if w.capital.controls.get(*i).copied().unwrap_or(false) {
+                                " [controls]"
+                            } else {
+                                ""
+                            }
+                        )
+                    };
                     println!(
-                        "{year} {tag}: {:?} {:.1} | reserves {:.2}/{:.2} | issued {:.1} | cover {:.0} % (legal {:.0} %) | rate {:.2} = Taylor {:.2} + {:.2} | inflation {:+.1} %",
+                        "{year} {tag}: {:?} {:.1} | reserves {:.2}/{:.2} | issued {:.1} | cover {:.0} % (legal {:.0} %) | rate {:.2} = Taylor {:.2} + {:.2} | inflation {:+.1} %{capital}",
                         st.regime,
                         if st.regime == bf_sim::econ::gold::Regime::Float {
                             f(m.money.exchange_rate)

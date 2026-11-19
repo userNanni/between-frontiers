@@ -110,6 +110,18 @@ lines! {
     fdi_in,
     /// Works abroad this country's funds paid for.
     fdi_out,
+    /// Long-term private capital in (`econ::capital`): placed here from abroad, or brought home.
+    capital_in,
+    /// Long-term private capital out: placed abroad from here, or taken home by lenders abroad.
+    capital_out,
+    /// Short-term capital ("hot money") that came in, as `capital_in`.
+    hot_in,
+    /// Short-term capital that went out, as `capital_out`.
+    hot_out,
+    /// Income on this country's private claims abroad, long and short.
+    capital_income_received,
+    /// Income on the private claims of savers abroad here.
+    capital_income_paid,
 }
 
 impl Lines {
@@ -135,9 +147,25 @@ impl Lines {
         self.remittances_received - self.remittances_paid
     }
 
-    /// Primary income: interest of bonds and of the ledger, and remittances.
+    /// Income on private claims abroad (`econ::capital`), net.
+    pub fn capital_income(&self) -> Fixed {
+        self.capital_income_received - self.capital_income_paid
+    }
+
+    /// Primary income: interest of bonds and of the ledger, remittances, and the income of
+    /// private claims.
     pub fn income(&self) -> Fixed {
-        self.interest() + self.ledger_interest() + self.remittances()
+        self.interest() + self.ledger_interest() + self.remittances() + self.capital_income()
+    }
+
+    /// Long-term private capital, net inflow (`econ::capital`).
+    pub fn capital_long(&self) -> Fixed {
+        self.capital_in - self.capital_out
+    }
+
+    /// Short-term private capital, net inflow.
+    pub fn capital_short(&self) -> Fixed {
+        self.hot_in - self.hot_out
     }
 
     /// Margins and transfers between treasuries.
@@ -156,6 +184,8 @@ impl Lines {
             - self.ledger_principal_repaid
             + self.fdi_in
             - self.fdi_out
+            + self.capital_long()
+            + self.capital_short()
     }
 
     /// What would have to move for the balance to close: `−(current + financial)`.
@@ -197,6 +227,114 @@ pub struct PaymentsState {
     /// lenders receive what the debtors pay to the last unit, so every line adds up to zero
     /// over the world without it.
     pub unreceived: Period,
+}
+
+/// [`Lines`] as worlds before version 41 wrote it, without the private capital
+/// (`econ::capital`): frozen, it never changes again.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LinesBeforeCapital {
+    pub exports: Fixed,
+    pub imports: Fixed,
+    pub services_exports: Fixed,
+    pub services_imports: Fixed,
+    pub interest_received: Fixed,
+    pub interest_paid: Fixed,
+    pub ledger_interest_received: Fixed,
+    pub ledger_interest_paid: Fixed,
+    pub remittances_received: Fixed,
+    pub remittances_paid: Fixed,
+    pub margins: Fixed,
+    pub transfers_received: Fixed,
+    pub transfers_paid: Fixed,
+    pub bonds_sold: Fixed,
+    pub bonds_bought: Fixed,
+    pub principal_received: Fixed,
+    pub principal_repaid: Fixed,
+    pub ledger_principal_received: Fixed,
+    pub ledger_principal_repaid: Fixed,
+    pub fdi_in: Fixed,
+    pub fdi_out: Fixed,
+}
+
+macro_rules! convert_lines {
+    ($from:ty => $to:ident, $($field:ident),*) => {
+        #[allow(clippy::needless_update)]
+        impl From<$from> for $to {
+            fn from(l: $from) -> Self {
+                $to {
+                    $($field: l.$field,)*
+                    ..Default::default()
+                }
+            }
+        }
+    };
+}
+
+convert_lines!(LinesBeforeCapital => Lines, exports, imports, services_exports, services_imports,
+    interest_received, interest_paid, ledger_interest_received, ledger_interest_paid,
+    remittances_received, remittances_paid, margins, transfers_received, transfers_paid,
+    bonds_sold, bonds_bought, principal_received, principal_repaid, ledger_principal_received,
+    ledger_principal_repaid, fdi_in, fdi_out);
+convert_lines!(Lines => LinesBeforeCapital, exports, imports, services_exports, services_imports,
+    interest_received, interest_paid, ledger_interest_received, ledger_interest_paid,
+    remittances_received, remittances_paid, margins, transfers_received, transfers_paid,
+    bonds_sold, bonds_bought, principal_received, principal_repaid, ledger_principal_received,
+    ledger_principal_repaid, fdi_in, fdi_out);
+
+/// [`Period`] before version 41.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PeriodBeforeCapital {
+    pub week: LinesBeforeCapital,
+    pub year: LinesBeforeCapital,
+    pub last_year: LinesBeforeCapital,
+}
+
+/// [`PaymentsState`] as worlds 32 to 40 wrote it, before the private capital: frozen.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PaymentsBeforeCapital {
+    pub year: i32,
+    pub markets: Vec<PeriodBeforeCapital>,
+    pub unreceived: PeriodBeforeCapital,
+}
+
+impl From<PeriodBeforeCapital> for Period {
+    fn from(p: PeriodBeforeCapital) -> Self {
+        Self {
+            week: p.week.into(),
+            year: p.year.into(),
+            last_year: p.last_year.into(),
+        }
+    }
+}
+
+impl From<&Period> for PeriodBeforeCapital {
+    fn from(p: &Period) -> Self {
+        Self {
+            week: p.week.into(),
+            year: p.year.into(),
+            last_year: p.last_year.into(),
+        }
+    }
+}
+
+impl From<PaymentsBeforeCapital> for PaymentsState {
+    fn from(p: PaymentsBeforeCapital) -> Self {
+        Self {
+            year: p.year,
+            markets: p.markets.into_iter().map(Period::from).collect(),
+            unreceived: p.unreceived.into(),
+        }
+    }
+}
+
+impl From<&PaymentsState> for PaymentsBeforeCapital {
+    fn from(p: &PaymentsState) -> Self {
+        Self {
+            year: p.year,
+            markets: p.markets.iter().map(PeriodBeforeCapital::from).collect(),
+            unreceived: (&p.unreceived).into(),
+        }
+    }
 }
 
 impl PaymentsState {
@@ -349,6 +487,21 @@ impl PaymentsState {
                     principal_repaid: f.principal_repaid[mi],
                     interest_received: f.interest_received[mi],
                     principal_received: f.principal_received[mi],
+                    ..Lines::default()
+                },
+            );
+        }
+        for (mi, c) in f.capital.iter().enumerate() {
+            self.add(
+                mi,
+                year,
+                Lines {
+                    capital_in: c.capital_in,
+                    capital_out: c.capital_out,
+                    hot_in: c.hot_in,
+                    hot_out: c.hot_out,
+                    capital_income_received: c.income_received,
+                    capital_income_paid: c.income_paid,
                     ..Lines::default()
                 },
             );
@@ -686,6 +839,11 @@ pub struct PaymentsView {
     pub principal: Fixed,
     pub ledger_principal: Fixed,
     pub direct_investment: Fixed,
+    /// Income of private claims, net, and private capital, long and short, net inflow
+    /// (`econ::capital`).
+    pub capital_income: Fixed,
+    pub capital_long: Fixed,
+    pub capital_short: Fixed,
     pub financial_account: Fixed,
     pub not_settled: Fixed,
     /// The year these lines are of; 0 before a full year has passed.
@@ -712,6 +870,9 @@ pub fn view(world: &crate::game::GameWorld, market: usize) -> PaymentsView {
         principal: l.principal_received - l.principal_repaid,
         ledger_principal: l.ledger_principal_received - l.ledger_principal_repaid,
         direct_investment: l.fdi_in - l.fdi_out,
+        capital_income: l.capital_income(),
+        capital_long: l.capital_long(),
+        capital_short: l.capital_short(),
         financial_account: l.financial_account(),
         not_settled: l.not_settled(),
         year: if p.year > 0 { p.year - 1 } else { 0 },

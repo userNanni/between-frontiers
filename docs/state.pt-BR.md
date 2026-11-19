@@ -823,11 +823,122 @@ O que se vê:
   1925 a 1926 tinham inflação alta, que o jogo não tem; com ela, as voltas se espalhariam.
 - Nada disso se liga antes da fatia 4, do sinal do comércio e da cobertura contra a base.
 
+### Fatia 4: capital que segue o juro e controle de capital (PO5), desligada
+
+**Nenhum número desta fatia saiu de fonte lida (estimativas, a conferir):** todos os de
+`data/economy/capital.ron`. A ordem de grandeza do estoque de ativos externos (cerca de 8 % do PIB
+mundial em 1930 e 18 % em 1914, Obstfeld e Taylor, *Global Capital Markets*, 2004, tabela 2.1) é
+lembrada, não lida; *Golden Fetters* (Eichengreen, 1992) e Moggridge (1972) não foram lidos.
+
+Chave `capital_follows_rate` (`data/rules.ron`, desligada; só corre com `payments_settle`;
+`econ::capital`). Save 41 (sobre a 40 da fatia 3): `GameWorld::capital` (no hash quando a regra já correu) e seis
+linhas novas no balanço (`capital_in`, `capital_out`, `hot_in`, `hot_out`,
+`capital_income_received`, `capital_income_paid`). A 40 fica congelada em
+`save_format::compat::V40`, com o balanço sem as linhas novas em `payments::PaymentsBeforeCapital`.
+
+**O que o código faz.** Além dos títulos do governo vendidos fora (que continuam como antes), os
+credores de cada país guardam títulos privados nos outros, num estoque longo e num de curto prazo
+("dinheiro quente"), por par credor × devedor. Toda semana:
+- **Retorno esperado** de cada país, em pontos ao ano: a taxa dos títulos sem o prêmio, menos a
+  inflação, menos a depreciação real que o câmbio flutuante promete em um ano (87 % da distância
+  ao alvo, o que o passo de 1/26 por semana fecha em 52 semanas); menos 0,5 × o prêmio (aversão
+  ao risco), 1 ponto se a moeda flutua, e o risco de desvalorização de quem está no ouro perto do
+  piso: de zero em 1,25 × o piso a 10 pontos no piso (`gold::at_risk`). No ouro o retorno não
+  conta o ganho real de uma paridade com inflação acima da do mundo: na primeira medida esse ganho
+  realimentava a entrada (mais entrada, mais inflação, juro de Taylor maior, mais retorno) e a
+  Alemanha chegou a receber 290 % do PIB num ano.
+- **Para onde vai**: a riqueza do credor (o fundo de investimento, de bancos e capitalistas, mais
+  o que já tem fora; a poupança ociosa das famílias é 0,01 % do PIB e fica em casa) se reparte
+  entre a casa e cada devedor por um logit no retorno do devedor menos o do credor, pesado pelo PIB
+  do devedor. Com retornos iguais, 40 % fica fora no longo prazo e 5 % no curto (o estoque começa
+  perto de 8 % do PIB mundial com os fundos de 1925, cerca de 10 % do PIB). Semi-elasticidade 0,3
+  por ponto no longo e 0,5 no curto.
+- **Aos poucos**: cada título fecha 1/104 da distância ao alvo por semana no longo e 1/8 no curto.
+  O que se coloca sai do fundo do credor (até o que ele tem); o que se retira sai do fundo do
+  devedor (até o que ele tem) e volta ao do credor. Tudo é transferência entre fundos: o dinheiro
+  do mundo não muda.
+- **Valor e renda**: o título está na moeda do devedor e vale o que o câmbio real dele andou (quem
+  desvaloriza custa ao credor); o devedor paga a renda real dos seus títulos sem o prêmio, toda
+  semana, também sob controle.
+- **Começo**: a primeira semana põe os títulos no alvo sem mover dinheiro (as posições de 1925 são
+  da regra, não dado).
+- **Pela liquidação**: as linhas entram na conta financeira e na renda, e a liquidação da fatia 2
+  move a reserva por elas: entrada sobe a reserva de quem recebe, saída baixa a de quem manda.
+
+**Controle de capital (PO5).** Bandeira por país, `SetCapitalControls { tag, on }` (só a
+simulação; a tela é a fatia 5; está na lista de exceções de `player_commands.rs`). Sem escolha do
+jogador, a regra liga o controle em quem segura a paridade por controle cambial (o regime
+`Control` da fatia 3: quem sai do ouro com dívida em moeda estrangeira acima de 10 % do PIB). Com
+controle: nada novo sai nem entra, os títulos dos dois lados ficam parados (só reavaliados), os
+títulos do governo não são vendidos nem comprados fora, o principal deles fora não é pago (moratória;
+o excedente paga a dívida de casa), a renda continua paga e o prêmio sobe 1 ponto.
+
+**Testes:** `econ::capital` (com retornos iguais só a renda anda; o capital vai a quem paga mais,
+aos poucos, e sai de quem paga menos; o dinheiro quente sai primeiro de uma paridade em risco; o
+controle fecha a conta nos dois sentidos e a renda continua; a desvalorização custa ao credor; o
+logit em ponto fixo fica a 1 % de `e^x`), `econ::money` (sob controle ou flutuando, a taxa é a de
+Taylor; sob controle o câmbio fica na paridade, flutuando anda) e `tests/capital_follows_rate.rs`
+(30 semanas do mundo com as três chaves: a reserva líquida do mundo só muda pelo ouro novo, cada
+linha do capital privado e a conta financeira somam zero no mundo toda semana, nenhuma reserva ou
+título negativo, salvar e recarregar mantém o hash; o trilema: os Estados Unidos no ouro com taxa
+fixada em 0 %, na regra e em 10 % por 26 semanas recebem capital e reserva nessa ordem; a Holanda
+na paridade por controle não move nada na conta financeira e volta a mover quando o jogador tira
+o controle; a França flutuando move capital e câmbio; desligada, ou sem a liquidação, ninguém tem
+título privado). Desligada, o hash de 10 anos é o da fatia 3.
+
+**A medida** (`BF_DIAG_GOLD`, agora com o capital privado: entrada líquida no ano, longo/curto, e
+a renda, em % do PIB; saída em `target/capital/diag.txt`):
+
+| | 1925 | 1926 | 1927 | 1928 | 1929 | 1930 | 1931 | 1932 |
+|---|---|---|---|---|---|---|---|---|
+| Reino Unido: regime | sai (contágio, abr.) | flutua | flutua | flutua | flutua | flutua | flutua | flutua |
+| Reino Unido: capital longo/curto | −3,9/−8,5 | −0,5/+7,0 | +1,0/+0,2 | +0,4/−0,4 | −0,5/−0,7 | −0,4/0 | −0,3/+0,1 | 0/+0,1 |
+| Estados Unidos: reserva | 7,1 | 7,9 | 8,1 | 9,5 | 11,7 | 13,3 | 14,4 | 16,2 |
+| Estados Unidos: capital | +0,4/+1,1 | +0,3/−1,3 | −1,0/−0,8 | −0,5/+0,3 | +0,4/+0,3 | +0,2/0 | −0,1/−0,2 | −0,8/−0,2 |
+| Alemanha: capital | −5,2/−2,8 | −0,6/+4,9 | +2,7/+1,5 | +0,9/−1,0 | −0,3/−0,5 | −0,3/−0,1 | −0,1/+0,3 | 0/0 |
+| Suécia (ouro até 1932): taxa = Taylor + cobertura | 1,7 | 1,6 = −0,6 + 2,1 | 0 = −1,4 + 1,4 | 0 = −0,7 + 0,7 | 0 = −0,7 + 0,7 | 0 = −0,2 + 0,2 | 0 | 0 |
+| Suécia: capital longo/curto | +0,8/+1,0 | +0,8/−0,9 | +1,3/+0,7 | +1,4/+0,8 | +1,2/+0,4 | +1,0/+0,2 | +0,8/0 | +1,1/+0,3 |
+| Argentina (ouro desde dez. 1926): capital | +0,1/+0,5 | −0,5/−1,0 | +0,7/+0,9 | +0,7/+0,1 | +0,8/+0,2 | +1,4/+1,0 | +2,2/+0,9 | +2,5/+0,4 |
+
+Reservas brutas e líquidas, cobertura, taxa e inflação de todos os nove países por ano estão em
+`target/capital/diag.txt` (anexado ao relatório do PR).
+
+**Quem sai e quem volta, contra a fatia 3 e a história:**
+
+| | fatia 4 | fatia 3 | história |
+|---|---|---|---|
+| Áustria, Hungria | saem em mar. 1925 | mar. 1925 | controle cambial em 1931 |
+| Alemanha | sai em abr. 1925 | abr. 1925 | controle cambial em jul. 1931 |
+| Reino Unido | sai em abr. 1925, por contágio da Alemanha | nov. 1925, pelo piso | set. 1931 |
+| Holanda | sai em abr. 1925, por contágio | fica até 1932 | fica até 1936 |
+| Austrália, África do Sul | saem em abr. 1925, por contágio; voltam em 1929 e 1931 | ficam | 1929 a 1931 |
+| Suíça | sai em set. 1926 | out. 1925 | set. 1936 |
+| Suécia | fica até o fim de 1932 | sai em nov. 1928 | set. 1931 |
+| Argentina, Brasil, Noruega e mais 25 | voltam em dez. 1926 | dez. 1926 | Brasil dez. 1926, Argentina ago. 1927, Noruega mai. 1928 |
+| Canadá | volta em dez. 1930 | dez. 1931 | jul. 1926 a out. 1931 |
+| Ninguém | entra em controle cambial | — | Alemanha, Áustria, Hungria em 1931 |
+
+O que se vê:
+- **O mecanismo funciona onde a reserva aguenta:** a Suécia, abaixo da cobertura, sobe o juro
+  acima de Taylor, recebe de 0 a 2,2 % do PIB por ano de capital e fica no ouro até o fim (na fatia 3
+  saía em 1928); a Argentina, em deflação com juro acima de Taylor, recebe até 2,9 % do PIB por
+  ano. O teste do trilema mostra o mesmo nos Estados Unidos com a taxa fixada.
+- **A saída da Alemanha leva junto quem guarda marcos:** a Alemanha começa sem reserva (a de 1925 é
+  só ouro, sem divisas) e o risco de desvalorização dela é máximo desde a primeira semana; o
+  dinheiro quente sai (−8 % do PIB no ano) e ela paga em marcos; o Reino Unido e a Holanda saem
+  por contágio na semana em que ela sai, isto é, guardavam marcos em um quarto ou mais da reserva
+  (a composição não foi impressa: inferência pela regra do contágio). É a dinâmica de 1931 em 1925, por falta
+  das divisas de 1925 nos dados e da cobertura contra a base monetária (achados da fatia 3).
+- **O primeiro ano é grande:** os fluxos de 1925 e 1926 (até 8 a 9 % do PIB) são o ajuste dos
+  estoques ao primeiro choque de risco; de 1928 em diante ficam em 0 a 2,5 % do PIB, a ordem dos
+  fluxos do entreguerras.
+- **Ninguém entra em controle:** quem sai não tem dívida em moeda estrangeira acima de 10 % do PIB
+  (as dívidas de guerra não estão no cenário). A Alemanha de 1931 não aparece.
+- Nada disso se liga antes de as divisas de 1925 estarem nos dados, da cobertura contra a base e do
+  sinal do comércio.
+
 ### Fatias seguintes (aprovadas, por fazer)
 
-4. **Capital que segue o juro (PO5).** O credor escolhe o país pelo juro e pela confiança; controle
-   de capital fecha a conta financeira do país (a renda continua paga), com prêmio. É o trilema:
-   câmbio fixo e capital livre pedem o juro do mundo.
 5. **Telas e decisões.** Agendas: aderir, sair, defender ou desvalorizar. Governo → Moeda e dívida:
    a linha do câmbio ("Regra histórica" ou "Fixado"), a reserva, a cobertura, o balanço do ano e o
    controle de capital.

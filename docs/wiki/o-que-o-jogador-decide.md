@@ -62,7 +62,9 @@ Sem tela ainda: `SetGoldStandard` (aderir ao ouro na paridade de antes da guerra
 dia, flutuar, segurar o câmbio com controle cambial, ou devolver à regra) e `SetGoldPosture`
 (no ouro, defender a paridade ou desvalorizar dentro do padrão, PO6). A simulação é a fatia 3 do
 padrão-ouro, atrás da chave `gold_standard`, desligada; a tela, nas Agendas, com confirmação e
-ponto de restauração, é a fatia 5.
+ponto de restauração, é a fatia 5. Também sem tela: `SetCapitalControls` (ligar ou tirar o controle de capital,
+PO5), a fatia 4, atrás da chave `capital_follows_rate`, desligada; a tela, em Governo → Moeda e
+dívida, é a fatia 5.
 
 ## Desenhadas, sem comando ainda
 
@@ -103,7 +105,7 @@ faixa.
 | PO2 | Quem está no ouro em 1925 é dado com fonte; as voltas depois de 1925 saem da regra da IA, e a data histórica fica só como conferência. | fatia 3, feita atrás da chave `gold_standard`, desligada: `data/economy/gold.ron` (dez países no ouro em 1925, com a paridade), a volta pela regra no câmbio do dia (`econ::gold`) | — |
 | PO3 | Um país sai do ouro pela regra: cobertura abaixo do piso por meses seguidos, ou a saída do principal país-reserva. | fatia 3, desligada: 13 semanas abaixo de metade da cobertura legal, ou a saída do emissor de um quarto ou mais das reservas | — |
 | PO4 | Defender a paridade é juro acima da regra de Taylor por ponto de cobertura que falta, e moeda retirada quando a falta continua. | fatia 3, desligada: 0,3 ponto de juro por ponto de cobertura que falta, até 6; sem emissão abaixo da cobertura, retirada depois de 26 semanas | — |
-| PO5 | Controle de capital é decisão do jogador e entra na regra da IA. | fatia 4 | Governo → Moeda e dívida |
+| PO5 | Controle de capital é decisão do jogador e entra na regra da IA. | fatia 4, feita atrás da chave `capital_follows_rate`, desligada (`econ::capital`): o capital privado, longo e de curto prazo, segue o retorno esperado de cada país; o controle fecha a conta financeira (a renda continua paga, o prêmio sobe 1 ponto); a IA o liga quando segura a paridade por controle cambial; só a simulação: `SetCapitalControls` | Governo → Moeda e dívida (fatia 5) |
 | PO6 | Aderir e sair do ouro é decisão rara, com confirmação e ponto de restauração; a tela mostra o custo de cada paridade. | fatia 3, só a simulação: `SetGoldStandard`, `SetGoldPosture` | Agendas (fatia 5) |
 | PO7 | Divisas contam como reserva, e quem guarda a moeda que desvaloriza perde. | fatia 2 (a reserva por moeda); fatia 3: a divisa vale o que o câmbio do emissor diz, e quem a guarda perde o que o emissor deixa de dever | — |
 | PO8 | Ouro novo das minas entra pela produção de cada país, com fonte. | fatia 2, desligada: 62,5 % da produção vai ao banco central (Delegação do Ouro da Liga das Nações, 1932) | — |
