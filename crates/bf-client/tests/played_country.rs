@@ -1,6 +1,7 @@
 //! The views read the country played now: a campaign begun with Britain and switched to Germany
-//! ("Play another country") shows Germany's agreements and tariffs, not Britain's, whatever the
-//! world recorded as its first player.
+//! ("Play another country") shows Germany's agreements and tariffs, not Britain's: the views read
+//! the country played now (`Session::player`), which the world follows since the switch moves the
+//! control.
 
 use bf_client::app::Transition;
 use bf_client::saves;
@@ -30,8 +31,8 @@ fn the_views_follow_the_country_switched_to() {
     assert_eq!(s.player(), Some("GER"));
     assert_eq!(
         s.world().player_tag(),
-        Some("GBR"),
-        "the world keeps its first player"
+        Some("GER"),
+        "the world follows the switch (the control moves with it)"
     );
     let user = std::env::temp_dir().join(format!("bf-played-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&user);
