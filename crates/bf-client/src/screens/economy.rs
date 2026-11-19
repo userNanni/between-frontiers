@@ -17,8 +17,12 @@ use crate::text::money_short;
 const WINDOW: egui::Vec2 = egui::vec2(1100.0, 700.0);
 const MIN_WINDOW: egui::Vec2 = egui::vec2(760.0, 380.0);
 const ROW: f32 = 26.0;
-/// Width of each figure column; the name takes what is left.
-const COL: f32 = 104.0;
+/// Width of each figure column, between these; the name takes what is left.
+const COL_MIN: f32 = 84.0;
+const COL_MAX: f32 = 110.0;
+/// Width the name column keeps before the figure columns narrow.
+const NAME_MIN: f32 = 200.0;
+const SCROLL_GUTTER: f32 = 14.0;
 
 /// The window's tabs.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -243,38 +247,46 @@ fn buildings(
                 .then_with(|| a.kind.cmp(&b.kind))
         }),
     }
-    let flip = match window.sort {
-        Column::Name => window.ascending,
-        _ => !window.ascending,
-    };
-    if !flip {
+    if !window.ascending {
         rows.reverse();
     }
 
     // Header: each column sorts; again flips the order.
-    let width = ui.available_width();
-    let name_w = (width - COL * Column::FIGURES.len() as f32).max(160.0);
+    // Room on the right for the list's scroll bar.
+    let width = ui.available_width() - SCROLL_GUTTER;
+    let n = Column::FIGURES.len() as f32;
+    let col = ((width - NAME_MIN) / n).clamp(COL_MIN, COL_MAX);
+    let name_w = width - col * n;
     let header = |ui: &mut Ui, window: &mut Window| {
-        ui.horizontal(|ui| {
-            ui.spacing_mut().item_spacing.x = 0.0;
-            for (i, c) in std::iter::once(Column::Name)
-                .chain(Column::FIGURES)
-                .enumerate()
-            {
-                let w = if c == Column::Name { name_w } else { COL };
-                let arrow = if window.sort == c {
-                    if window.ascending { " ↑" } else { " ↓" }
-                } else {
-                    ""
-                };
-                let text = format!("{}{arrow}", i18n.tr(c.key()));
-                let layout = if c == Column::Name {
-                    Layout::left_to_right(Align::Center)
-                } else {
-                    Layout::right_to_left(Align::Center)
-                };
-                let r = ui
-                    .allocate_ui_with_layout(vec2(w, ROW), layout, |ui| {
+        let (rect, _) = ui.allocate_exact_size(vec2(name_w + col * n, ROW), Sense::hover());
+        let mut x = rect.left();
+        for (i, c) in std::iter::once(Column::Name)
+            .chain(Column::FIGURES)
+            .enumerate()
+        {
+            let w = if c == Column::Name { name_w } else { col };
+            let arrow = if window.sort == c {
+                if window.ascending { " ↑" } else { " ↓" }
+            } else {
+                ""
+            };
+            let text = format!("{}{arrow}", i18n.tr(c.key()));
+            let (left, right) = if c == Column::Name {
+                (x + space::XS, false)
+            } else {
+                (x, true)
+            };
+            let cell_rect =
+                Rect::from_min_size(egui::pos2(left, rect.top()), vec2(w - space::SM, ROW));
+            let layout = if right {
+                Layout::right_to_left(Align::Center)
+            } else {
+                Layout::left_to_right(Align::Center)
+            };
+            let r = ui
+                .scope_builder(
+                    egui::UiBuilder::new().max_rect(cell_rect).layout(layout),
+                    |ui| {
                         ui.add(
                             egui::Label::new(
                                 RichText::new(text)
@@ -282,28 +294,30 @@ fn buildings(
                                     .color(color::TEXT_MUTED),
                             )
                             .sense(Sense::click())
-                            .selectable(false),
+                            .selectable(false)
+                            .wrap_mode(egui::TextWrapMode::Extend),
                         )
-                    })
-                    .inner;
-                let r = r.on_hover_cursor(egui::CursorIcon::PointingHand);
-                let typed = keys::item(
-                    ui,
-                    'O',
-                    format!("economy.sort.{}", c.id()),
-                    &(i + 1).to_string(),
-                    r.rect,
-                );
-                if r.clicked() || typed {
-                    if window.sort == c {
-                        window.ascending = !window.ascending;
-                    } else {
-                        window.sort = c;
-                        window.ascending = c == Column::Name;
-                    }
+                    },
+                )
+                .inner
+                .on_hover_cursor(egui::CursorIcon::PointingHand);
+            let typed = keys::item(
+                ui,
+                'O',
+                format!("economy.sort.{}", c.id()),
+                &(i + 1).to_string(),
+                r.rect,
+            );
+            if r.clicked() || typed {
+                if window.sort == c {
+                    window.ascending = !window.ascending;
+                } else {
+                    window.sort = c;
+                    window.ascending = c == Column::Name;
                 }
             }
-        });
+            x += w;
+        }
     };
     header(ui, window);
     bf_ui_kit::divider(ui);
@@ -336,10 +350,10 @@ fn buildings(
                     },
                     k.states.len().to_string(),
                 ];
-                let marker = if open { "▾ " } else { "▸ " };
+                let marker = if open { "− " } else { "+ " };
                 let r = line(
                     ui,
-                    name_w,
+                    (name_w, col),
                     &format!("{marker}{}", name(k)),
                     &figures,
                     k.profit < 0.0 && !k.public,
@@ -361,7 +375,7 @@ fn buildings(
                     window.open = if open { None } else { Some(k.kind) };
                 }
                 if open {
-                    states(ui, i18n, world, k, name_w);
+                    states(ui, i18n, world, k, (name_w, col));
                 }
             }
         });
@@ -371,14 +385,14 @@ fn buildings(
 /// anywhere on it is the response's.
 fn line(
     ui: &mut Ui,
-    name_w: f32,
+    (name_w, col): (f32, f32),
     name: &str,
     figures: &[String],
     loss: bool,
     text: egui::Color32,
     stripe: Option<egui::Color32>,
 ) -> egui::Response {
-    let width = name_w + COL * figures.len() as f32;
+    let width = name_w + col * figures.len() as f32;
     let (rect, response) = ui.allocate_exact_size(vec2(width, ROW), Sense::click());
     if let Some(fill) = stripe {
         ui.painter()
@@ -388,7 +402,7 @@ fn line(
         ui.painter().rect_filled(rect, 0.0, color::SURFACE_HOVER);
     }
     let mut x = rect.left();
-    cell(
+    let name_cell = cell(
         ui,
         Rect::from_min_size(
             egui::pos2(x + space::XS, rect.top()),
@@ -404,38 +418,56 @@ fn line(
         let c = if j == 4 && loss { color::DANGER } else { text };
         cell(
             ui,
-            Rect::from_min_size(egui::pos2(x, rect.top()), vec2(COL - space::SM, ROW)),
+            Rect::from_min_size(egui::pos2(x, rect.top()), vec2(col - space::SM, ROW)),
             s,
             c,
             true,
         );
-        x += COL;
+        x += col;
     }
-    response
+    let name_cell = name_cell.on_hover_cursor(egui::CursorIcon::PointingHand);
+    response | name_cell
 }
 
-fn cell(ui: &mut Ui, r: Rect, s: &str, c: egui::Color32, right: bool) {
+/// One cell's text; the name cell (left-aligned) also takes clicks, so the line can be
+/// clicked by its name.
+fn cell(ui: &mut Ui, r: Rect, s: &str, c: egui::Color32, right: bool) -> egui::Response {
     let layout = if right {
         Layout::right_to_left(Align::Center)
     } else {
         Layout::left_to_right(Align::Center)
     };
     ui.scope_builder(egui::UiBuilder::new().max_rect(r).layout(layout), |ui| {
-        ui.add(
-            egui::Label::new(
-                RichText::new(s)
-                    .font(bf_ui_kit::theme::sans(size::SMALL))
-                    .color(c),
+        let label = egui::Label::new(
+            RichText::new(s)
+                .font(bf_ui_kit::theme::sans(size::SMALL))
+                .color(c),
+        )
+        .selectable(false);
+        // Figures never shorten; a name too long for its column ends in an ellipsis and shows
+        // whole on hover.
+        if right {
+            ui.add(label.wrap_mode(egui::TextWrapMode::Extend))
+        } else {
+            ui.add(
+                label
+                    .wrap_mode(egui::TextWrapMode::Truncate)
+                    .sense(Sense::click()),
             )
-            .selectable(false)
-            .wrap_mode(egui::TextWrapMode::Extend),
-        );
-    });
+        }
+    })
+    .inner
 }
 
 /// The kind's states, under its line: the state and the method its plant runs, then the same
 /// figures.
-fn states(ui: &mut Ui, i18n: &I18n, world: Option<&crate::world::World>, k: &KindRow, name_w: f32) {
+fn states(
+    ui: &mut Ui,
+    i18n: &I18n,
+    world: Option<&crate::world::World>,
+    k: &KindRow,
+    widths: (f32, f32),
+) {
     for s in &k.states {
         let state = world
             .and_then(|w| w.states.get(usize::from(s.state).saturating_sub(1)))
@@ -447,7 +479,7 @@ fn states(ui: &mut Ui, i18n: &I18n, world: Option<&crate::world::World>, k: &Kin
         };
         line(
             ui,
-            name_w,
+            widths,
             &label,
             &state_figures(i18n, k, s),
             s.profit < 0.0 && !k.public,
