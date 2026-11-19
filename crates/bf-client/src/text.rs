@@ -138,3 +138,9 @@ pub fn social_source(i18n: &I18n, source: Source) -> String {
         Source::Live { .. } => i18n.tr("source-live"),
     }
 }
+
+/// A number already written for `i18n` followed by its percent sign as the language writes it
+/// ("12,5 %" in Portuguese, "12.5%" in English).
+pub fn pct_text(i18n: &bf_i18n::I18n, value: String) -> String {
+    i18n.tr_args("gov-pct", &[("value", bf_i18n::Arg::String(value))])
+}

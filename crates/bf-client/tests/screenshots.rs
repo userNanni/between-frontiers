@@ -4799,3 +4799,114 @@ fn budget_and_works_at_the_floor() {
     }
     let _ = std::fs::remove_dir_all(&user);
 }
+
+/// The balance of deterrence on the crisis screen: the United States, with 600 warheads and 300
+/// bombers, the target of a Soviet demand, the Soviet Union with 40 untested warheads and 20
+/// bombers (read at half). The player's side framed, the other beside it. Portuguese at
+/// 1600 × 900, English at 1280 × 720; copies in `target/screenshots/nuclear/`.
+#[test]
+#[ignore = "needs a GPU (or software Vulkan) and the generated map; run with --ignored"]
+fn nuclear_balance() {
+    use bf_sim::game::GameCommand;
+    use bf_sim::treaty::{Clause, ClauseKind, Proposal, Side};
+    use laplace_schelling::Fixed;
+    use laplace_schelling::calendar::Date;
+    // SAFETY: the screenshot tests run one at a time (`RUST_TEST_THREADS=1`).
+    unsafe { std::env::set_var("BF_RULES", "forces,crisis") };
+    let user = std::env::temp_dir().join(format!("bf-shots-nuclear-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&user);
+    let mut data = bf_sim::data::GameData::load(&root()).expect("game data");
+    data.switches = data.switches.with("forces,crisis").expect("switches");
+    let mil = data.war.as_ref().expect("war data").military.clone();
+    let mut w = data.new_world();
+    for (tag, key, n) in [
+        ("USA", "nuclear_warhead", 600),
+        ("USA", "strategic_bomber", 300),
+        ("SOV", "nuclear_warhead", 40),
+        ("SOV", "strategic_bomber", 20),
+    ] {
+        let c = w.countries.iter().position(|(_, c)| c.tag == tag).unwrap();
+        w.war.countries[c].formations.push(bf_sim::war::Formation {
+            unit: mil.unit(key).unwrap(),
+            generation: 0,
+            elements: Fixed::from_int(n),
+            colonial: false,
+            called_up: false,
+            equipment: Vec::new(),
+            training: Fixed::ONE,
+            raised: true,
+        });
+    }
+    let mut s = bf_sim::game::Session::new(w, 1925, Date::new(1925, 1, 1), 2, Some(data.rules()));
+    s.submit(GameCommand::ChoosePlayer { tag: "USA".into() });
+    while s.clock().date < Date::new(1925, 2, 1) {
+        s.sim.step();
+    }
+    s.submit(GameCommand::Demand {
+        tag: "SOV".into(),
+        target: "USA".into(),
+        demand: Proposal {
+            side_a: vec!["SOV".into()],
+            side_b: vec!["USA".into()],
+            clauses: vec![Clause {
+                kind: ClauseKind::Payment {
+                    amount: Fixed::from_int(100_000_000),
+                },
+                giver: Side::Junior,
+                receiver: Side::Senior,
+                until: None,
+                note: None,
+            }],
+            term_years: None,
+            notice_years: 0,
+        },
+        weeks: None,
+    });
+    while s.clock().date < Date::new(1925, 2, 3) {
+        s.sim.step();
+    }
+    let save = write_campaign(&user.join("save"), &s, "Dissuasão", "USA", &[]);
+    let dir = root().join("target/screenshots/nuclear");
+    std::fs::create_dir_all(&dir).unwrap();
+    for (locale, size, tag, button, heading) in [
+        (
+            "pt-BR",
+            egui::vec2(1600.0, 900.0),
+            "pt",
+            "União Soviética exige",
+            "Balanço de dissuasão",
+        ),
+        (
+            "en",
+            egui::vec2(1280.0, 720.0),
+            "en-1280",
+            "Soviet Union demands",
+            "Balance of deterrence",
+        ),
+    ] {
+        let mut h = harness_sized(user.join(tag), locale, size);
+        let ctx = h.ctx.clone();
+        h.state_mut().apply(Transition::Game(save.clone()), &ctx);
+        for _ in 0..30 {
+            std::thread::sleep(std::time::Duration::from_millis(25));
+            h.run_steps(1);
+        }
+        h.key_press(egui::Key::J);
+        h.run_steps(8);
+        h.query_all(egui_kittest::kittest::by().label_contains(button))
+            .find(|n| n.accesskit_node().role() == egui::accesskit::Role::Button)
+            .expect("the Soviet demand in the Agendas")
+            .click();
+        h.run_steps(8);
+        h.get_by_label(heading).scroll_to_me();
+        h.run_steps(8);
+        let name = format!("260-nuclear-balance-{tag}");
+        shot(&mut h, &name);
+        std::fs::copy(
+            out_dir().join(format!("{name}.png")),
+            dir.join(format!("{name}.png")),
+        )
+        .unwrap();
+    }
+    let _ = std::fs::remove_dir_all(&user);
+}

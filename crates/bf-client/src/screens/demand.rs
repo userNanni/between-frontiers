@@ -26,7 +26,7 @@ pub struct DemandUi {
 }
 
 fn pct(i18n: &I18n, x: f64) -> String {
-    format!("{} %", i18n.decimal(x * 100.0, 2))
+    crate::text::pct_text(i18n, i18n.decimal(x * 100.0, 2))
 }
 
 /// A state's name: the interface's or the map's, found by key; the key itself as a last resort.

@@ -56,7 +56,7 @@ const TRIBUTE_STEP: i32 = 5;
 const MONEY_MAX: i32 = 1000;
 
 fn pct(i18n: &I18n, per_mille: f64) -> String {
-    format!("{} %", i18n.decimal(per_mille / 10.0, 1))
+    crate::text::pct_text(i18n, i18n.decimal(per_mille / 10.0, 1))
 }
 
 /// The proposal the draft makes: what the target gives the player.

@@ -1,6 +1,7 @@
 //! The "Balance of deterrence" panel (`nuclear_view`), on the crisis and the war screens: each
 //! side's second strike against what the other holds as unacceptable, who is secure, how far each
-//! can climb, and the risk per week of a direct war. Read only.
+//! can climb, and the risk per week of a direct war. The player's side is framed, the other
+//! beside it. Read only.
 
 use bf_i18n::{Arg, I18n};
 use egui::{RichText, Ui};
@@ -14,9 +15,13 @@ fn arg(s: String) -> Arg<'static> {
     Arg::String(s)
 }
 
-fn side(ui: &mut Ui, i18n: &I18n, s: &PanelSide) {
+fn side(ui: &mut Ui, i18n: &I18n, s: &PanelSide, mine: bool) {
     let name = country_name(i18n, &s.tag);
-    bf_ui_kit::caption(ui, &name);
+    ui.strong(if mine {
+        i18n.tr_args("war-support-you", &[("country", arg(name))])
+    } else {
+        name
+    });
     let warheads = if s.opaque {
         i18n.tr_args(
             "nuclear-warheads-opaque",
@@ -75,8 +80,23 @@ fn side(ui: &mut Ui, i18n: &I18n, s: &PanelSide) {
 pub fn show(ui: &mut Ui, i18n: &I18n, p: &Panel) {
     bf_ui_kit::gap(ui, space::XS);
     bf_ui_kit::heading(ui, &i18n.tr("nuclear-balance"));
-    for s in &p.sides {
-        side(ui, i18n, s);
+    // The player's side first, framed as in the war support; the other beside it when there
+    // is room, under it when not.
+    let mine = |ui: &mut Ui| {
+        egui::Frame::new()
+            .stroke(egui::Stroke::new(1.0, color::ACCENT))
+            .corner_radius(4.0)
+            .inner_margin(egui::Margin::same(8))
+            .show(ui, |ui| side(ui, i18n, &p.sides[0], true));
+    };
+    if ui.available_width() >= 680.0 {
+        bf_ui_kit::columns(ui, 2, |cols| {
+            mine(&mut cols[0]);
+            side(&mut cols[1], i18n, &p.sides[1], false);
+        });
+    } else {
+        mine(ui);
+        side(ui, i18n, &p.sides[1], false);
     }
     let summary = if p.mutual {
         i18n.tr_args(

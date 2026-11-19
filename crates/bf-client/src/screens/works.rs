@@ -41,7 +41,7 @@ fn state_name(i18n: &I18n, world: Option<&crate::world::World>, state: u16) -> S
 
 /// What holds a work back, with how much is missing and when it clears.
 fn bottleneck_line(i18n: &I18n, r: &WorkRow) -> Option<String> {
-    let share = |x: f64| format!("{} %", i18n.decimal(x * 100.0, 0));
+    let share = |x: f64| crate::text::pct_text(i18n, i18n.decimal(x * 100.0, 0));
     let key = match r.bottleneck {
         Bottleneck::None => return None,
         Bottleneck::Cement => "works-held-cement",
@@ -215,7 +215,10 @@ pub fn show(ui: &mut Ui, cx: &mut TabContext<'_>) {
             "works-progress",
             &[(
                 "done",
-                arg(format!("{} %", i18n.decimal(r.progress * 100.0, 0))),
+                arg(crate::text::pct_text(
+                    i18n,
+                    i18n.decimal(r.progress * 100.0, 0),
+                )),
             )],
         )];
         // With a bottleneck the weeks come in its line, at this pace and once it clears.
