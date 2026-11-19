@@ -77,6 +77,10 @@ pub struct CompositionView {
     pub target: Option<(u32, u32)>,
     /// (unit key, elements ordered, delivered, weeks stalled) of each conversion.
     pub converting: Vec<(String, f64, f64, u32)>,
+    /// A type the country equips moves on wheels, and one on tracks: without one, that part
+    /// of the target stays unconverted.
+    pub wheels_type: bool,
+    pub tracks_type: bool,
 }
 
 /// The queue and the formations of `c`, to know when the forces changed.
@@ -312,7 +316,13 @@ pub fn read(
         let newest = military
             .unit(&rule.from_unit)
             .and_then(|ty| bf_sim::war::system::newest_generation(military, world, ci, ty));
+        let newest_of = |ty: u16| bf_sim::war::system::newest_generation(military, world, ci, ty);
+        let has = |class| {
+            bf_sim::war::composition::class_unit(military, rule, class, &newest_of).is_some()
+        };
         CompositionView {
+            wheels_type: has(bf_sim::war::Mobility::Wheeled),
+            tracks_type: has(bf_sim::war::Mobility::Tracked),
             wheels: share(w),
             tracks: share(t),
             fixed,

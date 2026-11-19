@@ -83,6 +83,12 @@ fn composition(ui: &mut Ui, cx: &mut TabContext<'_>) {
         None => i18n.tr("composition-target-none"),
     };
     ui.label(target);
+    if cv.target.is_some() && !cv.wheels_type {
+        bf_ui_kit::small(ui, &i18n.tr("composition-no-wheels"));
+    }
+    if cv.target.is_some() && !cv.tracks_type {
+        bf_ui_kit::small(ui, &i18n.tr("composition-no-tracks"));
+    }
     for (unit, ordered, delivered, stalled) in &cv.converting {
         let mut line = i18n.tr_args(
             "composition-converting",

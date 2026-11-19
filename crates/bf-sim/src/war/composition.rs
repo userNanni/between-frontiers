@@ -214,6 +214,39 @@ pub fn vehicle_goods(rule: &CompositionRule, cat: &crate::econ::Catalogue) -> Ve
     rule.vehicles.iter().filter_map(|k| cat.good(k)).collect()
 }
 
+/// The type and generation a conversion lays down to fill the bucket of `class` (wheels or
+/// tracks): of the rule's two types, the one named for the class first, the newest generation
+/// the country equips whose mobility is that class. A generation that moved to another class
+/// (the mechanized infantry on tracks from the second generation) does not fill this bucket;
+/// an older one of the right class may (the mechanized infantry on lorries). `None`: no type
+/// of the class the country can equip, and the bucket stays unconverted.
+pub fn class_unit(
+    mil: &Military,
+    rule: &CompositionRule,
+    class: Mobility,
+    newest: &dyn Fn(u16) -> Option<u8>,
+) -> Option<(u16, u8)> {
+    let order = if class == Mobility::Wheeled {
+        [&rule.wheels_unit, &rule.tracks_unit]
+    } else {
+        [&rule.tracks_unit, &rule.wheels_unit]
+    };
+    for key in order {
+        let Some(ty) = mil.unit(key) else {
+            continue;
+        };
+        let Some(top) = newest(ty) else {
+            continue;
+        };
+        for g in (0..=top).rev() {
+            if mil.spec(ty, usize::from(g)).mobility == class {
+                return Some((ty, g));
+            }
+        }
+    }
+    None
+}
+
 /// The year's new conversions of `country` toward the target: the government's when fixed,
 /// the rule's otherwise (the target of the newest generation `newest` gives for the infantry).
 /// At most `per_year` of the land men a year, never more than the infantry at home, and only
@@ -227,11 +260,7 @@ pub fn compose(
     newest: &dyn Fn(u16) -> Option<u8>,
     conversions: &mut Vec<Conversion>,
 ) {
-    let (Some(from), Some(wty), Some(tty)) = (
-        mil.unit(&rule.from_unit),
-        mil.unit(&rule.wheels_unit),
-        mil.unit(&rule.tracks_unit),
-    ) else {
+    let Some(from) = mil.unit(&rule.from_unit) else {
         return;
     };
     let Some((tw, tt)) = target(rule, fixed, newest(from)) else {
@@ -248,12 +277,16 @@ pub fn compose(
     }
     let gap =
         |target: u32, have: Fixed| (all.mul_ratio(i64::from(target), 1000) - have).max(Fixed::ZERO);
-    let mut gw = if newest(wty).is_some() {
+    // Each bucket by the class of mobility it counts: the type laid down is one whose
+    // generation moves on that class, so a conversion fills the bucket it was asked for.
+    let wheel = class_unit(mil, rule, Mobility::Wheeled, newest);
+    let track = class_unit(mil, rule, Mobility::Tracked, newest);
+    let mut gw = if wheel.is_some() {
         gap(tw, wheels)
     } else {
         Fixed::ZERO
     };
-    let mut gt = if newest(tty).is_some() {
+    let mut gt = if track.is_some() {
         gap(tt, tracks)
     } else {
         Fixed::ZERO
@@ -277,13 +310,16 @@ pub fn compose(
         gw = gw.mul_div(cap, want);
         gt = cap - gw;
     }
-    for (unit, n) in [(&rule.wheels_unit, gw), (&rule.tracks_unit, gt)] {
+    for (pick, n) in [(wheel, gw), (track, gt)] {
+        let Some((ty, generation)) = pick else {
+            continue;
+        };
         if n.is_positive() {
             conversions.push(Conversion {
                 country,
-                unit: unit.clone(),
+                unit: mil.types[ty as usize].key.clone(),
                 from: rule.from_unit.clone(),
-                generation: None,
+                generation: Some(generation),
                 ordered: n,
                 delivered: Fixed::ZERO,
                 stalled: 0,

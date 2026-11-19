@@ -9,7 +9,7 @@ use laplace_schelling::Weekday;
 use laplace_schelling::schedule::{Access, Cadence, System, TickCtx};
 
 use super::calc::{AgeBand, apportion, mobilizable};
-use super::catalogue::{Domain, Military};
+use super::catalogue::{Domain, Military, Mobility};
 use super::state::{CountryWar, Formation, PeaceRules, PeaceSize, WAR, men};
 use crate::game::GameWorld;
 use crate::politics::Politics;
@@ -275,6 +275,7 @@ impl Forces {
         c: &mut CountryWar,
         mut money: Fixed,
         prices: &[Fixed],
+        mut class_room: Option<(Fixed, Fixed)>,
     ) {
         let mil = &self.military;
         let per_week = Fixed::from_ratio(1, 52 * i64::from(self.peace.modernize_years.max(1)));
@@ -309,6 +310,26 @@ impl Forces {
             let mut moved = f.elements * per_week;
             if unit_cost.is_positive() {
                 moved = moved.min(money / unit_cost);
+            }
+            // A newer generation on another class of mobility (the mechanized infantry from
+            // lorries to tracks) moves only as far as the composition's target of that class
+            // has room: the modernization does not overfill a bucket the conversions keep.
+            let (from_class, to_class) = (
+                mil.spec(f.unit, f.generation as usize).mobility,
+                mil.spec(f.unit, next).mobility,
+            );
+            if let Some((rw, rt)) = class_room.as_mut()
+                && from_class != to_class
+            {
+                let room = match to_class {
+                    Mobility::Wheeled => Some(rw),
+                    Mobility::Tracked => Some(rt),
+                    _ => None,
+                };
+                if let Some(room) = room {
+                    moved = moved.min(*room);
+                    *room -= moved.max(Fixed::ZERO);
+                }
             }
             if !moved.is_positive() {
                 continue;
@@ -761,7 +782,25 @@ impl Forces {
             };
         }
         if spare.is_positive() && !c.mobilized {
-            self.modernize(world, ci, &mut c, spare * weeks, &m.price);
+            // The room left in each class of the composition's target, while it runs.
+            let class_room = self
+                .fight
+                .as_ref()
+                .and(self.peace.composition.as_ref())
+                .and_then(|rule| {
+                    let from = mil.unit(&rule.from_unit)?;
+                    let (tw, tt) = super::composition::target(
+                        rule,
+                        world.war.composition.fixed_of(ci as u16),
+                        newest(from),
+                    )?;
+                    let (w, t, all) = super::composition::now(mil, &c, &conversions);
+                    Some((
+                        (all.mul_ratio(i64::from(tw), 1000) - w).max(Fixed::ZERO),
+                        (all.mul_ratio(i64::from(tt), 1000) - t).max(Fixed::ZERO),
+                    ))
+                });
+            self.modernize(world, ci, &mut c, spare * weeks, &m.price, class_room);
         }
         let (mut orders, mut repair) = needs(&c);
         for o in &c.queue {

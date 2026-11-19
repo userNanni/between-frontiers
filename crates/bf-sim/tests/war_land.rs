@@ -499,8 +499,22 @@ fn composition_check_1939_and_1944() {
                     })
                     .sum();
                 let m = &w.econ.markets[ci];
+                // The military budget's room over the country's GDP, a year.
+                let gdp = if m.gdp_last_year.is_positive() {
+                    m.gdp_last_year
+                } else {
+                    m.gdp_running
+                };
+                let room = bf_sim::econ::public::military_room(m, &base.catalogue);
+                let room_gdp = if gdp.is_positive() {
+                    (room * 52 * 1000 / gdp).to_f64_lossy() / 10.0
+                } else {
+                    0.0
+                };
                 println!(
-                    "{label} {year} {tag}: by type wheels {:.1}% tracks {:.1}% | equipped wheels {:.1}% tracks {:.1}% | of {at} men | fill {:?} | waiting {waiting:?} | lacking {lack:?} lots | bought automobiles {:?} armored {:?} | automobiles price {:?}",
+                    "{label} {year} {tag}: military room {room_gdp:.2}% of GDP | armored supply {:?} demand {:?} | by type wheels {:.1}% tracks {:.1}% | equipped wheels {:.1}% tracks {:.1}% | of {at} men | fill {:?} | waiting {waiting:?} | lacking {lack:?} lots | bought automobiles {:?} armored {:?} | automobiles price {:?}",
+                    m.supply[armored],
+                    m.demand[armored],
                     wt as f64 * 100.0 / at.max(1) as f64,
                     tt as f64 * 100.0 / at.max(1) as f64,
                     pc(we),
@@ -627,4 +641,67 @@ fn without_room_the_infantry_does_not_motorize() {
         "the rule asked for conversions"
     );
     assert!(w.war.composition.of(gbr).all(|x| x.stalled > 0));
+}
+
+/// No bucket of the composition passes its target by more than a year's step (20 per mille):
+/// a conversion asked for wheels lays down a type that moves on wheels, and the modernization
+/// does not move a type to another class past that class's target (the defect of the first
+/// review: the mechanized infantry of the second generation counted on tracks, so the wheels
+/// never filled and the tracks went to three times their target).
+fn no_bucket_passes_its_target(until: i32) {
+    let d = data();
+    let mil = &d.war.as_ref().unwrap().military;
+    let rule = d
+        .war
+        .as_ref()
+        .unwrap()
+        .peace
+        .as_ref()
+        .unwrap()
+        .composition
+        .clone()
+        .unwrap();
+    let from = mil.unit(&rule.from_unit).unwrap();
+    let mut s = Session::new(
+        d.new_world(),
+        1925,
+        Date::new(1925, 1, 1),
+        2,
+        Some(d.rules()),
+    );
+    for year in 1926..=until {
+        s.sim.run_until(Date::new(year, 6, 1));
+        let w = s.world();
+        for tag in ["USA", "GER"] {
+            let ci = index(w, tag) as usize;
+            let g = bf_sim::war::system::newest_generation(mil, w, ci, from);
+            let Some((tw, tt)) = bf_sim::war::composition::target(&rule, None, g) else {
+                continue;
+            };
+            let (wh, tr, all) = land_shares(w, mil, ci);
+            if all == 0 {
+                continue;
+            }
+            let step = 20;
+            assert!(
+                wh * 1000 <= (i64::from(tw) + step) * all,
+                "{tag} {year}: wheels {wh} of {all} over {tw} per mille"
+            );
+            assert!(
+                tr * 1000 <= (i64::from(tt) + step) * all,
+                "{tag} {year}: tracks {tr} of {all} over {tt} per mille"
+            );
+        }
+    }
+}
+
+#[test]
+fn no_bucket_passes_its_target_to_1946() {
+    no_bucket_passes_its_target(1946);
+}
+
+#[test]
+#[ignore = "35 years; run in a bench slot"]
+fn no_bucket_passes_its_target_to_1960() {
+    no_bucket_passes_its_target(1960);
 }
