@@ -317,7 +317,9 @@ mudar a lei move a taxa a partir dali pelo tamanho do degrau, nunca abaixo de ze
 (`customs::Duties`).
 
 **O que a tarifa faz.**
-- **Receita.** Toda semana o país recolhe a taxa sobre o valor do que importou, ao preço que os
+- **Receita.** Toda semana o país recolhe a taxa sobre o valor do que importou de cada parceiro,
+  a troca de variedades do comércio bruto incluída, a preço de base (o preço mundial na fronteira;
+  `customs::imports_by_buyer`). Sem o comércio por par, sobre a importação líquida ao preço que os
   compradores pagaram. O dinheiro sai do fundo do mercado, para onde foi o pagamento das
   importações, e entra no Tesouro, contado na receita da semana (`customs::pay`). Nada se cria:
   a soma mundial de fundos e tesouros não muda (teste `customs_duties.rs`).
@@ -364,12 +366,31 @@ para a reação ser pequena:
 - a planta nova sai do investimento, que leva anos (`construction`);
 - a tarifa é uma só para todos os bens até o passo 2 (a tabela por grupo), e protege o insumo
   junto com o produto;
-- o comércio é pequeno (1,5 % do PIB, docs/economy.pt-BR.md, "Aberto"), então a falta que a tarifa
-  cria pesa pouco no preço.
+- a tarifa age sobre a falta (o saldo); a troca de variedades do comércio bruto já responde à tarifa
+  da lei pela preferência entre origens (σ = 5), com a chave desligada ou ligada. No Reino Unido,
+  `free_trade` → `protective_tariffs` leva o comércio de 15,0 % a 12,6 % do PIB em 1926 com a chave
+  desligada e a 11,6 % ligada: os dois canais se somam pouco, sem contar a proteção duas vezes.
 
-**Para julgar.** A receita aduaneira sobre as importações, por país e no mundo, contra a taxa de
-1925 (`BF_DIAG_CONSERVE=<anos>` imprime a média mundial com a chave ligada). O custo é medido pelo
-relógio no trecho.
+**A receita, com o volume de comércio novo** (`BF_DIAG_DUTIES`, 1926, chave ligada):
+
+| país | tarifa | receita / PIB | importação / PIB |
+|---|---|---|---|
+| Brasil | 26 % | 4,33 % | 16,6 % |
+| Argentina | 15 % | 1,99 % | 13,3 % |
+| Austrália | 16 % | 1,36 % | 8,5 % |
+| Índia | 15 % | 0,91 % | 6,1 % |
+| Itália | 8 % | 0,72 % | 9,0 % |
+| Reino Unido | 9 % | 0,71 % | 7,9 % |
+| Japão | 7 % | 0,45 % | 6,5 % |
+| França | 7 % | 0,43 % | 6,2 % |
+| Alemanha | 6 % | 0,40 % | 6,6 % |
+| Estados Unidos | 14 % | 0,12 % | 0,9 % |
+| mundo (`BF_DIAG_CONSERVE`) | 10,8 % | 0,83 % | — |
+
+A referência é de 1 a 3 % do PIB nos anos 1920 nos países com dado, e cerca de 0,6 % nos Estados
+Unidos. A taxa é a de 1925 de cada país; o que falta é importação: os Estados Unidos importam 0,9 %
+do PIB contra perto de 4,5 % reais, e o Reino Unido 7,9 % contra perto de 25 %. É a distribuição do
+comércio bruto entre países (seção 14), não a tarifa.
 
 ## 14. O volume do comércio
 

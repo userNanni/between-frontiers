@@ -539,15 +539,11 @@ pequeno.
   2005, 0,83 → 0,69 em 2025). A dívida pública sobe de 7 a 10 pontos do PIB, e a população quase
   não muda. Por decisão do dono (2026-11-18, M1), o conserto entrou assim; o PIB baixo do fim do
   século vai para o equilíbrio, depois das fases.
-- **Comércio mundial baixo (fila de equilíbrio, não meta agora).** Exportações mais importações
-  dão 2,3 % do PIB mundial em 1925 na `main` (`BF_DIAG_TRADE`), contra 14,8 % reais (Klasing e
-  Milionis), e 1,4 % em 2025 contra cerca de 55 %. As importações são 1,5 % do PIB
-  (`BF_DIAG_CONSERVE`). Por isso a tarifa de 9 % médios arrecada 0,2 % do PIB, contra 1 a 3 %
-  reais (docs/trade.pt-BR.md, seção 13). É volume de comércio, não tarifa. Candidatos a estudar:
-  - o comércio só fecha o saldo de cada mercado (sem comércio dentro da mesma indústria);
-  - o alcance de 85 % do saldo por semana (`trade.reach`);
-  - a inércia do parceiro;
-  - a margem, que fica com 55 a 63 % do valor comerciado.
+- **Comércio mundial: o volume foi tratado (decisão V1 do dono).** O alcance a 100 % (#228) e o
+  comércio bruto (#231, #234) levam o comércio mundial de 2,3 % para 15,0 % do PIB em 1925 (real
+  14,8 %; docs/trade.pt-BR.md, seção 14). Fica na fila a distribuição entre países: Estados Unidos
+  6,7 % e Reino Unido 14 % contra cerca de 10 % e 40 % reais, e por isso a receita aduaneira dos
+  dois fica abaixo da real (seção 13).
 - **Eletricidade de 1925 (0,48 da referência).** As plantas nascem no primeiro método de cada
   edifício; a eletrificação de 1925 (motores, linhas de montagem, bondes) teria de entrar no setup
   pela eletricidade de cada país em `industry.ron`.
