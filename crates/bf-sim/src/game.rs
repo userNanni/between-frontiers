@@ -983,6 +983,11 @@ pub struct Switches {
     /// clause of an agreement in force (`TreatyState::customs_unions`), services and finance
     /// trade by pair like the tradable goods. Off: they are sold only at home.
     pub union_services: bool,
+    /// Gross trade (`econ::week::Week::gross`, docs/trade.pt-BR.md, section 14): every market
+    /// buys abroad the share of what it both makes and uses that its preferences give the foreign
+    /// sellers against its own product (Armington, with `trade.home_bias`), on top of its
+    /// shortage. Needs `trade_by_pair`. Off: only shortages and surpluses trade.
+    pub trade_gross: bool,
     /// The war on land in the tick (`war::fight`, docs/war.pt-BR.md, "A guerra no tick"):
     /// fronts, combat, advance and control. Needs `forces`; a declared war without it only
     /// mobilizes.
@@ -1025,6 +1030,7 @@ impl Switches {
         "schooling",
         "small_market_wage_floor",
         "trade_by_pair",
+        "trade_gross",
         "treaties_in_force",
         "union_services",
         "war",
@@ -1049,6 +1055,7 @@ impl Switches {
             "schooling" => self.schooling = true,
             "small_market_wage_floor" => self.small_market_wage_floor = true,
             "trade_by_pair" => self.trade_by_pair = true,
+            "trade_gross" => self.trade_gross = true,
             "treaties_in_force" => self.treaties_in_force = true,
             "union_services" => self.union_services = true,
             "war" => self.war = true,
@@ -1119,6 +1126,7 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
             by_pair: switches.trade_by_pair,
             treaty_tariffs: switches.treaties_in_force && switches.trade_by_pair,
             union_services: switches.union_services && switches.trade_by_pair,
+            gross: switches.trade_gross && switches.trade_by_pair,
             wage_floor: switches.small_market_wage_floor,
             // The week reads the stakes whenever a rule can make them: the funds abroad, or the
             // colony's plants at independence.

@@ -94,6 +94,9 @@ pub struct Week {
     pub treaty_tariffs: bool,
     /// Services across a customs union in force (`game::Switches::union_services`).
     pub union_services: bool,
+    /// Gross trade (`game::Switches::trade_gross`): every market buys abroad a share of what it
+    /// both makes and uses, not only its shortage.
+    pub gross: bool,
     /// `game::Switches::small_market_wage_floor`.
     pub wage_floor: bool,
     /// `game::Switches::fiscal_capacity`: a state short of servants collects less
@@ -867,6 +870,11 @@ impl Week {
                     world.countries.iter().map(|(_, c)| c.tag.clone()).collect();
                 world.treaties.tariff_relations(&tags, &date)
             });
+            // With gross trade, each buyer's own product is among its sellers, at its price
+            // index with no freight nor tariff, weighed by the home bias.
+            let home = self
+                .gross
+                .then(|| Fixed::from_f64_lossy(f64::from(cat.trade.home_bias)));
             let eq = super::trade::equilibrium(
                 cat,
                 geo,
@@ -874,6 +882,7 @@ impl Week {
                 &factors,
                 &date,
                 links.as_deref(),
+                home,
             );
             let lambda = Fixed::from_f64_lossy(f64::from(cat.trade.monthly_step));
             super::trade::step(&econ.trade.pref, &eq, lambda)
@@ -884,84 +893,113 @@ impl Week {
         // The pairs closed this week, once (the closures compare dates as text).
         let closed = geo.and_then(|g| g.closed_on(&date, nm));
         let is_closed = |s: usize, b: usize| closed.as_ref().is_some_and(|c| c[s * nm + b]);
-        let (mut sellers, mut offered, mut buyers, mut sought) =
-            (Vec::new(), Vec::new(), Vec::new(), Vec::new());
-        let mut pref: Vec<Fixed> = Vec::new();
-        let mut clear = super::trade::ClearBuffers::default();
-        for gi in 0..g {
-            if !cat.goods[gi].tradable {
-                continue;
-            }
-            sellers.clear();
-            offered.clear();
-            buyers.clear();
-            sought.clear();
-            for mi in 0..nm {
-                let gap = supply[mi][gi] - demand[mi][gi];
-                if gap > Fixed::ZERO {
-                    sellers.push(mi);
-                    offered.push(gap * reach);
-                } else if gap < Fixed::ZERO {
-                    buyers.push(mi);
-                    sought.push(-gap * reach);
+        // Each tradable good clears on its own, in parallel: the flows are merged after, in the
+        // order of the goods, so the sums are the same integers as one good after the other.
+        let sparse = prefs;
+        let goods: Vec<Option<GoodFlows>> = (0..g)
+            .into_par_iter()
+            .map_init(GoodBuffers::default, |buf, gi| {
+                if !cat.goods[gi].tradable {
+                    return None;
                 }
-            }
-            if sellers.is_empty() || buyers.is_empty() {
-                continue;
-            }
-            // How much each buyer leans toward each seller: the month's preference in the
-            // good's group; a buyer with none toward any seller of the good leans equally.
-            let base = cat.goods[gi].base_price;
-            let k = cat.good_group[gi].map(usize::from);
-            // By buyer, then seller (`trade::clear_good_flat`).
-            let (ns, nb) = (sellers.len(), buyers.len());
-            pref.clear();
-            pref.resize(ns * nb, Fixed::ZERO);
-            for (b, &bm) in buyers.iter().enumerate() {
-                let row = &mut pref[b * ns..(b + 1) * ns];
-                let table = k
-                    .map(|k| bm * groups + k)
-                    .filter(|&r| r < pref_rows)
-                    .map(|r| &pref_table[r * nm..(r + 1) * nm]);
-                let mut any = false;
-                for (s, &sm) in sellers.iter().enumerate() {
-                    // A closed pair trades nothing from the week it closes.
-                    if is_closed(sm, bm) {
-                        continue;
+                let k = cat.good_group[gi].map(usize::from);
+                let table_of = |bm: usize| {
+                    k.map(|k| bm * groups + k)
+                        .filter(|&r| r < pref_rows)
+                        .map(|r| (r, &pref_table[r * nm..(r + 1) * nm]))
+                };
+                buf.sellers.clear();
+                buf.offered.clear();
+                buf.buyers.clear();
+                buf.sought.clear();
+                for mi in 0..nm {
+                    let gap = supply[mi][gi] - demand[mi][gi];
+                    if gap > Fixed::ZERO {
+                        buf.sellers.push(mi);
+                        buf.offered.push(gap * reach);
+                    } else if gap < Fixed::ZERO {
+                        buf.buyers.push(mi);
+                        buf.sought.push(-gap * reach);
                     }
-                    let v = table.map_or(Fixed::ONE, |t| t[sm]);
-                    row[s] = v;
-                    any |= v > Fixed::ZERO;
                 }
-                if !any {
-                    for (s, &sm) in sellers.iter().enumerate() {
-                        if !is_closed(sm, bm) {
-                            row[s] = Fixed::ONE;
+                let mut value = Vec::new();
+                if self.gross {
+                    let rows = (&pref_table[..], pref_rows, sparse);
+                    let at = (gi, cat.goods[gi].base_price, k.map(|k| (k, groups)));
+                    swap(at, (supply, demand), rows, &is_closed, &mut value);
+                }
+                if buf.sellers.is_empty() || buf.buyers.is_empty() {
+                    return (!value.is_empty()).then(|| GoodFlows {
+                        gi,
+                        sellers: Vec::new(),
+                        buyers: Vec::new(),
+                        exports: Vec::new(),
+                        imports: Vec::new(),
+                        value,
+                    });
+                }
+                // How much each buyer leans toward each seller: the month's preference in the
+                // good's group; a buyer with none toward any seller of the good leans equally.
+                // A market never buys from itself.
+                let (ns, nb) = (buf.sellers.len(), buf.buyers.len());
+                buf.pref.clear();
+                buf.pref.resize(ns * nb, Fixed::ZERO);
+                for (b, &bm) in buf.buyers.iter().enumerate() {
+                    let row = &mut buf.pref[b * ns..(b + 1) * ns];
+                    let table = table_of(bm).map(|(_, t)| t);
+                    let mut any = false;
+                    for (s, &sm) in buf.sellers.iter().enumerate() {
+                        // A closed pair trades nothing from the week it closes.
+                        if sm == bm || is_closed(sm, bm) {
+                            continue;
+                        }
+                        let v = table.map_or(Fixed::ONE, |t| t[sm]);
+                        row[s] = v;
+                        any |= v > Fixed::ZERO;
+                    }
+                    if !any {
+                        for (s, &sm) in buf.sellers.iter().enumerate() {
+                            if sm != bm && !is_closed(sm, bm) {
+                                row[s] = Fixed::ONE;
+                            }
+                        }
+                    }
+                    // Scaled so that the favourite seller has 1: nothing to do when it already
+                    // has (`v / 1 = v`), else `v / top` for every seller, by one reciprocal.
+                    let top = row.iter().copied().max().unwrap_or(Fixed::ZERO);
+                    if top > Fixed::ZERO && top != Fixed::ONE {
+                        super::trade::scale_to(row, top);
+                    }
+                }
+                super::trade::clear_good_flat(&buf.offered, &buf.sought, &buf.pref, &mut buf.clear);
+                let base = cat.goods[gi].base_price;
+                for s in 0..ns {
+                    let row = &buf.clear.flow[s * nb..(s + 1) * nb];
+                    for (b, q) in row.iter().enumerate() {
+                        if *q > Fixed::ZERO {
+                            value.push((buf.sellers[s] * nm + buf.buyers[b], *q * base));
                         }
                     }
                 }
-                // Scaled so that the favourite seller has 1: nothing to do when it already has
-                // (`v / 1 = v`), else `v / top` for every seller, by one reciprocal.
-                let top = row.iter().copied().max().unwrap_or(Fixed::ZERO);
-                if top > Fixed::ZERO && top != Fixed::ONE {
-                    super::trade::scale_to(row, top);
-                }
+                Some(GoodFlows {
+                    gi,
+                    sellers: buf.sellers.clone(),
+                    buyers: buf.buyers.clone(),
+                    exports: buf.clear.exports.clone(),
+                    imports: buf.clear.imports.clone(),
+                    value,
+                })
+            })
+            .collect();
+        for f in goods.into_iter().flatten() {
+            for (pair, v) in f.value {
+                trade_value[pair] += v;
             }
-            super::trade::clear_good_flat(&offered, &sought, &pref, &mut clear);
-            let (exports, imports) = (&clear.exports, &clear.imports);
-            for s in 0..ns {
-                let row = &clear.flow[s * nb..(s + 1) * nb];
-                for (b, q) in row.iter().enumerate() {
-                    if *q > Fixed::ZERO {
-                        trade_value[sellers[s] * nm + buyers[b]] += *q * base;
-                    }
-                }
+            for (k, &mi) in f.sellers.iter().enumerate() {
+                trade[mi][f.gi] -= f.exports[k];
             }
-            for (k, &mi) in sellers.iter().enumerate() {
-                trade[mi][gi] = -exports[k];
-            }
-            for (k, &mi) in buyers.iter().enumerate() {
-                trade[mi][gi] = imports[k];
+            for (k, &mi) in f.buyers.iter().enumerate() {
+                trade[mi][f.gi] += f.imports[k];
             }
         }
         if self.union_services {
@@ -1546,5 +1584,90 @@ mod tests {
             }
         }
         compare(&world.econ);
+    }
+}
+
+/// The scratch of one good's clearing, one per worker (`Week::trade_by_pair`).
+#[derive(Default)]
+struct GoodBuffers {
+    sellers: Vec<usize>,
+    offered: Vec<Fixed>,
+    buyers: Vec<usize>,
+    sought: Vec<Fixed>,
+    pref: Vec<Fixed>,
+    clear: super::trade::ClearBuffers,
+}
+
+/// What one good's clearing leaves: each seller's exports and each buyer's imports, and the
+/// value of every pair's flow at base prices (`seller × markets + buyer`).
+struct GoodFlows {
+    gi: usize,
+    sellers: Vec<usize>,
+    buyers: Vec<usize>,
+    exports: Vec<Fixed>,
+    imports: Vec<Fixed>,
+    value: Vec<(usize, Fixed)>,
+}
+
+/// The month's preferences as a dense table (`trade::dense_flat`), its rows, and as kept.
+type PrefRows<'a> = (&'a [Fixed], usize, &'a [Vec<(u16, u16)>]);
+
+/// Gross trade's exchange of varieties (`game::Switches::trade_gross`, docs/trade.pt-BR.md,
+/// section 14), into `value` (`seller × markets + buyer`, at base prices). Of what a market both
+/// makes and uses, it buys abroad the share its preferences give the foreign sellers against its
+/// own product (Armington: each seller weighed by what it makes and the buyer's preference, the
+/// buyer's own product by the home bias in the month's preference), spread over those sellers
+/// by the same weights. It moves no good on net: what a market sends of a good is matched by
+/// what it keeps of its own, so only the balances clear physically (`trade::clear_good_flat`).
+/// It counts as trade: the pair's flows, the tariff and the influence read it, and a closed pair
+/// has none.
+fn swap(
+    (gi, base, group): (usize, Fixed, Option<(usize, usize)>),
+    (supply, demand): (&[Vec<Fixed>], &[Vec<Fixed>]),
+    (table, rows, sparse): PrefRows<'_>,
+    closed: &dyn Fn(usize, usize) -> bool,
+    value: &mut Vec<(usize, Fixed)>,
+) {
+    let Some((k, groups)) = group else {
+        return;
+    };
+    let nm = supply.len();
+    let mut weights: Vec<(usize, Fixed)> = Vec::new();
+    for b in 0..nm {
+        let both = supply[b][gi].min(demand[b][gi]);
+        let r = b * groups + k;
+        if both <= Fixed::ZERO || r >= rows {
+            continue;
+        }
+        let t = &table[r * nm..(r + 1) * nm];
+        weights.clear();
+        let mut foreign = Fixed::ZERO;
+        for &(sm, _) in &sparse[r] {
+            let sm = usize::from(sm);
+            if sm == b || closed(sm, b) || supply[sm][gi] <= Fixed::ZERO {
+                continue;
+            }
+            let w = supply[sm][gi] * t[sm];
+            if w > Fixed::ZERO {
+                weights.push((sm, w));
+                foreign += w;
+            }
+        }
+        if foreign <= Fixed::ZERO {
+            continue;
+        }
+        let abroad = both * (foreign / (foreign + supply[b][gi] * t[b]));
+        // `abroad × w / foreign` in one rounding (raw units: `a × w / f`), the reciprocal of
+        // `foreign` taken once by buyer and good (`trade::Divisor`).
+        let d = super::trade::Divisor::new(foreign.raw() as u64);
+        for &(sm, w) in &weights {
+            let q = match abroad.raw().checked_mul(w.raw()) {
+                Some(n) if n >= 0 => Fixed::from_raw(d.div_round(n as u64) as i64),
+                _ => abroad * (w / foreign),
+            };
+            if q > Fixed::ZERO {
+                value.push((sm * nm + b, q * base));
+            }
+        }
     }
 }
