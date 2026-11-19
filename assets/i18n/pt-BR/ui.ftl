@@ -307,6 +307,7 @@ research-all-fields = Todas as áreas
 
 ## Janela do governo
 bar-government = Governo
+bar-economy = Economia: prédios e obras
 gov-title = Governo
 gov-tab-budget = Orçamento
 gov-tab-money = Moeda e dívida

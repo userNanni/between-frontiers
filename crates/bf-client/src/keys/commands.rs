@@ -312,6 +312,7 @@ pub mod id {
 
     pub const POPULATION: &str = "window.population";
     pub const INFLUENCE: &str = "window.influence";
+    pub const ECONOMY: &str = "window.economy";
     pub const WAR: &str = "window.war";
     /// Scroll the open window's page down or up: what lies below the fold is reachable without
     /// the mouse (its key tips show once it is in view).
@@ -394,6 +395,9 @@ fn builtin() -> Vec<CommandDef> {
         CommandDef::new(JOURNAL, Windows).keys([k(KeyJ)]).hint('J'),
         CommandDef::new(POPULATION, Windows).keys([k(KeyY)]),
         CommandDef::new(INFLUENCE, Windows).keys([k(KeyI).shift()]),
+        CommandDef::new(ECONOMY, Windows)
+            .keys([k(KeyE).shift()])
+            .hint('E'),
         CommandDef::new(WAR, Windows).keys([k(KeyW).shift()]),
         CommandDef::new(SCROLL_DOWN, Windows).keys([k(PageDown).shift()]),
         CommandDef::new(SCROLL_UP, Windows).keys([k(PageUp).shift()]),

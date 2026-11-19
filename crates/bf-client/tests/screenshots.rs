@@ -2535,6 +2535,66 @@ fn influence_window() {
     let _ = std::fs::remove_dir_all(&user);
 }
 
+/// The economy window (Shift+E): Brazil's buildings in March 1925, all sectors, then light
+/// industry with its first kind opened on its states. Portuguese at 1600 × 900, English at
+/// 1280 × 720, and Portuguese at the floor.
+#[test]
+#[ignore = "needs a GPU (or software Vulkan) and the generated map; run with --ignored"]
+fn economy_window() {
+    use laplace_schelling::calendar::Date;
+    let user = std::env::temp_dir().join(format!("bf-shots-economy-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&user);
+    let session = advanced_session_of("BRA", Date::new(1925, 3, 1));
+    for (locale, size, name, light) in [
+        ("pt-BR", egui::vec2(1600.0, 900.0), "pt", "Indústria leve"),
+        ("en", egui::vec2(1280.0, 720.0), "en-1280", "Light industry"),
+        (
+            "pt-BR",
+            egui::vec2(960.0, 540.0),
+            "pt-960",
+            "Indústria leve",
+        ),
+    ] {
+        let home = user.join(name);
+        let save = write_campaign(&home, &session, "Economia", "BRA", &[]);
+        let mut h = harness_sized(home.clone(), locale, size);
+        let ctx = h.ctx.clone();
+        h.state_mut().apply(Transition::Game(save), &ctx);
+        h.run_steps(4);
+        h.key_press_modifiers(egui::Modifiers::SHIFT, egui::Key::E);
+        h.run_steps(4);
+        shot(&mut h, &format!("160-economy-buildings-{name}"));
+        let clicked = match h
+            .query_all(egui_kittest::kittest::by().label_contains(light))
+            .next()
+        {
+            Some(n) => {
+                n.click();
+                true
+            }
+            None => false,
+        };
+        if clicked {
+            h.run_steps(4);
+        }
+        let clicked = match h
+            .query_all(egui_kittest::kittest::by().label_contains("+ "))
+            .next()
+        {
+            Some(n) => {
+                n.click();
+                true
+            }
+            None => false,
+        };
+        if clicked {
+            h.run_steps(4);
+        }
+        shot(&mut h, &format!("161-economy-states-{name}"));
+    }
+    let _ = std::fs::remove_dir_all(&user);
+}
+
 /// The armed forces (phase 5, slice A): the government's forces tab of Britain in peace, and the
 /// journal's agenda with the decision to mobilize, asked and confirmed in two steps; then the
 /// mobilization under way, with the reservists who reported. Portuguese at 1600 × 900, English

@@ -1,0 +1,18 @@
+## Economy window: what the country has built
+cmd-window-economy = Economy: buildings and works
+    .short = Economy
+economy-title = Economy
+economy-tab-buildings = Buildings
+economy-waiting = The figures arrive at the end of the first week.
+economy-basis = What your country has built, by kind of building. Output and profit are per year, at this month's prices; use is the share of capacity that runs. Click a building to see its states and the method each one runs.
+economy-group-all = All
+economy-group-chip = { $group } · { $levels }
+economy-col-building = Building
+economy-col-levels = Levels
+economy-col-workers = Workers
+economy-col-output = Output
+economy-col-use = Use
+economy-col-profit = Profit
+economy-col-states = States
+economy-levels-building = { $levels } +{ $building }
+economy-none = No buildings in this sector.
