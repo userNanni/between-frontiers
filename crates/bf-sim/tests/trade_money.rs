@@ -1,8 +1,10 @@
-//! Trade makes no money (`econ::week::margin_transfers`): importers collect their own price and
-//! exporters are paid theirs, and the balance left goes back to the markets by their volume. The
-//! transfers add up to zero every week, with the pool and with trade by pair. The shares used
-//! to saturate `Fixed` and left most of the balance in the pools, about 0.7 % of world GDP a
-//! year.
+//! Trade makes and destroys no money (`econ::week::margin_transfers`): the clearing makes each
+//! market's buyers pay for what came in, which no plant there sold, and pays its plants for what
+//! left, which no buyer there bought, so it takes the market's balance out of its money; the
+//! transfer gives that balance back to the same pool, every week, with the pool and with trade by
+//! pair. Before, only the balance less a share of the world's came back, and the world's balance
+//! (the gap between importers' and exporters' prices, 0.35 to 0.5 % of world GDP a year) left
+//! the world's money.
 
 use std::path::PathBuf;
 use std::sync::OnceLock;
@@ -35,8 +37,24 @@ fn weeks_of_trade(switches: Switches) {
         s.sim.run_until(date);
         let e = &s.world().econ;
         let t = margin_transfers(&d.catalogue, &e.markets);
-        let made: Fixed = t.iter().copied().sum();
-        assert_eq!(made, Fixed::ZERO, "week of {date}: the margins made {made}");
+        for (mi, m) in e.markets.iter().enumerate() {
+            // What the clearing took out of this market's money for its trade.
+            let mut taken = Fixed::ZERO;
+            for gi in 0..d.catalogue.goods.len() {
+                let n = m.net_import[gi];
+                if n > Fixed::ZERO {
+                    taken += n * m.sell_ratio[gi] * m.price[gi];
+                } else if n < Fixed::ZERO {
+                    taken += n * m.buy_ratio[gi] * m.price[gi];
+                }
+            }
+            assert_eq!(
+                t[mi],
+                taken,
+                "week of {date}: market {mi}'s money changed by {} with its trade",
+                t[mi] - taken
+            );
+        }
         balance += t.iter().map(|x| x.abs()).sum::<Fixed>();
     }
     assert!(balance > Fixed::ZERO, "the margins moved some money");
