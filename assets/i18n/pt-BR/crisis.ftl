@@ -120,3 +120,6 @@ call-honour = Honrar…
 call-refuse = Não honrar…
 call-honour-confirm = Honrar entra na guerra e não se desfaz. Antes, fica salvo um ponto de restauração.
 call-refuse-confirm = Não honrar grava a quebra do acordo. Antes, fica salvo um ponto de restauração.
+
+crisis-coerced = Quem exige pode coagir: tem segundo golpe garantido e o alvo não. No periférico, o alvo cede com metade da força; o existencial ele não cede nunca.
+crisis-declare-blocked = A declaração está bloqueada: o alvo (ou quem o protege por cláusula de defesa) tem segundo golpe garantido, e você não. Contra ele, o teto é a crise; só resta recuar.

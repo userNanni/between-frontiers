@@ -184,6 +184,11 @@ const PLAYER: &[Surface] = &[
         files: &["screens/game.rs", "screens/treaty_table.rs"],
     },
     Surface {
+        variant: "NuclearTest",
+        command: id::TAB_FORCES,
+        files: &["screens/forces.rs"],
+    },
+    Surface {
         variant: "NuclearProgramme",
         command: id::TAB_FORCES,
         files: &["screens/forces.rs"],

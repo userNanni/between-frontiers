@@ -104,11 +104,31 @@ pub struct Programme {
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct NuclearState {
     pub programmes: Vec<Programme>,
+    /// N3: the countries that tested a weapon, sorted: their arsenal is known to all.
+    pub tested: Vec<u16>,
+    /// Tests asked for by command, checked the next week against the warheads held.
+    pub test_requests: Vec<u16>,
+    /// (demander, target) of the crises this week whose demander's ceiling against the target
+    /// is below war (`war::balance`): the declaration is blocked. Sorted.
+    pub blocked: Vec<(u16, u16)>,
 }
 
 impl NuclearState {
     pub fn is_empty(&self) -> bool {
         self.programmes.is_empty()
+            && self.tested.is_empty()
+            && self.test_requests.is_empty()
+            && self.blocked.is_empty()
+    }
+
+    /// Whether `country` tested a weapon (N3).
+    pub fn tested(&self, country: u16) -> bool {
+        self.tested.binary_search(&country).is_ok()
+    }
+
+    /// Whether `by`'s declaration on `target` is blocked by the nuclear ceiling.
+    pub fn blocked(&self, by: u16, target: u16) -> bool {
+        self.blocked.binary_search(&(by, target)).is_ok()
     }
 
     pub fn of(&self, country: u16) -> Option<&Programme> {
@@ -157,6 +177,37 @@ impl HashState for NuclearState {
             hash_goods(h, &p.buying);
             hash_goods(h, &p.research);
             h.write_u16(p.plant_wait);
+        }
+        // Only when any: a world without tests hashes as before them.
+        if !self.tested.is_empty() || !self.test_requests.is_empty() || !self.blocked.is_empty() {
+            h.write_len(self.tested.len());
+            for c in &self.tested {
+                h.write_u16(*c);
+            }
+            h.write_len(self.test_requests.len());
+            for c in &self.test_requests {
+                h.write_u16(*c);
+            }
+            h.write_len(self.blocked.len());
+            for (a, b) in &self.blocked {
+                h.write_u16(*a);
+                h.write_u16(*b);
+            }
+        }
+    }
+}
+
+/// [`NuclearState`] as version 37 of the world wrote it, before the tests and the crisis rung.
+#[derive(Clone, Debug, Default, Deserialize)]
+pub(crate) struct NuclearStateBeforeTests {
+    programmes: Vec<Programme>,
+}
+
+impl From<NuclearStateBeforeTests> for NuclearState {
+    fn from(n: NuclearStateBeforeTests) -> Self {
+        Self {
+            programmes: n.programmes,
+            ..Default::default()
         }
     }
 }

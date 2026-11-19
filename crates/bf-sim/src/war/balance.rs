@@ -154,9 +154,9 @@ pub fn balance(
     let n = &mil.rules.nuclear;
     let empty = CountryWar::default();
     let cw = |m: u16| world.war.countries.get(usize::from(m)).unwrap_or(&empty);
-    // No test exists yet: every arsenal but the reader's own is opaque (N3).
+    // Every arsenal but the reader's own and the tested ones is opaque (N3).
     let weight = |m: u16| {
-        if Some(m) == viewer {
+        if Some(m) == viewer || world.war.nuclear.tested(m) {
             1000
         } else {
             n.opaque_weight
@@ -216,7 +216,7 @@ pub fn balance(
                 country: a,
                 warheads: wa,
                 protectors: pa,
-                opaque: Some(a) != viewer,
+                opaque: Some(a) != viewer && !world.war.nuclear.tested(a),
                 unacceptable: sa.unacceptable,
                 side: sa,
             },
@@ -224,7 +224,7 @@ pub fn balance(
                 country: b,
                 warheads: wb,
                 protectors: pb,
-                opaque: Some(b) != viewer,
+                opaque: Some(b) != viewer && !world.war.nuclear.tested(b),
                 unacceptable: sb.unacceptable,
                 side: sb,
             },

@@ -1494,3 +1494,52 @@ pub fn v36_to_v37(w: V36) -> GameWorld {
         reserves: w.reserves,
     }
 }
+
+/// Version 37: the nuclear programmes (#257), before the nuclear tests and the crisis rung.
+#[derive(Deserialize)]
+pub struct V37 {
+    scenario: String,
+    player: Option<Id<Country>>,
+    countries: Table<Country, CountryState>,
+    census: Vec<CensusRecord>,
+    econ: crate::econ::Economy,
+    research: crate::research::ResearchState,
+    politics: crate::polity::PoliticsState,
+    demography: crate::demography::DemographyState,
+    borders: crate::borders::BordersState,
+    foreign: crate::foreign_stakes::ForeignState,
+    influence: crate::influence::InfluenceState,
+    treaties: crate::treaty::TreatyState,
+    war: crate::war::state::WarStateBeforeTests,
+    education: crate::demography::education::EducationState,
+    independence: crate::borders::independence::IndependenceState,
+    levers: crate::econ::levers::LeversState,
+    tariffs: crate::econ::customs::TariffState,
+    payments: crate::econ::payments::PaymentsState,
+    reserves: crate::econ::payments::ReservesState,
+}
+
+/// 37 → 38: the nuclear tests and the crisis rung (`NuclearState::tested`, `blocked`), none.
+pub fn v37_to_v38(w: V37) -> GameWorld {
+    GameWorld {
+        scenario: w.scenario,
+        player: w.player,
+        countries: w.countries,
+        census: w.census,
+        econ: w.econ,
+        research: w.research,
+        politics: w.politics,
+        demography: w.demography,
+        borders: w.borders,
+        foreign: w.foreign,
+        influence: w.influence,
+        treaties: w.treaties,
+        war: w.war.into(),
+        education: w.education,
+        independence: w.independence,
+        levers: w.levers,
+        tariffs: w.tariffs,
+        payments: w.payments,
+        reserves: w.reserves,
+    }
+}

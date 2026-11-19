@@ -84,6 +84,9 @@ pub struct ProgrammeView {
     pub plants: u32,
     pub fissile_price: f64,
     pub fissile_delivered: f64,
+    /// N3: the country tested a weapon; or asked for a test, to go through next week.
+    pub tested: bool,
+    pub test_asked: bool,
 }
 
 /// The programme of country `ci`, with its rule and the tree.
@@ -173,6 +176,8 @@ pub fn programme_view(
         plants,
         fissile_price: fissile.map_or(0.0, |g| f(m.price[g])),
         fissile_delivered: fissile.map_or(0.0, |g| f(m.buy_ratio[g])),
+        tested: world.war.nuclear.tested(ci as u16),
+        test_asked: world.war.nuclear.test_requests.contains(&(ci as u16)),
     })
 }
 

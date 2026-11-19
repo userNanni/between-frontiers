@@ -1372,6 +1372,10 @@ impl System<GameWorld> for Forces {
                 }
             }
         }
+        // The nuclear tests asked for, and the crises the nuclear ceiling blocks (N3, war on).
+        if self.fight.is_some() {
+            nuclear_week(&self.military, world);
+        }
         // The colonial wars (G6): a revolt of the last seven days opens one; under way, the
         // metropole lands men and the new country recruits.
         if let Some(k) = &colonial {
@@ -1381,6 +1385,40 @@ impl System<GameWorld> for Forces {
             }
         }
     }
+}
+
+/// A week of the nuclear rung: the tests asked for go through for a country holding a warhead
+/// (N3: its arsenal is known to all from then on), and every crisis whose demander's ceiling
+/// against its target is below war, as the demander reads the balance, is marked blocked.
+fn nuclear_week(mil: &Military, world: &mut GameWorld) {
+    let warhead = mil.unit("nuclear_warhead");
+    for c in std::mem::take(&mut world.war.nuclear.test_requests) {
+        let held = warhead.is_some_and(|ty| {
+            world.war.countries.get(usize::from(c)).is_some_and(|cw| {
+                cw.formations
+                    .iter()
+                    .any(|f| f.unit == ty && f.elements >= Fixed::ONE)
+            })
+        });
+        let t = &mut world.war.nuclear.tested;
+        if held && let Err(i) = t.binary_search(&c) {
+            t.insert(i, c);
+        }
+    }
+    let mut blocked: Vec<(u16, u16)> = world
+        .war
+        .conflicts
+        .crises
+        .iter()
+        .filter(|k| {
+            super::balance::balance(mil, world, k.by, k.target, Some(k.by))
+                .is_some_and(|b| b.limits.ceiling[0] < super::nuclear::Rung::War)
+        })
+        .map(|k| (k.by, k.target))
+        .collect();
+    blocked.sort_unstable();
+    blocked.dedup();
+    world.war.nuclear.blocked = blocked;
 }
 
 /// What the state buys in a week when it has forces. The civilian part of the state's basket

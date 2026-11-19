@@ -16,4 +16,8 @@
     // honouring the default) or betrayed.
     call_weeks: 2,
     lapsed_call_honours: true,
+    // N4 (the owner, 2026-11-19): against a demander that can coerce (a secure second strike the
+    // target lacks, as the target reads it), a peripheral demand is yielded to half the ratio of
+    // force; an existential one never.
+    nuclear_coercion: 500,
 )
