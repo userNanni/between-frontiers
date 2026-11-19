@@ -75,6 +75,8 @@ pub struct Snapshot {
     /// The player's buildings, state by state, read once a month and when the works queue
     /// changes (the economy window).
     pub buildings: Option<Arc<crate::buildings_view::BuildingsView>>,
+    /// Every state's figures, read once a month (the state panel).
+    pub states: Option<Arc<crate::state_view::StatesView>>,
     /// The blocs, read once a month, for the "Blocs" lens.
     pub blocs: Option<Arc<crate::blocs_view::BlocsView>>,
     /// The player's armed forces, read once a month; `None` without forces.
@@ -400,6 +402,7 @@ struct Monthly {
     crisis_draft: Option<Arc<crate::crisis_view::DraftWeighing>>,
     works: Option<Arc<crate::works_view::WorksView>>,
     buildings: Option<Arc<crate::buildings_view::BuildingsView>>,
+    states: Option<Arc<crate::state_view::StatesView>>,
     agreements: Option<Arc<crate::agreements_view::AgreementsView>>,
     trade: Option<Arc<crate::trade_view::TradeView>>,
     tariffs: Option<Arc<crate::tariff_view::TariffView>>,
@@ -449,6 +452,22 @@ fn buildings_of(
         _ => {
             let r = rules.as_ref()?;
             crate::buildings_view::read(w, tag, &r.catalogue, date).map(Arc::new)
+        }
+    }
+}
+
+/// Every state's figures, read again on a new month.
+fn states_of(
+    session: &Session,
+    rules: &Rules,
+    last: &Option<Arc<crate::state_view::StatesView>>,
+) -> Option<Arc<crate::state_view::StatesView>> {
+    let date = session.clock().date;
+    match last {
+        Some(v) if v.month == (date.year, date.month) => Some(Arc::clone(v)),
+        _ => {
+            let r = rules.as_ref()?;
+            crate::state_view::read(session.world(), &r.catalogue, date).map(Arc::new)
         }
     }
 }
@@ -758,6 +777,7 @@ impl Monthly {
             crisis_draft: draft_of(session, rules, extras, &last.crisis_draft),
             works: works_of(session, rules, &last.works),
             buildings: buildings_of(session, rules, &last.buildings),
+            states: states_of(session, rules, &last.states),
             agreements: agreements_of(session, rules, &last.agreements),
             trade: trade_of(session, &last.trade),
             tariffs: tariffs_of(session, rules, &last.tariffs),
@@ -808,6 +828,7 @@ fn snapshot_of(
         crisis_draft: monthly.crisis_draft,
         works: monthly.works,
         buildings: monthly.buildings,
+        states: monthly.states,
         agreements: monthly.agreements,
         trade: monthly.trade,
         tariffs: monthly.tariffs,

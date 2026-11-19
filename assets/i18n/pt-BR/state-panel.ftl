@@ -1,0 +1,23 @@
+## Painel do estado: o estado clicado no mapa, com o país acima
+state-panel-country = { $country } ›
+state-panel-up = Voltar ao país
+state-panel-none = A simulação não roda este estado.
+state-panel-colony = Colônia
+state-panel-gdp = PIB (estimado)
+state-panel-gdp-note = parte do PIB do país pela renda das famílias
+state-panel-income = Renda por pessoa
+state-panel-urban = Urbanização
+state-panel-buildings = Prédios: { $levels } níveis, produção de { $output } por ano
+state-panel-no-buildings = Nenhum prédio.
+state-panel-plant = { $levels } níveis · { $workers } empregados
+state-panel-more = e mais { $n } tipos de prédio (Economia › Prédios)
+state-panel-works = Em obra aqui: { $public } públicas, { $private } privadas
+state-panel-deposits = Jazidas conhecidas
+state-panel-no-deposits = Nenhuma jazida conhecida.
+state-panel-deposit = { $resource } { $size }/5
+state-panel-employed = Ocupados em prédios e no Estado
+state-panel-employed-share = { $share } da força de trabalho
+state-panel-subsistence = Na roça própria
+state-panel-subsistence-note = camponeses sem emprego em prédio, que vivem do que plantam
+state-panel-unemployment = Desemprego
+state-panel-unemployment-note = { $n } sem emprego, entre quem não é camponês
