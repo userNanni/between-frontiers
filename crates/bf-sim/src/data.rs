@@ -133,6 +133,10 @@ impl GameData {
         let candidates: Option<crate::borders::CandidatesFile> =
             optional(&data.join("borders/candidates.ron"))?;
         let politics = politics.map(Arc::new);
+        // The conduct of the war names interest groups and laws: checked here, at load.
+        if let Some(c) = war.as_ref().and_then(|w| w.conduct.clone()) {
+            crate::war::support::Conduct::resolve(c, politics.clone())?;
+        }
         let clauses: Option<crate::treaty::ClauseCatalogue> =
             optional(&data.join("diplomacy/clauses.ron"))?;
         let mut border_rules = crate::borders::BorderRules::new(
@@ -239,6 +243,44 @@ impl GameData {
             }
         }
         out
+    }
+
+    /// The state of each country's capital on the start date: of its metropolitan states, the
+    /// one whose centre lies nearest the capital (`capital_lon_lat`).
+    fn capital_states(&self) -> BTreeMap<String, u16> {
+        let meta = &self.map.meta;
+        let miller = |lat: f64| {
+            1.25 * (std::f64::consts::FRAC_PI_4 + 0.4 * lat.to_radians())
+                .tan()
+                .ln()
+        };
+        let (top, bottom) = (miller(meta.lat_top), miller(meta.lat_bottom));
+        let lon_lat = |c: (f32, f32)| {
+            let lon = f64::from(c.0) / f64::from(meta.width.max(1)) * 360.0 - 180.0;
+            let y = top - f64::from(c.1) / f64::from(meta.height.max(1)) * (top - bottom);
+            let lat = ((y / 1.25).exp().atan() - std::f64::consts::FRAC_PI_4) / 0.4;
+            (lon, lat.to_degrees())
+        };
+        let great_circle = |a: (f64, f64), b: (f64, f64)| {
+            let (la1, la2) = (a.1.to_radians(), b.1.to_radians());
+            let dl = (b.0 - a.0).to_radians();
+            let h = ((la2 - la1) / 2.0).sin().powi(2)
+                + la1.cos() * la2.cos() * (dl / 2.0).sin().powi(2);
+            2.0 * 6371.0 * h.sqrt().asin()
+        };
+        self.countries
+            .countries
+            .iter()
+            .filter_map(|c| {
+                self.map
+                    .states
+                    .iter()
+                    .filter(|s| s.owner == c.tag && !s.colony)
+                    .map(|s| (great_circle(lon_lat(s.center), c.capital_lon_lat), s.id))
+                    .min_by(|a, b| a.0.total_cmp(&b.0).then(a.1.cmp(&b.1)))
+                    .map(|(_, id)| (c.tag.clone(), id))
+            })
+            .collect()
     }
 
     /// States whose climate is mostly cold (continental, subarctic and polar): winter slows
@@ -377,6 +419,15 @@ impl GameData {
                             .collect()
                     })
                     .unwrap_or_default(),
+                capitals: self.capital_states(),
+                conduct: self
+                    .war
+                    .as_ref()
+                    .and_then(|w| w.conduct.clone())
+                    .and_then(|c| {
+                        crate::war::support::Conduct::resolve(c, self.politics.clone()).ok()
+                    })
+                    .map(Arc::new),
             })
         });
         crate::game::Rules {

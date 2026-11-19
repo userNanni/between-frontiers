@@ -17,8 +17,18 @@ fn data() -> &'static GameData {
         let mut d = GameData::load(&root).unwrap_or_else(|e| panic!("{e}"));
         d.enable_crisis();
         d.switches.war = true;
+        no_overrun(&mut d);
         d
     })
+}
+
+/// These tests follow the front: Hungary overrun must not end the war (`war_support` covers
+/// that rule).
+fn no_overrun(d: &mut GameData) {
+    if let Some(c) = d.war.as_mut().and_then(|w| w.conduct.as_mut()) {
+        c.support.overrun = 2000;
+        c.support.capital_overrun = 2000;
+    }
 }
 
 fn index(w: &GameWorld, tag: &str) -> u16 {
@@ -151,6 +161,7 @@ fn a_peace_signed_at_the_table_ends_the_war() {
     d.enable_crisis();
     d.switches.war = true;
     d.switches.negotiation = true;
+    no_overrun(&mut d);
     let mut s = Session::new(
         d.new_world(),
         1925,

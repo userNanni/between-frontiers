@@ -42,6 +42,10 @@ pub struct FightSetup {
     /// Width of the border between two states, km, by (lower, higher) state id
     /// (`assets/map/borders.ron`): the width of the segment, for the density of its defence.
     pub width_km: BTreeMap<(u16, u16), Fixed>,
+    /// The state of each country's capital, by tag.
+    pub capitals: BTreeMap<String, u16>,
+    /// War support and occupation (G3, G4), when `data/military/war.ron` exists.
+    pub conduct: Option<Arc<super::support::Conduct>>,
 }
 
 /// The war on land, saved and hashed only when not empty.
@@ -63,6 +67,12 @@ pub struct Fighting {
     /// (from region, into region, weeks): how long each segment has held still, sorted. Its
     /// defenders dig in up to `front.dig_weeks`.
     pub still: Vec<(u32, u32, u16)>,
+    /// The war support of every country at war, by country (G4).
+    pub support: Vec<super::support::Support>,
+    /// The regions under occupation, by region (G3).
+    pub occupied: Vec<super::occupation::Occupied>,
+    /// The devastation the combat left, by region (G3).
+    pub wrecks: Vec<super::occupation::Wreck>,
 }
 
 impl Fighting {
@@ -73,6 +83,9 @@ impl Fighting {
             && self.losses.is_empty()
             && self.last_week.is_empty()
             && self.still.is_empty()
+            && self.support.is_empty()
+            && self.occupied.is_empty()
+            && self.wrecks.is_empty()
     }
 
     /// Weeks segment (`from`, `into`) has held still.
@@ -80,6 +93,14 @@ impl Fighting {
         self.still
             .binary_search_by_key(&(from, into), |(a, b, _)| (*a, *b))
             .map_or(0, |i| self.still[i].2)
+    }
+
+    /// The war support of `country`, if at war.
+    pub fn support_of(&self, country: u16) -> Option<&super::support::Support> {
+        self.support
+            .binary_search_by_key(&country, |s| s.country)
+            .ok()
+            .map(|i| &self.support[i])
     }
 
     /// The market controlling region `r`, whose owner is `owner`.
@@ -146,6 +167,11 @@ pub struct FightWeek {
     /// (country, men lost this week): killed, wounded and captured.
     pub lost_men: Vec<(u16, u64)>,
     pub segments: Vec<SegmentWeek>,
+    /// What the support decided: governments fallen, peace asked for, wars given up.
+    pub support: super::support::SupportOut,
+    /// Occupation money: (owner, occupier, amount).
+    pub transfers: Vec<super::occupation::Transfer>,
+    pub devastation: super::occupation::Devastation,
 }
 
 /// The land strength of a country: men, the fire and protection of what it holds, and its
@@ -318,6 +344,16 @@ pub fn fight_week(
     if segments.is_empty() {
         out.fighting.last_week.clear();
         out.fighting.still.clear();
+        let held = setup.conduct.as_ref().map(|k| {
+            super::occupation::garrisons(&k.rules.occupation, world, &out.fighting, |c| {
+                world
+                    .war
+                    .countries
+                    .get(c as usize)
+                    .map_or(0, |cw| strength(mil, cw).men)
+            })
+        });
+        conduct_week(setup, world, &mut out, held.as_ref(), player);
         return out;
     }
     // Each country's land strength, spread evenly over its segments.
@@ -326,14 +362,30 @@ pub fn fight_week(
         *count.entry(a).or_default() += 1;
         *count.entry(b).or_default() += 1;
     }
-    let strengths: BTreeMap<u16, Strength> = count
-        .keys()
-        .filter_map(|&c| {
+    // The garrisons of the occupied land (G3) stand apart from the fronts.
+    let held = setup.conduct.as_ref().map(|k| {
+        super::occupation::garrisons(&k.rules.occupation, world, &out.fighting, |c| {
             world
                 .war
                 .countries
                 .get(c as usize)
-                .map(|cw| (c, strength(mil, cw)))
+                .map_or(0, |cw| strength(mil, cw).men)
+        })
+    });
+    let strengths: BTreeMap<u16, Strength> = count
+        .keys()
+        .filter_map(|&c| {
+            world.war.countries.get(c as usize).map(|cw| {
+                let mut s = strength(mil, cw);
+                if let Some((_, g)) = held.as_ref().and_then(|h| h.get(&c))
+                    && s.men > 0
+                {
+                    let left = s.men.saturating_sub(*g);
+                    s.fire *= Fixed::from_ratio(left as i64, s.men as i64);
+                    s.men = left;
+                }
+                (c, s)
+            })
         })
         .collect();
     // Posture: the player's as set (defend by default); the AI attacks a segment where its
@@ -508,6 +560,7 @@ pub fn fight_week(
     out.fighting.still.sort();
     out.fighting.still.dedup_by_key(|x| (x.0, x.1));
     out.fighting.last_week = out.segments.clone();
+    conduct_week(setup, world, &mut out, held.as_ref(), player);
     // Losses: a share of each country's land elements.
     for (c, l) in lost {
         if l == 0 {
@@ -543,9 +596,85 @@ impl From<FightingBeforeStill> for Fighting {
             postures: f.postures,
             losses: f.losses,
             last_week: f.last_week,
-            still: Vec::new(),
+            ..Default::default()
         }
     }
+}
+
+/// [`Fighting`] as version 27 of the world wrote it, before the war support and the occupation.
+#[derive(Default, Deserialize)]
+pub(crate) struct FightingBeforeSupport {
+    control: Vec<(u32, u16)>,
+    advance: Vec<(u32, u32, Fixed)>,
+    postures: Vec<(u16, u16, bool)>,
+    losses: Vec<(u16, u64)>,
+    last_week: Vec<SegmentWeek>,
+    still: Vec<(u32, u32, u16)>,
+}
+
+impl From<FightingBeforeSupport> for Fighting {
+    fn from(f: FightingBeforeSupport) -> Self {
+        Self {
+            control: f.control,
+            advance: f.advance,
+            postures: f.postures,
+            losses: f.losses,
+            last_week: f.last_week,
+            still: f.still,
+            ..Default::default()
+        }
+    }
+}
+
+/// The conduct of the war after the week's combat: occupation, devastation and support; the
+/// wars the side that declared gave up end here, as a peace does.
+fn conduct_week(
+    setup: &FightSetup,
+    world: &GameWorld,
+    out: &mut FightWeek,
+    held: Option<&BTreeMap<u16, (u64, u64)>>,
+    player: Option<u16>,
+) {
+    let Some(k) = setup.conduct.as_ref() else {
+        return;
+    };
+    let empty = BTreeMap::new();
+    out.transfers = super::occupation::occupation_week(
+        &k.rules.occupation,
+        world,
+        &mut out.fighting,
+        held.unwrap_or(&empty),
+    );
+    out.devastation = super::occupation::devastation_week(
+        &k.rules.occupation,
+        world,
+        &mut out.fighting,
+        &out.segments,
+    );
+    out.support = super::support::support_week(
+        k,
+        &setup.capitals,
+        world,
+        &mut out.fighting,
+        &out.segments,
+        &out.ended,
+        player,
+    );
+    for w in world
+        .war
+        .conflicts
+        .wars
+        .iter()
+        .filter(|w| out.support.withdrawn.contains(&w.id))
+    {
+        end_occupation(&mut out.fighting, world, &w.side_a, &w.side_b);
+        out.ended.push(w.id);
+    }
+    // The occupation and the wrecks follow the control that is left.
+    let control = out.fighting.control.clone();
+    out.fighting
+        .occupied
+        .retain(|o| control.iter().any(|&(r, by)| r == o.region && by == o.by));
 }
 
 /// Of land casualties (killed, wounded and captured), the killed: about one in four, the order
@@ -653,6 +782,18 @@ impl HashState for Fighting {
             h.write_u32(*a);
             h.write_u32(*b);
             h.write_u16(*w);
+        }
+        h.write_len(self.support.len());
+        for x in &self.support {
+            x.hash_state(h);
+        }
+        h.write_len(self.occupied.len());
+        for x in &self.occupied {
+            x.hash_state(h);
+        }
+        h.write_len(self.wrecks.len());
+        for x in &self.wrecks {
+            x.hash_state(h);
         }
     }
 }

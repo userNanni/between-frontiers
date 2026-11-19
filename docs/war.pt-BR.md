@@ -1067,7 +1067,22 @@ a revolta é uma **proclamação seguida de guerra**, como a da Indonésia de 19
 
 Lida do estado que o tick grava, sem refazer a semana:
 - **Guerra:** os lados (`world.war.conflicts.wars`: `side_a`, `side_b`, o líder primeiro), as
-  semanas desde `since`, a exigência em jogo; o apoio à guerra e a conta entram com a parte G4.
+  semanas desde `since`, a exigência em jogo.
+- **Apoio à guerra, primeiro na tela** (`fighting.support_of(país)`, G4):
+  - o valor, de 0 a 1.000 por mil, com os dois limiares: paz (300) e colapso (100);
+  - os termos da semana (`terms`): partida, baixas, duração, privação, território, curso da frente
+    e o alvo, que é a soma deles;
+  - o apoio de cada grupo de interesse (`groups`, na ordem do catálogo) e o seu peso na média;
+  - a contagem (`countdown`: semanas até o governo cair), visível enquanto o apoio estiver abaixo
+    do colapso. Nessas semanas o jogador ainda pode fechar a paz nos próprios termos;
+  - depois da queda (`fallen`), o que caiu. `Regime`: uma forma de governo nova, por exemplo
+    a monarquia que vira república; a reputação de segurança cai pela metade (P3). `Cabinet`:
+    numa república cai o gabinete e a forma fica; não há corte de reputação. Nos dois casos, o
+    governo que vem pede a paz: com o jogador, a proposta sai sozinha na mesa, e o texto diz
+    "o governo caiu; o novo governo pede a paz".
+- **Ocupação, por região ocupada** (`fighting.occupied`, G3): as semanas, a resistência, a
+  guarnição mantida sobre a necessária e o que o ocupante levou na semana (`taken`).
+- **Devastação** (`fighting.wrecks`): a parte dos níveis de edifício destruída e os civis mortos.
 - **Frente, uma por inimigo:** a postura (`fighting.posture(país, inimigo)`, padrão manter) com o
   comando `SetPosture { tag, enemy, attack }`; as perdas acumuladas (`fighting.losses`, homens);
   os segmentos da última semana (`fighting.last_week`: estados `from` e `into`, países `a` e `b`,
@@ -1118,7 +1133,17 @@ Os casos ignorados ficam marcados com o que lhes falta; a faixa não foi afrouxa
 ### Custo de CPU
 
 Decisão 6: a guerra mundial de 1939, com todos os segmentos ativos, abaixo de 15 % do tick. A
-fatia mede com uma guerra de teste de cinco grandes países, porque a IA não declara.
+fatia mede com uma guerra de teste de cinco grandes países, porque a IA não declara
+(`war_support::a_great_war_costs_under_a_seventh_of_the_tick`, ignorado, rodado no slot).
+
+Na medida de 2026-11-18, um ano de guerra opôs Alemanha, Itália, Hungria e União Soviética a
+França, Reino Unido, Polônia, Tchecoslováquia e Iugoslávia. Ninguém pediu paz: os limiares
+foram zerados para a guerra durar o ano. O sistema de forças gastou 92,6 ms de 6.225 ms nos
+sistemas, **1,5 % do tick**, com 53 regiões ocupadas no fim e 25 segmentos na última semana.
+Isso inclui o combate, o apoio, a ocupação e a devastação.
+
+Uma primeira medida deu 0,8 %, mas a Alemanha desistiu da guerra nas primeiras semanas, abaixo
+da paz, e o ano correu quase todo em paz.
 
 Na medida de 2026-11-18, com a densidade e o entrincheiramento, a guerra de nove países durou o
 ano inteiro (`front_pace::a_great_war_costs_under_a_seventh_of_the_tick`, ignorado, rodado no
@@ -1136,7 +1161,7 @@ regiões ocupadas e uma frente de 18 segmentos, toda entrincheirada.
 | G5 | a IA defende e contra-ataca com 1,5 vez o poder; **pede paz quando não tem mais apoio à guerra** | — |
 | G6 | proclamação e guerra entre dois países; **se a colônia perder, a metrópole reconquista** | — |
 
-### Apoio à guerra (G4, desenho para confirmar antes de codar)
+### Apoio à guerra (G4, em rascunho com os recomendados; A1–A3 com o dono)
 
 Um número por país em guerra, de 0 a 1.000 por mil, feito do apoio de cada **grupo de interesse**
 (`politics`), pesado pela influência do grupo (`clout`). É o que a tela da guerra mostra em
@@ -1177,7 +1202,48 @@ crescer o movimento `regime_change` (fase 3d); é a queda súbita da Rússia de 
   rendição é forçada também para o jogador, como a Alemanha em novembro de 1918.
   **Alternativa:** o jogador nunca é forçado; só paga legitimidade e movimento.
 
-### Ocupação: o que se extrai, a devastação e a guarnição (G3, desenho para confirmar)
+**A rendição passa pela política** (orquestrador, 2026-11-18), como em novembro de 1918:
+- Abaixo do colapso corre uma contagem (`revolution_weeks`: 6, o tempo entre o pedido de
+  armistício de Ludendorff e a abdicação).
+- Esgotada a contagem, o governo cai. A forma de governo seguinte vem de `revolution` em
+  `data/military/war.ron`:
+  - monarquias → `parliamentary_republic`;
+  - `one_party_state` → `military_dictatorship`;
+  - repúblicas parlamentares e presidenciais, e a monarquia parlamentar: só o gabinete cai
+    (os EUA em 1968, a França em 1940).
+- Uma forma nova entra em vigor como obra do movimento `regime_change`, no registro de trocas
+  de lei. O tratado lê ali uma troca de regime e corta a reputação de segurança (P3): o
+  governo novo pode não honrar o que o anterior honrava.
+- O governo que vem pede a paz. O país atacado propõe na mesa a exigência inteira. O que
+  declarou desiste da guerra, que acaba como começou.
+- Quando só o gabinete cai, não há corte de reputação.
+- A3 é dado: com `player_forced: false`, a contagem não corre para o país do jogador.
+
+**O país tomado** (o caso da tela, #218): sem esta regra, uma guerra ficava aberta para sempre
+com o país inteiro ocupado e sem frente.
+- O governo cai na hora, pelo mesmo caminho do colapso, quando o inimigo controla 90 % da
+  população metropolitana (`overrun`), ou metade dela com a capital tomada
+  (`capital_overrun`).
+- A capital é o estado metropolitano de centro mais próximo de `capital_lon_lat`.
+- Exceções: um aliado que ainda luta no mesmo lado, ou uma colônia que o inimigo não tomou,
+  mantém a guerra.
+- Referência: a Hungria de Kun, em agosto de 1919, com o exército romeno em Budapeste.
+
+**O que a fase 3d ainda não dá:** o movimento `regime_change` anda só uma vez por ano e não
+impõe lei ao jogador. Por isso a revolução de guerra roda no passo semanal da guerra. Um
+indicador `war_support` para as causas dos movimentos fica para quando um movimento contra a
+guerra entrar.
+
+**Casos de conferência** (testes de `war::support`, com os valores de `war.ron`):
+1. **Alemanha, 1914–1918.** Cerca de 2 milhões de mortos em 67 milhões, quatro anos de guerra,
+   a fome do bloqueio (35 % das necessidades básicas perdidas) e a frente recuando 5 km por
+   semana depois de Amiens. Nenhum território alemão ocupado. O alvo fica abaixo do colapso:
+   o país cede por dentro. Sem a fome e o recuo, os mesmos mortos e anos o deixam acima da paz.
+2. **Estados Unidos no Vietnã.** 58 mil mortos em 200 milhões, nenhuma derrota e nenhum
+   território perdido. O apoio fica acima de 300 aos três anos e abaixo aos seis, sem chegar
+   ao colapso: o país pede paz sem derrota militar.
+
+### Ocupação: o que se extrai, a devastação e a guarnição (G3, em rascunho; O1–O3 com o dono)
 
 **(a) O que o ocupante extrai.** A França ocupada pagou "custos de ocupação" de 400 milhões de
 francos por dia a partir de agosto de 1940, 300 milhões a partir de maio de 1941 e 500 milhões a
@@ -1212,6 +1278,18 @@ França em 1941, para uns 40 milhões, algo como 2,5 por mil.
   guarnição abaixo da exigência, a parcela extraída cai na mesma proporção e a resistência cresce;
   com falta grande, nascem guerrilhas (`irregular`), numa fatia depois.
 - **Alternativa:** um custo fixo de guarnição, sem exigência nem consequência.
+
+**No rascunho (código):**
+- **Guarnição:** sai dos homens de terra do ocupante, até metade deles (`garrison_cap`), e os
+  homens destacados não lutam na frente; o seu fogo sai na mesma proporção. Destacar formações
+  `garrison` próprias fica para quando o jogador puder mandar formações por frente (G2).
+- **Extração:** vai do tesouro do dono para o do ocupante. É a parcela do PIB do ano anterior
+  pela parte da renda do país na região, de 20 % a 33 % em três anos, vezes a guarnição mantida.
+- **Resistência:** cresce com o que se leva e com a guarnição que falta, e cai devagar com a
+  guarnição cheia.
+- **Devastação:** cada semana de combate tira até 0,4 % dos níveis de edifício dos dois estados
+  do segmento, pelo peso das baixas, com teto de 40 %, e mata civis. O transporte entra quando
+  a infraestrutura tiver estado por região.
 
 **Dado novo:** nenhum arquivo de fonte além destas referências; as parcelas, as taxas e as
 exigências são valores de desenho em `data/military/war.ron`, com as fontes no comentário.
