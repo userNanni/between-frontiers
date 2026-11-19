@@ -227,6 +227,10 @@
         density_power: 2,
         dig_weeks: 10,
         still_km: 2,
+        // Pursuit: a side that advanced last week and attacks with 1.5 times the defender's
+        // power marches on at its marching pace (the same ratio the AI attacks at, G5; design
+        // value).
+        pursuit_ratio: "1.5",
     ),
 
     // units.ron counts these goods in lots of 1925 dollars; the economy prices them in 2011

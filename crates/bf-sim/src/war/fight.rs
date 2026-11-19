@@ -14,7 +14,7 @@ use laplace_schelling::Fixed;
 use laplace_schelling::hash::{HashState, StateHasher};
 use serde::{Deserialize, Serialize};
 
-use super::calc::{LandField, LandSide, Posture, TerrainMix, apportion, land_step};
+use super::calc::{LandField, LandSide, Posture, TerrainMix, apportion, land_step, pursuit_km};
 use super::catalogue::{Domain, Military, Mobility, Terrain};
 use super::state::{CountryWar, Formation, men};
 use crate::game::GameWorld;
@@ -556,7 +556,32 @@ pub fn fight_week(
         .min(Fixed::ONE);
         let (sa, sb) = (side(a, ma, att_a, dug), side(b, mb, att_b, dug));
         let field = field_of(from, into, att_a || !att_b);
-        let o = land_step(&mil.rules, &field, [&sa, &sb]);
+        let mut o = land_step(&mil.rules, &field, [&sa, &sb]);
+        // Pursuit (step 6): the side that advanced here last week and attacks with the ratio
+        // marches on at its marching pace.
+        let last = world
+            .war
+            .fighting
+            .last_week
+            .iter()
+            .find(|g| g.from == from && g.into == into)
+            .map_or(Fixed::ZERO, |g| g.outcome.advance_km);
+        let still = mil.rules.front.still_km;
+        let pa = pursuit_km(&mil.rules, &field, &sa, o.power, last > still);
+        let pb = pursuit_km(
+            &mil.rules,
+            &field,
+            &sb,
+            [o.power[1], o.power[0]],
+            last < -still,
+        );
+        // Each side's pursuit only ever adds to its own advance (positive for A, negative for B).
+        if pa.is_positive() && pa > o.advance_km {
+            o.advance_km = pa;
+        }
+        if pb.is_positive() && -pb < o.advance_km {
+            o.advance_km = -pb;
+        }
         *lost.entry(a).or_default() += o.losses[0];
         *lost.entry(b).or_default() += o.losses[1];
         out.segments.push(SegmentWeek {
