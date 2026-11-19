@@ -154,6 +154,7 @@ fn the_foreign_share_of_profit_leaves_for_the_owners_fund() {
         wage_floor: false,
         foreign_flow: true,
         fiscal_capacity: false,
+        settle: None,
     };
     // The plant with the largest profit last week, of a kind with owners.
     let cat = &rules.catalogue;

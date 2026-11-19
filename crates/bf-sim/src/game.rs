@@ -146,6 +146,10 @@ pub struct GameWorld {
     /// leaves it out.
     #[serde(default)]
     pub payments: crate::econ::payments::PaymentsState,
+    /// Each country's reserves, gold and foreign exchange, and what settlement moved
+    /// (`econ::payments::settle`, `Switches::payments_settle`); empty while it is off.
+    #[serde(default)]
+    pub reserves: crate::econ::payments::ReservesState,
 }
 
 impl HashState for GameWorld {
@@ -217,7 +221,17 @@ impl HashState for GameWorld {
             h.section("tariffs");
             self.tariffs.hash_state(h);
         }
-        // `payments` is a record of what moved, read by no rule: out of the hash.
+        // `payments` is a record of what moved, out of the hash while no rule reads it. With
+        // settlement on, the reserves are state, and so is the week of the balance the next
+        // settlement reads.
+        if !self.reserves.is_empty() {
+            h.section("reserves");
+            self.reserves.hash_state(h);
+            h.write_u64(self.payments.markets.len() as u64);
+            for p in &self.payments.markets {
+                p.week.hash_state(h);
+            }
+        }
     }
 }
 
@@ -242,6 +256,7 @@ impl GameWorld {
             levers: Default::default(),
             tariffs: Default::default(),
             payments: Default::default(),
+            reserves: Default::default(),
             demography: crate::demography::DemographyState::default(),
             treaties: Default::default(),
             war: crate::war::WarState::default(),
@@ -1070,6 +1085,9 @@ pub struct Rules {
     /// reputation and the laws that are forms of government. With `clause_tests` or
     /// `reputation`.
     pub treaties: Option<Arc<crate::treaty_system::TreatySetup>>,
+    /// Settlement in money and reserves (`Switches::payments_settle`): the 1925 reserves and
+    /// the share of new gold that goes to them; without it trade settles nothing.
+    pub settle: Option<Arc<crate::econ::payments::SettleRules>>,
 }
 
 /// Rules that can be switched on, all off by default: a rule enters the main switched off, with
@@ -1130,6 +1148,12 @@ pub struct Switches {
     /// answered by the AI in the first week by the same account the player sees, counters, and
     /// denunciations. Off: proposals wait on the table and nothing is answered.
     pub negotiation: bool,
+    /// Settlement in money and reserves (`econ::payments::settle`, docs/state.pt-BR.md, gold
+    /// standard slice 2): each week goods and services move between the pools, the balance
+    /// moves the reserves (gold and foreign exchange, from the 1925 stocks of
+    /// `data/economy/reserves.ron`), and new gold from the mines joins them. Off: trade moves no
+    /// money between countries and nobody holds reserves.
+    pub payments_settle: bool,
     /// The reputation of each country's breaches (`treaty::Reputation`, docs/treaties.pt-BR.md
     /// 9.4, owner's decisions P1–P3): a breach weighs on the reputation of its kind, a tenth of
     /// it is forgotten each year, a change of regime halves the security one, and the table
@@ -1203,6 +1227,7 @@ impl Switches {
         "jobs_follow_use",
         "ledger_record",
         "negotiation",
+        "payments_settle",
         "reputation",
         "schooling",
         "small_market_wage_floor",
@@ -1229,6 +1254,7 @@ impl Switches {
             "jobs_follow_use" => self.jobs_follow_use = true,
             "ledger_record" => self.ledger_record = true,
             "negotiation" => self.negotiation = true,
+            "payments_settle" => self.payments_settle = true,
             "reputation" => self.reputation = true,
             "schooling" => self.schooling = true,
             "small_market_wage_floor" => self.small_market_wage_floor = true,
@@ -1280,6 +1306,7 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
         crisis,
         treaties,
         fight,
+        settle,
     }) = rules
     {
         if let Some(p) = &politics {
@@ -1313,6 +1340,7 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
             // colony's plants at independence.
             foreign_flow: switches.foreign_flow || switches.foreign_contract,
             fiscal_capacity: switches.fiscal_capacity,
+            settle: settle.filter(|_| switches.payments_settle),
         });
         s.add(crate::econ::monthly::Labour {
             cat: Arc::clone(&cat),
@@ -1969,9 +1997,57 @@ mod tests {
             hash_of(&with_ledger)
         );
         assert_eq!(
-            hash_of(&headed(35, &encode_snapshot(&with_ledger).unwrap())),
+            hash_of(&headed(36, &encode_snapshot(&with_ledger).unwrap())),
             hash_of(&with_ledger)
         );
+        // Version 35, the war at sea, before the reserves of settlement: the world without
+        // `reserves`.
+        {
+            #[derive(Serialize)]
+            struct BeforeReserves35<'a> {
+                scenario: &'a String,
+                player: &'a Option<Id<Country>>,
+                countries: &'a Table<Country, CountryState>,
+                census: &'a Vec<CensusRecord>,
+                econ: &'a crate::econ::Economy,
+                research: &'a crate::research::ResearchState,
+                politics: &'a crate::polity::PoliticsState,
+                demography: &'a crate::demography::DemographyState,
+                borders: &'a crate::borders::BordersState,
+                foreign: &'a crate::foreign_stakes::ForeignState,
+                influence: &'a crate::influence::InfluenceState,
+                treaties: &'a crate::treaty::TreatyState,
+                war: &'a crate::war::WarState,
+                education: &'a crate::demography::education::EducationState,
+                independence: &'a crate::borders::independence::IndependenceState,
+                levers: &'a crate::econ::levers::LeversState,
+                tariffs: &'a crate::econ::customs::TariffState,
+                payments: &'a crate::econ::payments::PaymentsState,
+            }
+            let w = &with_ledger;
+            let v35 = encode_snapshot(&BeforeReserves35 {
+                scenario: &w.scenario,
+                player: &w.player,
+                countries: &w.countries,
+                census: &w.census,
+                econ: &w.econ,
+                research: &w.research,
+                politics: &w.politics,
+                demography: &w.demography,
+                borders: &w.borders,
+                foreign: &w.foreign,
+                influence: &w.influence,
+                treaties: &w.treaties,
+                war: &w.war,
+                education: &w.education,
+                independence: &w.independence,
+                levers: &w.levers,
+                tariffs: &w.tariffs,
+                payments: &w.payments,
+            })
+            .unwrap();
+            assert_eq!(hash_of(&headed(35, &v35)), hash_of(&with_ledger));
+        }
         // Version 34, the colonial war (#241), before the war at sea: `war` without `sea`.
         {
             #[derive(Serialize)]

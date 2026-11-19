@@ -68,6 +68,55 @@ pub struct GameData {
     pub recognition: Option<crate::treaty::RecognitionFile>,
     /// Independence by movement (`data/borders/independence.ron`).
     pub independence: Option<crate::borders::independence::IndependenceRules>,
+    /// The 1925 reserves and the share of new gold that goes to them, when
+    /// `data/economy/reserves.ron` exists (read with `Switches::payments_settle`).
+    pub settle: Option<Arc<crate::econ::payments::SettleRules>>,
+}
+
+/// Format of `data/economy/reserves.ron`.
+#[derive(serde::Deserialize)]
+struct ReservesFile {
+    /// Dollars of the source's gold valuation per kilogram of gold.
+    dollars_per_kg: f64,
+    /// Per mille of the mines' output that goes to the central bank.
+    monetary_share: i64,
+    /// (tag, millions of dollars) of monetary gold at the end of 1925; a tag may repeat (a
+    /// colony's bank goes to its metropole's market).
+    gold_1925: Vec<(String, f64)>,
+}
+
+impl ReservesFile {
+    fn resolve(
+        &self,
+        cat: &Catalogue,
+        countries: &CountriesFile,
+    ) -> Result<crate::econ::payments::SettleRules, String> {
+        let gold = cat
+            .good("gold")
+            .ok_or("economy/reserves.ron: the catalogue has no good `gold`")?;
+        let gold_price = cat.goods[usize::from(gold)].base_price;
+        if self.dollars_per_kg <= 0.0 || !(0..=1000).contains(&self.monetary_share) {
+            return Err(
+                "economy/reserves.ron: dollars_per_kg or monetary_share out of range".into(),
+            );
+        }
+        let mut start = vec![Fixed::ZERO; countries.countries.len()];
+        for (tag, millions) in &self.gold_1925 {
+            let mi = countries
+                .countries
+                .iter()
+                .position(|c| &c.tag == tag)
+                .ok_or_else(|| format!("economy/reserves.ron: unknown tag {tag}"))?;
+            let kg = Fixed::from_f64_lossy(millions * 1e6 / self.dollars_per_kg);
+            start[mi] += kg * gold_price;
+        }
+        Ok(crate::econ::payments::SettleRules {
+            gold,
+            gold_price,
+            monetary_share: Fixed::from_int(self.monetary_share) / 1000,
+            start,
+        })
+    }
 }
 
 fn read<T: serde::de::DeserializeOwned>(path: &Path) -> Result<T, String> {
@@ -155,7 +204,11 @@ impl GameData {
         border_rules.recognition = clauses.as_ref().map(|c| c.policy.recognition_default);
         let border_rules = Arc::new(border_rules);
         let diplomacy: Option<DiplomacyFile> = optional(&scenario.join("diplomacy.ron"))?;
+        let settle = optional::<ReservesFile>(&data.join("economy/reserves.ron"))?
+            .map(|f| f.resolve(&catalogue, &countries).map(Arc::new))
+            .transpose()?;
         let data = Self {
+            settle,
             trade_geography: std::sync::OnceLock::new(),
             switches: optional::<crate::game::Switches>(&data.join("rules.ron"))?
                 .unwrap_or_default()
@@ -578,6 +631,7 @@ impl GameData {
                 _ => None,
             },
             independence,
+            settle: self.settle.clone().filter(|_| switches.payments_settle),
         }
     }
 

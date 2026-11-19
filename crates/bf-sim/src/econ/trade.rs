@@ -508,7 +508,7 @@ pub(crate) fn scale_to(row: &mut [Fixed], top: Fixed) {
 /// parts add up to `total` to the last unit and never past it. Fewer units are left than there
 /// are weights, so only that many of the largest remainders take one: they are selected, not
 /// sorted (the same ones, the order being total).
-fn split_exact_into(
+pub(crate) fn split_exact_into(
     total: Fixed,
     weights: &[Fixed],
     out: &mut [Fixed],

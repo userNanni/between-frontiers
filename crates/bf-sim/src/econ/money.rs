@@ -577,8 +577,9 @@ pub struct AbroadFlows {
     /// What the lenders received, split into interest and principal in the payers' proportion.
     pub interest_received: Vec<Fixed>,
     pub principal_received: Vec<Fixed>,
-    /// Paid by the debtors and received by no lender (interest, principal): the lenders' share
-    /// is rounded to a thousandth, and a week without claims abroad pays nobody.
+    /// Owed abroad in a week when nobody holds a claim abroad (interest, principal): it stays
+    /// with the debtors, back in their treasuries, and is out of the lines above. Otherwise
+    /// zero: the lenders receive what the debtors pay to the last unit.
     pub unreceived: (Fixed, Fixed),
     /// The service of the debts between governments, by line: (debtor, creditor, interest,
     /// principal), from treasury to treasury.
@@ -704,28 +705,58 @@ pub fn week(econ: &mut Economy, activity: &[Activity], year: i32) -> AbroadFlows
         written_off += lost;
     }
     // Lenders: their savings go out, interest and repayments come back to their pools, and a
-    // default takes its loss from their claims, all pro rata.
-    let claims: Fixed = econ.markets.iter().map(|m| m.money.foreign_assets).sum();
+    // default takes its loss from their claims, all pro rata. What the debtors paid reaches the
+    // lenders to the last unit (largest remainder): interest and principal are split apart, so
+    // each lender's two lines add up to what the payers paid on each.
+    let claim: Vec<Fixed> = econ
+        .markets
+        .iter()
+        .map(|m| m.money.foreign_assets)
+        .collect();
+    let claims: Fixed = claim.iter().copied().sum();
     let interest_abroad: Fixed = flows.interest_paid.iter().copied().sum();
+    let principal_abroad = paid_abroad - interest_abroad;
+    if claims > Fixed::ZERO {
+        let mut rest = Vec::new();
+        super::trade::split_exact_into(
+            interest_abroad,
+            &claim,
+            &mut flows.interest_received,
+            &mut rest,
+        );
+        super::trade::split_exact_into(
+            principal_abroad,
+            &claim,
+            &mut flows.principal_received,
+            &mut rest,
+        );
+    } else if paid_abroad > Fixed::ZERO {
+        // Nobody holds a claim abroad: what the debtors set aside for it stays with them, back
+        // in their treasuries, and nothing crosses a border (`AbroadFlows::unreceived`).
+        flows.unreceived = (interest_abroad, principal_abroad);
+        for (m, (i, p)) in econ.markets.iter_mut().zip(
+            flows
+                .interest_paid
+                .iter_mut()
+                .zip(flows.principal_repaid.iter_mut()),
+        ) {
+            m.treasury += *i + *p;
+            *i = Fixed::ZERO;
+            *p = Fixed::ZERO;
+        }
+    }
+    // What the borrowers sold abroad, lent by each market's savers to the last unit.
+    if lendable > Fixed::ZERO {
+        let weights: Vec<Fixed> = plans.iter().map(|p| p.lendable).collect();
+        super::trade::split_exact_into(lent, &weights, &mut flows.lent, &mut Vec::new());
+    }
     let mut take = vec![Fixed::ZERO; nm];
     for (mi, (m, plan)) in econ.markets.iter_mut().zip(&plans).enumerate() {
         if claims > Fixed::ZERO {
-            let share = m.money.foreign_assets / claims;
-            let received = paid_abroad * share;
-            m.pool += received;
-            m.money.foreign_assets -= written_off * share;
-            if paid_abroad != Fixed::ZERO {
-                let interest = received.mul_div(interest_abroad, paid_abroad);
-                flows.interest_received[mi] = interest;
-                flows.principal_received[mi] = received - interest;
-            }
+            m.pool += flows.interest_received[mi] + flows.principal_received[mi];
+            m.money.foreign_assets -= written_off * (claim[mi] / claims);
         }
-        let out = if lendable > Fixed::ZERO {
-            lent.mul_div(plan.lendable, lendable)
-        } else {
-            Fixed::ZERO
-        };
-        flows.lent[mi] = out;
+        let out = flows.lent[mi];
         m.money.foreign_assets = (m.money.foreign_assets + out).max(Fixed::ZERO);
         // Banks lend what is left of this week's share to the investment pool.
         let to_pool = (plan.idle * BANK_LENDING - plan.from_households - out).max(Fixed::ZERO);
@@ -748,11 +779,6 @@ pub fn week(econ: &mut Economy, activity: &[Activity], year: i32) -> AbroadFlows
             p.savings -= idle_savings(p) * take[mi];
         }
     }
-    let sum = |v: &[Fixed]| v.iter().copied().sum::<Fixed>();
-    flows.unreceived = (
-        interest_abroad - sum(&flows.interest_received),
-        sum(&flows.principal_repaid) - sum(&flows.principal_received),
-    );
     if !econ.ledger.is_empty() {
         flows.ledger = treaty_service(econ, &cuts, &w, year);
     }
