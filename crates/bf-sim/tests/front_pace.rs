@@ -351,3 +351,53 @@ fn a_great_war_costs_under_a_seventh_of_the_tick() {
     assert_eq!(w.war.conflicts.wars.len(), 1, "the war lasts the year");
     assert!(share < 0.15, "{:.1} %", share * 100.0);
 }
+
+/// Pursuit (step 6): a side that advanced last week and attacks with 1.5 times the defender's
+/// power marches on at its marching pace; without last week's advance, or short of the ratio,
+/// the line is pushed as before.
+#[test]
+fn a_broken_defence_is_pursued_at_marching_pace() {
+    use bf_sim::war::pursuit_km;
+    let r = rules();
+    let field = LandField {
+        terrain: TerrainMix::only(Terrain::Open),
+        winter: false,
+        river: Fixed::ZERO,
+        width_km: Fixed::from_int(200),
+    };
+    let a = side(40_000, 10, Posture::Attack, Fixed::ZERO);
+    let d = side(25_000, 10, Posture::Defend, Fixed::ZERO);
+    let power = land_step(r, &field, [&a, &d]).power;
+    let march = r.base_speed(TICK_MOBILITY);
+    assert_eq!(pursuit_km(r, &field, &a, power, true), march);
+    assert_eq!(pursuit_km(r, &field, &a, power, false), Fixed::ZERO);
+    // Even forces: no pursuit.
+    let even = side(25_000, 10, Posture::Attack, Fixed::ZERO);
+    let p = land_step(r, &field, [&even, &d]).power;
+    assert_eq!(pursuit_km(r, &field, &even, p, true), Fixed::ZERO);
+    // The defender does not pursue.
+    assert_eq!(
+        pursuit_km(r, &field, &d, [power[1], power[0]], true),
+        Fixed::ZERO
+    );
+}
+
+/// Poland, 1920, from the second week on: the Western Front pursued a broken Polish army from
+/// the Berezina to the Vistula, some 600 km in six weeks (Davies, *White Eagle, Red Star*, 1972).
+/// The majority of the Red Army walked, and the pursuit at its marching pace is 40 km a week,
+/// the bottom of the range; the first week, a line pushed, stays the ignored case above.
+#[test]
+fn poland_1920_pursued() {
+    let r = rules();
+    let field = LandField {
+        terrain: TerrainMix::only(Terrain::Open),
+        winter: false,
+        river: Fixed::ZERO,
+        width_km: Fixed::from_int(200),
+    };
+    let a = side(40_000, 10, Posture::Attack, Fixed::ZERO);
+    let d = side(25_000, 10, Posture::Defend, Fixed::ZERO);
+    let o = land_step(r, &field, [&a, &d]);
+    let km = bf_sim::war::pursuit_km(r, &field, &a, o.power, true).max(o.advance_km);
+    within(km, 40, 150, "Poland 1920, pursued");
+}

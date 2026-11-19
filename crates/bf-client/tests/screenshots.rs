@@ -4382,3 +4382,81 @@ fn issuance() {
     }
     let _ = std::fs::remove_dir_all(&user);
 }
+
+/// The composition of the forces in the forces tab: Germany in February 1926 with the war rule
+/// on, the target fixed by key and stepped a point up on wheels, with today's shares, the rule's
+/// target and the conversions. Portuguese at 1600 × 900, English at 1280 × 720; copies in
+/// `target/screenshots/composition/`.
+#[test]
+#[ignore = "needs a GPU (or software Vulkan) and the generated map; run with --ignored"]
+fn composition_section() {
+    use laplace_schelling::calendar::Date;
+    // SAFETY: the screenshot tests run one at a time (`RUST_TEST_THREADS=1`).
+    unsafe { std::env::set_var("BF_RULES", "forces,war") };
+    let mut switches = bf_sim::data::GameData::load(&root())
+        .expect("game data")
+        .switches;
+    switches = switches.with("forces,war").expect("switches");
+    let user = std::env::temp_dir().join(format!("bf-shots-comp-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&user);
+    let s = advanced_session_with("GER", Date::new(1926, 2, 1), switches);
+    let save = write_campaign(&user.join("save"), &s, "Composição", "GER", &[]);
+    let dir = root().join("target/screenshots/composition");
+    std::fs::create_dir_all(&dir).unwrap();
+    for (locale, size, tag, heading, last) in [
+        (
+            "pt-BR",
+            egui::vec2(1600.0, 900.0),
+            "pt",
+            "Composição das forças",
+            "Em conversão",
+        ),
+        (
+            "en",
+            egui::vec2(1280.0, 720.0),
+            "en-1280",
+            "Composition of the forces",
+            "Converting to",
+        ),
+    ] {
+        let mut h = harness_sized(user.join(tag), locale, size);
+        let ctx = h.ctx.clone();
+        h.state_mut().apply(Transition::Game(save.clone()), &ctx);
+        for _ in 0..30 {
+            std::thread::sleep(std::time::Duration::from_millis(25));
+            h.run_steps(1);
+        }
+        h.key_press(egui::Key::G);
+        h.run_steps(4);
+        h.key_press(egui::Key::T);
+        h.run_steps(8);
+        h.get_by_label(heading).scroll_to_me();
+        h.run_steps(8);
+        // Fixed by key, then a point up on wheels: K F, K 2.
+        for code in [
+            [egui::Key::K, egui::Key::F],
+            [egui::Key::K, egui::Key::Num2],
+        ] {
+            leader(&mut h);
+            for k in code {
+                tip(&mut h, k);
+            }
+            h.key_press(egui::Key::Escape);
+            h.run_steps(4);
+        }
+        // The section's foot in view: the steppers and the conversions.
+        h.get_all(egui_kittest::kittest::by().label_contains(last))
+            .last()
+            .expect("a conversion")
+            .scroll_to_me();
+        h.run_steps(8);
+        let name = format!("241-composition-{tag}");
+        shot(&mut h, &name);
+        std::fs::copy(
+            out_dir().join(format!("{name}.png")),
+            dir.join(format!("{name}.png")),
+        )
+        .unwrap();
+    }
+    let _ = std::fs::remove_dir_all(&user);
+}

@@ -1166,6 +1166,14 @@ densidade × (1 − defesa/ataque). O que decide o ritmo:
   (`war::fight::majority_mobility`): a classe de mobilidade que soma mais homens; as guarnições
   ficam fora, porque não saem do posto, e no empate vale a mais lenta. Na vida real, a maior
   parte do exército alemão de 1940 ia a pé atrás dos blindados, e a infantaria segura o conjunto.
+- **Perseguição (passo 6).** Um lado que avançou num segmento na semana anterior e o ataca nesta
+  com 1,5 vez o poder do defensor (`front.pursuit_ratio`, a mesma razão com que a IA ataca, valor
+  de desenho) não empurra mais uma linha: o defensor está se desfazendo. O atacante anda na
+  velocidade de marcha da sua mobilidade no terreno, sem o freio da densidade
+  (`calc::pursuit_km`). Na vida real é a perseguição que transforma uma vitória em centenas de
+  quilômetros: a Polônia de 1920 do Berezina ao Vístula, a França de 1940 depois de Sedan. A
+  primeira semana ainda é a linha empurrada; a perseguição vem da segunda em diante. Não há
+  estado novo: o avanço da semana anterior é o que `Fighting::last_week` já guarda.
 - **Falta:** 4, a concentração das tropas móveis no segmento do esforço principal, com a ruptura e
   o aproveitamento de `war::doctrine`. Pela maioria do país, os três exércitos dos casos abaixo
   andam a pé. Com a mobilidade das tropas concentradas no segmento, a Polônia de 1920 a cavalo
@@ -1178,7 +1186,8 @@ densidade × (1 − defesa/ataque). O que decide o ritmo:
 |---|---|---|---|
 | frente ocidental, 1916 (Somme) | ~10 km em 20 semanas | abaixo de 2 km/semana | 1,3 |
 | a mesma frente antes das trincheiras | guerra de movimento de 1914 | ao menos o dobro | ok |
-| Polônia, 1920 | ~600 km em 6 semanas | 40 a 150 km/semana | 26 (a maioria a pé); falta 4 (cavalaria no segmento: 46) |
+| Polônia, 1920 | ~600 km em 6 semanas | 40 a 150 km/semana | 1ª semana: 26 (a maioria a pé); falta 4 (cavalaria no segmento: 46) |
+| Polônia, 1920, da 2ª semana em diante (perseguição) | o mesmo | 40 a 150 km/semana | 40, a marcha a pé |
 | Polônia, 1939 | Varsóvia em ~8 dias | 60 a 200 km/semana | 56 (a maioria a pé); falta 4 |
 | França, 1940 | Sedan ao Canal em ~7 dias | 100 a 300 km/semana | 35 (a maioria a pé); falta 4 |
 | Hungria, 1925, contra a Tchecoslováquia com ~4× o fogo | 1919: meses contra um exército de massa; a perseguição final, ~100 km em 10 dias | 9/10 do povo tomados em 3 a 8 semanas | 4 semanas |
