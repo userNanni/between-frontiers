@@ -16,9 +16,9 @@
 //! banks. Interest is paid every week; a country whose foreign-currency service passes a limit,
 //! or whose interest eats half its revenue, defaults.
 //!
-//! Phase 4 hook: the international regime (gold standard, Bretton Woods, floating, euro, the
-//! reserve currency) replaces [`exchange_target`]. Until then every currency floats on
-//! purchasing-power parity with inertia and a risk discount.
+//! Phase 4: with the gold standard on (`econ::gold`), a country on gold holds its parity and its
+//! bank answers to the cover ([`super::gold::Peg`]); the others float on purchasing-power parity
+//! with inertia and a risk discount ([`exchange_target`]).
 //!
 //! See `docs/state.pt-BR.md` ("Moeda, banco central e dívida").
 
@@ -27,6 +27,7 @@ use laplace_schelling::hash::{HashState, StateHasher};
 use serde::{Deserialize, Serialize};
 
 use super::catalogue::Catalogue;
+use super::gold::Peg;
 use super::milli;
 use super::state::{Economy, Market, Pop, Region};
 
@@ -561,6 +562,9 @@ struct Plan {
     /// With the issue split fixed (D9): the share of what is asked abroad meant for bonds in the
     /// country's own currency (the rest in dollars). `None` on the rule: the market splits.
     local_abroad: Option<Fixed>,
+    /// The gold standard's cover binds the bank (`gold::Peg::bound`): it lends the treasury
+    /// nothing.
+    bound: bool,
 }
 
 /// What crossed borders in a week's money step, by market (`econ::payments`): moved by
@@ -587,8 +591,15 @@ pub struct AbroadFlows {
 }
 
 /// The weekly money step: prices, central banks, bonds, interest and defaults, for every
-/// market. Runs after taxes and spending are in the treasuries. Returns what crossed borders.
-pub fn week(econ: &mut Economy, activity: &[Activity], year: i32) -> AbroadFlows {
+/// market. Runs after taxes and spending are in the treasuries. `pegs`, by market, is what the
+/// gold standard asks of each bank (`econ::gold::step`); `None` with it off. Returns what
+/// crossed borders.
+pub fn week(
+    econ: &mut Economy,
+    activity: &[Activity],
+    year: i32,
+    pegs: Option<&[Peg]>,
+) -> AbroadFlows {
     let nm = econ.markets.len();
     let mut flows = AbroadFlows {
         sold: vec![Fixed::ZERO; nm],
@@ -643,6 +654,7 @@ pub fn week(econ: &mut Economy, activity: &[Activity], year: i32) -> AbroadFlows
             &w,
             year,
             treaty_debt[mi].0,
+            pegs.and_then(|p| p.get(mi)).copied().unwrap_or_default(),
         ));
     }
     // Foreign lenders: each market lends part of its idle savings; borrowers get their need
@@ -846,6 +858,7 @@ fn treaty_service(
 
 /// Prices, the central bank and the bonds sold at home for one market; returns what is left
 /// for foreign lenders.
+#[allow(clippy::too_many_arguments)]
 fn home_step(
     m: &mut Market,
     act: Activity,
@@ -854,10 +867,11 @@ fn home_step(
     w: &World,
     year: i32,
     treaty_debt: Fixed,
+    peg: Peg,
 ) -> Plan {
     let gdp = m.gdp_last_year;
     let gdp_week = gdp / 52;
-    let premium = premium(m, gdp, idle, treaty_debt);
+    let premium = premium(m, gdp, idle, treaty_debt) + peg.premium;
     let subordinate = m.money.subordinate(year);
     let money = &mut m.money;
     // Trends start at the first week's values.
@@ -889,12 +903,20 @@ fn home_step(
         money.exchange_rate = money.exchange_rate.mul_ratio(1, 1000);
         money.redenominations += 1;
     }
-    let target_rate = exchange_target(money, premium);
-    money.exchange_rate += (target_rate - money.exchange_rate) / EXCHANGE_WEEKS;
-    // The central bank: Taylor rule, or the player's rate; floored at zero.
+    // On gold (or under exchange control) the exchange rate holds the parity; otherwise it drifts
+    // to its target.
+    match peg.parity {
+        Some(p) => money.exchange_rate = p,
+        None => {
+            let target_rate = exchange_target(money, premium);
+            money.exchange_rate += (target_rate - money.exchange_rate) / EXCHANGE_WEEKS;
+        }
+    }
+    // The central bank: Taylor rule, or the player's rate; floored at zero. On gold, the cover
+    // adds its points to the rule (`gold::Peg::rate_add`).
     let neutral = NEUTRAL_REAL + money.inflation;
     let taylor = neutral + TAYLOR_INFLATION * (money.inflation - TARGET) + TAYLOR_GAP * gap;
-    let wanted = money.rate_command.unwrap_or(taylor);
+    let wanted = money.rate_command.unwrap_or(taylor + peg.rate_add);
     money.policy_rate = wanted.clamp(Fixed::ZERO, MAX_RATE);
     // Money the bank creates this week (negative: withdraws), in points of weekly GDP: what a
     // growing economy holds plus the stance against the neutral rate (below the zero floor the
@@ -902,11 +924,26 @@ fn home_step(
     let stance = (neutral - wanted).clamp(-MAX_STANCE, MAX_STANCE);
     let rule_stance = (neutral - taylor).clamp(-MAX_STANCE, MAX_STANCE);
     let mut purchase = gdp_week.mul_div(NEUTRAL_MONEY + stance, Fixed::from_int(100));
-    let beyond_rule = gdp_week.mul_div(
+    let mut beyond_rule = gdp_week.mul_div(
         (stance - rule_stance).max(Fixed::ZERO),
         Fixed::from_int(100),
     );
-    if subordinate {
+    if peg.bound() {
+        // Short of the cover the bank creates nothing, and after a while withdraws: a
+        // subordinate bank too. What it creates below the money a growing economy holds counts,
+        // negative, in the money beyond the rule, which inflation reads (deflation): the money
+        // that stopped, and what is withdrawn, at most the rule's withdrawal (a deeper cut
+        // from the rate is already in the stance).
+        let neutral_buy = gdp_week.mul_div(NEUTRAL_MONEY, Fixed::from_int(100));
+        let mut withdrawn = Fixed::ZERO;
+        purchase = purchase.min(Fixed::ZERO);
+        if let super::gold::Creation::Withdraw(points) = peg.creation {
+            withdrawn = gdp_week.mul_div(points, Fixed::from_int(100));
+            purchase = purchase.min(-withdrawn);
+        }
+        beyond_rule = (purchase - neutral_buy).max(-(neutral_buy + withdrawn));
+    }
+    if subordinate && !peg.bound() {
         purchase = purchase.max(Fixed::ZERO);
     }
     // Market rates: the world rate with this country's inflation, half way to the bank's rate,
@@ -1025,6 +1062,7 @@ fn home_step(
         fx_share,
         abroad_interest,
         local_abroad,
+        bound: peg.bound(),
     }
 }
 
@@ -1043,7 +1081,12 @@ fn settle_week(
     let gdp_week = m.gdp_last_year / 52;
     let mut forced = Fixed::ZERO;
     // With the split fixed (D9), the bank does not cover what was meant for abroad.
-    if plan.need > Fixed::ZERO && m.money.subordinate(year) && plan.local_abroad.is_none() {
+    // On gold short of the cover (`Plan::bound`), the bank lends the treasury nothing.
+    if plan.need > Fixed::ZERO
+        && m.money.subordinate(year)
+        && plan.local_abroad.is_none()
+        && !plan.bound
+    {
         m.money.debt_bank += plan.need;
         m.treasury += plan.need;
         m.budget.issued += plan.need;
@@ -1233,6 +1276,7 @@ mod tests {
                 },
                 1950,
                 Fixed::ZERO,
+                Peg::default(),
             )
         };
         let mut free = market(1_000_000);
@@ -1275,6 +1319,7 @@ mod tests {
             &w,
             1950,
             Fixed::ZERO,
+            Peg::default(),
         );
         assert!(m.money.debt_home > debt, "home savers bought bonds");
         assert!(plan.from_households > Fixed::ZERO);
@@ -1302,6 +1347,7 @@ mod tests {
             &w,
             1950,
             Fixed::ZERO,
+            Peg::default(),
         );
         settle_week(&mut m, &plan, 1950, (Fixed::ZERO, Fixed::ZERO));
         assert!(m.money.debt_bank > bank + Fixed::from_int(4000));
@@ -1329,6 +1375,7 @@ mod tests {
             &w,
             1950,
             Fixed::ZERO,
+            Peg::default(),
         );
         assert!(m.money.debt_home < home);
         assert_eq!(m.money.debt_fx, Fixed::from_int(10_000));
@@ -1346,6 +1393,7 @@ mod tests {
             fx_share: Fixed::ZERO,
             abroad_interest: Fixed::ZERO,
             local_abroad: None,
+            bound: false,
         };
         let (_, _, lost, _) = settle_week(&mut m, &plan, 1950, (Fixed::ZERO, Fixed::ZERO));
         assert_eq!(lost, Fixed::from_int(20_000));
@@ -1373,11 +1421,29 @@ mod tests {
             utilization: Fixed::from_int(90),
             index: Fixed::from_int(100),
         };
-        home_step(&mut m, hot, Fixed::ZERO, Fixed::ONE, &w, 1995, Fixed::ZERO);
+        home_step(
+            &mut m,
+            hot,
+            Fixed::ZERO,
+            Fixed::ONE,
+            &w,
+            1995,
+            Fixed::ZERO,
+            Peg::default(),
+        );
         assert!(m.money.policy_rate > NEUTRAL_REAL + m.money.inflation);
         // The player's rate wins, and money beyond the rule shows.
         m.money.rate_command = Some(Fixed::ZERO);
-        home_step(&mut m, hot, Fixed::ZERO, Fixed::ONE, &w, 1995, Fixed::ZERO);
+        home_step(
+            &mut m,
+            hot,
+            Fixed::ZERO,
+            Fixed::ONE,
+            &w,
+            1995,
+            Fixed::ZERO,
+            Peg::default(),
+        );
         assert!(m.budget.beyond_rule > Fixed::ZERO);
         assert_eq!(m.money.policy_rate, Fixed::ZERO);
     }
@@ -1413,6 +1479,7 @@ mod tests {
             fx_share: Fixed::ZERO,
             abroad_interest: Fixed::ZERO,
             local_abroad: None,
+            bound: false,
         };
         settle_week(&mut japan, &plan, 1990, (Fixed::ZERO, Fixed::ZERO));
         settle_week(&mut argentina, &plan, 1990, (Fixed::ZERO, Fixed::ZERO));
@@ -1446,10 +1513,78 @@ mod tests {
             &w,
             1950,
             Fixed::ZERO,
+            Peg::default(),
         );
         assert_eq!(m.budget.issued, Fixed::ZERO);
         assert!(m.money.credit > Fixed::ZERO, "its money went to banks");
         assert!(plan.need > Fixed::from_int(5000), "the gap is asked abroad");
+    }
+
+    /// The trilemma's first case: a fixed exchange rate and free capital leave the rate no
+    /// freedom. On gold, once the reserves fall below the cover, the bank cannot keep the Taylor
+    /// rule: its rate rises above it, it stops creating money (even a subordinate bank, even for
+    /// the treasury) and the exchange rate stays at the parity.
+    #[test]
+    fn on_gold_the_rate_leaves_the_taylor_rule_when_reserves_fall() {
+        use crate::econ::gold;
+        let w = World {
+            inflation: TARGET,
+            rate: NEUTRAL_REAL + TARGET,
+            income: Fixed::ONE,
+        };
+        let run = |m: &mut Market, peg: Peg| {
+            let plan = home_step(
+                m,
+                calm(),
+                Fixed::ZERO,
+                Fixed::ONE,
+                &w,
+                1926,
+                Fixed::ZERO,
+                peg,
+            );
+            settle_week(m, &plan, 1926, (Fixed::ZERO, Fixed::ZERO));
+        };
+        let mut start = market(52_000);
+        start.treasury = Fixed::from_int(-500);
+        start.money.exchange_rate = Fixed::from_int(95);
+        let issued = start.money.debt_bank + start.money.credit;
+        let rules = gold::tests::rules(1);
+        let date = laplace_schelling::Date::new(1926, 1, 4);
+        let peg_with = |reserve: Fixed| {
+            let mut st = gold::GoldState::default();
+            let res = crate::econ::payments::ReservesState {
+                markets: vec![crate::econ::payments::Reserve {
+                    gold: reserve,
+                    fx: Vec::new(),
+                }],
+                ..Default::default()
+            };
+            gold::step(&rules, &mut st, &res, std::slice::from_ref(&start), date)[0]
+        };
+        // Reserves above the legal cover (40 %): the rule is Taylor's, at the parity.
+        let full = peg_with(issued);
+        let mut covered = start.clone();
+        run(&mut covered, full);
+        let mut floating = start.clone();
+        run(&mut floating, Peg::default());
+        assert_eq!(covered.money.policy_rate, floating.money.policy_rate);
+        assert_eq!(covered.money.exchange_rate, INDEX_BASE);
+        // The reserves fell to a tenth of the issue.
+        let short = peg_with(issued / 10);
+        assert!(short.rate_add > Fixed::ZERO);
+        let mut defended = start.clone();
+        run(&mut defended, short);
+        assert!(
+            defended.money.policy_rate > floating.money.policy_rate,
+            "{} against Taylor's {}",
+            defended.money.policy_rate,
+            floating.money.policy_rate
+        );
+        assert_eq!(defended.money.exchange_rate, INDEX_BASE);
+        assert!(defended.money.debt_bank + defended.money.credit <= issued);
+        assert!(floating.money.debt_bank + floating.money.credit > issued);
+        assert!(defended.money.monetized < Fixed::ZERO);
     }
 
     #[test]

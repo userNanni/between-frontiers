@@ -113,6 +113,9 @@ pub struct Week {
     /// Settlement in money and reserves (`game::Switches::payments_settle`,
     /// `econ::payments::settle`); `None` off.
     pub settle: Option<Arc<super::payments::SettleRules>>,
+    /// The gold standard's regimes and rule (`game::Switches::gold_standard`, `econ::gold`);
+    /// `None` off, and always with `settle` off.
+    pub gold: Option<Arc<super::gold::GoldRules>>,
 }
 
 /// What a pop wants to buy this week.
@@ -1638,9 +1641,28 @@ impl System<GameWorld> for Week {
         }
         econ.markets = markets;
         econ.world_price = changes.world_price;
+        // The gold standard (`econ::gold`): the cover, exits and returns, and what each central
+        // bank is asked this week.
+        let pegs = self
+            .gold
+            .as_ref()
+            .filter(|_| self.settle.is_some())
+            .map(|rules| {
+                super::gold::step(
+                    rules,
+                    &mut world.gold,
+                    &world.reserves,
+                    &econ.markets,
+                    ctx.date,
+                )
+            });
         // Prices, central banks and bonds: the treasury's gap becomes debt.
-        let abroad = super::money::week(econ, &activity, ctx.date.year);
+        let abroad = super::money::week(econ, &activity, ctx.date.year, pegs.as_deref());
         payments.record_money(year, &abroad);
+        if pegs.is_some() {
+            // Foreign exchange is worth what its currency's exchange rate moved (PO7).
+            super::gold::revalue(&mut world.gold, &mut world.reserves, &econ.markets);
+        }
         // Finished works start running; one paid from abroad becomes its owner's stake.
         for p in done {
             let r = &mut econ.regions[p.region as usize];

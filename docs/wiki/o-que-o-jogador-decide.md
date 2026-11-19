@@ -58,6 +58,12 @@ O caminho inteiro da crise à paz (exigir, declarar depois da recusa, atacar num
 Exceção: `Borders` (operação de fronteira) não é do jogador. Vem de tratados, da paz, de testes e
 de ferramentas; o jogador liberta a própria terra com `Liberate`.
 
+Sem tela ainda: `SetGoldStandard` (aderir ao ouro na paridade de antes da guerra ou no câmbio do
+dia, flutuar, segurar o câmbio com controle cambial, ou devolver à regra) e `SetGoldPosture`
+(no ouro, defender a paridade ou desvalorizar dentro do padrão, PO6). A simulação é a fatia 3 do
+padrão-ouro, atrás da chave `gold_standard`, desligada; a tela, nas Agendas, com confirmação e
+ponto de restauração, é a fatia 5.
+
 ## Desenhadas, sem comando ainda
 
 | Decisão | Onde deve ficar | Depende de |
@@ -94,12 +100,12 @@ faixa.
 | | Decisão | Simulação | Tela |
 |---|---|---|---|
 | PO1 | O comércio passa a mover dinheiro entre países: quem importa paga a quem exporta. O que a reserva do país não cobre é pago na moeda dele, e os países em superávit a guardam como divisa: é a dívida que a regra da fatia 3 cobra. | fatia 2, feita atrás da chave `payments_settle`, desligada (`econ::payments::settle`) | — |
-| PO2 | Quem está no ouro em 1925 é dado com fonte; as voltas depois de 1925 saem da regra da IA, e a data histórica fica só como conferência. | fatias 2 e 3 | — |
-| PO3 | Um país sai do ouro pela regra: cobertura abaixo do piso por meses seguidos, ou a saída do principal país-reserva. | fatia 3 | — |
-| PO4 | Defender a paridade é juro acima da regra de Taylor por ponto de cobertura que falta, e moeda retirada quando a falta continua. | fatia 3 | — |
+| PO2 | Quem está no ouro em 1925 é dado com fonte; as voltas depois de 1925 saem da regra da IA, e a data histórica fica só como conferência. | fatia 3, feita atrás da chave `gold_standard`, desligada: `data/economy/gold.ron` (dez países no ouro em 1925, com a paridade), a volta pela regra no câmbio do dia (`econ::gold`) | — |
+| PO3 | Um país sai do ouro pela regra: cobertura abaixo do piso por meses seguidos, ou a saída do principal país-reserva. | fatia 3, desligada: 13 semanas abaixo de metade da cobertura legal, ou a saída do emissor de um quarto ou mais das reservas | — |
+| PO4 | Defender a paridade é juro acima da regra de Taylor por ponto de cobertura que falta, e moeda retirada quando a falta continua. | fatia 3, desligada: 0,3 ponto de juro por ponto de cobertura que falta, até 6; sem emissão abaixo da cobertura, retirada depois de 26 semanas | — |
 | PO5 | Controle de capital é decisão do jogador e entra na regra da IA. | fatia 4 | Governo → Moeda e dívida |
-| PO6 | Aderir e sair do ouro é decisão rara, com confirmação e ponto de restauração; a tela mostra o custo de cada paridade. | fatia 3 | Agendas |
-| PO7 | Divisas contam como reserva, e quem guarda a moeda que desvaloriza perde. | fatia 2 (a reserva por moeda, desligada); a perda vem com os regimes, fatia 3 | — |
+| PO6 | Aderir e sair do ouro é decisão rara, com confirmação e ponto de restauração; a tela mostra o custo de cada paridade. | fatia 3, só a simulação: `SetGoldStandard`, `SetGoldPosture` | Agendas (fatia 5) |
+| PO7 | Divisas contam como reserva, e quem guarda a moeda que desvaloriza perde. | fatia 2 (a reserva por moeda); fatia 3: a divisa vale o que o câmbio do emissor diz, e quem a guarda perde o que o emissor deixa de dever | — |
 | PO8 | Ouro novo das minas entra pela produção de cada país, com fonte. | fatia 2, desligada: 62,5 % da produção vai ao banco central (Delegação do Ouro da Liga das Nações, 1932) | — |
 
 ## O que o país decide por regra

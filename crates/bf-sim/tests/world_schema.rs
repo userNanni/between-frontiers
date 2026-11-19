@@ -51,6 +51,10 @@ fn schema() -> String {
         bf_sim::war::third::CallSide,
         bf_sim::war::support::Fall,
         bf_sim::war::nuclear_use::Mode,
+        bf_sim::econ::gold::Regime,
+        bf_sim::econ::gold::Posture,
+        bf_sim::econ::gold::GoldChoice,
+        bf_sim::econ::gold::Change,
     );
     let registry = tracer
         .registry()

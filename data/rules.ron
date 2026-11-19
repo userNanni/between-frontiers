@@ -43,6 +43,11 @@
     // diffusion run faster where foreign owners hold the levels a technology serves. Off: the
     // foreign plants teach nothing.
     foreign_technique: false,
+    // The gold standard's regimes and rule (`docs/state.pt-BR.md`, "Padrão-ouro, reservas e
+    // balanço de pagamentos", slice 3): who is on gold in 1925 (`data/economy/gold.ron`), the
+    // cover rule, exits, contagion, returns and the loss of who holds a falling currency. Needs
+    // `payments_settle`. Off: every currency floats.
+    gold_standard: false,
     // Independence by movement (`docs/borders.pt-BR.md`, section 11): colonial units demand an
     // answer, the metropole answers by its measured account, a refusal can end in revolt. Off:
     // colonies only grow their movement.
