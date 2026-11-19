@@ -17,6 +17,7 @@ pub mod influence;
 pub mod issuance;
 pub mod journal;
 pub mod keys_editor;
+pub mod keys_sheet;
 pub mod laws;
 pub mod ledger;
 pub mod lens_panel;

@@ -323,6 +323,8 @@ pub mod id {
     pub const UI_STREAM: &str = "system.ui_stream";
     /// Full screen on or off.
     pub const FULLSCREEN: &str = "system.fullscreen";
+    /// The sheet of every key, to read.
+    pub const KEYS_SHEET: &str = "system.keys_sheet";
     pub const HUD_CENTER_BAND: &str = "hud.center_band";
 }
 
@@ -394,11 +396,11 @@ fn builtin() -> Vec<CommandDef> {
         CommandDef::new(MENU, Windows).keys([k(F10)]).hint('N'),
         CommandDef::new(JOURNAL, Windows).keys([k(KeyJ)]).hint('J'),
         CommandDef::new(POPULATION, Windows).keys([k(KeyY)]),
-        CommandDef::new(INFLUENCE, Windows).keys([k(KeyI).shift()]),
+        CommandDef::new(INFLUENCE, Windows).keys([k(KeyI), k(KeyI).shift()]),
         CommandDef::new(ECONOMY, Windows)
-            .keys([k(KeyE).shift()])
+            .keys([k(KeyN), k(KeyE).shift()])
             .hint('E'),
-        CommandDef::new(WAR, Windows).keys([k(KeyW).shift()]),
+        CommandDef::new(WAR, Windows).keys([k(KeyK), k(KeyW).shift()]),
         CommandDef::new(SCROLL_DOWN, Windows).keys([k(PageDown).shift()]),
         CommandDef::new(SCROLL_UP, Windows).keys([k(PageUp).shift()]),
         CommandDef::new(OUTLINER, Windows).keys([k(KeyO)]).hint('O'),
@@ -501,6 +503,7 @@ fn builtin() -> Vec<CommandDef> {
     out.push(CommandDef::new(UI_SCALE_DOWN, System).keys([k(Minus).ctrl()]));
     out.push(CommandDef::new(UI_STREAM, System).hint('T'));
     out.push(CommandDef::new(FULLSCREEN, System).keys([k(F11), k(Enter).alt()]));
+    out.push(CommandDef::new(KEYS_SHEET, System).keys([k(F1)]));
     out.push(CommandDef::new(HUD_CENTER_BAND, Windows));
     out
 }
