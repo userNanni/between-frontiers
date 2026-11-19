@@ -321,6 +321,18 @@ fn a_great_war_costs_under_a_seventh_of_the_tick() {
             .map(|x| (x.country, x.value, x.weeks))
             .collect::<Vec<_>>()
     );
+    let sea = &w.war.sea;
+    println!(
+        "at sea: {} fleets {:?}, {} zones held, blockades {:?}, {} trade pairs cut",
+        sea.fleets.len(),
+        sea.fleets
+            .iter()
+            .map(|f| (f.country, f.zone, f.ships, f.against))
+            .collect::<Vec<_>>(),
+        sea.control.len(),
+        sea.blockades,
+        sea.cut.len()
+    );
     let share = forces / total;
     println!(
         "great war, a year: forces {:.1} ms of {:.1} ms in the systems ({:.1} %), {} segments in the last week, {} regions occupied",

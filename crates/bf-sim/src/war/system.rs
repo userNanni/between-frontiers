@@ -37,6 +37,8 @@ pub struct ForcesChanges {
     fight: Option<super::fight::FightWeek>,
     /// The conversions under way, every country's, while the war is switched on.
     conversions: Option<Vec<super::composition::Conversion>>,
+    /// The week at sea (slice C2), while a war is under way.
+    sea: Option<super::sea::SeaWeek>,
 }
 
 /// [`join`], for the conversions of the composition.
@@ -949,6 +951,7 @@ impl System<GameWorld> for Forces {
                 crises: None,
                 fight: None,
                 conversions: None,
+                sea: None,
             };
         }
         // A country born since (a separation, a liberation, a revolt) gets its forces' entry,
@@ -982,12 +985,21 @@ impl System<GameWorld> for Forces {
             .as_ref()
             .filter(|_| !world.war.conflicts.wars.is_empty() || ctx.date.day <= 7)
             .map(|setup| super::fight::fight_week(setup, &self.military, world, ctx.date));
+        // The war at sea, only while a war is under way.
+        let date = ctx.date.to_string();
+        let sea = self
+            .fight
+            .as_ref()
+            .and_then(|f| f.sea.as_ref())
+            .filter(|_| !world.war.conflicts.wars.is_empty())
+            .map(|s| super::sea::sea_week(s, &self.military, world, &date));
         ForcesChanges {
             countries,
             soldiers,
             crises,
             fight,
             conversions,
+            sea,
         }
     }
 
@@ -996,6 +1008,16 @@ impl System<GameWorld> for Forces {
             return;
         }
         world.war.countries = changes.countries;
+        // The week at sea: ships sunk, and the fleets, control and blockades for the trade and
+        // the screen; in peace, nothing.
+        match changes.sea {
+            Some(week) => {
+                super::sea::sink(world, &week.sunk);
+                world.war.sea = week.sea;
+            }
+            None if world.war.conflicts.wars.is_empty() => world.war.sea = Default::default(),
+            None => {}
+        }
         let colonial = self.fight.as_ref().and_then(|f| f.colonial.clone());
         // A week after a peace, the colonies the union took back (G6, GC5).
         if let Some(k) = &colonial
@@ -1007,6 +1029,8 @@ impl System<GameWorld> for Forces {
             world.war.composition.conversions = c;
         }
         if let Some(week) = changes.fight {
+            // Aircraft lost over the fronts (slice C2).
+            super::sea::sink(world, &week.air_lost);
             for (c, share) in &week.lost_share {
                 if let Some(cw) = world.war.countries.get_mut(*c as usize) {
                     super::fight::take_losses(&self.military, cw, *share);
@@ -1152,7 +1176,7 @@ impl System<GameWorld> for Forces {
         if let Some(k) = &colonial {
             super::colonial::open(k, &self.military, world, ctx.date);
             if !world.war.colonial.is_empty() {
-                super::colonial::week(k, &self.military, world);
+                super::colonial::week(k, &self.military, world, &ctx.date.to_string());
             }
         }
     }
