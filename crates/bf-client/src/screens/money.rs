@@ -91,6 +91,7 @@ fn bank(ui: &mut Ui, cx: &mut TabContext<'_>, v: &GovernmentView) {
     );
     let value = i18n.decimal(fx(m.exchange_rate), 1);
     Account::new(&i18n.tr("gov-exchange"), &value, &tip).show(ui);
+    external(ui, i18n, v);
     bf_ui_kit::gap(ui, space::MD);
 
     bf_ui_kit::heading(ui, &i18n.tr("gov-central-bank"));
@@ -356,6 +357,81 @@ fn debt(ui: &mut Ui, i18n: &I18n, v: &GovernmentView) {
         &i18n.tr("gov-foreign-assets"),
         &value,
         &i18n.tr("gov-tip-foreign-assets"),
+    )
+    .show(ui);
+}
+
+/// The balance of payments of the last full year (`econ::payments::view`): the current account
+/// and the financial account, each in dollars and as a share of that year's GDP, with its lines
+/// on hover.
+fn external(ui: &mut Ui, i18n: &I18n, v: &GovernmentView) {
+    let pv = &v.payments;
+    bf_ui_kit::gap(ui, space::SM);
+    if pv.year == 0 {
+        bf_ui_kit::caption(ui, &i18n.tr("gov-external"));
+        bf_ui_kit::small(ui, &i18n.tr("gov-external-none"));
+        return;
+    }
+    bf_ui_kit::caption(
+        ui,
+        &i18n.tr_args("gov-external-year", &[("year", arg(pv.year.to_string()))]),
+    );
+    let gdp = fx(pv.gdp);
+    let value = |x: f64| {
+        let amount = super::budget::signed_money(i18n, x);
+        if gdp > 0.0 {
+            i18n.tr_args(
+                "gov-external-value",
+                &[
+                    ("amount", arg(amount)),
+                    ("share", arg(of_gdp(i18n, x, gdp))),
+                ],
+            )
+        } else {
+            amount
+        }
+    };
+    let line = |key: &str, x: laplace_schelling::Fixed| {
+        i18n.tr_args(
+            "gov-external-line",
+            &[
+                ("line", arg(i18n.tr(key))),
+                // A sum never breaks across lines.
+                (
+                    "amount",
+                    arg(super::budget::signed_money(i18n, fx(x)).replace(' ', "\u{a0}")),
+                ),
+            ],
+        )
+    };
+    let tone = |x: f64| if x < 0.0 { color::DANGER } else { color::TEXT };
+    let current = fx(pv.current_account);
+    let tip = [
+        i18n.tr("gov-tip-current") + "\n",
+        line("gov-external-goods", pv.goods),
+        line("gov-external-services", pv.services),
+        line("gov-external-interest", pv.interest + pv.ledger_interest),
+        line("gov-external-remittances", pv.remittances),
+        line("gov-external-transfers", pv.transfers),
+    ]
+    .join("\n");
+    Account::new(&i18n.tr("gov-current-account"), &value(current), &tip)
+        .tone(tone(current))
+        .show(ui);
+    let financial = fx(pv.financial_account);
+    let mut lines = vec![
+        i18n.tr("gov-tip-financial") + "\n",
+        line("gov-external-bonds", pv.bonds),
+        line("gov-external-principal", pv.principal + pv.ledger_principal),
+        line("gov-external-fdi", pv.direct_investment),
+    ];
+    if fx(pv.not_settled).abs() >= 0.5 {
+        lines.push(line("gov-external-not-settled", pv.not_settled));
+    }
+    Account::new(
+        &i18n.tr("gov-financial-account"),
+        &value(financial),
+        &lines.join("\n"),
     )
     .show(ui);
 }

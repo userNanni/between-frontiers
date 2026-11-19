@@ -4910,3 +4910,62 @@ fn nuclear_balance() {
     }
     let _ = std::fs::remove_dir_all(&user);
 }
+
+/// The external accounts in Money and debt: Britain in February 1926, the current and the
+/// financial account of 1925 in dollars and as a share of GDP, and the current account's lines
+/// on hover. Portuguese at 1600 × 900, English at 1280 × 720; copies in
+/// `target/screenshots/payments/`.
+#[test]
+#[ignore = "needs a GPU (or software Vulkan) and the generated map; run with --ignored"]
+fn external_accounts() {
+    use laplace_schelling::calendar::Date;
+    let user = std::env::temp_dir().join(format!("bf-shots-payments-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&user);
+    let shipped = bf_sim::data::GameData::load(&root())
+        .expect("game data")
+        .switches;
+    let s = advanced_session_with("GBR", Date::new(1926, 2, 1), shipped);
+    let save = write_campaign(&user.join("save"), &s, "Contas", "GBR", &[]);
+    let dir = root().join("target/screenshots/payments");
+    std::fs::create_dir_all(&dir).unwrap();
+    for (locale, size, tag, current) in [
+        ("pt-BR", egui::vec2(1600.0, 900.0), "pt", "Conta corrente"),
+        (
+            "en",
+            egui::vec2(1280.0, 720.0),
+            "en-1280",
+            "Current account",
+        ),
+    ] {
+        let mut h = harness_sized(user.join(tag), locale, size);
+        let ctx = h.ctx.clone();
+        h.state_mut().apply(Transition::Game(save.clone()), &ctx);
+        for _ in 0..30 {
+            std::thread::sleep(std::time::Duration::from_millis(25));
+            h.run_steps(1);
+        }
+        h.key_press(egui::Key::G);
+        h.run_steps(4);
+        h.key_press(egui::Key::M);
+        h.run_steps(8);
+        let n = h
+            .query_all(egui_kittest::kittest::by().label_contains(current))
+            .next()
+            .expect("the current account");
+        n.scroll_to_me();
+        h.run_steps(4);
+        h.query_all(egui_kittest::kittest::by().label_contains(current))
+            .next()
+            .unwrap()
+            .hover();
+        h.run_steps(30);
+        let name = format!("270-external-accounts-{tag}");
+        shot(&mut h, &name);
+        std::fs::copy(
+            out_dir().join(format!("{name}.png")),
+            dir.join(format!("{name}.png")),
+        )
+        .unwrap();
+    }
+    let _ = std::fs::remove_dir_all(&user);
+}
