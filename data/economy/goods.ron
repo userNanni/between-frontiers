@@ -94,5 +94,11 @@
         // buildings cost to run per student (docs/population.pt-BR.md, "Ensino por coorte").
         (key: "secondary_schooling", category: "public", base_price: 540, available_from: 1925, tradable: false, unit: "one secondary pupil taught for a year"),
         (key: "higher_education", category: "public", base_price: 1500, available_from: 1925, tradable: false, unit: "one student in higher education taught for a year"),
+        // U2 (the owner, 2026-11-19): one good of weapon fissile, counted in cores, made by two
+        // methods (weapon_core_plant); a core is the fissile of a first-generation weapon. The
+        // base price is an estimate: above what the 1945 high enrichment spends on a core at base
+        // prices (about 254 million, mostly electricity), so the first method makes no loss at
+        // base prices; the production reactor spends far less, and the market sets the price.
+        (key: "weapon_cores", category: "military", base_price: 300000000, available_from: 1944, tradable: false, unit: "1 fission core"),
     ],
 )

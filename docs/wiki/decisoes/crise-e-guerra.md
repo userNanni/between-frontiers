@@ -299,6 +299,17 @@ termo a termo.
     - em Berlim (1961), os EUA não cedem e a URSS não pode declarar;
     - na Coreia (1950), a China não cede.
     O teatro (quem leva forças até o lugar) fica para uma fatia futura.
+- **O físsil (U1 a U4, decididas em seguida, todas na recomendação):**
+  - **U1:** o programa abre mina em depósito conhecido, em casa e na colônia. No exterior, abre
+    pelo capital do Estado quando o capital entre países ligar.
+  - **U2:** um bem só de físsil de arma, contado em núcleos, com dois métodos: alto enriquecimento
+    e reator de produção. O combustível de reator fica só para energia.
+  - **U3:** cada geração gasta menos material e tem mais potência. A fissão usa um núcleo, 21 kt; a
+    termonuclear usa 0,73 núcleo, 1,4 Mt. O dano cresce com a potência elevada a 2/3.
+  - **U4:** o rádio é o bem que puxa a mina antes da bomba, e o minério não vendido fica em
+    estoque.
+  - **Estado:** o passo 1 (núcleo, métodos, gerações e potência) está no PR da fatia. Minas,
+    rádio e estoque vêm depois.
 - **Como o jogo funciona por causa disso:** o dinheiro do programa compra o laboratório e adianta a
   cadeia (fissão, enriquecimento, bomba). Depois da bomba, ele mantém a encomenda de ogivas, que
   depende do material físsil do mercado. O painel de dissuasão lê o arsenal alheio pela metade até

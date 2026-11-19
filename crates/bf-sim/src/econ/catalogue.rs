@@ -77,6 +77,8 @@ pub struct Building {
     pub stagnant: bool,
     /// Built and paid for by the state (`BuildingDef::public`).
     pub public: bool,
+    /// Its profit goes whole to the treasury (`BuildingDef::state_firm`).
+    pub state_firm: bool,
     /// Urban self-employment sized by the labour market (`BuildingDef::informal`).
     pub informal: bool,
     /// Goods of one new level, per mille of its cost, and whether each is the building itself
@@ -270,6 +272,7 @@ impl Catalogue {
                     as u8,
                 stagnant: b.group == "services",
                 public: b.public,
+                state_firm: b.state_firm,
                 informal: b.informal,
                 agriculture: b.group == "agriculture",
                 labor_share: super::labor_share(&b.group),

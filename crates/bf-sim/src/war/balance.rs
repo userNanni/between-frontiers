@@ -111,6 +111,20 @@ pub(crate) fn defense_of(mil: &Military, c: &CountryWar, incoming: u64) -> Fixed
     defense(mil, c, incoming)
 }
 
+/// U3: (the sum of the equivalent megatons per mille of a country's warheads, their count).
+pub fn warhead_emt(mil: &Military, c: &CountryWar) -> (i128, i128) {
+    let Some(ty) = mil.unit("nuclear_warhead") else {
+        return (0, 0);
+    };
+    let (mut sum, mut count) = (0i128, 0i128);
+    for f in c.formations.iter().filter(|f| f.unit == ty) {
+        let n = i128::from(f.elements.to_int_floor().max(0));
+        sum += n * i128::from(mil.spec(ty, usize::from(f.generation)).emt_mille());
+        count += n;
+    }
+    (sum, count)
+}
+
 /// The share of incoming warheads a country's missile defence stops against `incoming`.
 fn defense(mil: &Military, c: &CountryWar, incoming: u64) -> Fixed {
     let n = &mil.rules.nuclear;
@@ -203,21 +217,39 @@ pub fn balance(
             .map(|r| r.population())
             .sum()
     };
-    let unacceptable = |m: u16| {
+    // U3: the mean equivalent megatons of a side's warheads (its own and its protectors'),
+    // per mille; one when it has none.
+    let emt = |me: u16, prot: &[u16]| -> i128 {
+        let (mut sum, mut count) = (0i128, 0i128);
+        for m in std::iter::once(me).chain(prot.iter().copied()) {
+            let (s, c) = warhead_emt(mil, cw(m));
+            sum += s;
+            count += c;
+        }
+        if count > 0 {
+            (sum / count).max(1)
+        } else {
+            1000
+        }
+    };
+    let (ea, eb) = (emt(a, &pa), emt(b, &pb));
+    // The warheads of the other side's mean power that kill the share held unacceptable, at
+    // `killed_per_warhead` a equivalent megaton.
+    let unacceptable = |m: u16, foe_emt: i128| {
         let dead = i128::from(people(m)) * i128::from(n.unacceptable_share) / 1000;
-        let per = i128::from(n.killed_per_warhead.max(1));
+        let per = (i128::from(n.killed_per_warhead.max(1)) * foe_emt / 1000).max(1);
         Fixed::from_int(((dead + per - 1) / per).max(1) as i64)
     };
     let first = |f: &[NuclearForce]| super::nuclear::first_strike_warheads(f);
-    let make = |me: u16, f: Vec<NuclearForce>, incoming: u64| NuclearSide {
+    let make = |me: u16, f: Vec<NuclearForce>, incoming: u64, foe_emt: i128| NuclearSide {
         forces: f,
         defense: defense(mil, cw(me), incoming),
         command: Fixed::from_ratio(i64::from(n.command), 1000),
-        unacceptable: unacceptable(me),
+        unacceptable: unacceptable(me, foe_emt),
     };
     let (ia, ib) = (first(&fb), first(&fa));
-    let sa = make(a, fa, ia);
-    let sb = make(b, fb, ib);
+    let sa = make(a, fa, ia, eb);
+    let sb = make(b, fb, ib, ea);
     let d = deterrence(&mil.rules, [&sa, &sb]);
     let limits = escalation_limits(&mil.rules, &d, [wa > 0, wb > 0]);
     Some(Balance {

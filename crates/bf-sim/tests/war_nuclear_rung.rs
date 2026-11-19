@@ -39,7 +39,9 @@ fn give(w: &mut GameWorld, tag: &str, key: &str, n: i64) {
     let c = index(w, tag) as usize;
     w.war.countries[c].formations.push(Formation {
         unit: ty,
-        generation: 0,
+        // Thermonuclear warheads (generation 1, U3), as the arsenals that deter; the rest
+        // has one generation here.
+        generation: u8::from(key == "nuclear_warhead"),
         elements: Fixed::from_int(n),
         colonial: false,
         called_up: false,

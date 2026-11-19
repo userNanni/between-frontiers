@@ -42,7 +42,7 @@ fn index(w: &GameWorld, tag: &str) -> u16 {
     w.countries.iter().position(|(_, c)| c.tag == tag).unwrap() as u16
 }
 
-fn give(w: &mut GameWorld, tag: &str, key: &str, n: i64) {
+fn give(w: &mut GameWorld, tag: &str, key: &str, n: i64, generation: u8) {
     if n == 0 {
         return;
     }
@@ -50,7 +50,7 @@ fn give(w: &mut GameWorld, tag: &str, key: &str, n: i64) {
     let c = index(w, tag) as usize;
     w.war.countries[c].formations.push(Formation {
         unit: ty,
-        generation: 0,
+        generation,
         elements: Fixed::from_int(n),
         colonial: false,
         called_up: false,
@@ -63,11 +63,13 @@ fn give(w: &mut GameWorld, tag: &str, key: &str, n: i64) {
 /// (warheads ready, ICBMs, missile submarines, bombers).
 type Forces = (i64, i64, i64, i64);
 
+/// The warheads of 1962 are thermonuclear (generation 1, U3), those of 1950 fission.
 fn arm(w: &mut GameWorld, tag: &str, (warheads, icbm, subs, bombers): Forces) {
-    give(w, tag, "nuclear_warhead", warheads);
-    give(w, tag, "ballistic_missile", icbm);
-    give(w, tag, "missile_submarine", subs);
-    give(w, tag, "strategic_bomber", bombers);
+    let generation = u8::from(icbm > 0 || subs > 0 || warheads > 1000);
+    give(w, tag, "nuclear_warhead", warheads, generation);
+    give(w, tag, "ballistic_missile", icbm, 0);
+    give(w, tag, "missile_submarine", subs, 0);
+    give(w, tag, "strategic_bomber", bombers, 0);
 }
 
 fn test_both(w: &mut GameWorld, tags: &[&str]) {
@@ -319,5 +321,103 @@ fn n10_coercion_and_theatre() {
         );
         assert_eq!(wg.yields, c.yields, "{}: {wg:?}", c.name);
         assert_eq!(declare, c.may_declare, "{}", c.name);
+    }
+}
+
+/// U3, the deterrence check with real arsenals (a measure for the PR): what each side delivers
+/// after the other's first strike, in equivalent megatons, the dead by the rule (370,000 an
+/// equivalent megaton), against a quarter of the other's people. With the forces of each date as
+/// in the sources above; 1955 is left out, its launchers have no source here. Also the 3,000
+/// fission warheads of the earlier tests, to show why they no longer deter.
+#[test]
+fn deterrence_with_real_arsenals() {
+    let d = data();
+    let n = &mil().rules.nuclear;
+    let ty = mil().unit("nuclear_warhead").unwrap();
+    struct Case {
+        name: &'static str,
+        by: &'static str,
+        on: &'static str,
+        forces: [(&'static str, Forces); 2],
+        generation: Option<u8>,
+    }
+    let cases = [
+        Case {
+            name: "US 1950 (bombers an estimate)",
+            by: "USA",
+            on: "SOV",
+            forces: [("USA", (369, 0, 0, 185)), ("SOV", (5, 0, 0, 3))],
+            generation: None,
+        },
+        Case {
+            name: "US 1962",
+            by: "USA",
+            on: "SOV",
+            forces: [("USA", (3500, 182, 7, 1479)), ("SOV", (300, 42, 0, 160))],
+            generation: None,
+        },
+        Case {
+            name: "USSR 1962",
+            by: "SOV",
+            on: "USA",
+            forces: [("USA", (3500, 182, 7, 1479)), ("SOV", (300, 42, 0, 160))],
+            generation: None,
+        },
+        Case {
+            name: "3,000 fission warheads on 1,500 bombers (the earlier tests)",
+            by: "USA",
+            on: "SOV",
+            forces: [("USA", (3000, 0, 0, 1500)), ("SOV", (300, 42, 0, 160))],
+            generation: Some(0),
+        },
+    ];
+    eprintln!(
+        "U3 case | warheads | delivered after the other's first strike | EMT each, delivered | dead by the rule | a quarter of the target | deters"
+    );
+    for c in &cases {
+        let mut w = d.new_world();
+        for (t, f) in c.forces {
+            arm(&mut w, t, f);
+        }
+        if let Some(g) = c.generation {
+            let by = index(&w, c.by) as usize;
+            for f in w.war.countries[by]
+                .formations
+                .iter_mut()
+                .filter(|f| f.unit == ty)
+            {
+                f.generation = g;
+            }
+        }
+        test_both(&mut w, &["USA", "SOV"]);
+        let (a, b) = (index(&w, c.by), index(&w, c.on));
+        let bal = balance(mil(), &w, a, b, Some(a)).unwrap();
+        let delivered = bal.deterrence.second_strike[0].delivered.to_f64_lossy();
+        let (sum, count) = bf_sim::war::balance::warhead_emt(mil(), &w.war.countries[a as usize]);
+        let emt = if count > 0 {
+            sum as f64 / count as f64 / 1000.0
+        } else {
+            0.0
+        };
+        let dead = delivered * emt * f64::from(n.killed_per_warhead);
+        let people: i64 = w
+            .econ
+            .regions
+            .iter()
+            .filter(|r| r.market == b)
+            .map(|r| r.population())
+            .sum();
+        let quarter = people as f64 * f64::from(n.unacceptable_share) / 1000.0;
+        eprintln!(
+            "U3 {} | {} | {:.0} | {:.3}, {:.1} | {:.1} M | {:.1} M | {}",
+            c.name,
+            bal.sides[0].warheads,
+            delivered,
+            emt,
+            delivered * emt,
+            dead / 1e6,
+            quarter / 1e6,
+            bal.deterrence.secure[0]
+        );
     }
 }

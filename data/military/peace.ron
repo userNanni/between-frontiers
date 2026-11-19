@@ -71,7 +71,7 @@
     // science and prototypes); with the game's American GDP of about 8e11 (1925) to 1.2e12,
     // that is some 8 million a point.
     nuclear_programme: Some((
-        chain: ["nuclear_fission", "uranium_enrichment", "atomic_bomb", "thermonuclear_weapon"],
+        chain: ["nuclear_fission", "uranium_enrichment", "production_reactor", "atomic_bomb", "thermonuclear_weapon"],
         // N2: the weapons are copied at half the usual pace (sharing by a clause between allies
         // waits for the treaties' clause).
         weapons: ["atomic_bomb", "thermonuclear_weapon"],
@@ -87,7 +87,7 @@
         stock_share: 750,
         // At most 2 % of GDP a year (the Manhattan Project was about 0.4 %).
         max_share: 20,
-        plant: "nuclear_fuel_plant",
+        plant: "weapon_core_plant",
         plant_shortage: 900,
         plant_weeks: 26,
         warhead: "nuclear_warhead",

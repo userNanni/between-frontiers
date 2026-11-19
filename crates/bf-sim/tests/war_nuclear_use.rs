@@ -39,7 +39,9 @@ fn give(w: &mut GameWorld, tag: &str, key: &str, n: i64) {
     let c = index(w, tag) as usize;
     w.war.countries[c].formations.push(Formation {
         unit: ty,
-        generation: 0,
+        // Thermonuclear warheads (generation 1, U3), as the arsenals that deter; the rest
+        // has one generation here.
+        generation: u8::from(key == "nuclear_warhead"),
         elements: Fixed::from_int(n),
         colonial: false,
         called_up: false,
@@ -167,7 +169,7 @@ fn countervalue_kills_and_wrecks() {
         people(w, "POL"),
         levels(w, "POL")
     );
-    assert_eq!(dead, 2 * 185_000);
+    assert_eq!(dead, 2 * 462_870);
     assert!(
         people(w, "POL") <= p0 - 300_000,
         "the dead leave the people"
@@ -197,7 +199,7 @@ fn counterforce_spares_civilians_and_hits_the_forces() {
     launch(&mut s, Mode::Counterforce, 2);
     let w = s.world();
     let cze = index(w, "POL");
-    assert_eq!(w.war.nuclear.dead_of(cze), 2 * 18_500);
+    assert_eq!(w.war.nuclear.dead_of(cze), 2 * 46_287);
     let men = bf_sim::war::nuclear_use::land_men(mil(), &w.war.countries[cze as usize]);
     eprintln!("land men {men0} → {men}");
     assert!(men < men0 - 30_000, "the forces are hit");
@@ -227,7 +229,7 @@ fn the_target_answers_in_kind() {
     s.sim.run_until(d);
     let w = s.world();
     assert_eq!(warheads(w, "POL"), 2, "two answered two");
-    assert_eq!(w.war.nuclear.dead_of(index(w, "GER")), 2 * 18_500);
+    assert_eq!(w.war.nuclear.dead_of(index(w, "GER")), 2 * 46_287);
     // The answer is not answered again.
     let d = later(&s, 15);
     s.sim.run_until(d);

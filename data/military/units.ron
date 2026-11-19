@@ -407,23 +407,26 @@
             roles: [(Strategic, 900)],
         ),
         (
-            // One warhead in the stockpile. Its fissile material in the game's "kg enriched" of
-            // `nuclear_fuel` (reactor-grade units, 5.87 kg of U3O8 each by the gaseous diffusion
-            // method of buildings.ron), counted by the ore it takes: a Little Boy core (64 kg at
-            // about 80 % U-235) took 12 to 24 t of natural uranium, with tails of 0.3 to 0.5 %
-            // (derived from Wellerstein, 2025, after the Manhattan District History); that is 14.1
-            // to 28.3 t of U3O8, or 2,400 to 4,800 kg enriched; the middle, 3,600 (derived). The
-            // thermonuclear generation keeps the same until a source for the fissile material of
-            // a primary is found (estimate). The plutonium route (production reactors and
-            // reprocessing) is missing: docs/war.pt-BR.md.
+            // One warhead in the stockpile (U2, U3; the owner, 2026-11-19): it takes fission cores
+            // (`weapon_cores`, buildings.ron) and each generation takes less and yields more.
+            // - Fission: one core, 21 kt (Fat Man; Little Boy 15 kt; Sublette, Nuclear Weapons
+            //   FAQ, 8.1.3 and 8.1.4).
+            // - Thermonuclear: a primary of about 4.5 kg of plutonium (Sublette, 4.3.1), 0.73 of
+            //   a Fat Man core of 6.15 kg; 1.4 Mt, the middle of the Mk-15 (1.69 Mt), the Mk-28
+            //   (1.1 to 1.45 Mt) and the W-49 (1.44 Mt) (Sublette, Complete List of All U.S.
+            //   Nuclear Weapons).
+            // The boosted weapons of the early 1950s (Mk-6) are left out: no fissile mass is
+            // published.
             key: "nuclear_warhead", domain: Strategic, mobility: Static, requires: ["atomic_bomb"],
             men: 5, training_weeks: 10,
-            equipment: [("nuclear_fuel", 3600), ("explosives", 2), ("electronic_components", 50)],
+            equipment: [("weapon_cores", 1), ("explosives", 2), ("electronic_components", 50)],
             upkeep: [("electronic_components", "0.1")],
             roles: [(Strategic, 1000)],
+            yield_kt: 21,
             generations: [
                 (requires: ["thermonuclear_weapon"],
-                    equipment: Some([("nuclear_fuel", 3600), ("explosives", 1), ("electronic_components", 100)])),
+                    equipment: Some([("weapon_cores", "0.73"), ("explosives", 1), ("electronic_components", 100)]),
+                    yield_kt: Some(1400)),
             ],
         ),
         (

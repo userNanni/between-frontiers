@@ -253,11 +253,14 @@
         opaque_weight: 500,
         // N9 (to the owner): the protectors bound by a defence clause add their arsenals.
         umbrella: true,
-        // Unacceptable damage: a quarter of the people, at 185,000 dead a warhead of 1 Mt
-        // equivalent (McNamara's assured destruction; Enthoven and Smith, 1971, How Much Is
-        // Enough?).
+        // Unacceptable damage: a quarter of the people (McNamara's assured destruction, 20 to 25 %
+        // of the Soviet population). The dead a warhead, per equivalent megaton of its yield
+        // (U3, `Y^(2/3)`): 370,000, from the first 100 equivalent megatons killing about 37
+        // million (Enthoven and Smith, 1971, How Much Is Enough?, p. 207, as the FRUS 1964-68,
+        // vol. X, doc. 102, quotes it). The next 100 add fewer (21 % at 200 against 15 % at
+        // 100): the return falls, and the density of the target (a later step) carries it.
         unacceptable_share: 250,
-        killed_per_warhead: 185000,
+        killed_per_warhead: 370000,
         warheads_per_bomber: 2,
         warheads_per_missile: 1,
         warheads_per_submarine: 16,

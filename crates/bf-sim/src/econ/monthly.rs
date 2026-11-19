@@ -1018,9 +1018,9 @@ impl System<GameWorld> for Investment {
             super::public::public_works(cat, econ, &unlocks, schools.as_deref(), self.wage_floor);
         // Works the governments asked for (D8, `GameCommand::AddWork`), each checked against what
         // the state may build there; one it may not build is dropped.
-        // The enrichment plant is the state's (a nuclear programme asks for it, `war::programme`):
-        // it may be asked for wherever its method is known.
-        let enrichment = cat.building("nuclear_fuel_plant");
+        // The weapon core plant is the state's (a nuclear programme asks for it,
+        // `war::programme`; U2): it may be asked for wherever one of its methods is known.
+        let enrichment = cat.building("weapon_core_plant");
         for q in &world.levers.requests {
             let found = super::public::buildable_in(
                 cat,

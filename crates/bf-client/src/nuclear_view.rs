@@ -71,6 +71,14 @@ pub fn strike_view(
     }
     let n = &mil.rules.nuclear;
     let nuc = &world.war.nuclear;
+    // U3: the dead of one of our warheads, at their mean equivalent megatons.
+    let (sum, count) = bf_sim::war::balance::warhead_emt(mil, c);
+    let emt = if count > 0 {
+        (sum / count).max(0) as u64
+    } else {
+        1000
+    };
+    let per = u64::from(n.killed_per_warhead) * emt / 1000;
     Some(StrikeView {
         target: world
             .countries
@@ -78,9 +86,8 @@ pub fn strike_view(
             .nth(usize::from(other))
             .map_or_else(String::new, |(_, c)| c.tag.clone()),
         deliverable,
-        per_countervalue: u64::from(n.killed_per_warhead),
-        per_counterforce: u64::from(n.killed_per_warhead) * u64::from(n.counterforce_civilians)
-            / 1000,
+        per_countervalue: per,
+        per_counterforce: per * u64::from(n.counterforce_civilians) / 1000,
         counterforce_men: u64::from(n.counterforce_men),
         stain: n.use_stain,
         taboo: nuc.taboo,
