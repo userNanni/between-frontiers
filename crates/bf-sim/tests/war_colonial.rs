@@ -74,6 +74,23 @@ fn state_key(d: &GameData, w: &GameWorld, r: u32) -> String {
 /// A month in, with the soldiers placed; then Algeria revolts: the garrison's states stay
 /// French, the rest secede as DZA, and the record goes into the history.
 fn revolt(d: &GameData) -> (Session, Vec<u32>, Vec<u32>) {
+    revolt_of(d, "DZA", "FRA")
+}
+
+/// The regions of candidate `unit` held by `owner`.
+fn unit_regions(d: &GameData, w: &GameWorld, unit: &str, owner: u16) -> Vec<u32> {
+    let k = setup(d);
+    let states: BTreeSet<u16> = k.candidates[unit].iter().copied().collect();
+    w.econ
+        .regions
+        .iter()
+        .enumerate()
+        .filter(|(_, r)| states.contains(&r.state) && r.market == owner)
+        .map(|(i, _)| i as u32)
+        .collect()
+}
+
+fn revolt_of(d: &GameData, unit: &str, owner_tag: &str) -> (Session, Vec<u32>, Vec<u32>) {
     let mut s = Session::new(
         d.new_world(),
         1925,
@@ -84,15 +101,15 @@ fn revolt(d: &GameData) -> (Session, Vec<u32>, Vec<u32>) {
     s.sim.run_until(Date::new(1925, 2, 3));
     let k = setup(d);
     let w = s.world();
-    let regions = algeria(d, w);
+    let owner = index(w, owner_tag);
+    let regions = unit_regions(d, w, unit, owner);
     let (kept, released) = colonial::partition(w, &regions, &k.coastal, k.rules.garrison);
     let states: Vec<String> = released.iter().map(|&r| state_key(d, w, r)).collect();
-    let fra = index(w, "FRA");
     s.submit(GameCommand::Borders {
         op: Operation::Secede {
-            from: "FRA".into(),
+            from: owner_tag.into(),
             states,
-            tag: "DZA".into(),
+            tag: unit.into(),
             overlord: None,
             signatories: Vec::new(),
             terms: Terms::default(),
@@ -101,11 +118,134 @@ fn revolt(d: &GameData) -> (Session, Vec<u32>, Vec<u32>) {
     s.sim.step();
     s.sim.world_mut().independence.history.push(Record {
         date: Date::new(1925, 2, 4),
-        unit: "DZA".into(),
-        owner: fra,
+        unit: unit.into(),
+        owner,
         how: How::Revolt,
     });
     (s, kept, released)
+}
+
+/// The conferences to the end (G6 criteria): a colonial war run until it ends or `years` pass,
+/// a line a year: support of both sides, the unit's regions each holds (by control), the
+/// irregulars armed, the men landed, the casualties of each side.
+fn to_the_end(d: &GameData, unit: &str, owner: &str, years: i32) {
+    let (mut s, kept, released) = revolt_of(d, unit, owner);
+    let w = s.world();
+    let names = |rs: &[u32]| rs.iter().map(|&r| state_key(d, w, r)).collect::<Vec<_>>();
+    eprintln!("{unit}: kept {:?}, proclaimed {:?}", names(&kept), names(&released));
+    let o = index(w, owner);
+    let c = index(w, unit);
+    let all: Vec<u32> = kept.iter().chain(&released).copied().collect();
+    let k = setup(d);
+    let mil = &d.war.as_ref().unwrap().military;
+    eprintln!("date | support {owner} {unit} | regions {owner}/{unit} | irregulars (armed) | landed | tied (‰ of the army ×2) | casualties {owner} {unit}");
+    let mut end = None;
+    for week_n in 0..(52 * years) {
+        week(&mut s);
+        let w = s.world();
+        let going = w.war.colonial.iter().any(|x| x.colony == c && !x.peace);
+        if week_n % 52 == 0 || !going {
+            let sup = |m: u16| w.war.fighting.support_of(m).map_or(-1, |x| x.value);
+            let held = |m: u16| {
+                all.iter()
+                    .filter(|&&r| w.war.fighting.controller(r, w.econ.regions[r as usize].market) == m)
+                    .count()
+            };
+            let (men, armed) = w
+                .war
+                .countries
+                .get(c as usize)
+                .map_or((0, 0), |cw| colonial::irregulars(mil, k.irregular, cw));
+            let rec = w.war.colonial.iter().find(|x| x.colony == c);
+            let landed = rec.map_or(0, |x| x.landed);
+            let (tied, commitment) = rec.map_or((0, 0), |x| (x.tied, x.commitment));
+            let lost = |m: u16| {
+                w.war
+                    .fighting
+                    .losses
+                    .iter()
+                    .find(|(x, _)| *x == m)
+                    .map_or(0, |(_, l)| *l)
+            };
+            let dt = s.sim.clock().date;
+            eprintln!(
+                "{}-{:02} | {} {} | {}/{} | {} ({}) | {} | {} ({}) | {} {}",
+                dt.year,
+                dt.month,
+                sup(o),
+                sup(c),
+                held(o),
+                held(c),
+                men,
+                armed,
+                landed,
+                tied,
+                commitment,
+                lost(o),
+                lost(c)
+            );
+        }
+        if !going {
+            end = Some(s.sim.clock().date);
+            break;
+        }
+    }
+    let w = s.world();
+    let owner_holds = all.iter().filter(|&&r| w.econ.regions[r as usize].market == o).count();
+    eprintln!("{unit}: ended {end:?}; {owner} owns {owner_holds} of {} regions", all.len());
+}
+
+fn g8() -> &'static GameData {
+    static D: OnceLock<GameData> = OnceLock::new();
+    D.get_or_init(|| {
+        load(|d| {
+            let c = d.war.as_mut().unwrap().conduct.as_mut().unwrap();
+            c.support.duration_by_commitment = true;
+        })
+    })
+}
+
+fn dosed(g8: bool) -> GameData {
+    load(|d| {
+        let c = d.war.as_mut().unwrap().conduct.as_mut().unwrap();
+        c.support.duration_by_commitment = g8;
+        c.colonial.as_mut().unwrap().cover_target = 1000;
+    })
+}
+
+#[test]
+#[ignore = "long: the G6 conference, the expedition dosed to the cover of O3"]
+fn dosed_to_the_end() {
+    for g8 in [false, true] {
+        let d = dosed(g8);
+        eprintln!("== dosed, G8 {g8}");
+        to_the_end(&d, "DZA", "FRA", 15);
+        to_the_end(&d, "MYS", "GBR", 15);
+    }
+}
+
+#[test]
+#[ignore = "long: the G6 conference, run in the slot"]
+fn algeria_to_the_end() {
+    to_the_end(data(), "DZA", "FRA", 15);
+}
+
+#[test]
+#[ignore = "long: the G6 conference, run in the slot"]
+fn malaya_to_the_end() {
+    to_the_end(data(), "MYS", "GBR", 15);
+}
+
+#[test]
+#[ignore = "long: the G6 conference with G8 (duration by commitment), run in the slot"]
+fn algeria_to_the_end_g8() {
+    to_the_end(g8(), "DZA", "FRA", 15);
+}
+
+#[test]
+#[ignore = "long: the G6 conference with G8 (duration by commitment), run in the slot"]
+fn malaya_to_the_end_g8() {
+    to_the_end(g8(), "MYS", "GBR", 15);
 }
 
 /// At the revolt the garrison holds the ports first; the interior (the Sahara) proclaims.
@@ -363,4 +503,69 @@ fn combatants_against_the_sources() {
         eprintln!("{tag}: {n} combatants at support 800 (1925 people)");
         assert!(n > 0);
     }
+}
+
+/// The front lost, the guerrilla goes on (G6): France takes the Sahara, Algeria holds no land,
+/// and the war goes on in the states France holds, costing it men every week and keeping its
+/// garrison tied there.
+#[test]
+fn the_guerrilla_goes_on_after_the_front() {
+    let d = data();
+    let (mut s, _, _) = revolt(d);
+    for _ in 0..30 {
+        week(&mut s);
+    }
+    let lost = |w: &GameWorld, m: u16| {
+        w.war
+            .fighting
+            .losses
+            .iter()
+            .find(|(x, _)| *x == m)
+            .map_or(0, |(_, l)| *l)
+    };
+    let w = s.world();
+    let (fra, dza) = (index(w, "FRA"), index(w, "DZA"));
+    let before = lost(w, fra);
+    let c = w.war.colonial.iter().find(|c| c.colony == dza).expect("still at war");
+    assert!(
+        c.regions
+            .iter()
+            .all(|&r| w.war.fighting.controller(r, w.econ.regions[r as usize].market) == fra),
+        "France holds the whole unit"
+    );
+    assert!(c.armed > 0 && c.tied > 0);
+    for _ in 0..4 {
+        week(&mut s);
+    }
+    let w = s.world();
+    assert!(w.war.conflicts.at_war(fra, dza), "the war goes on");
+    assert!(lost(w, fra) > before, "the guerrilla costs France men");
+}
+
+/// A colony with no one left under arms has lost (G6): the union goes through.
+#[test]
+fn a_colony_without_arms_surrenders() {
+    static D: OnceLock<GameData> = OnceLock::new();
+    let d = D.get_or_init(|| {
+        load(|d| {
+            let c = d.war.as_mut().unwrap().conduct.as_mut().unwrap();
+            let k = c.colonial.as_mut().unwrap();
+            k.recruit_week = 0;
+            k.exchange_base = 400_000;
+            c.support.ask_weeks = 1;
+        })
+    });
+    let (mut s, _, _) = revolt(d);
+    let fra = index(s.world(), "FRA");
+    let regions = algeria(d, s.world());
+    for _ in 0..30 {
+        week(&mut s);
+    }
+    let w = s.world();
+    assert!(
+        regions
+            .iter()
+            .all(|&r| w.econ.regions[r as usize].market == fra),
+        "the union went through"
+    );
 }

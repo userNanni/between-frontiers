@@ -54,6 +54,19 @@ pub struct ColonialRules {
     pub equipment_at_birth: u32,
     /// GC5: the movement after a reconquest, per mille of the mark of the revolt.
     pub movement_after_reconquest: u32,
+    /// The guerrilla in the states the metropole holds: its casualties a week per armed
+    /// irregular there, per mille.
+    pub ambush: u32,
+    /// The irregulars' casualties for each of the metropole's, per mille: `exchange_base` plus
+    /// `exchange_per_cover` times the cover (the metropole's men in the unit over `hostile` per
+    /// thousand of the people it holds there, O3).
+    pub exchange_base: u32,
+    pub exchange_per_cover: u32,
+    pub hostile: u32,
+    /// The AI lands men until its men in the unit reach this cover (per mille of `hostile` per
+    /// thousand of the people it holds there); 0 lands up to the cap.
+    #[serde(default)]
+    pub cover_target: u32,
 }
 
 /// What the colonial war needs from the map and the independence, built at load.
@@ -97,6 +110,12 @@ pub struct Colonial {
     /// The war ended in a peace: the unit waits for the union to go through to be a colony
     /// again (`reconquered`).
     pub peace: bool,
+    /// The new country's irregulars under arms, last week: at zero the colony has lost.
+    pub armed: u64,
+    /// The metropole's men tied in the unit (its garrison there and the men landed), and that
+    /// share of its land men times two, per mille, at most 1,000 (G8, the weight of duration).
+    pub tied: u64,
+    pub commitment: u16,
 }
 
 impl HashState for Colonial {
@@ -120,13 +139,17 @@ impl HashState for Colonial {
         self.by_land.hash_state(h);
         h.write_u16(self.mobilization);
         self.peace.hash_state(h);
+        h.write_u64(self.armed);
+        h.write_u64(self.tied);
+        h.write_u16(self.commitment);
     }
 }
 
 /// The split at the revolt: (kept, released). The garrison is the soldiers the metropole holds
 /// in the unit's regions; each state it keeps takes `garrison` men per thousand people, ports
-/// first, then by people (most first). The movement always takes one state at least: the last
-/// in that order.
+/// first, then by people (most first). The first port (the most populous) is always kept: the
+/// administration and the fleet are there ([`first_port`]). The movement always takes one state
+/// at least: the last in that order.
 pub fn partition(
     world: &GameWorld,
     regions: &[u32],
@@ -141,6 +164,7 @@ pub fn partition(
     if men <= 0 || regions.len() < 2 {
         return (Vec::new(), regions.to_vec());
     }
+    let port = first_port(world, regions, coastal);
     let mut order = regions.to_vec();
     order.sort_by_key(|&r| {
         let reg = &rs[r as usize];
@@ -151,8 +175,8 @@ pub fn partition(
     let mut released = Vec::new();
     for &r in &order[..order.len() - 1] {
         let need = (rs[r as usize].population() * i64::from(garrison) + 999) / 1000;
-        if need <= left {
-            left -= need;
+        if need <= left || Some(r) == port {
+            left = (left - need).max(0);
             kept.push(r);
         } else {
             released.push(r);
@@ -162,6 +186,17 @@ pub fn partition(
     kept.sort_unstable();
     released.sort_unstable();
     (kept, released)
+}
+
+/// The port the metropole keeps whatever its garrison: the most populous coastal region of the
+/// unit (ties by index). `None` without a coast.
+pub fn first_port(world: &GameWorld, regions: &[u32], coastal: &BTreeSet<u16>) -> Option<u32> {
+    let rs = &world.econ.regions;
+    regions
+        .iter()
+        .copied()
+        .filter(|&r| coastal.contains(&rs[r as usize].state))
+        .min_by_key(|&r| (-rs[r as usize].population(), r))
 }
 
 /// Whether the metropole reaches any of `regions` by land from its own metropolitan regions.
@@ -200,6 +235,28 @@ pub fn combatants(
     support: u16,
 ) -> u64 {
     combatants_where(rules, mil, world, |r| r.market == colony, support)
+}
+
+/// [`combatants`] over the people of `regions`, whoever holds them: the whole unit, the states
+/// the metropole keeps included (the movement recruits there too).
+pub fn combatants_of(
+    rules: &ColonialRules,
+    mil: &Military,
+    world: &GameWorld,
+    regions: &[u32],
+    support: u16,
+) -> u64 {
+    let set: BTreeSet<u32> = regions.iter().copied().collect();
+    let of_age: u64 = world
+        .econ
+        .regions
+        .iter()
+        .enumerate()
+        .filter(|(i, _)| set.contains(&(*i as u32)))
+        .filter_map(|(i, _)| world.demography.ages.get(i))
+        .map(|a| super::calc::mobilizable(&mil.rules, &super::system::bands(a), 1000, 0).of_age)
+        .sum();
+    (u128::from(of_age) * u128::from(rules.armed_share) * u128::from(support) / 1_000_000) as u64
 }
 
 /// [`combatants`] of the people of `states` held by `owner`: the measure of a unit before it
@@ -393,6 +450,11 @@ pub fn open(setup: &ColonialSetup, mil: &Military, world: &mut GameWorld, date: 
         let mobilization = setup.revolt;
         let by_land = by_land(setup, world, owner, &regions);
         birth_forces(setup, mil, world, owner, colony, &regions, mobilization);
+        let armed = world
+            .war
+            .countries
+            .get(colony as usize)
+            .map_or(0, |cw| irregulars(mil, setup.irregular, cw).1);
         world.war.colonial.push(Colonial {
             war: wid,
             owner,
@@ -404,6 +466,9 @@ pub fn open(setup: &ColonialSetup, mil: &Military, world: &mut GameWorld, date: 
             by_land,
             mobilization,
             peace: false,
+            armed,
+            tied: 0,
+            commitment: 0,
         });
     }
 }
@@ -442,11 +507,9 @@ fn birth_forces(
         };
         let mut gone = Vec::new();
         if let Some(cw) = world.war.countries.get_mut(owner as usize) {
-            for f in cw
-                .formations
-                .iter_mut()
-                .filter(|f| f.colonial && mil.types[f.unit as usize].domain == Domain::Land)
-            {
+            for f in cw.formations.iter_mut().filter(|f| {
+                f.colonial && mil.types[f.unit as usize].domain == Domain::Land
+            }) {
                 let take = f.elements * share;
                 if !take.is_positive() {
                     continue;
@@ -478,7 +541,7 @@ fn birth_forces(
     let Some(ty) = setup.irregular else {
         return;
     };
-    let want = combatants(r, mil, world, colony, r.proclaimed.clamp(0, 1000) as u16);
+    let want = combatants_of(r, mil, world, regions, r.proclaimed.clamp(0, 1000) as u16);
     let first = (u128::from(want) * u128::from(r.initial_share) / 1000) as i64;
     if first <= 0 {
         return;
@@ -517,6 +580,17 @@ pub fn week(setup: &ColonialSetup, mil: &Military, world: &mut GameWorld) {
             out.push(c);
             continue;
         }
+        let land_men: i64 = world
+            .war
+            .countries
+            .get(c.owner as usize)
+            .map_or(0, |cw| {
+                cw.formations
+                    .iter()
+                    .filter(|f| mil.types[f.unit as usize].domain == Domain::Land)
+                    .map(|f| men(mil, f))
+                    .sum()
+            });
         // Landing: by the ports the metropole still holds and controls in the unit.
         if !c.by_land {
             let ports = c
@@ -529,14 +603,23 @@ pub fn week(setup: &ColonialSetup, mil: &Military, world: &mut GameWorld) {
                         && world.war.fighting.controller(ri, reg.market) == c.owner
                 })
                 .count() as u64;
-            let land_men: i64 = world.war.countries.get(c.owner as usize).map_or(0, |cw| {
-                cw.formations
+            let mut cap = (land_men.max(0) as u64) * u64::from(r.expedition_cap) / 1000;
+            if r.cover_target > 0 {
+                let held: i64 = c
+                    .regions
                     .iter()
-                    .filter(|f| mil.types[f.unit as usize].domain == Domain::Land)
-                    .map(|f| men(mil, f))
-                    .sum()
-            });
-            let cap = (land_men.max(0) as u64) * u64::from(r.expedition_cap) / 1000;
+                    .filter(|&&ri| {
+                        let reg = &world.econ.regions[ri as usize];
+                        world.war.fighting.controller(ri, reg.market) == c.owner
+                    })
+                    .map(|&ri| world.econ.regions[ri as usize].population())
+                    .sum();
+                let garrison = theatre_men(world, &c).unwrap_or(0).saturating_sub(c.landed);
+                let want = (held.max(0) as u64) * u64::from(r.hostile) / 1000
+                    * u64::from(r.cover_target)
+                    / 1000;
+                cap = cap.min(want.saturating_sub(garrison));
+            }
             c.landed = (c.landed + ports * u64::from(r.men_per_port_week)).min(cap);
         }
         // Recruitment.
@@ -548,7 +631,7 @@ pub fn week(setup: &ColonialSetup, mil: &Military, world: &mut GameWorld) {
                 .support_of(c.colony)
                 .map_or(r.proclaimed, |s| s.value)
                 .clamp(0, 1000);
-            let want = combatants(r, mil, world, c.colony, support as u16);
+            let want = combatants_of(r, mil, world, &c.regions, support as u16);
             if let Some(cw) = world.war.countries.get_mut(c.colony as usize) {
                 let (have, armed) = irregulars(mil, Some(ty), cw);
                 let gap = want.saturating_sub(have);
@@ -558,10 +641,10 @@ pub fn week(setup: &ColonialSetup, mil: &Military, world: &mut GameWorld) {
                 } else {
                     Fixed::ONE
                 };
-                let n =
-                    (Fixed::from_int((u128::from(gap) * u128::from(r.recruit_week) / 1000) as i64)
-                        * arms)
-                        .to_int_trunc();
+                let n = (Fixed::from_int(
+                    (u128::from(gap) * u128::from(r.recruit_week) / 1000) as i64,
+                ) * arms)
+                    .to_int_trunc();
                 if n > 0 {
                     let add = Fixed::from_ratio(n, i64::from(mil.spec(ty, 0).men.max(1)));
                     match cw.formations.iter_mut().find(|f| f.unit == ty) {
@@ -584,9 +667,88 @@ pub fn week(setup: &ColonialSetup, mil: &Military, world: &mut GameWorld) {
                 }
             }
         }
+        guerrilla(setup, mil, world, &mut c, land_men);
         out.push(c);
     }
     world.war.colonial = out;
+}
+
+/// A week of the guerrilla in the unit's regions the metropole holds (G6, the orchestrator's
+/// note of 2026-11-19): the irregulars of their people ambush, the metropole's men there hunt
+/// them. The metropole's casualties are `ambush` per mille of those armed irregulars; theirs are
+/// as many times the metropole's as the exchange, which rises with the cover (O3). Both go into
+/// the losses that war support reads (G4), and are buried. Also records the men the metropole
+/// keeps tied in the unit and the weight of duration (G8).
+fn guerrilla(setup: &ColonialSetup, mil: &Military, world: &mut GameWorld, c: &mut Colonial, land: i64) {
+    let r = &setup.rules;
+    c.tied = theatre_men(world, c).unwrap_or_else(|| {
+        c.regions
+            .iter()
+            .filter(|&&ri| world.econ.regions[ri as usize].market == c.owner)
+            .map(|&ri| world.war.soldiers.get(ri as usize).copied().unwrap_or(0).max(0) as u64)
+            .sum()
+    });
+    c.commitment = if land > 0 {
+        (u128::from(c.tied) * 2000 / land as u128).min(1000) as u16
+    } else {
+        1000
+    };
+    let (mut all, mut held) = (0i64, 0i64);
+    for &ri in &c.regions {
+        let reg = &world.econ.regions[ri as usize];
+        let p = reg.population();
+        all += p;
+        if world.war.fighting.controller(ri, reg.market) == c.owner {
+            held += p;
+        }
+    }
+    let Some(cw) = world.war.countries.get(c.colony as usize) else {
+        return;
+    };
+    let (men_now, armed) = irregulars(mil, setup.irregular, cw);
+    c.armed = armed;
+    if all <= 0 || held <= 0 || armed == 0 || c.tied == 0 {
+        return;
+    }
+    let armed_here = (u128::from(armed) * held as u128 / all as u128) as u64;
+    let theirs_men = (armed_here * u64::from(r.ambush) / 1000).min(c.tied);
+    let need = (held as u64 * u64::from(r.hostile) / 1000).max(1);
+    let exchange = u64::from(r.exchange_base) + u64::from(r.exchange_per_cover) * c.tied / need;
+    let irregular_men = (theirs_men * exchange / 1000).min(men_now);
+    if theirs_men > 0 && land > 0 {
+        if let Some(cw) = world.war.countries.get_mut(c.owner as usize) {
+            super::fight::take_losses(mil, cw, Fixed::from_ratio(theirs_men as i64, land));
+        }
+        lose(world, c.owner, theirs_men);
+    }
+    if irregular_men > 0 {
+        if let (Some(ty), Some(cw)) = (setup.irregular, world.war.countries.get_mut(c.colony as usize)) {
+            let share = Fixed::from_ratio(irregular_men as i64, men_now as i64);
+            for f in cw.formations.iter_mut().filter(|f| f.unit == ty) {
+                let keep = Fixed::ONE - share;
+                f.elements *= keep;
+                for e in &mut f.equipment {
+                    e.1 *= keep;
+                }
+            }
+            cw.formations.retain(|f| f.elements.is_positive());
+        }
+        lose(world, c.colony, irregular_men);
+        if let Some(cw) = world.war.countries.get(c.colony as usize) {
+            c.armed = irregulars(mil, setup.irregular, cw).1;
+        }
+    }
+}
+
+/// Casualties of `m` into the war's losses, the killed among them buried.
+fn lose(world: &mut GameWorld, m: u16, n: u64) {
+    let f = &mut world.war.fighting;
+    match f.losses.binary_search_by_key(&m, |(k, _)| *k) {
+        Ok(i) => f.losses[i].1 += n,
+        Err(i) => f.losses.insert(i, (m, n)),
+    }
+    let killed = (n as i64 * super::fight::KILLED_PER_MILLE / 1000).max(0) as u64;
+    super::fight::bury(world, m, killed);
 }
 
 /// The colonial wars that ended this week. `withdrawn`: the metropole gave up, and the states it

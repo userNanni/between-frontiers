@@ -45,6 +45,11 @@ pub struct SupportRules {
     pub casualties_per_decade: i32,
     /// Support lost per year of war.
     pub duration_per_year: i32,
+    /// G8 (to the owner): the duration weighs by the share of the land army committed to the war,
+    /// times two, at most whole. A total war weighs whole; a distant expedition of regulars
+    /// little. Off: every war weighs whole.
+    #[serde(default)]
+    pub duration_by_commitment: bool,
     /// Support lost at a full loss of the basic needs met before the war.
     pub deprivation: i32,
     /// Support lost with the whole population under occupation.
@@ -409,8 +414,17 @@ pub fn support_week(
             }
         }
     }
+    // A country born in revolt fights on as a guerrilla while it has men under arms: it is not
+    // overrun, and the land it lost does not weigh on its support (G6).
+    let guerrilla = |m: u16| {
+        world
+            .war
+            .colonial
+            .iter()
+            .any(|k| !k.peace && k.colony == m && k.armed > 0)
+    };
     let overrun = |m: u16| {
-        home.get(&m).is_some_and(|&(size, taken, capital, colony)| {
+        !guerrilla(m) && home.get(&m).is_some_and(|&(size, taken, capital, colony)| {
             let share = if size > 0 { taken * 1000 / size } else { 0 };
             !colony
                 && (share >= i64::from(r.overrun)
@@ -502,14 +516,36 @@ pub fn support_week(
                 0
             }
         };
+        // G8: the weeks of war weigh by the commitment. Only a metropole whose wars are all
+        // colonial commits less than its whole army so far; any other war weighs whole.
+        let weeks = if r.duration_by_commitment {
+            let colonial: Vec<_> = world
+                .war
+                .colonial
+                .iter()
+                .filter(|k| !k.peace && k.owner == m)
+                .collect();
+            let other = wars.iter().any(|w| {
+                (w.side_a.contains(&m) || w.side_b.contains(&m))
+                    && !colonial.iter().any(|k| k.war == w.id)
+            });
+            if colonial.is_empty() || other {
+                s.weeks
+            } else {
+                let c = colonial.iter().map(|k| u32::from(k.commitment)).sum::<u32>().min(1000);
+                s.weeks * c / 1000
+            }
+        } else {
+            s.weeks
+        };
         let t = terms(
             r,
             &Inputs {
                 start,
                 killed_per_million: per_million(dead.saturating_sub(s.killed_before) as i64),
-                weeks: s.weeks,
+                weeks,
                 deprivation: lost_basic,
-                occupied: if size > 0 {
+                occupied: if size > 0 && !guerrilla(m) {
                     (occupied * 1000 / size) as i32
                 } else {
                     0
@@ -582,8 +618,17 @@ pub fn support_week(
         let (Some(sa), Some(sb)) = (get(f, a), get(f, b)) else {
             continue;
         };
-        let wants_out =
-            |s: &Support, m: u16| s.fallen.is_some() || (player != Some(m) && s.value < r.peace);
+        // A country born in revolt also loses when it has no one left under arms (G6).
+        let disarmed = world
+            .war
+            .colonial
+            .iter()
+            .any(|k| k.war == w.id && !k.peace && k.armed == 0);
+        let wants_out = |s: &Support, m: u16| {
+            s.fallen.is_some()
+                || (player != Some(m) && s.value < r.peace)
+                || (m == b && disarmed)
+        };
         if wants_out(&sa, a) {
             out.withdrawn.push(w.id);
             continue;
@@ -789,6 +834,52 @@ mod tests {
         let t6 = at(6, 58_000);
         assert!(t6.target < r.peace, "{t6:?}");
         assert!(t6.target > r.collapse, "{t6:?}");
+    }
+
+    /// G8, duration by commitment (measured for the owner): Germany 1914–18 fought with its whole
+    /// army (weight 1, the same case as above). The United States had some 540,000 of 1.5
+    /// million in Vietnam (×2: 0.72): with the weight it no longer asks for peace by the sixth
+    /// year, only in the eighth (302 in the seventh). The owner's case moves a year; this test records by how much.
+    #[test]
+    fn duration_by_commitment_keeps_the_owners_cases() {
+        let r = rules();
+        let weighed = |years: u32, per_mille: u32| years * 52 * per_mille / 1000;
+        let germany = terms(
+            &r,
+            &Inputs {
+                start: r.attacked,
+                killed_per_million: 2_000_000 * 1_000_000 / 67_000_000,
+                weeks: weighed(4, 1000),
+                deprivation: 350,
+                occupied: 0,
+                momentum: Fixed::from_int(-5),
+            },
+        );
+        assert!(germany.target < r.collapse, "{germany:?}");
+        let commitment = (540_000u64 * 2 * 1000 / 1_500_000).min(1000) as u32;
+        let at = |years: u32, killed: u64| {
+            terms(
+                &r,
+                &Inputs {
+                    start: r.attacker_cause,
+                    killed_per_million: killed * 1_000_000 / 200_000_000,
+                    weeks: weighed(years, commitment),
+                    ..Default::default()
+                },
+            )
+        };
+        let t3 = at(3, 30_000);
+        assert!(t3.target > r.peace, "{t3:?}");
+        let t6 = at(6, 58_000);
+        let t7 = at(7, 58_000);
+        let t8 = at(8, 58_000);
+        eprintln!(
+            "Vietnam with G8 ({commitment} per mille): year 6 {}, year 7 {}, year 8 {}",
+            t6.target, t7.target, t8.target
+        );
+        assert!(t7.target > r.peace, "G8 moves the peace past the seventh year: {t7:?}");
+        assert!(t8.target < r.peace, "{t8:?}");
+        assert!(t8.target > r.collapse, "{t8:?}");
     }
 
     #[test]

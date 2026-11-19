@@ -19,3 +19,4 @@ demand-refusal-revolt-now = Recusada, a colônia se separa sem acordo: já está
 demand-refusal-revolt-later = Recusada, a colônia fica por ora; ela se separa sem acordo se a mobilização chegar a { $mark } ‰ (hoje { $mobilized } ‰).
 demand-colonial-war = Recusada, a revolta vira guerra colonial (há um ponto de restauração antes da resposta). Com as tropas atuais você segura { $held }; { $proclaimed } proclama.
 demand-colonial-war-none = Recusada, a revolta vira guerra colonial (há um ponto de restauração antes da resposta). As tropas atuais não seguram nenhum estado; { $proclaimed } proclama.
+demand-colonial-port = Você mantém ao menos o porto de { $port }: a administração e a frota estão lá, e é por ele que as tropas desembarcam.

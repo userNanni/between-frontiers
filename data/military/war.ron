@@ -28,6 +28,9 @@
         // Resolution* 42(3)): per tenfold of the killed per million.
         casualties_per_decade: 60,
         duration_per_year: 30,
+        // G8 (to the owner): the duration weighs by the share of the land army committed to the
+        // war, times two, at most whole. Off until the owner answers.
+        duration_by_commitment: false,
         // Civilian deprivation counts (orchestrator, 2026-11-18): the share of the basic needs
         // met before the war that are no longer met. Germany's turnip winter of 1916–17 and the
         // strikes of 1918 (Offer, 1989, *The First World War: An Agrarian Interpretation*).
@@ -123,5 +126,22 @@
         equipment_at_birth: 500,
         // GC5: after a reconquest the movement starts again at half the mark of the revolt.
         movement_after_reconquest: 500,
+        // The guerrilla in the states the metropole holds. Casualties of the metropole a week
+        // per armed irregular there: Algeria some 10 per mille (about 25,000 French soldiers
+        // killed in 7.5 years, four casualties to a death, against some 25,000 armed), Malaya
+        // some 2 (1,865 of the security forces killed in 12 years against 7,000 to 8,000);
+        // design value between them.
+        ambush: 5,
+        // The exchange, irregulars' casualties for each of the metropole's: Malaya about 3.6
+        // (6,710 MNLA killed against 1,865) at a cover near 1, Algeria about 5.5 (some 141,000
+        // ALN killed, French figures, against some 25,000) at a cover near 2.2 (400,000 men for
+        // 180,000 needed); the line through the two: 2 + 1.6 x cover. Cover: the metropole's men
+        // in the unit over 20 per thousand of the people it holds there (O3, hostile).
+        exchange_base: 2000,
+        exchange_per_cover: 1600,
+        hostile: 20,
+        // The AI lands up to the cap and does not dose the expedition (phase 6); with a value,
+        // it lands until its men reach this cover (per mille of the O3 need).
+        cover_target: 0,
     )),
 )

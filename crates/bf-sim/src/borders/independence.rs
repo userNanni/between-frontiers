@@ -928,6 +928,8 @@ pub struct DemandView {
     /// With the colonial war (G6): a revolt now would split the unit into the states the
     /// current garrison holds and those the movement proclaims (`state-<key>`).
     pub held: Option<(Vec<String>, Vec<String>)>,
+    /// The port the metropole keeps whatever its garrison (`war::colonial::first_port`).
+    pub port: Option<String>,
 }
 
 fn add_months(d: Date, months: u8) -> Date {
@@ -988,6 +990,12 @@ pub fn demands_of(setup: &IndependenceSetup, world: &GameWorld, owner: u16) -> V
                             .collect()
                     };
                     (names(kept), names(released))
+                }),
+                port: setup.partition.as_ref().and_then(|(_, coastal)| {
+                    crate::war::colonial::first_port(world, &u.regions, coastal).and_then(|ri| {
+                        ids.get(&world.econ.regions[ri as usize].state)
+                            .map(|s| (*s).clone())
+                    })
                 }),
             })
         })

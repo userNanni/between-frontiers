@@ -1248,6 +1248,10 @@ passa ao `Secede` só os estados que a guarnição não segura.
 - Cada estado custa 2 homens por mil habitantes, o mínimo de O3 para população calma (Quinlivan,
   1995). O dono fica primeiro com os estados com porto e depois com os mais populosos, enquanto a
   guarnição pagar.
+- **O primeiro porto fica sempre com a metrópole,** mesmo sem guarnição que pague: é o mais
+  populoso, onde estão a administração e a frota (`first_port`). Sem ele, a Malásia de 1925
+  proclamava inteira, e o Reino Unido não tinha por onde desembarcar. A tela da recusa avisa: "você
+  mantém ao menos o porto de X".
 - O movimento leva sempre ao menos um estado: o último nessa ordem.
 - Na Argélia de 1925, a guarnição segura Argel, Constantina e Orã, e o Saara (`DZA-SUD`) proclama.
   A granularidade por estado é grossa: a guerrilha que nasce no interior de um estado segurado
@@ -1278,10 +1282,16 @@ ainda tem na unidade mais os homens desembarcados. O resto do exército fica nas
 - Sem porto, não chega reforço.
 
 **Irregulares.** O país novo luta com a unidade `irregular`.
-- Combatentes = apoio à guerra do país × `armed_share` (20‰) × homens em idade de serviço dos
-  seus estados.
-- O apoio à guerra entra no lugar da mobilização. A marca da revolta (200‰) dava 8 mil na
-  Argélia, abaixo da fonte.
+- Combatentes = apoio à guerra do país × `armed_share` (20‰) × homens em idade de serviço de
+  **toda a unidade**, inclusive dos estados que a metrópole segura: o movimento recruta lá também.
+- **Mobilização e apoio são grandezas diferentes.**
+  - A mobilização é a parte do povo que apoia o movimento antes da proclamação. É ela que decide
+    se há exigência e revolta (independência).
+  - Depois da proclamação, o movimento é um Estado em guerra. A parte que luta e recruta passa a
+    ser o apoio à guerra dele (G4), que cai com as baixas e com a duração como o de qualquer país.
+    Por isso o apoio substitui a mobilização no alvo de combatentes.
+  - A marca da revolta (200‰) dava 8 mil na Argélia, abaixo da fonte. O apoio, que começa em 800,
+    dá o número da fonte.
 - Começam com `initial_share` (100‰) dos combatentes e metade das armas (GC3).
 - A cada semana recrutam `recruit_week` (25‰) da distância até os combatentes, freados pela
   parte armada: sem armas, os recrutas esperam. As armas chegam pelas compras e pelo depósito da
@@ -1298,6 +1308,24 @@ A Malásia passa porque o jogo não separa a base étnica. O MNLA recrutava quas
 chinesa, cerca de 38%. Com essa parte, ficaria por volta de 5 mil. Fica anotado para a
 calibração; não é meta.
 
+**Guerrilha.** Perder a frente não extingue o movimento. Nos estados da unidade que a metrópole
+segura ou controla, toda semana:
+- Os armados dali, isto é, os armados vezes a parte da população da unidade que vive lá,
+  emboscam. A metrópole perde `ambush` (5‰) deles por semana em baixas.
+- Os irregulares perdem as baixas da metrópole vezes a razão de troca, que é 2 + 1,6 × a
+  cobertura.
+  - Cobertura: os homens da metrópole na unidade sobre 20 por mil da população que ela segura lá
+    (O3, população hostil).
+  - A reta passa pelos dois casos: Malásia, troca ≈ 3,6 com cobertura ≈ 1; Argélia, troca ≈ 5,5
+    com cobertura ≈ 2,2.
+- A taxa de emboscada é um valor de desenho entre a Argélia (≈ 10‰) e a Malásia (≈ 2‰). A
+  dispersão é de seis vezes, e fica anotada.
+- As baixas entram nas perdas que o apoio lê (G4) e são enterradas.
+- A guarnição e os desembarcados ficam **amarrados** na unidade (`Colonial::tied`), e a série
+  mostra quanto do exército isso é.
+- Enquanto tiver armados, o país novo não é "overrun", e o território perdido não pesa no apoio
+  dele: a guerrilha não se mede por terra segurada.
+
 **Apoio.** A metrópole começa em `support.colonial` (550), o valor do arquivo que até agora não
 era lido. O país novo começa em 800 (GC2, o mesmo de um país atacado). O resto do apoio segue a
 regra G4.
@@ -1305,7 +1333,8 @@ regra G4.
 **Fins.** São dois, e cada um tem o seu teste em `tests/war_colonial.rs`:
 - **A metrópole desiste** (apoio < 300, o caminho `withdrawn`). Os estados que ela ainda tem na
   unidade passam ao país novo por `Transfer`, sem deixar enclave, e ela reconhece o país novo.
-- **A colônia perde** (apoio < 300). A `Union` sai pela ponte dos tratados (`treaty_exec`), sem
+- **A colônia perde** quando o apoio dela cai abaixo de 300 **ou** quando os armados chegam a
+  zero. Ela não é mais tomada por território. A `Union` sai pela ponte dos tratados (`treaty_exec`), sem
   passar pela mesa. A IA da metrópole avaliava a união do Saara como negativa e recusava a paz
   pela qual lutava.
   - Se a metrópole é do jogador, a proposta vai à mesa como numa guerra comum e precisa de
@@ -1314,6 +1343,58 @@ regra G4.
     `movement_after_reconquest` (500‰) da marca da revolta, ou seja, 100‰ (GC5, em dado).
 - Nos dois testes, no dia em que a fronteira muda, a população e o dinheiro do mundo fecham
   iguais e nenhuma região fica sem dono vivo.
+
+**Conferências até o fim (G6), série por ano.** A revolta é posta à mão em fevereiro de 1925
+(`war_colonial.rs`, testes `#[ignore]`, rodados no slot). As colunas são: apoio dos dois lados,
+regiões controladas (metrópole/país novo), irregulares (armados), desembarcados, homens amarrados
+(e o peso G8, em ‰) e baixas acumuladas.
+
+*Argélia (FRA × DZA)*, sem G8. A França desiste em set/1929, depois de 4,6 anos. A faixa da fonte
+é de 5 a 8 anos; com G8, a desistência vai para dez/1932, 7,9 anos.
+
+| data | apoio FRA/DZA | regiões | armados | desembarcados | amarrados (‰) | baixas FRA/DZA |
+|---|---|---|---|---|---|---|
+| 1926-02 | 579 / 492 | 4/0 | 7.406 | 159.000 | 167.394 (451) | 2.547 / 7.289 |
+| 1927-02 | 435 / 513 | 4/0 | 3.521 | 315.000 | 323.412 (871) | 3.990 / 13.914 |
+| 1928-02 | 382 / 472 | 4/0 | 5.912 | 371.153 | 379.581 (1000) | 5.236 / 21.437 |
+| 1929-02 | 330 / 429 | 4/0 | 5.481 | 371.153 | 379.597 (1000) | 6.737 / 30.531 |
+| 1929-09 | desiste | 0/4 | 5.317 | — | — | 7.518 / 35.225 |
+
+*Malásia (GBR × MYS)*, sem G8. O porto mantido é MYS-FMS. O Reino Unido desiste em nov/1929,
+depois de 4,8 anos; com G8, em fev/1930. **O critério de mais de 10 anos acima de 300 não passa.**
+
+| data | apoio GBR/MYS | regiões | armados | desembarcados | amarrados (‰) | baixas GBR/MYS |
+|---|---|---|---|---|---|---|
+| 1926-02 | 550 / 570 | 5/0 | 5.655 | 53.000 | 53.073 (243) | 1.178 / 3.244 |
+| 1927-02 | 442 / 535 | 5/0 | 5.509 | 105.000 | 105.073 (482) | 2.666 / 8.222 |
+| 1928-02 | 390 / 492 | 5/0 | 4.750 | 157.000 | 157.074 (721) | 3.999 / 13.805 |
+| 1929-02 | 338 / 454 | 5/0 | 4.083 | 209.000 | 209.074 (960) | 5.143 / 19.529 |
+| 1929-11 | desiste | 0/5 | 3.850 | — | — | 5.881 / 23.593 |
+
+O que as séries mostram:
+- A frente acaba no primeiro ano: o país novo perde o território que tinha. A guerra continua
+  como guerrilha, com os armados entre 4 e 7 mil.
+- A metrópole perde primeiro porque começa mais perto do limiar: 550 contra 800. Os dois lados
+  caem por baixas e por duração em ritmos parecidos.
+- Os armados nunca chegam a zero. O recrutamento (25‰ da distância por semana) repõe as perdas
+  (≈ 1,8% por semana com troca 3,6), e o equilíbrio fica em uns 60% do alvo.
+- O Reino Unido desembarca sem parar, até 217 mil, e o peso G8 vai a 1. Com o desembarque dosado
+  à cobertura O3 (`cover_target`, desligado), ele fica em ~100 mil (450‰); mesmo assim desiste em
+  ago/1932, com G8.
+- O que falta para a Malásia, sem forçar a história: as forças locais leais (70 mil policiais e
+  250 mil da guarda doméstica na Malásia, os harkis na Argélia) contando na cobertura, e a
+  política que corta a base do movimento (o reassentamento do plano Briggs). As duas são
+  mecanismo novo, e o critério fica como dependência anotada até lá.
+
+**G8, duração pelo empenho (com o dono).** O peso da duração no apoio passa a ser a parcela do
+exército de terra empenhada na guerra, ×2, até 1. A regra é geral, atrás de
+`support.duration_by_commitment`, desligada.
+- Hoje ela só reduz o peso da metrópole cujas guerras são todas coloniais. Qualquer outra guerra
+  empenha o exército inteiro e pesa 1.
+- A Alemanha de 1914–18 não muda.
+- **O Vietnã muda:** com 540 mil de 1,5 milhão (peso 0,72), o alvo fica em 324 no sexto ano e em
+  302 no sétimo. A paz só vem no oitavo, e não entre o quinto e o sexto, como pede o caso do dono
+  (`duration_by_commitment_keeps_the_owners_cases` registra o deslocamento).
 
 **IA da metrópole.** Luta até o apoio cair abaixo de 300 e então desiste. Não abandona cedo nem
 dosa a expedição; isso fica anotado para a fase 6.

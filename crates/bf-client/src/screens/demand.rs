@@ -368,6 +368,17 @@ fn price(ui: &mut Ui, i18n: &I18n, world: Option<&World>, d: &Demand, k: usize) 
                 )
                 .wrap(),
             );
+            // The port is kept by rule, not by the garrison: said so the split is not read as
+            // a mistake.
+            if let Some(port) = &d.view.port {
+                bf_ui_kit::small(
+                    ui,
+                    &i18n.tr_args(
+                        "demand-colonial-port",
+                        &[("port", Arg::String(state_name(i18n, world, port)))],
+                    ),
+                );
+            }
         }
     });
 }
