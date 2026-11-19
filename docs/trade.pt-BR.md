@@ -323,13 +323,16 @@ mudar a lei move a taxa a partir dali pelo tamanho do degrau, nunca abaixo de ze
   compradores pagaram. O dinheiro sai do fundo do mercado, para onde foi o pagamento das
   importações, e entra no Tesouro, contado na receita da semana (`customs::pay`). Nada se cria:
   a soma mundial de fundos e tesouros não muda (teste `customs_duties.rs`).
-- **Procura de importação.** O país procura fora `1 / (1 + ε t)` do que procuraria sem tarifa
-  (`customs::import_factor`). Com ε = 1, a tarifa de 25 % corta 20 % da procura externa; a de 60 %,
-  37 %. O que não vem de fora fica como falta no mercado de casa, sobe o preço local e puxa o
-  produtor nacional: é a proteção.
 - **Preço de chegada × (1 + t).** O importador paga o bem e a tarifa: no dinheiro, pela receita
-  que sai do fundo; na quantidade, pela procura menor. O preço de mercado do bem não é tocado
+  que sai do fundo; na quantidade, pela preferência entre origens do comércio bruto, que lê a
+  mesma tarifa que o Tesouro cobra (a da lei deslocada pela diferença para 1925) e reparte a
+  compra entre o produtor de casa e os de fora com σ = 5. O preço de mercado do bem não é tocado
   diretamente, porque cada mercado tem um preço por bem, que mistura o nacional e o importado.
+- **Corte da quantidade, medido e desligado.** O primeiro desenho cortava a procura externa da
+  falta em `1 / (1 + ε t)` (`customs::import_factor`, ε = 1). Medido (`BF_DIAG_MET`), o que deixava
+  de vir de fora não ia ao produtor de casa: a procura sem vendedor subia de 0,7 a 1,5 ponto onde o
+  país importa, a produção de comerciáveis caía cerca de 1 % e o PIB mundial perdia 4 % até 2022.
+  O dado `elasticity` fica, em zero.
   Ter o preço separado (fase de equilíbrio) custa um segundo preço por bem e mercado, guardado no
   save, e a divisão da procura entre nacional e importado (Armington) em cada mercado toda semana.
 
@@ -391,6 +394,24 @@ A referência é de 1 a 3 % do PIB nos anos 1920 nos países com dado, e cerca d
 Unidos. A taxa é a de 1925 de cada país; o que falta é importação: os Estados Unidos importam 0,9 %
 do PIB contra perto de 4,5 % reais, e o Reino Unido 7,9 % contra perto de 25 %. É a distribuição do
 comércio bruto entre países (seção 14), não a tarifa.
+
+**Ligada por 101 anos, contra a faixa de 9b54acd** (oito rodadas com empurrão e a base):
+
+| | receita e corte da quantidade | só o corte | só a receita | preço de chegada (o conserto) | faixa |
+|---|---|---|---|---|---|
+| PIB mundial 2022 | 112,9 tri | 115,2 | 118,6 | 117,5 | 119,4 a 121,7 |
+| erro log. do PIB por hab. 2025 | 1,05 | 0,97 | 0,91 | 0,93 | 0,84 a 0,94 |
+| população 2025 | 8,07 bi | 8,17 | 8,02 | 8,03 | 8,13 a 8,19 |
+| correlação de ranking 2022 / 1985 / 1955 | 0,57 / 0,64 / 0,62 | | | 0,57 / 0,65 / 0,65 | 0,56–0,58 / 0,62–0,64 / 0,62–0,63 |
+
+A receita volta à economia pelo gasto: com a receita ligada, os impostos sobem 0,8 ponto do PIB em
+1935, o gasto 0,7 e o caixa do Tesouro 0,3; em 2015 os três estão no nível da base. Ela custa cerca
+de 1 % do PIB. O que fica fora da faixa é a população: nos países de tarifa alta e renda baixa, a
+receita paga escola e saúde cedo demais. No Equador de 1985, com a receita, a alfabetização é 85 %,
+a esperança de vida 75,6 anos e a fecundidade 1,87 com 2,2 mil dólares por habitante; na base, 67 %,
+62 anos e 4,95. A Colômbia, a Venezuela, a Guatemala e o Equador param de crescer depois de 1985
+(Colômbia 24 contra 40 milhões em 2025). A resposta da alfabetização e da saúde ao gasto é do
+thread dos serviços públicos; por isso a chave fica desligada (`customs_duties: false`) até lá.
 
 ## 14. O volume do comércio
 

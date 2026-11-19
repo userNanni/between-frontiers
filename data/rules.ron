@@ -20,7 +20,9 @@
     // Customs duties (`docs/trade.pt-BR.md`, section 13): the tariff is collected by the
     // treasury and makes imports dearer, and each country's 1925 rate comes from `diplomacy.ron`,
     // each by its datum in `data/economy/purchases.ron` (`trade.customs`). Needs `trade_by_pair`.
-    // Off: the tariff only weighs on the choice between sellers.
+    // Off: the tariff only weighs on the choice between sellers. Measured on, it costs about 2 % of
+    // world GDP by 2022 and moves population through public spending (docs/trade.pt-BR.md,
+    // section 13); it stays off until that is studied.
     customs_duties: false,
     // The servants' capacity to collect (`docs/state.pt-BR.md`, D1, owner's decision O1): a
     // region with fewer servants than the rule asks for collects that much less tax.
