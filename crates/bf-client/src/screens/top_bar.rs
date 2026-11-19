@@ -1161,6 +1161,7 @@ fn time_panel(
     let command = |ui: &mut Ui, icon: Icon, side: f32, text: &str, cmd: &'static str, on: bool| {
         let tip = keys::tip(ui.ctx(), text, cmd);
         let response = icon_button(ui, icon, side, &tip, on);
+        keys::badge(ui, response.rect, cmd);
         keys::pressed(ui, cmd, &response)
     };
     at(minus_rect, &mut |ui| {

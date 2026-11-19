@@ -97,6 +97,8 @@ pub fn base_keys(profile: &str, def: &CommandDef) -> Vec<Chord> {
         let f = |k| vec![Chord::key(k)];
         match def.id {
             id::COUNTRY => return f(F1),
+            // F1 went to the country: the sheet of keys moves to Shift.
+            id::KEYS_SHEET => return vec![Chord::key(F1).shift()],
             id::GOVERNMENT => return f(F2),
             id::RESEARCH => return f(F3),
             id::TAB_BUDGET => return f(F5),
