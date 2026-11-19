@@ -34,6 +34,7 @@ pub mod sea_lens;
 pub mod settings;
 pub mod state_panel;
 pub mod tariffs;
+pub mod tech_unlocks;
 pub mod tiles;
 pub mod top_bar;
 pub mod trade;
