@@ -32,7 +32,9 @@ fn a_warhead_costs_the_ore_of_a_little_boy() {
             .1
             .to_f64_lossy();
         let t = enriched * ratio / 1000.0;
-        eprintln!("generation {generation}: {enriched} kg enriched, {t:.1} t of U3O8 (ratio {ratio:.2})");
+        eprintln!(
+            "generation {generation}: {enriched} kg enriched, {t:.1} t of U3O8 (ratio {ratio:.2})"
+        );
         assert!((14.0..=28.5).contains(&t), "{t} t of U3O8");
     }
 }
