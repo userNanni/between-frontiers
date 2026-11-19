@@ -1074,6 +1074,10 @@ impl System<GameWorld> for Investment {
                 } else {
                     econ.markets[owner as usize].pool -= b.cost;
                     econ.markets[market].pool += b.cost;
+                    let year = ctx.date.year;
+                    world
+                        .payments
+                        .record_investment(year, owner as usize, market, b.cost);
                 }
                 foreign.paid(b.region as u32, b.kind, owner);
             }
@@ -1114,6 +1118,10 @@ impl System<GameWorld> for Investment {
             })
             .collect();
         for (owner, host, out) in release {
+            // Earnings going home late: a remittance in the balance of payments.
+            world
+                .payments
+                .record_remittance(ctx.date.year, owner as usize, host as usize, out);
             econ.markets[host as usize].pool -= out;
             econ.markets[owner as usize].pool += out;
             foreign.retain(owner, host, -out);

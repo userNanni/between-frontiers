@@ -12,6 +12,7 @@ pub mod local;
 pub mod migration;
 pub mod money;
 pub mod monthly;
+pub mod payments;
 pub mod public;
 pub mod setup;
 pub mod state;
