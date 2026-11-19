@@ -105,6 +105,9 @@ pub struct Standing {
     pub redenominations: u16,
     /// The cover of the last week ([`cover`]), as a ratio.
     pub cover: Fixed,
+    /// Points the central bank's rate stood above the Taylor rule last week to hold the parity
+    /// ([`defense`]); zero off gold.
+    pub defense: Fixed,
 }
 
 impl HashState for Standing {
@@ -119,6 +122,7 @@ impl HashState for Standing {
             self.premium,
             self.valued_at,
             self.cover,
+            self.defense,
         ] {
             v.hash_state(h);
         }
@@ -533,24 +537,29 @@ pub fn step(
     }
     state
         .countries
-        .iter()
+        .iter_mut()
         .enumerate()
-        .map(|(mi, s)| match s.regime {
-            Regime::Gold => {
-                let missing = (legal(mi) - s.cover).max(Fixed::ZERO) * 100;
-                Peg {
-                    parity: Some(s.parity),
-                    rate_add: (missing * rules.rate_per_point).min(rules.max_add),
-                    creation: if s.weeks_short >= rules.withdraw_weeks {
-                        Creation::Withdraw(rules.withdraw)
-                    } else if s.weeks_short > 0 {
-                        Creation::Stop
-                    } else {
-                        Creation::Rule
-                    },
-                    premium: s.premium,
-                }
-            }
+        .map(|(mi, s)| {
+            s.defense = if s.regime == Regime::Gold {
+                defense(rules, legal(mi), s.cover)
+            } else {
+                Fixed::ZERO
+            };
+            (mi, &*s)
+        })
+        .map(|(_, s)| match s.regime {
+            Regime::Gold => Peg {
+                parity: Some(s.parity),
+                rate_add: s.defense,
+                creation: if s.weeks_short >= rules.withdraw_weeks {
+                    Creation::Withdraw(rules.withdraw)
+                } else if s.weeks_short > 0 {
+                    Creation::Stop
+                } else {
+                    Creation::Rule
+                },
+                premium: s.premium,
+            },
             Regime::Control => Peg {
                 parity: Some(s.parity),
                 premium: s.premium,
@@ -562,6 +571,74 @@ pub fn step(
             },
         })
         .collect()
+}
+
+/// Points above the Taylor rule a bank on gold sets to hold its parity: `rate_per_point` per
+/// point of cover below the legal one, at most `max_add`.
+pub fn defense(rules: &GoldRules, legal: Fixed, cover: Fixed) -> Fixed {
+    let missing = (legal - cover).max(Fixed::ZERO) * 100;
+    (missing * rules.rate_per_point).min(rules.max_add)
+}
+
+/// Why a choice of regime cannot be carried out.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Refusal {
+    /// Adhering at the prewar parity, for a country the data gives none.
+    NoPrewarParity,
+}
+
+/// What a choice of regime would mean this week, without carrying it out (the screen's cost of
+/// each parity, PO6): the parity, the cover the country's net reserves would give at it, the
+/// points above the Taylor rule that cover asks for on gold, and how far the parity is from the
+/// day's exchange rate (positive: the currency held above the market, an overvaluation).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Preview {
+    pub parity: Fixed,
+    pub cover: Fixed,
+    pub legal: Fixed,
+    pub floor: Fixed,
+    pub defense: Fixed,
+    pub gap: Fixed,
+}
+
+/// The cost of `choice` for market `mi` (see [`Preview`]); `Err` when it would be refused.
+/// The cover at a parity scales the week's cover by the parity over the day's rate: the same
+/// reserves are worth more local money at a weaker currency.
+pub fn preview(
+    rules: &GoldRules,
+    standing: &Standing,
+    mi: usize,
+    m: &Market,
+    choice: GoldChoice,
+) -> Result<Preview, Refusal> {
+    let today = m.money.exchange_rate.max(Fixed::EPSILON);
+    let parity = match choice {
+        GoldChoice::Prewar if standing.prewar <= Fixed::ZERO => {
+            return Err(Refusal::NoPrewarParity);
+        }
+        GoldChoice::Prewar => standing.prewar,
+        GoldChoice::Market | GoldChoice::Control => today,
+        GoldChoice::Float => today,
+    };
+    let legal = rules
+        .legal_cover
+        .get(mi)
+        .copied()
+        .unwrap_or(Fixed::from_ratio(35, 100));
+    let cover = standing.cover.mul_div(parity, today);
+    let on_gold = matches!(choice, GoldChoice::Prewar | GoldChoice::Market);
+    Ok(Preview {
+        parity,
+        cover,
+        legal,
+        floor: legal * rules.floor,
+        defense: if on_gold {
+            defense(rules, legal, cover)
+        } else {
+            Fixed::ZERO
+        },
+        gap: (today - parity) / today,
+    })
 }
 
 /// After the central banks moved (`money::week`): the foreign exchange in each currency is worth
@@ -628,6 +705,42 @@ pub(crate) mod tests {
         m.gdp_last_year = Fixed::from_int(1000);
         m.money.debt_bank = Fixed::from_int(issued);
         m
+    }
+
+    #[test]
+    fn a_preview_gives_each_parity_its_cover_and_its_defense() {
+        let r = rules(1);
+        let mut m = market(100);
+        m.money.exchange_rate = INDEX_BASE;
+        let st = Standing {
+            cover: Fixed::from_ratio(30, 100),
+            prewar: Fixed::from_int(90),
+            ..Standing::default()
+        };
+        // At the day's rate: the week's cover, 10 points short of 40 %, 1.5 points of defense.
+        let day = preview(&r, &st, 0, &m, GoldChoice::Market).unwrap();
+        assert_eq!(day.cover, Fixed::from_ratio(30, 100));
+        assert_eq!(day.defense, Fixed::from_ratio(15, 10));
+        assert_eq!(day.gap, Fixed::ZERO);
+        assert_eq!(day.floor, Fixed::from_ratio(20, 100));
+        // At the prewar parity, 10 % stronger: less cover, more defense, a 10 % overvaluation.
+        let pre = preview(&r, &st, 0, &m, GoldChoice::Prewar).unwrap();
+        assert_eq!(pre.cover, Fixed::from_ratio(27, 100));
+        assert!(pre.defense > day.defense);
+        assert_eq!(pre.gap, Fixed::from_ratio(1, 10));
+        // Floating asks for no defense; no prewar parity, refused.
+        assert_eq!(
+            preview(&r, &st, 0, &m, GoldChoice::Float).unwrap().defense,
+            Fixed::ZERO
+        );
+        let none = Standing {
+            prewar: Fixed::ZERO,
+            ..st
+        };
+        assert_eq!(
+            preview(&r, &none, 0, &m, GoldChoice::Prewar),
+            Err(Refusal::NoPrewarParity)
+        );
     }
 
     fn reserves(gold: &[i64]) -> ReservesState {
