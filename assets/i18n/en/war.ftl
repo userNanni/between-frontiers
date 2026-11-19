@@ -350,3 +350,33 @@ war-expedition-less = −10,000
 war-expedition-more = +10,000
 war-expedition-to-rule = Back to the rule
 war-expedition-note = More men cover the unit better (the guerrilla loses more for each of your casualties), but they tie the army and, with G8, weigh more on the war's duration.
+composition-apply = Apply
+army-heading = Army generation
+army-basis = A second-generation army fights on a linear front, by fire and attrition, commanded from the centre; a third-generation one acts on the commander's intent, concentrates on one point, breaks through and exploits. The generation comes from the readiness, summed term by term and read at the start of each month.
+army-second = 2nd generation · readiness { $total } of 1,000; moves to the 3rd at { $up } ({ $short } to go)
+army-third = 3rd generation · readiness { $total } of 1,000; falls back to the 2nd below { $down }
+army-war-tip = The generation our army fights with. In the 3rd, the front puts six tenths of its free men on the weakest segment, sends the mobile troops there and breaks through at three times the power. The way there is in the Government's Forces tab.
+army-points = { $points } of { $most }
+army-points-taken = −{ $points } of { $most }
+army-term-officer_education = Officers trained to act on intent
+army-term-training = Training
+army-term-radio = Radio
+army-term-motorization = Motorization
+army-term-experience = Experience of war
+army-term-central_control = Political control of the officers
+army-do-officer_education = A class of officers a year leaves trained in what the school teaches, as far as the training goes.
+army-do-training = Keep the army trained; new recruits dilute the training.
+army-do-radio = The military budget's surplus replaces equipment with the new generation, which brings radio.
+army-do-motorization = Order mechanized and armoured formations.
+army-do-experience = It comes only from war; half of it fades every five years.
+army-do-central_control = Changing the form of government puts the officer corps under politics for five years.
+army-hold-school = The school does not teach the doctrine yet: armoured warfare is at { $stage }. Researching it to the industrial stage makes the new classes leave trained in it.
+army-hold-tradition = No tradition on record: it counts half the people's literacy. Teaching people to read raises this term.
+army-hold-training = Training incomplete: new recruits dilute it.
+army-hold-equipment = No formation in equipment newer than 1925's; the military budget's surplus modernizes it little by little.
+army-hold-motorized = No formation on wheels or tracks; order mechanized or armoured ones in New order.
+army-hold-experience = No experience of war: this term only comes from war.
+army-hold-regime = The form of government changed: the officer corps answers to politics for { $count ->
+    [one] { $years } more year
+   *[other] { $years } more years
+}.

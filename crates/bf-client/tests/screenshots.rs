@@ -4969,3 +4969,59 @@ fn external_accounts() {
     }
     let _ = std::fs::remove_dir_all(&user);
 }
+
+/// The army's generation in the forces tab (`docs/war.pt-BR.md`, "Geração do exército"):
+/// Germany in February 1926, with the war rule on: the readiness on its bar with the two
+/// thresholds, and each term with its points and what holds it back or what the country does in
+/// peace to move it. Portuguese at 1600 × 900, English at 1280 × 720; copies in
+/// `target/screenshots/army/`.
+#[test]
+#[ignore = "needs a GPU (or software Vulkan) and the generated map; run with --ignored"]
+fn army_generation() {
+    use laplace_schelling::calendar::Date;
+    // SAFETY: the screenshot tests run one at a time (`RUST_TEST_THREADS=1`).
+    unsafe { std::env::set_var("BF_RULES", "forces,war") };
+    let switches = bf_sim::game::Switches::parse("forces,war").expect("switches");
+    let user = std::env::temp_dir().join(format!("bf-shots-army-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&user);
+    let s = advanced_session_with("GER", Date::new(1926, 2, 1), switches);
+    let save = write_campaign(&user.join("save"), &s, "Exército", "GER", &[]);
+    let dir = root().join("target/screenshots/army");
+    std::fs::create_dir_all(&dir).unwrap();
+    for (locale, size, tag, heading) in [
+        (
+            "pt-BR",
+            egui::vec2(1600.0, 900.0),
+            "pt",
+            "Geração do exército",
+        ),
+        (
+            "en",
+            egui::vec2(1280.0, 720.0),
+            "en-1280",
+            "Army generation",
+        ),
+    ] {
+        let mut h = harness_sized(user.join(tag), locale, size);
+        let ctx = h.ctx.clone();
+        h.state_mut().apply(Transition::Game(save.clone()), &ctx);
+        for _ in 0..30 {
+            std::thread::sleep(std::time::Duration::from_millis(25));
+            h.run_steps(1);
+        }
+        h.key_press(egui::Key::G);
+        h.run_steps(4);
+        h.key_press(egui::Key::T);
+        h.run_steps(8);
+        h.get_by_label(heading).scroll_to_me();
+        h.run_steps(8);
+        let name = format!("240-army-generation-{tag}");
+        shot(&mut h, &name);
+        std::fs::copy(
+            out_dir().join(format!("{name}.png")),
+            dir.join(format!("{name}.png")),
+        )
+        .unwrap();
+    }
+    let _ = std::fs::remove_dir_all(&user);
+}

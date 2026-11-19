@@ -57,6 +57,8 @@ pub struct ForcesView {
     pub war: CountryWar,
     /// This week's price of each good, real dollars.
     pub prices: Vec<f64>,
+    /// The army's generation and readiness, with the war rule on.
+    pub army: Option<crate::army_view::ArmyView>,
 }
 
 /// What [`stock`] reads: the queue's length, the formations' number and their elements.
@@ -403,6 +405,7 @@ pub fn read(
         peace_share: f(c.peace_share),
         depot,
         rows,
+        army: None,
     })
 }
 
@@ -453,6 +456,7 @@ mod tests {
             weekly_goods: 0.0,
             peace_share: 0.0,
             depot: 0.0,
+            army: None,
             orders: None,
             stock: stock(&war),
             formations: war

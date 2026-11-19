@@ -16,6 +16,7 @@ use bf_ui_kit::{Button, ButtonSize};
 use egui::{Rect, RichText, Ui, vec2};
 
 use super::region;
+use crate::army_view::ArmyView;
 use crate::keys::{self, Tip, id};
 use crate::text::{country_name, date_long};
 use crate::war_view::{Fallen, Front, Occupied, Segment, SupportLine, WarLine, WarView};
@@ -63,12 +64,14 @@ fn state_name(i18n: &I18n, world: Option<&World>, id: u16) -> String {
         .map_or_else(|| id.to_string(), |s| crate::text::state_name(i18n, &s.def))
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn show(
     ui: &mut Ui,
     screen: Rect,
     i18n: &I18n,
     world: Option<&World>,
     view: Option<&WarView>,
+    army: Option<&ArmyView>,
     window: &mut Window,
     place: &mut crate::hud::WindowPlace,
 ) -> Response {
@@ -131,18 +134,20 @@ pub fn show(
                 ui.set_max_width(ui.available_width() - space::LG);
                 super::scroll_keys(ui);
                 ui.spacing_mut().item_spacing.y = space::SM;
-                war(ui, i18n, world, v, w, window, &mut out);
+                war(ui, i18n, world, v, army, w, window, &mut out);
             });
     });
     out.place_done |= super::window_grip(ui, "war", rect, place, MIN_WINDOW);
     out
 }
 
+#[allow(clippy::too_many_arguments)]
 fn war(
     ui: &mut Ui,
     i18n: &I18n,
     world: Option<&World>,
     v: &WarView,
+    army: Option<&ArmyView>,
     w: &WarLine,
     window: &mut Window,
     out: &mut Response,
@@ -342,10 +347,19 @@ fn war(
     if let Some(e) = &w.expedition {
         expedition(ui, i18n, v, w.id, e, out);
     }
-    // The fronts.
+    // The fronts, and the generation our army fights with.
     bf_ui_kit::gap(ui, space::XS);
     bf_ui_kit::heading(ui, &i18n.tr("war-fronts"));
     bf_ui_kit::small(ui, &i18n.tr("war-fronts-basis"));
+    if let Some(a) = army {
+        ui.add(
+            egui::Label::new(
+                RichText::new(super::forces::generation_line(i18n, a)).font(sans(size::SMALL)),
+            )
+            .wrap(),
+        )
+        .on_hover_text(bf_ui_kit::tooltip_text(&i18n.tr("army-war-tip")));
+    }
     for (k, f) in w.fronts.iter().enumerate() {
         front(ui, i18n, world, v, k, f, window, out);
     }
