@@ -1280,6 +1280,14 @@ ainda tem na unidade mais os homens desembarcados. O resto do exército fica nas
   serviço em guerra, o prazo de serviço maior), não um teto a inflar.
 - Colônia alcançável por terra (busca sobre `neighbours` a partir da metrópole) não tem teto.
 - Sem porto, não chega reforço.
+- **Quanto mandar.**
+  - A IA da metrópole dosa: manda até cobrir 20 por mil da população que segura na unidade (O3,
+    população hostil; `cover_target` 1000), nunca acima do teto.
+  - O jogador decide com `GameCommand::SetExpedition`, na janela "Guerra", seção "Expedição a X".
+    Ele dá a ordem em passos de 10 mil ou volta à regra.
+  - Os homens desembarcam, ou voltam, pelos portos, no ritmo de cada semana.
+  - Sem a dosagem, a IA desembarcava sem critério até o teto: o Reino Unido punha 217 mil na
+    Malásia.
 
 **Irregulares.** O país novo luta com a unidade `irregular`.
 - Combatentes = apoio à guerra do país × `armed_share` (20‰) × homens em idade de serviço de
@@ -1345,56 +1353,96 @@ regra G4.
   iguais e nenhuma região fica sem dono vivo.
 
 **Conferências até o fim (G6), série por ano.** A revolta é posta à mão em fevereiro de 1925
-(`war_colonial.rs`, testes `#[ignore]`, rodados no slot). As colunas são: apoio dos dois lados,
-regiões controladas (metrópole/país novo), irregulares (armados), desembarcados, homens amarrados
-(e o peso G8, em ‰) e baixas acumuladas.
+(`war_colonial.rs`, testes `#[ignore]`, rodados no slot). A IA dosa a expedição à cobertura O3.
+As colunas são: apoio dos dois lados, regiões controladas (metrópole/país novo), armados,
+desembarcados, homens amarrados (e a parcela do exército, em ‰) e baixas acumuladas.
 
-*Argélia (FRA × DZA)*, sem G8. A França desiste em set/1929, depois de 4,6 anos. A faixa da fonte
-é de 5 a 8 anos; com G8, a desistência vai para dez/1932, 7,9 anos.
+*Argélia (FRA × DZA)*:
+- Sem G8, a França desiste em set/1929, depois de 4,6 anos: perto da faixa de 5 a 8 anos.
+- **Com G8 (fator 3), desiste em jan/1931, depois de 5,9 anos: dentro da faixa.**
 
 | data | apoio FRA/DZA | regiões | armados | desembarcados | amarrados (‰) | baixas FRA/DZA |
 |---|---|---|---|---|---|---|
-| 1926-02 | 579 / 492 | 4/0 | 7.406 | 159.000 | 167.394 (451) | 2.547 / 7.289 |
-| 1927-02 | 435 / 513 | 4/0 | 3.521 | 315.000 | 323.412 (871) | 3.990 / 13.914 |
-| 1928-02 | 382 / 472 | 4/0 | 5.912 | 371.153 | 379.581 (1000) | 5.236 / 21.437 |
-| 1929-02 | 330 / 429 | 4/0 | 5.481 | 371.153 | 379.597 (1000) | 6.737 / 30.531 |
-| 1929-09 | desiste | 0/4 | 5.317 | — | — | 7.518 / 35.225 |
+| 1926-02 | 587 / 492 | 4/0 | 7.455 | 135.222 | 143.616 (193) | 2.547 / 7.248 |
+| 1927-02 | 458 / 516 | 4/0 | 4.220 | 137.312 | 145.724 (196) | 4.102 / 12.821 |
+| 1928-02 | 405 / 476 | 4/0 | 5.664 | 139.447 | 147.875 (199) | 5.426 / 17.564 |
+| 1929-02 | 362 / 439 | 4/0 | 5.689 | 141.620 | 150.064 (202) | 6.939 / 22.988 |
+| 1930-02 | 328 / 401 | 4/0 | 5.494 | 143.836 | 152.297 (205) | 8.382 / 28.156 |
+| 1931-01 | desiste | 0/4 | 4.777 | — | — | 9.570 / 32.417 |
 
-*Malásia (GBR × MYS)*, sem G8. O porto mantido é MYS-FMS. O Reino Unido desiste em nov/1929,
-depois de 4,8 anos; com G8, em fev/1930. **O critério de mais de 10 anos acima de 300 não passa.**
+*Malásia (GBR × MYS)*, com o porto mantido em MYS-FMS:
+- Sem G8, o Reino Unido desiste em nov/1929 (4,8 anos); com G8 (fator 3), em out/1930
+  (5,7 anos).
+- **O critério de mais de 10 anos não passa:** fica como dependência anotada, não como meta.
 
 | data | apoio GBR/MYS | regiões | armados | desembarcados | amarrados (‰) | baixas GBR/MYS |
 |---|---|---|---|---|---|---|
-| 1926-02 | 550 / 570 | 5/0 | 5.655 | 53.000 | 53.073 (243) | 1.178 / 3.244 |
-| 1927-02 | 442 / 535 | 5/0 | 5.509 | 105.000 | 105.073 (482) | 2.666 / 8.222 |
-| 1928-02 | 390 / 492 | 5/0 | 4.750 | 157.000 | 157.074 (721) | 3.999 / 13.805 |
-| 1929-02 | 338 / 454 | 5/0 | 4.083 | 209.000 | 209.074 (960) | 5.143 / 19.529 |
-| 1929-11 | desiste | 0/5 | 3.850 | — | — | 5.881 / 23.593 |
+| 1926-02 | 562 / 570 | 5/0 | 5.655 | 53.000 | 53.073 (121) | 1.178 / 3.244 |
+| 1927-02 | 463 / 535 | 5/0 | 5.562 | 93.849 | 93.922 (215) | 2.666 / 8.186 |
+| 1928-02 | 411 / 493 | 5/0 | 5.175 | 95.661 | 95.735 (219) | 4.054 / 13.161 |
+| 1929-02 | 359 / 457 | 5/0 | 4.864 | 97.565 | 97.639 (224) | 5.352 / 17.824 |
+| 1930-02 | 321 / 421 | 5/0 | 4.582 | 99.515 | 99.589 (228) | 6.574 / 22.192 |
+| 1930-10 | desiste | 0/5 | 4.467 | — | — | 7.333 / 24.911 |
 
 O que as séries mostram:
-- A frente acaba no primeiro ano: o país novo perde o território que tinha. A guerra continua
-  como guerrilha, com os armados entre 4 e 7 mil.
+- A frente acaba no primeiro ano: o país novo perde o território. A guerra continua como guerrilha,
+  com os armados entre 4 e 7 mil.
 - A metrópole perde primeiro porque começa mais perto do limiar: 550 contra 800. Os dois lados
   caem por baixas e por duração em ritmos parecidos.
-- Os armados nunca chegam a zero. O recrutamento (25‰ da distância por semana) repõe as perdas
-  (≈ 1,8% por semana com troca 3,6), e o equilíbrio fica em uns 60% do alvo.
-- O Reino Unido desembarca sem parar, até 217 mil, e o peso G8 vai a 1. Com o desembarque dosado
-  à cobertura O3 (`cover_target`, desligado), ele fica em ~100 mil (450‰); mesmo assim desiste em
-  ago/1932, com G8.
-- O que falta para a Malásia, sem forçar a história: as forças locais leais (70 mil policiais e
-  250 mil da guarda doméstica na Malásia, os harkis na Argélia) contando na cobertura, e a
-  política que corta a base do movimento (o reassentamento do plano Briggs). As duas são
-  mecanismo novo, e o critério fica como dependência anotada até lá.
+- Os armados nunca chegam a zero. O recrutamento (25‰ da distância por semana) repõe as perdas,
+  e o equilíbrio fica em uns 60% do alvo.
+- Na Malásia, a cobertura O3 só se faz com homens da metrópole, cerca de 100 mil (22% do exército
+  de terra). Na história eram uns 40 mil britânicos mais as forças locais. Por isso a guerra pesa
+  e custa baixas de mais.
+
+**Forças locais e a política contra a base do movimento (desenho para a fatia depois do C2).**
+É uma fatia só, com a guerrilha por falta de guarnição fora da guerra colonial (a ocupação comum).
+
+*O que conta como força local:*
+- polícia e guarda doméstica recrutadas na própria unidade, ou no território ocupado;
+- tropa nativa regular sob comando da metrópole.
+
+Casos: a polícia da Malásia (≈ 70 mil) e a guarda doméstica (≈ 250 mil); os harkis na Argélia
+(60 a 150 mil); os auxiliares das ocupações (a Schutzmannschaft no Leste).
+
+*De onde vêm:*
+- da parte da população da unidade que não apoia o movimento: 1 − apoio do proclamado, ou a
+  resistência baixa da ocupação;
+- recrutadas aos poucos, uma parcela por semana, com teto em uma fração dos homens em idade de
+  serviço dessa parte.
+
+*Quanto custam:*
+- soldo e equipamento leve (a unidade `garrison`), pagos pelo orçamento militar da metrópole;
+- contam na cobertura com um peso menor que o da tropa da metrópole (design: 1/2);
+- não entram no exército de terra para a G8: não amarram a metrópole nem pesam na duração da
+  guerra;
+- o jogo também os torna alvo: a guerrilha mata mais deles, e o movimento ganha apoio quando a
+  milícia é dura (a resistência sobe pela extração, como em O1).
+
+*A política contra a base:* o reassentamento (plano Briggs, 1950–52, cerca de 500 mil
+moradores de áreas rurais nas "novas aldeias") e o reagrupamento na Argélia (≈ 2 milhões).
+- O efeito: corta o recrutamento do movimento numa parte da população.
+- O custo: dinheiro e o apoio do proclamado, que sobe entre os reassentados.
+- É uma decisão de Agendas, com prazo e custo.
+
+*O que o jogador decide:* quantas forças locais recrutar (ordem com teto, como a expedição) e se
+aplica o reassentamento.
+
+*Conferência que a fatia deve passar:* a Malásia em reconquista, com o apoio britânico acima de
+300 por mais de 10 anos, sem forçar o número.
 
 **G8, duração pelo empenho (com o dono).** O peso da duração no apoio passa a ser a parcela do
-exército de terra empenhada na guerra, ×2, até 1. A regra é geral, atrás de
-`support.duration_by_commitment`, desligada.
+exército de terra empenhada na guerra × `commitment_factor` (3, em dados), até 1. A regra é geral,
+atrás de `support.duration_by_commitment`, desligada.
 - Hoje ela só reduz o peso da metrópole cujas guerras são todas coloniais. Qualquer outra guerra
   empenha o exército inteiro e pesa 1.
 - A Alemanha de 1914–18 não muda.
-- **O Vietnã muda:** com 540 mil de 1,5 milhão (peso 0,72), o alvo fica em 324 no sexto ano e em
-  302 no sétimo. A paz só vem no oitavo, e não entre o quinto e o sexto, como pede o caso do dono
-  (`duration_by_commitment_keeps_the_owners_cases` registra o deslocamento).
+- **Vietnã:** 540 mil de cerca de 1,5 milhão é uma parcela de 0,36, que com fator 3 dá peso 1. O
+  alvo fica em 308 no ano 5 e em 273 no ano 6: a paz vem entre o quinto e o sexto ano, como no
+  caso do dono.
+- Com fator 2 o peso era 0,72, e a paz só vinha no oitavo ano.
+- O teste `duration_by_commitment_keeps_the_owners_cases` imprime os dois fatores e assere o
+  caso do dono com o fator dos dados.
 
 **IA da metrópole.** Luta até o apoio cair abaixo de 300 e então desiste. Não abandona cedo nem
 dosa a expedição; isso fica anotado para a fase 6.
@@ -1406,8 +1454,9 @@ dosa a expedição; isso fica anotado para a fase 6.
 - O diário (Agendas, grupo Forças) mostra "Um país nasceu em revolta", com os combatentes, os
   armados e os desembarcados. Também lembra que a troca de país fica no ⋯ da tela de Campanhas
   (C4).
-- Não há decisão nova, então nada entra em `player_commands`. A postura nos segmentos usa o
-  comando de sempre.
+- A expedição é decisão nova: `SetExpedition`, com tela na janela "Guerra" e linha em
+  `player_commands` e na wiki ("O que o jogador decide"). A postura nos segmentos usa o comando de
+  sempre.
 
 **Perguntas ao dono, com a recomendação já no dado:**
 - GC1: as formações coloniais desertam pela mobilização (`defect: true`).

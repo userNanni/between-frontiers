@@ -487,6 +487,14 @@ pub enum GameCommand {
         tag: String,
         composition: Option<[u16; 2]>,
     },
+    /// `tag`, the metropole of colonial war `war`, orders `men` to the colony, landed by its ports
+    /// a week's capacity at a time and never past the cap; `None` returns to the AI's rule (the
+    /// cover of O3). `docs/war.pt-BR.md`, "Guerra colonial".
+    SetExpedition {
+        tag: String,
+        war: u32,
+        men: Option<u64>,
+    },
 }
 
 /// Changes the levers of the country `tag` (`econ::levers`); unknown tags are no-ops.
@@ -646,6 +654,17 @@ impl Command<GameWorld> for GameCommand {
                         buying: Vec::new(),
                         stalled: 0,
                     });
+                }
+            }
+            GameCommand::SetExpedition { tag, war, men } => {
+                if let Some(ci) = world.countries.iter().position(|(_, c)| c.tag == *tag)
+                    && let Some(c) = world
+                        .war
+                        .colonial
+                        .iter_mut()
+                        .find(|c| c.war == *war && c.owner as usize == ci && !c.peace)
+                {
+                    c.wanted = *men;
                 }
             }
             GameCommand::SetComposition { tag, composition } => {

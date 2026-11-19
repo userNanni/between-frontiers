@@ -593,3 +593,54 @@ fn a_colony_without_arms_surrenders() {
         "the union went through"
     );
 }
+
+/// The player's order: France orders 20,000 men to Algeria and the landed men go there, a
+/// week's capacity at a time, past the AI's rule or short of it; `None` returns to the rule.
+#[test]
+fn the_player_orders_the_expedition() {
+    let d = data();
+    let (mut s, _, _) = revolt(d);
+    for _ in 0..20 {
+        week(&mut s);
+    }
+    let w = s.world();
+    let c = w.war.colonial.iter().find(|c| !c.peace).unwrap().clone();
+    let rule = c.goal;
+    s.submit(GameCommand::SetExpedition {
+        tag: "FRA".into(),
+        war: c.war,
+        men: Some(20_000),
+    });
+    for _ in 0..60 {
+        week(&mut s);
+    }
+    let k = s
+        .world()
+        .war
+        .colonial
+        .iter()
+        .find(|k| k.war == c.war)
+        .unwrap();
+    eprintln!(
+        "rule {rule}, ordered 20,000: landed {} (goal {})",
+        k.landed, k.goal
+    );
+    assert_eq!(k.wanted, Some(20_000));
+    assert_eq!(k.goal, 20_000);
+    assert_eq!(k.landed, 20_000, "the landed men reach the order");
+    s.submit(GameCommand::SetExpedition {
+        tag: "FRA".into(),
+        war: c.war,
+        men: None,
+    });
+    week(&mut s);
+    let k = s
+        .world()
+        .war
+        .colonial
+        .iter()
+        .find(|k| k.war == c.war)
+        .unwrap();
+    assert_eq!(k.wanted, None);
+    assert!(k.goal > 20_000, "the rule again: {}", k.goal);
+}

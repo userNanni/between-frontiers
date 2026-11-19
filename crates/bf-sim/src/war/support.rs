@@ -46,10 +46,12 @@ pub struct SupportRules {
     /// Support lost per year of war.
     pub duration_per_year: i32,
     /// G8 (to the owner): the duration weighs by the share of the land army committed to the war,
-    /// times two, at most whole. A total war weighs whole; a distant expedition of regulars
-    /// little. Off: every war weighs whole.
+    /// times `commitment_factor` (per mille), at most whole. A total war weighs whole; a distant
+    /// expedition of regulars little. Off: every war weighs whole.
     #[serde(default)]
     pub duration_by_commitment: bool,
+    #[serde(default = "default_commitment_factor")]
+    pub commitment_factor: u32,
     /// Support lost at a full loss of the basic needs met before the war.
     pub deprivation: i32,
     /// Support lost with the whole population under occupation.
@@ -303,6 +305,16 @@ pub struct SupportOut {
     pub surrendered: Vec<u32>,
 }
 
+fn default_commitment_factor() -> u32 {
+    3000
+}
+
+/// G8: the weight of duration, per mille, for a war that commits `share` per mille of the land
+/// army: `commitment_factor` times the share, at most whole.
+pub fn duration_weight(r: &SupportRules, share: u32) -> u32 {
+    (u64::from(share) * u64::from(r.commitment_factor) / 1000).min(1000) as u32
+}
+
 /// Part of a demand: the first half of its clauses (at least one), the amounts halved.
 pub fn part_of(demand: &Proposal) -> Proposal {
     let mut p = demand.clone();
@@ -533,12 +545,12 @@ pub fn support_week(
             if colonial.is_empty() || other {
                 s.weeks
             } else {
-                let c = colonial
+                let share = colonial
                     .iter()
                     .map(|k| u32::from(k.commitment))
                     .sum::<u32>()
                     .min(1000);
-                s.weeks * c / 1000
+                s.weeks * duration_weight(r, share) / 1000
             }
         } else {
             s.weeks
@@ -839,14 +851,15 @@ mod tests {
         assert!(t6.target > r.collapse, "{t6:?}");
     }
 
-    /// G8, duration by commitment (measured for the owner): Germany 1914–18 fought with its whole
-    /// army (weight 1, the same case as above). The United States had some 540,000 of 1.5
-    /// million in Vietnam (×2: 0.72): with the weight it no longer asks for peace by the sixth
-    /// year, only in the eighth (302 in the seventh). The owner's case moves a year; this test records by how much.
+    /// G8, duration by commitment, with the factor of the data: Germany 1914–18 fought with its
+    /// whole army (weight 1, the same case as above). The United States had some 540,000 men in
+    /// Vietnam of an army of about 1.5 million (a share of 0.36): with the factor 3 the weight is
+    /// whole, and the owner's case stands (peace between the fifth and the sixth year). With the
+    /// factor 2 it was 0.72, and the peace moved to the eighth year.
     #[test]
     fn duration_by_commitment_keeps_the_owners_cases() {
         let r = rules();
-        let weighed = |years: u32, per_mille: u32| years * 52 * per_mille / 1000;
+        let weighed = |years: u32, share: u32| years * 52 * duration_weight(&r, share) / 1000;
         let germany = terms(
             &r,
             &Inputs {
@@ -859,33 +872,34 @@ mod tests {
             },
         );
         assert!(germany.target < r.collapse, "{germany:?}");
-        let commitment = (540_000u64 * 2 * 1000 / 1_500_000) as u32;
-        let at = |years: u32, killed: u64| {
+        let share = (540_000u64 * 1000 / 1_500_000) as u32;
+        let at = |years: u32, killed: u64, factor: u32| {
+            let r = SupportRules {
+                commitment_factor: factor,
+                ..r.clone()
+            };
             terms(
                 &r,
                 &Inputs {
                     start: r.attacker_cause,
                     killed_per_million: killed * 1_000_000 / 200_000_000,
-                    weeks: weighed(years, commitment),
+                    weeks: years * 52 * duration_weight(&r, share) / 1000,
                     ..Default::default()
                 },
             )
         };
-        let t3 = at(3, 30_000);
-        assert!(t3.target > r.peace, "{t3:?}");
-        let t6 = at(6, 58_000);
-        let t7 = at(7, 58_000);
-        let t8 = at(8, 58_000);
-        eprintln!(
-            "Vietnam with G8 ({commitment} per mille): year 6 {}, year 7 {}, year 8 {}",
-            t6.target, t7.target, t8.target
-        );
-        assert!(
-            t7.target > r.peace,
-            "G8 moves the peace past the seventh year: {t7:?}"
-        );
-        assert!(t8.target < r.peace, "{t8:?}");
-        assert!(t8.target > r.collapse, "{t8:?}");
+        let f = r.commitment_factor;
+        for (factor, years) in [(f, [5, 6, 7, 8]), (2000, [5, 6, 7, 8])] {
+            let line: Vec<i32> = years
+                .iter()
+                .map(|&y| at(y, 58_000 * u64::from(y.min(6)) / 6, factor).target)
+                .collect();
+            eprintln!("Vietnam, factor {factor}: years 5 to 8 {line:?}");
+        }
+        assert!(at(3, 30_000, f).target > r.peace);
+        let t6 = at(6, 58_000, f);
+        assert!(t6.target < r.peace, "{t6:?}");
+        assert!(t6.target > r.collapse, "{t6:?}");
     }
 
     #[test]

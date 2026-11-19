@@ -113,9 +113,15 @@ pub struct Colonial {
     /// The new country's irregulars under arms, last week: at zero the colony has lost.
     pub armed: u64,
     /// The metropole's men tied in the unit (its garrison there and the men landed), and that
-    /// share of its land men times two, per mille, at most 1,000 (G8, the weight of duration).
+    /// share of its land men, per mille (G8 weighs duration by it: `support::duration_weight`).
     pub tied: u64,
     pub commitment: u16,
+    /// The men the player ordered to the unit (`GameCommand::SetExpedition`); `None`: the AI's
+    /// rule, the cover of O3.
+    pub wanted: Option<u64>,
+    /// This week's goal of the landed men and their cap, for the screen.
+    pub goal: u64,
+    pub cap: u64,
 }
 
 impl HashState for Colonial {
@@ -142,6 +148,15 @@ impl HashState for Colonial {
         h.write_u64(self.armed);
         h.write_u64(self.tied);
         h.write_u16(self.commitment);
+        match self.wanted {
+            None => h.write_u8(0),
+            Some(w) => {
+                h.write_u8(1);
+                h.write_u64(w);
+            }
+        }
+        h.write_u64(self.goal);
+        h.write_u64(self.cap);
     }
 }
 
@@ -469,6 +484,9 @@ pub fn open(setup: &ColonialSetup, mil: &Military, world: &mut GameWorld, date: 
             armed,
             tied: 0,
             commitment: 0,
+            wanted: None,
+            goal: 0,
+            cap: 0,
         });
     }
 }
@@ -601,7 +619,10 @@ pub fn week(setup: &ColonialSetup, mil: &Military, world: &mut GameWorld) {
                         && world.war.fighting.controller(ri, reg.market) == c.owner
                 })
                 .count() as u64;
-            let mut cap = (land_men.max(0) as u64) * u64::from(r.expedition_cap) / 1000;
+            let cap = (land_men.max(0) as u64) * u64::from(r.expedition_cap) / 1000;
+            // The goal: the player's order, or the AI's rule (the cover of O3); never past the
+            // cap.
+            let mut goal = cap;
             if r.cover_target > 0 {
                 let held: i64 = c
                     .regions
@@ -616,9 +637,21 @@ pub fn week(setup: &ColonialSetup, mil: &Military, world: &mut GameWorld) {
                 let want = (held.max(0) as u64) * u64::from(r.hostile) / 1000
                     * u64::from(r.cover_target)
                     / 1000;
-                cap = cap.min(want.saturating_sub(garrison));
+                goal = want.saturating_sub(garrison);
             }
-            c.landed = (c.landed + ports * u64::from(r.men_per_port_week)).min(cap);
+            if let Some(w) = c.wanted {
+                goal = w;
+            }
+            goal = goal.min(cap);
+            c.cap = cap;
+            c.goal = goal;
+            // Men land (or sail home) by the ports, a week's capacity at a time.
+            let pace = ports * u64::from(r.men_per_port_week);
+            c.landed = if c.landed < goal {
+                (c.landed + pace).min(goal)
+            } else {
+                c.landed.saturating_sub(pace).max(goal)
+            };
         }
         // Recruitment.
         if let Some(ty) = setup.irregular {
@@ -701,7 +734,7 @@ fn guerrilla(
             .sum()
     });
     c.commitment = if land > 0 {
-        (u128::from(c.tied) * 2000 / land as u128).min(1000) as u16
+        (u128::from(c.tied) * 1000 / land as u128).min(1000) as u16
     } else {
         1000
     };

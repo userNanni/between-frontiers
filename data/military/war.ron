@@ -31,6 +31,10 @@
         // G8 (to the owner): the duration weighs by the share of the land army committed to the
         // war, times two, at most whole. Off until the owner answers.
         duration_by_commitment: false,
+        // The weight is the share of the land army committed times this factor, per mille, at
+        // most whole: with 3, Vietnam (some 0.36 of the army) weighs whole and the owner's case
+        // stands; Malaya (some 0.05) weighs about 0.15.
+        commitment_factor: 3000,
         // Civilian deprivation counts (orchestrator, 2026-11-18): the share of the basic needs
         // met before the war that are no longer met. Germany's turnip winter of 1916–17 and the
         // strikes of 1918 (Offer, 1989, *The First World War: An Agrarian Interpretation*).
@@ -140,8 +144,9 @@
         exchange_base: 2000,
         exchange_per_cover: 1600,
         hostile: 20,
-        // The AI lands up to the cap and does not dose the expedition (phase 6); with a value,
-        // it lands until its men reach this cover (per mille of the O3 need).
-        cover_target: 0,
+        // The AI lands until its men in the unit reach this cover, per mille of the O3 need (20
+        // per thousand of the people it holds there), never past the cap; 0 lands up to the cap.
+        // The player decides how many to send (`SetExpedition`).
+        cover_target: 1000,
     )),
 )
