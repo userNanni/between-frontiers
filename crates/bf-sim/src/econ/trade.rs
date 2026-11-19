@@ -42,6 +42,7 @@ pub fn equilibrium(
     factors: &FreightFactors,
     date: &str,
     links: Option<&[crate::treaty::TariffLink]>,
+    home: Option<Fixed>,
 ) -> Vec<Vec<Fixed>> {
     let groups = crate::economy::BUILDING_GROUPS.len();
     let n = markets.len();
@@ -122,6 +123,9 @@ pub fn equilibrium(
                         * (Fixed::ONE + freight[k] * km * carry / reference)
                         * (Fixed::ONE + tariff),
                 );
+            }
+            if let Some(h) = home {
+                row[b] = h * power(cat, index[b][k]);
             }
             let top = row.iter().copied().max().unwrap_or(Fixed::ZERO);
             if top > Fixed::ZERO {
@@ -840,6 +844,17 @@ impl Geography {
             sea,
             closures: Vec::new(),
         }
+    }
+
+    /// Closes the pair `a`–`b` to trade, both ways, from `from` (`YYYY-MM-DD`) until `until`
+    /// (none: for good). The slot of embargoes, sanctions and war (section 11).
+    pub fn close(&mut self, a: usize, b: usize, from: &str, until: Option<&str>) {
+        self.closures.push(Closure {
+            a,
+            b,
+            from: from.to_string(),
+            until: until.map(str::to_string),
+        });
     }
 
     /// Whether the cheaper way from `a` to `b` is by sea.

@@ -176,6 +176,14 @@ pub struct TradeDef {
     pub reference_km: u32,
     pub sea_per_land: f32,
     pub land_detour: f32,
+    /// How much a buyer leans toward its own product against a foreign one at the same cost,
+    /// with gross trade (`game::Switches::trade_gross`).
+    #[serde(default = "one")]
+    pub home_bias: f32,
+}
+
+fn one() -> f32 {
+    1.0
 }
 
 impl Default for TradeDef {
@@ -187,6 +195,7 @@ impl Default for TradeDef {
             reference_km: 1000,
             sea_per_land: 1.0 / 3.0,
             land_detour: 1.2,
+            home_bias: 1.0,
         }
     }
 }

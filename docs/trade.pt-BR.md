@@ -328,8 +328,64 @@ porque o que cada mercado produz chega a quem compra: 120 contra 92 trilhões em
 erro logarítmico médio do PIB por habitante de 1,07 para 0,86 e correlação de ranking de 0,54 para
 0,59 em 2022. O meio do século passa do real: 16,3 trilhões em 1955 contra 14,0 antes e 10,9 reais.
 
-**Passo 2, o comércio bruto** (`trade_gross`, desligado): um mercado só comerciava o saldo, e
-quem produz e consome o mesmo bem não importava nada dele. Vem em PR próprio.
+**Passo 2, o comércio bruto** (`trade_gross`, desligado). Um mercado só comerciava o saldo: quem
+produz e consome o mesmo bem não importava nada dele, e o Reino Unido não comprava tecido francês
+porque fazia tecido. No real, a maior parte do comércio é de variedades do mesmo bem.
+
+- **A regra (Armington).** Do que um mercado ao mesmo tempo produz e consome de um bem
+  (`min(oferta, procura)`), ele compra fora a fatia que as suas preferências dão aos fornecedores de
+  fora contra o próprio produto. Cada fornecedor pesa o que produz vezes a preferência do comprador
+  por ele; o próprio produto pesa o que o mercado produz vezes o viés nacional, no índice de preço
+  do grupo, sem frete nem tarifa (`trade.home_bias`, na preferência de equilíbrio do mês). A compra
+  de fora se divide entre os fornecedores pelos mesmos pesos.
+- **Não move bem em termos líquidos.** O que um mercado manda de um bem é compensado pelo que ele
+  guarda do próprio; só o saldo se fecha fisicamente (`trade::clear_good_flat`). O comércio bruto
+  conta como comércio: o fluxo do par, a tarifa e a influência o leem, e par fechado não tem nenhum.
+- **Calibração.** Só o viés nacional, para o comércio mundial de 1925:
+
+| `home_bias` | 1 | 3 | 10 | 30 | 36 |
+|---|---|---|---|---|---|
+| comércio mundial / PIB, 1925 | 43,1 % | 32,9 % | 22,8 % | 15,9 % | 15,0 % |
+
+  Fica 36. Real: 14,8 % (Klasing e Milionis, 2014).
+- **Dependência anotada: a distribuição entre países.** Com o mesmo viés para todos, o tamanho do
+  país quase não pesa: em 1925 os EUA ficam com 6,7 % do PIB em comércio e o Reino Unido com 14 %,
+  contra cerca de 10 % e 40 % reais (ordem de grandeza). O Reino Unido de 1925 importava comida e
+  matéria-prima de um império com tarifa de preferência e frota própria; o que falta é estudar o
+  processo (custo do frete por rota, preferência imperial), não ajustar por país.
+- **O bloqueio da Alemanha** (`tests/blockade.rs`, a pergunta da opção A): fechar todo par cujo
+  caminho mais barato até a Alemanha é por mar, de 1925 a 1926 (o jogo começa em 1925; é o análogo
+  de 1914–18). Fatia da procura atendida, aberto → fechado, com o comércio bruto:
+
+| bem | atendido | preço / base |
+|---|---|---|
+| frutas | 0,70 → 0,11 | 1,32 → 4,00 |
+| açúcar | 0,94 → 0,56 | 1,05 → 1,58 |
+| comida processada | 0,93 → 0,49 | 1,05 → 1,79 |
+| fosfato | 0,99 → 0,00 | 1,01 → 4,00 |
+| carne | 0,89 → 0,84 | 1,09 → 1,14 |
+| grãos, laticínios, potássio, fertilizante | 1,00 → 1,00 | — |
+
+  O bloqueio deixa falta de comida; só com os saldos o resultado é quase o mesmo. Os grãos não
+  faltam porque a Alemanha do jogo de 1925 exporta grão líquido, quando a real importava cerca de um
+  quinto das calorias antes de 1914: é dado de produção agrícola, anotado para a calibração.
+- **Custo** (2 anos, `--threads 1`, tempo de usuário, mediana de 5 rodadas intercaladas no mesmo
+  slot; o ruído entre repetições vai na coluna):
+
+| | tempo | contra a `main` | repetições |
+|---|---|---|---|
+| `main` 8d558c5 | 9,31 s | — | 9,23 a 9,43 s |
+| alcance a 100 % | 9,38 s | 0 % | 9,02 a 10,27 s (outra bateria) |
+| comércio bruto sem otimizar | 10,15 s | +9,0 % | 10,03 a 10,27 s |
+| + uma divisão por comprador e bem (`trade::Divisor`) | 9,96 s | +7,0 % | 9,84 a 10,12 s |
+
+  Os bens se fecham em paralelo entre os núcleos, cada um com o seu rascunho, e os fluxos se somam
+  na ordem dos bens: com o comércio bruto desligado, o hash é o mesmo do alcance. Com 2 threads, o
+  passo semanal cai de 5,2 s para 3,1 s. As demais candidatas já estavam no código ou não passaram
+  do ruído: a poda dos pares (a linha de preferências guarda só fornecedores acima de 0,1 % do
+  favorito, e o viés nacional deixa a maioria dos estrangeiros abaixo), o custo de chegada
+  recalculado só uma vez por mês, a divisão em forma fechada por comprador e bem, o pulo de bem sem
+  comércio ou sem consumo, e reservar de uma vez a lista de fluxos (mesmo hash, ganho não medível).
 
 ## Fontes
 
