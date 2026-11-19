@@ -460,7 +460,7 @@ Control Association.
 Teste da regra da casa: `deterrence_is_mutual_only_with_secure_second_strikes`. Bombardeiros sem
 alerta não dão segundo golpe; com alerta, dão. Trocar os lados troca o resultado.
 
-## Arma nuclear na escada de crise (fases 4 e 5): desenho, com o passo 1 feito
+## Arma nuclear na escada de crise (fases 4 e 5): decidida, com os passos 1 e 2 feitos
 
 O que segue foi combinado com o orquestrador em 2026-11-19. Só o passo 1 (a ponte e o painel,
 leitura) está no código. O resto espera as respostas do dono (N1 a N9).
@@ -518,21 +518,68 @@ em minério"), `ballistic_missile`,
   - dissuasão mútua com o risco;
   - o guarda-chuva da França sobre a Tchecoslováquia pelos tratados de 1925.
 
-### O arsenal como estoque gradual (passo 2, em rascunho até N1 e N2)
-- **Programa (decisão do jogador, Agendas):** uma parcela do orçamento por ano para o "Projeto".
-  - O dinheiro acelera fissão → enriquecimento → bomba pelo canal `state_buyer`.
-  - Põe as usinas de enriquecimento na fila de obras.
-  - A tela mostra os anos estimados e o custo acumulado.
-- **Material físsil:** o `nuclear_fuel` reservado pelo programa compete com as usinas elétricas
-  pelo mesmo bem. Será medido o efeito no preço da energia de um país que arma depressa.
-- **Ogivas:** ordens A2 de `nuclear_warhead`, limitadas pelo físsil. **Vetores:** pela árvore.
-- **Ritmo, conferido por rodada e não por conta** (Norris e Kristensen, "Global nuclear weapons
-  inventories, 1945–2010", *Bulletin of the Atomic Scientists* 66(4), 2010):
-  - primeiro teste: 1945, 1949, 1952, 1960, 1964;
-  - estoque americano: 2 em 1945, ~300 em 1950, ~2.400 em 1955, ~18.600 em 1960;
-  - critério: primeira bomba em 3 a 5 anos com base industrial, e o estoque subindo uma ordem de
-    grandeza a cada 5 anos;
-  - se a pesquisa do jogo atrasar, o número fica anotado e não é forçado.
+### Passo 2, feito: o programa e o estoque (N1, N2)
+`war::programme`, atrás de `war`; o estado é `WarState::nuclear` (save 37). O comando é
+`GameCommand::NuclearProgramme`, e a tela é a seção "Programa nuclear" da aba Forças, com entrada
+nas Agendas.
+
+**Funcionamento:**
+- **O programa:** o governo fixa uma parcela do PIB por ano, em passos de 0,1%, até 2%. O dinheiro
+  é gasto toda semana, por fora do teto militar (`econ::week` soma as compras do programa às do
+  Estado).
+- **Pesquisa:** até a bomba, o dinheiro compra os bens de um laboratório. A cada mês, o que o
+  mercado entregou é creditado à primeira tecnologia da cadeia ainda por entender ou prototipar
+  (fissão, enriquecimento, bomba, termonuclear), a `dollars_per_cost` (8 milhões) por ponto de
+  custo, com a mesma penalidade por estar à frente da história.
+  - A calibração é relativa ao PIB: o Projeto Manhattan custou cerca de 2 bilhões de dólares de
+    1945 em 1942–45 (Hewlett e Anderson, *The New World*, 1962), uns 0,4% do PIB americano por
+    ano durante três anos, para cerca de 1.800 pontos da cadeia.
+  - Do protótipo à indústria, o programa é o comprador da cadeia (`buyer` 1.500).
+- **Usinas:** com o enriquecimento industrial, o programa pede um nível da usina de enriquecimento
+  no estado metropolitano mais populoso. Pede outro quando o mercado entrega menos de 90% do
+  material físsil pedido, um pedido a cada 26 semanas. A fila de obras a constrói, paga pelo
+  Tesouro. O investimento aceita esse pedido do Estado.
+- **Ogivas:** com a bomba construível, três quartos do dinheiro mantêm uma encomenda A2 de
+  ogivas, uma a uma, comprando o equipamento fora do teto. O material físsil vem do mesmo
+  mercado das usinas elétricas.
+- **N2:** as armas (bomba e termonuclear) são imitadas à metade do ritmo usual. A partilha entre
+  aliados por cláusula espera a cláusula dos tratados.
+
+**Conferência do ritmo**, por rodada (`the_pace_from_1940`, `#[ignore]`), com a ogiva de 60 "kg
+enriched", antes do #261 e em lotes de 10. EUA, Alemanha e Reino Unido começam o programa em 1940
+com 0,4% do PIB. A conferência com a ogiva de 3.600 está em "O custo da ogiva em minério":
+
+| País | Bomba industrial | Primeiro lote de ogivas | Estoque em 1955 |
+|---|---|---|---|
+| EUA | 1943 (3 anos) | 1954 | 250 |
+| Reino Unido | 1946 | 1946 | 10 |
+| Alemanha | 1947 | 1948 | 10 |
+
+- **A pesquisa está no ritmo:** a primeira bomba sai em 3 a 7 anos com base industrial.
+- **O estoque não cresce:** fica preso no material físsil. A usina pedida é construída e fecha sem
+  insumo. O preço da eletricidade não muda (±0,5%), porque nenhuma usina de enriquecimento chega a
+  rodar.
+- O achado tem duas partes, registradas separadas e sem forçar:
+  1. **Escala do insumo: a ogiva, não a usina.** O `buildings.ron` dá as quantidades por nível
+     **por ano**.
+     - Um nível de `nuclear_fuel_plant` por difusão gasosa pede 200 t de U3O8 por ano e produz
+       34 t de "kg enriched", com a razão de cerca de 6 do urânio pouco enriquecido de reator.
+     - Em 1925, a extração mundial é de uns 65 t (Shinkolobwe, Jáchymov, Urgeiriça), e nenhuma
+       mina nova abre pela demanda: a usina fecha sem insumo.
+     - O descompasso de dado está na ogiva. Ela pede 60 "kg enriched" (~360 kg de minério),
+       enquanto um núcleo de Little Boy (64 kg a 80%) exigiu de 12 a 24 t de urânio natural.
+     - Números de Oak Ridge em 1945, em Hewlett e Anderson, *The New World* (1962):
+       - cerca de 6.000 t de óxido em estoque no fim de 1944 (pp. 291–292);
+       - 250 t de óxido por ano para cada 1 kg de U-235 por dia (p. 65);
+       - US$ 300,6 milhões em Y-12 e 458,3 milhões em K-25 (p. 723).
+     - Também: cerca de 10 kg por mês de urânio altamente enriquecido em meados de 1945
+       (Wellerstein, 2025, a partir do *Manhattan District History*).
+     - A correção da ogiva vai num PR de dados separado.
+  2. **Descoberta com data marcada.** Os depósitos de urânio do mapa só "existem" a partir do ano
+     da descoberta histórica, quase todos depois de 1946. Isso é história forçada: na vida real, a
+     prospecção respondeu em poucos anos à procura (Colorado, Eldorado, Congo ampliado).
+  - As duas são lacunas de funcionalidade do thread da economia: mineração e descoberta que
+    respondem ao preço e à compra do Estado.
 
 ### O custo da ogiva em minério (PR de dados)
 A ogiva pedia 60 "kg enriched" de `nuclear_fuel` (30 na termonuclear), cerca de 350 kg de U3O8.
@@ -608,7 +655,7 @@ Reino Unido a 0,4% do PIB desde 1940-01-01; o dinheiro está em dólares de 2011
   - Fica anotada para a fatia do físsil: o físsil por geração (U3), a rota do plutônio (U2) e as
     minas que o programa encomenda (U1).
 
-### O degrau nuclear na crise (passo 3, depois das respostas)
+### O degrau nuclear na crise (passo 3, decidido: N3, N4, N9)
 - **Exigência:** quem exige vê o seu teto contra o alvo. Teto abaixo de `War` quer dizer que a
   exigência não pode virar guerra. A IA não a faz; o jogador pode, mas a declaração vem bloqueada
   e com o motivo.
@@ -617,7 +664,7 @@ Reino Unido a 0,4% do PIB desde 1940-01-01; o dinheiro está em dólares de 2011
 - **Declaração:** entre dois lados com segundo golpe garantido, a guerra carrega
   `escalation_risk_per_week`. É um custo esperado que a IA pesa e que o jogador vê; não é sorteio.
 
-### O uso e a consequência (passo 4, depois das respostas)
+### O uso e a consequência (passo 4, decidido: N5, N6, N7)
 1. **Mortos e destruição:** por ogiva, uma parcela da população morre por idade
    (`kill_civilians`), e níveis de edifício caem (`wreck`).
    - Fonte (RERF): Hiroshima, 70 a 140 mil mortos até o fim de 1945, de cerca de 350 mil;
@@ -654,19 +701,29 @@ Reino Unido a 0,4% do PIB desde 1940-01-01; o dinheiro está em dólares de 2011
   - o tabu;
   - a reserva exigida contra a URSS.
 
-### Perguntas do dono (abertas)
-
-| # | Pergunta | Recomendado pela guerra | Alternativa |
-|---|---|---|---|
-| N1 | Programa | decisão explícita com orçamento e anos | só o foco de pesquisa |
-| N2 | Imitação de armas | sim, mais lenta, e por cláusula de partilha entre aliados | nenhuma |
-| N3 | Posse conhecida | só depois do teste; opaca conta 500‰ (no dado) | sempre pública |
-| N4 | Coerção de um lado só | a razão W3 cai à metade no periférico; o existencial nunca cede | a arma não muda a W3 |
-| N5 | Retaliação da IA | contravalor automático se tiver segundo golpe | **proporcional, recomendada pelo orquestrador:** resposta no mesmo degrau (contraforça por contraforça, cidade por cidade), com o risco semanal de subir. O contravalor total fica para quem recebeu contravalor ou perdeu a capacidade de responder de outro jeito. As duas ficam em dado. |
-| N6 | Apoio interno de quem usa | nada direto | queda pelos grupos |
-| N7 | Tabu | o primeiro uso sobe o risco de todos os pares, de vez | **estoque, recomendado pelo orquestrador:** o limiar sobe devagar com os anos sem uso no mundo e cai a cada uso, para todos (Tannenwald), com a tela mostrando os anos desde o último uso. As duas ficam em dado. |
-| N8 | Precipitação e efeitos longos | fora nesta fatia | perda de produtividade da terra por anos |
-| N9 | Guarda-chuva | os protetores somam os arsenais ao lado protegido (no dado) | só o próprio território |
+### Decisões do dono (2026-11-19, todas na recomendação levada pelo orquestrador)
+- **N1:** o programa é decisão explícita, com orçamento e anos (feito no passo 2).
+- **N2:** imitação mais lenta das armas e partilha por cláusula entre aliados (a imitação está no
+  passo 2; a cláusula espera os tratados).
+- **N3:** a posse só é conhecida depois do teste; sem teste, o arsenal conta a metade (no dado
+  desde o passo 1).
+- **N4:** contra quem coage de um lado só, o alvo cede mais fácil no periférico; no existencial,
+  nunca.
+- **N5, retaliação proporcional:** a resposta fica no mesmo degrau (contraforça por contraforça,
+  cidade por cidade), com o risco semanal de subir. O contravalor total fica para quem recebeu
+  contravalor ou perdeu a capacidade de responder de outro jeito.
+- **N6:** nada direto no apoio interno de quem usa.
+- **N7, tabu como estoque:** o limiar sobe devagar com os anos sem uso no mundo e cai a cada uso,
+  para todos (Tannenwald, *The Nuclear Taboo*, 2007). A tela mostra os anos desde o último uso.
+- **N8, precipitação: fora desta fatia, mas decidida como fatia seguinte ao uso.** Nos estados
+  atingidos e nos que ficam a sotavento, a terra e a saúde perdem produtividade por anos.
+  - Fonte: depois de Chernobyl, cerca de 784 mil hectares de terra agrícola saíram de uso na
+    Bielorrússia, na Rússia e na Ucrânia (IAEA, *Chernobyl's Legacy*, The Chernobyl Forum,
+    2005).
+  - Fonte: a precipitação dos testes de Semipalatinsk sobre as regiões vizinhas (Simon e Bouville,
+    *Health Physics* 82(5), 2002).
+  - Vem depois do passo 4.
+- **N9:** o guarda-chuva é dado pelo aliado com cláusula de defesa (no dado desde o passo 1).
 
 ### Para a IA da fase 6
 - proliferação: quem começa o programa e quem fica sob guarda-chuva;

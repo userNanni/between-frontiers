@@ -173,6 +173,8 @@ pub enum Kind {
     },
     /// A country born in revolt, at war with its metropole (G6), by its tag.
     Revolt(String),
+    /// The nuclear programme under way (N1).
+    NuclearProgramme,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -209,6 +211,7 @@ impl Kind {
             Kind::LawChanges => "law-changes".into(),
             Kind::Forces { .. } => "forces".into(),
             Kind::Revolt(tag) => format!("revolt-{tag}"),
+            Kind::NuclearProgramme => "nuclear-programme".into(),
         }
     }
 }
@@ -334,6 +337,8 @@ pub struct Rules<'a> {
     pub politics: Option<&'a Politics>,
     /// The unit catalogue, when the forces run.
     pub military: Option<&'a bf_sim::war::Military>,
+    /// The nuclear programme's rule and chain, with the war switched on.
+    pub programme: Option<&'a bf_sim::war::programme::ProgrammeSetup>,
 }
 
 fn f(x: Fixed) -> f64 {
@@ -362,6 +367,9 @@ pub fn read_country(world: &GameWorld, c: usize, date: Date, rules: Rules<'_>) -
     if let Some(mil) = rules.military {
         forces_entry(world, c, mil, &mut entries);
         revolt_entries(world, mil, &mut entries);
+        if let (Some(ps), Some(tree)) = (rules.programme, rules.tree) {
+            programme_entry(world, c, mil, ps, tree, rules.catalogue, &mut entries);
+        }
     }
     for e in &mut entries {
         e.id = e.kind.id(rules.politics);
@@ -425,6 +433,57 @@ fn revolt_entries(world: &GameWorld, mil: &bf_sim::war::Military, out: &mut Vec<
         e.completes = Some(label("journal-revolt-switch"));
         out.push(e);
     }
+}
+
+/// The nuclear programme under way: the chain's step, the months left at the month's credit,
+/// the warheads; its controls are in the forces tab.
+fn programme_entry(
+    world: &GameWorld,
+    c: usize,
+    mil: &bf_sim::war::Military,
+    ps: &bf_sim::war::programme::ProgrammeSetup,
+    tree: &TechTree,
+    cat: &Catalogue,
+    out: &mut Vec<Entry>,
+) {
+    let Some(v) = crate::forces_view::programme_view(world, cat, mil, ps, tree, c) else {
+        return;
+    };
+    if v.share == 0 {
+        return;
+    }
+    let mut e = entry(
+        Kind::NuclearProgramme,
+        Tone::Neutral,
+        label("journal-programme-title"),
+        label("journal-programme-cause").value("share", Value::Percent(f64::from(v.share) / 10.0)),
+        Screen::Forces,
+    );
+    let done = v
+        .steps
+        .iter()
+        .filter(|(_, s, _)| *s >= bf_sim::research::Stage::Industrial)
+        .count();
+    let total = v.steps.len().max(1);
+    e.progress = Some((
+        done as f32 / total as f32,
+        label("journal-programme-progress")
+            .value("done", Value::Count(done as i64))
+            .value("total", Value::Count(total as i64)),
+    ));
+    e.forces.push(Force {
+        label: label("journal-programme-warheads"),
+        value: Some(Value::Count(v.warheads.round() as i64)),
+        helps: true,
+    });
+    if let Some(mo) = v.months_left {
+        e.forces.push(Force {
+            label: label("journal-programme-months"),
+            value: Some(Value::Number(mo.round())),
+            helps: true,
+        });
+    }
+    out.push(e);
 }
 
 fn entry(kind: Kind, tone: Tone, title: Label, cause: Label, screen: Screen) -> Entry {

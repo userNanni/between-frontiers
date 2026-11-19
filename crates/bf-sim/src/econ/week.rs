@@ -488,11 +488,18 @@ fn clear_market(
     exists: &[bool],
     upkeep: &[(GoodIx, Fixed)],
     military: Option<&[(GoodIx, Fixed)]>,
+    programme: Option<&[(GoodIx, Fixed)]>,
 ) -> (Market, Vec<(GoodIx, Fixed)>) {
     let g = cat.goods.len();
     // The state's own purchases and construction join the demand.
     let mut demand = demand.to_vec();
-    let orders = state_orders(cat, &m, exists, military);
+    let mut orders = state_orders(cat, &m, exists, military);
+    if let Some(p) = programme {
+        orders.extend(
+            p.iter()
+                .filter(|(g, q)| exists[*g as usize] && q.is_positive()),
+        );
+    }
     for (gi, q) in &orders {
         demand[*gi as usize] += *q;
     }
@@ -1328,7 +1335,19 @@ impl System<GameWorld> for Week {
             .map(|(mi, m)| {
                 let (d, s, t) = (&demand[mi], &supply[mi], &trade[mi]);
                 let military = world.war.orders(mi);
-                clear_market(cat, m.clone(), d, s, t, exists, &upkeep[mi], military)
+                // A nuclear programme buys on top of the budget (`war::programme`).
+                let programme = world.war.nuclear.of(mi as u16).map(|p| p.buying.as_slice());
+                clear_market(
+                    cat,
+                    m.clone(),
+                    d,
+                    s,
+                    t,
+                    exists,
+                    &upkeep[mi],
+                    military,
+                    programme,
+                )
             })
             .unzip();
         super::local::finish(

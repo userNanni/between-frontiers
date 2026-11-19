@@ -510,6 +510,10 @@ pub enum GameCommand {
         war: u32,
         men: Option<u64>,
     },
+    /// `tag` sets its nuclear programme at `share` per mille of its GDP a year (N1), or ends it
+    /// with `None` (or 0). The forces cap it at the programme rule's `max_share`
+    /// (`docs/war.pt-BR.md`, "Arma nuclear na escada de crise").
+    NuclearProgramme { tag: String, share: Option<u16> },
 }
 
 /// Changes the levers of the country `tag` (`econ::levers`); unknown tags are no-ops.
@@ -680,6 +684,19 @@ impl Command<GameWorld> for GameCommand {
                         .find(|c| c.war == *war && c.owner as usize == ci && !c.peace)
                 {
                     c.wanted = *men;
+                }
+            }
+            GameCommand::NuclearProgramme { tag, share } => {
+                if world.war.is_empty() {
+                    return;
+                }
+                if let Some(ci) = world.countries.iter().position(|(_, c)| c.tag == *tag) {
+                    let d = ctx.date;
+                    world.war.nuclear.set(
+                        ci as u16,
+                        share.map(|s| s.min(1000)),
+                        (d.year, d.month, d.day),
+                    );
                 }
             }
             GameCommand::SetComposition { tag, composition } => {
@@ -1315,6 +1332,7 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
                 Arc::clone(&cat),
             ));
         }
+        let programme = fight.as_ref().and_then(|f| f.programme.clone());
         if let Some((military, peace)) = war {
             s.add(crate::war::Forces::new(
                 Arc::clone(&cat),
@@ -1363,6 +1381,7 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
                 tree: Arc::clone(tree),
                 wage_floor: switches.small_market_wage_floor,
                 foreign_technique: switches.foreign_technique,
+                programme: programme.clone(),
             });
         }
         let borders = borders.map(|b| {
@@ -1997,14 +2016,24 @@ mod tests {
             hash_of(&with_ledger)
         );
         assert_eq!(
-            hash_of(&headed(36, &encode_snapshot(&with_ledger).unwrap())),
+            hash_of(&headed(37, &encode_snapshot(&with_ledger).unwrap())),
             hash_of(&with_ledger)
         );
-        // Version 35, the war at sea, before the reserves of settlement: the world without
-        // `reserves`.
+        // Version 36, the reserves of settlement (#254), before the nuclear programmes: `war`
+        // without `nuclear`.
         {
             #[derive(Serialize)]
-            struct BeforeReserves35<'a> {
+            struct WarV36<'a> {
+                countries: &'a Vec<crate::war::CountryWar>,
+                soldiers: &'a Vec<i64>,
+                conflicts: &'a crate::war::Conflicts,
+                fighting: &'a crate::war::fight::Fighting,
+                composition: &'a crate::war::composition::CompositionState,
+                colonial: &'a Vec<crate::war::colonial::Colonial>,
+                sea: &'a crate::war::sea::SeaWar,
+            }
+            #[derive(Serialize)]
+            struct BeforeNuclear36<'a> {
                 scenario: &'a String,
                 player: &'a Option<Id<Country>>,
                 countries: &'a Table<Country, CountryState>,
@@ -2017,15 +2046,16 @@ mod tests {
                 foreign: &'a crate::foreign_stakes::ForeignState,
                 influence: &'a crate::influence::InfluenceState,
                 treaties: &'a crate::treaty::TreatyState,
-                war: &'a crate::war::WarState,
+                war: WarV36<'a>,
                 education: &'a crate::demography::education::EducationState,
                 independence: &'a crate::borders::independence::IndependenceState,
                 levers: &'a crate::econ::levers::LeversState,
                 tariffs: &'a crate::econ::customs::TariffState,
                 payments: &'a crate::econ::payments::PaymentsState,
+                reserves: &'a crate::econ::payments::ReservesState,
             }
             let w = &with_ledger;
-            let v35 = encode_snapshot(&BeforeReserves35 {
+            let v36 = encode_snapshot(&BeforeNuclear36 {
                 scenario: &w.scenario,
                 player: &w.player,
                 countries: &w.countries,
@@ -2038,7 +2068,82 @@ mod tests {
                 foreign: &w.foreign,
                 influence: &w.influence,
                 treaties: &w.treaties,
-                war: &w.war,
+                war: WarV36 {
+                    countries: &w.war.countries,
+                    soldiers: &w.war.soldiers,
+                    conflicts: &w.war.conflicts,
+                    fighting: &w.war.fighting,
+                    composition: &w.war.composition,
+                    colonial: &w.war.colonial,
+                    sea: &w.war.sea,
+                },
+                education: &w.education,
+                independence: &w.independence,
+                levers: &w.levers,
+                tariffs: &w.tariffs,
+                payments: &w.payments,
+                reserves: &w.reserves,
+            })
+            .unwrap();
+            assert_eq!(hash_of(&headed(36, &v36)), hash_of(&with_ledger));
+        }
+        // Version 35, the war at sea (#245), before the nuclear programmes: `war` without
+        // `nuclear`.
+        {
+            #[derive(Serialize)]
+            struct WarV35<'a> {
+                countries: &'a Vec<crate::war::CountryWar>,
+                soldiers: &'a Vec<i64>,
+                conflicts: &'a crate::war::Conflicts,
+                fighting: &'a crate::war::fight::Fighting,
+                composition: &'a crate::war::composition::CompositionState,
+                colonial: &'a Vec<crate::war::colonial::Colonial>,
+                sea: &'a crate::war::sea::SeaWar,
+            }
+            #[derive(Serialize)]
+            struct BeforeNuclear35<'a> {
+                scenario: &'a String,
+                player: &'a Option<Id<Country>>,
+                countries: &'a Table<Country, CountryState>,
+                census: &'a Vec<CensusRecord>,
+                econ: &'a crate::econ::Economy,
+                research: &'a crate::research::ResearchState,
+                politics: &'a crate::polity::PoliticsState,
+                demography: &'a crate::demography::DemographyState,
+                borders: &'a crate::borders::BordersState,
+                foreign: &'a crate::foreign_stakes::ForeignState,
+                influence: &'a crate::influence::InfluenceState,
+                treaties: &'a crate::treaty::TreatyState,
+                war: WarV35<'a>,
+                education: &'a crate::demography::education::EducationState,
+                independence: &'a crate::borders::independence::IndependenceState,
+                levers: &'a crate::econ::levers::LeversState,
+                tariffs: &'a crate::econ::customs::TariffState,
+                payments: &'a crate::econ::payments::PaymentsState,
+            }
+            let w = &with_ledger;
+            let v35 = encode_snapshot(&BeforeNuclear35 {
+                scenario: &w.scenario,
+                player: &w.player,
+                countries: &w.countries,
+                census: &w.census,
+                econ: &w.econ,
+                research: &w.research,
+                politics: &w.politics,
+                demography: &w.demography,
+                borders: &w.borders,
+                foreign: &w.foreign,
+                influence: &w.influence,
+                treaties: &w.treaties,
+                war: WarV35 {
+                    countries: &w.war.countries,
+                    soldiers: &w.war.soldiers,
+                    conflicts: &w.war.conflicts,
+                    fighting: &w.war.fighting,
+                    composition: &w.war.composition,
+                    colonial: &w.war.colonial,
+                    sea: &w.war.sea,
+                },
                 education: &w.education,
                 independence: &w.independence,
                 levers: &w.levers,

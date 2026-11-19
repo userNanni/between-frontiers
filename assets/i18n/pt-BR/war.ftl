@@ -422,3 +422,24 @@ war-blockaded-basis = A frota inimiga corta { $count ->
    *[other] { $pairs } pares
 } do nosso comércio por mar, que somavam { $total } por ano. Por terra, o comércio segue.
 war-fleet-command-later = O comando da frota (a missão por zona) vem na próxima fatia; por ora a frota segue a regra acima.
+programme-title = Programa nuclear
+programme-basis = Uma parcela do PIB por ano, por fora do teto militar. Até a bomba, o dinheiro compra o laboratório e adianta a fissão, o enriquecimento e a bomba; depois, três quartos mantêm a encomenda de ogivas, que dependem do material físsil do mercado, o mesmo das usinas elétricas.
+programme-start = Começar o programa (0,1 % do PIB por ano)
+programme-share = Parcela do PIB por ano
+programme-step-tip = Um décimo de ponto do PIB por ano
+programme-cost = Custo por ano nessa parcela
+programme-spent = Entregue até agora
+programme-stage-unknown = ainda não estudada ({ $progress })
+programme-stage-science = entendida; protótipo em { $progress }
+programme-stage-prototype = protótipo; indústria em { $progress }
+programme-stage-industrial = em produção
+programme-stage-diffused = difundida
+programme-months = No ritmo do último mês, o passo em curso termina em cerca de { $months } meses.
+programme-months-none = Sem crédito no último mês ainda, ou a cadeia já está toda em produção.
+programme-warheads = Ogivas
+programme-warheads-value = { $n } prontas, { $ordered } encomendadas
+programme-plants = Usinas de enriquecimento
+programme-fissile = Material físsil
+programme-fissile-value = { $price } a unidade; o mercado entregou { $delivered } do que se pediu
+programme-end = Encerrar o programa
+programme-note = O teste, a doutrina e o uso vêm nas próximas fatias. Sem minério de urânio, a usina não roda, e o estoque para no material físsil.

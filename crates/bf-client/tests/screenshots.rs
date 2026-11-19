@@ -719,6 +719,7 @@ fn outliner_and_journal() {
         tree: rules.tree.as_deref(),
         politics: rules.politics.as_deref(),
         military: rules.war.as_ref().map(|(m, _)| m.as_ref()),
+        programme: None,
     };
     let date = session.clock().date;
     let world = session.world();

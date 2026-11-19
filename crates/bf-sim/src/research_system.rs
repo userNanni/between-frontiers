@@ -57,6 +57,9 @@ pub struct Research {
     pub wage_floor: bool,
     /// `game::Switches::foreign_technique`: foreign plants speed up imitation and diffusion.
     pub foreign_technique: bool,
+    /// The nuclear programme (N1, N2), with `Switches::war`: the money it delivered is credited
+    /// to its chain, it is the state buyer of its prototypes, and weapons are imitated slower.
+    pub programme: Option<Arc<crate::war::programme::ProgrammeSetup>>,
 }
 
 /// Share of the levels of the buildings each technology serves (`Tech::methods`) that foreign
@@ -217,11 +220,17 @@ impl System<GameWorld> for Research {
     }
 
     fn access(&self) -> Access {
-        Access::new()
+        let a = Access::new()
             .read(ECON)
             .write(ECON)
             .read(RESEARCH)
-            .write(RESEARCH)
+            .write(RESEARCH);
+        // The programmes' money (only with the programme, so the schedule is the same without).
+        if self.programme.is_some() {
+            a.read(crate::war::WAR)
+        } else {
+            a
+        }
     }
 
     fn compute(&self, ctx: &TickCtx, world: &GameWorld) -> ResearchChanges {
@@ -355,6 +364,35 @@ impl System<GameWorld> for Research {
                     points * SCIENCE_SHARE / science_cost(t, channel).max(milli(1));
             }
 
+            // The nuclear programme's month: its money delivered goes to the first technology
+            // of its chain still to understand or to prototype, at the programme's price of a
+            // point of cost, with the same penalty for being ahead of history.
+            let programme = self
+                .programme
+                .as_deref()
+                .and_then(|ps| world.war.nuclear.of(c as u16).map(|p| (ps, p.month)));
+            if let Some((ps, money)) = programme {
+                let next = ps.chain.iter().copied().find(|&t| {
+                    (stages[t] == Stage::Unknown && requirements_met(c, t, &stages))
+                        || stages[t] == Stage::Science
+                });
+                if let Some(t) = next {
+                    let tech = &tree.techs[t];
+                    let (base, history) = if stages[t] == Stage::Unknown {
+                        (Fixed::ONE, tech.demonstrated - 3)
+                    } else {
+                        (PROTOTYPE_COST, tech.demonstrated)
+                    };
+                    let cost = Fixed::from_int(i64::from(tech.cost))
+                        * Fixed::from_int(i64::from(ps.rule.dollars_per_cost))
+                        * base
+                        * ahead(year, history);
+                    if cost.is_positive() {
+                        state.progress[c][t] += money / cost;
+                    }
+                }
+            }
+
             // Prototypes of what is understood.
             let at_science: Vec<usize> = (0..nt).filter(|&t| stages[t] == Stage::Science).collect();
             if !at_science.is_empty() {
@@ -403,6 +441,13 @@ impl System<GameWorld> for Research {
                 if tech.state_buyer {
                     buyer = buyer.max((f.gdp / world_gdp * 8).clamp(Fixed::ZERO, milli(1500)));
                 }
+                // The programme is the buyer of its chain's prototypes.
+                if let Some(ps) = self.programme.as_deref()
+                    && ps.chain.contains(&t)
+                    && world.war.nuclear.of(c as u16).is_some()
+                {
+                    buyer = buyer.max(Fixed::from_ratio(i64::from(ps.rule.buyer), 1000));
+                }
                 let years = i64::from((tech.industrialized - tech.demonstrated).max(2));
                 let rate = buyer * (Fixed::ONE + industrial[t] * channel * 2)
                     / (years * 12)
@@ -414,9 +459,18 @@ impl System<GameWorld> for Research {
             // people read; no own research needed; through the same channel.
             for t in 0..nt {
                 if stages[t] < Stage::Industrial && industrial[t] > Fixed::ZERO {
+                    // N2: weapons are copied slower than what is made in the open.
+                    let weapon = self
+                        .programme
+                        .as_deref()
+                        .filter(|ps| ps.weapons.contains(&t))
+                        .map_or(Fixed::ONE, |ps| {
+                            Fixed::from_ratio(i64::from(ps.rule.imitation), 1000)
+                        });
                     state.progress[c][t] += (milli(300) + f.literacy) * industrial[t] * channel
                         / (IMITATION_YEARS * 12)
-                        * spread(c, t);
+                        * spread(c, t)
+                        * weapon;
                 }
             }
 

@@ -219,6 +219,7 @@ fn journal_of(
                 tree: r.tree.as_deref(),
                 politics: r.politics.as_deref(),
                 military: r.war.as_ref().map(|(m, _)| m.as_ref()),
+                programme: r.fight.as_ref().and_then(|f| f.programme.as_deref()),
             };
             crate::journal::read(session.world(), session.player(), date, rules).map(Arc::new)
         }
@@ -331,6 +332,21 @@ fn forces_of(
                     ci,
                     date.to_days(),
                 ));
+            }
+            // The nuclear programme, with the war switched on.
+            {
+                let w = session.world();
+                let ci = w
+                    .player_tag()
+                    .and_then(|t| w.countries.iter().position(|(_, c)| c.tag == t));
+                if let (Some(ps), Some(tree), Some(ci)) = (
+                    r.fight.as_ref().and_then(|f| f.programme.as_deref()),
+                    r.tree.as_deref(),
+                    ci,
+                ) {
+                    v.programme =
+                        crate::forces_view::programme_view(w, &r.catalogue, mil, ps, tree, ci);
+                }
             }
             Some(Arc::new(v))
         }

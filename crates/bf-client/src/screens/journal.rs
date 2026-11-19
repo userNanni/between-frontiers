@@ -87,6 +87,8 @@ pub struct Response {
     pub liberate: Option<(Vec<String>, Option<String>, bool)>,
     /// The player confirmed mobilizing (`true`) or sending the reserve home (`false`).
     pub mobilize: Option<bool>,
+    /// The player confirmed ending the nuclear programme.
+    pub programme_end: bool,
     /// The player confirmed an answer to a demand of independence: (unit, answer).
     pub answer: Option<(String, bf_sim::borders::independence::Answer)>,
     /// The player confirmed a demand on another country: the target and the proposal.
@@ -197,7 +199,7 @@ fn group_key(kind: &Kind) -> &'static str {
         Kind::Research => "journal-group-research",
         Kind::Fiscal(_) => "journal-group-fiscal",
         Kind::Movement(_) | Kind::PendingLaw(_) | Kind::LawChanges => "journal-group-politics",
-        Kind::Forces { .. } | Kind::Revolt(_) => "journal-group-forces",
+        Kind::Forces { .. } | Kind::Revolt(_) | Kind::NuclearProgramme => "journal-group-forces",
     }
 }
 
@@ -1056,9 +1058,26 @@ fn section(ui: &mut Ui, i18n: &I18n, key: &str) {
     bf_ui_kit::caption(ui, &i18n.tr(key));
 }
 
-/// The decision of an agenda, in two steps: the first click asks, the second confirms. Only
-/// the forces' entry has one today (mobilize, or send the reserve home).
+/// The decision of an agenda, in two steps: the first click asks, the second confirms. The
+/// forces' entry has one (mobilize, or send the reserve home), and the nuclear programme's
+/// (end it).
 fn decision(ui: &mut Ui, i18n: &I18n, e: &Entry, confirm: &mut Option<String>, out: &mut Response) {
+    if let Kind::NuclearProgramme = e.kind {
+        two_steps(
+            ui,
+            i18n,
+            e,
+            confirm,
+            [
+                "journal-programme-end",
+                "journal-programme-end-confirm",
+                "journal-programme-end-explain",
+            ],
+            "journal.decision",
+            || out.programme_end = true,
+        );
+        return;
+    }
     let Kind::Forces { mobilized } = e.kind else {
         return;
     };
@@ -1100,6 +1119,49 @@ fn decision(ui: &mut Ui, i18n: &I18n, e: &Entry, confirm: &mut Option<String>, o
             .show(ui);
         if first.clicked() || keys::single(ui, "journal.decision", 'D', first.rect) {
             *confirm = Some(e.id.clone());
+        }
+    }
+}
+
+/// One decision in two steps: `keys` are the first button, the confirmation and the sentence
+/// that says what changes; `done` runs on the confirmation.
+fn two_steps(
+    ui: &mut Ui,
+    i18n: &I18n,
+    e: &Entry,
+    confirm: &mut Option<String>,
+    keys: [&str; 3],
+    id: &str,
+    done: impl FnOnce(),
+) {
+    let [ask, sure, explain] = keys;
+    bf_ui_kit::gap(ui, space::SM);
+    bf_ui_kit::heading(ui, &i18n.tr("journal-decision"));
+    bf_ui_kit::small(ui, &i18n.tr(explain));
+    let asked = format!("{}#{ask}", e.id);
+    if confirm.as_deref() == Some(asked.as_str()) {
+        ui.horizontal(|ui| {
+            let yes = Button::primary(&i18n.tr(sure))
+                .size(ButtonSize::Small)
+                .show(ui);
+            if yes.clicked() || keys::single(ui, &format!("{id}.yes"), 'Y', yes.rect) {
+                done();
+                *confirm = None;
+                return;
+            }
+            let no = Button::ghost(&i18n.tr("journal-decision-cancel"))
+                .size(ButtonSize::Small)
+                .show(ui);
+            if no.clicked() || keys::single(ui, &format!("{id}.no"), 'N', no.rect) {
+                *confirm = None;
+            }
+        });
+    } else {
+        let first = Button::secondary(&i18n.tr(ask))
+            .size(ButtonSize::Small)
+            .show(ui);
+        if first.clicked() || keys::single(ui, id, 'D', first.rect) {
+            *confirm = Some(asked);
         }
     }
 }

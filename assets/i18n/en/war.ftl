@@ -410,3 +410,24 @@ war-blockaded-basis = The enemy fleet cuts { $count ->
    *[other] { $pairs } pairs
 } of our sea trade, worth { $total } a year. By land, trade goes on.
 war-fleet-command-later = The command of the fleet (the mission by zone) comes with the next slice; until then the fleet follows the rule above.
+programme-title = Nuclear programme
+programme-basis = A share of GDP a year, outside the military ceiling. Until the bomb, the money buys the laboratory and moves fission, enrichment and the bomb ahead; after it, three quarters keep the warhead order going, which depends on the fissile material on the market, the same as the power plants'.
+programme-start = Start the programme (0.1% of GDP a year)
+programme-share = Share of GDP a year
+programme-step-tip = A tenth of a point of GDP a year
+programme-cost = Cost a year at this share
+programme-spent = Delivered so far
+programme-stage-unknown = not yet studied ({ $progress })
+programme-stage-science = understood; prototype at { $progress }
+programme-stage-prototype = prototype; industry at { $progress }
+programme-stage-industrial = in production
+programme-stage-diffused = diffused
+programme-months = At last month's pace, the step under way ends in about { $months } months.
+programme-months-none = No credit last month yet, or the whole chain is in production.
+programme-warheads = Warheads
+programme-warheads-value = { $n } ready, { $ordered } on order
+programme-plants = Enrichment plants
+programme-fissile = Fissile material
+programme-fissile-value = { $price } a unit; the market delivered { $delivered } of what was asked
+programme-end = End the programme
+programme-note = The test, the doctrine and the use come in the next slices. Without uranium ore the plant does not run, and the stock stops at the fissile material.

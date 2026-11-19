@@ -61,6 +61,8 @@ pub struct FightSetup {
     pub colonial: Option<Arc<super::colonial::ColonialSetup>>,
     /// The war at sea (slice C2), when the sea zones exist.
     pub sea: Option<Arc<super::sea::SeaSetup>>,
+    /// The nuclear programme's technologies, resolved (N1, N2).
+    pub programme: Option<Arc<super::programme::ProgrammeSetup>>,
 }
 
 /// The war on land, saved and hashed only when not empty.

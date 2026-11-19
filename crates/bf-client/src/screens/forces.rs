@@ -51,7 +51,114 @@ pub fn show(ui: &mut Ui, cx: &mut TabContext<'_>) {
     bf_ui_kit::gap(ui, space::MD);
     composition(ui, cx);
     bf_ui_kit::gap(ui, space::MD);
+    programme(ui, cx);
+    bf_ui_kit::gap(ui, space::MD);
     bf_ui_kit::small(ui, &i18n.tr("forces-decision-hint"));
+}
+
+/// The nuclear programme (N1): its share of GDP a year (a stepper of one per mille, or start and
+/// end), what it costs and spent, the chain step by step with the months left at the month's
+/// credit, and the stock: warheads, plants and the fissile material (`GameCommand::
+/// NuclearProgramme`).
+fn programme(ui: &mut Ui, cx: &mut TabContext<'_>) {
+    use bf_sim::research::Stage;
+    let i18n = cx.i18n;
+    let Some(p) = cx.snap.forces.as_deref().and_then(|f| f.programme.as_ref()) else {
+        return;
+    };
+    bf_ui_kit::heading(ui, &i18n.tr("programme-title"));
+    bf_ui_kit::small(ui, &i18n.tr("programme-basis"));
+    let tag = cx.tag.to_owned();
+    let pm = |x: u16| pct(i18n, f64::from(x) / 10.0, 1);
+    if p.share == 0 {
+        let b = Button::secondary(&i18n.tr("programme-start"))
+            .size(ButtonSize::Small)
+            .show(ui);
+        if b.clicked() || keys::item(ui, 'U', "forces.programme.start".into(), "s", b.rect) {
+            cx.commands.push(GameCommand::NuclearProgramme {
+                tag,
+                share: Some(1),
+            });
+        }
+        return;
+    }
+    let d = super::gov_ui::control_row(ui, &i18n.tr("programme-share"), |ui| {
+        super::gov_ui::stepper(
+            ui,
+            &pm(p.share),
+            &i18n.tr("programme-step-tip"),
+            p.share > 1,
+            p.share < p.max_share,
+            super::gov_ui::StepTips {
+                family: 'U',
+                id: "forces.programme.share",
+                row: 0,
+            },
+        )
+    });
+    if d != 0 {
+        let share = (i32::from(p.share) + d).clamp(1, i32::from(p.max_share)) as u16;
+        cx.commands.push(GameCommand::NuclearProgramme {
+            tag: tag.clone(),
+            share: Some(share),
+        });
+    }
+    bf_ui_kit::stat_row(ui, &i18n.tr("programme-cost"), &money(i18n, p.money_year));
+    bf_ui_kit::stat_row(ui, &i18n.tr("programme-spent"), &money(i18n, p.spent));
+    for (key, stage, progress) in &p.steps {
+        let st = match stage {
+            Stage::Unknown => "programme-stage-unknown",
+            Stage::Science => "programme-stage-science",
+            Stage::Prototype => "programme-stage-prototype",
+            Stage::Industrial => "programme-stage-industrial",
+            Stage::Diffused => "programme-stage-diffused",
+        };
+        bf_ui_kit::stat_row(
+            ui,
+            &i18n.tr(&format!("tech-{key}")),
+            &i18n.tr_args(st, &[("progress", arg(pct(i18n, progress * 100.0, 0)))]),
+        );
+    }
+    let months = match p.months_left {
+        Some(mo) => i18n.tr_args("programme-months", &[("months", arg(i18n.decimal(mo, 0)))]),
+        None => i18n.tr("programme-months-none"),
+    };
+    bf_ui_kit::small(ui, &months);
+    bf_ui_kit::stat_row(
+        ui,
+        &i18n.tr("programme-warheads"),
+        &i18n.tr_args(
+            "programme-warheads-value",
+            &[
+                ("n", arg(i18n.decimal(p.warheads, 0))),
+                ("ordered", arg(i18n.decimal(p.ordered, 0))),
+            ],
+        ),
+    );
+    bf_ui_kit::stat_row(
+        ui,
+        &i18n.tr("programme-plants"),
+        &i18n.int(i64::from(p.plants)),
+    );
+    bf_ui_kit::stat_row(
+        ui,
+        &i18n.tr("programme-fissile"),
+        &i18n.tr_args(
+            "programme-fissile-value",
+            &[
+                ("price", arg(money(i18n, p.fissile_price))),
+                ("delivered", arg(pct(i18n, p.fissile_delivered * 100.0, 0))),
+            ],
+        ),
+    );
+    let end = Button::ghost(&i18n.tr("programme-end"))
+        .size(ButtonSize::Small)
+        .show(ui);
+    if end.clicked() || keys::item(ui, 'U', "forces.programme.end".into(), "e", end.rect) {
+        cx.commands
+            .push(GameCommand::NuclearProgramme { tag, share: None });
+    }
+    bf_ui_kit::small(ui, &i18n.tr("programme-note"));
 }
 
 /// The composition of the land forces: on wheels and on tracks now, the target (the historical

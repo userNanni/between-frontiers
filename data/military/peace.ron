@@ -61,6 +61,39 @@
         // not motorize it.
         min_fill: 900,
     )),
+    // The nuclear programme (docs/war.pt-BR.md, "Arma nuclear na escada de crise"; N1 and N2,
+    // decided by the owner on 2026-11-19). The money buys a laboratory's goods until the bomb
+    // can be built; each month what was delivered is credited to the first technology of the
+    // chain still to understand or prototype, at `dollars_per_cost` (base prices) a point of its
+    // cost. Calibrated relative to GDP: the Manhattan Project cost some 2 billion dollars of
+    // 1945 over 1942-45 (Hewlett and Anderson, 1962, The New World), about 0.4 % of the American
+    // GDP a year for three years, for some 1,800 points of the chain (enrichment and the bomb,
+    // science and prototypes); with the game's American GDP of about 8e11 (1925) to 1.2e12,
+    // that is some 8 million a point.
+    nuclear_programme: Some((
+        chain: ["nuclear_fission", "uranium_enrichment", "atomic_bomb", "thermonuclear_weapon"],
+        // N2: the weapons are copied at half the usual pace (sharing by a clause between allies
+        // waits for the treaties' clause).
+        weapons: ["atomic_bomb", "thermonuclear_weapon"],
+        imitation: 500,
+        basket: [
+            ("electronic_components", 300), ("machinery", 300), ("chemicals", 200),
+            ("electricity", 200),
+        ],
+        dollars_per_cost: 8000000,
+        // The programme is the state buyer of its prototypes, at the most a buyer can be.
+        buyer: 1500,
+        // Three quarters of the money keep the warhead order going once the bomb can be built.
+        stock_share: 750,
+        // At most 2 % of GDP a year (the Manhattan Project was about 0.4 %).
+        max_share: 20,
+        plant: "nuclear_fuel_plant",
+        plant_shortage: 900,
+        plant_weeks: 26,
+        warhead: "nuclear_warhead",
+        // One warhead an order: the stock grows by ones, as in 1945–47 (2, 9, 13).
+        batch: 1,
+    )),
     build_weeks: [
         ("battleship", 156), ("carrier", 156), ("cruiser", 104), ("destroyer", 52),
         ("submarine", 65), ("escort", 39), ("coastal", 39), ("mine_warfare", 26),

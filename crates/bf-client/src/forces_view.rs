@@ -59,6 +59,121 @@ pub struct ForcesView {
     pub prices: Vec<f64>,
     /// The army's generation and readiness, with the war rule on.
     pub army: Option<crate::army_view::ArmyView>,
+    /// The nuclear programme (N1), while the war is switched on and the rule is in the data.
+    pub programme: Option<ProgrammeView>,
+}
+
+/// The nuclear programme as the forces tab shows it (`war::programme`).
+#[derive(Clone, Debug, PartialEq)]
+pub struct ProgrammeView {
+    /// Share of GDP a year, per mille; 0 without a programme. And the most it may be.
+    pub share: u16,
+    pub max_share: u16,
+    /// What it costs a year at this share, and what it delivered so far, real dollars.
+    pub money_year: f64,
+    pub spent: f64,
+    /// Each technology of the chain: its key, stage and progress (0–1).
+    pub steps: Vec<(String, bf_sim::research::Stage, f64)>,
+    /// Months to finish the step under way at the month's credit; `None` without credit yet or
+    /// with the chain done.
+    pub months_left: Option<f64>,
+    /// Warheads in the forces, and ordered not yet delivered.
+    pub warheads: f64,
+    pub ordered: f64,
+    /// Enrichment plant levels, the fissile material's price and the share the market delivered.
+    pub plants: u32,
+    pub fissile_price: f64,
+    pub fissile_delivered: f64,
+}
+
+/// The programme of country `ci`, with its rule and the tree.
+pub fn programme_view(
+    world: &GameWorld,
+    cat: &Catalogue,
+    military: &Military,
+    setup: &bf_sim::war::programme::ProgrammeSetup,
+    tree: &bf_sim::research::TechTree,
+    ci: usize,
+) -> Option<ProgrammeView> {
+    use bf_sim::research::Stage;
+    let rule = &setup.rule;
+    let m = world.econ.markets.get(ci)?;
+    let p = world.war.nuclear.of(ci as u16);
+    let share = p.map_or(0, |p| p.share.min(rule.max_share as u16));
+    let stage = |t: usize| world.research.stage.get(ci).and_then(|s| s.get(t)).copied();
+    let progress = |t: usize| {
+        world
+            .research
+            .progress
+            .get(ci)
+            .and_then(|s| s.get(t))
+            .map_or(0.0, |x| f(*x))
+    };
+    let steps: Vec<(String, Stage, f64)> = setup
+        .chain
+        .iter()
+        .filter_map(|&t| Some((tree.techs[t].key.clone(), stage(t)?, progress(t))))
+        .collect();
+    // The step under way: the first still to understand or to prototype.
+    let months_left = p.and_then(|p| {
+        let credit = f(p.month);
+        let &t = setup
+            .chain
+            .iter()
+            .find(|&&t| matches!(stage(t), Some(Stage::Unknown | Stage::Science)))?;
+        let base = if stage(t) == Some(Stage::Unknown) {
+            1.0
+        } else {
+            0.5
+        };
+        let cost = f64::from(tree.techs[t].cost) * f64::from(rule.dollars_per_cost) * base;
+        (credit > 0.0).then(|| (1.0 - progress(t)).max(0.0) * cost / credit)
+    });
+    let warhead = military.unit(&rule.warhead);
+    let c = world.war.countries.get(ci)?;
+    let warheads = c
+        .formations
+        .iter()
+        .filter(|x| Some(x.unit) == warhead)
+        .map(|x| f(x.elements))
+        .sum();
+    let ordered = c
+        .queue
+        .iter()
+        .filter(|o| o.unit == rule.warhead)
+        .map(|o| f(o.ordered - o.delivered))
+        .sum();
+    let plant = cat.building(&rule.plant);
+    let plants = world
+        .econ
+        .regions
+        .iter()
+        .filter(|r| usize::from(r.market) == ci)
+        .flat_map(|r| r.plants.iter())
+        .filter(|x| Some(usize::from(x.kind)) == plant)
+        .map(|x| u32::try_from(x.levels).unwrap_or(0))
+        .sum();
+    let fissile = military.unit(&rule.warhead).and_then(|ty| {
+        military
+            .spec(ty, 0)
+            .equipment
+            .iter()
+            .max_by_key(|(_, q)| *q)
+            .map(|(g, _)| usize::from(*g))
+    });
+    Some(ProgrammeView {
+        share,
+        max_share: rule.max_share as u16,
+        money_year: f(m.gdp_last_year) * f64::from(share) / 1000.0,
+        spent: p.map_or(0.0, |p| f(p.spent)),
+        steps,
+        months_left,
+        warheads,
+        ordered,
+        plants,
+        fissile_price: fissile.map_or(0.0, |g| f(m.price[g])),
+        fissile_delivered: fissile.map_or(0.0, |g| f(m.buy_ratio[g])),
+    })
 }
 
 /// What [`stock`] reads: the queue's length, the formations' number and their elements.
@@ -406,6 +521,7 @@ pub fn read(
         depot,
         rows,
         army: None,
+        programme: None,
     })
 }
 
@@ -473,6 +589,7 @@ mod tests {
                 })
                 .collect(),
             prices: vec![0.0, 0.0, 0.0, 2.0],
+            programme: None,
             war,
         }
     }

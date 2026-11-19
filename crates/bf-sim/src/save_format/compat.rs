@@ -1317,7 +1317,7 @@ pub struct V35 {
     foreign: crate::foreign_stakes::ForeignState,
     influence: crate::influence::InfluenceState,
     treaties: crate::treaty::TreatyState,
-    war: crate::war::WarState,
+    war: crate::war::state::WarStateBeforeNuclear,
     education: crate::demography::education::EducationState,
     independence: crate::borders::independence::IndependenceState,
     levers: crate::econ::levers::LeversState,
@@ -1340,7 +1340,7 @@ pub fn v35_to_v36(w: V35) -> GameWorld {
         foreign: w.foreign,
         influence: w.influence,
         treaties: w.treaties,
-        war: w.war,
+        war: w.war.into(),
         education: w.education,
         independence: w.independence,
         levers: w.levers,
@@ -1443,5 +1443,54 @@ pub fn v34_to_v35(w: V34) -> GameWorld {
         tariffs: w.tariffs,
         payments: w.payments,
         reserves: Default::default(),
+    }
+}
+
+/// Version 36: the reserves of settlement (#254), before the nuclear programmes.
+#[derive(Deserialize)]
+pub struct V36 {
+    scenario: String,
+    player: Option<Id<Country>>,
+    countries: Table<Country, CountryState>,
+    census: Vec<CensusRecord>,
+    econ: crate::econ::Economy,
+    research: crate::research::ResearchState,
+    politics: crate::polity::PoliticsState,
+    demography: crate::demography::DemographyState,
+    borders: crate::borders::BordersState,
+    foreign: crate::foreign_stakes::ForeignState,
+    influence: crate::influence::InfluenceState,
+    treaties: crate::treaty::TreatyState,
+    war: crate::war::state::WarStateBeforeNuclear,
+    education: crate::demography::education::EducationState,
+    independence: crate::borders::independence::IndependenceState,
+    levers: crate::econ::levers::LeversState,
+    tariffs: crate::econ::customs::TariffState,
+    payments: crate::econ::payments::PaymentsState,
+    reserves: crate::econ::payments::ReservesState,
+}
+
+/// 36 → 37: the nuclear programmes (`WarState::nuclear`), none.
+pub fn v36_to_v37(w: V36) -> GameWorld {
+    GameWorld {
+        scenario: w.scenario,
+        player: w.player,
+        countries: w.countries,
+        census: w.census,
+        econ: w.econ,
+        research: w.research,
+        politics: w.politics,
+        demography: w.demography,
+        borders: w.borders,
+        foreign: w.foreign,
+        influence: w.influence,
+        treaties: w.treaties,
+        war: w.war.into(),
+        education: w.education,
+        independence: w.independence,
+        levers: w.levers,
+        tariffs: w.tariffs,
+        payments: w.payments,
+        reserves: w.reserves,
     }
 }

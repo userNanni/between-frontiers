@@ -44,6 +44,9 @@ pub struct PeaceRules {
     /// The historical rule of the forces' composition; `None`: no conversion.
     #[serde(default)]
     pub composition: Option<super::composition::CompositionRule>,
+    /// The nuclear programme (N1, N2); `None`: no programme can start.
+    #[serde(default)]
+    pub nuclear_programme: Option<super::programme::ProgrammeRule>,
 }
 
 fn default_raise_weeks() -> u32 {
@@ -170,6 +173,8 @@ pub struct WarState {
     pub colonial: Vec<super::colonial::Colonial>,
     /// The war at sea of the last week (slice C2): fleets, control, blockades; empty in peace.
     pub sea: super::sea::SeaWar,
+    /// The nuclear programmes under way (N1); empty without one.
+    pub nuclear: super::programme::NuclearState,
 }
 
 impl WarState {
@@ -226,6 +231,7 @@ impl WarState {
             composition: Default::default(),
             colonial: Vec::new(),
             sea: Default::default(),
+            nuclear: Default::default(),
         }
     }
 
@@ -356,6 +362,9 @@ impl HashState for WarState {
         if !self.sea.is_empty() {
             self.sea.hash_state(h);
         }
+        if !self.nuclear.is_empty() {
+            self.nuclear.hash_state(h);
+        }
     }
 }
 
@@ -380,11 +389,12 @@ impl From<WarStateBeforeSea> for WarState {
             composition: w.composition,
             colonial: w.colonial,
             sea: Default::default(),
+            nuclear: Default::default(),
         }
     }
 }
 
-/// [`WarState`] as version 29 of the world wrote it, before the colonial war.
+/// [`WarState`] as version 33 of the world wrote it, before the colonial war.
 #[derive(Default, Deserialize)]
 pub(crate) struct WarStateBeforeColonial {
     countries: Vec<CountryWar>,
@@ -404,6 +414,34 @@ impl From<WarStateBeforeColonial> for WarState {
             composition: w.composition,
             colonial: Vec::new(),
             sea: Default::default(),
+            nuclear: Default::default(),
+        }
+    }
+}
+
+/// [`WarState`] as version 35 of the world wrote it, before the nuclear programmes.
+#[derive(Default, Deserialize)]
+pub(crate) struct WarStateBeforeNuclear {
+    countries: Vec<CountryWar>,
+    soldiers: Vec<i64>,
+    conflicts: super::crisis::Conflicts,
+    fighting: super::fight::Fighting,
+    composition: super::composition::CompositionState,
+    colonial: Vec<super::colonial::Colonial>,
+    sea: super::sea::SeaWar,
+}
+
+impl From<WarStateBeforeNuclear> for WarState {
+    fn from(w: WarStateBeforeNuclear) -> Self {
+        Self {
+            countries: w.countries,
+            soldiers: w.soldiers,
+            conflicts: w.conflicts,
+            fighting: w.fighting,
+            composition: w.composition,
+            colonial: w.colonial,
+            sea: w.sea,
+            nuclear: Default::default(),
         }
     }
 }
@@ -427,6 +465,7 @@ impl From<WarStateBeforeComposition> for WarState {
             composition: Default::default(),
             colonial: Vec::new(),
             sea: Default::default(),
+            nuclear: Default::default(),
         }
     }
 }
@@ -450,6 +489,7 @@ impl From<WarStateBeforeStill> for WarState {
             composition: Default::default(),
             colonial: Vec::new(),
             sea: Default::default(),
+            nuclear: Default::default(),
         }
     }
 }
@@ -474,6 +514,7 @@ impl From<WarStateBeforeDoctrine> for WarState {
             composition: w.composition,
             colonial: Vec::new(),
             sea: Default::default(),
+            nuclear: Default::default(),
         }
     }
 }
@@ -497,6 +538,7 @@ impl From<WarStateBeforeSupport> for WarState {
             composition: Default::default(),
             colonial: Vec::new(),
             sea: Default::default(),
+            nuclear: Default::default(),
         }
     }
 }
@@ -518,6 +560,7 @@ impl From<WarStateBeforeCrises> for WarState {
             composition: Default::default(),
             colonial: Vec::new(),
             sea: Default::default(),
+            nuclear: Default::default(),
         }
     }
 }
@@ -593,6 +636,7 @@ impl From<WarStateBeforeOrders> for WarState {
             composition: Default::default(),
             colonial: Vec::new(),
             sea: Default::default(),
+            nuclear: Default::default(),
         }
     }
 }
@@ -639,6 +683,7 @@ impl From<WarStateBeforeCalls> for WarState {
             composition: Default::default(),
             colonial: Vec::new(),
             sea: Default::default(),
+            nuclear: Default::default(),
         }
     }
 }
@@ -719,6 +764,7 @@ impl From<WarStateBeforeFighting> for WarState {
             composition: Default::default(),
             colonial: Vec::new(),
             sea: Default::default(),
+            nuclear: Default::default(),
         }
     }
 }
