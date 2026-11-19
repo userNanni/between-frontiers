@@ -554,6 +554,17 @@ pub struct NuclearRule {
     /// when the taboo is nothing; the line rises to all of it as the taboo grows whole.
     #[serde(default = "nuclear_defaults::first_use_occupied")]
     pub first_use_occupied: u32,
+    /// N8, the fallout: the share of a region's productivity a warhead that arrives takes, per
+    /// mille; the share of that its neighbouring states take; the most a region loses; and the
+    /// share of the loss left after a year (the half-life of caesium-137).
+    #[serde(default = "nuclear_defaults::fallout_loss")]
+    pub fallout_loss: u32,
+    #[serde(default = "nuclear_defaults::fallout_downwind")]
+    pub fallout_downwind: u32,
+    #[serde(default = "nuclear_defaults::fallout_cap")]
+    pub fallout_cap: u32,
+    #[serde(default = "nuclear_defaults::fallout_keep")]
+    pub fallout_keep: u32,
 }
 
 mod nuclear_defaults {
@@ -610,6 +621,18 @@ mod nuclear_defaults {
     }
     pub fn first_use_occupied() -> u32 {
         300
+    }
+    pub fn fallout_loss() -> u32 {
+        100
+    }
+    pub fn fallout_downwind() -> u32 {
+        300
+    }
+    pub fn fallout_cap() -> u32 {
+        900
+    }
+    pub fn fallout_keep() -> u32 {
+        977
     }
 }
 

@@ -448,6 +448,34 @@ impl From<WarStateBeforeTests> for WarState {
     }
 }
 
+/// [`WarState`] as version 39 of the world wrote it, before the fallout.
+#[derive(Default, Deserialize)]
+pub(crate) struct WarStateBeforeFallout {
+    countries: Vec<CountryWar>,
+    soldiers: Vec<i64>,
+    conflicts: super::crisis::Conflicts,
+    fighting: super::fight::Fighting,
+    composition: super::composition::CompositionState,
+    colonial: Vec<super::colonial::Colonial>,
+    sea: super::sea::SeaWar,
+    nuclear: super::programme::NuclearStateBeforeFallout,
+}
+
+impl From<WarStateBeforeFallout> for WarState {
+    fn from(w: WarStateBeforeFallout) -> Self {
+        Self {
+            countries: w.countries,
+            soldiers: w.soldiers,
+            conflicts: w.conflicts,
+            fighting: w.fighting,
+            composition: w.composition,
+            colonial: w.colonial,
+            sea: w.sea,
+            nuclear: w.nuclear.into(),
+        }
+    }
+}
+
 /// [`WarState`] as version 38 of the world wrote it, before the nuclear use.
 #[derive(Default, Deserialize)]
 pub(crate) struct WarStateBeforeUse {

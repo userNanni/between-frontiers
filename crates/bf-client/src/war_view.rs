@@ -172,6 +172,20 @@ pub struct Wreck {
     pub civilians: u64,
 }
 
+/// N8: a region's productivity lost to a nuclear strike's fallout, a stock that decays.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Fallout {
+    pub state: u16,
+    /// The player's side's land.
+    pub ours: bool,
+    /// Per mille of the productivity lost.
+    pub per_mille: u32,
+    /// Years for the loss to halve, at the rule's yearly decay.
+    pub half_years: u32,
+    /// The January in which the loss falls under 1 % (10 per mille), as the simulation decays it.
+    pub under_1pc: i32,
+}
+
 /// One war of the player's.
 #[derive(Clone, Debug, PartialEq)]
 pub struct WarLine {
@@ -194,6 +208,8 @@ pub struct WarLine {
     pub support: [Option<SupportLine>; 2],
     pub occupied: Vec<Occupied>,
     pub wrecks: Vec<Wreck>,
+    /// N8: the fallout on either side's land, the worst first.
+    pub fallout: Vec<Fallout>,
     /// The nuclear balance with the other side's leader, as the player reads it; `None` when
     /// neither holds a warhead.
     pub nuclear: Option<crate::nuclear_view::Panel>,
@@ -553,6 +569,49 @@ pub fn read(
                     })
                 })
                 .collect();
+            let keep = mil.map_or(977, |m| m.rules.nuclear.fallout_keep).min(999);
+            let year = laplace_schelling::calendar::Date::from_days(days).year;
+            // As `nuclear_use::fallout_year` decays it: each January, `keep` per mille is left.
+            let half_years = {
+                let (mut l, mut n) = (1_000_000u64, 0u32);
+                while l > 500_000 && n < 1000 {
+                    l = l * u64::from(keep) / 1000;
+                    n += 1;
+                }
+                n
+            };
+            let under_1pc = |per_mille: u32| {
+                let (mut l, mut n) = (per_mille, 0i32);
+                while l >= 10 && n < 1000 {
+                    l = l * keep / 1000;
+                    n += 1;
+                }
+                year + n
+            };
+            let mut fallout: Vec<Fallout> = world
+                .war
+                .nuclear
+                .fallout
+                .iter()
+                .filter_map(|&(r, per_mille)| {
+                    let (st, owner) = state(r)?;
+                    let side = if ours.contains(&owner) {
+                        true
+                    } else if theirs.contains(&owner) {
+                        false
+                    } else {
+                        return None;
+                    };
+                    Some(Fallout {
+                        state: st,
+                        ours: side,
+                        per_mille,
+                        half_years,
+                        under_1pc: under_1pc(per_mille),
+                    })
+                })
+                .collect();
+            fallout.sort_by(|a, b| b.per_mille.cmp(&a.per_mille).then(a.state.cmp(&b.state)));
             let rules = setup.conduct.as_ref().map(|c| &c.rules.support);
             let support = [
                 support_line(world, politics, rules, me, tag.to_owned()),
@@ -575,6 +634,7 @@ pub fn read(
                 support,
                 occupied,
                 wrecks,
+                fallout,
                 nuclear: mil.and_then(|m| {
                     theirs.first().and_then(|&e| {
                         let mut p = crate::nuclear_view::read(world, m, me, e)?;

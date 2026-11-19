@@ -120,6 +120,8 @@ pub struct NuclearState {
     pub dead: Vec<(u16, u64)>,
     /// Uses asked for by command or by the AI, and the answers (N5), for the next week.
     pub uses: Vec<super::nuclear_use::Use>,
+    /// N8: (region, per mille of its productivity lost to the fallout), sorted.
+    pub fallout: Vec<(u32, u32)>,
 }
 
 impl NuclearState {
@@ -129,11 +131,31 @@ impl NuclearState {
             && self.test_requests.is_empty()
             && self.blocked.is_empty()
             && !self.used()
+            && self.fallout.is_empty()
     }
 
     /// Whether anything of the use is held: a world without it hashes as before.
     fn used(&self) -> bool {
         self.taboo != 0 || self.last_use.is_some() || !self.dead.is_empty() || !self.uses.is_empty()
+    }
+
+    /// The fallout of `region`, per mille of its productivity (N8).
+    pub fn fallout_of(&self, region: u32) -> u32 {
+        self.fallout
+            .binary_search_by_key(&region, |(r, _)| *r)
+            .map_or(0, |i| self.fallout[i].1)
+    }
+
+    /// Sets `region`'s fallout; 0 removes it.
+    pub fn set_fallout(&mut self, region: u32, level: u32) {
+        match self.fallout.binary_search_by_key(&region, |(r, _)| *r) {
+            Ok(i) if level == 0 => {
+                self.fallout.remove(i);
+            }
+            Ok(i) => self.fallout[i].1 = level,
+            Err(i) if level > 0 => self.fallout.insert(i, (region, level)),
+            Err(_) => {}
+        }
     }
 
     /// The dead of the strikes `country` received.
@@ -251,6 +273,43 @@ impl HashState for NuclearState {
                 h.write_u32(u.warheads);
                 h.write_u8(u8::from(u.answer));
             }
+        }
+        // Only when any: a world without fallout hashes as before it.
+        if !self.fallout.is_empty() {
+            h.write_len(self.fallout.len());
+            for (r, l) in &self.fallout {
+                h.write_u32(*r);
+                h.write_u32(*l);
+            }
+        }
+    }
+}
+
+/// [`NuclearState`] as version 39 of the world wrote it, before the fallout.
+#[derive(Clone, Debug, Default, Deserialize)]
+pub(crate) struct NuclearStateBeforeFallout {
+    programmes: Vec<Programme>,
+    tested: Vec<u16>,
+    test_requests: Vec<u16>,
+    blocked: Vec<(u16, u16)>,
+    taboo: u32,
+    last_use: Option<(i32, u8, u8)>,
+    dead: Vec<(u16, u64)>,
+    uses: Vec<super::nuclear_use::Use>,
+}
+
+impl From<NuclearStateBeforeFallout> for NuclearState {
+    fn from(n: NuclearStateBeforeFallout) -> Self {
+        Self {
+            programmes: n.programmes,
+            tested: n.tested,
+            test_requests: n.test_requests,
+            blocked: n.blocked,
+            taboo: n.taboo,
+            last_use: n.last_use,
+            dead: n.dead,
+            uses: n.uses,
+            fallout: Vec::new(),
         }
     }
 }

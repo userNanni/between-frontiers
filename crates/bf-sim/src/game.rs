@@ -2082,9 +2082,99 @@ mod tests {
             hash_of(&with_ledger)
         );
         assert_eq!(
-            hash_of(&headed(39, &encode_snapshot(&with_ledger).unwrap())),
+            hash_of(&headed(40, &encode_snapshot(&with_ledger).unwrap())),
             hash_of(&with_ledger)
         );
+        // Version 39, the nuclear use, before the fallout: `nuclear` without the fallout.
+        {
+            #[derive(Serialize)]
+            struct NuclearV39<'a> {
+                programmes: &'a Vec<crate::war::programme::Programme>,
+                tested: &'a Vec<u16>,
+                test_requests: &'a Vec<u16>,
+                blocked: &'a Vec<(u16, u16)>,
+                taboo: &'a u32,
+                last_use: &'a Option<(i32, u8, u8)>,
+                dead: &'a Vec<(u16, u64)>,
+                uses: &'a Vec<crate::war::nuclear_use::Use>,
+            }
+            #[derive(Serialize)]
+            struct WarV39<'a> {
+                countries: &'a Vec<crate::war::CountryWar>,
+                soldiers: &'a Vec<i64>,
+                conflicts: &'a crate::war::Conflicts,
+                fighting: &'a crate::war::fight::Fighting,
+                composition: &'a crate::war::composition::CompositionState,
+                colonial: &'a Vec<crate::war::colonial::Colonial>,
+                sea: &'a crate::war::sea::SeaWar,
+                nuclear: NuclearV39<'a>,
+            }
+            #[derive(Serialize)]
+            struct BeforeFallout39<'a> {
+                scenario: &'a String,
+                player: &'a Option<Id<Country>>,
+                countries: &'a Table<Country, CountryState>,
+                census: &'a Vec<CensusRecord>,
+                econ: &'a crate::econ::Economy,
+                research: &'a crate::research::ResearchState,
+                politics: &'a crate::polity::PoliticsState,
+                demography: &'a crate::demography::DemographyState,
+                borders: &'a crate::borders::BordersState,
+                foreign: &'a crate::foreign_stakes::ForeignState,
+                influence: &'a crate::influence::InfluenceState,
+                treaties: &'a crate::treaty::TreatyState,
+                war: WarV39<'a>,
+                education: &'a crate::demography::education::EducationState,
+                independence: &'a crate::borders::independence::IndependenceState,
+                levers: &'a crate::econ::levers::LeversState,
+                tariffs: &'a crate::econ::customs::TariffState,
+                payments: &'a crate::econ::payments::PaymentsState,
+                reserves: &'a crate::econ::payments::ReservesState,
+            }
+            let w = &with_ledger;
+            let v39 = encode_snapshot(&BeforeFallout39 {
+                scenario: &w.scenario,
+                player: &w.player,
+                countries: &w.countries,
+                census: &w.census,
+                econ: &w.econ,
+                research: &w.research,
+                politics: &w.politics,
+                demography: &w.demography,
+                borders: &w.borders,
+                foreign: &w.foreign,
+                influence: &w.influence,
+                treaties: &w.treaties,
+                war: WarV39 {
+                    countries: &w.war.countries,
+                    soldiers: &w.war.soldiers,
+                    conflicts: &w.war.conflicts,
+                    fighting: &w.war.fighting,
+                    composition: &w.war.composition,
+                    colonial: &w.war.colonial,
+                    sea: &w.war.sea,
+                    nuclear: NuclearV39 {
+                        programmes: &w.war.nuclear.programmes,
+                        tested: &w.war.nuclear.tested,
+                        test_requests: &w.war.nuclear.test_requests,
+                        blocked: &w.war.nuclear.blocked,
+                        taboo: &w.war.nuclear.taboo,
+                        last_use: &w.war.nuclear.last_use,
+                        dead: &w.war.nuclear.dead,
+                        uses: &w.war.nuclear.uses,
+                    },
+                },
+                education: &w.education,
+                independence: &w.independence,
+                levers: &w.levers,
+                tariffs: &w.tariffs,
+                payments: &w.payments,
+                reserves: &w.reserves,
+            })
+            .unwrap();
+            assert_eq!(hash_of(&headed(39, &v39)), hash_of(&with_ledger));
+        }
+
         // Version 38, the nuclear tests and the crisis rung, before the use: `nuclear` without the
         // taboo, the last use, the dead and the uses.
         {

@@ -369,6 +369,9 @@ fn war(
             );
         }
     }
+    if !w.fallout.is_empty() {
+        fallout(ui, i18n, world, &w.fallout);
+    }
     if let Some(p) = &w.nuclear {
         super::nuclear::show(ui, i18n, p);
         if let Some(s) = &p.strike {
@@ -1081,6 +1084,46 @@ fn expedition(
         }
     }
     bf_ui_kit::small(ui, &i18n.tr("war-expedition-note"));
+}
+
+/// N8: the fallout, state by state: the productivity lost, a stock that halves in 30 years.
+fn fallout(ui: &mut Ui, i18n: &I18n, world: Option<&World>, list: &[crate::war_view::Fallout]) {
+    bf_ui_kit::gap(ui, space::XS);
+    bf_ui_kit::heading(ui, &i18n.tr("war-fallout"));
+    bf_ui_kit::small(ui, &i18n.tr("war-fallout-basis"));
+    for f in list.iter().take(WRECKS_SHOWN) {
+        let line = i18n.tr_args(
+            if f.ours {
+                "war-fallout-ours"
+            } else {
+                "war-fallout-theirs"
+            },
+            &[
+                ("state", arg(state_name(i18n, world, f.state))),
+                (
+                    "share",
+                    arg(super::budget::pct(i18n, f64::from(f.per_mille) / 10.0, 1)),
+                ),
+                ("half", arg(i18n.int(i64::from(f.half_years)))),
+                ("n", Arg::Num(f64::from(f.half_years))),
+                ("year", arg(f.under_1pc.to_string())),
+            ],
+        );
+        ui.add(egui::Label::new(RichText::new(line).font(sans(size::SMALL))).wrap());
+    }
+    if list.len() > WRECKS_SHOWN {
+        let more = list.len() - WRECKS_SHOWN;
+        bf_ui_kit::small(
+            ui,
+            &i18n.tr_args(
+                "war-devastation-more",
+                &[
+                    ("n", arg(i18n.int(more as i64))),
+                    ("count", Arg::Num(more as f64)),
+                ],
+            ),
+        );
+    }
 }
 
 /// The nuclear use (step 4; N5–N7): a rare decision. The aim and the warheads, what it would do

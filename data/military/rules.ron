@@ -286,6 +286,16 @@
         taboo_years: 20,
         taboo_cut: 500,
         first_use_occupied: 300,
+        // N8, the fallout (the owner, 2026-11-19: a loss of productivity that decays over the
+        // years). Estimates, to be checked: a warhead that arrives takes a tenth of the
+        // productivity of the region it falls on and three tenths of that from the regions of
+        // the neighbouring states (no winds: all neighbours stand for the side downwind), at most
+        // nine tenths. The loss decays with caesium-137, half in 30 years (977 per mille kept a
+        // year; IAEA, Chernobyl's Legacy, The Chernobyl Forum, 2005).
+        fallout_loss: 100,
+        fallout_downwind: 300,
+        fallout_cap: 900,
+        fallout_keep: 977,
     ),
 
     // The reserve reports in four weeks, at seven tenths of full training (a reservist keeps

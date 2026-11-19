@@ -50,6 +50,8 @@ pub struct Strike {
     pub wrecked: i64,
     /// Men of the target's land forces put out of the war.
     pub men: i64,
+    /// The region each warhead that arrived fell on (N8: where the fallout starts).
+    pub hit: Vec<u32>,
 }
 
 /// The warheads a country holds on launchers, ready to go.
@@ -200,6 +202,7 @@ pub fn strike(mil: &Military, world: &mut GameWorld, u: &Use, date: Date) -> Opt
         }
         super::occupation::kill_civilians(world, ri, dead);
         out.killed += dead;
+        out.hit.push(ri);
     }
     if u.mode == Mode::Counterforce
         && let Some(t) = world.war.countries.get_mut(usize::from(u.target))
@@ -307,6 +310,62 @@ pub fn taboo_year(mil: &Military, world: &mut GameWorld, year: i32) {
     let used = nuc.last_use.is_some_and(|(y, _, _)| y >= year - 1);
     if any && !used {
         nuc.taboo = (nuc.taboo + 1000 / n.taboo_years.max(1)).min(1000);
+    }
+}
+
+/// N8: the fallout of a strike. Each warhead that arrived takes `fallout_loss` of the
+/// productivity of the region it fell on, and `fallout_downwind` of that of the regions of the
+/// neighbouring states (no winds: all neighbours, as a stand-in for the side the wind blows to).
+/// A loss compounds on what is left; the stock is kept by region.
+pub fn fallout(
+    mil: &Military,
+    world: &mut GameWorld,
+    neighbours: &std::collections::BTreeMap<u16, Vec<u16>>,
+    hit: &[u32],
+) {
+    let n = &mil.rules.nuclear;
+    let mut adds: Vec<(u32, u32)> = Vec::new();
+    for &ri in hit {
+        adds.push((ri, n.fallout_loss));
+        let Some(r) = world.econ.regions.get(ri as usize) else {
+            continue;
+        };
+        let near = neighbours.get(&r.state).cloned().unwrap_or_default();
+        for (rj, other) in world.econ.regions.iter().enumerate() {
+            if near.contains(&other.state) {
+                adds.push((rj as u32, n.fallout_loss * n.fallout_downwind / 1000));
+            }
+        }
+    }
+    for (ri, add) in adds {
+        let old = world.war.nuclear.fallout_of(ri);
+        let new = (old + add * (1000 - old) / 1000).min(n.fallout_cap);
+        set_fallout(world, ri, old, new);
+    }
+}
+
+/// Moves `region`'s fallout from `old` to `new` (per mille) and its productivity with it: the
+/// productivity left is `1 - fallout` of what it would be without it.
+fn set_fallout(world: &mut GameWorld, region: u32, old: u32, new: u32) {
+    if old == new {
+        return;
+    }
+    if let Some(r) = world.econ.regions.get_mut(region as usize) {
+        r.tfp = r
+            .tfp
+            .mul_ratio(i64::from(1000 - new), i64::from((1000 - old).max(1)));
+    }
+    world.war.nuclear.set_fallout(region, new);
+}
+
+/// N8: a year passes. The fallout of every region decays by `fallout_keep` (the half-life of
+/// caesium-137), and the productivity comes back with it; under 1 per mille it is gone.
+pub fn fallout_year(mil: &Military, world: &mut GameWorld) {
+    let keep = mil.rules.nuclear.fallout_keep;
+    let list = world.war.nuclear.fallout.clone();
+    for (ri, old) in list {
+        let new = old * keep / 1000;
+        set_fallout(world, ri, old, if new < 1 { 0 } else { new });
     }
 }
 

@@ -350,3 +350,156 @@ fn the_ai_uses_first_when_overrun() {
         "the taboo whole holds"
     );
 }
+
+/// N8: a warhead's fallout takes a tenth of the productivity of the region it falls on and
+/// three hundredths of the neighbours', kept as a stock that decays with the years (half in
+/// 30), the productivity coming back with it.
+#[test]
+fn the_fallout_takes_productivity_and_decays() {
+    let mut w = data().new_world();
+    bombers(&mut w, "GER", 4);
+    let mut used = at_war(w.clone());
+    let mut plain = at_war(w);
+    launch(&mut used, Mode::Countervalue, 1);
+    let d = later(&plain, 8);
+    plain.sim.run_until(d);
+    let n = &used.world().war.nuclear;
+    let pol = index(used.world(), "POL");
+    // The region the warhead fell on: a home region of Poland's with the whole loss.
+    let hit = n
+        .fallout
+        .iter()
+        .find(|&&(r, l)| l == 100 && used.world().econ.regions[r as usize].market == pol)
+        .map(|&(r, _)| r)
+        .unwrap();
+    eprintln!("fallout {:?}", n.fallout);
+    assert_eq!(n.fallout_of(hit), 100);
+    assert!(
+        n.fallout.iter().any(|&(r, l)| r != hit && l == 30),
+        "the neighbours take three tenths"
+    );
+    let ratio = |a: &Session, b: &Session, r: u32| {
+        a.world().econ.regions[r as usize].tfp.to_f64_lossy()
+            / b.world().econ.regions[r as usize].tfp.to_f64_lossy()
+    };
+    let now = ratio(&used, &plain, hit);
+    eprintln!("productivity of the region hit: {now:.3} of the world without the strike");
+    assert!((now - 0.9).abs() < 0.005);
+    // A year on, the stock decays and the productivity comes back with it.
+    used.sim.run_until(Date::new(1926, 1, 20));
+    plain.sim.run_until(Date::new(1926, 1, 20));
+    let left = used.world().war.nuclear.fallout_of(hit);
+    let back = ratio(&used, &plain, hit);
+    eprintln!("a year on: fallout {left} per mille, productivity {back:.3}");
+    assert_eq!(left, 97);
+    assert!(back > now, "it comes back");
+}
+
+/// N8, the measure for the PR (no target): France strikes Germany with ten warheads on its
+/// cities in March 1925, and Germany's GDP five, ten and thirty years on, with the fallout's loss
+/// at 0 (the strike alone), 5 % and 10 % a warhead (the neighbours three tenths of it, as in the
+/// data).
+#[test]
+#[ignore = "long: the N8 measure, thirty years three times; run in the slot"]
+fn fallout_gdp_measure() {
+    for loss in [0u32, 50, 100] {
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let mut d = GameData::load(&root).unwrap_or_else(|e| panic!("{e}"));
+        d.enable_crisis();
+        d.switches.war = true;
+        let n = &mut d.war.as_mut().unwrap().military.rules.nuclear;
+        n.fallout_loss = loss;
+        let mut w = d.new_world();
+        let ty = d
+            .war
+            .as_ref()
+            .unwrap()
+            .military
+            .unit("nuclear_warhead")
+            .unwrap();
+        let bomber = d
+            .war
+            .as_ref()
+            .unwrap()
+            .military
+            .unit("strategic_bomber")
+            .unwrap();
+        let fra = w
+            .countries
+            .iter()
+            .position(|(_, c)| c.tag == "FRA")
+            .unwrap();
+        for (unit, n) in [(ty, 10), (bomber, 10)] {
+            w.war.countries[fra].formations.push(Formation {
+                unit,
+                generation: 0,
+                elements: Fixed::from_int(n),
+                colonial: false,
+                called_up: false,
+                equipment: Vec::new(),
+                training: Fixed::ONE,
+                raised: true,
+            });
+        }
+        let mut s = Session::new(w, 1925, Date::new(1925, 1, 1), 2, Some(d.rules()));
+        s.submit(GameCommand::ChoosePlayer { tag: "FRA".into() });
+        s.sim.run_until(Date::new(1925, 3, 2));
+        s.submit(GameCommand::Demand {
+            tag: "FRA".into(),
+            target: "GER".into(),
+            demand: Proposal {
+                side_a: vec!["FRA".into()],
+                side_b: vec!["GER".into()],
+                clauses: vec![Clause {
+                    kind: ClauseKind::Union,
+                    giver: Side::Junior,
+                    receiver: Side::Senior,
+                    until: None,
+                    note: None,
+                }],
+                term_years: None,
+                notice_years: 0,
+            },
+            weeks: None,
+        });
+        s.sim.run_until(Date::new(1925, 3, 20));
+        let id = s.world().war.conflicts.crises[0].id;
+        s.submit(GameCommand::Declare {
+            tag: "FRA".into(),
+            crisis: id,
+            war: true,
+        });
+        s.sim.run_until(Date::new(1925, 3, 24));
+        s.submit(GameCommand::NuclearUse {
+            tag: "FRA".into(),
+            target: "GER".into(),
+            mode: Mode::Countervalue,
+            warheads: 10,
+        });
+        let ger = s
+            .world()
+            .countries
+            .iter()
+            .position(|(_, c)| c.tag == "GER")
+            .unwrap();
+        let gdp = |s: &Session| s.world().econ.markets[ger].gdp_last_year.to_f64_lossy() / 1e9;
+        s.sim.run_until(Date::new(1926, 1, 10));
+        let g0 = gdp(&s);
+        let mut line = format!("N8 loss {loss}: GDP of Germany, billions: 1925 {g0:.1}");
+        for year in [1930, 1935, 1955] {
+            s.sim.run_until(Date::new(year, 1, 10));
+            let stock: u32 = s
+                .world()
+                .war
+                .nuclear
+                .fallout
+                .iter()
+                .filter(|(r, _)| usize::from(s.world().econ.regions[*r as usize].market) == ger)
+                .map(|(_, l)| *l)
+                .max()
+                .unwrap_or(0);
+            line += &format!(" | {} {:.1} (worst region {stock}‰)", year - 1, gdp(&s));
+        }
+        eprintln!("{line}");
+    }
+}

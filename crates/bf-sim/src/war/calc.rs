@@ -1244,6 +1244,10 @@ pub(crate) mod tests {
                 taboo_years: 20,
                 taboo_cut: 500,
                 first_use_occupied: 300,
+                fallout_loss: 100,
+                fallout_downwind: 300,
+                fallout_cap: 900,
+                fallout_keep: 977,
             },
         }
     }
