@@ -134,3 +134,43 @@ fn every_character_has_a_glyph() {
     }
     assert!(missing.is_empty(), "no glyph for:\n{}", missing.join("\n"));
 }
+
+/// No text a player reads names an owner's decision by its code (O3, G8, N1, CT6…): the code
+/// means nothing on screen; the text says what the rule is.
+#[test]
+fn no_text_names_a_decision_code() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/i18n");
+    let prefixes = ["GC", "PO", "CT", "O", "G", "N", "D", "A"];
+    let mut found = Vec::new();
+    for locale in std::fs::read_dir(&root).unwrap() {
+        for file in std::fs::read_dir(locale.unwrap().path()).unwrap() {
+            let file = file.unwrap().path();
+            if file.extension().is_none_or(|x| x != "ftl") {
+                continue;
+            }
+            let text = std::fs::read_to_string(&file).unwrap();
+            for (n, line) in text.lines().enumerate() {
+                if line.trim_start().starts_with('#') {
+                    continue;
+                }
+                // A word made of a prefix and one or two digits: "O3", "G8", "CT6", "D13".
+                let words = line.split(|c: char| !c.is_ascii_alphanumeric());
+                for w in words {
+                    let code = prefixes.iter().any(|p| {
+                        w.strip_prefix(p).is_some_and(|d| {
+                            (1..=2).contains(&d.len()) && d.chars().all(|c| c.is_ascii_digit())
+                        })
+                    });
+                    if code {
+                        found.push(format!("{}:{}: {w}", file.display(), n + 1));
+                    }
+                }
+            }
+        }
+    }
+    assert!(
+        found.is_empty(),
+        "decision codes in texts:\n{}",
+        found.join("\n")
+    );
+}
