@@ -1109,8 +1109,8 @@ pub struct V29 {
     levers: crate::econ::levers::LeversState,
 }
 
-/// 29 → 31: the tariff tables (`GameWorld::tariffs`), every country on the historical rule.
-pub fn v29_to_v31(w: V29) -> GameWorld {
+/// 29 → 30: the tariff tables (`GameWorld::tariffs`), every country on the historical rule.
+pub fn v29_to_v30(w: V29) -> GameWorld {
     GameWorld {
         scenario: w.scenario,
         player: w.player,

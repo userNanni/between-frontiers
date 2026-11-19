@@ -3566,6 +3566,54 @@ fn trade_partners() {
     let _ = std::fs::remove_dir_all(&user);
 }
 
+/// The government's trade tab (tariff by good and partner, owner's decisions CT1 and CT2):
+/// Britain in February 1926, as the game ships (the tariff that counts off, said in one line),
+/// with steel fixed at 30 %, then a category open. Portuguese and English at 1280 × 720; copies
+/// in `target/screenshots/tariffs/`.
+#[test]
+#[ignore = "needs a GPU (or software Vulkan) and the generated map; run with --ignored"]
+fn trade_tab() {
+    use bf_sim::game::GameCommand;
+    use laplace_schelling::calendar::Date;
+    let user = std::env::temp_dir().join(format!("bf-shots-tariffs-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&user);
+    let data = bf_sim::data::GameData::load(&root()).expect("game data");
+    let steel = data.catalogue.good("steel").expect("steel");
+    let mut s = advanced_session_with("GBR", Date::new(1926, 1, 25), data.switches);
+    s.submit(GameCommand::SetGoodsTariff {
+        tag: "GBR".into(),
+        goods: vec![steel],
+        per_mille: Some(300),
+    });
+    s.sim.run_until(Date::new(1926, 2, 1));
+    let save = write_campaign(&user.join("save"), &s, "Tarifas", "GBR", &[]);
+    let dir = root().join("target/screenshots/tariffs");
+    std::fs::create_dir_all(&dir).unwrap();
+    let keep = |name: &str| {
+        let from = out_dir().join(format!("{name}.png"));
+        std::fs::copy(&from, dir.join(format!("{name}.png"))).unwrap();
+    };
+    for (locale, tag) in [("pt-BR", "pt-1280"), ("en", "en-1280")] {
+        let mut h = harness_sized(user.join(tag), locale, egui::vec2(1280.0, 720.0));
+        let ctx = h.ctx.clone();
+        h.state_mut().apply(Transition::Game(save.clone()), &ctx);
+        h.run_steps(4);
+        h.key_press(egui::Key::G);
+        h.run_steps(4);
+        h.key_press_modifiers(egui::Modifiers::SHIFT, egui::Key::T);
+        h.run_steps(8);
+        let name = format!("210-trade-tab-{tag}");
+        shot(&mut h, &name);
+        keep(&name);
+        h.key_press(egui::Key::K);
+        h.run_steps(8);
+        let name = format!("211-trade-tab-category-{tag}");
+        shot(&mut h, &name);
+        keep(&name);
+    }
+    let _ = std::fs::remove_dir_all(&user);
+}
+
 /// The country's agreements (treaties, sections 9 and 13): Britain in March 1925, after
 /// denouncing without notice one of its agreements of 1925 (a breach on the record, the
 /// agreement ended, its reputation weighed): the agreements in force with their clauses, the

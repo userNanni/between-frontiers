@@ -347,7 +347,7 @@ agrupados pelas 9 categorias de `goods.ron`, fica na "Regra histórica" (a taxa 
 pela de 1925) ou "Fixado" pelo governo, de 0 a 200 %; "Aplicar ao grupo" fixa a categoria inteira e
 "Voltar à regra" a devolve. Por parceiro, o governo soma pontos à tarifa de todo bem (sobretaxa) ou
 os tira (preferência). O mundo guarda só as exceções (`GameWorld::tariffs`, `customs::TariffTable`,
-save 31); sem exceção nenhuma, o hash é o de antes. A IA fica na regra.
+save 30); sem exceção nenhuma, o hash é o de antes. A IA fica na regra.
 - **Cobrança.** A tarifa de um fluxo do bem `g` do vendedor `s` ao comprador `b` é a do bem (fixada
   ou da regra) mais os pontos de `s`, sob os acordos em vigor, nunca abaixo de zero
   (`customs::Charge`, `trade::PairRules`): a união aduaneira não paga, a preferência tira a sua

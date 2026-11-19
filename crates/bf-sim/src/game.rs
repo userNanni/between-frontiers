@@ -1869,7 +1869,7 @@ mod tests {
             hash_of(&with_ledger)
         );
         assert_eq!(
-            hash_of(&headed(31, &encode_snapshot(&with_ledger).unwrap())),
+            hash_of(&headed(30, &encode_snapshot(&with_ledger).unwrap())),
             hash_of(&with_ledger)
         );
         // Version 29, before the tariff tables: the world without `tariffs`.
