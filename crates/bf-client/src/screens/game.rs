@@ -192,6 +192,11 @@ impl State {
         self.government.as_ref().map(|w| w.tab)
     }
 
+    /// The government window's pending changes, while it is open (tests).
+    pub fn government_drafts(&self) -> Option<&super::government::Drafts> {
+        self.government.as_ref().map(|w| &w.drafts)
+    }
+
     /// Selects a country (index into the map's countries), as a click on it does (tests).
     pub fn select(&mut self, country: Option<usize>) {
         self.selected = country;

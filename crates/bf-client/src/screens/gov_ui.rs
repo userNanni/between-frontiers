@@ -164,7 +164,214 @@ pub fn stepper_wide(
     can_up: bool,
     tips: StepTips<'_>,
 ) -> i32 {
-    let mut out = 0;
+    match stepper_any(ui, value, width, tip, can_down, can_up, tips, None) {
+        StepOut::Step(d) => d,
+        _ => 0,
+    }
+}
+
+/// A stepper whose value can also be typed: what the number accepts.
+pub struct Typed {
+    /// The number as the value shows it, without its unit.
+    pub current: f64,
+    pub min: f64,
+    pub max: f64,
+    /// Decimal places kept from what is typed.
+    pub decimals: i32,
+    /// The limits, said: shown when a typed number falls outside them.
+    pub range: String,
+    /// How to type, added to the value's tip.
+    pub hint: String,
+}
+
+/// What a typed stepper did this frame.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum StepOut {
+    None,
+    /// − or +: −1 or +1.
+    Step(i32),
+    /// A number typed and confirmed with Enter, within the limits.
+    Set(f64),
+}
+
+/// [`stepper_wide`] whose value, clicked, turns into a field: Enter applies the number typed,
+/// Escape or a click elsewhere leaves it as it was, a number out of the limits stays in the
+/// field, marked, with the limits said.
+#[allow(clippy::too_many_arguments)]
+pub fn stepper_typed(
+    ui: &mut Ui,
+    value: &str,
+    width: f32,
+    tip: &str,
+    can_down: bool,
+    can_up: bool,
+    tips: StepTips<'_>,
+    typed: Typed,
+) -> StepOut {
+    stepper_any(ui, value, width, tip, can_down, can_up, tips, Some(typed))
+}
+
+/// A number as typed: a comma or a point for the decimals, a sign, spaces and a percent sign
+/// allowed.
+pub fn parse_typed(text: &str) -> Option<f64> {
+    let t: String = text
+        .chars()
+        .filter(|c| !c.is_whitespace() && *c != '%' && *c != '+')
+        .map(|c| {
+            if c == ',' {
+                '.'
+            } else if c == '−' {
+                '-'
+            } else {
+                c
+            }
+        })
+        .collect();
+    let v: f64 = t.parse().ok()?;
+    v.is_finite().then_some(v)
+}
+
+/// The text a field opens with: the number, in the value's own writing.
+fn typed_text(value: &str) -> String {
+    value
+        .chars()
+        .filter(|c| c.is_ascii_digit() || matches!(c, ',' | '.' | '-' | '−'))
+        .collect()
+}
+
+/// A field being typed into: its text and whether the last Enter was refused.
+#[derive(Clone, Debug, Default)]
+struct Editing {
+    text: String,
+    refused: bool,
+}
+
+/// The value's cell of a typed stepper.
+fn typed_cell(
+    ui: &mut Ui,
+    value: &str,
+    width: f32,
+    tip: &str,
+    id: &str,
+    typed: &Typed,
+) -> Option<f64> {
+    let key = ui.make_persistent_id(("stepper-typed", id));
+    let editing: Option<Editing> = ui.data(|d| d.get_temp(key));
+    let Some(mut e) = editing else {
+        let (rect, response) = ui.allocate_exact_size(Vec2::new(width, ROW_H), Sense::click());
+        let hovered = response.hovered();
+        if hovered {
+            ui.painter().rect_stroke(
+                rect.shrink(1.0),
+                radius::SM,
+                egui::Stroke::new(1.0, color::BORDER_STRONG),
+                egui::StrokeKind::Inside,
+            );
+        }
+        ui.painter().text(
+            rect.center(),
+            Align2::CENTER_CENTER,
+            value,
+            sans_medium(size::BODY),
+            color::TEXT,
+        );
+        // Read by name as what the stepper sets: the first line of its tip.
+        let name = tip.lines().next().unwrap_or_default().to_owned();
+        response.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, &name));
+        let response = response
+            .on_hover_cursor(egui::CursorIcon::Text)
+            .on_hover_text(bf_ui_kit::tooltip_text(&format!("{tip}\n{}", typed.hint)));
+        if response.clicked() {
+            ui.data_mut(|d| {
+                d.insert_temp(
+                    key,
+                    Editing {
+                        text: typed_text(value),
+                        refused: false,
+                    },
+                )
+            });
+            ui.memory_mut(|m| m.request_focus(key.with("field")));
+        }
+        return None;
+    };
+    // Escape belongs to the field: it leaves the value as it was, and does not reach Back.
+    if ui.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape)) {
+        ui.data_mut(|d| d.remove::<Editing>(key));
+        ui.memory_mut(|m| m.surrender_focus(key.with("field")));
+        return None;
+    }
+    let response = ui.add_sized(
+        [width, ROW_H],
+        egui::TextEdit::singleline(&mut e.text)
+            .id(key.with("field"))
+            .font(sans_medium(size::BODY))
+            .text_color(color::TEXT)
+            .align(Align2::CENTER_CENTER)
+            .char_limit(12)
+            // Holds the focus on Escape, so that it reaches the field and not Back.
+            .event_filter(egui::EventFilter {
+                horizontal_arrows: true,
+                escape: true,
+                ..Default::default()
+            }),
+    );
+    if e.refused {
+        ui.painter().rect_stroke(
+            response.rect,
+            radius::SM,
+            egui::Stroke::new(1.5, color::DANGER),
+            egui::StrokeKind::Outside,
+        );
+        response.show_tooltip_text(typed.range.as_str());
+    }
+    let mut out = None;
+    if response.lost_focus() {
+        let (enter, escape) = ui.input(|i| {
+            (
+                i.key_pressed(egui::Key::Enter),
+                i.key_pressed(egui::Key::Escape),
+            )
+        });
+        let parsed = parse_typed(&e.text)
+            .map(|v| {
+                let f = 10f64.powi(typed.decimals);
+                (v * f).round() / f
+            })
+            .filter(|v| (typed.min..=typed.max).contains(v));
+        match (enter && !escape, parsed) {
+            (true, Some(v)) => {
+                out = Some(v);
+                ui.data_mut(|d| d.remove::<Editing>(key));
+            }
+            (true, None) => {
+                e.refused = true;
+                ui.memory_mut(|m| m.request_focus(key.with("field")));
+                ui.data_mut(|d| d.insert_temp(key, e));
+            }
+            _ => ui.data_mut(|d| d.remove::<Editing>(key)),
+        }
+    } else {
+        if response.changed() {
+            e.refused = false;
+        }
+        ui.data_mut(|d| d.insert_temp(key, e));
+    }
+    out
+}
+
+#[allow(clippy::too_many_arguments)]
+fn stepper_any(
+    ui: &mut Ui,
+    value: &str,
+    width: f32,
+    tip: &str,
+    can_down: bool,
+    can_up: bool,
+    tips: StepTips<'_>,
+    typed: Option<Typed>,
+) -> StepOut {
+    let mut out = StepOut::None;
     ui.horizontal(|ui| {
         ui.spacing_mut().item_spacing.x = space::XS;
         // Inside a right-aligned row the parts are added from the right.
@@ -174,6 +381,13 @@ pub fn stepper_wide(
         }
         for part in parts {
             match part {
+                0 if typed.is_some() => {
+                    if let Some(t) = &typed
+                        && let Some(v) = typed_cell(ui, value, width, tip, tips.id, t)
+                    {
+                        out = StepOut::Set(v);
+                    }
+                }
                 0 => {
                     let (rect, response) =
                         ui.allocate_exact_size(Vec2::new(width, ROW_H), Sense::hover());
@@ -207,7 +421,7 @@ pub fn stepper_wide(
                         name.to_owned()
                     };
                     let id = format!("{}.{name}", tips.id);
-                    let typed = enabled
+                    let key_typed = enabled
                         && crate::keys::item_beside(
                             ui,
                             tips.family,
@@ -220,8 +434,8 @@ pub fn stepper_wide(
                                 crate::keys::Side::Right
                             },
                         );
-                    if response.clicked() || typed {
-                        out = d;
+                    if response.clicked() || key_typed {
+                        out = StepOut::Step(d);
                     }
                 }
             }
@@ -246,4 +460,50 @@ pub fn control_row<R>(ui: &mut Ui, label: &str, add: impl FnOnce(&mut Ui) -> R) 
         add,
     );
     out
+}
+
+/// "Between 0 % and 200 %": the limits of a typed stepper.
+pub fn typed_range(i18n: &bf_i18n::I18n, min: &str, max: &str) -> String {
+    i18n.tr_args(
+        "step-typed-range",
+        &[
+            ("min", bf_i18n::Arg::String(min.to_owned())),
+            ("max", bf_i18n::Arg::String(max.to_owned())),
+        ],
+    )
+}
+
+/// A whole number typed in a stepper, from `min` to `max`.
+pub fn typed_int(i18n: &bf_i18n::I18n, current: i64, min: i64, max: i64) -> Typed {
+    Typed {
+        current: current as f64,
+        min: min as f64,
+        max: max as f64,
+        decimals: 0,
+        range: typed_range(i18n, &i18n.int(min), &i18n.int(max)),
+        hint: i18n.tr("step-typed-hint"),
+    }
+}
+
+/// A percentage typed in a stepper, from `min` to `max` %, kept to `decimals` places.
+pub fn typed_pct(i18n: &bf_i18n::I18n, current: f64, min: f64, max: f64, decimals: usize) -> Typed {
+    let p = |x: f64| super::budget::pct(i18n, x, decimals);
+    Typed {
+        current,
+        min,
+        max,
+        decimals: decimals as i32,
+        range: typed_range(i18n, &p(min), &p(max)),
+        hint: i18n.tr("step-typed-hint"),
+    }
+}
+
+/// The new value of a stepper whose − and + move by `step`, or that was typed (`scale` turns
+/// the number typed into the stepper's units), clamped to `min..=max`.
+pub fn step_to(out: StepOut, now: i32, step: i32, scale: f64, min: i32, max: i32) -> Option<i32> {
+    match out {
+        StepOut::None => None,
+        StepOut::Step(d) => Some((now + d * step).clamp(min, max)),
+        StepOut::Set(v) => Some(((v * scale).round() as i32).clamp(min, max)),
+    }
 }

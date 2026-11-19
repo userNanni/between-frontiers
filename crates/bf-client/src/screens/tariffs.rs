@@ -16,7 +16,7 @@ use laplace_schelling::Fixed;
 
 use super::budget::{WEEKS, pct, with_gdp};
 use super::country_find::{self, FindUi};
-use super::gov_ui::{StepTips, step_width, stepper_wide};
+use super::gov_ui::{StepOut, StepTips, Typed, step_width, stepper_typed, typed_range};
 use super::government::TabContext;
 use crate::keys::{self, Tip};
 use crate::tariff_view::{Category, PartnerLine, TOP_PARTNERS, TariffView, good_rate};
@@ -63,6 +63,22 @@ fn to_step(r: Fixed) -> u16 {
 }
 
 /// "+10 pontos", "−5 pontos", "sem ajuste".
+/// A rate typed in a stepper: whole percentage points from 0 to 200 %.
+fn rate_typed(i18n: &I18n, per_mille: i32) -> Typed {
+    Typed {
+        current: f64::from(per_mille) / 10.0,
+        min: 0.0,
+        max: f64::from(RATE_MAX) / 10.0,
+        decimals: 0,
+        range: typed_range(
+            i18n,
+            &pct(i18n, 0.0, 0),
+            &pct(i18n, f64::from(RATE_MAX) / 10.0, 0),
+        ),
+        hint: i18n.tr("step-typed-hint"),
+    }
+}
+
 fn points(i18n: &I18n, per_mille: i32) -> String {
     if per_mille == 0 {
         return i18n.tr("tariff-points-none");
@@ -274,6 +290,7 @@ fn summary(ui: &mut Ui, i18n: &I18n, v: &TariffView, table: &TariffTable, tag: &
         bf_ui_kit::muted(ui, &i18n.tr("tariff-off"));
     }
     bf_ui_kit::small(ui, &i18n.tr("tariff-basis"));
+    bf_ui_kit::small(ui, &i18n.tr("tariff-imports-only"));
 }
 
 fn goods_header(ui: &mut Ui, i18n: &I18n, c: &GoodCols) {
@@ -446,7 +463,7 @@ fn category(
                 .font(sans(size::BODY))
                 .color(color::TEXT_MUTED),
         );
-        let d = stepper_wide(
+        match stepper_typed(
             ui,
             &pct(i18n, f64::from(group) / 10.0, 0),
             cols.step_value,
@@ -458,10 +475,17 @@ fn category(
                 id: "gov.tariff.group",
                 row: 0,
             },
-        );
-        if d != 0 {
-            group = (i32::from(group) + d * RATE_STEP).clamp(0, RATE_MAX) as u16;
-            cx.tariffs.group = Some(group);
+            rate_typed(i18n, group.into()),
+        ) {
+            StepOut::Step(d) => {
+                group = (i32::from(group) + d * RATE_STEP).clamp(0, RATE_MAX) as u16;
+                cx.tariffs.group = Some(group);
+            }
+            StepOut::Set(v) => {
+                group = (v * 10.0).round() as u16;
+                cx.tariffs.group = Some(group);
+            }
+            StepOut::None => {}
         }
         let apply = Button::secondary(&i18n.tr("tariff-apply"))
             .size(ButtonSize::Small)
@@ -516,7 +540,7 @@ fn category(
             cell(ui, cols.stepper, false, |ui| {
                 if let Some(r) = table.good(gi) {
                     let pm = (r.to_f64_lossy() * 1000.0).round() as i32;
-                    let d = stepper_wide(
+                    let to = match stepper_typed(
                         ui,
                         &pct(i18n, f64::from(pm) / 10.0, 0),
                         cols.step_value,
@@ -528,9 +552,13 @@ fn category(
                             id: &format!("gov.tariff.good.{key}"),
                             row,
                         },
-                    );
-                    if d != 0 {
-                        let to = (pm + d * RATE_STEP).clamp(0, RATE_MAX) as u16;
+                        rate_typed(i18n, pm),
+                    ) {
+                        StepOut::Step(d) => Some((pm + d * RATE_STEP).clamp(0, RATE_MAX) as u16),
+                        StepOut::Set(v) => Some((v * 10.0).round() as u16),
+                        StepOut::None => None,
+                    };
+                    if let Some(to) = to {
                         set(table, vec![g.good], Some(to));
                     }
                 }
@@ -658,7 +686,7 @@ fn partners(
                 );
             });
             cell(ui, c.stepper, false, |ui| {
-                let d = stepper_wide(
+                let step = stepper_typed(
                     ui,
                     &points(i18n, pm),
                     c.step_value,
@@ -670,9 +698,27 @@ fn partners(
                         id: &format!("gov.tariff.partner.{}", p.tag),
                         row,
                     },
+                    Typed {
+                        current: f64::from(pm) / 10.0,
+                        min: -f64::from(POINT_MAX) / 10.0,
+                        max: f64::from(POINT_MAX) / 10.0,
+                        decimals: 0,
+                        range: typed_range(
+                            i18n,
+                            &points(i18n, -POINT_MAX),
+                            &points(i18n, POINT_MAX),
+                        ),
+                        hint: i18n.tr("step-typed-hint"),
+                    },
                 );
-                if d != 0 {
-                    let to = (pm + d * POINT_STEP).clamp(-POINT_MAX, POINT_MAX) as i16;
+                let to = match step {
+                    StepOut::Step(d) => Some((pm + d * POINT_STEP).clamp(-POINT_MAX, POINT_MAX)),
+                    StepOut::Set(v) => Some((v * 10.0).round() as i32),
+                    StepOut::None => None,
+                };
+                if let Some(to) = to {
+                    let d = (to - pm).signum();
+                    let to = to as i16;
                     let to = (to != 0).then_some(to);
                     let mut after = table.clone();
                     if let Ok(pi) = u16::try_from(p.country) {
