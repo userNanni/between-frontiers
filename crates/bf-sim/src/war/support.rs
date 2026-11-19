@@ -468,10 +468,12 @@ pub fn support_week(
         b.0 -= km;
         b.1 += 1;
     }
+    // The dead of the front, and those of the nuclear strikes received (N6: the user's own
+    // support reads nothing of its use).
     let killed = |m: u16| -> u64 {
         f.losses.iter().find(|(k, _)| *k == m).map_or(0, |(_, l)| {
             *l * super::fight::KILLED_PER_MILLE as u64 / 1000
-        })
+        }) + world.war.nuclear.dead_of(m)
     };
     for (&m, &start) in &at_war {
         let (size, basic, occupied) = people.get(&m).copied().unwrap_or_default();

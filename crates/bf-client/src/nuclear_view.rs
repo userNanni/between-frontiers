@@ -34,6 +34,60 @@ pub struct Panel {
     pub risk_per_week: u32,
     /// The opacity of an untested arsenal, per mille (N3).
     pub opaque_weight: u32,
+    /// In a war, what a use would do (step 4): `None` in a crisis or without a warhead ready.
+    pub strike: Option<StrikeView>,
+}
+
+/// What the player reads before a use (step 4; N5–N7).
+#[derive(Clone, Debug, PartialEq)]
+pub struct StrikeView {
+    pub target: String,
+    /// Warheads on launchers, ready to go.
+    pub deliverable: u64,
+    /// Dead a warhead that arrives makes, on the cities and on the forces.
+    pub per_countervalue: u64,
+    pub per_counterforce: u64,
+    /// Men of the target's land forces a counterforce warhead puts out.
+    pub counterforce_men: u64,
+    /// The stain on the security reputation, in years of our forces' cost, per mille.
+    pub stain: u32,
+    /// The taboo, per mille, and the years since the last use in the world (N7).
+    pub taboo: u32,
+    pub years_since: Option<i64>,
+}
+
+/// The use `me` could make on `other`, `days` into the calendar.
+pub fn strike_view(
+    world: &GameWorld,
+    mil: &Military,
+    me: u16,
+    other: u16,
+    days: i64,
+) -> Option<StrikeView> {
+    let c = world.war.countries.get(usize::from(me))?;
+    let deliverable = bf_sim::war::nuclear_use::deliverable(mil, c);
+    if deliverable == 0 {
+        return None;
+    }
+    let n = &mil.rules.nuclear;
+    let nuc = &world.war.nuclear;
+    Some(StrikeView {
+        target: world
+            .countries
+            .iter()
+            .nth(usize::from(other))
+            .map_or_else(String::new, |(_, c)| c.tag.clone()),
+        deliverable,
+        per_countervalue: u64::from(n.killed_per_warhead),
+        per_counterforce: u64::from(n.killed_per_warhead) * u64::from(n.counterforce_civilians)
+            / 1000,
+        counterforce_men: u64::from(n.counterforce_men),
+        stain: n.use_stain,
+        taboo: nuc.taboo,
+        years_since: nuc.last_use.map(|(y, m, d)| {
+            (days - laplace_schelling::calendar::Date::new(y, m, d).to_days()).max(0) / 365
+        }),
+    })
 }
 
 /// The balance between `me` and `other`; `None` when neither holds a warhead.
@@ -65,6 +119,7 @@ pub fn read(world: &GameWorld, mil: &Military, me: u16, other: u16) -> Option<Pa
         mutual: b.deterrence.mutual,
         risk_per_week: b.limits.risk_per_week,
         opaque_weight: mil.rules.nuclear.opaque_weight,
+        strike: None,
     })
 }
 

@@ -678,17 +678,61 @@ Atrás de `war`, com estado em `NuclearState` (save 38).
 - **Fica para o passo 4:** o risco semanal de escalada entre dois lados com segundo golpe garantido
   pesando na decisão da IA de declarar, e o custo de reputação do teste com os não nucleares.
 
-### O uso e a consequência (passo 4, decidido: N5, N6, N7)
-1. **Mortos e destruição:** por ogiva, uma parcela da população morre por idade
-   (`kill_civilians`), e níveis de edifício caem (`wreck`).
-   - Fonte (RERF): Hiroshima, 70 a 140 mil mortos até o fim de 1945, de cerca de 350 mil;
-     Nagasaki, 40 a 70 mil.
-   - Contraforça mata menos civis que contravalor.
-2. **Apoio à guerra:** do atingido, as mortes entram no termo de baixas da G4. Do lado de quem usa,
-   nada direto (N6).
-3. **Terceiros:** perda de reputação com todos, chamado aos aliados do atingido (W4) e a retaliação
-   (N5).
-4. **O tabu (N7).**
+### Passo 4, em rascunho: o uso e a consequência (N5, N6, N7)
+Está em `war::nuclear_use`, atrás de `war`, no save 39. Os parâmetros ficam em `rules.ron`
+(`nuclear`) e são estimativas de desenho, a conferir contra as fontes.
+- **O comando `NuclearUse`:** dá o alvo (um país em guerra com quem usa), o modo e o número de
+  ogivas.
+  - Sai na semana seguinte, com o que os lançadores carregam (as ogivas sem lançador ficam no
+    depósito).
+  - A defesa antimíssil do alvo para a sua parcela. Cada ogiva que chega é um efeito.
+  - O uso conta como teste (N3).
+- **Contravalor:**
+  - mata `killed_per_warhead` (185 mil, o mesmo número do dano inaceitável) nas regiões
+    metropolitanas mais populosas, uma ogiva por região, em ciclo;
+  - derruba níveis de edifício no dobro da parcela da população morta (`wreck_factor`).
+  - Fonte de escala (RERF): Hiroshima, 70 a 140 mil mortos até o fim de 1945, de cerca de 350
+    mil; Nagasaki, 40 a 70 mil.
+- **Contraforça:** mata um décimo disso (`counterforce_civilians`) e põe 20 mil homens das forças
+  de terra do alvo fora da guerra por ogiva (`counterforce_men`), em proporção em cada formação.
+- **Apoio (N6):**
+  - Os mortos de cada país atingido ficam em `NuclearState::dead` e entram no termo de baixas do
+    seu apoio à guerra, somados aos da frente.
+  - O apoio de quem usa não lê nada do uso.
+  - Medido no teste: 8 ogivas de contravalor sobre a Polônia levam o apoio dela de 779 a 742 em
+    cinco semanas, e o da Alemanha fica igual (288).
+- **Reputação:** quem usa leva uma mancha na reputação de segurança de dois anos do custo das suas
+  forças (`use_stain`). Para comparar: uma chamada de defesa não atendida vale um ano.
+  - Fica de fora o chamado aos aliados do atingido. Os aliados com cláusula de defesa já entraram
+    na declaração (W4), e o uso não chama de novo.
+- **Retaliação proporcional (N5):**
+  - A IA atingida, com ogivas prontas, responde na semana seguinte no mesmo degrau e com o mesmo
+    número.
+  - Sem forças de terra, responde com tudo, em contravalor.
+  - A resposta não é respondida de novo.
+  - O risco semanal de subir entre dois lados seguros fica para a IA da fase 6.
+- **O tabu (N7):**
+  - É um estoque mundial de 0 a 1.000.
+  - Cresce um vigésimo (`taboo_years` 20) a cada janeiro em que há ogiva no mundo e o ano anterior
+    não teve uso.
+  - Cada uso o corta à metade (`taboo_cut`).
+  - A IA atacada usa primeiro só com a população metropolitana sob o inimigo acima de uma linha.
+    A linha vai de 30% sem tabu (`first_use_occupied`) a 100% com o tabu inteiro (Tannenwald,
+    *The Nuclear Taboo*, 2007).
+- **A tela:** a janela "Guerra", sob o painel de dissuasão, mostra:
+  - o modo e as ogivas;
+  - os mortos estimados e os homens postos fora da guerra;
+  - a mancha, a resposta esperada e o tabu, com os anos desde o último uso.
+  "Lançar…" pede a confirmação, que diz a frase do que muda, com ponto de restauração antes.
+- **Testes** (`tests/war_nuclear_use.rs`, Alemanha jogada contra a Polônia):
+  - contravalor com mortos, edifícios e mancha;
+  - contraforça com menos civis e homens fora;
+  - sem lançador, nada sai;
+  - a resposta no mesmo degrau;
+  - os mortos pesam só no atingido;
+  - o tabu cresce e cai;
+  - a IA só usa primeiro depois da linha.
+- **A precipitação (N8)** vem na fatia seguinte.
 
 ### Decisões do jogador, cada uma com tela e `player_commands`
 - `NuclearProgram` (Agendas → Forças): parcela, anos estimados, custo.

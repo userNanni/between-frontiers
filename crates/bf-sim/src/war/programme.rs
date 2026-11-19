@@ -111,6 +111,15 @@ pub struct NuclearState {
     /// (demander, target) of the crises this week whose demander's ceiling against the target
     /// is below war (`war::balance`): the declaration is blocked. Sorted.
     pub blocked: Vec<(u16, u16)>,
+    /// N7: the taboo, per mille: grows with the years without use, falls at each use.
+    pub taboo: u32,
+    /// (year, month, day) of the last use in the world.
+    pub last_use: Option<(i32, u8, u8)>,
+    /// The dead of the strikes each country received, sorted: they weigh on its support for the
+    /// war (the casualties term).
+    pub dead: Vec<(u16, u64)>,
+    /// Uses asked for by command or by the AI, and the answers (N5), for the next week.
+    pub uses: Vec<super::nuclear_use::Use>,
 }
 
 impl NuclearState {
@@ -119,6 +128,29 @@ impl NuclearState {
             && self.tested.is_empty()
             && self.test_requests.is_empty()
             && self.blocked.is_empty()
+            && !self.used()
+    }
+
+    /// Whether anything of the use is held: a world without it hashes as before.
+    fn used(&self) -> bool {
+        self.taboo != 0 || self.last_use.is_some() || !self.dead.is_empty() || !self.uses.is_empty()
+    }
+
+    /// The dead of the strikes `country` received.
+    pub fn dead_of(&self, country: u16) -> u64 {
+        self.dead
+            .binary_search_by_key(&country, |(c, _)| *c)
+            .map_or(0, |i| self.dead[i].1)
+    }
+
+    pub fn add_dead(&mut self, country: u16, n: u64) {
+        if n == 0 {
+            return;
+        }
+        match self.dead.binary_search_by_key(&country, |(c, _)| *c) {
+            Ok(i) => self.dead[i].1 += n,
+            Err(i) => self.dead.insert(i, (country, n)),
+        }
     }
 
     /// Whether `country` tested a weapon (N3).
@@ -193,6 +225,53 @@ impl HashState for NuclearState {
                 h.write_u16(*a);
                 h.write_u16(*b);
             }
+        }
+        // Only when any: a world without a use hashes as before it.
+        if self.used() {
+            h.write_u32(self.taboo);
+            match self.last_use {
+                Some((y, m, d)) => {
+                    h.write_u8(1);
+                    h.write_i64(i64::from(y));
+                    h.write_u8(m);
+                    h.write_u8(d);
+                }
+                None => h.write_u8(0),
+            }
+            h.write_len(self.dead.len());
+            for (c, n) in &self.dead {
+                h.write_u16(*c);
+                h.write_u64(*n);
+            }
+            h.write_len(self.uses.len());
+            for u in &self.uses {
+                h.write_u16(u.by);
+                h.write_u16(u.target);
+                h.write_u8(u.mode as u8);
+                h.write_u32(u.warheads);
+                h.write_u8(u8::from(u.answer));
+            }
+        }
+    }
+}
+
+/// [`NuclearState`] as version 38 of the world wrote it, before the use.
+#[derive(Clone, Debug, Default, Deserialize)]
+pub(crate) struct NuclearStateBeforeUse {
+    programmes: Vec<Programme>,
+    tested: Vec<u16>,
+    test_requests: Vec<u16>,
+    blocked: Vec<(u16, u16)>,
+}
+
+impl From<NuclearStateBeforeUse> for NuclearState {
+    fn from(n: NuclearStateBeforeUse) -> Self {
+        Self {
+            programmes: n.programmes,
+            tested: n.tested,
+            test_requests: n.test_requests,
+            blocked: n.blocked,
+            ..Default::default()
         }
     }
 }

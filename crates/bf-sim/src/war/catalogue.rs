@@ -529,6 +529,31 @@ pub struct NuclearRule {
     pub interceptors_per_site: u32,
     #[serde(default = "nuclear_defaults::interceptor_kill")]
     pub interceptor_kill: u32,
+    /// The use (step 4; N5, N6, N7). Civilians a counterforce warhead kills, per mille of
+    /// `killed_per_warhead`.
+    #[serde(default = "nuclear_defaults::counterforce_civilians")]
+    pub counterforce_civilians: u32,
+    /// Men of the target's land forces a counterforce warhead puts out of the war.
+    #[serde(default = "nuclear_defaults::counterforce_men")]
+    pub counterforce_men: u32,
+    /// Share of a region's plant levels a countervalue warhead destroys, per mille of the share
+    /// of its people it kills.
+    #[serde(default = "nuclear_defaults::wreck_factor")]
+    pub wreck_factor: u32,
+    /// The stain of a use on the user's security reputation, per mille of a year of its forces'
+    /// cost (the value of a defence call not answered is one year).
+    #[serde(default = "nuclear_defaults::use_stain")]
+    pub use_stain: u32,
+    /// N7: years without use, with warheads in the world, for the taboo to grow from nothing to
+    /// whole; and the share of it each use takes away, per mille.
+    #[serde(default = "nuclear_defaults::taboo_years")]
+    pub taboo_years: u32,
+    #[serde(default = "nuclear_defaults::taboo_cut")]
+    pub taboo_cut: u32,
+    /// N7: the AI uses first with this share of its home people under the enemy, per mille,
+    /// when the taboo is nothing; the line rises to all of it as the taboo grows whole.
+    #[serde(default = "nuclear_defaults::first_use_occupied")]
+    pub first_use_occupied: u32,
 }
 
 mod nuclear_defaults {
@@ -564,6 +589,27 @@ mod nuclear_defaults {
     }
     pub fn interceptor_kill() -> u32 {
         500
+    }
+    pub fn counterforce_civilians() -> u32 {
+        100
+    }
+    pub fn counterforce_men() -> u32 {
+        20_000
+    }
+    pub fn wreck_factor() -> u32 {
+        2000
+    }
+    pub fn use_stain() -> u32 {
+        2000
+    }
+    pub fn taboo_years() -> u32 {
+        20
+    }
+    pub fn taboo_cut() -> u32 {
+        500
+    }
+    pub fn first_use_occupied() -> u32 {
+        300
     }
 }
 

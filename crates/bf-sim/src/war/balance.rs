@@ -101,6 +101,16 @@ fn forces(mil: &Military, c: &CountryWar, weight: u32) -> (Vec<NuclearForce>, u6
     (out, total)
 }
 
+/// [`forces`] for the use (`war::nuclear_use`).
+pub(crate) fn forces_of(mil: &Military, c: &CountryWar, weight: u32) -> (Vec<NuclearForce>, u64) {
+    forces(mil, c, weight)
+}
+
+/// [`defense`] for the use (`war::nuclear_use`).
+pub(crate) fn defense_of(mil: &Military, c: &CountryWar, incoming: u64) -> Fixed {
+    defense(mil, c, incoming)
+}
+
 /// The share of incoming warheads a country's missile defence stops against `incoming`.
 fn defense(mil: &Military, c: &CountryWar, incoming: u64) -> Fixed {
     let n = &mil.rules.nuclear;

@@ -444,3 +444,26 @@ programme-test = Test the weapon
 programme-test-note = The test makes the arsenal known to all: until it, the others count half your warheads. The whole world hears it, and it cannot be undone.
 programme-test-asked = Test set: it happens next week.
 programme-tested = Weapon tested: the arsenal is known to all.
+
+# The use of the nuclear weapon (step 4; N5, N6, N7)
+strike-title = Nuclear use
+strike-counterforce = Counterforce
+strike-countervalue = Countervalue
+strike-warheads = Warheads
+strike-warheads-tip = How many warheads to launch, up to what the launchers carry
+strike-ready = Warheads ready on launchers
+strike-dead = Estimated dead, if all arrive
+strike-men = Men of the enemy's land forces put out of the war
+strike-stain = The security reputation loses the equivalent of { $years } years of our forces' cost.
+strike-answer = If the enemy has warheads ready, it answers the next week on the same rung and with the same number; without land forces, with everything on the cities.
+strike-taboo-since = Taboo: { $taboo }; { $years ->
+    [one] { $years } year since the last use in the world
+   *[other] { $years } years since the last use in the world
+}. Each use cuts the taboo by half, for all.
+strike-taboo-never = Taboo: { $taboo }; the weapon has never been used in the world. Each use cuts the taboo by half, for all.
+strike-launch = Launch…
+strike-confirm = Confirm the launch
+strike-confirm-line = { $n ->
+    [one] { $warheads } warhead
+   *[other] { $warheads } warheads
+} on { $country }, about { $dead } dead. It cannot be undone. A restore point is saved first.
