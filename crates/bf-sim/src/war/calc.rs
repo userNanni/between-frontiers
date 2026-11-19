@@ -712,6 +712,29 @@ pub fn density_speed(rules: &Rules, field: &LandField, d: &LandSide) -> Fixed {
 }
 
 /// Speed factor of a mobility on the segment: terrain and winter.
+/// Pursuit (front pace, step 6): a side that advanced on this segment last week and attacks it
+/// this week with `front.pursuit_ratio` times the defender's power no longer pushes a line: the
+/// defender is breaking, and the attacker marches on at its marching pace over the terrain,
+/// without the defence's density holding it back. The pursuit is what turns a victory into
+/// hundreds of kilometres (Poland 1920, France 1940 after Sedan). Zero when it does not apply.
+pub fn pursuit_km(
+    rules: &Rules,
+    field: &LandField,
+    attacker: &LandSide,
+    power: [Fixed; 2],
+    advanced_last_week: bool,
+) -> Fixed {
+    let [pa, pd] = power;
+    if !advanced_last_week
+        || attacker.posture != Posture::Attack
+        || !pa.is_positive()
+        || pa < pd * rules.front.pursuit_ratio
+    {
+        return Fixed::ZERO;
+    }
+    rules.base_speed(attacker.mobility) * terrain_speed(rules, field, attacker.mobility)
+}
+
 pub(crate) fn terrain_speed(rules: &Rules, field: &LandField, mobility: Mobility) -> Fixed {
     field.terrain.weighted(|t| rules.speed_factor(t, mobility))
         * if field.winter {
@@ -1191,6 +1214,7 @@ pub(crate) mod tests {
                 density_power: 2,
                 dig_weeks: 10,
                 still_km: Fixed::from_int(2),
+                pursuit_ratio: Fixed::from_ratio(3, 2),
             },
             nuclear: NuclearRule {
                 silo_kill: 500,
