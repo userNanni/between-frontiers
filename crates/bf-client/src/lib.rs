@@ -1,5 +1,6 @@
 //! Native game client of Between Frontiers (egui over wgpu).
 
+pub mod agreements_view;
 pub mod app;
 pub mod blocs_view;
 pub mod crisis_view;

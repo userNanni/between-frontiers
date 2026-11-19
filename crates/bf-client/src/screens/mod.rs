@@ -1,5 +1,6 @@
 //! Screens. Each one draws with `bf_ui_kit` components only and returns a transition.
 
+pub mod agreements;
 pub mod budget;
 pub mod country_panel;
 pub mod crisis;

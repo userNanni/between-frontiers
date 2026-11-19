@@ -944,6 +944,7 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
                 .as_ref()
                 .and_then(|t| t.clauses.as_deref()),
             today: Some(snap.date),
+            agreements: snap.agreements.as_deref(),
         };
         let res = super::journal::show(
             ui,
@@ -979,6 +980,13 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
         keep_window_place(shared, "journal", journal_place, res.place_done);
         for id in res.toggle_pin {
             state.toggle_pin(shared, &id, now);
+        }
+        // Denouncing ends an agreement, or breaks it: a point to go back to first.
+        if let (Some(agreement), Some(tag)) = (res.denounce, snap.player.clone()) {
+            state.restore_point_before(shared, Reason::Denounce);
+            state
+                .sim
+                .send(Command::Issue(GameCommand::Denounce { tag, agreement }));
         }
         // The proposal on the negotiation table, too.
         if res.treaty_draft != state.treaty_draft {

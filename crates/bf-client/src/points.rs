@@ -38,6 +38,8 @@ pub enum Reason {
     Demand,
     /// Forces disbanded.
     Disband,
+    /// An agreement denounced.
+    Denounce,
 }
 
 impl Reason {
@@ -51,6 +53,7 @@ impl Reason {
             Reason::Load => "points-reason-load",
             Reason::Demand => "points-reason-demand",
             Reason::Disband => "points-reason-disband",
+            Reason::Denounce => "points-reason-denounce",
         }
     }
 }

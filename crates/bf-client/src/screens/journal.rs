@@ -39,6 +39,8 @@ pub struct Window {
     pub call: super::crisis::CallUi,
     /// The negotiation table: the draft, a counter, an answer waiting for its confirmation.
     pub table: super::treaty_table::TableUi,
+    /// The agreements screen: a denunciation being weighed.
+    pub agreements: super::agreements::AgreementsUi,
 }
 
 /// The id the decision "Libertar território" takes in `Window::picked`.
@@ -53,6 +55,8 @@ pub const CRISIS: &str = "crisis:";
 pub const CALL: &str = "call:";
 /// `Window::picked` set by a war's button: the war window opens.
 pub const OPEN_WAR: &str = "open:war";
+/// The id the agreements screen takes in `Window::picked`.
+pub const AGREEMENTS: &str = "decision:agreements";
 /// The id the negotiation table takes in `Window::picked`.
 pub const TABLE: &str = "decision:treaty";
 /// The prefix of a proposal received in `Window::picked`, before its id.
@@ -95,6 +99,8 @@ pub struct Response {
     pub treaty: Option<super::treaty_table::Sent>,
     /// Open the war window (from a war's line).
     pub open_war: bool,
+    /// The player confirmed denouncing this agreement.
+    pub denounce: Option<u32>,
     /// The proposal on the negotiation table, to weigh (`None` off the table).
     pub treaty_draft: Option<(String, bf_sim::treaty::Proposal)>,
 }
@@ -107,6 +113,8 @@ pub struct TableInput<'a> {
     pub draft: Option<&'a crate::treaty_view::Weighed>,
     pub catalogue: Option<&'a bf_sim::treaty::ClauseCatalogue>,
     pub today: Option<laplace_schelling::calendar::Date>,
+    /// The player's agreements, breaches and reputations.
+    pub agreements: Option<&'a crate::agreements_view::AgreementsView>,
 }
 
 /// What the journal shows of crises: the player's, the draft's weighing, and the country picked
@@ -370,6 +378,28 @@ pub fn show(
                 });
             return;
         }
+        // The agreements screen takes the whole window too.
+        if let Some(view) = table
+            .agreements
+            .filter(|_| window.picked.as_deref() == Some(AGREEMENTS))
+        {
+            let back = Button::ghost(&format!("←  {}", i18n.tr("journal-agendas")))
+                .size(ButtonSize::Small)
+                .show(ui);
+            if back.clicked() || keys::single(ui, "journal.decision.back", 'B', back.rect) {
+                window.picked = None;
+                window.agreements = Default::default();
+                return;
+            }
+            egui::ScrollArea::vertical()
+                .id_salt("agreements")
+                .auto_shrink([false, false])
+                .show(ui, |ui| {
+                    ui.set_max_width(ui.available_width() - space::LG);
+                    super::agreements::show(ui, i18n, view, &mut window.agreements, &mut out);
+                });
+            return;
+        }
         // The negotiation table and a proposal received take the whole window too.
         let picked_received = window
             .picked
@@ -511,6 +541,19 @@ pub fn show(
                 {
                     window.picked = Some(format!("{DEMAND}{}", d.view.unit));
                     window.demand = Default::default();
+                }
+            }
+            // The country's agreements, breaches and reputations, and the way to denounce.
+            if let Some(a) = table.agreements {
+                let b = Button::secondary(&i18n.tr_args(
+                    "agreements-open",
+                    &[("n", I18nArg::String(a.in_force.len().to_string()))],
+                ))
+                .size(ButtonSize::Small)
+                .show(ui);
+                if b.clicked() || keys::single(ui, "journal.decision.agreements", 'O', b.rect) {
+                    window.picked = Some(AGREEMENTS.to_owned());
+                    window.agreements = Default::default();
                 }
             }
             // With the negotiation rule on: propose an agreement to the country picked on the map,

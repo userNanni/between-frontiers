@@ -174,6 +174,11 @@ const PLAYER: &[Surface] = &[
         files: &["screens/war.rs"],
     },
     Surface {
+        variant: "Denounce",
+        command: id::JOURNAL,
+        files: &["screens/game.rs", "screens/agreements.rs"],
+    },
+    Surface {
         variant: "Mobilize",
         command: id::JOURNAL,
         files: &["screens/game.rs", "screens/journal.rs"],
@@ -187,10 +192,6 @@ const EXCEPTIONS: &[(&str, &str)] = &[
     (
         "Borders",
         "issued by treaties, peace, tests and tools; the player frees its land with Liberate",
-    ),
-    (
-        "Denounce",
-        "comes with the list of the agreements in force, where the player reaches it (section 13)",
     ),
 ];
 
