@@ -88,6 +88,8 @@ pub struct WarLine {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct CrisisView {
+    /// The country the crises were read for (the one played now).
+    pub me: String,
     pub crises: Vec<CrisisLine>,
     pub wars: Vec<WarLine>,
     /// Calls on the player to join a war by an agreement.
@@ -111,6 +113,7 @@ pub fn signature(world: &GameWorld) -> Vec<(u32, u8, u16)> {
 
 fn line(
     world: &GameWorld,
+    me_tag: &str,
     setup: &CrisisSetup,
     mil: &Military,
     k: &Crisis,
@@ -143,8 +146,9 @@ fn line(
         demand: k.demand.clone(),
         nuclear: {
             let me = world
-                .player_tag()
-                .and_then(|t| world.countries.iter().position(|(_, c)| c.tag == t))
+                .countries
+                .iter()
+                .position(|(_, c)| c.tag == me_tag)
                 .map(|i| i as u16);
             me.and_then(|me| {
                 let other = if me == k.by { k.target } else { k.by };
@@ -196,11 +200,11 @@ fn joiners(world: &GameWorld, by: &str, target: &str) -> Option<Vec<Joiner>> {
 /// The player's crises and wars; `None` without a player or with the crisis switch off.
 pub fn read(
     world: &GameWorld,
+    tag: &str,
     setup: Option<&CrisisSetup>,
     mil: Option<&Military>,
 ) -> Option<CrisisView> {
     let (setup, mil) = (setup?, mil?);
-    let tag = world.player_tag()?;
     let me = world.countries.iter().position(|(_, c)| c.tag == tag)? as u16;
     let c = &world.war.conflicts;
     let crises = c
@@ -214,7 +218,7 @@ pub fn read(
             } else {
                 return None;
             };
-            Some(line(world, setup, mil, k, role))
+            Some(line(world, tag, setup, mil, k, role))
         })
         .collect();
     let tags = |v: &[u16]| -> Vec<String> {
@@ -265,6 +269,7 @@ pub fn read(
         })
         .collect();
     Some(CrisisView {
+        me: tag.to_owned(),
         crises,
         wars,
         calls,
@@ -288,13 +293,13 @@ pub struct DraftWeighing {
 /// Weighs the player's draft `demand` on `target` without touching the world.
 pub fn weigh_draft(
     world: &GameWorld,
+    tag: &str,
     setup: Option<&CrisisSetup>,
     mil: Option<&Military>,
     target: &str,
     demand: &Proposal,
 ) -> Option<DraftWeighing> {
     let (setup, mil) = (setup?, mil?);
-    let tag = world.player_tag()?;
     let index = |t: &str| world.countries.iter().position(|(_, c)| c.tag == t);
     let (by, to) = (index(tag)? as u16, index(target)? as u16);
     let c = &world.war.conflicts;
@@ -321,7 +326,7 @@ pub fn weigh_draft(
     Some(DraftWeighing {
         target: target.to_owned(),
         demand: demand.clone(),
-        line: line(world, setup, mil, &k, Role::Demander),
+        line: line(world, tag, setup, mil, &k, Role::Demander),
         blocked,
         target_gdp: world
             .econ
