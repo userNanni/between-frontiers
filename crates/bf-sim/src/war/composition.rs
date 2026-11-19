@@ -138,6 +138,38 @@ pub fn target(
     }
 }
 
+/// The land elements of `c` at home on wheels and on tracks as far as they hold their
+/// equipment (each formation counts by the value of its equipment over what its type needs, at
+/// most whole), and all of them: what the army moves on, not what it was ordered to be. A
+/// formation converted without the money or the vehicles to equip it counts for what it has.
+pub fn equipped(mil: &Military, c: &CountryWar) -> (Fixed, Fixed, Fixed) {
+    let (mut wheels, mut tracks, mut all) = (Fixed::ZERO, Fixed::ZERO, Fixed::ZERO);
+    for f in &c.formations {
+        if mil.types[f.unit as usize].domain != Domain::Land || f.called_up || f.colonial {
+            continue;
+        }
+        all += f.elements;
+        let spec = mil.spec(f.unit, f.generation as usize);
+        let need: Vec<(u16, Fixed)> = spec
+            .equipment
+            .iter()
+            .map(|(g, q)| (*g, *q * f.elements))
+            .collect();
+        let need = mil.value_lots(&need);
+        let fill = if need.is_positive() {
+            (mil.value_lots(&f.equipment) / need).min(Fixed::ONE)
+        } else {
+            Fixed::ONE
+        };
+        match spec.mobility {
+            Mobility::Wheeled => wheels += f.elements * fill,
+            Mobility::Tracked => tracks += f.elements * fill,
+            _ => {}
+        }
+    }
+    (wheels, tracks, all)
+}
+
 /// The year's new conversions of `country` toward the target: the government's when fixed,
 /// the rule's otherwise (the target of the newest generation `newest` gives for the infantry).
 /// At most `per_year` of the land men a year, never more than the infantry at home, and only
@@ -267,7 +299,8 @@ pub fn convert_week(
     for (src, ty, generation, n) in moves {
         convert(mil, c, src, (ty, generation), n);
     }
-    conversions.retain(|x| x.delivered < x.ordered);
+    // Done when less than a hundredth of an element (ten men) is left: the rest is rounding.
+    conversions.retain(|x| x.ordered - x.delivered >= Fixed::from_ratio(1, 100));
     money
 }
 

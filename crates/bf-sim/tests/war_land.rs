@@ -462,9 +462,16 @@ fn composition_check_1939_and_1944() {
         for year in [1939, 1944] {
             s.sim.run_until(Date::new(year, 6, 1));
             let w = s.world();
-            for tag in ["GER", "FRA", "SOV", "USA", "GBR", "CHN", "BRA", "ETH"] {
-                let ci = index(w, tag) as usize;
-                let (wh, tr, all) = land_shares(w, mil, ci);
+            for tag in [
+                "GER", "FRA", "SOV", "USA", "GBR", "CHN", "BRA", "TUR", "PER",
+            ] {
+                let Some(ci) = w.countries.iter().position(|(_, c)| c.tag == tag) else {
+                    continue;
+                };
+                let (_, _, all) = land_shares(w, mil, ci);
+                let (we, te, ae) = bf_sim::war::composition::equipped(mil, &w.war.countries[ci]);
+                let wh = (we * 1000 / ae.max(Fixed::ONE)).to_f64_lossy() * all as f64 / 1000.0;
+                let tr = (te * 1000 / ae.max(Fixed::ONE)).to_f64_lossy() * all as f64 / 1000.0;
                 let waiting: Fixed = w
                     .war
                     .composition
@@ -480,9 +487,9 @@ fn composition_check_1939_and_1944() {
                     .unwrap_or(0);
                 let m = &w.econ.markets[ci];
                 println!(
-                    "{label} {year} {tag}: wheels {:.1}% tracks {:.1}% of {all} | waiting {waiting:?} (stalled {stalled} wk) | automobiles price {:?} bought {:?}",
-                    wh as f64 * 100.0 / all.max(1) as f64,
-                    tr as f64 * 100.0 / all.max(1) as f64,
+                    "{label} {year} {tag}: equipped on wheels {:.1}% on tracks {:.1}% of {all} | waiting {waiting:?} (stalled {stalled} wk) | automobiles price {:?} bought {:?}",
+                    wh * 100.0 / all.max(1) as f64,
+                    tr * 100.0 / all.max(1) as f64,
                     m.price[auto],
                     m.buy_ratio[auto],
                 );

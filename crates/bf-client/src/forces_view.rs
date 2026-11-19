@@ -66,7 +66,8 @@ pub type Stock = (usize, usize, Fixed);
 /// tracks, the target, and the infantry in conversion.
 #[derive(Clone, Debug, PartialEq)]
 pub struct CompositionView {
-    /// Shares of the land men at home, 0–1, the conversions under way counted as done.
+    /// Shares of the land men at home on wheels and on tracks, 0–1, each formation counted by
+    /// the equipment it holds.
     pub wheels: f64,
     pub tracks: f64,
     /// The government's target, per mille, when fixed.
@@ -297,7 +298,8 @@ pub fn read(
     let orders = crate::orders_view::read(world, date, ci, cat, military, peace, wage_floor);
     let composition = peace.composition.as_ref().map(|rule| {
         let list: Vec<_> = world.war.composition.of(ci as u16).cloned().collect();
-        let (w, t, all) = bf_sim::war::composition::now(military, c, &list);
+        // What the army moves on: the formations by the equipment they hold.
+        let (w, t, all) = bf_sim::war::composition::equipped(military, c);
         let share = |x: Fixed| {
             if all.is_positive() {
                 f(x) / f(all)
