@@ -350,7 +350,7 @@ pub(crate) struct WarStateBeforeComposition {
     countries: Vec<CountryWar>,
     soldiers: Vec<i64>,
     conflicts: super::crisis::Conflicts,
-    fighting: super::fight::Fighting,
+    fighting: super::fight::FightingBeforeDoctrine,
 }
 
 impl From<WarStateBeforeComposition> for WarState {
@@ -359,7 +359,7 @@ impl From<WarStateBeforeComposition> for WarState {
             countries: w.countries,
             soldiers: w.soldiers,
             conflicts: w.conflicts,
-            fighting: w.fighting,
+            fighting: w.fighting.into(),
             composition: Default::default(),
         }
     }
@@ -382,6 +382,28 @@ impl From<WarStateBeforeStill> for WarState {
             conflicts: w.conflicts,
             fighting: w.fighting.into(),
             composition: Default::default(),
+        }
+    }
+}
+
+/// [`WarState`] as version 29 of the world wrote it, before the generation of the armies.
+#[derive(Default, Deserialize)]
+pub(crate) struct WarStateBeforeDoctrine {
+    countries: Vec<CountryWar>,
+    soldiers: Vec<i64>,
+    conflicts: super::crisis::Conflicts,
+    fighting: super::fight::FightingBeforeDoctrine,
+    composition: super::composition::CompositionState,
+}
+
+impl From<WarStateBeforeDoctrine> for WarState {
+    fn from(w: WarStateBeforeDoctrine) -> Self {
+        Self {
+            countries: w.countries,
+            soldiers: w.soldiers,
+            conflicts: w.conflicts,
+            fighting: w.fighting.into(),
+            composition: w.composition,
         }
     }
 }

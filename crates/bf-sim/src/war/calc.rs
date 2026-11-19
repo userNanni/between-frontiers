@@ -1202,11 +1202,15 @@ pub(crate) mod tests {
                 focus_share: 600,
                 breakthrough_ratio: Fixed::from_int(3),
                 exploitation_speed: Fixed::from_int(2),
+                experience_full_weeks: 52,
+                experience_half_life_years: 5,
+                politicized_years: 5,
             },
             reserve: crate::war::catalogue::ReserveRule {
                 call_up_weeks: 4,
                 training: 700,
             },
+            command: Default::default(),
             front: crate::war::catalogue::FrontRule {
                 full_line_men_km: Fixed::from_int(600),
                 density_min: pm(100),

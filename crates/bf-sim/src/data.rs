@@ -463,6 +463,19 @@ impl GameData {
                         crate::war::support::Conduct::resolve(c, self.politics.clone()).ok()
                     })
                     .map(Arc::new),
+                politics: self.politics.clone(),
+                vehicles: self
+                    .war
+                    .as_ref()
+                    .and_then(|w| w.peace.as_ref()?.composition.as_ref())
+                    .map(|r| crate::war::composition::vehicle_goods(r, &self.catalogue))
+                    .unwrap_or_default(),
+                doctrine_tech: self.war.as_ref().and_then(|w| {
+                    self.tree
+                        .as_ref()?
+                        .tech(&w.military.rules.command.doctrine_tech)
+                        .map(|t| t as u16)
+                }),
             })
         });
         crate::game::Rules {
