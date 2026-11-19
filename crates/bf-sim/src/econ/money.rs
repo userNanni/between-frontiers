@@ -565,6 +565,12 @@ struct Plan {
     /// The gold standard's cover binds the bank (`gold::Peg::bound`): it lends the treasury
     /// nothing.
     bound: bool,
+    /// Capital controls (`econ::capital`): nothing is asked or lent abroad, and the principal
+    /// of the bonds held abroad is not repaid.
+    closed: bool,
+    /// What private capital reads of this market (`econ::capital::Outlook`), the parts the
+    /// money step knows.
+    outlook: super::capital::Outlook,
 }
 
 /// What crossed borders in a week's money step, by market (`econ::payments`): moved by
@@ -588,17 +594,30 @@ pub struct AbroadFlows {
     /// The service of the debts between governments, by line: (debtor, creditor, interest,
     /// principal), from treasury to treasury.
     pub ledger: Vec<(u16, u16, Fixed, Fixed)>,
+    /// Private capital's lines by market (`econ::capital`); empty with the rule off.
+    pub capital: Vec<super::capital::Flows>,
+}
+
+/// What private capital needs of the week (`econ::capital`, `Switches::capital_follows_rate`).
+pub struct CapitalWeek<'a> {
+    pub rules: &'a super::capital::CapitalRules,
+    pub state: &'a mut super::capital::CapitalState,
+    /// How likely each market's devaluation is (`gold::at_risk`), 0 to 1.
+    pub risk: &'a [Fixed],
+    /// The claims are empty: this week seeds them.
+    pub seed: bool,
 }
 
 /// The weekly money step: prices, central banks, bonds, interest and defaults, for every
 /// market. Runs after taxes and spending are in the treasuries. `pegs`, by market, is what the
-/// gold standard asks of each bank (`econ::gold::step`); `None` with it off. Returns what
-/// crossed borders.
+/// gold standard asks of each bank (`econ::gold::step`); `None` with it off. `capital`: private
+/// capital that follows the returns, `None` with it off. Returns what crossed borders.
 pub fn week(
     econ: &mut Economy,
     activity: &[Activity],
     year: i32,
     pegs: Option<&[Peg]>,
+    mut capital: Option<CapitalWeek<'_>>,
 ) -> AbroadFlows {
     let nm = econ.markets.len();
     let mut flows = AbroadFlows {
@@ -646,7 +665,14 @@ pub fn week(
         } else {
             Fixed::ZERO
         };
-        plans.push(home_step(
+        let mut peg = pegs.and_then(|p| p.get(mi)).copied().unwrap_or_default();
+        let closed = capital
+            .as_ref()
+            .is_some_and(|c| c.state.controls.get(mi).copied().unwrap_or(false));
+        if closed && let Some(c) = &capital {
+            peg.premium += c.rules.control_premium;
+        }
+        let mut plan = home_step(
             m,
             activity[mi],
             idle[mi],
@@ -654,8 +680,13 @@ pub fn week(
             &w,
             year,
             treaty_debt[mi].0,
-            pegs.and_then(|p| p.get(mi)).copied().unwrap_or_default(),
-        ));
+            peg,
+        );
+        if closed {
+            plan.closed = true;
+            plan.lendable = Fixed::ZERO;
+        }
+        plans.push(plan);
     }
     // Foreign lenders: each market lends part of its idle savings; borrowers get their need
     // pro rata to what can be lent this week.
@@ -664,7 +695,7 @@ pub fn week(
         .markets
         .iter()
         .zip(&plans)
-        .filter(|(m, _)| m.money.excluded_until <= year)
+        .filter(|(m, p)| m.money.excluded_until <= year && !p.closed)
         .map(|(_, p)| p.need)
         .sum();
     let granted_share = if asked > Fixed::ZERO {
@@ -677,7 +708,7 @@ pub fn week(
     let mut written_off = Fixed::ZERO;
     let mut cuts = vec![Fixed::ZERO; nm];
     for (mi, (m, plan)) in econ.markets.iter_mut().zip(plans.iter_mut()).enumerate() {
-        let abroad = if m.money.excluded_until <= year {
+        let abroad = if m.money.excluded_until <= year && !plan.closed {
             plan.need * granted_share
         } else {
             Fixed::ZERO
@@ -761,6 +792,24 @@ pub fn week(
     if lendable > Fixed::ZERO {
         let weights: Vec<Fixed> = plans.iter().map(|p| p.lendable).collect();
         super::trade::split_exact_into(lent, &weights, &mut flows.lent, &mut Vec::new());
+    }
+    // Private capital (`econ::capital`): from and to the investment pools.
+    if let Some(c) = capital.as_mut() {
+        let outlook: Vec<super::capital::Outlook> = econ
+            .markets
+            .iter()
+            .zip(&plans)
+            .map(|(m, p)| super::capital::Outlook {
+                pool: m.pool,
+                excluded: m.money.excluded_until > year,
+                ..p.outlook
+            })
+            .collect();
+        let moved = super::capital::step(c.rules, c.state, &outlook, c.risk, c.seed);
+        for (m, p) in econ.markets.iter_mut().zip(&moved.pool) {
+            m.pool += *p;
+        }
+        flows.capital = moved.lines;
     }
     let mut take = vec![Fixed::ZERO; nm];
     for (mi, (m, plan)) in econ.markets.iter_mut().zip(&plans).enumerate() {
@@ -905,11 +954,15 @@ fn home_step(
     }
     // On gold (or under exchange control) the exchange rate holds the parity; otherwise it drifts
     // to its target.
+    // The real depreciation expected over a year while floating: what the drift to the target
+    // closes of its gap in 52 weeks (1 - (25/26)^52, 87 %), in percent.
+    let mut drift = Fixed::ZERO;
     match peg.parity {
         Some(p) => money.exchange_rate = p,
         None => {
             let target_rate = exchange_target(money, premium);
             money.exchange_rate += (target_rate - money.exchange_rate) / EXCHANGE_WEEKS;
+            drift = percent_of(target_rate - money.exchange_rate, money.exchange_rate) * milli(870);
         }
     }
     // The central bank: Taylor rule, or the player's rate; floored at zero. On gold, the cover
@@ -955,6 +1008,18 @@ fn home_step(
     let fx = (w.rate + premium.max(Fixed::ZERO)).max(BOND_FLOOR);
     money.bond_rate = local;
     money.fx_rate = fx;
+    // Private capital's view (`econ::capital::Outlook`): the bond rate without the premium, less
+    // inflation, and floating less the real depreciation the drift promises.
+    let base = local - premium;
+    let outlook = super::capital::Outlook {
+        ret: base - money.inflation - drift,
+        premium,
+        floating: peg.parity.is_none(),
+        yield_pct: base - money.inflation,
+        gdp,
+        real_exchange: money.real_exchange(),
+        ..Default::default()
+    };
     money.cost_local += (local - money.cost_local) / MATURITY_WEEKS;
     money.cost_fx += (fx - money.cost_fx) / MATURITY_WEEKS;
     // Interest of the week. The central bank hands its interest back to the treasury.
@@ -1063,6 +1128,8 @@ fn home_step(
         abroad_interest,
         local_abroad,
         bound: peg.bound(),
+        closed: false,
+        outlook,
     }
 }
 
@@ -1105,12 +1172,22 @@ fn settle_week(
     };
     if excess > Fixed::ZERO && repays {
         let mut repay = excess * REPAY_SHARE;
-        let fx = repay.min(m.money.debt_fx_local());
+        // Under capital controls the principal held abroad is frozen (a standstill): the
+        // surplus repays at home.
+        let fx = if plan.closed {
+            Fixed::ZERO
+        } else {
+            repay.min(m.money.debt_fx_local())
+        };
         if fx > Fixed::ZERO {
             m.money.debt_fx -= fx.mul_div(INDEX_BASE, m.money.real_exchange());
             m.money.debt_fx = m.money.debt_fx.max(Fixed::ZERO);
         }
-        let abroad = (repay - fx).min(m.money.debt_abroad);
+        let abroad = if plan.closed {
+            Fixed::ZERO
+        } else {
+            (repay - fx).min(m.money.debt_abroad)
+        };
         m.money.debt_abroad -= abroad;
         repaid += fx + abroad;
         repay -= fx + abroad;
@@ -1394,6 +1471,8 @@ mod tests {
             abroad_interest: Fixed::ZERO,
             local_abroad: None,
             bound: false,
+            closed: false,
+            outlook: Default::default(),
         };
         let (_, _, lost, _) = settle_week(&mut m, &plan, 1950, (Fixed::ZERO, Fixed::ZERO));
         assert_eq!(lost, Fixed::from_int(20_000));
@@ -1480,6 +1559,8 @@ mod tests {
             abroad_interest: Fixed::ZERO,
             local_abroad: None,
             bound: false,
+            closed: false,
+            outlook: Default::default(),
         };
         settle_week(&mut japan, &plan, 1990, (Fixed::ZERO, Fixed::ZERO));
         settle_week(&mut argentina, &plan, 1990, (Fixed::ZERO, Fixed::ZERO));
@@ -1585,6 +1666,50 @@ mod tests {
         assert!(defended.money.debt_bank + defended.money.credit <= issued);
         assert!(floating.money.debt_bank + floating.money.credit > issued);
         assert!(defended.money.monetized < Fixed::ZERO);
+    }
+
+    /// The trilemma's other cases: a parity held behind exchange control (capital closed) and a
+    /// floating currency (capital free) both leave the bank on the Taylor rule; the first holds
+    /// its exchange rate, the second lets it move.
+    #[test]
+    fn behind_controls_or_floating_the_rate_is_taylors() {
+        let w = World {
+            inflation: TARGET,
+            rate: NEUTRAL_REAL + TARGET,
+            income: Fixed::ONE,
+        };
+        let run = |m: &mut Market, peg: Peg| {
+            home_step(
+                m,
+                calm(),
+                Fixed::ZERO,
+                Fixed::ONE,
+                &w,
+                1926,
+                Fixed::ZERO,
+                peg,
+            )
+        };
+        let mut start = market(52_000);
+        start.money.exchange_rate = Fixed::from_int(95);
+        let mut floating = start.clone();
+        let float_plan = run(&mut floating, Peg::default());
+        let mut control = start.clone();
+        let control_plan = run(
+            &mut control,
+            Peg {
+                parity: Some(Fixed::from_int(95)),
+                premium: Fixed::ONE,
+                ..Peg::default()
+            },
+        );
+        assert_eq!(control.money.policy_rate, floating.money.policy_rate);
+        assert_eq!(control.money.exchange_rate, Fixed::from_int(95));
+        assert!(floating.money.exchange_rate > Fixed::from_int(95));
+        // Private capital reads the drift of the floating currency as a depreciation to come,
+        // and the parity's return in reference units.
+        assert!(float_plan.outlook.floating && !control_plan.outlook.floating);
+        assert!(float_plan.outlook.ret < float_plan.outlook.yield_pct);
     }
 
     #[test]

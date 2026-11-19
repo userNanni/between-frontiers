@@ -512,6 +512,7 @@ pub fn v15_to_v16(w: V15) -> GameWorld {
         payments: Default::default(),
         reserves: Default::default(),
         gold: Default::default(),
+        capital: Default::default(),
     }
 }
 
@@ -559,6 +560,7 @@ pub fn v16_to_v17(w: V16) -> GameWorld {
         payments: Default::default(),
         reserves: Default::default(),
         gold: Default::default(),
+        capital: Default::default(),
     }
 }
 
@@ -607,6 +609,7 @@ pub fn v17_to_v18(w: V17) -> GameWorld {
         payments: Default::default(),
         reserves: Default::default(),
         gold: Default::default(),
+        capital: Default::default(),
     }
 }
 
@@ -656,6 +659,7 @@ pub fn v18_to_v20(w: V18) -> GameWorld {
         payments: Default::default(),
         reserves: Default::default(),
         gold: Default::default(),
+        capital: Default::default(),
     }
 }
 
@@ -719,6 +723,7 @@ pub fn v20_to_v21(w: V20) -> GameWorld {
         payments: Default::default(),
         reserves: Default::default(),
         gold: Default::default(),
+        capital: Default::default(),
     }
 }
 
@@ -775,6 +780,7 @@ pub fn v21_to_v22(w: V21) -> GameWorld {
         payments: Default::default(),
         reserves: Default::default(),
         gold: Default::default(),
+        capital: Default::default(),
     }
 }
 
@@ -824,6 +830,7 @@ pub fn v22_to_v23(w: V22) -> GameWorld {
         payments: Default::default(),
         reserves: Default::default(),
         gold: Default::default(),
+        capital: Default::default(),
     }
 }
 
@@ -880,6 +887,7 @@ pub fn v23_to_v24(w: V23) -> GameWorld {
         payments: Default::default(),
         reserves: Default::default(),
         gold: Default::default(),
+        capital: Default::default(),
     }
 }
 
@@ -936,6 +944,7 @@ pub fn v24_to_v25(w: V24) -> GameWorld {
         payments: Default::default(),
         reserves: Default::default(),
         gold: Default::default(),
+        capital: Default::default(),
     }
 }
 
@@ -983,6 +992,7 @@ pub fn v25_to_v26(w: V25) -> GameWorld {
         payments: Default::default(),
         reserves: Default::default(),
         gold: Default::default(),
+        capital: Default::default(),
     }
 }
 
@@ -1030,6 +1040,7 @@ pub fn v26_to_v27(w: V26) -> GameWorld {
         payments: Default::default(),
         reserves: Default::default(),
         gold: Default::default(),
+        capital: Default::default(),
     }
 }
 
@@ -1077,6 +1088,7 @@ pub fn v27_to_v28(w: V27) -> GameWorld {
         payments: Default::default(),
         reserves: Default::default(),
         gold: Default::default(),
+        capital: Default::default(),
     }
 }
 
@@ -1124,6 +1136,7 @@ pub fn v28_to_v29(w: V28) -> GameWorld {
         payments: Default::default(),
         reserves: Default::default(),
         gold: Default::default(),
+        capital: Default::default(),
     }
 }
 
@@ -1171,6 +1184,7 @@ pub fn v29_to_v30(w: V29) -> GameWorld {
         payments: Default::default(),
         reserves: Default::default(),
         gold: Default::default(),
+        capital: Default::default(),
     }
 }
 
@@ -1219,6 +1233,7 @@ pub fn v30_to_v31(w: V30) -> GameWorld {
         payments: Default::default(),
         reserves: Default::default(),
         gold: Default::default(),
+        capital: Default::default(),
     }
 }
 
@@ -1267,6 +1282,7 @@ pub fn v31_to_v32(w: V31) -> GameWorld {
         payments: Default::default(),
         reserves: Default::default(),
         gold: Default::default(),
+        capital: Default::default(),
     }
 }
 
@@ -1290,7 +1306,7 @@ pub struct V32 {
     independence: crate::borders::independence::IndependenceState,
     levers: crate::econ::levers::LeversState,
     tariffs: crate::econ::customs::TariffState,
-    payments: crate::econ::payments::PaymentsState,
+    payments: crate::econ::payments::PaymentsBeforeCapital,
 }
 
 /// 32 → 33: the generation of the armies (`Fighting::doctrine`), empty.
@@ -1313,9 +1329,10 @@ pub fn v32_to_v33(w: V32) -> GameWorld {
         independence: w.independence,
         levers: w.levers,
         tariffs: w.tariffs,
-        payments: w.payments,
+        payments: w.payments.into(),
         reserves: Default::default(),
         gold: Default::default(),
+        capital: Default::default(),
     }
 }
 
@@ -1339,7 +1356,7 @@ pub struct V35 {
     independence: crate::borders::independence::IndependenceState,
     levers: crate::econ::levers::LeversState,
     tariffs: crate::econ::customs::TariffState,
-    payments: crate::econ::payments::PaymentsState,
+    payments: crate::econ::payments::PaymentsBeforeCapital,
 }
 
 /// 35 → 36: the reserves of settlement (`GameWorld::reserves`), empty until settlement runs.
@@ -1362,9 +1379,10 @@ pub fn v35_to_v36(w: V35) -> GameWorld {
         independence: w.independence,
         levers: w.levers,
         tariffs: w.tariffs,
-        payments: w.payments,
+        payments: w.payments.into(),
         reserves: Default::default(),
         gold: Default::default(),
+        capital: Default::default(),
     }
 }
 
@@ -1388,7 +1406,7 @@ pub struct V33 {
     independence: crate::borders::independence::IndependenceState,
     levers: crate::econ::levers::LeversState,
     tariffs: crate::econ::customs::TariffState,
-    payments: crate::econ::payments::PaymentsState,
+    payments: crate::econ::payments::PaymentsBeforeCapital,
 }
 
 /// 33 → 34: the colonial wars (`WarState::colonial`), none.
@@ -1411,9 +1429,10 @@ pub fn v33_to_v34(w: V33) -> GameWorld {
         independence: w.independence,
         levers: w.levers,
         tariffs: w.tariffs,
-        payments: w.payments,
+        payments: w.payments.into(),
         reserves: Default::default(),
         gold: Default::default(),
+        capital: Default::default(),
     }
 }
 
@@ -1437,7 +1456,7 @@ pub struct V40 {
     independence: crate::borders::independence::IndependenceState,
     levers: crate::econ::levers::LeversState,
     tariffs: crate::econ::customs::TariffState,
-    payments: crate::econ::payments::PaymentsState,
+    payments: crate::econ::payments::PaymentsBeforeCapital,
     reserves: crate::econ::payments::ReservesState,
 }
 
@@ -1461,9 +1480,10 @@ pub fn v40_to_v41(w: V40) -> GameWorld {
         independence: w.independence,
         levers: w.levers,
         tariffs: w.tariffs,
-        payments: w.payments,
+        payments: w.payments.into(),
         reserves: w.reserves,
         gold: Default::default(),
+        capital: Default::default(),
     }
 }
 
@@ -1487,7 +1507,7 @@ pub struct V34 {
     independence: crate::borders::independence::IndependenceState,
     levers: crate::econ::levers::LeversState,
     tariffs: crate::econ::customs::TariffState,
-    payments: crate::econ::payments::PaymentsState,
+    payments: crate::econ::payments::PaymentsBeforeCapital,
 }
 
 /// 34 → 35: the war at sea (`WarState::sea`), empty.
@@ -1510,9 +1530,65 @@ pub fn v34_to_v35(w: V34) -> GameWorld {
         independence: w.independence,
         levers: w.levers,
         tariffs: w.tariffs,
-        payments: w.payments,
+        payments: w.payments.into(),
         reserves: Default::default(),
         gold: Default::default(),
+        capital: Default::default(),
+    }
+}
+
+/// Version 41: the gold standard's regimes (#258), before private capital: the balance of
+/// payments without its lines (`payments::PaymentsBeforeCapital`) and the world without
+/// `capital`.
+#[derive(Deserialize)]
+pub struct V41 {
+    scenario: String,
+    player: Option<Id<Country>>,
+    countries: Table<Country, CountryState>,
+    census: Vec<CensusRecord>,
+    econ: crate::econ::Economy,
+    research: crate::research::ResearchState,
+    politics: crate::polity::PoliticsState,
+    demography: crate::demography::DemographyState,
+    borders: crate::borders::BordersState,
+    foreign: crate::foreign_stakes::ForeignState,
+    influence: crate::influence::InfluenceState,
+    treaties: crate::treaty::TreatyState,
+    war: crate::war::WarState,
+    education: crate::demography::education::EducationState,
+    independence: crate::borders::independence::IndependenceState,
+    levers: crate::econ::levers::LeversState,
+    tariffs: crate::econ::customs::TariffState,
+    payments: crate::econ::payments::PaymentsBeforeCapital,
+    reserves: crate::econ::payments::ReservesState,
+    gold: crate::econ::gold::GoldState,
+}
+
+/// 41 → 42: private capital (`GameWorld::capital`, empty until the rule runs) and its lines in
+/// the balance of payments (zero).
+pub fn v41_to_v42(w: V41) -> GameWorld {
+    GameWorld {
+        scenario: w.scenario,
+        player: w.player,
+        countries: w.countries,
+        census: w.census,
+        econ: w.econ,
+        research: w.research,
+        politics: w.politics,
+        demography: w.demography,
+        borders: w.borders,
+        foreign: w.foreign,
+        influence: w.influence,
+        treaties: w.treaties,
+        war: w.war,
+        education: w.education,
+        independence: w.independence,
+        levers: w.levers,
+        tariffs: w.tariffs,
+        payments: w.payments.into(),
+        reserves: w.reserves,
+        gold: w.gold,
+        capital: Default::default(),
     }
 }
 
@@ -1536,7 +1612,7 @@ pub struct V36 {
     independence: crate::borders::independence::IndependenceState,
     levers: crate::econ::levers::LeversState,
     tariffs: crate::econ::customs::TariffState,
-    payments: crate::econ::payments::PaymentsState,
+    payments: crate::econ::payments::PaymentsBeforeCapital,
     reserves: crate::econ::payments::ReservesState,
 }
 
@@ -1560,9 +1636,10 @@ pub fn v36_to_v37(w: V36) -> GameWorld {
         independence: w.independence,
         levers: w.levers,
         tariffs: w.tariffs,
-        payments: w.payments,
+        payments: w.payments.into(),
         reserves: w.reserves,
         gold: Default::default(),
+        capital: Default::default(),
     }
 }
 
@@ -1586,7 +1663,7 @@ pub struct V37 {
     independence: crate::borders::independence::IndependenceState,
     levers: crate::econ::levers::LeversState,
     tariffs: crate::econ::customs::TariffState,
-    payments: crate::econ::payments::PaymentsState,
+    payments: crate::econ::payments::PaymentsBeforeCapital,
     reserves: crate::econ::payments::ReservesState,
 }
 
@@ -1610,9 +1687,10 @@ pub fn v37_to_v38(w: V37) -> GameWorld {
         independence: w.independence,
         levers: w.levers,
         tariffs: w.tariffs,
-        payments: w.payments,
+        payments: w.payments.into(),
         reserves: w.reserves,
         gold: Default::default(),
+        capital: Default::default(),
     }
 }
 
@@ -1636,7 +1714,7 @@ pub struct V38 {
     independence: crate::borders::independence::IndependenceState,
     levers: crate::econ::levers::LeversState,
     tariffs: crate::econ::customs::TariffState,
-    payments: crate::econ::payments::PaymentsState,
+    payments: crate::econ::payments::PaymentsBeforeCapital,
     reserves: crate::econ::payments::ReservesState,
 }
 
@@ -1660,9 +1738,10 @@ pub fn v38_to_v39(w: V38) -> GameWorld {
         independence: w.independence,
         levers: w.levers,
         tariffs: w.tariffs,
-        payments: w.payments,
+        payments: w.payments.into(),
         reserves: w.reserves,
         gold: Default::default(),
+        capital: Default::default(),
     }
 }
 
@@ -1686,7 +1765,7 @@ pub struct V39 {
     independence: crate::borders::independence::IndependenceState,
     levers: crate::econ::levers::LeversState,
     tariffs: crate::econ::customs::TariffState,
-    payments: crate::econ::payments::PaymentsState,
+    payments: crate::econ::payments::PaymentsBeforeCapital,
     reserves: crate::econ::payments::ReservesState,
 }
 
@@ -1710,8 +1789,9 @@ pub fn v39_to_v40(w: V39) -> GameWorld {
         independence: w.independence,
         levers: w.levers,
         tariffs: w.tariffs,
-        payments: w.payments,
+        payments: w.payments.into(),
         reserves: w.reserves,
         gold: Default::default(),
+        capital: Default::default(),
     }
 }

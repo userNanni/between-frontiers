@@ -241,6 +241,11 @@ const EXCEPTIONS: &[(&str, &str)] = &[
         "the gold standard's simulation (slice 3, gold_standard off); its screen, in the \
          Agendas, is slice 5",
     ),
+    (
+        "SetCapitalControls",
+        "capital controls' simulation (gold standard slice 4, capital_follows_rate off); its \
+         screen, in Government > Money and debt, is slice 5",
+    ),
 ];
 
 fn variants() -> BTreeSet<String> {
