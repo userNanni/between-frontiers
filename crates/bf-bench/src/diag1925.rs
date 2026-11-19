@@ -342,6 +342,50 @@ pub fn main() -> Result<(), String> {
         }
         return Ok(());
     }
+    // Demand left unmet (`BF_DIAG_MET=<years>`): by year, the world's tradable demand that found
+    // no seller (demand times one less the share bought, at base prices) over all tradable
+    // demand, the same for the goods a country imports on net, and the world's output of tradable
+    // goods; to see whether a cut in imports moves demand to the producer at home or leaves it
+    // unmet.
+    if let Ok(years) = std::env::var("BF_DIAG_MET") {
+        let years: i32 = years.parse().unwrap_or(5);
+        let end = Date::new(1925 + years, 1, 1);
+        let mut d = Date::new(1925, 1, 5);
+        let (mut year, mut weeks) = (1925, 0u32);
+        let (mut want, mut short, mut want_imp, mut short_imp, mut made) =
+            (0f64, 0f64, 0f64, 0f64, 0f64);
+        while d < end {
+            d = Date::from_days(d.to_days() + 7);
+            s.sim.run_until(d);
+            let e = &s.world().econ;
+            for m in &e.markets {
+                for (gi, good) in cat.goods.iter().enumerate().filter(|(_, g)| g.tradable) {
+                    let b = good.base_price;
+                    let w = (m.demand[gi] * b).to_f64_lossy().max(0.0);
+                    let met = m.buy_ratio[gi].to_f64_lossy().clamp(0.0, 1.0);
+                    want += w;
+                    short += w * (1.0 - met);
+                    if m.net_import[gi] > laplace_schelling::Fixed::ZERO {
+                        want_imp += w;
+                        short_imp += w * (1.0 - met);
+                    }
+                    made += (m.supply[gi] * b).to_f64_lossy().max(0.0);
+                }
+            }
+            weeks += 1;
+            if d.year != year {
+                println!(
+                    "{year} world: unmet {:.2} % of tradable demand, {:.2} % where imported on net; tradable output {:.4e} a week",
+                    short / want.max(1.0) * 100.0,
+                    short_imp / want_imp.max(1.0) * 100.0,
+                    made / f64::from(weeks)
+                );
+                (want, short, want_imp, short_imp, made) = (0.0, 0.0, 0.0, 0.0, 0.0);
+                (year, weeks) = (d.year, 0);
+            }
+        }
+        return Ok(());
+    }
     // Conservation of trade, week by week (`BF_DIAG_CONSERVE=<years>`): for every tradable
     // good the world's net imports add up to zero, and the margins' transfers between the
     // pools (`week::margin_transfers`) add up to zero, so trade makes no money. Printed by
