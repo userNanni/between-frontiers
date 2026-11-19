@@ -100,7 +100,9 @@ fn every_character_has_a_glyph() {
     let ctx = egui::Context::default();
     bf_ui_kit::install(&ctx);
     // The fonts load on the first frame.
-    let _ = ctx.run_pass(egui::RawInput::default(), |_| {});
+    let mut first = ctx.run_pass(egui::RawInput::default(), |_| {});
+    // No renderer takes the font atlas here: dropped on purpose (a debug build checks it).
+    first.textures_delta.clear();
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/i18n");
     let mut missing = Vec::new();
     for locale in std::fs::read_dir(&root).unwrap() {
