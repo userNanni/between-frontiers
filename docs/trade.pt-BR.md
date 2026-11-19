@@ -480,16 +480,34 @@ porque fazia tecido. No real, a maior parte do comércio é de variedades do mes
   por ele; o próprio produto pesa o que o mercado produz vezes o viés nacional, no índice de preço
   do grupo, sem frete nem tarifa (`trade.home_bias`, na preferência de equilíbrio do mês). A compra
   de fora se divide entre os fornecedores pelos mesmos pesos.
-- **Não move bem em termos líquidos.** O que um mercado manda de um bem é compensado pelo que ele
-  guarda do próprio; só o saldo se fecha fisicamente (`trade::clear_good_flat`). O comércio bruto
-  conta como comércio: o fluxo do par, a tarifa e a influência o leem, e par fechado não tem nenhum.
-- **Calibração.** Só o viés nacional, para o comércio mundial de 1925:
+- **Só o que vai nos dois sentidos.** De cada bem, cada par troca o menor dos dois sentidos: o
+  comércio dentro da mesma indústria é a parte que se sobrepõe (Grubel e Lloyd, 1975); o que um
+  lado quer além disso é saldo, e o comércio de saldos já o troca. Cada par não move bem nem
+  dinheiro em termos líquidos (teste `swap_tests`). O primeiro desenho guardava a compra de um lado
+  só, e o balanço de pagamentos medido (#247) mostrou o efeito: um país pequeno contra os parceiros
+  comprava muito mais variedade do que vendia, e um grande o contrário. Em 1926, saldo de bens em %
+  do PIB:
 
-| `home_bias` | 1 | 3 | 10 | 30 | 36 |
-|---|---|---|---|---|---|
-| comércio mundial / PIB, 1925 | 43,1 % | 32,9 % | 22,8 % | 15,9 % | 15,0 % |
+| | com a compra de um lado só | com os dois sentidos | real (conta corrente) |
+|---|---|---|---|
+| Argentina | −7,3 | −0,3 | superávit (sem série na base Jones-Obstfeld) |
+| Estados Unidos | +5,4 | +2,2 | +0,5 |
+| Alemanha | +3,9 | −0,3 | +1,6 |
+| Reino Unido | −0,9 | −1,4 | −0,4 |
 
-  Fica 36. Real: 14,8 % (Klasing e Milionis, 2014).
+  O "não liquidado" do balanço cai de 3 a 7 % do PIB para menos de 0,6 % nesses países. A
+  Argentina ainda importa mais do que vende (carvão demais e pouca exportação de grão, milho e
+  carne): é dado, pré-requisito declarado de ligar a liquidação (docs/state.pt-BR.md).
+- **Não move bem em termos líquidos.** Só o saldo se fecha fisicamente
+  (`trade::clear_good_flat`). O comércio bruto conta como comércio: o fluxo do par, a tarifa e a
+  influência o leem, e par fechado não tem nenhum.
+- **Calibração.** Só o viés nacional, para o comércio mundial de 1925, com os dois sentidos:
+
+| `home_bias` | 1 | 3 | 6 | 9 | 12 | 36 |
+|---|---|---|---|---|---|---|
+| comércio mundial / PIB, 1925 | 33,9 % | 23,0 % | 17,4 % | 14,8 % | 13,2 % | 9,3 % |
+
+  Fica 9 (era 36 com a compra de um lado só). Real: 14,8 % (Klasing e Milionis, 2014).
 - **Dependência anotada: a distribuição entre países.** Com o mesmo viés para todos, o tamanho do
   país quase não pesa: em 1925 os EUA ficam com 6,7 % do PIB em comércio e o Reino Unido com 14 %,
   contra cerca de 10 % e 40 % reais (ordem de grandeza). O Reino Unido de 1925 importava comida e
