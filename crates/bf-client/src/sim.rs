@@ -291,7 +291,7 @@ fn forces_of(
     // the month.
     let stock = || {
         let w = session.world();
-        let tag = w.player_tag()?;
+        let tag = session.player()?;
         let ci = w.countries.iter().position(|(_, c)| c.tag == tag)?;
         w.war.countries.get(ci).map(crate::forces_view::stock)
     };
@@ -304,6 +304,7 @@ fn forces_of(
             let (mil, peace) = r.war.as_ref()?;
             let mut v = crate::forces_view::read(
                 session.world(),
+                session.player()?,
                 date,
                 &r.catalogue,
                 mil,
@@ -313,7 +314,7 @@ fn forces_of(
             // The army's generation lives only with the war rule.
             if r.switches.war {
                 let w = session.world();
-                let tag = w.player_tag()?;
+                let tag = session.player()?;
                 let ci = w.countries.iter().position(|(_, c)| c.tag == tag)?;
                 // The goods that make a vehicle: what counts as wheels and tracks.
                 let vehicles = peace
@@ -396,9 +397,8 @@ fn works_of(
 ) -> Option<Arc<crate::works_view::WorksView>> {
     let date = session.clock().date;
     let w = session.world();
-    let ci = w
-        .player_tag()
-        .and_then(|t| w.countries.iter().position(|(_, c)| c.tag == t))?;
+    let tag = session.player()?;
+    let ci = w.countries.iter().position(|(_, c)| c.tag == tag)?;
     match last {
         Some(v)
             if v.month == (date.year, date.month)
@@ -408,7 +408,7 @@ fn works_of(
         }
         _ => {
             let r = rules.as_ref()?;
-            crate::works_view::read(w, &r.catalogue, r.tree.as_deref(), date).map(Arc::new)
+            crate::works_view::read(w, tag, &r.catalogue, r.tree.as_deref(), date).map(Arc::new)
         }
     }
 }
@@ -424,7 +424,8 @@ fn war_of(
     let w = session.world();
     match last {
         Some(v)
-            if v.signature == crate::war_view::signature(w, days) && session.player().is_some() =>
+            if v.signature == crate::war_view::signature(w, days)
+                && session.player() == Some(v.me.as_str()) =>
         {
             Some(Arc::clone(v))
         }
@@ -433,6 +434,7 @@ fn war_of(
             let front = rules.war.as_ref().map(|(m, _)| &m.rules.front);
             crate::war_view::read(
                 w,
+                session.player()?,
                 setup,
                 rules.politics.as_deref(),
                 front,
@@ -482,8 +484,10 @@ fn tariffs_of(
     };
     let (w, date) = (session.world(), session.clock().date);
     match last {
-        Some(v) if crate::tariff_view::fresh(v, w, date, &src) => Some(Arc::clone(v)),
-        _ => crate::tariff_view::read(w, date, &src).map(Arc::new),
+        Some(v) if crate::tariff_view::fresh(v, session.player()?, w, date, &src) => {
+            Some(Arc::clone(v))
+        }
+        _ => crate::tariff_view::read(w, session.player()?, date, &src).map(Arc::new),
     }
 }
 
@@ -504,7 +508,7 @@ fn agreements_of(
         }
         _ => {
             let negotiation = rules.as_ref().is_some_and(|r| r.switches.negotiation);
-            crate::agreements_view::read(w, year, negotiation).map(Arc::new)
+            crate::agreements_view::read(w, session.player()?, year, negotiation).map(Arc::new)
         }
     }
 }
@@ -541,11 +545,11 @@ fn treaty_table_of(
     match last {
         Some(v)
             if v.signature == crate::treaty_view::signature(session.world(), date)
-                && session.player().is_some() =>
+                && session.player() == Some(v.me.as_str()) =>
         {
             Some(Arc::clone(v))
         }
-        _ => crate::treaty_view::read(session.world(), cat, date).map(Arc::new),
+        _ => crate::treaty_view::read(session.world(), session.player()?, cat, date).map(Arc::new),
     }
 }
 
@@ -587,9 +591,12 @@ fn crises_of(
     let setup = r.crisis.as_deref()?;
     let sig = crate::crisis_view::signature(session.world());
     match last {
-        Some(v) if v.signature == sig && session.player().is_some() => Some(Arc::clone(v)),
+        Some(v) if v.signature == sig && session.player() == Some(v.me.as_str()) => {
+            Some(Arc::clone(v))
+        }
         _ => crate::crisis_view::read(
             session.world(),
+            session.player()?,
             Some(setup),
             r.war.as_ref().map(|(m, _)| m.as_ref()),
         )
@@ -614,6 +621,7 @@ fn draft_of(
     let r = rules.as_ref()?;
     crate::crisis_view::weigh_draft(
         session.world(),
+        session.player()?,
         r.crisis.as_deref(),
         r.war.as_ref().map(|(m, _)| m.as_ref()),
         target,
@@ -793,9 +801,8 @@ fn snapshot_of(
 /// The player's purchases lever (D3), read with the government's view.
 fn purchases_of(session: &Session, rules: &Rules) -> Option<bf_sim::econ::levers::PurchasesView> {
     let w = session.world();
-    let ci = w
-        .player_tag()
-        .and_then(|t| w.countries.iter().position(|(_, c)| c.tag == t))?;
+    let tag = session.player()?;
+    let ci = w.countries.iter().position(|(_, c)| c.tag == tag)?;
     let m = w.econ.markets.get(ci)?;
     Some(bf_sim::econ::levers::purchases_view(
         m,

@@ -130,8 +130,7 @@ pub fn signature(world: &GameWorld, year: i32) -> Signature {
 }
 
 /// The player's agreements; `None` without a player or without any agreement on record.
-pub fn read(world: &GameWorld, year: i32, can_denounce: bool) -> Option<AgreementsView> {
-    let me = world.player_tag()?;
+pub fn read(world: &GameWorld, me: &str, year: i32, can_denounce: bool) -> Option<AgreementsView> {
     let t = &world.treaties;
     if t.agreements.is_empty() && t.ended.is_empty() {
         return None;

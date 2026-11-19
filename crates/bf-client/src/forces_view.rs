@@ -239,13 +239,13 @@ fn f(x: Fixed) -> f64 {
 /// The player's forces; `None` without a player or without forces.
 pub fn read(
     world: &GameWorld,
+    tag: &str,
     date: Date,
     cat: &Catalogue,
     military: &Military,
     peace: &PeaceRules,
     wage_floor: bool,
 ) -> Option<ForcesView> {
-    let tag = world.player_tag()?;
     let ci = world.countries.iter().position(|(_, c)| c.tag == tag)?;
     let c = world.war.countries.get(ci)?;
     let m = world.econ.markets.get(ci)?;
