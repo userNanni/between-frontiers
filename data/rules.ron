@@ -82,8 +82,8 @@
     // Gross trade (`docs/trade.pt-BR.md`, section 14): every market buys abroad the share of
     // what it both makes and uses that its preferences give the foreign sellers against its own
     // product (Armington), on top of its shortage. Needs `trade_by_pair`. Off: only shortages
-    // and surpluses trade.
-    trade_gross: false,
+    // and surpluses trade. On since the owner's decision V1 (world trade near 15 % of GDP in 1925).
+    trade_gross: true,
     // The war on land in the tick (`docs/war.pt-BR.md`, "A guerra no tick"): fronts, combat,
     // advance and control. Needs `forces`. Off: a declared war only mobilizes.
     war: false,
