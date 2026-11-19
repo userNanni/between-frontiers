@@ -1880,6 +1880,77 @@ tick, terra, mar e ar juntos).
 | S4 | Alvo do bombardeio | o jogador escolhe a classe de alvo (indústria, transporte e combustível, cidades) | alvo automático pela indústria de guerra do inimigo |
 | S5 | Ar | aviões repartidos pela regra entre as frentes; o jogador só escolhe o alvo estratégico | o jogador designa cada ala |
 
+## Mar e ar mínimos (fatia C2, feito, atrás de `war`)
+
+O recorte combinado com o orquestrador (2026-11-19). O código está em `war/sea.rs`, no ar de
+`fight_week` e na rota de `colonial::route_cut`; o save é o 31 (`WarState::sea`). Tudo roda só
+com uma guerra aberta: com `war` ligada e em paz, o custo é zero.
+
+**Frotas.**
+- Cada país em guerra põe a marinha numa zona, com a missão fixa "controlar".
+- A **zona de saída** de um país é a zona mais presente nas rotas mais curtas dele até os portos
+  dos outros países. A da Alemanha é o mar do Norte.
+- Se a força de superfície do país é maior que a do inimigo principal, a frota vai à zona de
+  saída do inimigo e bloqueia. Se é menor, fica na própria zona de saída, como frota em potência,
+  sem buscar batalha.
+- O comando do jogador (S1, missão por zona) vem na fatia seguinte. Até lá, a janela "Guerra"
+  diz onde está a frota, por quê e quem ela bloqueia (`FleetLine`).
+
+**Batalha e controle.**
+- Numa zona com frotas de países em guerra entre si, o mais forte presente e os aliados dele
+  enfrentam os inimigos presentes com `naval_step`.
+- Saem das formações os navios afundados e a avaria dos que ficam à tona, como fração de navio.
+  O navio avariado fica fora de ação, e a reposição é paga pelas compras do estaleiro.
+- Controla a zona quem fica com mais poder de superfície no fim da semana.
+- O combustível ainda não é seguido: o suprimento é cheio.
+
+**Bloqueio, por par.**
+- O par (B, X) fica cortado quando o caminho mais barato entre os dois é por mar
+  (`Geography::by_sea`) e nenhuma rota marítima dos portos de B chega aos de X com as zonas que
+  os inimigos de B controlam fechadas (`SeaGraph::reach`).
+- Par por terra não fecha. Par com rota livre também não.
+- A leitura é `war::fight::blockaded_pairs(world)`; o comércio fecha e reabre o par
+  (`feat/embargo-war`, do thread do comércio). Para a tela, `blockaded(world)` dá (A, B).
+- Os pares de quem está em guerra fecham pelo CT7 (`war_pairs`), e por isso não entram aqui.
+
+**Desembarque colonial.** Os homens só desembarcam se houver rota marítima aberta dos portos
+metropolitanos até o porto mantido, sem passar por zona que o inimigo controla. Com a rota
+cortada, nada desembarca, e a tela da expedição diz onde: "a rota Marselha–Argel está cortada em
+Mediterrâneo ocidental".
+- A capacidade continua a dos portos.
+- As forças de 1925 não têm navio `transport`: a tropa ia em mercantes requisitados, e a marinha
+  mercante não está modelada.
+- A capacidade dos transportes entra quando houver navio de transporte ou marinha mercante.
+
+**Ar em terra.**
+- Os aviões de cada país se repartem igualmente pelos segmentos dele.
+- Em cada segmento, `air_step` dá a superioridade, que entra no termo `air` do `LandSide`, no
+  lugar do 0,5 neutro (peso `air_weight`, 25%). As perdas saem das formações.
+- O ataque ao solo somado ao fogo fica de fora: o poder aéreo está em valor de equipamento, o
+  fogo de terra em `fire_per_unit`, e não há conversão calibrada entre os dois.
+
+**Neutros.** O bloqueio corta o comércio do bloqueado com terceiros. Nesta fatia não acontece nada
+entre o bloqueador e o neutro prejudicado: nem relação, nem reputação, nem causa de guerra (os
+Estados Unidos em 1917). Fica como entrada da fase 6.
+
+**Conferências** (`tests/war_sea.rs`, mundo de 1925):
+
+| Caso | O que deu |
+|---|---|
+| Bloqueio da Alemanha (guerra GBR × GER) | O Reino Unido, mais forte, fica no mar do Norte, a saída da Alemanha, e o controla. Corta 51 dos 61 pares que o `tests/blockade.rs` fecha à mão (todo parceiro cujo caminho mais barato até a Alemanha é por mar). Ficam abertos, pelo Báltico e pelo Kattegat: Danzig, Polônia, Lituânia, Letônia, Estônia, Finlândia, Suécia, Noruega, Dinamarca e URSS. Alemanha–Suécia aberta é o caso do teste. O tamanho do erro do bloqueio binário seriam esses 10 pares. A Noruega aberta pelo Kattegat é um limite: na história, o comércio norueguês com a Alemanha passava pelas águas territoriais. |
+| Jutlândia | O mar do Norte fica britânico nas 12 semanas. A frota alemã de Versalhes vai de 16 a 8 navios, e a britânica de 303 a 273. |
+| Ar em terra | A Alemanha de 1925 não tem força aérea (Versalhes). Contra a aviação francesa, o termo de ar alemão fica em 0,819; com a francesa no chão, em 0,840. O avanço alemão muda 0,12 km por segmento-semana. A França de 1940 com a Luftwaffe só se mede quando a Alemanha tiver aviação (ordens A2, ou um mundo de 1939). |
+| Rota colonial | Com a Itália em guerra com a França e controlando o Mediterrâneo ocidental, a rota Marselha–Argel fica cortada nessa zona, e a expedição para. |
+| Paz | Sem guerra, o mar fica vazio, e `blockaded_pairs` também. |
+
+**Custo de CPU.** Na grande guerra de um ano (`a_great_war_costs_under_a_seventh_of_the_tick`:
+Alemanha, Itália, Hungria e URSS contra França, Reino Unido, Polônia, Tchecoslováquia e
+Iugoslávia):
+- forças com mar e ar: 64,6 ms de 2.154 ms dos sistemas, ou 3,0%;
+- sem mar e ar (o ramo da guerra colonial): 57,7 ms, ou 2,2%;
+- ficaram 7 frotas, 5 zonas controladas e 89 pares de comércio cortados;
+- a meta da decisão 6 é ficar abaixo de 15%.
+
 ## O que falta para ligar ao tick
 
 O contrato, os dados e as funções estão prontos e testados. Nada roda ainda. Quando a fase 5

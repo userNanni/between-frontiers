@@ -82,7 +82,7 @@ impl HashState for SeaWar {
             h.write_u16(f.country);
             h.write_u16(f.zone);
             h.write_u64(f.ships);
-            h.write_u16(f.against.map_or(u16::MAX, |x| x));
+            h.write_u16(f.against.unwrap_or(u16::MAX));
         }
         for list in [&self.control, &self.blockades, &self.cut] {
             h.write_len(list.len());
