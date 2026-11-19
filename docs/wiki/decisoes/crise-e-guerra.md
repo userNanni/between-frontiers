@@ -201,9 +201,25 @@ termo a termo.
 - **Como o jogo funciona por causa disso:** um exército de 2ª geração ganha por atrito, segmento a
   segmento; um de 3ª concentra no ponto fraco rumo ao centro de gravidade. Sem rádio ou sem
   combustível, a 3ª degrada para a 2ª.
-- **Estado:** desenhado; contrato e funções fora do tick no jogo (#64). O combate é a fatia C.
+- **Estado:** no tick com a guerra ligada (#230). A geração lê cinco coisas: a cultura de comando,
+  o treino, o equipamento novo, a motorização e a experiência recente.
 - **Onde está o detalhe:** [`war.pt-BR.md`, "Doutrina"](../../war.pt-BR.md#doutrina-as-gerações-da-guerra)
   e ["Decisões do dono"](../../war.pt-BR.md#decisões-do-dono).
+
+### A cultura de comando vem da tradição de cada país e muda devagar (G7)
+
+- **Decisão:** cada país começa em 1925 com a parcela dos oficiais formados para agir pela intenção,
+  segundo a tradição registrada nas fontes. Essa parcela muda uma turma de oficiais por ano. Uma
+  derrota abre a reforma e acelera a mudança; a troca de regime desgasta o comando.
+- **O que o autor pensou:** o regime não serve de atalho para a cultura de comando: a Alemanha de
+  1939 contradiz esse atalho. O dono escolheu a opção (a) em 2026-11-19.
+- **Como o jogo funciona por causa disso:** um país sem tradição registrada parte da metade da
+  alfabetização da metrópole. Pesquisar a guerra blindada passa a doutrina às escolas, e o treino
+  a espalha.
+- **Como é na vida real:** a *Auftragstaktik* prussiana e alemã, e a França de 1940, presa à batalha
+  metódica.
+- **Estado:** decidido (2026-11-19); no #230.
+- **Onde está o detalhe:** [`war.pt-BR.md`, "Cultura de comando"](../../war.pt-BR.md).
 
 ### Tipos com gerações, em poucos tipos
 

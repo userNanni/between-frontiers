@@ -1332,7 +1332,7 @@ chave `war` ligada; com ela desligada nada disso existe e o hash não muda.
 
 | Termo | Peso | De onde sai no jogo | O que o jogador faz em paz |
 |---|---|---|---|
-| Oficiais formados para agir pela intenção | 350 | com tradição registrada (G7, rascunho): a parcela do corpo de oficiais formada na doutrina, que muda uma turma por ano; sem tradição: metade da alfabetização da metrópole | pesquisar `armored_warfare` (a escola passa a ensinar a doutrina) e treinar (a turma se espalha na medida do treino); alfabetizar, para quem não tem tradição |
+| Oficiais formados para agir pela intenção | 350 | com tradição registrada (G7, decidida pelo dono em 2026-11-19): a parcela do corpo de oficiais formada na doutrina, que muda uma turma por ano; sem tradição: metade da alfabetização da metrópole | pesquisar `armored_warfare` (a escola passa a ensinar a doutrina) e treinar (a turma se espalha na medida do treino); alfabetizar, para quem não tem tradição |
 | Treino | 200 | treino médio das formações de terra | manter o exército treinado (o recruta novo dilui o treino) |
 | Rádio | 100 | parcela dos homens em geração de equipamento posterior à de 1925 | modernizar (a sobra do orçamento militar troca a geração, fatia A) |
 | Motorização | 150 | parcela dos homens em roda ou lagarta | encomendar formações mecanizadas e blindadas (A2) |
@@ -1351,7 +1351,7 @@ francês de 1940, sob democracia, lutava a batalha metódica do centro.
 
 Sem combustível (abaixo da metade do pedido) ele luta como de segunda.
 
-**Cultura de comando (G7, recomendação (a), à espera do dono).** O dado é o de 1925, a
+**Cultura de comando (G7: o dono escolheu (a) em 2026-11-19).** O dado é o de 1925, a
 instituição daquele ano, com fonte em `rules.ron`:
 - Alemanha 700: a Reichswehr de Seeckt;
 - Reino Unido 400;
