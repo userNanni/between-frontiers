@@ -212,8 +212,8 @@ war-term-training = Training
 war-term-supply = Supply
 war-term-terrain = Terrain
 war-term-air = Air
-war-into-theirs = We advanced { $share } into their state; at 100 % it passes to us.
-war-into-ours = They advanced { $share } into our state; at 100 % it passes to them.
+war-into-theirs = We advanced { $share } into their state; at 100% it passes to us.
+war-into-ours = They advanced { $share } into our state; at 100% it passes to them.
 war-segment-density = Front of { $width } km · { $ours } men per km us, { $theirs } them · full line: { $full } per km
 war-segment-density-tip = The denser the defender, the slower the attacker advances: against a full line, at the base speed; against a line five times as dense, 25 times slower; against a thin line, up to 1.75 times faster. The width is the border between the two states.
 war-segment-dug = Dug in { $share }: still for { $weeks ->
@@ -285,17 +285,33 @@ war-wreck-theirs = { $state } (theirs): { $share } of the buildings destroyed, {
 }
 
 composition-title = Composition of the forces
-composition-basis = Once a year the infantry changes equipment toward the target share on wheels and on tracks: at most 2 % of the land men a year, paid from what the military budget leaves. The army does not grow: the men are the same, with the training they had.
-composition-now = Now: { $wheels } on wheels and { $tracks } on tracks, counting the conversions under way.
-composition-target-rule = Target by the historical rule: { $wheels } on wheels and { $tracks } on tracks.
-composition-target-fixed = Target fixed by the government: { $wheels } on wheels and { $tracks } on tracks.
+composition-basis = Once a year the infantry changes equipment toward the target share on wheels and on tracks: at most 2% of the land men a year, paid from what the military budget leaves. The army does not grow: the men are the same, with the training they had.
 composition-target-none = No target: the country does not make the infantry's equipment yet.
-composition-converting = Converting to { $unit }: { $done } of { $of } thousand men.
-composition-stalled = Stalled for { $weeks } weeks: no room left in the military budget or no vehicles on the market.
+composition-wheels-now = On wheels today
+composition-tracks-now = On tracks today
+composition-target = Composition target
+composition-rule-line = Historical rule: { $wheels } on wheels and { $tracks } on tracks, by what the country can already make.
+composition-fixed-note = The government fixes both shares; the conversion keeps its pace, only the destination changes.
+composition-step-tip = One percentage point per click; the two shares add up to at most 100%.
+composition-converting = Converting to { $unit }
+composition-converting-done = { $done } of { $of } thousand men
+composition-stall-maker = Stalled for { $count ->
+    [one] { $weeks } week
+   *[other] { $weeks } weeks
+}: the country cannot make this type's equipment yet.
+composition-stall-room = Stalled for { $count ->
+    [one] { $weeks } week
+   *[other] { $weeks } weeks
+}: the military ceiling of state purchases all goes to supplying the forces and the orders; nothing is left to convert.
+composition-stall-infantry = Stalled for { $count ->
+    [one] { $weeks } week
+   *[other] { $weeks } weeks
+}: no infantry is left at home to convert.
+composition-stall-prices = Stalled for { $count ->
+    [one] { $weeks } week
+   *[other] { $weeks } weeks
+}: what is left of the military budget does not pay for the vehicles at today's market prices.
 composition-no-wheels = No type on wheels the country can equip: the target's part on wheels stays unconverted.
 composition-no-tracks = No type on tracks the country can equip: the target's part on tracks stays unconverted.
-composition-rule = Historical rule
-composition-fixed = Fixed by the government
 composition-wheels = On wheels
 composition-tracks = On tracks
-composition-apply = Apply
