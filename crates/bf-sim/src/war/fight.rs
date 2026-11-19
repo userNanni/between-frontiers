@@ -291,11 +291,20 @@ pub fn war_pairs(world: &GameWorld) -> Vec<(u16, u16)> {
     out
 }
 
-/// The blockades at sea this week, (blockader, blockaded), sorted: the trade closes the
-/// blockaded country's pairs whose cheapest route runs by sea (owner's decision CT7; the trade
-/// reads it with `war_pairs`). Empty until the war at sea (slice C2) sets who holds the sea lanes
-/// of whom.
+/// The blockades at sea this week, (blockader, blockaded), sorted: who holds the sea lanes of
+/// whom, for the screen. The trade closes the pairs of [`blockaded_pairs`]. Empty until the war
+/// at sea (slice C2).
 pub fn blockaded(_world: &GameWorld) -> Vec<(u16, u16)> {
+    Vec::new()
+}
+
+/// The trade pairs a blockade cuts this week, (blockaded, partner) with the lower index first,
+/// sorted and without repeats: the pairs whose cheaper way is by sea (`Geography::by_sea`) and
+/// whose every sea route passes a zone the blockader controls (`SeaGraph`, with those zones
+/// closed). A pair that goes by land, or that has a free route (Germany and Sweden by the
+/// Baltic while the North Sea is British), stays open. The trade closes and reopens them
+/// (owner's decision CT7). Empty until the war at sea (slice C2).
+pub fn blockaded_pairs(_world: &GameWorld) -> Vec<(u16, u16)> {
     Vec::new()
 }
 
