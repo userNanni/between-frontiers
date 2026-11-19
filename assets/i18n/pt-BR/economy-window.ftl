@@ -17,3 +17,21 @@ economy-col-states = Estados
 economy-levels-building = { $levels } +{ $building }
 economy-none = Nenhum prédio neste setor.
 economy-goto-state = Abrir o painel do estado
+economy-tab-methods = Métodos
+methods-basis = Como cada prédio produz. Hoje vale a regra histórica: os donos escolhem o método que mais rende sobre o capital e trocam uma vez por ano, se outro render 10 % mais, pagando o equipamento com o fundo de investimento do país. Valores por nível e por ano, aos preços deste mês.
+methods-none = O país não tem prédio com mais de um método.
+methods-kind = { $building } · { $levels }
+methods-best = Os donos escolheriam hoje, onde o estado tiver transporte e energia: { $method }
+methods-best-none = Nenhum método roda hoje: falta insumo no mercado.
+methods-in-use = em { $levels } níveis, { $states ->
+        [one] 1 estado
+       *[other] { $states } estados
+    }
+methods-owners-pick = escolha dos donos hoje
+methods-needs = pede { $tech }
+methods-not-yet = ainda não disponível
+methods-quantity = { $n } { $what }
+methods-inputs = Usa: { $v }
+methods-outputs = Produz: { $v }
+methods-jobs = Emprega: { $v }
+methods-profit = Lucro dos donos por nível: { $v } por ano

@@ -19,6 +19,7 @@ pub mod laws_view;
 pub mod ledger_view;
 pub mod live;
 pub mod map;
+pub mod methods_view;
 pub mod nuclear_view;
 pub mod orders_view;
 pub mod paths;

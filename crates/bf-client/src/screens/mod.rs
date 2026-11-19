@@ -24,6 +24,7 @@ pub mod lens_panel;
 pub mod levers;
 pub mod liberate;
 pub mod menu;
+pub mod methods;
 pub mod money;
 pub mod nuclear;
 pub mod outliner;

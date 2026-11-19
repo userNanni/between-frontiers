@@ -29,6 +29,8 @@ const SCROLL_GUTTER: f32 = 14.0;
 pub enum Tab {
     #[default]
     Buildings,
+    /// The production methods of each building (`methods.rs`).
+    Methods,
 }
 
 /// A column the buildings table sorts by.
@@ -92,6 +94,8 @@ pub struct Window {
     /// A state line was clicked: the map state id to show (the game selects it and closes the
     /// window).
     pub goto: Option<u16>,
+    /// The methods tab's building.
+    pub methods_kind: Option<u16>,
 }
 
 #[derive(Default)]
@@ -134,12 +138,14 @@ fn sort_value(k: &KindRow, c: Column) -> f64 {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn show(
     ui: &mut Ui,
     screen: Rect,
     i18n: &I18n,
     world: Option<&crate::world::World>,
     view: Option<&BuildingsView>,
+    methods: Option<&crate::methods_view::MethodsView>,
     window: &mut Window,
     place: &mut crate::hud::WindowPlace,
 ) -> Response {
@@ -156,8 +162,14 @@ pub fn show(
         ui.horizontal(|ui| {
             bf_ui_kit::title(ui, &i18n.tr("economy-title"));
             ui.add_space(space::MD);
-            let options = vec![(Tab::Buildings, i18n.tr("economy-tab-buildings"))];
-            let tips = [Tip::Item('Z', "economy.tab.buildings".into(), "1")];
+            let options = vec![
+                (Tab::Buildings, i18n.tr("economy-tab-buildings")),
+                (Tab::Methods, i18n.tr("economy-tab-methods")),
+            ];
+            let tips = [
+                Tip::Item('Z', "economy.tab.buildings".into(), "1"),
+                Tip::Item('Z', "economy.tab.methods".into(), "2"),
+            ];
             keys::segmented(ui, &mut window.tab, &options, &tips);
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                 let label = i18n.tr("gov-close");
@@ -175,6 +187,12 @@ pub fn show(
         };
         match window.tab {
             Tab::Buildings => buildings(ui, i18n, world, v, window),
+            Tab::Methods => match methods {
+                Some(m) => super::methods::show(ui, i18n, m, &mut window.methods_kind),
+                None => {
+                    bf_ui_kit::muted(ui, &i18n.tr("economy-waiting"));
+                }
+            },
         }
     });
     out.place_done |= super::window_grip(ui, "economy", rect, place, MIN_WINDOW);
