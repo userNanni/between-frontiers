@@ -303,6 +303,34 @@ Recomendação: 1, com 3 para Andorra. É o processo real e serve além dos micr
   código (o PIB, o caixa e o fundo de cada país são do mercado). Separar os dois é uma refatoração
   grande, para quatro países com menos de 60 mil pessoas.
 
+## 14. O volume do comércio
+
+**O problema.** Com o comércio por par (#203), o comércio mundial (exportação mais importação) era
+de 2,9 % do PIB em 1925, contra 14,8 % reais (Klasing e Milionis, 2014), e a margem ficava com 55 a
+61 % do valor comerciado (`BF_DIAG_VOLUME=2`). Duas causas, uma por passo (decisão V1 do dono,
+2026-11-18, opção A).
+
+**Passo 1, o alcance a 100 %.** Só 85 % do saldo de cada mercado chegava ao mundo por semana
+(`trade.reach`). O valor vinha do fundo comum da fase 1 (#29), "para que o preço local ainda leve
+parte do sinal (distância, portos, hábitos)", antes de existirem o frete e a preferência pelo
+parceiro. Eles levam esse sinal agora, e os 15 % restantes eram falta e sobra que voltavam toda
+semana: a diferença de preço virava margem, e o comércio caía à metade. Com o alcance a 100 %:
+
+| 1925 | alcance 85 % | alcance 100 % |
+|---|---|---|
+| comércio mundial / PIB | 2,9 % | 6,4 % |
+| margem / comércio | 55 % | 11 % |
+| variação semanal do preço, mediana (GBR, ARG, ITA, 2.º ano) | 0,10 a 0,15 % | 0,10 % |
+
+O preço não oscila mais por isso (`BF_DIAG_WEEKLY`): a maior variação semanal média de um bem cai
+na Argentina e na Itália e fica parecida no Reino Unido. No século, o PIB mundial cresce mais,
+porque o que cada mercado produz chega a quem compra: 120 contra 92 trilhões em 2022 (133 reais),
+erro logarítmico médio do PIB por habitante de 1,07 para 0,86 e correlação de ranking de 0,54 para
+0,59 em 2022. O meio do século passa do real: 16,3 trilhões em 1955 contra 14,0 antes e 10,9 reais.
+
+**Passo 2, o comércio bruto** (`trade_gross`, desligado): um mercado só comerciava o saldo, e
+quem produz e consome o mesmo bem não importava nada dele. Vem em PR próprio.
+
 ## Fontes
 
 - Gallaway, M. P.; McDaniel, C. A.; Rivera, S. A. "Short-run and long-run industry-level estimates
