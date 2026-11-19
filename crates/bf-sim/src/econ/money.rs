@@ -858,6 +858,7 @@ fn treaty_service(
 
 /// Prices, the central bank and the bonds sold at home for one market; returns what is left
 /// for foreign lenders.
+#[allow(clippy::too_many_arguments)]
 fn home_step(
     m: &mut Market,
     act: Activity,
