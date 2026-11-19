@@ -464,6 +464,75 @@ pub struct NuclearRule {
     /// strike: not a draw, a cost the decision weighs (the threat that leaves something to
     /// chance).
     pub escalation_risk_per_week: u32,
+    /// The balance read from the forces (`war::balance`). N3 (to the owner): what an untested
+    /// arsenal counts for the others, per mille.
+    #[serde(default = "nuclear_defaults::opaque_weight")]
+    pub opaque_weight: u32,
+    /// N9 (to the owner): the protectors bound by a defence clause add their forces to the
+    /// protected side (the umbrella).
+    #[serde(default = "nuclear_defaults::umbrella")]
+    pub umbrella: bool,
+    /// Unacceptable damage: this share of the people, per mille, at `killed_per_warhead` each.
+    #[serde(default = "nuclear_defaults::unacceptable_share")]
+    pub unacceptable_share: u32,
+    #[serde(default = "nuclear_defaults::killed_per_warhead")]
+    pub killed_per_warhead: u32,
+    /// Warheads each launcher carries.
+    #[serde(default = "nuclear_defaults::per_bomber")]
+    pub warheads_per_bomber: u32,
+    #[serde(default = "nuclear_defaults::per_missile")]
+    pub warheads_per_missile: u32,
+    #[serde(default = "nuclear_defaults::per_submarine")]
+    pub warheads_per_submarine: u32,
+    /// Shares on alert or at sea, per mille, until the doctrine sets them.
+    #[serde(default)]
+    pub bomber_alert: u32,
+    #[serde(default = "nuclear_defaults::submarine_alert")]
+    pub submarine_alert: u32,
+    /// Share of command that survives a first strike, per mille.
+    #[serde(default = "nuclear_defaults::command")]
+    pub command: u32,
+    /// Interceptors of a missile defence site, and the share of warheads each stops, per mille.
+    #[serde(default = "nuclear_defaults::interceptors")]
+    pub interceptors_per_site: u32,
+    #[serde(default = "nuclear_defaults::interceptor_kill")]
+    pub interceptor_kill: u32,
+}
+
+mod nuclear_defaults {
+    pub fn opaque_weight() -> u32 {
+        500
+    }
+    pub fn umbrella() -> bool {
+        true
+    }
+    pub fn unacceptable_share() -> u32 {
+        250
+    }
+    pub fn killed_per_warhead() -> u32 {
+        185_000
+    }
+    pub fn per_bomber() -> u32 {
+        2
+    }
+    pub fn per_missile() -> u32 {
+        1
+    }
+    pub fn per_submarine() -> u32 {
+        16
+    }
+    pub fn submarine_alert() -> u32 {
+        500
+    }
+    pub fn command() -> u32 {
+        900
+    }
+    pub fn interceptors() -> u32 {
+        100
+    }
+    pub fn interceptor_kill() -> u32 {
+        500
+    }
 }
 
 // ---------------------------------------------------------------------------------------------
