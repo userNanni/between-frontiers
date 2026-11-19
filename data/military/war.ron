@@ -28,9 +28,9 @@
         // Resolution* 42(3)): per tenfold of the killed per million.
         casualties_per_decade: 60,
         duration_per_year: 30,
-        // G8 (to the owner): the duration weighs by the share of the land army committed to the
-        // war, times two, at most whole. Off until the owner answers.
-        duration_by_commitment: false,
+        // G8 (the owner, 2026-11-19): the duration weighs by the share of the land army
+        // committed to the war, times `commitment_factor`, at most whole.
+        duration_by_commitment: true,
         // The weight is the share of the land army committed times this factor, per mille, at
         // most whole: with 3, Vietnam (some 0.36 of the army) weighs whole and the owner's case
         // stands; Malaya (some 0.05) weighs about 0.15.

@@ -1431,9 +1431,10 @@ aplica o reassentamento.
 *Conferência que a fatia deve passar:* a Malásia em reconquista, com o apoio britânico acima de
 300 por mais de 10 anos, sem forçar o número.
 
-**G8, duração pelo empenho (com o dono).** O peso da duração no apoio passa a ser a parcela do
-exército de terra empenhada na guerra × `commitment_factor` (3, em dados), até 1. A regra é geral,
-atrás de `support.duration_by_commitment`, desligada.
+**G8, duração pelo empenho (decidida pelo dono em 2026-11-19, opção A).** O peso da duração no
+apoio passa a ser a parcela do exército de terra empenhada na guerra × `commitment_factor` (3, em
+dados), até 1. A regra é geral, atrás de `support.duration_by_commitment`, ligada dentro de
+`war`.
 - Hoje ela só reduz o peso da metrópole cujas guerras são todas coloniais. Qualquer outra guerra
   empenha o exército inteiro e pesa 1.
 - A Alemanha de 1914–18 não muda.
@@ -1458,7 +1459,7 @@ dosa a expedição; isso fica anotado para a fase 6.
   `player_commands` e na wiki ("O que o jogador decide"). A postura nos segmentos usa o comando de
   sempre.
 
-**Perguntas ao dono, com a recomendação já no dado:**
+**Decididas pelo dono em 2026-11-19, todas na recomendação:**
 - GC1: as formações coloniais desertam pela mobilização (`defect: true`).
 - GC2: o país novo começa em 800 de apoio.
 - GC3: metade das armas no nascimento.

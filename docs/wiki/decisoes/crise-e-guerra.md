@@ -191,14 +191,15 @@ termo a termo.
     guerra, recrutados aos poucos e freados pelas armas.
   - Se a metrópole desiste, entrega o que ainda segura e reconhece o país novo. Se a colônia
     perde, a união a devolve à condição de colônia, e o movimento recomeça em metade da marca.
-- **Perguntas abertas ao dono (com a recomendação já no dado):**
+- **Decidido pelo dono (2026-11-19, todas na recomendação):**
   - GC1: as formações coloniais passam ao país novo pela mobilização;
   - GC2: o país novo começa com 800 de apoio;
   - GC3: metade das armas no nascimento;
   - GC5: o movimento após a reconquista é dado, 500‰ da marca.
-- **Como é na vida real:** a Indonésia de 1945–49 (a república proclamada, a guerra com a Holanda,
-  a Mesa Redonda).
-- **Estado:** decidido (2026-11-18); desenhado com o thread das fronteiras; implementado em rascunho atrás de `war` (GC1, GC2, GC3 e GC5 com o dono).
+- **A duração pesa pelo empenho (G8, decidida, fator 3):** a guerra longa desgasta conforme a
+  parcela do exército de terra empenhada. Uma expedição distante de profissionais pesa pouco; a
+  guerra total pesa inteira. Detalhe em [`war.pt-BR.md`, G8](../../war.pt-BR.md).
+- **Estado:** decidido (2026-11-18 e 2026-11-19); no #241, atrás de `war`.
 - **Onde está o detalhe:** [`war.pt-BR.md`, "Guerra colonial"](../../war.pt-BR.md#guerra-colonial-i3-opção-a-g6) e
   [`borders.pt-BR.md`, seção 11](../../borders.pt-BR.md).
 
