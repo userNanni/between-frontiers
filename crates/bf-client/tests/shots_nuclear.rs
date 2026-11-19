@@ -3,77 +3,16 @@
 //! `cargo test -p bf-client --release --test shots_nuclear -- --ignored`; images in
 //! `target/screenshots/nuclear/`.
 
-use std::path::PathBuf;
+#[path = "common/shots.rs"]
+mod shots;
 
+use bf_client::App;
 use bf_client::app::Transition;
-use bf_client::paths::Paths;
-use bf_client::{App, saves};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
+use shots::*;
 
-fn root() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
-}
-
-fn out_dir() -> PathBuf {
-    let dir = std::env::var_os("BF_SCREENSHOT_DIR")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| root().join("target/screenshots"))
-        .join("nuclear");
-    std::fs::create_dir_all(&dir).unwrap();
-    dir
-}
-
-fn shot(harness: &mut Harness<'_, App>, name: &str) {
-    harness.run_steps(4);
-    let image = harness.render().expect("render");
-    let path = out_dir().join(format!("{name}.png"));
-    image.save(&path).unwrap();
-    println!("screenshot: {}", path.display());
-}
-
-fn harness_sized(user: PathBuf, locale: &str, size: egui::Vec2) -> Harness<'static, App> {
-    std::fs::create_dir_all(&user).unwrap();
-    std::fs::write(
-        user.join("settings.ron"),
-        format!("(locale: \"{locale}\", ui_scale: 100, map_labels: true, autosave: Off)"),
-    )
-    .unwrap();
-    let paths = Paths::new(&root(), user.clone(), user);
-    let mut h = Harness::builder()
-        .with_size(size)
-        .wgpu()
-        .build_eframe(move |cc| App::new(cc, paths));
-    h.set_render_cursor(false);
-    h
-}
-
-/// Writes `session` as a campaign of `tag` named `name`, with `pinned` journal entries.
-fn write_campaign(
-    user: &std::path::Path,
-    session: &bf_sim::game::Session,
-    name: &str,
-    tag: &str,
-    pinned: &[&str],
-) -> saves::Save {
-    let mut save = saves::create(
-        &user.join("saves"),
-        name,
-        1925,
-        laplace_schelling::calendar::Date::new(1925, 1, 1),
-    )
-    .unwrap();
-    save.meta.player = Some(tag.into());
-    save.meta.date = session.clock().date;
-    save.meta.pinned = pinned.iter().map(|p| (*p).to_owned()).collect();
-    std::fs::write(
-        save.dir.join(saves::WORLD_FILE),
-        session.save("test", &save.meta.name).unwrap(),
-    )
-    .unwrap();
-    saves::write(&save).unwrap();
-    save
-}
+const THEME: &str = "nuclear";
 
 fn leader(h: &mut Harness<'_, App>) {
     h.key_press(egui::Key::AltLeft);
@@ -193,7 +132,7 @@ fn nuclear_finish() {
     while usa.clock().date < Date::new(1925, 3, 2) {
         usa.sim.step();
     }
-    let save_prog = write_campaign(&user.join("prog"), &usa, "Programa", "USA", &[]);
+    let save_prog = write_campaign(&user.join("prog"), &usa, "Programa", "USA");
     // The demand, with the American arsenal tested: the Soviet Union reads it whole.
     let mut usa = bf_sim::game::Session::new(
         world(true),
@@ -247,9 +186,9 @@ fn nuclear_finish() {
         sov.sim.step();
     }
     let sov_crisis = sov.world().war.conflicts.crises[0].id;
-    let save_usa = write_campaign(&user.join("usa"), &usa, "Dissuasão", "USA", &[]);
-    let save_sov = write_campaign(&user.join("sov"), &sov, "Teto", "SOV", &[]);
-    let keep = |h: &mut Harness<'_, App>, name: &str| shot(h, name);
+    let save_usa = write_campaign(&user.join("usa"), &usa, "Dissuasão", "USA");
+    let save_sov = write_campaign(&user.join("sov"), &sov, "Teto", "SOV");
+    let keep = |h: &mut Harness<'_, App>, name: &str| shot(h, THEME, name);
     let act = |h: &mut Harness<'_, App>, id: &str| {
         for _ in 0..30 {
             leader(h);
@@ -292,7 +231,7 @@ fn nuclear_finish() {
             "declaration is blocked",
         ),
     ] {
-        let mut h = harness_sized(user.join(format!("prog-{tag}")), locale, size);
+        let mut h = harness(user.join(format!("prog-{tag}")), locale, size);
         let ctx = h.ctx.clone();
         h.state_mut()
             .apply(Transition::Game(save_prog.clone()), &ctx);
@@ -308,7 +247,7 @@ fn nuclear_finish() {
         wait(&mut h);
         keep(&mut h, &format!("261-programme-test-{tag}"));
         // The demand on the Soviet Union: coercion.
-        let mut h = harness_sized(user.join(format!("usa-{tag}")), locale, size);
+        let mut h = harness(user.join(format!("usa-{tag}")), locale, size);
         let ctx = h.ctx.clone();
         h.state_mut()
             .apply(Transition::Game(save_usa.clone()), &ctx);
@@ -326,7 +265,7 @@ fn nuclear_finish() {
         wait(&mut h);
         keep(&mut h, &format!("262-crisis-coerced-{tag}"));
         // The Soviet Union, refused: the ceiling blocks the declaration.
-        let mut h = harness_sized(user.join(format!("sov-{tag}")), locale, size);
+        let mut h = harness(user.join(format!("sov-{tag}")), locale, size);
         let ctx = h.ctx.clone();
         h.state_mut()
             .apply(Transition::Game(save_sov.clone()), &ctx);
