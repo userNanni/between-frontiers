@@ -156,7 +156,7 @@ termo a termo.
 - **Como é na vida real:** Milward (1970) e Occhino, Oosterlinck e White (2008) para a França;
   Harrison (1998) para a devastação; Quinlivan (1995) para a guarnição por mil habitantes.
 - **Estado:** decidido (2026-11-18); regra proposta, a confirmar antes de codar.
-- **Onde está o detalhe:** [`war.pt-BR.md`, "Ocupação"](../../war.pt-BR.md#ocupação-o-que-se-extrai-a-devastação-e-a-guarnição-g3-desenho-para-confirmar).
+- **Onde está o detalhe:** [`war.pt-BR.md`, "Ocupação"](../../war.pt-BR.md#ocupação-o-que-se-extrai-a-devastação-e-a-guarnição-g3-o-dono-decidiu-o1o3-na-recomendada-2026-11-18).
 
 ### Quem desiste é o apoio à guerra, não a exaustão
 
@@ -174,7 +174,7 @@ termo a termo.
   para a fome alemã de 1916–18; Gelpi, Feaver e Reifler (2009) para a expectativa de vitória;
   Reiter e Stam (2002) para o regime.
 - **Estado:** decidido (2026-11-18); regra proposta, a confirmar antes de codar.
-- **Onde está o detalhe:** [`war.pt-BR.md`, "Apoio à guerra"](../../war.pt-BR.md#apoio-à-guerra-g4-desenho-para-confirmar-antes-de-codar).
+- **Onde está o detalhe:** [`war.pt-BR.md`, "Apoio à guerra"](../../war.pt-BR.md#apoio-à-guerra-g4-o-dono-decidiu-a1a3-na-recomendada-2026-11-18).
 
 ### A revolta colonial é guerra, e a colônia vencida é reconquistada
 
