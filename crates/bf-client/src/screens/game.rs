@@ -932,6 +932,7 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
             &shared.i18n,
             shared.world.as_ref(),
             snap.buildings.as_deref(),
+            snap.methods.as_deref(),
             state.economy.as_mut().expect("economy open"),
             &mut place,
         );
