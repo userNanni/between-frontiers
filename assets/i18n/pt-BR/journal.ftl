@@ -169,4 +169,4 @@ journal-revolt-cause = { $owner } recusou a independência e { $country } se pro
 journal-revolt-irregulars = Combatentes irregulares
 journal-revolt-armed = Desses, armados
 journal-revolt-landed = Homens desembarcados pela metrópole
-journal-revolt-switch = Para jogar pelo país novo ou pela metrópole, troque de país no ⋯ da tela de Campanhas.
+journal-revolt-switch = Para jogar pelo país novo ou pela metrópole, troque de país no menu “…” da campanha, na tela de Campanhas.

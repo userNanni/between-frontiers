@@ -4093,7 +4093,7 @@ fn crisis_to_peace_by_keyboard() {
 #[ignore = "needs a GPU (or software Vulkan) and the generated map; run with --ignored"]
 fn demand_screen() {
     // SAFETY: the screenshot tests run one at a time (`RUST_TEST_THREADS=1`).
-    unsafe { std::env::set_var("BF_RULES", "independence") };
+    unsafe { std::env::set_var("BF_RULES", "independence,forces,war") };
     use bf_sim::borders::independence::{Account, Answer, Demand, units_of};
     use laplace_schelling::Fixed;
     use laplace_schelling::calendar::Date;
@@ -5022,6 +5022,195 @@ fn army_generation() {
             dir.join(format!("{name}.png")),
         )
         .unwrap();
+    }
+    let _ = std::fs::remove_dir_all(&user);
+}
+
+/// The colonial war (G6) seen by the metropole: France in March 1925, Algeria revolted in
+/// February (the garrison's states kept, the rest proclaimed as DZA, as the independence writes
+/// it): the Agendas' entry "A country was born in revolt", the war window's expedition with the
+/// men landed against the cap, the irregulars and the goal by the rule, then fixed by key and
+/// stepped up. Portuguese at 1600 × 900, English at 1280 × 720; copies in
+/// `target/screenshots/colonial/`.
+#[test]
+#[ignore = "needs a GPU (or software Vulkan) and the generated map; run with --ignored"]
+fn colonial_war() {
+    use bf_sim::borders::independence::{How, Record};
+    use bf_sim::borders::{Operation, Terms};
+    use bf_sim::game::GameCommand;
+    use laplace_schelling::calendar::Date;
+    // SAFETY: the screenshot tests run one at a time (`RUST_TEST_THREADS=1`).
+    unsafe { std::env::set_var("BF_RULES", "forces,crisis,war") };
+    let user = std::env::temp_dir().join(format!("bf-shots-colonial-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&user);
+    let mut data = bf_sim::data::GameData::load(&root()).expect("game data");
+    data.switches = data.switches.with("forces,crisis,war").expect("switches");
+    let rules = data.rules();
+    let k = rules
+        .fight
+        .as_ref()
+        .and_then(|f| f.colonial.clone())
+        .expect("the colonial rules");
+    let mut s = bf_sim::game::Session::new(
+        data.new_world(),
+        1925,
+        Date::new(1925, 1, 1),
+        2,
+        Some(rules),
+    );
+    s.submit(GameCommand::ChoosePlayer { tag: "FRA".into() });
+    while s.clock().date < Date::new(1925, 2, 3) {
+        s.sim.step();
+    }
+    // Algeria revolts: the garrison's states stay French, the rest secede as DZA.
+    let w = s.world();
+    let fra = w
+        .countries
+        .iter()
+        .position(|(_, c)| c.tag == "FRA")
+        .unwrap() as u16;
+    let states: std::collections::BTreeSet<u16> = k.candidates["DZA"].iter().copied().collect();
+    let regions: Vec<u32> = w
+        .econ
+        .regions
+        .iter()
+        .enumerate()
+        .filter(|(_, r)| states.contains(&r.state) && r.market == fra)
+        .map(|(i, _)| i as u32)
+        .collect();
+    let (_, released) = bf_sim::war::colonial::partition(w, &regions, &k.coastal, k.rules.garrison);
+    let key = |r: u32| {
+        let id = w.econ.regions[r as usize].state;
+        data.border_rules
+            .state_ids
+            .iter()
+            .find(|(_, v)| **v == id)
+            .map(|(k, _)| k.clone())
+            .unwrap()
+    };
+    let released: Vec<String> = released.iter().map(|&r| key(r)).collect();
+    s.submit(GameCommand::Borders {
+        op: Operation::Secede {
+            from: "FRA".into(),
+            states: released,
+            tag: "DZA".into(),
+            overlord: None,
+            signatories: Vec::new(),
+            terms: Terms::default(),
+        },
+    });
+    s.sim.step();
+    s.sim.world_mut().independence.history.push(Record {
+        date: Date::new(1925, 2, 4),
+        unit: "DZA".into(),
+        owner: fra,
+        how: How::Revolt,
+    });
+    while s.clock().date < Date::new(1925, 3, 18) {
+        s.sim.step();
+    }
+    assert!(
+        !s.world().war.conflicts.wars.is_empty(),
+        "the revolt opened a colonial war"
+    );
+    let save = write_campaign(&user.join("save"), &s, "Argélia", "FRA", &[]);
+    let dir = root().join("target/screenshots/colonial");
+    std::fs::create_dir_all(&dir).unwrap();
+    let keep = |h: &mut Harness<'_, App>, name: &str| {
+        shot(h, name);
+        std::fs::copy(
+            out_dir().join(format!("{name}.png")),
+            dir.join(format!("{name}.png")),
+        )
+        .unwrap();
+    };
+    let act = |h: &mut Harness<'_, App>, id: &str| {
+        for _ in 0..10 {
+            leader(h);
+            if let Some(code) = h.state().shared.keys.code_of(id).map(str::to_owned) {
+                for c in code.chars() {
+                    tip(h, egui::Key::from_name(&c.to_string()).expect("key"));
+                }
+                h.key_press(egui::Key::Escape);
+                h.run_steps(3);
+                return;
+            }
+            h.key_press(egui::Key::Escape);
+            h.run_steps(2);
+            h.key_press_modifiers(egui::Modifiers::SHIFT, egui::Key::PageDown);
+            h.run_steps(4);
+        }
+        panic!("no key tip for {id}");
+    };
+    let wait = |h: &mut Harness<'_, App>| {
+        for _ in 0..30 {
+            std::thread::sleep(std::time::Duration::from_millis(25));
+            h.run_steps(1);
+        }
+    };
+    for (locale, size, tag, heading, revolt, men) in [
+        (
+            "pt-BR",
+            egui::vec2(1600.0, 900.0),
+            "pt",
+            "Expedição a",
+            "Um país nasceu em revolta",
+            "Homens a manter lá",
+        ),
+        (
+            "en",
+            egui::vec2(1280.0, 720.0),
+            "en-1280",
+            "Expedition to",
+            "A country born in revolt",
+            "Men to keep there",
+        ),
+    ] {
+        let mut h = harness_sized(user.join(tag), locale, size);
+        let ctx = h.ctx.clone();
+        h.state_mut().apply(Transition::Game(save.clone()), &ctx);
+        wait(&mut h);
+        h.key_press(egui::Key::J);
+        wait(&mut h);
+        // The revolt's entry, in the forces' group, opened.
+        let entry = h
+            .query_all(egui_kittest::kittest::by().label_contains(revolt))
+            .find(|n| n.accesskit_node().role() == egui::accesskit::Role::Button)
+            .expect("the revolt's entry in the Agendas");
+        entry.scroll_to_me();
+        h.run_steps(4);
+        h.query_all(egui_kittest::kittest::by().label_contains(revolt))
+            .find(|n| n.accesskit_node().role() == egui::accesskit::Role::Button)
+            .unwrap()
+            .click();
+        wait(&mut h);
+        keep(&mut h, &format!("280-colonial-agendas-{tag}"));
+        h.key_press(egui::Key::J);
+        h.run_steps(4);
+        h.key_press_modifiers(egui::Modifiers::SHIFT, egui::Key::W);
+        wait(&mut h);
+        let find = |h: &Harness<'_, App>| {
+            h.query_all(egui_kittest::kittest::by().label_contains(heading))
+                .next()
+                .is_some()
+        };
+        assert!(find(&h), "the expedition in the war window");
+        h.query_all(egui_kittest::kittest::by().label_contains(heading))
+            .next()
+            .unwrap()
+            .scroll_to_me();
+        wait(&mut h);
+        keep(&mut h, &format!("281-colonial-expedition-{tag}"));
+        act(&mut h, "war.expedition.fixed");
+        wait(&mut h);
+        act(&mut h, "war.expedition.men.up");
+        wait(&mut h);
+        h.query_all(egui_kittest::kittest::by().label_contains(men))
+            .next()
+            .unwrap()
+            .scroll_to_me();
+        wait(&mut h);
+        keep(&mut h, &format!("282-colonial-expedition-fixed-{tag}"));
     }
     let _ = std::fs::remove_dir_all(&user);
 }

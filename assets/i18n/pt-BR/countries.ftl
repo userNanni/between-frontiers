@@ -394,7 +394,7 @@ country-LBN-capital = Beirute
 
 country-VNMX = Império do Vietnã
     .article = o
-country-VNMX-capital = Huế
+country-VNMX-capital = Hué
 
 country-KHMX = Reino do Kampuchea
     .article = o

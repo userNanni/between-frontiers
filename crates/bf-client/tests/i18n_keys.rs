@@ -92,3 +92,110 @@ fn every_state_has_a_name() {
         assert!(missing.is_empty(), "{locale} lacks names for: {missing:?}");
     }
 }
+
+/// Every character of every text in every locale has a glyph in the game's fonts: a character
+/// none of them draws shows as a box on screen (the "⋯" of an early text of the colonial war).
+#[test]
+fn every_character_has_a_glyph() {
+    let ctx = egui::Context::default();
+    bf_ui_kit::install(&ctx);
+    // The fonts load on the first frame.
+    let mut first = ctx.run_pass(egui::RawInput::default(), |_| {});
+    // No renderer takes the font atlas here: dropped on purpose (a debug build checks it).
+    first.textures_delta.clear();
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/i18n");
+    let mut missing = Vec::new();
+    for locale in std::fs::read_dir(&root).unwrap() {
+        let locale = locale.unwrap().path();
+        for file in std::fs::read_dir(&locale).unwrap() {
+            let file = file.unwrap().path();
+            if file.extension().is_none_or(|x| x != "ftl") {
+                continue;
+            }
+            let text = std::fs::read_to_string(&file).unwrap();
+            for (n, line) in text.lines().enumerate() {
+                if line.trim_start().starts_with('#') {
+                    continue;
+                }
+                for c in line.chars() {
+                    let font = egui::FontId::proportional(14.0);
+                    let has = ctx.fonts_mut(|f| f.has_glyph(&font, c));
+                    if !has {
+                        missing.push(format!(
+                            "{}:{}: {c:?} (U+{:04X})",
+                            file.display(),
+                            n + 1,
+                            c as u32
+                        ));
+                    }
+                }
+            }
+        }
+    }
+    assert!(missing.is_empty(), "no glyph for:\n{}", missing.join("\n"));
+}
+
+/// No text a player reads names an owner's decision by its code (O3, G8, N1, CT6…): the code
+/// means nothing on screen; the text says what the rule is.
+#[test]
+fn no_text_names_a_decision_code() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/i18n");
+    let prefixes = ["GC", "PO", "CT", "O", "G", "N", "D", "A"];
+    let mut found = Vec::new();
+    for locale in std::fs::read_dir(&root).unwrap() {
+        for file in std::fs::read_dir(locale.unwrap().path()).unwrap() {
+            let file = file.unwrap().path();
+            if file.extension().is_none_or(|x| x != "ftl") {
+                continue;
+            }
+            let text = std::fs::read_to_string(&file).unwrap();
+            for (n, line) in text.lines().enumerate() {
+                if line.trim_start().starts_with('#') {
+                    continue;
+                }
+                // A word made of a prefix and one or two digits: "O3", "G8", "CT6", "D13".
+                let words = line.split(|c: char| !c.is_ascii_alphanumeric());
+                for w in words {
+                    let code = prefixes.iter().any(|p| {
+                        w.strip_prefix(p).is_some_and(|d| {
+                            (1..=2).contains(&d.len()) && d.chars().all(|c| c.is_ascii_digit())
+                        })
+                    });
+                    if code {
+                        found.push(format!("{}:{}: {w}", file.display(), n + 1));
+                    }
+                }
+            }
+        }
+    }
+    assert!(
+        found.is_empty(),
+        "decision codes in texts:\n{}",
+        found.join("\n")
+    );
+}
+
+/// English writes the percent sign against the number ("12.5%"), as `gov-pct` does.
+#[test]
+fn english_percentages_have_no_space() {
+    let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/i18n/en");
+    let mut found = Vec::new();
+    for file in std::fs::read_dir(&dir).unwrap() {
+        let file = file.unwrap().path();
+        let text = std::fs::read_to_string(&file).unwrap();
+        for (n, line) in text.lines().enumerate() {
+            let spaced = line.contains("} %")
+                || line
+                    .char_indices()
+                    .any(|(i, c)| c.is_ascii_digit() && line[i + 1..].starts_with(" %"));
+            if spaced {
+                found.push(format!("{}:{}", file.display(), n + 1));
+            }
+        }
+    }
+    assert!(
+        found.is_empty(),
+        "a space before % in English:\n{}",
+        found.join("\n")
+    );
+}
