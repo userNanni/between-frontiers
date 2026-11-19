@@ -366,6 +366,17 @@ impl GameData {
                 terrain: self.state_terrains(),
                 river: self.river_borders(),
                 cold: self.cold_states(),
+                width_km: self
+                    .war
+                    .as_ref()
+                    .and_then(|w| w.borders.as_ref())
+                    .map(|b| {
+                        b.borders
+                            .iter()
+                            .map(|x| ((x.a, x.b), Fixed::from_int(i64::from(x.km))))
+                            .collect()
+                    })
+                    .unwrap_or_default(),
             })
         });
         crate::game::Rules {

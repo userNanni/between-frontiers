@@ -945,3 +945,46 @@ pub fn v25_to_v26(w: V25) -> GameWorld {
         levers: w.levers,
     }
 }
+
+/// Version 26: the war on land (#206), before the entrenchment of the fronts.
+#[derive(Deserialize)]
+pub struct V26 {
+    scenario: String,
+    player: Option<Id<Country>>,
+    countries: Table<Country, CountryState>,
+    census: Vec<CensusRecord>,
+    econ: crate::econ::Economy,
+    research: crate::research::ResearchState,
+    politics: crate::polity::PoliticsState,
+    demography: crate::demography::DemographyState,
+    borders: crate::borders::BordersState,
+    foreign: crate::foreign_stakes::ForeignState,
+    influence: crate::influence::InfluenceState,
+    treaties: crate::treaty::TreatyState,
+    war: crate::war::state::WarStateBeforeStill,
+    education: crate::demography::education::EducationState,
+    independence: crate::borders::independence::IndependenceState,
+    levers: crate::econ::levers::LeversState,
+}
+
+/// 26 → 27: the entrenchment of the fronts (`Fighting::still`), empty.
+pub fn v26_to_v27(w: V26) -> GameWorld {
+    GameWorld {
+        scenario: w.scenario,
+        player: w.player,
+        countries: w.countries,
+        census: w.census,
+        econ: w.econ,
+        research: w.research,
+        politics: w.politics,
+        demography: w.demography,
+        borders: w.borders,
+        foreign: w.foreign,
+        influence: w.influence,
+        treaties: w.treaties,
+        war: w.war.into(),
+        education: w.education,
+        independence: w.independence,
+        levers: w.levers,
+    }
+}

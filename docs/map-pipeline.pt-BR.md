@@ -488,6 +488,23 @@ Mar Amarelo. Quando o porto contar (fase 4), o gelo pode ir para o porto.
   - o Panamá abre em 1914, e Magalhães tem o Horn atrás.
 - Duas rodadas do gerador dão os mesmos bytes.
 
+## Fronteiras entre estados
+
+`bf-mapgen borders` grava em `assets/map/borders.ron` o comprimento em km da fronteira entre
+cada par de estados vizinhos. É a largura de um segmento de frente, para a densidade da defesa
+(`docs/war.pt-BR.md`, "Ritmo da frente"). Ele lê só a `provinces.png` e a `provinces.ron`, sem
+fonte bruta:
+
+```bash
+cargo run -p bf-mapgen --release -- borders   # gera assets/map/borders.ron (~1 s)
+```
+
+Cada aresta de pixel entre dois estados conta o seu comprimento no chão: uma aresta vertical
+vale a altura da sua linha, e uma horizontal a largura de um pixel na sua latitude. Os degraus
+não são corrigidos. As fronteiras do mapa já são simplificadas, e os degraus as trazem de volta
+para perto do comprimento real: Hungria–Romênia dá 443 km contra 432, França–Alemanha 305
+contra cerca de 290 em 1925.
+
 ## Terreno
 
 `bf-mapgen terrain` grava o terreno de cada estado para o passo de combate em terra. Ele lê a

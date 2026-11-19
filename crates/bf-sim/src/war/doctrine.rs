@@ -271,6 +271,7 @@ mod tests {
             terrain: TerrainMix::only(Terrain::Open),
             winter: false,
             river: Fixed::ZERO,
+            width_km: Fixed::ZERO,
         }
     }
 

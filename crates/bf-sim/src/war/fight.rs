@@ -39,6 +39,9 @@ pub struct FightSetup {
     /// States whose winters stop the front (`Terrain` of their climate is cold): the months of
     /// December to February slow the front there.
     pub cold: std::collections::BTreeSet<u16>,
+    /// Width of the border between two states, km, by (lower, higher) state id
+    /// (`assets/map/borders.ron`): the width of the segment, for the density of its defence.
+    pub width_km: BTreeMap<(u16, u16), Fixed>,
 }
 
 /// The war on land, saved and hashed only when not empty.
@@ -57,6 +60,9 @@ pub struct Fighting {
     /// The segments of the last week and what happened on each: what moved the front, for the
     /// war screen to read without working the week out again.
     pub last_week: Vec<SegmentWeek>,
+    /// (from region, into region, weeks): how long each segment has held still, sorted. Its
+    /// defenders dig in up to `front.dig_weeks`.
+    pub still: Vec<(u32, u32, u16)>,
 }
 
 impl Fighting {
@@ -66,6 +72,14 @@ impl Fighting {
             && self.postures.is_empty()
             && self.losses.is_empty()
             && self.last_week.is_empty()
+            && self.still.is_empty()
+    }
+
+    /// Weeks segment (`from`, `into`) has held still.
+    pub fn still_weeks(&self, from: u32, into: u32) -> u16 {
+        self.still
+            .binary_search_by_key(&(from, into), |(a, b, _)| (*a, *b))
+            .map_or(0, |i| self.still[i].2)
     }
 
     /// The market controlling region `r`, whose owner is `owner`.
@@ -219,6 +233,18 @@ pub fn end_occupation(f: &mut Fighting, world: &GameWorld, a: &[u16], b: &[u16])
         )
     });
     f.postures.retain(|(c, e, _)| !between(*c, *e));
+    let holder = |r: u32| {
+        f.control
+            .binary_search_by_key(&r, |(k, _)| *k)
+            .map_or(regions[r as usize].market, |i| f.control[i].1)
+    };
+    let still: Vec<_> = f
+        .still
+        .iter()
+        .copied()
+        .filter(|(x, y, _)| !between(holder(*x), holder(*y)))
+        .collect();
+    f.still = still;
 }
 
 /// `date` is the day of the week (winter in cold states runs from December to February; a
@@ -291,6 +317,7 @@ pub fn fight_week(
     segments.dedup();
     if segments.is_empty() {
         out.fighting.last_week.clear();
+        out.fighting.still.clear();
         return out;
     }
     // Each country's land strength, spread evenly over its segments.
@@ -309,16 +336,14 @@ pub fn fight_week(
                 .map(|cw| (c, strength(mil, cw)))
         })
         .collect();
-    // Posture: the player's as set (defend by default); the AI attacks a front where its fire
-    // is at least 1.5 times the enemy's (G5).
-    let attacks = |c: u16, e: u16| -> bool {
+    // Posture: the player's as set (defend by default); the AI attacks a segment where its
+    // fire there is at least 1.5 times the enemy's there (G5): local superiority, so that two
+    // even countries still attack where one is thinner.
+    let attacks = |c: u16, e: u16, mine: Fixed, theirs: Fixed| -> bool {
         if Some(c) == player {
             return out.fighting.posture(c, e).unwrap_or(false);
         }
-        let (Some(me), Some(them)) = (strengths.get(&c), strengths.get(&e)) else {
-            return false;
-        };
-        me.fire * AI_ATTACK_RATIO.1 >= them.fire * AI_ATTACK_RATIO.0 && me.fire.is_positive()
+        mine * AI_ATTACK_RATIO.1 >= theirs * AI_ATTACK_RATIO.0 && mine.is_positive()
     };
     let share_of = |c: u16, k: u64| -> Vec<u64> {
         let s = &strengths[&c];
@@ -334,6 +359,11 @@ pub fn fight_week(
     let winter_month = matches!(month, 12 | 1 | 2);
     let field_of = |from: u32, into: u32, attack_from_a: bool| -> LandField {
         let (sa, sb) = (regions[from as usize].state, regions[into as usize].state);
+        let width_km = setup
+            .width_km
+            .get(&(sa.min(sb), sa.max(sb)))
+            .copied()
+            .unwrap_or(Fixed::ZERO);
         // The terrain is the defender's state: where the attack goes.
         let at = if attack_from_a { sb } else { sa };
         LandField {
@@ -348,6 +378,7 @@ pub fn fight_week(
                 .get(&(sa.min(sb), sa.max(sb)))
                 .copied()
                 .unwrap_or(Fixed::ZERO),
+            width_km,
         }
     };
     let supply: BTreeMap<u16, Fixed> = count
@@ -364,7 +395,7 @@ pub fn fight_week(
             (c, fill)
         })
         .collect();
-    let side = |c: u16, men_here: u64, attack: bool| -> LandSide {
+    let side = |c: u16, men_here: u64, attack: bool, dug: Fixed| -> LandSide {
         let s = &strengths[&c];
         let part = if s.men > 0 {
             Fixed::from_ratio(men_here as i64, s.men as i64)
@@ -386,7 +417,7 @@ pub fn fight_week(
                 Posture::Defend
             },
             mobility: Mobility::Foot,
-            fortification: Fixed::ZERO,
+            fortification: dug,
             landing: false,
         }
     };
@@ -397,8 +428,24 @@ pub fn fight_week(
         *next.get_mut(&b).unwrap() += 1;
         let ma = men_on[&a].get(ia).copied().unwrap_or(0);
         let mb = men_on[&b].get(ib).copied().unwrap_or(0);
-        let (sa, sb) = (side(a, ma, attacks(a, b)), side(b, mb, attacks(b, a)));
-        let field = field_of(from, into, attacks(a, b) || !attacks(b, a));
+        // The fire each side has on this segment, and how dug in the segment is.
+        let local = |c: u16, m: u64| {
+            let s = &strengths[&c];
+            if s.men > 0 {
+                s.fire * Fixed::from_ratio(m as i64, s.men as i64)
+            } else {
+                Fixed::ZERO
+            }
+        };
+        let (fa, fb) = (local(a, ma), local(b, mb));
+        let (att_a, att_b) = (attacks(a, b, fa, fb), attacks(b, a, fb, fa));
+        let dug = Fixed::from_ratio(
+            i64::from(world.war.fighting.still_weeks(from, into)),
+            i64::from(mil.rules.front.dig_weeks.max(1)),
+        )
+        .min(Fixed::ONE);
+        let (sa, sb) = (side(a, ma, att_a, dug), side(b, mb, att_b, dug));
+        let field = field_of(from, into, att_a || !att_b);
         let o = land_step(&mil.rules, &field, [&sa, &sb]);
         *lost.entry(a).or_default() += o.losses[0];
         *lost.entry(b).or_default() += o.losses[1];
@@ -445,6 +492,21 @@ pub fn fight_week(
             f.advance.retain(|(x, y, _)| *x != into && *y != into);
         }
     }
+    // Still segments dig in; a segment that moved starts again, and one that is gone is
+    // forgotten.
+    let still_km = mil.rules.front.still_km;
+    let cap = mil.rules.front.dig_weeks;
+    out.fighting.still = out
+        .segments
+        .iter()
+        .filter(|g| g.outcome.advance_km.abs() < still_km)
+        .map(|g| {
+            let w = world.war.fighting.still_weeks(g.from, g.into);
+            (g.from, g.into, w.saturating_add(1).min(cap))
+        })
+        .collect();
+    out.fighting.still.sort();
+    out.fighting.still.dedup_by_key(|x| (x.0, x.1));
     out.fighting.last_week = out.segments.clone();
     // Losses: a share of each country's land elements.
     for (c, l) in lost {
@@ -461,6 +523,29 @@ pub fn fight_week(
         }
     }
     out
+}
+
+/// [`Fighting`] as version 26 of the world wrote it, before the entrenchment.
+#[derive(Default, Deserialize)]
+pub(crate) struct FightingBeforeStill {
+    control: Vec<(u32, u16)>,
+    advance: Vec<(u32, u32, Fixed)>,
+    postures: Vec<(u16, u16, bool)>,
+    losses: Vec<(u16, u64)>,
+    last_week: Vec<SegmentWeek>,
+}
+
+impl From<FightingBeforeStill> for Fighting {
+    fn from(f: FightingBeforeStill) -> Self {
+        Self {
+            control: f.control,
+            advance: f.advance,
+            postures: f.postures,
+            losses: f.losses,
+            last_week: f.last_week,
+            still: Vec::new(),
+        }
+    }
 }
 
 /// Of land casualties (killed, wounded and captured), the killed: about one in four, the order
@@ -562,6 +647,12 @@ impl HashState for Fighting {
                 h.write_u64(l);
             }
             o.advance_km.hash_state(h);
+        }
+        h.write_len(self.still.len());
+        for (a, b, w) in &self.still {
+            h.write_u32(*a);
+            h.write_u32(*b);
+            h.write_u16(*w);
         }
     }
 }

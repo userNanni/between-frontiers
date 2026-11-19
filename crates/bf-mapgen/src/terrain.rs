@@ -45,7 +45,7 @@ const GLWD_MEMBER: &str = "GLWD_v2_0_combined_classes/GLWD_v2_0_main_class_50pct
 const GLWD_CELLS_PER_DEGREE: f64 = 240.0;
 const GLWD_LAT_TOP: f64 = 84.0;
 
-fn read_png16(path: &Path) -> Result<(u32, u32, Vec<u16>), String> {
+pub(crate) fn read_png16(path: &Path) -> Result<(u32, u32, Vec<u16>), String> {
     let file = File::open(path).map_err(|e| format!("{}: {e}", path.display()))?;
     let mut reader = png::Decoder::new(std::io::BufReader::new(file))
         .read_info()

@@ -66,8 +66,9 @@
     supply_floor: 250,
     // Losing the sky entirely costs a quarter of the power.
     air_weight: 250,
-    // Full fortification adds half to the defender's terrain.
-    fortification_bonus: 500,
+    // Full fortification doubles the defender's terrain: a trench system with wire and machine
+    // guns, the Western Front's (the tick digs a still segment in, "front" below).
+    fortification_bonus: 1000,
 
     // At even power a side loses 1.5 % of its men a week in combat; at most twice that.
     land_lethality: "0.015",
@@ -210,6 +211,23 @@
     // The reserve reports in four weeks, at seven tenths of full training (a reservist keeps
     // part of what he learned; design parameter).
     reserve: (call_up_weeks: 4, training: 700),
+
+    // The pace of a front (docs/war.pt-BR.md, "Ritmo da frente"). A full line is some 600 men
+    // per km, a division per 25 km, the least a coherent defence holds (Mearsheimer, 1989,
+    // "Assessing the Conventional Balance", International Security 13(4)). Denser, the attacker
+    // slows down to a tenth (the Western Front, 1915–17: thousands of men per km); thinner, it
+    // runs up to 1.75 times its speed, the pursuit of a broken army on foot (the Romanian
+    // advance on Budapest in 1919, about 100 km in ten days). The factor goes with the square
+    // of the ratio: the Somme's 3,300 men per km against 600 give a thirtieth, about half a km a
+    // week (Prior and Wilson, The Somme, 2005). Ten still weeks dig a front in.
+    front: (
+        full_line_men_km: 600,
+        density_min: "0.1",
+        density_max: "1.75",
+        density_power: 2,
+        dig_weeks: 10,
+        still_km: 2,
+    ),
 
     // units.ron counts these goods in lots of 1925 dollars; the economy prices them in 2011
     // dollars (data/economy/goods.ron, "lot worth $1,000"). Factor: CPI-U of the BLS, 1925 to

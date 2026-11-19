@@ -79,3 +79,19 @@ impl TerrainFile {
             .map(|r| r.name.as_str())
     }
 }
+
+/// `assets/map/borders.ron`: the length of the border between every two neighbouring states,
+/// from the map (`bf-mapgen borders`). The width of a front segment, read at load.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct BordersFile {
+    pub borders: Vec<StateBorder>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct StateBorder {
+    /// The two states, `a < b`.
+    pub a: u16,
+    pub b: u16,
+    /// Length of their common border, km.
+    pub km: u32,
+}
