@@ -328,7 +328,7 @@ porque o que cada mercado produz chega a quem compra: 120 contra 92 trilhões em
 erro logarítmico médio do PIB por habitante de 1,07 para 0,86 e correlação de ranking de 0,54 para
 0,59 em 2022. O meio do século passa do real: 16,3 trilhões em 1955 contra 14,0 antes e 10,9 reais.
 
-**Passo 2, o comércio bruto** (`trade_gross`, desligado). Um mercado só comerciava o saldo: quem
+**Passo 2, o comércio bruto** (`trade_gross`, ligado). Um mercado só comerciava o saldo: quem
 produz e consome o mesmo bem não importava nada dele, e o Reino Unido não comprava tecido francês
 porque fazia tecido. No real, a maior parte do comércio é de variedades do mesmo bem.
 
@@ -386,6 +386,14 @@ porque fazia tecido. No real, a maior parte do comércio é de variedades do mes
   favorito, e o viés nacional deixa a maioria dos estrangeiros abaixo), o custo de chegada
   recalculado só uma vez por mês, a divisão em forma fechada por comprador e bem, o pulo de bem sem
   comércio ou sem consumo, e reservar de uma vez a lista de fluxos (mesmo hash, ganho não medível).
+- **Ligado, contra a faixa da `main` 5574382** (oito rodadas com empurrão mínimo e a base, 101
+  anos): depois de 1945, de 5 a 10 % dos territórios ficam fora de 2σ em cada série, perto dos 5 %
+  do acaso; o PIB mundial de 2022 fica em 119,9 trilhões (faixa: 119,1 a 121,7) e a correlação de
+  ranking em 0,56 (faixa: 0,56 a 0,59). O erro logarítmico médio do PIB por habitante em 2025 sobe
+  para 0,94, acima da faixa (0,86 a 0,91): efeito da regra, pequeno, sem região que mude (as fatias
+  regionais do PIB ficam iguais). O caso mais longe é a Etiópia, que cai para 683 dólares por
+  habitante em 2025 contra 6 008 na faixa: instabilidade de trajetória de um país interior, anotada
+  para a fila de equilíbrio. Custo nos 101 anos, tempo de usuário com `--check-determinism`: +7,1 %.
 
 ## Fontes
 

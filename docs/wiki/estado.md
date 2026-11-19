@@ -43,7 +43,7 @@ salário (`jobs_follow_use`, `small_market_wage_floor`).
 | Fase | O que é | Andamento | Estado |
 |---|---|---|---|
 | 0. Fundação | engine determinística, mapa de 1925 com 870 estados, i18n, teste de 100 anos | 100 % | no jogo (#4 a #22, #7 a engine) |
-| 1. Economia | mercados, fábricas, pops, investimento autônomo, comércio, transporte e energia por região | ~88 % | no jogo; comércio por par ligado (#203), alcance do comércio a 100 % (#228); comércio bruto (#231) e tarifa (#220) em PR, desligados |
+| 1. Economia | mercados, fábricas, pops, investimento autônomo, comércio, transporte e energia por região | ~88 % | no jogo; comércio por par ligado (#203), alcance do comércio a 100 % (#228), comércio bruto ligado (#231 e este PR); tarifa (#220) em PR, desligada |
 | 2. Pesquisa | árvore de 1925 a 2025, maturidade por país, laboratórios que custam | ~85 % | no jogo (#30 a #33, #107) |
 | 3. Política nacional | leis, grupos de interesse, movimentos, orçamento, moeda, banco central e dívida | ~80 % | no jogo; alavancas do orçamento e da dívida (#165, #186, #189) e fila de obras (#176), com a regra histórica como padrão; ensino por coorte (#152) e capacidade fiscal (#165) desligados |
 | 4. Diplomacia | fronteiras, tratados, livro de dívida entre Estados, influência, blocos, capital entre países | ~60 %; ~70 % com os PRs abertos | veja "Fase 4 em detalhe" |
@@ -59,7 +59,7 @@ salário (`jobs_follow_use`, `small_market_wage_floor`).
 | Tratados | cláusulas e livro de dívida (#93, #101, #104); reconhecimento (#145); os tratados de 1925 em vigor (#208); união aduaneira de San Marino com a Itália (#222) | acordos em vigor e quebras (#181), teste mensal (#192), reputação (#194), registro de cada linha (#158), mesa de negociação (#196, #199, #210, #212), preço da revisão de dívida (#216) | — | cláusula de promessa |
 | Influência e blocos | influência no tick (#110), serviço exterior (#112), blocos lidos das cláusulas (#132), lentes de influência e de blocos (#164, #167, #171) | canais de comércio e investimento (#143) | — | — |
 | Capital entre países | camadas no save (#109), capital por método (#111) | fluxo e remessa, fábricas da colônia na independência, técnica pela fábrica estrangeira (#166, #175) | ligar o fluxo de capital (#174) | — |
-| Comércio | comércio por par (#203); tarifa lida dos acordos em vigor (#205, #207); alcance a 100 % (#228) | serviços na união aduaneira (#211) | comércio bruto (#231), tarifa que conta (#220) | — |
+| Comércio | comércio por par (#203); tarifa lida dos acordos em vigor (#205, #207); alcance a 100 % (#228); comércio bruto (#231) | serviços na união aduaneira (#211) | tarifa que conta (#220) | — |
 
 ## Fase 5 em detalhe
 
