@@ -686,6 +686,10 @@ fn partners(
                         cx.tariffs.confirm = to.map(|t| (p.tag.clone(), t));
                     } else {
                         *table = after;
+                        // A partner edited stays listed even once its points go back to zero.
+                        if !cx.tariffs.picked.contains(&p.tag) {
+                            cx.tariffs.picked.push(p.tag.clone());
+                        }
                         out.push(GameCommand::SetPartnerTariff {
                             tag: cx.tag.to_owned(),
                             partner: p.tag.clone(),

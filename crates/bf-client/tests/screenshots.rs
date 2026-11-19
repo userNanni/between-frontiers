@@ -3664,16 +3664,26 @@ fn trade_tab() {
         shot(&mut h, &name);
         keep(&name);
         // Below: the partners, their agreements, the points and the search.
-        h.get_by_label(if en { "BY PARTNER" } else { "POR PARCEIRO" })
-            .scroll_to_me();
-        h.run_steps(4);
+        for _ in 0..3 {
+            h.key_press_modifiers(egui::Modifiers::SHIFT, egui::Key::PageDown);
+            h.run_steps(4);
+        }
         let name = format!("212-trade-tab-partners-{tag}");
         shot(&mut h, &name);
         keep(&name);
     }
     // Belgium, in a customs union with Luxembourg: a surcharge on Luxembourg asks first, the
     // breach of the union and the general reputation in words, a restore point on confirming.
-    let bel = advanced_session_with("BEL", Date::new(1926, 2, 1), data_switches());
+    // A point of preference for Luxembourg lists it among Belgium's partners; two steps up pass
+    // the union.
+    let mut bel = advanced_session_with("BEL", Date::new(1926, 1, 25), data_switches());
+    bel.submit(GameCommand::SetPartnerTariff {
+        tag: "BEL".into(),
+        partner: "LUX".into(),
+        per_mille: Some(-10),
+        breach: false,
+    });
+    bel.sim.run_until(Date::new(1926, 2, 1));
     let save = write_campaign(&user.join("save-bel"), &bel, "Tarifas", "BEL", &[]);
     for (locale, size, tag) in [
         ("pt-BR", egui::vec2(1280.0, 720.0), "pt-1280"),
@@ -3687,11 +3697,17 @@ fn trade_tab() {
         h.run_steps(4);
         h.key_press_modifiers(egui::Modifiers::SHIFT, egui::Key::T);
         h.run_steps(8);
-        assert!(
-            act_by_tip(&mut h, "gov.tariff.partner.LUX.up"),
-            "Luxembourg's surcharge"
-        );
+        for _ in 0..2 {
+            assert!(
+                act_by_tip(&mut h, "gov.tariff.partner.LUX.up"),
+                "Luxembourg's surcharge"
+            );
+        }
         h.run_steps(8);
+        for _ in 0..2 {
+            h.key_press_modifiers(egui::Modifiers::SHIFT, egui::Key::PageDown);
+            h.run_steps(4);
+        }
         let name = format!("213-trade-tab-breach-{tag}");
         shot(&mut h, &name);
         keep(&name);
