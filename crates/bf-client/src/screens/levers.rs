@@ -93,7 +93,7 @@ fn per_mille_people(i18n: &I18n, v: f64) -> String {
 
 /// Thousandths as a percentage.
 fn pct_of_milli(i18n: &I18n, v: f64) -> String {
-    format!("{} %", i18n.decimal(v / 10.0, 1))
+    crate::text::pct_text(i18n, i18n.decimal(v / 10.0, 1))
 }
 
 /// What a fixed value does to the treasury in a week against the rule, when the simulation
@@ -204,7 +204,10 @@ pub fn show(
             ui,
             &i18n.tr_args(
                 "lever-uncollected",
-                &[("share", arg(format!("{} %", i18n.decimal(u * 100.0, 1))))],
+                &[(
+                    "share",
+                    arg(crate::text::pct_text(i18n, i18n.decimal(u * 100.0, 1))),
+                )],
             ),
         );
     }

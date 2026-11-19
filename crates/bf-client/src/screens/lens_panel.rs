@@ -817,7 +817,7 @@ pub fn tooltip_line(
 
 /// A share of GDP as a percentage: two decimals, influence is small.
 fn gdp_pct(i18n: &I18n, x: f64) -> String {
-    format!("{} %", i18n.decimal(x * 100.0, 2))
+    crate::text::pct_text(i18n, i18n.decimal(x * 100.0, 2))
 }
 
 /// A colour swatch with its label beside it: every colour of a legend says what it is.
@@ -962,7 +962,7 @@ fn decade(i18n: &I18n, share: f64) -> String {
     } else {
         (-pct.log10()).ceil() as usize
     };
-    format!("{} %", i18n.decimal(pct, digits))
+    crate::text::pct_text(i18n, i18n.decimal(pct, digits))
 }
 
 /// Rows of blocs the legend shows before it scrolls.
