@@ -5323,3 +5323,59 @@ fn sea_blockade() {
     }
     let _ = std::fs::remove_dir_all(&user);
 }
+
+/// The display settings: the section "Display" in the settings (mode, the window's sizes that
+/// fit the monitor, the line on what full screen is), and the bar that asks to keep a new mode
+/// with its countdown. Portuguese at 1600 × 900, English at 1280 × 720; copies in
+/// `target/screenshots/display/`.
+#[test]
+#[ignore = "needs a GPU (or software Vulkan) and the generated map; run with --ignored"]
+fn display_settings() {
+    let user = std::env::temp_dir().join(format!("bf-shots-display-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&user);
+    let dir = root().join("target/screenshots/display");
+    std::fs::create_dir_all(&dir).unwrap();
+    for (locale, size, tag, settings, display, borderless) in [
+        (
+            "pt-BR",
+            egui::vec2(1600.0, 900.0),
+            "pt",
+            "Configurações",
+            "Tela",
+            "Janela sem borda",
+        ),
+        (
+            "en",
+            egui::vec2(1280.0, 720.0),
+            "en-1280",
+            "Settings",
+            "Display",
+            "Borderless window",
+        ),
+    ] {
+        let mut h = harness_sized(user.join(tag), locale, size);
+        h.run_steps(4);
+        h.get_by_label(settings).click();
+        h.run_steps(6);
+        h.get_by_label(borderless).scroll_to_me();
+        let _ = display;
+        h.run_steps(4);
+        let name = format!("280-display-{tag}");
+        shot(&mut h, &name);
+        std::fs::copy(
+            out_dir().join(format!("{name}.png")),
+            dir.join(format!("{name}.png")),
+        )
+        .unwrap();
+        h.get_by_label(borderless).click();
+        h.run_steps(8);
+        let name = format!("281-display-keep-{tag}");
+        shot(&mut h, &name);
+        std::fs::copy(
+            out_dir().join(format!("{name}.png")),
+            dir.join(format!("{name}.png")),
+        )
+        .unwrap();
+    }
+    let _ = std::fs::remove_dir_all(&user);
+}

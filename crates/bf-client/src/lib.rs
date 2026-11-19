@@ -6,6 +6,7 @@ pub mod army_view;
 pub mod blocs_view;
 pub mod crisis_view;
 pub mod demands_view;
+pub mod display;
 pub mod flags;
 pub mod forces_view;
 pub mod government;
