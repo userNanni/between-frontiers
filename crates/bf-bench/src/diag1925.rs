@@ -1060,7 +1060,11 @@ pub fn main() -> Result<(), String> {
             };
             let m = &e.markets[mi];
             let gdp = m.gdp_last_year.to_f64_lossy();
-            for key in ["steel", "natural_gas", "cement", "machinery"] {
+            // The goods to break down (`BF_DIAG_ENERGY_GOODS=coal,timber`, by default steel, gas,
+            // cement and machinery).
+            let goods = std::env::var("BF_DIAG_ENERGY_GOODS")
+                .unwrap_or_else(|_| "steel,natural_gas,cement,machinery".to_string());
+            for key in goods.split(',') {
                 let Some(g) = cat.good(key) else { continue };
                 let g = g as usize;
                 let dem = m.demand[g].to_f64_lossy() * 52.0;
