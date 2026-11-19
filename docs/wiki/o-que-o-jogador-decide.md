@@ -90,7 +90,7 @@ faixa.
 
 | | Decisão | Simulação | Tela |
 |---|---|---|---|
-| PO1 | O comércio passa a mover dinheiro entre países: quem importa paga a quem exporta. | fatia 2, feita atrás da chave `payments_settle`, desligada (`econ::payments::settle`) | — |
+| PO1 | O comércio passa a mover dinheiro entre países: quem importa paga a quem exporta. O que a reserva do país não cobre é pago na moeda dele, e os países em superávit a guardam como divisa: é a dívida que a regra da fatia 3 cobra. | fatia 2, feita atrás da chave `payments_settle`, desligada (`econ::payments::settle`) | — |
 | PO2 | Quem está no ouro em 1925 é dado com fonte; as voltas depois de 1925 saem da regra da IA, e a data histórica fica só como conferência. | fatias 2 e 3 | — |
 | PO3 | Um país sai do ouro pela regra: cobertura abaixo do piso por meses seguidos, ou a saída do principal país-reserva. | fatia 3 | — |
 | PO4 | Defender a paridade é juro acima da regra de Taylor por ponto de cobertura que falta, e moeda retirada quando a falta continua. | fatia 3 | — |
