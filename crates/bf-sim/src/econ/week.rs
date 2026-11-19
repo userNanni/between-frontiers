@@ -854,18 +854,14 @@ impl Week {
         let date = ctx.date.to_string();
         // The pairs closed this week, once (the closures compare dates as text): the dated
         // closures, the embargoes ordered by governments (CT6) and, with war on, the pairs at war
-        // and the blockaded countries' sea pairs (CT7).
+        // and those a blockade cuts, resolved by the sea graph (CT7).
         let closed = geo.and_then(|g| {
-            let (mut extra, mut by_sea) = (world.tariffs.embargoes.clone(), Vec::new());
+            let mut extra = world.tariffs.embargoes.clone();
             if self.war_closes {
                 extra.extend(crate::war::fight::war_pairs(world));
-                by_sea.extend(
-                    crate::war::fight::blockaded(world)
-                        .into_iter()
-                        .map(|(_, b)| b),
-                );
+                extra.extend(crate::war::fight::blockaded_pairs(world));
             }
-            g.closed_with(&date, nm, &extra, &by_sea)
+            g.closed_with(&date, nm, &extra)
         });
         let trade_pref = (ctx.date.day <= 7 || econ.trade.pref.is_empty()).then(|| {
             let trade_ix = crate::research::EFFECTS

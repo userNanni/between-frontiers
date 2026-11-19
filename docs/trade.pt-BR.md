@@ -218,10 +218,12 @@ o par.
   - os **embargos** que um governo ordenou (CT6, `GameCommand::Embargo`, `TariffState::embargoes`,
     save 31): unilaterais, fecham os dois sentidos; levantados, a preferência sobe um λ por mês;
   - com a chave `war`, os **pares em guerra** (CT7, `war::fight::war_pairs`: cada membro de um lado
-    contra cada membro do outro, o aliado chamado só depois de entrar) e, de cada país
-    **bloqueado** (`war::fight::blockaded`), todo par cujo caminho mais barato até ele é por mar.
-    O bloqueio vem da guerra no mar (fatia C2); até lá a lista é vazia. A paz tira o par da lista
-    na semana em que é assinada, e ele reabre devagar como o embargo levantado.
+    contra cada membro do outro, o aliado chamado só depois de entrar) e os pares que um
+    **bloqueio** corta (`war::fight::blockaded_pairs`, do thread da guerra: os pares por mar
+    cujas rotas passam todas por uma zona que o bloqueador controla; Alemanha e Suécia ficam
+    abertas pelo Báltico com o mar do Norte britânico; vazia até a guerra no mar, fatia C2). A
+    paz tira o par da lista na semana em que é assinada, e ele reabre devagar como o embargo
+    levantado.
 - **Ainda dormente:** a cláusula de embargo coletivo ou sanção de um acordo (thread dos tratados,
   em pausa). O encaixe é o mesmo: os pares que a cláusula fecha entram em `extra` de
   `closed_with`, como os embargos por comando. O não reconhecimento e o estreito fechado também
