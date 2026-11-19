@@ -468,4 +468,5 @@ fn no_blockade_before_the_war_at_sea() {
     let d = data(|_| {});
     let s = at_war(&d);
     assert!(bf_sim::war::fight::blockaded(s.world()).is_empty());
+    assert!(bf_sim::war::fight::blockaded_pairs(s.world()).is_empty());
 }
