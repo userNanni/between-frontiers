@@ -16,7 +16,7 @@ use serde::{Deserialize, Serialize};
 
 use super::calc::{LandField, LandSide, Posture, TerrainMix, apportion, land_step};
 use super::catalogue::{Domain, Military, Mobility, Terrain};
-use super::state::{CountryWar, men};
+use super::state::{CountryWar, Formation, men};
 use crate::game::GameWorld;
 
 /// Ratio of land fire at which the AI attacks a front (owner's decision G5: 1.5).
@@ -181,6 +181,33 @@ struct Strength {
     fire: Fixed,
     protection: Fixed,
     training: Fixed,
+    mobility: Mobility,
+}
+
+/// How a country's army moves: the mobility of the types that hold most of its land men. An
+/// army marches at the pace of the bulk of its men (in 1940 most of the German army walked,
+/// whatever its armour did). Garrisons (`Static`) hold their posts and do not count; a tie goes
+/// to the slower mobility, which holds the rest back. Foot without mobile men.
+pub fn majority_mobility(mil: &Military, formations: &[Formation]) -> Mobility {
+    let mut by: BTreeMap<Mobility, i64> = BTreeMap::new();
+    for f in formations {
+        if mil.types[f.unit as usize].domain != Domain::Land || !f.elements.is_positive() {
+            continue;
+        }
+        let m = mil.spec(f.unit, f.generation as usize).mobility;
+        if m == Mobility::Static {
+            continue;
+        }
+        *by.entry(m).or_default() += men(mil, f);
+    }
+    // Ascending order: on a tie the first (slower) one stays.
+    let mut best = (Mobility::Foot, 0i64);
+    for (m, n) in by {
+        if n > best.1 {
+            best = (m, n);
+        }
+    }
+    best.0
 }
 
 fn strength(mil: &Military, c: &CountryWar) -> Strength {
@@ -202,6 +229,7 @@ fn strength(mil: &Military, c: &CountryWar) -> Strength {
         fire: mil.land_fire(&equipment),
         protection: mil.protection(&equipment),
         training,
+        mobility: majority_mobility(mil, &c.formations),
     }
 }
 
@@ -490,7 +518,7 @@ pub fn fight_week(
             } else {
                 Posture::Defend
             },
-            mobility: Mobility::Foot,
+            mobility: s.mobility,
             fortification: dug,
             landing: false,
         }

@@ -306,3 +306,43 @@ fn at_war_the_forces_order_the_ammunition_of_combat() {
         ammo(&peace)
     );
 }
+
+/// The army moves at the pace of most of its land men: foot infantry holds back the armour, the
+/// garrisons do not count, and a tie goes to the slower (passo 3 of the front's pace).
+#[test]
+fn the_army_moves_at_the_pace_of_most_of_its_men() {
+    use bf_sim::war::Formation;
+    use bf_sim::war::catalogue::Mobility;
+    use bf_sim::war::fight::majority_mobility;
+    let mil = &data().war.as_ref().unwrap().military;
+    let f = |key: &str, thousands: i64| Formation {
+        unit: mil.unit(key).unwrap(),
+        generation: 0,
+        elements: Fixed::from_int(thousands),
+        colonial: false,
+        called_up: false,
+        equipment: Vec::new(),
+        training: Fixed::ONE,
+        raised: false,
+    };
+    // France 1940 on the German side: most men walked behind the panzers.
+    assert_eq!(
+        majority_mobility(mil, &[f("infantry", 100), f("armor", 30)]),
+        Mobility::Foot
+    );
+    assert_eq!(
+        majority_mobility(mil, &[f("infantry", 20), f("mechanized", 50)]),
+        Mobility::Wheeled
+    );
+    // Garrisons hold their posts.
+    assert_eq!(
+        majority_mobility(mil, &[f("garrison", 500), f("cavalry", 10)]),
+        Mobility::Horse
+    );
+    // A tie: the slower one.
+    assert_eq!(
+        majority_mobility(mil, &[f("cavalry", 10), f("mechanized", 10)]),
+        Mobility::Horse
+    );
+    assert_eq!(majority_mobility(mil, &[]), Mobility::Foot);
+}
