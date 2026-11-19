@@ -975,11 +975,12 @@ impl System<GameWorld> for Forces {
                 !world.war.conflicts.crises.is_empty() || !world.war.conflicts.calls.is_empty()
             })
             .map(|setup| super::crisis::crisis_week(setup, &self.military, world));
-        // The war on land, only while a war is under way.
+        // The war on land while a war is under way, and the first week of each month the
+        // generation of the armies (step 4), in peace too while the war is switched on.
         let fight = self
             .fight
             .as_ref()
-            .filter(|_| !world.war.conflicts.wars.is_empty())
+            .filter(|_| !world.war.conflicts.wars.is_empty() || ctx.date.day <= 7)
             .map(|setup| super::fight::fight_week(setup, &self.military, world, ctx.date));
         ForcesChanges {
             countries,

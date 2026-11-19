@@ -14,8 +14,11 @@ use laplace_schelling::Fixed;
 use laplace_schelling::hash::{HashState, StateHasher};
 use serde::{Deserialize, Serialize};
 
-use super::calc::{LandField, LandSide, Posture, TerrainMix, apportion, land_step, pursuit_km};
+use super::calc::{
+    LandField, LandSide, Posture, Segment, TerrainMix, apportion, land_step, pursuit_km,
+};
 use super::catalogue::{Domain, Military, Mobility, Terrain};
+use super::doctrine::Generation;
 use super::state::{CountryWar, Formation, men};
 use crate::game::GameWorld;
 
@@ -46,6 +49,13 @@ pub struct FightSetup {
     pub capitals: BTreeMap<String, u16>,
     /// War support and occupation (G3, G4), when `data/military/war.ron` exists.
     pub conduct: Option<Arc<super::support::Conduct>>,
+    /// The laws, for the changes of the form of government (step 4).
+    pub politics: Option<Arc<crate::politics::Politics>>,
+    /// Index in the tree of `command.doctrine_tech`, the research that opens the doctrine.
+    pub doctrine_tech: Option<u16>,
+    /// The goods that make a formation move on wheels or tracks (`peace.ron`,
+    /// `composition.vehicles`), for the motorization of the generation.
+    pub vehicles: Vec<u16>,
 }
 
 /// The war on land, saved and hashed only when not empty.
@@ -73,6 +83,29 @@ pub struct Fighting {
     pub occupied: Vec<super::occupation::Occupied>,
     /// The devastation the combat left, by region (G3).
     pub wrecks: Vec<super::occupation::Wreck>,
+    /// The generation of each army that has fought, by country (step 4 of the front's pace):
+    /// kept from month to month because it moves up and down with a gap (`doctrine.up`,
+    /// `doctrine.down`), with the weeks of war behind it.
+    pub doctrine: Vec<ArmyDoctrine>,
+}
+
+/// The generation of a country's army and its experience of war.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ArmyDoctrine {
+    pub country: u16,
+    pub generation: super::doctrine::Generation,
+    /// Weeks of war behind the army on `as_of`, decayed by `doctrine.experience_half_life_years`.
+    pub experience_weeks: Fixed,
+    /// The day (`Date::to_days`) the experience was counted.
+    pub as_of: i64,
+    /// Share of the officer corps formed to act on the commander's intent, 0 to 1 (decision G7);
+    /// zero and unused without a recorded tradition.
+    pub intent: Fixed,
+    /// The army has a tradition of command on record (`command.tradition_1925`).
+    pub tradition: bool,
+    /// Until this day the schools revise the doctrine after a defeat, cohorts faster; 0 for
+    /// none (the calendar's days are negative before 2000).
+    pub reform_until: i64,
 }
 
 impl Fighting {
@@ -86,6 +119,15 @@ impl Fighting {
             && self.support.is_empty()
             && self.occupied.is_empty()
             && self.wrecks.is_empty()
+            && self.doctrine.is_empty()
+    }
+
+    /// The generation kept for `country`'s army, if it has fought.
+    pub fn doctrine_of(&self, country: u16) -> Option<&ArmyDoctrine> {
+        self.doctrine
+            .binary_search_by_key(&country, |d| d.country)
+            .ok()
+            .map(|i| &self.doctrine[i])
     }
 
     /// Weeks segment (`from`, `into`) has held still.
@@ -182,6 +224,28 @@ struct Strength {
     protection: Fixed,
     training: Fixed,
     mobility: Mobility,
+    /// The mobile class (horse, wheels, tracks) with the most men, if any: what a third
+    /// generation puts on its focus segment.
+    mobile: Option<Mobility>,
+}
+
+/// The mobile class (horse, wheels, tracks) that holds the most land men of the country, if
+/// it has any; on a tie the faster.
+pub fn mobile_mobility(mil: &Military, formations: &[Formation]) -> Option<Mobility> {
+    let mut by: BTreeMap<Mobility, i64> = BTreeMap::new();
+    for f in formations {
+        if mil.types[f.unit as usize].domain != Domain::Land || !f.elements.is_positive() {
+            continue;
+        }
+        let m = mil.spec(f.unit, f.generation as usize).mobility;
+        if matches!(m, Mobility::Horse | Mobility::Wheeled | Mobility::Tracked) {
+            *by.entry(m).or_default() += men(mil, f);
+        }
+    }
+    by.into_iter()
+        .filter(|(_, n)| *n > 0)
+        .max_by(|x, y| x.1.cmp(&y.1).then(x.0.cmp(&y.0)))
+        .map(|(m, _)| m)
 }
 
 /// How a country's army moves: the mobility of the types that hold most of its land men. An
@@ -230,6 +294,7 @@ fn strength(mil: &Military, c: &CountryWar) -> Strength {
         protection: mil.protection(&equipment),
         training,
         mobility: majority_mobility(mil, &c.formations),
+        mobile: mobile_mobility(mil, &c.formations),
     }
 }
 
@@ -308,6 +373,91 @@ pub fn blockaded_pairs(_world: &GameWorld) -> Vec<(u16, u16)> {
     Vec::new()
 }
 
+/// A month of the command culture and the generation of every army (step 4; decision G7):
+/// the officers formed in the schools' doctrine a class a year (in January), the experience of war
+/// decaying, a defeat that opens a reform, and the generation moving up or down with its gap.
+/// Runs the first week of each month while the war is switched on.
+pub fn doctrine_month(
+    setup: &FightSetup,
+    mil: &Military,
+    world: &GameWorld,
+    today: i64,
+    january: bool,
+    f: &mut Fighting,
+) {
+    let cmd = &mil.rules.command;
+    let tradition_of = |ci: usize| super::army::tradition_1925(world, mil, ci);
+    let industrial = |ci: usize| {
+        setup.doctrine_tech.is_some_and(|t| {
+            world
+                .research
+                .stage
+                .get(ci)
+                .and_then(|s| s.get(usize::from(t)))
+                .is_some_and(|&st| st >= crate::research::Stage::Industrial)
+        })
+    };
+    for (ci, c) in world.war.countries.iter().enumerate() {
+        let has_land = c.formations.iter().any(|x| {
+            mil.types[x.unit as usize].domain == super::catalogue::Domain::Land
+                && x.elements.is_positive()
+        });
+        if !has_land {
+            continue;
+        }
+        let tradition = tradition_of(ci);
+        let at = f.doctrine.binary_search_by_key(&(ci as u16), |d| d.country);
+        let mut d = match at {
+            Ok(i) => f.doctrine[i],
+            Err(_) => ArmyDoctrine {
+                country: ci as u16,
+                generation: super::doctrine::Generation::Second,
+                experience_weeks: Fixed::ZERO,
+                as_of: today,
+                intent: tradition.unwrap_or(Fixed::ZERO),
+                tradition: tradition.is_some(),
+                reform_until: 0,
+            },
+        };
+        d.experience_weeks = super::army::decayed(mil, d.experience_weeks, today - d.as_of);
+        d.as_of = today;
+        if f.support_of(ci as u16).is_some_and(|s| s.fallen.is_some()) {
+            d.reform_until = today + 365 * i64::from(cmd.reform_years);
+        }
+        if let Some(t) = tradition
+            && january
+        {
+            // What the schools teach: the doctrine once the country makes its research, the
+            // tradition until then. A class a year leaves the schools, a career's share of the
+            // corps, spread as far as the army trains.
+            let school = if industrial(ci) { Fixed::ONE } else { t };
+            let mut rate = Fixed::from_ratio(1, i64::from(cmd.officer_career_years.max(1)));
+            if d.reform_until != 0 && today < d.reform_until {
+                rate *= Fixed::from_int(i64::from(cmd.defeat_reform_speed.max(1)));
+            }
+            let training = super::army::land_training(mil, c);
+            d.intent += (school - d.intent) * rate * training;
+        }
+        let r = super::doctrine::readiness(
+            &mil.rules,
+            &super::army::inputs_with(
+                world,
+                mil,
+                setup.politics.as_deref(),
+                &setup.vehicles,
+                ci,
+                &d,
+                today,
+            ),
+        );
+        d.generation = super::doctrine::next_generation(&mil.rules, d.generation, &r);
+        match at {
+            Ok(i) => f.doctrine[i] = d,
+            Err(i) => f.doctrine.insert(i, d),
+        }
+    }
+}
+
 /// After a peace, the occupation between the sides ends: the regions one side held of the
 /// other go back to their owner (what the peace ceded changed owner by the treaty's bridge),
 /// and the advances and postures between them are forgotten.
@@ -353,6 +503,17 @@ pub fn fight_week(
         fighting: world.war.fighting.clone(),
         ..Default::default()
     };
+    // The generation of the armies, the first week of each month (step 4).
+    if date.day <= 7 {
+        doctrine_month(
+            setup,
+            mil,
+            world,
+            date.to_days(),
+            date.month == 1,
+            &mut out.fighting,
+        );
+    }
     if world.war.conflicts.wars.is_empty() {
         return out;
     }
@@ -455,6 +616,16 @@ pub fn fight_week(
             })
         })
         .collect();
+    // A week of war adds to the experience of every army on a front.
+    for &c in count.keys() {
+        if let Ok(i) = out
+            .fighting
+            .doctrine
+            .binary_search_by_key(&c, |d| d.country)
+        {
+            out.fighting.doctrine[i].experience_weeks += Fixed::ONE;
+        }
+    }
     // Posture: the player's as set (defend by default); the AI attacks a segment where its
     // fire there is at least 1.5 times the enemy's there (G5): local superiority, so that two
     // even countries still attack where one is thinner.
@@ -464,15 +635,73 @@ pub fn fight_week(
         }
         mine * AI_ATTACK_RATIO.1 >= theirs * AI_ATTACK_RATIO.0 && mine.is_positive()
     };
-    let share_of = |c: u16, k: u64| -> Vec<u64> {
-        let s = &strengths[&c];
-        apportion(s.men, &vec![Fixed::ONE; count[&c] as usize])
-            .into_iter()
-            .take(k as usize)
-            .collect()
+    // The generation each army fights with this week: a third-generation army fights as a
+    // second short of fuel (`doctrine.fuel_min`; radio is not a good yet).
+    let generation_of = |c: u16| -> Generation {
+        let kept = out
+            .fighting
+            .doctrine_of(c)
+            .map_or(Generation::Second, |d| d.generation);
+        let fuel = world
+            .econ
+            .markets
+            .get(c as usize)
+            .and_then(|m| m.buy_ratio.get(mil.rules.fuel as usize))
+            .copied()
+            .unwrap_or(Fixed::ONE)
+            .clamp(Fixed::ZERO, Fixed::ONE);
+        super::doctrine::effective_generation(&mil.rules, kept, Fixed::ONE, fuel).0
     };
-    let men_on: BTreeMap<u16, Vec<u64>> =
-        count.iter().map(|(&c, &n)| (c, share_of(c, n))).collect();
+    let generations: BTreeMap<u16, Generation> =
+        count.keys().map(|&c| (c, generation_of(c))).collect();
+    // Each country's segments in the order the loop below takes them: width and the enemy's
+    // even share of fire, for the third generation's focus.
+    let mut segs_of: BTreeMap<u16, Vec<Segment>> = BTreeMap::new();
+    for &(from, into, a, b) in &segments {
+        let (sa, sb) = (regions[from as usize].state, regions[into as usize].state);
+        let width = setup
+            .width_km
+            .get(&(sa.min(sb), sa.max(sb)))
+            .copied()
+            .unwrap_or(Fixed::ONE);
+        for (me, enemy) in [(a, b), (b, a)] {
+            let e = &strengths[&enemy];
+            segs_of.entry(me).or_default().push(Segment {
+                length_km: width,
+                enemy_power: e.fire / Fixed::from_int(count[&enemy].max(1) as i64),
+                objective: false,
+            });
+        }
+    }
+    // The men on each segment: evenly for a second-generation army; a third concentrates on
+    // the focus segment, the weakest per km (`doctrine::allocate_front`).
+    let mut focus_of: BTreeMap<u16, usize> = BTreeMap::new();
+    let men_on: BTreeMap<u16, Vec<u64>> = count
+        .iter()
+        .map(|(&c, &n)| {
+            let s = &strengths[&c];
+            if generations[&c] == Generation::Third && n > 1 {
+                let shares = super::doctrine::allocate_front(
+                    &mil.rules,
+                    s.men,
+                    &segs_of[&c],
+                    Generation::Third,
+                );
+                if let Some(i) = shares.iter().position(|x| x.focus) {
+                    focus_of.insert(c, i);
+                }
+                (c, shares.iter().map(|x| x.elements).collect())
+            } else {
+                (
+                    c,
+                    apportion(s.men, &vec![Fixed::ONE; n as usize])
+                        .into_iter()
+                        .take(n as usize)
+                        .collect(),
+                )
+            }
+        })
+        .collect();
     let mut next: BTreeMap<u16, usize> = BTreeMap::new();
     let mut lost: BTreeMap<u16, u64> = BTreeMap::new();
     let winter_month = matches!(month, 12 | 1 | 2);
@@ -514,7 +743,7 @@ pub fn fight_week(
             (c, fill)
         })
         .collect();
-    let side = |c: u16, men_here: u64, attack: bool, dug: Fixed| -> LandSide {
+    let side = |c: u16, men_here: u64, attack: bool, dug: Fixed, on_focus: bool| -> LandSide {
         let s = &strengths[&c];
         let part = if s.men > 0 {
             Fixed::from_ratio(men_here as i64, s.men as i64)
@@ -535,7 +764,12 @@ pub fn fight_week(
             } else {
                 Posture::Defend
             },
-            mobility: s.mobility,
+            // The focus segment of a third-generation army gets its mobile troops.
+            mobility: if on_focus {
+                s.mobile.unwrap_or(s.mobility)
+            } else {
+                s.mobility
+            },
             fortification: dug,
             landing: false,
         }
@@ -563,7 +797,11 @@ pub fn fight_week(
             i64::from(mil.rules.front.dig_weeks.max(1)),
         )
         .min(Fixed::ONE);
-        let (sa, sb) = (side(a, ma, att_a, dug), side(b, mb, att_b, dug));
+        let (fa_focus, fb_focus) = (focus_of.get(&a) == Some(&ia), focus_of.get(&b) == Some(&ib));
+        let (sa, sb) = (
+            side(a, ma, att_a, dug, fa_focus),
+            side(b, mb, att_b, dug, fb_focus),
+        );
         let field = field_of(from, into, att_a || !att_b);
         let mut o = land_step(&mil.rules, &field, [&sa, &sb]);
         // Pursuit (step 6): the side that advanced here last week and attacks with the ratio
@@ -590,6 +828,34 @@ pub fn fight_week(
         }
         if pb.is_positive() && -pb < o.advance_km {
             o.advance_km = -pb;
+        }
+        // A third-generation attacker breaks the focus segment at three times the power and
+        // exploits beyond the line (`doctrine::breakthrough`).
+        for (i, (c, me, focus, attack)) in [(a, &sa, fa_focus, att_a), (b, &sb, fb_focus, att_b)]
+            .into_iter()
+            .enumerate()
+        {
+            if !(focus && attack) {
+                continue;
+            }
+            let bt = super::doctrine::breakthrough(
+                &mil.rules,
+                &field,
+                &super::doctrine::BreakthroughInputs {
+                    generation: generations[&c],
+                    attacker_power: o.power[i],
+                    defender_power: o.power[1 - i],
+                    defender_reserve: Fixed::ZERO,
+                    mobility: me.mobility,
+                },
+            );
+            if bt.happened {
+                if i == 0 {
+                    o.advance_km += bt.advance_km;
+                } else {
+                    o.advance_km -= bt.advance_km;
+                }
+            }
         }
         *lost.entry(a).or_default() += o.losses[0];
         *lost.entry(b).or_default() += o.losses[1];
@@ -714,6 +980,37 @@ impl From<FightingBeforeSupport> for Fighting {
             last_week: f.last_week,
             still: f.still,
             ..Default::default()
+        }
+    }
+}
+
+/// [`Fighting`] as versions 28 and 29 of the world wrote it, before the generation of the armies.
+#[derive(Default, Deserialize)]
+pub(crate) struct FightingBeforeDoctrine {
+    control: Vec<(u32, u16)>,
+    advance: Vec<(u32, u32, Fixed)>,
+    postures: Vec<(u16, u16, bool)>,
+    losses: Vec<(u16, u64)>,
+    last_week: Vec<SegmentWeek>,
+    still: Vec<(u32, u32, u16)>,
+    support: Vec<super::support::Support>,
+    occupied: Vec<super::occupation::Occupied>,
+    wrecks: Vec<super::occupation::Wreck>,
+}
+
+impl From<FightingBeforeDoctrine> for Fighting {
+    fn from(f: FightingBeforeDoctrine) -> Self {
+        Self {
+            control: f.control,
+            advance: f.advance,
+            postures: f.postures,
+            losses: f.losses,
+            last_week: f.last_week,
+            still: f.still,
+            support: f.support,
+            occupied: f.occupied,
+            wrecks: f.wrecks,
+            doctrine: Vec::new(),
         }
     }
 }
@@ -886,6 +1183,16 @@ impl HashState for Fighting {
         h.write_len(self.wrecks.len());
         for x in &self.wrecks {
             x.hash_state(h);
+        }
+        h.write_len(self.doctrine.len());
+        for d in &self.doctrine {
+            h.write_u16(d.country);
+            h.write_u8(d.generation as u8);
+            d.experience_weeks.hash_state(h);
+            h.write_i64(d.as_of);
+            d.intent.hash_state(h);
+            d.tradition.hash_state(h);
+            h.write_i64(d.reform_until);
         }
     }
 }

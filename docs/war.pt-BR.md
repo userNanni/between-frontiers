@@ -1322,6 +1322,97 @@ densidade × (1 − defesa/ataque). O que decide o ritmo:
   daria 46 km por semana (faixa 40 a 150), e a de 1939 a cavalo 98, de caminhão ou lagarta 210
   (faixa 60 a 200).
 
+### Geração do exército (passo 4, rascunho atrás de `war`)
+
+Cada exército é de segunda geração (frente linear, fogo e desgaste, comando do centro) ou de
+terceira (unidades que agem pela intenção do comandante, concentração num ponto, ruptura e
+aproveitamento). A geração sai da **prontidão**, somada termo a termo (`rules.ron`, `doctrine`).
+Ela sobe a 650 e só cai abaixo de 450, para não oscilar. É lida no começo de cada mês, só com a
+chave `war` ligada; com ela desligada nada disso existe e o hash não muda.
+
+| Termo | Peso | De onde sai no jogo | O que o jogador faz em paz |
+|---|---|---|---|
+| Oficiais formados para agir pela intenção | 350 | com tradição registrada (G7, rascunho): a parcela do corpo de oficiais formada na doutrina, que muda uma turma por ano; sem tradição: metade da alfabetização da metrópole | pesquisar `armored_warfare` (a escola passa a ensinar a doutrina) e treinar (a turma se espalha na medida do treino); alfabetizar, para quem não tem tradição |
+| Treino | 200 | treino médio das formações de terra | manter o exército treinado (o recruta novo dilui o treino) |
+| Rádio | 100 | parcela dos homens em geração de equipamento posterior à de 1925 | modernizar (a sobra do orçamento militar troca a geração, fatia A) |
+| Motorização | 150 | parcela dos homens em roda ou lagarta | encomendar formações mecanizadas e blindadas (A2) |
+| Experiência | 200 | semanas de guerra, cheia em 52, meia-vida de 5 anos | — (vem da guerra) |
+| Controle político (subtrai) | 400 | troca da forma de governo nos últimos 5 anos: cheio na troca, some no fim | não trocar de regime às vésperas da guerra |
+
+O regime em si não entra: o exército alemão de 1939–41, sob ditadura, comandava por missão; o
+francês de 1940, sob democracia, lutava a batalha metódica do centro.
+
+**Na guerra.** Um exército de terceira geração:
+- põe seis décimos dos homens livres no segmento de foco, o mais fraco por km
+  (`doctrine::allocate_front`);
+- manda para lá as tropas móveis (a classe de cavalo, roda ou lagarta com mais homens);
+- rompe o segmento quando o seu poder passa de 3 vezes o do defensor e avança além da linha a 2
+  vezes a velocidade-base (`doctrine::breakthrough`).
+
+Sem combustível (abaixo da metade do pedido) ele luta como de segunda.
+
+**Cultura de comando (G7, recomendação (a), à espera do dono).** O dado é o de 1925, a
+instituição daquele ano, com fonte em `rules.ron`:
+- Alemanha 700: a Reichswehr de Seeckt;
+- Reino Unido 400;
+- União Soviética 350: antes das operações em profundidade;
+- França 200: a instrução de 1921 e a batalha metódica.
+
+O que cada exército vira depois sai do jogo:
+- uma turma por ano, 1/25 do corpo, sai formada no que a escola ensina, na medida do treino;
+- a escola ensina a doutrina nova quando o país tem `armored_warfare` em estágio industrial;
+- a derrota (governo caído) dobra a velocidade da revisão por 10 anos; a vitória não.
+
+Quem não tem dado lê metade da alfabetização do povo (`untraditioned_share`, valor de desenho):
+um corpo escolarizado, sem a doutrina de uma escola de estado-maior. Sem esse desconto, a Polônia
+de 1939 (alfabetização 0,79) passaria a Reichswehr (0,7). Na tela, aparece como "sem tradição
+registrada".
+A formação dos oficiais é automática nesta fatia. Como decisão, ela seria uma linha do orçamento
+militar ("Regra histórica" ou "Fixado pelo governo"), desenho para depois.
+
+**Leitura para a tela:** `war::army::army_reading(world, mil, politics, país, dia)` devolve a
+geração, a prontidão termo a termo, as entradas, se há tradição, a experiência e os limiares.
+
+**Conferência de 1939–41** (`war_land::generation_check_1939_to_1941`, ignorado, rodado no
+slot: o jogo de 1925 com `war` ligada e nenhuma guerra lutada):
+
+| | oficiais | treino | rádio | motorização | total | geração | `armored_warfare` |
+|---|---|---|---|---|---|---|---|
+| Alemanha, set/1939 | 0,70 | 1 | 0 | 0 | 445 | 2ª | Ciência |
+| Alemanha, mai/1940 | 0,70 | 1 | 0,02 | 0 | 447 | 2ª | Ciência |
+| Alemanha, jun/1941 | 0,70 | 1 | 0,13 | 0 | 457 | 2ª | Protótipo |
+| França, mai/1940 | 0,20 | 1 | 0 | 0 | 270 | 2ª | Desconhecida |
+| URSS, jun/1941 | 0,35 | 1 | 0,04 | 0 | 326 | 2ª | Ciência |
+| Polônia, set/1939 (sem tradição) | 0,39 | 1 | 0 | 0 | 337 | 2ª | Desconhecida |
+
+A ordem sai certa: Alemanha, Polônia, URSS, França. Ninguém chega à terceira geração (650), e o
+limiar não baixa. O que falta não é do mesmo tipo:
+- **Motorização zero: lacuna de funcionalidade, da guerra.** Nenhum exército muda de composição
+  de 1925 a 1939: a encomenda de formações (A2) é do jogador, e a IA não encomenda. É a próxima
+  fatia: a regra histórica de composição das forças.
+- **Ritmo da pesquisa de guerra blindada (equilíbrio, para a fila de calibração).** No jogo a
+  Alemanha está em Ciência em 1939; na história a técnica estava industrial em 1936. A pesquisa
+  militar não responde a verba nem a ameaça: sem foco do jogador, a ciência nova vai para a
+  tecnologia aberta mais barata, e os protótipos dividem o esforço por igual. É entrada para a
+  IA estratégica da fase 6 (pesquisar o que a ameaça pede).
+- **Rádio lento (equilíbrio, para a fila de calibração).** A troca de geração do equipamento leva
+  a Alemanha a 0,13 em 1941.
+
+Os casos de `front_pace` seguem ignorados com esse motivo.
+
+**O que a tela mostra.** `army_reading` diz, por termo, o que o segura (`war::army::Hold`):
+- a escola sem a doutrina, com o estágio da pesquisa;
+- sem tradição registrada;
+- treino incompleto;
+- nenhuma formação em geração nova;
+- nenhuma formação motorizada;
+- sem experiência de guerra;
+- troca de regime, com os anos que faltam.
+
+**Lacuna anotada.** Os expurgos soviéticos de 1937–38 e os comissários não entram: não houve
+troca de forma de governo, e o jogo não tem evento de expurgo. Se a União Soviética chegar a 1941
+melhor que a real, é dependência anotada, não meta.
+
 **Casos de conferência** (`tests/front_pace.rs`, com a fonte em cada teste):
 
 | caso | história | faixa | modelo |

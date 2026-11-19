@@ -1950,13 +1950,33 @@ mod tests {
             hash_of(&with_ledger)
         );
         assert_eq!(
-            hash_of(&headed(32, &encode_snapshot(&with_ledger).unwrap())),
+            hash_of(&headed(33, &encode_snapshot(&with_ledger).unwrap())),
             hash_of(&with_ledger)
         );
-        // Version 31, before the balance of payments: the world without `payments`.
+        // Version 32, the balance of payments (#247), before the generation of the armies.
         {
             #[derive(Serialize)]
-            struct BeforePayments<'a> {
+            struct FightingV32<'a> {
+                control: &'a Vec<(u32, u16)>,
+                advance: &'a Vec<(u32, u32, laplace_schelling::Fixed)>,
+                postures: &'a Vec<(u16, u16, bool)>,
+                losses: &'a Vec<(u16, u64)>,
+                last_week: &'a Vec<crate::war::fight::SegmentWeek>,
+                still: &'a Vec<(u32, u32, u16)>,
+                support: &'a Vec<crate::war::support::Support>,
+                occupied: &'a Vec<crate::war::occupation::Occupied>,
+                wrecks: &'a Vec<crate::war::occupation::Wreck>,
+            }
+            #[derive(Serialize)]
+            struct WarV32<'a> {
+                countries: &'a Vec<crate::war::CountryWar>,
+                soldiers: &'a Vec<i64>,
+                conflicts: &'a crate::war::Conflicts,
+                fighting: FightingV32<'a>,
+                composition: &'a crate::war::composition::CompositionState,
+            }
+            #[derive(Serialize)]
+            struct BeforeDoctrine32<'a> {
                 scenario: &'a String,
                 player: &'a Option<Id<Country>>,
                 countries: &'a Table<Country, CountryState>,
@@ -1969,14 +1989,16 @@ mod tests {
                 foreign: &'a crate::foreign_stakes::ForeignState,
                 influence: &'a crate::influence::InfluenceState,
                 treaties: &'a crate::treaty::TreatyState,
-                war: &'a crate::war::state::WarState,
+                war: WarV32<'a>,
                 education: &'a crate::demography::education::EducationState,
                 independence: &'a crate::borders::independence::IndependenceState,
                 levers: &'a crate::econ::levers::LeversState,
                 tariffs: &'a crate::econ::customs::TariffState,
+                payments: &'a crate::econ::payments::PaymentsState,
             }
             let w = &with_ledger;
-            let v31 = encode_snapshot(&BeforePayments {
+            let f = &w.war.fighting;
+            let v32 = encode_snapshot(&BeforeDoctrine32 {
                 scenario: &w.scenario,
                 player: &w.player,
                 countries: &w.countries,
@@ -1989,18 +2011,115 @@ mod tests {
                 foreign: &w.foreign,
                 influence: &w.influence,
                 treaties: &w.treaties,
-                war: &w.war,
+                war: WarV32 {
+                    countries: &w.war.countries,
+                    soldiers: &w.war.soldiers,
+                    conflicts: &w.war.conflicts,
+                    fighting: FightingV32 {
+                        control: &f.control,
+                        advance: &f.advance,
+                        postures: &f.postures,
+                        losses: &f.losses,
+                        last_week: &f.last_week,
+                        still: &f.still,
+                        support: &f.support,
+                        occupied: &f.occupied,
+                        wrecks: &f.wrecks,
+                    },
+                    composition: &w.war.composition,
+                },
+                education: &w.education,
+                independence: &w.independence,
+                levers: &w.levers,
+                tariffs: &w.tariffs,
+                payments: &w.payments,
+            })
+            .unwrap();
+            assert_eq!(hash_of(&headed(32, &v32)), hash_of(&with_ledger));
+        }
+        // Version 31, the embargoes (#244), before the generation of the armies.
+        {
+            #[derive(Serialize)]
+            struct FightingV31<'a> {
+                control: &'a Vec<(u32, u16)>,
+                advance: &'a Vec<(u32, u32, laplace_schelling::Fixed)>,
+                postures: &'a Vec<(u16, u16, bool)>,
+                losses: &'a Vec<(u16, u64)>,
+                last_week: &'a Vec<crate::war::fight::SegmentWeek>,
+                still: &'a Vec<(u32, u32, u16)>,
+                support: &'a Vec<crate::war::support::Support>,
+                occupied: &'a Vec<crate::war::occupation::Occupied>,
+                wrecks: &'a Vec<crate::war::occupation::Wreck>,
+            }
+            #[derive(Serialize)]
+            struct WarV31<'a> {
+                countries: &'a Vec<crate::war::CountryWar>,
+                soldiers: &'a Vec<i64>,
+                conflicts: &'a crate::war::Conflicts,
+                fighting: FightingV31<'a>,
+                composition: &'a crate::war::composition::CompositionState,
+            }
+            #[derive(Serialize)]
+            struct BeforeDoctrine31<'a> {
+                scenario: &'a String,
+                player: &'a Option<Id<Country>>,
+                countries: &'a Table<Country, CountryState>,
+                census: &'a Vec<CensusRecord>,
+                econ: &'a crate::econ::Economy,
+                research: &'a crate::research::ResearchState,
+                politics: &'a crate::polity::PoliticsState,
+                demography: &'a crate::demography::DemographyState,
+                borders: &'a crate::borders::BordersState,
+                foreign: &'a crate::foreign_stakes::ForeignState,
+                influence: &'a crate::influence::InfluenceState,
+                treaties: &'a crate::treaty::TreatyState,
+                war: WarV31<'a>,
+                education: &'a crate::demography::education::EducationState,
+                independence: &'a crate::borders::independence::IndependenceState,
+                levers: &'a crate::econ::levers::LeversState,
+                tariffs: &'a crate::econ::customs::TariffState,
+            }
+            let w = &with_ledger;
+            let f = &w.war.fighting;
+            let v31 = encode_snapshot(&BeforeDoctrine31 {
+                scenario: &w.scenario,
+                player: &w.player,
+                countries: &w.countries,
+                census: &w.census,
+                econ: &w.econ,
+                research: &w.research,
+                politics: &w.politics,
+                demography: &w.demography,
+                borders: &w.borders,
+                foreign: &w.foreign,
+                influence: &w.influence,
+                treaties: &w.treaties,
+                war: WarV31 {
+                    countries: &w.war.countries,
+                    soldiers: &w.war.soldiers,
+                    conflicts: &w.war.conflicts,
+                    fighting: FightingV31 {
+                        control: &f.control,
+                        advance: &f.advance,
+                        postures: &f.postures,
+                        losses: &f.losses,
+                        last_week: &f.last_week,
+                        still: &f.still,
+                        support: &f.support,
+                        occupied: &f.occupied,
+                        wrecks: &f.wrecks,
+                    },
+                    composition: &w.war.composition,
+                },
                 education: &w.education,
                 independence: &w.independence,
                 levers: &w.levers,
                 tariffs: &w.tariffs,
             })
             .unwrap();
-            let old = headed(31, &v31);
-            assert_eq!(hash_of(&old), hash_of(&with_ledger));
-            assert_eq!(old, *w, "version 31 reads as this world, its record empty");
+            assert_eq!(hash_of(&headed(31, &v31)), hash_of(&with_ledger));
         }
-        // Version 30, before the embargoes: `tariffs` without `embargoes`.
+        // Version 30, the tariff tables (#242), before the embargoes and the generation of the armies.
         {
             #[derive(Serialize)]
             struct TariffsV30<'a> {
@@ -2008,7 +2127,27 @@ mod tests {
                 revenue: &'a Vec<laplace_schelling::Fixed>,
             }
             #[derive(Serialize)]
-            struct BeforeEmbargoes<'a> {
+            struct FightingV30<'a> {
+                control: &'a Vec<(u32, u16)>,
+                advance: &'a Vec<(u32, u32, laplace_schelling::Fixed)>,
+                postures: &'a Vec<(u16, u16, bool)>,
+                losses: &'a Vec<(u16, u64)>,
+                last_week: &'a Vec<crate::war::fight::SegmentWeek>,
+                still: &'a Vec<(u32, u32, u16)>,
+                support: &'a Vec<crate::war::support::Support>,
+                occupied: &'a Vec<crate::war::occupation::Occupied>,
+                wrecks: &'a Vec<crate::war::occupation::Wreck>,
+            }
+            #[derive(Serialize)]
+            struct WarV30<'a> {
+                countries: &'a Vec<crate::war::CountryWar>,
+                soldiers: &'a Vec<i64>,
+                conflicts: &'a crate::war::Conflicts,
+                fighting: FightingV30<'a>,
+                composition: &'a crate::war::composition::CompositionState,
+            }
+            #[derive(Serialize)]
+            struct BeforeDoctrine30<'a> {
                 scenario: &'a String,
                 player: &'a Option<Id<Country>>,
                 countries: &'a Table<Country, CountryState>,
@@ -2021,14 +2160,15 @@ mod tests {
                 foreign: &'a crate::foreign_stakes::ForeignState,
                 influence: &'a crate::influence::InfluenceState,
                 treaties: &'a crate::treaty::TreatyState,
-                war: &'a crate::war::state::WarState,
+                war: WarV30<'a>,
                 education: &'a crate::demography::education::EducationState,
                 independence: &'a crate::borders::independence::IndependenceState,
                 levers: &'a crate::econ::levers::LeversState,
                 tariffs: TariffsV30<'a>,
             }
             let w = &with_ledger;
-            let v30 = encode_snapshot(&BeforeEmbargoes {
+            let f = &w.war.fighting;
+            let v30 = encode_snapshot(&BeforeDoctrine30 {
                 scenario: &w.scenario,
                 player: &w.player,
                 countries: &w.countries,
@@ -2041,7 +2181,23 @@ mod tests {
                 foreign: &w.foreign,
                 influence: &w.influence,
                 treaties: &w.treaties,
-                war: &w.war,
+                war: WarV30 {
+                    countries: &w.war.countries,
+                    soldiers: &w.war.soldiers,
+                    conflicts: &w.war.conflicts,
+                    fighting: FightingV30 {
+                        control: &f.control,
+                        advance: &f.advance,
+                        postures: &f.postures,
+                        losses: &f.losses,
+                        last_week: &f.last_week,
+                        still: &f.still,
+                        support: &f.support,
+                        occupied: &f.occupied,
+                        wrecks: &f.wrecks,
+                    },
+                    composition: &w.war.composition,
+                },
                 education: &w.education,
                 independence: &w.independence,
                 levers: &w.levers,
@@ -2053,10 +2209,30 @@ mod tests {
             .unwrap();
             assert_eq!(hash_of(&headed(30, &v30)), hash_of(&with_ledger));
         }
-        // Version 29, before the tariff tables: the world without `tariffs`.
+        // Version 29, before the generation of the armies: `fighting` up to `wrecks`, with the composition.
         {
             #[derive(Serialize)]
-            struct BeforeTariffs<'a> {
+            struct FightingV29<'a> {
+                control: &'a Vec<(u32, u16)>,
+                advance: &'a Vec<(u32, u32, laplace_schelling::Fixed)>,
+                postures: &'a Vec<(u16, u16, bool)>,
+                losses: &'a Vec<(u16, u64)>,
+                last_week: &'a Vec<crate::war::fight::SegmentWeek>,
+                still: &'a Vec<(u32, u32, u16)>,
+                support: &'a Vec<crate::war::support::Support>,
+                occupied: &'a Vec<crate::war::occupation::Occupied>,
+                wrecks: &'a Vec<crate::war::occupation::Wreck>,
+            }
+            #[derive(Serialize)]
+            struct WarV29<'a> {
+                countries: &'a Vec<crate::war::CountryWar>,
+                soldiers: &'a Vec<i64>,
+                conflicts: &'a crate::war::Conflicts,
+                fighting: FightingV29<'a>,
+                composition: &'a crate::war::composition::CompositionState,
+            }
+            #[derive(Serialize)]
+            struct BeforeDoctrine29<'a> {
                 scenario: &'a String,
                 player: &'a Option<Id<Country>>,
                 countries: &'a Table<Country, CountryState>,
@@ -2069,13 +2245,14 @@ mod tests {
                 foreign: &'a crate::foreign_stakes::ForeignState,
                 influence: &'a crate::influence::InfluenceState,
                 treaties: &'a crate::treaty::TreatyState,
-                war: &'a crate::war::state::WarState,
+                war: WarV29<'a>,
                 education: &'a crate::demography::education::EducationState,
                 independence: &'a crate::borders::independence::IndependenceState,
                 levers: &'a crate::econ::levers::LeversState,
             }
             let w = &with_ledger;
-            let v29 = encode_snapshot(&BeforeTariffs {
+            let f = &w.war.fighting;
+            let v29 = encode_snapshot(&BeforeDoctrine29 {
                 scenario: &w.scenario,
                 player: &w.player,
                 countries: &w.countries,
@@ -2088,7 +2265,23 @@ mod tests {
                 foreign: &w.foreign,
                 influence: &w.influence,
                 treaties: &w.treaties,
-                war: &w.war,
+                war: WarV29 {
+                    countries: &w.war.countries,
+                    soldiers: &w.war.soldiers,
+                    conflicts: &w.war.conflicts,
+                    fighting: FightingV29 {
+                        control: &f.control,
+                        advance: &f.advance,
+                        postures: &f.postures,
+                        losses: &f.losses,
+                        last_week: &f.last_week,
+                        still: &f.still,
+                        support: &f.support,
+                        occupied: &f.occupied,
+                        wrecks: &f.wrecks,
+                    },
+                    composition: &w.war.composition,
+                },
                 education: &w.education,
                 independence: &w.independence,
                 levers: &w.levers,
@@ -2096,17 +2289,29 @@ mod tests {
             .unwrap();
             assert_eq!(hash_of(&headed(29, &v29)), hash_of(&with_ledger));
         }
-        // Version 28, before the composition of the forces: `war` without `composition`.
+        // Version 28, before the composition and the generation of the armies.
         {
+            #[derive(Serialize)]
+            struct FightingV28<'a> {
+                control: &'a Vec<(u32, u16)>,
+                advance: &'a Vec<(u32, u32, laplace_schelling::Fixed)>,
+                postures: &'a Vec<(u16, u16, bool)>,
+                losses: &'a Vec<(u16, u64)>,
+                last_week: &'a Vec<crate::war::fight::SegmentWeek>,
+                still: &'a Vec<(u32, u32, u16)>,
+                support: &'a Vec<crate::war::support::Support>,
+                occupied: &'a Vec<crate::war::occupation::Occupied>,
+                wrecks: &'a Vec<crate::war::occupation::Wreck>,
+            }
             #[derive(Serialize)]
             struct WarV28<'a> {
                 countries: &'a Vec<crate::war::CountryWar>,
                 soldiers: &'a Vec<i64>,
                 conflicts: &'a crate::war::Conflicts,
-                fighting: &'a crate::war::fight::Fighting,
+                fighting: FightingV28<'a>,
             }
             #[derive(Serialize)]
-            struct BeforeComposition<'a> {
+            struct BeforeDoctrine<'a> {
                 scenario: &'a String,
                 player: &'a Option<Id<Country>>,
                 countries: &'a Table<Country, CountryState>,
@@ -2125,7 +2330,8 @@ mod tests {
                 levers: &'a crate::econ::levers::LeversState,
             }
             let w = &with_ledger;
-            let v28 = encode_snapshot(&BeforeComposition {
+            let f = &w.war.fighting;
+            let v28 = encode_snapshot(&BeforeDoctrine {
                 scenario: &w.scenario,
                 player: &w.player,
                 countries: &w.countries,
@@ -2142,7 +2348,17 @@ mod tests {
                     countries: &w.war.countries,
                     soldiers: &w.war.soldiers,
                     conflicts: &w.war.conflicts,
-                    fighting: &w.war.fighting,
+                    fighting: FightingV28 {
+                        control: &f.control,
+                        advance: &f.advance,
+                        postures: &f.postures,
+                        losses: &f.losses,
+                        last_week: &f.last_week,
+                        still: &f.still,
+                        support: &f.support,
+                        occupied: &f.occupied,
+                        wrecks: &f.wrecks,
+                    },
                 },
                 education: &w.education,
                 independence: &w.independence,

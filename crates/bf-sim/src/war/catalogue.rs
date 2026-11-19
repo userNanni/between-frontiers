@@ -324,6 +324,8 @@ pub struct RulesFile {
     /// Share of the wounded who cannot go back to work, per mille.
     pub invalid_share: u32,
     pub doctrine: DoctrineRule,
+    #[serde(default)]
+    pub command: CommandRule,
     pub nuclear: NuclearRule,
     pub reserve: ReserveRule,
     pub front: FrontRule,
@@ -447,6 +449,36 @@ pub struct DoctrineRule {
     pub breakthrough_ratio: Fixed,
     /// Speed of the exploitation after a breakthrough, over the base speed.
     pub exploitation_speed: Fixed,
+    /// Weeks of war that give an army the full experience term.
+    pub experience_full_weeks: u32,
+    /// Half-life of that experience in peace, years.
+    pub experience_half_life_years: u32,
+    /// Years after a change of the form of government in which the officer corps is under
+    /// political control: full at the change, gone at the end.
+    pub politicized_years: u32,
+}
+
+/// The command culture of the armies (decision G7, draft): the share of the officer corps
+/// formed to act on the commander's intent, in 1925, and how it moves, a cohort at a time.
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct CommandRule {
+    /// (country tag, per mille) in 1925, for the armies with a recorded tradition. The others
+    /// read the schooling of their people instead.
+    pub tradition_1925: Vec<(String, u32)>,
+    /// Per mille of the schooling of the people that an army without a recorded tradition
+    /// counts as officers formed to act on intent: a schooled corps, without a staff school's
+    /// doctrine.
+    pub untraditioned_share: u32,
+    /// Years an officer serves: a cohort of 1 / this of the corps comes out of the schools each
+    /// year, formed in what they teach.
+    pub officer_career_years: u32,
+    /// The research that opens the doctrine of mobile, decentralised command: once the country
+    /// makes it (Industrial stage), the schools teach it.
+    pub doctrine_tech: String,
+    /// After a lost war the schools revise the doctrine: the cohorts come this many times as
+    /// fast for `reform_years`.
+    pub defeat_reform_speed: u32,
+    pub reform_years: u32,
 }
 
 /// Nuclear deterrence (`docs/war.pt-BR.md`, "Arma nuclear"). Per mille unless said. Design
@@ -621,6 +653,7 @@ pub struct Rules {
     pub exhaustion: ExhaustionWeights,
     pub invalid_share: Fixed,
     pub doctrine: DoctrineRule,
+    pub command: CommandRule,
     pub nuclear: NuclearRule,
     pub reserve: ReserveRule,
     pub front: FrontRule,
@@ -1017,6 +1050,7 @@ fn resolve_rules(file: &RulesFile, cat: &Catalogue, errors: &mut Vec<String>) ->
         exhaustion: file.exhaustion,
         invalid_share: per_mille(file.invalid_share),
         doctrine: file.doctrine,
+        command: file.command.clone(),
         nuclear: file.nuclear,
         reserve: file.reserve,
         front: file.front,

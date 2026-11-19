@@ -197,6 +197,48 @@
         // Three times the defender's power, its reserve included, breaks the segment.
         breakthrough_ratio: 3,
         exploitation_speed: 2,
+        // A year of war gives the full experience term, which halves in five years of peace
+        // (design values: the lessons of one war are mostly gone by the next generation of
+        // officers, Murray and Millett 1996 on the interwar years).
+        experience_full_weeks: 52,
+        experience_half_life_years: 5,
+        // The officer corps answers to politics for five years after a change of the form of
+        // government (purges and commissars; design value). The regime itself is not a term:
+        // the German army of 1939–41, under a dictatorship, commanded by mission; the French of
+        // 1940, under a democracy, fought a methodical battle from the centre.
+        politicized_years: 5,
+    ),
+
+    // Command culture (decision G7, draft; docs/war.pt-BR.md, "Geração do exército"): the share
+    // of the officer corps formed to act on the commander's intent in 1925. Design values from
+    // the institution each army was in 1925, not from what it became; what it becomes comes
+    // out of the game. Armies not listed read the schooling of their people.
+    command: (
+        tradition_1925: [
+            // The Reichswehr of Seeckt (1920-26): an army of leaders, command by mission
+            // (Corum, The Roots of Blitzkrieg, 1992; Citino, The Path to Blitzkrieg, 1999).
+            ("GER", 700),
+            // The Field Service Regulations of 1924 and the experimental mechanised force to come
+            // (French, Raising Churchill's Army, 2000): between the two.
+            ("GBR", 400),
+            // Frunze's reforms; deep operations only from 1929 (Triandafillov) and PU-36 (Glantz,
+            // Soviet Military Operational Art, 1991).
+            ("SOV", 350),
+            // The provisional instruction of 1921 and the methodical battle, run from the centre
+            // (Doughty, The Seeds of Disaster, 1985).
+            ("FRA", 200),
+        ],
+        // An army without a recorded tradition counts half the schooling of its people (design
+        // value): otherwise a literate country without a staff school (Poland, 0.79 in 1939)
+        // would out-rank the Reichswehr's 0.7.
+        untraditioned_share: 500,
+        // A career of 25 years: a twenty-fifth of the corps a year (design value).
+        officer_career_years: 25,
+        doctrine_tech: "armored_warfare",
+        // After a defeat the schools revise the doctrine (the Reichswehr after 1918): cohorts
+        // twice as fast for ten years (design values).
+        defeat_reform_speed: 2,
+        reform_years: 10,
     ),
 
     // Nuclear deterrence (docs/war.pt-BR.md, "Arma nuclear").

@@ -22,6 +22,7 @@ fn schema() -> String {
     }
     trace!(
         GameWorld,
+        bf_sim::war::doctrine::Generation,
         bf_sim::econ::money::CentralBank,
         bf_sim::treaty::Currency,
         bf_sim::borders::op::DebtTerm,

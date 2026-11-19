@@ -706,6 +706,189 @@ fn no_bucket_passes_its_target_to_1960() {
     no_bucket_passes_its_target(1960);
 }
 
+/// The command culture (decision G7, draft): the armies with a tradition on record start at it,
+/// the others read their people's schooling and show no tradition; once the doctrine's research
+/// is made, the schools teach it and the officers turn over a cohort at a time, slowly.
+#[test]
+fn the_command_culture_moves_a_cohort_at_a_time() {
+    use bf_sim::war::army::army_reading;
+    let d = data();
+    let mut w = d.new_world();
+    let ger = index(&w, "GER") as usize;
+    let tree = d.tree.as_ref().unwrap();
+    let t = tree.tech("armored_warfare").unwrap();
+    w.research.stage[ger][t] = bf_sim::research::Stage::Industrial;
+    let mut s = Session::new(w, 1925, Date::new(1925, 1, 1), 2, Some(d.rules()));
+    s.sim.run_until(Date::new(1925, 2, 10));
+    let mil = &d.war.as_ref().unwrap().military;
+    let today = s.clock().date.to_days();
+    let read = |s: &Session, tag: &str| {
+        army_reading(
+            s.world(),
+            mil,
+            d.politics.as_deref(),
+            d.tree.as_deref(),
+            &vehicles_of(d),
+            index(s.world(), tag) as usize,
+            today,
+        )
+    };
+    let (g0, f0, p0) = (read(&s, "GER"), read(&s, "FRA"), read(&s, "POL"));
+    assert!(g0.tradition && f0.tradition && !p0.tradition);
+    assert!(g0.inputs.officer_education > f0.inputs.officer_education);
+    // Poland reads the schooling of its people, not a zero, and the reading says why.
+    assert!(p0.inputs.officer_education.is_positive());
+    assert_eq!(p0.holds[0], Some(bf_sim::war::army::Hold::NoTradition));
+    // France's schools wait for the research.
+    assert!(matches!(
+        f0.holds[0],
+        Some(bf_sim::war::army::Hold::SchoolWithoutDoctrine(_))
+    ));
+    assert_eq!(g0.holds[0], None);
+    // "No motorized formation" holds exactly when the motorization, by the vehicles held, is
+    // zero.
+    for r in [&g0, &f0, &p0] {
+        assert_eq!(
+            r.holds[3] == Some(bf_sim::war::army::Hold::NoMotorized),
+            !r.inputs.motorization.is_positive()
+        );
+    }
+    s.sim.run_until(Date::new(1927, 2, 10));
+    let today = s.clock().date.to_days();
+    let read = |s: &Session, tag: &str| {
+        army_reading(
+            s.world(),
+            mil,
+            d.politics.as_deref(),
+            d.tree.as_deref(),
+            &vehicles_of(d),
+            index(s.world(), tag) as usize,
+            today,
+        )
+    };
+    let (g1, f1) = (read(&s, "GER"), read(&s, "FRA"));
+    // Germany's schools teach the doctrine: up, by at most two classes in two years.
+    assert!(g1.inputs.officer_education > g0.inputs.officer_education);
+    let gain = g1.inputs.officer_education - g0.inputs.officer_education;
+    assert!(gain <= Fixed::from_ratio(2 * 300, 25 * 1000), "{gain:?}");
+    // France without the research keeps its methodical school.
+    assert_eq!(f1.inputs.officer_education, f0.inputs.officer_education);
+}
+
+/// A third-generation army concentrates on the focus segment and breaks through there; the
+/// same army in the second generation spreads evenly and does not.
+#[test]
+fn a_third_generation_army_concentrates_and_breaks_through() {
+    use bf_sim::war::doctrine::Generation;
+    let run = |generation: Generation| {
+        let mut s = at_war();
+        let hun = index(s.world(), "HUN");
+        let today = s.clock().date.to_days();
+        let f = &mut s.sim.world_mut().war.fighting;
+        f.doctrine.retain(|x| x.country != hun);
+        let at = f.doctrine.partition_point(|x| x.country < hun);
+        f.doctrine.insert(
+            at,
+            bf_sim::war::fight::ArmyDoctrine {
+                country: hun,
+                generation,
+                experience_weeks: Fixed::ZERO,
+                as_of: today,
+                intent: Fixed::ZERO,
+                tradition: false,
+                reform_until: 0,
+            },
+        );
+        // Before the next month's reading, which would move the generation by the readiness.
+        s.sim.run_until(Date::new(1925, 3, 31));
+        let w = s.world();
+        let men: Vec<u64> = w
+            .war
+            .fighting
+            .last_week
+            .iter()
+            .filter(|g| g.a == hun || g.b == hun)
+            .map(|g| g.outcome.terms[usize::from(g.b == hun)].number.raw() as u64)
+            .collect();
+        men
+    };
+    let even = run(Generation::Second);
+    let focus = run(Generation::Third);
+    let spread =
+        |v: &[u64]| v.iter().max().copied().unwrap_or(0) - v.iter().min().copied().unwrap_or(0);
+    assert!(spread(&focus) > spread(&even), "{even:?} {focus:?}");
+}
+
+/// The check of step 4 against 1939–41 (`docs/war.pt-BR.md`, "Geração do exército"): the
+/// readiness of Germany, France, the Soviet Union and Poland (no tradition on record), term by
+/// term, out of the game from 1925 with the war switched on and no war fought. Ignored: 16
+/// years; run in a bench slot and read the table it prints.
+#[test]
+#[ignore]
+fn generation_check_1939_to_1941() {
+    use bf_sim::war::army::army_reading;
+    let d = data();
+    let mut s = Session::new(
+        d.new_world(),
+        1925,
+        Date::new(1925, 1, 1),
+        2,
+        Some(d.rules()),
+    );
+    let mil = &d.war.as_ref().unwrap().military;
+    let t = d.tree.as_ref().unwrap().tech("armored_warfare").unwrap();
+    for (date, tags) in [
+        (Date::new(1939, 9, 1), vec!["GER", "POL", "FRA", "SOV"]),
+        (Date::new(1940, 5, 10), vec!["GER", "FRA"]),
+        (Date::new(1941, 6, 22), vec!["GER", "SOV"]),
+    ] {
+        s.sim.run_until(date);
+        let w = s.world();
+        for tag in tags {
+            let ci = index(w, tag) as usize;
+            let r = army_reading(
+                w,
+                mil,
+                d.politics.as_deref(),
+                d.tree.as_deref(),
+                &vehicles_of(d),
+                ci,
+                date.to_days(),
+            );
+            let i = &r.inputs;
+            let x = &r.readiness;
+            println!(
+                "{date:?} {tag}: tradition {} | holds {:?} | officers {:?} ({}) training {:?} ({}) radio {:?} ({}) motor {:?} ({}) experience {:?} ({}) control {:?} (-{}) | total {} -> {:?} | armored_warfare {:?}",
+                r.tradition,
+                r.holds,
+                i.officer_education,
+                x.officer_education,
+                i.training,
+                x.training,
+                i.radio,
+                x.radio,
+                i.motorization,
+                x.motorization,
+                i.experience,
+                x.experience,
+                i.central_control,
+                x.central_control,
+                x.total,
+                r.generation,
+                w.research.stage[ci][t],
+            );
+        }
+    }
+}
+
+fn vehicles_of(d: &GameData) -> Vec<u16> {
+    d.war
+        .as_ref()
+        .and_then(|w| w.peace.as_ref()?.composition.as_ref())
+        .map(|r| bf_sim::war::composition::vehicle_goods(r, &d.catalogue))
+        .unwrap_or_default()
+}
+
 /// A country born in play (here Nigeria, separated from Britain) gets its entry in the forces:
 /// without it, it had no forces, no military budget and no war support.
 #[test]
