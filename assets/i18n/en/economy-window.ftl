@@ -16,3 +16,4 @@ economy-col-profit = Profit
 economy-col-states = States
 economy-levels-building = { $levels } +{ $building }
 economy-none = No buildings in this sector.
+economy-goto-state = Open the state panel

@@ -89,6 +89,9 @@ pub struct Window {
     pub ascending: bool,
     /// The kind opened on its states.
     pub open: Option<u16>,
+    /// A state line was clicked: the map state id to show (the game selects it and closes the
+    /// window).
+    pub goto: Option<u16>,
 }
 
 #[derive(Default)]
@@ -375,7 +378,7 @@ fn buildings(
                     window.open = if open { None } else { Some(k.kind) };
                 }
                 if open {
-                    states(ui, i18n, world, k, (name_w, col));
+                    window.goto = states(ui, i18n, world, k, (name_w, col)).or(window.goto);
                 }
             }
         });
@@ -467,8 +470,9 @@ fn states(
     world: Option<&crate::world::World>,
     k: &KindRow,
     widths: (f32, f32),
-) {
-    for s in &k.states {
+) -> Option<u16> {
+    let mut goto = None;
+    for (j, s) in k.states.iter().enumerate() {
         let state = world
             .and_then(|w| w.states.get(usize::from(s.state).saturating_sub(1)))
             .map_or_else(|| "—".into(), |st| crate::text::state_name(i18n, &st.def));
@@ -477,7 +481,7 @@ fn states(
         } else {
             format!("    {state} · {}", i18n.tr(&format!("method-{}", s.method)))
         };
-        line(
+        let r = line(
             ui,
             widths,
             &label,
@@ -485,9 +489,21 @@ fn states(
             s.profit < 0.0 && !k.public,
             color::TEXT_MUTED,
             None,
+        )
+        .on_hover_text(i18n.tr("economy-goto-state"));
+        let typed = keys::item(
+            ui,
+            'T',
+            format!("economy.state.{}", s.state),
+            &(j + 1).to_string(),
+            r.rect,
         );
+        if r.clicked() || typed {
+            goto = Some(s.state);
+        }
     }
     bf_ui_kit::gap(ui, space::XS);
+    goto
 }
 
 fn state_figures(i18n: &I18n, k: &KindRow, s: &StateRow) -> [String; 6] {
