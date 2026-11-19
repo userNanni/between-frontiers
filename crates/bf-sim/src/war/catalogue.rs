@@ -357,6 +357,10 @@ pub struct FrontRule {
     /// trenches); a week in which the front moves less than `still_km` counts as still.
     pub dig_weeks: u16,
     pub still_km: Fixed,
+    /// Pursuit: a side that advanced on a segment last week and attacks it this week with this
+    /// many times the defender's power marches on at its marching pace, the defence broken
+    /// (`calc::pursuit_km`).
+    pub pursuit_ratio: Fixed,
 }
 
 /// Calling up the reserve.
