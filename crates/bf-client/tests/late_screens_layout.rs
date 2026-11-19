@@ -291,7 +291,11 @@ fn the_late_screens_fit_and_answer_their_keys() {
         failures.extend(check_sizes(&mut h, locale, "embargo"));
         need(&mut h, "embargo.find", &mut failures);
         failures.extend(check_sizes(&mut h, locale, "embargo search"));
-        need(&mut h, "embargo.find.ALB", &mut failures);
+        // The search field holds the keys: a name typed, Enter picks the first.
+        h.event(egui::Event::Text("Alb".into()));
+        steps(&mut h);
+        h.key_press(egui::Key::Enter);
+        steps(&mut h);
         failures.extend(check_sizes(&mut h, locale, "embargo confirm"));
         need(&mut h, "embargo.no", &mut failures);
         need(&mut h, "journal.decision.back", &mut failures);
