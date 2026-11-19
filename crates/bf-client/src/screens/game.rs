@@ -851,6 +851,14 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
             if matches!(c, GameCommand::SetLaw { .. }) {
                 state.restore_point_before(shared, Reason::Law);
             }
+            // The nuclear test and the end of the programme from the forces tab: a point first,
+            // as from the Agendas.
+            if matches!(
+                c,
+                GameCommand::NuclearTest { .. } | GameCommand::NuclearProgramme { share: None, .. }
+            ) {
+                state.restore_point_before(shared, Reason::War);
+            }
             // Breaking an agreement's tariff clause on purpose (CT2): a point to go back to.
             if matches!(c, GameCommand::SetPartnerTariff { breach: true, .. }) {
                 state.restore_point_before(shared, Reason::Treaty);
