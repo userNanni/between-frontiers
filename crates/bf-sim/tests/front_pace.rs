@@ -1,9 +1,9 @@
 //! The pace of a front against history (docs/war.pt-BR.md, "Ritmo da frente"): how far a week of
 //! combat moves a segment, from the density of the defence per km of front, the entrenchment,
 //! the ratio of fire, the mobility and the terrain. Each case gives its source and the range the
-//! week must fall in. A case the model cannot reach yet is ignored with what it lacks: 3, the
-//! mobility of the formations; 4, the breakthrough and exploitation of `war::doctrine`. The range
-//! is not loosened.
+//! week must fall in. A case the model cannot reach yet is ignored with what it lacks: 4, the
+//! concentration of mobile troops on the focus segment and the breakthrough and exploitation of
+//! `war::doctrine`. The range is not loosened.
 
 use std::path::PathBuf;
 use std::sync::OnceLock;
@@ -29,8 +29,13 @@ fn rules() -> &'static Rules {
     &data().war.as_ref().unwrap().military.rules
 }
 
-/// What the tick feeds the combat today: every land force on foot. The cases that need horses,
-/// lorries or tracks wait for 3.
+/// What the tick feeds these cases: the mobility of the majority of the attacker's land men
+/// (`war::fight::majority_mobility`, step 3). In the three armies of the cases most men walked:
+/// the Red Army of 1920 was mostly infantry, with Budyonny's cavalry a minority; in 1939 and
+/// 1940 some 16 of about 140 German divisions were armoured or motorized. What the cases lack is
+/// the concentration of the mobile troops on the segment that attacks (step 4): with the
+/// segment's own mobility, Poland 1920 on horses gives 46 km a week (range 40 to 150) and Poland
+/// 1939 on horses 98, on lorries or tracks 210 (range 60 to 200).
 const TICK_MOBILITY: Mobility = Mobility::Foot;
 
 /// A side of `men` whose fire per man is `quality` times the reference.
@@ -128,7 +133,7 @@ fn the_same_front_before_the_trenches_moves_faster() {
 /// Budyonny's cavalry (Davies, *White Eagle, Red Star*, 1972). A segment of 200 km: 40,000
 /// against 25,000 of the same fire per man. 40 to 150 km a week.
 #[test]
-#[ignore = "needs 3: the cavalry's mobility (on foot the thin front gives about 26 km a week)"]
+#[ignore = "needs the cavalry concentrated on the segment (4): the majority walked, 26 km a week; on horses 46"]
 fn poland_1920_runs() {
     let km = week(
         200,
@@ -146,7 +151,7 @@ fn poland_1920_runs() {
 /// (Zaloga and Madej, *The Polish Campaign 1939*, 1985). A segment of 150 km: 100,000 against
 /// 40,000. 60 to 200 km a week.
 #[test]
-#[ignore = "needs 3 and 4: tracks and lorries, and the breakthrough of the focus segment"]
+#[ignore = "needs 4: the mobile divisions on the focus segment; the majority walked, 56 km a week"]
 fn poland_1939_in_weeks() {
     let km = week(
         150,
@@ -165,7 +170,7 @@ fn poland_1939_in_weeks() {
 /// km, half forest, along the Meuse: 100,000 with one and a half times the fire per man against
 /// 40,000. 100 to 300 km a week.
 #[test]
-#[ignore = "needs 3 and 4: the panzer divisions' tracks, and the breakthrough and exploitation"]
+#[ignore = "needs 4: the panzer divisions on the focus segment, and the breakthrough and exploitation"]
 fn france_1940_in_weeks() {
     let km = week(
         80,
