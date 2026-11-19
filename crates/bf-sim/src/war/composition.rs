@@ -31,6 +31,10 @@ pub struct CompositionRule {
     /// The goods that make a formation move on wheels or tracks (lorries, armoured vehicles):
     /// a formation counts as motorized by how many of them it holds over what its type needs.
     pub vehicles: Vec<String>,
+    /// The rule opens no new conversion while the army holds less than this share of the
+    /// equipment its formations need, per mille: a country that cannot keep its infantry armed
+    /// does not motorize it.
+    pub min_fill: u32,
 }
 
 /// A conversion under way: `ordered` elements of `from` becoming `unit`.
@@ -182,6 +186,29 @@ pub fn equipped(mil: &Military, vehicles: &[u16], c: &CountryWar) -> (Fixed, Fix
     (wheels, tracks, all)
 }
 
+/// The value of the equipment the land formations of `c` hold over what they need, 0 to 1.
+pub fn land_fill(mil: &Military, c: &CountryWar) -> Fixed {
+    let (mut need, mut held) = (Fixed::ZERO, Fixed::ZERO);
+    for f in &c.formations {
+        if mil.types[f.unit as usize].domain != Domain::Land {
+            continue;
+        }
+        let want: Vec<(u16, Fixed)> = mil
+            .spec(f.unit, f.generation as usize)
+            .equipment
+            .iter()
+            .map(|(g, q)| (*g, *q * f.elements))
+            .collect();
+        need += mil.value_lots(&want);
+        held += mil.value_lots(&f.equipment).min(mil.value_lots(&want));
+    }
+    if need.is_positive() {
+        held / need
+    } else {
+        Fixed::ONE
+    }
+}
+
 /// The goods of `rule.vehicles`, by index.
 pub fn vehicle_goods(rule: &CompositionRule, cat: &crate::econ::Catalogue) -> Vec<u16> {
     rule.vehicles.iter().filter_map(|k| cat.good(k)).collect()
@@ -210,6 +237,11 @@ pub fn compose(
     let Some((tw, tt)) = target(rule, fixed, newest(from)) else {
         return;
     };
+    // The rule waits while the army cannot keep what it has armed; the government's target
+    // does not (the player chose it, and sees the lack).
+    if fixed.is_none() && land_fill(mil, c) < Fixed::from_ratio(i64::from(rule.min_fill), 1000) {
+        return;
+    }
     let (wheels, tracks, all) = now(mil, c, conversions);
     if !all.is_positive() {
         return;

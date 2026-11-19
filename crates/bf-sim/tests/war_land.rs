@@ -500,11 +500,12 @@ fn composition_check_1939_and_1944() {
                     .sum();
                 let m = &w.econ.markets[ci];
                 println!(
-                    "{label} {year} {tag}: by type wheels {:.1}% tracks {:.1}% | equipped wheels {:.1}% tracks {:.1}% | of {at} men | waiting {waiting:?} | lacking {lack:?} lots | bought automobiles {:?} armored {:?} | automobiles price {:?}",
+                    "{label} {year} {tag}: by type wheels {:.1}% tracks {:.1}% | equipped wheels {:.1}% tracks {:.1}% | of {at} men | fill {:?} | waiting {waiting:?} | lacking {lack:?} lots | bought automobiles {:?} armored {:?} | automobiles price {:?}",
                     wt as f64 * 100.0 / at.max(1) as f64,
                     tt as f64 * 100.0 / at.max(1) as f64,
                     pc(we),
                     pc(te),
+                    bf_sim::war::composition::land_fill(mil, c),
                     m.buy_ratio[auto],
                     m.buy_ratio[armored],
                     m.price[auto],
@@ -548,8 +549,8 @@ fn a_converted_formation_counts_by_the_equipment_it_holds() {
     };
     let cat = &data().catalogue;
     let vehicles = vec![
-        cat.good("automobiles").unwrap() as u16,
-        cat.good("armored_vehicles").unwrap() as u16,
+        cat.good("automobiles").unwrap(),
+        cat.good("armored_vehicles").unwrap(),
     ];
     let (w0, _, a0) = bf_sim::war::composition::equipped(mil, &vehicles, &empty);
     let (w1, _, _) = bf_sim::war::composition::equipped(mil, &vehicles, &half);
