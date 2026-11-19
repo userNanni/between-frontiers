@@ -349,8 +349,17 @@ impl System<GameWorld> for Research {
             let stages = state.stage[c].clone();
             let channel = imitation_channel(world.econ.markets.get(c));
 
+            // A programme-only technology (the production reactor) is out of reach without a
+            // nuclear programme: no civil research, prototype, industry or imitation.
+            let in_programme = self
+                .programme
+                .as_deref()
+                .is_some_and(|_| world.war.nuclear.of(c as u16).is_some());
+            let allowed = |t: usize| in_programme || !tree.techs[t].programme_only;
             // New science: the chosen technology, or the cheapest open one.
-            let open = |t: usize| stages[t] == Stage::Unknown && requirements_met(c, t, &stages);
+            let open = |t: usize| {
+                stages[t] == Stage::Unknown && requirements_met(c, t, &stages) && allowed(t)
+            };
             let target = state.focus[c]
                 .map(usize::from)
                 .filter(|&t| t < nt && open(t))
@@ -394,7 +403,9 @@ impl System<GameWorld> for Research {
             }
 
             // Prototypes of what is understood.
-            let at_science: Vec<usize> = (0..nt).filter(|&t| stages[t] == Stage::Science).collect();
+            let at_science: Vec<usize> = (0..nt)
+                .filter(|&t| stages[t] == Stage::Science && allowed(t))
+                .collect();
             if !at_science.is_empty() {
                 let each = points * (Fixed::ONE - SCIENCE_SHARE) / at_science.len() as i64;
                 for &t in &at_science {
@@ -415,7 +426,7 @@ impl System<GameWorld> for Research {
             };
             let m = &world.econ.markets[c];
             for t in 0..nt {
-                if stages[t] != Stage::Prototype {
+                if stages[t] != Stage::Prototype || !allowed(t) {
                     continue;
                 }
                 let tech = &tree.techs[t];
@@ -458,7 +469,7 @@ impl System<GameWorld> for Research {
             // Imitation: what is made at scale abroad is copied, a stage at a time, faster where
             // people read; no own research needed; through the same channel.
             for t in 0..nt {
-                if stages[t] < Stage::Industrial && industrial[t] > Fixed::ZERO {
+                if stages[t] < Stage::Industrial && industrial[t] > Fixed::ZERO && allowed(t) {
                     // N2: weapons are copied slower than what is made in the open.
                     let weapon = self
                         .programme

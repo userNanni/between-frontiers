@@ -311,14 +311,21 @@ fn no_core_plant_without_a_programme() {
             .countries
             .iter()
             .enumerate()
-            .filter(|(i, _)| w.research.stage[*i][reactor] >= Stage::Industrial)
+            .filter(|(i, _)| w.research.stage[*i][reactor] > Stage::Unknown)
             .map(|(_, (_, c))| c.tag.clone())
             .collect();
+        let bomb = tech(&d, "atomic_bomb");
+        let with_bomb = (0..w.countries.len())
+            .filter(|&i| w.research.stage[i][bomb] >= Stage::Science)
+            .count();
         eprintln!(
-            "{year}: weapon core plant levels in the world {levels}; production reactor industrial in {} countries: {:?}",
+            "{year}: weapon core plant levels in the world {levels}; production reactor known in {} countries; the atomic bomb understood or beyond in {with_bomb}",
             reached.len(),
-            reached.iter().take(12).collect::<Vec<_>>()
         );
         assert_eq!(levels, 0, "no core plant without a programme");
+        assert!(
+            reached.is_empty(),
+            "no production reactor without a programme"
+        );
     }
 }
