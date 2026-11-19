@@ -45,6 +45,8 @@ pub fn show(shared: &mut Shared, ui: &mut Ui, rect: Rect) -> bool {
                         shared.set_locale(locale);
                     }
 
+                    display_field(shared, ui);
+
                     scale_field(shared, ui);
 
                     points_fields(shared, ui);
@@ -129,6 +131,82 @@ pub fn show(shared: &mut Shared, ui: &mut Ui, rect: Rect) -> bool {
         done = false;
     }
     done
+}
+
+/// The window: windowed, borderless or full screen; in windowed mode, its size among the common
+/// ones that fit the monitor, or the monitor's. A change applies at once and goes back unless
+/// kept (as the scale). Full screen is the borderless window the size of the monitor: what to
+/// draw smaller or larger is the scale's, said in a line.
+fn display_field(shared: &mut Shared, ui: &mut Ui) {
+    use crate::display::{Display, Mode, fitting, wayland};
+    let ctx = ui.ctx().clone();
+    let now = ctx.input(|i| i.time);
+    let monitor = ctx.input(|i| i.viewport().monitor_size);
+    let current = shared.settings.display;
+    let mut next: Option<Display> = None;
+    let hint = shared.tr("settings-display-hint");
+    let label = shared.tr("settings-display");
+    bf_ui_kit::field(ui, &label, Some(&hint), |ui| {
+        let mut mode = current.mode;
+        let options: Vec<(Mode, String)> =
+            Mode::ALL.iter().map(|m| (*m, shared.tr(m.key()))).collect();
+        if bf_ui_kit::segmented(ui, &mut mode, &options) {
+            next = Some(Display { mode, ..current });
+        }
+    });
+    if current.mode == Mode::Windowed {
+        bf_ui_kit::caption(ui, &shared.tr("settings-display-size"));
+        ui.horizontal_wrapped(|ui| {
+            let mut sizes: Vec<Option<[u32; 2]>> = fitting(monitor).into_iter().map(Some).collect();
+            sizes.push(None);
+            for (i, size) in sizes.into_iter().enumerate() {
+                let text = match size {
+                    Some([w, h]) => format!("{w} × {h}"),
+                    None => shared.tr("settings-display-monitor-size"),
+                };
+                let b = if current.size == size {
+                    Button::primary(&text)
+                } else {
+                    Button::secondary(&text)
+                }
+                .size(ButtonSize::Small)
+                .show(ui);
+                let typed = crate::keys::item(
+                    ui,
+                    'W',
+                    format!("settings.display.size.{i}"),
+                    &(i + 1).to_string(),
+                    b.rect,
+                );
+                if (b.clicked() || typed) && current.size != size {
+                    next = Some(Display { size, ..current });
+                }
+            }
+        });
+    }
+    bf_ui_kit::small(
+        ui,
+        &shared.tr(if wayland() {
+            "settings-display-wayland"
+        } else {
+            "settings-display-note"
+        }),
+    );
+    if let Some(m) = monitor {
+        bf_ui_kit::small(
+            ui,
+            &shared.i18n.tr_args(
+                "settings-display-monitor",
+                &[
+                    ("w", Arg::String(shared.i18n.int(m.x.round() as i64))),
+                    ("h", Arg::String(shared.i18n.int(m.y.round() as i64))),
+                ],
+            ),
+        );
+    }
+    if let Some(d) = next {
+        shared.try_display(d, now);
+    }
 }
 
 /// The interface scale: automatic, fixed, or sized for a stream; what it gives now, in percent

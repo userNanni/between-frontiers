@@ -47,7 +47,7 @@ settings-title = Configurações
 settings-language = Idioma
 settings-language-hint = Muda todos os textos na hora, inclusive nomes de países.
 settings-ui-scale = Tamanho da interface
-settings-ui-scale-value = { $percent }%
+settings-ui-scale-value = { $percent } %
 settings-map-labels = Nomes de países no mapa
 settings-autosave = Salvamento automático
 settings-autosave-off = Desligado
@@ -185,7 +185,7 @@ bar-life = Expectativa de vida
 bar-urban = Urbanização
 bar-unknown = —
 bar-years = { $value } anos
-bar-percent = { $value }%
+bar-percent = { $value } %
 bar-of-hundred = { $value } de 100
 bar-rank = { $rank }º do mundo
 bar-gdp-tip = Valor de tudo o que o país produz num ano.
@@ -307,6 +307,7 @@ research-all-fields = Todas as áreas
 
 ## Janela do governo
 bar-government = Governo
+bar-economy = Economia: prédios e obras
 gov-title = Governo
 gov-tab-budget = Orçamento
 gov-tab-money = Moeda e dívida

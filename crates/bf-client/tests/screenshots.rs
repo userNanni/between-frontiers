@@ -2535,6 +2535,66 @@ fn influence_window() {
     let _ = std::fs::remove_dir_all(&user);
 }
 
+/// The economy window (Shift+E): Brazil's buildings in March 1925, all sectors, then light
+/// industry with its first kind opened on its states. Portuguese at 1600 × 900, English at
+/// 1280 × 720, and Portuguese at the floor.
+#[test]
+#[ignore = "needs a GPU (or software Vulkan) and the generated map; run with --ignored"]
+fn economy_window() {
+    use laplace_schelling::calendar::Date;
+    let user = std::env::temp_dir().join(format!("bf-shots-economy-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&user);
+    let session = advanced_session_of("BRA", Date::new(1925, 3, 1));
+    for (locale, size, name, light) in [
+        ("pt-BR", egui::vec2(1600.0, 900.0), "pt", "Indústria leve"),
+        ("en", egui::vec2(1280.0, 720.0), "en-1280", "Light industry"),
+        (
+            "pt-BR",
+            egui::vec2(960.0, 540.0),
+            "pt-960",
+            "Indústria leve",
+        ),
+    ] {
+        let home = user.join(name);
+        let save = write_campaign(&home, &session, "Economia", "BRA", &[]);
+        let mut h = harness_sized(home.clone(), locale, size);
+        let ctx = h.ctx.clone();
+        h.state_mut().apply(Transition::Game(save), &ctx);
+        h.run_steps(4);
+        h.key_press_modifiers(egui::Modifiers::SHIFT, egui::Key::E);
+        h.run_steps(4);
+        shot(&mut h, &format!("160-economy-buildings-{name}"));
+        let clicked = match h
+            .query_all(egui_kittest::kittest::by().label_contains(light))
+            .next()
+        {
+            Some(n) => {
+                n.click();
+                true
+            }
+            None => false,
+        };
+        if clicked {
+            h.run_steps(4);
+        }
+        let clicked = match h
+            .query_all(egui_kittest::kittest::by().label_contains("+ "))
+            .next()
+        {
+            Some(n) => {
+                n.click();
+                true
+            }
+            None => false,
+        };
+        if clicked {
+            h.run_steps(4);
+        }
+        shot(&mut h, &format!("161-economy-states-{name}"));
+    }
+    let _ = std::fs::remove_dir_all(&user);
+}
+
 /// The armed forces (phase 5, slice A): the government's forces tab of Britain in peace, and the
 /// journal's agenda with the decision to mobilize, asked and confirmed in two steps; then the
 /// mobilization under way, with the reservists who reported. Portuguese at 1600 × 900, English
@@ -4394,8 +4454,8 @@ fn crisis_screens() {
     let _ = std::fs::remove_dir_all(&user);
 }
 
-/// The public works' queue (D8): Britain in 1925 with its public works, one moved to the top of
-/// the government's order and a new school asked for; the region list and its buildings.
+/// The works (D8): Britain in 1925 with its public works, one moved up in the government's
+/// order; then a new school, the states that take it with their costs.
 /// Portuguese at 1600 × 900, English at 1280 × 720.
 #[test]
 #[ignore = "needs a GPU (or software Vulkan) and the generated map; run with --ignored"]
@@ -4425,14 +4485,19 @@ fn works_tab() {
         }
         h.run_steps(4);
         shot(&mut h, &format!("181-works-moved-{tag}"));
-        // A new work: the first region, its buildings and costs.
-        let new = if en { "New work" } else { "Nova obra" };
-        h.get_by_label(new).scroll_to_me();
-        h.run_steps(4);
-        // London's buildings and their costs.
-        let london = if en { "London" } else { "Londres" };
+        // A new work: the first building, then the states that take it, with costs. A click
+        // reaches only what is on screen: down to the buildings first.
+        for _ in 0..12 {
+            h.key_press_modifiers(egui::Modifiers::SHIFT, egui::Key::PageDown);
+            h.run_steps(2);
+        }
+        let school = if en {
+            " states · from "
+        } else {
+            " estados · desde "
+        };
         let found = match h
-            .query_all(egui_kittest::kittest::by().label(london))
+            .query_all(egui_kittest::kittest::by().label_contains(school))
             .find(|n| n.accesskit_node().role() == egui::accesskit::Role::Button)
         {
             Some(b) => {
@@ -4444,11 +4509,10 @@ fn works_tab() {
         if found {
             h.run_steps(4);
         }
-        if let Some(n) = h
-            .query_all(egui_kittest::kittest::by().label_contains(" · "))
-            .rfind(|n| n.accesskit_node().role() == egui::accesskit::Role::Button)
-        {
-            n.scroll_to_me();
+        // Down to the states that take it.
+        for _ in 0..2 {
+            h.key_press_modifiers(egui::Modifiers::SHIFT, egui::Key::PageDown);
+            h.run_steps(2);
         }
         h.run_steps(4);
         shot(&mut h, &format!("182-works-new-{tag}"));
@@ -5320,6 +5384,62 @@ fn sea_blockade() {
             )
             .unwrap();
         }
+    }
+    let _ = std::fs::remove_dir_all(&user);
+}
+
+/// The display settings: the section "Display" in the settings (mode, the window's sizes that
+/// fit the monitor, the line on what full screen is), and the bar that asks to keep a new mode
+/// with its countdown. Portuguese at 1600 × 900, English at 1280 × 720; copies in
+/// `target/screenshots/display/`.
+#[test]
+#[ignore = "needs a GPU (or software Vulkan) and the generated map; run with --ignored"]
+fn display_settings() {
+    let user = std::env::temp_dir().join(format!("bf-shots-display-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&user);
+    let dir = root().join("target/screenshots/display");
+    std::fs::create_dir_all(&dir).unwrap();
+    for (locale, size, tag, settings, display, borderless) in [
+        (
+            "pt-BR",
+            egui::vec2(1600.0, 900.0),
+            "pt",
+            "Configurações",
+            "Tela",
+            "Janela sem borda",
+        ),
+        (
+            "en",
+            egui::vec2(1280.0, 720.0),
+            "en-1280",
+            "Settings",
+            "Display",
+            "Borderless window",
+        ),
+    ] {
+        let mut h = harness_sized(user.join(tag), locale, size);
+        h.run_steps(4);
+        h.get_by_label(settings).click();
+        h.run_steps(6);
+        h.get_by_label(borderless).scroll_to_me();
+        let _ = display;
+        h.run_steps(4);
+        let name = format!("280-display-{tag}");
+        shot(&mut h, &name);
+        std::fs::copy(
+            out_dir().join(format!("{name}.png")),
+            dir.join(format!("{name}.png")),
+        )
+        .unwrap();
+        h.get_by_label(borderless).click();
+        h.run_steps(8);
+        let name = format!("281-display-keep-{tag}");
+        shot(&mut h, &name);
+        std::fs::copy(
+            out_dir().join(format!("{name}.png")),
+            dir.join(format!("{name}.png")),
+        )
+        .unwrap();
     }
     let _ = std::fs::remove_dir_all(&user);
 }

@@ -30,6 +30,9 @@ pub struct Shared {
     pub key_editor: Option<crate::screens::keys_editor::State>,
     /// A scale change waiting for the player to keep it.
     pub scale_trial: Option<crate::ui_scale::Trial>,
+    /// A window change waiting for the player to keep it, and the window to apply next frame.
+    pub display_trial: Option<crate::display::Trial>,
+    pub display_dirty: bool,
     /// The sea lens' layer, read the first time the lens opens (an error says why it could not),
     /// and its overlay on the GPU.
     pub sea: Option<Result<std::sync::Arc<crate::map::sea::SeaLayer>, String>>,
@@ -127,11 +130,58 @@ impl Shared {
         self.try_scale(next, now);
     }
 
+    /// Applies a window at once, on trial: it goes back after a few seconds unless kept.
+    pub fn try_display(&mut self, d: crate::display::Display, now: f64) {
+        let previous = self
+            .display_trial
+            .map_or(self.settings.display, |t| t.previous);
+        self.display_trial = (d != previous).then_some(crate::display::Trial {
+            previous,
+            deadline: now + crate::display::TRIAL_SECONDS,
+        });
+        self.settings.display = d;
+        self.display_dirty = true;
+        if self.display_trial.is_none() {
+            self.persist_settings();
+        }
+    }
+
+    /// Keeps the window on trial and writes it.
+    pub fn keep_display(&mut self) {
+        self.display_trial = None;
+        self.persist_settings();
+    }
+
+    /// Puts back the window that was in use before the trial.
+    pub fn revert_display(&mut self) {
+        if let Some(t) = self.display_trial.take() {
+            self.settings.display = t.previous;
+            self.display_dirty = true;
+        }
+    }
+
+    /// Full screen on or off (F11, Alt+Enter): applied and written at once, as a key the player
+    /// pressed on purpose; off goes back to the windowed mode.
+    pub fn toggle_fullscreen(&mut self) {
+        use crate::display::Mode;
+        self.display_trial = None;
+        self.settings.display.mode = if self.settings.display.mode == Mode::Fullscreen {
+            Mode::Windowed
+        } else {
+            Mode::Fullscreen
+        };
+        self.display_dirty = true;
+        self.persist_settings();
+    }
+
     pub fn persist_settings(&self) {
-        // A scale on trial is not written until kept.
+        // A scale or a window on trial is not written until kept.
         let mut settings = self.settings.clone();
         if let Some(t) = self.scale_trial {
             (settings.ui_scale, settings.ui_stream) = t.previous.store();
+        }
+        if let Some(t) = self.display_trial {
+            settings.display = t.previous;
         }
         if let Err(e) = settings.save(&self.paths.settings_file()) {
             log(&format!("settings: {e}"));
@@ -207,6 +257,10 @@ impl App {
             saves: Vec::new(),
             hud: crate::hud::Hud::new(crate::hud::Layout::load(&crate::hud::file(&paths_config))),
             scale_trial: None,
+            display_trial: None,
+            // The window opens as saved (`main.rs` builds the viewport from the settings): no
+            // command at the first frame, which would also resize a test harness.
+            display_dirty: false,
             sea: None,
             sea_texture: None,
             map_gpu_dirty: false,
@@ -379,6 +433,9 @@ fn load_world(paths: &Paths) -> Result<(World, MapData), String> {
 impl eframe::App for App {
     fn ui(&mut self, ui: &mut Ui, frame: &mut eframe::Frame) {
         apply_scale(ui.ctx(), self.shared.scale_choice());
+        if std::mem::take(&mut self.shared.display_dirty) {
+            crate::display::apply(ui.ctx(), self.shared.settings.display);
+        }
         if std::mem::take(&mut self.shared.map_gpu_dirty)
             && let (Some(rs), Some(map)) = (frame.wgpu_render_state(), &self.shared.map)
         {
@@ -437,6 +494,10 @@ impl App {
         if keys::fired(&ctx, id::UI_STREAM) {
             self.shared.toggle_stream_scale(now);
         }
+        if keys::fired(&ctx, id::FULLSCREEN) {
+            self.shared.toggle_fullscreen();
+        }
+        self.display_controls(ui, screen, now);
         let Some(trial) = self.shared.scale_trial else {
             return;
         };
@@ -480,6 +541,57 @@ impl App {
                 .clicked()
             {
                 self.shared.revert_scale();
+            }
+        });
+    }
+}
+
+impl App {
+    /// The bar that asks to keep a new window, and its countdown.
+    fn display_controls(&mut self, ui: &mut Ui, screen: Rect, now: f64) {
+        use bf_ui_kit::tokens::space;
+        let Some(trial) = self.shared.display_trial else {
+            return;
+        };
+        let left = (trial.deadline - now).max(0.0);
+        if left <= 0.0 {
+            self.shared.revert_display();
+            return;
+        }
+        let ctx = ui.ctx().clone();
+        ctx.request_repaint_after(std::time::Duration::from_millis(250));
+        let card = Rect::from_center_size(
+            egui::pos2(screen.center().x, screen.top() + 140.0),
+            egui::vec2(460.0_f32.min(screen.width() - 32.0), 96.0),
+        );
+        bf_ui_kit::paint_overlay(ui, card);
+        ui.interact(
+            card,
+            ui.make_persistent_id("display-trial"),
+            egui::Sense::click_and_drag(),
+        );
+        let mut child = ui.new_child(egui::UiBuilder::new().max_rect(card.shrink(space::LG)));
+        let ui = &mut child;
+        ui.spacing_mut().item_spacing.y = space::SM;
+        bf_ui_kit::body(
+            ui,
+            &self.shared.i18n.tr_args(
+                "settings-display-keep-ask",
+                &[("seconds", bf_i18n::Arg::Num(left.ceil()))],
+            ),
+        );
+        ui.horizontal(|ui| {
+            let keep = bf_ui_kit::Button::primary(&self.shared.tr("settings-ui-scale-keep"))
+                .size(bf_ui_kit::ButtonSize::Small)
+                .show(ui);
+            if keep.clicked() || crate::keys::single(ui, "display.keep", 'K', keep.rect) {
+                self.shared.keep_display();
+            }
+            let back = bf_ui_kit::Button::ghost(&self.shared.tr("settings-ui-scale-revert"))
+                .size(bf_ui_kit::ButtonSize::Small)
+                .show(ui);
+            if back.clicked() || crate::keys::single(ui, "display.revert", 'V', back.rect) {
+                self.shared.revert_display();
             }
         });
     }
