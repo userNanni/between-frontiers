@@ -61,6 +61,8 @@ pub struct Settings {
     pub points_cap: u32,
     /// A campaign folder past this many MB is flagged.
     pub warn_mb: u32,
+    /// The window: windowed, borderless or full screen, and its size (`display`).
+    pub display: crate::display::Display,
 }
 
 impl Default for Settings {
@@ -76,6 +78,7 @@ impl Default for Settings {
             point_before_risk: true,
             points_cap: 30,
             warn_mb: 1000,
+            display: crate::display::Display::default(),
         }
     }
 }

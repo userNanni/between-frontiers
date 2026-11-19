@@ -767,7 +767,10 @@ pub fn tooltip_line(
                     ),
                     (
                         "share",
-                        Arg::String(format!("{}%", i18n.decimal(f64::from(v) * 100.0, 0))),
+                        Arg::String(crate::text::pct_text(
+                            i18n,
+                            i18n.decimal(f64::from(v) * 100.0, 0),
+                        )),
                     ),
                 ],
             ))
@@ -795,7 +798,10 @@ pub fn tooltip_line(
                     ("climate", Arg::String(i18n.tr(&format!("climate-{key}")))),
                     (
                         "share",
-                        Arg::String(format!("{}%", i18n.decimal(*share as f64 * 100.0, 0))),
+                        Arg::String(crate::text::pct_text(
+                            i18n,
+                            i18n.decimal(*share as f64 * 100.0, 0),
+                        )),
                     ),
                 ],
             ))
