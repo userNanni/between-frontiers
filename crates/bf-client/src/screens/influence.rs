@@ -56,7 +56,7 @@ pub const CHANNEL_KEYS: [&str; 4] = [
 
 /// A share of GDP as a percentage, two decimals: influence is small.
 fn pct(i18n: &I18n, x: f64) -> String {
-    format!("{} %", i18n.decimal(x * 100.0, 2))
+    crate::text::pct_text(i18n, i18n.decimal(x * 100.0, 2))
 }
 
 pub fn show(
