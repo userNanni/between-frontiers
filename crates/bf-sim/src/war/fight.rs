@@ -291,6 +291,14 @@ pub fn war_pairs(world: &GameWorld) -> Vec<(u16, u16)> {
     out
 }
 
+/// The blockades at sea this week, (blockader, blockaded), sorted: the trade closes the
+/// blockaded country's pairs whose cheapest route runs by sea (owner's decision CT7; the trade
+/// reads it with `war_pairs`). Empty until the war at sea (slice C2) sets who holds the sea lanes
+/// of whom.
+pub fn blockaded(_world: &GameWorld) -> Vec<(u16, u16)> {
+    Vec::new()
+}
+
 /// After a peace, the occupation between the sides ends: the regions one side held of the
 /// other go back to their owner (what the peace ceded changed owner by the treaty's bridge),
 /// and the advances and postures between them are forgotten.

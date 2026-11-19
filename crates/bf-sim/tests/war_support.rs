@@ -460,3 +460,12 @@ fn the_pairs_at_war_for_the_trade() {
     assert!(pairs.windows(2).all(|x| x[0] < x[1]));
     assert!(pairs.iter().all(|(a, b)| a < b));
 }
+
+/// No blockade before the war at sea (slice C2): the trade's reader exists and is empty, at war
+/// too.
+#[test]
+fn no_blockade_before_the_war_at_sea() {
+    let d = data(|_| {});
+    let s = at_war(&d);
+    assert!(bf_sim::war::fight::blockaded(s.world()).is_empty());
+}
