@@ -101,7 +101,8 @@ fn the_player_attacks_and_both_sides_lose_men() {
         enemy: "CZE".into(),
         attack: true,
     });
-    s.sim.run_until(Date::new(1925, 4, 7));
+    // The first week of combat (the front of a thin Hungary does not last long).
+    s.sim.run_until(Date::new(1925, 3, 31));
     // The screen reads the week the tick fought, without working it out again.
     assert!(
         s.world()
