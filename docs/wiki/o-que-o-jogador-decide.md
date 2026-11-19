@@ -90,14 +90,14 @@ faixa.
 
 | | Decisão | Simulação | Tela |
 |---|---|---|---|
-| PO1 | O comércio passa a mover dinheiro entre países: quem importa paga a quem exporta. | fatia 2 | — |
+| PO1 | O comércio passa a mover dinheiro entre países: quem importa paga a quem exporta. | fatia 2, feita atrás da chave `payments_settle`, desligada (`econ::payments::settle`) | — |
 | PO2 | Quem está no ouro em 1925 é dado com fonte; as voltas depois de 1925 saem da regra da IA, e a data histórica fica só como conferência. | fatias 2 e 3 | — |
 | PO3 | Um país sai do ouro pela regra: cobertura abaixo do piso por meses seguidos, ou a saída do principal país-reserva. | fatia 3 | — |
 | PO4 | Defender a paridade é juro acima da regra de Taylor por ponto de cobertura que falta, e moeda retirada quando a falta continua. | fatia 3 | — |
 | PO5 | Controle de capital é decisão do jogador e entra na regra da IA. | fatia 4 | Governo → Moeda e dívida |
 | PO6 | Aderir e sair do ouro é decisão rara, com confirmação e ponto de restauração; a tela mostra o custo de cada paridade. | fatia 3 | Agendas |
-| PO7 | Divisas contam como reserva, e quem guarda a moeda que desvaloriza perde. | fatia 2 | — |
-| PO8 | Ouro novo das minas entra pela produção de cada país, com fonte. | fatia 2 | — |
+| PO7 | Divisas contam como reserva, e quem guarda a moeda que desvaloriza perde. | fatia 2 (a reserva por moeda, desligada); a perda vem com os regimes, fatia 3 | — |
+| PO8 | Ouro novo das minas entra pela produção de cada país, com fonte. | fatia 2, desligada: 62,5 % da produção vai ao banco central (Delegação do Ouro da Liga das Nações, 1932) | — |
 
 ## O que o país decide por regra
 
