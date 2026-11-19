@@ -113,7 +113,8 @@ fn body(text: String) -> RichText {
 }
 
 /// Widths of the goods' columns, from the right: imports, rate, the stepper, the rule's
-/// choice; the name takes what is left.
+/// choice; the name takes what is left. The two sums keep a margin, so that "US$ 3,3 bi" and
+/// "US$ 65,7 mi" read as two columns.
 struct GoodCols {
     revenue: f32,
     imports: f32,
@@ -140,7 +141,7 @@ fn good_cols(ui: &Ui, i18n: &I18n) -> GoodCols {
     .into_iter()
     .fold(0.0, f32::max)
     .ceil()
-        + 4.0;
+        + space::MD;
     let revenue = [
         small(&money_short(i18n, 999_000_000_000.0)),
         text_w(ui, &i18n.tr("tariff-col-revenue"), sans(size::CAPTION)),
@@ -148,7 +149,7 @@ fn good_cols(ui: &Ui, i18n: &I18n) -> GoodCols {
     .into_iter()
     .fold(0.0, f32::max)
     .ceil()
-        + 4.0;
+        + space::MD;
     let rate = [
         small(&pct(i18n, 200.0, 1)),
         text_w(ui, &i18n.tr("tariff-col-rate"), sans(size::CAPTION)),
