@@ -4394,8 +4394,8 @@ fn crisis_screens() {
     let _ = std::fs::remove_dir_all(&user);
 }
 
-/// The public works' queue (D8): Britain in 1925 with its public works, one moved to the top of
-/// the government's order and a new school asked for; the region list and its buildings.
+/// The works (D8): Britain in 1925 with its public works, one moved up in the government's
+/// order; then a new school, the states that take it with their costs.
 /// Portuguese at 1600 × 900, English at 1280 × 720.
 #[test]
 #[ignore = "needs a GPU (or software Vulkan) and the generated map; run with --ignored"]
@@ -4425,14 +4425,19 @@ fn works_tab() {
         }
         h.run_steps(4);
         shot(&mut h, &format!("181-works-moved-{tag}"));
-        // A new work: the first region, its buildings and costs.
-        let new = if en { "New work" } else { "Nova obra" };
-        h.get_by_label(new).scroll_to_me();
-        h.run_steps(4);
-        // London's buildings and their costs.
-        let london = if en { "London" } else { "Londres" };
+        // A new work: the first building, then the states that take it, with costs. A click
+        // reaches only what is on screen: down to the buildings first.
+        for _ in 0..12 {
+            h.key_press_modifiers(egui::Modifiers::SHIFT, egui::Key::PageDown);
+            h.run_steps(2);
+        }
+        let school = if en {
+            " states · from "
+        } else {
+            " estados · desde "
+        };
         let found = match h
-            .query_all(egui_kittest::kittest::by().label(london))
+            .query_all(egui_kittest::kittest::by().label_contains(school))
             .find(|n| n.accesskit_node().role() == egui::accesskit::Role::Button)
         {
             Some(b) => {
@@ -4444,11 +4449,10 @@ fn works_tab() {
         if found {
             h.run_steps(4);
         }
-        if let Some(n) = h
-            .query_all(egui_kittest::kittest::by().label_contains(" · "))
-            .rfind(|n| n.accesskit_node().role() == egui::accesskit::Role::Button)
-        {
-            n.scroll_to_me();
+        // Down to the states that take it.
+        for _ in 0..2 {
+            h.key_press_modifiers(egui::Modifiers::SHIFT, egui::Key::PageDown);
+            h.run_steps(2);
         }
         h.run_steps(4);
         shot(&mut h, &format!("182-works-new-{tag}"));

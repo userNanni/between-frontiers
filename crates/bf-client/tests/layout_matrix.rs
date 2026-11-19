@@ -820,6 +820,41 @@ fn the_works_tab_holds_a_long_queue() {
         h.key_press(egui::Key::G);
         steps(&mut h);
         click(&mut h, if locale == "en" { "Works" } else { "Obras" });
+        // The private works opened, and a building picked: its states and costs. A click
+        // reaches only what is on screen: down to them first.
+        let en = locale == "en";
+        for _ in 0..12 {
+            h.key_press_modifiers(egui::Modifiers::SHIFT, egui::Key::PageDown);
+            steps(&mut h);
+        }
+        for part in [
+            if en {
+                "private works of"
+            } else {
+                "obras privadas da"
+            },
+            if en {
+                " states · from "
+            } else {
+                " estados · desde "
+            },
+        ] {
+            let found = match h
+                .query_all(egui_kittest::kittest::by().label_contains(part))
+                .next()
+            {
+                Some(n) => {
+                    n.click();
+                    true
+                }
+                None => false,
+            };
+            if found {
+                steps(&mut h);
+            } else {
+                failures.push(format!("{locale}: no {part}"));
+            }
+        }
         for (w, hh) in [
             (960.0, 540.0),
             (1280.0, 720.0),
