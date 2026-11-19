@@ -216,7 +216,7 @@ o par.
   que vale para a partilha da semana e para o equilíbrio do mês (`Geography::closed_with`):
   - os fechamentos datados da geografia;
   - os **embargos** que um governo ordenou (CT6, `GameCommand::Embargo`, `TariffState::embargoes`,
-    save 32): unilaterais, fecham os dois sentidos; levantados, a preferência sobe um λ por mês;
+    save 31): unilaterais, fecham os dois sentidos; levantados, a preferência sobe um λ por mês;
   - com a chave `war`, os **pares em guerra** (CT7, `war::fight::war_pairs`: cada membro de um lado
     contra cada membro do outro, o aliado chamado só depois de entrar) e, de cada país
     **bloqueado** (`war::fight::blockaded`), todo par cujo caminho mais barato até ele é por mar.
