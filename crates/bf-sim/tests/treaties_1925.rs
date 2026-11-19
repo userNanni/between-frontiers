@@ -70,7 +70,7 @@ fn the_1925_treaties_are_clauses() {
     if let Err(e) = treaty::validate_treaties(&d.diplomacy, &d.cat, &d.countries, &d.debts) {
         panic!("{} problems:\n{}", e.len(), e.join("\n"));
     }
-    assert_eq!(d.diplomacy.treaties.len(), 58);
+    assert_eq!(d.diplomacy.treaties.len(), 59);
     let clauses: usize = d.diplomacy.treaties.iter().map(|t| t.clauses.len()).sum();
     let bundles = d
         .diplomacy
@@ -78,7 +78,7 @@ fn the_1925_treaties_are_clauses() {
         .iter()
         .filter(|t| t.bundle.is_some())
         .count();
-    eprintln!("58 treaties: {clauses} clauses, {bundles} subject bundles");
+    eprintln!("59 treaties: {clauses} clauses, {bundles} subject bundles");
 }
 
 #[test]

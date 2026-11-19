@@ -92,5 +92,6 @@ treaty-soviet_mongolian_agreement = Soviet–Mongolian Agreement
 treaty-belgium_luxembourg_union = Belgium–Luxembourg Economic Union
 treaty-swiss_liechtenstein_customs = Swiss–Liechtenstein Customs Treaty
 treaty-franco_monegasque_customs = Franco-Monegasque Customs Union
+treaty-italo_sammarinese_friendship_1897 = Italo-Sammarinese Treaty of Friendship (1897)
 treaty-saar_french_customs = Saar in the French Customs Regime
 treaty-danzig_polish_customs = Danzig in the Polish Customs Territory
