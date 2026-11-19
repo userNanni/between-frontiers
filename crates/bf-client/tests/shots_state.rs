@@ -42,3 +42,19 @@ fn state_panel() {
     }
     let _ = std::fs::remove_dir_all(&user);
 }
+
+/// Selects the state that holds `tag`'s capital, as a click on it does; its index.
+fn select_capital_state(
+    h: &mut egui_kittest::Harness<'_, bf_client::App>,
+    tag: &str,
+) -> Option<usize> {
+    let app = h.state_mut();
+    let world = app.shared.world.as_ref()?;
+    let c = world.countries.iter().find(|c| c.tag() == tag)?;
+    let state = world.provinces[usize::from(c.capital_province?) - 1].state?;
+    if let bf_client::screens::Screen::Game(g) = &mut app.screen {
+        g.select_state(world, state);
+    }
+    h.run_steps(4);
+    Some(state)
+}
