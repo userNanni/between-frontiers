@@ -42,7 +42,11 @@ pub fn equilibrium(
     factors: &FreightFactors,
     date: &str,
     links: Option<&[crate::treaty::TariffLink]>,
-    (home, duties): (Option<Fixed>, Option<&super::customs::Duties>),
+    (home, duties, tables): (
+        Option<Fixed>,
+        Option<&super::customs::Duties>,
+        Option<&super::customs::TariffState>,
+    ),
 ) -> Vec<Vec<Fixed>> {
     let groups = crate::economy::BUILDING_GROUPS.len();
     let n = markets.len();
@@ -102,6 +106,23 @@ pub fn equilibrium(
         // With customs duties, the tariff the country charges (its law moved by its 1925 gap,
         // `customs::Duties::rate`): the same one the treasury collects.
         let own = duties.map_or(own, |d| d.rate_of(b, own));
+        // A government that fixed goods or partners (CT1, CT2): by group, the mean of its goods'
+        // rates (the rule's for those it did not fix), and each partner's points on top. The
+        // preference is by group; a good fixed far from the rest of its group moves the group's
+        // whole share (docs/trade.pt-BR.md, section 13).
+        let table = tables.and_then(|t| t.table(b));
+        let own_by_group: Vec<Fixed> = table.map_or_else(Vec::new, |t| {
+            members
+                .iter()
+                .map(|gs| {
+                    if gs.is_empty() {
+                        return own;
+                    }
+                    let sum: Fixed = gs.iter().map(|&g| t.good(g).unwrap_or(own)).sum();
+                    sum / gs.len() as i64
+                })
+                .collect()
+        });
         for (s, p) in pair.iter_mut().enumerate() {
             // A closed pair has no equilibrium: its preference decays (`step`).
             *p = (s != b && !closed.as_ref().is_some_and(|c| c[s * n + b])).then(|| {
@@ -119,6 +140,17 @@ pub fn equilibrium(
             for (s, p) in pair.iter().enumerate() {
                 let Some((km, carry, tariff)) = *p else {
                     continue;
+                };
+                let tariff = match table {
+                    Some(t) => {
+                        let base = (own_by_group[k] + t.partner(s)).max(Fixed::ZERO);
+                        if geo.is_some() {
+                            tariff_by(&relations, b, s, base)
+                        } else {
+                            base
+                        }
+                    }
+                    None => tariff,
                 };
                 row[s] = power(
                     cat,
@@ -1214,5 +1246,63 @@ mod divisor_tests {
             scale_to(&mut row, top);
             assert_eq!(row, want);
         }
+    }
+}
+
+/// The tariff relations in force by pair, looked up without scanning the treaties: for the
+/// weekly duties of each good (`customs::Charge`). Built once a week when duties are collected.
+#[derive(Clone, Debug, Default)]
+pub struct PairRules {
+    n: usize,
+    /// `seller × n + buyer` → index into `rules` (0: no relation).
+    at: Vec<u32>,
+    rules: Vec<Vec<TariffRule>>,
+}
+
+impl PairRules {
+    /// From the agreements in force when they are kept (`links`), else from the treaties of
+    /// `diplomacy.ron` in force on `date`, as `equilibrium` reads them.
+    pub fn new(
+        geo: Option<&Geography>,
+        date: &str,
+        links: Option<&[crate::treaty::TariffLink]>,
+        n: usize,
+    ) -> Self {
+        let owned: Vec<TariffRelation> = links.map_or_else(Vec::new, |l| {
+            l.iter().map(TariffRelation::from_link).collect()
+        });
+        let relations: Vec<&TariffRelation> = match links {
+            Some(_) => owned.iter().collect(),
+            None => geo.map_or_else(Vec::new, |g| g.relations_on(date)),
+        };
+        let mut at = vec![0u32; n * n];
+        let mut rules: Vec<Vec<TariffRule>> = vec![Vec::new()];
+        for r in relations {
+            if r.giver >= n || r.receiver >= n {
+                continue;
+            }
+            let k = r.receiver * n + r.giver;
+            if at[k] == 0 {
+                at[k] = u32::try_from(rules.len()).unwrap_or(u32::MAX);
+                rules.push(Vec::new());
+            }
+            if let Some(list) = rules.get_mut(at[k] as usize) {
+                list.push(r.rule);
+            }
+        }
+        Self { n, at, rules }
+    }
+
+    /// The tariff `buyer` charges on `seller`'s goods from its own `tariff`, as `tariff_by`.
+    pub fn apply(&self, seller: usize, buyer: usize, tariff: Fixed) -> Fixed {
+        let k = seller * self.n + buyer;
+        let Some(list) = self.at.get(k).and_then(|&i| self.rules.get(i as usize)) else {
+            return tariff;
+        };
+        list.iter().fold(tariff, |t, r| match *r {
+            TariffRule::Union => Fixed::ZERO,
+            TariffRule::Margin(m) => (t - m).max(Fixed::ZERO),
+            TariffRule::Cap(c) => t.min(c),
+        })
     }
 }

@@ -107,3 +107,17 @@ fn the_duties_leave_the_importers_for_the_treasuries() {
     let treasuries = |ms: &[bf_sim::econ::Market]| -> Fixed { ms.iter().map(|m| m.treasury).sum() };
     assert_eq!(treasuries(&after) - treasuries(markets), total);
 }
+
+#[test]
+fn the_week_s_duties_are_kept_for_the_budget() {
+    let s = run(true);
+    let w = s.world();
+    assert_eq!(w.tariffs.revenue.len(), w.econ.markets.len());
+    assert!(
+        w.tariffs.revenue.iter().any(|r| *r > Fixed::ZERO),
+        "no duty recorded"
+    );
+    assert!(w.tariffs.revenue.iter().all(|r| *r >= Fixed::ZERO));
+    // A record only: no table fixed, the world hashes as without one.
+    assert!(w.tariffs.is_empty());
+}

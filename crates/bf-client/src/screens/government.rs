@@ -30,14 +30,17 @@ pub enum Tab {
     Forces,
     /// The public works' queue (D8).
     Works,
+    /// The tariff by good and by partner (CT1, CT2).
+    Trade,
 }
 
 impl Tab {
-    pub const ALL: [Tab; 6] = [
+    pub const ALL: [Tab; 7] = [
         Tab::Budget,
         Tab::Works,
         Tab::Money,
         Tab::Ledger,
+        Tab::Trade,
         Tab::Laws,
         Tab::Forces,
     ];
@@ -51,6 +54,7 @@ impl Tab {
             Tab::Ledger => id::TAB_LEDGER,
             Tab::Forces => id::TAB_FORCES,
             Tab::Works => id::TAB_WORKS,
+            Tab::Trade => id::TAB_TRADE,
         }
     }
 
@@ -62,6 +66,7 @@ impl Tab {
             Tab::Ledger => "gov-tab-ledger",
             Tab::Forces => "gov-tab-forces",
             Tab::Works => "gov-tab-works",
+            Tab::Trade => "gov-tab-trade",
         }
     }
 }
@@ -87,6 +92,8 @@ pub struct Drafts {
     pub issuance: Option<Option<[u16; 3]>>,
     /// The order of the public works the player set this tick (`Some(None)`: back to arrival).
     pub works_order: Option<Option<Vec<bf_sim::econ::levers::WorkKey>>>,
+    /// The player's tariff table as set this tick.
+    pub tariffs: Option<bf_sim::econ::customs::TariffTable>,
 }
 
 impl Drafts {
@@ -113,6 +120,8 @@ pub struct Window {
     pub orders: super::forces::OrdersUi,
     /// The works tab's cancellation and new work.
     pub works: super::works::WorksUi,
+    /// The trade tab's open category and partners picked by name.
+    pub tariffs: super::tariffs::TariffUi,
 }
 
 /// What a tab gets to draw with.
@@ -133,6 +142,7 @@ pub struct TabContext<'a> {
     pub ledger: &'a mut super::ledger::LedgerUi,
     pub orders: &'a mut super::forces::OrdersUi,
     pub works: &'a mut super::works::WorksUi,
+    pub tariffs: &'a mut super::tariffs::TariffUi,
     /// The principal each 1925 debt was signed with.
     pub signed: &'a crate::ledger_view::Signed,
     /// The debts tab asked to renegotiate a debt: the other party and the proposal to put on
@@ -210,6 +220,7 @@ pub fn show(
         ledger,
         orders,
         works,
+        tariffs,
     } = window;
     region(ui, rect.shrink(space::XL), |ui| {
         ui.horizontal(|ui| {
@@ -250,6 +261,7 @@ pub fn show(
             ledger,
             orders,
             works,
+            tariffs,
             signed,
             renegotiate: &mut out.renegotiate,
         };
@@ -267,6 +279,7 @@ pub fn show(
                     Tab::Ledger => super::ledger::show(ui, &mut cx),
                     Tab::Forces => super::forces::show(ui, &mut cx),
                     Tab::Works => super::works::show(ui, &mut cx),
+                    Tab::Trade => super::tariffs::show(ui, &mut cx),
                 }
             });
     });

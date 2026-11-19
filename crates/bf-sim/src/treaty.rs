@@ -2105,6 +2105,19 @@ pub enum TariffTerm {
     Cap(Fixed),
 }
 
+impl TariffTerm {
+    /// The giver's tariff `t` under this term, as the trade applies it
+    /// (`econ::trade::PairRules::apply`): none in a union, less the margin but never below zero,
+    /// at most the cap.
+    pub fn apply(self, t: Fixed) -> Fixed {
+        match self {
+            TariffTerm::Union => Fixed::ZERO,
+            TariffTerm::Margin(m) => (t - m).max(Fixed::ZERO),
+            TariffTerm::Cap(c) => t.min(c),
+        }
+    }
+}
+
 /// One breach of a clause in force (9.1).
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Breach {

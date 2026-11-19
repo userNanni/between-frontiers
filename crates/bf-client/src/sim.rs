@@ -81,6 +81,8 @@ pub struct Snapshot {
     pub agreements: Option<Arc<crate::agreements_view::AgreementsView>>,
     /// Every country's trade by partner, read once a month; `None` with trade by pair off.
     pub trade: Option<Arc<crate::trade_view::TradeView>>,
+    /// The player's tariffs, read when a week went by or the table changed.
+    pub tariffs: Option<Arc<crate::tariff_view::TariffView>>,
     /// The player's wars on land, read when the fighting changes; `None` without the war rule.
     pub war: Option<Arc<crate::war_view::WarView>>,
     /// Who holds what in every war, for the map's war lens; `None` with no war.
@@ -358,6 +360,7 @@ struct Monthly {
     works: Option<Arc<crate::works_view::WorksView>>,
     agreements: Option<Arc<crate::agreements_view::AgreementsView>>,
     trade: Option<Arc<crate::trade_view::TradeView>>,
+    tariffs: Option<Arc<crate::tariff_view::TariffView>>,
     war: Option<Arc<crate::war_view::WarView>>,
     control: Option<Arc<crate::war_view::ControlView>>,
     treaty_table: Option<Arc<crate::treaty_view::TableView>>,
@@ -433,6 +436,25 @@ fn trade_of(
     match last {
         Some(t) if t.month == (date.year, date.month) => Some(Arc::clone(t)),
         _ => crate::trade_view::read(session.world(), date).map(Arc::new),
+    }
+}
+
+/// The player's tariffs, read again when a week went by or the table or the rule changed.
+fn tariffs_of(
+    session: &Session,
+    rules: &Rules,
+    last: &Option<Arc<crate::tariff_view::TariffView>>,
+) -> Option<Arc<crate::tariff_view::TariffView>> {
+    let r = rules.as_ref()?;
+    let src = crate::tariff_view::Sources {
+        catalogue: &r.catalogue,
+        politics: r.politics.as_deref(),
+        duties: r.duties.as_deref(),
+    };
+    let (w, date) = (session.world(), session.clock().date);
+    match last {
+        Some(v) if crate::tariff_view::fresh(v, w, date, &src) => Some(Arc::clone(v)),
+        _ => crate::tariff_view::read(w, date, &src).map(Arc::new),
     }
 }
 
@@ -660,6 +682,7 @@ impl Monthly {
             works: works_of(session, rules, &last.works),
             agreements: agreements_of(session, rules, &last.agreements),
             trade: trade_of(session, &last.trade),
+            tariffs: tariffs_of(session, rules, &last.tariffs),
             war: war_of(session, rules, &last.war),
             control: control_of(session, &last.control),
             figures: figures_of(session, &last.figures),
@@ -708,6 +731,7 @@ fn snapshot_of(
         works: monthly.works,
         agreements: monthly.agreements,
         trade: monthly.trade,
+        tariffs: monthly.tariffs,
         war: monthly.war,
         control: monthly.control,
         treaty_table: monthly.treaty_table,

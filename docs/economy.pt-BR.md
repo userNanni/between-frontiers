@@ -531,6 +531,15 @@ pequeno.
 
 ## Aberto
 
+- **Ensino e saúde de país pobre respondem cedo demais ao gasto (fila de equilíbrio; trava a
+  tarifa que conta).** Com `customs_duties` ligada, a receita aduaneira de um país pobre de tarifa
+  alta paga escola e saúde décadas antes: no Equador de 1985, alfabetização 85 %, esperança de vida
+  75,6 anos e fecundidade 1,87 com 2,2 mil dólares por habitante, contra 67 %, 62 anos e 4,95 na
+  base; Colômbia, Venezuela, Guatemala e Equador param de crescer depois de 1985 (Colômbia 24
+  contra 40 milhões em 2025), e a população mundial sai da faixa (8,03 contra 8,13 a 8,19 bilhões).
+  Para ligar a tarifa (docs/trade.pt-BR.md, seção 13), falta a resposta da alfabetização e da saúde
+  ao gasto em país pobre (serviços públicos, `econ/public.rs`); depois, refazer os 101 anos contra a
+  faixa com a chave ligada.
 - **PIB mundial abaixo do real depois de 2000 (fila de equilíbrio, não meta agora).** O comércio
   criava dinheiro nas margens, de 0,65 a 0,87 % do PIB mundial por ano, porque a partilha
   saturava o `Fixed` (#193, `week::margin_transfers`). O mundo tinha sido ajustado com esse

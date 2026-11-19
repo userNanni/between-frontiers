@@ -45,6 +45,14 @@ pub fn money(i18n: &I18n, value: f64) -> String {
     )
 }
 
+/// "US$ 59 bi": a sum for a narrow column.
+pub fn money_short(i18n: &I18n, value: f64) -> String {
+    i18n.tr_args(
+        "money-intl-dollars",
+        &[("value", Arg::String(i18n.compact_short(value)))],
+    )
+}
+
 pub fn money_exact(i18n: &I18n, value: f64) -> String {
     i18n.tr_args(
         "money-intl-dollars",

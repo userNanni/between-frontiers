@@ -11,7 +11,7 @@ use egui::{Rect, RichText, Sense, Ui, vec2};
 use super::government::TabContext;
 use crate::keys;
 use crate::ledger_view::{LedgerView, Line, Standing};
-use crate::text::{country_name, money};
+use crate::text::{country_name, money, money_short};
 
 const ROW: f32 = 30.0;
 
@@ -22,14 +22,6 @@ pub fn treaty_name(i18n: &I18n, key: &str) -> String {
     } else {
         key.to_owned()
     }
-}
-
-/// "US$ 59 bi": a sum for a narrow column.
-fn money_short(i18n: &I18n, x: f64) -> String {
-    i18n.tr_args(
-        "money-intl-dollars",
-        &[("value", Arg::String(i18n.compact_short(x)))],
-    )
 }
 
 fn pct(i18n: &I18n, x: f64) -> String {

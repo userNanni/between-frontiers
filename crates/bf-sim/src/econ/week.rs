@@ -168,6 +168,8 @@ pub struct WeekChanges {
     trade_value: Vec<Fixed>,
     /// The preferences of trade after a month of inertia, in the first week of a month.
     trade_pref: Option<Vec<Vec<(u16, u16)>>>,
+    /// The week's customs duties by market, by good and pair (`customs::Charge`).
+    duties: Option<Vec<Fixed>>,
 }
 
 /// Cost-weighted choice among the goods that meet a need: shares fall with the square of the
@@ -815,7 +817,14 @@ fn world_pool(cat: &Catalogue, supply: &[Vec<Fixed>], demand: &[Vec<Fixed>]) -> 
 
 /// What trade by pair hands the week: the trade of each market by good, the exports by pair
 /// at base prices (seller × markets + buyer) and the month's preferences in its first week.
-type PairTrade = (Vec<Vec<Fixed>>, Vec<Fixed>, Option<Vec<Vec<(u16, u16)>>>);
+/// Trade by good, the pairs' values, the month's preferences (first week) and the week's
+/// customs duties by market (with `customs_duties` and its revenue).
+type PairTrade = (
+    Vec<Vec<Fixed>>,
+    Vec<Fixed>,
+    Option<Vec<Vec<(u16, u16)>>>,
+    Option<Vec<Fixed>>,
+);
 
 impl Week {
     /// Trade by pair (`econ::trade`, docs/trade.pt-BR.md): each market offers part of its
@@ -884,7 +893,7 @@ impl Week {
                 &factors,
                 &date,
                 links.as_deref(),
-                (home, self.duties.as_deref()),
+                (home, self.duties.as_deref(), Some(&world.tariffs)),
             );
             let lambda = Fixed::from_f64_lossy(f64::from(cat.trade.monthly_step));
             super::trade::step(&econ.trade.pref, &eq, lambda)
@@ -906,6 +915,30 @@ impl Week {
                     .collect()
             })
         });
+        // Customs duties by good and pair (`customs::Charge`): the rule's rate, the governments'
+        // tables and the relations in force.
+        let charge = self
+            .duties
+            .as_ref()
+            .filter(|_| cat.trade.customs.revenue)
+            .map(|d| {
+                let links = self.treaty_tariffs.then(|| {
+                    let tags: Vec<String> =
+                        world.countries.iter().map(|(_, c)| c.tag.clone()).collect();
+                    world.treaties.tariff_relations(&tags, &date)
+                });
+                super::customs::Charge {
+                    rule: econ
+                        .markets
+                        .iter()
+                        .enumerate()
+                        .map(|(mi, m)| d.rate(mi, m))
+                        .collect(),
+                    tables: &world.tariffs,
+                    pairs: super::trade::PairRules::new(geo, &date, links.as_deref(), nm),
+                }
+            });
+        let mut duties = charge.as_ref().map(|_| vec![Fixed::ZERO; nm]);
         // Each tradable good clears on its own, in parallel: the flows are merged after, in the
         // order of the goods, so the sums are the same integers as one good after the other.
         let sparse = prefs;
@@ -1012,6 +1045,10 @@ impl Week {
         for f in goods.into_iter().flatten() {
             for (pair, v) in f.value {
                 trade_value[pair] += v;
+                if let (Some(c), Some(d)) = (&charge, duties.as_mut()) {
+                    let (s, b) = (pair / nm, pair % nm);
+                    d[b] += v * c.rate(s, b, f.gi);
+                }
             }
             for (k, &mi) in f.sellers.iter().enumerate() {
                 trade[mi][f.gi] -= f.exports[k];
@@ -1033,7 +1070,7 @@ impl Week {
                 union_services(cat, (supply, demand), &view, &mut trade, &mut trade_value);
             }
         }
-        (trade, trade_value, trade_pref)
+        (trade, trade_value, trade_pref, duties)
     }
 }
 
@@ -1247,10 +1284,10 @@ impl System<GameWorld> for Week {
             }
         }
         // Trade between markets: by pair when switched on, else the world pool.
-        let (trade, trade_value, trade_pref) = if self.by_pair {
+        let (trade, trade_value, trade_pref, duties) = if self.by_pair {
             self.trade_by_pair(ctx, world, &supply, &demand)
         } else {
-            (world_pool(cat, &supply, &demand), Vec::new(), None)
+            (world_pool(cat, &supply, &demand), Vec::new(), None, None)
         };
         let upkeep: Vec<_> = econ.markets.iter().map(|m| upkeep_orders(cat, m)).collect();
         let (mut markets, state_orders): (Vec<Market>, Vec<_>) = econ
@@ -1354,6 +1391,7 @@ impl System<GameWorld> for Week {
             upkeep,
             trade_value,
             trade_pref,
+            duties,
         }
     }
 
@@ -1381,23 +1419,24 @@ impl System<GameWorld> for Week {
         let mut done = Vec::new();
         let transfers = margin_transfers(cat, &markets);
         // Customs duties (`customs::duties`): from the importers' money to the treasury.
-        let duties: Option<Vec<Fixed>> = self
-            .duties
-            .as_ref()
-            .filter(|_| cat.trade.customs.revenue)
-            .map(|d| {
-                let rates: Vec<Fixed> = markets
-                    .iter()
-                    .enumerate()
-                    .map(|(mi, m)| d.rate(mi, m))
-                    .collect();
-                // With trade by pair, the duty is on every partner's goods, gross trade's
-                // varieties included.
-                let imports = self
-                    .by_pair
-                    .then(|| super::customs::imports_by_buyer(&changes.trade_value, markets.len()));
-                super::customs::duties(cat, &markets, &rates, imports.as_deref())
-            });
+        let duties: Option<Vec<Fixed>> = changes.duties.clone().or_else(|| {
+            self.duties
+                .as_ref()
+                .filter(|_| cat.trade.customs.revenue)
+                .map(|d| {
+                    let rates: Vec<Fixed> = markets
+                        .iter()
+                        .enumerate()
+                        .map(|(mi, m)| d.rate(mi, m))
+                        .collect();
+                    // With trade by pair, the duty is on every partner's goods, gross trade's
+                    // varieties included.
+                    let imports = self.by_pair.then(|| {
+                        super::customs::imports_by_buyer(&changes.trade_value, markets.len())
+                    });
+                    super::customs::duties(cat, &markets, &rates, imports.as_deref())
+                })
+        });
         for (mi, m) in markets.iter_mut().enumerate() {
             m.pool += transfers[mi];
             // The state pays for the goods it got and for what its schools and hospitals made.
@@ -1455,6 +1494,15 @@ impl System<GameWorld> for Week {
             }
             for &(gi, q) in &changes.upkeep[mi] {
                 m.pool -= q * m.buy_ratio[gi as usize] * m.price[gi as usize];
+            }
+        }
+        // The week's duties, kept for the budget's line (a record: no rule reads it).
+        let revenue = &mut world.tariffs.revenue;
+        revenue.clear();
+        revenue.resize(markets.len(), Fixed::ZERO);
+        if let Some(d) = &duties {
+            for (r, v) in revenue.iter_mut().zip(d) {
+                *r = *v;
             }
         }
         // How busy each market was, for its central bank (`money::week`).

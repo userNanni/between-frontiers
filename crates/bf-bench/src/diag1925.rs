@@ -102,6 +102,29 @@ pub fn main() -> Result<(), String> {
     // that no movement undoes them.
     let forced = forced_laws(&data)?;
     force(&mut s, &forced, 1925);
+    // Tariffs fixed by good from the first week (`BF_TARIFF="GBR:textiles=1000,steel=300;..."`,
+    // rates in thousandths), as the government's table would (`GameCommand::SetGoodsTariff`).
+    if let Ok(spec) = std::env::var("BF_TARIFF") {
+        for entry in spec.split(';').filter(|e| !e.trim().is_empty()) {
+            let (tag, goods) = entry
+                .split_once(':')
+                .ok_or_else(|| format!("BF_TARIFF: no ':' in {entry}"))?;
+            for kv in goods.split(',') {
+                let (good, rate) = kv
+                    .split_once('=')
+                    .ok_or_else(|| format!("BF_TARIFF: no '=' in {kv}"))?;
+                let g = cat
+                    .good(good.trim())
+                    .ok_or_else(|| format!("BF_TARIFF: unknown good {good}"))?;
+                let rate: u16 = rate.trim().parse().map_err(|e| format!("BF_TARIFF: {e}"))?;
+                s.submit(bf_sim::game::GameCommand::SetGoodsTariff {
+                    tag: tag.trim().to_string(),
+                    goods: vec![g],
+                    per_mille: Some(rate),
+                });
+            }
+        }
+    }
     // Weekly prices and quantities (`BF_DIAG_WEEKLY=TAG,TAG[:weeks]`), to see whether trade
     // makes them oscillate: one CSV line per market, tradable good and week (price over base,
     // supply, demand and net imports at base prices).

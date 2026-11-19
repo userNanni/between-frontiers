@@ -342,9 +342,28 @@ mudar a lei move a taxa a partir dali pelo tamanho do degrau, nunca abaixo de ze
   0,3 a 1,6 (Hooper, Johnson e Marquez, 2000); 1 é valor de projeto. Zero desliga o efeito;
 - `rates_1925` (CT5): a taxa de 1925 de cada país em vez do degrau da lei.
 
-**Ainda não.** A tabela por bem (CT1, uns 60), o comando do jogador e a tela são o passo 2. O
-embargo e a guerra fecham o par pelo encaixe que já existe (`Geography::closures`, seção 11): o
-embargo por comando (CT6) e a guerra por `war::fight::war_pairs` (CT7). É o passo 3.
+**A tabela por bem (passo 2, CT1 e CT2).** Em Governo → Comércio, cada um dos 76 bens comerciáveis,
+agrupados pelas 9 categorias de `goods.ron`, fica na "Regra histórica" (a taxa da lei, deslocada
+pela de 1925) ou "Fixado" pelo governo, de 0 a 200 %; "Aplicar ao grupo" fixa a categoria inteira e
+"Voltar à regra" a devolve. Por parceiro, o governo soma pontos à tarifa de todo bem (sobretaxa) ou
+os tira (preferência). O mundo guarda só as exceções (`GameWorld::tariffs`, `customs::TariffTable`,
+save 30); sem exceção nenhuma, o hash é o de antes. A IA fica na regra.
+- **Cobrança.** A tarifa de um fluxo do bem `g` do vendedor `s` ao comprador `b` é a do bem (fixada
+  ou da regra) mais os pontos de `s`, sob os acordos em vigor, nunca abaixo de zero
+  (`customs::Charge`, `trade::PairRules`): a união aduaneira não paga, a preferência tira a sua
+  margem, o teto limita. Passar do teto de propósito (quebra de cláusula, com ponto de
+  restauração) é o passo seguinte; por ora o acordo corta o excesso e a tela avisa.
+- **Receita no Orçamento.** A linha "Receita aduaneira" lê a cobrança da semana
+  (`TariffState::revenue`, um registro que nenhuma regra lê).
+- **A preferência pela média do grupo (aproximação).** A preferência entre origens é por grupo de
+  edifícios: com bens fixados, o grupo usa a média simples das tarifas dos seus bens. Um bem
+  fixado longe do resto do grupo move a fatia de fora do grupo inteiro, não só a dele. Medido com
+  `BF_TARIFF` (têxteis britânicos a 100 %, o resto na regra de 9 %): o comércio do Reino Unido cai
+  de 15,7 % para 15,4 % do PIB em 1927, espalhado pelos bens do grupo.
+
+**Ainda não.** A quebra da cláusula pela tarifa, com aviso, perda da reputação geral e ponto de
+restauração. O embargo e a guerra fecham o par pelo encaixe que já existe (`Geography::closures`,
+seção 11): o embargo por comando (CT6) e a guerra por `war::fight::war_pairs` (CT7). É o passo 3.
 
 **A tarifa protege?** Medida com `BF_DIAG_PROTECT=TAG:10` e `BF_LAWS`, com a chave ligada: o
 mesmo país sob `free_trade` e sob `protective_tariffs`, por 10 anos. Desligada, mudar a lei não
