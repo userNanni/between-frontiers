@@ -89,8 +89,8 @@ pub const TILES: [TileDef; 25] = [
     ),
 ];
 
-/// The blocks of a player who never arranged them: the panel as it always was.
-pub const DEFAULT: [&str; 15] = [
+/// The figures the map gives every country, in the order `top_bar::items` builds them.
+pub const FIGURES: [&str; 15] = [
     "quality",
     "literacy",
     "life",
@@ -105,6 +105,28 @@ pub const DEFAULT: [&str; 15] = [
     "pop-share",
     "rank-quality",
     "rank-population",
+    "subjects",
+];
+
+/// The blocks of a player who never arranged them: the panel as it always was, with the public
+/// debt beside the GDP.
+pub const DEFAULT: [&str; 15] = [
+    "quality",
+    "literacy",
+    "life",
+    "urban",
+    "gdp-per-capita",
+    "gdp",
+    // The debt in sight: the owner looked for it and did not find the money tab. The rank in
+    // population left the default for it (still in the tray), so the panel keeps three rows.
+    "debt",
+    "population",
+    "density",
+    "area",
+    "states",
+    "gdp-share",
+    "pop-share",
+    "rank-quality",
     "subjects",
 ];
 
