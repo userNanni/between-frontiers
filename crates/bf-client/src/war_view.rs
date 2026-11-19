@@ -72,6 +72,40 @@ impl Front {
     pub fn advance_km(&self) -> f64 {
         self.segments.iter().map(|s| s.advance_km).sum()
     }
+
+    /// The front's advance this week as a front moves: the mean over its segments, and the
+    /// segment that moved the most (with its sign).
+    pub fn advance_mean(&self) -> f64 {
+        if self.segments.is_empty() {
+            0.0
+        } else {
+            self.advance_km() / self.segments.len() as f64
+        }
+    }
+
+    pub fn advance_most(&self) -> f64 {
+        self.segments
+            .iter()
+            .map(|s| s.advance_km)
+            .max_by(|a, b| a.abs().total_cmp(&b.abs()))
+            .unwrap_or(0.0)
+    }
+}
+
+/// How near the player's government is to falling by occupation (`support::support_week`): the
+/// metropolitan people under the enemy, per mille, against the share that brings it down, lower
+/// with the capital taken; and what keeps it standing (a colony still held, an ally fighting).
+#[derive(Clone, Debug, PartialEq)]
+pub struct Overrun {
+    pub share: i64,
+    pub capital_taken: bool,
+    /// The share that brings it down now (`overrun`, or `capital_overrun` with the capital taken),
+    /// and the other one.
+    pub threshold: i32,
+    pub capital_threshold: i32,
+    pub plain_threshold: i32,
+    pub colony_held: bool,
+    pub ally_fights: bool,
 }
 
 /// One side's support for the war (G4), per mille, as the tick wrote it.
@@ -228,6 +262,8 @@ pub struct WarView {
     /// The player's trade cut at sea by an enemy's blockade: (partner, what they traded in a
     /// year, both ways), the largest first.
     pub cut_ours: Vec<(String, f64)>,
+    /// The player's nearness to falling by occupation, at war.
+    pub overrun: Option<Overrun>,
     /// The player's navy, while at war and with ships.
     pub fleet: Option<FleetLine>,
 }
@@ -376,7 +412,7 @@ pub fn read(
             0.0
         }
     };
-    let wars = world
+    let wars: Vec<WarLine> = world
         .war
         .conflicts
         .wars
@@ -564,6 +600,54 @@ pub fn read(
             })
         })
         .collect();
+    // How near the player's government is to falling by occupation.
+    let overrun = (!wars.is_empty())
+        .then(|| {
+            let rules = &setup.conduct.as_ref()?.rules.support;
+            let capital = setup.capitals.get(tag).copied();
+            let (mut all, mut taken) = (0i64, 0i64);
+            let (mut capital_taken, mut colony_held) = (false, false);
+            for (ri, r) in world.econ.regions.iter().enumerate() {
+                if r.market != me {
+                    continue;
+                }
+                let lost = fighting.controller(ri as u32, me) != me;
+                if r.colony {
+                    colony_held |= !lost;
+                    continue;
+                }
+                all += r.population();
+                if lost {
+                    taken += r.population();
+                    capital_taken |= Some(r.state) == capital;
+                }
+            }
+            let share = if all > 0 { taken * 1000 / all } else { 0 };
+            let ally_fights = world.war.conflicts.wars.iter().any(|w| {
+                let side = if w.side_a.contains(&me) {
+                    &w.side_a
+                } else if w.side_b.contains(&me) {
+                    &w.side_b
+                } else {
+                    return false;
+                };
+                side.iter().any(|&x| x != me)
+            });
+            Some(Overrun {
+                share,
+                capital_taken,
+                threshold: if capital_taken {
+                    rules.capital_overrun
+                } else {
+                    rules.overrun
+                },
+                capital_threshold: rules.capital_overrun,
+                plain_threshold: rules.overrun,
+                colony_held,
+                ally_fights,
+            })
+        })
+        .flatten();
     // What two countries traded in the last full year (or the year so far), both ways.
     let traded = |a: u16, b: u16| {
         let t = &world.econ.trade;
@@ -593,6 +677,7 @@ pub fn read(
         full_line_men_km: front.map_or(0.0, |r| f(r.full_line_men_km)),
         dig_weeks,
         signature: signature(world, days),
+        overrun,
         cut_ours: {
             let mut v: Vec<(String, f64)> = world
                 .war

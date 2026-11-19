@@ -228,6 +228,9 @@ fn war(
     // Occupation: the regions held either way, with what each yields and costs.
     bf_ui_kit::gap(ui, space::XS);
     bf_ui_kit::heading(ui, &i18n.tr("war-occupation"));
+    if let Some(o) = &v.overrun {
+        overrun(ui, i18n, o);
+    }
     if w.occupied.is_empty() {
         for (list, key) in [(&w.taken, "war-taken"), (&w.lost, "war-lost")] {
             let shown: Vec<String> = list.iter().map(|s| state_name(i18n, world, *s)).collect();
@@ -477,7 +480,7 @@ fn front(
                     i18n.int(f.week_losses(1) as i64),
                 ),
             );
-            // The sum over the segments, not a distance on the map: said on hover.
+            // The mean over the segments, as a front moves, and the fastest segment.
             ui.horizontal(|ui| {
                 ui.label(
                     RichText::new(i18n.tr("war-advance"))
@@ -487,9 +490,15 @@ fn front(
                 .on_hover_text(bf_ui_kit::tooltip_text(&i18n.tr("war-advance-tip")));
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     ui.label(
-                        RichText::new(km(i18n, f.advance_km()))
-                            .font(bf_ui_kit::theme::sans_medium(size::BODY))
-                            .color(color::TEXT),
+                        RichText::new(i18n.tr_args(
+                            "war-advance-value",
+                            &[
+                                ("mean", arg(km(i18n, f.advance_mean()))),
+                                ("most", arg(i18n.decimal(f.advance_most().abs(), 1))),
+                            ],
+                        ))
+                        .font(bf_ui_kit::theme::sans_medium(size::BODY))
+                        .color(color::TEXT),
                     )
                     .on_hover_text(bf_ui_kit::tooltip_text(&i18n.tr("war-advance-tip")));
                 });
@@ -1178,5 +1187,58 @@ fn cut_ours(ui: &mut Ui, i18n: &I18n, cut: &[(String, f64)]) {
                 ],
             ),
         );
+    }
+}
+
+/// How near the player's government is to falling by occupation: the people under the enemy on
+/// a bar against the share that brings it down, in red near it, and what happens past it.
+fn overrun(ui: &mut Ui, i18n: &I18n, o: &crate::war_view::Overrun) {
+    let near = o.share * 10 >= i64::from(o.threshold) * 8;
+    let tint = if near { color::DANGER } else { color::TEXT };
+    bf_ui_kit::stat_row(
+        ui,
+        &i18n.tr("war-overrun"),
+        &i18n.tr_args(
+            "war-overrun-value",
+            &[
+                ("share", arg(per_mille(i18n, o.share as i32))),
+                ("threshold", arg(per_mille(i18n, o.threshold))),
+            ],
+        ),
+    );
+    let width = ui.available_width().min(420.0);
+    let (rect, _) = ui.allocate_exact_size(egui::vec2(width, 8.0), egui::Sense::hover());
+    let p = ui.painter();
+    p.rect_filled(rect, 3.0, color::SURFACE_SUNKEN);
+    let mut fill = rect;
+    fill.set_width(rect.width() * (o.share.clamp(0, 1000) as f32 / 1000.0));
+    p.rect_filled(fill, 3.0, if near { color::DANGER } else { color::ACCENT });
+    let x = rect.left() + rect.width() * (o.threshold.clamp(0, 1000) as f32 / 1000.0);
+    p.vline(
+        x,
+        rect.expand(3.0).y_range(),
+        egui::Stroke::new(1.5, color::DANGER),
+    );
+    let capital = i18n.tr_args(
+        if o.capital_taken {
+            "war-overrun-capital-taken"
+        } else {
+            "war-overrun-capital-held"
+        },
+        &[
+            ("capital", arg(per_mille(i18n, o.capital_threshold))),
+            ("plain", arg(per_mille(i18n, o.plain_threshold))),
+        ],
+    );
+    let mut lines = vec![capital];
+    if o.colony_held {
+        lines.push(i18n.tr("war-overrun-colony"));
+    } else if o.ally_fights {
+        lines.push(i18n.tr("war-overrun-ally"));
+    } else {
+        lines.push(i18n.tr("war-overrun-fall"));
+    }
+    for l in lines {
+        ui.add(egui::Label::new(RichText::new(l).font(sans(size::SMALL)).color(tint)).wrap());
     }
 }
