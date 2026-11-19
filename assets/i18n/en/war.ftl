@@ -388,11 +388,12 @@ war-fleet-blockading = Stronger on the surface than { $country }: it holds the w
 war-fleet-home = Weaker on the surface than { $country }: it stays at its own way out to sea, a fleet in being, without seeking battle.
 war-fleet-home-alone = The enemy has no fleet: yours stays at its own way out to sea.
 war-fleet-ships = Ships
-war-fleet-zone = Zone, mission control
+war-fleet-zone = Zone
+war-fleet-zone-value = { $zone } · mission: control
 war-fleet-week = At the end of the week
 war-fleet-holds-short = the zone is yours
 war-fleet-contested-short = contested: the enemy has more power there
-war-fleet-blockade-head = We blockade { $countries }: { $count ->
+war-fleet-blockade-head = Under our blockade: { $countries } · { $count ->
     [one] { $pairs } pair cut
    *[other] { $pairs } pairs cut
 }

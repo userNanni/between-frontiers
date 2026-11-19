@@ -384,15 +384,28 @@ army-hold-regime = A forma de governo mudou: o corpo de oficiais responde à pol
 war-expedition-cut = Desembarque parado: a rota { $from }–{ $to } está cortada em { $zone }, zona que o inimigo controla.
 
 war-fleet = Frota
-war-fleet-blockading = Mais forte na superfície que { $country }: guarda a saída do mar dele e corta o comércio que passa por ali.
-war-fleet-home = Mais fraca na superfície que { $country }: fica na própria saída do mar, como frota em potência, sem buscar batalha.
+war-fleet-blockading = Mais forte na superfície que { $article ->
+    [o] o { $country }
+    [a] a { $country }
+    [os] os { $country }
+    [as] as { $country }
+   *[other] { $country }
+}: guarda a saída para o mar do inimigo e corta o comércio que passa por ali.
+war-fleet-home = Mais fraca na superfície que { $article ->
+    [o] o { $country }
+    [a] a { $country }
+    [os] os { $country }
+    [as] as { $country }
+   *[other] { $country }
+}: fica na própria saída do mar, como frota em potência, sem buscar batalha.
 war-fleet-home-alone = O inimigo não tem frota: a sua fica na própria saída do mar.
 war-fleet-ships = Navios
-war-fleet-zone = Zona, missão controlar
+war-fleet-zone = Zona
+war-fleet-zone-value = { $zone } · missão: controlar
 war-fleet-week = No fim da semana
 war-fleet-holds-short = a zona é sua
 war-fleet-contested-short = disputada: o inimigo tem mais poder ali
-war-fleet-blockade-head = Bloqueamos { $countries }: { $count ->
+war-fleet-blockade-head = Sob nosso bloqueio: { $countries } · { $count ->
     [one] { $pairs } par cortado
    *[other] { $pairs } pares cortados
 }

@@ -1059,7 +1059,11 @@ fn fleet(ui: &mut Ui, i18n: &I18n, f: &crate::war_view::FleetLine) {
     bf_ui_kit::heading(ui, &i18n.tr("war-fleet"));
     let zone = i18n.tr(&format!("sea-zone-{}", f.zone));
     bf_ui_kit::stat_row(ui, &i18n.tr("war-fleet-ships"), &i18n.int(f.ships as i64));
-    bf_ui_kit::stat_row(ui, &i18n.tr("war-fleet-zone"), &zone);
+    bf_ui_kit::stat_row(
+        ui,
+        &i18n.tr("war-fleet-zone"),
+        &i18n.tr_args("war-fleet-zone-value", &[("zone", arg(zone))]),
+    );
     bf_ui_kit::stat_row(
         ui,
         &i18n.tr("war-fleet-week"),
@@ -1072,11 +1076,18 @@ fn fleet(ui: &mut Ui, i18n: &I18n, f: &crate::war_view::FleetLine) {
     let why = match (&f.against, &f.stronger) {
         (Some(e), _) => i18n.tr_args(
             "war-fleet-blockading",
-            &[("country", arg(country_name(i18n, e)))],
+            &[
+                ("country", arg(country_name(i18n, e))),
+                ("article", arg(crate::text::country_article(i18n, e))),
+            ],
         ),
-        (None, Some(e)) => {
-            i18n.tr_args("war-fleet-home", &[("country", arg(country_name(i18n, e)))])
-        }
+        (None, Some(e)) => i18n.tr_args(
+            "war-fleet-home",
+            &[
+                ("country", arg(country_name(i18n, e))),
+                ("article", arg(crate::text::country_article(i18n, e))),
+            ],
+        ),
         (None, None) => i18n.tr("war-fleet-home-alone"),
     };
     bf_ui_kit::small(ui, &why);
