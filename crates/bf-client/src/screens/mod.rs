@@ -2,6 +2,7 @@
 
 pub mod agreements;
 pub mod budget;
+pub mod country_find;
 pub mod country_panel;
 pub mod crisis;
 pub mod demand;
@@ -111,6 +112,18 @@ pub fn backdrop_map(shared: &mut Shared, ui: &mut Ui, rect: Rect, extra_dim: f32
 }
 
 /// A child Ui confined to `rect`.
+/// Scrolls the enclosing scroll area by most of a page when the player asks by key
+/// (`window.scroll_down`, `window.scroll_up`). Call it inside the scroll area's body.
+pub fn scroll_keys(ui: &mut Ui) {
+    let page = ui.clip_rect().height() * 0.8;
+    if crate::keys::fired(ui.ctx(), crate::keys::id::SCROLL_DOWN) {
+        ui.scroll_with_delta(egui::vec2(0.0, -page));
+    }
+    if crate::keys::fired(ui.ctx(), crate::keys::id::SCROLL_UP) {
+        ui.scroll_with_delta(egui::vec2(0.0, page));
+    }
+}
+
 pub fn region<R>(ui: &mut Ui, rect: Rect, add: impl FnOnce(&mut Ui) -> R) -> R {
     ui.scope_builder(UiBuilder::new().max_rect(rect), add).inner
 }

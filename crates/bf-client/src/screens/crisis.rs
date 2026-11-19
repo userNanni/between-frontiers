@@ -39,6 +39,9 @@ pub struct DemandUi {
     /// A tribute a year, in thousandths of the target's GDP.
     pub tribute: u16,
     pub confirming: bool,
+    /// The target found by name (keyboard), over the one selected on the map.
+    pub chosen: Option<String>,
+    pub find: super::country_find::FindUi,
 }
 
 /// The choice waiting for its second click in a crisis: accept/declare (`true`) or refuse/back
@@ -328,13 +331,22 @@ pub fn show_demand(
 ) -> Option<(String, Proposal)> {
     ui.spacing_mut().item_spacing.y = space::SM;
     bf_ui_kit::title(ui, &i18n.tr("crisis-demand-title"));
-    let (Some(target), Some(world)) = (target, world) else {
+    let world = world?;
+    // The target: found by name, or selected on the map; the search works from the keyboard.
+    if let Some(tag) =
+        super::country_find::show(ui, i18n, world, me, &mut d.find, "crisis.demand", 'C')
+    {
+        d.chosen = Some(tag);
+    }
+    let chosen = d.chosen.clone();
+    let Some(target) = chosen.as_deref().or(target) else {
         bf_ui_kit::muted(ui, &i18n.tr("crisis-demand-pick-target"));
         return None;
     };
     if d.target.as_deref() != Some(target) {
         *d = DemandUi {
             target: Some(target.to_owned()),
+            chosen: d.chosen.take(),
             ..DemandUi::default()
         };
     }
@@ -355,7 +367,10 @@ pub fn show_demand(
         // What to ask: the whole country, or states of it; money.
         bf_ui_kit::caption(ui, &i18n.tr("crisis-demand-clauses"));
         let union = ui.checkbox(&mut d.union, i18n.tr("crisis-demand-union"));
-        if union.changed() {
+        if keys::single(ui, "crisis.demand.union", 'U', union.rect) {
+            d.union = !d.union;
+            d.states.clear();
+        } else if union.changed() {
             d.states.clear();
         }
         if !d.union {
@@ -379,9 +394,19 @@ pub fn show_demand(
                 .auto_shrink([false, true])
                 .show(ui, |ui| {
                     ui.horizontal_wrapped(|ui| {
-                        for (key, name) in &states {
+                        for (k, (key, name)) in states.iter().enumerate() {
                             let mut on = d.states.contains(key);
-                            if ui.checkbox(&mut on, name).changed() {
+                            let b = ui.checkbox(&mut on, name);
+                            if keys::item(
+                                ui,
+                                'S',
+                                format!("crisis.demand.state.{key}"),
+                                &(k + 1).to_string(),
+                                b.rect,
+                            ) {
+                                on = !on;
+                            }
+                            if b.changed() || on != d.states.contains(key) {
                                 if on {
                                     d.states.insert(key.clone());
                                 } else {

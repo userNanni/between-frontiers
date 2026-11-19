@@ -122,6 +122,7 @@ pub fn show(
             .auto_shrink([false, false])
             .show(ui, |ui| {
                 ui.set_max_width(ui.available_width() - space::LG);
+                super::scroll_keys(ui);
                 ui.spacing_mut().item_spacing.y = space::SM;
                 war(ui, i18n, world, v, w, window, &mut out);
             });

@@ -301,6 +301,11 @@ impl Keys {
         }
     }
 
+    /// The code a key tip shows for element `id` this frame (tests drive the keyboard by it).
+    pub fn code_of(&self, id: &str) -> Option<&str> {
+        self.codes.get(id).map(String::as_str)
+    }
+
     pub fn hint_mode(&self) -> bool {
         self.hint_mode
     }

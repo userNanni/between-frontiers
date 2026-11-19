@@ -374,6 +374,7 @@ pub fn show(
                 .show(ui, |ui| {
                     // Clear of the scroll bar.
                     ui.set_max_width(ui.available_width() - space::LG);
+                    super::scroll_keys(ui);
                     super::demand::show(ui, i18n, world, &all.tags, d, &mut window.demand, &mut out)
                 });
             return;
@@ -422,6 +423,7 @@ pub fn show(
                 .auto_shrink([false, false])
                 .show(ui, |ui| {
                     ui.set_max_width(ui.available_width() - space::LG);
+                    super::scroll_keys(ui);
                     if on_table {
                         if let Some(me) = crises.me {
                             out.treaty_draft = super::treaty_table::show_table(
@@ -484,6 +486,7 @@ pub fn show(
                 .auto_shrink([false, false])
                 .show(ui, |ui| {
                     ui.set_max_width(ui.available_width() - space::LG);
+                    super::scroll_keys(ui);
                     if let Some(c) = picked_call {
                         super::crisis::show_call(ui, i18n, c, &mut window.call, &mut out);
                     } else if let Some(l) = picked_crisis {
@@ -734,6 +737,7 @@ pub fn show(
                 .auto_shrink([false, false])
                 .show(ui, |ui| {
                     ui.set_max_width(LIST_W - SCROLL_GUTTER);
+                    super::scroll_keys(ui);
                     decisions(ui, window);
                     bf_ui_kit::gap(ui, space::SM);
                     bf_ui_kit::heading(ui, &i18n.tr("journal-agendas"));
@@ -776,6 +780,7 @@ pub fn show(
                 .auto_shrink([false, false])
                 .show(ui, |ui| {
                     ui.set_max_width(detail.width() - SCROLL_GUTTER);
+                    super::scroll_keys(ui);
                     entry_detail(ui, i18n, world, picked, pinned, &mut out);
                     decision(ui, i18n, picked, &mut window.confirm, &mut out);
                 });

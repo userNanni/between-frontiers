@@ -108,7 +108,7 @@ table-propose-to = Propor acordo { $article ->
 } { $country }…
 table-counter-title = Contraproposta
 table-off = A mesa de negociação está desligada nesta partida.
-table-pick-country = Selecione no mapa o país a quem propor.
+table-pick-country = Selecione no mapa o país a quem propor, ou escolha pelo nome.
 table-parties = { $me } e { $other }
 table-gives = { $country } dá
 table-gives-nothing = Nada por enquanto.

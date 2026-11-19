@@ -357,3 +357,15 @@ pick-find-count = { $n ->
     [one] one country
    *[other] { $n } countries
     }
+
+## Choosing a country by name (keyboard)
+find-country = Choose a country by name…
+find-country-cancel = Cancel
+find-country-count = { $n ->
+    [one] 1 country
+   *[other] { $n } countries
+}
+cmd-window-scroll-down = Scroll the window down
+    .short = Scroll ↓
+cmd-window-scroll-up = Scroll the window up
+    .short = Scroll ↑

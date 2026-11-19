@@ -3675,6 +3675,155 @@ fn agreements_screen() {
     let _ = std::fs::remove_dir_all(&user);
 }
 
+/// The path from a demand to the peace, from the keyboard only (key tips: the leader key, then
+/// the code each element shows): Hungary demands Czechoslovakia whole (the target found by name,
+/// the union ticked, reviewed, sent); after the refusal it declares; in the war window it sets
+/// the front to attack; then it opens the peace table, puts a payment on its side and proposes.
+/// Portuguese at 1600 × 900; copies in `target/screenshots/keyboard-war/`.
+#[test]
+#[ignore = "needs a GPU (or software Vulkan) and the generated map; run with --ignored"]
+fn crisis_to_peace_by_keyboard() {
+    use laplace_schelling::calendar::Date;
+    // SAFETY: the screenshot tests run one at a time (`RUST_TEST_THREADS=1`).
+    unsafe { std::env::set_var("BF_RULES", "forces,crisis,war,negotiation") };
+    let switches =
+        bf_sim::game::Switches::parse("forces,crisis,war,negotiation").expect("switches");
+    let user = std::env::temp_dir().join(format!("bf-shots-kbwar-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&user);
+    let s = advanced_session_with("HUN", Date::new(1925, 3, 2), switches);
+    let save = write_campaign(&user.join("save"), &s, "Teclado", "HUN", &[]);
+    let dir = root().join("target/screenshots/keyboard-war");
+    std::fs::create_dir_all(&dir).unwrap();
+    let keep = |h: &mut Harness<'_, App>, name: &str| {
+        shot(h, name);
+        let from = out_dir().join(format!("{name}.png"));
+        std::fs::copy(&from, dir.join(format!("{name}.png"))).unwrap();
+    };
+    let wait = |h: &mut Harness<'_, App>| {
+        for _ in 0..20 {
+            std::thread::sleep(std::time::Duration::from_millis(25));
+            h.run_steps(1);
+        }
+    };
+    let snap = |h: &Harness<'_, App>| match &h.state().screen {
+        Screen::Game(g) => g.snapshot(),
+        _ => panic!("not in a campaign"),
+    };
+    // Types the code of element `id`: the leader key first when the tips are off.
+    let act = |h: &mut Harness<'_, App>, id: &str| {
+        if !h.state().shared.keys.hint_mode() {
+            leader(h);
+        }
+        h.run_steps(2);
+        let code = h
+            .state()
+            .shared
+            .keys
+            .code_of(id)
+            .unwrap_or_else(|| panic!("no key tip for {id}"))
+            .to_owned();
+        for c in code.chars() {
+            let key = egui::Key::from_name(&c.to_string()).expect("a key for the code");
+            tip(h, key);
+        }
+        wait(h);
+    };
+    // Runs the clock until `done`, then pauses.
+    let run = |h: &mut Harness<'_, App>, done: &dyn Fn(&bf_client::sim::Snapshot) -> bool| {
+        h.key_press(egui::Key::Space);
+        let started = std::time::Instant::now();
+        while !done(&snap(h)) && started.elapsed().as_secs() < 60 {
+            std::thread::sleep(std::time::Duration::from_millis(50));
+            h.run_steps(1);
+        }
+        h.key_press(egui::Key::Space);
+        let paused = std::time::Instant::now();
+        while !snap(h).paused && paused.elapsed().as_secs() < 10 {
+            std::thread::sleep(std::time::Duration::from_millis(50));
+            h.run_steps(1);
+        }
+        wait(h);
+        assert!(done(&snap(h)), "the clock ran to the step");
+    };
+    let mut h = harness_sized(user.join("pt"), "pt-BR", egui::vec2(1600.0, 900.0));
+    let ctx = h.ctx.clone();
+    h.state_mut().apply(Transition::Game(save.clone()), &ctx);
+    wait(&mut h);
+    // 1. The demand: J, the decision, the target by name, the union, review, send.
+    h.key_press(egui::Key::J);
+    wait(&mut h);
+    act(&mut h, "journal.decision.exigency");
+    act(&mut h, "crisis.demand.find");
+    h.key_press(egui::Key::Escape);
+    h.run_steps(2);
+    h.event(egui::Event::Text("Tchec".into()));
+    h.run_steps(2);
+    h.key_press(egui::Key::Enter);
+    wait(&mut h);
+    keep(&mut h, "230-keyboard-demand-target");
+    act(&mut h, "crisis.demand.union");
+    act(&mut h, "crisis.demand.review");
+    keep(&mut h, "231-keyboard-demand-review");
+    act(&mut h, "crisis.demand.send");
+    h.key_press(egui::Key::Escape);
+    h.run_steps(2);
+    // 2. The refusal, then the declaration.
+    run(&mut h, &|s| {
+        s.crises.as_ref().is_some_and(|c| {
+            c.crises
+                .iter()
+                .any(|k| k.stage == bf_sim::war::Stage::Refused)
+        })
+    });
+    let id = snap(&h).crises.unwrap().crises[0].id;
+    // The Agendas stayed open on the demand: back to the list, then the crisis.
+    act(&mut h, "journal.decision.back");
+    act(&mut h, &format!("journal.crisis.{id}"));
+    keep(&mut h, "232-keyboard-crisis-refused");
+    act(&mut h, "crisis.yes");
+    act(&mut h, "crisis.confirm");
+    h.key_press(egui::Key::Escape);
+    h.run_steps(2);
+    run(&mut h, &|s| {
+        s.war.as_ref().is_some_and(|w| !w.wars.is_empty())
+    });
+    // 3. The war window: the front to attack.
+    h.key_press_modifiers(egui::Modifiers::SHIFT, egui::Key::W);
+    wait(&mut h);
+    act(&mut h, "war.posture.CZE");
+    h.key_press(egui::Key::Escape);
+    h.run_steps(2);
+    run(&mut h, &|s| {
+        s.war
+            .as_ref()
+            .is_some_and(|w| w.wars.iter().any(|x| x.fronts.iter().any(|f| f.attack)))
+    });
+    keep(&mut h, "233-keyboard-war-attack");
+    // 4. Peace: the table with Czechoslovakia, a payment of ours, propose.
+    act(&mut h, "war.peace");
+    act(&mut h, "treaty.add.true");
+    act(&mut h, "treaty.pick.payment");
+    wait(&mut h);
+    keep(&mut h, "234-keyboard-peace-table");
+    // The button is below the fold: the page scrolls by key, then its tip shows.
+    h.key_press(egui::Key::Escape);
+    h.run_steps(2);
+    for _ in 0..3 {
+        h.key_press_modifiers(egui::Modifiers::SHIFT, egui::Key::PageDown);
+        h.run_steps(3);
+    }
+    act(&mut h, "treaty.propose");
+    h.key_press(egui::Key::Escape);
+    h.run_steps(2);
+    wait(&mut h);
+    run(&mut h, &|s| {
+        s.treaty_table
+            .as_ref()
+            .is_some_and(|t| !t.outgoing.is_empty() || !t.closed.is_empty())
+    });
+    let _ = std::fs::remove_dir_all(&user);
+}
+
 /// Answering a demand of independence: Nigeria's demand pending on the United Kingdom, from the
 /// red button in the Agendas to the screen with the four answers, the refusal chosen and the
 /// review before confirming; in Portuguese at 1600 × 900 and in English at 1280 × 720.
