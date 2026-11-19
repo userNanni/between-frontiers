@@ -61,7 +61,9 @@ fn give(w: &mut GameWorld, tag: &str, key: &str, n: i64) {
 }
 
 /// (warheads ready, ICBMs, missile submarines, bombers).
-fn arm(w: &mut GameWorld, tag: &str, (warheads, icbm, subs, bombers): (i64, i64, i64, i64)) {
+type Forces = (i64, i64, i64, i64);
+
+fn arm(w: &mut GameWorld, tag: &str, (warheads, icbm, subs, bombers): Forces) {
     give(w, tag, "nuclear_warhead", warheads);
     give(w, tag, "ballistic_missile", icbm);
     give(w, tag, "missile_submarine", subs);
@@ -191,5 +193,147 @@ fn korea_1950() {
         let uses = bf_sim::war::nuclear_use::first_uses(mil(), &w, None);
         eprintln!("CONF taboo {taboo}: first uses {uses:?}");
         assert!(uses.is_empty(), "the United States is not occupied");
+    }
+}
+
+/// A country's surface power at sea (gun and torpedo of its ships afloat), as the war at sea
+/// reads it (`war::sea`): who holds the sea of an overseas theatre.
+fn surface(w: &GameWorld, tag: &str) -> f64 {
+    let c = index(w, tag) as usize;
+    w.war.countries[c]
+        .formations
+        .iter()
+        .filter(|f| mil().types[f.unit as usize].domain == bf_sim::war::Domain::Sea)
+        .map(|f| {
+            let n = f.elements.to_int_floor().max(0) as u64;
+            let g = mil().ship_group(f.unit, f.generation as usize, n);
+            if g.submerged {
+                0.0
+            } else {
+                ((g.gun + g.torpedo) * g.count as i64).to_f64_lossy()
+            }
+        })
+        .sum()
+}
+
+/// How a theatre is reached by each side.
+#[derive(Clone, Copy, Debug)]
+enum Reach {
+    /// Overseas for both: the side that holds the sea brings its land forces, the other none.
+    Overseas,
+    /// Inside the demander's land: the demander brings its land forces, the target none beyond
+    /// the garrison (not counted).
+    Enclosed,
+    /// By land for the target, by sea for the demander.
+    TargetByLand,
+}
+
+/// N10 (to the owner, measured): two ways for a peripheral demand to weigh the nuclear weapon
+/// and the theatre. (a) the one-sided nuclear advantage, delivered over the other's unacceptable,
+/// adds to the ratio of land forces (and the target's own subtracts); (b) the ratio is that of
+/// the forces each side can bring to the theatre. Prints who yields, and whether the demander
+/// may declare.
+#[test]
+fn n10_coercion_and_theatre() {
+    let d = data();
+    let setup = d.rules().crisis.clone().unwrap();
+    let yield_ratio = i64::from(setup.rules.yield_ratio);
+    struct Case {
+        name: &'static str,
+        by: &'static str,
+        target: &'static str,
+        forces: [(&'static str, Forces); 2],
+        reach: Reach,
+    }
+    let cases = [
+        Case {
+            name: "Cuba 1962",
+            by: "USA",
+            target: "SOV",
+            forces: [("USA", (3500, 182, 7, 1479)), ("SOV", (300, 42, 0, 160))],
+            reach: Reach::Overseas,
+        },
+        Case {
+            // The 1962 forces as a stand-in for 1961 (an estimate: 1961 has no source here).
+            name: "Berlin 1961 (1962 forces, estimate)",
+            by: "SOV",
+            target: "USA",
+            forces: [("USA", (3500, 182, 7, 1479)), ("SOV", (300, 42, 0, 160))],
+            reach: Reach::Enclosed,
+        },
+        Case {
+            name: "Korea 1950",
+            by: "USA",
+            target: "CHN",
+            forces: [("USA", (369, 0, 0, 185)), ("SOV", (5, 0, 0, 3))],
+            reach: Reach::TargetByLand,
+        },
+    ];
+    eprintln!(
+        "N10 case | land ratio | nuclear term by / target | (a) ratio, yields | (b) theatre ratio, yields | demander may declare"
+    );
+    for c in &cases {
+        let mut w = d.new_world();
+        for (t, f) in c.forces {
+            arm(&mut w, t, f);
+        }
+        test_both(&mut w, &["USA", "SOV"]);
+        let (by, target) = (index(&w, c.by), index(&w, c.target));
+        let land = |m: u16| bf_sim::war::crisis::land_men(mil(), &w.war, m as usize);
+        let ratio = land(by) * 1000 / land(target).max(1);
+        let b = balance(mil(), &w, by, target, Some(target));
+        let term = |i: usize| -> i64 {
+            b.as_ref().map_or(0, |b| {
+                if b.deterrence.secure[i] && !b.deterrence.secure[1 - i] {
+                    let u = b.sides[1 - i].unacceptable.to_f64_lossy().max(1.0);
+                    (b.deterrence.second_strike[i].delivered.to_f64_lossy() / u * 1000.0) as i64
+                } else {
+                    0
+                }
+            })
+        };
+        let (nb, nt) = (term(0), term(1));
+        let a = ratio + nb - nt;
+        let (sb, st) = (surface(&w, c.by), surface(&w, c.target));
+        let theatre = match c.reach {
+            Reach::Overseas => {
+                if sb > st {
+                    i64::MAX
+                } else {
+                    0
+                }
+            }
+            Reach::Enclosed => i64::MAX,
+            Reach::TargetByLand => {
+                if sb > st {
+                    ratio
+                } else {
+                    0
+                }
+            }
+        };
+        let declare = b
+            .as_ref()
+            .is_none_or(|b| b.limits.ceiling[0] >= bf_sim::war::Rung::War);
+        eprintln!(
+            "N10 {} ({} on {}) | {} | {} / {} | {}, {} | {}, {} | {} (sea {:.0} / {:.0})",
+            c.name,
+            c.by,
+            c.target,
+            ratio,
+            nb,
+            nt,
+            a,
+            a >= yield_ratio,
+            if theatre == i64::MAX {
+                "all / none".to_owned()
+            } else {
+                theatre.to_string()
+            },
+            theatre >= yield_ratio,
+            declare,
+            sb,
+            st
+        );
     }
 }
