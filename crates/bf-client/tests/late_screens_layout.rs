@@ -1,6 +1,6 @@
 //! The screens that came after the layout matrix fit the screen, in both languages, and each
 //! is reached by its key tip: Hungary in its first week of war with Czechoslovakia after a demand,
-//! with Austria's proposal of an agreement on the table. The walk opens the government's forces,
+//! with Austria's proposal of an agreement on the table. The walk opens the government's budget (every lever fixed), forces,
 //! works and debts tabs, the Agendas with the demand, the negotiation table and the agreements,
 //! the war window from its line in the Agendas and its peace table, and the country panel with
 //! its trade partners; every element lies on the screen and inside its window, no number is cut,
@@ -146,6 +146,16 @@ fn act(h: &mut Harness<'_, App>, id: &str) -> bool {
     true
 }
 
+/// Back to the top of the open window (Shift+PageUp): rows scrolled out above still report
+/// where they were.
+fn top(h: &mut Harness<'_, App>) {
+    for _ in 0..12 {
+        h.key_press_modifiers(egui::Modifiers::SHIFT, egui::Key::PageUp);
+        h.run_steps(2);
+    }
+    steps(h);
+}
+
 /// Checks the screen at every walk size, then goes back to 1600 × 900.
 fn check_sizes(h: &mut Harness<'_, App>, locale: &str, name: &str) -> Vec<String> {
     let mut out = Vec::new();
@@ -207,9 +217,25 @@ fn the_late_screens_fit_and_answer_their_keys() {
                 failures.push(format!("{locale}: no key tip for {id}"));
             }
         };
-        // The government: forces, works, debts between governments.
+        // The government: the budget with every lever fixed by key, then forces, works, debts
+        // between governments.
         h.key_press(egui::Key::G);
         steps(&mut h);
+        h.key_press(egui::Key::B);
+        steps(&mut h);
+        failures.extend(check_sizes(&mut h, locale, "government budget"));
+        for lever in [
+            "payroll",
+            "pay",
+            "treasury",
+            "deficit",
+            "purchases",
+            "military",
+        ] {
+            need(&mut h, &format!("gov.lever.{lever}.fixed"), &mut failures);
+        }
+        top(&mut h);
+        failures.extend(check_sizes(&mut h, locale, "government budget fixed"));
         for (key, shift, name) in [
             (egui::Key::T, false, "forces"),
             (egui::Key::B, true, "works"),
@@ -222,6 +248,12 @@ fn the_late_screens_fit_and_answer_their_keys() {
             }
             steps(&mut h);
             failures.extend(check_sizes(&mut h, locale, &format!("government {name}")));
+            // The works in the player's order, with the queue's arrows.
+            if name == "works" {
+                need(&mut h, "works.order.mine", &mut failures);
+                top(&mut h);
+                failures.extend(check_sizes(&mut h, locale, "government works mine"));
+            }
         }
         need(&mut h, "gov.close", &mut failures);
         // The Agendas: the demand, the table with Austria selected, the agreements, the crisis.

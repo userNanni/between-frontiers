@@ -196,7 +196,7 @@ fn war(
             }
         };
         if wide {
-            ui.columns(2, |cols| {
+            bf_ui_kit::columns(ui, 2, |cols| {
                 side(&mut cols[0], &w.support[0], true);
                 side(&mut cols[1], &w.support[1], false);
             });

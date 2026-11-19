@@ -951,13 +951,16 @@ impl System<GameWorld> for Forces {
                 conversions: None,
             };
         }
-        let (countries, conversions): (Vec<CountryWar>, Vec<_>) = world
-            .war
-            .countries
-            .iter()
-            .enumerate()
-            .map(|(ci, cw)| self.country_week(ctx, world, ci, cw))
-            .unzip();
+        // A country born since (a separation, a liberation, a revolt) gets its forces' entry,
+        // empty: without it, it had no forces, no military budget and no war support.
+        let empty = CountryWar::default();
+        let (countries, conversions): (Vec<CountryWar>, Vec<_>) =
+            (0..world.countries.len().max(world.war.countries.len()))
+                .map(|ci| {
+                    let cw = world.war.countries.get(ci).unwrap_or(&empty);
+                    self.country_week(ctx, world, ci, cw)
+                })
+                .unzip();
         let conversions = self
             .fight
             .is_some()

@@ -60,7 +60,7 @@ pub fn show(
 
     if !state.confirming {
         // Step 1: what (left), how and what it costs (right).
-        ui.columns(2, |cols| {
+        bf_ui_kit::columns(ui, 2, |cols| {
             let [left, right] = cols else { return };
             left.spacing_mut().item_spacing.y = space::SM;
             bf_ui_kit::caption(left, &i18n.tr("liberate-choose"));
