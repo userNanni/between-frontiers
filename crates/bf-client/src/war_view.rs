@@ -205,6 +205,8 @@ pub struct FleetLine {
     /// The countries it blockades, and the trade pairs cut.
     pub blockades: Vec<String>,
     pub cut: usize,
+    /// The pairs it cuts, with what they traded in a year before (both ways), the largest first.
+    pub pairs: Vec<(String, String, f64)>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -223,6 +225,9 @@ pub struct WarView {
     pub dig_weeks: u16,
     /// What the fighting looked like when read: a change reads it again.
     pub signature: Signature,
+    /// The player's trade cut at sea by an enemy's blockade: (partner, what they traded in a
+    /// year, both ways), the largest first.
+    pub cut_ours: Vec<(String, f64)>,
     /// The player's navy, while at war and with ships.
     pub fleet: Option<FleetLine>,
 }
@@ -559,6 +564,20 @@ pub fn read(
             })
         })
         .collect();
+    // What two countries traded in the last full year (or the year so far), both ways.
+    let traded = |a: u16, b: u16| {
+        let t = &world.econ.trade;
+        let n = usize::from(t.n);
+        let any = t.last_year.iter().any(|x| x.is_positive());
+        let flows = if any { &t.last_year } else { &t.year };
+        let at = |s: usize, d: usize| flows.get(s * n + d).map_or(0.0, |x| f(*x));
+        let (a, b) = (usize::from(a), usize::from(b));
+        if a < n && b < n {
+            at(a, b) + at(b, a)
+        } else {
+            0.0
+        }
+    };
     Some(WarView {
         me: tag.to_owned(),
         wars,
@@ -574,6 +593,26 @@ pub fn read(
         full_line_men_km: front.map_or(0.0, |r| f(r.full_line_men_km)),
         dig_weeks,
         signature: signature(world, days),
+        cut_ours: {
+            let mut v: Vec<(String, f64)> = world
+                .war
+                .sea
+                .cut
+                .iter()
+                .filter_map(|&(x, y)| {
+                    let other = if x == me {
+                        y
+                    } else if y == me {
+                        x
+                    } else {
+                        return None;
+                    };
+                    Some((tag_of(other), traded(me, other)))
+                })
+                .collect();
+            v.sort_by(|a, b| b.1.total_cmp(&a.1).then(a.0.cmp(&b.0)));
+            v
+        },
         fleet: {
             let sea = &world.war.sea;
             sea.fleets.iter().find(|f| f.country == me).map(|f| {
@@ -604,6 +643,24 @@ pub fn read(
                         .iter()
                         .filter(|(x, y)| blockades.contains(x) || blockades.contains(y))
                         .count(),
+                    pairs: {
+                        let mut v: Vec<(String, String, f64)> = sea
+                            .cut
+                            .iter()
+                            .filter(|(x, y)| blockades.contains(x) || blockades.contains(y))
+                            .map(|&(x, y)| {
+                                // The blockaded side first.
+                                let (a, b) = if blockades.contains(&x) {
+                                    (x, y)
+                                } else {
+                                    (y, x)
+                                };
+                                (tag_of(a), tag_of(b), traded(a, b))
+                            })
+                            .collect();
+                        v.sort_by(|a, b| b.2.total_cmp(&a.2).then(a.1.cmp(&b.1)));
+                        v
+                    },
                     blockades: blockades.into_iter().map(tag_of).collect(),
                 }
             })
