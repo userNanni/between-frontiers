@@ -498,6 +498,18 @@ porque fazia tecido. No real, a maior parte do comércio é de variedades do mes
   O "não liquidado" do balanço cai de 3 a 7 % do PIB para menos de 0,6 % nesses países. A
   Argentina ainda importa mais do que vende (carvão demais e pouca exportação de grão, milho e
   carne): é dado, pré-requisito declarado de ligar a liquidação (docs/state.pt-BR.md).
+- **O comércio não cria nem destrói dinheiro.** A compensação de cada mercado faz os compradores
+  pagarem o que veio de fora, que nenhuma fábrica dali vendeu, e paga às fábricas o que saiu, que
+  nenhum comprador dali comprou: sozinha, ela tira do dinheiro do mercado o seu saldo. O saldo volta
+  ao mesmo fundo (`week::margin_transfers`). Antes voltava o saldo menos uma fatia do saldo do mundo,
+  e o saldo do mundo (a diferença entre o preço de quem importa e o de quem exporta) saía do dinheiro
+  do mundo: de 0,35 a 0,5 % do PIB mundial por ano, achado pelo balanço de pagamentos (#254). O teste
+  `trade_money.rs` exige, mercado a mercado e semana a semana, que a devolução seja o que a
+  compensação tirou; com a regra antiga ele falha na primeira semana. Pagar o que muda de país é da
+  liquidação do padrão-ouro (`payments::settle`). Sem o vazamento, o PIB mundial de 2022 vai de
+  119,3 para 126,8 trilhões (133,4 reais), o erro do PIB por habitante de 0,92 para 0,84 e a
+  correlação de ranking de 0,55 para 0,59; a deflação de fundo de 1935 some (−0,32 → −0,08 %); o
+  meio do século passa mais do real (17,1 contra 16,2 trilhões em 1955, 10,9 reais).
 - **Não move bem em termos líquidos.** Só o saldo se fecha fisicamente
   (`trade::clear_good_flat`). O comércio bruto conta como comércio: o fluxo do par, a tarifa e a
   influência o leem, e par fechado não tem nenhum.
