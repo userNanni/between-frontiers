@@ -190,6 +190,8 @@ pub struct ClosedLine {
 /// The table as the journal shows it.
 #[derive(Clone, Debug, PartialEq)]
 pub struct TableView {
+    /// The country the table was read for (the one played now).
+    pub me: String,
     /// Proposals to the player: it accepts, refuses or counters before the deadline.
     pub incoming: Vec<OpenLine>,
     /// Proposals of the player waiting for the other side (it answers on Monday).
@@ -218,8 +220,7 @@ pub fn signature(world: &GameWorld, date: Date) -> Signature {
 }
 
 /// The table of the player's country; `None` without a player.
-pub fn read(world: &GameWorld, cat: &ClauseCatalogue, date: Date) -> Option<TableView> {
-    let me = world.player_tag()?;
+pub fn read(world: &GameWorld, me: &str, cat: &ClauseCatalogue, date: Date) -> Option<TableView> {
     let t = &world.treaties.table;
     let line = |p: &treaty_table::Pending, other: &str| OpenLine {
         id: p.id,
@@ -256,6 +257,7 @@ pub fn read(world: &GameWorld, cat: &ClauseCatalogue, date: Date) -> Option<Tabl
         })
         .collect();
     Some(TableView {
+        me: me.to_owned(),
         incoming,
         outgoing,
         closed,
