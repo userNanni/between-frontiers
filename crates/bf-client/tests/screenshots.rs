@@ -1675,10 +1675,13 @@ fn budget_revenue_sources() {
             Screen::Game(g) => g.snapshot().government.expect("budget"),
             _ => panic!("not in a campaign"),
         };
-        let [income, consumption, state] = view.revenue_sources();
-        println!("{locale}: income {income:.0} consumption {consumption:.0} firms {state:.0}");
+        let [income, consumption, state, customs] = view.revenue_sources();
+        println!(
+            "{locale}: income {income:.0} consumption {consumption:.0} firms {state:.0} customs {customs:.0}"
+        );
         assert!(consumption > 0.0 && state > 0.0, "Turkey has both sources");
-        assert!((income + consumption + state - view.budget.revenue.to_f64_lossy()).abs() < 1.0);
+        let sum = income + consumption + state + customs;
+        assert!((sum - view.budget.revenue.to_f64_lossy()).abs() < 1.0);
         let hover = |h: &mut Harness<'_, App>, label: &str| {
             let r = h
                 .get_all(egui_kittest::kittest::by().label(label))

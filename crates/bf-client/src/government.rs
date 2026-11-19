@@ -57,6 +57,8 @@ pub struct GovernmentView {
     pub research_state_share: f64,
     /// The adult literacy campaign, running or possible; `None` without schooling data.
     pub campaign: Option<bf_sim::demography::education::CampaignOutlook>,
+    /// Last week's customs duties (`econ::customs`), inside `Budget::revenue`.
+    pub customs: f64,
 }
 
 /// The budget rule that sets the state's purchases (`econ::public::goods_budget`), term by
@@ -101,18 +103,23 @@ impl GovernmentView {
         out
     }
 
-    /// Last week's income tax: the revenue less the tax on consumption and the profit of state
-    /// firms, which `Budget::revenue` holds too.
+    /// Last week's income tax: the revenue less the tax on consumption, the profit of state
+    /// firms and the customs duties, which `Budget::revenue` holds too.
     pub fn income_tax(&self) -> f64 {
         let b = &self.budget;
-        (f(b.revenue) - f(b.revenue_indirect) - f(b.revenue_firms)).max(0.0)
+        (f(b.revenue) - f(b.revenue_indirect) - f(b.revenue_firms) - self.customs).max(0.0)
     }
 
-    /// Last week's revenue by source: income tax, tax on consumption, profit of state firms.
-    /// They add up to `Budget::revenue`.
-    pub fn revenue_sources(&self) -> [f64; 3] {
+    /// Last week's revenue by source: income tax, tax on consumption, profit of state firms,
+    /// customs duties. They add up to `Budget::revenue`.
+    pub fn revenue_sources(&self) -> [f64; 4] {
         let b = &self.budget;
-        [self.income_tax(), f(b.revenue_indirect), f(b.revenue_firms)]
+        [
+            self.income_tax(),
+            f(b.revenue_indirect),
+            f(b.revenue_firms),
+            self.customs,
+        ]
     }
 
     /// Last week's spending: payroll, goods, public services, public works, interest.
@@ -202,6 +209,7 @@ pub fn read(
         campaign: education.and_then(|(rules, price)| {
             bf_sim::demography::education::campaign_outlook(world, rules, price, ci)
         }),
+        customs: world.tariffs.revenue.get(ci).map_or(0.0, |r| f(*r)),
         goods_rule: {
             use bf_sim::econ::public::{GOODS_PER_PAYROLL, austerity, goods_budget};
             let b = &m.budget;
@@ -244,6 +252,7 @@ mod tests {
             research: [0.0; 2],
             research_state_share: 0.0,
             campaign: None,
+            customs: 0.0,
             levers: None,
             purchases: None,
             issuance: None,
@@ -253,13 +262,21 @@ mod tests {
     #[test]
     fn the_sources_add_up_to_the_revenue_and_the_classes_to_the_income_tax() {
         let v = view(100, 15, 5);
-        let [income, indirect, firms] = v.revenue_sources();
-        assert_eq!((income, indirect, firms), (80.0, 15.0, 5.0));
+        let [income, indirect, firms, customs] = v.revenue_sources();
+        assert_eq!((income, indirect, firms, customs), (80.0, 15.0, 5.0, 0.0));
         assert!((income + indirect + firms - 100.0).abs() < 1e-9);
         let classes: f64 = v.tax_by_class().iter().sum();
         assert!((classes - income).abs() < 1e-6, "{classes}");
         // Without the new sources, the classes take the whole revenue, as before.
         let v = view(100, 0, 0);
         assert!((v.tax_by_class().iter().sum::<f64>() - 100.0).abs() < 1e-6);
+        // The customs duties come off the income tax, not on top of the revenue.
+        let v = GovernmentView {
+            customs: 10.0,
+            ..view(100, 15, 5)
+        };
+        let s = v.revenue_sources();
+        assert_eq!(s, [70.0, 15.0, 5.0, 10.0]);
+        assert!((s.iter().sum::<f64>() - 100.0).abs() < 1e-9);
     }
 }

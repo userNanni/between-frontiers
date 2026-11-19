@@ -1200,6 +1200,7 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
             (id::TAB_LEDGER, Tab::Ledger),
             (id::TAB_FORCES, Tab::Forces),
             (id::TAB_WORKS, Tab::Works),
+            (id::TAB_TRADE, Tab::Trade),
         ] {
             if fired(cmd) {
                 state.research_open = false;

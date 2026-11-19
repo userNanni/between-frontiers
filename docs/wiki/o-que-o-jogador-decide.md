@@ -32,6 +32,7 @@ O caminho inteiro da crise à paz (exigir, declarar depois da recusa, atacar num
 | Teto de déficit (D5) | `SetDeficitCap` | Governo → Orçamento → "Folha e Tesouro" | G, B | no jogo (#165) |
 | Ordenar a fila de obras públicas, pôr e tirar obra (D8) | `SetWorksOrder`, `AddWork`, `CancelWork` | Governo → Obras: ordem de chegada ou a minha, ↑ ↓, cancelar em dois cliques, nova obra por estado com o custo; "só a minha lista" zera as prioridades | G, Shift+B | no jogo (#176) |
 | Onde emitir a dívida: em casa, fora em moeda própria, fora em dólar (D9) | `SetIssuance` | Governo → Moeda e dívida → "Onde emitir": regra histórica ou fixado; o vendido e o sem vender de cada praça; aviso quando a moeda própria pedida passa do que os de fora aceitam | G, M | no jogo (#190) |
+| Tarifa por bem e por parceiro (CT1, CT2) | `SetGoodsTariff`, `SetPartnerTariff` | Governo → Comércio: os bens pelas 9 categorias, cada uma abre e fecha (fechada, mostra a faixa das tarifas, "26,0 % a 40,0 %", e quantos bens estão fixados); cada bem na "Regra histórica" ou "Fixado", de 0 a 200 %, de ponto em ponto; "Aplicar ao grupo" e "Voltar à regra" por categoria. Por parceiro, os 10 maiores vendedores ao país e a busca pelo nome: o acordo em vigor, o ajuste em pontos sobre a tarifa de cada bem (−100 a +100) e a tarifa efetiva; quando o acordo corta a sobretaxa, a tela diz até onde. Passar do teto de propósito (quebra de cláusula) vem depois. A receita aduaneira é uma linha nova do Orçamento | G, Shift+T; K abre a categoria; F escolhe regra ou fixado; S + número muda a tarifa do bem; G aplica ao grupo; P + número muda o ajuste do parceiro; A procura o país | no jogo |
 | Encomendar tropas, navios e aviões (D13) | `OrderForces` | Governo → Forças → "Nova encomenda": tipo, elementos, colonial; o custo de construir e o de todo ano; a encomenda grande pede um segundo clique | G, T | no jogo (#151) |
 | Cancelar uma encomenda | `CancelOrder` | Governo → Forças → "Encomendas": "Cancelar" e confirmação; o construído vai ao depósito | G, T | no jogo (#151) |
 | Dissolver tropas, dar baixa em navios e aviões | `DisbandForces` | Governo → Forças → "Dissolver…" na linha do tipo: quantos elementos, o que volta ao depósito (valor e bens), quantos homens vão à reserva ou para casa, e o aviso de que o exército de paz volta ao tamanho de paz em janeiro; "Dissolver" confirma, com ponto de restauração antes (motivo "dissolver forças"). Tira primeiro as formações encomendadas. Reservistas chamados voltam por `Mobilize` | G, T | no jogo (#209) |
@@ -57,7 +58,6 @@ de ferramentas; o jogador liberta a própria terra com `Liberate`.
 | Decisão | Onde deve ficar | Depende de |
 |---|---|---|
 | Entrar e sair de um bloco | Agendas | blocos como rótulo sobre tratados (#132) e proposta no tick |
-| Tarifa por bem (cerca de 60 linhas), cada uma "Regra histórica" ou "Fixado pelo governo", com sobretaxa ou preferência por parceiro (decisão do dono de 2026-11-18) | Governo; a tela é do thread do comércio, com a linha e as teclas das outras abas | comando do thread do comércio; o comércio por par já está no jogo (#113, tela #215) |
 | Impor e levantar embargo | Agendas, em dois passos, com ponto de restauração | comando do thread do comércio |
 | Vetar capital estrangeiro | Governo | fluxo de capital (#117) |
 | Calote e reestruturação (D6) | Agendas | thread do ensino |
@@ -72,9 +72,9 @@ e guerra.
 
 | | Decisão | Simulação | Tela |
 |---|---|---|---|
-| CT1 | A tarifa é por bem, uns 60, não por grupo. Na "Regra histórica" vale a taxa da lei, igual para todos os bens; em "Fixado pelo governo" o jogador dá a taxa de cada bem. | thread do comércio | Governo → Comércio, os bens agrupados pelos 13 grupos |
+| CT1 | A tarifa é por bem, uns 60, não por grupo. Na "Regra histórica" vale a taxa da lei, igual para todos os bens; em "Fixado pelo governo" o jogador dá a taxa de cada bem. | thread do comércio | Governo → Comércio (no jogo), os bens pelas 9 categorias do catálogo |
 | CT2 | O jogador dá sobretaxa ou preferência a um parceiro dentro do que os acordos em vigor permitem. Passar de um teto é quebra de cláusula, com o preço de reputação. | thread do comércio, com o dos tratados | Governo → Comércio |
-| CT3 | A receita aduaneira vai ao Tesouro, numa linha nova do orçamento. | #220 | Orçamento |
+| CT3 | A receita aduaneira vai ao Tesouro, numa linha nova do orçamento. | #220 | Orçamento → "Receita aduaneira" (no jogo) |
 | CT4 | A tarifa encarece o importado e reduz a importação, com a elasticidade da literatura. | #220 | — |
 | CT5 | O ponto de partida é a taxa de 1925 de cada país (`diplomacy.ron`); a lei move a taxa a partir dela. | #220 | — |
 | CT6 | Embargo unilateral por comando, nos dois sentidos, que reabre devagar. Decisão rara, em Agendas, com ponto de restauração. | thread do comércio (`Geography::closures`) | Agendas |

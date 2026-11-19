@@ -19,7 +19,7 @@ fn arg(s: String) -> Arg<'static> {
 }
 
 /// What one tariff term says, short.
-fn term(i18n: &I18n, t: TariffTerm) -> String {
+pub fn term(i18n: &I18n, t: TariffTerm) -> String {
     match t {
         TariffTerm::Union => i18n.tr("trade-union"),
         TariffTerm::Margin(m) => i18n.tr_args(

@@ -1496,6 +1496,15 @@ impl System<GameWorld> for Week {
                 m.pool -= q * m.buy_ratio[gi as usize] * m.price[gi as usize];
             }
         }
+        // The week's duties, kept for the budget's line (a record: no rule reads it).
+        let revenue = &mut world.tariffs.revenue;
+        revenue.clear();
+        revenue.resize(markets.len(), Fixed::ZERO);
+        if let Some(d) = &duties {
+            for (r, v) in revenue.iter_mut().zip(d) {
+                *r = *v;
+            }
+        }
         // How busy each market was, for its central bank (`money::week`).
         let activity = super::money::activity(cat, &econ.regions, &markets);
         for (r, l) in econ.regions.iter_mut().zip(changes.local) {

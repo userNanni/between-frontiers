@@ -16,7 +16,7 @@ use crate::flags::{Flags, paint_flag};
 use crate::keys::{self, id};
 use crate::sim::Snapshot;
 use crate::text::{
-    country_name, date_long, difficulty_key, economy_source, money_exact, money_unit,
+    country_name, date_long, difficulty_key, economy_source, money_exact, money_short, money_unit,
     social_source, status_line,
 };
 use crate::world::{Source, World};
@@ -317,13 +317,6 @@ fn pct(i18n: &I18n, share: f64) -> String {
     i18n.tr_args(
         "bar-percent",
         &[("value", Arg::String(i18n.decimal(v, digits)))],
-    )
-}
-
-fn money_short(i18n: &I18n, v: f64) -> String {
-    i18n.tr_args(
-        "money-intl-dollars",
-        &[("value", Arg::String(i18n.compact_short(v)))],
     )
 }
 

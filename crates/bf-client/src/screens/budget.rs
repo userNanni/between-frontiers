@@ -147,9 +147,9 @@ fn accounts(ui: &mut Ui, i18n: &I18n, v: &GovernmentView) {
             .show(ui);
     }
     // The other sources, each with its cause; a source that gave nothing is not listed.
-    let [income, indirect, firms] = v.revenue_sources();
+    let [income, indirect, firms, customs] = v.revenue_sources();
     let effects = &v.laws.effects[0];
-    if indirect > 0.0 || firms > 0.0 {
+    if indirect > 0.0 || firms > 0.0 || customs > 0.0 {
         let tip = i18n.tr("gov-tip-income-tax");
         let value = money(i18n, income * WEEKS);
         Account::new(&i18n.tr("gov-income-tax"), &value, &tip)
@@ -207,6 +207,20 @@ fn accounts(ui: &mut Ui, i18n: &I18n, v: &GovernmentView) {
         let value = money(i18n, firms * WEEKS);
         Account::new(&i18n.tr("gov-state-firms"), &value, &tip)
             .share(firms / revenue.max(1e-9))
+            .show(ui);
+    }
+    if customs > 0.0 {
+        let tip = i18n.tr_args(
+            "gov-tip-customs",
+            &[
+                ("week", arg(money(i18n, customs))),
+                ("year", arg(money(i18n, customs * WEEKS))),
+                ("gdp", arg(of_gdp(i18n, customs * WEEKS, gdp))),
+            ],
+        );
+        let value = money(i18n, customs * WEEKS);
+        Account::new(&i18n.tr("gov-customs"), &value, &tip)
+            .share(customs / revenue.max(1e-9))
             .show(ui);
     }
     let tip = i18n.tr_args(
