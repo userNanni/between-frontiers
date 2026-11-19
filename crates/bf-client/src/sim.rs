@@ -466,6 +466,16 @@ fn states_of(
     rules: &Rules,
     last: &Option<Arc<crate::state_view::StatesView>>,
 ) -> Option<Arc<crate::state_view::StatesView>> {
+    let date = session.clock().date;
+    match last {
+        Some(v) if v.month == (date.year, date.month) => Some(Arc::clone(v)),
+        _ => {
+            let r = rules.as_ref()?;
+            crate::state_view::read(session.world(), &r.catalogue, date).map(Arc::new)
+        }
+    }
+}
+
 /// The player's production methods, read again on a new month.
 fn methods_of(
     session: &Session,
@@ -477,7 +487,6 @@ fn methods_of(
         Some(v) if v.month == (date.year, date.month) => Some(Arc::clone(v)),
         _ => {
             let r = rules.as_ref()?;
-            crate::state_view::read(session.world(), &r.catalogue, date).map(Arc::new)
             let tag = session.player()?;
             crate::methods_view::read(session.world(), tag, &r.catalogue, r.tree.as_deref(), date)
                 .map(Arc::new)
