@@ -227,6 +227,9 @@ pub struct UnitTypeDef {
     /// Shares per mille, at most 1,000 in all.
     #[serde(default)]
     pub roles: Vec<(Role, u32)>,
+    /// A nuclear warhead's yield, kilotons (U3: each generation more power); 0 for the rest.
+    #[serde(default)]
+    pub yield_kt: u32,
     /// Later generations, in order; each one replaces only what it names.
     #[serde(default)]
     pub generations: Vec<GenerationDef>,
@@ -254,6 +257,8 @@ pub struct GenerationDef {
     pub training_weeks: Option<u32>,
     #[serde(default)]
     pub roles: Option<Vec<(Role, u32)>>,
+    #[serde(default)]
+    pub yield_kt: Option<u32>,
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -656,6 +661,29 @@ pub struct Spec {
     pub training_weeks: u32,
     /// Per mille, indexed by [`Role`].
     pub roles: [u32; Role::COUNT],
+    /// A nuclear warhead's yield, kilotons.
+    pub yield_kt: u32,
+}
+
+impl Spec {
+    /// U3: the warhead's equivalent megatons, `Y^(2/3)` with Y in megatons: the area a given
+    /// overpressure covers grows with the yield to the 2/3 (Glasstone and Dolan, 1977, §3.61–3.62:
+    /// the distance as `W^(1/3)`; the area is that squared), the "equivalent megatonnage" of the
+    /// Office of Technology Assessment (1979, p. 45). Per mille.
+    pub fn emt_mille(&self) -> i64 {
+        // (Y / 1000)^(2/3) × 1000 = cbrt(Y² × 1000), Y in kilotons; integer, for determinism.
+        let x = i128::from(self.yield_kt) * i128::from(self.yield_kt) * 1000;
+        let (mut lo, mut hi) = (0i128, 1i128 << 21);
+        while lo < hi {
+            let mid = (lo + hi + 1) / 2;
+            if mid * mid * mid <= x {
+                lo = mid;
+            } else {
+                hi = mid - 1;
+            }
+        }
+        lo as i64
+    }
 }
 
 impl Spec {
@@ -890,6 +918,7 @@ fn resolve_type(
         upkeep: goods_list(&format!("{what} upkeep"), &def.upkeep, cat, errors),
         training_weeks: def.training_weeks,
         roles: roles_array(&what, domain, &def.roles, errors),
+        yield_kt: def.yield_kt,
     };
     let mut generations = vec![base];
     for (n, g) in def.generations.iter().enumerate() {
@@ -926,6 +955,7 @@ fn resolve_type(
                 .roles
                 .as_ref()
                 .map_or(prev.roles, |r| roles_array(&what, domain, r, errors)),
+            yield_kt: g.yield_kt.unwrap_or(prev.yield_kt),
         });
     }
     for (n, s) in generations.iter().enumerate() {

@@ -578,6 +578,8 @@ fn settle_region<const SKIP_IDLE: bool, const ABROAD: bool>(
     // Farm profit the land tenure law hands from the landowners to the tenants.
     let mut tenants = Fixed::ZERO;
     let mut pool = Fixed::ZERO;
+    // The profit of the state firms (U2), whole to the treasury.
+    let mut state_firm_profit = Fixed::ZERO;
     let mut gdp = Fixed::ZERO;
     let mut remit: Vec<(u16, Fixed, Fixed)> = Vec::new();
     let mut plants = Vec::with_capacity(r.plants.len());
@@ -631,7 +633,10 @@ fn settle_region<const SKIP_IDLE: bool, const ABROAD: bool>(
                 wages[*pi as usize] += wage_bill * (WAGE_WEIGHT[*pi as usize] * *n) / weight_total;
             }
         }
-        if profit > Fixed::ZERO {
+        if b.state_firm {
+            // A state firm's profit, or its loss, is the treasury's (U2).
+            state_firm_profit += profit;
+        } else if profit > Fixed::ZERO {
             // The foreign owners' share leaves for their funds, less what they reinvest here,
             // which stays in this country's fund as their claim; the rest splits as at home
             // (`docs/foreign-capital.pt-BR.md`, section 8).
@@ -686,7 +691,7 @@ fn settle_region<const SKIP_IDLE: bool, const ABROAD: bool>(
     // State firms: the ownership law's share of the owners' payout goes to the state, which
     // books part of it as revenue and reinvests the rest.
     let state_take = owners_industry * laws.state_ownership;
-    let state_revenue = state_take * laws.state_profit_to_treasury;
+    let state_revenue = state_take * laws.state_profit_to_treasury + state_firm_profit;
     owners_industry -= state_take;
     pool += state_take - state_revenue;
     if r.pops[prof::CAPITALIST].size > 0 {

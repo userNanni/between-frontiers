@@ -857,7 +857,8 @@ impl System<GameWorld> for Investment {
                 let idle: i64 = idle_of(prof::PEASANT) + idle_of(prof::LABORER) + informal;
                 let mut out = Vec::new();
                 for (kind, b) in cat.buildings.iter().enumerate() {
-                    if b.public || b.informal {
+                    // A state firm (U2) is built only when the state asks for it.
+                    if b.public || b.informal || b.state_firm {
                         continue;
                     }
                     let current = r.plants.iter().find(|p| p.kind as usize == kind);
@@ -1018,9 +1019,9 @@ impl System<GameWorld> for Investment {
             super::public::public_works(cat, econ, &unlocks, schools.as_deref(), self.wage_floor);
         // Works the governments asked for (D8, `GameCommand::AddWork`), each checked against what
         // the state may build there; one it may not build is dropped.
-        // The enrichment plant is the state's (a nuclear programme asks for it, `war::programme`):
-        // it may be asked for wherever its method is known.
-        let enrichment = cat.building("nuclear_fuel_plant");
+        // The weapon core plant is the state's (a nuclear programme asks for it,
+        // `war::programme`; U2): it may be asked for wherever one of its methods is known.
+        let enrichment = cat.building("weapon_core_plant");
         for q in &world.levers.requests {
             let found = super::public::buildable_in(
                 cat,
@@ -1293,7 +1294,9 @@ fn abroad(
                 .buildings
                 .iter()
                 .enumerate()
-                .filter(|(kind, b)| !b.public && !b.informal && b.farm.is_none() && busy[o][*kind])
+                .filter(|(kind, b)| {
+                    !b.public && !b.informal && !b.state_firm && b.farm.is_none() && busy[o][*kind]
+                })
                 .filter_map(|(kind, _)| method_of[o][kind].map(|(l, m)| (l, kind, m)))
                 .collect();
             kinds.sort_by(|a, b| b.0.cmp(&a.0).then(a.1.cmp(&b.1)));

@@ -469,8 +469,8 @@ leitura) está no código. O resto espera as respostas do dono (N1 a N9).
 - **Árvore (`technologies.ron`), toda com `state_buyer`:** fissão (1938/1944), enriquecimento
   (1944/1945, o bem `nuclear_fuel` e a usina `nuclear_fuel_plant`), bomba atômica (1945),
   termonuclear (1952/1954), míssil balístico (1957/1959), submarino nuclear e defesa antimíssil.
-- **Tipos:** `nuclear_warhead` (3.600 de `nuclear_fuel` nas duas gerações; ver "O custo da ogiva
-em minério"), `ballistic_missile`,
+- **Tipos:** `nuclear_warhead` (um núcleo de `weapon_cores` na fissão, 0,73 na termonuclear; ver "A
+fatia do físsil"), `ballistic_missile`,
   `missile_submarine`, `missile_defense` e o `strategic_bomber`. As forças de 1925 não têm nenhum.
 - **`war::nuclear`:** puro, testado e, até aqui, chamado por ninguém. Faz o segundo golpe por base,
   a dissuasão e o teto de cada lado na escada.
@@ -581,7 +581,69 @@ com 0,4% do PIB. A conferência com a ogiva de 3.600 está em "O custo da ogiva 
   - As duas são lacunas de funcionalidade do thread da economia: mineração e descoberta que
     respondem ao preço e à compra do Estado.
 
-### O custo da ogiva em minério (PR de dados)
+### A fatia do físsil (U1 a U4, o dono, 2026-11-19)
+**Decisões:**
+- **U1:** o programa compra o seu minério.
+  - O capital do Estado abre mina em depósito conhecido: em casa e na colônia.
+  - No exterior, abre pelo `foreign_capital`, quando o capital entre países for ligado. O minério
+    vem então pelo comércio, sujeito a embargo e bloqueio.
+- **U2:** um bem só de material físsil de arma, contado em núcleos, com dois métodos de
+  produção: alto enriquecimento, e reator de produção mais reprocessamento.
+  - Não há bem `plutonium` nem escolha de rota na tela.
+  - O `nuclear_fuel` volta a ser só de energia, com a razão dele (~6 kg de U3O8 por kg).
+- **U3:** cada geração da arma gasta menos material e tem mais potência.
+- **U4:** o rádio é o bem que puxa a mina antes da bomba, e o minério que o mercado não compra fica
+  em estoque.
+  - O dono observou que o enriquecimento para reator e o para arma são processos distintos, com
+    razões e perdas diferentes; U2 os separa.
+
+**Passo 1, feito: o núcleo, os dois métodos, as gerações e a potência.**
+- **O bem `weapon_cores`:** um núcleo de fissão. Vem da usina `weapon_core_plant`, que tem dois
+  métodos. Cada nível é uma usina da época:
+  - **Alto enriquecimento (com o enriquecimento de urânio):** um nível é o Oak Ridge de 1945.
+    - Cerca de 10 kg por mês de urânio a ~80% (Wellerstein, 2025, a partir do *Manhattan District
+      History*): 1,875 núcleos de Little Boy, de 64,15 kg, por ano (Sublette, *Nuclear Weapons
+      FAQ*, §8.1.3).
+    - Cada kg a 80% pede 194 kg de urânio natural, com rejeito de 0,3% (**conta minha** pelo
+      balanço de massa; a 93%, 230 kg e 200 SWU, IPFM 2006, p. 23). São 27,5 t de U3O8 por ano.
+    - Cerca de 270 MW médios de eletricidade (Reed, APS 2015, a partir de Jones, p. 391).
+  - **Reator de produção (tecnologia nova, 1942/1944):** um nível é o Hanford B.
+    - 250 MW térmicos (OSTI), ~0,9 g de Pu por MWd (IPFM 2006, p. 27): 82 kg por ano, ou 13,35
+      núcleos de Fat Man de 6,15 kg (Sublette, §8.1.1.1).
+    - ~0,9 kg de Pu por t de urânio natural: 107,6 t de U3O8 por ano (**conta minha**).
+    - A eletricidade e os químicos são **estimativa**.
+  - **Minério por núcleo:** 14,7 t de U3O8 pelo enriquecimento e 8,1 t pelo reator.
+    `tests/warhead_cost.rs` confere as duas faixas.
+- **A usina do programa:** o programa pede `weapon_core_plant`. A obra escolhe o último método que
+  o país conhece, o reator quando o conhece. Na prática é o mais barato; não há comparação
+  explícita de custo (**leitura minha**).
+- **O preço-base do núcleo:** 300 milhões (**estimativa**). Fica acima do que o Oak Ridge de 1945
+  gasta num núcleo a preços-base, cerca de 254 milhões, quase tudo eletricidade. O mercado
+  corrige.
+- **A ogiva (U3):** a de fissão pede 1 núcleo e tem 21 kt (Fat Man; Little Boy 15 kt). A
+  termonuclear pede 0,73 núcleo, um primário de ~4,5 kg de Pu (Sublette, §4.3.1), e tem 1,4 Mt.
+  - O 1,4 Mt é o meio do Mk-15 (1,69 Mt), do Mk-28 (1,1 a 1,45 Mt) e do W-49 (1,44 Mt), pela lista
+    de armas de Sublette.
+  - As bombas reforçadas do começo dos anos 1950 (Mk-6) ficam de fora: não há massa publicada.
+- **A potência (U3):** cada ogiva vale `Y^(2/3)` megatons equivalentes (`Spec::emt_mille`, em
+  inteiro).
+  - Fonte da escala: a distância de uma mesma sobrepressão cresce com `W^(1/3)` (Glasstone e
+    Dolan, 1977, §3.61–3.62); a área com `W^(2/3)` é **conta minha**.
+  - É a "potência equivalente em megatons" da OTA (1979, p. 45).
+  - 21 kt valem 0,076 e 1,4 Mt valem 1,25.
+  - A variante linear fica só como contraste. Ela erra Hiroshima e Nagasaki ainda mais que a
+    `Y^(2/3)`; as duas erram, pela densidade, que é o passo seguinte.
+- **Os mortos por megaton equivalente:** `killed_per_warhead` passa a 370.000, reancorado. Os 100
+  primeiros megatons equivalentes matariam cerca de 37 milhões de soviéticos (Enthoven e Smith,
+  1971, p. 207, citados no FRUS 1964–68, vol. X, doc. 102).
+  - Os 100 seguintes rendem menos: 21% em 200 contra 15% em 100. A regra fixa não vê esse
+    retorno decrescente.
+  - A densidade do alvo, passo seguinte, é que o traz, junto com Hiroshima e Nagasaki.
+- **O balanço:** o dano inaceitável é contado em ogivas da potência média do outro lado.
+  - Os testes de dissuasão passaram a armar com ogivas termonucleares.
+  - A conferência de 1962 arma com termonucleares e a de 1950 com fissão.
+
+### O custo da ogiva em minério (PR de dados, substituído pelo passo 1 acima)
 A ogiva pedia 60 "kg enriched" de `nuclear_fuel` (30 na termonuclear), cerca de 350 kg de U3O8.
 Agora pede 3.600 nas duas gerações, contadas pelo minério que um núcleo real consumiu.
 - **Unidade do jogo:** o `nuclear_fuel` é medido em "kg enriched", combustível de reator. A

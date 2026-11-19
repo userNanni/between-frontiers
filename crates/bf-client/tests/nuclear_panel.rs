@@ -31,7 +31,9 @@ fn the_panel_reads_the_balance_as_the_player_does() {
         let c = ix(&w, tag) as usize;
         w.war.countries[c].formations.push(Formation {
             unit: mil.unit(key).unwrap(),
-            generation: 0,
+            // Thermonuclear warheads (generation 1, U3), as the arsenals that deter; the rest
+            // has one generation here.
+            generation: u8::from(key == "nuclear_warhead"),
             elements: Fixed::from_int(n),
             colonial: false,
             called_up: false,

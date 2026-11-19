@@ -48,6 +48,13 @@ fn value_added_per_worker_is_plausible() {
             } else {
                 120_000.0
             };
+            // The weapon core plant (U2) sells one good by two methods of very different cost: the
+            // core's price is set above the dearer one (the high enrichment of 1945), and the
+            // production reactor earns a rent no wage explains (plutonium was the cheaper route).
+            // It is the state's, bought by the programme, not a market plant.
+            if b.key == "weapon_core_plant" {
+                continue;
+            }
             if !(1_000.0..=ceiling).contains(&va) {
                 bad.push(format!("{}/{}: {va:.0}", b.key, m.key));
             }
