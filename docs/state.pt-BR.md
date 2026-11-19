@@ -406,7 +406,8 @@ Decisão rara, nas Agendas, com ponto de restauração antes (motivo "dívida").
 
 ### D7. Câmbio
 
-Fica para a fase 4, com o padrão-ouro e o regime internacional (`money::exchange_target`).
+Fica para a fase 4, com o padrão-ouro e o regime internacional (`money::exchange_target`): ver
+"Padrão-ouro, reservas e balanço de pagamentos (fase 4)".
 
 ### D8. Fila de obras públicas
 
@@ -510,6 +511,92 @@ no caixa (`week_effect`).
 4. D6 nas Agendas, com ponto de restauração.
 
 Cada fatia é um PR com determinismo, CPU, save e o contrafactual.
+
+## Padrão-ouro, reservas e balanço de pagamentos (fase 4)
+
+Desenho aprovado pelo dono em 2026-11-19 (PO1 a PO8, todas na recomendada; registro em
+`docs/wiki/o-que-o-jogador-decide.md`). Entra por fatias, cada uma em PR próprio, atrás de chave e
+desligada; ligar é PR próprio, contra a faixa.
+
+### O que o código tinha antes
+
+- **Moeda** (`econ::money::Money`): nível de preços, inflação e câmbio contra a unidade de
+  referência, que anda 1/26 por semana para a paridade de poder de compra, enfraquecido pelo prêmio
+  (`exchange_target`). Sem regime e sem reserva.
+- **Banco central:** taxa de Taylor ou fixada pelo jogador; a taxa não olha câmbio nem reserva.
+- **Títulos no exterior:** a poupança sai, juros e amortização voltam aos credores e o calote corta.
+  O credor não escolhe o país pelo juro: leva 0,5 % por semana da poupança ociosa, repartida entre
+  quem pede.
+- **Livro de dívida entre Estados:** serviço de Tesouro a Tesouro.
+- **Remessa de lucro do capital estrangeiro:** a parte estrangeira do lucro vai ao fundo do dono
+  (desligada no `main`).
+- **O comércio não liquida o que se compra entre países.** Cada mercado compra e vende ao próprio
+  preço; só o saldo das margens se reparte pelo volume (`week::margin_transfers`), e esse é o único
+  dinheiro que o comércio move de um país a outro. Um déficit comercial não custa nada a ninguém.
+
+### Fatia 1: o balanço de pagamentos medido, sem efeito
+
+Por país, por semana e somado no ano (este ano até agora e o último completo), em unidades de
+referência: bens (exportação e importação por par, a preço de base), serviços (os da união
+aduaneira), renda (juros de títulos, serviço do livro entre Estados, remessas de lucro), a conta
+financeira (títulos vendidos e comprados fora, amortização; investimento direto quando ligado) e a
+linha **não liquidado** = −(conta corrente + conta financeira): o dinheiro que teria de mudar de país
+se o comércio liquidasse (PO1). As margens do comércio entram como transferência, e também os
+pagamentos de tratado e o dinheiro de ocupação. Registro fora do hash (`GameWorld::payments`, save
+32). Teste (`tests/payments.rs`): a soma mundial de cada linha é zero toda semana.
+`BF_DIAG_PAYMENTS=TAG,TAG[:anos]` imprime as linhas em % do PIB.
+
+**O que a medida mostra (1925 a 1930, % do PIB):**
+
+| | bens | renda (livro) | transferências (margem) | conta corrente | conta financeira | não liquidado | conta corrente real |
+|---|---|---|---|---|---|---|---|
+| Reino Unido | −1,2 a +2,5 | −0,3 a −0,4 | +1,7 a −1,4 | +0,1 a +0,8 | +0,1 | −0,2 a −0,8 | −0,4 a +2,7 |
+| Estados Unidos | +5,2 a +5,4 | +0,1 | −2,2 a −2,4 | +3,1 a +3,2 | 0,0 | −3,1 a −3,2 | +0,5 a +1,0 |
+| Alemanha | +1,6 a +5,0 | 0 | +1,2 a −1,4 | +2,1 a +4,7 | −0,8 a −0,9 | −1,3 a −3,8 | −3,0 a +1,6 |
+| França | +0,8 a +4,6 | 0 | +2,1 a −0,7 | +3,0 a +3,9 | +0,4 a +0,5 | −3,5 a −4,3 | sem série |
+| Argentina | −7,2 a −9,4 | 0 | +0,3 a +3,0 | −6,3 a −7,0 | 0 | +6,3 a +7,0 | sem série |
+| Índia | +2,9 a −1,3 | 0 | +1,1 a +4,7 | +3,3 a +3,9 | 0 | −3,3 a −3,9 | sem série |
+
+Conta corrente real: Jones e Obstfeld (NBER, *Saving, Investment, and Gold*, 1997), série original
+(`CAO`) sobre o PIB. Três achados:
+- **O dinheiro que mudaria de país é grande:** 3 a 7 % do PIB por ano nos países da tabela. Ligar a
+  liquidação (fatia 2) muda muito o mundo, e por isso a conservação e essa medida vêm antes de
+  qualquer agregado.
+- **O sinal do comércio está errado em dois casos:** a Argentina de 1925 exportava mais do que
+  importava e aparece com déficit de 7 a 9 % do PIB; os Estados Unidos aparecem com superávit de 5 %,
+  contra cerca de 1 % real. É o comércio bruto e a distribuição entre países (docs/trade.pt-BR.md,
+  seção 14), e precisa melhorar antes que a liquidação o transforme em perda de reserva.
+- **A renda quase não existe:** os juros de títulos no exterior ficam perto de zero, e o livro entre
+  Estados (as reparações e as dívidas de guerra) aparece só como principal. A renda britânica de 1925
+  era cerca de 5 % do PIB (Feinstein, 1972).
+- Os credores recebem um pouco menos do que os devedores pagam (a fatia de cada credor é arredondada
+  a 0,001, e numa semana sem credor ninguém recebe): cerca de 0,1 % dos juros pagos ao exterior,
+  anotado numa linha mundial (`unreceived`) e a consertar na fatia 2.
+
+### Fatias seguintes (aprovadas, por fazer)
+
+2. **Liquidação em dinheiro e reserva (PO1, PO7, PO8).** O saldo de bens de cada par passa de um
+   fundo ao outro a preço de base; quem tem déficit paga com reserva ou com capital que entra.
+   Reserva = ouro + divisas (créditos na moeda de um país-reserva; quem guarda a moeda que
+   desvaloriza perde). Ouro novo pela produção das minas de cada país, com fonte. Antes de qualquer
+   agregado: conservação testada e a medida de quanto dinheiro muda de país por ano.
+3. **Regime e regra (PO2, PO3, PO4, PO6).** Quem está no ouro em 1925 e a que paridade é dado com
+   fonte (Eichengreen, *Golden Fetters*, 1992; Liga das Nações, *Statistical Year-Book*). Abaixo da
+   cobertura, juro acima da regra de Taylor por ponto que falta e, se a falta continua, moeda
+   retirada: deflação, juro real alto, importação menor. A IA volta ao ouro e sai dele pela regra
+   (cobertura abaixo do piso por meses seguidos, ou a saída do principal país-reserva); as datas
+   históricas ficam como conferência. Aderir e sair são decisão rara, em Agendas.
+4. **Capital que segue o juro (PO5).** O credor escolhe o país pelo juro e pela confiança; controle
+   de capital fecha a conta financeira do país (a renda continua paga), com prêmio. É o trilema:
+   câmbio fixo e capital livre pedem o juro do mundo.
+5. **Telas e decisões.** Agendas: aderir, sair, defender ou desvalorizar. Governo → Moeda e dívida:
+   a linha do câmbio ("Regra histórica" ou "Fixado"), a reserva, a cobertura, o balanço do ano e o
+   controle de capital.
+6. **Conferências.** O Reino Unido de 1925 a 1931 (volta a US$ 4,86, taxa do banco de 4 a 5 %,
+   deflação, saída em setembro de 1931; Moggridge, 1972; Eichengreen, 1992); quem sai cedo se
+   recupera antes (Eichengreen e Sachs, 1985); o trilema como teste de unidade.
+
+**Não é** a crise de 1929 (fase 7): aqui é só o mecanismo que ela vai usar.
 
 ## Comandos do jogador
 

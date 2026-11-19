@@ -81,6 +81,23 @@ e guerra.
 | CT7 | A guerra fecha o comércio entre os beligerantes. | thread da guerra (`war_pairs`) e do comércio (o fechamento do par) | — |
 | V1 | O volume do comércio se trata agora (opção A): o saldo chega inteiro ao mundo (alcance a 100 %) e cada mercado também troca variedades do que produz e consome (comércio bruto), calibrado para uns 15 % do PIB mundial em 1925, com o custo no tick otimizado. | thread do comércio | — |
 
+### Padrão-ouro e balanço de pagamentos: o que o dono decidiu (2026-11-19)
+
+Desenho em `docs/state.pt-BR.md`, "Padrão-ouro, reservas e balanço de pagamentos (fase 4)". O dono
+aceitou as oito recomendações. Tudo entra atrás de chave e desligado; ligar é PR próprio, contra a
+faixa.
+
+| | Decisão | Simulação | Tela |
+|---|---|---|---|
+| PO1 | O comércio passa a mover dinheiro entre países: quem importa paga a quem exporta. | fatia 2 | — |
+| PO2 | Quem está no ouro em 1925 é dado com fonte; as voltas depois de 1925 saem da regra da IA, e a data histórica fica só como conferência. | fatias 2 e 3 | — |
+| PO3 | Um país sai do ouro pela regra: cobertura abaixo do piso por meses seguidos, ou a saída do principal país-reserva. | fatia 3 | — |
+| PO4 | Defender a paridade é juro acima da regra de Taylor por ponto de cobertura que falta, e moeda retirada quando a falta continua. | fatia 3 | — |
+| PO5 | Controle de capital é decisão do jogador e entra na regra da IA. | fatia 4 | Governo → Moeda e dívida |
+| PO6 | Aderir e sair do ouro é decisão rara, com confirmação e ponto de restauração; a tela mostra o custo de cada paridade. | fatia 3 | Agendas |
+| PO7 | Divisas contam como reserva, e quem guarda a moeda que desvaloriza perde. | fatia 2 | — |
+| PO8 | Ouro novo das minas entra pela produção de cada país, com fonte. | fatia 2 | — |
+
 ## O que o país decide por regra
 
 Estas decisões o país toma sozinho, por uma regra, sem alavanca do jogador. Se alguma virar decisão
