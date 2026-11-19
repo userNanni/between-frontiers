@@ -684,6 +684,12 @@ conta corrente real). Nada disso se liga antes das fatias 3 e 4 e de o comércio
 
 ### Fatia 3: o regime de câmbio e a regra do ouro (PO2, PO3, PO4, PO6, PO7), desligada
 
+**Números que não saíram de fonte lida (estimativa, a conferir):** a cobertura das regras
+fiduciárias do Reino Unido (30 %, supondo cerca de £ 370 milhões de notas) e da Suécia (40 %,
+supondo cerca de 550 milhões de coroas), e os 35 % dados a quem não está na lista. *Golden
+Fetters* (Eichengreen), o *Memorandum on Currency and Central Banks* da Liga e Moggridge (1972) não
+foram lidos.
+
 Chave `gold_standard` (`data/rules.ron`, desligada; só corre com `payments_settle`;
 `econ::gold`). Save 37: `GameWorld::gold`, a situação de cada país (no hash quando a regra já
 correu) e o registro das mudanças de regime (fora do hash). A 36 fica congelada em

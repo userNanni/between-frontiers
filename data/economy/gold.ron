@@ -26,6 +26,10 @@
 //   (40 % gold against notes). Where a bank's rule was a fiduciary issue (100 % gold above a
 //   fixed sum of notes), the cover here is the share of the circulation that rule asked for,
 //   marked below.
+// - NOT READ FROM A SOURCE (estimates, to check): the denominators of the fiduciary rules, the
+//   UK's 30 % (taking about GBP 370 million of notes) and Sweden's 40 % (about 550 million
+//   kronor); and the 35 % given to banks the list does not name. Eichengreen's *Golden Fetters*,
+//   the League's *Memorandum on Currency and Central Banks* and Moggridge (1972) were not read.
 // - The Bank of England's Bank Rate, against which the rule's rate is calibrated: Bank of
 //   England, Bank Rate history (baserate.xls, "HISTORICAL SINCE 1694"): 5 % from March 1925,
 //   4 to 4.5 % from August 1925 to February 1929, 5.5 to 6.5 % in 1929.
