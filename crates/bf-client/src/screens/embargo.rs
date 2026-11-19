@@ -178,8 +178,8 @@ fn confirm(
     bf_ui_kit::card_frame().show(ui, |ui| {
         ui.set_width(ui.available_width());
         ui.spacing_mut().item_spacing.y = space::XS;
-        ui.strong(i18n.tr_args("embargo-on", &args));
         if already {
+            ui.strong(i18n.tr_args("embargo-on", &args));
             bf_ui_kit::small(ui, &i18n.tr_args("embargo-already", &args));
         } else {
             wrapped(ui, i18n.tr_args("embargo-explain", &args), color::DANGER);

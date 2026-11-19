@@ -132,7 +132,7 @@ embargo-on-us = Embargo { $article ->
     [os] dos
     [as] das
    *[other] de
-} { $country } contra o país
+} { $country } contra nós
 embargo-on-us-note = Só quem impôs pode levantar; o comércio entre os dois segue fechado.
 embargo-lift = Levantar…
 embargo-lift-explain = Levantar o embargo { $article ->
