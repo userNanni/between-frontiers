@@ -2,8 +2,9 @@
 //! owner's decisions CT1 to CT3): the rate the historical rule gives (the trade law, moved by
 //! the country's 1925 gap), the goods and partners the government took off it, what the country
 //! imported of each good and from each partner, the agreements in force with each partner and
-//! last week's customs revenue. Read in the simulation's thread when a week went by or the
-//! table changed; the screen works out the rates from the table as the player sets it.
+//! last week's customs revenue; and the embargoes the player is in, by it or on it (CT6, the
+//! decision in the Agendas). Read in the simulation's thread when a week went by or the table or
+//! the embargoes changed; the screen works out the rates from the table as the player sets it.
 
 use bf_sim::econ::customs::{Duties, TariffTable};
 use bf_sim::game::GameWorld;
@@ -37,6 +38,8 @@ pub struct PartnerLine {
     pub tag: String,
     /// What the player bought from it in the year of `TariffView::year`, at base prices.
     pub imports: f64,
+    /// What the player sold to it in the same year, at base prices.
+    pub exports: f64,
     /// What the agreements in force do to the player's tariff on its goods.
     pub terms: Vec<TariffTerm>,
 }
@@ -64,6 +67,8 @@ pub struct TariffView {
     /// Whether the tariff that counts is on (`customs_duties`): off, the table weighs only on
     /// the choice between sellers and nothing goes to the treasury.
     pub on: bool,
+    /// The embargoes in force the player is in: `(by, on)` tags, the player on one side.
+    pub embargoes: Vec<(String, String)>,
 }
 
 /// Partners listed without a search: the largest by imports.
@@ -95,6 +100,25 @@ pub fn fresh(last: &TariffView, world: &GameWorld, date: Date, src: &Sources<'_>
         && date.to_days() < last.days + 7
         && rule_of(world, ci, src.duties) == Some(last.rule)
         && world.tariffs.countries.get(ci).cloned().unwrap_or_default() == last.table
+        && embargoes_of(world, ci) == last.embargoes
+}
+
+/// The embargoes in force with country `ci` on one side, as `(by, on)` tags.
+fn embargoes_of(world: &GameWorld, ci: usize) -> Vec<(String, String)> {
+    let tag = |i: u16| {
+        world
+            .countries
+            .iter()
+            .nth(usize::from(i))
+            .map(|(_, c)| c.tag.clone())
+    };
+    world
+        .tariffs
+        .embargoes
+        .iter()
+        .filter(|&&(by, on)| usize::from(by) == ci || usize::from(on) == ci)
+        .filter_map(|&(by, on)| Some((tag(by)?, tag(on)?)))
+        .collect()
 }
 
 /// The player's tariffs; `None` without a player or an economy.
@@ -158,6 +182,11 @@ pub fn read(world: &GameWorld, date: Date, src: &Sources<'_>) -> Option<TariffVi
             } else {
                 0.0
             },
+            exports: if p < n && ci < n {
+                flows.get(ci * n + p).map_or(0.0, |x| x.to_f64_lossy())
+            } else {
+                0.0
+            },
             terms: links
                 .iter()
                 .filter(|l| usize::from(l.giver) == ci && usize::from(l.receiver) == p)
@@ -187,6 +216,7 @@ pub fn read(world: &GameWorld, date: Date, src: &Sources<'_>) -> Option<TariffVi
             .map_or(0.0, |r| r.to_f64_lossy()),
         gdp: m.gdp_last_year.to_f64_lossy(),
         on: src.duties.is_some(),
+        embargoes: embargoes_of(world, ci),
     })
 }
 
@@ -289,6 +319,7 @@ mod tests {
                 country: 1,
                 tag: "ARG".into(),
                 imports: 1.0,
+                exports: 0.0,
                 terms,
             }],
             year: 1925,
@@ -296,6 +327,7 @@ mod tests {
             revenue: 0.0,
             gdp: 1.0,
             on: true,
+            embargoes: Vec::new(),
         }
     }
 

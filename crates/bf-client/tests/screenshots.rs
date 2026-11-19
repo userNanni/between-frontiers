@@ -3715,6 +3715,107 @@ fn trade_tab() {
     let _ = std::fs::remove_dir_all(&user);
 }
 
+/// The embargo, a rare decision in the Agendas (CT6): Britain in February 1926, with an
+/// embargo of Argentina's on it already, embargoes Argentina: the search by name, the
+/// confirmation that says what it cuts (last year's trade both ways), and, after a week, the
+/// embargoes in force with Britain's own lift asked. A restore point is written before the
+/// command. Portuguese and English at 1280 × 720; copies in `target/screenshots/embargo/`.
+#[test]
+#[ignore = "needs a GPU (or software Vulkan) and the generated map; run with --ignored"]
+fn embargo_agenda() {
+    use bf_client::points::{Kind, Reason};
+    use bf_sim::game::GameCommand;
+    use laplace_schelling::calendar::Date;
+    let user = std::env::temp_dir().join(format!("bf-shots-embargo-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&user);
+    let switches = bf_sim::data::GameData::load(&root())
+        .expect("game data")
+        .switches;
+    let mut s = advanced_session_with("GBR", Date::new(1926, 1, 25), switches);
+    s.submit(GameCommand::Embargo {
+        tag: "ARG".into(),
+        target: "GBR".into(),
+        on: true,
+    });
+    s.sim.run_until(Date::new(1926, 2, 1));
+    let dir = root().join("target/screenshots/embargo");
+    std::fs::create_dir_all(&dir).unwrap();
+    let keep = |h: &mut Harness<'_, App>, name: &str| {
+        shot(h, name);
+        let from = out_dir().join(format!("{name}.png"));
+        std::fs::copy(&from, dir.join(format!("{name}.png"))).unwrap();
+    };
+    let wait = |h: &mut Harness<'_, App>| {
+        for _ in 0..20 {
+            std::thread::sleep(std::time::Duration::from_millis(25));
+            h.run_steps(1);
+        }
+    };
+    let snap = |h: &Harness<'_, App>| match &h.state().screen {
+        Screen::Game(g) => g.snapshot(),
+        _ => panic!("not in a campaign"),
+    };
+    for (locale, tag) in [("pt-BR", "pt-1280"), ("en", "en-1280")] {
+        let save = write_campaign(&user.join(format!("save-{tag}")), &s, "Embargo", "GBR", &[]);
+        let mut h = harness_sized(user.join(tag), locale, egui::vec2(1280.0, 720.0));
+        let ctx = h.ctx.clone();
+        h.state_mut().apply(Transition::Game(save.clone()), &ctx);
+        wait(&mut h);
+        h.key_press(egui::Key::J);
+        wait(&mut h);
+        assert!(
+            act_by_tip(&mut h, "journal.decision.embargo"),
+            "the decision"
+        );
+        wait(&mut h);
+        // 1. The search, Argentina by name.
+        assert!(act_by_tip(&mut h, "embargo.find"), "the search");
+        h.event(egui::Event::Text("Argent".into()));
+        wait(&mut h);
+        keep(&mut h, &format!("240-embargo-ask-{tag}"));
+        // 2. Enter picks it: what the embargo cuts, in words.
+        h.key_press(egui::Key::Enter);
+        wait(&mut h);
+        keep(&mut h, &format!("241-embargo-confirm-{tag}"));
+        // 3. Confirmed: a restore point first, then a week of the clock.
+        assert!(act_by_tip(&mut h, "embargo.yes"), "the confirmation");
+        wait(&mut h);
+        assert!(
+            bf_client::points::list(&save)
+                .iter()
+                .any(|p| p.kind == Kind::Before(Reason::Embargo)),
+            "a restore point before the embargo"
+        );
+        let imposed = |h: &Harness<'_, App>| {
+            snap(h).tariffs.is_some_and(|t| {
+                t.embargoes
+                    .iter()
+                    .any(|(by, on)| by == "GBR" && on == "ARG")
+            })
+        };
+        h.key_press(egui::Key::Space);
+        let started = std::time::Instant::now();
+        while !imposed(&h) && started.elapsed().as_secs() < 60 {
+            std::thread::sleep(std::time::Duration::from_millis(50));
+            h.run_steps(1);
+        }
+        h.key_press(egui::Key::Space);
+        let paused = std::time::Instant::now();
+        while !snap(&h).paused && paused.elapsed().as_secs() < 10 {
+            std::thread::sleep(std::time::Duration::from_millis(50));
+            h.run_steps(1);
+        }
+        wait(&mut h);
+        assert!(imposed(&h), "the embargo is in force");
+        keep(&mut h, &format!("242-embargo-list-{tag}"));
+        // 4. Britain's own lift asked.
+        assert!(act_by_tip(&mut h, "embargo.lift.ARG"), "the lift");
+        wait(&mut h);
+        keep(&mut h, &format!("243-embargo-lift-{tag}"));
+    }
+    let _ = std::fs::remove_dir_all(&user);
+}
+
 /// The country's agreements (treaties, sections 9 and 13): Britain in March 1925, after
 /// denouncing without notice one of its agreements of 1925 (a breach on the record, the
 /// agreement ended, its reputation weighed): the agreements in force with their clauses, the

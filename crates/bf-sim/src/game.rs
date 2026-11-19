@@ -393,6 +393,13 @@ pub enum GameCommand {
         goods: Vec<u16>,
         per_mille: Option<u16>,
     },
+    /// Imposes (`on`) or lifts an embargo of `tag` on `target`: trade between the two is closed
+    /// both ways while it stands (owner's decision CT6). Unknown tags are no-ops.
+    Embargo {
+        tag: String,
+        target: String,
+        on: bool,
+    },
     /// Adds `per_mille` thousandths of points to the tariff of every good for `partner`
     /// (negative: a preference), or with `None` drops them (CT2). The agreements in force still
     /// cap the result (`trade::tariff_by`) unless `breach`: then every tariff clause `tag` gives
@@ -767,6 +774,15 @@ impl Command<GameWorld> for GameCommand {
                     for &g in goods {
                         t.set_good(g, *per_mille);
                     }
+                }
+            }
+            GameCommand::Embargo { tag, target, on } => {
+                let pos = |t: &str| world.countries.iter().position(|(_, c)| c.tag == t);
+                if let (Some(a), Some(b)) = (pos(tag), pos(target))
+                    && a != b
+                    && let (Ok(a), Ok(b)) = (u16::try_from(a), u16::try_from(b))
+                {
+                    world.tariffs.set_embargo(a, b, *on);
                 }
             }
             GameCommand::SetPartnerTariff {
@@ -1264,6 +1280,7 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
             treaty_tariffs: switches.treaties_in_force && switches.trade_by_pair,
             duties,
             union_services: switches.union_services && switches.trade_by_pair,
+            war_closes: switches.war && switches.trade_by_pair,
             gross: switches.trade_gross && switches.trade_by_pair,
             wage_floor: switches.small_market_wage_floor,
             // The week reads the stakes whenever a rule can make them: the funds abroad, or the
@@ -1926,9 +1943,62 @@ mod tests {
             hash_of(&with_ledger)
         );
         assert_eq!(
-            hash_of(&headed(30, &encode_snapshot(&with_ledger).unwrap())),
+            hash_of(&headed(31, &encode_snapshot(&with_ledger).unwrap())),
             hash_of(&with_ledger)
         );
+        // Version 30, before the embargoes: `tariffs` without `embargoes`.
+        {
+            #[derive(Serialize)]
+            struct TariffsV30<'a> {
+                countries: &'a Vec<crate::econ::customs::TariffTable>,
+                revenue: &'a Vec<laplace_schelling::Fixed>,
+            }
+            #[derive(Serialize)]
+            struct BeforeEmbargoes<'a> {
+                scenario: &'a String,
+                player: &'a Option<Id<Country>>,
+                countries: &'a Table<Country, CountryState>,
+                census: &'a Vec<CensusRecord>,
+                econ: &'a crate::econ::Economy,
+                research: &'a crate::research::ResearchState,
+                politics: &'a crate::polity::PoliticsState,
+                demography: &'a crate::demography::DemographyState,
+                borders: &'a crate::borders::BordersState,
+                foreign: &'a crate::foreign_stakes::ForeignState,
+                influence: &'a crate::influence::InfluenceState,
+                treaties: &'a crate::treaty::TreatyState,
+                war: &'a crate::war::state::WarState,
+                education: &'a crate::demography::education::EducationState,
+                independence: &'a crate::borders::independence::IndependenceState,
+                levers: &'a crate::econ::levers::LeversState,
+                tariffs: TariffsV30<'a>,
+            }
+            let w = &with_ledger;
+            let v30 = encode_snapshot(&BeforeEmbargoes {
+                scenario: &w.scenario,
+                player: &w.player,
+                countries: &w.countries,
+                census: &w.census,
+                econ: &w.econ,
+                research: &w.research,
+                politics: &w.politics,
+                demography: &w.demography,
+                borders: &w.borders,
+                foreign: &w.foreign,
+                influence: &w.influence,
+                treaties: &w.treaties,
+                war: &w.war,
+                education: &w.education,
+                independence: &w.independence,
+                levers: &w.levers,
+                tariffs: TariffsV30 {
+                    countries: &w.tariffs.countries,
+                    revenue: &w.tariffs.revenue,
+                },
+            })
+            .unwrap();
+            assert_eq!(hash_of(&headed(30, &v30)), hash_of(&with_ledger));
+        }
         // Version 29, before the tariff tables: the world without `tariffs`.
         {
             #[derive(Serialize)]

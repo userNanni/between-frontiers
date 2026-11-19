@@ -40,6 +40,8 @@ pub enum Reason {
     Disband,
     /// An agreement denounced.
     Denounce,
+    /// An embargo imposed (CT6).
+    Embargo,
 }
 
 impl Reason {
@@ -54,6 +56,7 @@ impl Reason {
             Reason::Demand => "points-reason-demand",
             Reason::Disband => "points-reason-disband",
             Reason::Denounce => "points-reason-denounce",
+            Reason::Embargo => "points-reason-embargo",
         }
     }
 }

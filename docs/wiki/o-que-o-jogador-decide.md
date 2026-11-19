@@ -49,6 +49,7 @@ O caminho inteiro da crise à paz (exigir, declarar depois da recusa, atacar num
 | Renegociar uma dívida entre governos | `ProposeTreaty` (cláusula `revise_debt`) | Governo → Dívidas entre governos → a linha → "Renegociar": abre a mesa nas Agendas com a revisão da dívida, a partir dos termos de hoje, e o outro lado fixo. Os parâmetros da revisão e o preço dela na conta chegam com a simulação (pedido ao thread dos tratados) | G, Shift+M; Z escolhe a linha; N renegocia | no jogo (#213), regra desligada |
 | Postura de cada frente na guerra: segurar ou atacar | `SetPosture` | Janela "Guerra" (Shift+W, ou a linha da guerra nas Agendas): uma frente por país inimigo, com "Segurar" e "Atacar", os homens e o poder de fogo dos dois lados, as baixas e o avanço da semana e cada segmento com os termos do poder, quanto já entrou em cada estado, a largura da frente, os homens por km de cada lado e o entrincheiramento. Acima das frentes, o apoio à guerra de cada lado (os termos, os grupos de interesse, a velocidade sob o voto e a censura, a contagem e a queda), a ocupação (resistência, guarnição e o que o ocupante leva) e a devastação. O padrão é segurar. "Propor paz…" abre a mesa nas Agendas com o líder inimigo. Só com a regra `war` | Shift+W; F + número troca a postura; S + número abre os segmentos; Q propõe a paz | no jogo (#219), regra desligada |
 | Denunciar um acordo em vigor | `Denounce` | Agendas → Decisões → "Acordos do país (N em vigor)": cada acordo com as partes, o ano, o prazo, o aviso e as cláusulas; "Denunciar…" — com aviso, diz o ano em que acaba, sem quebra; sem aviso, diz que é quebra de cada cláusula que o país dá e pede dois passos. Ponto de restauração antes (motivo "denunciar um acordo"). A mesma tela mostra as quebras, as causas e a reputação geral e de segurança de cada país. A denúncia só é processada com a mesa (`negotiation`) | J; O abre; U + número denuncia; Y confirma, N mantém | no jogo (#221), regra desligada |
+| Impor e levantar embargo (CT6) | `Embargo` | Agendas → Decisões → "Embargo comercial (N em vigor)": o país pelo nome ("Escolher país pelo nome…", C, digitar e Enter); a confirmação diz em palavras o que fecha (o comércio nos dois sentidos a partir da próxima semana, o que o país vendeu ao alvo e comprou dele no ano passado, e que levantado volta devagar, uns seis meses); "Impor o embargo" confirma, com ponto de restauração antes (motivo "impor um embargo"). Abaixo, os embargos em vigor do país e contra ele; os do país com "Levantar…" em dois passos, sem ponto de restauração. O embargo contra o país só quem impôs levanta | J; M abre; C procura o país; Y confirma, N cancela; L + número levanta | no jogo |
 
 Exceção: `Borders` (operação de fronteira) não é do jogador. Vem de tratados, da paz, de testes e
 de ferramentas; o jogador liberta a própria terra com `Liberate`.
@@ -58,7 +59,6 @@ de ferramentas; o jogador liberta a própria terra com `Liberate`.
 | Decisão | Onde deve ficar | Depende de |
 |---|---|---|
 | Entrar e sair de um bloco | Agendas | blocos como rótulo sobre tratados (#132) e proposta no tick |
-| Impor e levantar embargo | Agendas, em dois passos, com ponto de restauração | comando do thread do comércio |
 | Vetar capital estrangeiro | Governo | fluxo de capital (#117) |
 | Calote e reestruturação (D6) | Agendas | thread do ensino |
 | Câmbio (D7) | Governo → Moeda e dívida | padrão-ouro (fase 4) |
@@ -77,7 +77,7 @@ e guerra.
 | CT3 | A receita aduaneira vai ao Tesouro, numa linha nova do orçamento. | #220 | Orçamento → "Receita aduaneira" (no jogo) |
 | CT4 | A tarifa encarece o importado e reduz a importação, com a elasticidade da literatura. | #220 | — |
 | CT5 | O ponto de partida é a taxa de 1925 de cada país (`diplomacy.ron`); a lei move a taxa a partir dela. | #220 | — |
-| CT6 | Embargo unilateral por comando, nos dois sentidos, que reabre devagar. Decisão rara, em Agendas, com ponto de restauração. | thread do comércio (`Geography::closures`) | Agendas |
+| CT6 | Embargo unilateral por comando, nos dois sentidos, que reabre devagar. Decisão rara, em Agendas, com ponto de restauração. | thread do comércio (`Geography::closures`) | Agendas → "Embargo comercial" (no jogo) |
 | CT7 | A guerra fecha o comércio entre os beligerantes. | thread da guerra (`war_pairs`) e do comércio (o fechamento do par) | — |
 | V1 | O volume do comércio se trata agora (opção A): o saldo chega inteiro ao mundo (alcance a 100 %) e cada mercado também troca variedades do que produz e consome (comércio bruto), calibrado para uns 15 % do PIB mundial em 1925, com o custo no tick otimizado. | thread do comércio | — |
 

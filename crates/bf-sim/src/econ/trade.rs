@@ -30,6 +30,15 @@ pub struct TradeState {
 /// Smallest preference kept, in 65,535ths of the buyer's favourite.
 const PREF_FLOOR: u16 = 66;
 
+/// What [`equilibrium`] charges a pair: the home bias, the duties' rule, the governments'
+/// tables, and the pairs closed (embargoes, war).
+pub type Charges<'a> = (
+    Option<Fixed>,
+    Option<&'a super::customs::Duties>,
+    Option<&'a super::customs::TariffState>,
+    Option<&'a [bool]>,
+);
+
 /// The equilibrium preferences of the month: for every buyer, group and seller, the cost of
 /// arrival to the power −σ, the cost being the seller's price index in the group (price over
 /// base price, averaged over its tradable goods) times one plus the group's freight over the
@@ -42,11 +51,7 @@ pub fn equilibrium(
     factors: &FreightFactors,
     date: &str,
     links: Option<&[crate::treaty::TariffLink]>,
-    (home, duties, tables): (
-        Option<Fixed>,
-        Option<&super::customs::Duties>,
-        Option<&super::customs::TariffState>,
-    ),
+    (home, duties, tables, closed): Charges<'_>,
 ) -> Vec<Vec<Fixed>> {
     let groups = crate::economy::BUILDING_GROUPS.len();
     let n = markets.len();
@@ -83,7 +88,7 @@ pub fn equilibrium(
     let reference = i64::from(cat.trade.reference_km.max(1));
     // What depends only on the pair, once a month: whether it is closed, the km, the carry and
     // the tariff (the treaties in force on the date, filtered once).
-    let closed = geo.and_then(|g| g.closed_on(date, n));
+    let closed = closed.map(<[bool]>::to_vec);
     // From the agreements in force when they are kept (`links`), else from the treaties of
     // `diplomacy.ron` in force on the date: the same relations in 1925, in the same order.
     let owned: Vec<TariffRelation> = links.map_or_else(Vec::new, |l| {
@@ -917,6 +922,22 @@ impl Geography {
             .iter()
             .filter(|r| crate::diplomacy::covers(&r.from, r.until.as_deref(), date))
             .collect()
+    }
+
+    /// The pairs closed on `date` by the dated closures, plus `extra` (both ways): the
+    /// embargoes, the pairs at war and those a blockade cuts (`war::fight::blockaded_pairs`).
+    /// `None` when nothing is closed.
+    pub fn closed_with(&self, date: &str, n: usize, extra: &[(u16, u16)]) -> Option<Vec<bool>> {
+        let mut out = self.closed_on(date, n);
+        for &(a, b) in extra {
+            let (a, b) = (usize::from(a), usize::from(b));
+            if a < n && b < n && a != b {
+                let t = out.get_or_insert_with(|| vec![false; n * n]);
+                t[a * n + b] = true;
+                t[b * n + a] = true;
+            }
+        }
+        out
     }
 
     /// The pairs among `n` markets closed on `date` (either way), as an `n × n` table, as

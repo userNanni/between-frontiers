@@ -46,3 +46,101 @@ tariff-breach-cap = Passar de { $rate } com { $partner } ({ $points }) quebra a 
 tariff-breach-union = Cobrar tarifa de { $partner } ({ $points }) quebra a união aduaneira do acordo em vigor: a sua reputação geral de honrar acordos cai, { $partner } ganha uma causa contra você e a união deixa de valer entre os dois. Um ponto de restauração é gravado antes.
 tariff-breach-confirm = Quebrar a cláusula
 tariff-breach-cancel = Cancelar
+
+## Embargo (decisão CT6), nas Agendas
+embargo-open = Embargo comercial ({ $n } em vigor)
+embargo-title = Embargo comercial
+embargo-basis = Uma decisão rara: o embargo fecha todo o comércio com um país, nos dois sentidos, enquanto durar. Escolha o país pelo nome; a decisão pede confirmação.
+embargo-impose = Impor embargo
+embargo-on = Embargo { $article ->
+    [o] ao
+    [a] à
+    [os] aos
+    [as] às
+   *[other] a
+} { $country }
+embargo-explain = Embargo { $article ->
+    [o] ao
+    [a] à
+    [os] aos
+    [as] às
+   *[other] a
+} { $country }: o comércio entre os dois fecha nos dois sentidos a partir da próxima semana.
+embargo-trade = No ano passado o país vendeu { $sold } { $article ->
+    [o] ao
+    [a] à
+    [os] aos
+    [as] às
+   *[other] a
+} { $country } e comprou { $bought } { $article ->
+    [o] dele
+    [a] dela
+    [os] deles
+    [as] delas
+   *[other] de lá
+}.
+embargo-trade-so-far = Neste ano, até agora, o país vendeu { $sold } { $article ->
+    [o] ao
+    [a] à
+    [os] aos
+    [as] às
+   *[other] a
+} { $country } e comprou { $bought } { $article ->
+    [o] dele
+    [a] dela
+    [os] deles
+    [as] delas
+   *[other] de lá
+}.
+embargo-lifted-slowly = Levantado, o comércio volta devagar (cerca de seis meses para refazer a rede).
+embargo-restore-point = Um ponto de restauração é gravado antes.
+embargo-already = O país já mantém embargo { $article ->
+    [o] ao
+    [a] à
+    [os] aos
+    [as] às
+   *[other] a
+} { $country }.
+embargo-yes = Impor o embargo
+embargo-no = Cancelar
+embargo-sent = Ordem enviada: o embargo { $article ->
+    [o] ao
+    [a] à
+    [os] aos
+    [as] às
+   *[other] a
+} { $country } vale a partir da próxima semana.
+embargo-lift-sent = Ordem enviada: o embargo { $article ->
+    [o] ao
+    [a] à
+    [os] aos
+    [as] às
+   *[other] a
+} { $country } cai na próxima semana.
+embargo-in-force = Embargos em vigor ({ $n })
+embargo-none = Nenhum embargo em vigor, nem do país nem contra ele.
+embargo-by-us = Nosso embargo { $article ->
+    [o] ao
+    [a] à
+    [os] aos
+    [as] às
+   *[other] a
+} { $country }
+embargo-on-us = Embargo { $article ->
+    [o] do
+    [a] da
+    [os] dos
+    [as] das
+   *[other] de
+} { $country } contra nós
+embargo-on-us-note = Só quem impôs pode levantar; o comércio entre os dois segue fechado.
+embargo-lift = Levantar…
+embargo-lift-explain = Levantar o embargo { $article ->
+    [o] ao
+    [a] à
+    [os] aos
+    [as] às
+   *[other] a
+} { $country }: o comércio volta devagar, cerca de seis meses para refazer a rede.
+embargo-lift-yes = Levantar
+embargo-lift-no = Manter

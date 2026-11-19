@@ -194,6 +194,11 @@ const PLAYER: &[Surface] = &[
         files: &["screens/game.rs", "screens/agreements.rs"],
     },
     Surface {
+        variant: "Embargo",
+        command: id::JOURNAL,
+        files: &["screens/game.rs", "screens/embargo.rs"],
+    },
+    Surface {
         variant: "Mobilize",
         command: id::JOURNAL,
         files: &["screens/game.rs", "screens/journal.rs"],
