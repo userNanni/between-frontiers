@@ -42,7 +42,7 @@ pub fn equilibrium(
     factors: &FreightFactors,
     date: &str,
     links: Option<&[crate::treaty::TariffLink]>,
-    home: Option<Fixed>,
+    (home, duties): (Option<Fixed>, Option<&super::customs::Duties>),
 ) -> Vec<Vec<Fixed>> {
     let groups = crate::economy::BUILDING_GROUPS.len();
     let n = markets.len();
@@ -99,6 +99,9 @@ pub fn equilibrium(
             .effects
             .first()
             .map_or(Fixed::ZERO, |e| e.tariff);
+        // With customs duties, the tariff the country charges (its law moved by its 1925 gap,
+        // `customs::Duties::rate`): the same one the treasury collects.
+        let own = duties.map_or(own, |d| d.rate_of(b, own));
         for (s, p) in pair.iter_mut().enumerate() {
             // A closed pair has no equilibrium: its preference decays (`step`).
             *p = (s != b && !closed.as_ref().is_some_and(|c| c[s * n + b])).then(|| {

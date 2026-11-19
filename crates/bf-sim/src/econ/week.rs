@@ -884,7 +884,7 @@ impl Week {
                 &factors,
                 &date,
                 links.as_deref(),
-                home,
+                (home, self.duties.as_deref()),
             );
             let lambda = Fixed::from_f64_lossy(f64::from(cat.trade.monthly_step));
             super::trade::step(&econ.trade.pref, &eq, lambda)
