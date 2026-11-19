@@ -116,6 +116,49 @@ mod tests {
     use crate::econ::milli;
 
     #[test]
+    fn a_table_fixes_goods_and_partners_and_hands_them_back() {
+        let mut t = TariffTable::default();
+        assert!(t.is_rule());
+        t.set_good(7, Some(400));
+        t.set_good(3, Some(0));
+        t.set_partner(5, Some(-50));
+        assert_eq!(t.goods, vec![(3, 0), (7, 400)]);
+        assert_eq!(t.good(7), Some(milli(400)));
+        assert_eq!(t.good(3), Some(Fixed::ZERO));
+        assert_eq!(t.good(4), None);
+        assert_eq!(t.partner(5), -milli(50));
+        assert_eq!(t.partner(6), Fixed::ZERO);
+        t.set_good(7, None);
+        t.set_good(3, None);
+        t.set_partner(5, Some(0));
+        assert!(t.is_rule());
+        let mut s = TariffState::default();
+        s.table_mut(2).set_good(1, Some(100));
+        assert!(!s.is_empty());
+        assert!(s.table(0).is_none());
+        assert_eq!(s.table(2).and_then(|t| t.good(1)), Some(milli(100)));
+    }
+
+    #[test]
+    fn a_charge_reads_the_rule_the_table_and_the_partner() {
+        let mut tables = TariffState::default();
+        tables.table_mut(1).set_good(0, Some(400));
+        tables.table_mut(1).set_partner(2, Some(100));
+        tables.table_mut(1).set_partner(0, Some(-500));
+        let c = Charge {
+            rule: vec![milli(100), milli(250), milli(50)],
+            tables: &tables,
+            pairs: crate::econ::trade::PairRules::new(None, "1925-01-01", None, 3),
+        };
+        // Market 0 on the rule; market 1 fixed good 0 at 40 %, +10 points on 2, -50 on 0.
+        assert_eq!(c.rate(1, 0, 0), milli(100));
+        assert_eq!(c.rate(2, 1, 0), milli(500));
+        assert_eq!(c.rate(2, 1, 3), milli(350));
+        // A preference larger than the rate stops at zero.
+        assert_eq!(c.rate(0, 1, 3), Fixed::ZERO);
+    }
+
+    #[test]
     fn a_higher_tariff_imports_less_and_none_imports_all() {
         let e = Fixed::ONE;
         assert_eq!(import_factor(Fixed::ZERO, e), Fixed::ONE);
