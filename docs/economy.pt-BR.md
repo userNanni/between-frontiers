@@ -531,6 +531,11 @@ pequeno.
 
 ## Aberto
 
+- **PIB mundial do meio do século acima do real (fila de equilíbrio).** 17,1 trilhões em 1955 contra
+  10,9 reais (Maddison) na `main` com o comércio que não cria nem destrói dinheiro (#256); era 16,2
+  antes. O fim do século se aproximou (126,8 contra 133,4 em 2022). O crescimento de 1925 a 1955 é
+  rápido demais: a guerra e a crise de 1929 ainda não estão no tick (fases 5 e 7), mas o excesso já
+  aparecia antes delas.
 - **Ensino e saúde de país pobre respondem cedo demais ao gasto (fila de equilíbrio; trava a
   tarifa que conta).** Com `customs_duties` ligada, a receita aduaneira de um país pobre de tarifa
   alta paga escola e saúde décadas antes: no Equador de 1985, alfabetização 85 %, esperança de vida

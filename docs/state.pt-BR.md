@@ -605,10 +605,10 @@ saldo próprio menos uma parte do saldo do mundo pelo volume. Assim, por país:
 
 - **O saldo próprio anula o comércio:** bens a preço de base contra o mesmo saldo a preço do
   mercado. A diferença entre os dois é avaliação, não dinheiro que falta.
-- **A parte do mundo é dinheiro que some:** cada mercado perde a sua parte (0,15 a 0,7 % do PIB ao
-  ano) sem contrapartida; no mundo, 0,35 a 0,5 % do PIB mundial por ano que a compensação tira e as
-  margens não devolvem (o preço do importador acima do do exportador). Achado para o thread do
-  comércio: não muda nesta fatia.
+- **A parte do mundo era dinheiro que sumia:** cada mercado perdia a sua parte (0,15 a 0,7 % do PIB
+  ao ano) sem contrapartida; no mundo, 0,35 a 0,5 % do PIB mundial por ano. Consertado no #256: a
+  compensação devolve a cada mercado o saldo próprio inteiro, e as margens deixaram de cruzar a
+  fronteira (a linha `margins` fica em zero). A tabela acima é de antes do conserto.
 - **O resto já mudou de país quando aconteceu** (juros e principal do livro, pagamentos de Tesouro a
   Tesouro): o Reino Unido paga −0,3 de juros do livro, a Alemanha −0,8 a −0,9 de principal, a
   França recebe +0,4 a +0,5. O não liquidado os conta de novo.
