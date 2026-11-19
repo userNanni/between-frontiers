@@ -154,5 +154,9 @@
         sea_per_land: 0.333,
         // Land route over the great circle between capitals (design value).
         land_detour: 1.2,
+        // Gross trade (`trade_gross`): how much a buyer leans toward its own product against a
+        // foreign one at the same cost of arrival. Calibrated so that world trade (exports plus
+        // imports) is near 14.8 % of world GDP in 1925 (Klasing and Milionis, 2014).
+        home_bias: 36.0,
     ),
 )
