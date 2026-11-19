@@ -1209,45 +1209,31 @@ fn union_services(
     }
 }
 
-/// What trade's margins move into each market's pool in a week. Importers collected their own
-/// price for the goods that came in and exporters were paid theirs for the goods that left, so
-/// the world is left with a balance; each market keeps its own balance less its share of the
-/// world's by its volume of trade. The shares are taken with one rounding in 128 bits
-/// (`Fixed::mul_div`: the product of the world's balance and a large market's volume is far
-/// beyond `Fixed`'s range, and the saturated shares used to leave most of the balance in the
-/// pools, about 0.7 % of world GDP a year made out of nothing), and the rounding left over goes
-/// to the market with the largest volume: the transfers add up to zero exactly.
+/// What trade gives back to each market's pool in a week. The clearing makes buyers pay for the
+/// goods that came in, which no plant of the market sold, and pays the plants for the goods that
+/// left, which no buyer of the market bought: by itself it takes each market's balance (imports
+/// at the share sold times the price, less exports at the share bought times the price) out of
+/// its money. The balance goes back to the same pool, so trade makes and destroys no money in
+/// any market. Before, only each market's balance less its share of the world's came back, and
+/// the world's balance (the gap between importers' and exporters' prices) left the world's
+/// money: 0.35 to 0.5 % of world GDP a year (docs/trade.pt-BR.md, section 14). Paying for what
+/// changes country is the settlement's (`payments::settle`).
 pub fn margin_transfers(cat: &Catalogue, markets: &[Market]) -> Vec<Fixed> {
-    let mut balance = vec![Fixed::ZERO; markets.len()];
-    let mut volume = vec![Fixed::ZERO; markets.len()];
-    for (mi, m) in markets.iter().enumerate() {
-        for gi in 0..cat.goods.len() {
-            let n = m.net_import[gi];
-            if n > Fixed::ZERO {
-                balance[mi] += n * m.sell_ratio[gi] * m.price[gi];
-                volume[mi] += n * m.price[gi];
-            } else if n < Fixed::ZERO {
-                balance[mi] += n * m.buy_ratio[gi] * m.price[gi];
-                volume[mi] -= n * m.price[gi];
-            }
-        }
-    }
-    let total_balance: Fixed = balance.iter().copied().sum();
-    let total_volume: Fixed = volume.iter().copied().sum();
-    if total_volume <= Fixed::ZERO {
-        return balance;
-    }
-    let mut transfers: Vec<Fixed> = balance
+    markets
         .iter()
-        .zip(&volume)
-        .map(|(b, v)| *b - total_balance.mul_div(*v, total_volume))
-        .collect();
-    let left: Fixed = transfers.iter().copied().sum();
-    let largest = (0..volume.len())
-        .max_by(|&a, &b| volume[a].cmp(&volume[b]).then(b.cmp(&a)))
-        .unwrap_or(0);
-    transfers[largest] -= left;
-    transfers
+        .map(|m| {
+            let mut balance = Fixed::ZERO;
+            for gi in 0..cat.goods.len() {
+                let n = m.net_import[gi];
+                if n > Fixed::ZERO {
+                    balance += n * m.sell_ratio[gi] * m.price[gi];
+                } else if n < Fixed::ZERO {
+                    balance += n * m.buy_ratio[gi] * m.price[gi];
+                }
+            }
+            balance
+        })
+        .collect()
 }
 
 impl System<GameWorld> for Week {
@@ -1459,12 +1445,11 @@ impl System<GameWorld> for Week {
             );
         }
         let mut markets = changes.markets;
-        // Trade margins: importers collected more than exporters were paid; the difference goes
-        // back to the markets by their volume, so no money is created (`margin_transfers`).
+        // What the clearing took out of each market for its trade goes back to it
+        // (`margin_transfers`): trade makes and destroys no money.
         let construction_good = cat.construction;
         let mut done = Vec::new();
         let transfers = margin_transfers(cat, &markets);
-        payments.record_margins(year, &transfers);
         // Customs duties (`customs::duties`): from the importers' money to the treasury.
         let duties: Option<Vec<Fixed>> = changes.duties.clone().or_else(|| {
             self.duties
