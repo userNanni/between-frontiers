@@ -154,6 +154,10 @@ pub struct GameWorld {
     /// (`econ::gold`, `Switches::gold_standard`); empty while it is off.
     #[serde(default)]
     pub gold: crate::econ::gold::GoldState,
+    /// The private claims across borders and each country's capital controls (`econ::capital`,
+    /// `Switches::capital_follows_rate`); empty while it is off.
+    #[serde(default)]
+    pub capital: crate::econ::capital::CapitalState,
 }
 
 impl HashState for GameWorld {
@@ -241,6 +245,11 @@ impl HashState for GameWorld {
             h.section("gold");
             self.gold.hash_state(h);
         }
+        // Worlds where private capital never moved keep their hash.
+        if !self.capital.is_empty() {
+            h.section("capital");
+            self.capital.hash_state(h);
+        }
     }
 }
 
@@ -267,6 +276,7 @@ impl GameWorld {
             payments: Default::default(),
             reserves: Default::default(),
             gold: Default::default(),
+            capital: Default::default(),
             demography: crate::demography::DemographyState::default(),
             treaties: Default::default(),
             war: crate::war::WarState::default(),
@@ -552,6 +562,12 @@ pub enum GameCommand {
         tag: String,
         posture: crate::econ::gold::Posture,
     },
+    /// Capital controls (PO5, `econ::capital`): with them on, the country neither lends abroad
+    /// nor borrows from abroad, its claims both ways are frozen, income is still paid, and its
+    /// premium rises. The choice holds over the rule (controls while holding a parity behind
+    /// exchange control). A no-op while the rule is off. Sim side only: the screen comes with
+    /// slice 5.
+    SetCapitalControls { tag: String, on: bool },
 }
 
 /// Changes the levers of the country `tag` (`econ::levers`); unknown tags are no-ops.
@@ -687,6 +703,14 @@ impl Command<GameWorld> for GameCommand {
                 if let Some(st) = world.gold.countries.get_mut(ci) {
                     st.chosen = choice.is_some();
                     st.pending = *choice;
+                }
+            }
+            GameCommand::SetCapitalControls { tag, on } => {
+                let Some(ci) = world.countries.iter().position(|(_, c)| c.tag == *tag) else {
+                    return;
+                };
+                if let Some(c) = world.capital.chosen.get_mut(ci) {
+                    *c = Some(*on);
                 }
             }
             GameCommand::SetGoldPosture { tag, posture } => {
@@ -1217,6 +1241,9 @@ pub struct Rules {
     /// The gold standard (`Switches::gold_standard`, with `payments_settle`): the 1925 regimes
     /// and the cover rule; without it every currency floats.
     pub gold: Option<Arc<crate::econ::gold::GoldRules>>,
+    /// Private capital that follows the returns (`Switches::capital_follows_rate`, with
+    /// `payments_settle`); without it only government bonds cross borders.
+    pub capital: Option<Arc<crate::econ::capital::CapitalRules>>,
 }
 
 /// Rules that can be switched on, all off by default: a rule enters the main switched off, with
@@ -1229,6 +1256,13 @@ pub struct Rules {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Switches {
+    /// Capital that follows interest, and capital controls (`econ::capital`,
+    /// docs/state.pt-BR.md, gold standard slice 4, PO5): each country's savers hold private
+    /// claims abroad, long and short, spread by the expected return of each country (its rate,
+    /// its expected depreciation, the risk of its parity) against their own, moved gradually;
+    /// the flows go through settlement and the reserves; capital controls close a country's
+    /// financial account. Needs `payments_settle`; off, only government bonds cross borders.
+    pub capital_follows_rate: bool,
     /// Crises and declaration (`docs/war.pt-BR.md`, "Crise e declaração"): demands with a
     /// deadline, answered by the AI by the force against the share asked for, and war declared
     /// on a refusal. Needs `forces`. Off: no crisis opens.
@@ -1349,6 +1383,7 @@ impl Switches {
     /// length is not part of the type, so two PRs that each add a switch merge without breaking
     /// the build. `tests/trade_by_pair.rs` checks it against the fields and `data/rules.ron`.
     pub const NAMES: &'static [&'static str] = &[
+        "capital_follows_rate",
         "clause_tests",
         "crisis",
         "customs_duties",
@@ -1377,6 +1412,7 @@ impl Switches {
     /// Switches one rule on by name; unknown names are refused.
     pub fn switch_on(&mut self, name: &str) -> Result<(), String> {
         match name {
+            "capital_follows_rate" => self.capital_follows_rate = true,
             "clause_tests" => self.clause_tests = true,
             "crisis" => self.crisis = true,
             "customs_duties" => self.customs_duties = true,
@@ -1445,6 +1481,7 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
         fight,
         settle,
         gold,
+        capital,
     }) = rules
     {
         if let Some(p) = &politics {
@@ -1480,6 +1517,7 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
             foreign_flow: switches.foreign_flow || switches.foreign_contract,
             fiscal_capacity: switches.fiscal_capacity,
             gold: gold.filter(|_| switches.gold_standard && switches.payments_settle),
+            capital: capital.filter(|_| switches.capital_follows_rate && switches.payments_settle),
             settle: settle.filter(|_| switches.payments_settle),
         });
         s.add(crate::econ::monthly::Labour {
@@ -2138,9 +2176,64 @@ mod tests {
             hash_of(&with_ledger)
         );
         assert_eq!(
-            hash_of(&headed(41, &encode_snapshot(&with_ledger).unwrap())),
+            hash_of(&headed(42, &encode_snapshot(&with_ledger).unwrap())),
             hash_of(&with_ledger)
         );
+        // Before version 42 the balance of payments had no lines of private capital.
+        let old_payments =
+            crate::econ::payments::PaymentsBeforeCapital::from(&with_ledger.payments);
+        // Version 41, the gold standard's regimes, before private capital: the world without
+        // `capital`.
+        {
+            #[derive(Serialize)]
+            struct BeforeCapital41<'a> {
+                scenario: &'a String,
+                player: &'a Option<Id<Country>>,
+                countries: &'a Table<Country, CountryState>,
+                census: &'a Vec<CensusRecord>,
+                econ: &'a crate::econ::Economy,
+                research: &'a crate::research::ResearchState,
+                politics: &'a crate::polity::PoliticsState,
+                demography: &'a crate::demography::DemographyState,
+                borders: &'a crate::borders::BordersState,
+                foreign: &'a crate::foreign_stakes::ForeignState,
+                influence: &'a crate::influence::InfluenceState,
+                treaties: &'a crate::treaty::TreatyState,
+                war: &'a crate::war::WarState,
+                education: &'a crate::demography::education::EducationState,
+                independence: &'a crate::borders::independence::IndependenceState,
+                levers: &'a crate::econ::levers::LeversState,
+                tariffs: &'a crate::econ::customs::TariffState,
+                payments: &'a crate::econ::payments::PaymentsBeforeCapital,
+                reserves: &'a crate::econ::payments::ReservesState,
+                gold: &'a crate::econ::gold::GoldState,
+            }
+            let w = &with_ledger;
+            let v41 = encode_snapshot(&BeforeCapital41 {
+                scenario: &w.scenario,
+                player: &w.player,
+                countries: &w.countries,
+                census: &w.census,
+                econ: &w.econ,
+                research: &w.research,
+                politics: &w.politics,
+                demography: &w.demography,
+                borders: &w.borders,
+                foreign: &w.foreign,
+                influence: &w.influence,
+                treaties: &w.treaties,
+                war: &w.war,
+                education: &w.education,
+                independence: &w.independence,
+                levers: &w.levers,
+                tariffs: &w.tariffs,
+                payments: &old_payments,
+                reserves: &w.reserves,
+                gold: &w.gold,
+            })
+            .unwrap();
+            assert_eq!(hash_of(&headed(41, &v41)), hash_of(&with_ledger));
+        }
         // Version 40, the fallout, before the gold standard: the world without `gold`.
         {
             #[derive(Serialize)]
@@ -2162,7 +2255,7 @@ mod tests {
                 independence: &'a crate::borders::independence::IndependenceState,
                 levers: &'a crate::econ::levers::LeversState,
                 tariffs: &'a crate::econ::customs::TariffState,
-                payments: &'a crate::econ::payments::PaymentsState,
+                payments: &'a crate::econ::payments::PaymentsBeforeCapital,
                 reserves: &'a crate::econ::payments::ReservesState,
             }
             let w = &with_ledger;
@@ -2184,7 +2277,7 @@ mod tests {
                 independence: &w.independence,
                 levers: &w.levers,
                 tariffs: &w.tariffs,
-                payments: &w.payments,
+                payments: &old_payments,
                 reserves: &w.reserves,
             })
             .unwrap();
@@ -2233,7 +2326,7 @@ mod tests {
                 independence: &'a crate::borders::independence::IndependenceState,
                 levers: &'a crate::econ::levers::LeversState,
                 tariffs: &'a crate::econ::customs::TariffState,
-                payments: &'a crate::econ::payments::PaymentsState,
+                payments: &'a crate::econ::payments::PaymentsBeforeCapital,
                 reserves: &'a crate::econ::payments::ReservesState,
             }
             let w = &with_ledger;
@@ -2273,7 +2366,7 @@ mod tests {
                 independence: &w.independence,
                 levers: &w.levers,
                 tariffs: &w.tariffs,
-                payments: &w.payments,
+                payments: &old_payments,
                 reserves: &w.reserves,
             })
             .unwrap();
@@ -2320,7 +2413,7 @@ mod tests {
                 independence: &'a crate::borders::independence::IndependenceState,
                 levers: &'a crate::econ::levers::LeversState,
                 tariffs: &'a crate::econ::customs::TariffState,
-                payments: &'a crate::econ::payments::PaymentsState,
+                payments: &'a crate::econ::payments::PaymentsBeforeCapital,
                 reserves: &'a crate::econ::payments::ReservesState,
             }
             let w = &with_ledger;
@@ -2356,7 +2449,7 @@ mod tests {
                 independence: &w.independence,
                 levers: &w.levers,
                 tariffs: &w.tariffs,
-                payments: &w.payments,
+                payments: &old_payments,
                 reserves: &w.reserves,
             })
             .unwrap();
@@ -2399,7 +2492,7 @@ mod tests {
                 independence: &'a crate::borders::independence::IndependenceState,
                 levers: &'a crate::econ::levers::LeversState,
                 tariffs: &'a crate::econ::customs::TariffState,
-                payments: &'a crate::econ::payments::PaymentsState,
+                payments: &'a crate::econ::payments::PaymentsBeforeCapital,
                 reserves: &'a crate::econ::payments::ReservesState,
             }
             let w = &with_ledger;
@@ -2432,7 +2525,7 @@ mod tests {
                 independence: &w.independence,
                 levers: &w.levers,
                 tariffs: &w.tariffs,
-                payments: &w.payments,
+                payments: &old_payments,
                 reserves: &w.reserves,
             })
             .unwrap();
@@ -2470,7 +2563,7 @@ mod tests {
                 independence: &'a crate::borders::independence::IndependenceState,
                 levers: &'a crate::econ::levers::LeversState,
                 tariffs: &'a crate::econ::customs::TariffState,
-                payments: &'a crate::econ::payments::PaymentsState,
+                payments: &'a crate::econ::payments::PaymentsBeforeCapital,
                 reserves: &'a crate::econ::payments::ReservesState,
             }
             let w = &with_ledger;
@@ -2500,7 +2593,7 @@ mod tests {
                 independence: &w.independence,
                 levers: &w.levers,
                 tariffs: &w.tariffs,
-                payments: &w.payments,
+                payments: &old_payments,
                 reserves: &w.reserves,
             })
             .unwrap();
@@ -2538,7 +2631,7 @@ mod tests {
                 independence: &'a crate::borders::independence::IndependenceState,
                 levers: &'a crate::econ::levers::LeversState,
                 tariffs: &'a crate::econ::customs::TariffState,
-                payments: &'a crate::econ::payments::PaymentsState,
+                payments: &'a crate::econ::payments::PaymentsBeforeCapital,
             }
             let w = &with_ledger;
             let v35 = encode_snapshot(&BeforeNuclear35 {
@@ -2567,7 +2660,7 @@ mod tests {
                 independence: &w.independence,
                 levers: &w.levers,
                 tariffs: &w.tariffs,
-                payments: &w.payments,
+                payments: &old_payments,
             })
             .unwrap();
             assert_eq!(hash_of(&headed(35, &v35)), hash_of(&with_ledger));
@@ -2602,7 +2695,7 @@ mod tests {
                 independence: &'a crate::borders::independence::IndependenceState,
                 levers: &'a crate::econ::levers::LeversState,
                 tariffs: &'a crate::econ::customs::TariffState,
-                payments: &'a crate::econ::payments::PaymentsState,
+                payments: &'a crate::econ::payments::PaymentsBeforeCapital,
             }
             let w = &with_ledger;
             let v34 = encode_snapshot(&BeforeSea34 {
@@ -2630,7 +2723,7 @@ mod tests {
                 independence: &w.independence,
                 levers: &w.levers,
                 tariffs: &w.tariffs,
-                payments: &w.payments,
+                payments: &old_payments,
             })
             .unwrap();
             assert_eq!(hash_of(&headed(34, &v34)), hash_of(&with_ledger));
@@ -2665,7 +2758,7 @@ mod tests {
                 independence: &'a crate::borders::independence::IndependenceState,
                 levers: &'a crate::econ::levers::LeversState,
                 tariffs: &'a crate::econ::customs::TariffState,
-                payments: &'a crate::econ::payments::PaymentsState,
+                payments: &'a crate::econ::payments::PaymentsBeforeCapital,
             }
             let w = &with_ledger;
             let v33 = encode_snapshot(&BeforeColonial33 {
@@ -2692,7 +2785,7 @@ mod tests {
                 independence: &w.independence,
                 levers: &w.levers,
                 tariffs: &w.tariffs,
-                payments: &w.payments,
+                payments: &old_payments,
             })
             .unwrap();
             assert_eq!(hash_of(&headed(33, &v33)), hash_of(&with_ledger));
@@ -2738,7 +2831,7 @@ mod tests {
                 independence: &'a crate::borders::independence::IndependenceState,
                 levers: &'a crate::econ::levers::LeversState,
                 tariffs: &'a crate::econ::customs::TariffState,
-                payments: &'a crate::econ::payments::PaymentsState,
+                payments: &'a crate::econ::payments::PaymentsBeforeCapital,
             }
             let w = &with_ledger;
             let f = &w.war.fighting;
@@ -2776,7 +2869,7 @@ mod tests {
                 independence: &w.independence,
                 levers: &w.levers,
                 tariffs: &w.tariffs,
-                payments: &w.payments,
+                payments: &old_payments,
             })
             .unwrap();
             assert_eq!(hash_of(&headed(32, &v32)), hash_of(&with_ledger));

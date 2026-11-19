@@ -74,6 +74,52 @@ pub struct GameData {
     /// The 1925 regimes and the gold standard's rule, when `data/economy/gold.ron` exists (read
     /// with `Switches::gold_standard`).
     pub gold: Option<Arc<crate::econ::gold::GoldRules>>,
+    /// Private capital's rule, when `data/economy/capital.ron` exists (read with
+    /// `Switches::capital_follows_rate`).
+    pub capital: Option<Arc<crate::econ::capital::CapitalRules>>,
+}
+
+/// Format of `data/economy/capital.ron`; shares, elasticities and points in thousandths.
+#[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct CapitalFile {
+    long_share: i64,
+    short_share: i64,
+    long_beta: i64,
+    short_beta: i64,
+    long_weeks: i64,
+    short_weeks: i64,
+    risk_aversion: i64,
+    float_risk: i64,
+    devaluation: i64,
+    risk_band: i64,
+    control_premium: i64,
+}
+
+impl CapitalFile {
+    fn resolve(&self) -> Result<crate::econ::capital::CapitalRules, String> {
+        let milli = Fixed::from_raw;
+        if !(0..1000).contains(&self.long_share)
+            || !(0..1000).contains(&self.short_share)
+            || self.long_weeks < 1
+            || self.short_weeks < 1
+        {
+            return Err("economy/capital.ron: a share or a pace out of range".into());
+        }
+        Ok(crate::econ::capital::CapitalRules {
+            long_share: milli(self.long_share),
+            short_share: milli(self.short_share),
+            long_beta: milli(self.long_beta),
+            short_beta: milli(self.short_beta),
+            long_weeks: self.long_weeks,
+            short_weeks: self.short_weeks,
+            risk_aversion: milli(self.risk_aversion),
+            float_risk: milli(self.float_risk),
+            devaluation: milli(self.devaluation),
+            risk_band: milli(self.risk_band),
+            control_premium: milli(self.control_premium),
+        })
+    }
 }
 
 /// Format of `data/economy/gold.ron`; every rate in thousandths, every parity an exchange-rate
@@ -305,9 +351,13 @@ impl GameData {
         let gold = optional::<GoldFile>(&data.join("economy/gold.ron"))?
             .map(|f| f.resolve(&countries).map(Arc::new))
             .transpose()?;
+        let capital = optional::<CapitalFile>(&data.join("economy/capital.ron"))?
+            .map(|f| f.resolve().map(Arc::new))
+            .transpose()?;
         let data = Self {
             settle,
             gold,
+            capital,
             trade_geography: std::sync::OnceLock::new(),
             switches: optional::<crate::game::Switches>(&data.join("rules.ron"))?
                 .unwrap_or_default()
@@ -744,6 +794,10 @@ impl GameData {
                 .gold
                 .clone()
                 .filter(|_| switches.gold_standard && switches.payments_settle),
+            capital: self
+                .capital
+                .clone()
+                .filter(|_| switches.capital_follows_rate && switches.payments_settle),
         }
     }
 

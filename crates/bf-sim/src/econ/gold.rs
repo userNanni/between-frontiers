@@ -641,6 +641,38 @@ pub fn preview(
     })
 }
 
+/// How likely each country's devaluation looks to lenders (`econ::capital`), 0 to 1: on gold,
+/// zero while the cover is at the floor times `1 + band` or above, growing linearly to one at
+/// the floor. Floating and under exchange control, zero (the drift and the controls are read
+/// elsewhere).
+pub fn at_risk(rules: &GoldRules, state: &GoldState, band: Fixed) -> Vec<Fixed> {
+    state
+        .countries
+        .iter()
+        .enumerate()
+        .map(|(mi, s)| {
+            if s.regime != Regime::Gold {
+                return Fixed::ZERO;
+            }
+            let legal = rules
+                .legal_cover
+                .get(mi)
+                .copied()
+                .unwrap_or(Fixed::from_ratio(35, 100));
+            let floor = legal * rules.floor;
+            let span = floor * band;
+            if span <= Fixed::ZERO {
+                return if s.cover < floor {
+                    Fixed::ONE
+                } else {
+                    Fixed::ZERO
+                };
+            }
+            ((floor + span - s.cover) / span).clamp(Fixed::ZERO, Fixed::ONE)
+        })
+        .collect()
+}
+
 /// After the central banks moved (`money::week`): the foreign exchange in each currency is worth
 /// what its exchange rate moved since it was last valued (PO7). A currency that falls costs its
 /// holders and lowers what its issuer owes abroad by the same amount, so the world's net

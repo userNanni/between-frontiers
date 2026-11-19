@@ -9,6 +9,12 @@
 //
 // In alphabetical order, as `game::Switches`: a new rule goes in its place, not at the end.
 (
+    // Capital that follows interest, and capital controls (`docs/state.pt-BR.md`, "Padrão-ouro,
+    // reservas e balanço de pagamentos", slice 4, PO5): private claims abroad, long and short,
+    // spread by each country's expected return and moved gradually through settlement and the
+    // reserves (`data/economy/capital.ron`); capital controls close a country's financial
+    // account. Needs `payments_settle`. Off: only government bonds cross borders.
+    capital_follows_rate: false,
     // The monthly step of the agreements in force (`docs/treaties.pt-BR.md`, "o teste mensal"):
     // tribute paid and tested, and an agreement with a fixed term ends when it runs out.
     // Off: nothing is paid and agreements never end by their term.
