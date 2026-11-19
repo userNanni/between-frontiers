@@ -214,5 +214,72 @@ war-term-terrain = Terreno
 war-term-air = Ar
 war-into-theirs = Avançamos { $share } do estado deles; em 100 % ele passa a nós.
 war-into-ours = Eles avançaram { $share } do nosso estado; em 100 % ele passa a eles.
+war-segment-density = Frente de { $width } km · { $ours } homens por km nós, { $theirs } eles · linha cheia: { $full } por km
+war-segment-density-tip = Quanto mais denso o defensor, mais devagar o atacante avança: diante de uma linha cheia, na velocidade de base; diante de uma linha cinco vezes mais densa, 25 vezes mais devagar; diante de uma linha rala, até 1,75 vez mais rápido. A largura é a fronteira entre os dois estados.
+war-segment-dug = Entrincheirado { $share }: parado há { $weeks ->
+    [one] { $weeks } semana
+   *[other] { $weeks } semanas
+}; cheio em { $full } semanas, quando o terreno do defensor conta em dobro.
 war-peace = Propor paz a { $country }…
 war-peace-note = A paz é um acordo na mesa de negociação, nas Agendas; assinado entre os líderes, a guerra acaba e a ocupação entre eles termina.
+war-support-thresholds = Na barra, o traço claro é a paz e o vermelho, o colapso. Um governo da IA abaixo de { $peace } pede a paz; abaixo de { $collapse }, entra em contagem para cair.
+war-support-you = { $country } (você)
+war-support-tends-down = O apoio tende a cair para { $target }, por:
+war-support-tends-up = O apoio tende a subir para { $target }, por:
+war-support-tends-still = O apoio tende a ficar em { $target }, por:
+war-support-why-start = causa da guerra
+war-support-why-casualties = mortos
+war-support-why-duration = guerra longa
+war-support-why-deprivation = privação em casa
+war-support-why-territory-lost = terra perdida
+war-support-why-territory-won = terra tomada
+war-support-why-result-down = frente que recua
+war-support-why-result-up = frente que avança
+war-support-pace = Muda devagar: { $count ->
+    [one] { $weeks } semana
+   *[other] { $weeks } semanas
+} para andar metade do caminho
+war-support-censored = a censura atrasa a mudança
+war-support-censored-fall = a censura atrasa a queda
+war-support-vote-wide = com voto amplo, o apoio reage mais rápido
+war-support-vote-narrow = com voto restrito, a opinião pesa devagar
+war-support-you-thresholds = Para você: abaixo de { $peace } a IA pediria a paz, mas quem decide é você; abaixo de { $collapse }, o governo cai em { $count ->
+    [one] { $weeks } semana
+   *[other] { $weeks } semanas
+} e o novo governo pede a paz.
+war-devastation-ours = Nosso lado
+war-devastation-theirs = Lado deles
+war-devastation-total = { $count ->
+    [one] { $civilians } civil morto
+   *[other] { $civilians } civis mortos
+} em { $n ->
+    [one] { $regions } região
+   *[other] { $regions } regiões
+}
+war-devastation-more = e mais { $count ->
+    [one] { $n } região com perda menor
+   *[other] { $n } regiões com perdas menores
+}
+war-support-term = { $term } { $value }
+war-support-group = { $group } { $value } (peso { $clout })
+war-support-speed-tip = O apoio anda para o alvo aos poucos. O voto livre faz a opinião pesar mais depressa; a censura das leis em vigor a freia. Mudar a lei de imprensa ou o voto muda essa velocidade.
+war-support-countdown = Abaixo do colapso: o governo cai em { $count ->
+    [one] { $weeks } semana
+   *[other] { $weeks } semanas
+}; até lá, ainda dá para fechar a paz nos próprios termos.
+war-support-fallen-regime = O governo caiu e veio outra forma de governo ({ $form }); o novo governo pede a paz. A reputação de segurança caiu à metade.
+war-support-fallen-cabinet = O gabinete caiu; o novo governo pede a paz.
+war-occupied-line = { $state } — de { $by } há { $count ->
+    [one] { $weeks } semana
+   *[other] { $weeks } semanas
+}; resistência { $resistance }, guarnição { $garrison } da necessária; leva { $extraction } da produção ({ $taken } por semana; sobe até { $cap })
+war-occupied-tip = A resistência sobe com o que o ocupante leva e com a guarnição curta; a guarnição é a parte mantida da tropa que o território pede. O ocupante leva uma parte da produção que cresce com as semanas até o teto, cortada quando a guarnição fica curta.
+war-devastation = Devastação
+war-wreck-ours = { $state } (nosso): { $share } dos edifícios destruídos, { $count ->
+    [one] { $civilians } civil morto
+   *[other] { $civilians } civis mortos
+}
+war-wreck-theirs = { $state } (deles): { $share } dos edifícios destruídos, { $count ->
+    [one] { $civilians } civil morto
+   *[other] { $civilians } civis mortos
+}

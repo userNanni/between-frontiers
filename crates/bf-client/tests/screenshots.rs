@@ -3330,9 +3330,11 @@ fn renegotiate_debt() {
 }
 
 /// The war window (phase 5, slice C): Hungary at war with Czechoslovakia, attacking since the
-/// declaration: the front with the posture, the forces, the week's losses and advance; the
-/// segments opened, with the advance into each state; and peace, which opens the negotiation
-/// table with Czechoslovakia fixed. Portuguese at 1600 × 900, English at 1280 × 720; copies in
+/// declaration, on the week of its first state occupied: each side's war support with its
+/// groups and its speed, the occupation with what it yields, the devastation; the front with the
+/// posture, the forces, the week's losses and advance; the segments opened, with the advance
+/// into each state, the width, the men per km and the entrenchment; and peace, which opens the
+/// negotiation table with Czechoslovakia fixed. Portuguese at 1600 × 900, English at 1280 × 720; copies in
 /// `target/screenshots/war-window/`.
 #[test]
 #[ignore = "needs a GPU (or software Vulkan) and the generated map; run with --ignored"]
@@ -3379,14 +3381,15 @@ fn war_window() {
         enemy: "CZE".into(),
         attack: true,
     });
-    // Four weeks of attack: the front has moved and holds five segments (it empties in late
-    // April, when Hungary has taken seven states).
-    while s.clock().date < Date::new(1925, 4, 22) {
+    // The first week of combat with its support moved and the segments still: since #217 the
+    // war ends on 31 March without a peace signed (reported to the war's thread), so the
+    // occupation and the devastation show empty here.
+    while s.clock().date < Date::new(1925, 3, 30) {
         s.sim.step();
     }
     assert!(
-        !s.world().war.fighting.last_week.is_empty(),
-        "the war has a front"
+        !s.world().war.fighting.last_week.is_empty() && !s.world().war.fighting.support.is_empty(),
+        "the war has a front and a support"
     );
     let save = write_campaign(&user.join("save"), &s, "Guerra", "HUN", &[]);
     let dir = root().join("target/screenshots/war-window");

@@ -404,7 +404,11 @@ fn war_of(
         {
             Some(Arc::clone(v))
         }
-        _ => crate::war_view::read(w, setup, days).map(Arc::new),
+        _ => {
+            let rules = rules.as_ref()?;
+            let front = rules.war.as_ref().map(|(m, _)| &m.rules.front);
+            crate::war_view::read(w, setup, rules.politics.as_deref(), front, days).map(Arc::new)
+        }
     }
 }
 
