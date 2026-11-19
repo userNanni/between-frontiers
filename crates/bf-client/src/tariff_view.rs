@@ -295,6 +295,7 @@ mod tests {
             so_far: true,
             revenue: 0.0,
             gdp: 1.0,
+            on: true,
         }
     }
 
@@ -308,6 +309,14 @@ mod tests {
         t.set_partner(1, Some(-50));
         assert_eq!(v.effective(&t, &v.partners[0]), milli(280));
         assert_eq!(v.limit(&t, &v.partners[0]), None);
+    }
+
+    #[test]
+    fn off_it_shows_what_the_table_would_collect() {
+        let v = view(Vec::new());
+        let t = TariffTable::default();
+        // One partner bought 1.0 at the rule's 26 %.
+        assert!((v.would_collect(&t) - 0.26).abs() < 1e-9);
     }
 
     #[test]
