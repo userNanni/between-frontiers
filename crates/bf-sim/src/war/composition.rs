@@ -120,6 +120,24 @@ pub fn now(mil: &Military, c: &CountryWar, conversions: &[Conversion]) -> (Fixed
     (wheels, tracks, all)
 }
 
+/// The target, wheels and tracks per mille of the land men: the government's when fixed, the
+/// rule's for `newest`, the newest generation of the infantry's equipment the country makes.
+pub fn target(
+    rule: &CompositionRule,
+    fixed: Option<[u16; 2]>,
+    newest: Option<u8>,
+) -> Option<(u32, u32)> {
+    match fixed {
+        Some([w, t]) => Some((u32::from(w), u32::from(t))),
+        None => newest.and_then(|g| {
+            rule.targets
+                .iter()
+                .rfind(|(level, _, _)| *level <= g)
+                .map(|(_, w, t)| (*w, *t))
+        }),
+    }
+}
+
 /// The year's new conversions of `country` toward the target: the government's when fixed,
 /// the rule's otherwise (the target of the newest generation `newest` gives for the infantry).
 /// At most `per_year` of the land men a year, never more than the infantry at home, and only
@@ -140,16 +158,7 @@ pub fn compose(
     ) else {
         return;
     };
-    let target = match fixed {
-        Some([w, t]) => Some((u32::from(w), u32::from(t))),
-        None => newest(from).and_then(|g| {
-            rule.targets
-                .iter()
-                .rfind(|(level, _, _)| *level <= g)
-                .map(|(_, w, t)| (*w, *t))
-        }),
-    };
-    let Some((tw, tt)) = target else {
+    let Some((tw, tt)) = target(rule, fixed, newest(from)) else {
         return;
     };
     let (wheels, tracks, all) = now(mil, c, conversions);

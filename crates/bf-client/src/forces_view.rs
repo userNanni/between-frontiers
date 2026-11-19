@@ -31,6 +31,8 @@ pub struct ForceRow {
 #[derive(Clone, Debug, PartialEq)]
 pub struct ForcesView {
     pub month: (i32, u8),
+    /// The composition, while the war is switched on and the rule is in the data.
+    pub composition: Option<CompositionView>,
     pub rows: Vec<ForceRow>,
     pub men: i64,
     pub reserve: i64,
@@ -59,6 +61,22 @@ pub struct ForcesView {
 
 /// What [`stock`] reads: the queue's length, the formations' number and their elements.
 pub type Stock = (usize, usize, Fixed);
+
+/// The composition of the land forces (`war::composition`): what the army has on wheels and on
+/// tracks, the target, and the infantry in conversion.
+#[derive(Clone, Debug, PartialEq)]
+pub struct CompositionView {
+    /// Shares of the land men at home, 0–1, the conversions under way counted as done.
+    pub wheels: f64,
+    pub tracks: f64,
+    /// The government's target, per mille, when fixed.
+    pub fixed: Option<[u16; 2]>,
+    /// The target that applies (the government's or the rule's), per mille; `None` without the
+    /// rule or before the country makes the infantry's first generation.
+    pub target: Option<(u32, u32)>,
+    /// (unit key, elements ordered, delivered, weeks stalled) of each conversion.
+    pub converting: Vec<(String, f64, f64, u32)>,
+}
 
 /// The queue and the formations of `c`, to know when the forces changed.
 pub fn stock(c: &CountryWar) -> Stock {
@@ -277,8 +295,34 @@ pub fn read(
         .map(|(g, q)| f(*q * m.price[*g as usize]))
         .sum();
     let orders = crate::orders_view::read(world, date, ci, cat, military, peace, wage_floor);
+    let composition = peace.composition.as_ref().map(|rule| {
+        let list: Vec<_> = world.war.composition.of(ci as u16).cloned().collect();
+        let (w, t, all) = bf_sim::war::composition::now(military, c, &list);
+        let share = |x: Fixed| {
+            if all.is_positive() {
+                f(x) / f(all)
+            } else {
+                0.0
+            }
+        };
+        let fixed = world.war.composition.fixed_of(ci as u16);
+        let newest = military
+            .unit(&rule.from_unit)
+            .and_then(|ty| bf_sim::war::system::newest_generation(military, world, ci, ty));
+        CompositionView {
+            wheels: share(w),
+            tracks: share(t),
+            fixed,
+            target: bf_sim::war::composition::target(rule, fixed, newest),
+            converting: list
+                .iter()
+                .map(|x| (x.unit.clone(), f(x.ordered), f(x.delivered), x.stalled))
+                .collect(),
+        }
+    });
     Some(ForcesView {
         month: (date.year, date.month),
+        composition,
         orders,
         stock: stock(c),
         formations,
@@ -320,6 +364,7 @@ mod tests {
         };
         ForcesView {
             month: (1926, 1),
+            composition: None,
             rows: vec![ForceRow {
                 unit: "infantry".into(),
                 domain: Domain::Land,
