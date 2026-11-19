@@ -258,8 +258,9 @@ impl App {
             hud: crate::hud::Hud::new(crate::hud::Layout::load(&crate::hud::file(&paths_config))),
             scale_trial: None,
             display_trial: None,
-            // The window as saved, put back at the first frame.
-            display_dirty: true,
+            // The window opens as saved (`main.rs` builds the viewport from the settings): no
+            // command at the first frame, which would also resize a test harness.
+            display_dirty: false,
             sea: None,
             sea_texture: None,
             map_gpu_dirty: false,
