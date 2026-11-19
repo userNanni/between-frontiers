@@ -44,8 +44,8 @@ fn imports(s: &Session) -> Fixed {
 }
 
 #[test]
-fn off_by_default_and_on_the_world_imports_less() {
-    assert!(!data().rules().switches.customs_duties, "ships off");
+fn on_by_default_and_on_the_world_imports_less() {
+    assert!(data().rules().switches.customs_duties, "ships on");
     let (off, on) = (run(false), run(true));
     assert_ne!(off.state_hash(), on.state_hash());
     assert!(

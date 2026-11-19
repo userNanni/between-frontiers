@@ -1020,6 +1020,7 @@ impl Switches {
     /// aggregates against the reshuffle band of main (`docs/wiki/principios.md`); every other
     /// rule ships off.
     pub const SHIPPED_ON: &'static [&'static str] = &[
+        "customs_duties",
         "forces",
         "trade_by_pair",
         "trade_gross",
