@@ -207,6 +207,9 @@ pub struct IndependenceSetup {
     pub trusteeship: Option<u16>,
     /// The buildings `school` and `hospital`, resolved at load.
     pub services: (Option<usize>, Option<usize>),
+    /// The colonial war (G6), with `Switches::war`: men per thousand people that hold a state at
+    /// the revolt, and the states with a port. The metropole keeps what its garrison holds.
+    pub partition: Option<(u32, Arc<BTreeSet<u16>>)>,
 }
 
 /// The colonial units of the world as it stands: every candidate without an end, with states,
@@ -617,6 +620,21 @@ impl IndependenceSystem {
     /// Carry out an answer that lets the unit go.
     fn release(&self, world: &GameWorld, u: &Unit, how: How, out: &mut Changes) {
         let owner = Self::tag(world, usize::from(u.owner));
+        // A revolt in a colonial war (G6): the movement proclaims only where the garrison does
+        // not hold (`war::colonial::partition`).
+        let split;
+        let u = match (&self.setup.partition, how) {
+            (Some((garrison, coastal)), How::Revolt) => {
+                let (_, released) =
+                    crate::war::colonial::partition(world, &u.regions, coastal, *garrison);
+                split = Unit {
+                    regions: released,
+                    ..u.clone()
+                };
+                &split
+            }
+            _ => u,
+        };
         let states = self.states_of(world, u);
         if states.is_empty() {
             return;

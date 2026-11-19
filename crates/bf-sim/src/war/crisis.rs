@@ -337,22 +337,49 @@ pub fn crisis_decide(
     if !declare {
         return;
     }
+    open_war(
+        world,
+        vec![k.by],
+        vec![k.target],
+        k.id,
+        k.demand,
+        date,
+        true,
+    );
+}
+
+/// Opens a war: `side_a` declared on `side_b` over `demand` (from crisis `crisis`, `u32::MAX`
+/// without one). Both sides call up their reserve; with `calls`, the agreements in force call in
+/// third parties (W4). Returns the war's id.
+pub fn open_war(
+    world: &mut GameWorld,
+    side_a: Vec<u16>,
+    side_b: Vec<u16>,
+    crisis: u32,
+    demand: Proposal,
+    date: laplace_schelling::Date,
+    calls: bool,
+) -> u32 {
+    let c = &mut world.war.conflicts;
     let wid = c.next_id;
     c.next_id += 1;
-    c.wars.push(War {
-        id: wid,
-        side_a: vec![k.by],
-        side_b: vec![k.target],
-        crisis: k.id,
-        demand: k.demand,
-        since: (date.year, date.month, date.day),
-    });
-    for s in [k.by, k.target] {
-        if let Some(cw) = world.war.countries.get_mut(s as usize) {
+    for s in side_a.iter().chain(&side_b) {
+        if let Some(cw) = world.war.countries.get_mut(*s as usize) {
             cw.mobilized = true;
         }
     }
-    super::third::on_declaration(world, wid, RULES_DEADLINE, date);
+    world.war.conflicts.wars.push(War {
+        id: wid,
+        side_a,
+        side_b,
+        crisis,
+        demand,
+        since: (date.year, date.month, date.day),
+    });
+    if calls {
+        super::third::on_declaration(world, wid, RULES_DEADLINE, date);
+    }
+    wid
 }
 
 impl HashState for Proposal {

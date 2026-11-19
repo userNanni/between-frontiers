@@ -25,6 +25,9 @@ use crate::treaty::{ClauseKind, Proposal};
 pub struct ConductFile {
     pub support: SupportRules,
     pub occupation: OccupationRules,
+    /// The colonial war (G6); none in older data.
+    #[serde(default)]
+    pub colonial: Option<super::colonial::ColonialRules>,
 }
 
 /// The rules of war support. Per mille unless named otherwise.
@@ -290,6 +293,9 @@ pub struct SupportOut {
     pub proposals: Vec<(u16, u16, Proposal)>,
     /// Wars the side that declared gave up: they end as they began.
     pub withdrawn: Vec<u32>,
+    /// Colonial wars the new country lost (G6): the metropole's demand, the union, is carried
+    /// out without the table; the metropole fought for it.
+    pub surrendered: Vec<u32>,
 }
 
 /// Part of a demand: the first half of its clauses (at least one), the amounts halved.
@@ -338,8 +344,18 @@ pub fn support_week(
             .iter()
             .find(|k| k.id == w.crisis)
             .is_some_and(|k| k.casus_belli);
+        // A colonial war (G6): the metropole starts at `colonial`, the proclaimed country at
+        // the colonial rules' `proclaimed` (GC2).
+        let colonial = world.war.colonial.iter().any(|k| k.war == w.id);
+        let proclaimed = c
+            .rules
+            .colonial
+            .as_ref()
+            .map_or(r.attacked, |k| k.proclaimed);
         for &m in &w.side_a {
-            let s = if cause {
+            let s = if colonial {
+                r.colonial
+            } else if cause {
                 r.attacker_cause
             } else {
                 r.attacker_no_cause
@@ -350,7 +366,7 @@ pub fn support_week(
                 .or_insert(s);
         }
         for &m in &w.side_b {
-            at_war.insert(m, r.attacked);
+            at_war.insert(m, if colonial { proclaimed } else { r.attacked });
         }
     }
     f.support.retain(|s| at_war.contains_key(&s.country));
@@ -573,6 +589,10 @@ pub fn support_week(
             continue;
         }
         if wants_out(&sb, b) && sb.asked >= r.ask_weeks {
+            if player != Some(a) && world.war.colonial.iter().any(|k| k.war == w.id) {
+                out.surrendered.push(w.id);
+                continue;
+            }
             let (Some(from), Some(to)) = (tag(b), tag(a)) else {
                 continue;
             };

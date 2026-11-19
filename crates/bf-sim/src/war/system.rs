@@ -193,7 +193,7 @@ pub fn needs_of(
 }
 
 /// Years of age of each group of the demography's pyramid (5-year groups, the last open).
-fn bands(ages: &[i64]) -> Vec<AgeBand> {
+pub(crate) fn bands(ages: &[i64]) -> Vec<AgeBand> {
     ages.iter()
         .enumerate()
         .map(|(k, people)| AgeBand {
@@ -996,6 +996,13 @@ impl System<GameWorld> for Forces {
             return;
         }
         world.war.countries = changes.countries;
+        let colonial = self.fight.as_ref().and_then(|f| f.colonial.clone());
+        // A week after a peace, the colonies the union took back (G6, GC5).
+        if let Some(k) = &colonial
+            && !world.war.colonial.is_empty()
+        {
+            super::colonial::reconquered(k, world);
+        }
         if let Some(c) = changes.conversions {
             world.war.composition.conversions = c;
         }
@@ -1078,6 +1085,29 @@ impl System<GameWorld> for Forces {
                 .filter(|w| ended.contains(&w.id))
                 .flat_map(|w| w.side_a.iter().chain(&w.side_b).copied())
                 .collect();
+            if let Some(k) = &colonial {
+                // The colony that lost: the union, by the treaty's bridge.
+                let cat = self.crisis.as_ref().and_then(|c| c.clauses.as_ref());
+                for w in world
+                    .war
+                    .conflicts
+                    .wars
+                    .clone()
+                    .iter()
+                    .filter(|w| week.support.surrendered.contains(&w.id))
+                {
+                    if let Some(cat) = cat
+                        && let Ok(s) = crate::treaty_exec::settle(
+                            cat,
+                            &w.demand,
+                            &format!("colonial-{}", w.id),
+                        )
+                    {
+                        crate::treaty_exec::queue(world, &s, ctx.date.year);
+                    }
+                }
+                super::colonial::end(k, world, ended, &week.support.withdrawn);
+            }
             world.war.conflicts.wars.retain(|w| !ended.contains(&w.id));
             // Out of the war, out of the support; in peace, no front.
             let wars = &world.war.conflicts.wars;
@@ -1115,6 +1145,14 @@ impl System<GameWorld> for Forces {
                 } else {
                     super::third::betray(world, call, ctx.date);
                 }
+            }
+        }
+        // The colonial wars (G6): a revolt of the last seven days opens one; under way, the
+        // metropole lands men and the new country recruits.
+        if let Some(k) = &colonial {
+            super::colonial::open(k, &self.military, world, ctx.date);
+            if !world.war.colonial.is_empty() {
+                super::colonial::week(k, &self.military, world);
             }
         }
     }

@@ -92,4 +92,36 @@
         devastation_cap: 400,
         civilians_per_million: 20,
     ),
+    // The colonial war (G6; docs/war.pt-BR.md, "Guerra colonial"). GC1 to GC5 are the owner's
+    // questions, with the recommendation in place until answered.
+    colonial: Some((
+        // At the revolt the metropole keeps the states its garrison holds at the calm minimum
+        // of O3 (Quinlivan, 1995): 2 men per thousand people, ports first.
+        garrison: 2,
+        // Algeria: some 80,000 French troops in November 1954, about 400,000 by 1956–57, landed
+        // by Algiers, Oran and Bône (Horne, 1977, *A Savage War of Peace*; Alexander, Evans and
+        // Keiger, 2002, *The Algerian War and the French Army*): some 320,000 men in two years,
+        // about 3,000 a week, about 1,000 a port.
+        men_per_port_week: 1000,
+        // The landed men's cap, per mille of the metropole's land men. France's 400,000 in
+        // Algeria were about half of its army, after the call-up of the reservists and the
+        // service raised to 27 months (1956).
+        expedition_cap: 500,
+        // Combatants per mille of the men of service age, at full support. Design value,
+        // checked in absolute numbers: Algeria, ALN 15,000 to 40,000 (NWC, DTIC ADA422710);
+        // Malaya, MNLA 5,000 to 10,000, 7,000 to 8,000 at the peak (IWM; Stubbs, 1989).
+        armed_share: 20,
+        // Of those, under arms at the proclamation; the gap closes a share a week (some two
+        // years to most of it), held back by the arms.
+        initial_share: 100,
+        recruit_week: 25,
+        // GC2: the proclaimed country starts as a country attacked does.
+        proclaimed: 800,
+        // GC1: the colonial formations in the unit go over by the mobilization.
+        defect: true,
+        // GC3: half the irregulars' arms at the proclamation.
+        equipment_at_birth: 500,
+        // GC5: after a reconquest the movement starts again at half the mark of the revolt.
+        movement_after_reconquest: 500,
+    )),
 )

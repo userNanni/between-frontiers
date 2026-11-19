@@ -56,6 +56,8 @@ pub struct FightSetup {
     /// The goods that make a formation move on wheels or tracks (`peace.ron`,
     /// `composition.vehicles`), for the motorization of the generation.
     pub vehicles: Vec<u16>,
+    /// The colonial war (G6), when `war.ron` has its rules.
+    pub colonial: Option<Arc<super::colonial::ColonialSetup>>,
 }
 
 /// The war on land, saved and hashed only when not empty.
@@ -584,12 +586,29 @@ pub fn fight_week(
         conduct_week(setup, world, &mut out, held.as_ref(), player);
         return out;
     }
-    // Each country's land strength, spread evenly over its segments.
-    let mut count: BTreeMap<u16, u64> = BTreeMap::new();
+    // Each country's land strength, spread evenly over its segments. A metropole fighting its
+    // colony overseas (G6) has there only its garrison and the men it landed: those segments
+    // are a theatre of their own, keyed by the enemy; the rest share the main army (`u16::MAX`).
+    let caps: BTreeMap<(u16, u16), u64> = world
+        .war
+        .colonial
+        .iter()
+        .filter(|k| !k.peace)
+        .filter_map(|k| super::colonial::theatre_men(world, k).map(|m| ((k.owner, k.colony), m)))
+        .collect();
+    let theatre = |c: u16, e: u16| {
+        if caps.contains_key(&(c, e)) {
+            e
+        } else {
+            u16::MAX
+        }
+    };
+    let mut count: BTreeMap<(u16, u16), u64> = BTreeMap::new();
     for &(_, _, a, b) in &segments {
-        *count.entry(a).or_default() += 1;
-        *count.entry(b).or_default() += 1;
+        *count.entry((a, theatre(a, b))).or_default() += 1;
+        *count.entry((b, theatre(b, a))).or_default() += 1;
     }
+    let fighters: std::collections::BTreeSet<u16> = count.keys().map(|k| k.0).collect();
     // The garrisons of the occupied land (G3) stand apart from the fronts.
     let held = setup.conduct.as_ref().map(|k| {
         super::occupation::garrisons(&k.rules.occupation, world, &out.fighting, |c| {
@@ -600,8 +619,8 @@ pub fn fight_week(
                 .map_or(0, |cw| strength(mil, cw).men)
         })
     });
-    let strengths: BTreeMap<u16, Strength> = count
-        .keys()
+    let strengths: BTreeMap<u16, Strength> = fighters
+        .iter()
         .filter_map(|&c| {
             world.war.countries.get(c as usize).map(|cw| {
                 let mut s = strength(mil, cw);
@@ -617,7 +636,7 @@ pub fn fight_week(
         })
         .collect();
     // A week of war adds to the experience of every army on a front.
-    for &c in count.keys() {
+    for &c in &fighters {
         if let Ok(i) = out
             .fighting
             .doctrine
@@ -653,10 +672,10 @@ pub fn fight_week(
         super::doctrine::effective_generation(&mil.rules, kept, Fixed::ONE, fuel).0
     };
     let generations: BTreeMap<u16, Generation> =
-        count.keys().map(|&c| (c, generation_of(c))).collect();
-    // Each country's segments in the order the loop below takes them: width and the enemy's
+        fighters.iter().map(|&c| (c, generation_of(c))).collect();
+    // Each theatre's segments in the order the loop below takes them: width and the enemy's
     // even share of fire, for the third generation's focus.
-    let mut segs_of: BTreeMap<u16, Vec<Segment>> = BTreeMap::new();
+    let mut segs_of: BTreeMap<(u16, u16), Vec<Segment>> = BTreeMap::new();
     for &(from, into, a, b) in &segments {
         let (sa, sb) = (regions[from as usize].state, regions[into as usize].state);
         let width = setup
@@ -666,43 +685,58 @@ pub fn fight_week(
             .unwrap_or(Fixed::ONE);
         for (me, enemy) in [(a, b), (b, a)] {
             let e = &strengths[&enemy];
-            segs_of.entry(me).or_default().push(Segment {
-                length_km: width,
-                enemy_power: e.fire / Fixed::from_int(count[&enemy].max(1) as i64),
-                objective: false,
-            });
+            let enemy_segments: u64 = count
+                .iter()
+                .filter(|(k, _)| k.0 == enemy)
+                .map(|(_, n)| *n)
+                .sum();
+            segs_of
+                .entry((me, theatre(me, enemy)))
+                .or_default()
+                .push(Segment {
+                    length_km: width,
+                    enemy_power: e.fire / Fixed::from_int(enemy_segments.max(1) as i64),
+                    objective: false,
+                });
         }
     }
-    // The men on each segment: evenly for a second-generation army; a third concentrates on
-    // the focus segment, the weakest per km (`doctrine::allocate_front`).
-    let mut focus_of: BTreeMap<u16, usize> = BTreeMap::new();
-    let men_on: BTreeMap<u16, Vec<u64>> = count
+    // The men of each theatre: a colonial one has its cap, the main army the rest.
+    let pool = |c: u16, t: u16| -> u64 {
+        let all = strengths[&c].men;
+        if t != u16::MAX {
+            return caps[&(c, t)].min(all);
+        }
+        let overseas: u64 = count
+            .keys()
+            .filter(|k| k.0 == c && k.1 != u16::MAX)
+            .map(|k| caps[k].min(all))
+            .sum();
+        all.saturating_sub(overseas)
+    };
+    // The men on each segment of a theatre: evenly for a second-generation army; a third
+    // concentrates on the focus segment, the weakest per km (`doctrine::allocate_front`).
+    let mut focus_of: BTreeMap<(u16, u16), usize> = BTreeMap::new();
+    let men_on: BTreeMap<(u16, u16), Vec<u64>> = count
         .iter()
-        .map(|(&c, &n)| {
-            let s = &strengths[&c];
+        .map(|(&(c, t), &n)| {
+            let men = pool(c, t);
             if generations[&c] == Generation::Third && n > 1 {
                 let shares = super::doctrine::allocate_front(
                     &mil.rules,
-                    s.men,
-                    &segs_of[&c],
+                    men,
+                    &segs_of[&(c, t)],
                     Generation::Third,
                 );
                 if let Some(i) = shares.iter().position(|x| x.focus) {
-                    focus_of.insert(c, i);
+                    focus_of.insert((c, t), i);
                 }
-                (c, shares.iter().map(|x| x.elements).collect())
+                ((c, t), shares.iter().map(|x| x.elements).collect())
             } else {
-                (
-                    c,
-                    apportion(s.men, &vec![Fixed::ONE; n as usize])
-                        .into_iter()
-                        .take(n as usize)
-                        .collect(),
-                )
+                ((c, t), apportion(men, &vec![Fixed::ONE; n as usize]))
             }
         })
         .collect();
-    let mut next: BTreeMap<u16, usize> = BTreeMap::new();
+    let mut next: BTreeMap<(u16, u16), usize> = BTreeMap::new();
     let mut lost: BTreeMap<u16, u64> = BTreeMap::new();
     let winter_month = matches!(month, 12 | 1 | 2);
     let field_of = |from: u32, into: u32, attack_from_a: bool| -> LandField {
@@ -729,8 +763,8 @@ pub fn fight_week(
             width_km,
         }
     };
-    let supply: BTreeMap<u16, Fixed> = count
-        .keys()
+    let supply: BTreeMap<u16, Fixed> = fighters
+        .iter()
         .map(|&c| {
             let fill = world
                 .econ
@@ -775,12 +809,13 @@ pub fn fight_week(
         }
     };
     for &(from, into, a, b) in &segments {
-        let ia = *next.entry(a).or_default();
-        let ib = *next.entry(b).or_default();
-        *next.get_mut(&a).unwrap() += 1;
-        *next.get_mut(&b).unwrap() += 1;
-        let ma = men_on[&a].get(ia).copied().unwrap_or(0);
-        let mb = men_on[&b].get(ib).copied().unwrap_or(0);
+        let (ka, kb) = ((a, theatre(a, b)), (b, theatre(b, a)));
+        let ia = *next.entry(ka).or_default();
+        let ib = *next.entry(kb).or_default();
+        *next.get_mut(&ka).unwrap() += 1;
+        *next.get_mut(&kb).unwrap() += 1;
+        let ma = men_on[&ka].get(ia).copied().unwrap_or(0);
+        let mb = men_on[&kb].get(ib).copied().unwrap_or(0);
         // The fire each side has on this segment, and how dug in the segment is.
         let local = |c: u16, m: u64| {
             let s = &strengths[&c];
@@ -797,7 +832,10 @@ pub fn fight_week(
             i64::from(mil.rules.front.dig_weeks.max(1)),
         )
         .min(Fixed::ONE);
-        let (fa_focus, fb_focus) = (focus_of.get(&a) == Some(&ia), focus_of.get(&b) == Some(&ib));
+        let (fa_focus, fb_focus) = (
+            focus_of.get(&ka) == Some(&ia),
+            focus_of.get(&kb) == Some(&ib),
+        );
         let (sa, sb) = (
             side(a, ma, att_a, dug, fa_focus),
             side(b, mb, att_b, dug, fb_focus),
@@ -1049,13 +1087,9 @@ fn conduct_week(
         &out.ended,
         player,
     );
-    for w in world
-        .war
-        .conflicts
-        .wars
-        .iter()
-        .filter(|w| out.support.withdrawn.contains(&w.id))
-    {
+    for w in world.war.conflicts.wars.iter().filter(|w| {
+        out.support.withdrawn.contains(&w.id) || out.support.surrendered.contains(&w.id)
+    }) {
         end_occupation(&mut out.fighting, world, &w.side_a, &w.side_b);
         out.ended.push(w.id);
     }

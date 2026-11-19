@@ -18,6 +18,7 @@ pub mod army;
 pub mod balance;
 pub mod calc;
 pub mod catalogue;
+pub mod colonial;
 pub mod composition;
 pub mod crisis;
 pub mod doctrine;
