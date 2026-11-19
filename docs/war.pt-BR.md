@@ -1264,7 +1264,7 @@ anteriores e abre a guerra pelo `open_war`, extraído de `crisis_decide`.
 - A abertura não chama terceiros pelos acordos. Eles só leem a guerra; a entrada deles fica para
   a fase 6.
 - A guerra fica registrada em `WarState::colonial`: a unidade, os estados mantidos, os homens
-  desembarcados e se a metrópole chega por terra. Save 31.
+  desembarcados e se a metrópole chega por terra. Save 34.
 - O `Record` da independência não mudou de formato.
 
 **Teto da expedição.** Nos segmentos contra a colônia, a metrópole luta só com a guarnição que
