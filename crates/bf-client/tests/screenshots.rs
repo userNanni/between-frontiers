@@ -5214,3 +5214,111 @@ fn colonial_war() {
     }
     let _ = std::fs::remove_dir_all(&user);
 }
+
+/// The war at sea (C2): Britain at war with Germany from March 1925, three weeks in. Britain's
+/// war window shows its fleet at the North Sea, the zone held and the pairs of Germany's trade it
+/// cuts with what each traded; Germany's shows the blockade against it. The support's thresholds
+/// are off, as in `war_sea`, so the war lasts the weeks. Portuguese at 1600 × 900, English at
+/// 1280 × 720; copies in `target/screenshots/sea/`.
+#[test]
+#[ignore = "needs a GPU (or software Vulkan) and the generated map; run with --ignored"]
+fn sea_blockade() {
+    use bf_sim::game::GameCommand;
+    use bf_sim::treaty::{Clause, ClauseKind, Proposal, Side};
+    use laplace_schelling::calendar::Date;
+    // SAFETY: the screenshot tests run one at a time (`RUST_TEST_THREADS=1`).
+    unsafe { std::env::set_var("BF_RULES", "forces,crisis,war") };
+    let user = std::env::temp_dir().join(format!("bf-shots-sea-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&user);
+    let mut data = bf_sim::data::GameData::load(&root()).expect("game data");
+    data.switches = data.switches.with("forces,crisis,war").expect("switches");
+    if let Some(c) = data.war.as_mut().and_then(|w| w.conduct.as_mut()) {
+        c.support.overrun = 2000;
+        c.support.capital_overrun = 2000;
+        c.support.peace = -1;
+        c.support.collapse = -1;
+    }
+    let mut s = bf_sim::game::Session::new(
+        data.new_world(),
+        1925,
+        Date::new(1925, 1, 1),
+        2,
+        Some(data.rules()),
+    );
+    s.submit(GameCommand::ChoosePlayer { tag: "GBR".into() });
+    while s.clock().date < Date::new(1925, 3, 2) {
+        s.sim.step();
+    }
+    s.submit(GameCommand::Demand {
+        tag: "GBR".into(),
+        target: "GER".into(),
+        demand: Proposal {
+            side_a: vec!["GBR".into()],
+            side_b: vec!["GER".into()],
+            clauses: vec![Clause {
+                kind: ClauseKind::Union,
+                giver: Side::Junior,
+                receiver: Side::Senior,
+                until: None,
+                note: None,
+            }],
+            term_years: None,
+            notice_years: 0,
+        },
+        weeks: None,
+    });
+    while s.clock().date < Date::new(1925, 3, 20) {
+        s.sim.step();
+    }
+    let id = s.world().war.conflicts.crises[0].id;
+    s.submit(GameCommand::Declare {
+        tag: "GBR".into(),
+        crisis: id,
+        war: true,
+    });
+    while s.clock().date < Date::new(1925, 4, 11) {
+        s.sim.step();
+    }
+    assert!(
+        !bf_sim::war::fight::blockaded_pairs(s.world()).is_empty(),
+        "the blockade cuts pairs"
+    );
+    let gbr = write_campaign(&user.join("gbr"), &s, "Bloqueio", "GBR", &[]);
+    s.submit(GameCommand::SwitchCountry { tag: "GER".into() });
+    s.sim.step();
+    let ger = write_campaign(&user.join("ger"), &s, "Bloqueado", "GER", &[]);
+    let dir = root().join("target/screenshots/sea");
+    std::fs::create_dir_all(&dir).unwrap();
+    for (save, who, heading) in [
+        (&gbr, "gbr", ["Frota", "Fleet"]),
+        (&ger, "ger", ["Bloqueio contra nós", "Blockade against us"]),
+    ] {
+        for (locale, size, tag, k) in [
+            ("pt-BR", egui::vec2(1600.0, 900.0), "pt", 0),
+            ("en", egui::vec2(1280.0, 720.0), "en-1280", 1),
+        ] {
+            let mut h = harness_sized(user.join(format!("{who}-{tag}")), locale, size);
+            let ctx = h.ctx.clone();
+            h.state_mut().apply(Transition::Game(save.clone()), &ctx);
+            for _ in 0..30 {
+                std::thread::sleep(std::time::Duration::from_millis(25));
+                h.run_steps(1);
+            }
+            h.key_press_modifiers(egui::Modifiers::SHIFT, egui::Key::W);
+            h.run_steps(8);
+            h.query_all(egui_kittest::kittest::by().label(heading[k]))
+                .next()
+                .unwrap_or_else(|| panic!("{} in the war window", heading[k]))
+                .scroll_to_me();
+            h.run_steps(8);
+            let name = format!("290-sea-{who}-{tag}");
+            shot(&mut h, &name);
+            std::fs::copy(
+                out_dir().join(format!("{name}.png")),
+                dir.join(format!("{name}.png")),
+            )
+            .unwrap();
+        }
+    }
+    let _ = std::fs::remove_dir_all(&user);
+}
