@@ -578,10 +578,14 @@ pub fn stat_block(ui: &mut Ui, label: &str, value: &str, detail: Option<&str>) {
     ui.vertical(|ui| {
         ui.spacing_mut().item_spacing.y = 2.0;
         caption(ui, label);
-        ui.label(
-            RichText::new(value)
-                .font(sans_semibold(size::STAT))
-                .color(color::TEXT),
+        // A number never wraps nor ends in an ellipsis: "US$ 35,3 bilhões" stays on one line.
+        ui.add(
+            egui::Label::new(
+                RichText::new(value)
+                    .font(sans_semibold(size::STAT))
+                    .color(color::TEXT),
+            )
+            .extend(),
         );
         if let Some(d) = detail {
             ui.label(

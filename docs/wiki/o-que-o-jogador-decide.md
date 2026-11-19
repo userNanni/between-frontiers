@@ -3,7 +3,9 @@
 Cada decisão de um país que o jogador pode tomar, com o comando da simulação, onde fica na tela e o
 atalho. O teste `crates/bf-client/tests/player_commands.rs` garante que nenhum comando de jogador
 novo chega sem tela e sem atalho: comando novo em `GameCommand` falha nele até ter os dois, ou até
-entrar na lista de exceções com a razão. Quando esta tabela muda, o teste muda junto.
+entrar na lista de exceções com a razão. O mesmo teste confere que a seção "No jogo" desta página
+nomeia cada comando e cada exceção e que nenhuma linha dela está "em revisão": o PR que
+traz a decisão a escreve aqui com o próprio número, sem tabela à parte para PR aberto.
 
 Atalhos do perfil padrão; todos se mudam no editor de atalhos (Configurações → Editar atalhos). Numa janela mais alta que a tela, Shift+PageDown e Shift+PageUp rolam a página, e as dicas de tecla do que entrou à vista aparecem.
 
@@ -13,7 +15,7 @@ O caminho inteiro da crise à paz (exigir, declarar depois da recusa, atacar num
 
 | Decisão | Comando | Onde fica | Atalho | Estado |
 |---|---|---|---|---|
-| Escolher o país da campanha | `ChoosePlayer` | Tela de escolha de país: clique no mapa, ou "Procurar país" (lista com busca pelo nome ou pela sigla), e "Começar" | Ctrl+F abre a lista; Enter escolhe o primeiro; S começa | no jogo (#8; teclado neste PR) |
+| Escolher o país da campanha | `ChoosePlayer` | Tela de escolha de país: clique no mapa, ou "Procurar país" (lista com busca pelo nome ou pela sigla), e "Começar" | Ctrl+F abre a lista; Enter escolhe o primeiro; S começa | no jogo (#8; teclado #137) |
 | Jogar com outro país | `SwitchCountry` | Campanhas → "…" da campanha → "Jogar com outro país" | Shift+F10 abre o "…"; J escolhe | no jogo (#96, #108) |
 | Pesquisa: foco | `SetResearch` | Pesquisa: clique numa tecnologia; "Limpar foco" | R abre; Delete limpa o foco | no jogo |
 | Impostos por classe, ou regra automática | `SetTaxRates` | Governo → Orçamento | G abre; B a aba | no jogo |
@@ -23,44 +25,42 @@ O caminho inteiro da crise à paz (exigir, declarar depois da recusa, atacar num
 | Taxa de juros do banco central, ou regra automática | `SetPolicyRate` | Governo → Moeda e dívida | G abre; M a aba | no jogo |
 | Banco central: histórico, autônomo ou subordinado | `SetCentralBank` | Governo → Moeda e dívida | G, M | no jogo |
 | Propor uma lei | `SetLaw` | Governo → Leis: escolher a lei e "Propor" | G, L; Ctrl+Enter propõe | no jogo |
+| Folha do Estado: servidores e clero por mil habitantes (D1) | `SetPayroll` | Governo → Orçamento → "Folha e Tesouro": regra histórica ou fixado | G, B | no jogo (#165) |
+| Salário público sobre o privado (D2) | `SetPublicPay` | Governo → Orçamento → "Folha e Tesouro" | G, B | no jogo (#165) |
+| Compras do Estado e a parte militar (D3) | `SetStatePurchases` | Governo → Orçamento → "Folha e Tesouro": regra histórica ou fixado, com o teto militar da semana | G, B | no jogo (#186) |
+| Reserva do Tesouro e destino do excesso (D4) | `SetTreasury` | Governo → Orçamento → "Folha e Tesouro" | G, B | no jogo (#165) |
+| Teto de déficit (D5) | `SetDeficitCap` | Governo → Orçamento → "Folha e Tesouro" | G, B | no jogo (#165) |
+| Ordenar a fila de obras públicas, pôr e tirar obra (D8) | `SetWorksOrder`, `AddWork`, `CancelWork` | Governo → Obras: ordem de chegada ou a minha, ↑ ↓, cancelar em dois cliques, nova obra por estado com o custo; "só a minha lista" zera as prioridades | G, Shift+B | no jogo (#176) |
+| Onde emitir a dívida: em casa, fora em moeda própria, fora em dólar (D9) | `SetIssuance` | Governo → Moeda e dívida → "Onde emitir": regra histórica ou fixado; o vendido e o sem vender de cada praça; aviso quando a moeda própria pedida passa do que os de fora aceitam | G, M | no jogo (#190) |
+| Encomendar tropas, navios e aviões (D13) | `OrderForces` | Governo → Forças → "Nova encomenda": tipo, elementos, colonial; o custo de construir e o de todo ano; a encomenda grande pede um segundo clique | G, T | no jogo (#151) |
+| Cancelar uma encomenda | `CancelOrder` | Governo → Forças → "Encomendas": "Cancelar" e confirmação; o construído vai ao depósito | G, T | no jogo (#151) |
+| Dissolver tropas, dar baixa em navios e aviões | `DisbandForces` | Governo → Forças → "Dissolver…" na linha do tipo: quantos elementos, o que volta ao depósito (valor e bens), quantos homens vão à reserva ou para casa, e o aviso de que o exército de paz volta ao tamanho de paz em janeiro; "Dissolver" confirma, com ponto de restauração antes (motivo "dissolver forças"). Tira primeiro as formações encomendadas. Reservistas chamados voltam por `Mobilize` | G, T | no jogo (#209) |
 | Libertar território | `Liberate` | Agendas → Decisões → "Libertar território", com confirmação | J abre as Agendas | no jogo (#96) |
-| Mobilizar e desmobilizar a reserva | `Mobilize` | Agendas → "Forças armadas em paz" → "Mobilizar a reserva…" (ou desmobilizar), com confirmação e ponto de restauração; a aba Forças do governo (T) mostra os reservistas que se apresentam | J abre as Agendas | em revisão (#115) |
-| Responder à exigência de independência de uma colônia: governo próprio, domínio, independência ou recusar | `AnswerDemand` | Agendas → Decisões → "{colônia} exige uma resposta": mobilização contra as marcas, o que segura o movimento, a conta de manter a colônia, o preço de cada resposta, o prazo e confirmação; ponto de restauração antes (motivo "exigência") | J abre as Agendas; a dica de tecla escolhe a exigência, 1 a 4 a resposta, R revisa, Y confirma | no jogo (#136 e a tela empilhada nele) |
-| Exigir de outro país: estados, o país inteiro, pagamento, tributo | `Demand` | Agendas → Decisões → "Exigir de {país}…": o país selecionado no mapa ou escolhido pelo nome ("Escolher país pelo nome…", C, digitar e Enter); a conta do alvo, o prazo, revisar e enviar; ponto de restauração antes (motivo "guerra"). Só com a regra `crisis` | J; E abre; C procura o país; U o país inteiro; S + número os estados; M muda pagamento e tributo; R revisa; Y envia | no jogo, regra desligada |
-| Aceitar ou recusar uma exigência feita ao país | `AnswerCrisis` | Agendas → Crises → "{país} exige…": o que pede, o prazo, a resposta provável; em dois passos, com ponto de restauração | J; K + número abre; A aceita, R recusa; Y confirma | no jogo, regra desligada |
-| Depois da recusa: declarar guerra ou recuar | `Declare` | Agendas → Crises → a crise recusada: declarar ou recuar, em dois passos, com ponto de restauração; quem entraria pelos acordos | J; K + número; A declara, R recua; Y confirma | no jogo, regra desligada |
-| Honrar ou não a chamada de um aliado à guerra | `AnswerCall` | Agendas → Crises → "{aliado} chama…": as duas saídas e o preço de cada uma; em dois passos, com ponto de restauração | J; H + número; H honra, R recusa; Y confirma | no jogo, regra desligada |
+| Mobilizar e desmobilizar a reserva | `Mobilize` | Agendas → "Forças armadas em paz" → "Mobilizar a reserva…" (ou desmobilizar), com confirmação e ponto de restauração; a aba Forças do governo (T) mostra os reservistas que se apresentam | J abre as Agendas | no jogo (#115) |
+| Responder à exigência de independência de uma colônia: governo próprio, domínio, independência ou recusar | `AnswerDemand` | Agendas → Decisões → "{colônia} exige uma resposta": mobilização contra as marcas, o que segura o movimento, a conta de manter a colônia, o preço de cada resposta, o prazo e confirmação; ponto de restauração antes (motivo "exigência") | J abre as Agendas; a dica de tecla escolhe a exigência, 1 a 4 a resposta, R revisa, Y confirma | no jogo (#144), regra desligada |
+| Exigir de outro país: estados, o país inteiro, pagamento, tributo | `Demand` | Agendas → Decisões → "Exigir de {país}…": o país selecionado no mapa ou escolhido pelo nome ("Escolher país pelo nome…", C, digitar e Enter); a conta do alvo, o prazo, revisar e enviar; ponto de restauração antes (motivo "guerra"). Só com a regra `crisis` | J; E abre; C procura o país; U o país inteiro; S + número os estados; M muda pagamento e tributo; R revisa; Y envia | no jogo (#157), regra desligada |
+| Aceitar ou recusar uma exigência feita ao país | `AnswerCrisis` | Agendas → Crises → "{país} exige…": o que pede, o prazo, a resposta provável; em dois passos, com ponto de restauração | J; K + número abre; A aceita, R recusa; Y confirma | no jogo (#157), regra desligada |
+| Depois da recusa: declarar guerra ou recuar | `Declare` | Agendas → Crises → a crise recusada: declarar ou recuar, em dois passos, com ponto de restauração; quem entraria pelos acordos | J; K + número; A declara, R recua; Y confirma | no jogo (#157), regra desligada |
+| Honrar ou não a chamada de um aliado à guerra | `AnswerCall` | Agendas → Crises → "{aliado} chama…": as duas saídas e o preço de cada uma; em dois passos, com ponto de restauração | J; H + número; H honra, R recusa; Y confirma | no jogo (#184), regra desligada |
+| Propor um acordo a outro país | `ProposeTreaty` | Agendas → Decisões → "Propor acordo a {país selecionado}…": a mesa, com o que cada lado dá em sua coluna (cláusulas do catálogo, parâmetros dentro dos limites), prazo e aviso, a conta de cada lado por termo, a resposta provável do outro, e por que a proposta não pode ir (limite, reconhecimento, igual recusada há menos de 6 meses); ponto de restauração antes (motivo "tratado"). Só com a regra `negotiation` | J abre; T a mesa; A e S acrescentam cláusula, K escolhe, R tira, V muda parâmetro, W prazo e aviso, P propõe | no jogo (#210), regra desligada |
+| Aceitar, recusar ou contrapropor um acordo recebido | `AnswerProposal` | Agendas → Decisões → "{país} propõe um acordo (N semanas)": o que cada lado dá, a conta do jogador, o prazo; aceitar e recusar em dois passos, contrapropor na mesma mesa (até a terceira rodada); ponto de restauração antes de aceitar ou contrapropor | J; P escolhe a proposta; A, R, C; Y confirma | no jogo (#210), regra desligada |
+| Renegociar uma dívida entre governos | `ProposeTreaty` (cláusula `revise_debt`) | Governo → Dívidas entre governos → a linha → "Renegociar": abre a mesa nas Agendas com a revisão da dívida, a partir dos termos de hoje, e o outro lado fixo. Os parâmetros da revisão e o preço dela na conta chegam com a simulação (pedido ao thread dos tratados) | G, Shift+M; Z escolhe a linha; N renegocia | no jogo (#213), regra desligada |
+| Postura de cada frente na guerra: segurar ou atacar | `SetPosture` | Janela "Guerra" (Shift+W, ou a linha da guerra nas Agendas): uma frente por país inimigo, com "Segurar" e "Atacar", os homens e o poder de fogo dos dois lados, as baixas e o avanço da semana e cada segmento com os termos do poder e quanto já entrou em cada estado. O padrão é segurar. "Propor paz…" abre a mesa nas Agendas com o líder inimigo. Só com a regra `war` | Shift+W; F + número troca a postura; S + número abre os segmentos; Q propõe a paz | no jogo (#219), regra desligada |
+| Denunciar um acordo em vigor | `Denounce` | Agendas → Decisões → "Acordos do país (N em vigor)": cada acordo com as partes, o ano, o prazo, o aviso e as cláusulas; "Denunciar…" — com aviso, diz o ano em que acaba, sem quebra; sem aviso, diz que é quebra de cada cláusula que o país dá e pede dois passos. Ponto de restauração antes (motivo "denunciar um acordo"). A mesma tela mostra as quebras, as causas e a reputação geral e de segurança de cada país. A denúncia só é processada com a mesa (`negotiation`) | J; O abre; U + número denuncia; Y confirma, N mantém | no jogo (#221), regra desligada |
 
 Exceção: `Borders` (operação de fronteira) não é do jogador. Vem de tratados, da paz, de testes e
 de ferramentas; o jogador liberta a própria terra com `Liberate`.
-
-## Em PR
-
-| Decisão | Comando | Onde fica | Estado |
-|---|---|---|---|
-| Compras do Estado e a parte militar (D3) | `SetStatePurchases` | Governo → Orçamento → "Folha e Tesouro": regra histórica ou fixado, com o teto militar da semana | em revisão |
-| Onde emitir a dívida: em casa, fora em moeda própria, fora em dólar (D9) | `SetIssuance` | Governo → Moeda e dívida → "Onde emitir": regra histórica ou fixado; o vendido e o sem vender de cada praça; aviso quando a moeda própria pedida passa do que os de fora aceitam | em revisão |
-| Ordenar a fila de obras públicas, pôr e tirar obra (D8) | `SetWorksOrder`, `AddWork`, `CancelWork` | Governo → Obras (Shift+B): ordem de chegada ou a minha, ↑ ↓, cancelar em dois cliques, nova obra por estado com o custo; "só a minha lista" zera as prioridades | em revisão |
-| Folha do Estado: servidores e clero por mil habitantes (D1) | `SetPayroll` | Governo → Orçamento → "Folha e Tesouro": regra histórica ou fixado | em revisão |
-| Salário público sobre o privado (D2) | `SetPublicPay` | Governo → Orçamento → "Folha e Tesouro" | em revisão |
-| Reserva do Tesouro e destino do excesso (D4) | `SetTreasury` | Governo → Orçamento → "Folha e Tesouro" | em revisão |
-| Teto de déficit (D5) | `SetDeficitCap` | Governo → Orçamento → "Folha e Tesouro" | em revisão |
-| Mobilizar e desmobilizar | `Mobilize { on }` | Agendas, decisão em dois passos, com ponto de restauração antes (motivo "guerra") | em revisão (#115) |
-| Encomendar tropas, navios e aviões | `OrderForces` | Governo → Forças → "Nova encomenda": tipo, elementos, colonial; o custo de construir e o de todo ano; a encomenda grande pede um segundo clique | em revisão |
-| Cancelar uma encomenda | `CancelOrder` | Governo → Forças → "Encomendas": "Cancelar" e confirmação; o construído vai ao depósito | em revisão |
-| Dissolver tropas, dar baixa em navios e aviões | `DisbandForces` | Governo → Forças → "Dissolver…" na linha do tipo: quantos elementos, o que volta ao depósito (valor e bens), quantos homens vão à reserva ou para casa, e o aviso de que o exército de paz volta ao tamanho de paz em janeiro; "Dissolver" confirma, com ponto de restauração antes (motivo "dissolver forças"). Tira primeiro as formações encomendadas. Reservistas chamados voltam por `Mobilize` | em revisão |
-| Propor um acordo a outro país | `ProposeTreaty` | Agendas → Decisões → "Propor acordo a {país selecionado}…": a mesa, com o que cada lado dá em sua coluna (cláusulas do catálogo, parâmetros dentro dos limites), prazo e aviso, a conta de cada lado por termo, a resposta provável do outro, e por que a proposta não pode ir (limite, reconhecimento, igual recusada há menos de 6 meses); ponto de restauração antes (motivo "tratado"). Só com a regra `negotiation` | J abre; T a mesa; A e S acrescentam cláusula, K escolhe, R tira, V muda parâmetro, W prazo e aviso, P propõe | em revisão, regra desligada |
-| Aceitar, recusar ou contrapropor um acordo recebido | `AnswerProposal` | Agendas → Decisões → "{país} propõe um acordo (N semanas)": o que cada lado dá, a conta do jogador, o prazo; aceitar e recusar em dois passos, contrapropor na mesma mesa (até a terceira rodada); ponto de restauração antes de aceitar ou contrapropor | J; P escolhe a proposta; A, R, C; Y confirma | em revisão, regra desligada |
-| Renegociar uma dívida entre governos | `ProposeTreaty` (cláusula `revise_debt`) | Governo → Dívidas entre governos → a linha → "Renegociar": abre a mesa nas Agendas com a revisão da dívida, a partir dos termos de hoje, e o outro lado fixo. Os parâmetros da revisão e o preço dela na conta chegam com a simulação (pedido ao thread dos tratados) | G, Shift+M; Z escolhe a linha; N renegocia | em revisão, regra desligada |
-| Postura de cada frente na guerra: segurar ou atacar | `SetPosture` | Janela "Guerra" (Shift+W, ou a linha da guerra nas Agendas): uma frente por país inimigo, com "Segurar" e "Atacar", os homens e o poder de fogo dos dois lados, as baixas e o avanço da semana e cada segmento com os termos do poder e quanto já entrou em cada estado. O padrão é segurar. "Propor paz…" abre a mesa nas Agendas com o líder inimigo. Só com a regra `war` | Shift+W; F + número troca a postura; S + número abre os segmentos; Q propõe a paz | em revisão, regra desligada |
-| Denunciar um acordo em vigor | `Denounce` | Agendas → Decisões → "Acordos do país (N em vigor)": cada acordo com as partes, o ano, o prazo, o aviso e as cláusulas; "Denunciar…" — com aviso, diz o ano em que acaba, sem quebra; sem aviso, diz que é quebra de cada cláusula que o país dá e pede dois passos. Ponto de restauração antes (motivo "denunciar um acordo"). A mesma tela mostra as quebras, as causas e a reputação geral e de segurança de cada país. A denúncia só é processada com a mesa (`negotiation`) | J; O abre; U + número denuncia; Y confirma, N mantém | em revisão, regra desligada |
 
 ## Desenhadas, sem comando ainda
 
 | Decisão | Onde deve ficar | Depende de |
 |---|---|---|
 | Entrar e sair de um bloco | Agendas | blocos como rótulo sobre tratados (#132) e proposta no tick |
-| Vetar capital estrangeiro e impor embargo | Governo | fluxo de capital (#117) e comércio por par (#113) |
+| Tarifa por bem (cerca de 60 linhas), cada uma "Regra histórica" ou "Fixado pelo governo", com sobretaxa ou preferência por parceiro (decisão do dono de 2026-11-18) | Governo; a tela é do thread do comércio, com a linha e as teclas das outras abas | comando do thread do comércio; o comércio por par já está no jogo (#113, tela #215) |
+| Impor e levantar embargo | Agendas, em dois passos, com ponto de restauração | comando do thread do comércio |
+| Vetar capital estrangeiro | Governo | fluxo de capital (#117) |
+| Calote e reestruturação (D6) | Agendas | thread do ensino |
+| Câmbio (D7) | Governo → Moeda e dívida | padrão-ouro (fase 4) |
 | Abrir missão diplomática | Agendas | serviço exterior (#112) |
 
 ## O que o país decide por regra

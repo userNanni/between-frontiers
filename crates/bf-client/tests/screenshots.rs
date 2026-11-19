@@ -3537,6 +3537,12 @@ fn trade_partners() {
                 g.select(i);
             }
             wait(&mut h);
+            // The top of the panel: the headline numbers on one line each.
+            if country == "GBR" {
+                let name = format!("202-country-top-{tag}");
+                shot(&mut h, &name);
+                keep(&name);
+            }
             h.query_all(egui_kittest::kittest::by().label(if en {
                 "LARGEST PARTNERS"
             } else {
