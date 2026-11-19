@@ -283,3 +283,19 @@ war-wreck-theirs = { $state } (theirs): { $share } of the buildings destroyed, {
     [one] { $civilians } civilian killed
    *[other] { $civilians } civilians killed
 }
+
+composition-title = Composition of the forces
+composition-basis = Once a year the infantry changes equipment toward the target share on wheels and on tracks: at most 2 % of the land men a year, paid from what the military budget leaves. The army does not grow: the men are the same, with the training they had.
+composition-now = Now: { $wheels } on wheels and { $tracks } on tracks, counting the conversions under way.
+composition-target-rule = Target by the historical rule: { $wheels } on wheels and { $tracks } on tracks.
+composition-target-fixed = Target fixed by the government: { $wheels } on wheels and { $tracks } on tracks.
+composition-target-none = No target: the country does not make the infantry's equipment yet.
+composition-converting = Converting to { $unit }: { $done } of { $of } thousand men.
+composition-stalled = Stalled for { $weeks } weeks: no room left in the military budget or no vehicles on the market.
+composition-no-wheels = No type on wheels the country can equip: the target's part on wheels stays unconverted.
+composition-no-tracks = No type on tracks the country can equip: the target's part on tracks stays unconverted.
+composition-rule = Historical rule
+composition-fixed = Fixed by the government
+composition-wheels = On wheels
+composition-tracks = On tracks
+composition-apply = Apply

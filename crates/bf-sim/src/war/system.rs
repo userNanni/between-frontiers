@@ -9,7 +9,7 @@ use laplace_schelling::Weekday;
 use laplace_schelling::schedule::{Access, Cadence, System, TickCtx};
 
 use super::calc::{AgeBand, apportion, mobilizable};
-use super::catalogue::{Domain, Military};
+use super::catalogue::{Domain, Military, Mobility};
 use super::state::{CountryWar, Formation, PeaceRules, PeaceSize, WAR, men};
 use crate::game::GameWorld;
 use crate::politics::Politics;
@@ -35,6 +35,19 @@ pub struct ForcesChanges {
     soldiers: Option<Vec<i64>>,
     crises: Option<super::crisis::CrisisWeek>,
     fight: Option<super::fight::FightWeek>,
+    /// The conversions under way, every country's, while the war is switched on.
+    conversions: Option<Vec<super::composition::Conversion>>,
+}
+
+/// [`join`], for the conversions of the composition.
+pub(crate) fn join_formation(
+    c: &mut CountryWar,
+    key: (u16, u8, bool, bool),
+    elements: Fixed,
+    training: Fixed,
+    equipment: Vec<(u16, Fixed)>,
+) {
+    join(c, key, elements, training, equipment)
 }
 
 /// Merges a list of (good, quantity) into a sorted list.
@@ -262,6 +275,7 @@ impl Forces {
         c: &mut CountryWar,
         mut money: Fixed,
         prices: &[Fixed],
+        mut class_room: Option<(Fixed, Fixed)>,
     ) {
         let mil = &self.military;
         let per_week = Fixed::from_ratio(1, 52 * i64::from(self.peace.modernize_years.max(1)));
@@ -296,6 +310,26 @@ impl Forces {
             let mut moved = f.elements * per_week;
             if unit_cost.is_positive() {
                 moved = moved.min(money / unit_cost);
+            }
+            // A newer generation on another class of mobility (the mechanized infantry from
+            // lorries to tracks) moves only as far as the composition's target of that class
+            // has room: the modernization does not overfill a bucket the conversions keep.
+            let (from_class, to_class) = (
+                mil.spec(f.unit, f.generation as usize).mobility,
+                mil.spec(f.unit, next).mobility,
+            );
+            if let Some((rw, rt)) = class_room.as_mut()
+                && from_class != to_class
+            {
+                let room = match to_class {
+                    Mobility::Wheeled => Some(rw),
+                    Mobility::Tracked => Some(rt),
+                    _ => None,
+                };
+                if let Some(room) = room {
+                    moved = moved.min(*room);
+                    *room -= moved.max(Fixed::ZERO);
+                }
             }
             if !moved.is_positive() {
                 continue;
@@ -502,13 +536,16 @@ impl Forces {
         world: &GameWorld,
         ci: usize,
         cw: &CountryWar,
-    ) -> CountryWar {
+    ) -> (CountryWar, Vec<super::composition::Conversion>) {
         let mil = &self.military;
         let rules = &mil.rules;
         let mut c = cw.clone();
+        let mut conversions: Vec<super::composition::Conversion> =
+            world.war.composition.of(ci as u16).cloned().collect();
         let Some(m) = world.econ.markets.get(ci) else {
-            return c;
+            return (c, conversions);
         };
+        let newest = |ty: u16| self.newest(world, ci, ty);
         // 1. Last week's purchases make good the equipment, to each formation by what it lacks.
         for (g, q) in &cw.repair {
             let got = *q * m.buy_ratio.get(*g as usize).copied().unwrap_or(Fixed::ZERO);
@@ -629,6 +666,21 @@ impl Forces {
         }
         // 4. Once a year, the size in peace follows the men of service age and the law.
         let new_year = ctx.date.month == 1 && ctx.date.day <= 7;
+        // The composition of the forces, once a year, while the war is switched on.
+        if new_year
+            && self.fight.is_some()
+            && let Some(rule) = &self.peace.composition
+        {
+            super::composition::compose(
+                mil,
+                rule,
+                ci as u16,
+                &c,
+                world.war.composition.fixed_of(ci as u16),
+                &newest,
+                &mut conversions,
+            );
+        }
         if new_year && self.peace.peace_size == PeaceSize::ShareOfServiceAge && !c.mobilized {
             let of_age = self.men_of_service_age(world, ci);
             // Forces raised by an order stay outside the size in peace, and so do the colonial
@@ -704,6 +756,20 @@ impl Forces {
         if spare.is_positive() && !c.queue.is_empty() {
             spare = self.place_orders(world, ci, &mut c, spare, &m.price);
         }
+        // The conversions of the composition, from what the orders left; without it they wait,
+        // and count the week as stalled.
+        if !conversions.is_empty() {
+            spare = super::composition::convert_week(
+                mil,
+                &mut c,
+                &mut conversions,
+                spare,
+                &m.price,
+                self.peace.raise_weeks,
+                self.peace.replace_weeks,
+                &newest,
+            );
+        }
         // Weeks in a row an order got nothing for want of room in the budget.
         for (o, (delivered, built)) in c.queue.iter_mut().zip(before) {
             let got = o.delivered != delivered
@@ -716,7 +782,25 @@ impl Forces {
             };
         }
         if spare.is_positive() && !c.mobilized {
-            self.modernize(world, ci, &mut c, spare * weeks, &m.price);
+            // The room left in each class of the composition's target, while it runs.
+            let class_room = self
+                .fight
+                .as_ref()
+                .and(self.peace.composition.as_ref())
+                .and_then(|rule| {
+                    let from = mil.unit(&rule.from_unit)?;
+                    let (tw, tt) = super::composition::target(
+                        rule,
+                        world.war.composition.fixed_of(ci as u16),
+                        newest(from),
+                    )?;
+                    let (w, t, all) = super::composition::now(mil, &c, &conversions);
+                    Some((
+                        (all.mul_ratio(i64::from(tw), 1000) - w).max(Fixed::ZERO),
+                        (all.mul_ratio(i64::from(tt), 1000) - t).max(Fixed::ZERO),
+                    ))
+                });
+            self.modernize(world, ci, &mut c, spare * weeks, &m.price, class_room);
         }
         let (mut orders, mut repair) = needs(&c);
         for o in &c.queue {
@@ -764,7 +848,7 @@ impl Forces {
         c.upgrade = upgrade;
         c.orders = orders;
         c.repair = repair;
-        c
+        (c, conversions)
     }
 }
 
@@ -864,15 +948,20 @@ impl System<GameWorld> for Forces {
                 soldiers: None,
                 crises: None,
                 fight: None,
+                conversions: None,
             };
         }
-        let countries: Vec<CountryWar> = world
+        let (countries, conversions): (Vec<CountryWar>, Vec<_>) = world
             .war
             .countries
             .iter()
             .enumerate()
             .map(|(ci, cw)| self.country_week(ctx, world, ci, cw))
-            .collect();
+            .unzip();
+        let conversions = self
+            .fight
+            .is_some()
+            .then(|| conversions.into_iter().flatten().collect::<Vec<_>>());
         let month_start = ctx.date.day <= 7 || world.war.soldiers.is_empty();
         let soldiers = month_start.then(|| place_soldiers(&self.military, &countries, &world.econ));
         // Crises run only when there are any: a world in peace pays nothing for them.
@@ -894,6 +983,7 @@ impl System<GameWorld> for Forces {
             soldiers,
             crises,
             fight,
+            conversions,
         }
     }
 
@@ -902,6 +992,9 @@ impl System<GameWorld> for Forces {
             return;
         }
         world.war.countries = changes.countries;
+        if let Some(c) = changes.conversions {
+            world.war.composition.conversions = c;
+        }
         if let Some(week) = changes.fight {
             for (c, share) in &week.lost_share {
                 if let Some(cw) = world.war.countries.get_mut(*c as usize) {

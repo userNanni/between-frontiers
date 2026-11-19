@@ -84,6 +84,11 @@ const PLAYER: &[Surface] = &[
         files: &["screens/forces.rs"],
     },
     Surface {
+        variant: "SetComposition",
+        command: id::TAB_FORCES,
+        files: &["screens/forces.rs"],
+    },
+    Surface {
         variant: "DisbandForces",
         command: id::TAB_FORCES,
         files: &["screens/forces.rs"],

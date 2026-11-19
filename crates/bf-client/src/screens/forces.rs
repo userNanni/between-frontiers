@@ -45,7 +45,122 @@ pub fn show(ui: &mut Ui, cx: &mut TabContext<'_>) {
     bf_ui_kit::gap(ui, space::MD);
     orders(ui, cx);
     bf_ui_kit::gap(ui, space::MD);
+    composition(ui, cx);
+    bf_ui_kit::gap(ui, space::MD);
     bf_ui_kit::small(ui, &i18n.tr("forces-decision-hint"));
+}
+
+/// The composition of the land forces: on wheels and on tracks now, the target (the historical
+/// rule's or the government's), the infantry in conversion, and the choice between the rule
+/// and a target the government fixes (`GameCommand::SetComposition`).
+fn composition(ui: &mut Ui, cx: &mut TabContext<'_>) {
+    let i18n = cx.i18n;
+    let Some(cv) = cx
+        .snap
+        .forces
+        .as_deref()
+        .and_then(|f| f.composition.as_ref())
+    else {
+        return;
+    };
+    bf_ui_kit::heading(ui, &i18n.tr("composition-title"));
+    bf_ui_kit::small(ui, &i18n.tr("composition-basis"));
+    let p = |x: f64| pct(i18n, x * 100.0, 1);
+    let pm = |x: u32| pct(i18n, f64::from(x) / 10.0, 0);
+    ui.label(i18n.tr_args(
+        "composition-now",
+        &[("wheels", arg(p(cv.wheels))), ("tracks", arg(p(cv.tracks)))],
+    ));
+    let target = match cv.target {
+        Some((w, t)) => i18n.tr_args(
+            if cv.fixed.is_some() {
+                "composition-target-fixed"
+            } else {
+                "composition-target-rule"
+            },
+            &[("wheels", arg(pm(w))), ("tracks", arg(pm(t)))],
+        ),
+        None => i18n.tr("composition-target-none"),
+    };
+    ui.label(target);
+    if cv.target.is_some() && !cv.wheels_type {
+        bf_ui_kit::small(ui, &i18n.tr("composition-no-wheels"));
+    }
+    if cv.target.is_some() && !cv.tracks_type {
+        bf_ui_kit::small(ui, &i18n.tr("composition-no-tracks"));
+    }
+    for (unit, ordered, delivered, stalled) in &cv.converting {
+        let mut line = i18n.tr_args(
+            "composition-converting",
+            &[
+                ("unit", arg(unit_name(i18n, unit))),
+                ("done", arg(i18n.decimal(*delivered, 1))),
+                ("of", arg(i18n.decimal(*ordered, 1))),
+            ],
+        );
+        if *stalled > 0 {
+            line.push(' ');
+            line.push_str(&i18n.tr_args(
+                "composition-stalled",
+                &[("weeks", arg(i18n.int(i64::from(*stalled))))],
+            ));
+        }
+        bf_ui_kit::small(ui, &line);
+    }
+    let tag = cx.tag.to_owned();
+    let st = &mut *cx.orders;
+    ui.horizontal(|ui| {
+        if ui
+            .radio(
+                cv.fixed.is_none() && st.composition.is_none(),
+                i18n.tr("composition-rule"),
+            )
+            .clicked()
+        {
+            st.composition = None;
+            cx.commands.push(GameCommand::SetComposition {
+                tag: tag.clone(),
+                composition: None,
+            });
+        }
+        if ui
+            .radio(
+                cv.fixed.is_some() || st.composition.is_some(),
+                i18n.tr("composition-fixed"),
+            )
+            .clicked()
+            && st.composition.is_none()
+        {
+            let (w, t) = cv.target.unwrap_or((150, 50));
+            st.composition = Some(cv.fixed.unwrap_or([w as u16, t as u16]));
+        }
+    });
+    if let Some([w, t]) = st.composition.as_mut() {
+        ui.horizontal(|ui| {
+            ui.label(i18n.tr("composition-wheels"));
+            ui.add(
+                egui::DragValue::new(w)
+                    .range(0..=1000)
+                    .speed(10)
+                    .suffix(" ‰"),
+            );
+            ui.label(i18n.tr("composition-tracks"));
+            ui.add(
+                egui::DragValue::new(t)
+                    .range(0..=1000)
+                    .speed(10)
+                    .suffix(" ‰"),
+            );
+        });
+        let value = [*w, (*t).min(1000 - (*w).min(1000))];
+        if ui.button(i18n.tr("composition-apply")).clicked() {
+            cx.commands.push(GameCommand::SetComposition {
+                tag,
+                composition: Some(value),
+            });
+            st.composition = None;
+        }
+    }
 }
 
 fn summary(ui: &mut Ui, i18n: &I18n, f: &ForcesView, gdp: f64) {
@@ -175,6 +290,9 @@ pub struct OrdersUi {
     /// The forces as they stood when a disband was sent: the step waits for the simulation to
     /// carry it out before taking another (the formations' indices move).
     pub disband_sent: Option<crate::forces_view::Stock>,
+    /// The composition being set: wheels and tracks per mille, while "fixed by the government"
+    /// is being edited.
+    pub composition: Option<[u16; 2]>,
 }
 
 /// The disband step of one row of the forces' table.

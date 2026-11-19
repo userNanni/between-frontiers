@@ -346,3 +346,362 @@ fn the_army_moves_at_the_pace_of_most_of_its_men() {
     );
     assert_eq!(majority_mobility(mil, &[]), Mobility::Foot);
 }
+
+fn land_shares(w: &GameWorld, mil: &bf_sim::war::Military, ci: usize) -> (i64, i64, i64) {
+    use bf_sim::war::catalogue::{Domain, Mobility};
+    let (mut wheels, mut tracks, mut all) = (0i64, 0i64, 0i64);
+    for f in &w.war.countries[ci].formations {
+        if mil.types[f.unit as usize].domain != Domain::Land || f.called_up || f.colonial {
+            continue;
+        }
+        let n = bf_sim::war::men(mil, f);
+        all += n;
+        match mil.spec(f.unit, f.generation as usize).mobility {
+            Mobility::Wheeled => wheels += n,
+            Mobility::Tracked => tracks += n,
+            _ => {}
+        }
+    }
+    (wheels, tracks, all)
+}
+
+/// The composition of the forces: in January the historical rule converts infantry toward its
+/// target, at most a class a year; the men come from the infantry (the army does not grow)
+/// and show in conversion until the year's class has moved.
+#[test]
+fn the_infantry_converts_a_class_a_year() {
+    let d = data();
+    let mil = &d.war.as_ref().unwrap().military;
+    let mut s = Session::new(
+        d.new_world(),
+        1925,
+        Date::new(1925, 1, 1),
+        2,
+        Some(d.rules()),
+    );
+    let gbr = index(s.world(), "GBR") as usize;
+    s.sim.run_until(Date::new(1925, 1, 10));
+    let w = s.world();
+    let ordered: Fixed = w.war.composition.of(gbr as u16).map(|x| x.ordered).sum();
+    let (_, _, all) = land_shares(w, mil, gbr);
+    assert!(ordered.is_positive(), "Britain converts in 1925");
+    // At most 20 per mille of the land men.
+    assert!(
+        ordered * 1000 <= Fixed::from_int(all) * 20 / 1000 + Fixed::ONE,
+        "{ordered:?} of {all}"
+    );
+    s.sim.run_until(Date::new(1925, 6, 1));
+    let w = s.world();
+    let (wheels, tracks, all2) = land_shares(w, mil, gbr);
+    assert!(wheels + tracks > 0);
+    // The army changed equipment, it did not grow from the conversion (the size in peace moves
+    // it only in January).
+    assert!((all2 - all).abs() * 100 <= all, "{all} -> {all2}");
+}
+
+/// The government's target in place of the rule; `None` returns to the rule.
+#[test]
+fn the_government_fixes_the_composition() {
+    let d = data();
+    let mut s = Session::new(
+        d.new_world(),
+        1925,
+        Date::new(1925, 1, 1),
+        2,
+        Some(d.rules()),
+    );
+    s.submit(GameCommand::SetComposition {
+        tag: "GBR".into(),
+        composition: Some([900, 400]),
+    });
+    s.sim.run_until(Date::new(1925, 1, 3));
+    let gbr = index(s.world(), "GBR");
+    // Clamped: together at most 1,000.
+    assert_eq!(s.world().war.composition.fixed_of(gbr), Some([900, 100]));
+    s.submit(GameCommand::SetComposition {
+        tag: "GBR".into(),
+        composition: None,
+    });
+    s.sim.run_until(Date::new(1925, 1, 4));
+    assert_eq!(s.world().war.composition.fixed_of(gbr), None);
+}
+
+/// The check of the composition against 1939 and 1944 (`docs/war.pt-BR.md`, "Composição das
+/// forças"): the share of land men on wheels and on tracks, the conversions waiting, and the
+/// price and the households' share of automobiles, with the rule and without it. Ignored: two
+/// runs of 19 years; run in a bench slot and read the table it prints.
+#[test]
+#[ignore]
+fn composition_check_1939_and_1944() {
+    let base = data();
+    let mut off = {
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let mut d = GameData::load(&root).unwrap_or_else(|e| panic!("{e}"));
+        d.enable_crisis();
+        d.switches.war = true;
+        no_overrun(&mut d);
+        d
+    };
+    off.war
+        .as_mut()
+        .unwrap()
+        .peace
+        .as_mut()
+        .unwrap()
+        .composition = None;
+    let mil = &base.war.as_ref().unwrap().military;
+    let auto = base.catalogue.good("automobiles").unwrap() as usize;
+    let armored = base.catalogue.good("armored_vehicles").unwrap() as usize;
+    let vehicles = vec![auto as u16, armored as u16];
+    for (label, d) in [("rule", base), ("no rule", &off)] {
+        let mut s = Session::new(
+            d.new_world(),
+            1925,
+            Date::new(1925, 1, 1),
+            2,
+            Some(d.rules()),
+        );
+        for year in [1939, 1944] {
+            s.sim.run_until(Date::new(year, 6, 1));
+            let w = s.world();
+            for tag in [
+                "GER", "FRA", "SOV", "USA", "GBR", "CHN", "BRA", "TUR", "PER",
+            ] {
+                let Some(ci) = w.countries.iter().position(|(_, c)| c.tag == tag) else {
+                    continue;
+                };
+                let c = &w.war.countries[ci];
+                // By type of formation (what the target counts) and by the equipment that
+                // arrived (what the generation counts).
+                let (wt, tt, at) = land_shares(w, mil, ci);
+                let (we, te, ae) = bf_sim::war::composition::equipped(mil, &vehicles, c);
+                let pc = |x: Fixed| (x * 1000 / ae.max(Fixed::ONE)).to_f64_lossy() / 10.0;
+                let waiting: Fixed = w
+                    .war
+                    .composition
+                    .of(ci as u16)
+                    .map(|x| x.ordered - x.delivered)
+                    .sum();
+                // What holds the gap: the equipment the formations lack (the military budget
+                // cut the replacement to its room), or a market that does not deliver (a buy
+                // ratio under one).
+                let lack: Fixed = c
+                    .formations
+                    .iter()
+                    .map(|f| {
+                        let spec = mil.spec(f.unit, f.generation as usize);
+                        let need: Vec<(u16, Fixed)> = spec
+                            .equipment
+                            .iter()
+                            .map(|(g, q)| (*g, *q * f.elements))
+                            .collect();
+                        (mil.value_lots(&need) - mil.value_lots(&f.equipment)).max(Fixed::ZERO)
+                    })
+                    .sum();
+                let m = &w.econ.markets[ci];
+                // The military budget's room over the country's GDP, a year.
+                let gdp = if m.gdp_last_year.is_positive() {
+                    m.gdp_last_year
+                } else {
+                    m.gdp_running
+                };
+                let room = bf_sim::econ::public::military_room(m, &base.catalogue);
+                let room_gdp = if gdp.is_positive() {
+                    (room * 52 * 1000 / gdp).to_f64_lossy() / 10.0
+                } else {
+                    0.0
+                };
+                println!(
+                    "{label} {year} {tag}: military room {room_gdp:.2}% of GDP | armored supply {:?} demand {:?} | by type wheels {:.1}% tracks {:.1}% | equipped wheels {:.1}% tracks {:.1}% | of {at} men | fill {:?} | waiting {waiting:?} | lacking {lack:?} lots | bought automobiles {:?} armored {:?} | automobiles price {:?}",
+                    m.supply[armored],
+                    m.demand[armored],
+                    wt as f64 * 100.0 / at.max(1) as f64,
+                    tt as f64 * 100.0 / at.max(1) as f64,
+                    pc(we),
+                    pc(te),
+                    bf_sim::war::composition::land_fill(mil, c),
+                    m.buy_ratio[auto],
+                    m.buy_ratio[armored],
+                    m.price[auto],
+                );
+            }
+        }
+    }
+}
+
+/// The composition shown counts each formation by the vehicles it holds: a formation converted
+/// without its lorries moves on foot, whatever it was ordered to be or the rifles it kept (the
+/// defect the first checks found: a poor country "motorized" as fast as the powers).
+#[test]
+fn a_converted_formation_counts_by_the_equipment_it_holds() {
+    use bf_sim::war::Formation;
+    let mil = &data().war.as_ref().unwrap().military;
+    let mech = mil.unit("mechanized").unwrap();
+    let full: Vec<(u16, Fixed)> = mil
+        .spec(mech, 0)
+        .equipment
+        .iter()
+        .map(|(g, q)| (*g, *q * Fixed::from_int(10)))
+        .collect();
+    let f = |equipment: Vec<(u16, Fixed)>| Formation {
+        unit: mech,
+        generation: 0,
+        elements: Fixed::from_int(10),
+        colonial: false,
+        called_up: false,
+        equipment,
+        training: Fixed::ONE,
+        raised: false,
+    };
+    let empty = bf_sim::war::CountryWar {
+        formations: vec![f(Vec::new())],
+        ..Default::default()
+    };
+    let half = bf_sim::war::CountryWar {
+        formations: vec![f(full.iter().map(|(g, q)| (*g, *q / 2)).collect())],
+        ..Default::default()
+    };
+    let cat = &data().catalogue;
+    let vehicles = vec![
+        cat.good("automobiles").unwrap(),
+        cat.good("armored_vehicles").unwrap(),
+    ];
+    let (w0, _, a0) = bf_sim::war::composition::equipped(mil, &vehicles, &empty);
+    let (w1, _, _) = bf_sim::war::composition::equipped(mil, &vehicles, &half);
+    // The rifles and guns the infantry brought do not make it move: only the lorries count.
+    let rifles_only = bf_sim::war::CountryWar {
+        formations: vec![f(full
+            .iter()
+            .filter(|(g, _)| !vehicles.contains(g))
+            .copied()
+            .collect())],
+        ..Default::default()
+    };
+    let (w2, _, _) = bf_sim::war::composition::equipped(mil, &vehicles, &rifles_only);
+    assert_eq!(w2, Fixed::ZERO);
+    assert_eq!(a0, Fixed::from_int(10));
+    assert_eq!(w0, Fixed::ZERO);
+    assert_eq!(w1, Fixed::from_int(5));
+}
+
+/// A conversion ends when less than ten men are left: the rounding of the classes does not
+/// keep it open and "stalled" for years (the second defect of the first check).
+#[test]
+fn conversions_end_and_do_not_linger() {
+    let d = data();
+    let mut s = Session::new(
+        d.new_world(),
+        1925,
+        Date::new(1925, 1, 1),
+        2,
+        Some(d.rules()),
+    );
+    s.sim.run_until(Date::new(1926, 12, 20));
+    for x in &s.world().war.composition.conversions {
+        assert!(
+            x.ordered - x.delivered >= Fixed::from_ratio(1, 100),
+            "{x:?}"
+        );
+        assert!(x.stalled < 52, "{x:?}");
+    }
+}
+
+/// Without room in the military budget the infantry does not motorize: the conversion waits,
+/// stalled, and nothing moves on wheels (the country poor in its military budget, made so by
+/// the budget's lever D3 at zero for arms).
+#[test]
+fn without_room_the_infantry_does_not_motorize() {
+    let d = data();
+    let mil = &d.war.as_ref().unwrap().military;
+    let cat = &d.catalogue;
+    let vehicles = vec![
+        cat.good("automobiles").unwrap(),
+        cat.good("armored_vehicles").unwrap(),
+    ];
+    let mut s = Session::new(
+        d.new_world(),
+        1925,
+        Date::new(1925, 1, 1),
+        2,
+        Some(d.rules()),
+    );
+    s.submit(GameCommand::SetStatePurchases {
+        tag: "GBR".into(),
+        goods: None,
+        military: Some(0),
+    });
+    s.sim.run_until(Date::new(1926, 6, 1));
+    let w = s.world();
+    let gbr = index(w, "GBR");
+    let (wheels, tracks, _) =
+        bf_sim::war::composition::equipped(mil, &vehicles, &w.war.countries[gbr as usize]);
+    assert_eq!(wheels + tracks, Fixed::ZERO);
+    assert!(
+        w.war.composition.of(gbr).count() > 0,
+        "the rule asked for conversions"
+    );
+    assert!(w.war.composition.of(gbr).all(|x| x.stalled > 0));
+}
+
+/// No bucket of the composition passes its target by more than a year's step (20 per mille):
+/// a conversion asked for wheels lays down a type that moves on wheels, and the modernization
+/// does not move a type to another class past that class's target (the defect of the first
+/// review: the mechanized infantry of the second generation counted on tracks, so the wheels
+/// never filled and the tracks went to three times their target).
+fn no_bucket_passes_its_target(until: i32) {
+    let d = data();
+    let mil = &d.war.as_ref().unwrap().military;
+    let rule = d
+        .war
+        .as_ref()
+        .unwrap()
+        .peace
+        .as_ref()
+        .unwrap()
+        .composition
+        .clone()
+        .unwrap();
+    let from = mil.unit(&rule.from_unit).unwrap();
+    let mut s = Session::new(
+        d.new_world(),
+        1925,
+        Date::new(1925, 1, 1),
+        2,
+        Some(d.rules()),
+    );
+    for year in 1926..=until {
+        s.sim.run_until(Date::new(year, 6, 1));
+        let w = s.world();
+        for tag in ["USA", "GER"] {
+            let ci = index(w, tag) as usize;
+            let g = bf_sim::war::system::newest_generation(mil, w, ci, from);
+            let Some((tw, tt)) = bf_sim::war::composition::target(&rule, None, g) else {
+                continue;
+            };
+            let (wh, tr, all) = land_shares(w, mil, ci);
+            if all == 0 {
+                continue;
+            }
+            let step = 20;
+            assert!(
+                wh * 1000 <= (i64::from(tw) + step) * all,
+                "{tag} {year}: wheels {wh} of {all} over {tw} per mille"
+            );
+            assert!(
+                tr * 1000 <= (i64::from(tt) + step) * all,
+                "{tag} {year}: tracks {tr} of {all} over {tt} per mille"
+            );
+        }
+    }
+}
+
+#[test]
+fn no_bucket_passes_its_target_to_1946() {
+    no_bucket_passes_its_target(1946);
+}
+
+#[test]
+#[ignore = "35 years; run in a bench slot"]
+fn no_bucket_passes_its_target_to_1960() {
+    no_bucket_passes_its_target(1960);
+}

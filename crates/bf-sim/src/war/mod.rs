@@ -16,6 +16,7 @@
 
 pub mod calc;
 pub mod catalogue;
+pub mod composition;
 pub mod crisis;
 pub mod doctrine;
 pub mod fight;

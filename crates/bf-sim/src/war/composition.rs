@@ -1,0 +1,472 @@
+//! The composition of the forces (front pace, after step 4): once a year the infantry converts
+//! toward a share of the land men on wheels and on tracks. The government may fix the target
+//! (`GameCommand::SetComposition`); otherwise the historical rule gives it, by the newest
+//! generation of the infantry's equipment the country makes. The army changes equipment, it does
+//! not grow: the men come from the infantry with their training, the equipment that serves goes
+//! with them, the rest to the depot, and the new type's lack is bought as replacement, so a
+//! formation shows in conversion, part equipped, until the market delivers. Behind the war
+//! switch; reasoning in `docs/war.pt-BR.md`, "Composição das forças".
+
+use std::collections::BTreeMap;
+
+use laplace_schelling::Fixed;
+use laplace_schelling::hash::{HashState, StateHasher};
+use serde::{Deserialize, Serialize};
+
+use super::catalogue::{Domain, Military, Mobility};
+use super::state::CountryWar;
+
+/// The historical rule (`data/military/peace.ron`, `composition`).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct CompositionRule {
+    /// (generation of the infantry's equipment the country makes, wheels per mille, tracks per
+    /// mille of the land men), in ascending generations; the newest reached applies.
+    pub targets: Vec<(u8, u32, u32)>,
+    /// Land men converted a year at most, per mille of the land men.
+    pub per_year: u32,
+    /// The types the infantry converts into, on wheels and on tracks, and the one it converts.
+    pub wheels_unit: String,
+    pub tracks_unit: String,
+    pub from_unit: String,
+    /// The goods that make a formation move on wheels or tracks (lorries, armoured vehicles):
+    /// a formation counts as motorized by how many of them it holds over what its type needs.
+    pub vehicles: Vec<String>,
+    /// The rule opens no new conversion while the army holds less than this share of the
+    /// equipment its formations need, per mille: a country that cannot keep its infantry armed
+    /// does not motorize it.
+    pub min_fill: u32,
+}
+
+/// A conversion under way: `ordered` elements of `from` becoming `unit`.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Conversion {
+    pub country: u16,
+    pub unit: String,
+    pub from: String,
+    /// The generation laid down, the newest the country could equip when the conversion was
+    /// first paid; `None` until then.
+    pub generation: Option<u8>,
+    pub ordered: Fixed,
+    pub delivered: Fixed,
+    /// Weeks in a row it got nothing: no room in the military budget, or no infantry left.
+    pub stalled: u32,
+}
+
+/// The targets the governments fixed and the conversions under way, sorted by country.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CompositionState {
+    /// (country, [wheels, tracks] per mille): the government's target in place of the rule.
+    pub fixed: Vec<(u16, [u16; 2])>,
+    pub conversions: Vec<Conversion>,
+}
+
+impl CompositionState {
+    pub fn is_empty(&self) -> bool {
+        self.fixed.is_empty() && self.conversions.is_empty()
+    }
+
+    /// The target `country`'s government fixed, if any.
+    pub fn fixed_of(&self, country: u16) -> Option<[u16; 2]> {
+        self.fixed
+            .binary_search_by_key(&country, |(c, _)| *c)
+            .ok()
+            .map(|i| self.fixed[i].1)
+    }
+
+    /// Fixes `country`'s target, or returns it to the rule (`None`). Each share at most 1,000,
+    /// both together at most 1,000.
+    pub fn set(&mut self, country: u16, target: Option<[u16; 2]>) {
+        let at = self.fixed.binary_search_by_key(&country, |(c, _)| *c);
+        match (at, target) {
+            (Ok(i), None) => {
+                self.fixed.remove(i);
+            }
+            (Err(_), None) => {}
+            (at, Some([w, t])) => {
+                let w = w.min(1000);
+                let v = (country, [w, t.min(1000 - w)]);
+                match at {
+                    Ok(i) => self.fixed[i] = v,
+                    Err(i) => self.fixed.insert(i, v),
+                }
+            }
+        }
+    }
+
+    /// The conversions of `country`.
+    pub fn of(&self, country: u16) -> impl Iterator<Item = &Conversion> {
+        self.conversions
+            .iter()
+            .filter(move |x| x.country == country)
+    }
+}
+
+/// The land elements of `c` at home (not called up, not colonial) on wheels, on tracks, and
+/// all of them; the conversions under way count as done.
+pub fn now(mil: &Military, c: &CountryWar, conversions: &[Conversion]) -> (Fixed, Fixed, Fixed) {
+    let (mut wheels, mut tracks, mut all) = (Fixed::ZERO, Fixed::ZERO, Fixed::ZERO);
+    let mut count = |m: Mobility, n: Fixed| match m {
+        Mobility::Wheeled => wheels += n,
+        Mobility::Tracked => tracks += n,
+        _ => {}
+    };
+    for f in &c.formations {
+        if mil.types[f.unit as usize].domain != Domain::Land || f.called_up || f.colonial {
+            continue;
+        }
+        all += f.elements;
+        count(mil.spec(f.unit, f.generation as usize).mobility, f.elements);
+    }
+    for x in conversions {
+        if let Some(ty) = mil.unit(&x.unit) {
+            let g = usize::from(x.generation.unwrap_or(0))
+                .min(mil.types[ty as usize].generations.len() - 1);
+            count(mil.spec(ty, g).mobility, x.ordered - x.delivered);
+        }
+    }
+    (wheels, tracks, all)
+}
+
+/// The target, wheels and tracks per mille of the land men: the government's when fixed, the
+/// rule's for `newest`, the newest generation of the infantry's equipment the country makes.
+pub fn target(
+    rule: &CompositionRule,
+    fixed: Option<[u16; 2]>,
+    newest: Option<u8>,
+) -> Option<(u32, u32)> {
+    match fixed {
+        Some([w, t]) => Some((u32::from(w), u32::from(t))),
+        None => newest.and_then(|g| {
+            rule.targets
+                .iter()
+                .rfind(|(level, _, _)| *level <= g)
+                .map(|(_, w, t)| (*w, *t))
+        }),
+    }
+}
+
+/// The land elements of `c` at home on wheels and on tracks as far as they hold their
+/// vehicles (each formation counts by the vehicles it holds over the vehicles its type needs, at
+/// most whole), and all of them: what the army moves on, not what it was ordered to be. A
+/// formation converted without lorries counts for the lorries it has, whatever rifles it kept.
+pub fn equipped(mil: &Military, vehicles: &[u16], c: &CountryWar) -> (Fixed, Fixed, Fixed) {
+    let (mut wheels, mut tracks, mut all) = (Fixed::ZERO, Fixed::ZERO, Fixed::ZERO);
+    for f in &c.formations {
+        if mil.types[f.unit as usize].domain != Domain::Land || f.called_up || f.colonial {
+            continue;
+        }
+        all += f.elements;
+        let spec = mil.spec(f.unit, f.generation as usize);
+        if !matches!(spec.mobility, Mobility::Wheeled | Mobility::Tracked) {
+            continue;
+        }
+        let need: Vec<(u16, Fixed)> = spec
+            .equipment
+            .iter()
+            .filter(|(g, _)| vehicles.contains(g))
+            .map(|(g, q)| (*g, *q * f.elements))
+            .collect();
+        let held: Vec<(u16, Fixed)> = f
+            .equipment
+            .iter()
+            .filter(|(g, _)| vehicles.contains(g))
+            .copied()
+            .collect();
+        let need = mil.value_lots(&need);
+        let fill = if need.is_positive() {
+            (mil.value_lots(&held) / need).min(Fixed::ONE)
+        } else {
+            Fixed::ONE
+        };
+        match spec.mobility {
+            Mobility::Wheeled => wheels += f.elements * fill,
+            _ => tracks += f.elements * fill,
+        }
+    }
+    (wheels, tracks, all)
+}
+
+/// The value of the equipment the land formations of `c` hold over what they need, 0 to 1.
+pub fn land_fill(mil: &Military, c: &CountryWar) -> Fixed {
+    let (mut need, mut held) = (Fixed::ZERO, Fixed::ZERO);
+    for f in &c.formations {
+        if mil.types[f.unit as usize].domain != Domain::Land {
+            continue;
+        }
+        let want: Vec<(u16, Fixed)> = mil
+            .spec(f.unit, f.generation as usize)
+            .equipment
+            .iter()
+            .map(|(g, q)| (*g, *q * f.elements))
+            .collect();
+        need += mil.value_lots(&want);
+        held += mil.value_lots(&f.equipment).min(mil.value_lots(&want));
+    }
+    if need.is_positive() {
+        held / need
+    } else {
+        Fixed::ONE
+    }
+}
+
+/// The goods of `rule.vehicles`, by index.
+pub fn vehicle_goods(rule: &CompositionRule, cat: &crate::econ::Catalogue) -> Vec<u16> {
+    rule.vehicles.iter().filter_map(|k| cat.good(k)).collect()
+}
+
+/// The type and generation a conversion lays down to fill the bucket of `class` (wheels or
+/// tracks): of the rule's two types, the one named for the class first, the newest generation
+/// the country equips whose mobility is that class. A generation that moved to another class
+/// (the mechanized infantry on tracks from the second generation) does not fill this bucket;
+/// an older one of the right class may (the mechanized infantry on lorries). `None`: no type
+/// of the class the country can equip, and the bucket stays unconverted.
+pub fn class_unit(
+    mil: &Military,
+    rule: &CompositionRule,
+    class: Mobility,
+    newest: &dyn Fn(u16) -> Option<u8>,
+) -> Option<(u16, u8)> {
+    let order = if class == Mobility::Wheeled {
+        [&rule.wheels_unit, &rule.tracks_unit]
+    } else {
+        [&rule.tracks_unit, &rule.wheels_unit]
+    };
+    for key in order {
+        let Some(ty) = mil.unit(key) else {
+            continue;
+        };
+        let Some(top) = newest(ty) else {
+            continue;
+        };
+        for g in (0..=top).rev() {
+            if mil.spec(ty, usize::from(g)).mobility == class {
+                return Some((ty, g));
+            }
+        }
+    }
+    None
+}
+
+/// The year's new conversions of `country` toward the target: the government's when fixed,
+/// the rule's otherwise (the target of the newest generation `newest` gives for the infantry).
+/// At most `per_year` of the land men a year, never more than the infantry at home, and only
+/// into the types the country can equip.
+pub fn compose(
+    mil: &Military,
+    rule: &CompositionRule,
+    country: u16,
+    c: &CountryWar,
+    fixed: Option<[u16; 2]>,
+    newest: &dyn Fn(u16) -> Option<u8>,
+    conversions: &mut Vec<Conversion>,
+) {
+    let Some(from) = mil.unit(&rule.from_unit) else {
+        return;
+    };
+    let Some((tw, tt)) = target(rule, fixed, newest(from)) else {
+        return;
+    };
+    // The rule waits while the army cannot keep what it has armed; the government's target
+    // does not (the player chose it, and sees the lack).
+    if fixed.is_none() && land_fill(mil, c) < Fixed::from_ratio(i64::from(rule.min_fill), 1000) {
+        return;
+    }
+    let (wheels, tracks, all) = now(mil, c, conversions);
+    if !all.is_positive() {
+        return;
+    }
+    let gap =
+        |target: u32, have: Fixed| (all.mul_ratio(i64::from(target), 1000) - have).max(Fixed::ZERO);
+    // Each bucket by the class of mobility it counts: the type laid down is one whose
+    // generation moves on that class, so a conversion fills the bucket it was asked for.
+    let wheel = class_unit(mil, rule, Mobility::Wheeled, newest);
+    let track = class_unit(mil, rule, Mobility::Tracked, newest);
+    let mut gw = if wheel.is_some() {
+        gap(tw, wheels)
+    } else {
+        Fixed::ZERO
+    };
+    let mut gt = if track.is_some() {
+        gap(tt, tracks)
+    } else {
+        Fixed::ZERO
+    };
+    let infantry: Fixed = c
+        .formations
+        .iter()
+        .filter(|f| f.unit == from && !f.called_up && !f.colonial)
+        .map(|f| f.elements)
+        .sum();
+    let pending: Fixed = conversions
+        .iter()
+        .filter(|x| x.from == rule.from_unit)
+        .map(|x| x.ordered - x.delivered)
+        .sum();
+    let cap = all
+        .mul_ratio(i64::from(rule.per_year), 1000)
+        .min((infantry - pending).max(Fixed::ZERO));
+    let want = gw + gt;
+    if want > cap && want.is_positive() {
+        gw = gw.mul_div(cap, want);
+        gt = cap - gw;
+    }
+    for (pick, n) in [(wheel, gw), (track, gt)] {
+        let Some((ty, generation)) = pick else {
+            continue;
+        };
+        if n.is_positive() {
+            conversions.push(Conversion {
+                country,
+                unit: mil.types[ty as usize].key.clone(),
+                from: rule.from_unit.clone(),
+                generation: Some(generation),
+                ordered: n,
+                delivered: Fixed::ZERO,
+                stalled: 0,
+            });
+        }
+    }
+}
+
+/// Pays this week's part of the conversions from `money` (what the military budget leaves
+/// after the needs and the orders): a class of men a week over `raise_weeks`, as far as the
+/// money pays the replacement of the new type's equipment over `replace_weeks`. Returns what is
+/// left; finished conversions leave the list.
+#[allow(clippy::too_many_arguments)]
+pub fn convert_week(
+    mil: &Military,
+    c: &mut CountryWar,
+    conversions: &mut Vec<Conversion>,
+    mut money: Fixed,
+    prices: &[Fixed],
+    raise_weeks: u32,
+    replace_weeks: u32,
+    newest: &dyn Fn(u16) -> Option<u8>,
+) -> Fixed {
+    let weeks = i64::from(replace_weeks.max(1));
+    let mut source: BTreeMap<u16, Fixed> = BTreeMap::new();
+    for f in c.formations.iter().filter(|f| !f.called_up && !f.colonial) {
+        *source.entry(f.unit).or_default() += f.elements;
+    }
+    let mut moves = Vec::new();
+    for x in conversions.iter_mut() {
+        let (Some(ty), Some(src)) = (mil.unit(&x.unit), mil.unit(&x.from)) else {
+            continue;
+        };
+        if x.generation.is_none() {
+            x.generation = newest(ty);
+        }
+        let Some(generation) = x.generation else {
+            x.stalled += 1;
+            continue;
+        };
+        let per = &mil.spec(ty, usize::from(generation)).equipment;
+        let unit_cost: Fixed = per.iter().map(|(g, q)| *q * prices[*g as usize]).sum();
+        let avail = source.get(&src).copied().unwrap_or(Fixed::ZERO);
+        let mut n = (x.ordered / i64::from(raise_weeks.max(1)))
+            .min(x.ordered - x.delivered)
+            .min(avail);
+        if unit_cost.is_positive() && money.is_positive() {
+            n = n.min(money * weeks / unit_cost);
+        } else if unit_cost.is_positive() || !money.is_positive() {
+            n = Fixed::ZERO;
+        }
+        if !n.is_positive() {
+            x.stalled += 1;
+            continue;
+        }
+        x.stalled = 0;
+        money -= n * unit_cost / weeks;
+        x.delivered += n;
+        source.insert(src, avail - n);
+        moves.push((src, ty, generation, n));
+    }
+    for (src, ty, generation, n) in moves {
+        convert(mil, c, src, (ty, generation), n);
+    }
+    // Done when less than a hundredth of an element (ten men) is left: the rest is rounding.
+    conversions.retain(|x| x.ordered - x.delivered >= Fixed::from_ratio(1, 100));
+    money
+}
+
+/// Moves `n` elements of type `src` (at home, not called up) to type `ty` of `generation`: the
+/// men keep their training; the equipment the new type uses goes with them, the rest to the
+/// depot.
+fn convert(mil: &Military, c: &mut CountryWar, src: u16, (ty, generation): (u16, u8), n: Fixed) {
+    let home = |f: &super::state::Formation| f.unit == src && !f.called_up && !f.colonial;
+    let total: Fixed = c
+        .formations
+        .iter()
+        .filter(|f| home(f))
+        .map(|f| f.elements)
+        .sum();
+    if !total.is_positive() {
+        return;
+    }
+    let n = n.min(total);
+    let uses: Vec<u16> = mil
+        .spec(ty, usize::from(generation))
+        .equipment
+        .iter()
+        .map(|(g, _)| *g)
+        .collect();
+    let (mut training, mut carried) = (Fixed::ZERO, Vec::new());
+    for f in c.formations.iter_mut().filter(|f| home(f)) {
+        let share = n.mul_div(f.elements, total);
+        let part = if f.elements.is_positive() {
+            share / f.elements
+        } else {
+            Fixed::ZERO
+        };
+        training += f.training * share;
+        for e in &mut f.equipment {
+            let q = e.1 * part;
+            e.1 -= q;
+            super::system::add_goods(&mut carried, e.0, q);
+        }
+        f.elements -= share;
+    }
+    let training = training / n;
+    let mut keep = Vec::new();
+    for (g, q) in carried {
+        if uses.contains(&g) {
+            keep.push((g, q));
+        } else {
+            super::system::add_goods(&mut c.depot, g, q);
+        }
+    }
+    c.formations
+        .retain(|f| f.elements.is_positive() || f.called_up);
+    super::system::join_formation(c, (ty, generation, false, false), n, training, keep);
+}
+
+impl HashState for CompositionState {
+    fn hash_state(&self, h: &mut StateHasher) {
+        h.write_len(self.fixed.len());
+        for (c, [w, t]) in &self.fixed {
+            h.write_u16(*c);
+            h.write_u16(*w);
+            h.write_u16(*t);
+        }
+        h.write_len(self.conversions.len());
+        for x in &self.conversions {
+            h.write_u16(x.country);
+            for s in [&x.unit, &x.from] {
+                h.write_len(s.len());
+                for b in s.bytes() {
+                    h.write_u8(b);
+                }
+            }
+            match x.generation {
+                None => h.write_u8(0),
+                Some(g) => {
+                    h.write_u8(1);
+                    h.write_u8(g);
+                }
+            }
+            x.ordered.hash_state(h);
+            x.delivered.hash_state(h);
+            h.write_u32(x.stalled);
+        }
+    }
+}

@@ -788,6 +788,55 @@ ler o teto de `public::military_room(m)`, que o jogador decide, e mais nada muda
   comandos do jogador;
 - a rodada de 101 anos com encomendas de teste e a CPU.
 
+## Composição das forças (atrás de `war`)
+
+Os exércitos mudaram de composição devagar, divisão a divisão, e mesmo no auge a parcela
+motorizada ou blindada ficou pequena:
+
+| | 1939–40 | 1943–44 |
+|---|---|---|
+| Alemanha | ~14 % das divisões (6 panzer e 8 motorizadas ou ligeiras de 98 a 103) | 52 de 322 em nov/1943, ~16 % |
+| França, mai/1940 | ~13–16 % (7 DIM, 3 DLM e 3 DCR, mais 5 DLC meio a cavalo, de ~83–94) | — |
+| EUA | fim de 1942: 5 motorizadas e 14 blindadas de 73, ~26 % | 16 blindadas de 89, ~18 % |
+| URSS | — | 6 exércitos de tanques; o cavalo ainda fazia cerca de metade do transporte |
+
+Fontes:
+- "Horses in World War II" (Wikipedia);
+- ww2-weapons.com, ordens de batalha de 1º de setembro de 1939;
+- "Cavalry Corps (France)" (Wikipedia) e littlewars.se;
+- GlobalSecurity, US Army divisions WWII;
+- hgw-davie, motor vehicles in the Red Army.
+
+**A regra.** Uma vez por ano, em janeiro, a infantaria troca de equipamento rumo a uma parcela-alvo
+dos homens de terra sobre rodas e em lagarta (`peace.ron`, `composition`). Os alvos por geração
+de equipamento são valores de desenho; a calibração ajusta os números, e a estrutura fica:
+
+| Geração | Sobre rodas | Em lagarta | De onde vem |
+|---|---|---|---|
+| 0, a de 1925 | 150 por mil | 50 por mil | dentro da faixa de 13 a 26 % das fontes acima |
+| 1, armas em série | 300 por mil | 100 por mil | meio caminho |
+| 2, mísseis guiados (de ~1960) | 650 por mil | 350 por mil | os exércitos grandes todos sobre rodas ou lagartas (as divisões ROAD de 1961 do exército americano, com a infantaria mecanizada) |
+
+O alvo é o da geração mais nova do equipamento da infantaria que o país faz.
+
+- **Ritmo.** No máximo 20 por mil dos homens de terra por ano, uma turma de equipamento, e só para
+  os tipos que o país sabe equipar.
+- **O exército não cresce.** Os homens saem da infantaria com o treino que tinham. O equipamento
+  que o tipo novo usa vai junto, e o resto vai para o depósito.
+- **Pagamento.** A conversão é paga com a sobra do teto militar, depois das necessidades e das
+  encomendas, na mesma ordem da A2. Em guerra ela continua, se o teto paga, como a Alemanha e os
+  EUA fizeram.
+- **Quando falta.** Sem dinheiro ou sem veículo no mercado, a formação fica em conversão com
+  equipamento parcial. A tela conta as semanas paradas e diz o motivo.
+- **Decisão do jogador** (`GameCommand::SetComposition`, aba Forças): "Regra histórica" ou "Fixado
+  pelo governo", com as duas parcelas. A mesma mecânica converte até o alvo fixado. A encomenda
+  da A2 continua sendo o caminho para formação nova.
+- **Duas contas.** O alvo conta os homens pelo tipo da formação, para não pedir duas vezes. A parcela
+  que vale para a geração do exército e para a tela conta cada formação pelo equipamento que
+  tem (`composition::equipped`): convertida sem caminhão, ela anda a pé.
+
+**Fica para a fase 6:** a parcela-alvo responder à ameaça (corrida armamentista).
+
 ## Crise e declaração (fatia B, desenho)
 
 A guerra nasce de uma exigência recusada; não há declaração seca. A fatia B põe no estado a crise
