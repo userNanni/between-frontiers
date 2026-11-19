@@ -276,11 +276,13 @@ impl Forces {
             .collect();
         let warhead = mil.unit(&rule.warhead);
         let plant = self.cat.building(&rule.plant);
-        let fuel = mil.unit(&rule.warhead).and_then(|ty| {
-            mil.spec(ty, 0)
-                .equipment
-                .iter()
-                .max_by_key(|(_, q)| *q)
+        // The fissile the plant makes (its first output): the good whose shortage asks for
+        // another plant.
+        let fuel = plant.and_then(|k| {
+            self.cat.buildings[k]
+                .methods
+                .first()
+                .and_then(|m| m.outputs.first())
                 .map(|(g, _)| *g)
         });
         // The enrichment: the second technology of the chain, resolved at load.
