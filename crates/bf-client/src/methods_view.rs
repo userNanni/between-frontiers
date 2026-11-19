@@ -155,14 +155,7 @@ pub fn read(
             })
             .collect();
         let best = bf_sim::econ::monthly::best_method(
-            cat,
-            k,
-            &unlocks,
-            ci,
-            &m.price,
-            &buy,
-            mean_tfp,
-            wage,
+            cat, k, &unlocks, ci, &m.price, &buy, mean_tfp, wage,
         )
         .map(|(mi, _)| mi);
         kinds.push(KindMethods {

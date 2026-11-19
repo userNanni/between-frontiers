@@ -150,7 +150,7 @@ fn method(ui: &mut Ui, i18n: &I18n, m: &MethodRow, best: bool) {
                     "methods-in-use",
                     &[
                         ("levels", Arg::String(m.levels.to_string())),
-                        ("states", Arg::String(m.states.to_string())),
+                        ("states", Arg::Num(m.states as f64)),
                     ],
                 ),
                 Tone::Accent,
