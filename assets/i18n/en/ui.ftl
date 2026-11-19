@@ -295,6 +295,7 @@ research-all-fields = All fields
 
 ## Government window
 bar-government = Government
+bar-economy = Economy: buildings and works
 gov-title = Government
 gov-tab-budget = Budget
 gov-tab-money = Money and debt
