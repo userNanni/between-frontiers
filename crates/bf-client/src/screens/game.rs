@@ -925,6 +925,15 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
         if res.close {
             state.economy = None;
         }
+        // A state line: its panel, the window closed so the map shows.
+        if let Some(id) = state.economy.as_mut().and_then(|w| w.goto.take())
+            && let Some(world) = &shared.world
+        {
+            let s = usize::from(id).saturating_sub(1);
+            state.selected = world.states.get(s).and_then(|st| st.owner);
+            state.selected_state = state.selected.is_some().then_some(s);
+            state.economy = None;
+        }
     }
 
     // Influence window.
