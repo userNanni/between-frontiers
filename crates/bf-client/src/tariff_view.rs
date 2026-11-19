@@ -61,6 +61,9 @@ pub struct TariffView {
     /// Last week's customs revenue and last year's GDP.
     pub revenue: f64,
     pub gdp: f64,
+    /// Whether the tariff that counts is on (`customs_duties`): off, the table weighs only on
+    /// the choice between sellers and nothing goes to the treasury.
+    pub on: bool,
 }
 
 /// Partners listed without a search: the largest by imports.
@@ -183,6 +186,7 @@ pub fn read(world: &GameWorld, date: Date, src: &Sources<'_>) -> Option<TariffVi
             .get(ci)
             .map_or(0.0, |r| r.to_f64_lossy()),
         gdp: m.gdp_last_year.to_f64_lossy(),
+        on: src.duties.is_some(),
     })
 }
 
@@ -220,6 +224,16 @@ impl TariffView {
             })
             .fold((Fixed::ZERO, 0i64), |(s, k), r| (s + r, k + 1));
         if k == 0 { Fixed::ZERO } else { sum / k }
+    }
+
+    /// The customs revenue the table would collect in the year of `year` (or so far), from every
+    /// partner's imports at its effective tariff: what the screen shows while the tariff that
+    /// counts is off.
+    pub fn would_collect(&self, table: &TariffTable) -> f64 {
+        self.partners
+            .iter()
+            .map(|p| p.imports * self.effective(table, p).to_f64_lossy())
+            .sum()
     }
 
     /// What the agreements with `p` hold the adjustment to, when they cut what it asks: the

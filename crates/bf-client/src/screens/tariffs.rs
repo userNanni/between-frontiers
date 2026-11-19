@@ -217,11 +217,20 @@ fn summary(ui: &mut Ui, i18n: &I18n, v: &TariffView, table: &TariffTable, tag: &
             );
         });
     });
-    let yearly = v.revenue * WEEKS;
+    // Off, the revenue the table would collect from last year's imports (`would_collect`).
+    let yearly = if v.on {
+        v.revenue * WEEKS
+    } else {
+        v.would_collect(table)
+    };
     let mut parts = vec![
         i18n.tr_args("tariff-mean", &[("rate", arg(rate(i18n, v.mean(table))))]),
         i18n.tr_args(
-            "tariff-revenue",
+            if v.on {
+                "tariff-revenue"
+            } else {
+                "tariff-revenue-would"
+            },
             &[(
                 "amount",
                 arg(with_gdp(i18n, money(i18n, yearly), yearly, v.gdp)),
@@ -243,6 +252,9 @@ fn summary(ui: &mut Ui, i18n: &I18n, v: &TariffView, table: &TariffTable, tag: &
         .wrap(),
     )
     .on_hover_text(bf_ui_kit::tooltip_text(&i18n.tr("tariff-mean-tip")));
+    if !v.on {
+        bf_ui_kit::muted(ui, &i18n.tr("tariff-off"));
+    }
     bf_ui_kit::small(ui, &i18n.tr("tariff-basis"));
 }
 
