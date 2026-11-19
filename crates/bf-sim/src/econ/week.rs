@@ -1212,6 +1212,27 @@ fn union_services(
     }
 }
 
+/// Each market's own balance of its net trade in the week, at its prices (what its buyers paid
+/// for the goods that came in, less what its sellers were paid for the goods that left), and
+/// its volume of trade.
+pub fn trade_balances(cat: &Catalogue, markets: &[Market]) -> (Vec<Fixed>, Vec<Fixed>) {
+    let mut balance = vec![Fixed::ZERO; markets.len()];
+    let mut volume = vec![Fixed::ZERO; markets.len()];
+    for (mi, m) in markets.iter().enumerate() {
+        for gi in 0..cat.goods.len() {
+            let n = m.net_import[gi];
+            if n > Fixed::ZERO {
+                balance[mi] += n * m.sell_ratio[gi] * m.price[gi];
+                volume[mi] += n * m.price[gi];
+            } else if n < Fixed::ZERO {
+                balance[mi] += n * m.buy_ratio[gi] * m.price[gi];
+                volume[mi] -= n * m.price[gi];
+            }
+        }
+    }
+    (balance, volume)
+}
+
 /// What trade gives back to each market's pool in a week. The clearing makes buyers pay for the
 /// goods that came in, which no plant of the market sold, and pays the plants for the goods that
 /// left, which no buyer of the market bought: by itself it takes each market's balance (imports
@@ -1222,21 +1243,7 @@ fn union_services(
 /// money: 0.35 to 0.5 % of world GDP a year (docs/trade.pt-BR.md, section 14). Paying for what
 /// changes country is the settlement's (`payments::settle`).
 pub fn margin_transfers(cat: &Catalogue, markets: &[Market]) -> Vec<Fixed> {
-    markets
-        .iter()
-        .map(|m| {
-            let mut balance = Fixed::ZERO;
-            for gi in 0..cat.goods.len() {
-                let n = m.net_import[gi];
-                if n > Fixed::ZERO {
-                    balance += n * m.sell_ratio[gi] * m.price[gi];
-                } else if n < Fixed::ZERO {
-                    balance += n * m.buy_ratio[gi] * m.price[gi];
-                }
-            }
-            balance
-        })
-        .collect()
+    trade_balances(cat, markets).0
 }
 
 impl System<GameWorld> for Week {

@@ -333,6 +333,142 @@ pub fn main() -> Result<(), String> {
         }
         return Ok(());
     }
+    // Settlement in money and reserves (`BF_DIAG_SETTLE=TAG,TAG[:years]`,
+    // `econ::payments::settle`). By year, in % of GDP:
+    // - where each country's "not settled" sits: goods and services, trade's margins split into
+    //   the market's own balance (its buyers' payment for its net imports given back to its own
+    //   pool, less its sellers' pay for its net exports) and its share of the world's balance,
+    //   and the rest (income, transfers between treasuries, financial account);
+    // - with `payments_settle` on, the money that changed country (the world's sum of the
+    //   balances settled and of the pools' moves, over world GDP), and each country's reserves
+    //   at the start and end of the year and what moved them.
+    if let Ok(spec) = std::env::var("BF_DIAG_SETTLE") {
+        let (tags, years) = spec.split_once(':').unwrap_or((spec.as_str(), "6"));
+        let years: i32 = years.parse().unwrap_or(6);
+        let idx: Vec<(String, usize)> = tags
+            .split(',')
+            .filter_map(|t| {
+                let t = t.trim();
+                data.countries
+                    .countries
+                    .iter()
+                    .position(|c| c.tag == t)
+                    .map(|i| (t.to_string(), i))
+            })
+            .collect();
+        let f = |v: laplace_schelling::Fixed| v.to_f64_lossy();
+        let mut d = Date::new(1925, 1, 5);
+        let mut year = 1925;
+        let mut own = vec![0.0f64; 0];
+        let mut share = vec![0.0f64; 0];
+        let mut start: Vec<(f64, f64)> = Vec::new();
+        println!(
+            "settlement, % of GDP; residual: not settled = -(trade + margins + rest), margins = own balance - world share"
+        );
+        while year < 1925 + years {
+            d = Date::from_days(d.to_days() + 7);
+            s.sim.run_until(d);
+            let w = s.world();
+            let nm = w.econ.markets.len();
+            own.resize(nm, 0.0);
+            share.resize(nm, 0.0);
+            let p = &w.payments;
+            if p.year > year {
+                let world_gdp: f64 = w
+                    .econ
+                    .markets
+                    .iter()
+                    .map(|m| f(m.gdp_last_year))
+                    .sum::<f64>()
+                    .max(1.0);
+                let res = &w.reserves;
+                let held = |mi: usize| -> (f64, f64) {
+                    res.markets
+                        .get(mi)
+                        .map_or((0.0, 0.0), |r| (f(r.total()), f(res.owed(mi))))
+                };
+                for (tag, i) in &idx {
+                    let Some(l) = p.markets.get(*i).map(|x| x.last_year) else {
+                        continue;
+                    };
+                    let gdp = f(w.econ.markets[*i].gdp_last_year).max(1.0);
+                    let pc = |v: f64| v / gdp * 100.0;
+                    let rest = f(l.reserve_flow() - l.trade());
+                    println!(
+                        "{year} {tag}: residual: trade {:+.2}, margins {:+.2} (own {:+.2}, world share {:+.2}), rest {:+.2}; not settled {:+.2}",
+                        pc(f(l.trade())),
+                        pc(f(l.margins)),
+                        pc(own[*i]),
+                        pc(share[*i]),
+                        pc(rest),
+                        pc(f(l.not_settled())),
+                    );
+                    if !res.is_empty() {
+                        let r = res.record.get(*i).map(|x| x.last_year).unwrap_or_default();
+                        let (a, oa) = start.get(*i).copied().unwrap_or((0.0, 0.0));
+                        let (b, ob) = held(*i);
+                        println!(
+                            "{year} {tag}: reserves {:.2} -> {:.2} ({:+.2}); settled: balance {:+.2} (pool {:+.2}), new gold {:+.2}, unpaid {:.2}; owed abroad {:.2} -> {:.2}",
+                            pc(a),
+                            pc(b),
+                            pc(b - a),
+                            pc(f(r.balance)),
+                            pc(f(r.pool)),
+                            pc(f(r.gold)),
+                            pc(f(r.unpaid)),
+                            pc(oa),
+                            pc(ob),
+                        );
+                    }
+                }
+                let own_world: f64 = own.iter().sum();
+                if res.is_empty() {
+                    println!(
+                        "{year} world: the markets' own balances add up to {:+.4} % of world GDP (money the clearing took out, given back as margins)",
+                        own_world / world_gdp * 100.0
+                    );
+                } else {
+                    let sum = |g: &dyn Fn(&bf_sim::econ::payments::Settled) -> f64| -> f64 {
+                        res.record.iter().map(|x| g(&x.last_year)).sum()
+                    };
+                    let reserves: f64 = (0..nm).map(|mi| held(mi).0).sum();
+                    println!(
+                        "{year} world: money that changed country {:.2} % of world GDP (sum of |balance| {:.2} %, of |pool| {:.2} %); new gold {:.4} %, unpaid {:.3} %; reserves {:.2} % of world GDP; last week's mismatch {}",
+                        sum(&|x| f(x.balance).abs()) / 2.0 / world_gdp * 100.0,
+                        sum(&|x| f(x.balance).abs()) / world_gdp * 100.0,
+                        sum(&|x| f(x.pool).abs()) / world_gdp * 100.0,
+                        sum(&|x| f(x.gold)) / world_gdp * 100.0,
+                        sum(&|x| f(x.unpaid)) / world_gdp * 100.0,
+                        reserves / world_gdp * 100.0,
+                        res.mismatch,
+                    );
+                }
+                start = (0..nm).map(held).collect();
+                own.iter_mut().for_each(|x| *x = 0.0);
+                share.iter_mut().for_each(|x| *x = 0.0);
+                year = p.year;
+            } else if start.is_empty() && !w.reserves.is_empty() {
+                start = (0..nm)
+                    .map(|mi| {
+                        let r = &w.reserves;
+                        (
+                            r.markets.get(mi).map_or(0.0, |x| f(x.total())),
+                            f(r.owed(mi)),
+                        )
+                    })
+                    .collect();
+            }
+            // This week's margins, split: each market's own balance and its share of the
+            // world's.
+            let (balance, _) = bf_sim::econ::week::trade_balances(&cat, &w.econ.markets);
+            let t = bf_sim::econ::week::margin_transfers(&cat, &w.econ.markets);
+            for mi in 0..nm {
+                own[mi] += f(balance[mi]);
+                share[mi] += f(balance[mi] - t[mi]);
+            }
+        }
+        return Ok(());
+    }
     // Customs revenue by country (`BF_DIAG_DUTIES=TAG,TAG[:years]`), with `customs_duties` on:
     // by year, the tariff in force (against the 1925 rate of `diplomacy.ron`), the duties over
     // GDP and the imports from every partner over GDP (gross trade included, at base prices).
