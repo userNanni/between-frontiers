@@ -41,3 +41,7 @@ methods-who = Who picks the method:
 methods-rule = Historical rule (the owners)
 methods-fixed = Fixed by the government
 methods-fixed-later = The government cannot fix the method yet; the historical rule holds for now.
+economy-search = Search a building or a state
+economy-place-all = All states
+economy-place-metropole = Metropole
+economy-place-colonies = Colonies

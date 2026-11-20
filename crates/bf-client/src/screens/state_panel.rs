@@ -151,9 +151,38 @@ pub fn show(
     if f.plants.is_empty() {
         bf_ui_kit::muted(ui, &i18n.tr("state-panel-no-buildings"));
     }
+    // Search the state's buildings by name: with a text, every match shows.
+    let id = ui.make_persistent_id(("state-panel-search", state));
+    let mut search: String = ui.data_mut(|d| d.get_temp::<String>(id).unwrap_or_default());
+    if f.plants.len() > PLANTS_SHOWN {
+        let field = ui.add(
+            egui::TextEdit::singleline(&mut search)
+                .hint_text(i18n.tr("state-panel-search"))
+                .desired_width(ui.available_width()),
+        );
+        if keys::single(ui, "state.search", 'F', field.rect) {
+            field.request_focus();
+        }
+        ui.data_mut(|d| d.insert_temp(id, search.clone()));
+    }
+    let needle = crate::text::folded(search.trim());
+    let name_of = |p: &crate::state_view::StatePlant| i18n.tr(&format!("building-{}", p.key));
+    let matches: Vec<&crate::state_view::StatePlant> = f
+        .plants
+        .iter()
+        .filter(|p| needle.is_empty() || crate::text::folded(&name_of(p)).contains(&needle))
+        .collect();
+    let limit = if needle.is_empty() {
+        PLANTS_SHOWN
+    } else {
+        usize::MAX
+    };
+    if !needle.is_empty() && matches.is_empty() {
+        bf_ui_kit::muted(ui, &i18n.tr("state-panel-search-none"));
+    }
     ui.spacing_mut().item_spacing.y = space::XS;
     // A kind per two lines: the panel is narrow and names run long.
-    for p in f.plants.iter().take(PLANTS_SHOWN) {
+    for p in matches.iter().take(limit) {
         ui.vertical(|ui| {
             ui.spacing_mut().item_spacing.y = 0.0;
             ui.label(
@@ -184,7 +213,7 @@ pub fn show(
             );
         });
     }
-    if f.plants.len() > PLANTS_SHOWN {
+    if needle.is_empty() && f.plants.len() > PLANTS_SHOWN {
         bf_ui_kit::small(
             ui,
             &i18n.tr_args(
