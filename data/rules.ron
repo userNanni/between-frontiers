@@ -68,6 +68,11 @@
     // (`docs/treaties.pt-BR.md`, "o registro de cada linha"): what was paid and written off, and a
     // line that ends stays closed in the record. Off: a line that ends leaves the ledger.
     ledger_record: false,
+    // Stocks by market (`econ::stock`, owner's decision U4): a storable good
+    // (`data/economy/goods.ron`, `stock`) that finds no buyer is kept, up to some weeks of the
+    // market's output, offered again with the next week's, its price held at a floor; the uranium
+    // of the radium mines piles up. Off: what is not sold is lost.
+    market_stock: false,
     // The negotiation table (`docs/treaties.pt-BR.md` section 13): proposals answered by the AI
     // in the first week by the account the player sees, counterproposals and denunciations.
     // Off: proposals wait on the table.

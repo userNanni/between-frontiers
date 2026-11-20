@@ -18,6 +18,7 @@ pub mod payments;
 pub mod public;
 pub mod setup;
 pub mod state;
+pub mod stock;
 pub mod trade;
 pub mod week;
 pub mod yearly;

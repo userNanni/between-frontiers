@@ -513,6 +513,7 @@ pub fn v15_to_v16(w: V15) -> GameWorld {
         reserves: Default::default(),
         gold: Default::default(),
         capital: Default::default(),
+        stocks: Default::default(),
     }
 }
 
@@ -561,6 +562,7 @@ pub fn v16_to_v17(w: V16) -> GameWorld {
         reserves: Default::default(),
         gold: Default::default(),
         capital: Default::default(),
+        stocks: Default::default(),
     }
 }
 
@@ -610,6 +612,7 @@ pub fn v17_to_v18(w: V17) -> GameWorld {
         reserves: Default::default(),
         gold: Default::default(),
         capital: Default::default(),
+        stocks: Default::default(),
     }
 }
 
@@ -660,6 +663,7 @@ pub fn v18_to_v20(w: V18) -> GameWorld {
         reserves: Default::default(),
         gold: Default::default(),
         capital: Default::default(),
+        stocks: Default::default(),
     }
 }
 
@@ -724,6 +728,7 @@ pub fn v20_to_v21(w: V20) -> GameWorld {
         reserves: Default::default(),
         gold: Default::default(),
         capital: Default::default(),
+        stocks: Default::default(),
     }
 }
 
@@ -781,6 +786,7 @@ pub fn v21_to_v22(w: V21) -> GameWorld {
         reserves: Default::default(),
         gold: Default::default(),
         capital: Default::default(),
+        stocks: Default::default(),
     }
 }
 
@@ -831,6 +837,7 @@ pub fn v22_to_v23(w: V22) -> GameWorld {
         reserves: Default::default(),
         gold: Default::default(),
         capital: Default::default(),
+        stocks: Default::default(),
     }
 }
 
@@ -888,6 +895,7 @@ pub fn v23_to_v24(w: V23) -> GameWorld {
         reserves: Default::default(),
         gold: Default::default(),
         capital: Default::default(),
+        stocks: Default::default(),
     }
 }
 
@@ -945,6 +953,7 @@ pub fn v24_to_v25(w: V24) -> GameWorld {
         reserves: Default::default(),
         gold: Default::default(),
         capital: Default::default(),
+        stocks: Default::default(),
     }
 }
 
@@ -993,6 +1002,7 @@ pub fn v25_to_v26(w: V25) -> GameWorld {
         reserves: Default::default(),
         gold: Default::default(),
         capital: Default::default(),
+        stocks: Default::default(),
     }
 }
 
@@ -1041,6 +1051,7 @@ pub fn v26_to_v27(w: V26) -> GameWorld {
         reserves: Default::default(),
         gold: Default::default(),
         capital: Default::default(),
+        stocks: Default::default(),
     }
 }
 
@@ -1089,6 +1100,7 @@ pub fn v27_to_v28(w: V27) -> GameWorld {
         reserves: Default::default(),
         gold: Default::default(),
         capital: Default::default(),
+        stocks: Default::default(),
     }
 }
 
@@ -1137,6 +1149,7 @@ pub fn v28_to_v29(w: V28) -> GameWorld {
         reserves: Default::default(),
         gold: Default::default(),
         capital: Default::default(),
+        stocks: Default::default(),
     }
 }
 
@@ -1185,6 +1198,7 @@ pub fn v29_to_v30(w: V29) -> GameWorld {
         reserves: Default::default(),
         gold: Default::default(),
         capital: Default::default(),
+        stocks: Default::default(),
     }
 }
 
@@ -1234,6 +1248,7 @@ pub fn v30_to_v31(w: V30) -> GameWorld {
         reserves: Default::default(),
         gold: Default::default(),
         capital: Default::default(),
+        stocks: Default::default(),
     }
 }
 
@@ -1283,6 +1298,7 @@ pub fn v31_to_v32(w: V31) -> GameWorld {
         reserves: Default::default(),
         gold: Default::default(),
         capital: Default::default(),
+        stocks: Default::default(),
     }
 }
 
@@ -1333,6 +1349,7 @@ pub fn v32_to_v33(w: V32) -> GameWorld {
         reserves: Default::default(),
         gold: Default::default(),
         capital: Default::default(),
+        stocks: Default::default(),
     }
 }
 
@@ -1383,6 +1400,7 @@ pub fn v35_to_v36(w: V35) -> GameWorld {
         reserves: Default::default(),
         gold: Default::default(),
         capital: Default::default(),
+        stocks: Default::default(),
     }
 }
 
@@ -1433,6 +1451,7 @@ pub fn v33_to_v34(w: V33) -> GameWorld {
         reserves: Default::default(),
         gold: Default::default(),
         capital: Default::default(),
+        stocks: Default::default(),
     }
 }
 
@@ -1484,6 +1503,7 @@ pub fn v40_to_v41(w: V40) -> GameWorld {
         reserves: w.reserves,
         gold: Default::default(),
         capital: Default::default(),
+        stocks: Default::default(),
     }
 }
 
@@ -1534,6 +1554,7 @@ pub fn v34_to_v35(w: V34) -> GameWorld {
         reserves: Default::default(),
         gold: Default::default(),
         capital: Default::default(),
+        stocks: Default::default(),
     }
 }
 
@@ -1589,6 +1610,62 @@ pub fn v41_to_v42(w: V41) -> GameWorld {
         reserves: w.reserves,
         gold: w.gold,
         capital: Default::default(),
+        stocks: Default::default(),
+    }
+}
+
+/// Version 42: private capital (#270), before the stocks by market: the world without
+/// `stocks`.
+#[derive(Deserialize)]
+pub struct V42 {
+    scenario: String,
+    player: Option<Id<Country>>,
+    countries: Table<Country, CountryState>,
+    census: Vec<CensusRecord>,
+    econ: crate::econ::Economy,
+    research: crate::research::ResearchState,
+    politics: crate::polity::PoliticsState,
+    demography: crate::demography::DemographyState,
+    borders: crate::borders::BordersState,
+    foreign: crate::foreign_stakes::ForeignState,
+    influence: crate::influence::InfluenceState,
+    treaties: crate::treaty::TreatyState,
+    war: crate::war::WarState,
+    education: crate::demography::education::EducationState,
+    independence: crate::borders::independence::IndependenceState,
+    levers: crate::econ::levers::LeversState,
+    tariffs: crate::econ::customs::TariffState,
+    payments: crate::econ::payments::PaymentsState,
+    reserves: crate::econ::payments::ReservesState,
+    gold: crate::econ::gold::GoldState,
+    capital: crate::econ::capital::CapitalState,
+}
+
+/// 42 → 43: the stocks by market (`GameWorld::stocks`), empty until the rule runs.
+pub fn v42_to_v43(w: V42) -> GameWorld {
+    GameWorld {
+        scenario: w.scenario,
+        player: w.player,
+        countries: w.countries,
+        census: w.census,
+        econ: w.econ,
+        research: w.research,
+        politics: w.politics,
+        demography: w.demography,
+        borders: w.borders,
+        foreign: w.foreign,
+        influence: w.influence,
+        treaties: w.treaties,
+        war: w.war,
+        education: w.education,
+        independence: w.independence,
+        levers: w.levers,
+        tariffs: w.tariffs,
+        payments: w.payments,
+        reserves: w.reserves,
+        gold: w.gold,
+        capital: w.capital,
+        stocks: Default::default(),
     }
 }
 
@@ -1640,6 +1717,7 @@ pub fn v36_to_v37(w: V36) -> GameWorld {
         reserves: w.reserves,
         gold: Default::default(),
         capital: Default::default(),
+        stocks: Default::default(),
     }
 }
 
@@ -1691,6 +1769,7 @@ pub fn v37_to_v38(w: V37) -> GameWorld {
         reserves: w.reserves,
         gold: Default::default(),
         capital: Default::default(),
+        stocks: Default::default(),
     }
 }
 
@@ -1742,6 +1821,7 @@ pub fn v38_to_v39(w: V38) -> GameWorld {
         reserves: w.reserves,
         gold: Default::default(),
         capital: Default::default(),
+        stocks: Default::default(),
     }
 }
 
@@ -1793,5 +1873,6 @@ pub fn v39_to_v40(w: V39) -> GameWorld {
         reserves: w.reserves,
         gold: Default::default(),
         capital: Default::default(),
+        stocks: Default::default(),
     }
 }

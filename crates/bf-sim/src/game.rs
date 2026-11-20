@@ -158,6 +158,10 @@ pub struct GameWorld {
     /// `Switches::capital_follows_rate`); empty while it is off.
     #[serde(default)]
     pub capital: crate::econ::capital::CapitalState,
+    /// Each market's stock of the storable goods (`econ::stock`, `Switches::market_stock`);
+    /// empty while it is off.
+    #[serde(default)]
+    pub stocks: crate::econ::stock::StockState,
 }
 
 impl HashState for GameWorld {
@@ -250,6 +254,11 @@ impl HashState for GameWorld {
             h.section("capital");
             self.capital.hash_state(h);
         }
+        // Worlds that never kept a stock keep their hash.
+        if !self.stocks.is_empty() {
+            h.section("stocks");
+            self.stocks.hash_state(h);
+        }
     }
 }
 
@@ -277,6 +286,7 @@ impl GameWorld {
             reserves: Default::default(),
             gold: Default::default(),
             capital: Default::default(),
+            stocks: Default::default(),
             demography: crate::demography::DemographyState::default(),
             treaties: Default::default(),
             war: crate::war::WarState::default(),
@@ -1313,6 +1323,10 @@ pub struct Switches {
     /// docs/treaties.pt-BR.md): what was paid and written off, and a line that ends stays in
     /// `Ledger::closed`. Off, a line that ends leaves the ledger and nothing is recorded.
     pub ledger_record: bool,
+    /// Stocks by market (`econ::stock`, owner's decision U4): a storable good that finds no
+    /// buyer is kept, up to some weeks of the market's output, and offered again with the next
+    /// week's; its price does not fall below a floor. Off: what is not sold is lost.
+    pub market_stock: bool,
     /// The negotiation table (`treaty_table`, docs/treaties.pt-BR.md section 13): proposals
     /// answered by the AI in the first week by the same account the player sees, counters, and
     /// denunciations. Off: proposals wait on the table and nothing is answered.
@@ -1397,6 +1411,7 @@ impl Switches {
         "influence_ties",
         "jobs_follow_use",
         "ledger_record",
+        "market_stock",
         "negotiation",
         "payments_settle",
         "reputation",
@@ -1426,6 +1441,7 @@ impl Switches {
             "influence_ties" => self.influence_ties = true,
             "jobs_follow_use" => self.jobs_follow_use = true,
             "ledger_record" => self.ledger_record = true,
+            "market_stock" => self.market_stock = true,
             "negotiation" => self.negotiation = true,
             "payments_settle" => self.payments_settle = true,
             "reputation" => self.reputation = true,
@@ -1519,6 +1535,7 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
             gold: gold.filter(|_| switches.gold_standard && switches.payments_settle),
             capital: capital.filter(|_| switches.capital_follows_rate && switches.payments_settle),
             settle: settle.filter(|_| switches.payments_settle),
+            stock: switches.market_stock,
         });
         s.add(crate::econ::monthly::Labour {
             cat: Arc::clone(&cat),
@@ -2176,9 +2193,62 @@ mod tests {
             hash_of(&with_ledger)
         );
         assert_eq!(
-            hash_of(&headed(42, &encode_snapshot(&with_ledger).unwrap())),
+            hash_of(&headed(43, &encode_snapshot(&with_ledger).unwrap())),
             hash_of(&with_ledger)
         );
+        // Version 42, private capital, before the stocks by market: the world without `stocks`.
+        {
+            #[derive(Serialize)]
+            struct BeforeStocks42<'a> {
+                scenario: &'a String,
+                player: &'a Option<Id<Country>>,
+                countries: &'a Table<Country, CountryState>,
+                census: &'a Vec<CensusRecord>,
+                econ: &'a crate::econ::Economy,
+                research: &'a crate::research::ResearchState,
+                politics: &'a crate::polity::PoliticsState,
+                demography: &'a crate::demography::DemographyState,
+                borders: &'a crate::borders::BordersState,
+                foreign: &'a crate::foreign_stakes::ForeignState,
+                influence: &'a crate::influence::InfluenceState,
+                treaties: &'a crate::treaty::TreatyState,
+                war: &'a crate::war::WarState,
+                education: &'a crate::demography::education::EducationState,
+                independence: &'a crate::borders::independence::IndependenceState,
+                levers: &'a crate::econ::levers::LeversState,
+                tariffs: &'a crate::econ::customs::TariffState,
+                payments: &'a crate::econ::payments::PaymentsState,
+                reserves: &'a crate::econ::payments::ReservesState,
+                gold: &'a crate::econ::gold::GoldState,
+                capital: &'a crate::econ::capital::CapitalState,
+            }
+            let w = &with_ledger;
+            let v42 = encode_snapshot(&BeforeStocks42 {
+                scenario: &w.scenario,
+                player: &w.player,
+                countries: &w.countries,
+                census: &w.census,
+                econ: &w.econ,
+                research: &w.research,
+                politics: &w.politics,
+                demography: &w.demography,
+                borders: &w.borders,
+                foreign: &w.foreign,
+                influence: &w.influence,
+                treaties: &w.treaties,
+                war: &w.war,
+                education: &w.education,
+                independence: &w.independence,
+                levers: &w.levers,
+                tariffs: &w.tariffs,
+                payments: &w.payments,
+                reserves: &w.reserves,
+                gold: &w.gold,
+                capital: &w.capital,
+            })
+            .unwrap();
+            assert_eq!(hash_of(&headed(42, &v42)), hash_of(&with_ledger));
+        }
         // Before version 42 the balance of payments had no lines of private capital.
         let old_payments =
             crate::econ::payments::PaymentsBeforeCapital::from(&with_ledger.payments);
