@@ -939,7 +939,7 @@ O que se vê:
 
 ### Pré-requisitos de ligar: divisas, base monetária, contágio e volta, desligados
 
-Sem chave nova: tudo vale só com `gold_standard` ligado. Save 43 (`gold::Standing::base_other`).
+Sem chave nova: tudo vale só com `gold_standard` ligado. Save 44 (`gold::Standing::base_other`).
 
 **Dados (com fonte, `data/economy/reserves.ron`).** As divisas que os bancos centrais contavam como
 reserva no fim de 1925 (`fx_1925`) e a base monetária (`base_1925`: notas e depósitos à vista do

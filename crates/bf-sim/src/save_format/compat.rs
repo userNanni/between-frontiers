@@ -1722,6 +1722,7 @@ pub fn v43_to_v44(w: V43) -> GameWorld {
         reserves: w.reserves,
         gold: w.gold.into(),
         capital: w.capital,
+        stocks: w.stocks,
     }
 }
 
