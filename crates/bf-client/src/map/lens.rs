@@ -29,6 +29,8 @@ pub enum Lens {
     /// Who holds what in the wars: the countries at war in their colours, the states held by
     /// another than their owner in the occupier's colour, hatched; the rest faded.
     War,
+    /// The gold standard: on gold in gold, behind exchange control hatched, floating faded.
+    Gold,
 }
 
 /// Goods the infrastructure lens shows, in the simulation's `Catalogue::local` order (catalogue
@@ -119,7 +121,12 @@ pub fn ramp_color(key: &str, size: u8) -> [u8; 4] {
 /// Colour of one state in the lens, `None` meaning "nothing here".
 pub fn state_color(world: &World, state: usize, lens: Lens, year: i32) -> Option<[u8; 4]> {
     match lens {
-        Lens::Political | Lens::Sea | Lens::Influence { .. } | Lens::Blocs(_) | Lens::War => None,
+        Lens::Political
+        | Lens::Sea
+        | Lens::Influence { .. }
+        | Lens::Blocs(_)
+        | Lens::War
+        | Lens::Gold => None,
         Lens::Resource(i) => {
             let key = RESOURCES[i];
             let size = world.deposits[state]
@@ -175,6 +182,9 @@ pub fn palette(world: &World, lens: Lens, year: i32) -> Vec<[u8; 4]> {
     }
     if lens == Lens::War {
         return war_palette(world, out);
+    }
+    if lens == Lens::Gold {
+        return gold_palette(world, out);
     }
     let mut by_state = vec![None; world.states.len()];
     for (i, slot) in by_state.iter_mut().enumerate() {
@@ -333,6 +343,33 @@ fn war_palette(world: &World, mut out: Vec<[u8; 4]>) -> Vec<[u8; 4]> {
             None => faded(owner.def.color),
         };
         out[p.def.id as usize] = color;
+    }
+    out
+}
+
+/// On gold: the gold of the standard. Behind exchange control: a muted red, hatched.
+pub const GOLD_ON: [u8; 3] = [201, 164, 76];
+pub const GOLD_CONTROL: [u8; 3] = [160, 70, 60];
+
+/// The gold standard's lens: on gold, behind control, floating (the country's colour faded).
+fn gold_palette(world: &World, mut out: Vec<[u8; 4]>) -> Vec<[u8; 4]> {
+    use bf_sim::econ::gold::Regime;
+    let view = world.live_gold.as_deref();
+    for p in &world.provinces {
+        let Some(owner) = p.owner.map(|c| &world.countries[c]) else {
+            continue;
+        };
+        let regime = view.and_then(|v| v.iter().find(|c| c.tag == owner.tag()).map(|c| c.regime));
+        out[p.def.id as usize] = match regime {
+            Some(Regime::Gold) => [GOLD_ON[0], GOLD_ON[1], GOLD_ON[2], 255],
+            Some(Regime::Control) => [
+                GOLD_CONTROL[0],
+                GOLD_CONTROL[1],
+                GOLD_CONTROL[2],
+                HATCH_ALPHA,
+            ],
+            _ => faded(owner.def.color),
+        };
     }
     out
 }

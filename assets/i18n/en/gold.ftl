@@ -118,3 +118,25 @@ gold-choice-market-confirm = Adhering at today's rate takes effect next week. Fr
 gold-choice-float-confirm = Leaving gold takes effect next week: the rate floats, the risk premium rises, and holders of our currency lose if it falls. A restore point is saved first.
 gold-choice-control-confirm = Exchange control takes effect next week: capital freezes, and what the country cannot pay stays blocked abroad. A restore point is saved first.
 gold-choice-rule-confirm = Handing back to the historical rule takes effect next week. A restore point is saved first.
+
+# The gold standard's lens and the journal's notice
+lens-ties-gold = Gold standard: who is on gold
+legend-gold-off = The gold standard is off in this game.
+legend-gold-on = On the gold standard
+legend-gold-control = Parity behind exchange control
+legend-gold-float = Floating exchange rate
+legend-gold-count = { $gold } on gold · { $control } under control · { $float } floating
+tip-gold-on = On the gold standard: parity { $parity } (1925 = 100), cover { $cover } against a legal { $legal }
+tip-gold-control = Parity { $parity } (1925 = 100) behind exchange control
+tip-gold-float = Floating exchange rate
+journal-gold-title = Gold standard
+journal-gold-cause-below = The reserves cover less than the legal cover: by the rule, the rate rises and the bank creates no money. Below the floor, the country leaves gold.
+journal-gold-cause-world = Who joined and who left the gold standard in the last twelve months. When the main issuer of a country's foreign exchange leaves, the country may leave with it.
+journal-gold-cond-cover = Cover above the legal one
+journal-gold-join = { $country } joined the gold standard
+journal-gold-leave = { $country } left the gold standard by its cover
+journal-gold-contagion = { $country } left the gold standard with the issuer of its foreign exchange
+journal-gold-control = { $country } went to hold its parity behind exchange control
+journal-gold-devalue = { $country } devalued its parity and stayed on gold
+journal-gold-abandon = { $country } left the gold standard by the government's choice
+journal-gold-cond-below = Cover below the legal one

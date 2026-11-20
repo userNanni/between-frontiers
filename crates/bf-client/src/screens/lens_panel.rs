@@ -38,16 +38,19 @@ enum Family {
 
 /// The ties family's list: influence both ways, then the blocs in the order of
 /// `blocs_view::KINDS`, then the wars (`lens-ties-*`).
-const TIES_ITEMS: [&str; 6] = [
+const TIES_ITEMS: [&str; 7] = [
     "influence_over",
     "influence_on",
     "military",
     "monetary",
     "subjects",
     "war",
+    "gold",
 ];
 /// Index of the war lens in [`TIES_ITEMS`].
 const TIES_WAR: usize = 5;
+/// Index of the gold standard's lens in [`TIES_ITEMS`].
+const TIES_GOLD: usize = 6;
 
 /// Index of a ties lens in [`TIES_ITEMS`].
 fn ties_index(lens: Lens) -> Option<usize> {
@@ -55,6 +58,7 @@ fn ties_index(lens: Lens) -> Option<usize> {
         Lens::Influence { on, .. } => Some(usize::from(on)),
         Lens::Blocs(k) => Some(2 + k),
         Lens::War => Some(TIES_WAR),
+        Lens::Gold => Some(TIES_GOLD),
         _ => None,
     }
 }
@@ -66,6 +70,7 @@ fn ties_lens(i: usize) -> Lens {
             on: i == 1,
         },
         TIES_WAR => Lens::War,
+        TIES_GOLD => Lens::Gold,
         k => Lens::Blocs(k - 2),
     }
 }
@@ -78,7 +83,7 @@ fn family(lens: Lens) -> Family {
         Lens::Farm(_) => Family::Farms,
         Lens::Local(_) => Family::Infrastructure,
         Lens::Sea => Family::Sea,
-        Lens::Influence { .. } | Lens::Blocs(_) | Lens::War => Family::Ties,
+        Lens::Influence { .. } | Lens::Blocs(_) | Lens::War | Lens::Gold => Family::Ties,
     }
 }
 
@@ -468,7 +473,9 @@ pub fn show(
     if let Some(area) = lay.list {
         let selected = match current {
             Lens::Resource(i) | Lens::Farm(i) | Lens::Local(i) => i,
-            Lens::Influence { .. } | Lens::Blocs(_) => ties_index(current).unwrap_or(usize::MAX),
+            Lens::Influence { .. } | Lens::Blocs(_) | Lens::War | Lens::Gold => {
+                ties_index(current).unwrap_or(usize::MAX)
+            }
             _ => usize::MAX,
         };
         let mut ui = region(ui, area);
@@ -628,6 +635,10 @@ fn legend(ui: &mut Ui, i18n: &I18n, current: Lens, world: &World) {
         war_legend(ui, i18n, world);
         return;
     }
+    if current == Lens::Gold {
+        gold_legend(ui, i18n, world);
+        return;
+    }
     if let Lens::Local(_) = current {
         if world.live_local.is_empty() {
             bf_ui_kit::small(ui, &i18n.tr("lens-no-data"));
@@ -696,7 +707,8 @@ fn legend(ui: &mut Ui, i18n: &I18n, current: Lens, world: &World) {
         | Lens::Sea
         | Lens::Influence { .. }
         | Lens::Blocs(_)
-        | Lens::War => {}
+        | Lens::War
+        | Lens::Gold => {}
     }
 }
 
@@ -753,6 +765,7 @@ pub fn tooltip_line(
         Lens::Influence { issue, on } => influence_tip(i18n, world, state, issue, on),
         Lens::Blocs(kind) => blocs_tip(i18n, world, state, kind),
         Lens::War => war_tip(i18n, world, state),
+        Lens::Gold => gold_tip(i18n, world, state),
         Lens::Local(i) => {
             let v = world.live_local.get(state)?.get(i).copied()?;
             if v < 0.0 {
@@ -1171,6 +1184,71 @@ fn war_legend(ui: &mut Ui, i18n: &I18n, world: &World) {
             ],
         ),
     );
+}
+
+/// The gold standard's lens: what the colours say, and how many on gold.
+fn gold_legend(ui: &mut Ui, i18n: &I18n, world: &World) {
+    use bf_sim::econ::gold::Regime;
+    let Some(v) = world.live_gold.as_deref() else {
+        bf_ui_kit::small(ui, &i18n.tr("legend-gold-off"));
+        return;
+    };
+    let g = lens::GOLD_ON;
+    let c = lens::GOLD_CONTROL;
+    swatch(
+        ui,
+        [g[0], g[1], g[2], 255],
+        false,
+        &i18n.tr("legend-gold-on"),
+    );
+    swatch(
+        ui,
+        [c[0], c[1], c[2], 255],
+        true,
+        &i18n.tr("legend-gold-control"),
+    );
+    swatch(
+        ui,
+        lens::faded((150, 150, 150)),
+        false,
+        &i18n.tr("legend-gold-float"),
+    );
+    let n = |r: Regime| v.iter().filter(|c| c.regime == r).count() as i64;
+    bf_ui_kit::small(
+        ui,
+        &i18n.tr_args(
+            "legend-gold-count",
+            &[
+                ("gold", Arg::String(i18n.int(n(Regime::Gold)))),
+                ("control", Arg::String(i18n.int(n(Regime::Control)))),
+                ("float", Arg::String(i18n.int(n(Regime::Float)))),
+            ],
+        ),
+    );
+}
+
+/// The owner's regime of the state under the pointer: on gold with its parity and cover.
+fn gold_tip(i18n: &I18n, world: &World, state: usize) -> Option<String> {
+    use bf_sim::econ::gold::Regime;
+    let v = world.live_gold.as_deref()?;
+    let owner = owner_tag(world, state)?;
+    let c = v.iter().find(|c| c.tag == owner)?;
+    let pct = |x: f64| super::budget::pct(i18n, x * 100.0, 0);
+    Some(match c.regime {
+        Regime::Gold => i18n.tr_args(
+            "tip-gold-on",
+            &[
+                ("parity", Arg::String(i18n.decimal(c.parity, 1))),
+                ("cover", Arg::String(pct(c.cover))),
+                ("legal", Arg::String(pct(c.legal))),
+            ],
+        ),
+        Regime::Control => i18n.tr_args(
+            "tip-gold-control",
+            &[("parity", Arg::String(i18n.decimal(c.parity, 1)))],
+        ),
+        Regime::Float => i18n.tr("tip-gold-float"),
+    })
 }
 
 /// Who holds the state under the pointer, in the wars.
