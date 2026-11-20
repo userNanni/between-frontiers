@@ -323,7 +323,9 @@
         (key: "aircraft_plant", group: "heavy_industry", resource: None, farm: None, methods: [
             (key: "wood_and_fabric", available_from: 1925, inputs: [("timber", 800), ("textiles", 100), ("engines", 300)], outputs: [("aircraft", 8580)], jobs: [("laborer", 600), ("skilled_worker", 250), ("engineer", 30), ("clerk", 40), ("manager", 15), ("capitalist", 5)]),
             (key: "all_metal", available_from: 1933, inputs: [("aluminium", 300), ("engines", 450), ("electrical_equipment", 80)], outputs: [("aircraft", 17160)], jobs: [("laborer", 350), ("skilled_worker", 330), ("engineer", 60), ("clerk", 60), ("manager", 20), ("capitalist", 5)]),
-            (key: "jet", available_from: 1950, inputs: [("aluminium", 500), ("engines", 700), ("electronic_components", 150), ("ferroalloys", 80)], outputs: [("aircraft", 30506.7)], jobs: [("laborer", 150), ("skilled_worker", 380), ("engineer", 150), ("clerk", 80), ("manager", 25), ("capitalist", 5)]),
+            // The jet's instruments and radio of the 1940s were vacuum-tube electrical equipment;
+            // electronic components come in 1950 (the quantity is kept, an estimate).
+            (key: "jet", available_from: 1950, inputs: [("aluminium", 500), ("engines", 700), ("electrical_equipment", 150), ("ferroalloys", 80)], outputs: [("aircraft", 30506.7)], jobs: [("laborer", 150), ("skilled_worker", 380), ("engineer", 150), ("clerk", 80), ("manager", 25), ("capitalist", 5)]),
         ]),
         (key: "electronics_plant", group: "heavy_industry", resource: None, farm: None, methods: [
             (key: "vacuum_tubes", available_from: 1925, inputs: [("glass", 200), ("copper", 100), ("base_metals", 30), ("electricity", 3000)], outputs: [("consumer_electronics", 7955)], jobs: [("laborer", 450), ("skilled_worker", 300), ("engineer", 20), ("clerk", 60), ("manager", 15), ("capitalist", 5)]),
@@ -396,7 +398,10 @@
         (key: "trade_center", group: "services", resource: None, farm: None, methods: [
             (key: "shops", available_from: 1925, inputs: [("paper", 30), ("transportation", 200)], outputs: [("services", 6000)], jobs: [("clerk", 700), ("laborer", 200), ("manager", 40), ("capitalist", 20)]),
             (key: "department_stores", available_from: 1925, inputs: [("paper", 40), ("transportation", 300), ("electricity", 1500)], outputs: [("services", 9000)], jobs: [("clerk", 650), ("laborer", 150), ("manager", 50), ("capitalist", 20)]),
-            (key: "supermarkets", available_from: 1955, inputs: [("paper", 50), ("transportation", 400), ("electricity", 3000), ("plastics", 60), ("computers", 2)], outputs: [("services", 15000)], jobs: [("clerk", 550), ("laborer", 150), ("manager", 60), ("capitalist", 20)]),
+            // The supermarket of the 1950s checked out by hand: no computer. The computerized,
+            // scanned checkout came with the bar code in 1974 (the first UPC scan at a Marsh
+            // supermarket, Troy, Ohio, June 1974): a later method, left for when it is sourced.
+            (key: "supermarkets", available_from: 1955, inputs: [("paper", 50), ("transportation", 400), ("electricity", 3000), ("plastics", 60)], outputs: [("services", 15000)], jobs: [("clerk", 550), ("laborer", 150), ("manager", 60), ("capitalist", 20)]),
         ]),
         (key: "bank", group: "services", resource: None, farm: None, methods: [
             (key: "ledger_banking", available_from: 1925, inputs: [("paper", 80)], outputs: [("finance", 3000)], jobs: [("clerk", 750), ("professional", 100), ("manager", 80), ("capitalist", 40)]),

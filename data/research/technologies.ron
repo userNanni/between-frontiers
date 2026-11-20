@@ -822,10 +822,12 @@
             state_buyer: true,
         ),
         (
+            // Civil power needs the enrichment of reactor fuel, not the bomb: countries without a
+            // weapon built power reactors (the bomb is programme-only).
             key: "nuclear_power",
             field: "energy",
             era: 2,
-            requires: ["uranium_enrichment", "atomic_bomb"],
+            requires: ["uranium_enrichment"],
             demonstrated: 1951,
             industrialized: 1956,
             cost: 1093,
@@ -1091,6 +1093,8 @@
             cost: 845,
             productivity: [("military_industry", 40)],
             state_buyer: true,
+            // A weapon: only a nuclear programme researches it (orchestrator, 2026-11-19).
+            programme_only: true,
         ),
         (
             key: "thermonuclear_weapon",
@@ -1101,6 +1105,8 @@
             industrialized: 1954,
             cost: 1219,
             state_buyer: true,
+            // A weapon: only a nuclear programme researches it.
+            programme_only: true,
         ),
         (
             key: "ballistic_missile",
