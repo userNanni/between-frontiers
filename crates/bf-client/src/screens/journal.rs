@@ -207,7 +207,7 @@ fn group_key(kind: &Kind) -> &'static str {
     match kind {
         Kind::Works | Kind::LargeWork => "journal-group-works",
         Kind::Research => "journal-group-research",
-        Kind::Fiscal(_) => "journal-group-fiscal",
+        Kind::Fiscal(_) | Kind::Gold => "journal-group-fiscal",
         Kind::Movement(_) | Kind::PendingLaw(_) | Kind::LawChanges => "journal-group-politics",
         Kind::Forces { .. } | Kind::Revolt(_) | Kind::NuclearProgramme { .. } => {
             "journal-group-forces"

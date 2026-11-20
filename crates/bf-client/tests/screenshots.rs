@@ -720,6 +720,7 @@ fn outliner_and_journal() {
         politics: rules.politics.as_deref(),
         military: rules.war.as_ref().map(|(m, _)| m.as_ref()),
         programme: None,
+        gold: None,
     };
     let date = session.clock().date;
     let world = session.world();

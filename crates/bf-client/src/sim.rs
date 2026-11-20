@@ -95,6 +95,8 @@ pub struct Snapshot {
     pub war: Option<Arc<crate::war_view::WarView>>,
     /// Who holds what in every war, for the map's war lens; `None` with no war.
     pub control: Option<Arc<crate::war_view::ControlView>>,
+    /// Every country's exchange regime, for the gold standard's lens.
+    pub gold_map: Option<Arc<Vec<crate::gold_view::MapCountry>>>,
     /// The negotiation table of the player's country, read when the table changes and weekly;
     /// `None` with the `negotiation` rule off.
     pub treaty_table: Option<Arc<crate::treaty_view::TableView>>,
@@ -228,6 +230,7 @@ fn journal_of(
                 politics: r.politics.as_deref(),
                 military: r.war.as_ref().map(|(m, _)| m.as_ref()),
                 programme: r.fight.as_ref().and_then(|f| f.programme.as_deref()),
+                gold: r.gold.as_deref(),
             };
             crate::journal::read(session.world(), session.player(), date, rules).map(Arc::new)
         }
@@ -860,6 +863,11 @@ fn snapshot_of(
         control: monthly.control,
         treaty_table: monthly.treaty_table,
         treaty_draft: monthly.treaty_draft,
+        gold_map: crate::gold_view::map(
+            session.world(),
+            rules.as_ref().and_then(|r| r.gold.as_deref()),
+        )
+        .map(Arc::new),
         government: crate::government::read(
             session.world(),
             session.player(),
