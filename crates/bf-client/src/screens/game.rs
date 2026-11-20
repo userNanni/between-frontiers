@@ -1121,6 +1121,7 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
             today: Some(snap.date),
             agreements: snap.agreements.as_deref(),
             trade: snap.tariffs.as_deref(),
+            gold: snap.government.as_deref().and_then(|g| g.gold.as_ref()),
         };
         let res = super::journal::show(
             ui,
@@ -1171,6 +1172,13 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
                 state.restore_point_before(shared, Reason::Embargo);
             }
             state.sim.send(Command::Issue(c));
+        }
+        // A change of exchange regime: a point to go back to first.
+        if let (Some(choice), Some(tag)) = (res.gold, snap.player.clone()) {
+            state.restore_point_before(shared, Reason::Exchange);
+            state
+                .sim
+                .send(Command::Issue(GameCommand::SetGoldStandard { tag, choice }));
         }
         // The proposal on the negotiation table, too.
         if res.treaty_draft != state.treaty_draft {

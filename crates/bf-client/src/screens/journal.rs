@@ -43,6 +43,8 @@ pub struct Window {
     pub agreements: super::agreements::AgreementsUi,
     /// The embargo decision: the country picked, a lift asked.
     pub embargo: super::embargo::EmbargoUi,
+    /// The gold standard decision: the choice waiting for its confirmation.
+    pub gold: super::gold_decision::GoldUi,
 }
 
 /// The id the decision "Libertar território" takes in `Window::picked`.
@@ -59,6 +61,8 @@ pub const CALL: &str = "call:";
 pub const OPEN_WAR: &str = "open:war";
 /// The id the agreements screen takes in `Window::picked`.
 pub const AGREEMENTS: &str = "decision:agreements";
+/// The id the gold standard decision takes in `Window::picked`.
+pub const GOLD: &str = "decision:gold";
 /// The id the embargo decision takes in `Window::picked`.
 pub const EMBARGO: &str = "decision:embargo";
 /// The id the negotiation table takes in `Window::picked`.
@@ -111,6 +115,8 @@ pub struct Response {
     pub denounce: Option<u32>,
     /// The player confirmed imposing (`true`) or lifting an embargo on this country.
     pub embargo: Option<(String, bool)>,
+    /// The player confirmed a choice of exchange regime (`None` inside: back to the rule).
+    pub gold: Option<Option<bf_sim::econ::gold::GoldChoice>>,
     /// The proposal on the negotiation table, to weigh (`None` off the table).
     pub treaty_draft: Option<(String, bf_sim::treaty::Proposal)>,
 }
@@ -127,6 +133,8 @@ pub struct TableInput<'a> {
     pub agreements: Option<&'a crate::agreements_view::AgreementsView>,
     /// The player's trade by partner and embargoes (the embargo decision).
     pub trade: Option<&'a crate::tariff_view::TariffView>,
+    /// The exchange regime and its choices; `None` with the gold standard off.
+    pub gold: Option<&'a crate::gold_view::GoldView>,
 }
 
 /// What the journal shows of crises: the player's, the draft's weighing, and the country picked
@@ -474,6 +482,29 @@ pub fn show(
                 });
             return;
         }
+        // The gold standard decision takes the whole window too.
+        if let Some(g) = table
+            .gold
+            .filter(|_| window.picked.as_deref() == Some(GOLD))
+        {
+            let back = Button::ghost(&format!("←  {}", i18n.tr("journal-agendas")))
+                .size(ButtonSize::Small)
+                .show(ui);
+            if back.clicked() || keys::single(ui, "journal.decision.back", 'B', back.rect) {
+                window.picked = None;
+                window.gold = Default::default();
+                return;
+            }
+            egui::ScrollArea::vertical()
+                .id_salt("gold-decision")
+                .auto_shrink([false, false])
+                .show(ui, |ui| {
+                    ui.set_max_width(ui.available_width() - space::LG);
+                    super::scroll_keys(ui);
+                    out.gold = super::gold_decision::show(ui, i18n, g, &mut window.gold);
+                });
+            return;
+        }
         // The embargo decision takes the whole window too.
         if let Some(view) = table
             .trade
@@ -653,6 +684,16 @@ pub fn show(
                 if b.clicked() || keys::single(ui, "journal.decision.agreements", 'O', b.rect) {
                     window.picked = Some(AGREEMENTS.to_owned());
                     window.agreements = Default::default();
+                }
+            }
+            // The gold standard: adhere or leave, with what each choice means this week.
+            if let Some(g) = table.gold {
+                let b = Button::secondary(&super::gold_decision::open_label(i18n, g))
+                    .size(ButtonSize::Small)
+                    .show(ui);
+                if b.clicked() || keys::single(ui, "journal.decision.gold", 'U', b.rect) {
+                    window.picked = Some(GOLD.to_owned());
+                    window.gold = Default::default();
                 }
             }
             // Embargoes: imposing one, and those in force by the country and on it.

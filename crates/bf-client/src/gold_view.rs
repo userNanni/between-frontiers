@@ -59,6 +59,10 @@ pub struct GoldView {
     pub owed: f64,
     /// Share by which a devaluation moves the parity.
     pub devaluation: f64,
+    /// Points of GDP a year the bank withdraws once short of the legal cover long enough.
+    pub withdraw: f64,
+    /// The government fixed the policy rate: the cover's points do not apply.
+    pub rate_fixed: bool,
     /// Each choice of regime, as `gold::preview` reads it, in the order of [`CHOICES`].
     pub choices: Vec<Result<Preview, Refusal>>,
     pub capital: Option<CapitalView>,
@@ -157,6 +161,8 @@ pub fn read(
         fx,
         owed: f(world.reserves.owed(ci)),
         devaluation: f(rules.devaluation),
+        withdraw: f(rules.withdraw),
+        rate_fixed: m.money.rate_command.is_some(),
         choices,
         capital,
     })
