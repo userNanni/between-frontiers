@@ -80,13 +80,37 @@ pub struct ProgrammeView {
     /// Warheads in the forces, and ordered not yet delivered.
     pub warheads: f64,
     pub ordered: f64,
-    /// Enrichment plant levels, the fissile material's price and the share the market delivered.
-    pub plants: u32,
+    /// The weapon core plants by method (high enrichment, production reactor): levels and the
+    /// cores they make a year at this week's pace.
+    pub core_plants: Vec<CorePlant>,
+    /// The warhead's core (its main equipment): the price and the share the market delivered.
     pub fissile_price: f64,
     pub fissile_delivered: f64,
+    /// Where the plants' uranium ore comes from; `None` when no method of the plant takes ore.
+    pub ore: Option<OreView>,
     /// N3: the country tested a weapon; or asked for a test, to go through next week.
     pub tested: bool,
     pub test_asked: bool,
+}
+
+/// The weapon core plants of one method.
+#[derive(Clone, Debug, PartialEq)]
+pub struct CorePlant {
+    /// Method key (`method-<key>`).
+    pub method: String,
+    pub levels: i64,
+    pub cores_year: f64,
+}
+
+/// The uranium ore of the programme: what the country mines, what its core plants take, the
+/// market's stock (`econ::stock`, with `market_stock`), its price and the share delivered.
+#[derive(Clone, Debug, PartialEq)]
+pub struct OreView {
+    pub mined_year: f64,
+    pub used_year: f64,
+    pub stock: f64,
+    pub price: f64,
+    pub delivered: f64,
 }
 
 /// The programme of country `ci`, with its rule and the tree.
@@ -146,16 +170,75 @@ pub fn programme_view(
         .filter(|o| o.unit == rule.warhead)
         .map(|o| f(o.ordered - o.delivered))
         .sum();
+    // The core plants by method, and the ore: what the country's plants make of each good and
+    // take of it a year, at this week's pace.
     let plant = cat.building(&rule.plant);
-    let plants = world
+    let ore = plant.and_then(|k| {
+        cat.buildings[k]
+            .methods
+            .iter()
+            .flat_map(|m| m.inputs.iter().map(|(g, _)| usize::from(*g)))
+            .find(|&g| cat.goods.get(g).is_some_and(|d| d.key == "uranium_ore"))
+    });
+    let mut core_plants: Vec<CorePlant> = Vec::new();
+    let (mut mined, mut used) = (0.0, 0.0);
+    for r in world
         .econ
         .regions
         .iter()
         .filter(|r| usize::from(r.market) == ci)
-        .flat_map(|r| r.plants.iter())
-        .filter(|x| Some(usize::from(x.kind)) == plant)
-        .map(|x| u32::try_from(x.levels).unwrap_or(0))
-        .sum();
+    {
+        for x in &r.plants {
+            let Some(b) = cat.buildings.get(usize::from(x.kind)) else {
+                continue;
+            };
+            let Some(method) = b.methods.get(usize::from(x.method)) else {
+                continue;
+            };
+            let tfp = bf_sim::econ::plant_tfp(r, m, b);
+            let scale =
+                f(Fixed::from_int(x.levels) * x.staffing * tfp * x.utilization * x.input_ratio)
+                    * 52.0;
+            if let Some(g) = ore {
+                mined += method
+                    .outputs
+                    .iter()
+                    .filter(|(o, _)| usize::from(*o) == g)
+                    .map(|(_, q)| f(*q) * scale)
+                    .sum::<f64>();
+            }
+            if Some(usize::from(x.kind)) != plant {
+                continue;
+            }
+            if let Some(g) = ore {
+                used += method
+                    .inputs
+                    .iter()
+                    .filter(|(i, _)| usize::from(*i) == g)
+                    .map(|(_, q)| f(*q) * scale)
+                    .sum::<f64>();
+            }
+            let cores: f64 = method.outputs.iter().map(|(_, q)| f(*q) * scale).sum();
+            match core_plants.iter_mut().find(|c| c.method == method.key) {
+                Some(c) => {
+                    c.levels += x.levels;
+                    c.cores_year += cores;
+                }
+                None => core_plants.push(CorePlant {
+                    method: method.key.clone(),
+                    levels: x.levels,
+                    cores_year: cores,
+                }),
+            }
+        }
+    }
+    let ore = ore.map(|g| OreView {
+        mined_year: mined,
+        used_year: used,
+        stock: f(world.stocks.of(ci, g)),
+        price: f(m.price[g]),
+        delivered: f(m.buy_ratio[g]),
+    });
     let fissile = military.unit(&rule.warhead).and_then(|ty| {
         military
             .spec(ty, 0)
@@ -173,7 +256,8 @@ pub fn programme_view(
         months_left,
         warheads,
         ordered,
-        plants,
+        core_plants,
+        ore,
         fissile_price: fissile.map_or(0.0, |g| f(m.price[g])),
         fissile_delivered: fissile.map_or(0.0, |g| f(m.buy_ratio[g])),
         tested: world.war.nuclear.tested(ci as u16),

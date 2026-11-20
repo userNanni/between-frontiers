@@ -419,7 +419,7 @@ war-blockaded-basis = The enemy fleet cuts { $count ->
 } of our sea trade, worth { $total } a year. By land, trade goes on.
 war-fleet-command-later = The command of the fleet (the mission by zone) comes with the next slice; until then the fleet follows the rule above.
 programme-title = Nuclear programme
-programme-basis = A share of GDP a year, outside the military ceiling. Until the bomb, the money buys the laboratory and moves fission, enrichment and the bomb ahead; after it, three quarters keep the warhead order going, which depends on the fissile material on the market, the same as the power plants'.
+programme-basis = A share of GDP a year, outside the military ceiling. Until the bomb, the money buys the laboratory and moves fission, enrichment and the bomb ahead; after it, three quarters keep the warhead order going, and each warhead takes a weapon core.
 programme-start = Start the programme (0.1% of GDP a year)
 programme-share = Share of GDP a year
 programme-step-tip = A tenth of a point of GDP a year
@@ -434,11 +434,10 @@ programme-months = At last month's pace, the step under way ends in about { $mon
 programme-months-none = No credit last month yet, or the whole chain is in production.
 programme-warheads = Warheads
 programme-warheads-value = { $n } ready, { $ordered } on order
-programme-plants = Enrichment plants
-programme-fissile = Fissile material
+programme-fissile = Weapon cores on the market
 programme-fissile-value = { $price } a unit; the market delivered { $delivered } of what was asked
 programme-end = End the programme
-programme-note = Without uranium ore the plant does not run, and the stock stops at the fissile material. Today the fissile material comes from the market, at the day's price; where it comes from changes with the next slice, the warhead core's.
+programme-note = The cores come from the country's core plants and from the market. The plant makes cores by high enrichment or by a production reactor (which needs the reactor technology, a programme's only); both run on uranium ore, from the country's mines, the market's stock or abroad.
 
 programme-test = Test the weapon
 programme-test-note = The test makes the arsenal known to all: until it, the others count half your warheads. The whole world hears it, and it cannot be undone.
