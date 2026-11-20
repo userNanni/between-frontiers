@@ -208,6 +208,15 @@ fn buildings(
 ) {
     ui.spacing_mut().item_spacing.y = space::XS;
     bf_ui_kit::small(ui, &i18n.tr("economy-basis"));
+    // The state's own firms: their profit or loss is the treasury's.
+    let (state, building) = v.state_levels();
+    bf_ui_kit::small(
+        ui,
+        &i18n.tr_args(
+            "economy-state-firms",
+            &[("levels", Arg::String(levels_text(i18n, state, building)))],
+        ),
+    );
     bf_ui_kit::gap(ui, space::SM);
 
     // Sectors: all, then each one with its levels.
@@ -375,7 +384,14 @@ fn buildings(
                 let r = line(
                     ui,
                     (name_w, col),
-                    &format!("{marker}{}", name(k)),
+                    &if k.state_firm {
+                        i18n.tr_args(
+                            "economy-state-firm-name",
+                            &[("building", Arg::String(format!("{marker}{}", name(k))))],
+                        )
+                    } else {
+                        format!("{marker}{}", name(k))
+                    },
                     &figures,
                     k.profit < 0.0 && !k.public,
                     color::TEXT,

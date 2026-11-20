@@ -60,6 +60,15 @@ fn the_methods_tab_fits() {
             if !nodes(&h).iter().any(|n| n.label.contains(rule)) {
                 failures.push(format!("{case}: no owners' pick"));
             }
+            // The government's choice stands there, switched off until it is in the game.
+            let fixed = if locale == "en" {
+                "Fixed by the government"
+            } else {
+                "Fixado pelo governo"
+            };
+            if !nodes(&h).iter().any(|n| n.label == fixed) {
+                failures.push(format!("{case}: no place for the government's choice"));
+            }
             failures.extend(check(&h, &case));
             failures.extend(no_overlapping_text(&h, &case));
         }
