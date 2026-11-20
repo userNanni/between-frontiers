@@ -30,6 +30,11 @@ pub struct State {
     research_open: bool,
     /// The sheet of keys (F1), over everything.
     keys_sheet: Option<super::keys_sheet::Sheet>,
+    /// The key tips lit by themselves in the first campaign: the banner says what they are
+    /// until they go out.
+    tips_banner: bool,
+    /// The key tips were on last frame: turning them on counts as a use of the shortcuts.
+    hint_was: bool,
     /// The government window while it is open.
     government: Option<super::government::Window>,
     /// The journal window while it is open.
@@ -150,6 +155,8 @@ impl State {
             signed: crate::ledger_view::signed_1925(&data),
             research_open: false,
             keys_sheet: None,
+            tips_banner: false,
+            hint_was: false,
             government: None,
             journal: None,
             influence: None,
@@ -446,6 +453,26 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
             .as_ref()
             .and_then(|t| w.countries.iter().position(|c| c.tag() == t))
     });
+
+    // The first campaign: the key tips light by themselves once the map is in, with a line
+    // saying what they are; from then on the shortcuts' chip counts the player's uses.
+    if shared.first_tips && shared.world.is_some() && shared.map.is_some() {
+        shared.first_tips = false;
+        shared.keys.set_hint_mode(true);
+        state.tips_banner = true;
+        state.hint_was = true;
+        shared.settings.first_tips_done = true;
+        shared.settings.shortcut_uses.get_or_insert(0);
+        shared.persist_settings();
+    }
+    let hint = shared.keys.hint_mode();
+    if hint && !state.hint_was {
+        count_shortcut_use(shared);
+    }
+    if !hint {
+        state.tips_banner = false;
+    }
+    state.hint_was = hint;
 
     // Live map lenses: the world takes the simulation's figures; the map recolours once a
     // month, or at once when the lens opens. The HUD's country figures change with the month too.
@@ -775,6 +802,19 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
                 super::population::show(ui, r, &shared.i18n, world, view, &mut state.population)
             }
             _ => super::frame(ui, r, "population"),
+        }
+    }
+
+    // The shortcuts' chip: a click opens the sheet of keys; the pin keeps it for good.
+    if let Some(r) = place(PanelId::Shortcuts) {
+        let o = super::shortcuts_chip::show(ui, r, shared);
+        if o.open_sheet && state.keys_sheet.is_none() {
+            state.keys_sheet = Some(Default::default());
+            count_shortcut_use(shared);
+        }
+        if o.toggle_pin {
+            shared.settings.shortcut_chip_pinned = !shared.settings.shortcut_chip_pinned;
+            shared.persist_settings();
         }
     }
 
@@ -1342,7 +1382,10 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
     } else if keys::fired(&ctx, id::KEYS_SHEET) {
         state.keys_sheet = match state.keys_sheet {
             Some(_) => None,
-            None => Some(Default::default()),
+            None => {
+                count_shortcut_use(shared);
+                Some(Default::default())
+            }
         };
     }
     let fired = |cmd: &str| keys::fired(&ctx, cmd) && !(sheet_back && cmd == id::BACK);
@@ -1586,12 +1629,26 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
             state.naming = Some(name);
         }
     }
+    if state.tips_banner && shared.keys.hint_mode() {
+        super::shortcuts_chip::banner(ui, rect, shared);
+    }
     if let Some(mut sheet) = state.keys_sheet.take()
         && super::keys_sheet::show(ui, rect, shared, &mut sheet)
     {
         state.keys_sheet = Some(sheet);
     }
     out
+}
+
+/// The player used the shortcuts (the key tips turned on, the sheet opened): counted from the
+/// first campaign on, so the chip fades after a few.
+fn count_shortcut_use(shared: &mut Shared) {
+    if let Some(n) = &mut shared.settings.shortcut_uses
+        && *n < super::shortcuts_chip::FADE_AFTER
+    {
+        *n += 1;
+        shared.persist_settings();
+    }
 }
 
 /// The quick save: the campaign's state and the quick slot, replaced each time.
@@ -1783,6 +1840,9 @@ fn hud_sizes(
                 (screen.height() - top_bar::RIGHT_BOTTOM - space::LG).max(240.0),
             ),
         );
+    }
+    if super::shortcuts_chip::shown(shared) && (editing || !window) {
+        out.insert(PanelId::Shortcuts, super::shortcuts_chip::size(shared, ctx));
     }
     out
 }

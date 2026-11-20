@@ -33,6 +33,9 @@ pub struct Shared {
     /// A window change waiting for the player to keep it, and the window to apply next frame.
     pub display_trial: Option<crate::display::Trial>,
     pub display_dirty: bool,
+    /// A campaign was just started from the country choice and the key tips have never lit by
+    /// themselves: they light once the map is in.
+    pub first_tips: bool,
     /// The sea lens' layer, read the first time the lens opens (an error says why it could not),
     /// and its overlay on the GPU.
     pub sea: Option<Result<std::sync::Arc<crate::map::sea::SeaLayer>, String>>,
@@ -261,6 +264,7 @@ impl App {
             // The window opens as saved (`main.rs` builds the viewport from the settings): no
             // command at the first frame, which would also resize a test harness.
             display_dirty: false,
+            first_tips: false,
             sea: None,
             sea_texture: None,
             map_gpu_dirty: false,
