@@ -19,6 +19,21 @@ pub fn date_long(i18n: &I18n, date: Date) -> String {
     )
 }
 
+/// "2 mar. 1925": the date with the month short, where the long one has no room.
+pub fn date_short(i18n: &I18n, date: Date) -> String {
+    i18n.tr_args(
+        "date-short",
+        &[
+            ("day", Arg::String(date.day.to_string())),
+            (
+                "month",
+                Arg::String(i18n.tr(&format!("month-short-{}", date.month))),
+            ),
+            ("year", Arg::String(date.year.to_string())),
+        ],
+    )
+}
+
 pub fn country_name(i18n: &I18n, tag: &str) -> String {
     i18n.tr(&format!("country-{tag}"))
 }
