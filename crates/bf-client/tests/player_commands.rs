@@ -223,30 +223,28 @@ const PLAYER: &[Surface] = &[
         command: id::JOURNAL,
         files: &["screens/game.rs", "screens/journal.rs"],
     },
+    Surface {
+        variant: "SetGoldStandard",
+        command: id::JOURNAL,
+        files: &["screens/game.rs", "screens/gold_decision.rs"],
+    },
+    Surface {
+        variant: "SetGoldPosture",
+        command: id::TAB_MONEY,
+        files: &["screens/gold.rs"],
+    },
+    Surface {
+        variant: "SetCapitalControls",
+        command: id::TAB_MONEY,
+        files: &["screens/gold.rs"],
+    },
 ];
 
 /// Variants the player does not give from a screen with a key, and why.
-const EXCEPTIONS: &[(&str, &str)] = &[
-    (
-        "Borders",
-        "issued by treaties, peace, tests and tools; the player frees its land with Liberate",
-    ),
-    (
-        "SetGoldStandard",
-        "the gold standard's simulation (slice 3, gold_standard off); its screen, in the \
-         Agendas, is slice 5",
-    ),
-    (
-        "SetGoldPosture",
-        "the gold standard's simulation (slice 3, gold_standard off); its screen, in the \
-         Agendas, is slice 5",
-    ),
-    (
-        "SetCapitalControls",
-        "capital controls' simulation (gold standard slice 4, capital_follows_rate off); its \
-         screen, in Government > Money and debt, is slice 5",
-    ),
-];
+const EXCEPTIONS: &[(&str, &str)] = &[(
+    "Borders",
+    "issued by treaties, peace, tests and tools; the player frees its land with Liberate",
+)];
 
 fn variants() -> BTreeSet<String> {
     let mut tracer = Tracer::new(TracerConfig::default());
