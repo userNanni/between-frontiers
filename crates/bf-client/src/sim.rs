@@ -148,6 +148,8 @@ pub struct ResearchView {
     pub points: f32,
     /// Year each technology first reached each stage anywhere (0 = not yet).
     pub firsts: Vec<[i32; 5]>,
+    /// The country runs a nuclear programme: the programme-only technologies are open to it.
+    pub programme: bool,
 }
 
 fn research_view(session: &Session) -> Option<ResearchView> {
@@ -166,6 +168,7 @@ fn research_view(session: &Session) -> Option<ResearchView> {
         focus: r.focus.get(c).copied().flatten(),
         points: r.points.get(c).map_or(0.0, |p| p.to_f64_lossy() as f32),
         firsts: r.firsts.clone(),
+        programme: w.war.nuclear.of(c as u16).is_some(),
     })
 }
 
