@@ -144,3 +144,19 @@ pub fn social_source(i18n: &I18n, source: Source) -> String {
 pub fn pct_text(i18n: &bf_i18n::I18n, value: String) -> String {
     i18n.tr_args("gov-pct", &[("value", bf_i18n::Arg::String(value))])
 }
+
+/// Lower case without accents: "Sao" finds "São".
+pub fn folded(s: &str) -> String {
+    s.chars()
+        .flat_map(char::to_lowercase)
+        .map(|c| match c {
+            'á' | 'à' | 'â' | 'ã' | 'ä' => 'a',
+            'é' | 'è' | 'ê' | 'ë' => 'e',
+            'í' | 'ì' | 'î' | 'ï' => 'i',
+            'ó' | 'ò' | 'ô' | 'õ' | 'ö' => 'o',
+            'ú' | 'ù' | 'û' | 'ü' => 'u',
+            'ç' => 'c',
+            c => c,
+        })
+        .collect()
+}

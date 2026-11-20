@@ -21,3 +21,5 @@ state-panel-subsistence = On their own plot
 state-panel-subsistence-note = peasants with no job in a plant, living off what they grow
 state-panel-unemployment = Unemployment
 state-panel-unemployment-note = { $n } without a job, among those who are not peasants
+state-panel-search = Search a building in this state
+state-panel-search-none = No building by that name here.
