@@ -256,13 +256,14 @@ pub mod id {
     pub const JOURNAL_GO: &str = "journal.open_screen";
     pub const HUD_EDIT: &str = "hud.edit";
     /// Show or hide each HUD panel, in the order of `hud::PanelId::ALL`.
-    pub const HUD_PANELS: [&str; 6] = [
+    pub const HUD_PANELS: [&str; 7] = [
         "hud.toggle_country",
         "hud.toggle_time",
         "hud.toggle_map_modes",
         "hud.toggle_country_panel",
         "hud.toggle_outliner",
         "hud.toggle_population",
+        "hud.toggle_shortcuts",
     ];
     /// HUD presets, in the order of `hud::Preset::CHOICES`.
     pub const HUD_PRESETS: [&str; 3] = [
@@ -470,10 +471,10 @@ fn builtin() -> Vec<CommandDef> {
     ]);
     for (i, (cmd, hint)) in HUD_PANELS
         .into_iter()
-        .zip(['C', 'T', 'M', 'P', 'O', '0'])
+        .zip(['C', 'T', 'M', 'P', 'O', '0', 'A'])
         .enumerate()
     {
-        let digit = [Digit1, Digit2, Digit3, Digit4, Digit5, Digit6][i];
+        let digit = [Digit1, Digit2, Digit3, Digit4, Digit5, Digit6, Digit7][i];
         out.push(
             CommandDef::new(cmd, Windows)
                 .keys([k(digit).ctrl()])

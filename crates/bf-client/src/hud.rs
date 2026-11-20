@@ -39,17 +39,21 @@ pub enum PanelId {
     /// The player's population: pyramid, rates, why so many or so few are born, migration.
     /// Hidden until opened.
     Population,
+    /// "Alt: shortcuts · F1: list", from the first campaign until the player has used them a
+    /// few times, or for good once pinned.
+    Shortcuts,
 }
 
 impl PanelId {
     /// Placement order: fixed panels first, the ones that shrink to fit last.
-    pub const ALL: [PanelId; 6] = [
+    pub const ALL: [PanelId; 7] = [
         PanelId::Country,
         PanelId::Time,
         PanelId::MapModes,
         PanelId::CountryPanel,
         PanelId::Outliner,
         PanelId::Population,
+        PanelId::Shortcuts,
     ];
 
     /// Key in the layout file.
@@ -61,6 +65,7 @@ impl PanelId {
             PanelId::MapModes => "map-modes",
             PanelId::CountryPanel => "country-panel",
             PanelId::Population => "population",
+            PanelId::Shortcuts => "shortcuts",
         }
     }
 
@@ -77,6 +82,7 @@ impl PanelId {
             PanelId::MapModes => "hud-panel-map-modes",
             PanelId::CountryPanel => "hud-panel-country-panel",
             PanelId::Population => "hud-panel-population",
+            PanelId::Shortcuts => "hud-panel-shortcuts",
         }
     }
 
@@ -281,6 +287,7 @@ fn default_place(p: PanelId) -> Placement {
             visible: false,
             ..Placement::at(Anchor::TopLeft, GAP * 2.0 + 300.0, LEFT_BOTTOM)
         },
+        PanelId::Shortcuts => Placement::at(Anchor::BottomRight, -GAP, -GAP),
     }
 }
 
