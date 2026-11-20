@@ -201,7 +201,8 @@ impl State {
         }
     }
 
-    /// Which windows are open, by name (tests): "economy", "war", "influence", "keys-sheet".
+    /// Which windows are open, by name (tests): "economy", "war", "influence", "government",
+    /// "keys-sheet", "research".
     pub fn open_windows(&self) -> Vec<&'static str> {
         let mut out = Vec::new();
         if self.economy.is_some() {
@@ -218,6 +219,9 @@ impl State {
         }
         if self.keys_sheet.is_some() {
             out.push("keys-sheet");
+        }
+        if self.research_open {
+            out.push("research");
         }
         out
     }

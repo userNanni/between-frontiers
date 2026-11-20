@@ -64,11 +64,15 @@ pub fn show(
         if field.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
             picked = found.first().map(|(t, _)| t.clone());
         }
+        // Escape closes the search; a second one reaches the window.
+        let escaped = field.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Escape));
         let close = Button::ghost(&i18n.tr("find-country-cancel"))
             .size(ButtonSize::Small)
             .show(ui);
-        // Esc leaves the key tips first, so the search closes by its button (or a pick).
-        if close.clicked() || keys::single(ui, &format!("{id}.find.cancel"), 'V', close.rect) {
+        if escaped
+            || close.clicked()
+            || keys::single(ui, &format!("{id}.find.cancel"), 'V', close.rect)
+        {
             st.open = false;
         }
     });

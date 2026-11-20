@@ -414,24 +414,44 @@ impl<'a> Button<'a> {
 // ---------------------------------------------------------------------------------------------
 // Inputs
 
-/// Labelled single-line text field.
+/// Labelled single-line text field. Escape only leaves the field: the field keeps the key
+/// (egui would drop the focus before the game reads its keys, and the same Escape would close
+/// the window around it), and lets go of the focus itself; a second Escape reaches the window.
 pub fn text_field(ui: &mut Ui, value: &mut String, width: f32) -> Response {
     let frame = Frame::new()
         .fill(color::SURFACE_SUNKEN)
         .stroke(Stroke::new(1.0, color::BORDER_STRONG))
         .corner_radius(radius::MD)
         .inner_margin(Margin::symmetric(space::MD as i8, (space::SM + 1.0) as i8));
-    frame
+    let response = frame
         .show(ui, |ui| {
             ui.add(
                 egui::TextEdit::singleline(value)
                     .font(sans(size::BODY))
                     .text_color(color::TEXT)
                     .frame(Frame::NONE)
-                    .desired_width(width - space::MD * 2.0),
+                    .desired_width(width - space::MD * 2.0)
+                    .event_filter(ESCAPE_KEPT),
             )
         })
-        .inner
+        .inner;
+    leave_on_escape(ui, &response);
+    response
+}
+
+/// What a text field keeps of the keyboard: the arrows to move in it, and Escape.
+pub const ESCAPE_KEPT: egui::EventFilter = egui::EventFilter {
+    horizontal_arrows: true,
+    vertical_arrows: false,
+    tab: false,
+    escape: true,
+};
+
+/// A field that keeps Escape ([`ESCAPE_KEPT`]) lets go of the focus on it.
+pub fn leave_on_escape(ui: &Ui, response: &Response) {
+    if response.has_focus() && ui.input(|i| i.key_pressed(egui::Key::Escape)) {
+        response.surrender_focus();
+    }
 }
 
 /// A row of mutually exclusive options. Returns true when the value changed.
