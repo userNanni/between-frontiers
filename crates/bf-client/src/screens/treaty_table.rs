@@ -677,9 +677,10 @@ fn clause(
             };
             let d =
                 super::gov_ui::control_row(ui, &i18n.tr(&format!("table-param-{name}")), |ui| {
-                    super::gov_ui::stepper(
+                    super::gov_ui::stepper_typed(
                         ui,
                         &shown,
+                        super::gov_ui::STEP_VALUE_W,
                         &i18n.tr(&format!("table-param-{name}")),
                         v > lo + step / 2.0,
                         v < hi - step / 2.0 && step > 0.0,
@@ -688,10 +689,29 @@ fn clause(
                             id: &format!("treaty.param.{ci}.{name}"),
                             row,
                         },
+                        param_typed(i18n, l.unit, gdp, v, lo, hi),
                     )
                 });
-            if d != 0 {
-                let x = (v + f64::from(d) * step).clamp(lo, hi);
+            // A number typed is in the unit shown (a share of GDP in %, a fraction in %, years),
+            // and lands on the clause's steps.
+            let x = match d {
+                super::gov_ui::StepOut::Step(d) => Some(v + f64::from(d) * step),
+                super::gov_ui::StepOut::Set(t) => {
+                    let x = match l.unit {
+                        LimitUnit::ShareOfGdp | LimitUnit::ShareOfGdpYearly => t / 100.0 * gdp,
+                        LimitUnit::Fraction => t / 100.0,
+                        LimitUnit::Years => t,
+                    };
+                    Some(if step > 0.0 {
+                        lo + ((x - lo) / step).round() * step
+                    } else {
+                        x
+                    })
+                }
+                super::gov_ui::StepOut::None => None,
+            };
+            if let Some(x) = x {
+                let x = x.clamp(lo, hi);
                 edit.param = Some((ci, name, Fixed::from_f64_lossy(x)));
             }
             match l.unit {
@@ -888,6 +908,28 @@ fn states(
         });
 }
 
+/// A clause's parameter typed in the unit it shows: a share of GDP or a fraction in percent,
+/// years as a whole number; the limits in the same unit.
+fn param_typed(
+    i18n: &I18n,
+    unit: LimitUnit,
+    gdp: f64,
+    v: f64,
+    lo: f64,
+    hi: f64,
+) -> super::gov_ui::Typed {
+    match unit {
+        LimitUnit::ShareOfGdp | LimitUnit::ShareOfGdpYearly => {
+            let of = |x: f64| if gdp > 0.0 { x / gdp * 100.0 } else { 0.0 };
+            super::gov_ui::typed_pct(i18n, of(v), of(lo), of(hi), 1)
+        }
+        LimitUnit::Fraction => super::gov_ui::typed_pct(i18n, v * 100.0, lo * 100.0, hi * 100.0, 1),
+        LimitUnit::Years => {
+            super::gov_ui::typed_int(i18n, v.round() as i64, lo.round() as i64, hi.round() as i64)
+        }
+    }
+}
+
 /// The term and the notice of the draft. Both values sit in one width, the longest either can
 /// show in this language ("No term", "99 years"), so the words stay clear of − and +.
 fn term(ui: &mut Ui, i18n: &I18n, p: &mut Proposal) {
@@ -918,7 +960,7 @@ fn term(ui: &mut Ui, i18n: &I18n, p: &mut Proposal) {
     p.notice_years = p.notice_years.min(most);
     let n = p.notice_years;
     let d = super::gov_ui::control_row(ui, &i18n.tr("table-notice"), |ui| {
-        super::gov_ui::stepper_wide(
+        super::gov_ui::stepper_typed(
             ui,
             &years(n),
             width,
@@ -930,10 +972,11 @@ fn term(ui: &mut Ui, i18n: &I18n, p: &mut Proposal) {
                 id: "treaty.notice",
                 row: 1,
             },
+            super::gov_ui::typed_int(i18n, i64::from(n), 0, i64::from(most)),
         )
     });
-    if d != 0 {
-        p.notice_years = (i32::from(n) + d).clamp(0, i32::from(most)) as u16;
+    if let Some(to) = super::gov_ui::step_to(d, i32::from(n), 1, 1.0, 0, i32::from(most)) {
+        p.notice_years = to as u16;
     }
     bf_ui_kit::small(
         ui,
