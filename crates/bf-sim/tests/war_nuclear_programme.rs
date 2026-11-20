@@ -201,9 +201,12 @@ fn the_pace_from_1940() {
     let warhead = mil.unit("nuclear_warhead").unwrap();
     let elec = usize::from(d.catalogue.good("electricity").unwrap());
     let fuel = usize::from(d.catalogue.good("weapon_cores").unwrap());
+    let ore = usize::from(d.catalogue.good("uranium_ore").unwrap());
+    let plant = d.catalogue.building("weapon_core_plant").unwrap();
+    let mine = d.catalogue.building("uranium_mine").unwrap();
     for tag in ["USA", "GER", "GBR"] {
         eprintln!(
-            "== {tag}: year | fission enrichment bomb | warheads | fissile price | electricity with/without"
+            "== {tag}: year | fission enrichment bomb | warheads | fissile price | electricity with/without | core plant levels, ore delivered to them | uranium mine levels at home and in colonies | ore price"
         );
         for (k, (w, wo)) in with.iter().zip(&without).enumerate() {
             let c = index(w, tag);
@@ -214,15 +217,28 @@ fn the_pace_from_1940() {
                 .filter(|f| f.unit == warhead)
                 .map(|f| f.elements.to_f64_lossy())
                 .sum();
+            let plants = |kind: usize| {
+                w.econ
+                    .regions
+                    .iter()
+                    .filter(|r| usize::from(r.market) == c)
+                    .flat_map(|r| r.plants.iter())
+                    .filter(|p| usize::from(p.kind) == kind)
+                    .map(|p| (p.levels, p.input_ratio.to_f64_lossy()))
+                    .fold((0, 1.0f64), |(l, x), (n, y)| (l + n, x.min(y)))
+            };
+            let (core_levels, ore_in) = plants(plant);
+            let (mine_levels, _) = plants(mine);
             eprintln!(
-                "{} | {} {} {} | {n:.0} | {:.0} | {:.3} / {:.3}",
+                "{} | {} {} {} | {n:.0} | {:.0} | {:.3} / {:.3} | {core_levels}, {ore_in:.2} | {mine_levels} | {:.0}",
                 1940 + k,
                 st("nuclear_fission"),
                 st("uranium_enrichment"),
                 st("atomic_bomb"),
                 w.econ.markets[c].price[fuel].to_f64_lossy(),
                 w.econ.markets[c].price[elec].to_f64_lossy(),
-                wo.econ.markets[c].price[elec].to_f64_lossy()
+                wo.econ.markets[c].price[elec].to_f64_lossy(),
+                w.econ.markets[c].price[ore].to_f64_lossy()
             );
         }
     }
