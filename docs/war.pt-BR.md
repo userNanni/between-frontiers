@@ -884,6 +884,8 @@ Está em `war::nuclear_use::fallout`, atrás de `war`, no save 40.
   1. **O ceder lê a força de terra.** A coerção nuclear só divide a razão. Na crise real, a
      assimetria nuclear (17:1, Gribkov, p. 8) pesou sozinha. **Leitura minha:** a coerção
      precisaria somar a assimetria nuclear à razão de forças, e não só reduzir o limiar.
+     **Feito pela N10 (#271):** o termo nuclear entra somado à razão, e a URSS cede em Cuba (ver
+     "Regras decididas depois das medidas").
   2. **Os EUA não são contidos.** Falta a "Europa como refém": a URSS ameaçando os aliados
      europeus dos EUA com força de terra e mísseis de alcance médio, ou seja, o guarda-chuva ao
      contrário. Falta também o peso do risco de escalada na decisão, que é da IA da fase 6.
@@ -1091,6 +1093,20 @@ de leitura em `tools/war/SOURCES.md`). Contagem: 44 países, 187 linhas, das qua
   Bélgica, Turquia, Brasil e Argentina; destróieres alemães.
 - O *Armaments Year-Book* de 1925-26 daria números de 1924-25 e a divisão por arma; não foi achado
   em scan aberto.
+
+## Dependências de outros donos
+
+Funções que faltam e que a guerra lê, mas que pertencem a outro sistema (anotadas em 2026-11-19, na ordem do orquestrador):
+- **Apoio ao movimento por comunidade** (independência): `support[unidade][comunidade]`, que sai da causa medida por comunidade, da distância de cultura e religião e da organização. Lido pela mobilização, pelos irregulares e pelas forças locais (GC6). A medida de 2026-11-19 mostrou que trocar isso por regra de religião ou de cultura erra na Argélia (berberes), na Malásia (chineses) e com os harkis.
+- **Mineração e descoberta de urânio que respondem ao preço e à compra do Estado** (economia), no lugar da descoberta com data marcada.
+- **IA estratégica, fase 6:**
+  - a "Europa como refém";
+  - a razão de forças no teatro (variante b da N10);
+  - terceiros chamados à guerra colonial pelos acordos;
+  - o orçamento militar que acompanha a ameaça;
+  - o risco semanal de escalada e o custo de reputação do teste.
+- **Expurgos** (eventos, fase 7).
+- **Reassentamento** (GC7): espera a decisão do dono.
 
 ## Pedidos a outros arquivos
 
@@ -1763,18 +1779,38 @@ O que as séries mostram:
 - polícia e guarda doméstica recrutadas na própria unidade, ou no território ocupado;
 - tropa nativa regular sob comando da metrópole.
 
-Casos: a polícia da Malásia (≈ 70 mil) e a guarda doméstica (≈ 250 mil); os harkis na Argélia
-(60 a 150 mil); os auxiliares das ocupações (a Schutzmannschaft no Leste).
+Casos, com fonte:
+- **Malásia** (Komer, *The Malayan Emergency in Retrospect*, RAND R-957-ARPA, 1972):
+  - polícia regular: 10 mil em 1948, cerca de 28 mil no fim de 1952, dos quais 2.488 chineses, "mostly Malay" (p. 38);
+  - policiais especiais: 29.700 no fim de 1948 e 40 mil no fim de 1951; polícia auxiliar: 47 mil no fim de 1949 (p. 40);
+  - guarda doméstica: 99 mil no fim de 1951. Em 1953, cerca de 50 mil chineses e 100 mil malaios e aborígines, com **um terço armado**; 152 mil no fim de 1955 (pp. 40–41);
+  - o partido comunista vinha "almost exclusively" da minoria chinesa, cerca de 38% da população (pp. 1 e 6).
+- **Argélia** (Faivre, *Les combattants musulmans de la guerre d'Algérie*, pp. 251–252, reproduzido no rapport Ceaux, *Aux harkis, la France reconnaissante*, 2018, p. 11), máximos:
+  - 63 mil harkis, 8.500 GMS, 19.700 moghaznis, 62 mil nos grupos de autodefesa e 7.600 nas unidades territoriais e Aassès.
+- **Quênia:**
+  - guarda doméstica de cerca de 25 mil homens com cerca de 5 mil armas de fogo, ou **um quinto armado** (HC Deb 22 jul. 1954, vol. 530, c. 1590);
+  - 10 mil kikuyu alistados em fevereiro de 1953 (HC Deb 25 fev. 1953, vol. 511, c. 2067);
+  - era recrutada entre kikuyu, embu e meru, a mesma base do movimento. A fonte é o working paper de Branch (2005, p. 3), que pede para não ser citado; fica como pista até achar a página no livro dele.
+- **Outros:** os auxiliares das ocupações (a Schutzmannschaft no Leste), sem número aqui.
 
 *De onde vêm:*
 - da parte da população da unidade que não apoia o movimento: 1 − apoio do proclamado, ou a
   resistência baixa da ocupação;
+- **a fonte certa é o apoio por comunidade**: leal = Σ população da comunidade × (1 − apoio dela ao
+  movimento). Isso dá os harkis e a guarda kikuyu, que vinham da própria base do movimento. É
+  dependência do modelo de independência, que hoje guarda um só apoio por unidade (ver
+  "Dependências de outros donos"). Até lá, vale 1 − apoio da unidade;
+- **teto: 40 por mil da população controlada.** É a estimativa de antes, agora com âncora: cerca de
+  220 mil entre polícia, policiais especiais e guarda, para cerca de 5,5 milhões na Malásia de 1953
+  (Komer, pp. 38–41). A conta é minha, e a população ainda está sem página;
 - recrutadas aos poucos, uma parcela por semana, com teto em uma fração dos homens em idade de
   serviço dessa parte.
 
 *Quanto custam:*
 - soldo e equipamento leve (a unidade `garrison`), pagos pelo orçamento militar da metrópole;
-- contam na cobertura com um peso menor que o da tropa da metrópole (design: 1/2);
+- contam na cobertura com um peso menor que o da tropa da metrópole. Há dois candidatos, à espera do dono:
+  - **meio soldado:** valor de desenho, sem fonte;
+  - **a fração armada:** um terço na Malásia (Komer, p. 41) e um quinto no Quênia (Hansard, 1954). Tem fonte, e é a candidata melhor;
 - não entram no exército de terra para a G8: não amarram a metrópole nem pesam na duração da
   guerra;
 - o jogo também os torna alvo: a guerrilha mata mais deles, e o movimento ganha apoio quando a
