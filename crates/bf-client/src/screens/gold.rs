@@ -23,7 +23,7 @@ fn arg(s: String) -> Arg<'static> {
 }
 
 /// Points, written out: "1,5 pontos percentuais".
-fn points(i18n: &I18n, x: f64) -> String {
+pub fn points_text(i18n: &I18n, x: f64) -> String {
     let n = (x * 10.0).round() / 10.0;
     i18n.tr_args(
         "gold-points",
@@ -87,47 +87,60 @@ pub fn show(ui: &mut Ui, cx: &mut TabContext<'_>, g: &GoldView) {
     // The cover, against the legal cover and the floor.
     cover_bar(ui, i18n, g);
     if g.regime == Regime::Gold {
+        let weeks = |n: u16| Arg::Num(f64::from(n));
         if g.weeks_floor > 0 {
+            let left = weeks(g.exit_weeks.saturating_sub(g.weeks_floor));
             let line = match g.posture {
                 Posture::Rule => i18n.tr_args(
                     "gold-below-floor-rule",
-                    &[
-                        ("weeks", Arg::Num(f64::from(g.weeks_floor))),
-                        (
-                            "left",
-                            Arg::Num(f64::from(g.exit_weeks.saturating_sub(g.weeks_floor))),
-                        ),
-                    ],
+                    &[("weeks", weeks(g.weeks_floor)), ("left", left)],
                 ),
-                Posture::Defend => i18n.tr("gold-below-floor-defend"),
+                Posture::Defend => i18n.tr_args(
+                    "gold-below-floor-defend",
+                    &[("weeks", weeks(g.weeks_floor))],
+                ),
                 Posture::Devalue => i18n.tr_args(
                     "gold-below-floor-devalue",
-                    &[("share", arg(p(g.devaluation)))],
+                    &[
+                        ("weeks", weeks(g.weeks_floor)),
+                        ("left", left),
+                        ("share", arg(p(g.devaluation))),
+                    ],
                 ),
             };
             warn(ui, &line);
         } else if g.weeks_short > 0 {
-            warn(
-                ui,
-                &i18n.tr_args(
-                    "gold-below-legal",
-                    &[
-                        ("weeks", Arg::Num(f64::from(g.weeks_short))),
-                        ("points", arg(points(i18n, g.defense))),
-                        (
-                            "left",
-                            Arg::Num(f64::from(g.withdraw_weeks.saturating_sub(g.weeks_short))),
-                        ),
-                    ],
-                ),
-            );
+            // The rate's part holds only without a rate the government fixed; the money's part
+            // says whether the bank already withdraws.
+            let mut parts =
+                vec![i18n.tr_args("gold-below-legal", &[("weeks", weeks(g.weeks_short))])];
+            parts.push(if g.rate_fixed {
+                i18n.tr("gold-below-legal-rate-fixed")
+            } else {
+                i18n.tr_args(
+                    "gold-below-legal-rate",
+                    &[("points", arg(points_text(i18n, g.defense)))],
+                )
+            });
+            parts.push(if g.weeks_short >= g.withdraw_weeks {
+                i18n.tr_args(
+                    "gold-below-legal-withdrawing",
+                    &[("share", arg(pct(i18n, g.withdraw, 1)))],
+                )
+            } else {
+                i18n.tr_args(
+                    "gold-below-legal-stop",
+                    &[("left", weeks(g.withdraw_weeks - g.weeks_short))],
+                )
+            });
+            warn(ui, &parts.join(" "));
         }
         posture(ui, cx, g);
     }
     if g.premium > 0.0 {
         Account::new(
             &i18n.tr("gold-premium"),
-            &points(i18n, g.premium),
+            &points_text(i18n, g.premium),
             &i18n.tr("gold-premium-tip"),
         )
         .show(ui);
@@ -160,7 +173,11 @@ pub fn show(ui: &mut Ui, cx: &mut TabContext<'_>, g: &GoldView) {
             &[
                 ("country", arg(country_name(i18n, tag))),
                 ("share", arg(p(g.devaluation))),
-                ("loss", arg(money(i18n, x * g.devaluation))),
+                // A parity raised by d loses x·d/(1+d) of these holdings.
+                (
+                    "loss",
+                    arg(money(i18n, x * g.devaluation / (1.0 + g.devaluation))),
+                ),
             ],
         );
         let value = money(i18n, *x);
@@ -184,6 +201,19 @@ pub fn show(ui: &mut Ui, cx: &mut TabContext<'_>, g: &GoldView) {
         &money(i18n, g.owed),
         &i18n.tr("gold-owed-tip"),
     )
+    .show(ui);
+    // What the cover counts: the reserves less our currency held abroad.
+    let net = total - g.owed;
+    Account::new(
+        &i18n.tr("gold-reserves-net"),
+        &money(i18n, net),
+        &i18n.tr("gold-reserves-net-tip"),
+    )
+    .tone(if net < 0.0 {
+        color::DANGER
+    } else {
+        color::TEXT
+    })
     .show(ui);
 
     if let Some(c) = &g.capital {
@@ -355,7 +385,7 @@ fn capital(ui: &mut Ui, cx: &mut TabContext<'_>, c: &crate::gold_view::CapitalVi
             } else {
                 "gold-controls-on-means"
             },
-            &[("points", arg(points(i18n, c.control_premium)))],
+            &[("points", arg(points_text(i18n, c.control_premium)))],
         );
         warn(ui, &explain);
         ui.horizontal(|ui| {

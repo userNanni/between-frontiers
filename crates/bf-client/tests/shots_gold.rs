@@ -94,3 +94,59 @@ fn gold_section() {
     }
     let _ = std::fs::remove_dir_all(&user);
 }
+
+/// The Agendas' decision: the United States on gold, the choices to leave with what each means
+/// this week, and the second step of floating; Britain (floating by the rule) with the choices
+/// to adhere, the prewar parity's cover against the legal one. Portuguese at 1600 × 900,
+/// English at 1280 × 720.
+#[test]
+#[ignore = "needs a GPU (or software Vulkan) and the generated map; run with --ignored"]
+fn gold_decision() {
+    let user = std::env::temp_dir().join(format!("bf-shots-gold-dec-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&user);
+    let switches = bf_sim::data::GameData::load(&root())
+        .expect("game data")
+        .switches
+        .with(RULES)
+        .expect("switches");
+    // SAFETY: the client takes its switches from `BF_RULES`; one thread.
+    unsafe { std::env::set_var("BF_RULES", RULES) };
+    for (tag_c, name, step) in [("USA", "306", true), ("GBR", "308", false)] {
+        let s = session(tag_c, Date::new(1926, 2, 1), switches);
+        for (locale, size, tag, open_label, float) in [
+            (
+                "pt-BR",
+                egui::vec2(1600.0, 900.0),
+                "pt",
+                "padrão-ouro…",
+                "Sair do ouro e flutuar",
+            ),
+            (
+                "en",
+                egui::vec2(1280.0, 720.0),
+                "en-1280",
+                "gold standard…",
+                "Leave gold and float",
+            ),
+        ] {
+            let home = user.join(format!("{tag_c}-{tag}"));
+            let save = write_campaign(&home, &s, "Ouro", tag_c);
+            let mut h = harness(home, locale, size);
+            open(&mut h, save);
+            settle(&mut h);
+            h.key_press(egui::Key::J);
+            settle(&mut h);
+            assert!(click_containing(&mut h, open_label), "the gold decision");
+            settle(&mut h);
+            shot(&mut h, THEME, &format!("{name}-gold-decision-{tag}"));
+            if step {
+                assert!(click_containing(&mut h, float), "floating");
+                settle(&mut h);
+                shot(&mut h, THEME, &format!("307-gold-decision-confirm-{tag}"));
+            }
+        }
+    }
+    // SAFETY: as above.
+    unsafe { std::env::remove_var("BF_RULES") };
+    let _ = std::fs::remove_dir_all(&user);
+}

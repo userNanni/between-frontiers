@@ -11,6 +11,7 @@ pub mod embargo;
 pub mod forces;
 pub mod game;
 pub mod gold;
+pub mod gold_decision;
 pub mod gov_ui;
 pub mod government;
 pub mod hud_edit;
