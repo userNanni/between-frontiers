@@ -296,7 +296,24 @@ fn no_core_plant_without_a_programme() {
     );
     let plant = d.catalogue.building("weapon_core_plant").unwrap();
     let reactor = tech(&d, "production_reactor");
-    for year in [1950, 1975, 2025] {
+    let method_levels = |w: &GameWorld, building: &str, method: &str| -> i64 {
+        let k = d.catalogue.building(building).unwrap();
+        let m = d.catalogue.buildings[k]
+            .methods
+            .iter()
+            .position(|x| x.key == method)
+            .unwrap();
+        w.econ
+            .regions
+            .iter()
+            .flat_map(|r| r.plants.iter())
+            .filter(|p| usize::from(p.kind) == k && usize::from(p.method) == m)
+            .map(|p| p.levels)
+            .sum()
+    };
+    for year in [
+        1935, 1945, 1950, 1955, 1965, 1975, 1985, 1995, 2005, 2015, 2025,
+    ] {
         s.sim.run_until(Date::new(year, 1, 1));
         let w = s.world();
         let levels: i64 = w
@@ -314,10 +331,26 @@ fn no_core_plant_without_a_programme() {
             .filter(|(i, _)| w.research.stage[*i][reactor] > Stage::Unknown)
             .map(|(_, (_, c))| c.tag.clone())
             .collect();
-        let bomb = tech(&d, "atomic_bomb");
-        let with_bomb = (0..w.countries.len())
-            .filter(|&i| w.research.stage[i][bomb] >= Stage::Science)
-            .count();
+        let count = |k: &str| {
+            let t = tech(&d, k);
+            (0..w.countries.len())
+                .filter(|&i| w.research.stage[i][t] >= Stage::Science)
+                .count()
+        };
+        let with_bomb = count("atomic_bomb");
+        let np = tech(&d, "nuclear_power");
+        eprintln!(
+            "{year}: jet aircraft plant levels {}, supermarket levels {}; nuclear power first industrial {}",
+            method_levels(w, "aircraft_plant", "jet"),
+            method_levels(w, "trade_center", "supermarkets"),
+            w.research.firsts[np][Stage::Industrial as usize]
+        );
+        eprintln!(
+            "{year}: the hydrogen bomb in {}, nuclear power in {}, enrichment in {}",
+            count("thermonuclear_weapon"),
+            count("nuclear_power"),
+            count("uranium_enrichment")
+        );
         eprintln!(
             "{year}: weapon core plant levels in the world {levels}; production reactor known in {} countries; the atomic bomb understood or beyond in {with_bomb}",
             reached.len(),
