@@ -144,6 +144,7 @@ pub fn show(
             &[
                 ("levels", Arg::String(i18n.int(f.levels()))),
                 ("output", Arg::String(money(i18n, f.output))),
+                ("state", Arg::String(i18n.int(f.state_levels()))),
             ],
         ),
     );
@@ -156,9 +157,19 @@ pub fn show(
         ui.vertical(|ui| {
             ui.spacing_mut().item_spacing.y = 0.0;
             ui.label(
-                RichText::new(i18n.tr(&format!("building-{}", p.key)))
-                    .font(bf_ui_kit::theme::sans(size::SMALL))
-                    .color(color::TEXT),
+                RichText::new({
+                    let name = i18n.tr(&format!("building-{}", p.key));
+                    if p.state_firm {
+                        i18n.tr_args(
+                            "economy-state-firm-name",
+                            &[("building", Arg::String(name))],
+                        )
+                    } else {
+                        name
+                    }
+                })
+                .font(bf_ui_kit::theme::sans(size::SMALL))
+                .color(color::TEXT),
             );
             ui.label(
                 RichText::new(i18n.tr_args(

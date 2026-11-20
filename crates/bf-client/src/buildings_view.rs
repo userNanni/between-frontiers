@@ -45,6 +45,9 @@ pub struct KindRow {
     pub group: u8,
     /// Built and paid for by the state (schools, hospitals, roads).
     pub public: bool,
+    /// A state firm (`Building::state_firm`): every level is the state's, its profit or loss
+    /// the treasury's.
+    pub state_firm: bool,
     pub levels: i64,
     pub building: i64,
     pub workers: f64,
@@ -66,6 +69,14 @@ pub struct BuildingsView {
 }
 
 impl BuildingsView {
+    /// Levels of state firms, and those under construction.
+    pub fn state_levels(&self) -> (i64, i64) {
+        self.kinds
+            .iter()
+            .filter(|k| k.state_firm)
+            .fold((0, 0), |(l, b), k| (l + k.levels, b + k.building))
+    }
+
     /// Totals by group (`economy::BUILDING_GROUPS` order): levels, workers, output, profit.
     pub fn groups(&self) -> Vec<[f64; 4]> {
         let mut out = vec![[0.0; 4]; bf_sim::economy::BUILDING_GROUPS.len()];
@@ -167,6 +178,7 @@ pub fn read(world: &GameWorld, tag: &str, cat: &Catalogue, date: Date) -> Option
                 key: b.key.clone(),
                 group: b.group_ix,
                 public: b.public,
+                state_firm: b.state_firm,
                 levels: 0,
                 building: 0,
                 workers: 0.0,
