@@ -54,10 +54,17 @@ pub fn current_era(year: i32) -> u8 {
 
 fn open(tree: &TechTree, view: &ResearchView, t: usize) -> bool {
     view.stages[t] == Stage::Unknown
+        && !closed_by_programme(tree, view, t)
         && tree.techs[t]
             .requires
             .iter()
             .all(|&r| view.stages[r as usize] >= Stage::Science)
+}
+
+/// A programme-only technology (the production reactor) for a country without a nuclear
+/// programme: out of its research, whatever it knows.
+fn closed_by_programme(tree: &TechTree, view: &ResearchView, t: usize) -> bool {
+    tree.techs[t].programme_only && !view.programme
 }
 
 /// Colour of each field, in the order of `FIELDS`.
@@ -831,6 +838,8 @@ fn card(
         (i18n.tr("research-focused"), color::ACCENT)
     } else if can_focus && response.hovered() {
         (i18n.tr("research-set-focus"), color::ACCENT_HOVER)
+    } else if stage == Stage::Unknown && closed_by_programme(tree, view, t) {
+        (i18n.tr("research-programme-only-short"), color::DANGER)
     } else if stage == Stage::Unknown && !can_focus {
         (i18n.tr("research-locked-short"), color::TEXT_FAINT)
     } else {
@@ -1046,6 +1055,13 @@ fn tooltip(
         .font(sans(12.5)),
     );
     let names = |list: Vec<String>| list.join(", ");
+    if closed_by_programme(tree, view, t) {
+        ui.label(
+            egui::RichText::new(i18n.tr("research-programme-only"))
+                .font(sans(12.5))
+                .color(color::DANGER),
+        );
+    }
     if !tech.requires.is_empty() {
         let req = names(
             tech.requires
@@ -1106,7 +1122,7 @@ fn tooltip(
         .collect();
     line(ui, "research-leads-to", next);
     // The way there: what this country still has to research first.
-    if view.stages[t] == Stage::Unknown {
+    if view.stages[t] == Stage::Unknown && !closed_by_programme(tree, view, t) {
         let missing = tu::missing(tree, &view.stages, t);
         if missing.is_empty() {
             ui.label(
@@ -1167,5 +1183,39 @@ fn tooltip(
                 .font(sans(12.5))
                 .color(color::TEXT_FAINT),
         );
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The production reactor stays closed to a country without a nuclear programme, its
+    /// requirements met or not, and opens with the programme.
+    #[test]
+    fn a_programme_only_technology_waits_for_the_programme() {
+        let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let data = bf_sim::data::GameData::load(&root).expect("game data");
+        let rules = data.rules();
+        let tree = rules.tree.as_ref().expect("the tree");
+        let t = tree
+            .techs
+            .iter()
+            .position(|t| t.key == "production_reactor")
+            .expect("the production reactor");
+        assert!(tree.techs[t].programme_only);
+        let mut view = ResearchView {
+            stages: vec![Stage::Science; tree.techs.len()],
+            progress: vec![0.0; tree.techs.len()],
+            focus: None,
+            points: 0.0,
+            firsts: vec![[0; 5]; tree.techs.len()],
+            programme: false,
+        };
+        view.stages[t] = Stage::Unknown;
+        assert!(closed_by_programme(tree, &view, t));
+        assert!(!open(tree, &view, t), "closed without a programme");
+        view.programme = true;
+        assert!(open(tree, &view, t), "open with one");
     }
 }

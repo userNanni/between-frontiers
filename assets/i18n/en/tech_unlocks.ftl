@@ -19,3 +19,5 @@ research-search-found = { $n ->
     [one] 1 technology
    *[other] { $n } technologies
 }
+research-programme-only-short = Nuclear programme only
+research-programme-only = Nuclear programme only: this technology enters the research of a country with a nuclear programme alone (Government → Forces).
