@@ -410,8 +410,10 @@ pub fn show(
                 .id(ui.make_persistent_id("research-search"))
                 .font(sans(12.5))
                 .hint_text(i18n.tr("research-search-hint"))
-                .desired_width(260.0),
+                .desired_width(260.0)
+                .event_filter(bf_ui_kit::ESCAPE_KEPT),
         );
+        bf_ui_kit::leave_on_escape(ui, &search);
         if keys::item(ui, 'Z', "research.search".into(), "search", search.rect) {
             search.request_focus();
         }

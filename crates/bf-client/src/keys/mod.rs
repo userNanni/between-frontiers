@@ -369,6 +369,7 @@ impl Keys {
         let typing = ctx.egui_wants_keyboard_input() || self.capturing;
         let mut fired = Vec::new();
         let mut leader = false;
+        let mut escape_taken = false;
         for e in &events {
             match e {
                 egui::Event::Key {
@@ -391,6 +392,13 @@ impl Keys {
                     let lead = leader::leader_key(self.config.leader);
                     if self.tap.key(self.config.leader, phys, *pressed, *repeat) && !typing {
                         leader = true;
+                    }
+                    // With the tips lit, Escape puts them out first, even over a field that holds
+                    // the keyboard; the field does not see it.
+                    if typing && self.hint_mode && *pressed && *key == egui::Key::Escape {
+                        self.set_hint_mode(false);
+                        escape_taken = true;
+                        continue;
                     }
                     if phys == lead || phys.is_modifier() || !*pressed || typing {
                         continue;
@@ -417,6 +425,9 @@ impl Keys {
                 }
                 _ => {}
             }
+        }
+        if escape_taken {
+            ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape));
         }
         // Platforms that report the left Alt only as a modifier.
         if self.tap.modifiers(self.config.leader, modifiers.alt) && !typing {
