@@ -120,6 +120,8 @@ pub struct Week {
     /// (`game::Switches::capital_follows_rate`, `econ::capital`); `None` off, and always with
     /// `settle` off.
     pub capital: Option<Arc<super::capital::CapitalRules>>,
+    /// Stocks by market (`game::Switches::market_stock`, `econ::stock`).
+    pub stock: bool,
 }
 
 /// What a pop wants to buy this week.
@@ -185,6 +187,8 @@ pub struct WeekChanges {
     trade_pref: Option<Vec<Vec<(u16, u16)>>>,
     /// The week's customs duties by market, by good and pair (`customs::Charge`).
     duties: Option<Vec<Fixed>>,
+    /// Each market's new stocks (`econ::stock`); `None` with the switch off.
+    stocks: Option<Vec<Vec<(u16, Fixed)>>>,
 }
 
 /// Cost-weighted choice among the goods that meet a need: shares fall with the square of the
@@ -1327,6 +1331,12 @@ impl System<GameWorld> for Week {
                 supply[mi][lg] += cleared.leftover[ri][li] - o.supply[lg];
             }
         }
+        // The stocks join the supply before trade (`econ::stock`); what the markets made
+        // themselves caps what they keep.
+        let made = self.stock.then(|| supply.clone());
+        if self.stock {
+            super::stock::offer(cat, &world.stocks, &mut supply);
+        }
         // Trade between markets: by pair when switched on, else the world pool.
         let (trade, trade_value, trade_pref, duties, services_value) = if self.by_pair {
             self.trade_by_pair(ctx, world, &supply, &demand)
@@ -1371,6 +1381,14 @@ impl System<GameWorld> for Week {
             &region_supply,
             &national,
         );
+        // What the stocks sold goes to the pools, what is left is kept (`econ::stock`).
+        let stocks = made.map(|made| {
+            markets
+                .iter_mut()
+                .enumerate()
+                .map(|(mi, m)| super::stock::settle(cat, &world.stocks, mi, &made[mi], m))
+                .collect::<Vec<_>>()
+        });
         let local = cleared.regions;
         let wages = super::monthly::market_wages(econ, self.wage_floor);
         // Capital across borders is tested once: off, this is the loop of before it.
@@ -1455,6 +1473,7 @@ impl System<GameWorld> for Week {
             services_value,
             trade_pref,
             duties,
+            stocks,
         }
     }
 
@@ -1495,6 +1514,9 @@ impl System<GameWorld> for Week {
                 &changes.trade_value,
                 changes.services_value.as_deref(),
             );
+        }
+        if let Some(stocks) = changes.stocks {
+            world.stocks.markets = stocks;
         }
         let mut markets = changes.markets;
         if let Some(pools) = settled {

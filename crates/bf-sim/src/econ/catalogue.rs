@@ -22,6 +22,9 @@ pub struct Good {
     pub local: bool,
     /// Technology key that makes it flow across the country (`GoodDef::national_with`).
     pub national_with: Option<String>,
+    /// Storable (`GoodDef::stock`, `econ::stock`): the most a market keeps, in weeks of its own
+    /// output, and the lowest price as a share of the base price.
+    pub stock: Option<(u16, Fixed)>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -329,6 +332,9 @@ impl Catalogue {
                 tradable: g.tradable,
                 local: g.local,
                 national_with: g.national_with.clone(),
+                stock: g
+                    .stock
+                    .map(|s| (s.weeks, Fixed::from_int(i64::from(s.floor)) / 1000)),
             })
             .collect();
         let freight = gx("transportation").ok();

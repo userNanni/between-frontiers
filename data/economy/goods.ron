@@ -34,7 +34,10 @@
         (key: "sulfur", category: "mineral", base_price: 250, available_from: 1925, tradable: true, unit: "1 t"),
         (key: "phosphate_rock", category: "mineral", base_price: 60, available_from: 1925, tradable: true, unit: "1 t"),
         (key: "potash", category: "mineral", base_price: 400, available_from: 1925, tradable: true, unit: "1 t K2O"),
-        (key: "uranium_ore", category: "mineral", base_price: 100, available_from: 1925, tradable: true, unit: "1 kg U3O8 (radium ore before the 1940s)"),
+        // Storable (`econ::stock`, owner's decision U4): the uranium of the radium mines found no
+        // buyer and piled up (Shinkolobwe's stock of 1940). The cap of ten years of output and the
+        // floor at a tenth of the base price are estimates, the game's choice.
+        (key: "uranium_ore", category: "mineral", base_price: 100, available_from: 1925, tradable: true, unit: "1 kg U3O8 (radium ore before the 1940s)", stock: Some((weeks: 520, floor: 100))),
         (key: "rare_earth_ore", category: "mineral", base_price: 20000, available_from: 1950, tradable: true, unit: "1 t rare-earth oxide content"),
         (key: "coal", category: "energy", base_price: 65, available_from: 1925, tradable: true, unit: "1 t"),
         (key: "crude_oil", category: "energy", base_price: 200, available_from: 1925, tradable: true, unit: "1 t"),

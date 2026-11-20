@@ -868,6 +868,52 @@ pub fn main() -> Result<(), String> {
         }
         return Ok(());
     }
+    // Stocks by market (`BF_DIAG_STOCK=<years>`, `econ::stock`, with `market_stock` on): each
+    // January, every storable good's stock in the world, in weeks of the world's output, and the
+    // markets that hold most of it.
+    if let Ok(years) = std::env::var("BF_DIAG_STOCK") {
+        let years: i32 = years.parse().unwrap_or(16);
+        for y in 1926..=1925 + years {
+            s.sim.run_until(Date::new(y, 1, 2));
+            let w = s.world();
+            for (g, good) in cat
+                .goods
+                .iter()
+                .enumerate()
+                .filter(|(_, g)| g.stock.is_some())
+            {
+                let mut held: Vec<(usize, f64)> = (0..w.econ.markets.len())
+                    .map(|mi| (mi, w.stocks.of(mi, g).to_f64_lossy()))
+                    .filter(|x| x.1 > 0.0)
+                    .collect();
+                held.sort_by(|a, b| b.1.total_cmp(&a.1));
+                let total: f64 = held.iter().map(|x| x.1).sum();
+                let made: f64 = w
+                    .econ
+                    .markets
+                    .iter()
+                    .map(|m| m.supply[g].to_f64_lossy())
+                    .sum();
+                let top: Vec<String> = held
+                    .iter()
+                    .take(4)
+                    .map(|(mi, q)| format!("{} {:.0}", data.countries.countries[*mi].tag, q))
+                    .collect();
+                println!(
+                    "{y} {}: stock {total:.0} ({:.1} weeks of supply), price/base {:.2} [{}]",
+                    good.key,
+                    total / made.max(1e-9),
+                    w.econ
+                        .markets
+                        .iter()
+                        .map(|m| (m.price[g] / good.base_price).to_f64_lossy())
+                        .fold(0.0, f64::max),
+                    top.join(", ")
+                );
+            }
+        }
+        return Ok(());
+    }
     // World trade over world GDP every ten years (data/history/trade_openness.csv): exports
     // plus imports at base prices, a week in July times 52, over the GDP of the last year.
     if std::env::var_os("BF_DIAG_TRADE").is_some() {
