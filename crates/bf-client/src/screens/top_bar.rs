@@ -75,11 +75,16 @@ pub fn corner_size(tiles: usize) -> Vec2 {
     )
 }
 
-/// Width of the date: what the country figures leave on the top row, up to its full width.
+/// Width of the date: what the country figures leave on the top row, up to its full width. At
+/// 1280 px the long date has no room beside the figures; the short one ("2 mar. 1925") fits in
+/// what is left, so the panel stays on the top row instead of dropping under the figures.
 fn date_width(screen: Rect) -> f32 {
     let room = screen.width() - HUD_RIGHT - MARGIN * 2.0 - PAD * 2.0 - TIME_FIXED;
-    room.clamp(130.0, 210.0)
+    room.clamp(DATE_MIN, 210.0)
 }
+
+/// The narrowest date: the short form at the smallest size.
+const DATE_MIN: f32 = 76.0;
 
 const TIME_BUTTON: f32 = 32.0;
 const TIME_SMALL: f32 = 28.0;
@@ -1266,16 +1271,21 @@ fn time_panel(
         Stroke::new(1.0, color::BORDER),
         egui::StrokeKind::Inside,
     );
-    // The full size when it fits; smaller on a narrow screen.
-    let date = date_long(i18n, snap.date);
-    let mut font = 19.0;
-    while font > 13.0
-        && painter
-            .layout_no_wrap(date.clone(), serif(font), color::TEXT)
+    // The full size when it fits; smaller on a narrow screen; the short form when even the
+    // smallest long one does not.
+    let fits = |text: &str, font: f32| {
+        painter
+            .layout_no_wrap(text.to_owned(), serif(font), color::TEXT)
             .size()
             .x
-            > date_w - 12.0
-    {
+            <= date_w - 12.0
+    };
+    let mut date = date_long(i18n, snap.date);
+    if !fits(&date, 13.0) {
+        date = crate::text::date_short(i18n, snap.date);
+    }
+    let mut font = 19.0;
+    while font > 13.0 && !fits(&date, font) {
         font -= 1.0;
     }
     painter.text(
