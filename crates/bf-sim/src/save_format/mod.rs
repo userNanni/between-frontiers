@@ -88,11 +88,12 @@ pub const WORLD_MAGIC: [u8; 4] = *b"BFWD";
 /// 41. the gold standard's regimes (`GameWorld::gold`);
 /// 42. private capital (`GameWorld::capital`) and its lines in the balance of payments
 ///     (`payments::Lines::capital_in` to `capital_income_paid`);
-/// 43. the stocks by market (`GameWorld::stocks`), the last field of the world.
+/// 43. the stocks by market (`GameWorld::stocks`), the last field of the world;
+/// 44. the gold standard's monetary base (`gold::Standing::base_other`).
 ///
 /// Versions 12 and 13 were held for the orders and the independence PRs; 14 landed first, so
 /// the orders came after it, and 12 and 13 were never written.
-pub const WORLD_VERSION: u32 = 43;
+pub const WORLD_VERSION: u32 = 44;
 
 /// Why a snapshot does not read.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -252,7 +253,8 @@ pub fn migrate(v: u32, body: &[u8]) -> Result<GameWorld, SaveError> {
         40 => return Ok(v40_to_v41(decode_snapshot(body)?)),
         41 => return Ok(v41_to_v42(decode_snapshot(body)?)),
         42 => return Ok(v42_to_v43(decode_snapshot(body)?)),
-        43 => return decode_snapshot(body),
+        43 => return Ok(v43_to_v44(decode_snapshot(body)?)),
+        44 => return decode_snapshot(body),
         _ => return Err(SaveError::Malformed(format!("unknown world version {v}"))),
     };
     Ok(v15_to_v16(v14_to_v15(v11_to_v14(v11))))

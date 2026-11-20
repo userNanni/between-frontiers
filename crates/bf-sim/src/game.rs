@@ -2193,9 +2193,11 @@ mod tests {
             hash_of(&with_ledger)
         );
         assert_eq!(
-            hash_of(&headed(43, &encode_snapshot(&with_ledger).unwrap())),
+            hash_of(&headed(44, &encode_snapshot(&with_ledger).unwrap())),
             hash_of(&with_ledger)
         );
+        // Before version 44 the gold standings had no monetary base.
+        let old_gold = crate::econ::gold::GoldStateBeforeBase::from(&with_ledger.gold);
         // Version 42, private capital, before the stocks by market: the world without `stocks`.
         {
             #[derive(Serialize)]
@@ -2219,7 +2221,7 @@ mod tests {
                 tariffs: &'a crate::econ::customs::TariffState,
                 payments: &'a crate::econ::payments::PaymentsState,
                 reserves: &'a crate::econ::payments::ReservesState,
-                gold: &'a crate::econ::gold::GoldState,
+                gold: &'a crate::econ::gold::GoldStateBeforeBase,
                 capital: &'a crate::econ::capital::CapitalState,
             }
             let w = &with_ledger;
@@ -2243,13 +2245,68 @@ mod tests {
                 tariffs: &w.tariffs,
                 payments: &w.payments,
                 reserves: &w.reserves,
-                gold: &w.gold,
+                gold: &old_gold,
                 capital: &w.capital,
             })
             .unwrap();
             assert_eq!(hash_of(&headed(42, &v42)), hash_of(&with_ledger));
         }
         // Before version 42 the balance of payments had no lines of private capital.
+        // Version 43, the stocks by market, before the monetary base.
+        {
+            #[derive(Serialize)]
+            struct BeforeBase43<'a> {
+                scenario: &'a String,
+                player: &'a Option<Id<Country>>,
+                countries: &'a Table<Country, CountryState>,
+                census: &'a Vec<CensusRecord>,
+                econ: &'a crate::econ::Economy,
+                research: &'a crate::research::ResearchState,
+                politics: &'a crate::polity::PoliticsState,
+                demography: &'a crate::demography::DemographyState,
+                borders: &'a crate::borders::BordersState,
+                foreign: &'a crate::foreign_stakes::ForeignState,
+                influence: &'a crate::influence::InfluenceState,
+                treaties: &'a crate::treaty::TreatyState,
+                war: &'a crate::war::WarState,
+                education: &'a crate::demography::education::EducationState,
+                independence: &'a crate::borders::independence::IndependenceState,
+                levers: &'a crate::econ::levers::LeversState,
+                tariffs: &'a crate::econ::customs::TariffState,
+                payments: &'a crate::econ::payments::PaymentsState,
+                reserves: &'a crate::econ::payments::ReservesState,
+                gold: &'a crate::econ::gold::GoldStateBeforeBase,
+                capital: &'a crate::econ::capital::CapitalState,
+                stocks: &'a crate::econ::stock::StockState,
+            }
+            let w = &with_ledger;
+            let v43 = encode_snapshot(&BeforeBase43 {
+                scenario: &w.scenario,
+                player: &w.player,
+                countries: &w.countries,
+                census: &w.census,
+                econ: &w.econ,
+                research: &w.research,
+                politics: &w.politics,
+                demography: &w.demography,
+                borders: &w.borders,
+                foreign: &w.foreign,
+                influence: &w.influence,
+                treaties: &w.treaties,
+                war: &w.war,
+                education: &w.education,
+                independence: &w.independence,
+                levers: &w.levers,
+                tariffs: &w.tariffs,
+                payments: &w.payments,
+                reserves: &w.reserves,
+                gold: &old_gold,
+                capital: &w.capital,
+                stocks: &w.stocks,
+            })
+            .unwrap();
+            assert_eq!(hash_of(&headed(43, &v43)), hash_of(&with_ledger));
+        }
         let old_payments =
             crate::econ::payments::PaymentsBeforeCapital::from(&with_ledger.payments);
         // Version 41, the gold standard's regimes, before private capital: the world without
@@ -2276,7 +2333,7 @@ mod tests {
                 tariffs: &'a crate::econ::customs::TariffState,
                 payments: &'a crate::econ::payments::PaymentsBeforeCapital,
                 reserves: &'a crate::econ::payments::ReservesState,
-                gold: &'a crate::econ::gold::GoldState,
+                gold: &'a crate::econ::gold::GoldStateBeforeBase,
             }
             let w = &with_ledger;
             let v41 = encode_snapshot(&BeforeCapital41 {
@@ -2299,7 +2356,7 @@ mod tests {
                 tariffs: &w.tariffs,
                 payments: &old_payments,
                 reserves: &w.reserves,
-                gold: &w.gold,
+                gold: &old_gold,
             })
             .unwrap();
             assert_eq!(hash_of(&headed(41, &v41)), hash_of(&with_ledger));

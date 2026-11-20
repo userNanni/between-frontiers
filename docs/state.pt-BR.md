@@ -937,6 +937,57 @@ O que se vê:
 - Nada disso se liga antes de as divisas de 1925 estarem nos dados, da cobertura contra a base e do
   sinal do comércio.
 
+### Pré-requisitos de ligar: divisas, base monetária, contágio e volta, desligados
+
+Sem chave nova: tudo vale só com `gold_standard` ligado. Save 44 (`gold::Standing::base_other`).
+
+**Dados (com fonte, `data/economy/reserves.ron`).** As divisas que os bancos centrais contavam como
+reserva no fim de 1925 (`fx_1925`) e a base monetária (`base_1925`: notas e depósitos à vista do
+banco emissor), lidas na página: Liga das Nações, *Statistical Year-Book 1928*, tabelas 95 e 96, e
+*Federal Reserve Bulletin* de fevereiro e março de 1926; câmbio de dezembro de 1925 de *Banking and
+Monetary Statistics*, tabela 173. Divisas de 26 países; base de 35. Maiores detentores: Índia
+(141, a reserva das notas), Egito (210), Holanda (99), Alemanha (96 de *Deckungsdevisen*, não os
+1.016 milhões de marcos de todos os ativos externos), Austrália (89), Áustria (79). Sem número:
+Reino Unido e Estados Unidos (nenhuma divisa como reserva), Canadá, Argentina e Nova Zelândia (sem
+banco central), Chile (banco aberto em 1926), Romênia, Japão e Estônia (somadas ao ouro).
+**Estimativa:** o emissor de cada divisa (as fontes dão uma soma só): império, Escandinávia,
+países dos empréstimos da Liga, Portugal e Egito em libra; os estabilizados com empréstimo
+americano em dólar; o resto metade e metade. O levantamento, com página por número, ficou fora do
+repositório; as citações estão no arquivo de dados.
+
+**Regra.**
+- **Cobertura contra a base:** ouro e divisas brutos (como as leis dos anos 1920 contavam; a moeda
+  do país nas reservas de fora não é descontada) sobre a base monetária: o que o jogo emitiu
+  (`debt_bank`, `credit`) mais o resto da base de 1925 (`Standing::base_other`, fixo). Antes era
+  sobre o que o jogo emitiu, 5 % do PIB igual para todos.
+- **Contágio só quando a perda pesa:** quem tem a moeda de um país que sai segue-o só se a queda
+  esperada dessa moeda (`contagion_loss`, 30 %, estimativa: a libra de 1931) deixar a própria
+  cobertura abaixo da legal; com folga, fica e leva a perda quando vier.
+- **Volta com o orçamento calmo:** as semanas calmas só contam com o banco sem criar dinheiro além
+  da regra (`calm_monetized`, meio ponto do PIB ao ano, estimativa).
+- **Dados de regime:** Colômbia (julho de 1923) e Nova Zelândia (abril de 1925) já estavam no ouro
+  em 1925 (*Federal Reserve Bulletin*, agosto de 1928, p. 562).
+
+**A medida (as três chaves ligadas, 1925–1932).**
+
+| | antes | depois | real |
+|---|---|---|---|
+| Alemanha | sai em abril de 1925 | sai em janeiro de 1926 (fuga de capital de 7,6 % do PIB em 1925) | no ouro até os controles de julho de 1931 |
+| Reino Unido | sai em abril de 1925, por contágio da Alemanha | no ouro até 1932, cobertura 30 % | no ouro de abril de 1925 a setembro de 1931 |
+| Holanda, Austrália, África do Sul | saem em abril de 1925, por contágio | ficam | ficam até 1930–1936 |
+| Volta em dezembro de 1926 | 28 países | 27 países | espalhada de 1925 a 1928 (Chile 1926, Bélgica 1926, Argentina e Equador 1927, Itália 1927, Noruega e Grécia 1928, França 1928) |
+
+- O contágio de abril de 1925 acabou, e com o capital o Reino Unido segura a paridade.
+- **A volta ainda vem toda na mesma semana:** os países que voltam começam 1925 sem inflação, e o
+  jogo não tem a inflação nem a instabilidade do câmbio de cada país em 1925; a regra conta as
+  semanas calmas a partir do mesmo dia para todos. O dado que espalharia as datas é o estado de
+  cada moeda em 1925 (inflação e câmbio do pós-guerra), não a regra.
+- **A Alemanha sai pela fuga de capital:** a regra de Taylor dá 1,6 % ao Reichsbank (o real foi 9 %)
+  e não há o empréstimo Dawes; o capital privado sai. Sem a chave do capital, Reino Unido e
+  Alemanha saem em 1925 pelo saldo do comércio, que ainda está errado (o carvão das ferrovias,
+  `docs/trade.pt-BR.md`).
+- **Ainda não dá para ligar:** faltam o sinal do comércio e a volta espalhada.
+
 ### Fatias seguintes (aprovadas, por fazer)
 
 5. **Telas e decisões.** Agendas: aderir, sair, defender ou desvalorizar. Governo → Moeda e dívida:
