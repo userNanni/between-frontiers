@@ -1582,7 +1582,7 @@ pub struct V41 {
     tariffs: crate::econ::customs::TariffState,
     payments: crate::econ::payments::PaymentsBeforeCapital,
     reserves: crate::econ::payments::ReservesState,
-    gold: crate::econ::gold::GoldState,
+    gold: crate::econ::gold::GoldStateBeforeBase,
 }
 
 /// 41 → 42: private capital (`GameWorld::capital`, empty until the rule runs) and its lines in
@@ -1608,7 +1608,7 @@ pub fn v41_to_v42(w: V41) -> GameWorld {
         tariffs: w.tariffs,
         payments: w.payments.into(),
         reserves: w.reserves,
-        gold: w.gold,
+        gold: w.gold.into(),
         capital: Default::default(),
         stocks: Default::default(),
     }
@@ -1637,7 +1637,7 @@ pub struct V42 {
     tariffs: crate::econ::customs::TariffState,
     payments: crate::econ::payments::PaymentsState,
     reserves: crate::econ::payments::ReservesState,
-    gold: crate::econ::gold::GoldState,
+    gold: crate::econ::gold::GoldStateBeforeBase,
     capital: crate::econ::capital::CapitalState,
 }
 
@@ -1663,9 +1663,65 @@ pub fn v42_to_v43(w: V42) -> GameWorld {
         tariffs: w.tariffs,
         payments: w.payments,
         reserves: w.reserves,
-        gold: w.gold,
+        gold: w.gold.into(),
         capital: w.capital,
         stocks: Default::default(),
+    }
+}
+
+/// Version 43: the stocks by market (#299), before the monetary base: each gold standing without
+/// `base_other` (`gold::GoldStateBeforeBase`).
+#[derive(Deserialize)]
+pub struct V43 {
+    scenario: String,
+    player: Option<Id<Country>>,
+    countries: Table<Country, CountryState>,
+    census: Vec<CensusRecord>,
+    econ: crate::econ::Economy,
+    research: crate::research::ResearchState,
+    politics: crate::polity::PoliticsState,
+    demography: crate::demography::DemographyState,
+    borders: crate::borders::BordersState,
+    foreign: crate::foreign_stakes::ForeignState,
+    influence: crate::influence::InfluenceState,
+    treaties: crate::treaty::TreatyState,
+    war: crate::war::WarState,
+    education: crate::demography::education::EducationState,
+    independence: crate::borders::independence::IndependenceState,
+    levers: crate::econ::levers::LeversState,
+    tariffs: crate::econ::customs::TariffState,
+    payments: crate::econ::payments::PaymentsState,
+    reserves: crate::econ::payments::ReservesState,
+    gold: crate::econ::gold::GoldStateBeforeBase,
+    capital: crate::econ::capital::CapitalState,
+    stocks: crate::econ::stock::StockState,
+}
+
+/// 43 → 44: the gold standard's monetary base (`gold::Standing::base_other`), zero: an old save
+/// keeps the cover it had.
+pub fn v43_to_v44(w: V43) -> GameWorld {
+    GameWorld {
+        scenario: w.scenario,
+        player: w.player,
+        countries: w.countries,
+        census: w.census,
+        econ: w.econ,
+        research: w.research,
+        politics: w.politics,
+        demography: w.demography,
+        borders: w.borders,
+        foreign: w.foreign,
+        influence: w.influence,
+        treaties: w.treaties,
+        war: w.war,
+        education: w.education,
+        independence: w.independence,
+        levers: w.levers,
+        tariffs: w.tariffs,
+        payments: w.payments,
+        reserves: w.reserves,
+        gold: w.gold.into(),
+        capital: w.capital,
     }
 }
 
