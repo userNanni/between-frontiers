@@ -431,7 +431,7 @@ war-blockaded-basis = A frota inimiga corta { $count ->
 } do nosso comércio por mar, que somavam { $total } por ano. Por terra, o comércio segue.
 war-fleet-command-later = O comando da frota (a missão por zona) vem na próxima fatia; por ora a frota segue a regra acima.
 programme-title = Programa nuclear
-programme-basis = Uma parcela do PIB por ano, por fora do teto militar. Até a bomba, o dinheiro compra o laboratório e adianta a fissão, o enriquecimento e a bomba; depois, três quartos mantêm a encomenda de ogivas, que dependem do material físsil do mercado, o mesmo das usinas elétricas.
+programme-basis = Uma parcela do PIB por ano, por fora do teto militar. Até a bomba, o dinheiro compra o laboratório e adianta a fissão, o enriquecimento e a bomba; depois, três quartos mantêm a encomenda de ogivas, e cada ogiva leva um núcleo de arma.
 programme-start = Começar o programa (0,1 % do PIB por ano)
 programme-share = Parcela do PIB por ano
 programme-step-tip = Um décimo de ponto do PIB por ano
@@ -446,11 +446,10 @@ programme-months = No ritmo do último mês, o passo em curso termina em cerca d
 programme-months-none = Sem crédito no último mês ainda, ou a cadeia já está toda em produção.
 programme-warheads = Ogivas
 programme-warheads-value = { $n } prontas, { $ordered } encomendadas
-programme-plants = Usinas de enriquecimento
-programme-fissile = Material físsil
+programme-fissile = Núcleos de arma no mercado
 programme-fissile-value = { $price } a unidade; o mercado entregou { $delivered } do que se pediu
 programme-end = Encerrar o programa
-programme-note = Sem minério de urânio, a usina não roda, e o estoque para no material físsil. Hoje o material físsil vem do mercado, ao preço do dia; de onde ele vem muda com a próxima fatia, a do núcleo de ogiva.
+programme-note = Os núcleos vêm das usinas de núcleos do país e do mercado. A usina faz núcleos por alto enriquecimento ou por reator de produção (que pede a tecnologia do reator, só com programa); as duas rodam com minério de urânio, das minas do país, do estoque do mercado ou de fora.
 
 programme-test = Testar a arma
 programme-test-note = O teste torna o arsenal conhecido de todos: até ele, os outros contam metade das suas ogivas. Ele é ouvido no mundo inteiro e não se desfaz.
