@@ -263,7 +263,12 @@ impl Forces {
     /// A week of every nuclear programme (`war::programme`): last week's deliveries credited,
     /// this week's money spent on the laboratory's goods and, once the bomb can be built, on the
     /// warhead order; a plant asked for when the fissile material runs short.
-    fn programmes_week(&self, world: &GameWorld, countries: &mut [CountryWar]) -> ProgrammesWeek {
+    fn programmes_week(
+        &self,
+        world: &GameWorld,
+        countries: &mut [CountryWar],
+        year: i32,
+    ) -> ProgrammesWeek {
         use super::programme::{basket_buy, weekly_money};
         let Some(rule) = self.peace.nuclear_programme.as_ref() else {
             return (Vec::new(), Vec::new());
@@ -276,6 +281,16 @@ impl Forces {
             .collect();
         let warhead = mil.unit(&rule.warhead);
         let plant = self.cat.building(&rule.plant);
+        // U1: the mine and its resource, and the ore the plant's methods take.
+        let mine_kind = rule.mine.as_deref().and_then(|k| self.cat.building(k));
+        let mine_resource = mine_kind.and_then(|k| self.cat.buildings[k].resource);
+        let ore = mine_kind.and_then(|k| {
+            self.cat.buildings[k]
+                .methods
+                .first()
+                .and_then(|m| m.outputs.first())
+                .map(|(g, _)| *g)
+        });
         // The fissile the plant makes (its first output): the good whose shortage asks for
         // another plant.
         let fuel = plant.and_then(|k| {
@@ -407,6 +422,42 @@ impl Forces {
                         });
                     if let Some(r) = at {
                         requests.push((p.country, r as u32, kind as u16));
+                        q.plant_wait = rule.plant_weeks;
+                    }
+                } else if let (Some(mk), Some(res), Some(g)) = (mine_kind, mine_resource, ore)
+                    && levels > 0
+                    && q.plant_wait == 0
+                    && !m.queue.iter().any(|w| usize::from(w.kind) == mk)
+                    && m.buy_ratio.get(g as usize).copied().unwrap_or(Fixed::ONE)
+                        < Fixed::from_ratio(i64::from(rule.mine_shortage), 1000)
+                {
+                    // U1: a mine in a deposit already found and not yet full, at home first,
+                    // then in a colony; the largest room left.
+                    let room = |i: usize| -> i64 {
+                        let r = &world.econ.regions[i];
+                        let ceiling: i64 = r
+                            .deposits
+                            .iter()
+                            .filter(|(x, found, _)| *x == res && *found <= year)
+                            .map(|(_, _, c)| *c)
+                            .sum();
+                        let built: i64 = r
+                            .plants
+                            .iter()
+                            .filter(|p| usize::from(p.kind) == mk)
+                            .map(|p| p.levels)
+                            .sum();
+                        ceiling - built
+                    };
+                    let at = mine
+                        .iter()
+                        .copied()
+                        .filter(|&i| room(i) > 0)
+                        .max_by_key(|&i| {
+                            (!world.econ.regions[i].colony, room(i), std::cmp::Reverse(i))
+                        });
+                    if let Some(r) = at {
+                        requests.push((p.country, r as u32, mk as u16));
                         q.plant_wait = rule.plant_weeks;
                     }
                 }
@@ -1169,7 +1220,7 @@ impl System<GameWorld> for Forces {
             .map(|s| super::sea::sea_week(s, &self.military, world, &date));
         // The nuclear programmes (N1), with the war switched on.
         let programmes = (self.fight.is_some() && !world.war.nuclear.is_empty())
-            .then(|| self.programmes_week(world, &mut countries));
+            .then(|| self.programmes_week(world, &mut countries, ctx.date.year));
         ForcesChanges {
             countries,
             soldiers,

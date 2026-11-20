@@ -201,9 +201,12 @@ fn the_pace_from_1940() {
     let warhead = mil.unit("nuclear_warhead").unwrap();
     let elec = usize::from(d.catalogue.good("electricity").unwrap());
     let fuel = usize::from(d.catalogue.good("weapon_cores").unwrap());
+    let ore = usize::from(d.catalogue.good("uranium_ore").unwrap());
+    let plant = d.catalogue.building("weapon_core_plant").unwrap();
+    let mine = d.catalogue.building("uranium_mine").unwrap();
     for tag in ["USA", "GER", "GBR"] {
         eprintln!(
-            "== {tag}: year | fission enrichment bomb | warheads | fissile price | electricity with/without"
+            "== {tag}: year | fission enrichment bomb | warheads | fissile price | electricity with/without | core plant levels, ore delivered to them | uranium mine levels at home and in colonies | ore price"
         );
         for (k, (w, wo)) in with.iter().zip(&without).enumerate() {
             let c = index(w, tag);
@@ -214,15 +217,28 @@ fn the_pace_from_1940() {
                 .filter(|f| f.unit == warhead)
                 .map(|f| f.elements.to_f64_lossy())
                 .sum();
+            let plants = |kind: usize| {
+                w.econ
+                    .regions
+                    .iter()
+                    .filter(|r| usize::from(r.market) == c)
+                    .flat_map(|r| r.plants.iter())
+                    .filter(|p| usize::from(p.kind) == kind)
+                    .map(|p| (p.levels, p.input_ratio.to_f64_lossy()))
+                    .fold((0, 1.0f64), |(l, x), (n, y)| (l + n, x.min(y)))
+            };
+            let (core_levels, ore_in) = plants(plant);
+            let (mine_levels, _) = plants(mine);
             eprintln!(
-                "{} | {} {} {} | {n:.0} | {:.0} | {:.3} / {:.3}",
+                "{} | {} {} {} | {n:.0} | {:.0} | {:.3} / {:.3} | {core_levels}, {ore_in:.2} | {mine_levels} | {:.0}",
                 1940 + k,
                 st("nuclear_fission"),
                 st("uranium_enrichment"),
                 st("atomic_bomb"),
                 w.econ.markets[c].price[fuel].to_f64_lossy(),
                 w.econ.markets[c].price[elec].to_f64_lossy(),
-                wo.econ.markets[c].price[elec].to_f64_lossy()
+                wo.econ.markets[c].price[elec].to_f64_lossy(),
+                w.econ.markets[c].price[ore].to_f64_lossy()
             );
         }
     }
@@ -361,4 +377,86 @@ fn no_core_plant_without_a_programme() {
             "no production reactor without a programme"
         );
     }
+}
+
+/// U1: with its core plants short of ore, the programme opens a uranium mine with the state's
+/// capital in a deposit already found, at home first: the United States in its own carnotite.
+#[test]
+fn the_programme_opens_a_mine() {
+    let d = data();
+    let mut world = d.new_world();
+    let usa = index(&world, "USA");
+    for k in ["nuclear_fission", "uranium_enrichment", "atomic_bomb"] {
+        world.research.stage[usa][tech(d, k)] = Stage::Industrial;
+    }
+    let mut s = Session::new(world, 1925, Date::new(1925, 1, 1), 2, Some(d.rules()));
+    s.submit(GameCommand::NuclearProgramme {
+        tag: "USA".into(),
+        share: Some(20),
+    });
+    let mine = d.catalogue.building("uranium_mine").unwrap();
+    let res = d.catalogue.buildings[mine].resource.unwrap();
+    let levels = |s: &Session| -> (i64, bool) {
+        let w = s.world();
+        let built = w
+            .econ
+            .regions
+            .iter()
+            .filter(|r| usize::from(r.market) == usa)
+            .flat_map(|r| r.plants.iter())
+            .filter(|p| usize::from(p.kind) == mine)
+            .map(|p| p.levels)
+            .sum();
+        let queued = w.econ.markets[usa]
+            .queue
+            .iter()
+            .any(|q| usize::from(q.kind) == mine);
+        (built, queued)
+    };
+    let (before, _) = levels(&s);
+    let mut asked = None;
+    let mut most = before;
+    for wk in 0..156 {
+        week(&mut s);
+        let (built, queued) = levels(&s);
+        most = most.max(built);
+        if asked.is_none() && (queued || built > before) {
+            asked = Some(wk);
+        }
+        if wk % 13 == 0 {
+            let w = s.world();
+            let ore = usize::from(d.catalogue.good("uranium_ore").unwrap());
+            let core = d.catalogue.building("weapon_core_plant").unwrap();
+            let plants: i64 = w
+                .econ
+                .regions
+                .iter()
+                .filter(|r| usize::from(r.market) == usa)
+                .flat_map(|r| r.plants.iter())
+                .filter(|p| usize::from(p.kind) == core)
+                .map(|p| p.levels)
+                .sum();
+            eprintln!(
+                "week {wk}: mines {built} queued {queued}, core plants {plants}, ore delivered {:.2} price {:.0}",
+                w.econ.markets[usa].buy_ratio[ore].to_f64_lossy(),
+                w.econ.markets[usa].price[ore].to_f64_lossy()
+            );
+        }
+    }
+    let w = s.world();
+    let (after, _) = levels(&s);
+    let homes: Vec<String> = w
+        .econ
+        .regions
+        .iter()
+        .filter(|r| usize::from(r.market) == usa && !r.colony)
+        .filter(|r| r.deposits.iter().any(|(x, y, _)| *x == res && *y <= 1925))
+        .map(|r| r.state.to_string())
+        .collect();
+    eprintln!(
+        "uranium mine levels {before} → {after}, first asked in week {asked:?}; home states with a deposit found: {homes:?}"
+    );
+    assert!(!homes.is_empty(), "the United States has carnotite");
+    assert!(asked.is_some(), "a mine asked for");
+    assert!(most > before, "a mine built");
 }
