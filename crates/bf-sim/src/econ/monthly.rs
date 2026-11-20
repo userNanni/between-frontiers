@@ -879,21 +879,7 @@ impl System<GameWorld> for Investment {
                     if !busy_here {
                         continue;
                     }
-                    let ceiling = if let Some(res) = b.resource {
-                        r.deposits
-                            .iter()
-                            .filter(|d| d.0 == res && d.1 <= year)
-                            .map(|d| d.2)
-                            .sum::<i64>()
-                    } else if let Some(farm) = b.farm {
-                        r.land
-                            .iter()
-                            .filter(|l| l.0 == farm)
-                            .map(|l| l.1)
-                            .sum::<i64>()
-                    } else {
-                        i64::MAX
-                    };
+                    let ceiling = super::public::level_ceiling(b, r, year);
                     // A farm on all its open land can clear pasture or forest suited to its crop.
                     let clears = b.farm.filter(|&farm| {
                         existing >= ceiling && r.frontier.iter().any(|f| f.0 == farm && f.1 > 0)
@@ -1019,9 +1005,6 @@ impl System<GameWorld> for Investment {
             super::public::public_works(cat, econ, &unlocks, schools.as_deref(), self.wage_floor);
         // Works the governments asked for (D8, `GameCommand::AddWork`), each checked against what
         // the state may build there; one it may not build is dropped.
-        // The weapon core plant is the state's (a nuclear programme asks for it,
-        // `war::programme`; U2): it may be asked for wherever one of its methods is known.
-        let enrichment = cat.building("weapon_core_plant");
         for q in &world.levers.requests {
             let found = super::public::buildable_in(
                 cat,
@@ -1033,18 +1016,38 @@ impl System<GameWorld> for Investment {
             .into_iter()
             .find(|x| x.0 == usize::from(q.kind))
             .or_else(|| {
-                (Some(usize::from(q.kind)) == enrichment)
-                    .then(|| {
-                        super::public::state_plant_in(
-                            cat,
-                            econ,
-                            &unlocks,
-                            usize::from(q.market),
-                            q.region as usize,
-                            usize::from(q.kind),
-                        )
-                    })
-                    .flatten()
+                // A productive building (a state firm, or a plant the state builds itself):
+                // wherever a method of it is known and the state's deposits or land leave room
+                // for another level, counting the levels already in the queue.
+                let b = cat.buildings.get(usize::from(q.kind))?;
+                if b.public || b.informal {
+                    return None;
+                }
+                let r = econ.regions.get(q.region as usize)?;
+                let queued = econ
+                    .markets
+                    .get(usize::from(q.market))?
+                    .queue
+                    .iter()
+                    .chain(&public)
+                    .filter(|p| p.region == q.region && p.kind == q.kind)
+                    .count() as i64;
+                let built = r
+                    .plants
+                    .iter()
+                    .find(|p| p.kind == q.kind)
+                    .map_or(0, |p| p.levels);
+                if built + queued >= super::public::level_ceiling(b, r, year) {
+                    return None;
+                }
+                super::public::state_plant_in(
+                    cat,
+                    econ,
+                    &unlocks,
+                    usize::from(q.market),
+                    q.region as usize,
+                    usize::from(q.kind),
+                )
             });
             if let Some((_, method, points)) = found {
                 public.push(super::state::Project {

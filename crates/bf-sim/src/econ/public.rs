@@ -308,6 +308,26 @@ pub fn buildable_in(
     out
 }
 
+/// Levels of building `b` the deposits (a mine, a well) or the open land (a farm) of `r` allow
+/// by `year`; `i64::MAX` for a building that needs neither.
+pub fn level_ceiling(b: &super::Building, r: &Region, year: i32) -> i64 {
+    if let Some(res) = b.resource {
+        r.deposits
+            .iter()
+            .filter(|d| d.0 == res && d.1 <= year)
+            .map(|d| d.2)
+            .sum::<i64>()
+    } else if let Some(farm) = b.farm {
+        r.land
+            .iter()
+            .filter(|l| l.0 == farm)
+            .map(|l| l.1)
+            .sum::<i64>()
+    } else {
+        i64::MAX
+    }
+}
+
 /// A level of `kind` (not a public service: a plant the state builds itself, the enrichment of
 /// a nuclear programme) in region `ri` of market `mi`: its newest method known there and its
 /// cost in points; `None` when no method is known or the region is not the market's.
