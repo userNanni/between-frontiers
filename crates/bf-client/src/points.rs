@@ -42,6 +42,8 @@ pub enum Reason {
     Denounce,
     /// An embargo imposed (CT6).
     Embargo,
+    /// The exchange regime or capital controls changed (gold standard).
+    Exchange,
 }
 
 impl Reason {
@@ -57,6 +59,7 @@ impl Reason {
             Reason::Disband => "points-reason-disband",
             Reason::Denounce => "points-reason-denounce",
             Reason::Embargo => "points-reason-embargo",
+            Reason::Exchange => "points-reason-exchange",
         }
     }
 }

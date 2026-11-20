@@ -10,6 +10,7 @@ pub mod demands_view;
 pub mod display;
 pub mod flags;
 pub mod forces_view;
+pub mod gold_view;
 pub mod government;
 pub mod hud;
 pub mod influence_view;

@@ -40,6 +40,11 @@ pub fn show(ui: &mut Ui, cx: &mut TabContext<'_>) {
         }
         bank(&mut cols[0], cx, v);
         debt(&mut cols[1], cx.i18n, v);
+        // Exchange and reserves, with the gold standard on.
+        if let Some(g) = &v.gold {
+            bf_ui_kit::gap(&mut cols[1], space::MD);
+            super::gold::show(&mut cols[1], cx, g);
+        }
     });
 }
 

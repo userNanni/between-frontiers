@@ -61,6 +61,8 @@ pub struct GovernmentView {
     pub customs: f64,
     /// The balance of payments of the last full year (`econ::payments::view`).
     pub payments: bf_sim::econ::payments::PaymentsView,
+    /// The exchange regime, reserves and capital; `None` while the gold standard is off.
+    pub gold: Option<crate::gold_view::GoldView>,
 }
 
 /// The budget rule that sets the state's purchases (`econ::public::goods_budget`), term by
@@ -213,6 +215,7 @@ pub fn read(
         }),
         customs: world.tariffs.revenue.get(ci).map_or(0.0, |r| f(*r)),
         payments: bf_sim::econ::payments::view(world, ci),
+        gold: None,
         goods_rule: {
             use bf_sim::econ::public::{GOODS_PER_PAYROLL, austerity, goods_budget};
             let b = &m.budget;
@@ -257,6 +260,7 @@ mod tests {
             campaign: None,
             customs: 0.0,
             payments: Default::default(),
+            gold: None,
             levers: None,
             purchases: None,
             issuance: None,

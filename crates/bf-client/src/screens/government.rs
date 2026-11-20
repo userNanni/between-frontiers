@@ -94,6 +94,12 @@ pub struct Drafts {
     pub works_order: Option<Option<Vec<bf_sim::econ::levers::WorkKey>>>,
     /// The player's tariff table as set this tick.
     pub tariffs: Option<bf_sim::econ::customs::TariffTable>,
+    /// The posture on gold and the capital controls as set this tick.
+    pub posture: Option<bf_sim::econ::gold::Posture>,
+    pub controls: Option<bool>,
+    /// The player is at the second step of turning capital controls on or off; survives the
+    /// ticks, as the campaign's.
+    pub controls_confirm: bool,
 }
 
 impl Drafts {
@@ -103,6 +109,7 @@ impl Drafts {
             *self = Self {
                 tick,
                 campaign_confirm: self.campaign_confirm,
+                controls_confirm: self.controls_confirm,
                 ..Self::default()
             };
         }
@@ -211,6 +218,7 @@ pub fn show(
     if snap.tick > window.drafts.tick {
         window.drafts = Drafts {
             campaign_confirm: window.drafts.campaign_confirm,
+            controls_confirm: window.drafts.controls_confirm,
             ..Drafts::default()
         };
     }
