@@ -48,11 +48,23 @@ pub struct ProgrammeRule {
     /// programme asks for another level.
     pub plant: String,
     pub plant_shortage: u32,
-    /// Weeks between two requests of a plant.
+    /// Weeks between two requests of a plant (or of a mine).
     pub plant_weeks: u16,
+    /// U1 (the owner, 2026-11-19): the mine the programme opens with the state's capital, in a
+    /// deposit already known, at home first and then in a colony, when the market delivers less
+    /// than `mine_shortage` per mille of the ore its plants ask for. Abroad (by the capital
+    /// between countries) waits for that rule.
+    #[serde(default)]
+    pub mine: Option<String>,
+    #[serde(default = "default_mine_shortage")]
+    pub mine_shortage: u32,
     pub warhead: String,
     /// Warheads ordered at a time.
     pub batch: u32,
+}
+
+fn default_mine_shortage() -> u32 {
+    900
 }
 
 /// The programme's technologies, resolved against the tree at load.
