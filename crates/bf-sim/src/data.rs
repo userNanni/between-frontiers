@@ -134,10 +134,12 @@ struct GoldFile {
     withdraw: i64,
     exit_weeks: u16,
     contagion: i64,
+    contagion_loss: i64,
     control_debt: i64,
     exit_premium: i64,
     premium_weeks: u16,
     calm_inflation: i64,
+    calm_monetized: i64,
     calm_weeks: u16,
     return_cover: i64,
     devaluation: i64,
@@ -203,13 +205,16 @@ impl GoldFile {
             withdraw: milli(self.withdraw),
             exit_weeks: self.exit_weeks,
             contagion: milli(self.contagion),
+            contagion_loss: milli(self.contagion_loss),
             control_debt: milli(self.control_debt),
             exit_premium: milli(self.exit_premium),
             premium_weeks: self.premium_weeks,
             calm_inflation: milli(self.calm_inflation),
+            calm_monetized: milli(self.calm_monetized),
             calm_weeks: self.calm_weeks,
             return_cover: milli(self.return_cover),
             devaluation: milli(self.devaluation),
+            base_1925: Vec::new(),
         })
     }
 }
@@ -224,6 +229,14 @@ struct ReservesFile {
     /// (tag, millions of dollars) of monetary gold at the end of 1925; a tag may repeat (a
     /// colony's bank goes to its metropole's market).
     gold_1925: Vec<(String, f64)>,
+    /// (holder, issuer, millions of dollars) of foreign exchange the central banks held at the
+    /// end of 1925.
+    #[serde(default)]
+    fx_1925: Vec<(String, String, f64)>,
+    /// (tag, millions of dollars) of the monetary base at the end of 1925: notes in circulation
+    /// and the central bank's sight liabilities.
+    #[serde(default)]
+    base_1925: Vec<(String, f64)>,
 }
 
 impl ReservesFile {
@@ -241,21 +254,47 @@ impl ReservesFile {
                 "economy/reserves.ron: dollars_per_kg or monetary_share out of range".into(),
             );
         }
-        let mut start = vec![Fixed::ZERO; countries.countries.len()];
-        for (tag, millions) in &self.gold_1925 {
-            let mi = countries
+        let n = countries.countries.len();
+        let index = |tag: &str| {
+            countries
                 .countries
                 .iter()
-                .position(|c| &c.tag == tag)
-                .ok_or_else(|| format!("economy/reserves.ron: unknown tag {tag}"))?;
-            let kg = Fixed::from_f64_lossy(millions * 1e6 / self.dollars_per_kg);
-            start[mi] += kg * gold_price;
+                .position(|c| c.tag == tag)
+                .ok_or_else(|| format!("economy/reserves.ron: unknown tag {tag}"))
+        };
+        // Millions of dollars at the source's gold valuation, in reference units.
+        let value = |millions: f64| {
+            Fixed::from_f64_lossy(millions * 1e6 / self.dollars_per_kg) * gold_price
+        };
+        let mut start = vec![Fixed::ZERO; n];
+        for (tag, millions) in &self.gold_1925 {
+            start[index(tag)?] += value(*millions);
+        }
+        let mut start_fx: Vec<Vec<(u16, Fixed)>> = vec![Vec::new(); n];
+        for (holder, issuer, millions) in &self.fx_1925 {
+            let (h, i) = (index(holder)?, index(issuer)?);
+            if h == i || *millions < 0.0 {
+                return Err(format!(
+                    "economy/reserves.ron: fx_1925 {holder} in {issuer}: own currency or negative"
+                ));
+            }
+            let i = u16::try_from(i).map_err(|_| "economy/reserves.ron: too many countries")?;
+            match start_fx[h].binary_search_by_key(&i, |x| x.0) {
+                Ok(k) => start_fx[h][k].1 += value(*millions),
+                Err(k) => start_fx[h].insert(k, (i, value(*millions))),
+            }
+        }
+        let mut base_1925 = vec![Fixed::ZERO; n];
+        for (tag, millions) in &self.base_1925 {
+            base_1925[index(tag)?] += value(*millions);
         }
         Ok(crate::econ::payments::SettleRules {
             gold,
             gold_price,
             monetary_share: Fixed::from_int(self.monetary_share) / 1000,
             start,
+            start_fx,
+            base_1925,
         })
     }
 }
@@ -348,8 +387,16 @@ impl GameData {
         let settle = optional::<ReservesFile>(&data.join("economy/reserves.ron"))?
             .map(|f| f.resolve(&catalogue, &countries).map(Arc::new))
             .transpose()?;
+        // The cover reads the 1925 monetary base, which reserves.ron gives at its valuation.
         let gold = optional::<GoldFile>(&data.join("economy/gold.ron"))?
-            .map(|f| f.resolve(&countries).map(Arc::new))
+            .map(|f| {
+                f.resolve(&countries).map(|mut g| {
+                    if let Some(s) = &settle {
+                        g.base_1925.clone_from(&s.base_1925);
+                    }
+                    Arc::new(g)
+                })
+            })
             .transpose()?;
         let capital = optional::<CapitalFile>(&data.join("economy/capital.ron"))?
             .map(|f| f.resolve().map(Arc::new))

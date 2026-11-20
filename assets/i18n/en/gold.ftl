@@ -20,7 +20,7 @@ gold-parity = Parity
 gold-parity-value = { $parity } (today's rate { $today })
 gold-parity-tip = Exchange rate index, 1925 = 100. The parity is the rate the central bank holds.
 gold-cover-line = Cover { $cover } · legal { $legal } · floor { $floor }
-gold-cover-tip = Cover: the central bank's net reserves (gold and foreign exchange, less the country's currency in other reserves), in local money at the real exchange rate, over the money it issued (the bonds it bought and its credit to banks). It runs from −1000% to +1000%. The white mark is the legal cover; the red one, the floor.
+gold-cover-tip = Cover: the central bank's gold and foreign exchange, at the real exchange rate, over the monetary base (the bank's notes and deposits: what the game issued, bonds and credit, plus the rest of the 1925 base). It runs from −1000% to +1000%. The white mark is the legal cover; the red one, the floor.
 gold-below-legal = Below the legal cover for { $weeks } { $weeks ->
     [one] week
    *[other] weeks
@@ -89,7 +89,7 @@ gold-below-legal-stop = the bank creates no money and, in { $left } { $left ->
 }, starts withdrawing money.
 gold-below-legal-withdrawing = the bank is withdrawing money: { $share } of GDP a year.
 gold-reserves-net = Net reserves
-gold-reserves-net-tip = Reserves less our currency in other reserves: what the cover counts. Below zero, the cover is too.
+gold-reserves-net-tip = Reserves less our currency in other reserves: what is left if others exchanged the currency of ours they hold. The cover counts the gross reserves, without this.
 
 # The gold standard decision (Agendas)
 gold-decision-open-join = Adhere to the gold standard…
