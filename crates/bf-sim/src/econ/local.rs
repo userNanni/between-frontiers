@@ -284,6 +284,7 @@ mod tests {
                 tradable: false,
                 local: true,
                 national_with: None,
+                stock: None,
             }],
             local: vec![0],
             freight: Some(0),

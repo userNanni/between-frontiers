@@ -76,6 +76,19 @@ pub struct GoodDef {
     pub national_with: Option<String>,
     /// What one unit is, for tooltips and calibration, e.g. "1 t of grain".
     pub unit: String,
+    /// Kept by the market when no buyer takes it (`econ::stock`, `Switches::market_stock`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stock: Option<StockDef>,
+}
+
+/// How a storable good is kept (`econ::stock`).
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StockDef {
+    /// Most a market keeps, in weeks of its own output of the good.
+    pub weeks: u16,
+    /// Lowest price, in thousandths of the base price.
+    pub floor: u32,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

@@ -495,6 +495,7 @@ mod tests {
             tradable: !local,
             local,
             national_with: None,
+            stock: None,
         }
     }
 
