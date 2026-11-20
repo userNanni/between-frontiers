@@ -32,6 +32,7 @@ good-sulfur = Enxofre
 good-phosphate_rock = Rocha fosfática
 good-potash = Potássio
 good-uranium_ore = Minério de urânio
+good-radium = Rádio
 good-rare_earth_ore = Minério de terras raras
 good-coal = Carvão
 good-crude_oil = Petróleo bruto

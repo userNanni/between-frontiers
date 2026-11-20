@@ -164,8 +164,14 @@
             (key: "open_pit", available_from: 1950, inputs: [("explosives", 8), ("machinery", 10), ("fuel", 400)], outputs: [("potash", 105000)], jobs: [("laborer", 300), ("skilled_worker", 150), ("engineer", 20), ("manager", 10), ("capitalist", 5)]),
         ]),
         (key: "uranium_mine", group: "extraction", resource: Some("uranium"), farm: None, methods: [
-            (key: "pick_and_shovel", available_from: 1925, inputs: [("tools", 4), ("explosives", 3)], outputs: [("uranium_ore", 50000)], jobs: [("laborer", 850), ("skilled_worker", 60), ("manager", 8), ("capitalist", 5)]),
-            (key: "mechanized_mining", available_from: 1925, inputs: [("tools", 4), ("explosives", 5), ("machinery", 6), ("electricity", 300)], outputs: [("uranium_ore", 90000)], jobs: [("laborer", 550), ("skilled_worker", 150), ("engineer", 15), ("manager", 10), ("capitalist", 5)]),
+            // U4: before the bomb a uranium mine works for radium; the uranium comes out as a
+            // by-product, about 5.2 t of uranium salts a gram of radium (Minerals Yearbook 1938,
+            // p. 681; 1939, p. 755), taken here as kg of U3O8 (estimate): 50,000 kg of U3O8 a
+            // level, 9,615 mg of radium. The first output is radium: the mine follows its sales,
+            // and the ore it makes beyond the buyers goes to the market's stock (`stock` of
+            // uranium_ore, the rule market_stock).
+            (key: "pick_and_shovel", available_from: 1925, inputs: [("tools", 4), ("explosives", 3)], outputs: [("radium", 9615), ("uranium_ore", 50000)], jobs: [("laborer", 850), ("skilled_worker", 60), ("manager", 8), ("capitalist", 5)]),
+            (key: "mechanized_mining", available_from: 1925, inputs: [("tools", 4), ("explosives", 5), ("machinery", 6), ("electricity", 300)], outputs: [("radium", 17308), ("uranium_ore", 90000)], jobs: [("laborer", 550), ("skilled_worker", 150), ("engineer", 15), ("manager", 10), ("capitalist", 5)]),
             (key: "open_pit", available_from: 1950, inputs: [("explosives", 8), ("machinery", 10), ("fuel", 400)], outputs: [("uranium_ore", 175000)], jobs: [("laborer", 300), ("skilled_worker", 150), ("engineer", 20), ("manager", 10), ("capitalist", 5)]),
         ]),
         (key: "rare_earth_mine", group: "extraction", resource: Some("rare_earths"), farm: None, methods: [
@@ -429,7 +435,11 @@
             (key: "classroom", available_from: 1925, inputs: [("paper", 20), ("furniture", 20), ("services", 50)], outputs: [("schooling", 24000)], jobs: [("professional", 800), ("clerk", 100), ("laborer", 100)]),
         ]),
         (key: "hospital", group: "services", resource: None, farm: None, public: true, methods: [
-            (key: "general_hospital", available_from: 1925, inputs: [("medicines", 1500), ("services", 300)], outputs: [("hospital_care", 8000)], jobs: [("professional", 300), ("clerk", 150), ("skilled_worker", 100), ("laborer", 400)]),
+            // Radium for the treatment of cancer (U4): the world made some 24 g a year about 1925
+            // (Oolen 20 g, Minerals Yearbook 1930, p. 873; Jachymov 3 to 4 g, 1934, p. 503) over
+            // some 3,600 hospital levels: 7 mg a level (my computation). How the radium split
+            // between medicine and luminous paint has no source with a page.
+            (key: "general_hospital", available_from: 1925, inputs: [("medicines", 1500), ("services", 300), ("radium", 7)], outputs: [("hospital_care", 8000)], jobs: [("professional", 300), ("clerk", 150), ("skilled_worker", 100), ("laborer", 400)]),
         ]),
         // University and research institute: engineers and scientists at the bench, with their
         // instruments and support. Built as a public work; the treasury pays the share the law

@@ -32,6 +32,7 @@ good-sulfur = Sulfur
 good-phosphate_rock = Phosphate rock
 good-potash = Potash
 good-uranium_ore = Uranium ore
+good-radium = Radium
 good-rare_earth_ore = Rare-earth ore
 good-coal = Coal
 good-crude_oil = Crude oil
