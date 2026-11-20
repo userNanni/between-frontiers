@@ -1055,7 +1055,7 @@ fn expedition(
     if fixed {
         let now = wanted.unwrap_or(e.goal);
         let d = super::gov_ui::control_row(ui, &i18n.tr("war-expedition-men"), |ui| {
-            super::gov_ui::stepper_wide(
+            super::gov_ui::stepper_typed(
                 ui,
                 &int(now),
                 super::gov_ui::step_width(ui, &[int(e.cap.max(now))]),
@@ -1067,14 +1067,16 @@ fn expedition(
                     id: "war.expedition.men",
                     row: 0,
                 },
+                super::gov_ui::typed_int(i18n, now as i64, 0, e.cap as i64),
             )
         });
-        if d != 0 {
-            let men = if d < 0 {
-                now.saturating_sub(EXPEDITION_STEP)
-            } else {
-                (now + EXPEDITION_STEP).min(e.cap)
-            };
+        let men = match d {
+            super::gov_ui::StepOut::Step(d) if d < 0 => Some(now.saturating_sub(EXPEDITION_STEP)),
+            super::gov_ui::StepOut::Step(_) => Some((now + EXPEDITION_STEP).min(e.cap)),
+            super::gov_ui::StepOut::Set(v) => Some((v.max(0.0) as u64).min(e.cap)),
+            super::gov_ui::StepOut::None => None,
+        };
+        if let Some(men) = men {
             *draft = Some((war, Some(men)));
             out.commands.push(GameCommand::SetExpedition {
                 tag: v.me.clone(),
@@ -1161,9 +1163,10 @@ fn strike(
         }
     });
     let step = super::gov_ui::control_row(ui, &i18n.tr("strike-warheads"), |ui| {
-        super::gov_ui::stepper(
+        super::gov_ui::stepper_typed(
             ui,
             &int(u64::from(d.warheads)),
+            super::gov_ui::STEP_VALUE_W,
             &i18n.tr("strike-warheads-tip"),
             d.warheads > 1,
             u64::from(d.warheads) < s.deliverable,
@@ -1172,10 +1175,16 @@ fn strike(
                 id: "war.strike.warheads",
                 row: 0,
             },
+            super::gov_ui::typed_int(i18n, i64::from(d.warheads), 1, s.deliverable as i64),
         )
     });
-    if step != 0 {
-        d.warheads = (d.warheads as i64 + i64::from(step)).clamp(1, s.deliverable as i64) as u32;
+    let to = match step {
+        super::gov_ui::StepOut::Step(k) => Some(d.warheads as i64 + i64::from(k)),
+        super::gov_ui::StepOut::Set(v) => Some(v.round() as i64),
+        super::gov_ui::StepOut::None => None,
+    };
+    if let Some(to) = to {
+        d.warheads = to.clamp(1, (s.deliverable as i64).max(1)) as u32;
         d.asked = false;
     }
     let n = u64::from(d.warheads);

@@ -458,9 +458,10 @@ pub fn show_demand(
         ] {
             let now = *value;
             let s = super::gov_ui::control_row(ui, &i18n.tr(label), |ui| {
-                super::gov_ui::stepper(
+                super::gov_ui::stepper_typed(
                     ui,
                     &pct(i18n, f64::from(now)),
+                    super::gov_ui::STEP_VALUE_W,
                     &i18n.tr("crisis-demand-of-gdp"),
                     now > 0 && gdp > 0.0,
                     i32::from(now) < MONEY_MAX && gdp > 0.0,
@@ -469,10 +470,20 @@ pub fn show_demand(
                         id,
                         row: usize::from(label == "crisis-demand-tribute"),
                     },
+                    super::gov_ui::typed_pct(
+                        i18n,
+                        f64::from(now) / 10.0,
+                        0.0,
+                        f64::from(MONEY_MAX) / 10.0,
+                        1,
+                    ),
                 )
             });
-            if s != 0 {
-                *value = (i32::from(now) + s * step).clamp(0, MONEY_MAX) as u16;
+            if gdp > 0.0
+                && let Some(to) =
+                    super::gov_ui::step_to(s, i32::from(now), step, 10.0, 0, MONEY_MAX)
+            {
+                *value = to as u16;
             }
         }
     }
