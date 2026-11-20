@@ -118,3 +118,25 @@ gold-choice-market-confirm = Aderir no câmbio do dia vale na semana que vem. Da
 gold-choice-float-confirm = Sair do ouro vale na semana que vem: o câmbio flutua, o prêmio de risco sobe, e quem guarda a nossa moeda perde se ela cair. Um ponto de restauração é gravado antes.
 gold-choice-control-confirm = O controle cambial vale na semana que vem: o capital fica congelado, e o que o país não consegue pagar fica bloqueado lá fora. Um ponto de restauração é gravado antes.
 gold-choice-rule-confirm = Devolver à regra histórica vale na semana que vem. Um ponto de restauração é gravado antes.
+
+# A lente do padrão-ouro e o aviso do diário
+lens-ties-gold = Padrão-ouro: quem está no ouro
+legend-gold-off = O padrão-ouro está desligado nesta partida.
+legend-gold-on = No padrão-ouro
+legend-gold-control = Paridade sob controle cambial
+legend-gold-float = Câmbio flutuante
+legend-gold-count = { $gold } no ouro · { $control } sob controle · { $float } flutuando
+tip-gold-on = No padrão-ouro: paridade { $parity } (1925 = 100), cobertura { $cover } para uma legal de { $legal }
+tip-gold-control = Paridade { $parity } (1925 = 100) sob controle cambial
+tip-gold-float = Câmbio flutuante
+journal-gold-title = Padrão-ouro
+journal-gold-cause-below = As reservas cobrem menos que a cobertura legal: pela regra, os juros sobem e o banco não cria moeda. Abaixo do piso, o país sai do ouro.
+journal-gold-cause-world = Quem entrou e quem saiu do padrão-ouro nos últimos doze meses. Quando o maior emissor das suas divisas sai, o país pode sair junto.
+journal-gold-cond-cover = Cobertura acima da legal
+journal-gold-join = { $country } entrou no padrão-ouro
+journal-gold-leave = { $country } saiu do padrão-ouro pela cobertura
+journal-gold-contagion = { $country } saiu do padrão-ouro junto com o emissor das suas divisas
+journal-gold-control = { $country } passou a segurar a paridade sob controle cambial
+journal-gold-devalue = { $country } desvalorizou a paridade e ficou no ouro
+journal-gold-abandon = { $country } deixou o padrão-ouro por decisão do governo
+journal-gold-cond-below = Cobertura abaixo da legal

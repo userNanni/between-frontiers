@@ -178,6 +178,9 @@ pub enum Kind {
     NuclearProgramme {
         can_test: bool,
     },
+    /// The gold standard: the country's cover below the legal one, or changes of regime in the
+    /// world in the last twelve months.
+    Gold,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -215,6 +218,7 @@ impl Kind {
             Kind::Forces { .. } => "forces".into(),
             Kind::Revolt(tag) => format!("revolt-{tag}"),
             Kind::NuclearProgramme { .. } => "nuclear-programme".into(),
+            Kind::Gold => "gold".into(),
         }
     }
 }
@@ -342,6 +346,8 @@ pub struct Rules<'a> {
     pub military: Option<&'a bf_sim::war::Military>,
     /// The nuclear programme's rule and chain, with the war switched on.
     pub programme: Option<&'a bf_sim::war::programme::ProgrammeSetup>,
+    /// The gold standard's rule, with it switched on.
+    pub gold: Option<&'a bf_sim::econ::gold::GoldRules>,
 }
 
 fn f(x: Fixed) -> f64 {
@@ -364,6 +370,9 @@ pub fn read_country(world: &GameWorld, c: usize, date: Date, rules: Rules<'_>) -
     let research = research(world, c, rules.tree);
     research_entry(&research, rules.tree, &mut entries);
     fiscal_entries(m, WorksBudget::read(m, rules.catalogue), date, &mut entries);
+    if let Some(g) = rules.gold {
+        gold_entry(world, c, g, date, &mut entries);
+    }
     if let Some(p) = rules.politics {
         politics_entries(world, c, p, &mut entries);
     }
@@ -506,6 +515,100 @@ fn entry(kind: Kind, tone: Tone, title: Label, cause: Label, screen: Screen) -> 
         completes: None,
         screen,
     }
+}
+
+// ---------------------------------------------------------------------------------------------
+// The gold standard
+
+/// The country's cover against the legal one while on gold, and the changes of regime in the
+/// world in the last twelve months, the latest first; nothing when neither has anything to say.
+fn gold_entry(
+    world: &GameWorld,
+    c: usize,
+    rules: &bf_sim::econ::gold::GoldRules,
+    date: Date,
+    out: &mut Vec<Entry>,
+) {
+    use bf_sim::econ::gold::{Change, Regime};
+    let Some(s) = world.gold.countries.get(c) else {
+        return;
+    };
+    let legal = rules
+        .legal_cover
+        .get(c)
+        .copied()
+        .unwrap_or(Fixed::from_ratio(35, 100));
+    let floor = legal * rules.floor;
+    let on_gold = s.regime == Regime::Gold;
+    let below = on_gold && s.cover < legal;
+    let now = date.year * 12 + i32::from(date.month);
+    let recent: Vec<_> = world
+        .gold
+        .events
+        .iter()
+        .filter(|e| now - (e.year * 12 + i32::from(e.month)) < 12)
+        .collect();
+    if !below && recent.is_empty() {
+        return;
+    }
+    let tone = if on_gold && s.cover < floor {
+        Tone::Danger
+    } else if below {
+        Tone::Warning
+    } else {
+        Tone::Neutral
+    };
+    let mut e = entry(
+        Kind::Gold,
+        tone,
+        label("journal-gold-title"),
+        label(if below {
+            "journal-gold-cause-below"
+        } else {
+            "journal-gold-cause-world"
+        }),
+        Screen::Money,
+    );
+    // Below the legal cover: what opens the entry, and what closes it.
+    if below {
+        e.enter.push(
+            Condition::new(label("journal-gold-cond-below"))
+                .measured(Value::Share(f(s.cover)))
+                .limit(Cmp::AtMost, Value::Share(f(legal)))
+                .holds(true),
+        );
+        e.exit.push(
+            Condition::new(label("journal-gold-cond-cover"))
+                .measured(Value::Share(f(s.cover)))
+                .limit(Cmp::AtLeast, Value::Share(f(legal)))
+                .holds(false),
+        );
+    }
+    let tag = |mi: u16| {
+        world
+            .countries
+            .iter()
+            .nth(usize::from(mi))
+            .map(|(_, c)| c.tag.clone())
+    };
+    for ev in recent.iter().rev().take(8) {
+        let Some(t) = tag(ev.market) else { continue };
+        let key = match ev.change {
+            Change::Join => "journal-gold-join",
+            Change::Leave => "journal-gold-leave",
+            Change::Contagion => "journal-gold-contagion",
+            Change::Control => "journal-gold-control",
+            Change::Devalue => "journal-gold-devalue",
+            Change::Abandon => "journal-gold-abandon",
+        };
+        e.milestones.push(Milestone {
+            label: label(key).key("country", format!("country-{t}")),
+            reached: true,
+            date: Some(Date::new(ev.year, ev.month, 1)),
+            progress: None,
+        });
+    }
+    out.push(e);
 }
 
 // ---------------------------------------------------------------------------------------------

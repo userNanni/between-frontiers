@@ -150,3 +150,54 @@ fn gold_decision() {
     unsafe { std::env::remove_var("BF_RULES") };
     let _ = std::fs::remove_dir_all(&user);
 }
+
+/// The gold standard's lens in February 1926 (who is on gold, under control, floating; the tip
+/// of the United States with its parity and cover), and the Agendas' notice of the year's
+/// changes of regime. Portuguese at 1600 × 900, English at 1280 × 720.
+#[test]
+#[ignore = "needs a GPU (or software Vulkan) and the generated map; run with --ignored"]
+fn gold_lens() {
+    let user = std::env::temp_dir().join(format!("bf-shots-gold-lens-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&user);
+    let switches = bf_sim::data::GameData::load(&root())
+        .expect("game data")
+        .switches
+        .with(RULES)
+        .expect("switches");
+    // SAFETY: the client takes its switches from `BF_RULES`; one thread.
+    unsafe { std::env::set_var("BF_RULES", RULES) };
+    let s = session("USA", Date::new(1926, 2, 1), switches);
+    for (locale, size, tag, notice) in [
+        ("pt-BR", egui::vec2(1600.0, 900.0), "pt", "Padrão-ouro"),
+        ("en", egui::vec2(1280.0, 720.0), "en-1280", "Gold standard"),
+    ] {
+        let home = user.join(tag);
+        let save = write_campaign(&home, &s, "Ouro", "USA");
+        let mut h = harness(home, locale, size);
+        open(&mut h, save);
+        settle(&mut h);
+        {
+            let app = h.state_mut();
+            if let (Some(view), Some(world)) = (&mut app.shared.map_view, &app.shared.world) {
+                bf_client::screens::lens_panel::choose(
+                    view,
+                    world,
+                    bf_client::map::lens::Lens::Gold,
+                    1926,
+                );
+            }
+        }
+        settle(&mut h);
+        h.hover_at(egui::pos2(size.x * 0.22, size.y * 0.42));
+        settle(&mut h);
+        shot(&mut h, THEME, &format!("309-gold-lens-{tag}"));
+        h.key_press(egui::Key::J);
+        settle(&mut h);
+        click_containing(&mut h, notice);
+        settle(&mut h);
+        shot(&mut h, THEME, &format!("310-gold-notice-{tag}"));
+    }
+    // SAFETY: as above.
+    unsafe { std::env::remove_var("BF_RULES") };
+    let _ = std::fs::remove_dir_all(&user);
+}

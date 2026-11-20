@@ -167,3 +167,42 @@ pub fn read(
         capital,
     })
 }
+
+/// One country on the gold standard's map lens.
+#[derive(Clone, Debug, PartialEq)]
+pub struct MapCountry {
+    pub tag: String,
+    pub regime: Regime,
+    /// Index, 1925 = 100.
+    pub parity: f64,
+    /// Ratios.
+    pub cover: f64,
+    pub legal: f64,
+}
+
+/// Every country's regime, for the map lens; `None` while the gold standard is off.
+pub fn map(world: &GameWorld, rules: Option<&GoldRules>) -> Option<Vec<MapCountry>> {
+    let rules = rules?;
+    if world.gold.countries.is_empty() {
+        return None;
+    }
+    Some(
+        world
+            .countries
+            .iter()
+            .zip(&world.gold.countries)
+            .enumerate()
+            .map(|(ci, ((_, c), s))| MapCountry {
+                tag: c.tag.clone(),
+                regime: s.regime,
+                parity: f(s.parity),
+                cover: f(s.cover),
+                legal: f(rules
+                    .legal_cover
+                    .get(ci)
+                    .copied()
+                    .unwrap_or(Fixed::from_ratio(35, 100))),
+            })
+            .collect(),
+    )
+}

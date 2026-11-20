@@ -494,6 +494,7 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
         world.live_influence = snap.lens_influence.clone();
         world.live_blocs = snap.blocs.clone();
         world.live_control = snap.control.clone();
+        world.live_gold = snap.gold_map.clone();
         let month = (snap.date.year, snap.date.month);
         let lens_data_new = !same(&snap.lens_influence, &state.lens_seen.0)
             || !same(&snap.blocs, &state.lens_seen.1)
@@ -501,7 +502,8 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
         if let Some(view) = &mut shared.map_view {
             use crate::map::lens::Lens;
             let live = match view.lens {
-                Lens::Local(_) => state.live_month != Some(month),
+                // The regimes change at most once a week; read once a month, as the local goods.
+                Lens::Local(_) | Lens::Gold => state.live_month != Some(month),
                 Lens::Influence { .. } | Lens::Blocs(_) | Lens::War => lens_data_new,
                 _ => false,
             };
