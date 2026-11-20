@@ -31,6 +31,8 @@ pub enum Lens {
     War,
     /// The gold standard: on gold in gold, behind exchange control hatched, floating faded.
     Gold,
+    /// A metric of each state (index into `state_metric::METRICS`), from the monthly figures.
+    State(usize),
 }
 
 /// Goods the infrastructure lens shows, in the simulation's `Catalogue::local` order (catalogue
@@ -126,7 +128,8 @@ pub fn state_color(world: &World, state: usize, lens: Lens, year: i32) -> Option
         | Lens::Influence { .. }
         | Lens::Blocs(_)
         | Lens::War
-        | Lens::Gold => None,
+        | Lens::Gold
+        | Lens::State(_) => None,
         Lens::Resource(i) => {
             let key = RESOURCES[i];
             let size = world.deposits[state]
@@ -185,6 +188,9 @@ pub fn palette(world: &World, lens: Lens, year: i32) -> Vec<[u8; 4]> {
     }
     if lens == Lens::Gold {
         return gold_palette(world, out);
+    }
+    if let Lens::State(m) = lens {
+        return state_palette(world, out, m);
     }
     let mut by_state = vec![None; world.states.len()];
     for (i, slot) in by_state.iter_mut().enumerate() {
@@ -369,6 +375,40 @@ fn gold_palette(world: &World, mut out: Vec<[u8; 4]>) -> Vec<[u8; 4]> {
                 HATCH_ALPHA,
             ],
             _ => faded(owner.def.color),
+        };
+    }
+    out
+}
+
+/// The states' metrics: from the paper of the lowest to a deep teal.
+pub const STATE_HIGH: [u8; 3] = [30, 105, 120];
+
+/// The colour of a state's metric at `t` (0–1) on the ramp.
+pub fn state_color_at(t: f32) -> [u8; 4] {
+    mix(EMPTY, STATE_HIGH, 0.08 + 0.92 * t)
+}
+
+/// Each state in the colour of its metric, between the lowest and highest of the world; a state
+/// the simulation does not run, or with nothing to measure, stays paper.
+fn state_palette(world: &World, mut out: Vec<[u8; 4]>, m: usize) -> Vec<[u8; 4]> {
+    use crate::state_metric as sm;
+    let empty = [EMPTY[0], EMPTY[1], EMPTY[2], 255];
+    let Some(view) = world.live_states.as_deref() else {
+        for p in &world.provinces {
+            out[p.def.id as usize] = empty;
+        }
+        return out;
+    };
+    let areas = world.state_areas();
+    let values: Vec<Option<f64>> = (0..world.states.len())
+        .map(|s| view.states.get(s).and_then(|f| sm::value(f, areas[s], m)))
+        .collect();
+    let range = sm::range(m, values.iter().flatten().copied());
+    for p in &world.provinces {
+        let v = p.state.and_then(|s| values.get(s).copied().flatten());
+        out[p.def.id as usize] = match (v, range) {
+            (Some(v), Some((lo, hi))) => state_color_at(sm::position(m, v, lo, hi)),
+            _ => empty,
         };
     }
     out

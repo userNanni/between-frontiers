@@ -227,6 +227,11 @@ impl State {
         self.government.as_ref().map(|w| w.tab)
     }
 
+    /// The state picked on the map (index into the map's states), if any (tests).
+    pub fn selected_state(&self) -> Option<usize> {
+        self.selected_state
+    }
+
     /// The government window's pending changes, while it is open (tests).
     pub fn government_drafts(&self) -> Option<&super::government::Drafts> {
         self.government.as_ref().map(|w| &w.drafts)
@@ -495,6 +500,7 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
         world.live_blocs = snap.blocs.clone();
         world.live_control = snap.control.clone();
         world.live_gold = snap.gold_map.clone();
+        world.live_states = snap.states.clone();
         let month = (snap.date.year, snap.date.month);
         let lens_data_new = !same(&snap.lens_influence, &state.lens_seen.0)
             || !same(&snap.blocs, &state.lens_seen.1)
@@ -502,8 +508,9 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
         if let Some(view) = &mut shared.map_view {
             use crate::map::lens::Lens;
             let live = match view.lens {
-                // The regimes change at most once a week; read once a month, as the local goods.
-                Lens::Local(_) | Lens::Gold => state.live_month != Some(month),
+                // Read once a month, as the local goods: the regimes change at most once a week,
+                // the states' figures are the month's.
+                Lens::Local(_) | Lens::Gold | Lens::State(_) => state.live_month != Some(month),
                 Lens::Influence { .. } | Lens::Blocs(_) | Lens::War => lens_data_new,
                 _ => false,
             };
@@ -1003,6 +1010,7 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
             shared.world.as_ref(),
             snap.buildings.as_deref(),
             snap.methods.as_deref(),
+            player,
             state.economy.as_mut().expect("economy open"),
             &mut place,
         );
