@@ -529,6 +529,28 @@ de San Marino com a Itália, de Liechtenstein com a Suíça (1924) e de Mônaco 
 turismo, selos, cassino e remessas. É assunto de blocos e comércio; até lá o PIB deles fica
 pequeno.
 
+## Estoque por mercado (decisão U4, desligado)
+
+Chave `market_stock` (`data/rules.ron`, desligada; `econ::stock`). Um bem marcado como estocável em
+`data/economy/goods.ron` (`stock: Some((weeks, floor))`) que não acha comprador fica no mercado em
+vez de se perder:
+
+- toda semana, antes do comércio, o estoque entra na oferta do mercado, e o comércio por par pode
+  levá-lo para fora;
+- depois da compensação, o estoque vende na mesma fração que a oferta inteira vendeu, e o que ele
+  rendeu vai à poupança do mercado (o comprador pagou e nenhuma usina vendeu, como numa
+  importação): o estoque não cria nem destrói dinheiro;
+- o que sobra fica, até `weeks` semanas da produção do próprio mercado; um estoque acima disso não
+  é cortado, só para de crescer, e a pilha de uma mina que fecha fica;
+- o preço do bem não cai abaixo de `floor` milésimos do preço-base.
+
+Hoje só o minério de urânio é estocável (dez anos de produção, piso de um décimo do preço-base:
+estimativas, escolha do jogo). O rádio como bem que puxa a mina, o urânio como subproduto e a
+conferência com o estoque de Shinkolobwe em 1940 vêm do PR da guerra (passo 3 da fatia do
+físsil). Medido com a chave ligada (`BF_DIAG_STOCK`): sem o rádio, as minas de 1925 param sem
+comprador, e o estoque fica no que sobrou das primeiras semanas (Tchecoslováquia, Portugal,
+Bélgica, Estados Unidos). Save 43: `GameWorld::stocks`, no hash só quando não está vazio.
+
 ## Aberto
 
 - **PIB mundial do meio do século acima do real (fila de equilíbrio).** 17,1 trilhões em 1955 contra
