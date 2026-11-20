@@ -243,6 +243,12 @@ ponto em 1935 e de 33 pontos em 2024.
   `target/baseline/<sha>/band/p±N/`), uma vez por sha. `tools/bench/band.py <base> <nova>/history.json`
   compara território a território, por década, com a média ± 2σ da base e das amostras, e
   resume quantos ficam fora por série. Por acaso, cerca de 5 % ficam fora a 2σ.
+- **As amostras variam o tipo de empurrão** (desde `8eb5b08`): quatro no investimento de todos
+  (`BF_PERTURB_PERMILLE` ±2, ±4), duas no investimento com o sinal sorteado por país
+  (`BF_PERTURB_SIGNED`), quatro no custo de toda tecnologia (`BF_PERTURB_RESEARCH` ±20, ±50 por
+  mil) e quatro nas datas históricas de cada tecnologia, um ano antes ou depois por sorteio
+  (`BF_PERTURB_TECH`): catorze, cerca de 2 h de slot. Só investimento dava faixa estreita para
+  mudança de meio de século (três mudanças diferentes moveram 1965 em cerca de 3σ cada).
 - **Fora da faixa não é erro:** é efeito da regra, e o PR diz qual e por quê.
 - **A faixa não amostra a perturbação pequena e local.** O `BF_PERTURB_PERMILLE` empurra o fundo
   de todos os mercados na mesma direção. Uma mudança que mexe num par só (a união de San Marino
