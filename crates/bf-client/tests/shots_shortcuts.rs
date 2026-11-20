@@ -53,3 +53,36 @@ fn shortcuts_in_sight() {
     }
     let _ = std::fs::remove_dir_all(&user);
 }
+
+/// The first campaign, Brazil in January 1925: the key tips lit by themselves, with the banner
+/// saying what they are and the shortcuts' chip below; then the chip alone once they go out.
+/// Portuguese at 1600 × 900, English at 1280 × 720.
+#[test]
+#[ignore = "needs a GPU (or software Vulkan) and the generated map; run with --ignored"]
+fn first_campaign_tips() {
+    let user = std::env::temp_dir().join(format!("bf-shots-first-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&user);
+    let s = session(
+        "BRA",
+        Date::new(1925, 1, 8),
+        bf_sim::data::GameData::load(&root())
+            .expect("game data")
+            .switches,
+    );
+    for (locale, size, tag) in [
+        ("pt-BR", egui::vec2(1600.0, 900.0), "pt"),
+        ("en", egui::vec2(1280.0, 720.0), "en-1280"),
+    ] {
+        let home = user.join(tag);
+        let save = write_campaign(&home, &s, "Primeira", "BRA");
+        let mut h = harness(home, locale, size);
+        h.state_mut().shared.first_tips = true;
+        open(&mut h, save);
+        settle(&mut h);
+        shot(&mut h, THEME, &format!("299-first-tips-{tag}"));
+        h.key_press(egui::Key::Escape);
+        settle(&mut h);
+        shot(&mut h, THEME, &format!("300-shortcuts-chip-{tag}"));
+    }
+    let _ = std::fs::remove_dir_all(&user);
+}
