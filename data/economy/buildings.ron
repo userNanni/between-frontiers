@@ -165,13 +165,16 @@
         ]),
         (key: "uranium_mine", group: "extraction", resource: Some("uranium"), farm: None, methods: [
             // U4: before the bomb a uranium mine works for radium; the uranium comes out as a
-            // by-product, about 5.2 t of uranium salts a gram of radium (Minerals Yearbook 1938,
-            // p. 681; 1939, p. 755), taken here as kg of U3O8 (estimate): 50,000 kg of U3O8 a
-            // level, 9,615 mg of radium. The first output is radium: the mine follows its sales,
-            // and the ore it makes beyond the buyers goes to the market's stock (`stock` of
-            // uranium_ore, the rule market_stock).
-            (key: "pick_and_shovel", available_from: 1925, inputs: [("tools", 4), ("explosives", 3)], outputs: [("radium", 9615), ("uranium_ore", 50000)], jobs: [("laborer", 850), ("skilled_worker", 60), ("manager", 8), ("capitalist", 5)]),
-            (key: "mechanized_mining", available_from: 1925, inputs: [("tools", 4), ("explosives", 5), ("machinery", 6), ("electricity", 300)], outputs: [("radium", 17308), ("uranium_ore", 90000)], jobs: [("laborer", 550), ("skilled_worker", 150), ("engineer", 15), ("manager", 10), ("capitalist", 5)]),
+            // by-product. Radium-226 and uranium-238 in equilibrium keep a fixed mass ratio,
+            // (1,600 years over 4.468 billion) x (226 over 238) = 3.40e-7: a gram of radium to
+            // 2.94 t of uranium, 3.47 t of U3O8 with the radium wholly recovered (the physical
+            // floor; my computation from the half-lives). With a recovery of 80 % (an estimate,
+            // the range 100 % to 80 % gives 3.47 to 4.34 t), 4.34 t of U3O8 a gram: a level's
+            // 50,000 kg give 11,534 mg of radium. (The Minerals Yearbook's 5.2 t of "uranium
+            // salts" a gram, 1938, p. 681, are salts, not oxide.) The first output is radium: the
+            // mine follows its sales, and the ore beyond the buyers goes to the market's stock.
+            (key: "pick_and_shovel", available_from: 1925, inputs: [("tools", 4), ("explosives", 3)], outputs: [("radium", 11534), ("uranium_ore", 50000)], jobs: [("laborer", 850), ("skilled_worker", 60), ("manager", 8), ("capitalist", 5)]),
+            (key: "mechanized_mining", available_from: 1925, inputs: [("tools", 4), ("explosives", 5), ("machinery", 6), ("electricity", 300)], outputs: [("radium", 20761), ("uranium_ore", 90000)], jobs: [("laborer", 550), ("skilled_worker", 150), ("engineer", 15), ("manager", 10), ("capitalist", 5)]),
             (key: "open_pit", available_from: 1950, inputs: [("explosives", 8), ("machinery", 10), ("fuel", 400)], outputs: [("uranium_ore", 175000)], jobs: [("laborer", 300), ("skilled_worker", 150), ("engineer", 20), ("manager", 10), ("capitalist", 5)]),
         ]),
         (key: "rare_earth_mine", group: "extraction", resource: Some("rare_earths"), farm: None, methods: [
