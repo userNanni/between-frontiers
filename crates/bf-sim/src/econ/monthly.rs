@@ -794,7 +794,12 @@ impl System<GameWorld> for Investment {
         let mut closes = Vec::new();
         for (ri, r) in econ.regions.iter().enumerate() {
             for p in &r.plants {
-                if p.levels > 0 && p.losing_weeks >= LOSING_WEEKS_TO_CLOSE {
+                // A state firm (U2) is not closed for its losses: they are the treasury's, and
+                // the state keeps it while it wants it.
+                if p.levels > 0
+                    && p.losing_weeks >= LOSING_WEEKS_TO_CLOSE
+                    && !cat.buildings[p.kind as usize].state_firm
+                {
                     closes.push((ri, p.kind));
                 }
             }

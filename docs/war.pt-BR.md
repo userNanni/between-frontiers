@@ -643,6 +643,32 @@ com 0,4% do PIB. A conferência com a ogiva de 3.600 está em "O custo da ogiva 
   - Os testes de dissuasão passaram a armar com ogivas termonucleares.
   - A conferência de 1962 arma com termonucleares e a de 1950 com fissão.
 
+**Passo 2, feito: o programa abre as suas minas (U1).**
+- **A regra:**
+  - Com usinas de núcleos e o mercado entregando menos de `mine_shortage` (90%) do minério que elas pedem, o programa pede um nível de `uranium_mine`.
+  - O pedido usa a fila de obras do Estado, como a usina, e é um de cada vez (`plant_weeks`).
+  - O lugar é um depósito já descoberto e com teto livre: primeiro em casa, depois em colônia, com o maior espaço que sobra.
+  - No exterior (pelo capital do Estado), espera o capital entre países.
+- **A usina de núcleos não fecha por prejuízo:** é empresa do Estado, o prejuízo é do Tesouro, e o Estado a mantém enquanto a quer. Sem isso, usina e mina fechavam em ciclo, uma sem a outra.
+- **Com `war` desligada** não há programa nem empresa do Estado: a série anual de 101 anos fica idêntica à do main.
+- **Teste:** `the_programme_opens_a_mine`. Os EUA pedem a mina na própria carnotita e a constroem.
+
+**Conferência de 1940, com o passo 2 e a ogiva consertada** (a ogiva de fissão pedia componentes eletrônicos, que só existem a partir de 1950; por isso o estoque ficava em zero até os anos 1950). Medida, sem ajuste; EUA, Alemanha e Reino Unido a 0,4% do PIB desde 1940:
+
+| Fim do ano | 1944 | 1945 | 1946 | 1947 | 1950 | 1955 |
+|---|---|---|---|---|---|---|
+| EUA, jogo | 12 | 27 | 50 | 75 | 148 | 226 |
+| EUA, real | 0 | 2 | 9 | 13 | ~300 | ~2.400 |
+
+- **O que limita os EUA:**
+  - em 1944, o minério (0,28 entregue, com uma mina);
+  - em 1945, a usina (núcleos entregues a 0,48, com 4 níveis);
+  - em 1946–47, a encomenda. O minério e os núcleos chegam inteiros, e o estoque sobe 23 a 25 ogivas por ano: o que três quartos do programa compram.
+- **Dependências anotadas, sem correção agora:**
+  1. **A montagem e as mãos de Los Alamos.** O jogo não tem esse passo. Em 1945–47, o real ficou em 2 a 9 ogivas por ano com o físsil de que dispunha, limitado pela montagem e pelos técnicos. No jogo, o núcleo vira ogiva na semana em que chega. Isso explica o excesso de 5 a 10 vezes em 1946–47, junto com o tamanho de um nível de usina, que é uma usina inteira da época.
+  2. **A bomba industrial em 1943, dois anos antes da real (1945).** O caminho é o crédito do programa. Com 0,4% do PIB desde 1940, ele empurra a cadeia (fissão, enriquecimento, reator, bomba) a `dollars_per_cost` por ponto. A penalidade de estar à frente da história (`ahead`) freia, mas não basta. Por isso há 12 ogivas já em 1944.
+  3. **O orçamento fixo em 0,4% do PIB.** O gasto americano saltou depois de 1950 (Coreia, a corrida da bomba H); os ~2.400 de 1955 vêm daí. O jogo fica em 226. É decisão de quem joga, ou da IA da fase 6, e não regra.
+
 ### O custo da ogiva em minério (PR de dados, substituído pelo passo 1 acima)
 A ogiva pedia 60 "kg enriched" de `nuclear_fuel` (30 na termonuclear), cerca de 350 kg de U3O8.
 Agora pede 3.600 nas duas gerações, contadas pelo minério que um núcleo real consumiu.
