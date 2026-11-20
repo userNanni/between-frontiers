@@ -31,6 +31,8 @@ pub enum Tab {
     Buildings,
     /// The production methods of each building (`methods.rs`).
     Methods,
+    /// Every state of the country with its metrics (`states_table.rs`).
+    States,
 }
 
 /// A column the buildings table sorts by.
@@ -96,6 +98,8 @@ pub struct Window {
     pub goto: Option<u16>,
     /// The methods tab's building.
     pub methods_kind: Option<u16>,
+    /// The states tab's sorting.
+    pub states: super::states_table::StatesUi,
 }
 
 #[derive(Default)]
@@ -146,6 +150,7 @@ pub fn show(
     world: Option<&crate::world::World>,
     view: Option<&BuildingsView>,
     methods: Option<&crate::methods_view::MethodsView>,
+    player: Option<usize>,
     window: &mut Window,
     place: &mut crate::hud::WindowPlace,
 ) -> Response {
@@ -165,10 +170,12 @@ pub fn show(
             let options = vec![
                 (Tab::Buildings, i18n.tr("economy-tab-buildings")),
                 (Tab::Methods, i18n.tr("economy-tab-methods")),
+                (Tab::States, i18n.tr("economy-tab-states")),
             ];
             let tips = [
                 Tip::Item('Z', "economy.tab.buildings".into(), "1"),
                 Tip::Item('Z', "economy.tab.methods".into(), "2"),
+                Tip::Item('Z', "economy.tab.states".into(), "3"),
             ];
             keys::segmented(ui, &mut window.tab, &options, &tips);
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
@@ -181,12 +188,21 @@ pub fn show(
             });
         });
         bf_ui_kit::divider(ui);
+        // The states tab reads the map's monthly figures, not the buildings' view.
+        if window.tab == Tab::States {
+            if let Some(id) = super::states_table::show(ui, i18n, world, player, &mut window.states)
+            {
+                window.goto = Some(id);
+            }
+            return;
+        }
         let Some(v) = view else {
             bf_ui_kit::muted(ui, &i18n.tr("economy-waiting"));
             return;
         };
         match window.tab {
             Tab::Buildings => buildings(ui, i18n, world, v, window),
+            Tab::States => {}
             Tab::Methods => match methods {
                 Some(m) => super::methods::show(ui, i18n, m, &mut window.methods_kind),
                 None => {

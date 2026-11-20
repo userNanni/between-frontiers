@@ -1,0 +1,19 @@
+# Métricas por estado: as lentes do mapa e a tabela de estados (state_metrics)
+lens-states = Estados
+cmd-map-mode-states = Mapa de métricas por estado
+    .short = Estados
+lens-state-population = População
+lens-state-density = Densidade
+lens-state-income = Renda por pessoa
+lens-state-literacy = Alfabetização
+lens-state-urban = Urbanização
+lens-state-employed = Ocupados em prédios e no Estado
+lens-state-works = Obras em andamento
+legend-state-log = Do estado mais baixo ao mais alto do mundo, em escala logarítmica (cada passo multiplica).
+legend-state-linear = De zero ao estado mais alto do mundo.
+states-density = { $n }/km²
+economy-tab-states = Estados
+states-basis = Os { $n } estados do país, metrópole e colônias, com os números do mês. Clique numa linha para ver o estado no mapa; clique numa coluna para ordenar.
+states-col-state = Estado
+states-col-gdp = PIB estimado
+states-colony = { $state } (colônia)
