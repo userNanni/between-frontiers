@@ -104,6 +104,24 @@ pub fn show(ui: &mut Ui, i18n: &I18n, v: &MethodsView, picked: &mut Option<u16>)
                     .show(ui, |ui| {
                         super::scroll_keys(ui);
                         bf_ui_kit::heading(ui, &i18n.tr(&format!("building-{}", k.key)));
+                        // Who picks the method: the market for now; the government's choice
+                        // stands here, off until it is in the game.
+                        ui.horizontal_wrapped(|ui| {
+                            ui.label(
+                                RichText::new(i18n.tr("methods-who"))
+                                    .font(bf_ui_kit::theme::sans(size::SMALL))
+                                    .color(color::TEXT_MUTED),
+                            );
+                            ui.add_enabled_ui(false, |ui| {
+                                let mut fixed = false;
+                                let options = [
+                                    (false, i18n.tr("methods-rule")),
+                                    (true, i18n.tr("methods-fixed")),
+                                ];
+                                bf_ui_kit::segmented_rects(ui, &mut fixed, &options);
+                            });
+                        });
+                        bf_ui_kit::small(ui, &i18n.tr("methods-fixed-later"));
                         let best = k
                             .best
                             .and_then(|b| k.methods.get(usize::from(b)))

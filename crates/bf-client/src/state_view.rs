@@ -25,6 +25,8 @@ pub struct StatePlant {
     pub workers: f64,
     /// A year's output at this month's prices.
     pub output: f64,
+    /// A state firm: its levels are the state's.
+    pub state_firm: bool,
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -80,6 +82,15 @@ impl StateFigures {
     pub fn levels(&self) -> i64 {
         self.plants.iter().map(|p| p.levels).sum()
     }
+
+    /// Levels of state firms here.
+    pub fn state_levels(&self) -> i64 {
+        self.plants
+            .iter()
+            .filter(|p| p.state_firm)
+            .map(|p| p.levels)
+            .sum()
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -124,6 +135,7 @@ pub fn read(world: &GameWorld, cat: &Catalogue, date: Date) -> Option<StatesView
                     levels: p.levels,
                     workers,
                     output,
+                    state_firm: b.state_firm,
                 })
             })
             .collect();
