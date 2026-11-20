@@ -38,6 +38,7 @@ pub mod sea_lens;
 pub mod settings;
 pub mod shortcuts_chip;
 pub mod state_panel;
+pub mod states_table;
 pub mod tariffs;
 pub mod tech_unlocks;
 pub mod tiles;

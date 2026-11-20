@@ -243,6 +243,7 @@ pub mod id {
     pub const MODE_SEA: &str = "map.mode_sea";
     pub const MODE_INFLUENCE: &str = "map.mode_influence";
     pub const MODE_BLOCS: &str = "map.mode_blocs";
+    pub const MODE_STATES: &str = "map.mode_states";
     pub const GOVERNMENT: &str = "window.government";
     pub const RESEARCH: &str = "window.research";
     pub const COUNTRY: &str = "window.country";
@@ -279,7 +280,7 @@ pub mod id {
     pub const LENS_PICKER: &str = "map.lens_picker";
     pub const LENS_KEEP_OPEN: &str = "map.lens_keep_open";
     /// The map modes, in the order of the picker.
-    pub const MODES: [&str; 8] = [
+    pub const MODES: [&str; 9] = [
         MODE_POLITICAL,
         MODE_RESOURCES,
         MODE_CLIMATE,
@@ -288,6 +289,7 @@ pub mod id {
         MODE_SEA,
         MODE_INFLUENCE,
         MODE_BLOCS,
+        MODE_STATES,
     ];
     pub const TAB_BUDGET: &str = "gov.tab_budget";
     pub const TAB_MONEY: &str = "gov.tab_money";
@@ -370,6 +372,7 @@ fn builtin() -> Vec<CommandDef> {
         (MODE_SEA, Digit6),
         (MODE_INFLUENCE, Digit7),
         (MODE_BLOCS, Digit8),
+        (MODE_STATES, Digit9),
     ]
     .into_iter()
     .enumerate()
@@ -380,6 +383,7 @@ fn builtin() -> Vec<CommandDef> {
             5 => '9',
             6 => '0',
             7 => 'Q',
+            8 => 'E',
             _ => (b'1' + i as u8) as char,
         };
         out.push(

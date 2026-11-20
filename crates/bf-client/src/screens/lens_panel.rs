@@ -13,7 +13,7 @@ use crate::world::World;
 
 // Wide enough for the seven families in English and Portuguese, as the kit draws them
 // (`the_lens_families_fit_across_the_panel` measures them).
-const WIDTH: f32 = 592.0;
+const WIDTH: f32 = 672.0;
 /// Sets the map's lens and recolours it, open picker or not (a command calls this; the
 /// `map.mode_*` commands can pass the family's first lens).
 pub fn choose(view: &mut MapView, world: &World, lens: Lens, year: i32) {
@@ -34,6 +34,8 @@ enum Family {
     Sea,
     /// Ties between countries: influence and blocs.
     Ties,
+    /// A metric of each state: people, density, income, schooling, towns, jobs, works.
+    States,
 }
 
 /// The ties family's list: influence both ways, then the blocs in the order of
@@ -84,6 +86,7 @@ fn family(lens: Lens) -> Family {
         Lens::Local(_) => Family::Infrastructure,
         Lens::Sea => Family::Sea,
         Lens::Influence { .. } | Lens::Blocs(_) | Lens::War | Lens::Gold => Family::Ties,
+        Lens::State(_) => Family::States,
     }
 }
 
@@ -93,6 +96,7 @@ fn items(fam: Family) -> &'static [&'static str] {
         Family::Farms => FARMS,
         Family::Infrastructure => &lens::LOCAL_GOODS,
         Family::Ties => &TIES_ITEMS,
+        Family::States => &crate::state_metric::METRICS,
         _ => &[],
     }
 }
@@ -230,6 +234,7 @@ pub fn family_labels(i18n: &I18n) -> Vec<String> {
         "lens-infrastructure",
         "lens-sea",
         "lens-ties",
+        "lens-states",
     ]
     .iter()
     .map(|k| i18n.tr(k))
@@ -244,6 +249,7 @@ pub fn all_lenses() -> Vec<Lens> {
     out.extend((0..lens::LOCAL_GOODS.len()).map(Lens::Local));
     out.push(Lens::Sea);
     out.extend((0..TIES_ITEMS.len()).map(ties_lens));
+    out.extend((0..crate::state_metric::METRICS.len()).map(Lens::State));
     out
 }
 
@@ -253,6 +259,7 @@ fn item_label(i18n: &I18n, fam: Family, key: &str) -> String {
         Family::Resources => i18n.tr(&format!("resource-{key}")),
         Family::Infrastructure => i18n.tr(&format!("good-{key}")),
         Family::Ties => i18n.tr(&format!("lens-ties-{key}")),
+        Family::States => i18n.tr(&format!("lens-state-{key}")),
         _ => i18n.tr(&format!("building-{key}")),
     }
 }
@@ -267,6 +274,7 @@ pub fn name(i18n: &I18n, lens: Lens) -> String {
         Family::Infrastructure => "lens-infrastructure",
         Family::Sea => "lens-sea",
         Family::Ties => "lens-ties",
+        Family::States => "lens-states",
     };
     let fam = i18n.tr(fam);
     let item = match lens {
@@ -278,6 +286,9 @@ pub fn name(i18n: &I18n, lens: Lens) -> String {
         Lens::Influence { .. } | Lens::Blocs(_) => ties_index(lens)
             .and_then(|i| TIES_ITEMS.get(i))
             .map(|k| item_label(i18n, Family::Ties, k)),
+        Lens::State(i) => crate::state_metric::METRICS
+            .get(i)
+            .map(|k| item_label(i18n, Family::States, k)),
         _ => None,
     };
     match item {
@@ -352,6 +363,7 @@ pub fn mode_lens(mode: usize, current: Lens) -> Lens {
             issue: 0,
             on: false,
         },
+        8 => Lens::State(0),
         _ => Lens::Blocs(0),
     };
     // The ties commands switch: a second press goes back to the political map.
@@ -439,6 +451,7 @@ pub fn show(
             (Family::Infrastructure, i18n.tr("lens-infrastructure")),
             (Family::Sea, i18n.tr("lens-sea")),
             (Family::Ties, i18n.tr("lens-ties")),
+            (Family::States, i18n.tr("lens-states")),
         ];
         let tips = [
             Tip::Command(id::MODE_POLITICAL),
@@ -448,6 +461,7 @@ pub fn show(
             Tip::Command(id::MODE_INFRASTRUCTURE),
             Tip::Command(id::MODE_SEA),
             Tip::Command(id::MODE_INFLUENCE),
+            Tip::Command(id::MODE_STATES),
         ];
         // The keys of these commands are read by the game screen, folded or not.
         let changed = keys::segmented(&mut ui, &mut f, &options, &tips);
@@ -465,6 +479,7 @@ pub fn show(
                 Family::Infrastructure => Lens::Local(lens::LOCAL_DEFAULT),
                 Family::Sea => Lens::Sea,
                 Family::Ties => ties_lens(0),
+                Family::States => Lens::State(0),
             };
         }
     }
@@ -472,7 +487,7 @@ pub fn show(
     // The list, scrolling inside its region when the room is short.
     if let Some(area) = lay.list {
         let selected = match current {
-            Lens::Resource(i) | Lens::Farm(i) | Lens::Local(i) => i,
+            Lens::Resource(i) | Lens::Farm(i) | Lens::Local(i) | Lens::State(i) => i,
             Lens::Influence { .. } | Lens::Blocs(_) | Lens::War | Lens::Gold => {
                 ties_index(current).unwrap_or(usize::MAX)
             }
@@ -539,6 +554,7 @@ pub fn show(
                             Family::Resources => Lens::Resource(i),
                             Family::Infrastructure => Lens::Local(i),
                             Family::Ties => ties_lens(i),
+                            Family::States => Lens::State(i),
                             _ => Lens::Farm(i),
                         };
                     }
@@ -639,6 +655,10 @@ fn legend(ui: &mut Ui, i18n: &I18n, current: Lens, world: &World) {
         gold_legend(ui, i18n, world);
         return;
     }
+    if let Lens::State(m) = current {
+        state_legend(ui, i18n, world, m);
+        return;
+    }
     if let Lens::Local(_) = current {
         if world.live_local.is_empty() {
             bf_ui_kit::small(ui, &i18n.tr("lens-no-data"));
@@ -708,7 +728,8 @@ fn legend(ui: &mut Ui, i18n: &I18n, current: Lens, world: &World) {
         | Lens::Influence { .. }
         | Lens::Blocs(_)
         | Lens::War
-        | Lens::Gold => {}
+        | Lens::Gold
+        | Lens::State(_) => {}
     }
 }
 
@@ -766,6 +787,7 @@ pub fn tooltip_line(
         Lens::Blocs(kind) => blocs_tip(i18n, world, state, kind),
         Lens::War => war_tip(i18n, world, state),
         Lens::Gold => gold_tip(i18n, world, state),
+        Lens::State(m) => state_tip(i18n, world, state, m),
         Lens::Local(i) => {
             let v = world.live_local.get(state)?.get(i).copied()?;
             if v < 0.0 {
@@ -1249,6 +1271,51 @@ fn gold_tip(i18n: &I18n, world: &World, state: usize) -> Option<String> {
         ),
         Regime::Float => i18n.tr("tip-gold-float"),
     })
+}
+
+/// A state metric's lens: the ramp from the lowest state to the highest.
+fn state_legend(ui: &mut Ui, i18n: &I18n, world: &World, m: usize) {
+    use crate::state_metric as sm;
+    let Some(v) = world.live_states.as_deref() else {
+        bf_ui_kit::small(ui, &i18n.tr("lens-no-data"));
+        return;
+    };
+    let areas = world.state_areas();
+    let values = (0..world.states.len())
+        .filter_map(|s| v.states.get(s).and_then(|f| sm::value(f, areas[s], m)));
+    let Some((lo, hi)) = sm::range(m, values) else {
+        bf_ui_kit::small(ui, &i18n.tr("lens-no-data"));
+        return;
+    };
+    bf_ui_kit::caption(ui, &i18n.tr(&format!("lens-state-{}", sm::METRICS[m])));
+    ramp(
+        ui,
+        lens::state_color_at(0.0),
+        lens::state_color_at(1.0),
+        &sm::text(i18n, m, lo),
+        &sm::text(i18n, m, hi),
+    );
+    bf_ui_kit::small(
+        ui,
+        &i18n.tr(if sm::scale(m) == sm::Scale::Log {
+            "legend-state-log"
+        } else {
+            "legend-state-linear"
+        }),
+    );
+}
+
+/// A state metric under the pointer, with its unit.
+fn state_tip(i18n: &I18n, world: &World, state: usize, m: usize) -> Option<String> {
+    use crate::state_metric as sm;
+    let f = world.live_states.as_deref()?.states.get(state)?;
+    let area = world.state_areas().get(state).copied().unwrap_or(0.0);
+    let v = sm::value(f, area, m)?;
+    Some(format!(
+        "{}: {}",
+        i18n.tr(&format!("lens-state-{}", sm::METRICS[m])),
+        sm::text(i18n, m, v)
+    ))
 }
 
 /// Who holds the state under the pointer, in the wars.

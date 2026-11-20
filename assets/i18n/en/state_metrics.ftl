@@ -1,0 +1,19 @@
+# Metrics by state: the map's lenses and the table of states (state_metrics)
+lens-states = States
+cmd-map-mode-states = Map of metrics by state
+    .short = States
+lens-state-population = Population
+lens-state-density = Density
+lens-state-income = Income per person
+lens-state-literacy = Literacy
+lens-state-urban = Urban share
+lens-state-employed = At work in buildings and for the state
+lens-state-works = Works under way
+legend-state-log = From the lowest state to the highest in the world, on a log scale (each step multiplies).
+legend-state-linear = From zero to the highest state in the world.
+states-density = { $n }/km²
+economy-tab-states = States
+states-basis = The country's { $n } states, metropole and colonies, with the month's figures. Click a line to see the state on the map; click a column to sort.
+states-col-state = State
+states-col-gdp = Estimated GDP
+states-colony = { $state } (colony)

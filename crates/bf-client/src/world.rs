@@ -269,6 +269,8 @@ pub struct World {
     pub live_control: Option<std::sync::Arc<crate::war_view::ControlView>>,
     /// Every country's exchange regime (the gold standard's lens).
     pub live_gold: Option<std::sync::Arc<Vec<crate::gold_view::MapCountry>>>,
+    /// Every state's figures of the month (the states' lenses and table).
+    pub live_states: Option<std::sync::Arc<crate::state_view::StatesView>>,
     /// Border changes of the simulation already applied to the owners (`apply_owners`).
     pub owners_seen: usize,
     /// Countries that may be born (`data/borders/candidates.ron`); empty when the file is missing.
@@ -329,6 +331,19 @@ fn parse_date(s: &str) -> Option<Date> {
 }
 
 impl World {
+    /// Each state's area in km², from its provinces.
+    pub fn state_areas(&self) -> Vec<f64> {
+        let mut out = vec![0.0; self.states.len()];
+        for p in &self.provinces {
+            if let Some(s) = p.state
+                && let Some(a) = out.get_mut(s)
+            {
+                *a += f64::from(p.def.area_km2);
+            }
+        }
+        out
+    }
+
     pub fn load(map_ron: &Path, countries_ron: &Path) -> Result<Self, WorldError> {
         let map: MapFile = read_ron(map_ron)?;
         let countries: CountriesFile = read_ron(countries_ron)?;
@@ -397,6 +412,7 @@ impl World {
             live_blocs: None,
             live_control: None,
             live_gold: None,
+            live_states: None,
             owners_seen: 0,
             candidates: Vec::new(),
             scenario_countries: 0,
@@ -611,6 +627,7 @@ impl World {
         self.live_blocs = None;
         self.live_control = None;
         self.live_gold = None;
+        self.live_states = None;
     }
 
     /// Tooltip text for a province: the state name (the province name on maps without states)
