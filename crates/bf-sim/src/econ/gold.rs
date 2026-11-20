@@ -7,25 +7,30 @@
 //! is on gold in 1925 and at what parity is data (`data/economy/gold.ron`); after that the
 //! rule moves them:
 //!
-//! - **Cover** ([`cover`]): the central bank's net reserves (gold and foreign exchange less the
-//!   country's own currency held abroad, `payments::ReservesState::owed`), valued in local real
-//!   units at the real exchange rate, over the money it issued (`Money::debt_bank`, the bonds it
-//!   bought, plus `Money::credit`, what it lent banks).
+//! - **Cover** ([`cover`]): the central bank's reserves (gold and foreign exchange, as the
+//!   statutes of the 1920s counted them; the country's own currency held abroad,
+//!   `payments::ReservesState::owed`, is not netted out), valued in local real units at the
+//!   real exchange rate, over the monetary base: the money the game issued (`Money::debt_bank`,
+//!   the bonds it bought, plus `Money::credit`, what it lent banks) and the rest of the 1925
+//!   base (notes and sight liabilities, `GoldRules::base_1925`, held fixed in
+//!   `Standing::base_other`).
 //! - **The rule on gold** ([`step`], read by `money::week` as a [`Peg`]): the exchange rate
 //!   holds the parity; below the legal cover the rate rises above the Taylor rule by some points
 //!   per point of cover missing and the bank creates no money (nor lends the treasury); after
 //!   some weeks short it withdraws money, and the existing inflation channel turns it into
 //!   deflation.
 //! - **Leaving** (PO3), by the rule, never by date: cover below the floor for some weeks in a
-//!   row, or the main issuer of the foreign exchange the country holds leaves (contagion, as
-//!   sterling in 1931). The rate goes back to the Taylor rule, the exchange rate floats to
+//!   row, or the main issuer of the foreign exchange the country holds leaves and the fall
+//!   expected of that currency would leave the holder's cover below the legal one (contagion,
+//!   as sterling in 1931). The rate goes back to the Taylor rule, the exchange rate floats to
 //!   purchasing-power parity, the premium rises for some years, and a country with much debt
 //!   in foreign currency holds its parity behind exchange control instead of floating.
 //! - **Holders lose** (PO7, [`revalue`]): foreign exchange is worth what its exchange rate says;
 //!   when a currency falls its holders' reserves fall with it and what its issuer owes abroad
 //!   falls by the same amount. Nobody gains from nowhere: the world's net reserves do not move.
 //! - **Returning** (PO2): a floating country goes back to gold at the exchange rate of the day
-//!   when its inflation has been low for long enough and its reserves cover enough.
+//!   when its inflation has been low and its bank has created no money beyond the rule for long
+//!   enough, and its reserves cover enough.
 //! - **The player** (PO6): adheres at the prewar parity or the day's rate, leaves (floating or
 //!   under control), or hands the choice back to the rule; on gold, the posture "defend" holds
 //!   the parity past the floor until the reserves run out, "devalue" moves the parity instead of
@@ -108,6 +113,11 @@ pub struct Standing {
     /// Points the central bank's rate stood above the Taylor rule last week to hold the parity
     /// ([`defense`]); zero off gold.
     pub defense: Fixed,
+    /// The part of the 1925 monetary base (notes and the bank's sight liabilities,
+    /// `GoldRules::base_1925`) the game's money does not hold (`Money::debt_bank` and `credit`):
+    /// notes backed by gold and by commercial bills, reference units, fixed at the start. Zero
+    /// when the data has no base.
+    pub base_other: Fixed,
 }
 
 impl HashState for Standing {
@@ -123,6 +133,7 @@ impl HashState for Standing {
             self.valued_at,
             self.cover,
             self.defense,
+            self.base_other,
         ] {
             v.hash_state(h);
         }
@@ -170,6 +181,91 @@ pub struct GoldState {
     /// By market index.
     pub countries: Vec<Standing>,
     pub events: Vec<GoldEvent>,
+}
+
+/// [`GoldState`] as saved before the monetary base (world versions 41 and 42): each standing
+/// without `base_other`.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct GoldStateBeforeBase {
+    pub countries: Vec<StandingBeforeBase>,
+    pub events: Vec<GoldEvent>,
+}
+
+/// [`Standing`] before `base_other`.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct StandingBeforeBase {
+    pub regime: Regime,
+    pub parity: Fixed,
+    pub prewar: Fixed,
+    pub posture: Posture,
+    pub chosen: bool,
+    pub pending: Option<GoldChoice>,
+    pub weeks_short: u16,
+    pub weeks_floor: u16,
+    pub weeks_calm: u16,
+    pub premium: Fixed,
+    pub valued_at: Fixed,
+    pub redenominations: u16,
+    pub cover: Fixed,
+    pub defense: Fixed,
+}
+
+impl From<GoldStateBeforeBase> for GoldState {
+    /// The old saves had no base: the cover reads the game's money alone, as it did.
+    fn from(g: GoldStateBeforeBase) -> Self {
+        Self {
+            countries: g
+                .countries
+                .into_iter()
+                .map(|s| Standing {
+                    regime: s.regime,
+                    parity: s.parity,
+                    prewar: s.prewar,
+                    posture: s.posture,
+                    chosen: s.chosen,
+                    pending: s.pending,
+                    weeks_short: s.weeks_short,
+                    weeks_floor: s.weeks_floor,
+                    weeks_calm: s.weeks_calm,
+                    premium: s.premium,
+                    valued_at: s.valued_at,
+                    redenominations: s.redenominations,
+                    cover: s.cover,
+                    defense: s.defense,
+                    base_other: Fixed::ZERO,
+                })
+                .collect(),
+            events: g.events,
+        }
+    }
+}
+
+impl From<&GoldState> for GoldStateBeforeBase {
+    fn from(g: &GoldState) -> Self {
+        Self {
+            countries: g
+                .countries
+                .iter()
+                .map(|s| StandingBeforeBase {
+                    regime: s.regime,
+                    parity: s.parity,
+                    prewar: s.prewar,
+                    posture: s.posture,
+                    chosen: s.chosen,
+                    pending: s.pending,
+                    weeks_short: s.weeks_short,
+                    weeks_floor: s.weeks_floor,
+                    weeks_calm: s.weeks_calm,
+                    premium: s.premium,
+                    valued_at: s.valued_at,
+                    redenominations: s.redenominations,
+                    cover: s.cover,
+                    defense: s.defense,
+                })
+                .collect(),
+            events: g.events.clone(),
+        }
+    }
 }
 
 impl GoldState {
@@ -239,28 +335,39 @@ pub struct GoldRules {
     pub withdraw: Fixed,
     /// Weeks below the floor that take a country off gold.
     pub exit_weeks: u16,
-    /// Share of the reserves in one currency above which its issuer's exit takes the holder off.
+    /// Share of the reserves in one currency above which its issuer's exit can take the holder
+    /// off: it does when the fall it expects of that currency (`contagion_loss`) leaves the
+    /// holder's own cover below the legal one.
     pub contagion: Fixed,
+    pub contagion_loss: Fixed,
     /// Debt in foreign currency over GDP above which a country leaving holds its parity behind
     /// exchange control.
     pub control_debt: Fixed,
     /// Points of premium an exit adds, and the weeks it takes to fade.
     pub exit_premium: Fixed,
     pub premium_weeks: u16,
-    /// Return: inflation within this many points of zero (both now and last year) for this many
-    /// weeks, and a cover of this multiple of the legal one.
+    /// Return: inflation within this many points of zero (both now and last year) and money
+    /// created beyond the rule (`Money::monetized`, points of GDP a year) at most
+    /// `calm_monetized`, for this many weeks, and a cover of this multiple of the legal one.
     pub calm_inflation: Fixed,
+    pub calm_monetized: Fixed,
     pub calm_weeks: u16,
     pub return_cover: Fixed,
     /// Share by which a devaluation moves the parity.
     pub devaluation: Fixed,
+    /// Each market's monetary base at the end of 1925 (notes in circulation and the central
+    /// bank's sight liabilities), reference units; zero where the data has none
+    /// (`data/economy/reserves.ron`).
+    pub base_1925: Vec<Fixed>,
 }
 
-/// The cover of one central bank (module doc): net reserves at the real exchange rate over the
-/// money it issued. A bank that issued nothing is fully covered with any reserve.
-pub fn cover(net_reserves: Fixed, money: &Money) -> Fixed {
-    let local = net_reserves.mul_div(money.real_exchange(), INDEX_BASE);
-    let issued = money.debt_bank + money.credit;
+/// The cover of one central bank (module doc): its reserves (gold and foreign exchange) at the
+/// real exchange rate over the monetary base, the money the game issued (`Money::debt_bank`,
+/// `credit`) plus the part of the 1925 base it does not hold (`Standing::base_other`). A bank
+/// that issued nothing is fully covered with any reserve.
+pub fn cover(reserves: Fixed, money: &Money, base_other: Fixed) -> Fixed {
+    let local = reserves.mul_div(money.real_exchange(), INDEX_BASE);
+    let issued = money.debt_bank + money.credit + base_other;
     let most = Fixed::from_int(10);
     if issued <= Fixed::ZERO {
         return if local > Fixed::ZERO {
@@ -337,9 +444,16 @@ pub fn step(
                     .get(mi)
                     .copied()
                     .unwrap_or((Regime::Float, INDEX_BASE));
+                let money = &markets[mi].money;
+                let base = rules.base_1925.get(mi).copied().unwrap_or(Fixed::ZERO);
                 Standing {
                     regime,
                     parity,
+                    base_other: if base > Fixed::ZERO {
+                        (base - money.debt_bank - money.credit).max(Fixed::ZERO)
+                    } else {
+                        Fixed::ZERO
+                    },
                     prewar: rules.prewar.get(mi).copied().unwrap_or(Fixed::ZERO),
                     valued_at: markets[mi].money.exchange_rate,
                     redenominations: markets[mi].money.redenominations,
@@ -359,6 +473,12 @@ pub fn step(
         );
     }
     let net = reserves.net();
+    let gross = |mi: usize| {
+        reserves
+            .markets
+            .get(mi)
+            .map_or(Fixed::ZERO, super::payments::Reserve::total)
+    };
     let legal = |mi: usize| {
         rules
             .legal_cover
@@ -374,7 +494,7 @@ pub fn step(
     let mut left: Vec<usize> = Vec::new();
     let events = &mut state.events;
     for (mi, (s, m)) in state.countries.iter_mut().zip(markets).enumerate() {
-        s.cover = cover(net.get(mi).copied().unwrap_or(Fixed::ZERO), &m.money);
+        s.cover = cover(gross(mi), &m.money, s.base_other);
         s.premium = (s.premium - fade).max(Fixed::ZERO);
         // The player's choice.
         if let Some(choice) = s.pending.take() {
@@ -477,7 +597,10 @@ pub fn step(
             }
             Regime::Float => {
                 let calm = |x: Fixed| x.abs() <= rules.calm_inflation;
-                s.weeks_calm = if calm(m.money.inflation) && calm(m.money.inflation_last_year) {
+                s.weeks_calm = if calm(m.money.inflation)
+                    && calm(m.money.inflation_last_year)
+                    && m.money.monetized <= rules.calm_monetized
+                {
                     s.weeks_calm.saturating_add(1)
                 } else {
                     0
@@ -516,11 +639,21 @@ pub fn step(
             if s.regime != Regime::Gold || s.posture != Posture::Rule {
                 continue;
             }
+            // The holder follows only if the fall it expects of the issuer's currency would
+            // leave its own cover below the legal one; a holder with room takes the loss when
+            // it comes (`revalue`) and stays.
             let hit = reserves
                 .markets
                 .get(mi)
-                .and_then(main_issuer)
-                .is_some_and(|(i, share)| i == issuer && share >= rules.contagion);
+                .and_then(|r| {
+                    let (i, share) = main_issuer(r)?;
+                    (i == issuer && share >= rules.contagion).then(|| r.total() * share)
+                })
+                .is_some_and(|held| {
+                    let after = gross(mi) - held * rules.contagion_loss;
+                    let other = state.countries[mi].base_other;
+                    cover(after, &markets[mi].money, other) < legal(mi)
+                });
             if hit {
                 leave(
                     rules,
@@ -588,7 +721,7 @@ pub enum Refusal {
 }
 
 /// What a choice of regime would mean this week, without carrying it out (the screen's cost of
-/// each parity, PO6): the parity, the cover the country's net reserves would give at it, the
+/// each parity, PO6): the parity, the cover the country's reserves would give at it, the
 /// points above the Taylor rule that cover asks for on gold, and how far the parity is from the
 /// day's exchange rate (positive: the currency held above the market, an overvaluation).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -722,6 +855,9 @@ pub(crate) mod tests {
             withdraw: Fixed::from_int(1),
             exit_weeks: 13,
             contagion: Fixed::from_ratio(1, 4),
+            contagion_loss: Fixed::from_ratio(3, 10),
+            calm_monetized: Fixed::from_ratio(1, 2),
+            base_1925: Vec::new(),
             control_debt: Fixed::from_ratio(1, 10),
             exit_premium: Fixed::from_int(1),
             premium_weeks: 156,
@@ -895,6 +1031,28 @@ pub(crate) mod tests {
         markets[1].money.redenominations = 1;
         revalue(&mut st, &mut res, &markets);
         assert_eq!(res.markets[0].fx, [(1, Fixed::from_int(40))]);
+    }
+
+    #[test]
+    fn a_holder_with_room_takes_the_loss_and_stays() {
+        let r = rules(3);
+        let mut st = GoldState::default();
+        let markets = vec![market(100), market(100), market(100)];
+        // Market 2 holds mostly market 1's currency, but so much gold besides that a fall of 30 %
+        // of what it holds still leaves it above the legal cover.
+        let mut res = reserves(&[100, 10, 200]);
+        res.markets[2].fx.push((1, Fixed::from_int(80)));
+        let mut date = laplace_schelling::Date::new(1926, 1, 4);
+        for _ in 0..13 {
+            step(&r, &mut st, &res, &markets, date);
+            date = laplace_schelling::Date::from_days(date.to_days() + 7);
+        }
+        assert_eq!(st.countries[1].regime, Regime::Float);
+        assert_eq!(
+            st.countries[2].regime,
+            Regime::Gold,
+            "no contagion with room"
+        );
     }
 
     #[test]

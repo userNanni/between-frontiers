@@ -13,7 +13,7 @@
 //   to France, Java (the Netherlands Indies) to the Netherlands. Countries with no figure for
 //   December 1925 in the table start with no gold: China, Ecuador (from 1927), Guatemala
 //   (from 1926), Danzig, Albania, Turkey, Siam, Persia and the Belgian Congo (from 1927).
-//   Foreign exchange held by central banks is not in the table and starts at zero everywhere.
+//   Foreign exchange held by central banks is not in the table: it is in `fx_1925` below.
 // - monetary_share: League of Nations, *Report of the Gold Delegation of the Financial
 //   Committee* (Geneva, 1932), §121(a): "in the four years 1926 to 1929 somewhat more than $250
 //   million of gold per annum were added to the visible monetary stocks ... rather less than
@@ -76,5 +76,67 @@
         ("SOV", 93.9),
         ("VEN", 16.4),
         ("YUG", 14.7),
+    ],
+    // Foreign exchange held by the central banks at the end of 1925 (holder, issuer, millions of
+    // dollars at the December 1925 New York rate). The amounts are read on the page: League of
+    // Nations, *Statistical Year-Book 1928* (Geneva, 1929), Table 96, "Gold and Foreign Assets
+    // Reserves", pp. 186–189 (archive.org in.ernet.dli.2015.99146), and *Federal Reserve
+    // Bulletin*, February 1926, pp. 120–122, and March 1926, pp. 190–192 (FRASER), the column
+    // of exchange the banks counted as reserve (Germany's 403 million marks of Deckungsdevisen,
+    // not the 1,016 of all foreign assets); rates from *Banking and Monetary Statistics
+    // 1914–1941*, Table 173. India's is the Paper Currency Reserve's sterling (the note cover),
+    // not all its sterling assets (411); Italy's takes the low end of an unresolved unit (27.9
+    // to 36.5). The pounds of Australia, South Africa and Egypt and the Baltic currencies are
+    // converted at sterling or their parity (estimates).
+    // NOT READ FROM A SOURCE (estimate): the issuer. The sources give the exchange in one sum;
+    // the empire, Scandinavia, the League's loan countries (Austria, Hungary, Greece) and
+    // Portugal and Egypt are put in sterling, the countries stabilized with American loans
+    // (Germany's Dawes loan, Poland, Italy, Belgium) in dollars, and the rest half and half.
+    // No figure: the United Kingdom and the United States held no exchange as reserve; Canada,
+    // Argentina and New Zealand had no central bank; Chile's opened in January 1926; Romania's
+    // has no line; Japan's and Estonia's come summed with gold.
+    fx_1925: [
+        ("GER", "USA", 95.9),
+        ("FRA", "GBR", 5.9), ("FRA", "USA", 5.9),
+        ("ITA", "USA", 27.9),
+        ("NLD", "GBR", 49.65), ("NLD", "USA", 49.65),
+        ("BEL", "USA", 5.8),
+        ("CHE", "GBR", 5.9), ("CHE", "USA", 5.9),
+        ("SWE", "GBR", 27.2), ("SWE", "USA", 27.2),
+        ("NOR", "GBR", 11.2),
+        ("DEN", "GBR", 22.4),
+        ("AUT", "GBR", 78.5),
+        ("HUN", "GBR", 36.2),
+        ("CZE", "GBR", 17.75), ("CZE", "USA", 17.75),
+        ("POL", "USA", 7.6),
+        ("RAJ", "GBR", 140.6),
+        ("AUS", "GBR", 89.2),
+        ("SAF", "GBR", 30.6),
+        ("BRA", "GBR", 20.7),
+        ("FIN", "GBR", 38.1),
+        ("ESP", "GBR", 2.05), ("ESP", "USA", 2.05),
+        ("YUG", "GBR", 3.25), ("YUG", "USA", 3.25),
+        ("BUL", "GBR", 1.85), ("BUL", "USA", 1.85),
+        ("GRE", "GBR", 14.4),
+        ("LAT", "GBR", 6.0),
+        ("LTU", "GBR", 1.5), ("LTU", "USA", 1.5),
+        ("POR", "GBR", 2.7),
+        ("EGY", "GBR", 209.8),
+    ],
+    // The monetary base at the end of 1925, millions of dollars: notes in circulation and the
+    // bank of issue's sight liabilities, from the same tables (and Table 95, "Note Circulation",
+    // pp. 183–185; *Banking and Monetary Statistics*, Tables 93, 164, 165 and 167). The Bank of
+    // England's own notes and deposits (1,249), not the Treasury's currency notes (another
+    // 1,441), which the Bank Act did not cover; the Federal Reserve's notes and deposits. Where
+    // the sources give no deposits (India, Australia, Canada, Argentina, Brazil, Chile, Egypt,
+    // Estonia, New Zealand) the notes alone.
+    base_1925: [
+        ("GBR", 1249.0), ("GER", 871.0), ("FRA", 2037.0), ("USA", 4099.0), ("ITA", 879.0),
+        ("NLD", 369.0), ("BEL", 364.0), ("CHE", 194.0), ("SWE", 216.0), ("NOR", 92.0),
+        ("DEN", 126.0), ("AUT", 133.0), ("HUN", 110.0), ("CZE", 271.0), ("POL", 52.3),
+        ("JAP", 844.0), ("RAJ", 703.0), ("AUS", 241.0), ("SAF", 73.3), ("CAN", 227.0),
+        ("ARG", 547.0), ("BRA", 384.0), ("CHL", 47.9), ("FIN", 54.7), ("ESP", 807.0),
+        ("ROM", 133.0), ("YUG", 114.0), ("BUL", 45.6), ("GRE", 117.0), ("EST", 9.4),
+        ("LAT", 29.7), ("LTU", 10.6), ("POR", 90.3), ("EGY", 167.0), ("NZL", 33.5),
     ],
 )
