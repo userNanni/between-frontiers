@@ -202,7 +202,8 @@ pub fn show(ui: &mut Ui, cx: &mut TabContext<'_>, g: &GoldView) {
         &i18n.tr("gold-owed-tip"),
     )
     .show(ui);
-    // What the cover counts: the reserves less our currency held abroad.
+    // The reserves less our currency held abroad: what is left if others cashed it (the cover
+    // counts the gross reserves).
     let net = total - g.owed;
     Account::new(
         &i18n.tr("gold-reserves-net"),
