@@ -183,6 +183,57 @@ fn a_work_asked_for_is_queued_and_one_cancelled_leaves() {
     assert_eq!(count(&s), before, "the cancelled work left");
 }
 
+/// A plant the state builds itself (the way of the state firms, U2): a machinery plant asked
+/// for in one of Brazil's states is queued as a public work; a coal mine asked for where the
+/// state has no coal is dropped.
+#[test]
+fn a_plant_the_state_asks_for_is_queued_where_it_may_stand() {
+    let d = data();
+    let mut s = session(&d, Date::new(1925, 2, 3));
+    let ci = market(&s, "BRA");
+    let plant = d.catalogue.building("machinery_plant").unwrap() as u16;
+    let mine = d.catalogue.building("coal_mine").unwrap() as u16;
+    let coal = d.catalogue.buildings[usize::from(mine)].resource.unwrap();
+    let (region, no_coal) = {
+        let w = s.sim.world();
+        let mine_of = |r: &bf_sim::econ::Region| r.deposits.iter().any(|d| d.0 == coal);
+        let ours: Vec<u32> = (0..w.econ.regions.len() as u32)
+            .filter(|&r| usize::from(w.econ.regions[r as usize].market) == ci)
+            .collect();
+        let no_coal = *ours
+            .iter()
+            .find(|&&r| !mine_of(&w.econ.regions[r as usize]))
+            .expect("a Brazilian state without coal");
+        (ours[0], no_coal)
+    };
+    let count = |s: &Session, region: u32, kind: u16| {
+        s.sim.world().econ.markets[ci]
+            .queue
+            .iter()
+            .filter(|p| p.public && p.region == region && p.kind == kind)
+            .count()
+    };
+    let before = (count(&s, region, plant), count(&s, no_coal, mine));
+    for (region, kind) in [(region, plant), (no_coal, mine)] {
+        s.submit(GameCommand::AddWork {
+            tag: "BRA".into(),
+            region,
+            kind,
+        });
+    }
+    run(&mut s, Date::new(1925, 3, 10));
+    assert_eq!(
+        count(&s, region, plant),
+        before.0 + 1,
+        "the machinery plant is queued as a public work"
+    );
+    assert_eq!(
+        count(&s, no_coal, mine),
+        before.1,
+        "no coal mine where there is no coal"
+    );
+}
+
 #[test]
 fn the_order_survives_a_save() {
     let d = data();
