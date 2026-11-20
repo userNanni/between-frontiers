@@ -108,6 +108,14 @@
         // sterling's 1924 rate; the table gives no rate of their own.
         ("AUS", 90765),
         ("SAF", 90765),
+        // New Zealand: restrictions on gold exports ceased on 28 April 1925 and "New Zealand
+        // currency in practice has moved closely with the English pound" (Federal Reserve
+        // Bulletin, August 1928, p. 562); at sterling's par, as Australia.
+        ("NZL", 90765),
+        // Colombia: the Bank of the Republic opened on 23 July 1923 "under legal obligation to
+        // redeem its notes in gold" (same page). At the 1924 rate: the table of 1924 averages has
+        // no Colombian peso, taken at par (an estimate).
+        ("COL", 100000),
     ],
     // Prewar parities the player may adhere at (PO6): the 1924 average over the prewar par.
     // The later returns of the table are not forced: the AI returns at the day's rate, and the
