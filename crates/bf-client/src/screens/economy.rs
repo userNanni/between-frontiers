@@ -147,6 +147,43 @@ fn levels_text(i18n: &I18n, levels: i64, building: i64) -> String {
     }
 }
 
+/// The search by name and the place (everywhere, the metropole, the colonies), as the
+/// buildings and the states tabs share them; the place only for a country with colonies.
+pub(super) fn search_and_place(
+    ui: &mut Ui,
+    i18n: &I18n,
+    search: &mut String,
+    place: &mut Place,
+    colonies: bool,
+) {
+    ui.horizontal_wrapped(|ui| {
+        let field = ui.add(
+            egui::TextEdit::singleline(search)
+                .hint_text(i18n.tr("economy-search"))
+                .desired_width(260.0)
+                .event_filter(bf_ui_kit::ESCAPE_KEPT),
+        );
+        bf_ui_kit::leave_on_escape(ui, &field);
+        if keys::single(ui, "economy.search", 'F', field.rect) {
+            field.request_focus();
+        }
+        if colonies {
+            ui.add_space(space::MD);
+            let options = [
+                (Place::All, i18n.tr("economy-place-all")),
+                (Place::Metropole, i18n.tr("economy-place-metropole")),
+                (Place::Colonies, i18n.tr("economy-place-colonies")),
+            ];
+            let tips = [
+                Tip::Item('L', "economy.place.all".into(), "all"),
+                Tip::Item('L', "economy.place.metropole".into(), "metropole"),
+                Tip::Item('L', "economy.place.colonies".into(), "colonies"),
+            ];
+            keys::segmented(ui, place, &options, &tips);
+        }
+    });
+}
+
 fn sort_value(k: &KindRow, c: Column) -> f64 {
     match c {
         Column::Name => 0.0,
@@ -210,8 +247,15 @@ pub fn show(
         bf_ui_kit::divider(ui);
         // The states tab reads the map's monthly figures, not the buildings' view.
         if window.tab == Tab::States {
-            if let Some(id) = super::states_table::show(ui, i18n, world, player, &mut window.states)
-            {
+            if let Some(id) = super::states_table::show(
+                ui,
+                i18n,
+                world,
+                player,
+                &mut window.states,
+                &mut window.search,
+                &mut window.place,
+            ) {
                 window.goto = Some(id);
             }
             return;
@@ -273,30 +317,13 @@ fn buildings(
     bf_ui_kit::gap(ui, space::SM);
 
     // Search by name and the place: the kinds over the states they keep.
-    ui.horizontal_wrapped(|ui| {
-        let field = ui.add(
-            egui::TextEdit::singleline(&mut window.search)
-                .hint_text(i18n.tr("economy-search"))
-                .desired_width(260.0),
-        );
-        if keys::single(ui, "economy.search", 'F', field.rect) {
-            field.request_focus();
-        }
-        if v.has_colonies() {
-            ui.add_space(space::MD);
-            let options = [
-                (Place::All, i18n.tr("economy-place-all")),
-                (Place::Metropole, i18n.tr("economy-place-metropole")),
-                (Place::Colonies, i18n.tr("economy-place-colonies")),
-            ];
-            let tips = [
-                Tip::Item('L', "economy.place.all".into(), "all"),
-                Tip::Item('L', "economy.place.metropole".into(), "metropole"),
-                Tip::Item('L', "economy.place.colonies".into(), "colonies"),
-            ];
-            keys::segmented(ui, &mut window.place, &options, &tips);
-        }
-    });
+    search_and_place(
+        ui,
+        i18n,
+        &mut window.search,
+        &mut window.place,
+        v.has_colonies(),
+    );
     bf_ui_kit::gap(ui, space::XS);
     let needle = crate::text::folded(window.search.trim());
     let place = window.place;

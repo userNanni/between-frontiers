@@ -31,6 +31,9 @@ pub struct GoodRow {
     /// The market's stock of a storable good (`econ::stock`), at base prices; `None` for a
     /// good that does not keep.
     pub stock: Option<f64>,
+    /// The price over the base, year by year, in the years the good had a market here
+    /// (`econ::series`, from save 45).
+    pub price_years: Vec<(i32, f64)>,
     /// Buildings whose methods make it (catalogue index and key), and the keys of those that
     /// take it.
     pub makers: Vec<(u16, String)>,
@@ -99,7 +102,18 @@ pub fn read(world: &GameWorld, tag: &str, cat: &Catalogue, date: Date) -> Option
                 1.0
             }
         };
+        let price_years = world
+            .series
+            .prices
+            .iter()
+            .filter(|y| usize::from(y.market) == ci)
+            .filter_map(|y| {
+                let pm = *y.per_mille.get(g)?;
+                (pm > 0).then(|| (y.year, f64::from(pm) / 1000.0))
+            })
+            .collect();
         goods.push(GoodRow {
+            price_years,
             good: gi,
             key: d.key.clone(),
             category: d.category.clone(),

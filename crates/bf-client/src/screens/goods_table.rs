@@ -324,6 +324,28 @@ fn detail(ui: &mut Ui, i18n: &I18n, g: &GoodRow, st: &mut GoodsUi) -> Option<u16
                     ],
                 ),
             );
+            // The price year by year, from the simulation's series.
+            if g.price_years.len() >= 2 {
+                let mut points = g.price_years.clone();
+                points.sort_by_key(|p| p.0);
+                let lo = points.iter().map(|p| p.1).fold(f64::INFINITY, f64::min);
+                let hi = points.iter().map(|p| p.1).fold(f64::NEG_INFINITY, f64::max);
+                let lines = vec![i18n.tr_args(
+                    "goods-price-years",
+                    &[
+                        ("low", Arg::String(pct(i18n, lo))),
+                        ("high", Arg::String(pct(i18n, hi))),
+                        ("from", Arg::String(points[0].0.to_string())),
+                        ("to", Arg::String(points[points.len() - 1].0.to_string())),
+                    ],
+                )];
+                ui.scope(|ui| {
+                    ui.set_max_width(420.0);
+                    super::top_bar::year_chart(ui, points, lines, 0.1);
+                });
+            } else {
+                bf_ui_kit::small(ui, &i18n.tr("goods-price-years-few"));
+            }
             bf_ui_kit::caption(ui, &i18n.tr("goods-makers"));
             if g.makers.is_empty() {
                 bf_ui_kit::small(ui, &i18n.tr("goods-makers-none"));

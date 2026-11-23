@@ -614,6 +614,24 @@ com 0,4% do PIB. A conferência com a ogiva de 3.600 está em "O custo da ogiva 
     - A eletricidade e os químicos são **estimativa**.
   - **Minério por núcleo:** 14,7 t de U3O8 pelo enriquecimento e 8,1 t pelo reator.
     `tests/warhead_cost.rs` confere as duas faixas.
+  - **A unidade (corrigida depois do #333):** os números acima são o que uma usina fez por ano
+    nos EUA de 1945. As quantidades de um método valem na produtividade 1, e a produtividade
+    americana de 1945 é 7,25, medida no tick. Por isso o dado é cada número ÷ 7,25, insumos e
+    produto juntos: 0,2586 e 1,841 núcleos por nível-ano (**conta minha**).
+    - Antes, um nível dos EUA de 1945 tinha capacidade de cerca de 13,6 e 97 núcleos por ano.
+    - O minério por núcleo não muda. A semana arredonda o dado a 1/1000: o reator fica em 1,82
+      núcleo por nível-ano, 1,1% abaixo.
+    - Conferência de 1940, EUA a 0,4% do PIB, com a montagem do #333:
+
+      | Fim do ano | 1944 | 1945 | 1946 | 1947 | 1950 | 1955 |
+      |---|---|---|---|---|---|---|
+      | antes desta correção | 4 | 8 | 16 | 26 | 60 | 136 |
+      | depois | 2 | 6 | 13 | 21 | 49 | 114 |
+      | real | 0 | 2 | 9 | 13 | ~300 | ~2.400 |
+
+      - A usina de núcleos chega a 3 níveis em 1945, 5 em 1947, 8 em 1950 e 12 em 1955.
+      - A Alemanha fica com 10 e 42 ogivas em 1950 e 1955; o Reino Unido, com 17 e 70.
+      - Com `war` desligada, o hash de 10 anos é o do #333 e a série de 101 anos fica idêntica.
 - **A usina do programa:** o programa pede `weapon_core_plant`. A obra escolhe o último método que
   o país conhece, o reator quando o conhece. Na prática é o mais barato; não há comparação
   explícita de custo (**leitura minha**).
@@ -693,32 +711,46 @@ O passo que faltava entre o núcleo e a arma.
     elétrico (50) por conjunto. São os insumos que a ogiva pedia antes.
   - `electronic_assembly` (termonuclear, 1950): 1 t de explosivo e 100 de componentes
     eletrônicos.
-- **VALOR DE DESENHO, sem fonte:** 12 conjuntos por ano por nível, com os empregos da usina de
-  núcleos (mais engenheiros). Não há página para a produção de Sandia nem para a do Mark 4 (cerca
-  de 550 feitos de 1949 a 1951, também sem página). O estoque de 1945–47 é medida, não meta.
+- **VALOR DE DESENHO, sem fonte:** um nível faz 12 conjuntos por ano nos EUA de 1945. Os
+  empregos são os da usina de núcleos, com mais engenheiros.
+  - As quantidades de um método valem na produtividade 1: um nível roda as suas quantidades
+    vezes a produtividade do prédio onde está.
+  - A produtividade americana de 1945 é 7,25, medida no tick. Por isso o dado é 12 ÷ 7,25 =
+    1,655 conjunto por ano, com os insumos de um conjunto na mesma proporção.
+  - Um nível é um quadro fixo de pessoal: em outro país faz 1,655 vez a produtividade dele.
+  - Não há página para a produção de Sandia nem para a do Mark 4 (cerca de 550 feitos de 1949 a
+    1951, também sem página). O estoque de 1945–47 é medida, não meta.
+  - O preço-base do conjunto (1 milhão, estimativa) deixa o valor adicionado por trabalhador da
+    usina na faixa da economia.
+- **A unidade, achada pela interface no #334:** a primeira versão deste PR punha 12 no dado.
+  Nos EUA de 1945 isso dava uns 87 conjuntos por nível-ano, e a montagem nunca amarrava.
 - **Conferência de 1940** (`the_pace_from_1940`; EUA a 0,4% do PIB):
 
   | Fim do ano | 1944 | 1945 | 1946 | 1947 | 1950 | 1955 |
   |---|---|---|---|---|---|---|
   | EUA, sem a montagem (#313) | 9 | 20 | 37 | 60 | 132 | 189 |
-  | EUA, com a montagem | 4 | 16 | 29 | 49 | 127 | 257 |
+  | EUA, com a montagem | 4 | 8 | 16 | 26 | 60 | 136 |
   | EUA, real | 0 | 2 | 9 | 13 | ~300 | ~2.400 |
 
-  - A usina de montagem chega a 1 nível em 1944, 2 em 1945–46 e 5 em 1950.
-  - Os núcleos esperando montagem ficam perto de zero: a montagem não é o gargalo depois do
-    primeiro nível.
-  - O ritmo segue limitado pela obra, um pedido de usina, de mina ou de montagem a cada 26
-    semanas, e pelo dinheiro.
-  - **Leitura minha:** o excesso de 1946–47 continua (29 e 49, contra 9 e 13). O que travou os
-    EUA naqueles anos não foi a capacidade de uma usina, e sim as equipes que se desfizeram com a
-    desmobilização (p. 47). O jogo não tem desmobilização de técnicos: fica como lacuna anotada,
-    sem número.
-  - Em 1955 o jogo fica acima do anterior (257 contra 189). A causa não foi isolada. Medido, sem
-    ajuste.
+  - A usina de montagem tem 1 nível em 1944–45, 2 em 1946–47, 4 em 1950 e 11 em 1955.
+  - Há núcleos esperando montagem (0,1 a 0,4) de 1945 a 1950: a montagem amarra.
+  - **Leitura minha:** o excesso de 1946–47 cai para 1,8 a 2 vezes (16 e 26, contra 9 e 13). O
+    resto é o que travou os EUA naqueles anos: as equipes que se desfizeram com a desmobilização
+    (p. 47). O jogo não tem desmobilização de técnicos: fica como lacuna anotada, sem número.
+- **Dependência: a encomenda de ogivas, uma por vez (`batch`), é o teto do ritmo depois de
+  1948.** É valor de desenho, em `peace.ron`.
+  - Medido antes da correção da unidade: com `plant_weeks` pela metade (13 semanas) ou com a
+    parcela em 1,0% do PIB, os EUA de 1947 / 1950 / 1955 ficam em 63 / 141 / 271 e 71 / 149 /
+    280, contra 49 / 127 / 257.
+  - Nos três casos, de 1950 a 1955, o estoque sobe exatamente 26 por ano: uma ogiva a cada duas
+    semanas, a cadência de encomendar uma, entregar e encomendar de novo.
+  - Não é calibração, é um teto artificial: o próximo PR troca a regra da encomenda.
+  - A mesma falha de unidade estava na usina de núcleos (#279), corrigida no PR seguinte (ver o
+    passo 1).
 - **Com `war` desligada:**
-  - o bem e o prédio novos, no fim das listas, mudam o hash de 10 anos para `209833ae…`;
+  - o bem e o prédio novos, no fim das listas, mudam o hash de 10 anos para `71d55cda…`;
   - a série anual de 101 anos fica idêntica à do main;
-  - o save não muda (44);
+  - o save não muda;
   - nenhuma usina de montagem existe sem programa (`no_core_plant_without_a_programme`).
 
 ### O custo da ogiva em minério (PR de dados, substituído pelo passo 1 acima)
