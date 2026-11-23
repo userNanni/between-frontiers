@@ -96,3 +96,63 @@ fn states_metrics() {
     }
     let _ = std::fs::remove_dir_all(&user);
 }
+
+/// The states tab with the place filter: Britain in February 1926, its colonies alone, sorted
+/// by population. Portuguese at 1600 × 900, English at 1280 × 720.
+#[test]
+#[ignore = "needs a GPU (or software Vulkan) and the generated map; run with --ignored"]
+fn states_colonies() {
+    let user = std::env::temp_dir().join(format!("bf-shots-states-col-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&user);
+    let s = session(
+        "GBR",
+        Date::new(1926, 2, 1),
+        bf_sim::data::GameData::load(&root())
+            .expect("game data")
+            .switches,
+    );
+    for (locale, size, tag, tab, colonies, population) in [
+        (
+            "pt-BR",
+            egui::vec2(1600.0, 900.0),
+            "pt",
+            "Estados",
+            "Colônias",
+            "População",
+        ),
+        (
+            "en",
+            egui::vec2(1280.0, 720.0),
+            "en-1280",
+            "States",
+            "Colonies",
+            "Population",
+        ),
+    ] {
+        let home = user.join(tag);
+        let save = write_campaign(&home, &s, "Colônias", "GBR");
+        let mut h = harness(home, locale, size);
+        open(&mut h, save);
+        settle(&mut h);
+        h.key_press(egui::Key::N);
+        settle(&mut h);
+        h.query_all(egui_kittest::kittest::by().label(tab))
+            .next()
+            .expect("the states tab")
+            .click();
+        settle(&mut h);
+        h.get_by_label(colonies).click();
+        settle(&mut h);
+        h.query_all(
+            egui_kittest::kittest::by()
+                .role(egui::accesskit::Role::ColumnHeader)
+                .label(population),
+        )
+        .next()
+        .expect("the population column")
+        .click();
+        settle(&mut h);
+        shot(&mut h, THEME, &format!("320-states-colonies-{tag}"));
+    }
+    let _ = std::fs::remove_dir_all(&user);
+}

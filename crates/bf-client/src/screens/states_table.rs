@@ -46,7 +46,10 @@ pub fn show(
     world: Option<&World>,
     player: Option<usize>,
     st: &mut StatesUi,
+    search: &mut String,
+    place: &mut super::economy::Place,
 ) -> Option<u16> {
+    use super::economy::Place;
     let (Some(world), Some(p)) = (world, player) else {
         bf_ui_kit::muted(ui, &i18n.tr("economy-waiting"));
         return None;
@@ -76,6 +79,17 @@ pub fn show(
             })
         })
         .collect();
+    // The search by name and the place, shared with the buildings tab.
+    let colonies = !country.colonial_states.is_empty();
+    let needle = crate::text::folded(search.trim());
+    rows.retain(|r| {
+        (needle.is_empty() || crate::text::folded(&r.name).contains(&needle))
+            && match *place {
+                Place::All => true,
+                Place::Metropole => !r.colony,
+                Place::Colonies => r.colony,
+            }
+    });
     match st.sort {
         None => rows.sort_by(|a, b| a.name.cmp(&b.name)),
         Some(c) => rows.sort_by(|a, b| {
@@ -102,6 +116,8 @@ pub fn show(
         ),
     );
     bf_ui_kit::gap(ui, space::SM);
+    super::economy::search_and_place(ui, i18n, search, place, colonies);
+    bf_ui_kit::gap(ui, space::XS);
     let width = ui.available_width() - SCROLL_GUTTER;
     let cols = GDP + 1;
     let col = ((width - NAME_MIN) / cols as f32).clamp(64.0, COL);
