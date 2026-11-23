@@ -100,6 +100,19 @@ pub struct Window {
     pub methods_kind: Option<u16>,
     /// The states tab's sorting.
     pub states: super::states_table::StatesUi,
+    /// Text a building's or a state's name must hold.
+    pub search: String,
+    /// Where: everywhere, the metropole or the colonies.
+    pub place: Place,
+}
+
+/// The states a table counts.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Place {
+    #[default]
+    All,
+    Metropole,
+    Colonies,
 }
 
 #[derive(Default)]
@@ -235,8 +248,63 @@ fn buildings(
     );
     bf_ui_kit::gap(ui, space::SM);
 
+    // Search by name and the place: the kinds over the states they keep.
+    ui.horizontal_wrapped(|ui| {
+        let field = ui.add(
+            egui::TextEdit::singleline(&mut window.search)
+                .hint_text(i18n.tr("economy-search"))
+                .desired_width(260.0),
+        );
+        if keys::single(ui, "economy.search", 'F', field.rect) {
+            field.request_focus();
+        }
+        if v.has_colonies() {
+            ui.add_space(space::MD);
+            let options = [
+                (Place::All, i18n.tr("economy-place-all")),
+                (Place::Metropole, i18n.tr("economy-place-metropole")),
+                (Place::Colonies, i18n.tr("economy-place-colonies")),
+            ];
+            let tips = [
+                Tip::Item('L', "economy.place.all".into(), "all"),
+                Tip::Item('L', "economy.place.metropole".into(), "metropole"),
+                Tip::Item('L', "economy.place.colonies".into(), "colonies"),
+            ];
+            keys::segmented(ui, &mut window.place, &options, &tips);
+        }
+    });
+    bf_ui_kit::gap(ui, space::XS);
+    let needle = crate::text::folded(window.search.trim());
+    let place = window.place;
+    let state_name = |id: u16| {
+        world
+            .and_then(|w| w.states.get(usize::from(id).saturating_sub(1)))
+            .map_or_else(String::new, |st| crate::text::state_name(i18n, &st.def))
+    };
+    let kinds: Vec<KindRow> = v
+        .kinds
+        .iter()
+        .filter_map(|k| {
+            let by_name = needle.is_empty()
+                || crate::text::folded(&i18n.tr(&format!("building-{}", k.key))).contains(&needle);
+            k.over(|s| {
+                let here = match place {
+                    Place::All => true,
+                    Place::Metropole => !s.colony,
+                    Place::Colonies => s.colony,
+                };
+                here && (by_name || crate::text::folded(&state_name(s.state)).contains(&needle))
+            })
+        })
+        .collect();
+
     // Sectors: all, then each one with its levels.
-    let totals = v.groups();
+    let totals = crate::buildings_view::BuildingsView {
+        month: v.month,
+        queue: v.queue,
+        kinds: kinds.clone(),
+    }
+    .groups();
     ui.horizontal_wrapped(|ui| {
         let all = i18n.tr("economy-group-all");
         let mut chip = |ui: &mut Ui, label: String, group: Option<u8>, key: String| {
@@ -260,7 +328,7 @@ fn buildings(
         chip(ui, all, None, "0".into());
         for (g, key) in BUILDING_GROUPS.iter().enumerate() {
             let levels = totals[g][0];
-            if levels <= 0.0 && !v.kinds.iter().any(|k| usize::from(k.group) == g) {
+            if levels <= 0.0 && !kinds.iter().any(|k| usize::from(k.group) == g) {
                 continue;
             }
             let label = i18n.tr_args(
@@ -278,8 +346,7 @@ fn buildings(
     });
     bf_ui_kit::gap(ui, space::SM);
 
-    let mut rows: Vec<&KindRow> = v
-        .kinds
+    let mut rows: Vec<&KindRow> = kinds
         .iter()
         .filter(|k| window.group.is_none_or(|g| g == k.group))
         .collect();

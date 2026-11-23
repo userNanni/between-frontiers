@@ -20,6 +20,8 @@ pub struct StateRow {
     pub region: u32,
     /// Map state id.
     pub state: u16,
+    /// A colony of the country (the region's `colony`).
+    pub colony: bool,
     pub levels: i64,
     /// Levels under construction here (public and private works).
     pub building: i64,
@@ -68,7 +70,43 @@ pub struct BuildingsView {
     pub kinds: Vec<KindRow>,
 }
 
+impl KindRow {
+    /// The kind over the states `keep` keeps, its totals summed again; `None` when it keeps
+    /// none.
+    pub fn over(&self, keep: impl Fn(&StateRow) -> bool) -> Option<KindRow> {
+        let states: Vec<StateRow> = self.states.iter().filter(|s| keep(s)).cloned().collect();
+        if states.is_empty() {
+            return None;
+        }
+        let levels: i64 = states.iter().map(|s| s.levels).sum();
+        let weighted = |f: fn(&StateRow) -> f64| {
+            if levels > 0 {
+                states.iter().map(|s| f(s) * s.levels as f64).sum::<f64>() / levels as f64
+            } else {
+                0.0
+            }
+        };
+        Some(KindRow {
+            levels,
+            building: states.iter().map(|s| s.building).sum(),
+            workers: states.iter().map(|s| s.workers).sum(),
+            output: states.iter().map(|s| s.output).sum(),
+            profit: states.iter().map(|s| s.profit).sum(),
+            utilization: weighted(|s| s.utilization),
+            staffing: weighted(|s| s.staffing),
+            states,
+            key: self.key.clone(),
+            ..*self
+        })
+    }
+}
+
 impl BuildingsView {
+    /// The country has colonies among the states with buildings.
+    pub fn has_colonies(&self) -> bool {
+        self.kinds.iter().any(|k| k.states.iter().any(|s| s.colony))
+    }
+
     /// Levels of state firms, and those under construction.
     pub fn state_levels(&self) -> (i64, i64) {
         self.kinds
@@ -143,6 +181,7 @@ pub fn read(world: &GameWorld, tag: &str, cat: &Catalogue, date: Date) -> Option
                         StateRow {
                             region: ri,
                             state: r.state,
+                            colony: r.colony,
                             levels: p.levels,
                             building,
                             method: method.key.clone(),
@@ -160,6 +199,7 @@ pub fn read(world: &GameWorld, tag: &str, cat: &Catalogue, date: Date) -> Option
                     StateRow {
                         region: ri,
                         state: r.state,
+                        colony: r.colony,
                         levels: 0,
                         building,
                         method: String::new(),

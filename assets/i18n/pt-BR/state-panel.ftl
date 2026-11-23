@@ -21,3 +21,5 @@ state-panel-subsistence = Na roça própria
 state-panel-subsistence-note = camponeses sem emprego em prédio, que vivem do que plantam
 state-panel-unemployment = Desemprego
 state-panel-unemployment-note = { $n } sem emprego, entre quem não é camponês
+state-panel-search = Buscar prédio neste estado
+state-panel-search-none = Nenhum prédio com esse nome aqui.
