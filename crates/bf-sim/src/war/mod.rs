@@ -33,6 +33,7 @@ pub mod sea;
 pub mod state;
 pub mod support;
 pub mod system;
+pub mod target;
 pub mod terrain;
 pub mod third;
 pub mod view;

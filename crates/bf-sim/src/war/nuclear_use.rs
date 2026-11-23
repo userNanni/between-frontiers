@@ -168,33 +168,26 @@ pub fn strike(mil: &Military, world: &mut GameWorld, u: &Use, date: Date) -> Opt
         delivered,
         ..Default::default()
     };
-    // The target's home regions, the most populous first.
-    let mut regions: Vec<(i64, u32)> = world
-        .econ
-        .regions
-        .iter()
-        .enumerate()
-        .filter(|(_, r)| r.market == u.target && !r.colony)
-        .map(|(i, r)| (r.population(), i as u32))
-        .filter(|(p, _)| *p > 0)
+    // The density of the target (`war::target`): each warhead falls on the city where it kills
+    // most, its lethal area (U3, by its equivalent megatons) added to what fell there before.
+    let cities = super::target::cities(world, u.target);
+    let areas: Vec<u64> = (0..delivered as usize)
+        .map(|k| {
+            let emt = spent.get(k).copied().unwrap_or(1000).max(0) as u64;
+            super::target::area_of(n.lethal_km2_per_emt, emt)
+        })
         .collect();
-    regions.sort_unstable_by(|a, b| b.cmp(a));
-    // U3: a warhead kills `killed_per_warhead` an equivalent megaton of its power.
-    let per_emt = u64::from(n.killed_per_warhead);
-    let per_emt = match u.mode {
-        Mode::Countervalue => per_emt,
-        Mode::Counterforce => per_emt * u64::from(n.counterforce_civilians) / 1000,
-    };
-    for k in 0..delivered as usize {
-        let per = per_emt * spent.get(k).copied().unwrap_or(1000).max(0) as u64 / 1000;
-        let Some(&(_, ri)) = regions.get(k % regions.len().max(1)) else {
-            break;
+    for (ci, dead) in super::target::plan(&cities, n.core_density, &areas) {
+        let ri = cities[ci].0;
+        let dead = match u.mode {
+            Mode::Countervalue => dead,
+            Mode::Counterforce => dead * i64::from(n.counterforce_civilians) / 1000,
         };
         let pop = world.econ.regions[ri as usize].population();
-        if pop <= 0 {
+        if pop <= 0 || dead <= 0 {
             continue;
         }
-        let dead = per.min(pop as u64);
+        let dead = (dead as u64).min(pop as u64);
         if u.mode == Mode::Countervalue {
             let levels: i64 = world.econ.regions[ri as usize]
                 .plants
