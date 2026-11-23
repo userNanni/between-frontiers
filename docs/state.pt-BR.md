@@ -1035,9 +1035,16 @@ estar medida contra a faixa.
    exportados de menos).
 4. **O estado de cada moeda em 1925** (inflação e câmbio do pós-guerra), para a volta ao ouro se
    espalhar.
-5. **Ligar, nesta ordem, cada uma contra a faixa:** `rail_by_line` e `household_biomass` juntas
-   (depois de 1 e 2), a produção agrícola (3), `payments_settle`, `gold_standard` e
-   `capital_follows_rate` (depois de 4, com o sinal do comércio certo nos países do placar).
+5. **O preço de bem sem comprador** (achado da guerra no #343): sem demanda, a usina para, a oferta
+   zera, e com oferta e demanda zeradas o preço volta ao preço-base (`PriceBand::next`, em
+   `econ/mod.rs`). O rádio fica em ~650 por mg depois que o pedido zera, o investimento vê a mina
+   como lucrativa e a URSS chega a 195 níveis de mina de urânio contra 26. Vale para todo bem sem
+   mercado (os que ainda não existem ficam no preço-base). Regra nova de mercado atrás de chave:
+   sem demanda o preço vai ao piso mesmo sem oferta, e sem nenhum dos dois fica onde estava.
+6. **Ligar, nesta ordem, cada uma contra a faixa:** `rail_by_line` e `household_biomass` juntas
+   (depois de 1 e 2), a produção agrícola (3), o preço sem comprador (5), `payments_settle`,
+   `gold_standard` e `capital_follows_rate` (depois de 4, com o sinal do comércio certo nos países
+   do placar).
 
 ### Fatias seguintes (aprovadas, por fazer)
 
