@@ -131,6 +131,8 @@ pub struct Catalogue {
     pub grain: Option<GoodIx>,
     pub construction: Option<GoodIx>,
     pub staple_need: Option<usize>,
+    /// The need households heat and cook with (`domestic_fuel`).
+    pub domestic_fuel_need: Option<usize>,
     /// Farms that grow a staple, as (farm index, building, staples a level of its first method
     /// grows in a week): the land smallholders can till when the farms leave it free.
     pub staple_farms: Vec<(u8, u16, Fixed)>,
@@ -414,6 +416,7 @@ impl Catalogue {
             grain: gx("grain").ok(),
             construction: gx("construction").ok(),
             staple_need,
+            domestic_fuel_need: ns.iter().position(|n| n.key == "domestic_fuel"),
             local: goods_where(&|g| g.local),
             public_goods: goods_where(&|g| g.category == "public"),
             military: goods.iter().map(|g| g.category == "military").collect(),

@@ -54,6 +54,11 @@
     // cover rule, exits, contagion, returns and the loss of who holds a falling currency. Needs
     // `payments_settle`. Off: every currency floats.
     gold_standard: false,
+    // The household fuel the countryside gathered (`docs/trade.pt-BR.md`, the trade's sign): rural
+    // households buy only the fuel they did not gather (firewood, dung, straw), each country's
+    // 1925 share (`data/economy/biomass.ron`) falling as it grows richer. Acts on the week and when
+    // the world is made. Off: every household buys all its fuel.
+    household_biomass: false,
     // Independence by movement (`docs/borders.pt-BR.md`, section 11): colonial units demand an
     // answer, the metropole answers by its measured account, a refusal can end in revolt. Off:
     // colonies only grow their movement.

@@ -1258,6 +1258,8 @@ pub struct Rules {
     /// Private capital that follows the returns (`Switches::capital_follows_rate`, with
     /// `payments_settle`); without it only government bonds cross borders.
     pub capital: Option<Arc<crate::econ::capital::CapitalRules>>,
+    /// The household fuel the countryside gathers (`Switches::household_biomass`).
+    pub biomass: Option<Arc<crate::econ::biomass::BiomassRules>>,
 }
 
 /// Rules that can be switched on, all off by default: a rule enters the main switched off, with
@@ -1313,6 +1315,11 @@ pub struct Switches {
     /// returns by the AI's rule, and the loss of who holds a falling currency. Needs
     /// `payments_settle`; off (or without it) every currency floats as before.
     pub gold_standard: bool,
+    /// The household fuel the countryside gathered (`econ::biomass`, `data/economy/biomass.ron`):
+    /// rural households buy only the part of their fuel they did not gather (firewood, dung,
+    /// straw), each country's 1925 share falling as it grows richer. Acts on the week and when
+    /// the world is made (`GameData::new_world`). Off: every household buys all its fuel.
+    pub household_biomass: bool,
     /// Independence by movement (`borders::independence`, docs/borders.pt-BR.md section 11):
     /// colonial units demand, the metropole answers by account, a refusal can end in revolt.
     pub independence: bool,
@@ -1418,6 +1425,7 @@ impl Switches {
         "foreign_flow",
         "foreign_technique",
         "gold_standard",
+        "household_biomass",
         "independence",
         "influence_ties",
         "jobs_follow_use",
@@ -1449,6 +1457,7 @@ impl Switches {
             "foreign_flow" => self.foreign_flow = true,
             "foreign_technique" => self.foreign_technique = true,
             "gold_standard" => self.gold_standard = true,
+            "household_biomass" => self.household_biomass = true,
             "independence" => self.independence = true,
             "influence_ties" => self.influence_ties = true,
             "jobs_follow_use" => self.jobs_follow_use = true,
@@ -1511,6 +1520,7 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
         settle,
         gold,
         capital,
+        biomass,
     }) = rules
     {
         if let Some(p) = &politics {
@@ -1549,6 +1559,7 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
             capital: capital.filter(|_| switches.capital_follows_rate && switches.payments_settle),
             settle: settle.filter(|_| switches.payments_settle),
             stock: switches.market_stock,
+            biomass,
         });
         s.add(crate::econ::monthly::Labour {
             cat: Arc::clone(&cat),
