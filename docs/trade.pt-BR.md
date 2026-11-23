@@ -629,6 +629,12 @@ Japão 44 % → 39 % e 26 % → −2 %; China 39 % → 35 %; Reino Unido exporta
   desvio de menos de um milhão), −0,4 % em 2025 (−1,5σ). Por território, metade fica fora da
   faixa em 1925 (o arranjo inicial muda) e 8 a 15 % depois de 1965.
 - **Desligada:** hash de 10 anos e série de 101 anos idênticos aos do `main` (`030bcaa9…`).
+- **Por que um prédio novo não muda o hash:** um bem novo alonga os vetores de preço, oferta e
+  demanda de todos os mercados, que entram no hash; foi isso que mudou o hash nos PRs da guerra
+  que acrescentaram bens (`weapon_cores`, `weapon_assemblies`). Um prédio novo sem nenhum nível
+  não aparece em região nenhuma (as plantas de cada região só listam os prédios que têm), e
+  nada indexado pelo número de prédios entra no hash; com a chave desligada o transporte
+  tradicional nunca tem nível, e o mundo é o mesmo.
 
 ## Fontes
 

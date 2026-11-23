@@ -42,6 +42,7 @@
 //     American freight (from memory) 10,000 tonne-km.
 (
     tkm_per_unit: 10450.0,
+    // Estimate, not read on a page (the American fare ratio, from memory; see above).
     passenger_weight: 2.7,
     reference: "USA",
     // (tag, millions of tonne-km, millions of passenger-km).
