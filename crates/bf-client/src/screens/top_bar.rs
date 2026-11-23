@@ -392,13 +392,16 @@ fn items(i18n: &I18n, world: &World, p: usize) -> (Vec<Item>, Vec<Item>, Vec<Ite
     let live = matches!(table.source, Source::Live { .. });
     let unknown = i18n.tr("bar-unknown");
     let social = social_source(i18n, table.source);
-    // Life expectancy is the scenario's even in a campaign: the simulation has none yet.
-    let mut life_source = if live {
+    // Life expectancy: the simulation's last closed year once there is one (the chart's source
+    // too); the 1925 data, said so, before it.
+    let mut life_source = if f.life_simulated {
+        vec![i18n.tr("hud-life-simulated")]
+    } else if live {
         vec![i18n.tr("hud-life-scenario"), i18n.tr("source-social")]
     } else {
         vec![i18n.tr("source-social")]
     };
-    if p >= world.scenario_countries {
+    if p >= world.scenario_countries && !f.life_simulated {
         life_source.insert(0, i18n.tr("hud-life-inherited"));
     }
     let economy = economy_source(i18n, table.source);
@@ -456,7 +459,7 @@ fn items(i18n: &I18n, world: &World, p: usize) -> (Vec<Item>, Vec<Item>, Vec<Ite
     let mut quality_summary = vec![i18n.tr("bar-quality-tip")];
     if f.quality.is_none() {
         quality_summary.push(i18n.tr("bar-quality-missing"));
-    } else if live {
+    } else if live && !f.life_simulated {
         quality_summary.push(i18n.tr("hud-quality-life-scenario"));
     }
     if !quality_breakdown.is_empty() {
@@ -1483,9 +1486,8 @@ fn figure_series(
                 Some(h.urban)
             }
         }),
-        Figure::Life => (SeriesKind::Years, |h, c| {
-            h.series.map(|s| if c { s.life_metro } else { s.life })
-        }),
+        // The metropole's, as the block's number (`FigureTable::live`).
+        Figure::Life => (SeriesKind::Years, |h, _| h.series.map(|s| s.life_metro)),
         Figure::Debt => (SeriesKind::Money, |h, _| h.series.map(|s| s.debt)),
         Figure::Treasury => (SeriesKind::Money, |h, _| h.series.map(|s| s.treasury)),
         Figure::Inflation => (SeriesKind::Percent, |h, _| h.series.map(|s| s.inflation)),
