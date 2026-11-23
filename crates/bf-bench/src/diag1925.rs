@@ -945,7 +945,10 @@ pub fn main() -> Result<(), String> {
         } else {
             spec.split(',').map(str::to_string).collect()
         };
-        println!("tag,levels,km,levels_per_1000km,coal_Mt_year,transport_demand_levels");
+        let trad = cat.building("traditional_transport");
+        println!(
+            "tag,levels,km,levels_per_1000km,coal_Mt_year,trad_levels,trad_workers_M,workers_M"
+        );
         for tag in tags {
             let Some(mi) = all.iter().position(|t| *t == tag) else {
                 continue;
@@ -970,11 +973,33 @@ pub fn main() -> Result<(), String> {
                 .find(|(g, _)| *g as usize == tr)
                 .map_or(1.0, |(_, q)| q.to_f64_lossy());
             let k = km(&tag).unwrap_or(0.0);
+            let _ = per_tr;
+            let tl: i64 = e
+                .regions
+                .iter()
+                .filter(|r| r.market as usize == mi)
+                .flat_map(|r| r.plants.iter())
+                .filter(|p| Some(p.kind as usize) == trad)
+                .map(|p| p.levels)
+                .sum();
+            let tw = trad.map_or(0, |t| cat.buildings[t].methods[0].workers) * tl;
+            let workers: i64 = e
+                .regions
+                .iter()
+                .filter(|r| r.market as usize == mi)
+                .map(|r| {
+                    r.pops
+                        .iter()
+                        .map(|p| bf_sim::econ::workers(p.size))
+                        .sum::<i64>()
+                })
+                .sum();
             println!(
-                "{tag},{levels},{k:.0},{:.1},{:.1},{:.0}",
+                "{tag},{levels},{k:.0},{:.1},{:.1},{tl},{:.2},{:.1}",
                 levels as f64 / k.max(1.0) * 1000.0,
                 levels as f64 * per_coal * 52.0 / 1e6,
-                e.markets[mi].demand[tr].to_f64_lossy() / per_tr
+                tw as f64 / 1e6,
+                workers as f64 / 1e6
             );
         }
         return Ok(());
