@@ -601,10 +601,14 @@ fn gold_entry(
             Change::Devalue => "journal-gold-devalue",
             Change::Abandon => "journal-gold-abandon",
         };
+        // The record keeps the month, not the day: the line says month and year.
         e.milestones.push(Milestone {
-            label: label(key).key("country", format!("country-{t}")),
+            label: label(key)
+                .key("country", format!("country-{t}"))
+                .key("month", format!("month-{}", ev.month))
+                .value("year", Value::Year(ev.year)),
             reached: true,
-            date: Some(Date::new(ev.year, ev.month, 1)),
+            date: None,
             progress: None,
         });
     }
