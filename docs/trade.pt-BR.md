@@ -636,6 +636,72 @@ Japão 44 % → 39 % e 26 % → −2 %; China 39 % → 35 %; Reino Unido exporta
   nada indexado pelo número de prédios entra no hash; com a chave desligada o transporte
   tradicional nunca tem nível, e o mundo é o mesmo.
 
+## 16. O combustível das famílias (chave `household_biomass`, desligada)
+
+**O defeito.** A necessidade `domestic_fuel` (`needs.ron`, 0,25 por pessoa) é atendida pelo bem
+mais barato por unidade de necessidade, e a lenha (`timber`, peso 0,15) quase nunca ganha do
+carvão: os 332 milhões de indianos e os 470 milhões de chineses compravam carvão para cozinhar.
+
+**A regra (só com a chave; age no arranjo inicial e toda semana, `econ::biomass`).** A família
+rural (as profissões que não são da cidade, `migration::is_urban`) compra só a parte do seu
+`domestic_fuel` que não colhe; a cidade compra tudo. O que é colhido (lenha, esterco, palha) fica
+fora do mercado, como a comida que o campo planta para si.
+- **A parcela de 1925** (`data/economy/biomass.ron`) é a das famílias de cada país, posta só na
+  população rural (dividida pela parte rural do cenário). Com fonte: China rural 88,7 % (Buck,
+  *Chinese Farm Economy*, 1930, pp. 400–402), EUA 23 % das casas aquecidas a lenha (Censo de
+  1940), Reino Unido ≈0 (Warde), Itália 37 % e Portugal 69 % do combustível (Kander, Malanima e
+  Warde). Secundárias: Índia rural ~90 % (93 % em 1970–71), Japão ~80 % das casas (início dos
+  anos 1950). Médias de região (a base de Malanima já as estima): América Latina 64 %, África
+  72 %, Leste Europeu 42 %. **Estimativas:** Alemanha, França, Espanha, Suécia e as faixas por
+  renda dos países sem número.
+- **Valor de desenho:** a parcela rural fica parada enquanto a renda por pessoa do país está
+  abaixo de 5.000 (dólares de 1925 do jogo, mais ou menos a Europa Ocidental de 1925) e cai na
+  proporção inversa acima disso (quem já era mais rico em 1925 cai desde então). A primeira
+  versão, inversa da renda desde 1925, levava a Índia rural de 0,90 a 0,53 em 1950, contra 93 %
+  medidos em 1970–71. Resultado (rodada de 101 anos com as duas chaves):
+
+| parcela rural | 1925 | 1950 | 1980 | 2000 | 2025 |
+|---|---|---|---|---|---|
+| Índia (renda do jogo 1.098 → 4.276) | 0,90 | 0,90 | 0,90 | 0,90 | 0,90 |
+| China (943 → 3.084) | 0,86 | 0,86 | 0,86 | 0,86 | 0,86 |
+| EUA (10.255 → 105.409) | 0,50 | 0,22 | 0,09 | 0,07 | 0,05 |
+
+  A Índia e a China ficam paradas porque a renda delas no jogo não passa do limiar até 2025
+  (a China real passou dos 15.000); com a renda certa, cairiam.
+
+**Conferência com o carvão real (consumo aparente de 1925: produção + importação − exportação;
+EUA *Mineral Resources 1925*, Reino Unido *Statistical Abstract* n.º 71, Índia *Statistical
+Abstract for British India*, Japão *Japan Year Book* 1927/28, China *China Year Book* 1928; a
+produção bate com o *Statistical Year-Book* da Liga de 1928, tab. 49, p. 95). Não é meta:**
+
+| Mt | jogo, tudo desligado | só ferrovias (`rail_by_line`) | ferrovias e biomassa | real |
+|---|---|---|---|---|
+| Índia | 123 | 88 | 60 | 21,4 |
+| China | 142 | 81 | 56 | 24,0 |
+| Japão | 71 | 39 | 33 | 30,5 |
+| Reino Unido | 197 | 112 | 99 | 195,4 (178,7 sem bunker) |
+| EUA | 480 | 275 | 245 | 510,0 |
+
+- **O Japão acerta; a Índia e a China ainda gastam 2,5 vezes o real.** O que sobra na Índia com
+  as duas chaves (60 Mt): ferrovia 17 Mt (6,7 medidos: o peso do passageiro, 2,7, é alto para a
+  terceira classe indiana), aço 8 Mt e 25 Mt fora das usinas (famílias da cidade, Estado,
+  manutenção). Na China, 32 Mt fora das usinas e 10 Mt de aço.
+- **Os EUA e o Reino Unido acertavam com tudo desligado e erram com as chaves:** as ferrovias
+  deles queimavam o dobro do real (264 contra 109 e 83 contra 15 Mt) e os outros usos compensavam
+  por baixo. Corrigida a ferrovia, o total cai à metade do real: o que falta lá está na indústria,
+  na eletricidade e nas famílias da cidade, que o jogo faz gastar pouco carvão. É o próximo
+  ponto do sinal, antes de ligar qualquer chave.
+
+**Saldo de bens (% do PIB), desligado → as duas chaves:** Índia −1,1 → −0,2 em 1925, −6,3 →
+−6,2 em 1935; China −3,8 → −2,7 e −4,1 → −3,1; Japão −3,3 → −3,0 e +1,6 → +3,2; Reino Unido
+−1,6 → −2,2 e +1,9 → +1,3; EUA +2,0 → +1,6 e +3,5 → +3,0. A importação de carvão cai (Índia 48 %
+→ 39 % do uso em 1925, China 39 % → 24 %), mas o sinal da Índia e dos EUA não se acerta.
+
+**Agregados (101 anos, as duas chaves, contra a faixa de 14 amostras de `17782c2`):** PIB
+mundial +0,4 a +1,5 % (até +3,1σ em 2025; +1,6σ em 1935); população +0,1 a +0,5 % (+2 a +8σ: a
+faixa da população tem desvio de poucos milhões). Desligada: hash de 10 anos e série de 101 anos
+idênticos aos do `main`.
+
 ## Fontes
 
 - Clemens, M. A.; Williamson, J. G. "Why did the tariff–growth correlation change after 1950?".
