@@ -422,16 +422,17 @@
             // published.
             key: "nuclear_warhead", domain: Strategic, mobility: Static, requires: ["atomic_bomb"],
             men: 5, training_weeks: 10,
-            // The fuzing and firing of 1945 (radar altimeters, barometric and clock switches, the
-            // detonators; Sublette, Nuclear Weapons FAQ, 8.1.3) as electrical equipment, which
-            // exists then; electronic components come in 1950. The quantity is kept (estimate).
-            equipment: [("weapon_cores", 1), ("explosives", 2), ("electrical_equipment", 50)],
+            // A core and its non-nuclear assembly (the lenses, the initiator, the fuzing and firing,
+            // the case), made by the weapon_assembly_plant: the fuzing of 1945 (radar altimeters,
+            // barometric and clock switches, the detonators; Sublette, Nuclear Weapons FAQ, 8.1.3)
+            // and the 2 t of explosive are now its inputs.
+            equipment: [("weapon_cores", 1), ("weapon_assemblies", 1)],
             upkeep: [("electrical_equipment", "0.1")],
             roles: [(Strategic, 1000)],
             yield_kt: 21,
             generations: [
                 (requires: ["thermonuclear_weapon"],
-                    equipment: Some([("weapon_cores", "0.73"), ("explosives", 1), ("electronic_components", 100)]),
+                    equipment: Some([("weapon_cores", "0.73"), ("weapon_assemblies", 1)]),
                     yield_kt: Some(1400)),
             ],
         ),

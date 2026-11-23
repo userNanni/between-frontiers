@@ -103,5 +103,12 @@
         // prices (about 254 million, mostly electricity), so the first method makes no loss at
         // base prices; the production reactor spends far less, and the market sets the price.
         (key: "weapon_cores", category: "military", base_price: 300000000, available_from: 1944, tradable: false, unit: "1 fission core"),
+        // The assembly of the warhead (the step between the core and the weapon; Hewlett and
+        // Duncan, Atomic Shield 1947-1952, 1969, pp. 47 and 134): the non-nuclear assembly of one
+        // warhead (the explosive lenses, the initiator, the fuzing and firing, the case), made by
+        // the weapon_assembly_plant. It is a good because the warhead is a formation built from
+        // goods, not the product of a building. The base price is an estimate: above the inputs
+        // (about 54,000) and the wages of a level over its yearly output at base prices.
+        (key: "weapon_assemblies", category: "military", base_price: 200000, available_from: 1945, tradable: false, unit: "the non-nuclear assembly of one warhead"),
     ],
 )

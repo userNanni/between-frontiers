@@ -491,5 +491,20 @@
             (key: "high_enrichment", available_from: 1944, inputs: [("uranium_ore", 27500), ("chemicals", 2000), ("electricity", 2365000)], outputs: [("weapon_cores", 1.875)], jobs: [("laborer", 350), ("skilled_worker", 330), ("engineer", 60), ("clerk", 60), ("manager", 20), ("capitalist", 5)], capital: Some(1.0)),
             (key: "production_reactor", available_from: 1944, inputs: [("uranium_ore", 107600), ("chemicals", 4000), ("electricity", 20000)], outputs: [("weapon_cores", 13.35)], jobs: [("laborer", 350), ("skilled_worker", 330), ("engineer", 60), ("clerk", 60), ("manager", 20), ("capitalist", 5)], capital: Some(0.147)),
         ]),
+        // The assembly of the warhead (programme rule `assembly`): a state firm, asked for by the
+        // nuclear programme once its core plants run. In 1947 none of the American bombs was
+        // assembled: the wartime civilian teams had broken up and the military ones were not yet
+        // trained (Hewlett and Duncan, Atomic Shield 1947-1952, 1969, p. 47); there were no
+        // production lines nor written procedures (p. 134). The inputs are what the warhead took
+        // before (2 t of explosive, the fuzing as electrical equipment; units.ron), and the
+        // thermonuclear generation's electronics.
+        // DESIGN VALUE, without a source: 12 assemblies a year a level, and the jobs of the core
+        // plant. No page was found for the output of Sandia or of the Mark 4 line (about 550 made
+        // from 1949 to 1951, without a page here); the 1945-47 stock (2, 9, 13) is a measure,
+        // not a target.
+        (key: "weapon_assembly_plant", group: "heavy_industry", resource: None, farm: None, state_firm: true, methods: [
+            (key: "hand_assembly", available_from: 1945, inputs: [("explosives", 24), ("electrical_equipment", 600)], outputs: [("weapon_assemblies", 12)], jobs: [("laborer", 100), ("skilled_worker", 330), ("engineer", 120), ("clerk", 40), ("manager", 20), ("capitalist", 5)], capital: Some(1.0)),
+            (key: "electronic_assembly", available_from: 1950, inputs: [("explosives", 12), ("electronic_components", 1200)], outputs: [("weapon_assemblies", 12)], jobs: [("laborer", 100), ("skilled_worker", 330), ("engineer", 120), ("clerk", 40), ("manager", 20), ("capitalist", 5)], capital: Some(1.0)),
+        ]),
     ],
 )
