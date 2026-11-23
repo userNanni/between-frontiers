@@ -33,6 +33,8 @@ pub enum Tab {
     Methods,
     /// Every state of the country with its metrics (`states_table.rs`).
     States,
+    /// The market good by good (`goods_table.rs`).
+    Goods,
 }
 
 /// A column the buildings table sorts by.
@@ -104,6 +106,8 @@ pub struct Window {
     pub search: String,
     /// Where: everywhere, the metropole or the colonies.
     pub place: Place,
+    /// The goods tab's sorting, filters and the good opened.
+    pub goods: super::goods_table::GoodsUi,
 }
 
 /// The states a table counts.
@@ -163,6 +167,7 @@ pub fn show(
     world: Option<&crate::world::World>,
     view: Option<&BuildingsView>,
     methods: Option<&crate::methods_view::MethodsView>,
+    goods: Option<&crate::goods_view::GoodsView>,
     player: Option<usize>,
     window: &mut Window,
     place: &mut crate::hud::WindowPlace,
@@ -184,11 +189,13 @@ pub fn show(
                 (Tab::Buildings, i18n.tr("economy-tab-buildings")),
                 (Tab::Methods, i18n.tr("economy-tab-methods")),
                 (Tab::States, i18n.tr("economy-tab-states")),
+                (Tab::Goods, i18n.tr("economy-tab-goods")),
             ];
             let tips = [
                 Tip::Item('Z', "economy.tab.buildings".into(), "1"),
                 Tip::Item('Z', "economy.tab.methods".into(), "2"),
                 Tip::Item('Z', "economy.tab.states".into(), "3"),
+                Tip::Item('Z', "economy.tab.goods".into(), "4"),
             ];
             keys::segmented(ui, &mut window.tab, &options, &tips);
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
@@ -209,13 +216,30 @@ pub fn show(
             }
             return;
         }
+        // The goods tab reads the market's monthly figures; "See in Buildings" opens the
+        // buildings tab on the kind.
+        if window.tab == Tab::Goods {
+            match goods {
+                Some(g) => {
+                    if let Some(kind) = super::goods_table::show(ui, i18n, g, &mut window.goods) {
+                        window.tab = Tab::Buildings;
+                        window.group = None;
+                        window.open = Some(kind);
+                    }
+                }
+                None => {
+                    bf_ui_kit::muted(ui, &i18n.tr("economy-waiting"));
+                }
+            }
+            return;
+        }
         let Some(v) = view else {
             bf_ui_kit::muted(ui, &i18n.tr("economy-waiting"));
             return;
         };
         match window.tab {
             Tab::Buildings => buildings(ui, i18n, world, v, window),
-            Tab::States => {}
+            Tab::States | Tab::Goods => {}
             Tab::Methods => match methods {
                 Some(m) => super::methods::show(ui, i18n, m, &mut window.methods_kind),
                 None => {

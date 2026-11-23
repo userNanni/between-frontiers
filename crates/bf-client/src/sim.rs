@@ -75,6 +75,8 @@ pub struct Snapshot {
     /// The player's buildings, state by state, read once a month and when the works queue
     /// changes (the economy window).
     pub buildings: Option<Arc<crate::buildings_view::BuildingsView>>,
+    /// The player's market good by good, read once a month (the economy window's goods tab).
+    pub goods: Option<Arc<crate::goods_view::GoodsView>>,
     /// Every state's figures, read once a month (the state panel).
     pub states: Option<Arc<crate::state_view::StatesView>>,
     /// The production methods of the player's buildings, read once a month (the economy
@@ -411,6 +413,7 @@ struct Monthly {
     crisis_draft: Option<Arc<crate::crisis_view::DraftWeighing>>,
     works: Option<Arc<crate::works_view::WorksView>>,
     buildings: Option<Arc<crate::buildings_view::BuildingsView>>,
+    goods: Option<Arc<crate::goods_view::GoodsView>>,
     states: Option<Arc<crate::state_view::StatesView>>,
     methods: Option<Arc<crate::methods_view::MethodsView>>,
     agreements: Option<Arc<crate::agreements_view::AgreementsView>>,
@@ -462,6 +465,23 @@ fn buildings_of(
         _ => {
             let r = rules.as_ref()?;
             crate::buildings_view::read(w, tag, &r.catalogue, date).map(Arc::new)
+        }
+    }
+}
+
+/// The player's market by good, read again on a new month.
+fn goods_of(
+    session: &Session,
+    rules: &Rules,
+    last: &Option<Arc<crate::goods_view::GoodsView>>,
+) -> Option<Arc<crate::goods_view::GoodsView>> {
+    let date = session.clock().date;
+    match last {
+        Some(v) if v.month == (date.year, date.month) => Some(Arc::clone(v)),
+        _ => {
+            let r = rules.as_ref()?;
+            let tag = session.player()?;
+            crate::goods_view::read(session.world(), tag, &r.catalogue, date).map(Arc::new)
         }
     }
 }
@@ -805,6 +825,7 @@ impl Monthly {
             crisis_draft: draft_of(session, rules, extras, &last.crisis_draft),
             works: works_of(session, rules, &last.works),
             buildings: buildings_of(session, rules, &last.buildings),
+            goods: goods_of(session, rules, &last.goods),
             states: states_of(session, rules, &last.states),
             methods: methods_of(session, rules, &last.methods),
             agreements: agreements_of(session, rules, &last.agreements),
@@ -857,6 +878,7 @@ fn snapshot_of(
         crisis_draft: monthly.crisis_draft,
         works: monthly.works,
         buildings: monthly.buildings,
+        goods: monthly.goods,
         states: monthly.states,
         methods: monthly.methods,
         agreements: monthly.agreements,
