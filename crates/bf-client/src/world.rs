@@ -79,8 +79,11 @@ pub struct Figures {
     /// Metropole, 0–1.
     pub literacy: Option<f64>,
     pub urbanization: Option<f64>,
-    /// Years. Always the scenario's: the simulation does not model it yet.
+    /// Years: the simulation's last closed year (the metropole's, as the other blocks) once the
+    /// yearly series has one, the scenario's before that.
     pub life_expectancy: Option<f64>,
+    /// The life expectancy is the simulation's, not the 1925 data.
+    pub life_simulated: bool,
     /// Present when literacy and life expectancy are known.
     pub quality: Option<QualityOfLife>,
     /// Metropole population.
@@ -203,22 +206,34 @@ impl FigureTable {
         Self::new(Source::Scenario, countries)
     }
 
-    /// The simulation's figures, matched to the countries by tag. Life expectancy stays the
-    /// scenario's; a country the simulation does not know counts as empty.
+    /// The simulation's figures, matched to the countries by tag. Life expectancy is the
+    /// simulation's last closed year once the yearly series has one, the scenario's before; a
+    /// country the simulation does not know counts as empty.
     pub fn live(countries: &[Country], live: &LiveFigures) -> Self {
         let rows = countries
             .iter()
             .map(|c| {
-                let life = c.def.life_expectancy.map(f64::from);
-                match live.countries.iter().find(|l| l.tag == c.def.tag) {
-                    Some(l) => Figures::new(
-                        (l.metropole.population, l.metropole.gdp),
-                        (l.colonies.population, l.colonies.gdp),
-                        l.metropole.literacy,
-                        l.metropole.urbanization,
-                        life,
-                    ),
-                    None => Figures::new((0.0, 0.0), (0.0, 0.0), None, None, life),
+                let scenario = c.def.life_expectancy.map(f64::from);
+                match live.countries.iter().position(|l| l.tag == c.def.tag) {
+                    Some(i) => {
+                        let l = &live.countries[i];
+                        let simulated = live
+                            .history
+                            .get(i)
+                            .and_then(|h| h.iter().rev().find_map(|p| p.series))
+                            .map(|s| s.life_metro)
+                            .filter(|v| *v > 0.0);
+                        let mut f = Figures::new(
+                            (l.metropole.population, l.metropole.gdp),
+                            (l.colonies.population, l.colonies.gdp),
+                            l.metropole.literacy,
+                            l.metropole.urbanization,
+                            simulated.or(scenario),
+                        );
+                        f.life_simulated = simulated.is_some();
+                        f
+                    }
+                    None => Figures::new((0.0, 0.0), (0.0, 0.0), None, None, scenario),
                 }
             })
             .collect();
