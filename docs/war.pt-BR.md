@@ -737,16 +737,50 @@ O passo que faltava entre o núcleo e a arma.
   - **Leitura minha:** o excesso de 1946–47 cai para 1,8 a 2 vezes (16 e 26, contra 9 e 13). O
     resto é o que travou os EUA naqueles anos: as equipes que se desfizeram com a desmobilização
     (p. 47). O jogo não tem desmobilização de técnicos: fica como lacuna anotada, sem número.
-- **Dependência: a encomenda de ogivas, uma por vez (`batch`), é o teto do ritmo depois de
-  1948.** É valor de desenho, em `peace.ron`.
-  - Medido antes da correção da unidade: com `plant_weeks` pela metade (13 semanas) ou com a
-    parcela em 1,0% do PIB, os EUA de 1947 / 1950 / 1955 ficam em 63 / 141 / 271 e 71 / 149 /
-    280, contra 49 / 127 / 257.
-  - Nos três casos, de 1950 a 1955, o estoque sobe exatamente 26 por ano: uma ogiva a cada duas
-    semanas, a cadência de encomendar uma, entregar e encomendar de novo.
-  - Não é calibração, é um teto artificial: o próximo PR troca a regra da encomenda.
-  - A mesma falha de unidade estava na usina de núcleos (#279), corrigida no PR seguinte (ver o
-    passo 1).
+- **A encomenda de ogivas (trocada depois do #336):** antes, o programa encomendava uma ogiva
+  por vez (`batch`), entregue com a encomenda inteira. Isso dava exatamente 26 ogivas por ano de
+  1950 a 1955, qualquer que fosse o dinheiro ou a obra. Era um teto artificial, não calibração.
+  - **A regra agora:**
+    - A encomenda cresce, de ogiva em ogiva, até que o que ainda falta comprar valha pelo menos
+      o dinheiro do estoque da semana. O dinheiro é 75% da parcela, depois que a bomba pode ser
+      feita.
+    - O dinheiro do programa e o que as usinas entregam são os únicos tetos.
+    - A ogiva entra assim que o seu núcleo e o seu conjunto chegam, uma a uma, como os aviões.
+  - **Quando o jogador encerra o programa ou zera a parcela:**
+    - a encomenda fica parada com os núcleos e os conjuntos que já tem, visíveis na tela, e nada
+      some;
+    - o orçamento militar nunca compra a encomenda do programa;
+    - um núcleo que já tinha o seu conjunto vira ogiva; o resto espera um programa novo.
+    - Teste: `the_order_follows_the_money_and_waits_when_the_programme_ends`.
+  - **O que amarra agora** (`war::programme::limit`), nas palavras do jogador:
+    - as usinas de núcleos, ou as de montagem, quando o mercado entrega menos de nove décimos do
+      que o programa comprou;
+    - senão, o dinheiro do programa.
+  - **Teto de estoque do jogador** ("parar em N ogivas"): fica para depois, com o save. Hoje o
+    jogador freia pela parcela.
+  - **Conferência de 1940, medida e não alvo** (`the_pace_from_1940`):
+
+    | Fim do ano | 1944 | 1945 | 1946 | 1947 | 1950 | 1955 |
+    |---|---|---|---|---|---|---|
+    | EUA, encomenda antiga, 0,4% (#336) | 2 | 6 | 13 | 21 | 49 | 114 |
+    | EUA, encomenda nova, 0,4% | 3 | 8 | 24 | 57 | 162 | 352 |
+    | EUA, encomenda nova, 1,0% | 0 | 9 | 33 | 66 | 258 | 710 |
+    | EUA, real | 0 | 2 | 9 | 13 | ~300 | ~2.400 |
+
+    - A Alemanha fica em 0 / 21 / 61 (1947 / 1950 / 1955) a 0,4% e em 37 / 93 / 197 a 1,0%. O
+      Reino Unido fica em 3 / 39 / 109 e em 45 / 133 / 299.
+    - **A 0,4%, o dinheiro amarra.** A usina de núcleos para em 4 níveis em 1947, porque o
+      núcleo não falta. O estoque sobe cerca de 35 por ano até 1950 e 38 por ano até 1955.
+    - **A 1,0%, a montagem amarra até 1950.** São de 44 a 74 núcleos esperando conjunto de 1944 a
+      1949. A usina de montagem cresce um pedido a cada 26 semanas, junto com a de núcleos e a
+      mina.
+    - **Dependências anotadas, sem ajuste:**
+      1. O excesso de 1946–47 (24 e 57 contra 9 e 13 a 0,4%) vem da desmobilização das equipes,
+         que o jogo não tem (Atomic Shield, p. 47).
+      2. O déficit de 1955 (352 ou 710 contra ~2.400) vem da parcela. O gasto americano saltou
+         depois de 1950; a parcela fixa de 0,4% é decisão do jogador ou da IA da fase 6.
+      3. Um pedido de obra a cada 26 semanas (`plant_weeks`), compartilhado entre núcleos, mina
+         e montagem, é valor de desenho e amarra a 1,0%.
 - **Com `war` desligada:**
   - o bem e o prédio novos, no fim das listas, mudam o hash de 10 anos para `71d55cda…`;
   - a série anual de 101 anos fica idêntica à do main;
