@@ -169,6 +169,12 @@ pub fn show(ui: &mut Ui, i18n: &I18n, v: &GoodsView, st: &mut GoodsUi) -> Option
         let resp = ui.interact(r, ui.make_persistent_id(("goods-col", c)), Sense::click());
         let named = label.clone();
         resp.widget_info(|| egui::WidgetInfo::labeled(egui::Role::ColumnHeader, true, &named));
+        // The stock is only a storable good's, and only with the market's stock rule on.
+        let resp = if sort == Some(COLUMNS.len() - 1) {
+            resp.on_hover_text(bf_ui_kit::tooltip_text(&i18n.tr("goods-col-stock-tip")))
+        } else {
+            resp
+        };
         let on = st.sort == sort;
         let arrow = if on {
             if st.ascending { " ↑" } else { " ↓" }
@@ -248,7 +254,7 @@ pub fn show(ui: &mut Ui, i18n: &I18n, v: &GoodsView, st: &mut GoodsUi) -> Option
                         ),
                         (_, Some(x)) if x > 0.0 => (money_short(i18n, x), color::TEXT),
                         (_, Some(_)) => ("—".into(), color::TEXT_FAINT),
-                        (_, None) => (String::new(), color::TEXT_FAINT),
+                        (_, None) => ("—".into(), color::TEXT_FAINT),
                     };
                     ui.painter().text(
                         egui::pos2(x_of(r, c), r.center().y),
@@ -300,9 +306,9 @@ fn detail(ui: &mut Ui, i18n: &I18n, g: &GoodRow, st: &mut GoodsUi) -> Option<u16
             ui.horizontal(|ui| {
                 bf_ui_kit::heading(ui, &name);
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    let close = Button::ghost(&i18n.tr("goods-close"))
-                        .size(ButtonSize::Small)
-                        .show(ui);
+                    // The close of the panel, as the window's: an X with its tip.
+                    let label = i18n.tr("goods-close");
+                    let close = bf_ui_kit::close_button(ui, &label, &label);
                     if close.clicked() || keys::single(ui, "goods.close", 'X', close.rect) {
                         st.open = None;
                     }

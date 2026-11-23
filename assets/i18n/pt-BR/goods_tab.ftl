@@ -18,3 +18,4 @@ goods-makers-none = Nenhum prédio faz este bem.
 goods-takers = Quem usa
 goods-takers-none = Nenhum prédio usa este bem; as famílias e o Estado compram.
 goods-see-in-buildings = { $building }: ver em Prédios
+goods-col-stock-tip = Só os bens estocáveis têm estoque (hoje, o minério de urânio), e só com a regra do estoque de mercado ligada (market_stock); sem ela, a coluna fica em "—".

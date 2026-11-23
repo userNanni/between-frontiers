@@ -18,3 +18,4 @@ goods-makers-none = No building makes this good.
 goods-takers = Who uses it
 goods-takers-none = No building uses this good; households and the state buy it.
 goods-see-in-buildings = { $building }: see in Buildings
+goods-col-stock-tip = Only storable goods have a stock (today, uranium ore), and only with the market stock rule on (market_stock); without it, the column reads "—".
