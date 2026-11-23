@@ -15,6 +15,9 @@
 //!   their forces to the protected side.
 //! - Every launcher reaches (no ranges on the map yet).
 
+/// Warheads held as never enough: the cities of a country do not hold its unacceptable share.
+pub const UNREACHABLE: u64 = 100_000;
+
 use laplace_schelling::Fixed;
 
 use super::catalogue::Military;
@@ -233,12 +236,21 @@ pub fn balance(
         }
     };
     let (ea, eb) = (emt(a, &pa), emt(b, &pb));
-    // The warheads of the other side's mean power that kill the share held unacceptable, at
-    // `killed_per_warhead` a equivalent megaton.
+    // The warheads of the other side's mean power that kill the share held unacceptable in its
+    // cities (`war::target`); past `UNREACHABLE` the cities alone do not hold that share.
     let unacceptable = |m: u16, foe_emt: i128| {
         let dead = i128::from(people(m)) * i128::from(n.unacceptable_share) / 1000;
-        let per = (i128::from(n.killed_per_warhead.max(1)) * foe_emt / 1000).max(1);
-        Fixed::from_int(((dead + per - 1) / per).max(1) as i64)
+        let area = super::target::area_of(n.lethal_km2_per_emt, foe_emt.max(1) as u64);
+        let cities = super::target::cities(world, m);
+        let k = super::target::warheads_to_kill(
+            &cities,
+            n.core_density,
+            area,
+            dead as i64,
+            UNREACHABLE,
+        )
+        .unwrap_or(UNREACHABLE);
+        Fixed::from_int(k.max(1) as i64)
     };
     let first = |f: &[NuclearForce]| super::nuclear::first_strike_warheads(f);
     let make = |me: u16, f: Vec<NuclearForce>, incoming: u64, foe_emt: i128| NuclearSide {

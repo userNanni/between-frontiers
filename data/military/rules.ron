@@ -254,13 +254,24 @@
         // N9 (to the owner): the protectors bound by a defence clause add their arsenals.
         umbrella: true,
         // Unacceptable damage: a quarter of the people (McNamara's assured destruction, 20 to 25 %
-        // of the Soviet population). The dead a warhead, per equivalent megaton of its yield
-        // (U3, `Y^(2/3)`): 370,000, from the first 100 equivalent megatons killing about 37
-        // million (Enthoven and Smith, 1971, How Much Is Enough?, p. 207, as the FRUS 1964-68,
-        // vol. X, doc. 102, quotes it). The next 100 add fewer (21 % at 200 against 15 % at
-        // 100): the return falls, and the density of the target (a later step) carries it.
+        // of the Soviet population), killed in its cities.
         unacceptable_share: 250,
-        killed_per_warhead: 370000,
+        // The density of the target (`war::target`): each home region's townsfolk are one city
+        // whose density falls from the centre; the lethal areas of the warheads that fall on it
+        // add up into one disc. The return falls by the shape.
+        // - Core density: 9,900 a km², the density within 0.6 mile of ground zero (Hiroshima
+        //   25,800 and Nagasaki 25,500 a square mile; Glasstone and Dolan, The Effects of Nuclear
+        //   Weapons, 1977, p. 544, table 12.09). Japanese cities of 1945, of wood and without
+        //   warning: a ceiling for other times; the spread by country is a gap.
+        // - Lethal area: 132 km² an equivalent megaton, my computation from the same table (the
+        //   dead of each ring over its density: 8.46 km² for Hiroshima's 12.5 kt and 9.03 for
+        //   Nagasaki's 22 kt, p. 36), over their 0.132 equivalent megatons together.
+        // - The independent check is the first 100 equivalent megatons on the Soviet Union
+        //   killing about 15 % of its people and 200 about 21 % (Enthoven and Smith, 1971, How
+        //   Much Is Enough?, p. 207, as the FRUS 1964-68, vol. X, doc. 102, quotes it): measured,
+        //   not a target.
+        lethal_km2_per_emt: 132,
+        core_density: 9900,
         warheads_per_bomber: 2,
         warheads_per_missile: 1,
         warheads_per_submarine: 16,
