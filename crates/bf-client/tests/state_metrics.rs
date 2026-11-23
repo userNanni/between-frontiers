@@ -87,6 +87,31 @@ fn the_states_have_their_metrics() {
         .expect("the states tab")
         .click();
     steps(&mut h);
+    // The search by name narrows the table to the states that hold it.
+    let names: Vec<String> = {
+        let w = h.state().shared.world.as_ref().unwrap();
+        w.countries[swe]
+            .states
+            .iter()
+            .map(|&s| bf_client::text::state_name(&h.state().shared.i18n, &w.states[s].def))
+            .collect()
+    };
+    let (kept, gone) = (&names[0], &names[1]);
+    h.query_all(egui_kittest::kittest::by().role(egui::accesskit::Role::TextInput))
+        .next()
+        .expect("the search")
+        .click();
+    steps(&mut h);
+    h.event(egui::Event::Text(kept.chars().take(4).collect()));
+    steps(&mut h);
+    assert!(
+        h.query_by_label(kept).is_some(),
+        "{kept} kept by the search"
+    );
+    assert!(
+        h.query_by_label(gone).is_none(),
+        "{gone} left out by the search"
+    );
     let first = {
         let w = h.state().shared.world.as_ref().unwrap();
         let s = w.countries[swe].states[0];
