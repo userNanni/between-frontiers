@@ -734,10 +734,19 @@ fn settle_region<const SKIP_IDLE: bool, const ABROAD: bool>(
         }
         // Plants follow demand for their main output: they ramp up while everything sells and
         // ease off in step with what goes unsold.
-        let sold_share = method
-            .outputs
-            .first()
-            .map_or(Fixed::ONE, |(gi, _)| v.sell[*gi as usize]);
+        let sold_share = if cat.follow_best_output && method.outputs.len() > 1 {
+            method
+                .outputs
+                .iter()
+                .map(|(gi, _)| v.sell[*gi as usize])
+                .max()
+                .unwrap_or(Fixed::ONE)
+        } else {
+            method
+                .outputs
+                .first()
+                .map_or(Fixed::ONE, |(gi, _)| v.sell[*gi as usize])
+        };
         let utilization = if sold_share >= milli(990) {
             (p.utilization + milli(50)).min(Fixed::ONE)
         } else {

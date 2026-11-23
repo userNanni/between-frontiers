@@ -137,6 +137,9 @@ pub struct Catalogue {
     pub buildings: Vec<Building>,
     /// The technologies some input fades with (`MethodDef::fading`), by key, in the order met.
     pub fading: Vec<String>,
+    /// A plant with several outputs follows the one that sells best, not only the first (set at
+    /// load with the switch `radium`: the radium mine runs for its ore once the radium fades).
+    pub follow_best_output: bool,
     pub needs: Vec<Need>,
     /// Goods that clear state by state, in catalogue order.
     pub local: Vec<GoodIx>,
@@ -500,6 +503,7 @@ impl Catalogue {
             goods,
             buildings: bs,
             fading,
+            follow_best_output: false,
             needs: ns,
             freight,
         })
