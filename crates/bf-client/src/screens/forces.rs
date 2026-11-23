@@ -177,6 +177,50 @@ fn programme(ui: &mut Ui, cx: &mut TabContext<'_>) {
             ],
         ),
     );
+    // The assembly of the warhead: its plants, the assemblies on the market, and the cores that
+    // wait for one.
+    if let Some(a) = &p.assembly {
+        if a.plants.is_empty() {
+            bf_ui_kit::stat_row(
+                ui,
+                &i18n.tr("programme-assembly-plants"),
+                &i18n.tr("programme-none"),
+            );
+        }
+        for c in &a.plants {
+            bf_ui_kit::stat_row(
+                ui,
+                &i18n.tr(&format!("method-{}", c.method)),
+                &i18n.tr_args(
+                    "programme-assembly-plant-value",
+                    &[
+                        ("levels", bf_i18n::Arg::Num(c.levels as f64)),
+                        ("made", arg(i18n.decimal(c.cores_year, 1))),
+                    ],
+                ),
+            );
+        }
+        bf_ui_kit::stat_row(
+            ui,
+            &i18n.tr("programme-assembly"),
+            &i18n.tr_args(
+                "programme-fissile-value",
+                &[
+                    ("price", arg(money(i18n, a.price))),
+                    ("delivered", arg(pct(i18n, a.delivered * 100.0, 0))),
+                ],
+            ),
+        );
+        ui.scope(|ui| {
+            bf_ui_kit::stat_row(
+                ui,
+                &i18n.tr("programme-cores-waiting"),
+                &i18n.decimal(a.cores_waiting, 1),
+            );
+        })
+        .response
+        .on_hover_text(i18n.tr("programme-cores-waiting-tip"));
+    }
     // Where the ore comes from: the country's mines, the market's stock, the market.
     if let Some(o) = &p.ore {
         bf_ui_kit::stat_row(

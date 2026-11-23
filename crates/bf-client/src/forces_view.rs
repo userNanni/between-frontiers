@@ -88,6 +88,8 @@ pub struct ProgrammeView {
     pub fissile_delivered: f64,
     /// Where the plants' uranium ore comes from; `None` when no method of the plant takes ore.
     pub ore: Option<OreView>,
+    /// The assembly of the warhead (rule `assembly`); `None` when the rule has no assembly plant.
+    pub assembly: Option<AssemblyView>,
     /// N3: the country tested a weapon; or asked for a test, to go through next week.
     pub tested: bool,
     pub test_asked: bool,
@@ -100,6 +102,17 @@ pub struct CorePlant {
     pub method: String,
     pub levels: i64,
     pub cores_year: f64,
+}
+
+/// The assembly of the warhead: the assembly plants by method, the assemblies on the market
+/// (price and the share delivered), and the cores already bought for the warhead order that
+/// wait for their assembly.
+#[derive(Clone, Debug, PartialEq)]
+pub struct AssemblyView {
+    pub plants: Vec<CorePlant>,
+    pub price: f64,
+    pub delivered: f64,
+    pub cores_waiting: f64,
 }
 
 /// The uranium ore of the programme: what the country mines, what its core plants take, the
@@ -180,7 +193,9 @@ pub fn programme_view(
             .flat_map(|m| m.inputs.iter().map(|(g, _)| usize::from(*g)))
             .find(|&g| cat.goods.get(g).is_some_and(|d| d.key == "uranium_ore"))
     });
+    let assembly = rule.assembly.as_deref().and_then(|k| cat.building(k));
     let mut core_plants: Vec<CorePlant> = Vec::new();
+    let mut assembly_plants: Vec<CorePlant> = Vec::new();
     let (mut mined, mut used) = (0.0, 0.0);
     for r in world
         .econ
@@ -207,6 +222,25 @@ pub fn programme_view(
                     .map(|(_, q)| f(*q) * scale)
                     .sum::<f64>();
             }
+            let into = if Some(usize::from(x.kind)) == plant {
+                &mut core_plants
+            } else if Some(usize::from(x.kind)) == assembly {
+                &mut assembly_plants
+            } else {
+                continue;
+            };
+            let made: f64 = method.outputs.iter().map(|(_, q)| f(*q) * scale).sum();
+            match into.iter_mut().find(|c| c.method == method.key) {
+                Some(c) => {
+                    c.levels += x.levels;
+                    c.cores_year += made;
+                }
+                None => into.push(CorePlant {
+                    method: method.key.clone(),
+                    levels: x.levels,
+                    cores_year: made,
+                }),
+            }
             if Some(usize::from(x.kind)) != plant {
                 continue;
             }
@@ -218,18 +252,6 @@ pub fn programme_view(
                     .map(|(_, q)| f(*q) * scale)
                     .sum::<f64>();
             }
-            let cores: f64 = method.outputs.iter().map(|(_, q)| f(*q) * scale).sum();
-            match core_plants.iter_mut().find(|c| c.method == method.key) {
-                Some(c) => {
-                    c.levels += x.levels;
-                    c.cores_year += cores;
-                }
-                None => core_plants.push(CorePlant {
-                    method: method.key.clone(),
-                    levels: x.levels,
-                    cores_year: cores,
-                }),
-            }
         }
     }
     let ore = ore.map(|g| OreView {
@@ -239,13 +261,59 @@ pub fn programme_view(
         price: f(m.price[g]),
         delivered: f(m.buy_ratio[g]),
     });
-    let fissile = military.unit(&rule.warhead).and_then(|ty| {
-        military
-            .spec(ty, 0)
-            .equipment
-            .iter()
-            .max_by_key(|(_, q)| *q)
+    // The core: the core plant's output (the warhead takes as many assemblies as cores).
+    let fissile = plant.and_then(|k| {
+        cat.buildings[k]
+            .methods
+            .first()
+            .and_then(|m| m.outputs.first())
             .map(|(g, _)| usize::from(*g))
+    });
+    // The assembly (the assembly plant's first output) and the cores bought for the warhead
+    // order that have no assembly yet.
+    let assembly = assembly.map(|k| {
+        let good = cat.buildings[k]
+            .methods
+            .first()
+            .and_then(|m| m.outputs.first())
+            .map(|(g, _)| usize::from(*g));
+        // Per order, in the order's generation: the cores bought beyond what the assemblies
+        // bought so far can take (a thermonuclear warhead takes 0.73 of a core and one assembly).
+        let waiting: f64 = match (warhead, fissile, good) {
+            (Some(ty), Some(core), Some(asm)) => c
+                .queue
+                .iter()
+                .filter(|o| o.unit == rule.warhead)
+                .map(|o| {
+                    let spec = military.spec(ty, usize::from(o.generation.unwrap_or(0)));
+                    let per = |g: usize| {
+                        spec.equipment
+                            .iter()
+                            .find(|(e, _)| usize::from(*e) == g)
+                            .map_or(0.0, |(_, q)| f(*q))
+                    };
+                    let had = |g: usize| -> f64 {
+                        o.built
+                            .iter()
+                            .filter(|(b, _)| usize::from(*b) == g)
+                            .map(|(_, q)| f(*q))
+                            .sum()
+                    };
+                    let (core_per, asm_per) = (per(core), per(asm));
+                    if asm_per <= 0.0 {
+                        return 0.0;
+                    }
+                    (had(core) - had(asm) / asm_per * core_per).max(0.0)
+                })
+                .sum(),
+            _ => 0.0,
+        };
+        AssemblyView {
+            plants: assembly_plants,
+            price: good.map_or(0.0, |g| f(m.price[g])),
+            delivered: good.map_or(0.0, |g| f(m.buy_ratio[g])),
+            cores_waiting: waiting,
+        }
     });
     Some(ProgrammeView {
         share,
@@ -258,6 +326,7 @@ pub fn programme_view(
         ordered,
         core_plants,
         ore,
+        assembly,
         fissile_price: fissile.map_or(0.0, |g| f(m.price[g])),
         fissile_delivered: fissile.map_or(0.0, |g| f(m.buy_ratio[g])),
         tested: world.war.nuclear.tested(ci as u16),
