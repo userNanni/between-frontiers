@@ -155,6 +155,9 @@ enum SeriesKind {
     Count,
     Money,
     Share,
+    /// Already in percent (inflation, the rate): moves in points.
+    Percent,
+    Years,
 }
 
 struct Item {
@@ -783,6 +786,7 @@ fn items(i18n: &I18n, world: &World, p: usize) -> (Vec<Item>, Vec<Item>, Vec<Ite
     let (mut row1, mut row2, row3) = (row1, row2, row3);
     let chart_of = |which: Figure| figure_series(i18n, table, p, which);
     row1[1].tip.series = chart_of(Figure::Literacy);
+    row1[2].tip.series = chart_of(Figure::Life);
     row1[3].tip.series = chart_of(Figure::Urban);
     row1[4].tip.series = chart_of(Figure::GdpPerCapita);
     row2[0].tip.series = chart_of(Figure::Gdp);
@@ -808,7 +812,20 @@ fn corner_panel(
         .copied()
         .zip(row1.into_iter().chain(row2).chain(row3))
         .collect();
-    all.extend(extra_items(i18n, extra));
+    let mut extra_all = extra_items(i18n, extra);
+    // The money blocks kept year by year get their chart too.
+    let table = world.figures();
+    for (key, item) in &mut extra_all {
+        let which = match *key {
+            "debt" => Figure::Debt,
+            "treasury" => Figure::Treasury,
+            "inflation" => Figure::Inflation,
+            "policy-rate" => Figure::Rate,
+            _ => continue,
+        };
+        item.tip.series = figure_series(i18n, table, p, which);
+    }
+    all.extend(extra_all);
     let mut chosen: Vec<(&'static str, Item)> = Vec::new();
     for key in extra.tiles {
         if let Some(i) = all.iter().position(|(k, _)| k == key) {
@@ -1400,6 +1417,11 @@ pub enum Figure {
     GdpPerCapita,
     Literacy,
     Urban,
+    Life,
+    Debt,
+    Treasury,
+    Inflation,
+    Rate,
 }
 
 /// The chart of a figure of country `p`, built from its closed years; `None` outside a
@@ -1415,37 +1437,74 @@ fn figure_series(
     if !matches!(table.source, Source::Live { .. }) {
         return None;
     }
-    if table
+    // A country with colonies: the metropole's own numbers, which the blocks show, from the
+    // year the simulation began to keep them apart; before that its years are left out.
+    let colonies = table
         .countries
         .get(p)
-        .is_some_and(|f| f.colonial_population > 0.0)
-    {
-        return Some(Series {
-            points: Vec::new(),
-            lines: vec![i18n.tr("hud-series-colonies")],
-            floor: 0.0,
-        });
-    }
+        .is_some_and(|f| f.colonial_population > 0.0);
     let history = table.history.get(p).map(Vec::as_slice).unwrap_or(&[]);
-    let (kind, value): (SeriesKind, fn(&crate::live::YearPoint) -> f64) = match which {
-        Figure::Population => (SeriesKind::Count, |h| h.population),
-        Figure::Gdp => (SeriesKind::Money, |h| h.gdp),
-        Figure::GdpPerCapita => (SeriesKind::Money, |h| {
-            if h.population > 0.0 {
-                h.gdp / h.population
+    type Read = fn(&crate::live::YearPoint, bool) -> Option<f64>;
+    let (kind, value): (SeriesKind, Read) = match which {
+        Figure::Population => (SeriesKind::Count, |h, c| {
+            if c {
+                h.series.map(|s| s.population_metro)
             } else {
-                0.0
+                Some(h.population)
             }
         }),
-        Figure::Literacy => (SeriesKind::Share, |h| h.literacy),
-        Figure::Urban => (SeriesKind::Share, |h| h.urban),
+        Figure::Gdp => (SeriesKind::Money, |h, c| {
+            if c {
+                h.series.map(|s| s.gdp_metro)
+            } else {
+                Some(h.gdp)
+            }
+        }),
+        Figure::GdpPerCapita => (SeriesKind::Money, |h, c| {
+            let (gdp, pop) = if c {
+                let s = h.series?;
+                (s.gdp_metro, s.population_metro)
+            } else {
+                (h.gdp, h.population)
+            };
+            (pop > 0.0).then(|| gdp / pop)
+        }),
+        Figure::Literacy => (SeriesKind::Share, |h, c| {
+            if c {
+                h.series.map(|s| s.literacy_metro)
+            } else {
+                Some(h.literacy)
+            }
+        }),
+        Figure::Urban => (SeriesKind::Share, |h, c| {
+            if c {
+                h.series.map(|s| s.urban_metro)
+            } else {
+                Some(h.urban)
+            }
+        }),
+        Figure::Life => (SeriesKind::Years, |h, c| {
+            h.series.map(|s| if c { s.life_metro } else { s.life })
+        }),
+        Figure::Debt => (SeriesKind::Money, |h, _| h.series.map(|s| s.debt)),
+        Figure::Treasury => (SeriesKind::Money, |h, _| h.series.map(|s| s.treasury)),
+        Figure::Inflation => (SeriesKind::Percent, |h, _| h.series.map(|s| s.inflation)),
+        Figure::Rate => (SeriesKind::Percent, |h, _| h.series.map(|s| s.rate)),
     };
     let write = |v: f64| match kind {
         SeriesKind::Count => i18n.compact(v),
         SeriesKind::Money => crate::text::money_short(i18n, v),
         SeriesKind::Share => pct(i18n, v),
+        SeriesKind::Percent => crate::text::pct_text(i18n, i18n.decimal(v, 1)),
+        SeriesKind::Years => i18n.tr_args(
+            "hud-series-years",
+            &[("n", Arg::String(i18n.decimal(v, 1)))],
+        ),
     };
-    let points: Vec<(i32, f64)> = history.iter().map(|h| (h.year, value(h))).collect();
+    let points: Vec<(i32, f64)> = history
+        .iter()
+        .filter_map(|h| Some((h.year, value(h, colonies)?)))
+        .collect();
     let mut lines = Vec::new();
     if points.len() >= 2 {
         let lo = points.iter().map(|p| p.1).fold(f64::INFINITY, f64::min);
@@ -1457,6 +1516,14 @@ fn figure_series(
             SeriesKind::Share => {
                 let d = (last - before) * 100.0;
                 format!("{}{} p.p.", sign(d), i18n.decimal(d.abs(), 1))
+            }
+            SeriesKind::Percent => {
+                let d = last - before;
+                format!("{}{} p.p.", sign(d), i18n.decimal(d.abs(), 1))
+            }
+            SeriesKind::Years => {
+                let d = last - before;
+                format!("{}{}", sign(d), i18n.decimal(d.abs(), 1))
             }
             _ if before > 0.0 => {
                 let d = (last / before - 1.0) * 100.0;
@@ -1487,9 +1554,24 @@ fn figure_series(
     } else {
         lines.push(i18n.tr("hud-series-few"));
     }
+    if colonies
+        && matches!(
+            which,
+            Figure::Population
+                | Figure::Gdp
+                | Figure::GdpPerCapita
+                | Figure::Literacy
+                | Figure::Urban
+                | Figure::Life
+        )
+    {
+        lines.push(i18n.tr("hud-series-metro"));
+    }
     let top = points.iter().map(|p| p.1.abs()).fold(0.0, f64::max);
     let floor = match kind {
         SeriesKind::Share => 0.05,
+        SeriesKind::Percent => 5.0,
+        SeriesKind::Years => 5.0,
         _ => top * 0.1,
     };
     Some(Series {

@@ -88,3 +88,55 @@ fn figure_history() {
     }
     let _ = std::fs::remove_dir_all(&user);
 }
+
+/// The yearly series of the simulation (save 45): Sweden in February 1928 with the charts of its
+/// public debt and life expectancy; Britain, with colonies, with the chart of its metropole's
+/// GDP alone. Portuguese at 1600 × 900, English at 1280 × 720.
+#[test]
+#[ignore = "needs a GPU (or software Vulkan) and the generated map; run with --ignored"]
+fn series_history() {
+    let user = std::env::temp_dir().join(format!("bf-shots-series-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&user);
+    let sweden = campaign(&user.join("swe"), "SWE", Date::new(1928, 2, 1));
+    let britain = campaign(&user.join("gbr"), "GBR", Date::new(1928, 2, 1));
+    for (locale, size, tag, blocks, gdp) in [
+        (
+            "pt-BR",
+            egui::vec2(1600.0, 900.0),
+            "pt",
+            ["Dívida pública: ", "Expectativa de vida: "],
+            "PIB: ",
+        ),
+        (
+            "en",
+            egui::vec2(1280.0, 720.0),
+            "en-1280",
+            ["Public debt: ", "Life expectancy: "],
+            "GDP: ",
+        ),
+    ] {
+        let mut h = harness(user.join(format!("swe-{tag}")), locale, size);
+        let ctx = h.ctx.clone();
+        h.state_mut().apply(Transition::Game(sweden.clone()), &ctx);
+        settle(&mut h);
+        for (k, block) in blocks.iter().enumerate() {
+            h.query_all(egui_kittest::kittest::by().label_contains(block))
+                .next()
+                .unwrap_or_else(|| panic!("the block {block}"))
+                .hover();
+            settle(&mut h);
+            save_shot(&mut h, &format!("319-series-{k}-{tag}"));
+        }
+        let mut h = harness(user.join(format!("gbr-{tag}")), locale, size);
+        let ctx = h.ctx.clone();
+        h.state_mut().apply(Transition::Game(britain.clone()), &ctx);
+        settle(&mut h);
+        h.query_all(egui_kittest::kittest::by().label_contains(gdp))
+            .next()
+            .expect("the GDP block")
+            .hover();
+        settle(&mut h);
+        save_shot(&mut h, &format!("319-series-metro-{tag}"));
+    }
+    let _ = std::fs::remove_dir_all(&user);
+}
