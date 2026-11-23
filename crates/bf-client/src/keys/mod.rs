@@ -111,9 +111,15 @@ fn badge_at(ui: &Ui, rect: Rect, cmd: &str, centred: bool) {
         return;
     };
     let painter = ui.painter();
+    // Shift as a small arrow (the fonts have no ⇧): "⇧B" instead of "Shift+B".
+    let (shift, key) = match key.strip_prefix("Shift+") {
+        Some(rest) => (true, rest.to_owned()),
+        None => (false, key),
+    };
     let galley =
         painter.layout_no_wrap(key, bf_ui_kit::theme::sans_semibold(9.5), color::TEXT_MUTED);
-    let size = galley.size() + egui::vec2(6.0, 1.0);
+    let arrow_w = if shift { 8.0 } else { 0.0 };
+    let size = galley.size() + egui::vec2(6.0 + arrow_w, 1.0);
     let left = if centred {
         rect.center().x - size.x / 2.0
     } else {
@@ -127,7 +133,32 @@ fn badge_at(ui: &Ui, rect: Rect, cmd: &str, centred: bool) {
         egui::Stroke::new(1.0, color::BORDER),
         egui::StrokeKind::Inside,
     );
-    painter.galley(at.min + egui::vec2(3.0, 0.5), galley, color::TEXT_MUTED);
+    if shift {
+        // An outlined arrow up, as printed on the key.
+        let x = at.left() + 3.0;
+        let (top, bottom) = (at.top() + 2.5, at.bottom() - 2.5);
+        let mid = top + (bottom - top) * 0.5;
+        let w = arrow_w - 2.0;
+        let p = |dx: f32, y: f32| egui::pos2(x + dx, y);
+        let points = vec![
+            p(w / 2.0, top),
+            p(w, mid),
+            p(w * 0.72, mid),
+            p(w * 0.72, bottom),
+            p(w * 0.28, bottom),
+            p(w * 0.28, mid),
+            p(0.0, mid),
+        ];
+        painter.add(egui::Shape::closed_line(
+            points,
+            egui::Stroke::new(1.0, color::TEXT_MUTED),
+        ));
+    }
+    painter.galley(
+        at.min + egui::vec2(3.0 + arrow_w, 0.5),
+        galley,
+        color::TEXT_MUTED,
+    );
 }
 
 /// `text (key)`, or `text` when the command has no key.
