@@ -863,7 +863,7 @@ impl System<GameWorld> for Investment {
                 let mut out = Vec::new();
                 for (kind, b) in cat.buildings.iter().enumerate() {
                     // A state firm (U2) is built only when the state asks for it.
-                    if b.public || b.informal || b.state_firm {
+                    if b.public || b.informal || b.state_firm || b.traditional {
                         continue;
                     }
                     let current = r.plants.iter().find(|p| p.kind as usize == kind);
@@ -1025,7 +1025,7 @@ impl System<GameWorld> for Investment {
                 // wherever a method of it is known and the state's deposits or land leave room
                 // for another level, counting the levels already in the queue.
                 let b = cat.buildings.get(usize::from(q.kind))?;
-                if b.public || b.informal {
+                if b.public || b.informal || b.traditional {
                     return None;
                 }
                 let r = econ.regions.get(q.region as usize)?;
@@ -1303,7 +1303,12 @@ fn abroad(
                 .iter()
                 .enumerate()
                 .filter(|(kind, b)| {
-                    !b.public && !b.informal && !b.state_firm && b.farm.is_none() && busy[o][*kind]
+                    !b.public
+                        && !b.informal
+                        && !b.state_firm
+                        && !b.traditional
+                        && b.farm.is_none()
+                        && busy[o][*kind]
                 })
                 .filter_map(|(kind, _)| method_of[o][kind].map(|(l, m)| (l, kind, m)))
                 .collect();

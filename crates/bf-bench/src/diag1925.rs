@@ -914,6 +914,96 @@ pub fn main() -> Result<(), String> {
         }
         return Ok(());
     }
+    // Railways against the scenario's network (`BF_DIAG_RAIL=TAG,TAG`): at the start, each
+    // country's railway levels, its km of railway (`industry.ron`), levels per 1,000 km, the coal
+    // the railways burn a year at full use, and the transport they make against the country's
+    // demand for it.
+    if let Ok(spec) = std::env::var("BF_DIAG_RAIL") {
+        let w = s.world();
+        let e = &w.econ;
+        let rail = cat.building("railway").ok_or("no railway")?;
+        let coal = cat.good("coal").ok_or("no coal")? as usize;
+        let tr = cat.good("transportation").ok_or("no transportation")? as usize;
+        let km = |tag: &str| {
+            data.industry.as_ref().and_then(|f| {
+                f.countries.iter().find(|c| c.country == tag).and_then(|c| {
+                    c.output
+                        .iter()
+                        .find(|(k, _)| k == "railways_km")
+                        .map(|(_, v)| *v as f64)
+                })
+            })
+        };
+        let all: Vec<String> = data
+            .countries
+            .countries
+            .iter()
+            .map(|c| c.tag.clone())
+            .collect();
+        let tags: Vec<String> = if spec == "all" {
+            all.clone()
+        } else {
+            spec.split(',').map(str::to_string).collect()
+        };
+        let trad = cat.building("traditional_transport");
+        println!(
+            "tag,levels,km,levels_per_1000km,coal_Mt_year,trad_levels,trad_workers_M,workers_M"
+        );
+        for tag in tags {
+            let Some(mi) = all.iter().position(|t| *t == tag) else {
+                continue;
+            };
+            let levels: i64 = e
+                .regions
+                .iter()
+                .filter(|r| r.market as usize == mi)
+                .flat_map(|r| r.plants.iter())
+                .filter(|p| p.kind as usize == rail)
+                .map(|p| p.levels)
+                .sum();
+            let meth = &cat.buildings[rail].methods[0];
+            let per_coal = meth
+                .inputs
+                .iter()
+                .find(|(g, _)| *g as usize == coal)
+                .map_or(0.0, |(_, q)| q.to_f64_lossy());
+            let per_tr = meth
+                .outputs
+                .iter()
+                .find(|(g, _)| *g as usize == tr)
+                .map_or(1.0, |(_, q)| q.to_f64_lossy());
+            let k = km(&tag).unwrap_or(0.0);
+            let _ = per_tr;
+            let tl: i64 = e
+                .regions
+                .iter()
+                .filter(|r| r.market as usize == mi)
+                .flat_map(|r| r.plants.iter())
+                .filter(|p| Some(p.kind as usize) == trad)
+                .map(|p| p.levels)
+                .sum();
+            let tw = trad.map_or(0, |t| cat.buildings[t].methods[0].workers) * tl;
+            let workers: i64 = e
+                .regions
+                .iter()
+                .filter(|r| r.market as usize == mi)
+                .map(|r| {
+                    r.pops
+                        .iter()
+                        .map(|p| bf_sim::econ::workers(p.size))
+                        .sum::<i64>()
+                })
+                .sum();
+            println!(
+                "{tag},{levels},{k:.0},{:.1},{:.1},{tl},{:.2},{:.1}",
+                levels as f64 / k.max(1.0) * 1000.0,
+                levels as f64 * per_coal * 52.0 / 1e6,
+                tw as f64 / 1e6,
+                workers as f64 / 1e6
+            );
+        }
+        return Ok(());
+    }
     // World trade over world GDP every ten years (data/history/trade_openness.csv): exports
     // plus imports at base prices, a week in July times 52, over the GDP of the last year.
     if std::env::var_os("BF_DIAG_TRADE").is_some() {
@@ -1060,7 +1150,11 @@ pub fn main() -> Result<(), String> {
             };
             let m = &e.markets[mi];
             let gdp = m.gdp_last_year.to_f64_lossy();
-            for key in ["steel", "natural_gas", "cement", "machinery"] {
+            // The goods to break down (`BF_DIAG_ENERGY_GOODS=coal,timber`, by default steel, gas,
+            // cement and machinery).
+            let goods = std::env::var("BF_DIAG_ENERGY_GOODS")
+                .unwrap_or_else(|_| "steel,natural_gas,cement,machinery".to_string());
+            for key in goods.split(',') {
                 let Some(g) = cat.good(key) else { continue };
                 let g = g as usize;
                 let dem = m.demand[g].to_f64_lossy() * 52.0;
