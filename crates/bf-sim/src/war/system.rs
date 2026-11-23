@@ -254,10 +254,10 @@ impl Forces {
     }
 
     /// The warhead type key a country's programme orders, while it has one.
-    fn programme_unit<'a>(&'a self, world: &GameWorld, ci: usize) -> Option<&'a str> {
+    /// The warhead the nuclear programme orders: only the programme buys it.
+    fn programme_unit(&self) -> Option<&str> {
         let rule = self.peace.nuclear_programme.as_ref()?;
-        (self.fight.is_some() && world.war.nuclear.of(ci as u16).is_some())
-            .then_some(rule.warhead.as_str())
+        self.fight.is_some().then_some(rule.warhead.as_str())
     }
 
     /// A week of every nuclear programme (`war::programme`): last week's deliveries credited,
@@ -359,7 +359,7 @@ impl Forces {
                             unit: rule.warhead.clone(),
                             generation: None,
                             colonial: false,
-                            ordered: Fixed::from_int(i64::from(rule.batch.max(1))),
+                            ordered: Fixed::ONE,
                             delivered: Fixed::ZERO,
                             built: Vec::new(),
                             buying: Vec::new(),
@@ -374,6 +374,25 @@ impl Forces {
                 }
                 if let Some(generation) = o.generation {
                     let per = &mil.spec(ty, generation as usize).equipment;
+                    // The order is what the money buys: it grows, by whole warheads, until
+                    // what it still lacks is worth at least this week's money for the stock.
+                    // The money and what the market delivers (the plants) are the only
+                    // ceilings; the order never waits for itself.
+                    let lacking = |o: &super::state::ForceOrder| -> Fixed {
+                        let left = o.ordered - o.delivered;
+                        per.iter()
+                            .map(|(g, x)| {
+                                (*x * left - held(&o.built, *g)).max(Fixed::ZERO)
+                                    * m.price[*g as usize]
+                            })
+                            .sum()
+                    };
+                    let unit_value: Fixed =
+                        per.iter().map(|(g, x)| *x * m.price[*g as usize]).sum();
+                    let short = for_stock - lacking(o);
+                    if short.is_positive() && unit_value.is_positive() {
+                        o.ordered += Fixed::from_int((short / unit_value).to_int_floor() + 1);
+                    }
                     let left = o.ordered - o.delivered;
                     // What the order still lacks, by good, and its value.
                     let lacks: Vec<(u16, Fixed)> = per
@@ -666,8 +685,11 @@ impl Forces {
                 .unwrap_or(left)
                 .min(left);
             // Ships and strategic forces are built side by side and join together at the end
-            // of their build weeks; aircraft leave the line one by one.
-            let ready = if mil.types[ty as usize].domain == Domain::Air || ready >= left {
+            // of their build weeks; aircraft leave the line one by one, and so do the
+            // programme's warheads (a core with its assembly is a warhead).
+            let one_by_one = mil.types[ty as usize].domain == Domain::Air
+                || self.programme_unit() == Some(o.unit.as_str());
+            let ready = if one_by_one || ready >= left {
                 ready
             } else {
                 0
@@ -723,9 +745,11 @@ impl Forces {
         let weeks = i64::from(self.peace.replace_weeks.max(1));
         let mut raised = Vec::new();
         let CountryWar { queue, depot, .. } = c;
-        let programme_unit = self.programme_unit(world, ci);
+        let programme_unit = self.programme_unit();
         for o in queue.iter_mut() {
-            // The nuclear programme pays its warhead order itself, outside the budget.
+            // The nuclear programme pays its warhead order itself, outside the budget. When the
+            // programme ends (or its share is nothing), the order waits with what it holds: the
+            // budget does not buy it, and nothing is lost.
             if programme_unit == Some(o.unit.as_str()) {
                 continue;
             }

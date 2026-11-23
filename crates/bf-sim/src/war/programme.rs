@@ -68,8 +68,6 @@ pub struct ProgrammeRule {
     #[serde(default = "default_mine_shortage")]
     pub assembly_shortage: u32,
     pub warhead: String,
-    /// Warheads ordered at a time.
-    pub batch: u32,
 }
 
 fn default_mine_shortage() -> u32 {
@@ -397,4 +395,43 @@ pub fn basket_buy(basket: &[(u16, u32)], money: Fixed, prices: &[Fixed]) -> Vec<
         })
         .filter(|(_, q)| q.is_positive())
         .collect()
+}
+
+/// What holds a programme's warheads back this week, in the player's words: the programme's
+/// money, the core plants or the assembly plants. The plants hold it back when the market
+/// delivers less than nine tenths of the cores or assemblies bought; otherwise the money does,
+/// because the order grows until it takes all the money for the stock.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ProgrammeLimit {
+    Money,
+    CorePlants,
+    AssemblyPlants,
+}
+
+/// The limit of the programme of `country`, from the market's delivered shares of `cores` and
+/// `assemblies` (goods of the catalogue).
+pub fn limit(
+    world: &crate::game::GameWorld,
+    country: usize,
+    cores: u16,
+    assemblies: u16,
+) -> ProgrammeLimit {
+    let Some(m) = world.econ.markets.get(country) else {
+        return ProgrammeLimit::Money;
+    };
+    let ratio = |g: u16| {
+        m.buy_ratio
+            .get(usize::from(g))
+            .copied()
+            .unwrap_or(Fixed::ONE)
+    };
+    let (c, a) = (ratio(cores), ratio(assemblies));
+    let line = Fixed::from_ratio(9, 10);
+    if c < line && c <= a {
+        ProgrammeLimit::CorePlants
+    } else if a < line {
+        ProgrammeLimit::AssemblyPlants
+    } else {
+        ProgrammeLimit::Money
+    }
 }
