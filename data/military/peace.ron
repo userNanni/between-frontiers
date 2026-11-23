@@ -96,6 +96,10 @@
         // plants.
         mine: Some("uranium_mine"),
         mine_shortage: 900,
+        // The assembly of the warhead: its plant once the cores run, and another level when the
+        // market delivers less than nine tenths of the assemblies the warhead order asks for.
+        assembly: Some("weapon_assembly_plant"),
+        assembly_shortage: 900,
         warhead: "nuclear_warhead",
         // One warhead an order: the stock grows by ones, as in 1945–47 (2, 9, 13).
         batch: 1,

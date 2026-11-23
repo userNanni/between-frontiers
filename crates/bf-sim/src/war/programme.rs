@@ -58,6 +58,15 @@ pub struct ProgrammeRule {
     pub mine: Option<String>,
     #[serde(default = "default_mine_shortage")]
     pub mine_shortage: u32,
+    /// The assembly of the warhead (the missing step between the core and the weapon): the
+    /// plant that makes the non-nuclear assembly of a warhead (the lenses, the initiator, the
+    /// fuzing and the case), which the programme asks for once its core plants run, and again
+    /// when the market delivers less than `assembly_shortage` per mille of what its warhead
+    /// order asks for.
+    #[serde(default)]
+    pub assembly: Option<String>,
+    #[serde(default = "default_mine_shortage")]
+    pub assembly_shortage: u32,
     pub warhead: String,
     /// Warheads ordered at a time.
     pub batch: u32,

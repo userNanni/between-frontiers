@@ -283,6 +283,15 @@ impl Forces {
         let plant = self.cat.building(&rule.plant);
         // U1: the mine and its resource, and the ore the plant's methods take.
         let mine_kind = rule.mine.as_deref().and_then(|k| self.cat.building(k));
+        // The assembly plant and the assembly it makes (its first output).
+        let assembly_kind = rule.assembly.as_deref().and_then(|k| self.cat.building(k));
+        let assembly_good = assembly_kind.and_then(|k| {
+            self.cat.buildings[k]
+                .methods
+                .first()
+                .and_then(|m| m.outputs.first())
+                .map(|(g, _)| *g)
+        });
         let mine_resource = mine_kind.and_then(|k| self.cat.buildings[k].resource);
         let ore = mine_kind.and_then(|k| {
             self.cat.buildings[k]
@@ -459,6 +468,35 @@ impl Forces {
                     if let Some(r) = at {
                         requests.push((p.country, r as u32, mk as u16));
                         q.plant_wait = rule.plant_weeks;
+                    }
+                } else if let (Some(ak), Some(g)) = (assembly_kind, assembly_good)
+                    && levels > 0
+                    && ready
+                    && q.plant_wait == 0
+                    && !m.queue.iter().any(|w| usize::from(w.kind) == ak)
+                {
+                    // The assembly: a plant once the cores run and the bomb can be built, and
+                    // another when the market delivers too few assemblies.
+                    let assembly_levels: i64 = mine
+                        .iter()
+                        .flat_map(|&i| world.econ.regions[i].plants.iter())
+                        .filter(|p| usize::from(p.kind) == ak)
+                        .map(|p| p.levels)
+                        .sum();
+                    let short = m.buy_ratio.get(g as usize).copied().unwrap_or(Fixed::ONE)
+                        < Fixed::from_ratio(i64::from(rule.assembly_shortage), 1000);
+                    if assembly_levels == 0 || short {
+                        let at = mine
+                            .iter()
+                            .copied()
+                            .filter(|&i| !world.econ.regions[i].colony)
+                            .max_by_key(|&i| {
+                                (world.econ.regions[i].population(), std::cmp::Reverse(i))
+                            });
+                        if let Some(r) = at {
+                            requests.push((p.country, r as u32, ak as u16));
+                            q.plant_wait = rule.plant_weeks;
+                        }
                     }
                 }
             }

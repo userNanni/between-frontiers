@@ -1095,6 +1095,8 @@
             state_buyer: true,
             // A weapon: only a nuclear programme researches it (orchestrator, 2026-11-19).
             programme_only: true,
+            methods: ["weapon_assembly_plant.hand_assembly"],
+            goods: ["weapon_assemblies"],
         ),
         (
             key: "thermonuclear_weapon",
@@ -1107,6 +1109,7 @@
             state_buyer: true,
             // A weapon: only a nuclear programme researches it.
             programme_only: true,
+            methods: ["weapon_assembly_plant.electronic_assembly"],
         ),
         (
             key: "ballistic_missile",

@@ -204,9 +204,12 @@ fn the_pace_from_1940() {
     let ore = usize::from(d.catalogue.good("uranium_ore").unwrap());
     let plant = d.catalogue.building("weapon_core_plant").unwrap();
     let mine = d.catalogue.building("uranium_mine").unwrap();
+    let assembly = d.catalogue.building("weapon_assembly_plant").unwrap();
+    let assemblies = d.catalogue.good("weapon_assemblies").unwrap();
+    let cores = d.catalogue.good("weapon_cores").unwrap();
     for tag in ["USA", "GER", "GBR"] {
         eprintln!(
-            "== {tag}: year | fission enrichment bomb | warheads | fissile price | electricity with/without | core plant levels, ore delivered to them | uranium mine levels at home and in colonies | ore price"
+            "== {tag}: year | fission enrichment bomb | warheads | fissile price | electricity with/without | core plant levels, ore delivered to them | uranium mine levels at home and in colonies | ore price | assembly plant levels | cores waiting for an assembly"
         );
         for (k, (w, wo)) in with.iter().zip(&without).enumerate() {
             let c = index(w, tag);
@@ -229,8 +232,20 @@ fn the_pace_from_1940() {
             };
             let (core_levels, ore_in) = plants(plant);
             let (mine_levels, _) = plants(mine);
+            let (assembly_levels, _) = plants(assembly);
+            // The warhead order's cores held beyond its assemblies.
+            let held = |g: u16| -> f64 {
+                w.war.countries[c]
+                    .queue
+                    .iter()
+                    .flat_map(|o| o.built.iter())
+                    .filter(|(x, _)| *x == g)
+                    .map(|(_, v)| v.to_f64_lossy())
+                    .sum()
+            };
+            let waiting = (held(cores) - held(assemblies)).max(0.0);
             eprintln!(
-                "{} | {} {} {} | {n:.0} | {:.0} | {:.3} / {:.3} | {core_levels}, {ore_in:.2} | {mine_levels} | {:.0}",
+                "{} | {} {} {} | {n:.0} | {:.0} | {:.3} / {:.3} | {core_levels}, {ore_in:.2} | {mine_levels} | {:.0} | {assembly_levels} | {waiting:.1}",
                 1940 + k,
                 st("nuclear_fission"),
                 st("uranium_enrichment"),
@@ -244,9 +259,10 @@ fn the_pace_from_1940() {
     }
 }
 
-/// U2: the weapon core plant is a state firm. Its profit, or its loss, goes whole to the
-/// treasury: with no other state firm (the ownership law at nothing in 1925), the week's firm
-/// revenue of the United States is exactly what its core plants made. The core costs the country
+/// U2: the weapon core plant is a state firm, and so is the assembly plant. Their profit, or
+/// their loss, goes whole to the treasury: with no other state firm (the ownership law at
+/// nothing in 1925), the week's firm revenue of the United States is exactly what its core and
+/// assembly plants made. The core costs the country
 /// its inputs, wages and works, whatever the price.
 #[test]
 fn the_core_plants_profit_is_the_treasurys() {
@@ -262,6 +278,7 @@ fn the_core_plants_profit_is_the_treasurys() {
         share: Some(20),
     });
     let plant = d.catalogue.building("weapon_core_plant").unwrap();
+    let assembly = d.catalogue.building("weapon_assembly_plant").unwrap();
     let mut checked = 0;
     for _ in 0..156 {
         week(&mut s);
@@ -272,7 +289,7 @@ fn the_core_plants_profit_is_the_treasurys() {
             .iter()
             .filter(|r| usize::from(r.market) == usa)
             .flat_map(|r| r.plants.iter())
-            .filter(|p| usize::from(p.kind) == plant)
+            .filter(|p| usize::from(p.kind) == plant || usize::from(p.kind) == assembly)
             .map(|p| p.profit)
             .sum();
         let m = &w.econ.markets[usa];
@@ -285,7 +302,7 @@ fn the_core_plants_profit_is_the_treasurys() {
         if profit != Fixed::ZERO && no_other {
             assert_eq!(
                 firms, profit,
-                "the week's firm revenue is the core plants' profit"
+                "the week's firm revenue is the core and assembly plants' profit"
             );
             checked += 1;
         }
@@ -372,6 +389,16 @@ fn no_core_plant_without_a_programme() {
             reached.len(),
         );
         assert_eq!(levels, 0, "no core plant without a programme");
+        let assembly = d.catalogue.building("weapon_assembly_plant").unwrap();
+        let assembly_levels: i64 = w
+            .econ
+            .regions
+            .iter()
+            .flat_map(|r| r.plants.iter())
+            .filter(|p| usize::from(p.kind) == assembly)
+            .map(|p| p.levels)
+            .sum();
+        assert_eq!(assembly_levels, 0, "no assembly plant without a programme");
         assert!(
             reached.is_empty(),
             "no production reactor without a programme"

@@ -491,5 +491,25 @@
             (key: "high_enrichment", available_from: 1944, inputs: [("uranium_ore", 27500), ("chemicals", 2000), ("electricity", 2365000)], outputs: [("weapon_cores", 1.875)], jobs: [("laborer", 350), ("skilled_worker", 330), ("engineer", 60), ("clerk", 60), ("manager", 20), ("capitalist", 5)], capital: Some(1.0)),
             (key: "production_reactor", available_from: 1944, inputs: [("uranium_ore", 107600), ("chemicals", 4000), ("electricity", 20000)], outputs: [("weapon_cores", 13.35)], jobs: [("laborer", 350), ("skilled_worker", 330), ("engineer", 60), ("clerk", 60), ("manager", 20), ("capitalist", 5)], capital: Some(0.147)),
         ]),
+        // The assembly of the warhead (programme rule `assembly`): a state firm, asked for by the
+        // nuclear programme once its core plants run. In 1947 none of the American bombs was
+        // assembled: the wartime civilian teams had broken up and the military ones were not yet
+        // trained (Hewlett and Duncan, Atomic Shield 1947-1952, 1969, p. 47); there were no
+        // production lines nor written procedures (p. 134). The inputs are what the warhead took
+        // before (2 t of explosive, the fuzing as electrical equipment; units.ron), and the
+        // thermonuclear generation's electronics.
+        // DESIGN VALUE, without a source: a level makes 12 assemblies a year in the United States
+        // of 1945. Method quantities are at productivity 1 (a level runs at its quantities times
+        // the building's productivity where it stands), and the American productivity of 1945 is
+        // 7.25 (measured in the tick), so the data are 12 / 7.25 = 1.655 assemblies a year, with
+        // the inputs of an assembly (2 t of explosive and 50 of electrical equipment; 1 t and 100
+        // of electronics after 1950) in the same proportion. A level is a fixed staff: elsewhere
+        // it makes 1.655 times its productivity. No page was found for the output of Sandia or of
+        // the Mark 4 line (about 550 made from 1949 to 1951, without a page here); the 1945-47
+        // stock (2, 9, 13) is a measure, not a target.
+        (key: "weapon_assembly_plant", group: "heavy_industry", resource: None, farm: None, state_firm: true, methods: [
+            (key: "hand_assembly", available_from: 1945, inputs: [("explosives", 3.31), ("electrical_equipment", 82.76)], outputs: [("weapon_assemblies", 1.655)], jobs: [("laborer", 100), ("skilled_worker", 330), ("engineer", 120), ("clerk", 40), ("manager", 20), ("capitalist", 5)], capital: Some(1.0)),
+            (key: "electronic_assembly", available_from: 1950, inputs: [("explosives", 1.655), ("electronic_components", 165.5)], outputs: [("weapon_assemblies", 1.655)], jobs: [("laborer", 100), ("skilled_worker", 330), ("engineer", 120), ("clerk", 40), ("manager", 20), ("capitalist", 5)], capital: Some(1.0)),
+        ]),
     ],
 )
