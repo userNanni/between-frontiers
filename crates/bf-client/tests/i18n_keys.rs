@@ -225,3 +225,33 @@ fn portuguese_percentages_have_a_space() {
         found.join("\n")
     );
 }
+
+/// Every good, building and method of the catalogue has its name (`good-<key>`,
+/// `building-<key>`, `method-<key>`) in every locale, so no screen shows a raw key (the warhead
+/// assembly of #333 came without its names).
+#[test]
+fn every_good_building_and_method_has_a_name() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let d = bf_sim::data::GameData::load(&root).unwrap_or_else(|e| panic!("{e}"));
+    let cat = &d.catalogue;
+    let mut keys: Vec<String> = cat
+        .goods
+        .iter()
+        .map(|g| format!("good-{}", g.key))
+        .collect();
+    for b in &cat.buildings {
+        keys.push(format!("building-{}", b.key));
+        keys.extend(b.methods.iter().map(|m| format!("method-{}", m.key)));
+    }
+    keys.sort();
+    keys.dedup();
+    for locale in Locale::ALL {
+        let i18n = I18n::load(&root.join("assets/i18n"), locale).unwrap();
+        let missing: Vec<&str> = keys
+            .iter()
+            .filter(|k| !i18n.has(k))
+            .map(String::as_str)
+            .collect();
+        assert!(missing.is_empty(), "{locale} lacks names for: {missing:?}");
+    }
+}
