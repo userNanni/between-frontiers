@@ -434,10 +434,13 @@ pub fn show(
             .iter()
             .min_by_key(|&&t| (tree.techs[t].level, t))
         {
+            // Its column at the left edge, where the era selector reads the era from, so the
+            // selector shows the era of what was found; centred top to bottom.
             let canvas = ui.max_rect();
-            camera.pan = canvas.size() * 0.5
-                - layout.pos[t].to_vec2() * camera.zoom
-                - Vec2::new(0.0, canvas.height() * 0.2);
+            camera.pan = Vec2::new(
+                GAP_X * 0.25 * camera.zoom - layout.pos[t].x * camera.zoom,
+                canvas.height() * 0.3 - layout.pos[t].y * camera.zoom,
+            );
         }
     }
 
