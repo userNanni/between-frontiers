@@ -31,6 +31,27 @@ pub struct Inputs<'a> {
     pub land: Option<&'a LandFile>,
     pub population: Option<&'a PopulationFile>,
     pub industry: Option<&'a IndustryFile>,
+    /// The railway lines of 1925 (`Switches::rail_by_line`): `None` off.
+    pub rail: Option<&'a RailLines>,
+}
+
+/// The railways by their lines in the setup: the good, the railway and the traditional
+/// transport, and what each market's railways carried in a week (`RailLines::traffic`).
+struct RailPlan<'a> {
+    good: usize,
+    rail: usize,
+    trad: usize,
+    traffic: &'a [f64],
+}
+
+/// What the railways of 1925 carried, by country (`data/economy/rail.ron`, with
+/// `Switches::rail_by_line`): the railways are sized to it and the rest of the demand for
+/// transport goes to traditional transport (`BuildingDef::traditional`), which burns no coal.
+#[derive(Clone, Debug, Default)]
+pub struct RailLines {
+    /// By country (the scenario's order): the units of the good `transportation` its railways
+    /// made in a week of 1925.
+    pub traffic: Vec<f64>,
 }
 
 /// Deposit units of `deposits.ron` to the catalogue's good units.
@@ -722,7 +743,18 @@ pub fn build(cat: &Catalogue, inp: &Inputs) -> Economy {
     // 4. World input-output balance, then the blocks' own accounts: what the simulation's
     //    rules pay out of the plants' value added is what the block spends, and its
     //    productivity is what makes its workers produce the scenario's GDP.
-    let mut lv = solve_levels(cat, &blocks, &raw_producers, &local_producer);
+    // Railways by their lines (`Switches::rail_by_line`).
+    let rail_plan = inp.rail.and_then(|r| {
+        let good = cat.good("transportation")? as usize;
+        Some(RailPlan {
+            good,
+            rail: local_producer[good]?,
+            trad: cat.building("traditional_transport")?,
+            traffic: &r.traffic,
+        })
+    });
+    let rail = rail_plan.as_ref();
+    let mut lv = solve_levels(cat, &blocks, &raw_producers, &local_producer, rail);
     let mut accounts: Vec<Accounts> = Vec::new();
     for round in 0..ROUNDS {
         accounts = blocks
@@ -742,7 +774,7 @@ pub fn build(cat: &Catalogue, inp: &Inputs) -> Economy {
             }
             (b.final_demand, b.invested) = spending(cat, &base, &base_f, b, a, b.scale(a));
         }
-        lv = solve_levels(cat, &blocks, &raw_producers, &local_producer);
+        lv = solve_levels(cat, &blocks, &raw_producers, &local_producer, rail);
     }
 
     if std::env::var_os("BF_SETUP_DEBUG").is_some() {
@@ -966,12 +998,33 @@ pub fn build(cat: &Catalogue, inp: &Inputs) -> Economy {
             // Transport and power are rounded up state by state: rounded for the whole block,
             // most states with a little demand got no power plant at all and waited for a
             // neighbour's surplus.
+            // Railways by their lines: the railway is laid as the balance sized it, and the
+            // traditional transport takes what each state's demand leaves to it.
+            let w: Vec<f64> = match rail {
+                Some(rp) if ki == rp.trad => {
+                    let per_rail = yearly_output(cat, rp.rail, rp.good) / 52.0 * b.tfp;
+                    w.iter()
+                        .zip(&b.regions)
+                        .map(|(x, &ri)| {
+                            let laid = regions[ri]
+                                .plants
+                                .iter()
+                                .filter(|p| p.kind as usize == rp.rail)
+                                .map(|p| p.levels as f64)
+                                .sum::<f64>();
+                            (x - laid * per_rail).max(0.0)
+                        })
+                        .collect()
+                }
+                _ => w,
+            };
+            let only_balance = rail.is_some_and(|rp| ki == rp.rail);
             let placed = if let Some(g) = local_good {
                 let total: f64 = w.iter().sum();
                 // As many levels as the demand laid so far asks for: the plants moved to
                 // electric methods use more power than the balance planned for.
                 let per_level = yearly_output(cat, ki, g) / 52.0 * b.tfp;
-                let wanted = if per_level > 0.0 {
+                let wanted = if per_level > 0.0 && !only_balance {
                     (n * k).max(total / per_level)
                 } else {
                     n * k
@@ -1271,6 +1324,7 @@ fn solve_levels(
     blocks: &[Block],
     raw_producers: &[Vec<usize>],
     local_producer: &[Option<usize>],
+    rail: Option<&RailPlan>,
 ) -> Vec<Vec<f64>> {
     let ng = cat.goods.len();
     let nb = cat.buildings.len();
@@ -1300,6 +1354,39 @@ fn solve_levels(
         let mut raw_alloc: Vec<(f64, Allocation)> = vec![(0.0, Vec::new()); ng];
         let mut residual = vec![0.0f64; ng];
         for g in 0..ng {
+            // The railways carry what the country's lines carried, at most its demand; the rest
+            // goes to traditional transport.
+            if let Some(rp) = rail.filter(|rp| rp.good == g) {
+                let per_rail = yearly_output(cat, rp.rail, g) / 52.0;
+                let per_trad = yearly_output(cat, rp.trad, g) / 52.0;
+                let mut need = vec![0.0f64; rp.traffic.len()];
+                for (bi, b) in blocks.iter().enumerate() {
+                    if let Some(x) = need.get_mut(b.market) {
+                        *x += demand[bi][g];
+                    }
+                }
+                for (bi, b) in blocks.iter().enumerate() {
+                    let total = need.get(b.market).copied().unwrap_or(0.0);
+                    let cap = rp.traffic.get(b.market).copied().unwrap_or(f64::MAX);
+                    let share = if total > 0.0 {
+                        (cap / total).min(1.0)
+                    } else {
+                        1.0
+                    };
+                    let by_rail = demand[bi][g] * share;
+                    if per_rail > 0.0 {
+                        next[bi][rp.rail] =
+                            f64::max(next[bi][rp.rail], by_rail / (per_rail * blocks[bi].tfp));
+                    }
+                    if per_trad > 0.0 {
+                        next[bi][rp.trad] = f64::max(
+                            next[bi][rp.trad],
+                            (demand[bi][g] - by_rail) / (per_trad * blocks[bi].tfp),
+                        );
+                    }
+                }
+                continue;
+            }
             if let Some(ki) = local_producer[g] {
                 let per_level = yearly_output(cat, ki, g) / 52.0;
                 if per_level > 0.0 {

@@ -517,5 +517,11 @@
             (key: "hand_assembly", available_from: 1945, inputs: [("explosives", 3.31), ("electrical_equipment", 82.76)], outputs: [("weapon_assemblies", 1.655)], jobs: [("laborer", 100), ("skilled_worker", 330), ("engineer", 120), ("clerk", 40), ("manager", 20), ("capitalist", 5)], capital: Some(1.0)),
             (key: "electronic_assembly", available_from: 1950, inputs: [("explosives", 1.655), ("electronic_components", 165.5)], outputs: [("weapon_assemblies", 1.655)], jobs: [("laborer", 100), ("skilled_worker", 330), ("engineer", 120), ("clerk", 40), ("manager", 20), ("capitalist", 5)], capital: Some(1.0)),
         ]),
-    ],
+        // Traditional transport (`Switches::rail_by_line`): carts, pack animals, porters and river
+        // boats, the transport of 1925 that burned no coal. Built only by the 1925 setup with the
+        // switch on, for the demand the railway lines of the scenario do not carry.
+        (key: "traditional_transport", group: "infrastructure", resource: None, farm: None, traditional: true, methods: [
+            (key: "animal_haulage", available_from: 1925, inputs: [("grain", 300), ("tools", 3)], outputs: [("transportation", 1500)], jobs: [("laborer", 950), ("clerk", 20), ("manager", 5)]),
+        ]),
+],
 )
