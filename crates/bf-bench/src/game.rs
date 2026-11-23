@@ -333,6 +333,46 @@ fn draw(seed: u64, k: u64) -> bool {
     (z ^ (z >> 31)) & 1 == 1
 }
 
+/// The rules of a run with the perturbations of the tree (`BF_PERTURB_RESEARCH`,
+/// `BF_PERTURB_TECH`) applied: the same for the run and for the reload of its saves, which do
+/// not carry the rules.
+fn perturbed_rules(data: &GameData) -> bf_sim::game::Rules {
+    let mut rules = rules(data);
+    if let Some(tree) = rules.tree.as_mut() {
+        let mut t = (**tree).clone();
+        let mut changed = false;
+        // `BF_PERTURB_RESEARCH=N`: every technology N per mille cheaper (negative: dearer), as if
+        // every country's research were that much larger.
+        if let Some(n) = std::env::var("BF_PERTURB_RESEARCH")
+            .ok()
+            .and_then(|v| v.parse::<i64>().ok())
+        {
+            for tech in &mut t.techs {
+                let c = i64::from(tech.cost) * (1000 - n) / 1000;
+                tech.cost = u32::try_from(c.max(1)).unwrap_or(tech.cost);
+            }
+            changed = true;
+        }
+        // `BF_PERTURB_TECH=S`: each technology's historical dates (demonstrated, industrialized)
+        // one year earlier or later, the direction drawn for each technology from the seed S.
+        if let Some(seed) = std::env::var("BF_PERTURB_TECH")
+            .ok()
+            .and_then(|v| v.parse::<u64>().ok())
+        {
+            for (k, tech) in t.techs.iter_mut().enumerate() {
+                let d = if draw(seed, k as u64) { 1 } else { -1 };
+                tech.demonstrated += d;
+                tech.industrialized += d;
+            }
+            changed = true;
+        }
+        if changed {
+            *tree = std::sync::Arc::new(t);
+        }
+    }
+    rules
+}
+
 fn new_session(data: &GameData, seed: u64, threads: usize) -> Session {
     // No player: every country runs its own politics, so the law changes can be scored
     // against history everywhere.
@@ -369,39 +409,7 @@ fn new_session(data: &GameData, seed: u64, threads: usize) -> Session {
             m.pool = m.pool.mul_ratio(1000 + n, 1000);
         }
     }
-    let mut rules = rules(data);
-    if let Some(tree) = rules.tree.as_mut() {
-        let mut t = (**tree).clone();
-        let mut changed = false;
-        // `BF_PERTURB_RESEARCH=N`: every technology N per mille cheaper (negative: dearer), as if
-        // every country's research were that much larger.
-        if let Some(n) = std::env::var("BF_PERTURB_RESEARCH")
-            .ok()
-            .and_then(|v| v.parse::<i64>().ok())
-        {
-            for tech in &mut t.techs {
-                let c = i64::from(tech.cost) * (1000 - n) / 1000;
-                tech.cost = u32::try_from(c.max(1)).unwrap_or(tech.cost);
-            }
-            changed = true;
-        }
-        // `BF_PERTURB_TECH=S`: each technology's historical dates (demonstrated, industrialized)
-        // one year earlier or later, the direction drawn for each technology from the seed S.
-        if let Some(seed) = std::env::var("BF_PERTURB_TECH")
-            .ok()
-            .and_then(|v| v.parse::<u64>().ok())
-        {
-            for (k, tech) in t.techs.iter_mut().enumerate() {
-                let d = if draw(seed, k as u64) { 1 } else { -1 };
-                tech.demonstrated += d;
-                tech.industrialized += d;
-            }
-            changed = true;
-        }
-        if changed {
-            *tree = std::sync::Arc::new(t);
-        }
-    }
+    let rules = perturbed_rules(data);
     let mut s = Session::new(world, seed, Date::new(1925, 1, 1), threads, Some(rules));
     // `BF_LEVERS=TAG`: the budget levers' counterfactual (`docs/state.pt-BR.md`, "Testes, por
     // alavanca"): the country's levers set against the rule from 1925 on, half its servants,
@@ -993,8 +1001,8 @@ pub fn main(
             .save(env!("CARGO_PKG_VERSION"), "bench")
             .map_err(|e| e.to_string())?,
         };
-        let reloaded =
-            Session::load(&bytes, threads, Some(rules(&data))).map_err(|e| e.to_string())?;
+        let reloaded = Session::load(&bytes, threads, Some(perturbed_rules(&data)))
+            .map_err(|e| e.to_string())?;
         let resumed = run(&data, reloaded, end, false, None, &mut []);
         let ok = resumed.session.state_hash() == main.session.state_hash();
         reloads.push((at, bytes.len(), ok));
