@@ -828,8 +828,12 @@ O passo que faltava entre o núcleo e a arma.
       1949. A usina de montagem cresce um pedido a cada 26 semanas, junto com a de núcleos e a
       mina.
     - **Dependências anotadas, sem ajuste:**
-      1. O excesso de 1946–47 (24 e 57 contra 9 e 13 a 0,4%) vem da desmobilização das equipes,
-         que o jogo não tem (Atomic Shield, p. 47).
+      1. O excesso de 1946–47 (24 e 57 contra 9 e 13 a 0,4%) tem duas causas que o jogo não tem:
+         - a desmobilização das equipes (Atomic Shield, p. 47);
+         - o **programa em ritmo de guerra depois de 1945**: a parcela não cai na paz, e a IA que
+           a baixa é da fase 6.
+         Com a encomenda nova, o dinheiro compra o que as usinas já podiam fazer: em 1947 os
+         níveis de usina são quase os mesmos de antes (núcleos 4 contra 5, montagem 3 contra 2).
       2. O déficit de 1955 (352 ou 710 contra ~2.400) vem da parcela. O gasto americano saltou
          depois de 1950; a parcela fixa de 0,4% é decisão do jogador ou da IA da fase 6.
       3. Um pedido de obra a cada 26 semanas (`plant_weeks`), compartilhado entre núcleos, mina
