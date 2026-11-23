@@ -137,9 +137,10 @@ pub struct Catalogue {
     pub buildings: Vec<Building>,
     /// The technologies some input fades with (`MethodDef::fading`), by key, in the order met.
     pub fading: Vec<String>,
-    /// A plant with several outputs follows the one that sells best, not only the first (set at
-    /// load with the switch `radium`: the radium mine runs for its ore once the radium fades).
-    pub follow_best_output: bool,
+    /// By good: whether some method's use of it fades (`MethodDef::fading`). A plant whose main
+    /// output fades follows its best-selling output, not only the first: the radium mine runs
+    /// for its ore once the hospitals' radium is gone.
+    pub fades: Vec<bool>,
     pub needs: Vec<Need>,
     /// Goods that clear state by state, in catalogue order.
     pub local: Vec<GoodIx>,
@@ -223,6 +224,7 @@ impl Catalogue {
         };
         let mut bs = Vec::new();
         let mut fading: Vec<String> = Vec::new();
+        let mut fades = vec![false; goods.goods.len()];
         for b in &buildings.buildings {
             let mut methods = Vec::new();
             for m in &b.methods {
@@ -264,6 +266,7 @@ impl Catalogue {
                         .iter()
                         .map(|(g, t)| {
                             let g = gx(g)?;
+                            fades[usize::from(g)] = true;
                             if !m.inputs.iter().any(|(k, _)| gx(k).ok() == Some(g)) {
                                 return Err(CatalogueError(format!(
                                     "{}.{}: fading {t} names a good that is not an input",
@@ -503,7 +506,7 @@ impl Catalogue {
             goods,
             buildings: bs,
             fading,
-            follow_best_output: false,
+            fades,
             needs: ns,
             freight,
         })

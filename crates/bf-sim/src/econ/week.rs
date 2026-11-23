@@ -734,7 +734,11 @@ fn settle_region<const SKIP_IDLE: bool, const ABROAD: bool>(
         }
         // Plants follow demand for their main output: they ramp up while everything sells and
         // ease off in step with what goes unsold.
-        let sold_share = if cat.follow_best_output && method.outputs.len() > 1 {
+        let fading_main = method
+            .outputs
+            .first()
+            .is_some_and(|(g, _)| cat.fades.get(usize::from(*g)).copied().unwrap_or(false));
+        let sold_share = if fading_main && method.outputs.len() > 1 {
             method
                 .outputs
                 .iter()

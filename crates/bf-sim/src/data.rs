@@ -460,9 +460,8 @@ impl GameData {
         }
         let needs: NeedsFile = read(&data.join("economy/needs.ron"))?;
         let purchases: PurchasesFile = read(&data.join("economy/purchases.ron"))?;
-        let mut catalogue =
+        let catalogue =
             Catalogue::build(&goods, &buildings, &needs, &purchases).map_err(|e| e.to_string())?;
-        catalogue.follow_best_output = switches.radium;
         let tree = optional::<TechnologiesFile>(&data.join("research/technologies.ron"))?
             .map(|mut file| {
                 // Without radium the tree is main's: the technology its use fades with leaves.
