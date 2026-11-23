@@ -1004,6 +1004,32 @@ pub fn main() -> Result<(), String> {
         }
         return Ok(());
     }
+    // Levels by method of some buildings, every ten years (`BF_DIAG_METHODS=laboratory,university`):
+    // whether a new method is taken up, and how fast.
+    if let Ok(spec) = std::env::var("BF_DIAG_METHODS") {
+        let kinds: Vec<usize> = spec.split(',').filter_map(|k| cat.building(k)).collect();
+        for y in (1935..=2025).step_by(10) {
+            s.sim.run_until(Date::new(y, 1, 2));
+            let e = &s.world().econ;
+            for &k in &kinds {
+                let b = &cat.buildings[k];
+                let mut by = vec![0i64; b.methods.len()];
+                for r in &e.regions {
+                    for p in r.plants.iter().filter(|p| p.kind as usize == k) {
+                        by[p.method as usize] += p.levels;
+                    }
+                }
+                let parts: Vec<String> = b
+                    .methods
+                    .iter()
+                    .zip(&by)
+                    .map(|(m, n)| format!("{} {n}", m.key))
+                    .collect();
+                println!("{y} {}: {}", b.key, parts.join(", "));
+            }
+        }
+        return Ok(());
+    }
     // World trade over world GDP every ten years (data/history/trade_openness.csv): exports
     // plus imports at base prices, a week in July times 52, over the GDP of the last year.
     if std::env::var_os("BF_DIAG_TRADE").is_some() {

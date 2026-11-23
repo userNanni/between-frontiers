@@ -150,6 +150,10 @@ pub struct MethodDef {
     /// gradually, with no decision (the radium of the hospitals and the cobalt of 1951).
     #[serde(default)]
     pub fading: Vec<(String, String)>,
+    /// The rule switch the method belongs to (`game::Switches`): with it off, the method is not
+    /// in the catalogue at all (`data::GameData::load`), so the world is the same as without it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub switch: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
