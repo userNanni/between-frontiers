@@ -17,3 +17,13 @@ programme-assembly-plant-value = { $levels } { $levels ->
 programme-assembly = Warhead assemblies on the market
 programme-cores-waiting = Cores waiting for assembly
 programme-cores-waiting-tip = Cores already bought for the warhead order that have no assembly yet (the explosive lenses, the initiator, the fuzing and the case). A warhead is ready only with both.
+# Warhead order: what holds it back now and what it holds
+programme-limit = What holds the warheads back now
+programme-limit-money = the programme's money
+programme-limit-cores = the core plants
+programme-limit-assembly = the assembly plants
+programme-limit-tip = The order grows until it spends all of the programme's money. When the market delivers less than nine tenths of the cores or assemblies bought, the plants of that good hold it back.
+programme-order = Warhead order
+programme-order-open = { $n } to make; warheads join one by one
+programme-order-stopped = stopped: no programme
+programme-order-held = In hand: { $cores } cores and { $assemblies } assemblies.
