@@ -9,10 +9,6 @@ programme-ore = Minério de urânio por ano
 programme-ore-value = { $mined } kg das minas do país; { $used } kg pedidos pelas usinas de núcleos
 programme-ore-market = No mercado: { $stock } kg em estoque, { $price } o kg; o mercado entregou { $delivered } do que se pediu.
 # Montagem da ogiva: a usina de montagem, os conjuntos e os núcleos que esperam
-building-weapon_assembly_plant = Usina de montagem de ogivas
-method-hand_assembly = Montagem manual
-method-electronic_assembly = Montagem com eletrônica
-good-weapon_assemblies = Conjuntos de ogiva
 programme-assembly-plants = Usinas de montagem
 programme-assembly-plant-value = { $levels } { $levels ->
     [one] nível

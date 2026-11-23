@@ -9,10 +9,6 @@ programme-ore = Uranium ore a year
 programme-ore-value = { $mined } kg from the country's mines; { $used } kg asked by the core plants
 programme-ore-market = On the market: { $stock } kg in stock, { $price } a kg; the market delivered { $delivered } of what was asked.
 # Warhead assembly: the assembly plant, the assemblies and the cores that wait
-building-weapon_assembly_plant = Weapon assembly plant
-method-hand_assembly = Hand assembly
-method-electronic_assembly = Electronic assembly
-good-weapon_assemblies = Warhead assemblies
 programme-assembly-plants = Assembly plants
 programme-assembly-plant-value = { $levels } { $levels ->
     [one] level
