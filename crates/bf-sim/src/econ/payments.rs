@@ -693,6 +693,12 @@ pub struct SettleRules {
     /// Each market's monetary gold at the end of 1925, reference units: the reserves when
     /// settlement first runs.
     pub start: Vec<Fixed>,
+    /// Each market's foreign exchange at the end of 1925, by issuer (ascending), reference
+    /// units: what each issuer owes abroad from the start.
+    pub start_fx: Vec<Vec<(u16, Fixed)>>,
+    /// Each market's monetary base at the end of 1925, reference units (the gold standard's
+    /// cover reads it, `gold::GoldRules::base_1925`).
+    pub base_1925: Vec<Fixed>,
 }
 
 /// The week's settlement (module doc): runs at the start of the economy week, before
@@ -711,9 +717,10 @@ pub fn settle(
         reserves.markets = rules
             .start
             .iter()
-            .map(|&gold| Reserve {
+            .enumerate()
+            .map(|(mi, &gold)| Reserve {
                 gold,
-                fx: Vec::new(),
+                fx: rules.start_fx.get(mi).cloned().unwrap_or_default(),
             })
             .collect();
     }
@@ -939,6 +946,8 @@ mod tests {
             gold: 0,
             gold_price: Fixed::from_int(10),
             monetary_share: Fixed::from_int(1) / 2,
+            start_fx: Vec::new(),
+            base_1925: Vec::new(),
             start: start.iter().map(|&x| Fixed::from_int(x)).collect(),
         }
     }

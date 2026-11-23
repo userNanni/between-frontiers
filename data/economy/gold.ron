@@ -48,8 +48,12 @@
     withdraw: 1000,
     exit_weeks: 13,
     // A country whose reserves are at least this share in one currency leaves when its issuer
-    // does (sterling, September 1931).
+    // does (sterling, September 1931), if the fall it expects of that currency
+    // (`contagion_loss`) would leave its own cover below the legal one; with room it stays and
+    // takes the loss. Estimate: sterling fell about 30 % against gold from September to
+    // December 1931 (from memory, not read on a page).
     contagion: 250,
+    contagion_loss: 300,
     // A country leaving with debt in foreign currency above this share of GDP holds its parity
     // behind exchange control instead of floating (Germany, Austria and Hungary, 1931).
     control_debt: 100,
@@ -57,8 +61,11 @@
     exit_premium: 1000,
     premium_weeks: 156,
     // Return by the AI's rule (PO2): inflation within this many points of zero, now and over
-    // the last year, for this many weeks, and a cover of this share of the legal one.
+    // the last year, and money created beyond the rule at most `calm_monetized` thousandths of a
+    // point of GDP a year (the budget stabilized: an estimate, the game's choice), for this many
+    // weeks, and a cover of this share of the legal one.
     calm_inflation: 3000,
+    calm_monetized: 500,
     calm_weeks: 104,
     return_cover: 1000,
     // The parity a devaluation within the standard moves (the posture "devalue").
@@ -101,6 +108,14 @@
         // sterling's 1924 rate; the table gives no rate of their own.
         ("AUS", 90765),
         ("SAF", 90765),
+        // New Zealand: restrictions on gold exports ceased on 28 April 1925 and "New Zealand
+        // currency in practice has moved closely with the English pound" (Federal Reserve
+        // Bulletin, August 1928, p. 562); at sterling's par, as Australia.
+        ("NZL", 90765),
+        // Colombia: the Bank of the Republic opened on 23 July 1923 "under legal obligation to
+        // redeem its notes in gold" (same page). At the 1924 rate: the table of 1924 averages has
+        // no Colombian peso, taken at par (an estimate).
+        ("COL", 100000),
     ],
     // Prewar parities the player may adhere at (PO6): the 1924 average over the prewar par.
     // The later returns of the table are not forced: the AI returns at the day's rate, and the
