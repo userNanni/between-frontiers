@@ -232,6 +232,8 @@ struct BiomassFile {
     /// Share of the households' fuel that was firewood, dung or straw, for a country the list
     /// does not name, by its 1925 GDP per head: (at most this GDP per head, share), ascending.
     by_income: Vec<(u32, f64)>,
+    /// GDP per head above which the share falls (`econ::biomass::BiomassRules::falls_above`).
+    falls_above: f64,
     /// (tag, share of the households' fuel gathered in 1925).
     households_1925: Vec<(String, f64)>,
 }
@@ -271,7 +273,10 @@ impl BiomassFile {
                 Fixed::from_f64_lossy((h / rural).min(1.0))
             })
             .collect();
-        Ok(crate::econ::biomass::BiomassRules { rural_1925 })
+        Ok(crate::econ::biomass::BiomassRules {
+            rural_1925,
+            falls_above: Fixed::from_f64_lossy(self.falls_above),
+        })
     }
 }
 

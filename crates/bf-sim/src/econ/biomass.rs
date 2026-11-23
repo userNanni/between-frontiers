@@ -4,9 +4,10 @@
 //! only the rest of their need `domestic_fuel`; townspeople buy all of it.
 //!
 //! The share is each country's, of 1925 (`data/economy/biomass.ron`), as a share of the rural
-//! households' fuel. It falls as the country's GDP per head rises over its 1925 level, in
-//! inverse proportion: twice as rich, half the share (an estimate: the sources show the volume of
-//! firewood about flat to the 1940s and its share falling with income and the towns).
+//! households' fuel. It holds while the country's GDP per head is under a threshold
+//! (`BiomassRules::falls_above`) and falls in inverse proportion to it above (a design value:
+//! rural India burned firewood, dung and straw for 90 % of its domestic energy around 1900 and
+//! 93 % in 1970–71; the national share falls first with the towns, which buy their fuel).
 
 use laplace_schelling::Fixed;
 
@@ -17,11 +18,14 @@ use super::Economy;
 pub struct BiomassRules {
     /// By market: the share of the rural households' fuel gathered in 1925, 0–1.
     pub rural_1925: Vec<Fixed>,
+    /// GDP per head (1925 base prices, as `Economy::history`) above which the share falls in
+    /// inverse proportion; a country richer than this in 1925 starts from its 1925 level.
+    pub falls_above: Fixed,
 }
 
 /// By market, the share of the rural households' fuel gathered this year: the 1925 share times
-/// the 1925 GDP per head over last year's (at most the 1925 share). Before a full year has
-/// passed, the 1925 share.
+/// the larger of the threshold and the 1925 GDP per head over last year's GDP per head, at most
+/// the 1925 share. Before a full year has passed, the 1925 share.
 pub fn shares(rules: &BiomassRules, econ: &Economy) -> Vec<Fixed> {
     let n = econ.markets.len();
     // GDP per head in 1925 and in the last year recorded, by market (`Economy::history`).
@@ -41,8 +45,9 @@ pub fn shares(rules: &BiomassRules, econ: &Economy) -> Vec<Fixed> {
     (0..n)
         .map(|mi| {
             let base = rules.rural_1925.get(mi).copied().unwrap_or(Fixed::ZERO);
-            if first[mi] > Fixed::ZERO && last[mi] > first[mi] {
-                base * (first[mi] / last[mi])
+            let from = first[mi].max(rules.falls_above);
+            if first[mi] > Fixed::ZERO && last[mi] > from {
+                base * (from / last[mi])
             } else {
                 base
             }
@@ -68,8 +73,9 @@ mod tests {
             urban: Fixed::ZERO,
             basic_needs: Fixed::ZERO,
         };
-        let rules = BiomassRules {
+        let mut rules = BiomassRules {
             rural_1925: vec![Fixed::from_ratio(9, 10)],
+            falls_above: Fixed::ZERO,
         };
         assert_eq!(shares(&rules, &econ)[0], Fixed::from_ratio(9, 10));
         econ.history = vec![rec(1925, 1000), rec(1950, 2000)];
@@ -77,5 +83,11 @@ mod tests {
         // Poorer than in 1925: the share stays.
         econ.history = vec![rec(1925, 1000), rec(1932, 800)];
         assert_eq!(shares(&rules, &econ)[0], Fixed::from_ratio(9, 10));
+        // Under the threshold the share holds; above, it falls from the threshold.
+        rules.falls_above = Fixed::from_int(15);
+        econ.history = vec![rec(1925, 1000), rec(1950, 1400)];
+        assert_eq!(shares(&rules, &econ)[0], Fixed::from_ratio(9, 10));
+        econ.history = vec![rec(1925, 1000), rec(1980, 3000)];
+        assert_eq!(shares(&rules, &econ)[0], Fixed::from_ratio(45, 100));
     }
 }

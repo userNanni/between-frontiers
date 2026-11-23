@@ -6,6 +6,14 @@
 // country's rural share is this over its rural share of the people (`countries.ron`), at most 1.
 // Read only with the switch on.
 //
+// DESIGN VALUE, not from a source: after 1925 the rural share holds while the country's GDP per
+// head is under `falls_above` and falls in inverse proportion to it above (a country richer than
+// that in 1925 starts from its 1925 level). Rural India burned firewood, dung and straw for about
+// 90 % of its domestic energy around 1900 and 93 % in 1970–71, while its income grew: the share
+// of the poor countryside does not fall with the first growth; the national share falls with the
+// towns, which buy their fuel. The threshold, about the GDP per head of Western Europe in 1925, is
+// the game's choice.
+//
 // Sources (read on the page unless marked):
 // - China: farm households got 88.7 % (by value) of their fuel and light from the farm itself
 //   (straw, stalks, grass, brush, some wood), 80.9 % in the north and 96.8 % in the east-centre,
@@ -35,6 +43,7 @@
 //   head of the scenario (Asia and Africa, Latin America, Eastern Europe, the rest of Western
 //   Europe and North America).
 (
+    falls_above: 5000.0,
     // (at most this 1925 GDP per head, share of the households' fuel gathered), ascending; the
     // last band takes everyone richer.
     by_income: [
