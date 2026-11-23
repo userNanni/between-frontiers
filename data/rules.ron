@@ -88,6 +88,12 @@
     // gold of `data/economy/reserves.ron`), and a share of each country's gold output joins them.
     // Off: trade moves no money between countries and nobody holds reserves.
     payments_settle: false,
+    // Radium (U4, the owner, 2026-11-19; `docs/war.pt-BR.md`, "Passo 3"): before the bomb the
+    // uranium mines work for radium, which the hospitals take, and the uranium is a by-product
+    // (with `market_stock` it piles up). Off: the good and its place in the methods are left out
+    // of the catalogue, as before. It changes jobs and GDP today: it turns on with the nuclear
+    // slice, after the balance.
+    radium: false,
     // Railways by their lines (`docs/trade.pt-BR.md`, the trade's sign): the 1925 railways sized to
     // what each country's lines carried (`data/economy/rail.ron`), the rest of the demand for
     // transport to traditional transport, which burns no coal and is never built again. Acts when

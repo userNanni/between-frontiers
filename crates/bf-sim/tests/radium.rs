@@ -15,7 +15,7 @@ use laplace_schelling::Date;
 #[ignore = "long: 1925 to 1940; run in the slot"]
 fn radium_and_the_uranium_stock_to_1940() {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut d = GameData::load(&root).unwrap_or_else(|e| panic!("{e}"));
+    let mut d = GameData::load_with(&root, "radium").unwrap_or_else(|e| panic!("{e}"));
     d.switches.market_stock = true;
     let cat = &d.catalogue;
     let radium = usize::from(cat.good("radium").unwrap());

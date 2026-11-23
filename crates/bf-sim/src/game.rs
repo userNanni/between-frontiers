@@ -1348,6 +1348,10 @@ pub struct Switches {
     /// `data/economy/reserves.ron`), and new gold from the mines joins them. Off: trade moves no
     /// money between countries and nobody holds reserves.
     pub payments_settle: bool,
+    /// Radium (U4, docs/war.pt-BR.md, "Passo 3"): the uranium mines work for radium, which the
+    /// hospitals take, and the uranium comes out as a by-product. Read at load: off, the good
+    /// and its place in the methods are left out of the catalogue, which is then main's.
+    pub radium: bool,
     /// Railways by their lines (`econ::setup`, `data/economy/rail.ron`): the 1925 railways are
     /// sized to what each country's lines carried, and the rest of the demand for transport goes
     /// to traditional transport (carts, pack animals, porters, river boats), which burns no coal;
@@ -1433,6 +1437,7 @@ impl Switches {
         "market_stock",
         "negotiation",
         "payments_settle",
+        "radium",
         "rail_by_line",
         "reputation",
         "schooling",
@@ -1465,6 +1470,7 @@ impl Switches {
             "market_stock" => self.market_stock = true,
             "negotiation" => self.negotiation = true,
             "payments_settle" => self.payments_settle = true,
+            "radium" => self.radium = true,
             "rail_by_line" => self.rail_by_line = true,
             "reputation" => self.reputation = true,
             "schooling" => self.schooling = true,
