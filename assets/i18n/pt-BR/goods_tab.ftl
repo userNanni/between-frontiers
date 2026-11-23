@@ -1,0 +1,20 @@
+# Economia → Bens: o mercado do país bem a bem
+economy-tab-goods = Bens
+goods-basis = O mercado do país, bem a bem: o ritmo da última semana × 52, em dólares a preços-base, para os bens se somarem. O preço é o do mercado sobre o preço-base. Clique num bem para ver quem faz e quem usa.
+goods-category-all = Todos
+goods-search = Buscar bem:
+goods-none = Nenhum bem com esse nome nesta categoria.
+goods-col-good = Bem
+goods-col-price = Preço sobre o base
+goods-col-made = Produção/ano
+goods-col-used = Consumo/ano
+goods-col-imports = Importação/ano
+goods-col-exports = Exportação/ano
+goods-col-stock = Estoque
+goods-row-tip = Preço { $price } do preço-base aqui; no mundo, { $world }.
+goods-close = Fechar
+goods-makers = Quem faz
+goods-makers-none = Nenhum prédio faz este bem.
+goods-takers = Quem usa
+goods-takers-none = Nenhum prédio usa este bem; as famílias e o Estado compram.
+goods-see-in-buildings = { $building }: ver em Prédios

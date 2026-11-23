@@ -231,6 +231,11 @@ impl State {
         self.government.as_ref().map(|w| w.tab)
     }
 
+    /// The economy window's tab and the building kind it opened, while it is open (tests).
+    pub fn economy_tab(&self) -> Option<(super::economy::Tab, Option<u16>)> {
+        self.economy.as_ref().map(|w| (w.tab, w.open))
+    }
+
     /// The state picked on the map (index into the map's states), if any (tests).
     pub fn selected_state(&self) -> Option<usize> {
         self.selected_state
@@ -1014,6 +1019,7 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
             shared.world.as_ref(),
             snap.buildings.as_deref(),
             snap.methods.as_deref(),
+            snap.goods.as_deref(),
             player,
             state.economy.as_mut().expect("economy open"),
             &mut place,

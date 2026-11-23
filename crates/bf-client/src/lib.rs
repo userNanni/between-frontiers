@@ -11,6 +11,7 @@ pub mod display;
 pub mod flags;
 pub mod forces_view;
 pub mod gold_view;
+pub mod goods_view;
 pub mod government;
 pub mod hud;
 pub mod influence_view;

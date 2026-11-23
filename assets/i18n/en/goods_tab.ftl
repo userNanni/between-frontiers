@@ -1,0 +1,20 @@
+# Economy → Goods: the country's market good by good
+economy-tab-goods = Goods
+goods-basis = The country's market, good by good: last week's pace × 52, in dollars at base prices so the goods add up. The price is the market's over the base price. Click a good to see who makes and who uses it.
+goods-category-all = All
+goods-search = Search a good:
+goods-none = No good by that name in this category.
+goods-col-good = Good
+goods-col-price = Price over base
+goods-col-made = Made/year
+goods-col-used = Used/year
+goods-col-imports = Imports/year
+goods-col-exports = Exports/year
+goods-col-stock = Stock
+goods-row-tip = Price { $price } of the base price here; in the world, { $world }.
+goods-close = Close
+goods-makers = Who makes it
+goods-makers-none = No building makes this good.
+goods-takers = Who uses it
+goods-takers-none = No building uses this good; households and the state buy it.
+goods-see-in-buildings = { $building }: see in Buildings
