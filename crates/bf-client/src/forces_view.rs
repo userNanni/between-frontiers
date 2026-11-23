@@ -90,6 +90,12 @@ pub struct ProgrammeView {
     pub ore: Option<OreView>,
     /// The assembly of the warhead (rule `assembly`); `None` when the rule has no assembly plant.
     pub assembly: Option<AssemblyView>,
+    /// What holds the warheads back this week (`war::programme::limit`); `None` without a
+    /// programme or without the core and assembly goods in the catalogue.
+    pub limit: Option<bf_sim::war::programme::ProgrammeLimit>,
+    /// The open warhead order: warheads still to make, and the cores and assemblies it holds.
+    /// It stays in the queue, stopped, when the programme ends; `None` without one.
+    pub order: Option<WarheadOrder>,
     /// N3: the country tested a weapon; or asked for a test, to go through next week.
     pub tested: bool,
     pub test_asked: bool,
@@ -102,6 +108,14 @@ pub struct CorePlant {
     pub method: String,
     pub levels: i64,
     pub cores_year: f64,
+}
+
+/// The open warhead order (`ForceOrder` of the warhead): what is left to make and what it holds.
+#[derive(Clone, Debug, PartialEq)]
+pub struct WarheadOrder {
+    pub to_make: f64,
+    pub cores: f64,
+    pub assemblies: f64,
 }
 
 /// The assembly of the warhead: the assembly plants by method, the assemblies on the market
@@ -315,6 +329,35 @@ pub fn programme_view(
             cores_waiting: waiting,
         }
     });
+    let assembly_good = rule
+        .assembly
+        .as_deref()
+        .and_then(|k| cat.building(k))
+        .and_then(|k| cat.buildings[k].methods.first())
+        .and_then(|m| m.outputs.first())
+        .map(|(g, _)| *g);
+    let limit = match (fissile, assembly_good) {
+        (Some(core), Some(asm)) if share > 0 => {
+            Some(bf_sim::war::programme::limit(world, ci, core as u16, asm))
+        }
+        _ => None,
+    };
+    let orders: Vec<_> = c.queue.iter().filter(|o| o.unit == rule.warhead).collect();
+    let held = |g: Option<usize>| -> f64 {
+        g.map_or(0.0, |g| {
+            orders
+                .iter()
+                .flat_map(|o| o.built.iter())
+                .filter(|(b, _)| usize::from(*b) == g)
+                .map(|(_, q)| f(*q))
+                .sum()
+        })
+    };
+    let order = (!orders.is_empty()).then(|| WarheadOrder {
+        to_make: ordered,
+        cores: held(fissile),
+        assemblies: held(assembly_good.map(usize::from)),
+    });
     Some(ProgrammeView {
         share,
         max_share: rule.max_share as u16,
@@ -327,6 +370,8 @@ pub fn programme_view(
         core_plants,
         ore,
         assembly,
+        limit,
+        order,
         fissile_price: fissile.map_or(0.0, |g| f(m.price[g])),
         fissile_delivered: fissile.map_or(0.0, |g| f(m.buy_ratio[g])),
         tested: world.war.nuclear.tested(ci as u16),

@@ -17,3 +17,13 @@ programme-assembly-plant-value = { $levels } { $levels ->
 programme-assembly = Conjuntos de ogiva no mercado
 programme-cores-waiting = Núcleos à espera de montagem
 programme-cores-waiting-tip = Núcleos já comprados para a encomenda de ogivas que ainda não têm conjunto (lentes de explosivo, iniciador, espoleta e invólucro). A ogiva só fica pronta com os dois.
+# Encomenda de ogivas: o que amarra agora e o que ela segura
+programme-limit = O que segura as ogivas agora
+programme-limit-money = o dinheiro do programa
+programme-limit-cores = as usinas de núcleos
+programme-limit-assembly = as usinas de montagem
+programme-limit-tip = A encomenda cresce até gastar todo o dinheiro do programa. Quando o mercado entrega menos de nove décimos dos núcleos ou dos conjuntos comprados, quem segura são as usinas desse bem.
+programme-order = Encomenda de ogivas
+programme-order-open = { $n } por fazer; as ogivas entram uma a uma
+programme-order-stopped = parada: sem programa
+programme-order-held = Na mão: { $cores } núcleos e { $assemblies } conjuntos.

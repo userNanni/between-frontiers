@@ -56,6 +56,17 @@ pub fn show(ui: &mut Ui, cx: &mut TabContext<'_>) {
     bf_ui_kit::small(ui, &i18n.tr("forces-decision-hint"));
 }
 
+/// What a warhead order holds, in a sentence.
+fn held(i18n: &I18n, o: &crate::forces_view::WarheadOrder) -> String {
+    i18n.tr_args(
+        "programme-order-held",
+        &[
+            ("cores", arg(i18n.decimal(o.cores, 1))),
+            ("assemblies", arg(i18n.decimal(o.assemblies, 1))),
+        ],
+    )
+}
+
 /// The nuclear programme (N1): its share of GDP a year (a stepper of one per mille, or start and
 /// end), what it costs and spent, the chain step by step with the months left at the month's
 /// credit, and the stock: warheads, plants and the fissile material (`GameCommand::
@@ -71,6 +82,15 @@ fn programme(ui: &mut Ui, cx: &mut TabContext<'_>) {
     let tag = cx.tag.to_owned();
     let pm = |x: u16| pct(i18n, f64::from(x) / 10.0, 1);
     if p.share == 0 {
+        // An ended programme's order waits in the queue with what it holds.
+        if let Some(o) = &p.order {
+            bf_ui_kit::stat_row(
+                ui,
+                &i18n.tr("programme-order"),
+                &i18n.tr("programme-order-stopped"),
+            );
+            bf_ui_kit::small(ui, &held(i18n, o));
+        }
         let b = Button::secondary(&i18n.tr("programme-start"))
             .size(ButtonSize::Small)
             .show(ui);
@@ -145,6 +165,29 @@ fn programme(ui: &mut Ui, cx: &mut TabContext<'_>) {
             ],
         ),
     );
+    // What holds the warheads back, and the open order with what it holds.
+    if let Some(l) = p.limit {
+        use bf_sim::war::programme::ProgrammeLimit;
+        let key = match l {
+            ProgrammeLimit::Money => "programme-limit-money",
+            ProgrammeLimit::CorePlants => "programme-limit-cores",
+            ProgrammeLimit::AssemblyPlants => "programme-limit-assembly",
+        };
+        ui.scope(|ui| bf_ui_kit::stat_row(ui, &i18n.tr("programme-limit"), &i18n.tr(key)))
+            .response
+            .on_hover_text(i18n.tr("programme-limit-tip"));
+    }
+    if let Some(o) = &p.order {
+        bf_ui_kit::stat_row(
+            ui,
+            &i18n.tr("programme-order"),
+            &i18n.tr_args(
+                "programme-order-open",
+                &[("n", arg(i18n.decimal(o.to_make, 0)))],
+            ),
+        );
+        bf_ui_kit::small(ui, &held(i18n, o));
+    }
     // The core plants by method: levels and the cores a year.
     if p.core_plants.is_empty() {
         bf_ui_kit::stat_row(
