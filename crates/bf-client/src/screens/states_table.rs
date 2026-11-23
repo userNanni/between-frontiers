@@ -188,11 +188,9 @@ pub fn show(
         .show(ui, |ui| {
             super::scroll_keys(ui);
             for (j, row) in rows.iter().enumerate() {
-                let (r, resp) = ui.allocate_exact_size(vec2(width, ROW), Sense::click());
-                if resp.hovered() {
-                    ui.painter().rect_filled(r, 4.0, color::SURFACE_HOVER);
-                }
-                let name = if row.colony {
+                // "(colony)" only where metropole and colonies are listed together; the line grows
+                // with a name that wraps.
+                let name = if row.colony && *place == Place::All {
                     i18n.tr_args(
                         "states-colony",
                         &[("state", bf_i18n::Arg::String(row.name.clone()))],
@@ -203,6 +201,11 @@ pub fn show(
                 let galley = ui
                     .painter()
                     .layout(name, sans(13.0), color::TEXT, name_w - space::SM);
+                let height = ROW.max(galley.size().y + 8.0);
+                let (r, resp) = ui.allocate_exact_size(vec2(width, height), Sense::click());
+                if resp.hovered() {
+                    ui.painter().rect_filled(r, 4.0, color::SURFACE_HOVER);
+                }
                 ui.painter().galley(
                     egui::pos2(r.left(), r.center().y - galley.size().y / 2.0),
                     galley,
