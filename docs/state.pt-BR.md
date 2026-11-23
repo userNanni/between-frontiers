@@ -988,6 +988,57 @@ repositório; as citações estão no arquivo de dados.
   `docs/trade.pt-BR.md`).
 - **Ainda não dá para ligar:** faltam o sinal do comércio e a volta espalhada.
 
+### Antes de ligar: o roteiro da rodada de calibração
+
+A cadeia do sinal do comércio virou calibração do balanço de energia e de comida de 1925, e a
+ordem do dono é funcionalidade, otimização, calibração. Ela fica parada aqui, com o que já foi
+medido, e volta na rodada de calibração nesta ordem. Nenhuma chave liga antes de a anterior
+estar medida contra a faixa.
+
+**O que já está medido (as chaves existem, desligadas):**
+- **Ferrovias pela linha** (`rail_by_line`, `docs/trade.pt-BR.md` seção 15): a ferrovia de 1925
+  carrega o tráfego que as linhas carregaram (Liga das Nações), o resto vai ao transporte
+  tradicional. O carvão das ferrovias bate com o medido nos EUA (110 contra 108,8 Mt) e fica perto
+  no Reino Unido (19 contra 15,1); a Índia fica em 18 contra 6,7.
+- **Combustível das famílias** (`household_biomass`, seção 16): a família rural colhe a lenha, o
+  esterco e a palha, pela parcela de cada país.
+- **O carvão de 1925 por país** (Mt; real = consumo aparente com fonte e página na seção 16):
+
+| | tudo desligado | só ferrovias | ferrovias e biomassa | real |
+|---|---|---|---|---|
+| Índia | 123 | 88 | 60 | 21,4 |
+| China | 142 | 81 | 56 | 24,0 |
+| Japão | 71 | 39 | 33 | 30,5 |
+| Reino Unido | 197 | 112 | 99 | 195,4 |
+| EUA | 480 | 275 | 245 | 510,0 |
+
+- **Erros que se compensavam nos EUA e no Reino Unido:** com tudo desligado o total batia, porque
+  as ferrovias queimavam o dobro do real e os outros usos (indústria, usinas, famílias da cidade)
+  queimavam de menos. Corrigida a ferrovia, o total cai à metade do real. Ligar `rail_by_line`
+  sozinha piora esses dois países.
+- **Cereais do Reino Unido:** a produção iguala o consumo porque o arranjo inicial dá a cada país
+  fazendas para a própria demanda onde há terra; o Reino Unido de 1925 importava mais da metade
+  do trigo por preço. Não é o transporte nem a energia.
+- **Padrão-ouro (pré-requisitos já feitos):** divisas e base monetária de 1925 com fonte,
+  contágio só quando a perda pesa (sumiu a cascata de abril de 1925). Falta a volta espalhada: o
+  jogo não tem a inflação e o câmbio de cada moeda em 1925, e 27 países voltam na mesma semana.
+
+**O que falta, em ordem:**
+1. **O carvão que falta nos países ricos:** indústria, usinas e famílias da cidade nos EUA e no
+   Reino Unido, contra o consumo por setor de 1925 (Schurr e Netschert; *Statistical Abstract*
+   britânico). Só depois disso `rail_by_line` pode ligar sem piorar os dois.
+2. **O carvão que sobra na Índia e na China** (60 e 56 contra 21 e 24 Mt com as duas chaves): a
+   ferrovia indiana (o peso do passageiro, 2,7, é alto para a terceira classe), o aço e o uso fora
+   das usinas (famílias da cidade, Estado, manutenção).
+3. **A produção agrícola de 1925 por país, de fonte,** no lugar da demanda própria no arranjo
+   inicial: os cereais do Reino Unido, e o resto do sinal da Argentina (grão, milho e carne
+   exportados de menos).
+4. **O estado de cada moeda em 1925** (inflação e câmbio do pós-guerra), para a volta ao ouro se
+   espalhar.
+5. **Ligar, nesta ordem, cada uma contra a faixa:** `rail_by_line` e `household_biomass` juntas
+   (depois de 1 e 2), a produção agrícola (3), `payments_settle`, `gold_standard` e
+   `capital_follows_rate` (depois de 4, com o sinal do comércio certo nos países do placar).
+
 ### Fatias seguintes (aprovadas, por fazer)
 
 5. **Telas e decisões.** Agendas: aderir, sair, defender ou desvalorizar. Governo → Moeda e dívida:
