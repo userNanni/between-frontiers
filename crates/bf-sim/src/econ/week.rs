@@ -1622,7 +1622,12 @@ impl System<GameWorld> for Week {
             r.local = l;
         }
         let mut remitted: Vec<(u16, u16, Fixed, Fixed)> = Vec::new();
+        // The metropole's GDP of the week, for the yearly series (`econ::series`).
+        let mut metro_gdp = vec![Fixed::ZERO; markets.len()];
         for (r, s) in econ.regions.iter_mut().zip(changes.regions) {
+            if !r.colony {
+                metro_gdp[r.market as usize] += s.gdp;
+            }
             let m = &mut markets[r.market as usize];
             m.treasury += s.taxes - s.payroll;
             m.budget.revenue += s.taxes;
@@ -1672,6 +1677,9 @@ impl System<GameWorld> for Week {
         }
         econ.markets = markets;
         econ.world_price = changes.world_price;
+        // The yearly series' running sums (`econ::series`): a record, out of the hash.
+        let base: Vec<Fixed> = cat.goods.iter().map(|g| g.base_price).collect();
+        world.series.add_week(&base, &econ.markets, &metro_gdp);
         // The gold standard (`econ::gold`): the cover, exits and returns, and what each central
         // bank is asked this week.
         let pegs = self

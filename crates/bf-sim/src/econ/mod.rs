@@ -16,6 +16,7 @@ pub mod money;
 pub mod monthly;
 pub mod payments;
 pub mod public;
+pub mod series;
 pub mod setup;
 pub mod state;
 pub mod stock;

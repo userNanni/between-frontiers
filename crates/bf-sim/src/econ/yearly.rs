@@ -53,6 +53,11 @@ pub struct YearlyChanges {
     literacy: Vec<Fixed>,
     tfp: Vec<Fixed>,
     records: Vec<YearRecord>,
+    /// The year's series for the charts (`econ::series`); `None` on the first tick.
+    series: Option<(
+        Vec<super::series::YearSeries>,
+        Vec<super::series::YearPrices>,
+    )>,
 }
 
 impl System<GameWorld> for Yearly {
@@ -251,12 +256,15 @@ impl System<GameWorld> for Yearly {
                 basic_needs: fill(basic, Fixed::ONE),
             });
         }
+        let series = (ctx.tick > 0)
+            .then(|| super::series::close_year(year - 1, &world.series, econ, &world.demography));
         YearlyChanges {
             methods,
             switches,
             literacy,
             tfp,
             records,
+            series,
         }
     }
     fn apply(&self, ctx: &TickCtx, changes: YearlyChanges, world: &mut GameWorld) {
@@ -313,6 +321,9 @@ impl System<GameWorld> for Yearly {
         // The first January of the run has no full year behind it: keep the 1925 figures.
         if ctx.tick > 0 {
             econ.history.extend(changes.records);
+            if let Some(series) = changes.series {
+                world.series.close(series);
+            }
             for m in &mut econ.markets {
                 m.gdp_last_year = m.gdp_running;
                 m.gdp_running = Fixed::ZERO;
