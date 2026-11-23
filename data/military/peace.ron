@@ -90,6 +90,12 @@
         plant: "weapon_core_plant",
         plant_shortage: 900,
         plant_weeks: 26,
+        // U1 (the owner, 2026-11-19): the programme opens uranium mines with the state's capital
+        // in deposits already known, at home and then in a colony, when the market delivers less
+        // than nine tenths of the ore its core plants ask for; one request at a time, as the
+        // plants.
+        mine: Some("uranium_mine"),
+        mine_shortage: 900,
         warhead: "nuclear_warhead",
         // One warhead an order: the stock grows by ones, as in 1945–47 (2, 9, 13).
         batch: 1,
