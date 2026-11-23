@@ -509,11 +509,16 @@ pub struct NuclearRule {
     /// protected side (the umbrella).
     #[serde(default = "nuclear_defaults::umbrella")]
     pub umbrella: bool,
-    /// Unacceptable damage: this share of the people, per mille, at `killed_per_warhead` each.
+    /// Unacceptable damage: this share of the people, per mille, killed in its cities
+    /// (`war::target`).
     #[serde(default = "nuclear_defaults::unacceptable_share")]
     pub unacceptable_share: u32,
-    #[serde(default = "nuclear_defaults::killed_per_warhead")]
-    pub killed_per_warhead: u32,
+    /// The density of the target (`war::target`): the lethal area of an equivalent megaton, km²,
+    /// and the density of a city's core, people a km².
+    #[serde(default = "nuclear_defaults::lethal_km2_per_emt")]
+    pub lethal_km2_per_emt: u32,
+    #[serde(default = "nuclear_defaults::core_density")]
+    pub core_density: u32,
     /// Warheads each launcher carries.
     #[serde(default = "nuclear_defaults::per_bomber")]
     pub warheads_per_bomber: u32,
@@ -534,8 +539,8 @@ pub struct NuclearRule {
     pub interceptors_per_site: u32,
     #[serde(default = "nuclear_defaults::interceptor_kill")]
     pub interceptor_kill: u32,
-    /// The use (step 4; N5, N6, N7). Civilians a counterforce warhead kills, per mille of
-    /// `killed_per_warhead`.
+    /// The use (step 4; N5, N6, N7). Civilians a counterforce warhead kills, per mille of what
+    /// a countervalue one would.
     #[serde(default = "nuclear_defaults::counterforce_civilians")]
     pub counterforce_civilians: u32,
     /// Men of the target's land forces a counterforce warhead puts out of the war.
@@ -582,8 +587,11 @@ mod nuclear_defaults {
     pub fn unacceptable_share() -> u32 {
         250
     }
-    pub fn killed_per_warhead() -> u32 {
-        185_000
+    pub fn lethal_km2_per_emt() -> u32 {
+        132
+    }
+    pub fn core_density() -> u32 {
+        9_900
     }
     pub fn per_bomber() -> u32 {
         2

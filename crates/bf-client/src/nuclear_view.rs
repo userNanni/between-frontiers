@@ -80,7 +80,12 @@ pub fn strike_view(
     } else {
         1000
     };
-    let per = u64::from(n.killed_per_warhead) * emt / 1000;
+    // The density of the target: the dead of that warhead on the target's largest city.
+    let cities = bf_sim::war::target::cities(world, other);
+    let area = bf_sim::war::target::area_of(n.lethal_km2_per_emt, emt);
+    let per = bf_sim::war::target::plan(&cities, n.core_density, &[area])
+        .first()
+        .map_or(0, |x| x.1.max(0) as u64);
     Some(StrikeView {
         target: world
             .countries
