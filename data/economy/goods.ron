@@ -107,8 +107,9 @@
         // Duncan, Atomic Shield 1947-1952, 1969, pp. 47 and 134): the non-nuclear assembly of one
         // warhead (the explosive lenses, the initiator, the fuzing and firing, the case), made by
         // the weapon_assembly_plant. It is a good because the warhead is a formation built from
-        // goods, not the product of a building. The base price is an estimate: above the inputs
-        // (about 54,000) and the wages of a level over its yearly output at base prices.
-        (key: "weapon_assemblies", category: "military", base_price: 200000, available_from: 1945, tradable: false, unit: "the non-nuclear assembly of one warhead"),
+        // goods, not the product of a building. The base price is an estimate: 1 million, well
+        // above the inputs of an assembly (about 54,000), so a level's value added a worker at
+        // productivity 1 (1.655 a year over 715 people) stays in the economy's range.
+        (key: "weapon_assemblies", category: "military", base_price: 1000000, available_from: 1945, tradable: false, unit: "the non-nuclear assembly of one warhead"),
     ],
 )
