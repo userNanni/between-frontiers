@@ -41,3 +41,7 @@ methods-who = Quem escolhe o método:
 methods-rule = Regra histórica (os donos)
 methods-fixed = Fixado pelo governo
 methods-fixed-later = O governo ainda não pode fixar o método; por enquanto vale a regra histórica.
+economy-search = Buscar prédio ou estado
+economy-place-all = Todos os estados
+economy-place-metropole = Metrópole
+economy-place-colonies = Colônias
