@@ -487,9 +487,15 @@
         // of the Oak Ridge enrichment (my computation). The capital of a high enrichment level
         // itself follows the game's rule (three years of its value added), not the source. The
         // jobs are estimates: no operating headcount was found with a page.
+        // The figures above are what one plant made in a year in the United States of 1945.
+        // Method quantities are at productivity 1 (a level runs at its quantities times the
+        // building's productivity where it stands), and the American productivity of 1945 is 7.25
+        // (measured in the tick), so the data are those figures over 7.25, inputs and outputs
+        // alike: 0.2586 and 1.841 cores a year a level (my computation). A level is a fixed staff:
+        // elsewhere it makes these times its productivity.
         (key: "weapon_core_plant", group: "heavy_industry", resource: None, farm: None, state_firm: true, methods: [
-            (key: "high_enrichment", available_from: 1944, inputs: [("uranium_ore", 27500), ("chemicals", 2000), ("electricity", 2365000)], outputs: [("weapon_cores", 1.875)], jobs: [("laborer", 350), ("skilled_worker", 330), ("engineer", 60), ("clerk", 60), ("manager", 20), ("capitalist", 5)], capital: Some(1.0)),
-            (key: "production_reactor", available_from: 1944, inputs: [("uranium_ore", 107600), ("chemicals", 4000), ("electricity", 20000)], outputs: [("weapon_cores", 13.35)], jobs: [("laborer", 350), ("skilled_worker", 330), ("engineer", 60), ("clerk", 60), ("manager", 20), ("capitalist", 5)], capital: Some(0.147)),
+            (key: "high_enrichment", available_from: 1944, inputs: [("uranium_ore", 3793.1), ("chemicals", 275.86), ("electricity", 326206.9)], outputs: [("weapon_cores", 0.2586)], jobs: [("laborer", 350), ("skilled_worker", 330), ("engineer", 60), ("clerk", 60), ("manager", 20), ("capitalist", 5)], capital: Some(1.0)),
+            (key: "production_reactor", available_from: 1944, inputs: [("uranium_ore", 14841.4), ("chemicals", 551.72), ("electricity", 2758.62)], outputs: [("weapon_cores", 1.841)], jobs: [("laborer", 350), ("skilled_worker", 330), ("engineer", 60), ("clerk", 60), ("manager", 20), ("capitalist", 5)], capital: Some(0.147)),
         ]),
         // The assembly of the warhead (programme rule `assembly`): a state firm, asked for by the
         // nuclear programme once its core plants run. In 1947 none of the American bombs was
