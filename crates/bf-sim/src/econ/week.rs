@@ -273,7 +273,7 @@ pub(crate) fn plan_pop(
         // The share of the household fuel the countryside gathers itself (firewood, dung, straw,
         // `econ::biomass`): out of the market, as the food it grows.
         if Some(i) == cat.domestic_fuel_need && fuel_gathered > Fixed::ZERO {
-            qty = qty * (Fixed::ONE - fuel_gathered.min(Fixed::ONE));
+            qty *= Fixed::ONE - fuel_gathered.min(Fixed::ONE);
         }
         if Some(i) == cat.staple_need && qty > Fixed::ZERO {
             in_kind = fill(staple_in_kind, qty);
@@ -1794,6 +1794,7 @@ pub fn plan_pop_public(
 }
 
 /// The goods a pop of `size` living in town (`urban`) or in the countryside would order.
+#[allow(clippy::too_many_arguments)]
 pub fn plan_pop_where(
     cat: &Catalogue,
     prices: &[Fixed],
