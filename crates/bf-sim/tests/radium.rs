@@ -151,6 +151,13 @@ fn radium_mines_by_country_to_2025() {
                 .unwrap();
             let mut by: Vec<(String, i64)> = Vec::new();
             let (mut jobs, mut va, mut asked) = (0.0, 0.0, 0.0);
+            // The share of the radium still used, by the stage of cobalt teletherapy.
+            let fade = bf_sim::econ::week::fade_shares(
+                cat,
+                d.tree.as_deref(),
+                &w.research,
+                w.econ.markets.len(),
+            );
             for r in &w.econ.regions {
                 let mi = usize::from(r.market);
                 let m = &w.econ.markets[mi];
@@ -166,7 +173,10 @@ fn radium_mines_by_country_to_2025() {
                         && let Some((_, q)) =
                             method.inputs.iter().find(|(x, _)| usize::from(*x) == g)
                     {
-                        asked += q.to_f64_lossy() * 52.0 * run;
+                        asked += q.to_f64_lossy()
+                            * method.input_share(g as u16, &fade[mi]).to_f64_lossy()
+                            * 52.0
+                            * run;
                     }
                     if usize::from(p.kind) != mine {
                         continue;
