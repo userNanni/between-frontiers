@@ -454,6 +454,7 @@ impl GameData {
                 for m in &mut b.methods {
                     m.inputs.retain(|(g, _)| g != "radium");
                     m.outputs.retain(|(g, _)| g != "radium");
+                    m.fading.retain(|(g, _)| g != "radium");
                 }
             }
         }
@@ -462,6 +463,13 @@ impl GameData {
         let catalogue =
             Catalogue::build(&goods, &buildings, &needs, &purchases).map_err(|e| e.to_string())?;
         let tree = optional::<TechnologiesFile>(&data.join("research/technologies.ron"))?
+            .map(|mut file| {
+                // Without radium the tree is main's: the technology its use fades with leaves.
+                if !switches.radium {
+                    file.technologies.retain(|t| t.key != "cobalt_teletherapy");
+                }
+                file
+            })
             .map(|file| TechTree::build(&file, &catalogue).map(Arc::new))
             .transpose()
             .map_err(|e| format!("research/technologies.ron: {e}"))?;

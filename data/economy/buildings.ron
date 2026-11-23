@@ -444,7 +444,9 @@
             // weigh 7,768 times their productivity (measured, tests/radium.rs), so 3.09 mg a level
             // (my computation). How the radium split between medicine and luminous paint has no
             // source with a page.
-            (key: "general_hospital", available_from: 1925, inputs: [("medicines", 1500), ("services", 300), ("radium", 3.09)], outputs: [("hospital_care", 8000)], jobs: [("professional", 300), ("clerk", 150), ("skilled_worker", 100), ("laborer", 400)]),
+            // The radium fades as cobalt-60 teletherapy spreads in the country (`fading`; the
+            // shares by stage are design values, `econ::week::FADE_*`).
+            (key: "general_hospital", available_from: 1925, inputs: [("medicines", 1500), ("services", 300), ("radium", 3.09)], fading: [("radium", "cobalt_teletherapy")], outputs: [("hospital_care", 8000)], jobs: [("professional", 300), ("clerk", 150), ("skilled_worker", 100), ("laborer", 400)]),
         ]),
         // University and research institute: engineers and scientists at the bench, with their
         // instruments and support. Built as a public work; the treasury pays the share the law

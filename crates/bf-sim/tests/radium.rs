@@ -117,3 +117,112 @@ fn radium_and_the_uranium_stock_to_1940() {
         );
     }
 }
+
+/// Where the radium's mines go (the orchestrator's question on Canada's GDP with radium on): by
+/// year, with and without radium, the uranium mine levels by market, the radium the hospitals
+/// ask for, and in Canada the mines' jobs and value added against its GDP.
+#[test]
+#[ignore = "long: two runs of a century; run in the slot"]
+fn radium_mines_by_country_to_2025() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+    for rules in ["", "radium"] {
+        let d = GameData::load_with(&root, rules).unwrap_or_else(|e| panic!("{e}"));
+        let cat = &d.catalogue;
+        let mine = cat.building("uranium_mine").unwrap();
+        let hospital = cat.building("hospital").unwrap();
+        let radium = cat.good("radium").map(usize::from);
+        let mut s = Session::new(
+            d.new_world(),
+            1925,
+            Date::new(1925, 1, 1),
+            2,
+            Some(d.rules()),
+        );
+        let tele = d.tree.as_ref().and_then(|t| t.tech("cobalt_teletherapy"));
+        for year in [
+            1935, 1945, 1955, 1965, 1975, 1985, 1995, 2000, 2005, 2015, 2025,
+        ] {
+            s.sim.run_until(Date::new(year, 1, 2));
+            let w = s.world();
+            let can = w
+                .countries
+                .iter()
+                .position(|(_, c)| c.tag == "CAN")
+                .unwrap();
+            let mut by: Vec<(String, i64)> = Vec::new();
+            let (mut jobs, mut va, mut asked) = (0.0, 0.0, 0.0);
+            for r in &w.econ.regions {
+                let mi = usize::from(r.market);
+                let m = &w.econ.markets[mi];
+                for p in r.plants.iter().filter(|p| p.levels > 0) {
+                    let b = &cat.buildings[usize::from(p.kind)];
+                    let method = &b.methods[p.method as usize];
+                    let run = p.levels as f64
+                        * p.staffing.to_f64_lossy()
+                        * bf_sim::econ::plant_tfp(r, m, b).to_f64_lossy()
+                        * p.utilization.to_f64_lossy();
+                    if usize::from(p.kind) == hospital
+                        && let Some(g) = radium
+                        && let Some((_, q)) =
+                            method.inputs.iter().find(|(x, _)| usize::from(*x) == g)
+                    {
+                        asked += q.to_f64_lossy() * 52.0 * run;
+                    }
+                    if usize::from(p.kind) != mine {
+                        continue;
+                    }
+                    let tag = w
+                        .countries
+                        .iter()
+                        .nth(mi)
+                        .map(|(_, c)| c.tag.clone())
+                        .unwrap();
+                    match by.iter_mut().find(|(x, _)| *x == tag) {
+                        Some(e) => e.1 += p.levels,
+                        None => by.push((tag, p.levels)),
+                    }
+                    if mi == can {
+                        jobs += p.levels as f64 * p.staffing.to_f64_lossy() * method.workers as f64;
+                        let value = |l: &[(u16, laplace_schelling::Fixed)]| -> f64 {
+                            l.iter()
+                                .map(|(g, q)| {
+                                    q.to_f64_lossy() * m.price[usize::from(*g)].to_f64_lossy()
+                                })
+                                .sum()
+                        };
+                        va += (value(&method.outputs) - value(&method.inputs)) * 52.0 * run;
+                    }
+                }
+            }
+            by.sort_by_key(|x| std::cmp::Reverse(x.1));
+            if let Some(t) = tele {
+                let stage = |tag: &str| {
+                    w.countries
+                        .iter()
+                        .position(|(_, c)| c.tag == tag)
+                        .map(|i| format!("{tag} {:?}", w.research.stage[i][t]))
+                        .unwrap_or_default()
+                };
+                eprintln!(
+                    "TELE {year} | {} | {} | {} | {} | {}",
+                    stage("USA"),
+                    stage("CAN"),
+                    stage("BRA"),
+                    stage("RAJ"),
+                    stage("CHN")
+                );
+            }
+            let gdp = w.econ.markets[can].gdp_last_year.to_f64_lossy();
+            eprintln!(
+                "MINES radium {} {year} | radium asked {:.0} g | uranium mine levels {:?} | CAN mines: {:.0} jobs, value added {:.2} bn, {:.2} % of GDP {:.0} bn",
+                if rules.is_empty() { "off" } else { "on" },
+                asked / 1000.0,
+                by.iter().take(8).collect::<Vec<_>>(),
+                jobs,
+                va / 1e9,
+                va * 100.0 / gdp.max(1.0),
+                gdp / 1e9
+            );
+        }
+    }
+}

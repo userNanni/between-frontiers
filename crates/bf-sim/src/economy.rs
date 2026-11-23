@@ -145,6 +145,11 @@ pub struct MethodDef {
     /// (docs/economy.pt-BR.md, "Capital por método").
     #[serde(default)]
     pub capital: Option<f32>,
+    /// Inputs that fade as a technology spreads in the country: `(good, technology)`. The use of
+    /// the good falls with the technology's stage there (`econ::fade`): a substitute taken up
+    /// gradually, with no decision (the radium of the hospitals and the cobalt of 1951).
+    #[serde(default)]
+    pub fading: Vec<(String, String)>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
