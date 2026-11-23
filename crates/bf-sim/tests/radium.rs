@@ -21,6 +21,7 @@ fn radium_and_the_uranium_stock_to_1940() {
     let radium = usize::from(cat.good("radium").unwrap());
     let ore = usize::from(cat.good("uranium_ore").unwrap());
     let mine = cat.building("uranium_mine").unwrap();
+    let hospital = cat.building("hospital").unwrap();
     let mut s = Session::new(
         d.new_world(),
         1925,
@@ -36,14 +37,37 @@ fn radium_and_the_uranium_stock_to_1940() {
             .unwrap_or_default()
     };
     eprintln!(
-        "RAD year | radium made (g, at full staff) | mine levels by market | uranium ore stock by market (t)"
+        "RAD year | radium made (g, at the plants' productivity) | radium the hospitals ask for (g) | hospital levels, and times productivity | mine levels by market | uranium ore stock by market (t)"
     );
     for year in 1926..=1941 {
         s.sim.run_until(Date::new(year, 1, 2));
         let w = s.world();
         let mut made = 0.0;
+        let (mut used, mut h_levels, mut h_tfp) = (0.0, 0i64, 0.0);
         let mut levels: Vec<(String, i64)> = Vec::new();
         for r in &w.econ.regions {
+            let m = &w.econ.markets[usize::from(r.market)];
+            for p in r
+                .plants
+                .iter()
+                .filter(|p| usize::from(p.kind) == hospital && p.levels > 0)
+            {
+                let b = &cat.buildings[hospital];
+                let tfp = bf_sim::econ::plant_tfp(r, m, b).to_f64_lossy();
+                let run = p.levels as f64
+                    * p.staffing.to_f64_lossy()
+                    * tfp
+                    * p.utilization.to_f64_lossy();
+                if let Some((_, q)) = b.methods[p.method as usize]
+                    .inputs
+                    .iter()
+                    .find(|(g, _)| usize::from(*g) == radium)
+                {
+                    used += q.to_f64_lossy() * 52.0 * run;
+                }
+                h_levels += p.levels;
+                h_tfp += p.levels as f64 * tfp;
+            }
             for p in r
                 .plants
                 .iter()
@@ -51,11 +75,19 @@ fn radium_and_the_uranium_stock_to_1940() {
             {
                 let m = &cat.buildings[mine].methods[p.method as usize];
                 if let Some((_, q)) = m.outputs.iter().find(|(g, _)| usize::from(*g) == radium) {
+                    let tfp = bf_sim::econ::plant_tfp(
+                        r,
+                        &w.econ.markets[usize::from(r.market)],
+                        &cat.buildings[mine],
+                    )
+                    .to_f64_lossy();
                     made += q.to_f64_lossy()
                         * 52.0
                         * p.levels as f64
                         * p.staffing.to_f64_lossy()
-                        * p.utilization.to_f64_lossy();
+                        * tfp
+                        * p.utilization.to_f64_lossy()
+                        * p.input_ratio.to_f64_lossy();
                 }
                 let t = tag(w, usize::from(r.market));
                 match levels.iter_mut().find(|(x, _)| *x == t) {
@@ -69,9 +101,10 @@ fn radium_and_the_uranium_stock_to_1940() {
             .filter(|(_, t)| *t > 0.5)
             .collect();
         eprintln!(
-            "RAD {} | {:.1} | {:?} | {:?} | radium price BEL {:.0}",
+            "RAD {} | {:.1} | {:.1} | {h_levels}, {h_tfp:.0} | {:?} | {:?} | radium price BEL {:.0}",
             year - 1,
             made / 1000.0,
+            used / 1000.0,
             levels,
             stocks,
             w.econ.markets[w
