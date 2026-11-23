@@ -18,8 +18,8 @@ fn settle(h: &mut egui_kittest::Harness<'_, bf_client::App>) {
     }
 }
 
-/// Britain in February 1926: the market good by good sorted by what it makes; then steel
-/// opened on who makes and who uses it. Portuguese at 1600 × 900, English at 1280 × 720.
+/// Britain in February 1928: the market good by good sorted by what it makes; then steel
+/// opened on its price year by year, who makes and who uses it. Portuguese at 1600 × 900, English at 1280 × 720.
 #[test]
 #[ignore = "needs a GPU (or software Vulkan) and the generated map; run with --ignored"]
 fn goods_tab() {
@@ -27,7 +27,7 @@ fn goods_tab() {
     let _ = std::fs::remove_dir_all(&user);
     let s = session(
         "GBR",
-        Date::new(1926, 2, 1),
+        Date::new(1928, 2, 1),
         bf_sim::data::GameData::load(&root())
             .expect("game data")
             .switches,

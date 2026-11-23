@@ -1365,6 +1365,19 @@ fn time_panel(
 
 /// The chart of a figure's closed years: a line over a faint band, the first and last years under
 /// it, and the lines written for it.
+/// A line of points year by year with its lines under it, as the HUD's tips draw it, for
+/// another screen (the goods tab's price); `floor` is the least span the height shows.
+pub fn year_chart(ui: &mut Ui, points: Vec<(i32, f64)>, lines: Vec<String>, floor: f64) {
+    chart(
+        ui,
+        &Series {
+            points,
+            lines,
+            floor,
+        },
+    );
+}
+
 fn chart(ui: &mut Ui, series: &Series) {
     ui.add_space(space::XS);
     if series.points.len() >= 2 {

@@ -19,3 +19,5 @@ goods-takers = Quem usa
 goods-takers-none = Nenhum prédio usa este bem; as famílias e o Estado compram.
 goods-see-in-buildings = { $building }: ver em Prédios
 goods-col-stock-tip = Só os bens estocáveis têm estoque (hoje, o minério de urânio), e só com a regra do estoque de mercado ligada (market_stock); sem ela, a coluna fica em "—".
+goods-price-years = Preço sobre o base, ano a ano: mínimo { $low }, máximo { $high }, de { $from } a { $to }.
+goods-price-years-few = A série do preço aparece quando fecharem dois anos com mercado do bem aqui.
