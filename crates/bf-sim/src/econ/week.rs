@@ -122,6 +122,9 @@ pub struct Week {
     pub capital: Option<Arc<super::capital::CapitalRules>>,
     /// Stocks by market (`game::Switches::market_stock`, `econ::stock`).
     pub stock: bool,
+    /// The household fuel the countryside gathers (`game::Switches::household_biomass`,
+    /// `econ::biomass`); `None` off.
+    pub biomass: Option<Arc<super::biomass::BiomassRules>>,
 }
 
 /// What a pop wants to buy this week.
@@ -256,6 +259,7 @@ pub(crate) fn plan_pop(
     budget: Fixed,
     staple_in_kind: Fixed,
     urban: Option<bool>,
+    fuel_gathered: Fixed,
 ) -> PopPlan {
     let mut tier_cost = [Fixed::ZERO; 4];
     let mut need_cost = Vec::with_capacity(cat.needs.len());
@@ -266,6 +270,11 @@ pub(crate) fn plan_pop(
             (Some(need), Some(pop)) if need != pop => Fixed::ZERO,
             _ => n.per_capita.mul_ratio(size, 1_000_000),
         };
+        // The share of the household fuel the countryside gathers itself (firewood, dung, straw,
+        // `econ::biomass`): out of the market, as the food it grows.
+        if Some(i) == cat.domestic_fuel_need && fuel_gathered > Fixed::ZERO {
+            qty *= Fixed::ONE - fuel_gathered.min(Fixed::ONE);
+        }
         if Some(i) == cat.staple_need && qty > Fixed::ZERO {
             in_kind = fill(staple_in_kind, qty);
             qty = (qty - staple_in_kind).max(Fixed::ZERO);
@@ -429,6 +438,7 @@ fn region_orders<const SKIP_IDLE: bool>(
     r: &Region,
     exists: &[bool],
     national: &[bool],
+    fuel_gathered: Fixed,
 ) -> RegionOrders {
     let g = cat.goods.len();
     let m = &econ.markets[r.market as usize];
@@ -475,6 +485,11 @@ fn region_orders<const SKIP_IDLE: bool>(
                 budget.max(Fixed::ZERO),
                 own_food,
                 Some(super::migration::is_urban(pi)),
+                if super::migration::is_urban(pi) {
+                    Fixed::ZERO
+                } else {
+                    fuel_gathered
+                },
             );
             for (gi, q) in &plan.orders {
                 demand[*gi as usize] += *q;
@@ -1295,6 +1310,12 @@ impl System<GameWorld> for Week {
         let econ = &world.econ;
         let unlocks = Unlocks::new(cat, ctx.date.year, self.tree.as_deref(), &world.research);
         let exists = &unlocks.goods;
+        // The rural households' fuel gathered by market (`econ::biomass`); empty off.
+        let biomass = self
+            .biomass
+            .as_ref()
+            .map(|b| super::biomass::shares(b, econ))
+            .unwrap_or_default();
         let national = super::local::national(
             cat,
             self.tree.as_deref(),
@@ -1304,7 +1325,11 @@ impl System<GameWorld> for Week {
         let orders: Vec<RegionOrders> = econ
             .regions
             .par_iter()
-            .map(|r| region_orders::<true>(cat, econ, r, exists, &national[r.market as usize]))
+            .map(|r| {
+                let mi = r.market as usize;
+                let gathered = biomass.get(mi).copied().unwrap_or(Fixed::ZERO);
+                region_orders::<true>(cat, econ, r, exists, &national[mi], gathered)
+            })
             .collect();
         let g = cat.goods.len();
         let mut demand = vec![vec![Fixed::ZERO; g]; econ.markets.len()];
@@ -1765,10 +1790,11 @@ pub fn plan_pop_public(
     in_kind: Fixed,
 ) -> Vec<(GoodIx, Fixed)> {
     let mixes = NeedMixes::new(cat, prices, &Unlocks::by_year(cat, year).goods);
-    plan_pop(cat, &mixes, size, budget, in_kind, None).orders
+    plan_pop(cat, &mixes, size, budget, in_kind, None, Fixed::ZERO).orders
 }
 
 /// The goods a pop of `size` living in town (`urban`) or in the countryside would order.
+#[allow(clippy::too_many_arguments)]
 pub fn plan_pop_where(
     cat: &Catalogue,
     prices: &[Fixed],
@@ -1777,9 +1803,19 @@ pub fn plan_pop_where(
     budget: Fixed,
     in_kind: Fixed,
     urban: bool,
+    fuel_gathered: Fixed,
 ) -> Vec<(GoodIx, Fixed)> {
     let mixes = NeedMixes::new(cat, prices, &Unlocks::by_year(cat, year).goods);
-    plan_pop(cat, &mixes, size, budget, in_kind, Some(urban)).orders
+    plan_pop(
+        cat,
+        &mixes,
+        size,
+        budget,
+        in_kind,
+        Some(urban),
+        fuel_gathered,
+    )
+    .orders
 }
 
 #[cfg(test)]
@@ -1808,8 +1844,8 @@ mod tests {
             for (ri, r) in econ.regions.iter().enumerate() {
                 let nat = &national[r.market as usize];
                 let m = &econ.markets[r.market as usize];
-                let skip = region_orders::<true>(cat, econ, r, &unlocks.goods, nat);
-                let full = region_orders::<false>(cat, econ, r, &unlocks.goods, nat);
+                let skip = region_orders::<true>(cat, econ, r, &unlocks.goods, nat, Fixed::ZERO);
+                let full = region_orders::<false>(cat, econ, r, &unlocks.goods, nat, Fixed::ZERO);
                 assert_eq!(skip, full, "orders of state {ri}");
                 // Short of every good, so that an input's shortfall moves the input ratio.
                 let mut v = View::last_week(cat, m, r, nat);

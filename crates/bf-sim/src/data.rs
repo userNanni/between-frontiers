@@ -80,6 +80,9 @@ pub struct GameData {
     /// What each country's railways carried in 1925 (`data/economy/rail.ron`); the world reads
     /// it only with `Switches::rail_by_line`.
     pub rail: Option<crate::econ::setup::RailLines>,
+    /// The share of the rural households' fuel gathered in 1925 (`data/economy/biomass.ron`);
+    /// read only with `Switches::household_biomass`.
+    pub biomass: Option<Arc<crate::econ::biomass::BiomassRules>>,
 }
 
 /// Format of `data/economy/capital.ron`; shares, elasticities and points in thousandths.
@@ -218,6 +221,61 @@ impl GoldFile {
             return_cover: milli(self.return_cover),
             devaluation: milli(self.devaluation),
             base_1925: Vec::new(),
+        })
+    }
+}
+
+/// Format of `data/economy/biomass.ron`.
+#[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct BiomassFile {
+    /// Share of the households' fuel that was firewood, dung or straw, for a country the list
+    /// does not name, by its 1925 GDP per head: (at most this GDP per head, share), ascending.
+    by_income: Vec<(u32, f64)>,
+    /// GDP per head above which the share falls (`econ::biomass::BiomassRules::falls_above`).
+    falls_above: f64,
+    /// (tag, share of the households' fuel gathered in 1925).
+    households_1925: Vec<(String, f64)>,
+}
+
+impl BiomassFile {
+    /// The rural households' share: the households' over the rural share of the people (the
+    /// towns bought their fuel), at most 1.
+    fn resolve(
+        &self,
+        countries: &CountriesFile,
+    ) -> Result<crate::econ::biomass::BiomassRules, String> {
+        let mut households: Vec<Option<f64>> = vec![None; countries.countries.len()];
+        for (tag, share) in &self.households_1925 {
+            let i = countries
+                .countries
+                .iter()
+                .position(|c| &c.tag == tag)
+                .ok_or_else(|| format!("economy/biomass.ron: unknown tag {tag}"))?;
+            if !(0.0..=1.0).contains(share) {
+                return Err(format!("economy/biomass.ron: {tag} share out of range"));
+            }
+            households[i] = Some(*share);
+        }
+        let rural_1925 = countries
+            .countries
+            .iter()
+            .zip(households)
+            .map(|(c, h)| {
+                let h = h.unwrap_or_else(|| {
+                    self.by_income
+                        .iter()
+                        .find(|(top, _)| c.gdp_per_capita <= *top)
+                        .or(self.by_income.last())
+                        .map_or(0.0, |x| x.1)
+                });
+                let rural = 1.0 - f64::from(c.urbanization.unwrap_or(0.3)).clamp(0.0, 0.95);
+                Fixed::from_f64_lossy((h / rural).min(1.0))
+            })
+            .collect();
+        Ok(crate::econ::biomass::BiomassRules {
+            rural_1925,
+            falls_above: Fixed::from_f64_lossy(self.falls_above),
         })
     }
 }
@@ -463,11 +521,15 @@ impl GameData {
         let rail = optional::<RailFile>(&data.join("economy/rail.ron"))?
             .map(|f| f.resolve(&countries, industry.as_ref()))
             .transpose()?;
+        let biomass = optional::<BiomassFile>(&data.join("economy/biomass.ron"))?
+            .map(|f| f.resolve(&countries).map(Arc::new))
+            .transpose()?;
         let data = Self {
             settle,
             gold,
             capital,
             rail,
+            biomass,
             trade_geography: std::sync::OnceLock::new(),
             switches: optional::<crate::game::Switches>(&data.join("rules.ron"))?
                 .unwrap_or_default()
@@ -908,6 +970,7 @@ impl GameData {
                 .capital
                 .clone()
                 .filter(|_| switches.capital_follows_rate && switches.payments_settle),
+            biomass: self.biomass.clone().filter(|_| switches.household_biomass),
         }
     }
 
@@ -940,6 +1003,10 @@ impl GameData {
                 population: self.population.as_ref(),
                 industry: self.industry.as_ref(),
                 rail: self.rail.as_ref().filter(|_| self.switches.rail_by_line),
+                biomass: self
+                    .biomass
+                    .as_deref()
+                    .filter(|_| self.switches.household_biomass),
             },
         );
         world.demography = crate::demography::DemographyState {

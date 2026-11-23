@@ -33,6 +33,8 @@ pub struct Inputs<'a> {
     pub industry: Option<&'a IndustryFile>,
     /// The railway lines of 1925 (`Switches::rail_by_line`): `None` off.
     pub rail: Option<&'a RailLines>,
+    /// The rural households' fuel gathered in 1925 (`Switches::household_biomass`): `None` off.
+    pub biomass: Option<&'a super::biomass::BiomassRules>,
 }
 
 /// The railways by their lines in the setup: the good, the railway and the traditional
@@ -279,6 +281,7 @@ fn spending(
     b: &Block,
     a: &Accounts,
     k: f64,
+    gathered: Fixed,
 ) -> (Vec<f64>, f64) {
     let mut fd = vec![0.0f64; cat.goods.len()];
     // What households cannot place on their needs goes to the pool (`week::PopPlan::unplaced`).
@@ -296,6 +299,11 @@ fn spending(
             fx(a.consumption[pi] * k),
             fx(b.in_kind * a.people[pi] / pop),
             super::migration::is_urban(pi),
+            if super::migration::is_urban(pi) {
+                Fixed::ZERO
+            } else {
+                gathered
+            },
         );
         let mut placed = 0.0;
         for (g, q) in plan {
@@ -513,9 +521,16 @@ pub fn build(cat: &Catalogue, inp: &Inputs) -> Economy {
         .find(|n| n.key == "staple_food")
         .map_or(0.0, |n| n.per_capita.to_f64_lossy() / 1000.0);
 
+    // The rural households' fuel gathered in 1925, by country (`econ::biomass`).
+    let gathered_of = |ci: usize| {
+        inp.biomass
+            .and_then(|b| b.rural_1925.get(ci).copied())
+            .unwrap_or(Fixed::ZERO)
+    };
     // 2. Blocks: population, labour structure, final demand, capacity.
     let mut blocks: Vec<Block> = Vec::new();
     for (ci, def) in inp.countries.iter().enumerate() {
+        let gathered = gathered_of(ci);
         for colony in [false, true] {
             let idx: Vec<usize> = (0..regions.len())
                 .filter(|&i| regions[i].market as usize == ci && regions[i].colony == colony)
@@ -588,6 +603,7 @@ pub fn build(cat: &Catalogue, inp: &Inputs) -> Economy {
                         fx(gdp_week * 0.70 * share * part),
                         fx(in_kind / 5.0 * part),
                         urban,
+                        if urban { Fixed::ZERO } else { gathered },
                     );
                     for (g, q) in plan {
                         final_demand[g as usize] += q.to_f64_lossy();
@@ -772,7 +788,8 @@ pub fn build(cat: &Catalogue, inp: &Inputs) -> Economy {
             if a.workers > 0.0 && room > 0.0 {
                 b.tfp = (b.tfp * a.workers / room).clamp(0.2, 12.0);
             }
-            (b.final_demand, b.invested) = spending(cat, &base, &base_f, b, a, b.scale(a));
+            (b.final_demand, b.invested) =
+                spending(cat, &base, &base_f, b, a, b.scale(a), gathered_of(b.market));
         }
         lv = solve_levels(cat, &blocks, &raw_producers, &local_producer, rail);
     }
