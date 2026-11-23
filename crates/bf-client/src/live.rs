@@ -49,6 +49,27 @@ pub struct YearPoint {
     pub gdp: f64,
     pub literacy: f64,
     pub urban: f64,
+    /// The year's series (`econ::series`), from the year the simulation began to keep them.
+    pub series: Option<SeriesPoint>,
+}
+
+/// One closed year of the series the charts read beside `econ.history`.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct SeriesPoint {
+    /// Life expectancy at birth, the country's and the metropole's.
+    pub life: f64,
+    pub life_metro: f64,
+    /// Public debt on 1 January, the treasury's cash; real dollars.
+    pub debt: f64,
+    pub treasury: f64,
+    /// Consumer prices over the year before, and the central bank's rate; in percent.
+    pub inflation: f64,
+    pub rate: f64,
+    /// The metropole's own: people, GDP, literacy and urban share.
+    pub population_metro: f64,
+    pub gdp_metro: f64,
+    pub literacy_metro: f64,
+    pub urban_metro: f64,
 }
 
 #[derive(Default)]
@@ -126,6 +147,29 @@ pub fn read(world: &GameWorld, date: Date) -> Option<LiveFigures> {
             }
         })
         .collect();
+    let series: std::collections::HashMap<(u16, i32), SeriesPoint> = world
+        .series
+        .years
+        .iter()
+        .map(|s| {
+            let f = |x: laplace_schelling::Fixed| x.to_f64_lossy();
+            (
+                (s.market, s.year),
+                SeriesPoint {
+                    life: f(s.life),
+                    life_metro: f(s.life_metro),
+                    debt: f(s.debt),
+                    treasury: f(s.treasury),
+                    inflation: f(s.inflation),
+                    rate: f(s.policy_rate),
+                    population_metro: s.population_metro as f64,
+                    gdp_metro: f(s.gdp_metro),
+                    literacy_metro: f(s.literacy_metro),
+                    urban_metro: f(s.urban_metro),
+                },
+            )
+        })
+        .collect();
     let mut history: Vec<Vec<YearPoint>> = vec![Vec::new(); n];
     for h in &econ.history {
         if let Some(v) = history.get_mut(usize::from(h.market)) {
@@ -135,6 +179,7 @@ pub fn read(world: &GameWorld, date: Date) -> Option<LiveFigures> {
                 gdp: h.gdp.to_f64_lossy(),
                 literacy: h.literacy.to_f64_lossy(),
                 urban: h.urban.to_f64_lossy(),
+                series: series.get(&(h.market, h.year)).copied(),
             });
         }
     }
