@@ -567,6 +567,75 @@ porque fazia tecido. No real, a maior parte do comércio é de variedades do mes
   habitante em 2025 contra 6 008 na faixa: instabilidade de trajetória de um país interior, anotada
   para a fila de equilíbrio. Custo nos 101 anos, tempo de usuário com `--check-determinism`: +7,1 %.
 
+## 15. O sinal do comércio: ferrovias pela linha (chave `rail_by_line`, desligada)
+
+**O defeito.** Os níveis de ferrovia de 1925 saíam de toda a demanda de transporte de cada país,
+que segue a população e o PIB, e os km de linha do cenário (`railways_km`) nunca eram lidos. A
+Índia tinha 55 níveis por 1.000 km de linha, a China 383, os EUA 9. O carvão dessas ferrovias
+fazia a Índia, a China e o Japão importarem e os EUA e o Reino Unido exportarem demais
+(`BF_DIAG_RAIL`, `BF_DIAG_ENERGY_GOODS`).
+
+**A regra (só com a chave, age quando o mundo é criado, `econ::setup`).**
+- A ferrovia de cada país carrega em 1925 no máximo o que as linhas dele carregaram
+  (`data/economy/rail.ron`): toneladas-km e passageiros-km da Liga das Nações (*International
+  Statistical Year-Book 1928*, tabelas 87–89) para 16 países; os outros, o tráfego por km de linha
+  dos EUA vezes os km do cenário.
+- O resto da demanda vai ao **transporte tradicional** (`traditional_transport`, "Transporte
+  tradicional"; método "Carros de boi, tropas e barcos"): o mesmo bem `transportation`, sem
+  carvão, com ração (grão) e ferramentas. Ninguém constrói níveis novos dele
+  (`BuildingDef::traditional`); os de 1925 se desgastam (1,5 % ao ano) e fecham com prejuízo,
+  enquanto as obras públicas fazem ferrovia e estrada: perde espaço sem data marcada.
+- **A unidade do bem** sai do próprio carvão da ferrovia: a ferrovia a vapor queima 13,35 t para
+  9 unidades, e as ferrovias americanas queimaram 108,8 Mt para 766,6 bilhões de t-km (passageiros
+  pesados) em 1925: uma unidade são 10.450 t-km. **Estimativas:** o peso do passageiro-km
+  (2,7 t-km, a relação das tarifas americanas, de memória) e a produtividade do transporte
+  tradicional por trabalhador, a mesma da ferrovia (onde o dado de ferrovia é completo, o que
+  as linhas não levavam ia por estrada, canal e costa; com a produtividade do carro de boi,
+  0,8 a 1 t por carro no Comitê Jayakar, o Reino Unido poria milhões a mais no transporte).
+
+**Conferência com o carvão medido das ferrovias (não é meta):**
+
+| | antes | com a chave | medido |
+|---|---|---|---|
+| EUA | 264 Mt | 110 Mt | 108,8 Mt (Statistical Abstract 1926, tab. 416) |
+| Reino Unido | 83 Mt | 19 Mt | 15,1 Mt (1924, Hansard) |
+| Índia | 53 Mt | 18 Mt | 6,7 Mt (Report on Indian Railways 1925-26) |
+
+**A medida (1925–1935, saldo de bens em % do PIB, `BF_DIAG_PAYMENTS`):**
+
+| | 1925 antes → com | 1930 antes → com | 1935 antes → com |
+|---|---|---|---|
+| Índia | −1,1 → −0,6 | −4,9 → −5,0 | −6,3 → −5,8 |
+| China | −3,8 → −3,1 | −6,2 → −5,8 | −4,1 → −3,5 |
+| Japão | −3,3 → −3,1 | +1,3 → +1,2 | +1,6 → +1,5 |
+| Reino Unido | −1,6 → −2,0 | +1,3 → +1,0 | +1,9 → +1,6 |
+| EUA | +2,0 → +1,7 | +2,8 → +2,3 | +3,5 → +2,9 |
+
+Importação líquida de carvão (parte do uso): Índia 48 % → 48 % em 1925 e 11 % → 3 % em 1935;
+Japão 44 % → 39 % e 26 % → −2 %; China 39 % → 35 %; Reino Unido exporta 35 % → 44 % do que faz em
+1925; EUA exportam 23 % → 23 %.
+
+- O carvão das ferrovias deixa de ser o erro grande; o sinal muda pouco. **A Índia ainda importa
+  metade do carvão que usa:** o resto do uso de carvão (famílias e Estado, 60 % do total) é o que
+  sobra, e lá as famílias queimavam esterco e lenha. Os EUA usam menos carvão (275 Mt contra 480),
+  mas as minas fazem o mesmo, e exportam o resto. O sinal da Índia e dos EUA continua errado.
+- **O Reino Unido não passa a importar cereais por causa disto:** com a chave, a ração aumenta o
+  uso de grão e ele importa 15 % em 1925, e nada a partir de 1930. A causa é outra: o arranjo
+  inicial dá a cada país fazendas para a própria demanda onde há terra, e o Reino Unido de 1925
+  importava mais da metade do trigo por preço, não por falta de terra.
+- **Agregados (101 anos, contra a faixa de 14 amostras de `17782c2`):** PIB mundial dentro da
+  faixa em todas as décadas (+0,9σ em 1935, +1,5σ em 1945, +0,2σ em 1965, −0,3σ em 2025);
+  população mundial +1 a +2 milhões em 1935–1945 (+3,7σ: a faixa da população nesses anos tem
+  desvio de menos de um milhão), −0,4 % em 2025 (−1,5σ). Por território, metade fica fora da
+  faixa em 1925 (o arranjo inicial muda) e 8 a 15 % depois de 1965.
+- **Desligada:** hash de 10 anos e série de 101 anos idênticos aos do `main` (`030bcaa9…`).
+- **Por que um prédio novo não muda o hash:** um bem novo alonga os vetores de preço, oferta e
+  demanda de todos os mercados, que entram no hash; foi isso que mudou o hash nos PRs da guerra
+  que acrescentaram bens (`weapon_cores`, `weapon_assemblies`). Um prédio novo sem nenhum nível
+  não aparece em região nenhuma (as plantas de cada região só listam os prédios que têm), e
+  nada indexado pelo número de prédios entra no hash; com a chave desligada o transporte
+  tradicional nunca tem nível, e o mundo é o mesmo.
+
 ## Fontes
 
 - Clemens, M. A.; Williamson, J. G. "Why did the tariff–growth correlation change after 1950?".

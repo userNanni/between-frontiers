@@ -1341,6 +1341,13 @@ pub struct Switches {
     /// `data/economy/reserves.ron`), and new gold from the mines joins them. Off: trade moves no
     /// money between countries and nobody holds reserves.
     pub payments_settle: bool,
+    /// Railways by their lines (`econ::setup`, `data/economy/rail.ron`): the 1925 railways are
+    /// sized to what each country's lines carried, and the rest of the demand for transport goes
+    /// to traditional transport (carts, pack animals, porters, river boats), which burns no coal;
+    /// nobody builds new levels of it, and they wear and close as railways and roads come. It
+    /// acts when the world is made (`GameData::new_world`): set it in `data/rules.ron` or
+    /// `BF_RULES`. Off: every railway is sized by the whole demand for transport.
+    pub rail_by_line: bool,
     /// The reputation of each country's breaches (`treaty::Reputation`, docs/treaties.pt-BR.md
     /// 9.4, owner's decisions P1–P3): a breach weighs on the reputation of its kind, a tenth of
     /// it is forgotten each year, a change of regime halves the security one, and the table
@@ -1418,6 +1425,7 @@ impl Switches {
         "market_stock",
         "negotiation",
         "payments_settle",
+        "rail_by_line",
         "reputation",
         "schooling",
         "small_market_wage_floor",
@@ -1448,6 +1456,7 @@ impl Switches {
             "market_stock" => self.market_stock = true,
             "negotiation" => self.negotiation = true,
             "payments_settle" => self.payments_settle = true,
+            "rail_by_line" => self.rail_by_line = true,
             "reputation" => self.reputation = true,
             "schooling" => self.schooling = true,
             "small_market_wage_floor" => self.small_market_wage_floor = true,

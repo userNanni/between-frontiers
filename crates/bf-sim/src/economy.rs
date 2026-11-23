@@ -121,6 +121,10 @@ pub struct BuildingDef {
     /// pay of those who work it.
     #[serde(default)]
     pub informal: bool,
+    /// Traditional transport and the like (`Switches::rail_by_line`): laid only by the 1925
+    /// setup; nobody builds new levels, and the old ones wear and close like any private plant.
+    #[serde(default)]
+    pub traditional: bool,
     /// Production methods, the oldest first. A building runs one at a time.
     pub methods: Vec<MethodDef>,
 }

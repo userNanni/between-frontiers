@@ -517,5 +517,19 @@
             (key: "hand_assembly", available_from: 1945, inputs: [("explosives", 3.31), ("electrical_equipment", 82.76)], outputs: [("weapon_assemblies", 1.655)], jobs: [("laborer", 100), ("skilled_worker", 330), ("engineer", 120), ("clerk", 40), ("manager", 20), ("capitalist", 5)], capital: Some(1.0)),
             (key: "electronic_assembly", available_from: 1950, inputs: [("explosives", 1.655), ("electronic_components", 165.5)], outputs: [("weapon_assemblies", 1.655)], jobs: [("laborer", 100), ("skilled_worker", 330), ("engineer", 120), ("clerk", 40), ("manager", 20), ("capitalist", 5)], capital: Some(1.0)),
         ]),
-    ],
+        // Traditional transport (`Switches::rail_by_line`): carts, pack animals, porters, river and
+        // coastal boats, the transport of 1925 that burned no coal. Laid only by the 1925 setup with
+        // the switch on, for the demand the railway lines of the scenario do not carry; nobody
+        // builds more (`traditional`). Output per worker: the steam railway's (10 units a week for
+        // 975 workers against its 9 for 870), an estimate, the game's choice: where the railway
+        // data are complete (Britain, France, Japan) most of what the lines did not carry went by
+        // road, canal and coast, not by cart, and a cart's own productivity (0.8 to 1 t a bullock
+        // cart, Indian Road Development Committee 1927–28, pp. 114–115: some 4,500 tonne-km a year
+        // a driver at an estimated 20 km a day and 250 days) would put millions more to work in
+        // the residual of the model's demand for transport. Fodder (grain) a tenth of the output's
+        // value, as the railway's coal; tools as its rolling stock. Estimates.
+        (key: "traditional_transport", group: "infrastructure", resource: None, farm: None, traditional: true, methods: [
+            (key: "animal_haulage", available_from: 1925, inputs: [("grain", 1400), ("tools", 30)], outputs: [("transportation", 10000)], jobs: [("laborer", 950), ("clerk", 20), ("manager", 5)]),
+        ]),
+],
 )

@@ -77,6 +77,9 @@ pub struct GameData {
     /// Private capital's rule, when `data/economy/capital.ron` exists (read with
     /// `Switches::capital_follows_rate`).
     pub capital: Option<Arc<crate::econ::capital::CapitalRules>>,
+    /// What each country's railways carried in 1925 (`data/economy/rail.ron`); the world reads
+    /// it only with `Switches::rail_by_line`.
+    pub rail: Option<crate::econ::setup::RailLines>,
 }
 
 /// Format of `data/economy/capital.ron`; shares, elasticities and points in thousandths.
@@ -216,6 +219,61 @@ impl GoldFile {
             devaluation: milli(self.devaluation),
             base_1925: Vec::new(),
         })
+    }
+}
+
+/// Format of `data/economy/rail.ron`.
+#[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RailFile {
+    /// Tonne-kilometres one unit of the good `transportation` moves.
+    tkm_per_unit: f64,
+    /// Tonne-kilometres a passenger-kilometre counts for.
+    passenger_weight: f64,
+    /// The country whose traffic per km of line stands in for those with no traffic.
+    reference: String,
+    /// (tag, millions of tonne-km, millions of passenger-km) of 1925.
+    traffic_1925: Vec<(String, f64, f64)>,
+}
+
+impl RailFile {
+    fn resolve(
+        &self,
+        countries: &CountriesFile,
+        industry: Option<&crate::initial::IndustryFile>,
+    ) -> Result<crate::econ::setup::RailLines, String> {
+        let n = countries.countries.len();
+        let index = |tag: &str| {
+            countries
+                .countries
+                .iter()
+                .position(|c| c.tag == tag)
+                .ok_or_else(|| format!("economy/rail.ron: unknown tag {tag}"))
+        };
+        if self.tkm_per_unit <= 0.0 || self.passenger_weight < 0.0 {
+            return Err("economy/rail.ron: tkm_per_unit or passenger_weight out of range".into());
+        }
+        let km = |tag: &str| {
+            industry
+                .and_then(|f| f.countries.iter().find(|c| c.country == tag))
+                .and_then(|c| c.output.iter().find(|(k, _)| k == "railways_km"))
+                .map_or(0.0, |(_, v)| f64::from(*v))
+        };
+        let week = |tkm: f64, pkm: f64| {
+            (tkm + pkm * self.passenger_weight) * 1e6 / self.tkm_per_unit / 52.0
+        };
+        let mut traffic = vec![-1.0f64; n];
+        for (tag, tkm, pkm) in &self.traffic_1925 {
+            traffic[index(tag)?] = week(*tkm, *pkm);
+        }
+        let r = index(&self.reference)?;
+        let per_km = traffic[r].max(0.0) / km(&self.reference).max(1.0);
+        for (i, c) in countries.countries.iter().enumerate() {
+            if traffic[i] < 0.0 {
+                traffic[i] = km(&c.tag) * per_km;
+            }
+        }
+        Ok(crate::econ::setup::RailLines { traffic })
     }
 }
 
@@ -401,10 +459,15 @@ impl GameData {
         let capital = optional::<CapitalFile>(&data.join("economy/capital.ron"))?
             .map(|f| f.resolve().map(Arc::new))
             .transpose()?;
+        let industry: Option<IndustryFile> = optional(&scenario.join("industry.ron"))?;
+        let rail = optional::<RailFile>(&data.join("economy/rail.ron"))?
+            .map(|f| f.resolve(&countries, industry.as_ref()))
+            .transpose()?;
         let data = Self {
             settle,
             gold,
             capital,
+            rail,
             trade_geography: std::sync::OnceLock::new(),
             switches: optional::<crate::game::Switches>(&data.join("rules.ron"))?
                 .unwrap_or_default()
@@ -428,7 +491,7 @@ impl GameData {
             deposits: optional(&scenario.join("deposits.ron"))?,
             land: optional(&scenario.join("land.ron"))?,
             population: optional(&scenario.join("population.ron"))?,
-            industry: optional(&scenario.join("industry.ron"))?,
+            industry,
             diplomacy,
             candidates,
             influence: optional(&data.join("diplomacy/influence.ron"))?,
@@ -876,6 +939,7 @@ impl GameData {
                 land: self.land.as_ref(),
                 population: self.population.as_ref(),
                 industry: self.industry.as_ref(),
+                rail: self.rail.as_ref().filter(|_| self.switches.rail_by_line),
             },
         );
         world.demography = crate::demography::DemographyState {

@@ -1,0 +1,67 @@
+// Railways by their lines (`game::Switches::rail_by_line`, `econ::setup`; docs/trade.pt-BR.md,
+// "O sinal do comércio"): what each country's railways carried in 1925. With the switch on, the
+// 1925 railways are sized to it and the rest of each country's demand for transport goes to
+// traditional transport, which burns no coal. Read only with the switch on.
+//
+// Sources:
+// - Traffic: League of Nations, *International Statistical Year-Book 1928* (Geneva, 1929),
+//   Tables 87–89, "Railways: length of lines", "goods traffic" (tonne-km) and "passenger
+//   traffic" (passenger-km), pp. 140–166, read on the page images of archive.org's scan. The
+//   year is 1925, or the fiscal year 1925–26 for India, Japan and Egypt (April to March). Fast
+//   goods are left out by the League for every country.
+// - Check, not target (`docs/trade.pt-BR.md`): the railways' coal. United States, Class I
+//   railways, 1925: 119.9 million short tons (108.8 million tonnes), *Statistical Abstract of the
+//   United States 1926*, Table 416, p. 400. Great Britain, 1924: 14.9 million long tons
+//   (15.1 Mt), written answer in the House of Commons, 31 March 1925 (Hansard). British India,
+//   1925–26: 6,610,361 long tons in coal equivalent (6.7 Mt), *Report on Indian Railways
+//   1925–26* (read in the digitized text).
+//
+// Notes and estimates:
+// - Great Britain's passenger-km: the League prints September 1925 alone (3,170 million);
+//   taken twelve times (an estimate).
+// - Italy and Belgium: the State networks only (most of the traffic). Egypt: the sum of the
+//   page's two lines (the total is not printed). Sweden: the printed total (the parts add up to
+//   3,544).
+// - No tonne-km on the page, so the reference's traffic per km of line stands in (the km are
+//   `industry.ron`'s `railways_km`): Argentina, Brazil, Mexico, the Netherlands, South Africa,
+//   Czechoslovakia, Spain (the printed 132 is implausible), Australia (four states only), China
+//   (only the South Manchuria Railway has traffic: 5,422 million tonne-km, 892 million
+//   passenger-km) and every country not listed.
+// - NOT READ FROM A SOURCE (estimates, the game's choice):
+//   - `passenger_weight`: a passenger-km counts as 2.7 tonne-km, the ratio of what American
+//     railways took per passenger-mile (about 2.9 cents) and per ton-mile (about 1.1 cents) in
+//     1925, from memory, not read on a page.
+//   - `tkm_per_unit`: the tonne-km one unit of the good `transportation` (a lot worth $1,000 of
+//     2011 at base price) stands for, taken from the railway's own coal: the steam railway
+//     burns 13.35 t of coal for 9 units (`buildings.ron`), and the American railways burned
+//     108.8 Mt for 766.6 billion tonne-km (passengers weighed) in 1925, 142 g a tonne-km; so a
+//     unit is 1.483 t / 142 g = 10,450 tonne-km, and the railways' coal comes out as measured in
+//     the reference country. The American railways then carry about 37 % of the model's
+//     demand for transport in the United States; the rest goes by road, water and animal. As a
+//     check, the price: $1,000 of 2011 are some $70 of 1925, at the 0.7 cents a tonne-km of
+//     American freight (from memory) 10,000 tonne-km.
+(
+    tkm_per_unit: 10450.0,
+    // Estimate, not read on a page (the American fare ratio, from memory; see above).
+    passenger_weight: 2.7,
+    reference: "USA",
+    // (tag, millions of tonne-km, millions of passenger-km).
+    traffic_1925: [
+        ("USA", 609417.0, 58205.0),
+        ("GBR", 29976.0, 38040.0),
+        ("GER", 59046.0, 50090.0),
+        ("FRA", 40406.0, 29823.0),
+        ("RAJ", 32531.0, 32721.0),
+        ("JAP", 12200.0, 20873.0),
+        ("SOV", 47438.0, 19404.0),
+        ("ITA", 12210.0, 0.0),
+        ("CAN", 51922.0, 4685.0),
+        ("POL", 12631.0, 6366.0),
+        ("SWE", 3511.0, 2039.0),
+        ("BEL", 7037.0, 6049.0),
+        ("AUT", 3751.0, 4124.0),
+        ("HUN", 2996.0, 2837.0),
+        ("ROM", 3828.0, 3412.0),
+        ("EGY", 1442.0, 1559.0),
+    ],
+)
