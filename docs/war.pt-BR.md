@@ -687,6 +687,59 @@ com 0,4% do PIB. A conferência com a ogiva de 3.600 está em "O custo da ogiva 
   2. **A bomba industrial em 1943, dois anos antes da real (1945).** O caminho é o crédito do programa. Com 0,4% do PIB desde 1940, ele empurra a cadeia (fissão, enriquecimento, reator, bomba) a `dollars_per_cost` por ponto. A penalidade de estar à frente da história (`ahead`) freia, mas não basta. Por isso há 9 ogivas já em 1944.
   3. **O orçamento fixo em 0,4% do PIB.** O gasto americano saltou depois de 1950 (Coreia, a corrida da bomba H); os ~2.400 de 1955 vêm daí. O jogo fica em 189. É decisão de quem joga, ou da IA da fase 6, e não regra.
 
+### Passo 3 do físsil: o rádio (U4), atrás da chave `radium`, desligada
+Antes da bomba, a mina de urânio trabalha pelo rádio, que os hospitais compram. O urânio sai como
+subproduto e, com `market_stock`, fica em estoque.
+- **Atrás da chave.** A chave é lida na carga (`GameData::load_with`, `--rule radium`).
+  - Desligada, o bem `radium`, o seu lugar nos métodos e a tecnologia `cobalt_teletherapy` saem
+    do catálogo e da árvore, que ficam iguais aos do main. O hash de 10 anos e a série de 101
+    anos são os do main.
+  - O motivo da chave: o rádio muda empregos e PIB do jogo de hoje, e o equilíbrio vem por
+    último. Liga junto com a fatia nuclear e o `market_stock`.
+- **A mina** (`uranium_mine`): o rádio é o primeiro produto, na razão física com o urânio, de
+  3,40e-7 em massa (conta minha pelas meias-vidas), com 80% de recuperação (estimativa).
+- **O hospital pede 3,09 mg por nível.** Na produtividade 1, são os ~24 g do mundo por volta de
+  1925 (Minerals Yearbook 1930, p. 873; 1934, p. 503) sobre os 3.615 níveis de hospital de 1925,
+  que pesam 7.768 vezes a produtividade (conta minha, medido no tick).
+  - A primeira versão punha 7 mg, e o jogo pedia 54 g.
+- **O rádio some com a teleterapia de cobalto-60.** O campo `fading: [(bem, tecnologia)]` vai no
+  método, no dado, e é genérico: o uso do insumo cai com o estágio da tecnologia no país.
+  - Metade no industrial e zero no difundido (`econ::week::FADE_*`). **Valores de desenho.**
+  - Sem método usando o campo, o tick é o mesmo.
+  - A troca de método da economia (10% a mais de lucro) nunca tiraria o rádio do hospital, que
+    pesa ~0,03% do custo do nível.
+  - A tecnologia `cobalt_teletherapy`, que requer a fissão:
+    - demonstrada em 1951: London, Ontário, em 27 out., e Saskatoon, em 8 nov. (LHSC, 2011;
+      Houston e Fedoruk, *Encyclopedia of Saskatchewan*; páginas web sem número);
+    - industrial em 1953: estimativa, pela primeira unidade na Itália em 1953.
+- **A mina segue o minério quando o rádio some.** Uma usina cujo produto principal é um bem que
+  some (`Catalogue::fades`) segue o produto que mais vende.
+  - Sem isso, a mina de rádio caía a 5% de uso sem comprador, e a falta de minério construía o
+    dobro de níveis com pessoal cheio. O Canadá de 2025 ia a +10% do PIB.
+  - A regra vale só para esses bens. Aplicada a todo prédio com vários produtos (carne e lã,
+    petróleo e gás), mudava o jogo desde 1925.
+- **Conferência com a chave ligada** (`tests/radium.rs`), medida e não ajustada:
+  - Rádio pedido no mundo, em gramas: 24 em 1925, 31 em 1935, 41 em 1945, 47 em 1955, 38 em
+    1965, 10 em 1975 e 0 de 1985 em diante.
+    - A teleterapia fica difundida nos EUA em 1965; no Canadá, no Raj e na China em 1975; no
+      Brasil em 1985.
+    - A queda real do uso não tem série anual com página aqui. O Minerals Yearbook de 1969 diz
+      que o rádio "is being replaced gradually", e a AECL parou de refinar rádio em 1950–53.
+      Fica como lacuna.
+  - Minério de urânio em estoque em 1940: 1.681 t de U3O8 em todos os mercados (913 t no Congo
+    belga, 562 t nos EUA). O real é ~1.220 t (conta minha: Congo mais Staten Island; H&A, p.
+    26; Jones, p. 79).
+  - **101 anos contra a faixa do `17782c2`** (15 rodadas): de 2% a 8% dos territórios fora a 2σ
+    por década, o ruído da faixa.
+    - Em 1925 são 12%, mas ali o σ da faixa é quase zero.
+    - PIB mundial: +0,8σ em 1965, −2,2σ em 1985 e +0,5σ em 2025.
+    - Canadá: −0,5σ em 1985, +0,7σ em 2000 e −1,3σ em 2025.
+- **Dependência anotada: o preço de um bem sem comprador não cai.** O rádio fica em ~650 por mg
+  depois que os hospitais param de comprá-lo. O investimento vê as minas como lucrativas e
+  constrói mais: a URSS chega a 195 níveis de mina de urânio em 2025, contra 26 sem rádio.
+  - O valor adicionado fica pequeno, porque o rádio não vende.
+  - É regra do mercado (economia), a rever quando a chave ligar.
+
 ### A montagem da ogiva (item 3 da lista de funções; opção (a) do orquestrador, 2026-11-23)
 O passo que faltava entre o núcleo e a arma.
 - **Fonte:** Hewlett e Duncan, *Atomic Shield 1947–1952*, AEC, 1969.
