@@ -914,6 +914,71 @@ pub fn main() -> Result<(), String> {
         }
         return Ok(());
     }
+    // Railways against the scenario's network (`BF_DIAG_RAIL=TAG,TAG`): at the start, each
+    // country's railway levels, its km of railway (`industry.ron`), levels per 1,000 km, the coal
+    // the railways burn a year at full use, and the transport they make against the country's
+    // demand for it.
+    if let Ok(spec) = std::env::var("BF_DIAG_RAIL") {
+        let w = s.world();
+        let e = &w.econ;
+        let rail = cat.building("railway").ok_or("no railway")?;
+        let coal = cat.good("coal").ok_or("no coal")? as usize;
+        let tr = cat.good("transportation").ok_or("no transportation")? as usize;
+        let km = |tag: &str| {
+            data.industry.as_ref().and_then(|f| {
+                f.countries.iter().find(|c| c.country == tag).and_then(|c| {
+                    c.output
+                        .iter()
+                        .find(|(k, _)| k == "railways_km")
+                        .map(|(_, v)| *v as f64)
+                })
+            })
+        };
+        let all: Vec<String> = data
+            .countries
+            .countries
+            .iter()
+            .map(|c| c.tag.clone())
+            .collect();
+        let tags: Vec<String> = if spec == "all" {
+            all.clone()
+        } else {
+            spec.split(',').map(str::to_string).collect()
+        };
+        println!("tag,levels,km,levels_per_1000km,coal_Mt_year,transport_demand_levels");
+        for tag in tags {
+            let Some(mi) = all.iter().position(|t| *t == tag) else {
+                continue;
+            };
+            let levels: i64 = e
+                .regions
+                .iter()
+                .filter(|r| r.market as usize == mi)
+                .flat_map(|r| r.plants.iter())
+                .filter(|p| p.kind as usize == rail)
+                .map(|p| p.levels)
+                .sum();
+            let meth = &cat.buildings[rail].methods[0];
+            let per_coal = meth
+                .inputs
+                .iter()
+                .find(|(g, _)| *g as usize == coal)
+                .map_or(0.0, |(_, q)| q.to_f64_lossy());
+            let per_tr = meth
+                .outputs
+                .iter()
+                .find(|(g, _)| *g as usize == tr)
+                .map_or(1.0, |(_, q)| q.to_f64_lossy());
+            let k = km(&tag).unwrap_or(0.0);
+            println!(
+                "{tag},{levels},{k:.0},{:.1},{:.1},{:.0}",
+                levels as f64 / k.max(1.0) * 1000.0,
+                levels as f64 * per_coal * 52.0 / 1e6,
+                e.markets[mi].demand[tr].to_f64_lossy() / per_tr
+            );
+        }
+        return Ok(());
+    }
     // World trade over world GDP every ten years (data/history/trade_openness.csv): exports
     // plus imports at base prices, a week in July times 52, over the GDP of the last year.
     if std::env::var_os("BF_DIAG_TRADE").is_some() {
