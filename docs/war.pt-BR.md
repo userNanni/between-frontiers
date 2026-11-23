@@ -783,8 +783,8 @@ Está em `war::nuclear_use`, atrás de `war`, no save 39. Os parâmetros ficam e
   - A defesa antimíssil do alvo para a sua parcela. Cada ogiva que chega é um efeito.
   - O uso conta como teste (N3).
 - **Contravalor:**
-  - mata `killed_per_warhead` (185 mil, o mesmo número do dano inaceitável) nas regiões
-    metropolitanas mais populosas, uma ogiva por região, em ciclo;
+  - mata nas cidades do alvo, pela densidade do alvo (abaixo, "Densidade do alvo"), e não mais um
+    número fixo por ogiva;
   - derruba níveis de edifício no dobro da parcela da população morta (`wreck_factor`).
   - Fonte de escala (RERF, FAQ, Q1, mortos agudos nos dois a quatro primeiros meses):
     Hiroshima, 90 a 166 mil de 340 a 350 mil; Nagasaki, 60 a 80 mil de 250 a 270 mil. O texto
@@ -829,6 +829,72 @@ Está em `war::nuclear_use`, atrás de `war`, no save 39. Os parâmetros ficam e
   - o tabu cresce e cai;
   - a IA só usa primeiro depois da linha.
 - **A precipitação (N8)** está no passo 4b, logo abaixo.
+
+### Densidade do alvo (item 5 da lista de funções; opção (b) do orquestrador, 2026-11-19)
+Está em `war::target`, atrás de `war`. Os três leitores usam a mesma função: o golpe (`strike`), o
+dano inaceitável da dissuasão (`balance`: quantas ogivas até um quarto da população) e a tela
+(`nuclear_view`). O `killed_per_warhead` saiu.
+- **A regra:**
+  - A população urbana de cada região metropolitana é uma cidade cuja densidade cai do centro,
+    `D(r) = D0·e^(−r/r0)`, com `r0 = √(U ÷ 2πD0)`.
+  - As áreas letais das ogivas que caem nela se somam num disco de raio `R`, e morrem os de
+    dentro: `U·[1 − (1 + x)·e^(−x)]`, com `x = R/r0 = √(2·A·D0/U)`.
+  - Cada ogiva vai para a cidade onde mata mais. A primeira mata na densidade do núcleo; as
+    seguintes chegam aos subúrbios. O retorno cai pela forma, sem número-alvo.
+  - Nunca passa da população urbana da região: há teste com 500 ogivas numa cidade só.
+  - A conta é toda inteira (partes por bilhão), igual em qualquer máquina.
+- **`core_density` = 9.900 por km².** É a densidade a menos de 0,6 milha do marco zero em
+  Hiroshima (25.800/mi²) e Nagasaki (25.500/mi²), da tabela 12.09 de Glasstone e Dolan, *The
+  Effects of Nuclear Weapons*, 1977, p. 544. São cidades japonesas de 1945, de madeira e sem
+  aviso: o valor serve de teto para outras épocas. A variação por país é lacuna.
+- **`lethal_km2_per_emt` = 132.** Conta minha, sobre a mesma tabela: os mortos de cada anel
+  divididos pela densidade do anel.
+  - Hiroshima dá 8,46 km² para 12,5 kt; Nagasaki, 9,03 km² para 22 kt (p. 36).
+  - Juntas, são 17,5 km² para 0,132 EMT.
+  - Separadas, dão 157 e 115 km² por EMT. Nagasaki teve morros que abrigaram parte da cidade.
+- **A população rural fica fora do alvo** por construção. A precipitação (N8) é que a alcança.
+  Se as cidades de um país não somam um quarto da população, o dano inaceitável fica fora de
+  alcance (`balance::UNREACHABLE`).
+- **Conferência, medida e não alvo** (`tests/war_target.rs`; os dois mundos vêm de uma rodada
+  desde 1925 com a guerra desligada, a série do main):
+  - **Japão de 1945:** 65,1 M de pessoas, 52,6 M nas cidades (81%), 19 cidades. A maior é
+    JPN-TOKYO, com 4,33 M.
+    - Uma ogiva de 12,5 kt mata 62.620 na maior cidade. Hiroshima real: 68.000 mortos de 256.300
+      em risco.
+    - Uma de 22 kt mata 89.367 (Nagasaki real: 38.000 de 173.800).
+    - É leitura, não conferência: a densidade do núcleo saiu da mesma tabela, e o jogo atira na
+      maior cidade, não em Hiroshima.
+  - **União Soviética de 1964:** 340,5 M de pessoas, 217,3 M nas cidades (64%), 110 cidades. Os
+    36% rurais ficam intocados.
+
+    | EMT | ogivas | mortos | parcela da população | real (FRUS) |
+    |---|---|---|---|---|
+    | 100 (de 1 EMT) | 100 | 61,8 M | 18,2% | 15% |
+    | 200 (de 1 EMT) | 200 | 99,0 M | 29,1% | 21% |
+    | 100 (de 0,076) | 1.315 | 65,1 M | 19,1% | — |
+    | 400 (de 1 EMT) | 400 | 139,6 M | 41,0% | — |
+
+    O real vem de Enthoven e Smith, 1971, *How Much Is Enough?*, p. 207, como o FRUS 1964–68,
+    vol. X, doc. 102, cita.
+    - O jogo passa o FRUS em 1,2× com 100 EMT e em 1,4× com 200. O retorno cai, mas menos que no
+      real.
+    - **Leitura minha:** o núcleo japonês de 1945 é mais denso e mais frágil que a cidade
+      soviética de 1964. Além disso, a URSS do jogo tem 340 M de pessoas e 64% urbanas, contra
+      cerca de 228 M e cerca de metade urbana na real. Esses dois números estão sem página aqui:
+      é dependência da demografia, anotada e não corrigida.
+    - Para um quarto da população soviética de 1964 são precisas 155 ogivas de 1 EMT, 127 de
+      1,25 e 2.003 de 0,076.
+- **O que muda nos testes N1–N10** (todos com o mundo de 1925):
+  - **Uma decisão vira:** "3.000 ogivas de fissão em 1.500 bombardeiros" deixa de dissuadir a
+    URSS. Matam 32,3 M, abaixo do quarto (35,2 M); antes eram 37,4 M.
+  - Nenhuma outra decisão muda: os EUA de 1962 seguem com segundo golpe, Cuba cede, Berlim não
+    cede e a Coreia não muda.
+  - O dano inaceitável muda em número de ogivas:
+    - o da URSS, em ogivas americanas: de 77 para 117;
+    - o dos EUA, em ogivas soviéticas: de 70 para 49;
+    - o da China em 1950, em ogivas americanas: de 4.245 para 8.645.
+  - Os EUA de 1962 matam 47,3 M, e não mais 141 M: as cidades da URSS de 1925 saturam.
+  - Os termos da N10 caem de ±20.641 para ±13.584.
 
 ### Passo 4b, em rascunho: a precipitação (N8)
 O dono pediu uma perda de produtividade gradual, que cai com os anos e fica à vista como estoque.
