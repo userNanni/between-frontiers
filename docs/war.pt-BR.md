@@ -614,6 +614,24 @@ com 0,4% do PIB. A conferência com a ogiva de 3.600 está em "O custo da ogiva 
     - A eletricidade e os químicos são **estimativa**.
   - **Minério por núcleo:** 14,7 t de U3O8 pelo enriquecimento e 8,1 t pelo reator.
     `tests/warhead_cost.rs` confere as duas faixas.
+  - **A unidade (corrigida depois do #333):** os números acima são o que uma usina fez por ano
+    nos EUA de 1945. As quantidades de um método valem na produtividade 1, e a produtividade
+    americana de 1945 é 7,25, medida no tick. Por isso o dado é cada número ÷ 7,25, insumos e
+    produto juntos: 0,2586 e 1,841 núcleos por nível-ano (**conta minha**).
+    - Antes, um nível dos EUA de 1945 tinha capacidade de cerca de 13,6 e 97 núcleos por ano.
+    - O minério por núcleo não muda. A semana arredonda o dado a 1/1000: o reator fica em 1,82
+      núcleo por nível-ano, 1,1% abaixo.
+    - Conferência de 1940, EUA a 0,4% do PIB, com a montagem do #333:
+
+      | Fim do ano | 1944 | 1945 | 1946 | 1947 | 1950 | 1955 |
+      |---|---|---|---|---|---|---|
+      | antes desta correção | 4 | 8 | 16 | 26 | 60 | 136 |
+      | depois | 2 | 6 | 13 | 21 | 49 | 114 |
+      | real | 0 | 2 | 9 | 13 | ~300 | ~2.400 |
+
+      - A usina de núcleos chega a 3 níveis em 1945, 5 em 1947, 8 em 1950 e 12 em 1955.
+      - A Alemanha fica com 10 e 42 ogivas em 1950 e 1955; o Reino Unido, com 17 e 70.
+      - Com `war` desligada, o hash de 10 anos é o do #333 e a série de 101 anos fica idêntica.
 - **A usina do programa:** o programa pede `weapon_core_plant`. A obra escolhe o último método que
   o país conhece, o reator quando o conhece. Na prática é o mais barato; não há comparação
   explícita de custo (**leitura minha**).
@@ -727,8 +745,8 @@ O passo que faltava entre o núcleo e a arma.
   - Nos três casos, de 1950 a 1955, o estoque sobe exatamente 26 por ano: uma ogiva a cada duas
     semanas, a cadência de encomendar uma, entregar e encomendar de novo.
   - Não é calibração, é um teto artificial: o próximo PR troca a regra da encomenda.
-  - A mesma falha de unidade está na usina de núcleos (#279): o 1,875 de Oak Ridge e o 13,35 de
-    Hanford B estão no dado como produção de um nível. O próximo PR corrige do mesmo jeito.
+  - A mesma falha de unidade estava na usina de núcleos (#279), corrigida no PR seguinte (ver o
+    passo 1).
 - **Com `war` desligada:**
   - o bem e o prédio novos, no fim das listas, mudam o hash de 10 anos para `71d55cda…`;
   - a série anual de 101 anos fica idêntica à do main;
