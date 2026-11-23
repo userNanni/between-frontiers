@@ -487,3 +487,76 @@ fn the_programme_opens_a_mine() {
     assert!(asked.is_some(), "a mine asked for");
     assert!(most > before, "a mine built");
 }
+
+/// The warhead order follows the money (no batch): it grows past one warhead, and the warheads
+/// join one by one. When the programme ends, the order waits with the cores and assemblies it
+/// holds: the budget does not buy it, nothing is lost, and no warhead is added.
+#[test]
+fn the_order_follows_the_money_and_waits_when_the_programme_ends() {
+    let d = data();
+    let mut world = d.new_world();
+    let usa = index(&world, "USA");
+    for k in ["nuclear_fission", "uranium_enrichment", "atomic_bomb"] {
+        world.research.stage[usa][tech(d, k)] = Stage::Industrial;
+    }
+    let mut s = Session::new(world, 1925, Date::new(1925, 1, 1), 2, Some(d.rules()));
+    s.submit(GameCommand::NuclearProgramme {
+        tag: "USA".into(),
+        share: Some(20),
+    });
+    let mil = &d.war.as_ref().unwrap().military;
+    let warhead = mil.unit("nuclear_warhead").unwrap();
+    let count = |w: &GameWorld| -> Fixed {
+        w.war.countries[usa]
+            .formations
+            .iter()
+            .filter(|f| f.unit == warhead)
+            .map(|f| f.elements)
+            .sum()
+    };
+    let order = |w: &GameWorld| {
+        w.war.countries[usa]
+            .queue
+            .iter()
+            .find(|o| o.unit == "nuclear_warhead")
+            .cloned()
+    };
+    let mut largest = Fixed::ZERO;
+    for _ in 0..156 {
+        week(&mut s);
+        if let Some(o) = order(s.world()) {
+            largest = largest.max(o.ordered - o.delivered);
+        }
+    }
+    let w = s.world();
+    eprintln!(
+        "after three years: warheads {:.1}, the largest open order {:.1}",
+        count(w).to_f64_lossy(),
+        largest.to_f64_lossy()
+    );
+    assert!(largest > Fixed::ONE, "the order grows with the money");
+    s.submit(GameCommand::NuclearProgramme {
+        tag: "USA".into(),
+        share: None,
+    });
+    week(&mut s);
+    week(&mut s);
+    let (n0, o0) = (count(s.world()), order(s.world()));
+    for _ in 0..26 {
+        week(&mut s);
+    }
+    let (n1, o1) = (count(s.world()), order(s.world()));
+    eprintln!(
+        "programme ended: warheads {:.1} → {:.1}; held {:?} → {:?}",
+        n0.to_f64_lossy(),
+        n1.to_f64_lossy(),
+        o0.as_ref().map(|o| o.built.clone()),
+        o1.as_ref().map(|o| o.built.clone())
+    );
+    assert_eq!(n0, n1, "no warhead without the programme");
+    assert_eq!(
+        o0.map(|o| o.built),
+        o1.map(|o| o.built),
+        "what the order holds waits, and nothing is lost"
+    );
+}
