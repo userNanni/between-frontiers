@@ -83,9 +83,10 @@ fn programme(ui: &mut Ui, cx: &mut TabContext<'_>) {
         return;
     }
     let d = super::gov_ui::control_row(ui, &i18n.tr("programme-share"), |ui| {
-        super::gov_ui::stepper(
+        super::gov_ui::stepper_typed(
             ui,
             &pm(p.share),
+            super::gov_ui::STEP_VALUE_W,
             &i18n.tr("programme-step-tip"),
             p.share > 1,
             p.share < p.max_share,
@@ -94,10 +95,19 @@ fn programme(ui: &mut Ui, cx: &mut TabContext<'_>) {
                 id: "forces.programme.share",
                 row: 0,
             },
+            super::gov_ui::typed_pct(
+                i18n,
+                f64::from(p.share) / 10.0,
+                0.1,
+                f64::from(p.max_share) / 10.0,
+                1,
+            ),
         )
     });
-    if d != 0 {
-        let share = (i32::from(p.share) + d).clamp(1, i32::from(p.max_share)) as u16;
+    if let Some(share) =
+        super::gov_ui::step_to(d, i32::from(p.share), 1, 10.0, 1, i32::from(p.max_share))
+    {
+        let share = share as u16;
         cx.commands.push(GameCommand::NuclearProgramme {
             tag: tag.clone(),
             share: Some(share),
@@ -313,9 +323,10 @@ fn composition(ui: &mut Ui, cx: &mut TabContext<'_>) {
             let other = now[1 - k];
             let room = 1000u16.saturating_sub(other);
             let d = super::gov_ui::control_row(ui, &i18n.tr(key), |ui| {
-                super::gov_ui::stepper(
+                super::gov_ui::stepper_typed(
                     ui,
                     &pm(u32::from(now[k])),
+                    super::gov_ui::STEP_VALUE_W,
                     &i18n.tr("composition-step-tip"),
                     now[k] > 0,
                     now[k] < room,
@@ -324,11 +335,24 @@ fn composition(ui: &mut Ui, cx: &mut TabContext<'_>) {
                         id: &format!("forces.composition.{k}"),
                         row: k,
                     },
+                    super::gov_ui::typed_pct(
+                        i18n,
+                        f64::from(now[k]) / 10.0,
+                        0.0,
+                        f64::from(room) / 10.0,
+                        0,
+                    ),
                 )
             });
-            if d != 0 {
-                now[k] =
-                    (i32::from(now[k]) + d * COMPOSITION_STEP).clamp(0, i32::from(room)) as u16;
+            if let Some(to) = super::gov_ui::step_to(
+                d,
+                i32::from(now[k]),
+                COMPOSITION_STEP,
+                10.0,
+                0,
+                i32::from(room),
+            ) {
+                now[k] = to as u16;
                 send = Some(Some(now));
             }
         }
