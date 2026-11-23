@@ -162,6 +162,9 @@ pub struct GameWorld {
     /// empty while it is off.
     #[serde(default)]
     pub stocks: crate::econ::stock::StockState,
+    /// Yearly series for the charts (`econ::series`): a record, out of the hash.
+    #[serde(default)]
+    pub series: crate::econ::series::SeriesState,
 }
 
 impl HashState for GameWorld {
@@ -287,6 +290,7 @@ impl GameWorld {
             gold: Default::default(),
             capital: Default::default(),
             stocks: Default::default(),
+            series: Default::default(),
             demography: crate::demography::DemographyState::default(),
             treaties: Default::default(),
             war: crate::war::WarState::default(),
@@ -2193,9 +2197,64 @@ mod tests {
             hash_of(&with_ledger)
         );
         assert_eq!(
-            hash_of(&headed(44, &encode_snapshot(&with_ledger).unwrap())),
+            hash_of(&headed(45, &encode_snapshot(&with_ledger).unwrap())),
             hash_of(&with_ledger)
         );
+        // Version 44, the monetary base, before the yearly series: the world without `series`.
+        {
+            #[derive(Serialize)]
+            struct BeforeSeries44<'a> {
+                scenario: &'a String,
+                player: &'a Option<Id<Country>>,
+                countries: &'a Table<Country, CountryState>,
+                census: &'a Vec<CensusRecord>,
+                econ: &'a crate::econ::Economy,
+                research: &'a crate::research::ResearchState,
+                politics: &'a crate::polity::PoliticsState,
+                demography: &'a crate::demography::DemographyState,
+                borders: &'a crate::borders::BordersState,
+                foreign: &'a crate::foreign_stakes::ForeignState,
+                influence: &'a crate::influence::InfluenceState,
+                treaties: &'a crate::treaty::TreatyState,
+                war: &'a crate::war::WarState,
+                education: &'a crate::demography::education::EducationState,
+                independence: &'a crate::borders::independence::IndependenceState,
+                levers: &'a crate::econ::levers::LeversState,
+                tariffs: &'a crate::econ::customs::TariffState,
+                payments: &'a crate::econ::payments::PaymentsState,
+                reserves: &'a crate::econ::payments::ReservesState,
+                gold: &'a crate::econ::gold::GoldState,
+                capital: &'a crate::econ::capital::CapitalState,
+                stocks: &'a crate::econ::stock::StockState,
+            }
+            let w = &with_ledger;
+            let v44 = encode_snapshot(&BeforeSeries44 {
+                scenario: &w.scenario,
+                player: &w.player,
+                countries: &w.countries,
+                census: &w.census,
+                econ: &w.econ,
+                research: &w.research,
+                politics: &w.politics,
+                demography: &w.demography,
+                borders: &w.borders,
+                foreign: &w.foreign,
+                influence: &w.influence,
+                treaties: &w.treaties,
+                war: &w.war,
+                education: &w.education,
+                independence: &w.independence,
+                levers: &w.levers,
+                tariffs: &w.tariffs,
+                payments: &w.payments,
+                reserves: &w.reserves,
+                gold: &w.gold,
+                capital: &w.capital,
+                stocks: &w.stocks,
+            })
+            .unwrap();
+            assert_eq!(hash_of(&headed(44, &v44)), hash_of(&with_ledger));
+        }
         // Before version 44 the gold standings had no monetary base.
         let old_gold = crate::econ::gold::GoldStateBeforeBase::from(&with_ledger.gold);
         // Version 42, private capital, before the stocks by market: the world without `stocks`.
