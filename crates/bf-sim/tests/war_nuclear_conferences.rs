@@ -399,7 +399,17 @@ fn deterrence_with_real_arsenals() {
         } else {
             0.0
         };
-        let dead_raw = delivered * emt * f64::from(n.killed_per_warhead);
+        // The density of the target: the delivered warheads on the target's cities.
+        let cities = bf_sim::war::target::cities(&w, b);
+        let area = bf_sim::war::target::area_of(n.lethal_km2_per_emt, (emt * 1000.0) as u64);
+        let dead_raw: f64 = bf_sim::war::target::plan(
+            &cities,
+            n.core_density,
+            &vec![area; delivered.max(0.0) as usize],
+        )
+        .iter()
+        .map(|x| x.1 as f64)
+        .sum();
         let people: i64 = w
             .econ
             .regions

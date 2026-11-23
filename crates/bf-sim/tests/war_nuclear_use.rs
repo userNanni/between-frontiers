@@ -131,6 +131,29 @@ fn later(s: &Session, days: i64) -> Date {
     Date::from_days(s.sim.clock().date.to_days() + days)
 }
 
+/// The dead `n` of `by`'s warheads would kill in `on`'s cities now (`war::target`), each counted
+/// at `share` per mille.
+fn expected(w: &GameWorld, by: &str, on: &str, n: usize, share: i64) -> i64 {
+    let rule = &mil().rules.nuclear;
+    let (sum, count) =
+        bf_sim::war::balance::warhead_emt(mil(), &w.war.countries[index(w, by) as usize]);
+    let area = bf_sim::war::target::area_of(rule.lethal_km2_per_emt, (sum / count.max(1)) as u64);
+    let cities = bf_sim::war::target::cities(w, index(w, on));
+    bf_sim::war::target::plan(&cities, rule.core_density, &vec![area; n])
+        .iter()
+        .map(|x| x.1 * share / 1000)
+        .sum()
+}
+
+/// Within a percent: the cities grow a little in the week before the strike.
+fn near(got: u64, want: i64) {
+    let got = got as i64;
+    assert!(
+        (got - want).abs() * 100 <= want,
+        "dead {got}, the cities' rule {want}"
+    );
+}
+
 fn launch(s: &mut Session, mode: Mode, n: u32) {
     s.submit(GameCommand::NuclearUse {
         tag: "GER".into(),
@@ -142,7 +165,7 @@ fn launch(s: &mut Session, mode: Mode, n: u32) {
     s.sim.run_until(d);
 }
 
-/// A countervalue strike kills a warhead's dead each, wrecks plants, spends the warheads, stains
+/// A countervalue strike kills its warheads' dead in the target's cities (`war::target`), wrecks plants, spends the warheads, stains
 /// the user's security reputation, and cuts the taboo.
 #[test]
 fn countervalue_kills_and_wrecks() {
@@ -160,6 +183,7 @@ fn countervalue_kills_and_wrecks() {
         .reputation
         .get("GER")
         .map_or(Fixed::ZERO, |r| r.security);
+    let want = expected(s.world(), "GER", "POL", 2, 1000);
     launch(&mut s, Mode::Countervalue, 2);
     let w = s.world();
     let cze = index(w, "POL");
@@ -169,7 +193,7 @@ fn countervalue_kills_and_wrecks() {
         people(w, "POL"),
         levels(w, "POL")
     );
-    assert_eq!(dead, 2 * 462_870);
+    near(dead, want);
     assert!(
         people(w, "POL") <= p0 - 300_000,
         "the dead leave the people"
@@ -196,10 +220,11 @@ fn counterforce_spares_civilians_and_hits_the_forces() {
         mil(),
         &s.world().war.countries[index(s.world(), "POL") as usize],
     );
+    let want = expected(s.world(), "GER", "POL", 2, 100);
     launch(&mut s, Mode::Counterforce, 2);
     let w = s.world();
     let cze = index(w, "POL");
-    assert_eq!(w.war.nuclear.dead_of(cze), 2 * 46_287);
+    near(w.war.nuclear.dead_of(cze), want);
     let men = bf_sim::war::nuclear_use::land_men(mil(), &w.war.countries[cze as usize]);
     eprintln!("land men {men0} → {men}");
     assert!(men < men0 - 30_000, "the forces are hit");
@@ -224,12 +249,13 @@ fn the_target_answers_in_kind() {
     bombers(&mut w, "GER", 4);
     bombers(&mut w, "POL", 4);
     let mut s = at_war(w);
+    let want = expected(s.world(), "POL", "GER", 2, 100);
     launch(&mut s, Mode::Counterforce, 2);
     let d = later(&s, 8);
     s.sim.run_until(d);
     let w = s.world();
     assert_eq!(warheads(w, "POL"), 2, "two answered two");
-    assert_eq!(w.war.nuclear.dead_of(index(w, "GER")), 2 * 46_287);
+    near(w.war.nuclear.dead_of(index(w, "GER")), want);
     // The answer is not answered again.
     let d = later(&s, 15);
     s.sim.run_until(d);
