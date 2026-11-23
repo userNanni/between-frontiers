@@ -419,7 +419,7 @@ war-blockaded-basis = The enemy fleet cuts { $count ->
 } of our sea trade, worth { $total } a year. By land, trade goes on.
 war-fleet-command-later = The command of the fleet (the mission by zone) comes with the next slice; until then the fleet follows the rule above.
 programme-title = Nuclear programme
-programme-basis = A share of GDP a year, outside the military ceiling. Until the bomb, the money buys the laboratory and moves fission, enrichment and the bomb ahead; after it, three quarters keep the warhead order going, and each warhead takes a weapon core.
+programme-basis = A share of GDP a year, outside the military ceiling. Until the bomb, the money buys the laboratory and moves fission, enrichment and the bomb ahead; after it, three quarters go to the warhead order, which grows as far as that money buys; each warhead takes a weapon core and an assembly, and they join one by one.
 programme-start = Start the programme (0.1% of GDP a year)
 programme-share = Share of GDP a year
 programme-step-tip = A tenth of a point of GDP a year

@@ -431,7 +431,7 @@ war-blockaded-basis = A frota inimiga corta { $count ->
 } do nosso comércio por mar, que somavam { $total } por ano. Por terra, o comércio segue.
 war-fleet-command-later = O comando da frota (a missão por zona) vem na próxima fatia; por ora a frota segue a regra acima.
 programme-title = Programa nuclear
-programme-basis = Uma parcela do PIB por ano, por fora do teto militar. Até a bomba, o dinheiro compra o laboratório e adianta a fissão, o enriquecimento e a bomba; depois, três quartos mantêm a encomenda de ogivas, e cada ogiva leva um núcleo de arma.
+programme-basis = Uma parcela do PIB por ano, por fora do teto militar. Até a bomba, o dinheiro compra o laboratório e adianta a fissão, o enriquecimento e a bomba; depois, três quartos vão para a encomenda de ogivas, que cresce até onde esse dinheiro compra; cada ogiva leva um núcleo de arma e um conjunto de montagem, e elas entram uma a uma.
 programme-start = Começar o programa (0,1 % do PIB por ano)
 programme-share = Parcela do PIB por ano
 programme-step-tip = Um décimo de ponto do PIB por ano
