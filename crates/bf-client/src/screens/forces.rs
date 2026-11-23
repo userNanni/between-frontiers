@@ -145,11 +145,27 @@ fn programme(ui: &mut Ui, cx: &mut TabContext<'_>) {
             ],
         ),
     );
-    bf_ui_kit::stat_row(
-        ui,
-        &i18n.tr("programme-plants"),
-        &i18n.int(i64::from(p.plants)),
-    );
+    // The core plants by method: levels and the cores a year.
+    if p.core_plants.is_empty() {
+        bf_ui_kit::stat_row(
+            ui,
+            &i18n.tr("programme-core-plants"),
+            &i18n.tr("programme-none"),
+        );
+    }
+    for c in &p.core_plants {
+        bf_ui_kit::stat_row(
+            ui,
+            &i18n.tr(&format!("method-{}", c.method)),
+            &i18n.tr_args(
+                "programme-core-plant-value",
+                &[
+                    ("levels", bf_i18n::Arg::Num(c.levels as f64)),
+                    ("cores", arg(i18n.decimal(c.cores_year, 1))),
+                ],
+            ),
+        );
+    }
     bf_ui_kit::stat_row(
         ui,
         &i18n.tr("programme-fissile"),
@@ -161,6 +177,31 @@ fn programme(ui: &mut Ui, cx: &mut TabContext<'_>) {
             ],
         ),
     );
+    // Where the ore comes from: the country's mines, the market's stock, the market.
+    if let Some(o) = &p.ore {
+        bf_ui_kit::stat_row(
+            ui,
+            &i18n.tr("programme-ore"),
+            &i18n.tr_args(
+                "programme-ore-value",
+                &[
+                    ("mined", arg(i18n.compact(o.mined_year))),
+                    ("used", arg(i18n.compact(o.used_year))),
+                ],
+            ),
+        );
+        bf_ui_kit::small(
+            ui,
+            &i18n.tr_args(
+                "programme-ore-market",
+                &[
+                    ("stock", arg(i18n.compact(o.stock))),
+                    ("price", arg(money(i18n, o.price))),
+                    ("delivered", arg(pct(i18n, o.delivered * 100.0, 0))),
+                ],
+            ),
+        );
+    }
     // N3: the test makes the arsenal known to all; it needs a warhead. The test and the end
     // are rare decisions: a second click that says what changes, and a restore point before
     // (written where the commands are sent, `screens/game.rs`), as in the Agendas.
