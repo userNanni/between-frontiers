@@ -20,7 +20,7 @@ gold-parity = Paridade
 gold-parity-value = { $parity } (câmbio de hoje { $today })
 gold-parity-tip = Índice do câmbio, 1925 = 100. A paridade é o câmbio que o banco central segura.
 gold-cover-line = Cobertura { $cover } · legal { $legal } · piso { $floor }
-gold-cover-tip = Cobertura: reservas líquidas do banco central (ouro e divisas, menos a moeda do país nas reservas de fora), em moeda local ao câmbio real, sobre a moeda que ele emitiu (títulos que comprou e crédito aos bancos). Vai de −1000 % a +1000 %. A marca branca é a cobertura legal; a vermelha, o piso.
+gold-cover-tip = Cobertura: ouro e divisas do banco central, à taxa de câmbio real, sobre a base monetária (as notas e os depósitos do banco: o que o jogo emitiu, títulos e crédito, mais o resto da base de 1925). Vai de −1000 % a +1000 %. A marca branca é a cobertura legal; a vermelha, o piso.
 gold-below-legal = Abaixo da cobertura legal há { $weeks } { $weeks ->
     [one] semana
    *[other] semanas
@@ -89,7 +89,7 @@ gold-below-legal-stop = o banco não cria moeda e, em { $left } { $left ->
 }, começa a retirar moeda.
 gold-below-legal-withdrawing = o banco está retirando moeda: { $share } do PIB ao ano.
 gold-reserves-net = Reservas líquidas
-gold-reserves-net-tip = Reservas menos a nossa moeda nas reservas de fora: é o que a cobertura conta. Negativas, a cobertura fica abaixo de zero.
+gold-reserves-net-tip = Reservas menos a nossa moeda nas reservas de fora: o que sobra se os de fora trocassem a nossa moeda que guardam. A cobertura conta as reservas brutas, sem esse desconto.
 
 # A decisão do padrão-ouro (Agendas)
 gold-decision-open-join = Aderir ao padrão-ouro…
