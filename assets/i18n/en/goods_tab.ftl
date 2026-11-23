@@ -19,3 +19,5 @@ goods-takers = Who uses it
 goods-takers-none = No building uses this good; households and the state buy it.
 goods-see-in-buildings = { $building }: see in Buildings
 goods-col-stock-tip = Only storable goods have a stock (today, uranium ore), and only with the market stock rule on (market_stock); without it, the column reads "—".
+goods-price-years = Price over base, year by year: lowest { $low }, highest { $high }, from { $from } to { $to }.
+goods-price-years-few = The price's series shows once two years with a market for the good here have closed.
