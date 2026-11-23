@@ -323,6 +323,16 @@ fn root() -> PathBuf {
     crate::data_root::root()
 }
 
+/// A coin drawn from `seed` for item `k` (splitmix64): the perturbations' signs.
+fn draw(seed: u64, k: u64) -> bool {
+    let mut z = seed
+        .wrapping_add(k.wrapping_mul(0x9E37_79B9_7F4A_7C15))
+        .wrapping_add(0x9E37_79B9_7F4A_7C15);
+    z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
+    z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
+    (z ^ (z >> 31)) & 1 == 1
+}
+
 fn new_session(data: &GameData, seed: u64, threads: usize) -> Session {
     // No player: every country runs its own politics, so the law changes can be scored
     // against history everywhere.
@@ -348,13 +358,51 @@ fn new_session(data: &GameData, seed: u64, threads: usize) -> Session {
             m.pool = m.pool.mul_ratio(1000 + n, 1000);
         }
     }
-    let mut s = Session::new(
-        world,
-        seed,
-        Date::new(1925, 1, 1),
-        threads,
-        Some(rules(data)),
-    );
+    // `BF_PERTURB_SIGNED=S`: every pool 3 per mille larger or smaller, the sign drawn for each
+    // country from the seed S: a nudge that does not move every country the same way.
+    if let Some(seed) = std::env::var("BF_PERTURB_SIGNED")
+        .ok()
+        .and_then(|v| v.parse::<u64>().ok())
+    {
+        for (mi, m) in world.econ.markets.iter_mut().enumerate() {
+            let n = if draw(seed, mi as u64) { 3 } else { -3 };
+            m.pool = m.pool.mul_ratio(1000 + n, 1000);
+        }
+    }
+    let mut rules = rules(data);
+    if let Some(tree) = rules.tree.as_mut() {
+        let mut t = (**tree).clone();
+        let mut changed = false;
+        // `BF_PERTURB_RESEARCH=N`: every technology N per mille cheaper (negative: dearer), as if
+        // every country's research were that much larger.
+        if let Some(n) = std::env::var("BF_PERTURB_RESEARCH")
+            .ok()
+            .and_then(|v| v.parse::<i64>().ok())
+        {
+            for tech in &mut t.techs {
+                let c = i64::from(tech.cost) * (1000 - n) / 1000;
+                tech.cost = u32::try_from(c.max(1)).unwrap_or(tech.cost);
+            }
+            changed = true;
+        }
+        // `BF_PERTURB_TECH=S`: each technology's historical dates (demonstrated, industrialized)
+        // one year earlier or later, the direction drawn for each technology from the seed S.
+        if let Some(seed) = std::env::var("BF_PERTURB_TECH")
+            .ok()
+            .and_then(|v| v.parse::<u64>().ok())
+        {
+            for (k, tech) in t.techs.iter_mut().enumerate() {
+                let d = if draw(seed, k as u64) { 1 } else { -1 };
+                tech.demonstrated += d;
+                tech.industrialized += d;
+            }
+            changed = true;
+        }
+        if changed {
+            *tree = std::sync::Arc::new(t);
+        }
+    }
+    let mut s = Session::new(world, seed, Date::new(1925, 1, 1), threads, Some(rules));
     // `BF_LEVERS=TAG`: the budget levers' counterfactual (`docs/state.pt-BR.md`, "Testes, por
     // alavanca"): the country's levers set against the rule from 1925 on, half its servants,
     // public pay as the private wage, twice the reserve, the surplus to repaying and no deficit.
