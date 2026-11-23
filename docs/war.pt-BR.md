@@ -669,6 +669,58 @@ com 0,4% do PIB. A conferência com a ogiva de 3.600 está em "O custo da ogiva 
   2. **A bomba industrial em 1943, dois anos antes da real (1945).** O caminho é o crédito do programa. Com 0,4% do PIB desde 1940, ele empurra a cadeia (fissão, enriquecimento, reator, bomba) a `dollars_per_cost` por ponto. A penalidade de estar à frente da história (`ahead`) freia, mas não basta. Por isso há 9 ogivas já em 1944.
   3. **O orçamento fixo em 0,4% do PIB.** O gasto americano saltou depois de 1950 (Coreia, a corrida da bomba H); os ~2.400 de 1955 vêm daí. O jogo fica em 189. É decisão de quem joga, ou da IA da fase 6, e não regra.
 
+### A montagem da ogiva (item 3 da lista de funções; opção (a) do orquestrador, 2026-11-23)
+O passo que faltava entre o núcleo e a arma.
+- **Fonte:** Hewlett e Duncan, *Atomic Shield 1947–1952*, AEC, 1969.
+  - p. 47: o relatório da AEC a Truman, de 3 abr. 1947, diz que nenhuma das bombas estava
+    montada. As equipes civis da guerra tinham se desfeito, e as militares ainda não estavam
+    treinadas.
+  - p. 134: Los Alamos não tinha linhas de produção nem procedimentos escritos.
+- **A regra:**
+  - A ogiva pede um núcleo (`weapon_cores`) e um conjunto não nuclear (`weapon_assemblies`): as
+    lentes de explosivo, o iniciador, a espoleta e o invólucro.
+  - O conjunto é feito pela `weapon_assembly_plant`, empresa do Estado como a usina de núcleos:
+    o lucro e o prejuízo vão ao Tesouro, e ela não fecha por prejuízo.
+  - O programa pede a usina quando as usinas de núcleos rodam e a bomba pode ser feita. Volta a
+    pedir quando o mercado entrega menos de `assembly_shortage` (90%) dos conjuntos que a
+    encomenda de ogivas pede.
+  - O pedido usa a mesma espera entre pedidos (`plant_weeks`) da usina de núcleos e da mina.
+- **Por que um bem, e não a usina entregando a ogiva direto:** a ogiva é uma formação montada
+  por encomenda a partir de bens, não produto de prédio. Fazer um prédio entregar formações seria
+  uma mudança maior que o bem.
+- **Métodos:**
+  - `hand_assembly` (bomba atômica, 1945): 2 t de explosivo e a espoleta como equipamento
+    elétrico (50) por conjunto. São os insumos que a ogiva pedia antes.
+  - `electronic_assembly` (termonuclear, 1950): 1 t de explosivo e 100 de componentes
+    eletrônicos.
+- **VALOR DE DESENHO, sem fonte:** 12 conjuntos por ano por nível, com os empregos da usina de
+  núcleos (mais engenheiros). Não há página para a produção de Sandia nem para a do Mark 4 (cerca
+  de 550 feitos de 1949 a 1951, também sem página). O estoque de 1945–47 é medida, não meta.
+- **Conferência de 1940** (`the_pace_from_1940`; EUA a 0,4% do PIB):
+
+  | Fim do ano | 1944 | 1945 | 1946 | 1947 | 1950 | 1955 |
+  |---|---|---|---|---|---|---|
+  | EUA, sem a montagem (#313) | 9 | 20 | 37 | 60 | 132 | 189 |
+  | EUA, com a montagem | 4 | 16 | 29 | 49 | 127 | 257 |
+  | EUA, real | 0 | 2 | 9 | 13 | ~300 | ~2.400 |
+
+  - A usina de montagem chega a 1 nível em 1944, 2 em 1945–46 e 5 em 1950.
+  - Os núcleos esperando montagem ficam perto de zero: a montagem não é o gargalo depois do
+    primeiro nível.
+  - O ritmo segue limitado pela obra, um pedido de usina, de mina ou de montagem a cada 26
+    semanas, e pelo dinheiro.
+  - **Leitura minha:** o excesso de 1946–47 continua (29 e 49, contra 9 e 13). O que travou os
+    EUA naqueles anos não foi a capacidade de uma usina, e sim as equipes que se desfizeram com a
+    desmobilização (p. 47). O jogo não tem desmobilização de técnicos: fica como lacuna anotada,
+    sem número.
+  - Em 1955 o jogo fica acima do anterior (257 contra 189). A causa não foi isolada. Medido, sem
+    ajuste.
+- **Com `war` desligada:**
+  - o bem e o prédio novos, no fim das listas, mudam o hash de 10 anos para `209833ae…`;
+  - a série anual de 101 anos fica idêntica à do main;
+  - o save não muda (44);
+  - nenhuma usina de montagem existe sem programa (`no_core_plant_without_a_programme`).
+
 ### O custo da ogiva em minério (PR de dados, substituído pelo passo 1 acima)
 A ogiva pedia 60 "kg enriched" de `nuclear_fuel` (30 na termonuclear), cerca de 350 kg de U3O8.
 Agora pede 3.600 nas duas gerações, contadas pelo minério que um núcleo real consumiu.
@@ -855,6 +907,14 @@ dano inaceitável da dissuasão (`balance`: quantas ogivas até um quarto da pop
 - **A população rural fica fora do alvo** por construção. A precipitação (N8) é que a alcança.
   Se as cidades de um país não somam um quarto da população, o dano inaceitável fica fora de
   alcance (`balance::UNREACHABLE`).
+- **Ponto em aberto, levado ao dono (2026-11-23): o critério de McNamara tinha duas pernas.**
+  Era 20 a 25% da população e cerca de metade da capacidade industrial (Enthoven e Smith, 1971).
+  - O jogo só lê a primeira perna, e a população rural fica fora do alvo.
+  - Por isso, contra um país pouco urbano, "um quarto do povo" fica difícil ou inalcançável. Foi
+    o que virou a decisão das 3.000 ogivas de fissão no #322.
+  - A segunda perna, a indústria, entraria pelo `wreck_factor` sobre os níveis de edifício das
+    cidades atingidas.
+  - A regra não muda agora.
 - **Conferência, medida e não alvo** (`tests/war_target.rs`; os dois mundos vêm de uma rodada
   desde 1925 com a guerra desligada, a série do main):
   - **Japão de 1945:** 65,1 M de pessoas, 52,6 M nas cidades (81%), 19 cidades. A maior é
