@@ -345,6 +345,27 @@ pub fn concentrated_mobility(
     }
 }
 
+/// The garrison unit type of the occupation rules (item 16), if any.
+fn garrison_unit(mil: &Military, r: &super::support::OccupationRules) -> Option<u16> {
+    r.garrison_unit.as_deref().and_then(|k| mil.unit(k))
+}
+
+/// The men and the fire of a country's formations of the garrison `unit`, colonial ones apart
+/// (item 16): they stand as the occupation's garrison before the field army.
+pub fn posts(mil: &Military, c: &CountryWar, unit: Option<u16>) -> (u64, Fixed) {
+    let Some(unit) = unit else {
+        return (0, Fixed::ZERO);
+    };
+    let list: Vec<&Formation> = c
+        .formations
+        .iter()
+        .filter(|f| f.unit == unit && !f.colonial && f.elements.is_positive())
+        .collect();
+    let m: i64 = list.iter().map(|f| men(mil, f)).sum();
+    let equipment: Vec<(u16, Fixed)> = list.iter().flat_map(|f| f.equipment.clone()).collect();
+    (m.max(0) as u64, mil.land_fire(&equipment))
+}
+
 /// A week of war on land: segments, combat, advance and control. Pure: reads the world.
 /// The wars a peace signed at the treaties' table this week ends: an agreement signed in the
 /// seven days to `date` between the leaders of the two sides (the one that declared and the one
@@ -620,11 +641,10 @@ pub fn fight_week(
         out.fighting.still.clear();
         let held = setup.conduct.as_ref().map(|k| {
             super::occupation::garrisons(&k.rules.occupation, world, &out.fighting, |c| {
-                world
-                    .war
-                    .countries
-                    .get(c as usize)
-                    .map_or(0, |cw| strength(mil, cw).men)
+                world.war.countries.get(c as usize).map_or((0, 0), |cw| {
+                    let (posts, _) = posts(mil, cw, garrison_unit(mil, &k.rules.occupation));
+                    (posts, strength(mil, cw).men.saturating_sub(posts))
+                })
             })
         });
         conduct_week(setup, world, &mut out, held.as_ref(), player);
@@ -656,11 +676,10 @@ pub fn fight_week(
     // The garrisons of the occupied land (G3) stand apart from the fronts.
     let held = setup.conduct.as_ref().map(|k| {
         super::occupation::garrisons(&k.rules.occupation, world, &out.fighting, |c| {
-            world
-                .war
-                .countries
-                .get(c as usize)
-                .map_or(0, |cw| strength(mil, cw).men)
+            world.war.countries.get(c as usize).map_or((0, 0), |cw| {
+                let (posts, _) = posts(mil, cw, garrison_unit(mil, &k.rules.occupation));
+                (posts, strength(mil, cw).men.saturating_sub(posts))
+            })
         })
     });
     let strengths: BTreeMap<u16, Strength> = fighters
@@ -671,9 +690,28 @@ pub fn fight_week(
                 if let Some((_, g)) = held.as_ref().and_then(|h| h.get(&c))
                     && s.men > 0
                 {
-                    let left = s.men.saturating_sub(*g);
-                    s.fire *= Fixed::from_ratio(left as i64, s.men as i64);
-                    s.men = left;
+                    // The garrison formations stand first, with their own fire; the rest of
+                    // the garrison comes out of the field army, its fire in proportion.
+                    let unit = setup
+                        .conduct
+                        .as_ref()
+                        .and_then(|k| garrison_unit(mil, &k.rules.occupation));
+                    let (pm, pf) = posts(mil, cw, unit);
+                    let from_posts = (*g).min(pm);
+                    let from_field = g - from_posts;
+                    let post_fire = if pm > 0 {
+                        pf * Fixed::from_ratio(from_posts as i64, pm as i64)
+                    } else {
+                        Fixed::ZERO
+                    };
+                    let (field_men, field_fire) = (s.men.saturating_sub(pm), s.fire - pf);
+                    let field_cut = if field_men > 0 {
+                        field_fire * Fixed::from_ratio(from_field as i64, field_men as i64)
+                    } else {
+                        Fixed::ZERO
+                    };
+                    s.fire = (s.fire - post_fire - field_cut).max(Fixed::ZERO);
+                    s.men = s.men.saturating_sub(*g);
                 }
                 (c, s)
             })

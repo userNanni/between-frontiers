@@ -104,6 +104,16 @@ pub struct OccupationRules {
     pub garrison_hostile: i32,
     /// Most of the occupier's land men that may stand as garrison.
     pub garrison_cap: i32,
+    /// Item 16: the unit type that holds posts (`garrison`). The occupier's own formations of it,
+    /// colonial ones apart, stand as garrison first; only what they miss comes out of its field
+    /// army, up to `garrison_cap`. `None`: only the field army, as before.
+    #[serde(default)]
+    pub garrison_unit: Option<String>,
+    /// Weeks an occupier without a player bears a garrison short before it orders formations
+    /// of `garrison_unit` to cover it (one element for each element's men missing). DESIGN
+    /// VALUE.
+    #[serde(default = "default_garrison_order_weeks")]
+    pub garrison_order_weeks: u32,
     /// Resistance at the occupation, its weekly growth per mille extracted and per mille of
     /// garrison missing, and its weekly fall under a full garrison.
     pub resistance_start: i32,
@@ -808,6 +818,10 @@ pub fn national(groups: &[i32], clout: &[u16]) -> i32 {
     } else {
         (groups.iter().map(|&g| i64::from(g)).sum::<i64>() / groups.len() as i64) as i32
     }
+}
+
+fn default_garrison_order_weeks() -> u32 {
+    4
 }
 
 #[cfg(test)]

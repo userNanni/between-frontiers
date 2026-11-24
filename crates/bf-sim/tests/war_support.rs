@@ -30,13 +30,13 @@ fn index(w: &GameWorld, tag: &str) -> u16 {
 
 /// Hungary, played, demands Czechoslovakia whole, hears the refusal and declares.
 fn at_war(d: &GameData) -> Session {
-    let mut s = Session::new(
-        d.new_world(),
-        1925,
-        Date::new(1925, 1, 1),
-        2,
-        Some(d.rules()),
-    );
+    at_war_with(d, |_| {})
+}
+
+fn at_war_with(d: &GameData, edit: impl FnOnce(&mut GameWorld)) -> Session {
+    let mut world = d.new_world();
+    edit(&mut world);
+    let mut s = Session::new(world, 1925, Date::new(1925, 1, 1), 2, Some(d.rules()));
     s.submit(GameCommand::ChoosePlayer { tag: "HUN".into() });
     s.sim.run_until(Date::new(1925, 3, 2));
     s.submit(GameCommand::Demand {
@@ -497,4 +497,87 @@ fn no_blockade_before_the_war_at_sea() {
     let s = at_war(&d);
     assert!(bf_sim::war::fight::blockaded(s.world()).is_empty());
     assert!(bf_sim::war::fight::blockaded_pairs(s.world()).is_empty());
+}
+
+/// Item 16: the occupier's garrison formations stand before its field army, and an occupier
+/// without a player orders garrisons for a shortfall that lasts. Hungary declares on
+/// Czechoslovakia and loses land to it and its allies. With the field cap cut to 1 % of the field
+/// men (`garrison_cap` 10) the garrison falls short: that is the case where the military ceiling
+/// does not pay the order in time, and the shortfall stays (the field army covers up to its cap,
+/// as before). With 60,000 men in garrison formations (60 elements of 1,000, colonial ones apart)
+/// Czechoslovakia keeps more of it. The order is read for Czechoslovakia, which has no player.
+#[test]
+fn garrison_formations_and_the_ais_order() {
+    let d = data(|c| {
+        no_overrun(c);
+        c.occupation.garrison_cap = 10;
+    });
+    let mil = &d.war.as_ref().unwrap().military;
+    let r = &d.war.as_ref().unwrap().conduct.as_ref().unwrap().occupation;
+    let ty = mil.unit("garrison").unwrap();
+    let mut kept = Vec::new();
+    for posts in [0i64, 60] {
+        let mut s = at_war_with(&d, |w| {
+            if posts > 0 {
+                let cze = index(w, "CZE") as usize;
+                w.war.countries[cze]
+                    .formations
+                    .push(bf_sim::war::state::Formation {
+                        unit: ty,
+                        generation: 0,
+                        elements: Fixed::from_int(posts),
+                        colonial: false,
+                        called_up: false,
+                        equipment: Vec::new(),
+                        training: Fixed::ONE,
+                        raised: false,
+                    });
+            }
+        });
+        s.sim.run_until(Date::new(1925, 7, 1));
+        let w = s.world();
+        let cze = index(w, "CZE") as usize;
+        let f = &w.war.fighting;
+        let mine: Vec<_> = f
+            .occupied
+            .iter()
+            .filter(|o| usize::from(o.by) == cze)
+            .collect();
+        assert!(
+            !mine.is_empty(),
+            "Czechoslovakia occupies: {:?}",
+            f.occupied
+        );
+        let need: u64 = mine
+            .iter()
+            .map(|o| {
+                let people = w.econ.regions[o.region as usize].population();
+                bf_sim::war::occupation::garrison_need(r, people, o.resistance)
+            })
+            .sum();
+        let share = mine.iter().map(|o| i64::from(o.garrison)).sum::<i64>() / mine.len() as i64;
+        // The order the AI placed in the tick (one open at a time), or the one it would place now.
+        let open = w.war.countries[cze]
+            .queue
+            .iter()
+            .find(|o| o.unit == "garrison")
+            .cloned();
+        let order = open.or_else(|| {
+            bf_sim::war::occupation::garrison_order(r, mil, w, cze, &w.war.countries[cze])
+        });
+        println!(
+            "garrison formations {posts}k men: {} regions held, {need} men needed, garrison kept {share} per mille on average; the AI's order: {:?}",
+            mine.len(),
+            order.as_ref().map(|o| (
+                o.ordered.to_f64_lossy(),
+                o.delivered.to_f64_lossy(),
+                o.stalled
+            ))
+        );
+        if share < 1000 && mine.iter().any(|o| o.weeks >= r.garrison_order_weeks) {
+            assert!(order.is_some(), "a lasting shortfall is ordered");
+        }
+        kept.push(share);
+    }
+    assert!(kept[1] > kept[0], "garrison formations keep more: {kept:?}");
 }
