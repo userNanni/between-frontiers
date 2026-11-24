@@ -59,8 +59,10 @@ mod tests {
                 (1, Fixed::from_ratio(16, 10), Fixed::from_int(60)),
             ],
         };
-        let mut research = ResearchState::default();
-        research.stage = vec![vec![Stage::Prototype, Stage::Unknown]];
+        let mut research = ResearchState {
+            stage: vec![vec![Stage::Prototype, Stage::Unknown]],
+            ..ResearchState::default()
+        };
         assert_eq!(step(&rules, &research, 0), None);
         research.stage[0][0] = Stage::Industrial;
         assert_eq!(
