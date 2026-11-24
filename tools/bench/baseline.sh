@@ -34,9 +34,12 @@ cargo=cargo; [ -x "$HOME/.local/bin/bf-cargo" ] && cargo=$HOME/.local/bin/bf-car
     > "$dir/build.log" 2>&1
   cp "$base/.target/release/bf-bench" "$dir/bf-bench"
 ) 9>"$base/.build.lock"
-# O binário lê os dados do caminho da fonte (CARGO_MANIFEST_DIR): src/ fica, sem target.
+# O binário lê os dados de BF_DATA_ROOT, explícito: a fonte desta base, nunca o caminho em que o
+# alvo compartilhado o compilou (a base de 61a1918 leu a cópia de outro thread). src/ fica, sem
+# target.
 slot=$HOME/.local/bin/bf-bench-slot; [ -x "$slot" ] || slot=
 cd "$dir/src"
+export BF_DATA_ROOT="$dir/src"
 COMMIT=$sha BRANCH=main $slot "$dir/tools/run-long.sh" "$dir" "$dir/bf-bench" \
   --game --years 101 --threads 2 || { echo "rodada falhou: $dir/run.txt" >&2; exit 1; }
 grep -o 'final hash [0-9a-f]*' "$dir/run.txt" | cut -d' ' -f3 > "$dir/hash.txt"

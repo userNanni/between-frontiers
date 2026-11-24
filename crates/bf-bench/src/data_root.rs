@@ -1,8 +1,11 @@
-//! Where the bench reads the game's data. By default the checkout it was built from
-//! (`CARGO_MANIFEST_DIR/../..`): a binary copied elsewhere still reads that checkout's `data/`,
-//! which is a trap when comparing two variants of the data. `BF_DATA_ROOT=<dir>` reads another
-//! root (a copy of the repository, or one with a file swapped). The first call prints the root and
-//! a hash of every file under its `data/` (`data/raw/` left out), so each run says what it read.
+//! Where the bench reads the game's data, found when it runs, never where it was built:
+//! `BF_DATA_ROOT=<dir>` if set (a copy of the repository, or one with a file swapped), else the
+//! first directory from the current one up that holds both `data/` and `crates/`; with neither,
+//! it stops with a message. The path it was built in is not used: a binary built in one
+//! checkout and reused by another (two trees with the same sources in one `CARGO_TARGET_DIR`,
+//! as the shared base target did on 61a1918) read the first checkout's `data/`. The first call
+//! prints the root and a hash of every file under its `data/` (`data/raw/` left out), so each
+//! run says what it read.
 
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
@@ -14,7 +17,14 @@ pub fn root() -> PathBuf {
         let root = std::env::var_os("BF_DATA_ROOT")
             .filter(|v| !v.is_empty())
             .map(PathBuf::from)
-            .unwrap_or_else(|| PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../.."));
+            .or_else(|| std::env::current_dir().ok().and_then(|d| find_up(&d)))
+            .unwrap_or_else(|| {
+                eprintln!(
+                    "bf-bench: no data root: set BF_DATA_ROOT, or run from inside a checkout \
+                     (a directory holding data/ and crates/)"
+                );
+                std::process::exit(2)
+            });
         let shown = root.canonicalize().unwrap_or_else(|_| root.clone());
         println!(
             "data root {} (data hash {:016x})",
@@ -24,6 +34,14 @@ pub fn root() -> PathBuf {
         root
     })
     .clone()
+}
+
+/// The first directory from `start` up that holds both `data/` and `crates/`.
+pub fn find_up(start: &Path) -> Option<PathBuf> {
+    start
+        .ancestors()
+        .find(|d| d.join("data").is_dir() && d.join("crates").is_dir())
+        .map(Path::to_path_buf)
 }
 
 /// FNV-1a over the paths (relative to `data/`) and bytes of every file under `root/data`, in path
@@ -66,5 +84,18 @@ fn walk(dir: &Path, out: &mut Vec<PathBuf>) {
         } else {
             out.push(p);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_root_is_found_from_inside_the_checkout() {
+        let here = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let root = find_up(&here).expect("the checkout holds data/ and crates/");
+        assert!(root.join("data").is_dir() && root.join("crates").is_dir());
+        assert!(find_up(Path::new("/")).is_none());
     }
 }
