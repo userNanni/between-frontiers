@@ -63,6 +63,9 @@ pub struct GovernmentView {
     pub payments: bf_sim::econ::payments::PaymentsView,
     /// The exchange regime, reserves and capital; `None` while the gold standard is off.
     pub gold: Option<crate::gold_view::GoldView>,
+    /// The state's offices with computers; `None` without `computer_efficiency` and
+    /// `fiscal_capacity`.
+    pub admin: Option<AdminLine>,
 }
 
 /// The budget rule that sets the state's purchases (`econ::public::goods_budget`), term by
@@ -85,6 +88,47 @@ pub struct GoodsRule {
 
 fn f(x: Fixed) -> f64 {
     x.to_f64_lossy()
+}
+
+/// The state's offices with computers (`econ::admin`): what a servant collects against one by
+/// hand, the technology behind it, and the computers ordered and found last week (lots).
+#[derive(Clone, Debug, PartialEq)]
+pub struct AdminLine {
+    pub worth: f64,
+    /// The newest computing technology at the industrial stage in the country; `None` before it.
+    pub tech: Option<String>,
+    pub computers: Option<(f64, f64)>,
+}
+
+/// The offices' line of country `ci`, from the market's outputs and the rule.
+pub fn admin_line(
+    world: &GameWorld,
+    ci: usize,
+    rules: Option<&bf_sim::econ::admin::AdminRules>,
+    tree: Option<&bf_sim::research::TechTree>,
+) -> Option<AdminLine> {
+    let m = world.econ.markets.get(ci)?;
+    let worth = m.admin_efficiency?;
+    let tech = rules.zip(tree).and_then(|(r, t)| {
+        let stages = world.research.stage.get(ci)?;
+        r.steps
+            .iter()
+            .rev()
+            .find(|(k, _, _)| {
+                stages
+                    .get(usize::from(*k))
+                    .is_some_and(|s| *s >= bf_sim::research::Stage::Industrial)
+            })
+            .and_then(|(k, _, _)| t.techs.get(usize::from(*k)))
+            .map(|x| x.key.clone())
+    });
+    Some(AdminLine {
+        worth: worth.to_f64_lossy(),
+        tech,
+        computers: m
+            .admin_computers
+            .map(|(a, b)| (a.to_f64_lossy(), b.to_f64_lossy())),
+    })
 }
 
 impl GovernmentView {
@@ -216,6 +260,7 @@ pub fn read(
         customs: world.tariffs.revenue.get(ci).map_or(0.0, |r| f(*r)),
         payments: bf_sim::econ::payments::view(world, ci),
         gold: None,
+        admin: None,
         goods_rule: {
             use bf_sim::econ::public::{GOODS_PER_PAYROLL, austerity, goods_budget};
             let b = &m.budget;
@@ -261,6 +306,7 @@ mod tests {
             customs: 0.0,
             payments: Default::default(),
             gold: None,
+            admin: None,
             levers: None,
             purchases: None,
             issuance: None,

@@ -137,6 +137,7 @@ pub fn show(
     cx: &mut TabContext<'_>,
     view: &LeversView,
     purchases: Option<&PurchasesView>,
+    admin: Option<&crate::government::AdminLine>,
 ) {
     let i18n = cx.i18n;
     // What the player set this tick wins over the view until the tick applies it.
@@ -210,6 +211,34 @@ pub fn show(
                 )],
             ),
         );
+    }
+    // The offices' computers: what a servant collects against one by hand, and the computers
+    // the state bought.
+    if let Some(a) = admin {
+        let worth = i18n.decimal(a.worth, 1);
+        let line = match &a.tech {
+            Some(t) => i18n.tr_args(
+                "lever-admin-worth",
+                &[
+                    ("worth", arg(worth)),
+                    ("tech", arg(i18n.tr(&format!("tech-{t}")))),
+                ],
+            ),
+            None => i18n.tr_args("lever-admin-worth-hand", &[("worth", arg(worth))]),
+        };
+        bf_ui_kit::small(ui, &line);
+        if let Some((ordered, found)) = a.computers.filter(|(o, _)| *o > 0.0) {
+            bf_ui_kit::small(
+                ui,
+                &i18n.tr_args(
+                    "lever-admin-computers",
+                    &[
+                        ("found", arg(i18n.compact(found))),
+                        ("ordered", arg(i18n.compact(ordered))),
+                    ],
+                ),
+            );
+        }
     }
     if l.payroll != before.payroll {
         out.push(GameCommand::SetPayroll {
