@@ -771,9 +771,62 @@ fn support_body(ui: &mut Ui, i18n: &I18n, v: &WarView, s: &SupportLine, mine: bo
             .wrap(),
         );
     }
+    // The movement against the war: its share of the recruits, the mobilized, the strike in the
+    // war industry, the mutiny, and the fall of the government below the peace threshold once
+    // enough are mobilized.
+    if let Some(m) = &s.anti_war {
+        let pm = |x: u16| super::budget::pct(i18n, f64::from(x) / 10.0, 1);
+        ui.add(
+            egui::Label::new(
+                RichText::new(i18n.tr_args(
+                    "antiwar-line",
+                    &[
+                        ("movement", arg(pm(m.movement))),
+                        ("weariness", arg(pm(m.weariness))),
+                        ("mobilized", arg(pm(m.mobilized))),
+                        ("strike", arg(pm(m.strike))),
+                        ("mutiny", arg(pm(m.mutiny))),
+                    ],
+                ))
+                .font(sans(size::SMALL)),
+            )
+            .halign(egui::Align::LEFT)
+            .wrap(),
+        )
+        .on_hover_text(bf_ui_kit::tooltip_text(&i18n.tr("antiwar-tip")));
+        if m.memory > 0 {
+            bf_ui_kit::small(
+                ui,
+                &i18n.tr_args("antiwar-memory", &[("memory", arg(pm(m.memory)))]),
+            );
+        }
+        if m.falls_below_peace
+            && let Some((peace, _)) = thresholds
+        {
+            ui.add(
+                egui::Label::new(
+                    RichText::new(i18n.tr_args(
+                        "antiwar-falls-below-peace",
+                        &[("peace", arg(per_mille(i18n, peace)))],
+                    ))
+                    .font(sans(size::SMALL))
+                    .color(color::DANGER),
+                )
+                .wrap(),
+            );
+        }
+    }
     if let Some(weeks) = s.countdown {
+        // Opened by the movement (above the collapse, below the peace threshold), or below the
+        // collapse.
+        let by_movement = s.anti_war.as_ref().is_some_and(|m| m.falls_below_peace)
+            && thresholds.is_some_and(|(_, collapse)| s.value >= collapse);
         let text = i18n.tr_args(
-            "war-support-countdown",
+            if by_movement {
+                "antiwar-countdown"
+            } else {
+                "war-support-countdown"
+            },
             &[
                 ("weeks", arg(weeks.to_string())),
                 ("count", Arg::Num(f64::from(weeks))),

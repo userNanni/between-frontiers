@@ -132,6 +132,25 @@ pub struct SupportLine {
     pub franchise: i32,
     pub censorship: i32,
     pub speed: i64,
+    /// The movement against the war in this country (switch `anti_war`); `None` with it off.
+    pub anti_war: Option<AntiWarLine>,
+}
+
+/// The movement against the war in one country (`war::antiwar`), per mille.
+#[derive(Clone, Debug, PartialEq)]
+pub struct AntiWarLine {
+    /// Of its recruits; their war weariness.
+    pub movement: u16,
+    pub weariness: u16,
+    /// Mobilized, of the people; the war industry's jobs on strike; the land fire lost to
+    /// mutiny; what was left of it when the war began.
+    pub mobilized: u16,
+    pub strike: u16,
+    pub mutiny: u16,
+    pub memory: u16,
+    /// Mobilized at `collapse_mobilized` or more: the government's fall counts down below the
+    /// peace threshold, not only below the collapse.
+    pub falls_below_peace: bool,
 }
 
 /// How a government fell in the war.
@@ -389,6 +408,7 @@ fn support_line(
         franchise,
         censorship,
         speed,
+        anti_war: None,
     })
 }
 
@@ -690,11 +710,32 @@ pub fn read(
                 .collect();
             fallout.sort_by(|a, b| b.per_mille.cmp(&a.per_mille).then(a.state.cmp(&b.state)));
             let rules = setup.conduct.as_ref().map(|c| &c.rules.support);
+            let anti = setup
+                .conduct
+                .as_ref()
+                .and_then(|c| c.rules.anti_war.as_ref());
+            let with_movement = |line: Option<SupportLine>, c: u16| {
+                line.map(|mut l| {
+                    l.anti_war = anti.and_then(|r| {
+                        let a = world.war.antiwar.of(c)?;
+                        Some(AntiWarLine {
+                            movement: a.per_mille(),
+                            weariness: a.weariness,
+                            mobilized: a.mobilized,
+                            strike: a.strike,
+                            mutiny: a.mutiny,
+                            memory: a.memory,
+                            falls_below_peace: u32::from(a.mobilized) >= r.collapse_mobilized,
+                        })
+                    });
+                    l
+                })
+            };
             let support = [
-                support_line(world, politics, rules, me, tag.to_owned()),
-                theirs
-                    .first()
-                    .and_then(|e| support_line(world, politics, rules, *e, tag_of(*e))),
+                with_movement(support_line(world, politics, rules, me, tag.to_owned()), me),
+                theirs.first().and_then(|e| {
+                    with_movement(support_line(world, politics, rules, *e, tag_of(*e)), *e)
+                }),
             ];
             let since = laplace_schelling::calendar::Date::new(w.since.0, w.since.1, w.since.2);
             Some(WarLine {
