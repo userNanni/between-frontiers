@@ -92,6 +92,13 @@
         garrison_calm: 2,
         garrison_hostile: 20,
         garrison_cap: 500,
+        // Item 16: the occupier's own garrison formations (colonial ones apart) stand first; only
+        // what they miss comes out of its field army, up to `garrison_cap`. An occupier without a
+        // player that has held a region for `garrison_order_weeks` with its garrison short orders
+        // garrison formations to cover the shortfall (one element for each element's men
+        // missing), paid by the military ceiling. DESIGN VALUES: the 4 weeks and the one for one.
+        garrison_unit: Some("garrison"),
+        garrison_order_weeks: 4,
         resistance_start: 50,
         resistance_per_extraction: 20,
         resistance_per_shortfall: 40,

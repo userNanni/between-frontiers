@@ -2557,9 +2557,38 @@ França em 1941, para uns 40 milhões, algo como 2,5 por mil.
 - **Alternativa:** um custo fixo de guarnição, sem exigência nem consequência.
 
 **No rascunho (código):**
-- **Guarnição:** sai dos homens de terra do ocupante, até metade deles (`garrison_cap`), e os
-  homens destacados não lutam na frente; o seu fogo sai na mesma proporção. Destacar formações
-  `garrison` próprias fica para quando o jogador puder mandar formações por frente (G2).
+- **Guarnição (item 16, feito):** as formações `garrison` do ocupante, as coloniais à parte, ficam
+  de guarnição primeiro, com o seu próprio fogo (`occupation::garrisons`, `fight::posts`). Só o
+  que elas não cobrem sai do exército de campo, até metade dele (`garrison_cap`) como antes, e o
+  fogo desse exército sai na mesma proporção. Os homens de guarnição não lutam na frente.
+  - **A IA encomenda guarnições** (`occupation::garrison_order`). Um ocupante sem jogador, com
+    regiões ocupadas há `garrison_order_weeks` (4) e a guarnição da semana anterior abaixo da
+    necessidade, encomenda pela fila A2 um elemento de `garrison` (mil homens) para cada mil que
+    faltam. Não encomenda de novo enquanto houver uma aberta, e o pagamento sai do teto militar.
+    **Valores de desenho:** as 4 semanas e o um por um.
+  - **Quando o teto não cobre a encomenda,** ela fica parada (com as semanas paradas contadas,
+    como toda encomenda), e a falta continua saindo do exército de campo até `garrison_cap`, como
+    antes. Exemplo (`war_support::garrison_formations_and_the_ais_order`):
+    - A Hungria declara à Tchecoslováquia e perde terra para ela e os aliados.
+    - Com o teto de campo cortado a 1% dos homens (`garrison_cap` 10), a Tchecoslováquia guarda 2,5%
+      da guarnição necessária (63.426 homens em 4 regiões). A IA encomendou 15 elementos, nenhum
+      entregue até julho de 1925.
+    - Com 60 mil homens em formações de guarnição desde o começo, ela mantém a guarnição inteira
+      (10.569 homens necessários: a resistência sobe menos com a guarnição cheia) e não encomenda.
+  - **Conferência, medida e não alvo:** a regra pede 2 por mil numa população calma, 80 mil homens
+    para os ~40 milhões da França. A Alemanha tinha cerca de 100 mil homens em toda a zona alemã da
+    França em dezembro de 1941. A fonte é a Wikipédia ("German military administration in
+    occupied France"), que cita uma monografia do Connecticut College que não abriu: **sem página
+    verificada.**
+  - **Guarnição colonial de 1925 à parte:** as formações `garrison` coloniais seguem na colônia e
+    não servem às ocupações. A ligação com a guerra colonial (forças locais, guarnição faltante:
+    GC6 a GC8, abertas com o dono) fica para lá.
+  - **Por frente, com comando do jogador (G2):** as guarnições servem a todas as ocupações do
+    país, pela necessidade de cada uma. Mandar formações a uma frente é dependência das frentes
+    como objeto de comando.
+  - **Tela:** por ocupante, a guarnição necessária, a mantida por formações de guarnição e a tirada
+    do exército de campo, e a encomenda de guarnição aberta. Vem do que o tick já calcula
+    (`occupation::garrison_need`, `fight::posts`, a fila de encomendas), sem campo novo no save.
 - **Extração:** vai do tesouro do dono para o do ocupante. É a parcela do PIB do ano anterior
   pela parte da renda do país na região, de 20 % a 33 % em três anos, vezes a guarnição mantida.
 - **Resistência:** cresce com o que se leva e com a guarnição que falta, e cai devagar com a
