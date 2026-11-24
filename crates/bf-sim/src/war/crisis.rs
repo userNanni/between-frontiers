@@ -30,6 +30,9 @@ pub struct CrisisSetup {
     pub clauses: Option<ClauseCatalogue>,
     /// Map state key → id (`Region::state`).
     pub state_ids: BTreeMap<String, u16>,
+    /// The neighbouring states of each state (`border_rules.neighbours`): whether a crisis is
+    /// across a land border or across the sea.
+    pub neighbours: std::sync::Arc<BTreeMap<u16, Vec<u16>>>,
 }
 
 /// How crises run (`data/military/crisis.ron`).
@@ -53,6 +56,15 @@ pub struct CrisisRules {
     /// from it. The existential never yields.
     #[serde(default)]
     pub nuclear_term: bool,
+    /// Across the sea (no land border between the two), the demander's force counts by its share
+    /// of the two navies' tonnage times this per mille, at most whole: with even navies (and
+    /// above) it brings its whole force, without a navy none. DESIGN VALUE.
+    #[serde(default = "default_sea_full")]
+    pub sea_full: u32,
+}
+
+fn default_sea_full() -> u32 {
+    2000
 }
 
 fn default_call_weeks() -> u16 {
@@ -208,6 +220,100 @@ pub fn money_asked(demand: &Proposal, years: i64) -> Fixed {
         .sum()
 }
 
+/// A country's land combat power, as the front reads it: the fire of the equipment its land
+/// formations hold (men, equipment and its generation) times their mean training. Men alone made
+/// a large, ill-armed army force the yield of a smaller modern one (China against Japan).
+pub fn combat_power(mil: &Military, war: &WarState, country: usize) -> Fixed {
+    let Some(c) = war.countries.get(country) else {
+        return Fixed::ZERO;
+    };
+    let land: Vec<_> = c
+        .formations
+        .iter()
+        .filter(|f| mil.types[f.unit as usize].domain == Domain::Land && f.elements.is_positive())
+        .collect();
+    let equipment: Vec<(u16, Fixed)> = land.iter().flat_map(|f| f.equipment.clone()).collect();
+    let elements: Fixed = land.iter().map(|f| f.elements).sum();
+    let training = if elements.is_positive() {
+        land.iter().map(|f| f.training * f.elements).sum::<Fixed>() / elements
+    } else {
+        Fixed::ZERO
+    };
+    mil.land_fire(&equipment) * training
+}
+
+/// A country's navy in tonnes.
+pub fn sea_tonnage(mil: &Military, war: &WarState, country: usize) -> i64 {
+    war.countries.get(country).map_or(0, |c| {
+        c.formations
+            .iter()
+            .filter(|f| mil.types[f.unit as usize].domain == Domain::Sea)
+            .map(|f| {
+                (f.elements * i64::from(mil.spec(f.unit, usize::from(f.generation)).tonnage))
+                    .to_int_floor()
+                    .max(0)
+            })
+            .sum()
+    })
+}
+
+/// Whether two countries share a land border, by their regions' states.
+pub fn land_border(setup: &CrisisSetup, world: &GameWorld, a: u16, b: u16) -> bool {
+    let theirs: std::collections::BTreeSet<u16> = world
+        .econ
+        .regions
+        .iter()
+        .filter(|r| r.market == b)
+        .map(|r| r.state)
+        .collect();
+    world
+        .econ
+        .regions
+        .iter()
+        .filter(|r| r.market == a)
+        .any(|r| {
+            setup
+                .neighbours
+                .get(&r.state)
+                .is_some_and(|n| n.iter().any(|s| theirs.contains(s)))
+        })
+}
+
+/// The ratio of force a target weighs (W3), per mille: the demander's combat power over its own;
+/// across the sea, the demander's by its share of the two navies (`sea_full`).
+pub fn force_ratio(
+    setup: &CrisisSetup,
+    mil: &Military,
+    world: &GameWorld,
+    by: u16,
+    target: u16,
+) -> i64 {
+    let (b, t) = (usize::from(by), usize::from(target));
+    let mut mine = combat_power(mil, &world.war, b);
+    if !land_border(setup, world, by, target) {
+        let (sb, st) = (
+            sea_tonnage(mil, &world.war, b),
+            sea_tonnage(mil, &world.war, t),
+        );
+        let share = if sb + st > 0 {
+            (i64::from(setup.rules.sea_full) * sb / (sb + st)).min(1000)
+        } else {
+            0
+        };
+        mine = mine.mul_ratio(share, 1000);
+    }
+    let theirs = combat_power(mil, &world.war, t);
+    if theirs.is_positive() {
+        (mine.mul_ratio(1000, 1) / theirs)
+            .to_int_floor()
+            .clamp(0, 1_000_000_000)
+    } else if mine.is_positive() {
+        1_000_000_000
+    } else {
+        0
+    }
+}
+
 /// Men under arms on land of a country.
 pub fn land_men(mil: &Military, war: &WarState, country: usize) -> i64 {
     war.countries.get(country).map_or(0, |c| {
@@ -226,9 +332,7 @@ pub fn weigh_crisis(
     world: &GameWorld,
     k: &Crisis,
 ) -> Weighing {
-    let theirs = land_men(mil, &world.war, k.by as usize);
-    let mine = land_men(mil, &world.war, k.target as usize).max(1);
-    let ratio = theirs * 1000 / mine;
+    let ratio = force_ratio(setup, mil, world, k.by, k.target);
     let (states, union) = states_asked(&k.demand);
     let ids: Vec<u16> = states
         .iter()
@@ -492,6 +596,7 @@ mod tests {
             call_weeks: 2,
             lapsed_call_honours: true,
             nuclear_term: true,
+            sea_full: 2000,
         }
     }
 

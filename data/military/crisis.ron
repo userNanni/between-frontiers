@@ -21,4 +21,8 @@
     // target's unacceptable damage, as the target reads it) adds to the ratio of force, and the
     // target's own subtracts; an existential demand is never yielded.
     nuclear_term: true,
+    // W3's force is combat power (the fire of the land equipment times the training), not men.
+    // Across the sea (no land border), the demander's counts by its share of the two navies'
+    // tonnage times sea_full per mille, at most whole. DESIGN VALUE.
+    sea_full: 2000,
 )

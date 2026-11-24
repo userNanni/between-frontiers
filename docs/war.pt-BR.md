@@ -1880,8 +1880,17 @@ guerra ou recuar (a crise fecha sem nada). Declarada a guerra, entra quem as cl�
 "Terceiros"), e cada um decide na semana seguinte.
 
 **IA mínima: só responde.** Ela nunca exige nem declara.
-- Como alvo, pesa a força contra o que se pede (W3, dono, 2026-11-17). Força é a força em terra de
-  quem exige sobre a sua, contando os terceiros que viriam pelas cláusulas. O que se pede é o peso
+- Como alvo, pesa a força contra o que se pede (W3, dono, 2026-11-17). Força é o **poder de
+  combate** em terra de quem exige sobre o seu (`crisis::force_ratio`): o fogo do equipamento das
+  formações de terra (os homens, o equipamento e a sua geração) vezes o treino médio, como a
+  frente lê. Até 2026-11-24 era o número de homens, e um exército grande e mal armado fazia ceder
+  um menor e moderno (a sombra da IA mostrou a China fazendo o Japão ceder a Manchúria). Pelo mar
+  (sem fronteira terrestre entre os dois), a força de quem exige conta pela sua parte das duas
+  marinhas em tonelagem vezes `sea_full` (2.000 por mil, **valor de desenho**), no máximo inteira.
+  **Dependência:** as forças de 1925 entram todas plenamente equipadas e treinadas, na mesma
+  geração, então em 1925 o poder de combate ainda sai quase igual aos homens (China e Japão: 6.867
+  por mil, com fronteira terrestre pela Coreia e por Kwantung). O equipamento e o treino de 1925
+  por país, com fonte, são dado da calibração. O que se pede é o peso
   das cláusulas exigidas sobre o total do país, medido pela avaliação de proposta dos tratados
   (população, PIB e território que a exigência leva, e se leva a capital). A razão exigida para
   ceder sobe com essa parcela, numa curva em dados. Uma exigência periférica cede a partir de 3×
