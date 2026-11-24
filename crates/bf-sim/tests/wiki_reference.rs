@@ -514,10 +514,223 @@ fn switches_page(root: &Path) -> String {
     s
 }
 
+fn laws_page(r: &Ref) -> String {
+    use bf_sim::politics::{CATEGORIES, EFFECTS};
+    let mut s = String::from(HEADER);
+    s.push_str("# Leis e efeitos\n\nPor categoria e grupo, na ordem do catálogo. Cada efeito em milésimos: os que multiplicam (alcance da migração, tetos de imposto) valem sobre 1.000; os que somam se somam entre as leis em vigor.\n");
+    let Some(p) = r.data.politics.as_deref() else {
+        return s;
+    };
+    for (ci, cat) in CATEGORIES.iter().enumerate() {
+        writeln!(s, "\n## {}\n", r.name("law-category", cat)).unwrap();
+        for g in p.groups.iter().filter(|g| usize::from(g.category) == ci) {
+            writeln!(
+                s,
+                "### {} (`{}`){}\n",
+                r.name("law-group", &g.key),
+                g.key,
+                if g.colonial { " · colonial" } else { "" }
+            )
+            .unwrap();
+            s.push_str("| Lei | Efeitos |\n|---|---|\n");
+            for &l in &g.laws {
+                let law = &p.laws[usize::from(l)];
+                let effects = law
+                    .effects
+                    .iter()
+                    .map(|(e, v)| {
+                        format!("{} {v}", r.name("law-effect", EFFECTS[usize::from(*e)].key))
+                    })
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                writeln!(
+                    s,
+                    "| {} (`{}`){} | {} |",
+                    r.name("law", &law.key),
+                    law.key,
+                    if law.targeted {
+                        " · dirigida a comunidades"
+                    } else {
+                        ""
+                    },
+                    if effects.is_empty() {
+                        "—".to_string()
+                    } else {
+                        effects
+                    }
+                )
+                .unwrap();
+            }
+            s.push('\n');
+        }
+    }
+    s
+}
+
+fn movements_page(r: &Ref) -> String {
+    use bf_sim::politics::{Among, Bound, EFFECTS, GoalRef, INDICATORS, Measure};
+    let mut s = String::from(HEADER);
+    s.push_str("# Movimentos\n\nNa ordem do catálogo. Um movimento cresce quando todas as condições valem (a mais fraca dá o ritmo), em milésimos de quem ele recruta por ano, e perde metade do apoio a cada tantos anos sem causa.\n\n");
+    s.push_str("| Movimento | Quer | Onde | Quem recruta | Condições | Crescimento | Meia-vida |\n|---|---|---|---|---|---|---|\n");
+    let Some(p) = r.data.politics.as_deref() else {
+        return s;
+    };
+    for m in &p.movements {
+        let goal = match m.goal {
+            GoalRef::Law(l) => r.name("law", &p.laws[usize::from(l)].key),
+            GoalRef::Independence => "independência".to_string(),
+            GoalRef::Revision => "revisão das fronteiras".to_string(),
+        };
+        let among = match m.among {
+            Among::Everyone => "metrópole",
+            Among::Colonies => "colônias",
+            Among::Targeted => "comunidade visada",
+        };
+        let who = if m.professions.is_empty() {
+            "todos".to_string()
+        } else {
+            m.professions
+                .iter()
+                .map(|(q, share)| {
+                    format!(
+                        "{} {}",
+                        r.name("profession", bf_sim::economy::PROFESSIONS[usize::from(*q)]),
+                        pct(*share)
+                    )
+                })
+                .collect::<Vec<_>>()
+                .join(", ")
+        };
+        let cause = m
+            .cause
+            .iter()
+            .map(|(measure, bound)| {
+                let what = match measure {
+                    Measure::Indicator(i) => r.name("indicator", INDICATORS[usize::from(*i)].key),
+                    Measure::Effect(e) => r.name("law-effect", EFFECTS[usize::from(*e)].key),
+                };
+                match bound {
+                    Bound::AtLeast(v) => format!("{what} ≥ {v}"),
+                    Bound::AtMost(v) => format!("{what} ≤ {v}"),
+                }
+            })
+            .collect::<Vec<_>>()
+            .join("; ");
+        writeln!(
+            s,
+            "| {} (`{}`) | {goal} | {among} | {who} | {cause} | {} por ano | {} anos |",
+            r.name("movement", &m.key),
+            m.key,
+            m.growth,
+            m.persistence
+        )
+        .unwrap();
+    }
+    s
+}
+
+fn forces_page(r: &Ref) -> String {
+    use bf_sim::war::catalogue::{Domain, Role};
+    let mut s = String::from(HEADER);
+    s.push_str("# Forças: tipos e gerações\n\nNa ordem do catálogo. Um elemento é mil homens em terra, um navio no mar, uma aeronave no ar, uma arma ou lançador no estratégico. Equipamento por elemento; manutenção por elemento e por semana; papéis em milésimos da força do elemento.\n");
+    let Some(w) = r.data.war.as_ref() else {
+        return s;
+    };
+    let cat = &r.data.catalogue;
+    let tree = r.data.tree.as_deref();
+    let mil = &w.military;
+    let good = |g: u16| r.name("good", &cat.goods[usize::from(g)].key);
+    let role_name = |role: Role| match role {
+        Role::Gun => "canhão",
+        Role::Torpedo => "torpedo",
+        Role::Asw => "antissubmarino",
+        Role::AntiAir => "antiaéreo",
+        Role::Mine => "minas",
+        Role::AirToAir => "ar-ar",
+        Role::GroundAttack => "ataque ao solo",
+        Role::Strategic => "estratégico",
+        Role::AntiShip => "antinavio",
+        Role::Recon => "reconhecimento",
+        Role::Engineering => "engenharia",
+    };
+    for t in &mil.types {
+        let domain = match t.domain {
+            Domain::Land => "Terra",
+            Domain::Sea => "Mar",
+            Domain::Air => "Ar",
+            Domain::Strategic => "Estratégico",
+        };
+        writeln!(
+            s,
+            "\n## {} (`{}`)\n\n{domain}{}\n",
+            r.name("unit", &t.key),
+            t.key,
+            if t.submerged { " · submerso" } else { "" }
+        )
+        .unwrap();
+        s.push_str("| Geração | Requer | Tamanho | Equipamento | Manutenção | Treino | Papéis |\n|---|---|---|---|---|---|---|\n");
+        for (gi, g) in t.generations.iter().enumerate() {
+            let requires = g
+                .requires
+                .iter()
+                .filter_map(|q| tree.and_then(|tr| tr.techs.get(usize::from(*q))))
+                .map(|tech| r.name("tech", &tech.key))
+                .collect::<Vec<_>>()
+                .join(", ");
+            let mut size = Vec::new();
+            if g.men > 0 {
+                size.push(format!("{} homens", g.men));
+            }
+            if g.tonnage > 0 {
+                size.push(format!("{} t", g.tonnage));
+            }
+            if g.aircraft > 0 {
+                size.push(format!("{} aeronaves", g.aircraft));
+            }
+            if g.cargo_t > 0 {
+                size.push(format!("{} t de carga", g.cargo_t));
+            }
+            if g.yield_kt > 0 {
+                size.push(format!("{} kt", g.yield_kt));
+            }
+            let list = |xs: &[(u16, laplace_schelling::Fixed)]| {
+                if xs.is_empty() {
+                    "—".to_string()
+                } else {
+                    xs.iter()
+                        .map(|(g, q)| format!("{} {}", good(*g), fixed(*q)))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                }
+            };
+            let roles = Role::ALL
+                .iter()
+                .filter(|role| g.role(**role) > 0)
+                .map(|role| format!("{} {}", role_name(*role), g.role(*role)))
+                .collect::<Vec<_>>()
+                .join(", ");
+            let dash = |x: String| if x.is_empty() { "—".to_string() } else { x };
+            writeln!(
+                s,
+                "| {} | {} | {} | {} | {} | {} semanas | {} |",
+                gi + 1,
+                dash(requires),
+                dash(size.join(", ")),
+                list(&g.equipment),
+                list(&g.upkeep),
+                g.training_weeks,
+                dash(roles)
+            )
+            .unwrap();
+        }
+    }
+    s
+}
+
 fn readme() -> String {
     let mut s = String::from(HEADER);
     s.push_str("# Referência dos dados\n\nPáginas geradas dos arquivos de `data/` e dos nomes de `assets/i18n/pt-BR/`; o teste `wiki_reference` falha no CI quando estão desatualizadas.\n\n");
-    s.push_str("- [Bens](bens.md)\n- [Prédios e métodos](predios.md)\n- [Tecnologias](tecnologias.md)\n- [Chaves de regra](chaves.md)\n");
+    s.push_str("- [Bens](bens.md)\n- [Prédios e métodos](predios.md)\n- [Tecnologias](tecnologias.md)\n- [Leis e efeitos](leis.md)\n- [Movimentos](movimentos.md)\n- [Forças: tipos e gerações](forcas.md)\n- [Chaves de regra](chaves.md)\n");
     s
 }
 
@@ -530,6 +743,9 @@ fn the_reference_pages_match_the_data() {
         ("bens.md", goods_page(&r)),
         ("predios.md", buildings_page(&r)),
         ("tecnologias.md", techs_page(&r)),
+        ("leis.md", laws_page(&r)),
+        ("movimentos.md", movements_page(&r)),
+        ("forcas.md", forces_page(&r)),
         ("chaves.md", switches_page(&root)),
     ];
     let dir = root.join("docs/wiki/referencia");

@@ -7,4 +7,7 @@ Páginas geradas dos arquivos de `data/` e dos nomes de `assets/i18n/pt-BR/`; o 
 - [Bens](bens.md)
 - [Prédios e métodos](predios.md)
 - [Tecnologias](tecnologias.md)
+- [Leis e efeitos](leis.md)
+- [Movimentos](movimentos.md)
+- [Forças: tipos e gerações](forcas.md)
 - [Chaves de regra](chaves.md)
