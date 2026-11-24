@@ -905,6 +905,45 @@ fn segment(ui: &mut Ui, i18n: &I18n, world: Option<&World>, v: &WarView, s: &Seg
         )
         .on_hover_text(bf_ui_kit::tooltip_text(&i18n.tr("war-segment-density-tip")));
     }
+    // The pace each side moved at here: its mobile class, with the share of its men in it.
+    if let Some(pace) = s.pace {
+        let side = |(m, share): (bf_sim::war::Mobility, f64)| {
+            use bf_sim::war::Mobility;
+            let key = match m {
+                Mobility::Static => "war-pace-static",
+                Mobility::Foot => "war-pace-foot",
+                Mobility::Light => "war-pace-light",
+                Mobility::Horse => "war-pace-horse",
+                Mobility::Wheeled => "war-pace-wheeled",
+                Mobility::Tracked => "war-pace-tracked",
+                Mobility::Ship => "war-pace-ship",
+                Mobility::Aircraft => "war-pace-aircraft",
+            };
+            if matches!(m, Mobility::Static | Mobility::Foot) || share <= 0.0 {
+                i18n.tr(key)
+            } else {
+                i18n.tr_args(
+                    "war-pace-share",
+                    &[
+                        ("pace", arg(i18n.tr(key))),
+                        ("share", arg(super::budget::pct(i18n, share * 100.0, 0))),
+                    ],
+                )
+            }
+        };
+        ui.add(
+            egui::Label::new(
+                RichText::new(i18n.tr_args(
+                    "war-segment-pace",
+                    &[("ours", arg(side(pace[0]))), ("theirs", arg(side(pace[1])))],
+                ))
+                .font(sans(size::SMALL))
+                .color(color::TEXT_MUTED),
+            )
+            .wrap(),
+        )
+        .on_hover_text(bf_ui_kit::tooltip_text(&i18n.tr("war-segment-pace-tip")));
+    }
     if v.dig_weeks > 0 && s.still_weeks > 0 {
         bf_ui_kit::small(
             ui,

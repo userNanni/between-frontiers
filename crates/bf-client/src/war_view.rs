@@ -38,6 +38,9 @@ pub struct Segment {
     /// `front.dig_weeks`).
     pub still_weeks: u16,
     pub dug: f64,
+    /// The mobility each side moved at here and the share of its men here in its mobile class,
+    /// 0–1, ours first; `None` until a week is fought after a load (`SegmentWeek::mobility`).
+    pub pace: Option<[(bf_sim::war::Mobility, f64); 2]>,
 }
 
 impl Segment {
@@ -498,6 +501,12 @@ pub fn read(
                                 } else {
                                     0.0
                                 },
+                                pace: g.mobility.map(|m| {
+                                    let at = |side: usize| {
+                                        (m[side], f64::from(g.mobile_share[side]) / 1000.0)
+                                    };
+                                    [at(us), at(them)]
+                                }),
                             })
                         })
                         .collect();
