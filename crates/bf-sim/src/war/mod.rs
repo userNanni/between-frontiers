@@ -100,7 +100,30 @@ pub fn load(
         return Ok(None);
     }
     let tree = tree.ok_or("data/military needs data/research/technologies.ron")?;
-    let units: UnitsFile = read(&units_path)?;
+    let mut units: UnitsFile = read(&units_path)?;
+    // Without the technology `helicopter` (the switch off), the helicopter units need
+    // `gas_turbine`, as before it.
+    if tree.tech("helicopter").is_none() {
+        let swap = |list: &mut Vec<String>| {
+            for k in list.iter_mut() {
+                if k == "helicopter" {
+                    *k = "gas_turbine".to_owned();
+                }
+            }
+            let mut seen = Vec::new();
+            list.retain(|k| {
+                let new = !seen.contains(k);
+                seen.push(k.clone());
+                new
+            });
+        };
+        for u in &mut units.types {
+            swap(&mut u.requires);
+            for g in &mut u.generations {
+                swap(&mut g.requires);
+            }
+        }
+    }
     let rules: RulesFile = read(&data.join("military/rules.ron"))?;
     let military = Military::build(&units, &rules, catalogue, tree)
         .map_err(|e| format!("data/military: {}", e.join("; ")))?;

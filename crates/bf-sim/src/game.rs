@@ -1345,6 +1345,10 @@ pub struct Switches {
     /// returns by the AI's rule, and the loss of who holds a falling currency. Needs
     /// `payments_settle`; off (or without it) every currency floats as before.
     pub gold_standard: bool,
+    /// The technology `helicopter` (1936/1942; docs/war.pt-BR.md, "Helicóptero"): the helicopter units
+    /// need it, and air assault needs it with `gas_turbine`. Read at load (the tree and
+    /// `war::load`). Off: no such technology, and the helicopter units need `gas_turbine`.
+    pub helicopter: bool,
     /// The household fuel the countryside gathered (`econ::biomass`, `data/economy/biomass.ron`):
     /// rural households buy only the part of their fuel they did not gather (firewood, dung,
     /// straw), each country's 1925 share falling as it grows richer. Acts on the week and when
@@ -1472,6 +1476,7 @@ impl Switches {
         "foreign_flow",
         "foreign_technique",
         "gold_standard",
+        "helicopter",
         "household_biomass",
         "independence",
         "influence_ties",
@@ -1508,6 +1513,7 @@ impl Switches {
             "foreign_flow" => self.foreign_flow = true,
             "foreign_technique" => self.foreign_technique = true,
             "gold_standard" => self.gold_standard = true,
+            "helicopter" => self.helicopter = true,
             "household_biomass" => self.household_biomass = true,
             "independence" => self.independence = true,
             "influence_ties" => self.influence_ties = true,

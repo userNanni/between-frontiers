@@ -704,6 +704,24 @@
             productivity: [("military_industry", 81)],
             state_buyer: true,
         ),
+        // The helicopter (switch `helicopter`, off: the tree is main's and the helicopter units
+        // need `gas_turbine`, as before). The Focke-Achgelis Fw 61 flew in 1936 and "is considered
+        // to be the world's first practical helicopter"; the Flettner was "produced for military
+        // use between 1942 and 1945", and the Sikorsky R-4 was the first production helicopter
+        // (ASME, "VS-300 Helicopter (1939)", National Historic Engineering Landmark 95, 1984,
+        // p. 2). cost: DESIGN VALUE, within era 1's range (no head-count conversion was made for
+        // it); no productivity, so the groups' sums above stay as they are.
+        (
+            key: "helicopter",
+            field: "military",
+            era: 1,
+            requires: ["aviation"],
+            demonstrated: 1936,
+            industrialized: 1942,
+            cost: 99,
+            productivity: [],
+            state_buyer: true,
+        ),
         (
             key: "liquid_fuel_rocket",
             field: "military",
