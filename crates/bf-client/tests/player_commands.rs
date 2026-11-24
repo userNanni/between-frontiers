@@ -199,6 +199,21 @@ const PLAYER: &[Surface] = &[
         files: &["screens/war.rs"],
     },
     Surface {
+        variant: "SetFrontShare",
+        command: id::WAR,
+        files: &["screens/fronts.rs"],
+    },
+    Surface {
+        variant: "SetFrontObjective",
+        command: id::WAR,
+        files: &["screens/fronts.rs"],
+    },
+    Surface {
+        variant: "SetReserve",
+        command: id::WAR,
+        files: &["screens/fronts.rs"],
+    },
+    Surface {
         variant: "SetExpedition",
         command: id::WAR,
         files: &["screens/war.rs"],
@@ -246,27 +261,10 @@ const PLAYER: &[Surface] = &[
 ];
 
 /// Variants the player does not give from a screen with a key, and why.
-const EXCEPTIONS: &[(&str, &str)] = &[
-    (
-        "Borders",
-        "issued by treaties, peace, tests and tools; the player frees its land with Liberate",
-    ),
-    (
-        "SetFrontObjective",
-        "behind the switch fronts (off), draft; its screen in the war window comes from the \
-         interface in the same merge train, which moves it to PLAYER",
-    ),
-    (
-        "SetFrontShare",
-        "behind the switch fronts (off), draft; its screen in the war window comes from the \
-         interface in the same merge train, which moves it to PLAYER",
-    ),
-    (
-        "SetReserve",
-        "behind the switch fronts (off), draft; its screen in the war window comes from the \
-         interface in the same merge train, which moves it to PLAYER",
-    ),
-];
+const EXCEPTIONS: &[(&str, &str)] = &[(
+    "Borders",
+    "issued by treaties, peace, tests and tools; the player frees its land with Liberate",
+)];
 
 fn variants() -> BTreeSet<String> {
     let mut tracer = Tracer::new(TracerConfig::default());

@@ -9,6 +9,7 @@ pub mod demand;
 pub mod economy;
 pub mod embargo;
 pub mod forces;
+pub mod fronts;
 pub mod game;
 pub mod gold;
 pub mod gold_decision;

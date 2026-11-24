@@ -111,6 +111,44 @@ pub struct Overrun {
     pub ally_fights: bool,
 }
 
+/// The player's fronts under orders (`war::fronts`): each front against an enemy, the reserve,
+/// and the pace the army moves at.
+#[derive(Clone, Debug, PartialEq)]
+pub struct FrontsView {
+    /// The land men of the army (in service and called up).
+    pub army_men: f64,
+    pub rows: Vec<FrontRow>,
+    /// The reserve set and now, per mille, and the state it reinforced last week.
+    pub reserve: u16,
+    pub reserve_now: u16,
+    pub reinforced: Option<u16>,
+    /// What the fronts without an order are to have, and the share in transit, per mille.
+    pub rest: u16,
+    pub transit: u16,
+    /// Of the army, the most that reaches its new place in a week, per mille.
+    pub per_week: u16,
+}
+
+/// One front, against an enemy.
+#[derive(Clone, Debug, PartialEq)]
+pub struct FrontRow {
+    pub enemy: String,
+    /// The share set (`None`: no order, the front takes its part of what is left), on the line
+    /// now, and in transit toward it, per mille.
+    pub share: Option<u16>,
+    pub now: u16,
+    pub transit: u16,
+    /// Men per km of the player's side over the front's segments; `None` without widths.
+    pub men_km: Option<f64>,
+    pub attack: bool,
+    /// The enemy state aimed at, the enemy states on the front (candidates), and the segments
+    /// into the objective of all the front's segments.
+    pub objective: Option<u16>,
+    pub states: Vec<u16>,
+    pub to_objective: usize,
+    pub segments: usize,
+}
+
 /// One side's support for the war (G4), per mille, as the tick wrote it.
 #[derive(Clone, Debug, PartialEq)]
 pub struct SupportLine {
@@ -288,6 +326,8 @@ pub struct WarView {
     pub losses: u64,
     /// The support's thresholds, per mille: peace and collapse.
     pub thresholds: Option<(i32, i32)>,
+    /// The fronts as objects of command (switch `fronts`); `None` with it off.
+    pub fronts: Option<FrontsView>,
     /// Weeks from the collapse to the government's fall.
     pub revolution_weeks: u16,
     /// The pace of the fronts (`front` of the military rules): men per km of a full line, and
@@ -305,7 +345,7 @@ pub struct WarView {
     pub fleet: Option<FleetLine>,
 }
 
-pub type Signature = (usize, usize, usize, usize, i64);
+pub type Signature = (usize, usize, usize, usize, i64, usize);
 
 pub fn signature(world: &GameWorld, days: i64) -> Signature {
     let f = &world.war.fighting;
@@ -315,6 +355,20 @@ pub fn signature(world: &GameWorld, days: i64) -> Signature {
         f.control.len(),
         f.postures.len(),
         days / 7,
+        // The player's front orders, so that a change shows before the week turns.
+        world
+            .war
+            .fronts
+            .countries
+            .iter()
+            .map(|c| {
+                usize::from(c.reserve)
+                    + c.fronts
+                        .iter()
+                        .map(|x| usize::from(x.share) + usize::from(x.objective.unwrap_or(0)))
+                        .sum::<usize>()
+            })
+            .sum(),
     )
 }
 
@@ -811,10 +865,97 @@ pub fn read(
             0.0
         }
     };
+    // The fronts under orders (switch `fronts`).
+    let fronts = setup
+        .conduct
+        .as_ref()
+        .and_then(|c| c.rules.fronts.as_ref())
+        .map(|r| {
+            let segs = bf_sim::war::fronts::segments_of(fighting, me);
+            let orders = world.war.fronts.of(me);
+            let on_line = orders.map(|o| o.on_line(&segs));
+            let state_of = |region: u32| regions.get(region as usize).map(|x| x.state);
+            let rows = segs
+                .iter()
+                .map(|&(enemy, n)| {
+                    let order = orders.and_then(|o| o.fronts.iter().find(|f| f.enemy == enemy));
+                    let now = match (&on_line, order) {
+                        (_, Some(f)) => f.now,
+                        (Some(l), None) => l.iter().find(|(e, _)| *e == enemy).map_or(0, |x| x.1),
+                        // The old rule: the army by segments.
+                        (None, None) => {
+                            let total: u64 = segs.iter().map(|x| x.1).sum();
+                            (1000 * n).checked_div(total).unwrap_or(0) as u16
+                        }
+                    };
+                    let (mut men, mut width) = (0.0, 0.0);
+                    let mut states: Vec<u16> = Vec::new();
+                    let objective = order.and_then(|f| f.objective);
+                    let mut to_objective = 0;
+                    for g in &fighting.last_week {
+                        let (us, them, theirs) = if g.a == me && g.b == enemy {
+                            (0usize, 1usize, g.into)
+                        } else if g.b == me && g.a == enemy {
+                            (1, 0, g.from)
+                        } else {
+                            continue;
+                        };
+                        let _ = them;
+                        men += f(g.outcome.terms[us].number) * 1000.0;
+                        if let (Some(x), Some(y)) = (state_of(g.from), state_of(g.into)) {
+                            width += setup
+                                .width_km
+                                .get(&(x.min(y), x.max(y)))
+                                .map_or(0.0, |w| f(*w));
+                        }
+                        if let Some(st) = state_of(theirs) {
+                            if !states.contains(&st) {
+                                states.push(st);
+                            }
+                            if Some(st) == objective {
+                                to_objective += 1;
+                            }
+                        }
+                    }
+                    FrontRow {
+                        enemy: tag_of(enemy),
+                        share: order.map(|f| f.share),
+                        now,
+                        transit: order.map_or(0, |f| f.share.saturating_sub(f.now)),
+                        men_km: (width > 0.0).then(|| men / width),
+                        attack: fighting.posture(me, enemy).unwrap_or(false),
+                        objective,
+                        states,
+                        to_objective,
+                        segments: n as usize,
+                    }
+                })
+                .collect();
+            let army_men = mil.map_or(0.0, |m| {
+                world.war.countries.get(usize::from(me)).map_or(0, |c| {
+                    c.formations
+                        .iter()
+                        .filter(|x| m.types[x.unit as usize].domain == bf_sim::war::Domain::Land)
+                        .map(|x| bf_sim::war::men(m, x))
+                        .sum::<i64>()
+                }) as f64
+            });
+            FrontsView {
+                army_men,
+                rows,
+                reserve: orders.map_or(0, |o| o.reserve),
+                reserve_now: orders.map_or(0, |o| o.reserve_now),
+                reinforced: orders.and_then(|o| o.reinforced).and_then(state_of),
+                rest: orders.map_or(1000, |o| o.rest()),
+                transit: orders.map_or(0, |o| o.transit()),
+                per_week: r.transfer_per_week,
+            }
+        });
     Some(WarView {
         me: tag.to_owned(),
         wars,
         losses: lost_of(me),
+        fronts,
         thresholds: setup
             .conduct
             .as_ref()
