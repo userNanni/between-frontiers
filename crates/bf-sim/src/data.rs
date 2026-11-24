@@ -1071,6 +1071,9 @@ impl GameData {
         (on && w.forces_1925.is_some()).then(|| {
             let mut peace = peace.clone();
             peace.soldiers = crate::war::SoldierRule::Forces;
+            if !self.switches.reserve_cohorts {
+                peace.reserve_cohorts = None;
+            }
             (Arc::new(w.military.clone()), Arc::new(peace))
         })
     }
