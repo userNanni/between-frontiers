@@ -172,6 +172,18 @@ O texto abaixo é o que foi levado ao dono, com a recomendação de cada uma.
      | ONU, *International Capital Movements during the Inter-War Period* (1949) | só a reimpressão de 1979, em empréstimo controlado; a biblioteca da ONU não tem o arquivo | não conferida | copyright da ONU | não |
      | Twomey (tabelas do site do autor) e Dunning | Twomey só no Wayback Machine; Dunning só em livro | Twomey: países de destino em 1913, 1929 e 1938, parcela do PIB | sem licença declarada; copyright do autor | não |
 
+   - **Revisão de 2026-11-24 (CS1, ao dono):** também foram vistas, para 1925 por credor e por
+     devedor: Feis, *Europe, the World's Banker 1870–1914* (1930), que para em 1914 (Reino Unido,
+     França e Alemanha como donos; não serve para 1925 sem extrapolar); Woodruff, *Impact of
+     Western Man* (1966), com tabelas de 1914 e 1938, não de 1925, e licença incerta. Nenhuma fonte
+     aberta dá o estoque de 1925 por credor e por devedor para todos os donos: só o Lewis, para os
+     EUA como dono. O que o jogo guarda em 1925 como posição externa: as camadas de capital
+     estrangeiro em zero; os títulos do governo no exterior (`Money::debt_abroad`, `debt_fx`) em
+     zero; as dívidas entre Estados por tratado (`treaty::Ledger`, `war_debts`) com fonte; e os
+     créditos privados da chave `capital_follows_rate`, semeados por valores de desenho. A pergunta
+     ao dono (CS1): semear só os EUA atrás de chave, ou esperar fonte para os outros credores; a
+     recomendação do orquestrador é esperar, porque os EUA como único dono estrangeiro em 1925 é
+     falso justamente onde o capital externo mais pesa (Argentina, Índia, Egito).
    - **Recomendação:** começar em zero neste passo. Depois, um PR de dados semeia o estoque
      americano por país de destino a partir do Lewis: interpolado entre 1924 e 1929, direto
      separado de carteira (só o direto vira camada), com a interpolação anotada. Os donos
