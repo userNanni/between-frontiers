@@ -1043,6 +1043,7 @@ impl GameData {
                     rules,
                     clauses: self.clauses.clone(),
                     state_ids: self.border_rules.state_ids.clone(),
+                    neighbours: Arc::new(self.border_rules.neighbours.clone()),
                 })
             });
         let fight = war.as_ref().filter(|_| switches.war).map(|_| {
