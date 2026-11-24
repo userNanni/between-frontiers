@@ -90,6 +90,10 @@
     // newspapers, radio and television sets and internet users per thousand as gradual stocks
     // (`data/politics/media.ron`), and the share they reach (`media_reach`). Off: nothing measured.
     media: false,
+    // What the mass media do (docs/politics.pt-BR.md, "Mídia", slice 2, in draft until the owner
+    // answers MD2, MD3 and MD6): movements, war support, the hidden pressure of the state's media,
+    // and the internet against censorship. Needs `media`. Off: the media are read by nothing.
+    media_effects: false,
     // The negotiation table (`docs/treaties.pt-BR.md` section 13): proposals answered by the AI
     // in the first week by the account the player sees, counterproposals and denunciations.
     // Off: proposals wait on the table.

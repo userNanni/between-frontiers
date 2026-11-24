@@ -31,4 +31,11 @@
     copies_half_income: 15000.0,
     news_pace: 0.1,
     people_per_unit: [2.5, 3.5, 3.5, 1.0],
+    // What the media do (slice 2, in draft: the owner's MD2, MD3 and MD6 at the recommended
+    // answer). DESIGN VALUES, per mille: (a movement grows 50 % faster at full free reach; 50 %
+    // slower at full official reach, and what it loses feeds the movement for a change of regime;
+    // the official media add 100 to the war's support target at full official reach; the free
+    // media make the support move 50 % faster at full free reach; full internet access takes 80 %
+    // of the censorship's force).
+    effects: Some((500, 500, 100, 500, 800)),
 )

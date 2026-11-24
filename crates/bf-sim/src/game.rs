@@ -1388,6 +1388,13 @@ pub struct Switches {
     /// gradual stocks, and the share they reach (the indicator `media_reach`). Off: nothing is
     /// measured and the indicator stays unmeasured.
     pub media: bool,
+    /// What the mass media do (`media`, slice 2, in draft: the owner's MD2, MD3 and MD6 at the
+    /// recommended answer): movements grow faster where free media reach and slower where the
+    /// state's do, the pressure the state's media hold back feeds the movement for a change of
+    /// regime; the state's media add to war support and the free media hasten its move; the
+    /// internet weakens censorship. Needs `media`. Off: the media are measured and read by
+    /// nothing.
+    pub media_effects: bool,
     /// The negotiation table (`treaty_table`, docs/treaties.pt-BR.md section 13): proposals
     /// answered by the AI in the first week by the same account the player sees, counters, and
     /// denunciations. Off: proposals wait on the table and nothing is answered.
@@ -1500,6 +1507,7 @@ impl Switches {
         "ledger_record",
         "market_stock",
         "media",
+        "media_effects",
         "negotiation",
         "occupied_works",
         "payments_settle",
@@ -1538,6 +1546,7 @@ impl Switches {
             "ledger_record" => self.ledger_record = true,
             "market_stock" => self.market_stock = true,
             "media" => self.media = true,
+            "media_effects" => self.media_effects = true,
             "negotiation" => self.negotiation = true,
             "occupied_works" => self.occupied_works = true,
             "payments_settle" => self.payments_settle = true,
@@ -1604,10 +1613,10 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
     }) = rules
     {
         if let Some(p) = &politics {
-            s.add(crate::polity::PoliticsSystem::new(
-                Arc::clone(p),
-                Arc::clone(&cat),
-            ));
+            s.add(
+                crate::polity::PoliticsSystem::new(Arc::clone(p), Arc::clone(&cat))
+                    .with_media(media.clone().filter(|_| switches.media_effects)),
+            );
         }
         let programme = fight.as_ref().and_then(|f| f.programme.clone());
         if let Some((military, peace)) = war {

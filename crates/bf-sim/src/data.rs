@@ -341,6 +341,10 @@ struct MediaFile {
     copies_half_income: f64,
     news_pace: f64,
     people_per_unit: Vec<f64>,
+    /// (free growth, official damp, propaganda, free speed, internet against censorship), per
+    /// mille; slice 2.
+    #[serde(default)]
+    effects: Option<(i32, i32, i32, i32, i32)>,
 }
 
 impl MediaFile {
@@ -382,6 +386,15 @@ impl MediaFile {
             copies_half_income: f(self.copies_half_income),
             news_pace: f(self.news_pace),
             people_per_unit: [0, 1, 2, 3].map(|k| f(self.people_per_unit[k])),
+            effects: self
+                .effects
+                .map_or_else(Default::default, |e| crate::media::MediaEffects {
+                    free_growth: e.0,
+                    official_damp: e.1,
+                    propaganda: e.2,
+                    free_speed: e.3,
+                    internet_censorship: e.4,
+                }),
         })
     }
 }
@@ -1063,6 +1076,13 @@ impl GameData {
                     .and_then(|w| w.conduct.clone())
                     .and_then(|c| {
                         crate::war::support::Conduct::resolve(c, self.politics.clone()).ok()
+                    })
+                    .map(|c| {
+                        c.with_media(
+                            self.media
+                                .clone()
+                                .filter(|_| switches.media && switches.media_effects),
+                        )
                     })
                     .map(Arc::new),
                 politics: self.politics.clone(),
