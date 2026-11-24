@@ -1142,6 +1142,7 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
             agreements: snap.agreements.as_deref(),
             trade: snap.tariffs.as_deref(),
             gold: snap.government.as_deref().and_then(|g| g.gold.as_ref()),
+            war: snap.war.as_deref(),
         };
         let res = super::journal::show(
             ui,
@@ -1186,6 +1187,19 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
                 .send(Command::Issue(GameCommand::Denounce { tag, agreement }));
         }
         // An embargo closes trade both ways from next week: a point to go back to first.
+        if let (Some((enemy, on)), Some(tag)) = (res.scorch, snap.player.clone()) {
+            // The order destroys what falls to the enemy: a point to come back to first.
+            if on {
+                state.restore_point_before(shared, Reason::Scorch);
+            }
+            state
+                .sim
+                .send(Command::Issue(GameCommand::SetScorchedEarth {
+                    tag,
+                    enemy,
+                    on,
+                }));
+        }
         if let (Some((target, on)), Some(tag)) = (res.embargo, snap.player.clone()) {
             let c = GameCommand::Embargo { tag, target, on };
             if matches!(c, GameCommand::Embargo { on: true, .. }) {

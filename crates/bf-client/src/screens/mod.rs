@@ -35,6 +35,7 @@ pub mod pick;
 pub mod population;
 pub mod research;
 pub mod saves;
+pub mod scorch;
 pub mod sea_lens;
 pub mod settings;
 pub mod shortcuts_chip;

@@ -59,6 +59,43 @@ pub struct Front {
     pub segments: Vec<Segment>,
     /// Land casualties of the enemy since its first war.
     pub enemy_losses: u64,
+    /// Scorched earth against this enemy (switch `scorched_earth`); `None` with it off.
+    pub scorch: Option<Scorch>,
+}
+
+/// Scorched earth against one enemy: whether the order is given, the player's regions fought
+/// over against it with what would burn if each fell this week, and what has burned.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Scorch {
+    pub ordered: bool,
+    pub regions: Vec<ScorchRegion>,
+    pub burned: Vec<Burned>,
+}
+
+/// A region of the player's side fought over against the enemy.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ScorchRegion {
+    pub state: u16,
+    /// Plant levels, and their share of the country's output (value added at this week's
+    /// prices), 0–1.
+    pub levels: i64,
+    pub output: f64,
+    /// Weeks fought over, and the share of its levels that would burn if it fell this week, per
+    /// mille (`ScorchRules::share` of one week more).
+    pub weeks: u16,
+    pub would_burn: i32,
+}
+
+/// What a scorched region lost.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Burned {
+    pub state: u16,
+    /// The country that burned it and the one it fell to (tags).
+    pub by: String,
+    pub to: String,
+    pub levels: i64,
+    pub share: i32,
+    pub day: i64,
 }
 
 impl Front {
@@ -305,7 +342,7 @@ pub struct WarView {
     pub fleet: Option<FleetLine>,
 }
 
-pub type Signature = (usize, usize, usize, usize, i64);
+pub type Signature = (usize, usize, usize, usize, i64, usize);
 
 pub fn signature(world: &GameWorld, days: i64) -> Signature {
     let f = &world.war.fighting;
@@ -315,6 +352,7 @@ pub fn signature(world: &GameWorld, days: i64) -> Signature {
         f.control.len(),
         f.postures.len(),
         days / 7,
+        world.war.scorch.orders.len(),
     )
 }
 
@@ -393,6 +431,7 @@ fn support_line(
 }
 
 /// The player's wars; `None` without a player or without the war rule.
+#[allow(clippy::too_many_arguments)]
 pub fn read(
     world: &GameWorld,
     tag: &str,
@@ -400,8 +439,35 @@ pub fn read(
     politics: Option<&bf_sim::politics::Politics>,
     front: Option<&bf_sim::war::FrontRule>,
     mil: Option<&bf_sim::war::Military>,
+    cat: Option<&bf_sim::econ::Catalogue>,
     days: i64,
 ) -> Option<WarView> {
+    let scorch_rules = setup
+        .conduct
+        .as_ref()
+        .and_then(|c| c.rules.occupation.scorched.as_ref());
+    let scorch = &world.war.scorch;
+    // The value added of a region's plants at its market's prices this week.
+    let output = |r: usize| -> f64 {
+        let (Some(cat), Some(x)) = (cat, world.econ.regions.get(r)) else {
+            return 0.0;
+        };
+        let Some(m) = world.econ.markets.get(usize::from(x.market)) else {
+            return 0.0;
+        };
+        x.plants
+            .iter()
+            .filter_map(|p| {
+                let b = cat.buildings.get(usize::from(p.kind))?;
+                let method = b.methods.get(usize::from(p.method))?;
+                let va = method.value_added(|g| m.price.get(g).copied().unwrap_or(Fixed::ZERO));
+                Some(f(va
+                    * Fixed::from_int(p.levels)
+                    * p.staffing
+                    * p.utilization))
+            })
+            .sum()
+    };
     let dig_weeks = front.map_or(0, |r| r.dig_weeks);
     let me = world.countries.iter().position(|(_, c)| c.tag == tag)? as u16;
     let tag_of = |i: u16| {
@@ -528,11 +594,73 @@ pub fn read(
                             })
                         })
                         .collect();
+                    // Scorched earth: the regions the player holds on this front, what would
+                    // burn there, and what the order burned against this enemy's side.
+                    let scorch = scorch_rules.map(|r| {
+                        let mut held: Vec<u32> = Vec::new();
+                        for g in &fighting.last_week {
+                            let at = if g.a == me && g.b == enemy {
+                                g.from
+                            } else if g.b == me && g.a == enemy {
+                                g.into
+                            } else {
+                                continue;
+                            };
+                            if !held.contains(&at) {
+                                held.push(at);
+                            }
+                        }
+                        let total: f64 = regions
+                            .iter()
+                            .enumerate()
+                            .filter(|(_, x)| x.market == me)
+                            .map(|(i, _)| output(i))
+                            .sum();
+                        let mut list: Vec<ScorchRegion> = held
+                            .into_iter()
+                            .filter_map(|at| {
+                                let x = regions.get(at as usize)?;
+                                let weeks = scorch.weeks(at);
+                                Some(ScorchRegion {
+                                    state: x.state,
+                                    levels: x.plants.iter().map(|p| p.levels).sum(),
+                                    output: if total > 0.0 {
+                                        output(at as usize) / total
+                                    } else {
+                                        0.0
+                                    },
+                                    weeks,
+                                    would_burn: r.share(weeks.saturating_add(1)),
+                                })
+                            })
+                            .collect();
+                        list.sort_by(|a, b| b.output.total_cmp(&a.output));
+                        Scorch {
+                            ordered: scorch.ordered(me, enemy),
+                            regions: list,
+                            burned: scorch
+                                .burned
+                                .iter()
+                                .filter(|b| b.by == me && theirs.contains(&b.to))
+                                .filter_map(|b| {
+                                    Some(Burned {
+                                        state: regions.get(b.region as usize)?.state,
+                                        by: tag_of(b.by),
+                                        to: tag_of(b.to),
+                                        levels: b.levels,
+                                        share: b.share,
+                                        day: b.day,
+                                    })
+                                })
+                                .collect(),
+                        }
+                    });
                     Front {
                         enemy: tag_of(enemy),
                         attack: fighting.posture(me, enemy).unwrap_or(false),
                         segments,
                         enemy_losses: lost_of(enemy),
+                        scorch,
                     }
                 })
                 .collect();

@@ -239,6 +239,11 @@ const PLAYER: &[Surface] = &[
         files: &["screens/game.rs", "screens/journal.rs"],
     },
     Surface {
+        variant: "SetScorchedEarth",
+        command: id::JOURNAL,
+        files: &["screens/game.rs", "screens/scorch.rs"],
+    },
+    Surface {
         variant: "SetCapitalControls",
         command: id::TAB_MONEY,
         files: &["screens/gold.rs"],
@@ -246,17 +251,10 @@ const PLAYER: &[Surface] = &[
 ];
 
 /// Variants the player does not give from a screen with a key, and why.
-const EXCEPTIONS: &[(&str, &str)] = &[
-    (
-        "Borders",
-        "issued by treaties, peace, tests and tools; the player frees its land with Liberate",
-    ),
-    (
-        "SetScorchedEarth",
-        "behind the switch scorched_earth (off), draft; its order in the Agendas (two steps, \
-         restore point) comes from the interface in the same merge train, which moves it to PLAYER",
-    ),
-];
+const EXCEPTIONS: &[(&str, &str)] = &[(
+    "Borders",
+    "issued by treaties, peace, tests and tools; the player frees its land with Liberate",
+)];
 
 fn variants() -> BTreeSet<String> {
     let mut tracer = Tracer::new(TracerConfig::default());
