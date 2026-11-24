@@ -2801,27 +2801,28 @@ movimento sai do catálogo e o jogo é o da `main`.
 | Greve (AW3 a) | parar a indústria de guerra | `strike` (300 por mil, **valor de desenho**) dos operários que apoiam o movimento param: o staffing dos edifícios `military_industry` da metrópole cai nessa parte, na mão de obra mensal. **Conservação:** os grevistas ficam na população, empregados, e consomem (teste `a_strike_stops_the_war_industry_and_keeps_the_people`) | sim |
 | Motim (AW3 a) | recusar o ataque, como a França de 1917 | `mutiny` (200 por mil, **valor de desenho**) dos soldados que apoiam o movimento não combatem: o fogo do exército de terra cai nessa parte. **Conservação:** os homens ficam nas formações e na frente (teste `a_mutiny_keeps_the_men_and_cuts_the_fire`) | sim |
 | O que ganha (AW4 a) | não faz lei; derruba governos | não troca lei nem força a paz por si. Com a mobilização em `collapse_mobilized` (40 por mil, **valor de desenho**, os 4 % com que um movimento move uma lei) ou mais, a contagem para a queda do governo corre abaixo do limiar de paz (300), não só abaixo do colapso (100) | sim |
+| Censura e repressão (AW6, recomendada: sim) | o Estado prende os líderes e cala a imprensa: em 1918 o exército prendeu os líderes da greve e mandou muitos ao front (GHDI, p. 1) | o crescimento semanal cai pelo fator que a regra geral aplica ao empurrão de lei: a repressão inteira (nenhum grupo apoia a "lei" da paz), mais a censura vezes `censorship_weight` (1000 por mil da repressão, **valor de desenho**: a regra geral não tem lugar para a censura); com as duas somando 1000, o movimento não cresce | sim: é a resposta do jogador ao movimento além da paz |
 | Memória (AW5 a) | o país que saiu cansado de uma guerra entra devagar na seguinte | o que sobrava do movimento quando a guerra começou tira `memory` (300 por mil, **valor de desenho**) dessa parte do apoio inicial | sim |
 
 **Medido** (`war_antiwar::hungary_tires_of_its_war`: a Hungria, jogada, declara à Tchecoslováquia
-sem causa; colapso por ocupação desligado para a guerra seguir):
+sem causa; colapso por ocupação desligado para a guerra seguir). A Hungria de 1925 tem repressão e
+censura altas: com AW6 o movimento cresce cerca de um quarto do que cresceria sem elas.
 
-| | mai/1925 | jul | set | nov |
-|---|---|---|---|---|
-| apoio à guerra | 308 | 235 | 181 | 144 |
-| cansaço dos recrutas | 705 | 775 | 827 | 862 |
-| movimento (por mil dos recrutas) | 6 | 24 | 51 | 80 |
-| mobilizados (por mil do povo) | 3 | 14 | 30 | 47 |
-| greve / motim (por mil) | 1 / 0 | 6 / 3 | 15 / 8 | 23 / 12 |
+| | mai/1925 | jul | set | nov | jan/1926 | mar |
+|---|---|---|---|---|---|---|
+| apoio à guerra | 308 | 235 | 181 | 144 | 113 | 92 |
+| cansaço dos recrutas | 705 | 775 | 827 | 862 | 892 | 912 |
+| movimento (por mil dos recrutas), com AW6 | 1 | 6 | 12 | 19 | 28 | 37 |
+| o mesmo sem AW6 (primeira medida) | 6 | 24 | 51 | 80 | — | — |
+| mobilizados (por mil do povo), com AW6 | 0 | 3 | 7 | 11 | 16 | 22 |
+| greve / motim (por mil), com AW6 | 0 / 0 | 1 / 0 | 3 / 1 | 5 / 3 | 8 / 4 | 10 / 5 |
 
-- Em novembro a mobilização passa de 40 por mil, o apoio (144) está entre o colapso e o limiar de
-  paz, e a contagem abre: o governo cai em dezembro de 1925. Sem o movimento, o apoio só passa do
-  colapso em março de 1926, e a guerra acaba em abril.
-- Depois da paz o movimento fica em 94 a 95 por mil e cai pela meia-vida; a aba Política o mostra
-  pelo espelho de janeiro.
-- **Dependências:** a legitimidade é anual (a regra dos movimentos), então pesa pouco numa guerra
-  curta; a repressão e a censura ainda não freiam o crescimento semanal (a regra geral só as aplica
-  ao empurrão de lei): para o dono, junto de AW1 a AW5.
+- Com AW6 a mobilização não chega a 40 por mil: a contagem abre só pelo colapso, em março de 1926,
+  como sem o movimento, e a guerra acaba no mesmo abril. Sem AW6, a mobilização passava de 40 em
+  novembro, a contagem abria com o apoio em 144 e o governo caía em dezembro de 1925.
+- A legitimidade da Hungria cai de 973 a 886 no espelho de janeiro de 1926, com a guerra em curso.
+- **Dependência:** a legitimidade é anual (a regra dos movimentos), então pesa pouco numa guerra
+  curta.
 
 **Tela (esboço, para o thread da interface).** Sem comando novo.
 - **Janela "Guerra", por país em guerra:** o movimento (por mil dos recrutas), o cansaço, os
