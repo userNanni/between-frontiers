@@ -121,6 +121,10 @@ const SWITCHES: &[(&str, &str)] = &[
         "As ferrovias de 1925 têm o tamanho do que as linhas carregavam, e o resto do transporte vai por carroça, tropa e barco.",
     ),
     (
+        "relations",
+        "Mede o poder, a ameaça e a hostilidade entre os países, só para leitura: nenhuma decisão da IA ainda depende disso.",
+    ),
+    (
         "reputation",
         "Cada país guarda a reputação dos acordos que quebrou, que pesa na mesa de negociação.",
     ),

@@ -30,6 +30,7 @@ Cada regra nova entra desligada, com o jogo igual ao de antes; ligar é outra de
 | `payments_settle` | desligada | O comércio e os pagamentos entre países mexem nas reservas de cada banco central. |
 | `radium` | desligada | As minas de urânio trabalham pelo rádio, que os hospitais compram, e o urânio sai como subproduto. |
 | `rail_by_line` | desligada | As ferrovias de 1925 têm o tamanho do que as linhas carregavam, e o resto do transporte vai por carroça, tropa e barco. |
+| `relations` | desligada | Mede o poder, a ameaça e a hostilidade entre os países, só para leitura: nenhuma decisão da IA ainda depende disso. |
 | `reputation` | desligada | Cada país guarda a reputação dos acordos que quebrou, que pesa na mesa de negociação. |
 | `reserve_cohorts` | desligada | A reserva militar por turma: quem termina o serviço entra na reserva, perde treino com o tempo e a mobilização chama os mais novos primeiro. |
 | `schooling` | desligada | A escola por turma e por nível, e a campanha de alfabetização de adultos. |
