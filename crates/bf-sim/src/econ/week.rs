@@ -130,6 +130,9 @@ pub struct Week {
     pub biomass: Option<Arc<super::biomass::BiomassRules>>,
     /// `game::Switches::occupied_works`: the works in a region its owner does not hold wait.
     pub occupied_works: bool,
+    /// The reach of the mass media (`game::Switches::media`): the week's purchases of the good
+    /// sets are bought with.
+    pub media: Option<Arc<crate::media::MediaRules>>,
 }
 
 /// What a pop wants to buy this week.
@@ -1826,6 +1829,16 @@ impl System<GameWorld> for Week {
         // The yearly series' running sums (`econ::series`): a record, out of the hash.
         let base: Vec<Fixed> = cat.goods.iter().map(|g| g.base_price).collect();
         world.series.add_week(&base, &econ.markets, &metro_gdp);
+        // The sets the households bought (`media`), for the year's stocks.
+        if let Some(rules) = &self.media {
+            let g = usize::from(rules.electronics);
+            let bought: Vec<Fixed> = econ
+                .markets
+                .iter()
+                .map(|m| m.demand[g] * m.buy_ratio[g])
+                .collect();
+            world.media.add_week(&bought);
+        }
         // The gold standard (`econ::gold`): the cover, exits and returns, and what each central
         // bank is asked this week.
         let pegs = self

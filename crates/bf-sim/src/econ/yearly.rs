@@ -44,6 +44,8 @@ pub struct Yearly {
     pub wage_floor: bool,
     /// `Switches::foreign_contract`: the contracts and the hosts' laws act on the stakes.
     pub foreign_contract: bool,
+    /// The reach of the mass media (`Switches::media`): its stocks move on 1 January.
+    pub media: Option<Arc<crate::media::MediaRules>>,
 }
 
 pub struct YearlyChanges {
@@ -323,6 +325,42 @@ impl System<GameWorld> for Yearly {
             econ.history.extend(changes.records);
             if let Some(series) = changes.series {
                 world.series.close(series);
+            }
+            // The mass media (`media`): each market's stocks move by the year that closed.
+            if let Some(rules) = &self.media {
+                let n = econ.markets.len();
+                let last = ctx.date.year - 1;
+                let mut by: Vec<crate::media::MarketYear> = (0..n)
+                    .map(|_| crate::media::MarketYear {
+                        population: 0,
+                        literacy: Fixed::ZERO,
+                        gdp_per_head: Fixed::ZERO,
+                        open: [false; 3],
+                    })
+                    .collect();
+                for r in econ.history.iter().rev().take_while(|r| r.year == last) {
+                    if let Some(m) = by.get_mut(usize::from(r.market)) {
+                        m.population = r.population;
+                        m.literacy = r.literacy;
+                        m.gdp_per_head = if r.population > 0 {
+                            r.gdp / r.population
+                        } else {
+                            Fixed::ZERO
+                        };
+                    }
+                }
+                for (mi, m) in by.iter_mut().enumerate() {
+                    for k in 0..3 {
+                        let t = usize::from(rules.sets[k].0);
+                        m.open[k] = world
+                            .research
+                            .stage
+                            .get(mi)
+                            .and_then(|s| s.get(t))
+                            .is_some_and(|s| *s >= crate::research::Stage::Industrial);
+                    }
+                }
+                crate::media::year(rules, &mut world.media, &by);
             }
             for m in &mut econ.markets {
                 m.gdp_last_year = m.gdp_running;

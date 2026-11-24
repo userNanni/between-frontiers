@@ -327,6 +327,66 @@ Por que tão pouco no prazo, e qual peça falta:
   anos tarde na Europa ocidental; adiantado onde o voto foi barrado por causa que o modelo não vê
   (alfabetização exigida no Brasil até 1985, raça na África do Sul).
 
+## Mídia (fase 3)
+
+**O que já existia:** as leis de imprensa (`free_press`, `press_licensing`, `prior_censorship`,
+`state_press_monopoly`) e de radiodifusão (`private_broadcasting`, `public_broadcaster`,
+`state_broadcasting`), com os efeitos `censorship` e `state_media`; só o apoio à guerra lê a
+censura (decisão A2 do dono). O indicador `media_reach` estava declarado e não medido, e nenhum
+movimento o lê.
+
+**Fatia 1: o alcance medido (chave `media`, desligada; `media.rs`, `data/politics/media.ron`).**
+Decisão MD1 (o orquestrador, pela regra do dono de calibrar sem forçar a história): alcance
+**medido** do consumo e da alfabetização, liberado por tecnologia; nunca uma série fixa por país.
+- **Jornais** seguem os alfabetizados: exemplares por alfabetizado sobem com a renda por pessoa até
+  um teto, e o estoque fecha um décimo da distância por ano (o primeiro ano começa no alvo: a
+  imprensa de 1925 já existia).
+- **Aparelhos e usuários** são comprados com os eletrônicos das famílias (`consumer_electronics`):
+  um décimo do que compram é aparelho de mídia, repartido entre os meios que as tecnologias liberam
+  (rádio, depois televisão, depois a web), dividido pelo preço de um aparelho e somado ao estoque,
+  que se desgasta pela vida do aparelho. Gradual, como na vida real: o estoque de aparelhos por mil
+  é o número intermediário que a tela mostra.
+- **Alcance** (`media_reach`, por mil): a parte das pessoas que pelo menos um meio alcança (um
+  exemplar é lido por 2,5 pessoas, um aparelho alcança uma casa de 3,5, um usuário é uma pessoa).
+- **Valores de desenho**, marcados no dado: a parte dos eletrônicos que é aparelho (0,1), os preços
+  e as vidas dos aparelhos, a repartição entre os meios, o teto e a meia renda dos jornais, as
+  pessoas por unidade.
+- **Nada lê o alcance ainda:** nenhum movimento tem condição sobre `media_reach`. Quais movimentos,
+  o apoio à guerra e a legitimidade passam a ler (MD2 a MD6) é a fatia 2, ao dono.
+
+**Conferência (não é meta; UNESCO e ITU, com página em `target/media/research.md` do levantamento:
+Liga das Nações 1931/32 tab. 119, *Historical Statistics* dos EUA pp. 796 e 809, UNESCO *Statistics
+on Radio and Television 1950–1960*, *World Communications* 1975, WDI do Banco Mundial para 1970 e
+2000). Por mil habitantes, jogo / real:**
+
+| | jornais 1950 | rádios 1930 | rádios 1950 | rádios 1970 | TVs 1970 | TVs 2000 | internet 2000 |
+|---|---|---|---|---|---|---|---|
+| EUA | 318 / 356 | 118 / 98 | 353 / 560 | 379 / ~1.414 | 246 / 395 | 292 / 835 | 206 / 431 |
+| Reino Unido | 95 / 612 | 44 / 94 | 142 / 244 | 104 / 624 | 64 / 324 | 98 / 652–892 | 0 / 268 |
+| URSS | 64 / ~174 | 0 / ~3 | 93 / 62 | 66 / 430 | 36 / 185 | 106 / 538 | 0 / 20 |
+| Brasil | 39 / 30 | 0 / 0,2–5 | 99 / 48 | 86 / 208 | 15 / 64 | 55 / 343 | 0 / 29 |
+| Índia | 12 / 8 | 0 / ~0,02 | 49 / 1 | 29 / 31 | 14 / 0,1 | 22 / 78 | 0 / 5 |
+
+- A ordem de grandeza bate em 1930–1950; depois os estoques do jogo ficam baixos nos países ricos
+  (rádio e TV dos EUA e do Reino Unido em 1970–2000 a um terço ou menos do real) e altos nos pobres
+  cedo (rádios da Índia em 1950). A parte dos eletrônicos que vira aparelho é uma só para todos os
+  anos; na vida real ela subiu com a TV a cores e o computador.
+- **A internet só chega aos EUA até 2000:** a web (1995) chega ao estágio industrial só lá; é a
+  difusão de técnica, a mesma anotada no computador (o Reino Unido em 1972).
+- Os jornais do Reino Unido (612 por mil em 1950) ficam a um sexto: o teto por alfabetizado é um
+  só para todos.
+- Itens de calibração dessa chave, no roteiro de `state.pt-BR.md`.
+
+**Decisões ao dono (fatia 2 e 3):**
+- **MD2** Onde a mídia age: movimentos, apoio à guerra e legitimidade (recomendada) | só
+  movimentos e guerra.
+- **MD3** Mídia estatal: freia a oposição e soma ao apoio, e a pressão escondida sai no colapso
+  (recomendada, como a A2) | um estoque de credibilidade que cai com o tempo de propaganda.
+- **MD4** Propaganda paga: linha do Orçamento com "Regra histórica" × "Fixado pelo governo"
+  (recomendada) | só as leis.
+- **MD5** Rádio estrangeiro alcançando outros países: depois (recomendada) | agora.
+- **MD6** A internet reduz a eficácia da censura na proporção do acesso (recomendada) | não.
+
 ## O que fica para ligar na simulação
 
 1. ~~Estado salvo, `SetLaw`, efeitos ligados, movimentos, peso e mudança de lei sem jogador.~~

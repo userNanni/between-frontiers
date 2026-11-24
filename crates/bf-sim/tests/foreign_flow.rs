@@ -162,6 +162,7 @@ fn the_foreign_share_of_profit_leaves_for_the_owners_fund() {
         biomass: None,
         admin: None,
         occupied_works: false,
+        media: None,
     };
     // The plant with the largest profit last week, of a kind with owners.
     let cat = &rules.catalogue;

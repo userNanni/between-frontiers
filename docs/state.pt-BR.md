@@ -1046,7 +1046,10 @@ estar medida contra a faixa.
    bem mais do que o efeito da árvore que sai; e o Reino Unido só põe computador no laboratório em
    1972, contra 1951 nos EUA (a difusão de técnica). Calibrar os fatores contra o efeito que eles
    substituem e a difusão entre países ricos antes de ligar.
-7. **Ligar, nesta ordem, cada uma contra a faixa:** `rail_by_line` e `household_biomass` juntas
+7. **A mídia** (`media`, docs/politics.pt-BR.md, "Mídia"): rádio e TV dos países ricos a um terço
+   do real em 1970–2000, rádios da Índia altos em 1950, os jornais do Reino Unido a um sexto, e a
+   internet só nos EUA até 2000 (a difusão da web).
+8. **Ligar, nesta ordem, cada uma contra a faixa:** `rail_by_line` e `household_biomass` juntas
    (depois de 1 e 2), a produção agrícola (3), o preço sem comprador (5), `payments_settle`,
    `gold_standard` e `capital_follows_rate` (depois de 4, com o sinal do comércio certo nos países
    do placar).
