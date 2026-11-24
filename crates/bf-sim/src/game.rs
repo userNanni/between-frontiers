@@ -165,6 +165,9 @@ pub struct GameWorld {
     /// Yearly series for the charts (`econ::series`): a record, out of the hash.
     #[serde(default)]
     pub series: crate::econ::series::SeriesState,
+    /// The reach of the mass media (`media`, `Switches::media`); empty while it is off.
+    #[serde(default)]
+    pub media: crate::media::MediaState,
 }
 
 impl HashState for GameWorld {
@@ -257,6 +260,11 @@ impl HashState for GameWorld {
             h.section("capital");
             self.capital.hash_state(h);
         }
+        // Worlds without the media keep their hash.
+        if !self.media.is_empty() {
+            h.section("media");
+            self.media.hash_state(h);
+        }
         // Worlds that never kept a stock keep their hash.
         if !self.stocks.is_empty() {
             h.section("stocks");
@@ -291,6 +299,7 @@ impl GameWorld {
             capital: Default::default(),
             stocks: Default::default(),
             series: Default::default(),
+            media: Default::default(),
             demography: crate::demography::DemographyState::default(),
             treaties: Default::default(),
             war: crate::war::WarState::default(),
@@ -1283,6 +1292,8 @@ pub struct Rules {
     /// The state's offices with computers (`Switches::computer_efficiency` with
     /// `fiscal_capacity`).
     pub admin: Option<Arc<crate::econ::admin::AdminRules>>,
+    /// The reach of the mass media (`Switches::media`).
+    pub media: Option<Arc<crate::media::MediaRules>>,
 }
 
 /// Rules that can be switched on, all off by default: a rule enters the main switched off, with
@@ -1368,6 +1379,11 @@ pub struct Switches {
     /// buyer is kept, up to some weeks of the market's output, and offered again with the next
     /// week's; its price does not fall below a floor. Off: what is not sold is lost.
     pub market_stock: bool,
+    /// The reach of the mass media (`media`, slice 1; owner's decision MD1, reach measured): each
+    /// country's newspapers, radio and television sets and internet users per thousand people as
+    /// gradual stocks, and the share they reach (the indicator `media_reach`). Off: nothing is
+    /// measured and the indicator stays unmeasured.
+    pub media: bool,
     /// The negotiation table (`treaty_table`, docs/treaties.pt-BR.md section 13): proposals
     /// answered by the AI in the first week by the same account the player sees, counters, and
     /// denunciations. Off: proposals wait on the table and nothing is answered.
@@ -1478,6 +1494,7 @@ impl Switches {
         "jobs_follow_use",
         "ledger_record",
         "market_stock",
+        "media",
         "negotiation",
         "occupied_works",
         "payments_settle",
@@ -1514,6 +1531,7 @@ impl Switches {
             "jobs_follow_use" => self.jobs_follow_use = true,
             "ledger_record" => self.ledger_record = true,
             "market_stock" => self.market_stock = true,
+            "media" => self.media = true,
             "negotiation" => self.negotiation = true,
             "occupied_works" => self.occupied_works = true,
             "payments_settle" => self.payments_settle = true,
@@ -1576,6 +1594,7 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
         capital,
         biomass,
         admin,
+        media,
     }) = rules
     {
         if let Some(p) = &politics {
@@ -1617,6 +1636,7 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
             biomass,
             admin,
             occupied_works: switches.occupied_works,
+            media: media.clone(),
         });
         s.add(crate::econ::monthly::Labour {
             cat: Arc::clone(&cat),
@@ -1655,6 +1675,7 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
             tree,
             wage_floor: switches.small_market_wage_floor,
             foreign_contract: switches.foreign_contract,
+            media,
         });
         // The agreements in force: tribute paid and tested, terms run out (off by default).
         if let Some(setup) = treaties {
@@ -2299,9 +2320,66 @@ mod tests {
             hash_of(&with_ledger)
         );
         assert_eq!(
-            hash_of(&headed(46, &encode_snapshot(&with_ledger).unwrap())),
+            hash_of(&headed(47, &encode_snapshot(&with_ledger).unwrap())),
             hash_of(&with_ledger)
         );
+        // Version 46, the reserves by cohort, before the media: the world without `media`.
+        {
+            #[derive(Serialize)]
+            struct BeforeMedia46<'a> {
+                scenario: &'a String,
+                player: &'a Option<Id<Country>>,
+                countries: &'a Table<Country, CountryState>,
+                census: &'a Vec<CensusRecord>,
+                econ: &'a crate::econ::Economy,
+                research: &'a crate::research::ResearchState,
+                politics: &'a crate::polity::PoliticsState,
+                demography: &'a crate::demography::DemographyState,
+                borders: &'a crate::borders::BordersState,
+                foreign: &'a crate::foreign_stakes::ForeignState,
+                influence: &'a crate::influence::InfluenceState,
+                treaties: &'a crate::treaty::TreatyState,
+                war: &'a crate::war::WarState,
+                education: &'a crate::demography::education::EducationState,
+                independence: &'a crate::borders::independence::IndependenceState,
+                levers: &'a crate::econ::levers::LeversState,
+                tariffs: &'a crate::econ::customs::TariffState,
+                payments: &'a crate::econ::payments::PaymentsState,
+                reserves: &'a crate::econ::payments::ReservesState,
+                gold: &'a crate::econ::gold::GoldState,
+                capital: &'a crate::econ::capital::CapitalState,
+                stocks: &'a crate::econ::stock::StockState,
+                series: &'a crate::econ::series::SeriesState,
+            }
+            let w = &with_ledger;
+            let v46 = encode_snapshot(&BeforeMedia46 {
+                scenario: &w.scenario,
+                player: &w.player,
+                countries: &w.countries,
+                census: &w.census,
+                econ: &w.econ,
+                research: &w.research,
+                politics: &w.politics,
+                demography: &w.demography,
+                borders: &w.borders,
+                foreign: &w.foreign,
+                influence: &w.influence,
+                treaties: &w.treaties,
+                war: &w.war,
+                education: &w.education,
+                independence: &w.independence,
+                levers: &w.levers,
+                tariffs: &w.tariffs,
+                payments: &w.payments,
+                reserves: &w.reserves,
+                gold: &w.gold,
+                capital: &w.capital,
+                stocks: &w.stocks,
+                series: &w.series,
+            })
+            .unwrap();
+            assert_eq!(hash_of(&headed(46, &v46)), hash_of(&with_ledger));
+        }
         // Version 45, the yearly series, before the reserves by cohort: the war without them.
         {
             #[derive(Serialize)]

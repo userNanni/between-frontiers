@@ -100,6 +100,7 @@ pub fn main() -> Result<(), String> {
             capital: None,
             biomass: None,
             admin: None,
+            media: None,
         }),
     );
     let world_supply = |e: &bf_sim::econ::Economy| -> Vec<f64> {

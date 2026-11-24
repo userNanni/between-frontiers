@@ -1,0 +1,34 @@
+// The reach of the mass media (`media`, `game::Switches::media`; docs/politics.pt-BR.md, "Mídia",
+// slice 1, owner's decision MD1: reach measured from what people buy and read, never a fixed
+// historical series). Read only with the switch on.
+//
+// DESIGN VALUES, not from a source (the stocks they make are compared with the UNESCO and ITU
+// series in the doc, as a check, not a target):
+// - a tenth of the households' consumer electronics are sets for the media (the rest is the other
+//   appliances);
+// - a radio set costs 0.6 units of consumer electronics (a lot of $1,000 of 2011: a 1930 set of
+//   some $50, about $700 today), lasts 10 years; a television set 2 units, 10 years; an internet
+//   user 1 unit (the device and the line), 5 years;
+// - the households' purchases of the good split among the open media: radio alone takes all;
+//   with television, 30 % radio and 70 % television; with the web, 10 %, 40 % and 50 %;
+// - a literate person buys at most 0.65 daily copies, half of that at a GDP per head of 15,000
+//   (1925 base prices); the stock closes a tenth of the gap a year;
+// - a copy is read by 2.5 people, a set reaches 3.5 (a household), a user is one person.
+(
+    electronics: "consumer_electronics",
+    sets_share: 0.1,
+    sets: [
+        ("radio", 0.6, 10),
+        ("television", 2.0, 10),
+        ("world_wide_web", 1.0, 5),
+    ],
+    split: [
+        [1.0, 0.0, 0.0],
+        [0.3, 0.7, 0.0],
+        [0.1, 0.4, 0.5],
+    ],
+    copies_per_literate: 0.65,
+    copies_half_income: 15000.0,
+    news_pace: 0.1,
+    people_per_unit: [2.5, 3.5, 3.5, 1.0],
+)

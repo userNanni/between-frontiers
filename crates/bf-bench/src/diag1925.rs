@@ -1117,6 +1117,36 @@ pub fn main() -> Result<(), String> {
         }
         return Ok(());
     }
+    // The mass media (`BF_DIAG_MEDIA=TAG,TAG`, with `media` on): in 1930, 1950, 1970 and 2000,
+    // newspapers, radio and television sets and internet users per thousand, and the reach.
+    if let Ok(spec) = std::env::var("BF_DIAG_MEDIA") {
+        let all: Vec<String> = data
+            .countries
+            .countries
+            .iter()
+            .map(|c| c.tag.clone())
+            .collect();
+        let idx: Vec<(String, usize)> = spec
+            .split(',')
+            .filter_map(|t| all.iter().position(|x| x == t).map(|i| (t.to_string(), i)))
+            .collect();
+        for y in [1930, 1950, 1970, 2000, 2025] {
+            s.sim.run_until(Date::new(y, 1, 3));
+            let w = s.world();
+            for (tag, mi) in &idx {
+                let m = w.media.markets.get(*mi).copied().unwrap_or_default();
+                println!(
+                    "{y} {tag}: newspapers {:.0}, radio {:.0}, television {:.0}, internet {:.0} per 1,000; reach {} per mille",
+                    m[0].to_f64_lossy(),
+                    m[1].to_f64_lossy(),
+                    m[2].to_f64_lossy(),
+                    m[3].to_f64_lossy(),
+                    w.media.reached.get(*mi).copied().unwrap_or(0)
+                );
+            }
+        }
+        return Ok(());
+    }
     // World trade over world GDP every ten years (data/history/trade_openness.csv): exports
     // plus imports at base prices, a week in July times 52, over the GDP of the last year.
     if std::env::var_os("BF_DIAG_TRADE").is_some() {

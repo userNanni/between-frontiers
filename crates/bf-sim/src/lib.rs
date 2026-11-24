@@ -13,6 +13,7 @@ pub mod game;
 pub mod indicators;
 pub mod influence;
 pub mod initial;
+pub mod media;
 pub mod politics;
 pub mod polity;
 pub mod research;
