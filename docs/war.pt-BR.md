@@ -1631,6 +1631,93 @@ O alvo é o da geração mais nova do equipamento da infantaria que o país faz.
 
 **Fica para a fase 6:** a parcela-alvo responder à ameaça (corrida armamentista).
 
+## A IA encomenda navios e aviões (item 11; desenho do orquestrador, 2026-11-23)
+
+Em paz, só o exército de terra seguia os homens em idade. A frota e a aviação ficavam com os
+elementos de 1925 e só trocavam de geração, e a sobra do teto militar comprava bens para o
+depósito.
+
+**A regra** (`war::ai_orders`, atrás de `war`):
+- Cada janeiro, um país sem jogador transforma `share` de um ano da sobra do teto sobre as
+  necessidades (o que iria ao depósito) em encomendas de navios e aviões. A fila é a A2, a
+  mesma do jogador.
+- **Mar e ar** dividem o dinheiro por uma regra só para todos. O mar pesa mais com a parcela
+  dos estados da metrópole com porto e com a gente nas colônias (`sea_base`, `sea_coast`,
+  `sea_colonies`, `air_base`). A tabela por país é calibração e fica fora.
+- **Dentro de cada serviço,** a encomenda mantém a forma que a força tem: cada tipo pela sua
+  parcela do valor do serviço, na geração mais nova que o país sabe equipar, sem encomenda nova
+  de um tipo que já tem uma aberta.
+- **Os tetos dos tratados em vigor** (`ai_orders::caps`) limitam o que limitam: navios capitais e
+  porta-aviões por tonelagem (Washington, 1922) e homens (Versalhes, art. 160). Honrar é o padrão.
+- **VALORES DE DESENHO, sem fonte.** Não há página aqui para a divisão do gasto militar por
+  serviço.
+- **`share` = 0 no dado:** o mecanismo, os tetos e a tela entram, e nada muda, até o teto militar
+  ser recalibrado.
+- **Tela:** as encomendas da IA aparecem na mesma lista das encomendas (`CountryWar::queue`), sem
+  campo novo no save.
+
+**Medido com `share` = 0,5, `war` ligada, 1939, sem a regra → com a regra** (`tests/war_ai_orders.rs`):
+
+| País | Aviões | Navios (mil t) | Depósito (bi) | Gasto militar/PIB |
+|---|---|---|---|---|
+| Reino Unido | 577 → 144.581 | 1.376 → 2.230 | 169 → 28 | 6,5% → 6,0% |
+| EUA | 750 → 324.264 | 1.499 → 5.192 | 607 → 56 | 6,8% → 4,6% |
+| França | 1.280 → 134.542 | 551 → 1.296 | 124 → 23 | 5,7% → 5,3% |
+| Japão | 548 → 59.910 | 652 → 1.070 | 79 → 12 | 6,0% → 5,5% |
+| Alemanha | 0 → 0 | 304 → 1.652 | 140 → 122 | 7,1% → 7,5% |
+| URSS | 0 → 0 | 132 → 822 | 86 → 63 | 5,5% → 5,3% |
+
+- **Leitura: a regra está certa, o dinheiro não.** O teto militar em paz dá 5 a 7% do PIB. O real
+  (Eloranta, *Essays in Economic & Business History* XXXV, 2017, p. 122, tabela 2):
+
+  | Gasto militar/PIB, % | 1925 | 1930 | 1935 | 1938 |
+  |---|---|---|---|---|
+  | Reino Unido | 2,5 | 2,3 | 2,8 | 6,5 |
+  | EUA | 0,8 | 0,9 | 1,3 | 1,5 |
+  | França | 2,5 | 4,6 | 6,0 | 6,8 |
+  | Japão | 2,8 | 3,0 | 5,7 | 22,7 |
+
+  - Hoje essa sobra vira depósito parado. Transformada em forças, faz frotas e aviações de dezenas
+    a centenas de vezes as reais.
+  - A RAF tinha 1.911 aviões de primeira linha em 3 set. 1939 (Richards, *Royal Air Force
+    1939–1945*, vol. I, 1953, ap. V, p. 410); o jogo dá ao Reino Unido 144.581, 76 vezes mais.
+  - A Luftwaffe tinha 2.916 aviões de combate em set. 1939 (Murray, *Strategy for Defeat*, 1983,
+    tabela XXI, p. 101).
+  - A Royal Navy tinha 12 couraçados e cruzadores de batalha efetivos e 6 porta-aviões (Roskill,
+    *The War at Sea*, vol. I, 1954, p. 50).
+  - Para a tonelagem da Marinha dos EUA em 1939 não achei página.
+- É a dependência "o tamanho do orçamento militar" (acima): a regra sobe quando o teto for
+  recalibrado.
+- **Dois defeitos achados e consertados antes do PR, só no código novo.** A encomenda media a sobra
+  de uma semana de janeiro, e o produto de dois valores em bilhões estourava o `Fixed`. O caminho
+  que já roda no main (necessidades, modernização, composição, depósito) não tem nenhum dos dois;
+  o hash do main não muda.
+
+**Dependências, com dono, para a calibração:**
+1. **Versalhes, no dado:** só tem o teto do exército (100 mil homens). Os navios por contagem
+   (art. 181) e a proibição de aviação e submarinos (arts. 191 e 198) estão só na nota da
+   cláusula; a Alemanha chegou a 1.148 mil t de navios capitais. É do thread dos tratados.
+2. **Couraçados britânicos em 1925:** o dado de forças dá 22 couraçados a 30 mil t, 660 mil t.
+   O tratado manteve 22 navios capitais britânicos com 580.450 t (Five-Power Treaty, cap. II,
+   parte 1, em *FRUS 1922*, vol. I, doc. 77, p. 254).
+   - O teto de 525 mil t (art. IV, p. 250) é o da tonelagem de substituição. Lido como teto do
+     total, ele dá o que o tratado deu: nenhum navio capital novo do Reino Unido até 1936.
+   - A tonelagem por navio do dado (30 mil t, contra ~26,4 mil t em média) fica para o dado de
+     forças conferir.
+3. **URSS sem aviação em 1925 no dado:** ela tinha força aérea.
+   - A Administração da Frota Aérea Vermelha é de maio de 1918, e em 1924 "one hundred combat
+     aircraft were built and delivered to the air force" (Yakovlev, *Fifty Years of Soviet
+     Aircraft Construction*, 1970; o scan não traz número de página).
+   - O total de 1925 ficou sem página.
+   - Com a regra mantendo a forma, a URSS nunca cria uma aviação. É do dado de forças.
+   - A Alemanha em zero está certa, por Versalhes.
+
+As três mudam o jogo de hoje, porque `forces` está ligada no main: ficam para a calibração.
+
+**O motor da fase 6** (a opção (c), não feita): a IA repõe o que envelhece, por vida útil de cada
+tipo, e só cresce por ameaça. Os anos de 1925 a 1935 foram de frotas estáveis sob os tratados. Pede
+a idade das formações, que é campo novo no save.
+
 ## Crise e declaração (fatia B, desenho)
 
 A guerra nasce de uma exigência recusada; não há declaração seca. A fatia B põe no estado a crise
@@ -2274,9 +2361,15 @@ slot: o jogo de 1925 com `war` ligada e nenhuma guerra lutada):
 
 A ordem sai certa: Alemanha, Polônia, URSS, França. Ninguém chega à terceira geração (650), e o
 limiar não baixa. O que falta não é do mesmo tipo:
-- **Motorização zero: lacuna de funcionalidade, da guerra.** Nenhum exército muda de composição
-  de 1925 a 1939: a encomenda de formações (A2) é do jogador, e a IA não encomenda. É a próxima
-  fatia: a regra histórica de composição das forças.
+- **Motorização: feita depois desta tabela, pela regra histórica de composição (#235).** Esta
+  tabela é de antes. Medido sobre o main `803bf72` (`composition_check_1939_and_1944`), os homens
+  de terra sobre rodas e em lagarta são:
+  - em 1939: 15 a 20% e 5 a 10% (Alemanha 16,5% e 5,5%; EUA 19,7% e 10%), contra 0% sem a regra;
+  - em 1944: 19 a 30% sobre rodas.
+  - A fonte da seção "Composição das forças" dá 13 a 26%.
+- **A Alemanha de 1939 tem 94.541 homens de terra**, o teto de Versalhes. A lei de conscrição de
+  1935 não muda no jogo. É dependência da política (a lei sob pressão ou decisão) e dos tratados
+  (a denúncia de Versalhes), não da encomenda.
 - **Ritmo da pesquisa de guerra blindada (equilíbrio, para a fila de calibração).** No jogo a
   Alemanha está em Ciência em 1939; na história a técnica estava industrial em 1936. A pesquisa
   militar não responde a verba nem a ameaça: sem foco do jogador, a ciência nova vai para a

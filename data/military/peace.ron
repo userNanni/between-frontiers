@@ -61,6 +61,21 @@
         // not motorize it.
         min_fill: 900,
     )),
+    // The AI's orders of new ships and aircraft (`war::ai_orders`, item 11): each January a
+    // country without a player turns `share` of the year's leftover over the needs (what went to
+    // the depot) into orders, split between the sea and the air by one rule for everyone, each
+    // service in the shape it has, within the treaty caps in force. DESIGN VALUES, without a
+    // source: no page was found for the split of military spending by service.
+    // `share` is 0 (the orchestrator, 2026-11-23): the military ceiling gives 5 to 7 % of GDP in
+    // peace against 1 to 3 % in the 1930s, and at 500 the AI built fleets and air forces 50 to
+    // 400 times the real ones (docs/war.pt-BR.md). It rises once the ceiling is recalibrated.
+    ai_orders: Some((
+        share: 0,
+        sea_base: 300,
+        sea_coast: 400,
+        sea_colonies: 400,
+        air_base: 500,
+    )),
     // The nuclear programme (docs/war.pt-BR.md, "Arma nuclear na escada de crise"; N1 and N2,
     // decided by the owner on 2026-11-19). The money buys a laboratory's goods until the bomb
     // can be built; each month what was delivered is credited to the first technology of the
