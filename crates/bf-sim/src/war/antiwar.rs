@@ -45,6 +45,12 @@ pub struct AntiWarRules {
     /// Per mille of the support left at the start of a war taken off the starting war support.
     /// DESIGN VALUE.
     pub memory: u32,
+    /// AW6: the censorship's brake on the weekly growth, per mille of the repression's. The
+    /// repression brakes it by the factor the general rule applies to a movement's push for a
+    /// law (`polity::system`: the clout backing the goal is none, so the whole repression
+    /// bites); the general rule has no place for the censorship. DESIGN VALUE.
+    #[serde(default = "default_censorship_weight")]
+    pub censorship_weight: u32,
     /// Professions that strike (`economy::PROFESSIONS` keys) and that mutiny.
     pub strikers: Vec<String>,
     pub soldiers: Vec<String>,
@@ -55,6 +61,26 @@ pub struct AntiWarRules {
     pub striker_ix: Vec<usize>,
     #[serde(skip)]
     pub soldier_ix: Vec<usize>,
+}
+
+fn default_censorship_weight() -> u32 {
+    1000
+}
+
+/// AW6: what the laws in force take off the movement's weekly growth, per mille: the
+/// repression whole, as on a push for a law no group backs, and the censorship by `weight`.
+pub fn brake(repression: i32, censorship: i32, weight: u32) -> i64 {
+    let r = i64::from(repression.clamp(0, 1000));
+    let c = i64::from(censorship.clamp(0, 1000)) * i64::from(weight) / 1000;
+    (r + c).min(1000)
+}
+
+/// The week's growth, in 1/100,000, at `pressure` per mille under `brake` per mille: at least
+/// one unit while the cause holds and the laws leave anything.
+pub fn growth(growth: u16, pressure: i32, brake: i64) -> u64 {
+    let full = u64::from(growth) * u64::from(UNIT) * pressure.max(0) as u64 / 1000 / 52;
+    let left = full * (1000 - brake.clamp(0, 1000)) as u64 / 1000;
+    if brake >= 1000 { 0 } else { left.max(1) }
 }
 
 /// A country's movement against the war.
@@ -233,9 +259,23 @@ pub fn week(rules: &AntiWarRules, p: &Politics, world: &GameWorld) -> AntiWarSta
             ..Default::default()
         };
         if pressure > 0 {
-            // `growth` per mille a year at full pressure, a 52nd each week.
-            let add = u64::from(kind.growth) * u64::from(UNIT) * pressure as u64 / 1000 / 52;
-            a.support = (u64::from(a.support) + add.max(1)).min(1000 * u64::from(UNIT)) as u32;
+            // `growth` per mille a year at full pressure, a 52nd each week, less what the
+            // repression and the censorship in force hold back (AW6).
+            let e = crate::polity::effects_in_force(
+                p,
+                &world.politics,
+                c,
+                crate::politics::Scope::Metropole,
+            );
+            let at = |k: &str| {
+                crate::politics::effect_index(k)
+                    .and_then(|i| e.get(i))
+                    .copied()
+                    .unwrap_or(0)
+            };
+            let b = brake(at("repression"), at("censorship"), rules.censorship_weight);
+            let add = growth(kind.growth, pressure, b);
+            a.support = (u64::from(a.support) + add).min(1000 * u64::from(UNIT)) as u32;
         } else if a.support > 0 && !war {
             // Halves every `persistence` years, a week at a time (ln 2 ≈ 0.693).
             let cut = u64::from(a.support) * 693 / (1000 * 52 * u64::from(kind.persistence.max(1)));
@@ -271,6 +311,19 @@ pub fn week(rules: &AntiWarRules, p: &Politics, world: &GameWorld) -> AntiWarSta
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// AW6: the repression and the censorship slow the movement, and stop it whole at 1000.
+    #[test]
+    fn the_laws_slow_the_movement() {
+        let free = growth(300, 1000, brake(0, 0, 1000));
+        assert_eq!(free, 300 * u64::from(UNIT) / 52);
+        let half = growth(300, 1000, brake(500, 0, 1000));
+        assert_eq!(half, free / 2);
+        assert_eq!(growth(300, 1000, brake(300, 200, 1000)), free / 2);
+        assert_eq!(growth(300, 1000, brake(300, 400, 500)), free / 2);
+        assert_eq!(growth(300, 1000, brake(800, 800, 1000)), 0);
+        assert_eq!(brake(-200, -100, 1000), 0);
+    }
 
     #[test]
     fn per_mille_reads_the_fine_units() {
