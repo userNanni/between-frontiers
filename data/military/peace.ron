@@ -61,6 +61,18 @@
         // not motorize it.
         min_fill: 900,
     )),
+    // The AI's orders of new ships and aircraft (`war::ai_orders`, item 11): each January a
+    // country without a player turns `share` of the year's leftover over the needs (what went to
+    // the depot) into orders, split between the sea and the air by one rule for everyone, each
+    // service in the shape it has, within the treaty caps in force. DESIGN VALUES, without a
+    // source: no page was found for the split of military spending by service.
+    ai_orders: Some((
+        share: 500,
+        sea_base: 300,
+        sea_coast: 400,
+        sea_colonies: 400,
+        air_base: 500,
+    )),
     // The nuclear programme (docs/war.pt-BR.md, "Arma nuclear na escada de crise"; N1 and N2,
     // decided by the owner on 2026-11-19). The money buys a laboratory's goods until the bomb
     // can be built; each month what was delivered is credited to the first technology of the

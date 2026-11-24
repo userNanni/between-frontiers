@@ -44,6 +44,9 @@ pub struct PeaceRules {
     /// The historical rule of the forces' composition; `None`: no conversion.
     #[serde(default)]
     pub composition: Option<super::composition::CompositionRule>,
+    /// The AI's orders of new ships and aircraft (`war::ai_orders`); `None`: no order.
+    #[serde(default)]
+    pub ai_orders: Option<super::ai_orders::AiOrderRule>,
     /// The nuclear programme (N1, N2); `None`: no programme can start.
     #[serde(default)]
     pub nuclear_programme: Option<super::programme::ProgrammeRule>,
