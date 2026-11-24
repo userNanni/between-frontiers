@@ -43,6 +43,10 @@
     // `data/military/peace.ron` (`soldiers`). On since the PR that switched it, judged by the
     // eight-sample band of main (docs/war.pt-BR.md, "Chave").
     forces: true,
+    // Fronts as objects of command (G2): the player sets each front's share of the land army,
+    // an objective and a reserve, and the men move in weeks. Off: the army spreads over every
+    // segment, as before.
+    fronts: false,
     // The contract and the expropriation of foreign plants (`docs/foreign-capital.pt-BR.md`, step
     // 4a): the colony's plants stay the old metropole's at independence, and on January 1st a
     // host whose laws close the capital or plan the economy takes them. Off: no such stake.

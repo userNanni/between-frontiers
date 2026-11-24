@@ -1777,6 +1777,64 @@ pub struct V44 {
     stocks: crate::econ::stock::StockState,
 }
 
+/// Version 46: the reserves by cohort, before the fronts under orders. PROVISIONAL number (the
+/// draft's 49): the version is the lowest free one the day the PR goes to the train.
+#[derive(Deserialize)]
+pub struct V46 {
+    scenario: String,
+    player: Option<Id<Country>>,
+    countries: Table<Country, CountryState>,
+    census: Vec<CensusRecord>,
+    econ: crate::econ::Economy,
+    research: crate::research::ResearchState,
+    politics: crate::polity::PoliticsState,
+    demography: crate::demography::DemographyState,
+    borders: crate::borders::BordersState,
+    foreign: crate::foreign_stakes::ForeignState,
+    influence: crate::influence::InfluenceState,
+    treaties: crate::treaty::TreatyState,
+    war: crate::war::state::WarStateBeforeFronts,
+    education: crate::demography::education::EducationState,
+    independence: crate::borders::independence::IndependenceState,
+    levers: crate::econ::levers::LeversState,
+    tariffs: crate::econ::customs::TariffState,
+    payments: crate::econ::payments::PaymentsState,
+    reserves: crate::econ::payments::ReservesState,
+    gold: crate::econ::gold::GoldState,
+    capital: crate::econ::capital::CapitalState,
+    stocks: crate::econ::stock::StockState,
+    series: crate::econ::series::SeriesState,
+}
+
+/// 46 → 49: the fronts under orders (`WarState::fronts`), empty: no orders.
+pub fn v46_to_v49(w: V46) -> GameWorld {
+    GameWorld {
+        scenario: w.scenario,
+        player: w.player,
+        countries: w.countries,
+        census: w.census,
+        econ: w.econ,
+        research: w.research,
+        politics: w.politics,
+        demography: w.demography,
+        borders: w.borders,
+        foreign: w.foreign,
+        influence: w.influence,
+        treaties: w.treaties,
+        war: w.war.into(),
+        education: w.education,
+        independence: w.independence,
+        levers: w.levers,
+        tariffs: w.tariffs,
+        payments: w.payments,
+        reserves: w.reserves,
+        gold: w.gold,
+        capital: w.capital,
+        stocks: w.stocks,
+        series: w.series,
+    }
+}
+
 /// Version 45: the yearly series (#324), before the reserves by cohort.
 #[derive(Deserialize)]
 pub struct V45 {

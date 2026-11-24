@@ -110,6 +110,18 @@
         devastation_cap: 400,
         civilians_per_million: 20,
     ),
+    // Fronts as objects of command (`war::fronts`, G2; switch `fronts`, off). The owner's FR1
+    // to FR6 are pending; the recommended ones are in place. DESIGN VALUES, without a source:
+    // - objective_weight: a segment into the front's objective weighs this per mille of the
+    //   others (twice);
+    // - reserve_step: of the reserve, the part that joins the threatened segment each week;
+    // - transfer_per_week: of the army, the most that reaches its new place each week (the
+    //   moves of corps by rail took weeks).
+    fronts: Some((
+        objective_weight: 2000,
+        reserve_step: 500,
+        transfer_per_week: 100,
+    )),
     // The colonial war (G6; docs/war.pt-BR.md, "Guerra colonial"). GC1 to GC5 are the owner's
     // questions, with the recommendation in place until answered.
     colonial: Some((

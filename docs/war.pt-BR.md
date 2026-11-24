@@ -2736,6 +2736,56 @@ Can a Victor Force the Vanquished to Pay?", *Journal of Economic History* 68(1);
 (1998), *The Economics of World War II*; Quinlivan, J. (1995), "Force Requirements in Stability
 Operations", *Parameters* 25(4).
 
+#### Frentes como objeto de comando (G2; atrás de `fronts`, desligada; rascunho)
+
+Desenho do orquestrador (2026-11-24). As escolhas FR1 a FR6 estão com o dono; o rascunho usa as
+recomendadas, e o PR não sai do rascunho sem a resposta. O save do rascunho é 49, **provisório**:
+o número certo é o menor livre no dia em que o PR for ao trem. Código em `war/fronts.rs` e no
+passo da guerra (`fight::front_men`); regra em `data/military/war.ron`, `fronts`.
+
+| Peça | Como é na vida real | No jogo | Muda a simulação? |
+|---|---|---|---|
+| A frente (FR1 a) | o comando reparte o exército entre teatros e frentes | uma frente por inimigo, como a janela da Guerra mostra | só com a regra |
+| A parcela (FR2 a) | o estado-maior decide quanto vai a cada frente | `SetFrontShare`: a parcela do exército de terra (teatro principal) na frente; as frentes sem ordem dividem o resto pela conta de segmentos, como antes. Dentro da frente, os homens vão aos segmentos como antes (igual, ou a concentração da terceira geração) | sim |
+| O objetivo (FR3 a) | a ofensiva mira um lugar | `SetFrontObjective`: um estado inimigo; os segmentos que entram nele pesam `objective_weight` (2×, **valor de desenho**), e o foco da terceira geração mira ali primeiro | sim |
+| A reserva (FR4 a) | uma parte fica atrás da linha e tapa a brecha | `SetReserve`: a parcela fora das linhas; a cada semana `reserve_step` dela (metade, **valor de desenho**) entra no segmento em que o país mais perdeu terreno na semana anterior. Na reserva os homens não lutam | sim |
+| A transferência (FR5 a) | mover corpos por ferrovia levava semanas | o que uma frente deixa vai ao trânsito na hora; o que ela ganha sai do trânsito, até `transfer_per_week` (10 % do exército, **valor de desenho**) por semana. Em trânsito os homens não lutam | sim |
+| A IA (FR6 a) | — | a regra de antes, sem ordens; repartir pela ameaça é fase 6 | — |
+
+**Conservação.** As parcelas em linha, na reserva, com as frentes sem ordem e em trânsito somam
+sempre o exército: são os mesmos homens, só muda onde estão (testes
+`the_shares_always_sum_to_the_army` e, no cenário, a soma semana a semana).
+
+**Medido:**
+- `war_fronts::hungary_orders_its_fronts`: a Hungria declara à Tchecoslováquia e luta contra ela,
+  a Romênia e a Iugoslávia (5, 3 e 4 segmentos). Com 70 % contra a Tchecoslováquia e 10 % em
+  reserva, a frente tcheca passa de 41,6 % (a sua conta de segmentos) a 51,6 % na primeira semana,
+  61,6 % na segunda e 70 % na terceira; a reserva se completa na quarta. A guerra acaba na segunda
+  semana pela queda da Hungria, nos dois casos.
+- `war_fronts::an_objective_draws_the_front`: a URSS, jogada, declara à Polônia e ataca. Com um
+  estado polonês como objetivo (e 10 % em reserva), o estado cai na sétima semana; sem objetivo,
+  não cai em 26 semanas.
+- A reserva não entrou no caso soviético: a URSS não perdeu terreno.
+
+**Tela (esboço, para o thread da interface).** Os comandos não são raros nem irreversíveis: ficam na
+janela da Guerra, aba nova "Frentes", só com a regra.
+```
+FRENTES — Polônia                                Exército de terra: 276 mil
+┌───────────────────────────────────────────────────────────────────────────┐
+│ Frente          Parcela fixada  Em linha  Em trânsito  Homens/km  Postura │
+│ Tchecoslováquia   [-] 60 % [+]    52 %       8 %          410    Atacar ▾ │
+│   Objetivo: [ Silésia tcheca ▾ ]   segmentos para lá: 3 de 9 (peso 2×)    │
+│ Lituânia          [-] 25 % [+]    25 %       —            180    Segurar ▾│
+│ Reserva           [-] 15 % [+]    15 %   reforçou: Cracóvia (+6 mil)      │
+│                   soma 100 %                                               │
+│ A parcela muda 10 % por semana: Tchecoslováquia chega a 60 % em 1 semana. │
+└───────────────────────────────────────────────────────────────────────────┘
+```
+- Campos: `world.war.fronts.of(país)` → `CountryFronts { fronts: Vec<FrontOrder { enemy, share,
+  now, objective }>, reserve, reserve_now, rest_now, reinforced }`, com `rest()`, `transit()` e
+  `on_line(segmentos)`; `war::fronts::segments_of(&fighting, país)` dá (inimigo, segmentos); regra
+  em `fronts` (`objective_weight`, `reserve_step`, `transfer_per_week`).
+
 ## Mar e ar (fatia C2, desenho)
 
 A fatia C2 traz para a guerra da fatia C o mar e o ar: `naval_step` e `air_step` (já escritos e

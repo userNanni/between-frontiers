@@ -587,6 +587,22 @@ pub enum GameCommand {
     /// next January, and the class that leaves for the reserve with it. A no-op while the rule
     /// is off.
     SetServiceMonths { tag: String, months: u16 },
+    /// Sets the share of the land army (per mille) on the country's front against `enemy`
+    /// (`war::fronts`, switch `fronts`); within what the other orders and the reserve leave.
+    /// The men move in weeks. From the war window.
+    SetFrontShare {
+        tag: String,
+        enemy: String,
+        share: u16,
+    },
+    /// Sets (or clears) the enemy state the front against `enemy` aims at (`Region::state`).
+    SetFrontObjective {
+        tag: String,
+        enemy: String,
+        state: Option<u16>,
+    },
+    /// Sets the share of the land army (per mille) kept in reserve off the lines.
+    SetReserve { tag: String, share: u16 },
 }
 
 /// Changes the levers of the country `tag` (`econ::levers`); unknown tags are no-ops.
@@ -859,6 +875,41 @@ impl Command<GameWorld> for GameCommand {
                     for (g, q) in o.built {
                         crate::war::add_goods(&mut c.depot, g, q);
                     }
+                }
+            }
+            GameCommand::SetFrontShare { tag, enemy, share } => {
+                let index = |t: &str| world.countries.iter().position(|(_, c)| c.tag == t);
+                if let (Some(me), Some(e)) = (index(tag), index(enemy))
+                    && world.war.conflicts.at_war(me as u16, e as u16)
+                {
+                    let segs = crate::war::fronts::segments_of(&world.war.fighting, me as u16);
+                    world.war.fronts.entry(me as u16).set_share(
+                        e as u16,
+                        (*share).min(1000),
+                        &segs,
+                    );
+                }
+            }
+            GameCommand::SetFrontObjective { tag, enemy, state } => {
+                let index = |t: &str| world.countries.iter().position(|(_, c)| c.tag == t);
+                if let (Some(me), Some(e)) = (index(tag), index(enemy))
+                    && world.war.conflicts.at_war(me as u16, e as u16)
+                {
+                    let segs = crate::war::fronts::segments_of(&world.war.fighting, me as u16);
+                    world
+                        .war
+                        .fronts
+                        .entry(me as u16)
+                        .set_objective(e as u16, *state, &segs);
+                }
+            }
+            GameCommand::SetReserve { tag, share } => {
+                if let Some(me) = world.countries.iter().position(|(_, c)| c.tag == *tag) {
+                    world
+                        .war
+                        .fronts
+                        .entry(me as u16)
+                        .set_reserve((*share).min(1000));
                 }
             }
             GameCommand::SetPosture { tag, enemy, attack } => {
@@ -1328,6 +1379,11 @@ pub struct Switches {
     /// Armed forces in peace (`war`, docs/war.pt-BR.md, "Forças em paz"): the soldiers are the
     /// men of the formations. Off, the old rule of `data/military/peace.ron` (`soldiers`).
     pub forces: bool,
+    /// Fronts as objects of command (`war::fronts`, docs/war.pt-BR.md, G2): the player sets the
+    /// share of the land army on each front, an objective and a reserve, and the men move in
+    /// weeks (`SetFrontShare`, `SetFrontObjective`, `SetReserve`). Read with the rules
+    /// (`GameData::rules_with`). Off: the army spreads over every segment, as before.
+    pub fronts: bool,
     /// The contract and the expropriation of foreign plants, and the colony's plants that stay
     /// the old metropole's at independence (`foreign_stakes::january`, `colonial_stakes`,
     /// docs/foreign-capital.pt-BR.md, step 4a).
@@ -1465,6 +1521,7 @@ impl Switches {
         "foreign_contract",
         "foreign_flow",
         "foreign_technique",
+        "fronts",
         "gold_standard",
         "household_biomass",
         "independence",
@@ -1497,6 +1554,7 @@ impl Switches {
             "customs_duties" => self.customs_duties = true,
             "fiscal_capacity" => self.fiscal_capacity = true,
             "forces" => self.forces = true,
+            "fronts" => self.fronts = true,
             "foreign_contract" => self.foreign_contract = true,
             "foreign_flow" => self.foreign_flow = true,
             "foreign_technique" => self.foreign_technique = true,
@@ -1928,6 +1986,32 @@ mod tests {
                 nuclear: &w.nuclear,
             }
         }
+        // `WarState` as version 46 wrote it: without the fronts under orders.
+        #[derive(Serialize)]
+        struct War46<'a> {
+            countries: &'a Vec<crate::war::state::CountryWar>,
+            soldiers: &'a Vec<i64>,
+            conflicts: &'a crate::war::crisis::Conflicts,
+            fighting: &'a crate::war::fight::Fighting,
+            composition: &'a crate::war::composition::CompositionState,
+            colonial: &'a Vec<crate::war::colonial::Colonial>,
+            sea: &'a crate::war::sea::SeaWar,
+            nuclear: &'a crate::war::programme::NuclearState,
+            reserve: &'a crate::war::reserve::ReserveState,
+        }
+        fn war46(w: &crate::war::WarState) -> War46<'_> {
+            War46 {
+                countries: &w.countries,
+                soldiers: &w.soldiers,
+                conflicts: &w.conflicts,
+                fighting: &w.fighting,
+                composition: &w.composition,
+                colonial: &w.colonial,
+                sea: &w.sea,
+                nuclear: &w.nuclear,
+                reserve: &w.reserve,
+            }
+        }
         #[derive(Serialize)]
         struct OldEconomy<'a> {
             regions: &'a Vec<crate::econ::Region>,
@@ -2289,9 +2373,66 @@ mod tests {
             hash_of(&with_ledger)
         );
         assert_eq!(
-            hash_of(&headed(46, &encode_snapshot(&with_ledger).unwrap())),
+            hash_of(&headed(49, &encode_snapshot(&with_ledger).unwrap())),
             hash_of(&with_ledger)
         );
+        // Version 46, the reserves by cohort, before the fronts under orders.
+        {
+            #[derive(Serialize)]
+            struct BeforeFronts46<'a> {
+                scenario: &'a String,
+                player: &'a Option<Id<Country>>,
+                countries: &'a Table<Country, CountryState>,
+                census: &'a Vec<CensusRecord>,
+                econ: &'a crate::econ::Economy,
+                research: &'a crate::research::ResearchState,
+                politics: &'a crate::polity::PoliticsState,
+                demography: &'a crate::demography::DemographyState,
+                borders: &'a crate::borders::BordersState,
+                foreign: &'a crate::foreign_stakes::ForeignState,
+                influence: &'a crate::influence::InfluenceState,
+                treaties: &'a crate::treaty::TreatyState,
+                war: War46<'a>,
+                education: &'a crate::demography::education::EducationState,
+                independence: &'a crate::borders::independence::IndependenceState,
+                levers: &'a crate::econ::levers::LeversState,
+                tariffs: &'a crate::econ::customs::TariffState,
+                payments: &'a crate::econ::payments::PaymentsState,
+                reserves: &'a crate::econ::payments::ReservesState,
+                gold: &'a crate::econ::gold::GoldState,
+                capital: &'a crate::econ::capital::CapitalState,
+                stocks: &'a crate::econ::stock::StockState,
+                series: &'a crate::econ::series::SeriesState,
+            }
+            let w = &with_ledger;
+            let v46 = encode_snapshot(&BeforeFronts46 {
+                scenario: &w.scenario,
+                player: &w.player,
+                countries: &w.countries,
+                census: &w.census,
+                econ: &w.econ,
+                research: &w.research,
+                politics: &w.politics,
+                demography: &w.demography,
+                borders: &w.borders,
+                foreign: &w.foreign,
+                influence: &w.influence,
+                treaties: &w.treaties,
+                war: war46(&w.war),
+                education: &w.education,
+                independence: &w.independence,
+                levers: &w.levers,
+                tariffs: &w.tariffs,
+                payments: &w.payments,
+                reserves: &w.reserves,
+                gold: &w.gold,
+                capital: &w.capital,
+                stocks: &w.stocks,
+                series: &w.series,
+            })
+            .unwrap();
+            assert_eq!(hash_of(&headed(46, &v46)), hash_of(&with_ledger));
+        }
         // Version 45, the yearly series, before the reserves by cohort: the war without them.
         {
             #[derive(Serialize)]
