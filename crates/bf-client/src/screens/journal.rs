@@ -45,6 +45,8 @@ pub struct Window {
     pub embargo: super::embargo::EmbargoUi,
     /// The gold standard decision: the choice waiting for its confirmation.
     pub gold: super::gold_decision::GoldUi,
+    /// The length of service being drafted, months (forces' entry).
+    pub service: Option<u16>,
 }
 
 /// The id the decision "Libertar território" takes in `Window::picked`.
@@ -95,6 +97,8 @@ pub struct Response {
     pub programme_end: bool,
     /// The player confirmed a nuclear test.
     pub nuclear_test: bool,
+    /// The player confirmed a new length of military service, months.
+    pub service_months: Option<u16>,
     /// The player confirmed an answer to a demand of independence: (unit, answer).
     pub answer: Option<(String, bf_sim::borders::independence::Answer)>,
     /// The player confirmed a demand on another country: the target and the proposal.
@@ -931,6 +935,17 @@ pub fn show(
                     super::scroll_keys(ui);
                     entry_detail(ui, i18n, world, picked, pinned, &mut out);
                     decision(ui, i18n, picked, &mut window.confirm, &mut out);
+                    if let Some(s) = &picked.service {
+                        service(
+                            ui,
+                            i18n,
+                            picked,
+                            s,
+                            &mut window.confirm,
+                            &mut window.service,
+                            &mut out,
+                        );
+                    }
                 });
         });
     });
@@ -1181,6 +1196,122 @@ fn decision(ui: &mut Ui, i18n: &I18n, e: &Entry, confirm: &mut Option<String>, o
             *confirm = Some(e.id.clone());
         }
     }
+}
+
+/// The decision to lengthen or shorten the military service (switch `reserve_cohorts`): the
+/// months asked within the rule's bounds, and before the confirmation what the army in peace
+/// gains or loses, in how many years and at what cost a year. Two steps, a restore point first
+/// (written where the commands are sent, `screens/game.rs`).
+fn service(
+    ui: &mut Ui,
+    i18n: &I18n,
+    e: &Entry,
+    s: &crate::forces_view::ServiceView,
+    confirm: &mut Option<String>,
+    draft: &mut Option<u16>,
+    out: &mut Response,
+) {
+    let asked = format!("{}#service", e.id);
+    bf_ui_kit::gap(ui, space::SM);
+    bf_ui_kit::heading(ui, &i18n.tr("service-title"));
+    let months = |m: u16| {
+        i18n.tr_args(
+            "service-months",
+            &[("months", bf_i18n::Arg::Num(f64::from(m)))],
+        )
+    };
+    if confirm.as_deref() != Some(asked.as_str()) {
+        bf_ui_kit::small(
+            ui,
+            &i18n.tr_args(
+                "service-now",
+                &[("months", bf_i18n::Arg::Num(f64::from(s.law_months)))],
+            ),
+        );
+        let first = Button::secondary(&i18n.tr("service-ask"))
+            .size(ButtonSize::Small)
+            .show(ui);
+        if first.clicked() || keys::single(ui, "journal.service", 'S', first.rect) {
+            *confirm = Some(asked);
+            *draft = Some(s.law_months.clamp(s.min_months, s.max_months));
+        }
+        return;
+    }
+    let lo = s.min_months;
+    let hi = s.max_months;
+    let mut value = draft.unwrap_or(s.law_months.clamp(lo, hi));
+    let m = &mut value;
+    ui.horizontal(|ui| {
+        ui.label(i18n.tr_args(
+            "service-today",
+            &[("months", bf_i18n::Arg::Num(f64::from(s.law_months)))],
+        ));
+        ui.label("→");
+        let down = Button::ghost("−").size(ButtonSize::Small).show(ui);
+        if (down.clicked() || keys::single(ui, "journal.service.less", 'L', down.rect)) && *m > lo {
+            *m = m.saturating_sub(6).max(lo);
+        }
+        ui.label(months(*m));
+        let up = Button::ghost("+").size(ButtonSize::Small).show(ui);
+        if (up.clicked() || keys::single(ui, "journal.service.more", 'M', up.rect)) && *m < hi {
+            *m = (*m + 6).min(hi);
+        }
+    });
+    *draft = Some(*m);
+    bf_ui_kit::small(
+        ui,
+        &i18n.tr_args(
+            "service-bounds",
+            &[
+                ("min", bf_i18n::Arg::Num(f64::from(lo))),
+                ("max", bf_i18n::Arg::Num(f64::from(hi))),
+            ],
+        ),
+    );
+    let effect = match s.change(*m) {
+        None => i18n.tr("service-effect-none"),
+        Some((0, _, _)) => i18n.tr("service-effect-same"),
+        Some((men, years, cost)) if men > 0 => i18n.tr_args(
+            "service-effect-longer",
+            &[
+                ("men", bf_i18n::Arg::String(i18n.int(men))),
+                ("years", bf_i18n::Arg::Num(f64::from(years))),
+                ("cost", bf_i18n::Arg::String(crate::text::money(i18n, cost))),
+            ],
+        ),
+        Some((men, _, cost)) => i18n.tr_args(
+            "service-effect-shorter",
+            &[
+                ("men", bf_i18n::Arg::String(i18n.int(-men))),
+                (
+                    "cost",
+                    bf_i18n::Arg::String(crate::text::money(i18n, -cost)),
+                ),
+            ],
+        ),
+    };
+    ui.add(egui::Label::new(egui::RichText::new(effect).font(sans(size::SMALL))).wrap());
+    bf_ui_kit::small(ui, &i18n.tr("service-explain"));
+    ui.horizontal(|ui| {
+        let changed = *m != s.law_months;
+        let yes = Button::primary(&i18n.tr("service-confirm"))
+            .size(ButtonSize::Small)
+            .enabled(changed)
+            .show(ui);
+        if changed && (yes.clicked() || keys::single(ui, "journal.service.yes", 'Y', yes.rect)) {
+            out.service_months = Some(*m);
+            *confirm = None;
+            *draft = None;
+            return;
+        }
+        let no = Button::ghost(&i18n.tr("journal-decision-cancel"))
+            .size(ButtonSize::Small)
+            .show(ui);
+        if no.clicked() || keys::single(ui, "journal.service.no", 'N', no.rect) {
+            *confirm = None;
+            *draft = None;
+        }
+    });
 }
 
 /// One decision in two steps: `keys` are the first button, the confirmation and the sentence

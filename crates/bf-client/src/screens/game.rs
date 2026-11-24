@@ -1289,6 +1289,16 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
                     share: None,
                 }));
         }
+        if let (Some(months), Some(tag)) = (res.service_months, state.save.meta.player.clone()) {
+            // A longer service keeps men out of work for years: a point to come back to first.
+            state.restore_point_before(shared, Reason::Service);
+            state
+                .sim
+                .send(Command::Issue(GameCommand::SetServiceMonths {
+                    tag,
+                    months,
+                }));
+        }
         if let (true, Some(tag)) = (res.nuclear_test, state.save.meta.player.clone()) {
             // The test cannot be undone: the arsenal is known to all from then on.
             state.restore_point_before(shared, Reason::War);

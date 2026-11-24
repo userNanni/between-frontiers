@@ -39,6 +39,9 @@ pub fn show(ui: &mut Ui, cx: &mut TabContext<'_>) {
     bf_ui_kit::small(ui, &i18n.tr("forces-basis"));
     bf_ui_kit::gap(ui, space::SM);
     summary(ui, i18n, f, cx.view.map_or(0.0, |v| v.gdp_last_year));
+    if let Some(sv) = &f.service {
+        reserve(ui, i18n, sv);
+    }
     if let Some(a) = &f.army {
         bf_ui_kit::gap(ui, space::MD);
         army(ui, i18n, a);
@@ -588,6 +591,82 @@ fn summary(ui: &mut Ui, i18n: &I18n, f: &ForcesView, gdp: f64) {
         i18n.tr("forces-peace")
     };
     bf_ui_kit::small(ui, &state);
+}
+
+/// The reserve by cohort (switch `reserve_cohorts`): the total, the length of service and the
+/// years in the reserve, what could be put under arms, and each year's class with its men and
+/// training, youngest first.
+fn reserve(ui: &mut Ui, i18n: &I18n, s: &crate::forces_view::ServiceView) {
+    bf_ui_kit::gap(ui, space::SM);
+    bf_ui_kit::heading(ui, &i18n.tr("reserve-title"));
+    let service = if s.law_months == 0 {
+        i18n.tr("reserve-no-conscription")
+    } else if s.serving_months > s.law_months {
+        i18n.tr_args(
+            "reserve-service-shortening",
+            &[
+                ("law", Arg::Num(f64::from(s.law_months))),
+                ("now", Arg::Num(f64::from(s.serving_months))),
+                ("years", Arg::Num(f64::from(s.reserve_years))),
+            ],
+        )
+    } else if s.serving_months != s.law_months {
+        i18n.tr_args(
+            "reserve-service-moving",
+            &[
+                ("law", Arg::Num(f64::from(s.law_months))),
+                ("now", Arg::Num(f64::from(s.serving_months))),
+                ("years", Arg::Num(f64::from(s.reserve_years))),
+            ],
+        )
+    } else {
+        i18n.tr_args(
+            "reserve-service",
+            &[
+                ("months", Arg::Num(f64::from(s.law_months))),
+                ("years", Arg::Num(f64::from(s.reserve_years))),
+            ],
+        )
+    };
+    bf_ui_kit::stat_row(ui, &i18n.tr("reserve-trained"), &i18n.int(s.reserve as i64));
+    bf_ui_kit::small(ui, &service);
+    bf_ui_kit::stat_row(
+        ui,
+        &i18n.tr("reserve-mobilizable"),
+        &i18n.int(s.mobilizable),
+    );
+    if s.cohorts.is_empty() {
+        return;
+    }
+    egui::ScrollArea::vertical()
+        .id_salt("reserve-cohorts")
+        .max_height(180.0)
+        .show(ui, |ui| {
+            egui::Grid::new("reserve-cohorts-grid")
+                .num_columns(3)
+                .striped(true)
+                .show(ui, |ui| {
+                    for key in [
+                        "reserve-col-year",
+                        "reserve-col-men",
+                        "reserve-col-training",
+                    ] {
+                        ui.label(
+                            egui::RichText::new(i18n.tr(key))
+                                .font(bf_ui_kit::theme::sans(bf_ui_kit::tokens::size::SMALL))
+                                .color(color::TEXT_MUTED),
+                        );
+                    }
+                    ui.end_row();
+                    for (year, men, training) in &s.cohorts {
+                        ui.label(year.to_string());
+                        ui.label(i18n.int(*men as i64));
+                        ui.label(pct(i18n, training * 100.0, 0));
+                        ui.end_row();
+                    }
+                });
+        });
+    bf_ui_kit::small(ui, &i18n.tr("reserve-youngest-first"));
 }
 
 fn table(ui: &mut Ui, i18n: &I18n, f: &ForcesView, st: &mut OrdersUi) {

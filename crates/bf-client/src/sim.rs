@@ -236,6 +236,8 @@ fn journal_of(
                 military: r.war.as_ref().map(|(m, _)| m.as_ref()),
                 programme: r.fight.as_ref().and_then(|f| f.programme.as_deref()),
                 gold: r.gold.as_deref(),
+                peace: r.war.as_ref().map(|(_, p)| p.as_ref()),
+                wage_floor: r.switches.small_market_wage_floor,
             };
             crate::journal::read(session.world(), session.player(), date, rules).map(Arc::new)
         }
