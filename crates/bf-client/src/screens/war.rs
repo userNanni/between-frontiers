@@ -45,6 +45,8 @@ pub struct Window {
     pub expedition: Option<(u32, Option<u64>)>,
     /// The nuclear use being drafted (step 4).
     pub strike: StrikeDraft,
+    /// The Fronts tab is open (switch `fronts`).
+    pub fronts: bool,
 }
 
 /// A use being drafted: the aim, the warheads, and whether the first click asked.
@@ -83,7 +85,7 @@ fn names(i18n: &I18n, tags: &[String]) -> String {
         .join(", ")
 }
 
-fn state_name(i18n: &I18n, world: Option<&World>, id: u16) -> String {
+pub(super) fn state_name(i18n: &I18n, world: Option<&World>, id: u16) -> String {
     world
         .and_then(|w| w.states.get(usize::from(id).checked_sub(1)?))
         .map_or_else(|| id.to_string(), |s| crate::text::state_name(i18n, &s.def))
@@ -129,6 +131,30 @@ pub fn show(
         if v.wars.is_empty() {
             bf_ui_kit::muted(ui, &i18n.tr("war-none"));
             return;
+        }
+        // The fronts, with their rule on: a tab of their own, the war's or the fronts'.
+        if let Some(fv) = &v.fronts {
+            let options = vec![
+                (false, i18n.tr("fronts-tab-war")),
+                (true, i18n.tr("fronts-tab-fronts")),
+            ];
+            let tips = [
+                Tip::Item('V', "war.tab.war".into(), "1"),
+                Tip::Item('V', "war.tab.fronts".into(), "2"),
+            ];
+            keys::segmented(ui, &mut window.fronts, &options, &tips);
+            if window.fronts {
+                egui::ScrollArea::vertical()
+                    .id_salt("war-fronts")
+                    .auto_shrink([false, false])
+                    .show(ui, |ui| {
+                        ui.set_max_width(ui.available_width() - space::LG);
+                        super::scroll_keys(ui);
+                        ui.spacing_mut().item_spacing.y = space::SM;
+                        super::fronts::show(ui, i18n, world, v, fv, &mut out);
+                    });
+                return;
+            }
         }
         // More than one war: pick it.
         if v.wars.len() > 1 {
