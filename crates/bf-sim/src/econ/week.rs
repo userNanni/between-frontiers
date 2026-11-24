@@ -104,6 +104,9 @@ pub struct Week {
     pub duties: Option<Arc<super::customs::Duties>>,
     /// `game::Switches::small_market_wage_floor`.
     pub wage_floor: bool,
+    /// The state's offices with computers (`econ::admin`, `computer_efficiency` with
+    /// `fiscal_capacity`); `None` off.
+    pub admin: Option<Arc<super::admin::AdminRules>>,
     /// `game::Switches::fiscal_capacity`: a state short of servants collects less
     /// (`econ::levers::collection`).
     pub fiscal_capacity: bool,
@@ -552,11 +555,16 @@ fn clear_market(
     upkeep: &[(GoodIx, Fixed)],
     military: Option<&[(GoodIx, Fixed)]>,
     programme: Option<&[(GoodIx, Fixed)]>,
+    admin: Option<(GoodIx, Fixed)>,
 ) -> (Market, Vec<(GoodIx, Fixed)>) {
     let g = cat.goods.len();
     // The state's own purchases and construction join the demand.
     let mut demand = demand.to_vec();
     let mut orders = state_orders(cat, &m, exists, military);
+    // The offices' computers (`econ::admin`), on top of the basket.
+    if let Some((gi, q)) = admin.filter(|(gi, q)| exists[*gi as usize] && q.is_positive()) {
+        orders.push((gi, q));
+    }
     if let Some(p) = programme {
         orders.extend(
             p.iter()
@@ -618,15 +626,15 @@ fn settle_region<const SKIP_IDLE: bool, const ABROAD: bool>(
     wage: Fixed,
     v: &View,
     abroad: &[(u16, u16, Fixed)],
-    fiscal_capacity: bool,
+    fiscal_capacity: Option<Fixed>,
     fade: &[Fixed],
 ) -> RegionSettlement {
     let laws = m.laws.of(r);
-    // The share of the taxes the state's servants here can collect (1 with the switch off).
-    let collected = if fiscal_capacity {
-        super::levers::collection(r)
-    } else {
-        Fixed::ONE
+    // The share of the taxes the state's servants here can collect (1 with the switch off), each
+    // servant worth what the offices' computers make him (`econ::admin`; 1 without them).
+    let collected = match fiscal_capacity {
+        Some(worth) => super::levers::collection_with(r, worth),
+        None => Fixed::ONE,
     };
     let mut uncollected = Fixed::ZERO;
     let mut wages = [Fixed::ZERO; P];
@@ -1433,6 +1441,30 @@ impl System<GameWorld> for Week {
             )
         };
         let upkeep: Vec<_> = econ.markets.iter().map(|m| upkeep_orders(cat, m)).collect();
+        // The state's offices with computers (`econ::admin`): by market, the good, the computers
+        // the servants use this week, and what a servant is worth (by the share found last week).
+        let offices: Vec<Option<(GoodIx, Fixed, Fixed)>> = (0..econ.markets.len())
+            .map(|mi| {
+                let rules = self.admin.as_ref()?;
+                let (factor, per_thousand) = super::admin::step(rules, &world.research, mi)?;
+                let servants: i64 = econ
+                    .regions
+                    .iter()
+                    .filter(|r| r.market as usize == mi)
+                    .map(|r| r.pops[super::prof::CIVIL_SERVANT].size)
+                    .sum();
+                let found = econ.markets[mi]
+                    .buy_ratio
+                    .get(rules.good as usize)
+                    .copied()
+                    .unwrap_or(Fixed::ZERO);
+                Some((
+                    rules.good,
+                    per_thousand.mul_ratio(servants, 1000),
+                    super::admin::efficiency(factor, found),
+                ))
+            })
+            .collect();
         let (mut markets, state_orders): (Vec<Market>, Vec<_>) = econ
             .markets
             .iter()
@@ -1442,7 +1474,8 @@ impl System<GameWorld> for Week {
                 let military = world.war.orders(mi);
                 // A nuclear programme buys on top of the budget (`war::programme`).
                 let programme = world.war.nuclear.of(mi as u16).map(|p| p.buying.as_slice());
-                clear_market(
+                let office = offices[mi].map(|o| (o.0, o.1));
+                let (mut m, orders) = clear_market(
                     cat,
                     m.clone(),
                     d,
@@ -1452,7 +1485,16 @@ impl System<GameWorld> for Week {
                     &upkeep[mi],
                     military,
                     programme,
-                )
+                    office,
+                );
+                if let Some((gi, want, worth)) = offices[mi] {
+                    m.admin_efficiency = Some(worth);
+                    m.admin_computers = Some((want, want * m.buy_ratio[gi as usize]));
+                } else if self.admin.is_some() {
+                    m.admin_efficiency = Some(Fixed::ONE);
+                    m.admin_computers = Some((Fixed::ZERO, Fixed::ZERO));
+                }
+                (m, orders)
             })
             .unzip();
         super::local::finish(
@@ -1502,7 +1544,8 @@ impl System<GameWorld> for Week {
                         wages[mi],
                         &v,
                         &a,
-                        self.fiscal_capacity,
+                        self.fiscal_capacity
+                            .then(|| offices[mi].map_or(Fixed::ONE, |o| o.2)),
                         &fade[mi],
                     )
                 })
@@ -1524,7 +1567,8 @@ impl System<GameWorld> for Week {
                         wages[mi],
                         &v,
                         &[],
-                        self.fiscal_capacity,
+                        self.fiscal_capacity
+                            .then(|| offices[mi].map_or(Fixed::ONE, |o| o.2)),
                         &fade[mi],
                     )
                 })
@@ -1913,8 +1957,8 @@ mod tests {
                 let mut v = View::last_week(cat, m, r, nat);
                 v.buy.iter_mut().for_each(|b| *b = milli(700));
                 let wage = Fixed::from_int(3);
-                let s = settle_region::<true, false>(cat, m, r, &skip, wage, &v, &[], false, &[]);
-                let f = settle_region::<false, false>(cat, m, r, &full, wage, &v, &[], false, &[]);
+                let s = settle_region::<true, false>(cat, m, r, &skip, wage, &v, &[], None, &[]);
+                let f = settle_region::<false, false>(cat, m, r, &full, wage, &v, &[], None, &[]);
                 assert_eq!(s, f, "settlement of state {ri}");
                 idle += r
                     .plants

@@ -54,6 +54,12 @@ pub struct Levers {
 /// (2009, AER 99(4)). The rule's servants are a fixed share of the people, so a country on the
 /// rule collects all but the lag of hiring behind growth.
 pub fn collection(r: &super::state::Region) -> Fixed {
+    collection_with(r, Fixed::ONE)
+}
+
+/// [`collection`] with each servant worth `worth` servants (the offices' computers,
+/// `econ::admin`): at most 1.
+pub fn collection_with(r: &super::state::Region, worth: Fixed) -> Fixed {
     let share = super::monthly::STATE_SHARE
         .iter()
         .find(|s| s.0 == super::prof::CIVIL_SERVANT)
@@ -63,7 +69,10 @@ pub fn collection(r: &super::state::Region) -> Fixed {
         return Fixed::ONE;
     }
     let have = r.pops[super::prof::CIVIL_SERVANT].size;
-    Fixed::from_ratio(have.min(needed), needed)
+    if worth == Fixed::ONE {
+        return Fixed::from_ratio(have.min(needed), needed);
+    }
+    (Fixed::from_ratio(have, needed) * worth).min(Fixed::ONE)
 }
 
 /// Floors and ceilings of what a command may fix. Design values for the first slice, each to be
