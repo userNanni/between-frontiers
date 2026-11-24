@@ -31,6 +31,9 @@ use crate::game::GameWorld;
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Weights {
     pub territory: i32,
+    /// An open territorial claim between the two (`claims.ron`).
+    #[serde(default)]
+    pub claim: i32,
     pub minority: i32,
     pub regime: i32,
     pub causes: i32,
@@ -53,6 +56,12 @@ pub struct RelationsRules {
     pub weights: Weights,
     /// Lost territory or minority abroad, per mille of the own people, that gives a whole term.
     pub people_full: u32,
+    /// How much a country speaks for its people in a neighbour (the minority term's weight).
+    #[serde(default)]
+    pub minority_by: MinorityBy,
+    /// Which pairs, besides neighbours, the regime term reaches whole.
+    #[serde(default)]
+    pub regime_reach: RegimeReach,
     /// Military spending per mille of GDP from which, and at which whole, the arms race term
     /// counts.
     pub effort_from: u32,
@@ -72,6 +81,31 @@ pub struct RelationsRules {
     pub rising: i32,
 }
 
+/// How much a country speaks for its people in a neighbour: the minority term is weighed by it.
+/// Both are DESIGN choices, measured side by side.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum MinorityBy {
+    /// The share of the culture's people that live in the claimant's metropole: who holds 0.1 %
+    /// of the Catalans does not speak for them; who holds most of the Albanians or of the
+    /// Hungarians does.
+    #[default]
+    HomeShare,
+    /// The claimant's people over the holder's, at most whole.
+    PopulationRatio,
+}
+
+/// Which pairs, besides neighbours, the regime term reaches whole; the others at `reach_far`.
+/// DESIGN choice; both measured.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum RegimeReach {
+    /// Two powers (each at `great_power` or more): interests the world over, as the United
+    /// States and the Soviet Union from 1917, without a border or a bomb.
+    #[default]
+    Powers,
+    /// A pair where either holds nuclear warheads.
+    Warheads,
+}
+
 /// What the measures need from the data, made once.
 #[derive(Clone, Debug)]
 pub struct RelationsSetup {
@@ -84,6 +118,24 @@ pub struct RelationsSetup {
     pub goods: [Option<u16>; 4],
     /// The unit type of a nuclear warhead, if any.
     pub warhead: Option<u16>,
+    /// The territorial claims (`data/diplomacy/claims.ron`): (claimant, holder, from, until).
+    pub claims: Vec<(u16, u16, i32, Option<i32>)>,
+}
+
+/// A territorial claim between governments, coded by hand with its source
+/// (`data/diplomacy/claims.ron`).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Claim {
+    pub claimant: String,
+    pub holder: String,
+    pub territory: String,
+    pub from: i32,
+    pub until: Option<i32>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ClaimsFile {
+    pub claims: Vec<Claim>,
 }
 
 /// The six components of the CINC, in order.
@@ -130,6 +182,7 @@ pub enum Role {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Terms {
     pub territory: i32,
+    pub claim: i32,
     pub minority: i32,
     pub regime: i32,
     pub causes: i32,
@@ -145,6 +198,7 @@ impl Terms {
     /// The weighted sum, 0 to 1000: the terms that push up less those that pull down.
     pub fn hostility(&self, w: &Weights) -> i32 {
         let up = self.territory * w.territory
+            + self.claim * w.claim
             + self.minority * w.minority
             + self.regime * w.regime
             + self.causes * w.causes
@@ -202,40 +256,93 @@ fn scaled(v: u32, full: u32) -> i32 {
 }
 
 /// The six components of each country, in their own units (spending in money, the rest in
-/// people, tonnes and coal-ton equivalents).
+/// The six components of each country, in their own units (spending in money, the rest in
+/// people, tonnes and coal-ton equivalents), measured as the NMC measures them: the state, not
+/// the empire (NMC Documentation v7.0, p. 12: colonial troops "were usually not included in this
+/// total if they were a separately administered force"). Population, urban population and
+/// soldiers are the metropole's regions'; steel is what the metropole's plants make; energy is
+/// what the metropole's plants burn, plus the households' part of the rest of the country's
+/// consumption by the metropole's share of the people (DESIGN: the game keeps no household
+/// consumption by region). Military spending is the state's, as the NMC counts it.
 fn components(s: &RelationsSetup, cat: &Catalogue, world: &GameWorld) -> Vec<[i128; 6]> {
     let n = world.countries.len();
     let mut out = vec![[0i128; 6]; n];
     let one = i128::from(Fixed::ONE.raw());
-    for (c, m) in world.econ.markets.iter().enumerate().take(n) {
-        out[c][0] = i128::from(crate::econ::public::military_room(m, cat).raw().max(0));
-        let at = |g: Option<u16>, v: &[Fixed]| -> i128 {
-            g.and_then(|g| v.get(usize::from(g)))
-                .map_or(0, |q| i128::from(q.raw().max(0)))
+    let [coal, crude, gas, steel] = s.goods;
+    let r = &s.rules;
+    let tce = |g: u16, q: Fixed| -> i128 {
+        let f = if Some(g) == coal {
+            r.coal_tce
+        } else if Some(g) == crude {
+            r.crude_tce
+        } else if Some(g) == gas {
+            r.gas_tce
+        } else {
+            return 0;
         };
-        let [coal, crude, gas, steel] = s.goods;
-        out[c][2] = at(steel, &m.supply);
-        let r = &s.rules;
-        out[c][3] = (at(coal, &m.demand) * i128::from(r.coal_tce)
-            + at(crude, &m.demand) * i128::from(r.crude_tce)
-            + at(gas, &m.demand) * i128::from(r.gas_tce))
-            / 1000;
-    }
-    for r in &world.econ.regions {
-        let c = usize::from(r.market);
+        i128::from(q.raw().max(0)) * i128::from(f) / 1000
+    };
+    // Energy the plants burn, the country's and the metropole's; people, all and metropole.
+    let mut burn_all = vec![0i128; n];
+    let mut burn_home = vec![0i128; n];
+    let mut people = vec![0i128; n];
+    for reg in &world.econ.regions {
+        let c = usize::from(reg.market);
         if c >= n {
             continue;
         }
-        for (p, pop) in r.pops.iter().enumerate() {
+        let m = &world.econ.markets[c];
+        for p in &reg.plants {
+            if p.levels <= 0 {
+                continue;
+            }
+            let (_, method, scale) = crate::econ::week::plant_run(cat, reg, m, p);
+            let burnt: i128 = method.inputs.iter().map(|&(g, q)| tce(g, q * scale)).sum();
+            burn_all[c] += burnt;
+            if !reg.colony {
+                burn_home[c] += burnt;
+                out[c][2] += method
+                    .outputs
+                    .iter()
+                    .filter(|(g, _)| Some(*g) == steel)
+                    .map(|&(_, q)| i128::from((q * scale).raw().max(0)))
+                    .sum::<i128>();
+            }
+        }
+        for (pi, pop) in reg.pops.iter().enumerate() {
             let size = i128::from(pop.size.max(0)) * one;
-            if p == crate::econ::prof::SOLDIER {
+            people[c] += size;
+            if reg.colony {
+                continue;
+            }
+            if pi == crate::econ::prof::SOLDIER {
                 out[c][1] += size;
             }
             out[c][4] += size;
-            if crate::econ::migration::is_urban(p) {
+            if crate::econ::migration::is_urban(pi) {
                 out[c][5] += size;
             }
         }
+    }
+    for (c, m) in world.econ.markets.iter().enumerate().take(n) {
+        out[c][0] = i128::from(crate::econ::public::military_room(m, cat).raw().max(0));
+        let used: i128 = [coal, crude, gas]
+            .into_iter()
+            .flatten()
+            .map(|g| {
+                tce(
+                    g,
+                    m.demand.get(usize::from(g)).copied().unwrap_or(Fixed::ZERO),
+                )
+            })
+            .sum();
+        let households = (used - burn_all[c]).max(0);
+        out[c][3] = burn_home[c]
+            + if people[c] > 0 {
+                households * out[c][4] / people[c]
+            } else {
+                0
+            };
     }
     out
 }
@@ -326,7 +433,21 @@ pub fn measure(
     }
     // (country, region's owner) -> people of the country's culture there.
     let mut abroad: BTreeMap<(u16, u16), i128> = BTreeMap::new();
+    // Each culture's people in the world, and each country's main culture at home (its
+    // metropole): who speaks for a people abroad.
+    let mut culture_all: BTreeMap<u16, i128> = BTreeMap::new();
+    let mut home = vec![0i128; n];
     if let (Some(t), Some(cult)) = (table, cultures.as_ref()) {
+        for (reg, rows) in world.econ.regions.iter().zip(&world.demography.communities) {
+            for (id, k) in rows.by_community() {
+                let culture = t.culture(id);
+                *culture_all.entry(culture).or_default() += i128::from(k.max(0));
+                let m = usize::from(reg.market);
+                if !reg.colony && m < n && cult[m] == Some(culture) {
+                    home[m] += i128::from(k.max(0));
+                }
+            }
+        }
         for (reg, rows) in world.econ.regions.iter().zip(&world.demography.communities) {
             for (id, k) in rows.by_community() {
                 let culture = t.culture(id);
@@ -365,6 +486,22 @@ pub fn measure(
             per_mille(taken.get(&(a, b)).copied().unwrap_or(0), own),
             per_mille(abroad.get(&(a, b)).copied().unwrap_or(0), own),
         )
+    };
+    // How much `a` speaks for its people in `b`, per mille (`MinorityBy`).
+    let voice = |a: u16, b: u16| -> u32 {
+        let (ai, bi) = (usize::from(a), usize::from(b));
+        match r.minority_by {
+            MinorityBy::HomeShare => {
+                let all = cultures
+                    .as_ref()
+                    .and_then(|c| c[ai])
+                    .and_then(|k| culture_all.get(&k))
+                    .copied()
+                    .unwrap_or(0);
+                per_mille(home[ai], all).min(1000)
+            }
+            MinorityBy::PopulationRatio => per_mille(people[ai], people[bi]).min(1000),
+        }
     };
     // Military effort, per mille of GDP.
     let effort: Vec<u32> = world
@@ -419,16 +556,29 @@ pub fn measure(
             let (tb, mb) = lost(b, a);
             let mut t = Terms {
                 territory: scaled(ta.max(tb), r.people_full),
-                minority: scaled(ma.max(mb), r.people_full),
+                // At most as many abroad as at home before the weight: 700 Catalans in Spain for
+                // each Andorran is still one people that Andorra speaks little for.
+                minority: scaled(
+                    (u64::from(ma.min(1000)) * u64::from(voice(a, b)) / 1000)
+                        .max(u64::from(mb.min(1000)) * u64::from(voice(b, a)) / 1000)
+                        as u32,
+                    r.people_full,
+                ),
                 ..Default::default()
             };
-            // Regimes clash where they meet: neighbours, or a great power and anyone.
-            let meet = is_near(a, b)
-                || cinc[usize::from(a)] >= r.great_power
-                || cinc[usize::from(b)] >= r.great_power;
-            if let (true, Some(la), Some(lb)) =
-                (meet, laws.get(usize::from(a)), laws.get(usize::from(b)))
-            {
+            // Regimes clash by how far one reaches the other (`RegimeReach`): whole between
+            // neighbours, and between two powers or with a nuclear one; `reach_far` otherwise.
+            let (ai, bi) = (usize::from(a), usize::from(b));
+            let far = match r.regime_reach {
+                RegimeReach::Powers => cinc[ai] >= r.great_power && cinc[bi] >= r.great_power,
+                RegimeReach::Warheads => warheads[ai] || warheads[bi],
+            };
+            let reach = if is_near(a, b) || far {
+                1000
+            } else {
+                i64::from(r.reach_far)
+            };
+            if let (Some(la), Some(lb)) = (laws.get(usize::from(a)), laws.get(usize::from(b))) {
                 let (mut same, mut all) = (0i64, 0i64);
                 for (x, y) in la.iter().zip(lb) {
                     if let (Some(x), Some(y)) = (x, y) {
@@ -439,7 +589,7 @@ pub fn measure(
                     }
                 }
                 if all > 0 {
-                    t.regime = (1000 - same * 1000 / all) as i32;
+                    t.regime = ((1000 - same * 1000 / all) * reach / 1000) as i32;
                 }
             }
             let (ga, gb) = (tag(a), tag(b));
@@ -451,14 +601,24 @@ pub fn measure(
             } else {
                 0
             };
+            // An open claim between the two, either way.
+            t.claim = if s.claims.iter().any(|&(x, y, from, until)| {
+                ((x == a && y == b) || (x == b && y == a))
+                    && from <= year
+                    && until.is_none_or(|u| year <= u)
+            }) {
+                1000
+            } else {
+                0
+            };
             t.war = if world.war.conflicts.at_war(a, b) {
                 1000
             } else {
                 0
             };
-            // The arms race weighs between those already in conflict (land, people, a cause,
-            // a war): the higher military effort of the two.
-            if t.territory + t.minority + t.causes + t.war > 0 {
+            // The arms race weighs between those already in conflict (land, a claim, people, a
+            // cause, a war): the higher military effort of the two.
+            if t.territory + t.claim + t.minority + t.causes + t.war > 0 {
                 let e = effort[usize::from(a)].max(effort[usize::from(b)]);
                 t.arms_race = scaled(
                     e.saturating_sub(r.effort_from),
@@ -575,6 +735,7 @@ mod tests {
     fn w() -> Weights {
         Weights {
             territory: 300,
+            claim: 300,
             minority: 200,
             regime: 150,
             causes: 200,

@@ -1,0 +1,111 @@
+// Territorial claims between governments, coded by hand for the game (`relations::Claim`,
+// docs/relations.pt-BR.md, "Reivindicações"). Read with the switch `relations`. No dataset is
+// copied: each line is our coding from a historical source of its own, with its locator.
+//
+// CRITERION OF INCLUSION, applied region by region (Europe and the peace settlements of 1919-23,
+// the Americas, Asia and Africa) to every candidate, whether or not it ever turned violent: a
+// claim is in if, at some time from 1 January 1925 to 1939, a GOVERNMENT formally contested
+// another state's sovereignty over a named territory, shown by (i) a formal protest, reservation
+// or non-recognition in a treaty, note or official statement; (ii) the question brought by a
+// government before the League of Nations, to arbitration or to the Permanent Court; or (iii) a
+// claim in its constitution or stated by its government in parliament. Agitation by private
+// groups without a government position does not count. The list was not chosen by whether a
+// militarized dispute followed.
+//
+// Out by the criterion (source checked): Alsace-Lorraine and Eupen-Malmedy (renounced at Locarno,
+// 16 October 1925, art. 1, with no claim found from January); North Schleswig, Gibraltar, the
+// Durand Line, Hungary against Romania and Yugoslavia (agitation, no government note), Macedonia
+// (private activity), the Hungarian optants (property, not sovereignty), Bolivia's outlet to the
+// Pacific (access, not a named territory), Costa Rica and Panama (Coto: Panama accepted the line
+// against compensation), Kwantung as such (inside Manchuria from 1931), Siam and Indochina (1940).
+// Closed before 1925: the Åland Islands (1921), East Karelia (1923), the Isle of Pines (the
+// Hay-Quesada treaty, ratified 23 March 1925). Out for want of a source we could open: Danzig
+// (1939), the Shatt al-Arab, Aqaba and Maan, South Tyrol, Burgenland, Northern Epirus, the
+// Dodecanese, the Albanian frontiers, Eastern Galicia, Western Thrace, Guiana Essequiba.
+//
+// A claim counts while it is open, from `from` to `until` (inclusive; None: open past 1945). The
+// hostility of the pair gets the claim term whole while it is open (a DESIGN scale, weight in
+// relations.ron). A claim is a pair in both directions; the claimant comes first. "Before 1925"
+// is coded as 1925, the game's start. Ends marked "end: no source" come from general knowledge.
+//
+// FRUS: Foreign Relations of the United States, history.state.gov (volume, document, pages).
+// Hansard: House of Commons (HC) or Lords (HL) (date, volume, column). RIAA: Reports of
+// International Arbitral Awards (United Nations), volume and page.
+(
+    claims: [
+        // EUROPE
+        // The Polish Corridor: FRUS 1931 v. I, doc. 457, pp. 600-601; FRUS 1933 v. I, doc. 70,
+        // pp. 86-89. Formal to the German-Polish declaration of January 1934 (end: no source).
+        (claimant: "GER", holder: "POL", territory: "Polish Corridor", from: 1925, until: Some(1934)),
+        // Memel: the German ultimatum and the cession of March 1939. FRUS 1939 v. I, doc. 83.
+        (claimant: "GER", holder: "LTU", territory: "Memel", from: 1939, until: Some(1939)),
+        // Vilna: Lithuania's note, FRUS 1928 v. I, doc. 161, pp. 188-189. End: 1939 (end: no
+        // source).
+        (claimant: "LTU", holder: "POL", territory: "Vilna", from: 1925, until: Some(1939)),
+        // Teschen: FRUS 1938 v. I, doc. 690, p. 710; ceded on 1 October 1938.
+        (claimant: "POL", holder: "CZE", territory: "Teschen", from: 1938, until: Some(1938)),
+        // The Saar under the League's commission, to the plebiscite of January 1935 (HL, 15
+        // November 1934, vol. 94, cc. 500-509; FRUS 1935 v. I, doc. 166).
+        (claimant: "GER", holder: "SAA", territory: "Saar", from: 1925, until: Some(1935)),
+        // Northern Ireland: the 1937 Constitution, arts. 2-3 (the original text).
+        (claimant: "IRL", holder: "GBR", territory: "Northern Ireland", from: 1937, until: None),
+        // Bessarabia: the Soviet Union's "disputed territory", FRUS 1932 v. II, doc. 374,
+        // pp. 503-504. End: 1940 (end: no source).
+        (claimant: "SOV", holder: "ROM", territory: "Bessarabia", from: 1925, until: Some(1940)),
+        // Mosul before the League Council (HL, 21 December 1925, vol. 62, cc. 1686, 1693; HC, 17
+        // December 1925, vol. 189, c. 1625); the treaty of Angora, 5 June 1926 (HC, 21 June 1926,
+        // vol. 197, c. 10).
+        (claimant: "TUR", holder: "IRQ", territory: "Mosul", from: 1925, until: Some(1926)),
+        // The Sanjak of Alexandretta before the League (HC written answers, 19 July 1937, vol.
+        // 326, c. 1789W); transferred in June 1939 (25 July 1939, vol. 350, cc. 1274-5W).
+        (claimant: "TUR", holder: "FRA", territory: "Alexandretta", from: 1936, until: Some(1939)),
+        // Southern Slovakia and Ruthenia, to the first Vienna award of 2 November 1938 (HL, 17
+        // November 1938, vol. 111, c. 120).
+        (claimant: "HUN", holder: "CZE", territory: "Southern Slovakia and Ruthenia", from: 1938, until: Some(1938)),
+        // Southern Dobrudja: the Bulgarian Prime Minister awaits "a conference in which this
+        // question could be considered" (FRUS 1939 v. I, doc. 457, p. 444). The earliest year we
+        // could source.
+        (claimant: "BUL", holder: "ROM", territory: "Southern Dobrudja", from: 1939, until: None),
+        // THE AMERICAS
+        // Tacna and Arica: the Coolidge award, FRUS 1925 v. I, doc. 204, pp. 306-347; settled 3
+        // June 1929 (FRUS 1929 v. I, doc. 658, note).
+        (claimant: "PER", holder: "CHL", territory: "Tacna and Arica", from: 1925, until: Some(1929)),
+        // The Chaco Boreal before the Commission of Inquiry and Conciliation, FRUS 1929 v. I, doc.
+        // 737, pp. 883-884. End: the 1938 treaty (end: no source).
+        (claimant: "BOL", holder: "PRY", territory: "Chaco Boreal", from: 1925, until: Some(1938)),
+        // The Ecuador-Peru frontier: the 1936 agreement, art. 3 (FRUS 1936 v. V, doc. 96). End:
+        // Rio, 1942 (end: no source).
+        (claimant: "ECU", holder: "PER", territory: "Ecuador-Peru frontier", from: 1925, until: Some(1942)),
+        // Leticia: FRUS 1933 v. IV, doc. 406, p. 419. End: the 1934 protocol (end: no source).
+        (claimant: "PER", holder: "COL", territory: "Leticia", from: 1932, until: Some(1934)),
+        // The Guatemala-Honduras boundary, both ways, to the award of 23 January 1933 (RIAA vol.
+        // II, pp. 1307 ff., 1325 and 1330).
+        (claimant: "HON", holder: "GUA", territory: "Motagua to Belize", from: 1925, until: Some(1933)),
+        (claimant: "GUA", holder: "HON", territory: "Omoa and Cuyamel", from: 1925, until: Some(1933)),
+        // North of the Coco: Nicaragua against the 1906 award, FRUS 1937 v. V, doc. 120, pp.
+        // 106-107.
+        (claimant: "NIC", holder: "HON", territory: "North of the Coco", from: 1925, until: None),
+        // Belize: FRUS 1937 v. V, doc. 143, pp. 120-128; FRUS 1938 v. V, doc. 188, pp. 205-208.
+        // The earliest year we could source.
+        (claimant: "GUA", holder: "GBR", territory: "Belize", from: 1936, until: None),
+        // The Falklands: HC, 20 March 1933, vol. 276, c. 22; 25 July 1935, vol. 304, cc. 2013-4.
+        (claimant: "ARG", holder: "GBR", territory: "Falkland Islands", from: 1925, until: None),
+        // The strip given to the Dominican Republic by the 1929 treaty: FRUS 1931 v. I, doc.
+        // 644, pp. 785-786. End: the 1936 protocol (end: no source).
+        (claimant: "HAI", holder: "DOM", territory: "1929 frontier strip", from: 1931, until: Some(1936)),
+        // ASIA AND AFRICA
+        // Outer Mongolia, in China's Provisional Constitution of 1931 (FRUS 1932 v. III, doc.
+        // 457, pp. 423-424; FRUS 1936 v. IV, doc. 99, p. 110). The earliest year we could source.
+        (claimant: "CHN", holder: "MGL", territory: "Outer Mongolia", from: 1931, until: None),
+        // Tibet, in the same Constitution (FRUS 1932 v. III, doc. 457, p. 423).
+        (claimant: "CHN", holder: "TIB", territory: "Tibet", from: 1931, until: None),
+        // Manchuria: FRUS 1932 v. IV, doc. 280, pp. 263-265; the League Assembly of 24 February
+        // 1933 (FRUS Japan 1931-1941 v. I, doc. 84).
+        (claimant: "CHN", holder: "JAP", territory: "Manchuria", from: 1931, until: None),
+        // Walwal and the Ogaden frontier before the League: FRUS 1935 v. I, doc. 480, pp. 603-605.
+        (claimant: "ETH", holder: "ITA", territory: "Walwal", from: 1934, until: Some(1936)),
+        // Zinta and Baragara-Batata: FRUS 1925 v. II, doc. 391, p. 496; FRUS 1926 v. II, doc. 374,
+        // pp. 602-604. End: the mixed commission from 1926 (end: no source).
+        (claimant: "LBR", holder: "FRA", territory: "Zinta and Baragara", from: 1925, until: Some(1926)),
+    ],
+)
