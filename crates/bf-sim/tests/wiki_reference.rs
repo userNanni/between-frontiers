@@ -539,7 +539,10 @@ fn the_reference_pages_match_the_data() {
             std::fs::write(&path, &page).unwrap();
             continue;
         }
-        let old = std::fs::read_to_string(&path).unwrap_or_default();
+        // Git on Windows may check the pages out with CRLF line ends.
+        let old = std::fs::read_to_string(&path)
+            .unwrap_or_default()
+            .replace("\r\n", "\n");
         if old != page {
             let line = old
                 .lines()
