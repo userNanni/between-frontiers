@@ -895,12 +895,11 @@ impl Command<GameWorld> for GameCommand {
                 if let (Some(me), Some(e)) = (index(tag), index(enemy))
                     && world.war.conflicts.at_war(me as u16, e as u16)
                 {
-                    let segs = crate::war::fronts::segments_of(&world.war.fighting, me as u16);
                     world
                         .war
                         .fronts
                         .entry(me as u16)
-                        .set_objective(e as u16, *state, &segs);
+                        .set_objective(e as u16, *state);
                 }
             }
             GameCommand::SetReserve { tag, share } => {

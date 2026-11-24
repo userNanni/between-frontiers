@@ -41,6 +41,9 @@ pub struct FrontOrder {
     pub now: u16,
     /// The enemy state the front aims at (`Region::state`).
     pub objective: Option<u16>,
+    /// The player set its share (`SetFrontShare`). A front with only an objective has none:
+    /// it shares the rest with the fronts without an order.
+    pub ordered: bool,
 }
 
 /// A country's fronts under orders.
@@ -61,13 +64,29 @@ pub struct CountryFronts {
 impl CountryFronts {
     /// What the fronts without an order are to have: what the orders and the reserve leave.
     pub fn rest(&self) -> u16 {
-        1000u16.saturating_sub(self.reserve + self.fronts.iter().map(|f| f.share).sum::<u16>())
+        1000u16.saturating_sub(self.reserve + self.ordered_shares(None))
+    }
+
+    /// The shares set on the fronts under a share order, but `except`'s.
+    fn ordered_shares(&self, except: Option<u16>) -> u16 {
+        self.fronts
+            .iter()
+            .filter(|f| f.ordered && Some(f.enemy) != except)
+            .map(|f| f.share)
+            .sum()
     }
 
     /// The share in transit: neither on a line nor in reserve.
     pub fn transit(&self) -> u16 {
         1000u16.saturating_sub(
-            self.reserve_now + self.rest_now + self.fronts.iter().map(|f| f.now).sum::<u16>(),
+            self.reserve_now
+                + self.rest_now
+                + self
+                    .fronts
+                    .iter()
+                    .filter(|f| f.ordered)
+                    .map(|f| f.now)
+                    .sum::<u16>(),
         )
     }
 
@@ -82,6 +101,7 @@ impl CountryFronts {
                         share: 0,
                         now: 0,
                         objective: None,
+                        ordered: false,
                     },
                 );
                 i
@@ -90,54 +110,51 @@ impl CountryFronts {
         &mut self.fronts[i]
     }
 
-    /// Puts the front against `enemy` under orders with its part of the rest now (`segments`:
-    /// (enemy, segments of that front) for the fronts without an order), so that listing it
-    /// moves no one.
-    fn list(&mut self, enemy: u16, segments: &[(u16, u64)]) {
-        if self.fronts.iter().any(|f| f.enemy == enemy) {
+    /// Puts the front against `enemy` under a share order with its part of the rest now
+    /// (`segments`: (enemy, segments of that front) for every front), so that ordering it moves
+    /// no one; within what the reserve and the other orders leave.
+    fn order(&mut self, enemy: u16, segments: &[(u16, u64)]) {
+        if self.fronts.iter().any(|f| f.enemy == enemy && f.ordered) {
             return;
         }
-        let unlisted: u64 = segments
+        let unordered: u64 = segments
             .iter()
-            .filter(|(e, _)| !self.fronts.iter().any(|f| f.enemy == *e))
+            .filter(|(e, _)| !self.fronts.iter().any(|f| f.enemy == *e && f.ordered))
             .map(|(_, n)| *n)
             .sum();
         let mine = segments
             .iter()
             .find(|(e, _)| *e == enemy)
             .map_or(0, |(_, n)| *n);
-        let part = (u64::from(self.rest_now) * mine)
-            .checked_div(unlisted)
-            .unwrap_or(0) as u16;
+        let free = 1000u16.saturating_sub(self.reserve + self.ordered_shares(Some(enemy)));
+        let part = ((u64::from(self.rest_now) * mine)
+            .checked_div(unordered)
+            .unwrap_or(0) as u16)
+            .min(free);
         self.rest_now -= part;
         let f = self.front_mut(enemy);
         f.share = part;
         f.now = part;
+        f.ordered = true;
     }
 
     /// Sets the share of the front against `enemy`, within what the other orders and the
     /// reserve leave.
     pub fn set_share(&mut self, enemy: u16, share: u16, segments: &[(u16, u64)]) {
-        self.list(enemy, segments);
-        let others: u16 = self
-            .fronts
-            .iter()
-            .filter(|f| f.enemy != enemy)
-            .map(|f| f.share)
-            .sum::<u16>()
-            + self.reserve;
+        self.order(enemy, segments);
+        let others = self.ordered_shares(Some(enemy)) + self.reserve;
         self.front_mut(enemy).share = share.min(1000u16.saturating_sub(others));
     }
 
-    pub fn set_objective(&mut self, enemy: u16, state: Option<u16>, segments: &[(u16, u64)]) {
-        self.list(enemy, segments);
+    /// Sets the objective of the front against `enemy`; it moves no one, and the front keeps
+    /// sharing the rest if it has no share order.
+    pub fn set_objective(&mut self, enemy: u16, state: Option<u16>) {
         self.front_mut(enemy).objective = state;
     }
 
     /// Sets the reserve, within what the fronts under orders leave.
     pub fn set_reserve(&mut self, share: u16) {
-        let fronts: u16 = self.fronts.iter().map(|f| f.share).sum();
-        self.reserve = share.min(1000u16.saturating_sub(fronts));
+        self.reserve = share.min(1000u16.saturating_sub(self.ordered_shares(None)));
     }
 
     /// A week of moving: what stands above its share goes into transit at once; what stands
@@ -145,7 +162,7 @@ impl CountryFronts {
     /// then the fronts without an order.
     pub fn step(&mut self, rate: u16) {
         let rest = self.rest();
-        for f in &mut self.fronts {
+        for f in self.fronts.iter_mut().filter(|f| f.ordered) {
             f.now = f.now.min(f.share);
         }
         self.reserve_now = self.reserve_now.min(self.reserve);
@@ -156,7 +173,7 @@ impl CountryFronts {
             *now += add;
             moving -= add;
         };
-        for f in &mut self.fronts {
+        for f in self.fronts.iter_mut().filter(|f| f.ordered) {
             take(&mut f.now, f.share);
         }
         take(&mut self.reserve_now, self.reserve);
@@ -168,16 +185,18 @@ impl CountryFronts {
     pub fn on_line(&self, segments: &[(u16, u64)]) -> Vec<(u16, u16)> {
         let unlisted: u64 = segments
             .iter()
-            .filter(|(e, _)| !self.fronts.iter().any(|f| f.enemy == *e))
+            .filter(|(e, _)| !self.fronts.iter().any(|f| f.enemy == *e && f.ordered))
             .map(|(_, n)| *n)
             .sum();
         segments
             .iter()
-            .map(|&(e, n)| match self.fronts.iter().find(|f| f.enemy == e) {
-                Some(f) => (e, f.now),
-                None if unlisted > 0 => (e, (u64::from(self.rest_now) * n / unlisted) as u16),
-                None => (e, 0),
-            })
+            .map(
+                |&(e, n)| match self.fronts.iter().find(|f| f.enemy == e && f.ordered) {
+                    Some(f) => (e, f.now),
+                    None if unlisted > 0 => (e, (u64::from(self.rest_now) * n / unlisted) as u16),
+                    None => (e, 0),
+                },
+            )
             .collect()
     }
 }
@@ -231,6 +250,7 @@ impl HashState for FrontsState {
                 h.write_u16(f.share);
                 h.write_u16(f.now);
                 h.write_u16(f.objective.unwrap_or(u16::MAX));
+                h.write_u8(u8::from(f.ordered));
             }
             h.write_u16(c.reserve);
             h.write_u16(c.reserve_now);
@@ -265,7 +285,14 @@ mod tests {
     use super::*;
 
     fn sums(c: &CountryFronts) -> u16 {
-        c.fronts.iter().map(|f| f.now).sum::<u16>() + c.reserve_now + c.rest_now + c.transit()
+        c.fronts
+            .iter()
+            .filter(|f| f.ordered)
+            .map(|f| f.now)
+            .sum::<u16>()
+            + c.reserve_now
+            + c.rest_now
+            + c.transit()
     }
 
     /// The men are the same: on the lines, in reserve, with the fronts without an order and in
@@ -296,6 +323,34 @@ mod tests {
         c.step(100);
         assert_eq!((c.fronts[0].now, c.transit()), (700, 50));
         assert_eq!(sums(c), 1000);
+    }
+
+    /// The interface's recipes (#374): an objective moves no one and leaves room for the
+    /// reserve, in either order.
+    #[test]
+    fn an_objective_takes_no_share() {
+        let segs = [(17u16, 9u64)];
+        for reserve_first in [false, true] {
+            let mut s = FrontsState::default();
+            let c = s.entry(26);
+            if reserve_first {
+                c.set_reserve(100);
+                c.set_objective(17, Some(597));
+            } else {
+                c.set_objective(17, Some(597));
+                c.set_reserve(100);
+            }
+            assert_eq!(c.reserve, 100);
+            assert!(!c.fronts[0].ordered);
+            for _ in 0..3 {
+                c.step(100);
+                assert_eq!(sums(c), 1000);
+            }
+            assert_eq!((c.reserve_now, c.rest_now), (100, 900));
+            assert_eq!(c.on_line(&segs), vec![(17, 900)]);
+            c.set_share(17, 950, &segs);
+            assert_eq!(c.fronts[0].share, 900, "within what the reserve leaves");
+        }
     }
 
     #[test]

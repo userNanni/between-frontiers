@@ -2763,8 +2763,12 @@ sempre o exército: são os mesmos homens, só muda onde estão (testes
   61,6 % na segunda e 70 % na terceira; a reserva se completa na quarta. A guerra acaba na segunda
   semana pela queda da Hungria, nos dois casos.
 - `war_fronts::an_objective_draws_the_front`: a URSS, jogada, declara à Polônia e ataca. Com um
-  estado polonês como objetivo (e 10 % em reserva), o estado cai na sétima semana; sem objetivo,
-  não cai em 26 semanas.
+  estado polonês como objetivo (e 10 % em reserva), o estado cai na 13ª semana; sem objetivo, não
+  cai em 26 semanas. (Antes da correção do #374, o objetivo punha a frente sob ordem com o
+  exército inteiro, sem reserva, e o estado caía na sétima.)
+- O objetivo sozinho não move ninguém: a frente só com objetivo divide o resto com as frentes sem
+  ordem (`FrontOrder::ordered` falso); só `SetFrontShare` a põe sob ordem de parcela, dentro do que
+  a reserva e as outras ordens deixam (`an_objective_takes_no_share`).
 - A reserva não entrou no caso soviético: a URSS não perdeu terreno.
 
 **Tela (esboço, para o thread da interface).** Os comandos não são raros nem irreversíveis: ficam na
