@@ -19,6 +19,11 @@
     // tribute paid and tested, and an agreement with a fixed term ends when it runs out.
     // Off: nothing is paid and agreements never end by their term.
     clause_tests: false,
+    // The computer as a gain in efficiency (docs/research.pt-BR.md): the laboratory and the
+    // university get methods that use computers and make more per worker; the computing
+    // technologies lose their own effect on research, which then comes through the methods. Acts
+    // when the data load. Off: the methods are not in the catalogue.
+    computer_efficiency: false,
     // Crises and declaration (`docs/war.pt-BR.md`, "Crise e declaração"): a demand with a
     // deadline, the AI answering by the force against the share asked for, war on a refusal.
     // Needs `forces`. Off: no crisis opens.
