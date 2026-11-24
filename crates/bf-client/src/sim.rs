@@ -446,7 +446,15 @@ fn works_of(
         }
         _ => {
             let r = rules.as_ref()?;
-            crate::works_view::read(w, tag, &r.catalogue, r.tree.as_deref(), date).map(Arc::new)
+            crate::works_view::read(
+                w,
+                tag,
+                &r.catalogue,
+                r.tree.as_deref(),
+                date,
+                r.switches.occupied_works,
+            )
+            .map(Arc::new)
         }
     }
 }

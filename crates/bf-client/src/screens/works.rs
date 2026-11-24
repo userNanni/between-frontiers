@@ -408,7 +408,11 @@ pub fn show(ui: &mut Ui, cx: &mut TabContext<'_>) {
             false,
         );
         x += cols.progress;
-        let when = ready(i18n, today, r.weeks);
+        let when = if r.stopped {
+            i18n.tr("works-stopped-occupied")
+        } else {
+            ready(i18n, today, r.weeks)
+        };
         cell(ui, top, x, cols.ready, &when, tint, false);
         let tip = i18n.tr_args(
             "works-ready-tip",
@@ -561,7 +565,11 @@ pub fn show(ui: &mut Ui, cx: &mut TabContext<'_>) {
                     top,
                     x,
                     cols.ready,
-                    &ready(i18n, today, p.weeks),
+                    &if p.stopped {
+                        i18n.tr("works-stopped-occupied")
+                    } else {
+                        ready(i18n, today, p.weeks)
+                    },
                     tint,
                     false,
                 );
