@@ -210,11 +210,25 @@ fn short(hash: &laplace_schelling::StateHash) -> String {
 }
 
 /// The month's figures, read again only when the month changed since `last`.
-fn figures_of(session: &Session, last: &Option<Arc<LiveFigures>>) -> Option<Arc<LiveFigures>> {
+fn figures_of(
+    session: &Session,
+    rules: &Rules,
+    last: &Option<Arc<LiveFigures>>,
+) -> Option<Arc<LiveFigures>> {
     let date = session.clock().date;
     match last {
         Some(f) if f.month == (date.year, date.month) => Some(Arc::clone(f)),
-        _ => crate::live::read(session.world(), date).map(Arc::new),
+        _ => crate::live::read(session.world(), date)
+            .map(|mut l| {
+                let r = rules.as_ref();
+                l.media = crate::live::media(
+                    session.world(),
+                    r.and_then(|r| r.media.as_deref()),
+                    r.and_then(|r| r.politics.as_deref()),
+                );
+                l
+            })
+            .map(Arc::new),
     }
 }
 
@@ -843,7 +857,7 @@ impl Monthly {
             tariffs: tariffs_of(session, rules, &last.tariffs),
             war: war_of(session, rules, &last.war),
             control: control_of(session, &last.control),
-            figures: figures_of(session, &last.figures),
+            figures: figures_of(session, rules, &last.figures),
             journal: journal_of(session, rules, &last.journal),
             population: population_of(session, rules, &last.population),
             demands: demands_of(session, rules, &last.demands),
