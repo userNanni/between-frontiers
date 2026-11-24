@@ -31,3 +31,4 @@ relations-term-trade = trade
 relations-term-agreement = agreement
 relations-term-common_enemy = common enemy
 relations-term-deterrence = deterrence
+relations-term-claim = claim
