@@ -921,6 +921,18 @@ fn snapshot_of(
                     let r = rules.as_ref()?;
                     crate::gold_view::read(w, ci, r.gold.as_deref(), r.capital.as_deref())
                 });
+            g.admin = session
+                .player()
+                .and_then(|t| w.countries.iter().position(|(_, c)| c.tag == t))
+                .and_then(|ci| {
+                    let r = rules.as_ref();
+                    crate::government::admin_line(
+                        w,
+                        ci,
+                        r.and_then(|r| r.admin.as_deref()),
+                        r.and_then(|r| r.tree.as_deref()),
+                    )
+                });
             g
         })
         .map(Arc::new),
