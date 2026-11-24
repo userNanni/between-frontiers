@@ -430,8 +430,44 @@ impl MulDivFloor for i64 {
     }
 }
 
+/// Share of a fading input still used, by the stage of its technology in the country
+/// (`MethodDef::fading`). DESIGN VALUES, without a source: half once the technology is
+/// industrial there, none once it is diffused; the real fall of each use is the conference.
+pub const FADE_INDUSTRIAL: Fixed = Fixed::from_raw(500);
+pub const FADE_DIFFUSED: Fixed = Fixed::ZERO;
+
+/// The share of each fading input still used, by market and by technology of
+/// [`Catalogue::fading`] (empty when no method has one, and then nothing changes).
+pub fn fade_shares(
+    cat: &Catalogue,
+    tree: Option<&crate::research::TechTree>,
+    research: &crate::research::ResearchState,
+    markets: usize,
+) -> Vec<Vec<Fixed>> {
+    use crate::research::Stage;
+    let techs: Vec<Option<usize>> = cat
+        .fading
+        .iter()
+        .map(|k| tree.and_then(|t| t.tech(k)))
+        .collect();
+    (0..markets)
+        .map(|m| {
+            techs
+                .iter()
+                .map(|t| {
+                    match t.and_then(|t| research.stage.get(m).and_then(|s| s.get(t)).copied()) {
+                        Some(Stage::Diffused) => FADE_DIFFUSED,
+                        Some(Stage::Industrial) => FADE_INDUSTRIAL,
+                        _ => Fixed::ONE,
+                    }
+                })
+                .collect()
+        })
+        .collect()
+}
+
 /// With `SKIP_IDLE`, a plant running at scale zero (no levels left) is passed over: everything
-/// it would add is zero. The tests run both ways.
+/// it would add is zero. The tests run both ways. `fade`: the market's [`fade_shares`].
 fn region_orders<const SKIP_IDLE: bool>(
     cat: &Catalogue,
     econ: &Economy,
@@ -439,6 +475,7 @@ fn region_orders<const SKIP_IDLE: bool>(
     exists: &[bool],
     national: &[bool],
     fuel_gathered: Fixed,
+    fade: &[Fixed],
 ) -> RegionOrders {
     let g = cat.goods.len();
     let m = &econ.markets[r.market as usize];
@@ -451,7 +488,7 @@ fn region_orders<const SKIP_IDLE: bool>(
             continue;
         }
         for (gi, q) in &method.inputs {
-            demand[*gi as usize] += *q * scale;
+            demand[*gi as usize] += *q * method.input_share(*gi, fade) * scale;
         }
         let out_scale = scale * p.input_ratio;
         for (gi, q) in &method.outputs {
@@ -582,6 +619,7 @@ fn settle_region<const SKIP_IDLE: bool, const ABROAD: bool>(
     v: &View,
     abroad: &[(u16, u16, Fixed)],
     fiscal_capacity: bool,
+    fade: &[Fixed],
 ) -> RegionSettlement {
     let laws = m.laws.of(r);
     // The share of the taxes the state's servants here can collect (1 with the switch off).
@@ -613,6 +651,7 @@ fn settle_region<const SKIP_IDLE: bool, const ABROAD: bool>(
         let output_value = method.output_value;
         let mut loss = Fixed::ZERO;
         for (gi, q) in &method.inputs {
+            let q = &(*q * method.input_share(*gi, fade));
             let base = cat.goods[*gi as usize].base_price;
             if !idle {
                 let bought = *q * scale * v.buy[*gi as usize];
@@ -695,10 +734,23 @@ fn settle_region<const SKIP_IDLE: bool, const ABROAD: bool>(
         }
         // Plants follow demand for their main output: they ramp up while everything sells and
         // ease off in step with what goes unsold.
-        let sold_share = method
+        let fading_main = method
             .outputs
             .first()
-            .map_or(Fixed::ONE, |(gi, _)| v.sell[*gi as usize]);
+            .is_some_and(|(g, _)| cat.fades.get(usize::from(*g)).copied().unwrap_or(false));
+        let sold_share = if fading_main && method.outputs.len() > 1 {
+            method
+                .outputs
+                .iter()
+                .map(|(gi, _)| v.sell[*gi as usize])
+                .max()
+                .unwrap_or(Fixed::ONE)
+        } else {
+            method
+                .outputs
+                .first()
+                .map_or(Fixed::ONE, |(gi, _)| v.sell[*gi as usize])
+        };
         let utilization = if sold_share >= milli(990) {
             (p.utilization + milli(50)).min(Fixed::ONE)
         } else {
@@ -1322,13 +1374,19 @@ impl System<GameWorld> for Week {
             &world.research,
             econ.markets.len(),
         );
+        let fade = fade_shares(
+            cat,
+            self.tree.as_deref(),
+            &world.research,
+            econ.markets.len(),
+        );
         let orders: Vec<RegionOrders> = econ
             .regions
             .par_iter()
             .map(|r| {
                 let mi = r.market as usize;
                 let gathered = biomass.get(mi).copied().unwrap_or(Fixed::ZERO);
-                region_orders::<true>(cat, econ, r, exists, &national[mi], gathered)
+                region_orders::<true>(cat, econ, r, exists, &national[mi], gathered, &fade[mi])
             })
             .collect();
         let g = cat.goods.len();
@@ -1445,6 +1503,7 @@ impl System<GameWorld> for Week {
                         &v,
                         &a,
                         self.fiscal_capacity,
+                        &fade[mi],
                     )
                 })
                 .collect()
@@ -1466,6 +1525,7 @@ impl System<GameWorld> for Week {
                         &v,
                         &[],
                         self.fiscal_capacity,
+                        &fade[mi],
                     )
                 })
                 .collect()
@@ -1844,15 +1904,17 @@ mod tests {
             for (ri, r) in econ.regions.iter().enumerate() {
                 let nat = &national[r.market as usize];
                 let m = &econ.markets[r.market as usize];
-                let skip = region_orders::<true>(cat, econ, r, &unlocks.goods, nat, Fixed::ZERO);
-                let full = region_orders::<false>(cat, econ, r, &unlocks.goods, nat, Fixed::ZERO);
+                let skip =
+                    region_orders::<true>(cat, econ, r, &unlocks.goods, nat, Fixed::ZERO, &[]);
+                let full =
+                    region_orders::<false>(cat, econ, r, &unlocks.goods, nat, Fixed::ZERO, &[]);
                 assert_eq!(skip, full, "orders of state {ri}");
                 // Short of every good, so that an input's shortfall moves the input ratio.
                 let mut v = View::last_week(cat, m, r, nat);
                 v.buy.iter_mut().for_each(|b| *b = milli(700));
                 let wage = Fixed::from_int(3);
-                let s = settle_region::<true, false>(cat, m, r, &skip, wage, &v, &[], false);
-                let f = settle_region::<false, false>(cat, m, r, &full, wage, &v, &[], false);
+                let s = settle_region::<true, false>(cat, m, r, &skip, wage, &v, &[], false, &[]);
+                let f = settle_region::<false, false>(cat, m, r, &full, wage, &v, &[], false, &[]);
                 assert_eq!(s, f, "settlement of state {ri}");
                 idle += r
                     .plants

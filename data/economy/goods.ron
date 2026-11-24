@@ -111,5 +111,11 @@
         // above the inputs of an assembly (about 54,000), so a level's value added a worker at
         // productivity 1 (1.655 a year over 715 people) stays in the economy's range.
         (key: "weapon_assemblies", category: "military", base_price: 1000000, available_from: 1945, tradable: false, unit: "the non-nuclear assembly of one warhead"),
+        // U4 (the owner, 2026-11-19): radium, the good that worked the uranium mines before the
+        // bomb; uranium came out as a by-product. The base price is the mean value of radium
+        // imported into the United States in 1925–29, US$ 51,900 a gram (Minerals Yearbook
+        // 1938, p. 680), about US$ 52 a milligram of the time, times 12.85 to 2011 dollars (the
+        // CPI-U factor the economy uses): 667 a milligram.
+        (key: "radium", category: "industrial", base_price: 667, available_from: 1925, tradable: true, unit: "1 mg radium"),
     ],
 )

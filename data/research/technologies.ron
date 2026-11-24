@@ -1074,6 +1074,22 @@
             effects: [("mortality", 50)],
         ),
         (
+            // Cobalt-60 teletherapy (with the switch `radium`, left out of the tree without it):
+            // the first patient treated in London, Ontario, on 27 October 1951 and in Saskatoon on
+            // 8 November 1951 (London Health Sciences Centre, 2011; Houston and Fedoruk,
+            // "High-energy Cancer Treatment", Encyclopedia of Saskatchewan, 2006; web pages, no
+            // page number). The first units were sold by Eldorado's Commercial Products Division
+            // (Ungrin, North Renfrew Times, 2025); the first in Italy in 1953: industrial in 1953
+            // is an estimate. As it spreads, the hospitals' radium fades (`fading`).
+            key: "cobalt_teletherapy",
+            field: "medicine",
+            era: 2,
+            requires: ["nuclear_fission"],
+            demonstrated: 1951,
+            industrialized: 1953,
+            cost: 600,
+        ),
+        (
             key: "oral_contraceptive",
             field: "medicine",
             era: 2,

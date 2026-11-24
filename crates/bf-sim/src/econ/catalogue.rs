@@ -48,9 +48,22 @@ pub struct Method {
     /// building declares it (`MethodDef::capital`): the choice of method weighs the return on
     /// it, and building or switching to the method pays it.
     pub capital: Option<Fixed>,
+    /// Inputs that fade with a technology (`MethodDef::fading`): the good and the index of the
+    /// technology in [`Catalogue::fading`].
+    pub fading: Vec<(GoodIx, u16)>,
 }
 
 impl Method {
+    /// Of input `g`, the share still used where the technologies of [`Catalogue::fading`]
+    /// stand at `fade` (by index; one where the method has no fading input).
+    pub fn input_share(&self, g: GoodIx, fade: &[Fixed]) -> Fixed {
+        self.fading
+            .iter()
+            .find(|(x, _)| *x == g)
+            .and_then(|(_, t)| fade.get(usize::from(*t)).copied())
+            .unwrap_or(Fixed::ONE)
+    }
+
     /// Outputs less inputs of a level, each good valued at `price`.
     pub fn value_added(&self, price: impl Fn(usize) -> Fixed) -> Fixed {
         let value = |items: &[(GoodIx, Fixed)]| -> Fixed {
@@ -122,6 +135,12 @@ pub struct Catalogue {
     /// Trade with a partner (`PurchasesFile::trade`).
     pub trade: crate::economy::TradeDef,
     pub buildings: Vec<Building>,
+    /// The technologies some input fades with (`MethodDef::fading`), by key, in the order met.
+    pub fading: Vec<String>,
+    /// By good: whether some method's use of it fades (`MethodDef::fading`). A plant whose main
+    /// output fades follows its best-selling output, not only the first: the radium mine runs
+    /// for its ore once the hospitals' radium is gone.
+    pub fades: Vec<bool>,
     pub needs: Vec<Need>,
     /// Goods that clear state by state, in catalogue order.
     pub local: Vec<GoodIx>,
@@ -204,6 +223,8 @@ impl Catalogue {
                 .ok_or_else(|| CatalogueError(format!("no purchases for building group {key}")))
         };
         let mut bs = Vec::new();
+        let mut fading: Vec<String> = Vec::new();
+        let mut fades = vec![false; goods.goods.len()];
         for b in &buildings.buildings {
             let mut methods = Vec::new();
             for m in &b.methods {
@@ -240,6 +261,28 @@ impl Catalogue {
                     freight: Fixed::ZERO,
                     output_value: Fixed::ZERO,
                     capital: m.capital.map(fx),
+                    fading: m
+                        .fading
+                        .iter()
+                        .map(|(g, t)| {
+                            let g = gx(g)?;
+                            fades[usize::from(g)] = true;
+                            if !m.inputs.iter().any(|(k, _)| gx(k).ok() == Some(g)) {
+                                return Err(CatalogueError(format!(
+                                    "{}.{}: fading {t} names a good that is not an input",
+                                    b.key, m.key
+                                )));
+                            }
+                            let i = match fading.iter().position(|k| k == t) {
+                                Some(i) => i,
+                                None => {
+                                    fading.push(t.clone());
+                                    fading.len() - 1
+                                }
+                            };
+                            Ok((g, i as u16))
+                        })
+                        .collect::<Result<_, CatalogueError>>()?,
                 });
             }
             // Capital is declared for every method of a building or for none, relative to the
@@ -462,6 +505,8 @@ impl Catalogue {
             trade: purchases.trade.clone(),
             goods,
             buildings: bs,
+            fading,
+            fades,
             needs: ns,
             freight,
         })

@@ -164,8 +164,17 @@
             (key: "open_pit", available_from: 1950, inputs: [("explosives", 8), ("machinery", 10), ("fuel", 400)], outputs: [("potash", 105000)], jobs: [("laborer", 300), ("skilled_worker", 150), ("engineer", 20), ("manager", 10), ("capitalist", 5)]),
         ]),
         (key: "uranium_mine", group: "extraction", resource: Some("uranium"), farm: None, methods: [
-            (key: "pick_and_shovel", available_from: 1925, inputs: [("tools", 4), ("explosives", 3)], outputs: [("uranium_ore", 50000)], jobs: [("laborer", 850), ("skilled_worker", 60), ("manager", 8), ("capitalist", 5)]),
-            (key: "mechanized_mining", available_from: 1925, inputs: [("tools", 4), ("explosives", 5), ("machinery", 6), ("electricity", 300)], outputs: [("uranium_ore", 90000)], jobs: [("laborer", 550), ("skilled_worker", 150), ("engineer", 15), ("manager", 10), ("capitalist", 5)]),
+            // U4: before the bomb a uranium mine works for radium; the uranium comes out as a
+            // by-product. Radium-226 and uranium-238 in equilibrium keep a fixed mass ratio,
+            // (1,600 years over 4.468 billion) x (226 over 238) = 3.40e-7: a gram of radium to
+            // 2.94 t of uranium, 3.47 t of U3O8 with the radium wholly recovered (the physical
+            // floor; my computation from the half-lives). With a recovery of 80 % (an estimate,
+            // the range 100 % to 80 % gives 3.47 to 4.34 t), 4.34 t of U3O8 a gram: a level's
+            // 50,000 kg give 11,534 mg of radium. (The Minerals Yearbook's 5.2 t of "uranium
+            // salts" a gram, 1938, p. 681, are salts, not oxide.) The first output is radium: the
+            // mine follows its sales, and the ore beyond the buyers goes to the market's stock.
+            (key: "pick_and_shovel", available_from: 1925, inputs: [("tools", 4), ("explosives", 3)], outputs: [("radium", 11534), ("uranium_ore", 50000)], jobs: [("laborer", 850), ("skilled_worker", 60), ("manager", 8), ("capitalist", 5)]),
+            (key: "mechanized_mining", available_from: 1925, inputs: [("tools", 4), ("explosives", 5), ("machinery", 6), ("electricity", 300)], outputs: [("radium", 20761), ("uranium_ore", 90000)], jobs: [("laborer", 550), ("skilled_worker", 150), ("engineer", 15), ("manager", 10), ("capitalist", 5)]),
             (key: "open_pit", available_from: 1950, inputs: [("explosives", 8), ("machinery", 10), ("fuel", 400)], outputs: [("uranium_ore", 175000)], jobs: [("laborer", 300), ("skilled_worker", 150), ("engineer", 20), ("manager", 10), ("capitalist", 5)]),
         ]),
         (key: "rare_earth_mine", group: "extraction", resource: Some("rare_earths"), farm: None, methods: [
@@ -429,7 +438,15 @@
             (key: "classroom", available_from: 1925, inputs: [("paper", 20), ("furniture", 20), ("services", 50)], outputs: [("schooling", 24000)], jobs: [("professional", 800), ("clerk", 100), ("laborer", 100)]),
         ]),
         (key: "hospital", group: "services", resource: None, farm: None, public: true, methods: [
-            (key: "general_hospital", available_from: 1925, inputs: [("medicines", 1500), ("services", 300)], outputs: [("hospital_care", 8000)], jobs: [("professional", 300), ("clerk", 150), ("skilled_worker", 100), ("laborer", 400)]),
+            // Radium for the treatment of cancer (U4): the world made some 24 g a year about 1925
+            // (Oolen 20 g, Minerals Yearbook 1930, p. 873; Jachymov 3 to 4 g, 1934, p. 503).
+            // Method quantities are at productivity 1: the game's 3,615 hospital levels of 1925
+            // weigh 7,768 times their productivity (measured, tests/radium.rs), so 3.09 mg a level
+            // (my computation). How the radium split between medicine and luminous paint has no
+            // source with a page.
+            // The radium fades as cobalt-60 teletherapy spreads in the country (`fading`; the
+            // shares by stage are design values, `econ::week::FADE_*`).
+            (key: "general_hospital", available_from: 1925, inputs: [("medicines", 1500), ("services", 300), ("radium", 3.09)], fading: [("radium", "cobalt_teletherapy")], outputs: [("hospital_care", 8000)], jobs: [("professional", 300), ("clerk", 150), ("skilled_worker", 100), ("laborer", 400)]),
         ]),
         // University and research institute: engineers and scientists at the bench, with their
         // instruments and support. Built as a public work; the treasury pays the share the law

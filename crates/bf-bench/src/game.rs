@@ -941,7 +941,9 @@ pub fn main(
     history_out: Option<&str>,
     save_at: &[Date],
 ) -> Result<(), String> {
-    let mut data = GameData::load(&root())?;
+    // The switches read at load (`radium`) go in with the data.
+    let rules = RULES_ON.lock().map_err(|e| e.to_string())?.join(",");
+    let mut data = GameData::load_with(&root(), &rules)?;
     for name in RULES_ON.lock().map_err(|e| e.to_string())?.iter() {
         data.switches
             .switch_on(name)

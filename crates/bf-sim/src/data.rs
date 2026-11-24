@@ -431,15 +431,45 @@ fn optional<T: serde::de::DeserializeOwned>(path: &Path) -> Result<Option<T>, St
 impl GameData {
     /// `root` holds `assets/` and `data/`.
     pub fn load(root: &Path) -> Result<Self, String> {
+        Self::load_with(root, "")
+    }
+
+    /// As [`GameData::load`], with the switches named in `rules` (comma-separated) on as well:
+    /// for the switches read at load (`radium`).
+    pub fn load_with(root: &Path, rules: &str) -> Result<Self, String> {
         let data = root.join("data");
         let scenario = data.join("scenario/1925");
-        let goods: GoodsFile = read(&data.join("economy/goods.ron"))?;
-        let buildings: BuildingsFile = read(&data.join("economy/buildings.ron"))?;
+        let switches = optional::<crate::game::Switches>(&data.join("rules.ron"))?
+            .unwrap_or_default()
+            .with(&std::env::var("BF_RULES").unwrap_or_default())
+            .map_err(|e| format!("BF_RULES: {e}"))?
+            .with(rules)?;
+        let mut goods: GoodsFile = read(&data.join("economy/goods.ron"))?;
+        let mut buildings: BuildingsFile = read(&data.join("economy/buildings.ron"))?;
+        if !switches.radium {
+            // Without radium the catalogue is main's: the good (the last one) and its place in
+            // the methods leave.
+            goods.goods.retain(|g| g.key != "radium");
+            for b in &mut buildings.buildings {
+                for m in &mut b.methods {
+                    m.inputs.retain(|(g, _)| g != "radium");
+                    m.outputs.retain(|(g, _)| g != "radium");
+                    m.fading.retain(|(g, _)| g != "radium");
+                }
+            }
+        }
         let needs: NeedsFile = read(&data.join("economy/needs.ron"))?;
         let purchases: PurchasesFile = read(&data.join("economy/purchases.ron"))?;
         let catalogue =
             Catalogue::build(&goods, &buildings, &needs, &purchases).map_err(|e| e.to_string())?;
         let tree = optional::<TechnologiesFile>(&data.join("research/technologies.ron"))?
+            .map(|mut file| {
+                // Without radium the tree is main's: the technology its use fades with leaves.
+                if !switches.radium {
+                    file.technologies.retain(|t| t.key != "cobalt_teletherapy");
+                }
+                file
+            })
             .map(|file| TechTree::build(&file, &catalogue).map(Arc::new))
             .transpose()
             .map_err(|e| format!("research/technologies.ron: {e}"))?;
@@ -531,10 +561,7 @@ impl GameData {
             rail,
             biomass,
             trade_geography: std::sync::OnceLock::new(),
-            switches: optional::<crate::game::Switches>(&data.join("rules.ron"))?
-                .unwrap_or_default()
-                .with(&std::env::var("BF_RULES").unwrap_or_default())
-                .map_err(|e| format!("BF_RULES: {e}"))?,
+            switches,
             border_rules,
             war,
             tree,
