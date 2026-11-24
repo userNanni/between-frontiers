@@ -2922,6 +2922,20 @@ Iugoslávia):
 
 ## O que falta para ligar ao tick
 
+### Funções que faltam à guerra (ordem do orquestrador, 2026-11-24)
+
+Só funcionalidade, desenho antes do código; a calibração fica no roteiro de "Calibração prevista".
+1. **Terra arrasada:** rascunho no #360 (chave `scorched_earth`), à espera de TE1 a TE5 do dono.
+2. **Movimento contra a guerra:** desenho em curso.
+3. **Quem investe e quem constrói em terra ocupada** (ocupação): hoje a construção não conhece o
+   controle, e o dono segue investindo e reconstruindo na região que o inimigo ocupa (medido na
+   seção "Terra arrasada": 524 níveis queimados, a diferença cai a 128 em nove meses; vale também
+   para a devastação do combate). A regra pedida: o dono não constrói em terra que não controla; o
+   ocupante só o que decidir. Desenho antes.
+4. **Frentes como objeto de comando (G2):** por último, com esboço de tela para a interface.
+
+### O plano original (fase 5)
+
 O contrato, os dados e as funções estão prontos e testados. Nada roda ainda. Quando a fase 5
 abrir, a ordem proposta é esta, cada passo com o hash e o custo medidos contra a `main`:
 
