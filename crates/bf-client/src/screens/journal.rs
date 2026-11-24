@@ -45,6 +45,8 @@ pub struct Window {
     pub embargo: super::embargo::EmbargoUi,
     /// The gold standard decision: the choice waiting for its confirmation.
     pub gold: super::gold_decision::GoldUi,
+    /// Scorched earth: the confirmation waiting.
+    pub scorch: super::scorch::ScorchUi,
     /// The length of service being drafted, months (forces' entry).
     pub service: Option<u16>,
 }
@@ -65,6 +67,8 @@ pub const OPEN_WAR: &str = "open:war";
 pub const AGREEMENTS: &str = "decision:agreements";
 /// The id the gold standard decision takes in `Window::picked`.
 pub const GOLD: &str = "decision:gold";
+/// The prefix of the scorched earth decision in `Window::picked`, before the enemy's tag.
+pub const SCORCH: &str = "decision:scorch:";
 /// The id the embargo decision takes in `Window::picked`.
 pub const EMBARGO: &str = "decision:embargo";
 /// The id the negotiation table takes in `Window::picked`.
@@ -117,6 +121,8 @@ pub struct Response {
     pub open_war: bool,
     /// The player confirmed denouncing this agreement.
     pub denounce: Option<u32>,
+    /// The player confirmed giving (`true`) or withdrawing scorched earth against this enemy.
+    pub scorch: Option<(String, bool)>,
     /// The player confirmed imposing (`true`) or lifting an embargo on this country.
     pub embargo: Option<(String, bool)>,
     /// The player confirmed a choice of exchange regime (`None` inside: back to the rule).
@@ -139,6 +145,8 @@ pub struct TableInput<'a> {
     pub trade: Option<&'a crate::tariff_view::TariffView>,
     /// The exchange regime and its choices; `None` with the gold standard off.
     pub gold: Option<&'a crate::gold_view::GoldView>,
+    /// The player's wars (scorched earth, with its rule on).
+    pub war: Option<&'a crate::war_view::WarView>,
 }
 
 /// What the journal shows of crises: the player's, the draft's weighing, and the country picked
@@ -509,6 +517,35 @@ pub fn show(
                 });
             return;
         }
+        // Scorched earth against an enemy takes the whole window too.
+        let scorch_pick = window
+            .picked
+            .as_deref()
+            .and_then(|p| p.strip_prefix(SCORCH))
+            .map(str::to_owned);
+        if let (Some(enemy), Some(war)) = (scorch_pick, table.war)
+            && let Some((_, s)) = super::scorch::fronts(war)
+                .into_iter()
+                .find(|(e, _)| *e == enemy)
+        {
+            let back = Button::ghost(&format!("←  {}", i18n.tr("journal-agendas")))
+                .size(ButtonSize::Small)
+                .show(ui);
+            if back.clicked() || keys::single(ui, "journal.decision.back", 'B', back.rect) {
+                window.picked = None;
+                window.scorch = Default::default();
+                return;
+            }
+            egui::ScrollArea::vertical()
+                .id_salt("scorch")
+                .auto_shrink([false, false])
+                .show(ui, |ui| {
+                    ui.set_max_width(ui.available_width() - space::LG);
+                    super::scroll_keys(ui);
+                    super::scorch::show(ui, i18n, world, &enemy, s, &mut window.scorch, &mut out);
+                });
+            return;
+        }
         // The embargo decision takes the whole window too.
         if let Some(view) = table
             .trade
@@ -698,6 +735,26 @@ pub fn show(
                 if b.clicked() || keys::single(ui, "journal.decision.gold", 'U', b.rect) {
                     window.picked = Some(GOLD.to_owned());
                     window.gold = Default::default();
+                }
+            }
+            // Scorched earth: one decision per enemy fought, with its rule on.
+            if let Some(war) = table.war {
+                for (i, (enemy, s)) in super::scorch::fronts(war).into_iter().enumerate() {
+                    let b = Button::secondary(&super::scorch::open_label(i18n, enemy, s))
+                        .size(ButtonSize::Small)
+                        .show(ui);
+                    if b.clicked()
+                        || keys::item(
+                            ui,
+                            'A',
+                            format!("journal.decision.scorch.{enemy}"),
+                            &(i + 1).to_string(),
+                            b.rect,
+                        )
+                    {
+                        window.picked = Some(format!("{SCORCH}{enemy}"));
+                        window.scorch = Default::default();
+                    }
                 }
             }
             // Embargoes: imposing one, and those in force by the country and on it.

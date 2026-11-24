@@ -1,0 +1,25 @@
+# Terra arrasada (Agendas e janela da guerra)
+points-reason-scorch = Antes de ordenar terra arrasada
+scorch-open = Terra arrasada contra { $country }…
+scorch-open-ordered = Terra arrasada contra { $country } (ordem dada)…
+scorch-title = Terra arrasada contra { $country }
+scorch-basis = Com a ordem dada, a região que passar ao lado deste inimigo perde parte dos edifícios na semana em que cai: indústria, minas e energia primeiro. Quanto mais semanas de luta antes da queda, mais se destrói, até metade; uma região tomada de surpresa queima pouco. A ordem vale contra todo o lado do inimigo e também para a terra que o país ocupa. O que queimou volta pela fila de obras.
+scorch-front = Terra arrasada
+scorch-front-ordered = ordem dada
+scorch-front-none = sem ordem
+scorch-regions = Regiões em luta com este inimigo
+scorch-regions-none = Nenhuma região do país está em luta com este inimigo nesta semana.
+scorch-col-state = Região
+scorch-col-levels = Níveis de edifício
+scorch-col-output = Da produção do país
+scorch-col-weeks = Semanas de luta
+scorch-col-burn = Queimaria se caísse agora
+scorch-burn-note = A última coluna é a parte dos níveis destruída se a região caísse nesta semana; sobe a cada semana de luta.
+scorch-burned = O que já queimou
+scorch-burned-line = { $state }, ao cair para { $to } em { $date }: { $levels } níveis destruídos ({ $share }).
+scorch-give = Dar a ordem…
+scorch-give-confirm = Confirmar a terra arrasada
+scorch-give-explain = A ordem vale até ser retirada. Um ponto de restauração é gravado antes.
+scorch-withdraw = Retirar a ordem…
+scorch-withdraw-confirm = Confirmar a retirada
+scorch-withdraw-explain = Sem a ordem, a região que cair passa inteira ao inimigo.

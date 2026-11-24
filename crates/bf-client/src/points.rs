@@ -46,6 +46,8 @@ pub enum Reason {
     Exchange,
     /// The length of military service changed.
     Service,
+    /// Scorched earth ordered against an enemy.
+    Scorch,
 }
 
 impl Reason {
@@ -63,6 +65,7 @@ impl Reason {
             Reason::Embargo => "points-reason-embargo",
             Reason::Exchange => "points-reason-exchange",
             Reason::Service => "points-reason-service",
+            Reason::Scorch => "points-reason-scorch",
         }
     }
 }

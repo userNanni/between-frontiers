@@ -1,0 +1,25 @@
+# Scorched earth (Agendas and war window)
+points-reason-scorch = Before ordering scorched earth
+scorch-open = Scorched earth against { $country }…
+scorch-open-ordered = Scorched earth against { $country } (ordered)…
+scorch-title = Scorched earth against { $country }
+scorch-basis = With the order given, a region that passes to this enemy's side loses part of its buildings the week it falls: industry, mines and power first. The more weeks of fighting before it falls, the more is destroyed, up to half; a region taken by surprise burns little. The order holds against the enemy's whole side and for the land the country occupies. What burned comes back through the works queue.
+scorch-front = Scorched earth
+scorch-front-ordered = ordered
+scorch-front-none = no order
+scorch-regions = Regions fought over against this enemy
+scorch-regions-none = No region of the country is fought over against this enemy this week.
+scorch-col-state = Region
+scorch-col-levels = Building levels
+scorch-col-output = Of the country's output
+scorch-col-weeks = Weeks of fighting
+scorch-col-burn = Would burn if it fell now
+scorch-burn-note = The last column is the share of the levels destroyed if the region fell this week; it rises with each week of fighting.
+scorch-burned = What has burned
+scorch-burned-line = { $state }, falling to { $to } on { $date }: { $levels } levels destroyed ({ $share }).
+scorch-give = Give the order…
+scorch-give-confirm = Confirm scorched earth
+scorch-give-explain = The order holds until withdrawn. A restore point is written first.
+scorch-withdraw = Withdraw the order…
+scorch-withdraw-confirm = Confirm the withdrawal
+scorch-withdraw-explain = Without the order, a region that falls passes whole to the enemy.

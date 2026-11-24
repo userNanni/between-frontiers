@@ -83,7 +83,7 @@ fn names(i18n: &I18n, tags: &[String]) -> String {
         .join(", ")
 }
 
-fn state_name(i18n: &I18n, world: Option<&World>, id: u16) -> String {
+pub(super) fn state_name(i18n: &I18n, world: Option<&World>, id: u16) -> String {
     world
         .and_then(|w| w.states.get(usize::from(id).checked_sub(1)?))
         .map_or_else(|| id.to_string(), |s| crate::text::state_name(i18n, &s.def))
@@ -579,6 +579,39 @@ fn front(
             &i18n.tr("war-enemy-losses"),
             &i18n.int(f.enemy_losses as i64),
         );
+        // Scorched earth, read only: the order is given in the Agendas.
+        if let Some(sc) = &f.scorch {
+            bf_ui_kit::stat_row(
+                ui,
+                &i18n.tr("scorch-front"),
+                &i18n.tr(if sc.ordered {
+                    "scorch-front-ordered"
+                } else {
+                    "scorch-front-none"
+                }),
+            );
+            for b in &sc.burned {
+                bf_ui_kit::small(
+                    ui,
+                    &i18n.tr_args(
+                        "scorch-burned-line",
+                        &[
+                            ("state", arg(state_name(i18n, world, b.state))),
+                            ("to", arg(country_name(i18n, &b.to))),
+                            ("levels", arg(i18n.int(b.levels))),
+                            ("share", arg(per_mille(i18n, b.share))),
+                            (
+                                "date",
+                                arg(date_long(
+                                    i18n,
+                                    laplace_schelling::calendar::Date::from_days(b.day),
+                                )),
+                            ),
+                        ],
+                    ),
+                );
+            }
+        }
         if !f.segments.is_empty() {
             let open = window.open.contains(&f.enemy);
             let label = i18n.tr_args(

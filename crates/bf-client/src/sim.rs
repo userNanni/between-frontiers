@@ -548,6 +548,7 @@ fn war_of(
                 rules.politics.as_deref(),
                 front,
                 rules.war.as_ref().map(|(m, _)| m.as_ref()),
+                Some(&rules.catalogue),
                 days,
             )
             .map(Arc::new)
