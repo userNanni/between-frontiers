@@ -91,6 +91,7 @@ fn capital_abroad_moves_money_between_funds_and_keeps_the_stakes_consistent() {
         tree: rules.tree.clone(),
         wage_floor: false,
         foreign_flow: true,
+        occupied_works: false,
     };
     let before = pools(&w);
     let waiting = w.foreign.building_count();
@@ -160,6 +161,7 @@ fn the_foreign_share_of_profit_leaves_for_the_owners_fund() {
         stock: false,
         biomass: None,
         admin: None,
+        occupied_works: false,
     };
     // The plant with the largest profit last week, of a kind with owners.
     let cat = &rules.catalogue;

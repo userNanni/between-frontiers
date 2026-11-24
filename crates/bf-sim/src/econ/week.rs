@@ -128,6 +128,8 @@ pub struct Week {
     /// The household fuel the countryside gathers (`game::Switches::household_biomass`,
     /// `econ::biomass`); `None` off.
     pub biomass: Option<Arc<super::biomass::BiomassRules>>,
+    /// `game::Switches::occupied_works`: the works in a region its owner does not hold wait.
+    pub occupied_works: bool,
 }
 
 /// What a pop wants to buy this week.
@@ -556,6 +558,7 @@ fn clear_market(
     military: Option<&[(GoodIx, Fixed)]>,
     programme: Option<&[(GoodIx, Fixed)]>,
     admin: Option<(GoodIx, Fixed)>,
+    stopped: Option<&[bool]>,
 ) -> (Market, Vec<(GoodIx, Fixed)>) {
     let g = cat.goods.len();
     // The state's own purchases and construction join the demand.
@@ -579,7 +582,7 @@ fn clear_market(
         demand[gi as usize] += supply[gi as usize];
     }
     if let Some(cg) = cat.construction {
-        demand[cg as usize] += super::construction::queue_want(&m);
+        demand[cg as usize] += super::construction::queue_want(&m, stopped);
     }
     for (gi, &left) in m.construction.iter().enumerate() {
         if left > Fixed::ZERO {
@@ -1370,6 +1373,10 @@ impl System<GameWorld> for Week {
         let econ = &world.econ;
         let unlocks = Unlocks::new(cat, ctx.date.year, self.tree.as_deref(), &world.research);
         let exists = &unlocks.goods;
+        let stopped = self
+            .occupied_works
+            .then(|| super::construction::stopped(world))
+            .flatten();
         // The rural households' fuel gathered by market (`econ::biomass`); empty off.
         let biomass = self
             .biomass
@@ -1486,6 +1493,7 @@ impl System<GameWorld> for Week {
                     military,
                     programme,
                     office,
+                    stopped.as_deref(),
                 );
                 if let Some((gi, want, worth)) = offices[mi] {
                     m.admin_efficiency = Some(worth);
@@ -1607,6 +1615,10 @@ impl System<GameWorld> for Week {
     }
 
     fn apply(&self, ctx: &TickCtx, changes: WeekChanges, world: &mut GameWorld) {
+        let stopped = self
+            .occupied_works
+            .then(|| super::construction::stopped(world))
+            .flatten();
         let cat = &*self.cat;
         let econ = &mut world.econ;
         let levers = &world.levers;
@@ -1718,7 +1730,12 @@ impl System<GameWorld> for Week {
                 if let Some(order) = levers.order(mi) {
                     super::levers::order_queue(m, order);
                 }
-                let d = super::construction::deliver(m, m.buy_ratio[cg], m.price[cg]);
+                let d = super::construction::deliver(
+                    m,
+                    m.buy_ratio[cg],
+                    m.price[cg],
+                    stopped.as_deref(),
+                );
                 m.pool -= d.private_cost;
                 m.treasury -= d.public_cost;
                 m.budget.works = d.public_cost;

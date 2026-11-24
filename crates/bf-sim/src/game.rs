@@ -1372,6 +1372,12 @@ pub struct Switches {
     /// answered by the AI in the first week by the same account the player sees, counters, and
     /// denunciations. Off: proposals wait on the table and nothing is answered.
     pub negotiation: bool,
+    /// Works and occupied land (`econ::construction::held`, docs/war.pt-BR.md, "Funções que
+    /// faltam à guerra", 3): the owner starts no work in a region it does not hold (private,
+    /// public, a state firm, a request or a fund from abroad), and the works there wait in the
+    /// queue, embargoed, until the land comes back; the occupier builds nothing. Off: the owner
+    /// builds wherever its regions are, held or not.
+    pub occupied_works: bool,
     /// Settlement in money and reserves (`econ::payments::settle`, docs/state.pt-BR.md, gold
     /// standard slice 2): each week goods and services move between the pools, the balance
     /// moves the reserves (gold and foreign exchange, from the 1925 stocks of
@@ -1473,6 +1479,7 @@ impl Switches {
         "ledger_record",
         "market_stock",
         "negotiation",
+        "occupied_works",
         "payments_settle",
         "radium",
         "rail_by_line",
@@ -1508,6 +1515,7 @@ impl Switches {
             "ledger_record" => self.ledger_record = true,
             "market_stock" => self.market_stock = true,
             "negotiation" => self.negotiation = true,
+            "occupied_works" => self.occupied_works = true,
             "payments_settle" => self.payments_settle = true,
             "radium" => self.radium = true,
             "rail_by_line" => self.rail_by_line = true,
@@ -1608,6 +1616,7 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
             stock: switches.market_stock,
             biomass,
             admin,
+            occupied_works: switches.occupied_works,
         });
         s.add(crate::econ::monthly::Labour {
             cat: Arc::clone(&cat),
@@ -1623,6 +1632,7 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
             tree: tree.clone(),
             wage_floor: switches.small_market_wage_floor,
             foreign_flow: switches.foreign_flow,
+            occupied_works: switches.occupied_works,
         });
         if let Some(tree) = &tree {
             s.add(crate::research_system::Research {

@@ -400,6 +400,7 @@ pub fn public_works(
     unlocks: &super::Unlocks<'_>,
     schools: Option<&[[i64; 3]]>,
     wage_floor: bool,
+    stopped: Option<&[bool]>,
 ) -> Vec<Project> {
     let kinds = PublicKinds::new(cat);
     let Some(cg) = kinds.construction else {
@@ -407,6 +408,10 @@ pub fn public_works(
     };
     let mut by_market: Vec<Vec<usize>> = vec![Vec::new(); econ.markets.len()];
     for (ri, r) in econ.regions.iter().enumerate() {
+        // The state does not build where it does not hold the land (`occupied_works`).
+        if stopped.is_some_and(|s| s[ri]) {
+            continue;
+        }
         by_market[r.market as usize].push(ri);
     }
     let wages = super::monthly::market_wages(econ, wage_floor);

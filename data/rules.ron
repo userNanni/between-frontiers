@@ -87,6 +87,9 @@
     // in the first week by the account the player sees, counterproposals and denunciations.
     // Off: proposals wait on the table.
     negotiation: false,
+    // Works and occupied land: the owner starts no work in a region it does not hold, and the
+    // works there wait, embargoed, until the land comes back; the occupier builds nothing.
+    occupied_works: false,
     // Settlement in money and reserves (`docs/state.pt-BR.md`, "Padrão-ouro, reservas e balanço
     // de pagamentos", slice 2): each week goods and services move between the pools at base
     // prices, the balance of payments moves the reserves (gold and foreign exchange, the 1925

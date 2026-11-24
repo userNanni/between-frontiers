@@ -494,6 +494,8 @@ pub struct Investment {
     pub wage_floor: bool,
     /// `Switches::foreign_flow`: the funds build abroad with what they have left.
     pub foreign_flow: bool,
+    /// `Switches::occupied_works`: no work starts in a region its owner does not hold.
+    pub occupied_works: bool,
 }
 
 pub struct Build {
@@ -769,16 +771,30 @@ impl System<GameWorld> for Investment {
         Cadence::Monthly { day: 8 }
     }
     fn access(&self) -> Access {
-        Access::new()
+        let a = Access::new()
             .read(ECON)
             .write(ECON)
             .read(crate::demography::DEMOGRAPHY)
             .read(crate::foreign_stakes::FOREIGN)
-            .write(crate::foreign_stakes::FOREIGN)
+            .write(crate::foreign_stakes::FOREIGN);
+        // The control of the land is the war's (`occupied_works`).
+        if self.occupied_works {
+            a.read(crate::war::WAR)
+        } else {
+            a
+        }
     }
     fn compute(&self, ctx: &TickCtx, world: &GameWorld) -> InvestmentChanges {
         let cat = &*self.cat;
         let econ = &world.econ;
+        // Regions whose owner does not hold them: no work starts there (OC1, OC2: the fund
+        // looks for its works in the regions it holds).
+        let stopped = self
+            .occupied_works
+            .then(|| super::construction::stopped(world))
+            .flatten();
+        let stopped = stopped.as_deref();
+        let is_stopped = |ri: usize| stopped.is_some_and(|s| s[ri]);
         let year = ctx.date.year;
         let unlocks = Unlocks::new(cat, year, self.tree.as_deref(), &world.research);
         let national = super::local::national(
@@ -847,6 +863,9 @@ impl System<GameWorld> for Investment {
             .par_iter()
             .enumerate()
             .map(|(ri, r)| {
+                if is_stopped(ri) {
+                    return Vec::new();
+                }
                 let m = &econ.markets[r.market as usize];
                 let view = super::local::View::last_week(cat, m, r, &national[r.market as usize]);
                 // Hands a new plant can hire here: idle peasants, jobless labourers and those
@@ -998,7 +1017,11 @@ impl System<GameWorld> for Investment {
             leftover.push(if waiting { Fixed::ZERO } else { budget });
         }
         if let Some(site) = &site {
-            builds.extend(abroad(cat, world, year, &busy, &queued, &leftover, site));
+            builds.extend(
+                abroad(cat, world, year, &busy, &queued, &leftover, site)
+                    .into_iter()
+                    .filter(|b| !is_stopped(b.region)),
+            );
         }
         let schools: Option<Vec<[i64; 3]>> = (world.education.regions.len() == econ.regions.len())
             .then(|| {
@@ -1006,11 +1029,22 @@ impl System<GameWorld> for Investment {
                     .map(|ri| crate::demography::education::places_needed(world, ri))
                     .collect()
             });
-        let mut public =
-            super::public::public_works(cat, econ, &unlocks, schools.as_deref(), self.wage_floor);
+        let mut public = super::public::public_works(
+            cat,
+            econ,
+            &unlocks,
+            schools.as_deref(),
+            self.wage_floor,
+            stopped,
+        );
         // Works the governments asked for (D8, `GameCommand::AddWork`), each checked against what
         // the state may build there; one it may not build is dropped.
-        for q in &world.levers.requests {
+        for q in world
+            .levers
+            .requests
+            .iter()
+            .filter(|q| !is_stopped(q.region as usize))
+        {
             let found = super::public::buildable_in(
                 cat,
                 econ,
