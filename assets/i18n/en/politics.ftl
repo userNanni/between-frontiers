@@ -322,6 +322,7 @@ indicator-media_reach = Media reach
 indicator-immigrant_share = Immigrant share
 indicator-fiscal_stress = Fiscal stress
 indicator-gdp_growth = GDP growth
+indicator-war_weariness = War weariness
 indicator-legitimacy = Legitimacy
 indicator-lost_territory = Lost territory
 
@@ -394,3 +395,5 @@ movement-regime_change = Regime change
 movement-regime_change-desc = A government that leaves movements unanswered amid mass unemployment loses the middle classes and the army to a single party.
 movement-revisionism = Revisionism
 movement-revisionism-desc = A country that lost land and standing demands them back.
+movement-anti_war = Against the war
+movement-anti_war-desc = Those who make the weapons and those who fight are tired of the war: strikes in the war industry, refusal to fight, pressure for peace.

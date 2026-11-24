@@ -1322,6 +1322,12 @@ pub struct Rules {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Switches {
+    /// The movement against the war (`war::antiwar`, docs/war.pt-BR.md): it grows every week
+    /// of war in which its recruits are weary, takes legitimacy, stops the war industry and the
+    /// land army's fire, brings the fall nearer, and is remembered at the next war. Read with
+    /// the rules (`GameData::rules_with`) and at load (the movement leaves the catalogue). Off:
+    /// main's politics and war.
+    pub anti_war: bool,
     /// Capital that follows interest, and capital controls (`econ::capital`,
     /// docs/state.pt-BR.md, gold standard slice 4, PO5): each country's savers hold private
     /// claims abroad, long and short, spread by the expected return of each country (its rate,
@@ -1505,6 +1511,7 @@ impl Switches {
     /// length is not part of the type, so two PRs that each add a switch merge without breaking
     /// the build. `tests/trade_by_pair.rs` checks it against the fields and `data/rules.ron`.
     pub const NAMES: &'static [&'static str] = &[
+        "anti_war",
         "capital_follows_rate",
         "clause_tests",
         "computer_efficiency",
@@ -1545,6 +1552,7 @@ impl Switches {
     /// Switches one rule on by name; unknown names are refused.
     pub fn switch_on(&mut self, name: &str) -> Result<(), String> {
         match name {
+            "anti_war" => self.anti_war = true,
             "capital_follows_rate" => self.capital_follows_rate = true,
             "clause_tests" => self.clause_tests = true,
             "computer_efficiency" => self.computer_efficiency = true,
@@ -1993,6 +2001,34 @@ mod tests {
                 nuclear: &w.nuclear,
             }
         }
+        // `WarState` as version 47 wrote it: without the movement against the war.
+        #[derive(Serialize)]
+        struct War47<'a> {
+            countries: &'a Vec<crate::war::state::CountryWar>,
+            soldiers: &'a Vec<i64>,
+            conflicts: &'a crate::war::crisis::Conflicts,
+            fighting: &'a crate::war::fight::Fighting,
+            composition: &'a crate::war::composition::CompositionState,
+            colonial: &'a Vec<crate::war::colonial::Colonial>,
+            sea: &'a crate::war::sea::SeaWar,
+            nuclear: &'a crate::war::programme::NuclearState,
+            reserve: &'a crate::war::reserve::ReserveState,
+            scorch: &'a crate::war::scorch::ScorchState,
+        }
+        fn war47(w: &crate::war::WarState) -> War47<'_> {
+            War47 {
+                countries: &w.countries,
+                soldiers: &w.soldiers,
+                conflicts: &w.conflicts,
+                fighting: &w.fighting,
+                composition: &w.composition,
+                colonial: &w.colonial,
+                sea: &w.sea,
+                nuclear: &w.nuclear,
+                reserve: &w.reserve,
+                scorch: &w.scorch,
+            }
+        }
         // `WarState` as version 46 wrote it: without scorched earth.
         #[derive(Serialize)]
         struct War46<'a> {
@@ -2380,9 +2416,68 @@ mod tests {
             hash_of(&with_ledger)
         );
         assert_eq!(
-            hash_of(&headed(48, &encode_snapshot(&with_ledger).unwrap())),
+            hash_of(&headed(49, &encode_snapshot(&with_ledger).unwrap())),
             hash_of(&with_ledger)
         );
+        // Version 48, scorched earth, before the movement against the war.
+        {
+            #[derive(Serialize)]
+            struct BeforeAntiWar48<'a> {
+                scenario: &'a String,
+                player: &'a Option<Id<Country>>,
+                countries: &'a Table<Country, CountryState>,
+                census: &'a Vec<CensusRecord>,
+                econ: &'a crate::econ::Economy,
+                research: &'a crate::research::ResearchState,
+                politics: &'a crate::polity::PoliticsState,
+                demography: &'a crate::demography::DemographyState,
+                borders: &'a crate::borders::BordersState,
+                foreign: &'a crate::foreign_stakes::ForeignState,
+                influence: &'a crate::influence::InfluenceState,
+                treaties: &'a crate::treaty::TreatyState,
+                war: War47<'a>,
+                education: &'a crate::demography::education::EducationState,
+                independence: &'a crate::borders::independence::IndependenceState,
+                levers: &'a crate::econ::levers::LeversState,
+                tariffs: &'a crate::econ::customs::TariffState,
+                payments: &'a crate::econ::payments::PaymentsState,
+                reserves: &'a crate::econ::payments::ReservesState,
+                gold: &'a crate::econ::gold::GoldState,
+                capital: &'a crate::econ::capital::CapitalState,
+                stocks: &'a crate::econ::stock::StockState,
+                series: &'a crate::econ::series::SeriesState,
+                media: &'a crate::media::MediaState,
+            }
+            let w = &with_ledger;
+            let v48 = encode_snapshot(&BeforeAntiWar48 {
+                scenario: &w.scenario,
+                player: &w.player,
+                countries: &w.countries,
+                census: &w.census,
+                econ: &w.econ,
+                research: &w.research,
+                politics: &w.politics,
+                demography: &w.demography,
+                borders: &w.borders,
+                foreign: &w.foreign,
+                influence: &w.influence,
+                treaties: &w.treaties,
+                war: war47(&w.war),
+                education: &w.education,
+                independence: &w.independence,
+                levers: &w.levers,
+                tariffs: &w.tariffs,
+                payments: &w.payments,
+                reserves: &w.reserves,
+                gold: &w.gold,
+                capital: &w.capital,
+                stocks: &w.stocks,
+                series: &w.series,
+                media: &w.media,
+            })
+            .unwrap();
+            assert_eq!(hash_of(&headed(48, &v48)), hash_of(&with_ledger));
+        }
         // Version 47, the media, before scorched earth: the war without it.
         {
             #[derive(Serialize)]

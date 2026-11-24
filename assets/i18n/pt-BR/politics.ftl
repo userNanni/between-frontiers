@@ -322,6 +322,7 @@ indicator-media_reach = Alcance da mídia
 indicator-immigrant_share = Parcela de imigrantes
 indicator-fiscal_stress = Aperto fiscal
 indicator-gdp_growth = Crescimento do PIB
+indicator-war_weariness = Cansaço da guerra
 indicator-legitimacy = Legitimidade
 indicator-lost_territory = Território perdido
 
@@ -394,3 +395,5 @@ movement-regime_change = Troca de regime
 movement-regime_change-desc = Um governo que deixa os movimentos sem resposta em meio ao desemprego em massa perde a classe média e o exército para um partido único.
 movement-revisionism = Revisionismo
 movement-revisionism-desc = Um país que perdeu terras e posição quer recuperá-las.
+movement-anti_war = Contra a guerra
+movement-anti_war-desc = Quem fabrica as armas e quem luta cansou da guerra: greve na indústria de guerra, recusa a combater, pressão pela paz.

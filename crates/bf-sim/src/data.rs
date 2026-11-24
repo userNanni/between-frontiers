@@ -661,7 +661,16 @@ impl GameData {
                 Politics::build(
                     &read::<LawsFile>(&data.join("politics/laws.ron"))?,
                     &read::<InterestGroupsFile>(&data.join("politics/interest_groups.ron"))?,
-                    &read::<MovementsFile>(&data.join("politics/movements.ron"))?,
+                    &{
+                        let mut m = read::<MovementsFile>(&data.join("politics/movements.ron"))?;
+                        // Without its switch, the movement against the war is not in the
+                        // catalogue: the politics is main's.
+                        if !switches.anti_war {
+                            m.movements
+                                .retain(|d| d.goal != crate::politics::Goal::Peace);
+                        }
+                        m
+                    },
                 )
                 .map_err(|e| format!("data/politics: {e}"))?,
             )
@@ -1081,6 +1090,21 @@ impl GameData {
                         // Scorched earth only with its switch; its groups resolved to kinds.
                         if !switches.scorched_earth {
                             c.occupation.scorched = None;
+                        }
+                        if !switches.anti_war {
+                            c.anti_war = None;
+                        }
+                        if let (Some(a), Some(p)) = (c.anti_war.as_mut(), self.politics.as_ref()) {
+                            let ix = |list: &[String]| -> Vec<usize> {
+                                list.iter()
+                                    .filter_map(|k| {
+                                        crate::economy::PROFESSIONS.iter().position(|q| q == k)
+                                    })
+                                    .collect()
+                            };
+                            a.kind = p.movements.iter().position(|m| m.key == a.movement);
+                            a.striker_ix = ix(&a.strikers);
+                            a.soldier_ix = ix(&a.soldiers);
                         }
                         if let Some(s) = c.occupation.scorched.as_mut() {
                             s.ranks = self

@@ -1567,6 +1567,9 @@ impl System<GameWorld> for Forces {
             if let Some(s) = week.scorch.take() {
                 world.war.scorch = s;
             }
+            if let Some(a) = week.antiwar.take() {
+                world.war.antiwar = a;
+            }
             // A government fallen at the end of a collapse (G4): a new form of government is a
             // change of regime, which the treaties read (owner's decision P3).
             if let Some(k) = self.fight.as_ref().and_then(|f| f.conduct.as_ref()) {

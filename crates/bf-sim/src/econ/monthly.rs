@@ -178,6 +178,24 @@ fn crew_next_month(held: i64, target: i64) -> i64 {
     }
 }
 
+/// The building group a strike against the war stops (`war::antiwar`).
+const MILITARY_INDUSTRY: &str = "military_industry";
+
+/// The war industry on strike (`war::antiwar`): `strike` per mille of the staffing of its
+/// plants stops. The strikers keep their jobs and their place among the people (the pops are not
+/// touched), and the plants run without them.
+fn on_strike(cat: &Catalogue, r: &Region, staffing: &mut [Fixed], strike: u16) {
+    if strike == 0 {
+        return;
+    }
+    let cut = Fixed::from_ratio(i64::from(strike.min(1000)), 1000);
+    for (p, s) in r.plants.iter().zip(staffing.iter_mut()) {
+        if cat.buildings[p.kind as usize].group == MILITARY_INDUSTRY {
+            *s -= *s * cut;
+        }
+    }
+}
+
 fn labour_region(
     cat: &Catalogue,
     r: &Region,
@@ -421,6 +439,10 @@ impl System<GameWorld> for Labour {
                     self.jobs_follow_use,
                     world.econ.markets[r.market as usize].levers.payroll(),
                 );
+                if !r.colony {
+                    let strike = world.war.antiwar.strike(r.market);
+                    on_strike(&self.cat, r, &mut c.staffing, strike);
+                }
                 c.pioneers = pioneers(&self.cat, r, &world.econ.markets[r.market as usize]);
                 c
             })
@@ -1696,5 +1718,53 @@ mod layoff_tests {
         assert_eq!(crew_next_month(200, 900), 900);
         assert_eq!(jobs_in_use(1000, Fixed::ONE), 1000);
         assert_eq!(jobs_in_use(999, milli(500)), 500, "rounded up");
+    }
+}
+
+#[cfg(test)]
+mod strike_tests {
+    use super::*;
+
+    /// A strike against the war (`war::antiwar`) stops the war industry and keeps the people:
+    /// the same sizes and the same employed, every other plant staffed as before.
+    #[test]
+    fn a_strike_stops_the_war_industry_and_keeps_the_people() {
+        let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let d = crate::data::GameData::load(&root).unwrap_or_else(|e| panic!("{e}"));
+        let w = d.new_world();
+        let cat = &*d.catalogue;
+        let military = |r: &crate::econ::Region| {
+            r.plants
+                .iter()
+                .any(|p| p.levels > 0 && cat.buildings[p.kind as usize].group == MILITARY_INDUSTRY)
+        };
+        let r = w
+            .econ
+            .regions
+            .iter()
+            .find(|r| military(r))
+            .expect("a region with war industry");
+        let mv = super::super::migration::Moves::default();
+        let run = |strike| {
+            let mut c = labour_region(cat, r, &mv, None, None, false, None);
+            on_strike(cat, r, &mut c.staffing, strike);
+            c
+        };
+        let calm = run(0);
+        let struck = run(300);
+        assert_eq!(
+            calm.pops, struck.pops,
+            "the strikers stay in the people, employed"
+        );
+        let mut stopped = 0;
+        for ((p, a), b) in r.plants.iter().zip(&calm.staffing).zip(&struck.staffing) {
+            if cat.buildings[p.kind as usize].group == MILITARY_INDUSTRY && a.is_positive() {
+                assert_eq!(*b, *a - *a * Fixed::from_ratio(300, 1000));
+                stopped += 1;
+            } else {
+                assert_eq!(a, b);
+            }
+        }
+        assert!(stopped > 0);
     }
 }
