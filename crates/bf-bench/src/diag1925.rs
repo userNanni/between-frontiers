@@ -1147,6 +1147,46 @@ pub fn main() -> Result<(), String> {
         }
         return Ok(());
     }
+    // Politics by decade (`BF_DIAG_POLITICS=TAG,TAG`): law changes in the world so far, the mean
+    // legitimacy, and each country's legitimacy and support of the movement for a change of
+    // regime, every twenty years: what the media's effects move.
+    if let Ok(spec) = std::env::var("BF_DIAG_POLITICS") {
+        let all: Vec<String> = data
+            .countries
+            .countries
+            .iter()
+            .map(|c| c.tag.clone())
+            .collect();
+        let idx: Vec<(String, usize)> = spec
+            .split(',')
+            .filter_map(|t| all.iter().position(|x| x == t).map(|i| (t.to_string(), i)))
+            .collect();
+        let rc = data
+            .politics
+            .as_ref()
+            .and_then(|p| p.movements.iter().position(|m| m.key == "regime_change"));
+        for y in (1945..=2025).step_by(20) {
+            s.sim.run_until(Date::new(y, 1, 3));
+            let p = &s.world().politics;
+            let mean = if p.legitimacy.is_empty() {
+                0.0
+            } else {
+                p.legitimacy.iter().map(|x| f64::from(*x)).sum::<f64>() / p.legitimacy.len() as f64
+            };
+            println!(
+                "{y}: {} law changes so far, mean legitimacy {mean:.0}",
+                p.changes.len()
+            );
+            for (tag, c) in &idx {
+                let leg = p.legitimacy.get(*c).copied().unwrap_or(0);
+                let regime = rc
+                    .and_then(|k| p.movements.get(*c)?.get(k))
+                    .map_or(0, |m| m.support);
+                println!("   {tag}: legitimacy {leg}, regime change support {regime}");
+            }
+        }
+        return Ok(());
+    }
     // World trade over world GDP every ten years (data/history/trade_openness.csv): exports
     // plus imports at base prices, a week in July times 52, over the GDP of the last year.
     if std::env::var_os("BF_DIAG_TRADE").is_some() {
