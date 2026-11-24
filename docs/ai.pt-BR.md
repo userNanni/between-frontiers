@@ -156,7 +156,7 @@ Cada fatia atrás da sua chave, desligada, com a série de 101 anos contra a fai
 | IA5 | Orçamento militar pela ameaça: como? | uma parcela do PIB que segue a razão entre o poder dos vizinhos hostis e o próprio, com teto e devagar (anos), e que cai na paz | a corrida simétrica de Richardson (cada um responde ao gasto do outro) |
 
 **Fatia 1 autorizada** (o orquestrador, 2026-11-24), depois do helicóptero: as medidas, só leitura,
-atrás de chave desligada. As fatias 2 em diante esperam o dono.
+atrás de chave desligada. O desenho, as fórmulas e a conferência estão em `relations.pt-BR.md`. As fatias 2 em diante esperam o dono.
 
 ## Dependências da fase 6 anotadas nas fases anteriores
 

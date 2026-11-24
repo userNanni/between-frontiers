@@ -62,6 +62,9 @@ pub struct GameData {
     pub war_debts: Option<crate::treaty::WarDebtsFile>,
     /// Rules of influence (`data/diplomacy/influence.ron`; phase 4, not simulated yet).
     pub influence: Option<crate::influence::InfluenceRules>,
+    /// The relations' measures (`data/diplomacy/relations.ron`), read with
+    /// `Switches::relations`.
+    pub relations: Option<crate::relations::RelationsRules>,
     /// What the border operations read (map, communities, catalogue, the 1925 subjects).
     pub border_rules: Arc<crate::borders::BorderRules>,
     /// Who did not recognise whom on the start date, when `recognition.ron` exists.
@@ -772,6 +775,11 @@ impl GameData {
             clauses,
             independence: optional(&data.join("borders/independence.ron"))?,
             war_debts: optional(&scenario.join("war_debts.ron"))?,
+            relations: if switches.relations {
+                optional(&data.join("diplomacy/relations.ron"))?
+            } else {
+                None
+            },
             recognition: optional(&scenario.join("recognition.ron"))?,
         };
         Ok(data)
@@ -1211,6 +1219,36 @@ impl GameData {
     }
 
     /// The world on the start date, economy included.
+    /// What the relations' measures need (`relations::measure`), with `Switches::relations`.
+    pub fn relations_setup(&self) -> Option<crate::relations::RelationsSetup> {
+        let rules = self.relations.clone()?;
+        let start = self.new_world();
+        let cat = &self.catalogue;
+        Some(crate::relations::RelationsSetup {
+            rules,
+            owner_1925: start.econ.regions.iter().map(|r| r.market).collect(),
+            state_borders: self
+                .war
+                .as_ref()
+                .and_then(|w| w.borders.as_ref())
+                .map(|b| b.borders.iter().map(|x| (x.a, x.b)).collect())
+                .unwrap_or_default(),
+            goods: [
+                cat.good("coal"),
+                cat.good("crude_oil"),
+                cat.good("natural_gas"),
+                cat.good("steel"),
+            ],
+            warhead: self.war.as_ref().and_then(|w| {
+                w.military
+                    .types
+                    .iter()
+                    .position(|t| t.key == "nuclear_warhead")
+                    .map(|i| i as u16)
+            }),
+        })
+    }
+
     pub fn new_world(&self) -> GameWorld {
         let mut world = GameWorld::from_scenario("1925", &self.countries.countries);
         world.econ = setup::build(

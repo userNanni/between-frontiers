@@ -16,6 +16,7 @@ pub mod initial;
 pub mod media;
 pub mod politics;
 pub mod polity;
+pub mod relations;
 pub mod research;
 pub mod research_system;
 pub mod resources;

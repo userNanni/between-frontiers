@@ -1415,6 +1415,10 @@ pub struct Switches {
     /// acts when the world is made (`GameData::new_world`): set it in `data/rules.ron` or
     /// `BF_RULES`. Off: every railway is sized by the whole demand for transport.
     pub rail_by_line: bool,
+    /// The relations' measures (`relations`, docs/ai.pt-BR.md, slice 1): power (the CINC),
+    /// lost territory, hostility by pair, threat and role, read only, for the interface. Read
+    /// at load (`data/diplomacy/relations.ron`). Off: not loaded.
+    pub relations: bool,
     /// The reputation of each country's breaches (`treaty::Reputation`, docs/treaties.pt-BR.md
     /// 9.4, owner's decisions P1–P3): a breach weighs on the reputation of its kind, a tenth of
     /// it is forgotten each year, a change of regime halves the security one, and the table
@@ -1505,6 +1509,7 @@ impl Switches {
         "payments_settle",
         "radium",
         "rail_by_line",
+        "relations",
         "reputation",
         "reserve_cohorts",
         "schooling",
@@ -1543,6 +1548,7 @@ impl Switches {
             "payments_settle" => self.payments_settle = true,
             "radium" => self.radium = true,
             "rail_by_line" => self.rail_by_line = true,
+            "relations" => self.relations = true,
             "reputation" => self.reputation = true,
             "reserve_cohorts" => self.reserve_cohorts = true,
             "schooling" => self.schooling = true,
