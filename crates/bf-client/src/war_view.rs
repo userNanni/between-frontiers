@@ -878,7 +878,10 @@ pub fn read(
             let rows = segs
                 .iter()
                 .map(|&(enemy, n)| {
-                    let order = orders.and_then(|o| o.fronts.iter().find(|f| f.enemy == enemy));
+                    let any = orders.and_then(|o| o.fronts.iter().find(|f| f.enemy == enemy));
+                    // Under a share order; a front with an objective only takes its part of the
+                    // rest.
+                    let order = any.filter(|f| f.ordered);
                     let now = match (&on_line, order) {
                         (_, Some(f)) => f.now,
                         (Some(l), None) => l.iter().find(|(e, _)| *e == enemy).map_or(0, |x| x.1),
@@ -890,7 +893,7 @@ pub fn read(
                     };
                     let (mut men, mut width) = (0.0, 0.0);
                     let mut states: Vec<u16> = Vec::new();
-                    let objective = order.and_then(|f| f.objective);
+                    let objective = any.and_then(|f| f.objective);
                     let mut to_objective = 0;
                     for g in &fighting.last_week {
                         let (us, them, theirs) = if g.a == me && g.b == enemy {

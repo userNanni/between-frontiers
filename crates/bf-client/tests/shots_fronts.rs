@@ -35,8 +35,8 @@ fn settle(h: &mut egui_kittest::Harness<'_, bf_client::App>) {
 }
 
 /// The Soviet Union at war with Poland over a payment (the war's recipe), attacking from 20
-/// March, with an objective on the front, nine tenths of the army on it and a tenth in reserve:
-/// the Fronts tab a week after the orders. Portuguese at 1600 × 900, English at 1280 × 720.
+/// March, with an objective on the front (no share of its own: it takes what the reserve leaves)
+/// and a tenth of the army in reserve: the Fronts tab a week after the orders. Portuguese at 1600 × 900, English at 1280 × 720.
 #[test]
 #[ignore = "needs a GPU (or software Vulkan) and the generated map; run with --ignored"]
 fn fronts_tab() {
@@ -95,8 +95,8 @@ fn fronts_tab() {
         enemy: "POL".into(),
         attack: true,
     });
-    // A week of combat, then the objective (the Polish state of the first segment), nine tenths
-    // on the front and a tenth in reserve, and a week more.
+    // A week of combat, then the objective (the Polish state of the first segment) and a tenth
+    // in reserve, and a week more.
     while s.world().war.fighting.last_week.is_empty() && s.clock().date < Date::new(1925, 5, 1) {
         s.sim.step();
     }
@@ -121,11 +121,6 @@ fn fronts_tab() {
         tag: "SOV".into(),
         enemy: "POL".into(),
         state: Some(objective),
-    });
-    s.submit(GameCommand::SetFrontShare {
-        tag: "SOV".into(),
-        enemy: "POL".into(),
-        share: 900,
     });
     s.submit(GameCommand::SetReserve {
         tag: "SOV".into(),
