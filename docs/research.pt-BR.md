@@ -270,42 +270,77 @@ unidade, feita por script (`tools/research/convert_tree.py`), não um ajuste por
   Mundial, `GB.XPD.RSDV.GD.ZS`, CC BY 4.0). A série da OECD (MSTI, desde 1981) não entrou porque
   a licença não foi confirmada.
 
-## Depois: computação como método
+## Computação como método (chave `computer_efficiency`, desligada)
 
-Desenho do dono (2026-11-17), para depois da fase 6. Não está no código.
+Desenho do dono (2026-11-17): o computador, e depois a IA, é ganho de **eficiência**, não de
+capacidade. Um país sem computador pesquisa, mas com perda grande de escala; a IA, do mesmo jeito,
+diminui o tempo de fazer tudo.
 
-- **A ideia:** o computador, e depois a IA, é ganho de **eficiência**, não de capacidade. Um país
-  sem computador consegue pesquisar, mas com perda enorme de escala: a dinâmica dos fluidos foi
-  feita à mão, com cálculos muito complexos e demorados. A IA, do mesmo jeito, diminui o tempo de
-  fazer tudo.
-- **A forma:** métodos nos prédios que pensam (laboratório, universidade e, na administração do
-  Estado, a repartição), cada um consumindo os bens correspondentes:
-  - cálculo manual;
-  - computador central (`computers`);
-  - microcomputador e rede (`computers`, `telecommunications`);
-  - IA (computação em nuvem, eletricidade).
+**Eficiência, não capacidade, em uma linha:** o mesmo pessoal, com os mesmos instrumentos, rende
+mais por pessoa pagando computadores e eletricidade; não entra pesquisador nem nível novo.
 
-  O método novo rende mais por pesquisador e por servidor. Quem não tem o bem fica no método
-  antigo, mais lento, sem ser travado.
-- **O que substituiria no código de hoje:** o efeito global `research` das tecnologias
-  (`EFFECTS[3]`: computador eletrônico 80, educação superior de massa 60, computador pessoal 60,
-  comutação de pacotes 40, web 120, sequenciamento genético 20, nuvem 30, aprendizado profundo
-  60, modelos de linguagem 80, ensino a distância 10, por mil no estágio difundido). Hoje ele
-  multiplica os pontos de todo pesquisador do país por até cerca de 2,1
-  (`research_system`, `boost = 1 + 2 × efeito`), sem comprar nenhum computador. Como método,
-  o ganho passa a depender do bem comprado e do preço dele, e a administração do Estado ganha o
-  mesmo tipo de eficiência (folha menor para o mesmo serviço).
-- **O que precisaria medir antes:**
-  - o ganho de produtividade de pesquisa e de administração por método, com fonte (horas de
-    cálculo à mão contra máquina; produtividade do setor público com informática);
-  - o consumo de bens por pesquisador em cada método (quanto computador e rede um laboratório
-    compra), para a demanda nova não criar falta crônica;
-  - a conversão da árvore de novo (`tools/research/convert_tree.py`), porque o esforço do líder
-    muda de unidade outra vez;
-  - o crescimento da alfabetização nos ajustes de custo: hoje a qualidade do pesquisador vem do
-    salário relativo, e a alfabetização só entra pela produtividade de base. Se a escola de massa
-    mudar o custo de formar um pesquisador, isso entra no custo do nível de laboratório, não num
-    multiplicador de pontos.
+**O que está no código (só com a chave; age quando os dados carregam, `MethodDef::switch`):**
+
+| prédio | método | tecnologia (demonstrada / industrial) | consome a mais | rende |
+|---|---|---|---|---|
+| laboratório | instituto computadorizado | computador eletrônico (1945 / 1951) | 300 de `computers`, 2.000 de eletricidade | 1,5 × a pesquisa |
+| laboratório | em rede | computador pessoal (1975 / 1981) | 600, 3.000 | 2 × |
+| laboratório | assistido por IA | aprendizado profundo (2012 / 2016) | 1.200, 6.000 | 3 × |
+| universidade | campus computadorizado | computador eletrônico | 50, 1.000 | 1,2 × o ensino superior |
+| universidade | em rede | computador pessoal | 150, 1.500 | 1,5 × |
+| universidade | tutoria por IA | aprendizado profundo | 300, 3.000 | 2 × |
+
+- **Os fatores (1,5 / 2 / 3 e 1,2 / 1,5 / 2) e os consumos são valores de desenho**, marcados assim
+  em `buildings.ron`: não achei medida de pesquisa por pesquisador por método. As datas são as da
+  árvore (as históricas de primeira demonstração e primeira produção em escala).
+- **O pesquisador conta pelo método** (`research_system::facts`): cada um vale a produção do
+  método do seu laboratório sobre a do primeiro. Com a chave desligada o primeiro método é o único
+  e o fator é 1.
+- **O efeito da árvore sai com a chave ligada:** o computador eletrônico (80), o computador pessoal
+  (60) e o aprendizado profundo (60) perdem o efeito `research` (que multiplicava os pontos de todo
+  pesquisador do país sem comprar nenhum computador), e o ganho vem só pelos métodos. Os outros
+  efeitos de pesquisa (web, nuvem, modelos de linguagem, educação superior de massa, comutação de
+  pacotes) ficam.
+- **A troca é sozinha,** pela troca anual de método que já existe: o computador custa uma parte
+  pequena do que o método rende a mais, e o lucro do método novo passa com folga dos 10 % de
+  `SWITCH_MARGIN`. Quem não tem a tecnologia, ou não acha o bem, fica no método antigo, sem ser
+  travado.
+- **A administração do Estado ainda não:** não é prédio, é a folha de servidores. A grandeza que o
+  computador melhoraria é a arrecadação por servidor (`levers::collection`), que só age com
+  `fiscal_capacity`; desenho em mensagem antes do código, numa fatia seguinte.
+- **A universidade** só tem níveis com a chave `schooling`: com ela desligada, os métodos da
+  universidade existem mas nenhum é usado.
+
+**A medida (101 anos, a chave ligada, contra a faixa de 14 amostras de `17782c2`):**
+
+| | 1945 | 1965 | 1985 | 2005 | 2025 |
+|---|---|---|---|---|---|
+| pesquisa mundial | +1,9 % (+1,2σ) | −10,1 % (−4,4σ) | +27,8 % (+21σ) | +55 % (+39σ) | +102 % (+86σ) |
+| PIB mundial | +0,9 % (+1,1σ) | −1,2 % (−1,3σ) | +0,3 % (+0,2σ) | +1,1 % (+2,9σ) | +3,2 % (+6,8σ) |
+
+- Em 1965 a pesquisa cai: o efeito da árvore sai antes de os laboratórios trocarem de método. Daí em
+  diante sobe: o computador no laboratório rende mais do que o efeito que substitui. O PIB sobe
+  menos, porque a árvore tem um fim (164 tecnologias) e a pesquisa a mais acha pouco de novo.
+- **Ano em que cada país troca o laboratório** (`BF_DIAG_ADOPTION`): computador, rede, IA.
+
+| | computador | rede | IA |
+|---|---|---|---|
+| EUA | 1951 | 1982 | 2015 |
+| Reino Unido | 1972 | 2002 | 2023 |
+| URSS | 1975 | 2000 | 2019 |
+| China | 1972 | 2005 | 2025 |
+| Japão | 1974 | 2005 | 2025 |
+| Índia | 1974 | 2004 | — |
+| Brasil | 1983 | 2008 | — |
+
+- **CPU:** 435 s contra 429 s de usuário nos 101 anos (+1,4 %, uma rodada de cada).
+- **Desligada:** hash de 10 anos e série de 101 anos idênticos aos do `main`.
+
+**O que o jogador vê:** os métodos novos nas abas Prédios e Métodos, pelo catálogo, com nome em
+português e inglês (`method-computerized_research` e os outros em `economy.ftl`); a pesquisa a mais
+na tela de Pesquisa. Para a interface: o método de cada nível (`Plant::method`), o insumo
+`computers` faltando (`Plant::input_ratio`) e o fator de cada método (a produção sobre a do
+primeiro, `Method::output_value`).
 
 ## A árvore de 1925 a 2025
 
