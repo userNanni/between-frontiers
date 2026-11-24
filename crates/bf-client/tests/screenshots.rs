@@ -3394,8 +3394,10 @@ fn renegotiate_debt() {
     let _ = std::fs::remove_dir_all(&user);
 }
 
-/// The war window (phase 5, slice C): Hungary at war with Czechoslovakia, attacking since the
-/// declaration, on the week of its first state occupied: each side's war support with its
+/// The war window (phase 5, slice C): Poland at war with Czechoslovakia over a payment,
+/// attacking since the declaration, after two weeks of combat (the recipe of the war's thread: a
+/// front that fights for weeks; Hungary against Czechoslovakia fell by occupation in its first
+/// week): each side's war support with its
 /// groups and its speed, the occupation with what it yields, the devastation; the front with the
 /// posture, the forces, the week's losses and advance; the segments opened, with the advance
 /// into each state, the width, the men per km and the entrenchment; and peace, which opens the
@@ -3413,15 +3415,53 @@ fn war_window() {
         bf_sim::game::Switches::parse("forces,crisis,war,negotiation").expect("switches");
     let user = std::env::temp_dir().join(format!("bf-shots-war-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&user);
-    let mut s = advanced_session_with("HUN", Date::new(1925, 3, 2), switches);
+    // Poland given 20 thousand cavalry (the forces of 1925 have none), as in the recipe.
+    let mut data = bf_sim::data::GameData::load(&root()).expect("game data");
+    data.switches = switches;
+    let mil = data.war.as_ref().expect("war data").military.clone();
+    let mut world = data.new_world();
+    {
+        use laplace_schelling::Fixed;
+        let ty = mil.unit("cavalry").expect("cavalry");
+        let spec = mil.spec(ty, 0);
+        let pol = world
+            .countries
+            .iter()
+            .position(|(_, c)| c.tag == "POL")
+            .unwrap();
+        world.war.countries[pol]
+            .formations
+            .push(bf_sim::war::Formation {
+                unit: ty,
+                generation: 0,
+                elements: Fixed::from_int(20),
+                colonial: false,
+                called_up: false,
+                equipment: spec
+                    .equipment
+                    .iter()
+                    .map(|(g, q)| (*g, *q * Fixed::from_int(20)))
+                    .collect(),
+                training: Fixed::ONE,
+                raised: false,
+            });
+    }
+    let mut s =
+        bf_sim::game::Session::new(world, 1925, Date::new(1925, 1, 1), 2, Some(data.rules()));
+    s.submit(GameCommand::ChoosePlayer { tag: "POL".into() });
+    while s.clock().date < Date::new(1925, 3, 2) {
+        s.sim.step();
+    }
     s.submit(GameCommand::Demand {
-        tag: "HUN".into(),
+        tag: "POL".into(),
         target: "CZE".into(),
         demand: Proposal {
-            side_a: vec!["HUN".into()],
+            side_a: vec!["POL".into()],
             side_b: vec!["CZE".into()],
             clauses: vec![Clause {
-                kind: ClauseKind::Union,
+                kind: ClauseKind::Payment {
+                    amount: laplace_schelling::Fixed::from_int(100),
+                },
                 giver: Side::Junior,
                 receiver: Side::Senior,
                 until: None,
@@ -3437,26 +3477,24 @@ fn war_window() {
     }
     let id = s.world().war.conflicts.crises[0].id;
     s.submit(GameCommand::Declare {
-        tag: "HUN".into(),
+        tag: "POL".into(),
         crisis: id,
         war: true,
     });
     s.submit(GameCommand::SetPosture {
-        tag: "HUN".into(),
+        tag: "POL".into(),
         enemy: "CZE".into(),
         attack: true,
     });
-    // The first week of combat with its support moved and the segments still: since #217 the
-    // war ends on 31 March without a peace signed (reported to the war's thread), so the
-    // occupation and the devastation show empty here.
-    while s.clock().date < Date::new(1925, 3, 30) {
+    // Two weeks of combat, with the support moved.
+    while s.clock().date < Date::new(1925, 4, 7) {
         s.sim.step();
     }
     assert!(
         !s.world().war.fighting.last_week.is_empty() && !s.world().war.fighting.support.is_empty(),
         "the war has a front and a support"
     );
-    let save = write_campaign(&user.join("save"), &s, "Guerra", "HUN", &[]);
+    let save = write_campaign(&user.join("save"), &s, "Guerra", "POL", &[]);
     let dir = root().join("target/screenshots/war-window");
     std::fs::create_dir_all(&dir).unwrap();
     let keep = |name: &str| {
@@ -3497,7 +3535,7 @@ fn war_window() {
         let name = format!("210-war-agendas-{tag}");
         shot(&mut h, &name);
         keep(&name);
-        press(&mut h, if en { "Hungary" } else { "Hungria" });
+        press(&mut h, if en { "Poland" } else { "Polônia" });
         wait(&mut h);
         wait(&mut h);
         let name = format!("211-war-window-{tag}");
@@ -3514,7 +3552,7 @@ fn war_window() {
         let name = format!("213-war-peace-table-{tag}");
         shot(&mut h, &name);
         keep(&name);
-        // The war lens over Central Europe: Hungary and Czechoslovakia in their colours, the
+        // The war lens over Central Europe: Poland and Czechoslovakia in their colours, the
         // states each holds of the other hatched in the occupier's, the rest faded.
         let mut h = harness_sized(user.join(format!("lens-{tag}")), locale, size);
         let ctx = h.ctx.clone();
