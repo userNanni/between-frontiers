@@ -349,7 +349,7 @@ const fn indicator(
     }
 }
 
-pub const INDICATORS: [IndicatorKind; 18] = [
+pub const INDICATORS: [IndicatorKind; 19] = [
     indicator(
         "literacy",
         1000,
@@ -451,6 +451,14 @@ pub const INDICATORS: [IndicatorKind; 18] = [
         System::Income,
         Some("econ::state::Economy::history"),
     ),
+    // War weariness of the people a movement recruits: 1000 less the war support (G4) of their
+    // interest groups, at war only (`war::antiwar`, switch `anti_war`).
+    indicator(
+        "war_weariness",
+        1000,
+        System::Military,
+        Some("war::antiwar::week"),
+    ),
 ];
 
 pub fn indicator_index(key: &str) -> Option<usize> {
@@ -524,6 +532,8 @@ pub enum Goal {
     Independence,
     /// Win back territory and standing lost (needs borders and war; never won before them).
     Revision,
+    /// End the country's wars (`war::antiwar`): moved every week by the war, never a law.
+    Peace,
 }
 
 /// Whom a movement draws from.
@@ -660,6 +670,7 @@ pub enum GoalRef {
     Law(u16),
     Independence,
     Revision,
+    Peace,
 }
 
 #[derive(Clone, Debug)]
@@ -1042,6 +1053,12 @@ impl Politics {
                         return Err(PoliticsError::WrongAmong(m.key.clone()));
                     }
                     GoalRef::Revision
+                }
+                Goal::Peace => {
+                    if m.among == Among::Colonies {
+                        return Err(PoliticsError::WrongAmong(m.key.clone()));
+                    }
+                    GoalRef::Peace
                 }
                 Goal::Law(l) => {
                     let li = out.law(l).ok_or_else(|| PoliticsError::UnknownLaw {

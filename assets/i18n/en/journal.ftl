@@ -112,6 +112,7 @@ journal-movement-exit = Cause gone: support halves every { $years } years
 journal-goal-law = Enact { $law }
 journal-goal-independence = Independence
 journal-goal-revision = Win back lost territory and standing
+journal-goal-peace = End the war
 journal-force-pressure = Pressure of the cause
 journal-force-growth = Growth a year at full pressure
 journal-force-weakest = Weakest condition: { $measure }

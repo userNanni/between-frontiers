@@ -290,6 +290,18 @@ impl PoliticsSystem {
                 // Independence and revision need borders, diplomacy and war (phases 4 and 5):
                 // measured, never won.
                 GoalRef::Independence | GoalRef::Revision => false,
+                // Peace: the movement against the war is moved by the war every week
+                // (`war::antiwar`); here it is mirrored, and counts while the country fights.
+                GoalRef::Peace => {
+                    let a = world.war.antiwar.of(c as u16);
+                    let st = &mut movements[k];
+                    st.support = a.map_or(0, |a| a.per_mille());
+                    st.pressure = a.map_or(0, |a| a.pressure);
+                    st.weakest = 0;
+                    let mob = a.map_or(0, |a| i32::from(a.mobilized));
+                    mobilized_total += mob;
+                    continue;
+                }
             };
             let mut weakest = 0u8;
             let mut pressure = i32::MAX;

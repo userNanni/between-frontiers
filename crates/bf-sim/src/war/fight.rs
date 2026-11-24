@@ -232,6 +232,16 @@ pub struct FightWeek {
     pub devastation: super::occupation::Devastation,
     /// Scorched earth's state after the week, with its switch on.
     pub scorch: Option<super::scorch::ScorchState>,
+    /// The movement against the war after the week, with its switch on.
+    pub antiwar: Option<super::antiwar::AntiWarState>,
+}
+
+/// The soldiers who refuse to fight (`war::antiwar`): the fire falls by `mutiny` per mille; the
+/// men stay in their formations and on the front.
+fn mutinied(s: &mut Strength, mutiny: u16) {
+    if mutiny > 0 {
+        s.fire = s.fire.mul_ratio(1000 - i64::from(mutiny.min(1000)), 1000);
+    }
 }
 
 /// The land strength of a country: men, the fire and protection of what it holds, and its
@@ -572,6 +582,13 @@ pub fn fight_week(
         fighting: world.war.fighting.clone(),
         ..Default::default()
     };
+    // The movement against the war, every week, at war or not (it fades in peace): reads last
+    // week's war support.
+    if let Some(k) = setup.conduct.as_ref()
+        && let (Some(rules), Some(p)) = (k.rules.anti_war.as_ref(), k.politics.as_ref())
+    {
+        out.antiwar = Some(super::antiwar::week(rules, p, world));
+    }
     // The generation of the armies, the first week of each month (step 4).
     if date.day <= 7 {
         doctrine_month(
@@ -722,6 +739,7 @@ pub fn fight_week(
                     s.fire = (s.fire - post_fire - field_cut).max(Fixed::ZERO);
                     s.men = s.men.saturating_sub(*g);
                 }
+                mutinied(&mut s, world.war.antiwar.mutiny(c));
                 (c, s)
             })
         })
@@ -1497,5 +1515,30 @@ mod concentration_tests {
             concentrated_mobility(Mobility::Foot, None, 50_000, 60_000, 333),
             Mobility::Foot
         );
+    }
+}
+
+#[cfg(test)]
+mod mutiny_tests {
+    use super::*;
+
+    /// The soldiers in mutiny stay in the formations: the men are the same, the fire falls.
+    #[test]
+    fn a_mutiny_keeps_the_men_and_cuts_the_fire() {
+        let mut s = Strength {
+            men: 100_000,
+            fire: Fixed::from_int(500),
+            protection: Fixed::from_int(40),
+            training: Fixed::ONE,
+            mobility: Mobility::Foot,
+            mobile: None,
+            mobile_men: 0,
+        };
+        mutinied(&mut s, 200);
+        assert_eq!(s.men, 100_000);
+        assert_eq!(s.fire, Fixed::from_int(400));
+        assert_eq!(s.protection, Fixed::from_int(40));
+        mutinied(&mut s, 0);
+        assert_eq!(s.fire, Fixed::from_int(400));
     }
 }

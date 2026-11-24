@@ -15,6 +15,7 @@
 //! - [`ledger`]: the war's cost, week by week and in total.
 
 pub mod ai_orders;
+pub mod antiwar;
 pub mod army;
 pub mod balance;
 pub mod calc;

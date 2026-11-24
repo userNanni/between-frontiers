@@ -1777,6 +1777,63 @@ pub struct V44 {
     stocks: crate::econ::stock::StockState,
 }
 
+/// Version 47: scorched earth, before the movement against the war.
+#[derive(Deserialize)]
+pub struct V47 {
+    scenario: String,
+    player: Option<Id<Country>>,
+    countries: Table<Country, CountryState>,
+    census: Vec<CensusRecord>,
+    econ: crate::econ::Economy,
+    research: crate::research::ResearchState,
+    politics: crate::polity::PoliticsState,
+    demography: crate::demography::DemographyState,
+    borders: crate::borders::BordersState,
+    foreign: crate::foreign_stakes::ForeignState,
+    influence: crate::influence::InfluenceState,
+    treaties: crate::treaty::TreatyState,
+    war: crate::war::state::WarStateBeforeAntiWar,
+    education: crate::demography::education::EducationState,
+    independence: crate::borders::independence::IndependenceState,
+    levers: crate::econ::levers::LeversState,
+    tariffs: crate::econ::customs::TariffState,
+    payments: crate::econ::payments::PaymentsState,
+    reserves: crate::econ::payments::ReservesState,
+    gold: crate::econ::gold::GoldState,
+    capital: crate::econ::capital::CapitalState,
+    stocks: crate::econ::stock::StockState,
+    series: crate::econ::series::SeriesState,
+}
+
+/// 47 → 48: the movement against the war (`WarState::antiwar`), empty.
+pub fn v47_to_v48(w: V47) -> GameWorld {
+    GameWorld {
+        scenario: w.scenario,
+        player: w.player,
+        countries: w.countries,
+        census: w.census,
+        econ: w.econ,
+        research: w.research,
+        politics: w.politics,
+        demography: w.demography,
+        borders: w.borders,
+        foreign: w.foreign,
+        influence: w.influence,
+        treaties: w.treaties,
+        war: w.war.into(),
+        education: w.education,
+        independence: w.independence,
+        levers: w.levers,
+        tariffs: w.tariffs,
+        payments: w.payments,
+        reserves: w.reserves,
+        gold: w.gold,
+        capital: w.capital,
+        stocks: w.stocks,
+        series: w.series,
+    }
+}
+
 /// Version 46: the reserves by cohort, before scorched earth.
 #[derive(Deserialize)]
 pub struct V46 {

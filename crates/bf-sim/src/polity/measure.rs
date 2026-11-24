@@ -25,6 +25,8 @@ pub const LANDOWNER_INCOME_SHARE: usize = 9;
 pub const LEGITIMACY: usize = 14;
 pub const FISCAL_STRESS: usize = 16;
 pub const GDP_GROWTH: usize = 17;
+/// Measured by the war (`war::antiwar`), not here.
+pub const WAR_WEARINESS: usize = 18;
 pub const IMMIGRANT_SHARE: usize = 13;
 
 /// Share of the people of `country` of foreign origin, per mille: the one place politics reads
@@ -144,6 +146,8 @@ impl Facts {
             FISCAL_STRESS => self.fiscal_stress,
             GDP_GROWTH => self.gdp_growth,
             IMMIGRANT_SHARE => self.immigrant_share?,
+            // Measured by the war, every week (`war::antiwar::week`).
+            WAR_WEARINESS => return None,
             LANDOWNER_INCOME_SHARE => Self::ratio(
                 self.income[prof::LANDOWNER],
                 self.income[prof::LANDOWNER]
@@ -236,6 +240,7 @@ mod tests {
             (FISCAL_STRESS, "fiscal_stress"),
             (GDP_GROWTH, "gdp_growth"),
             (IMMIGRANT_SHARE, "immigrant_share"),
+            (WAR_WEARINESS, "war_weariness"),
         ] {
             assert_eq!(indicator_index(key), Some(i), "{key}");
         }

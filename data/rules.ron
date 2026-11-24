@@ -9,6 +9,9 @@
 //
 // In alphabetical order, as `game::Switches`: a new rule goes in its place, not at the end.
 (
+    // The movement against the war (`war::antiwar`): grows every week of war in which its
+    // recruits are weary, takes legitimacy, strikes in the war industry, mutinies at the front.
+    anti_war: false,
     // Capital that follows interest, and capital controls (`docs/state.pt-BR.md`, "Padrão-ouro,
     // reservas e balanço de pagamentos", slice 4, PO5): private claims abroad, long and short,
     // spread by each country's expected return and moved gradually through settlement and the
