@@ -24,6 +24,7 @@ fn pm(i18n: &I18n, x: f64, decimals: usize) -> String {
 /// The terms of a pair, the weighted ones that count, the largest first: (key, points).
 fn terms(t: &Terms, w: &Weights) -> Vec<(&'static str, i32)> {
     let mut out = vec![
+        ("claim", t.claim * w.claim / 1000),
         ("territory", t.territory * w.territory / 1000),
         ("minority", t.minority * w.minority / 1000),
         ("regime", t.regime * w.regime / 1000),

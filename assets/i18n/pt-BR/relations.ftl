@@ -31,3 +31,4 @@ relations-term-trade = comércio
 relations-term-agreement = acordo
 relations-term-common_enemy = inimigo comum
 relations-term-deterrence = dissuasão
+relations-term-claim = reivindicação
