@@ -801,6 +801,45 @@ mod tests {
         }
     }
 
+    /// The base of the service's growth and cost: only the metropole's land army in peace;
+    /// colonial, raised and called-up formations stay out.
+    #[test]
+    fn the_service_sizes_only_the_metropoles_land_army_in_peace() {
+        let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let data = bf_sim::data::GameData::load(&root).expect("game data");
+        let mil = &data.war.as_ref().expect("war data").military;
+        let infantry = mil.unit("infantry").expect("infantry");
+        let form = |colonial, raised, called_up| Formation {
+            unit: infantry,
+            generation: 0,
+            elements: Fixed::from_int(10),
+            colonial,
+            called_up,
+            equipment: Vec::new(),
+            training: Fixed::ONE,
+            raised,
+        };
+        assert!(in_peace_army(mil, &form(false, false, false)));
+        assert!(!in_peace_army(mil, &form(true, false, false)), "colonial");
+        assert!(!in_peace_army(mil, &form(false, true, false)), "raised");
+        assert!(!in_peace_army(mil, &form(false, false, true)), "called up");
+        let navy = mil
+            .types
+            .iter()
+            .position(|t| t.domain != Domain::Land)
+            .expect("a type off land") as u16;
+        assert!(
+            !in_peace_army(
+                mil,
+                &Formation {
+                    unit: navy,
+                    ..form(false, false, false)
+                }
+            ),
+            "off land"
+        );
+    }
+
     #[test]
     fn a_disband_takes_the_raised_first_and_sends_the_highest_index_first() {
         // The peace army (10 elements) and two orders (4 and 6), all of one row.
@@ -859,7 +898,8 @@ pub struct ServiceView {
     pub max_months: u16,
     /// Years a cohort stays in the reserve.
     pub reserve_years: u32,
-    /// The land men in service in peace (reservists called up apart).
+    /// The land men of the army in peace: the metropole's, colonial forces, those raised by
+    /// order and reservists called up apart.
     pub peace_men: i64,
     /// A year of a land man in service: pay, upkeep and wear of his formation's equipment, real
     /// dollars, weighted by the land formations held.
@@ -892,6 +932,15 @@ impl ServiceView {
     }
 }
 
+/// A formation the months of service size: the metropole's land army in peace, without the
+/// colonial forces, those raised by order and the reservists called up.
+pub fn in_peace_army(military: &Military, x: &bf_sim::war::Formation) -> bool {
+    military.types[x.unit as usize].domain == Domain::Land
+        && !x.called_up
+        && !x.colonial
+        && !x.raised
+}
+
 /// The service and reserve of country `ci`; `None` with the switch off or without a reserve.
 pub fn service_view(
     world: &GameWorld,
@@ -908,7 +957,7 @@ pub fn service_view(
     let offers = bf_sim::war::orders_view(world, cat, military, peace, ci, wage_floor);
     let land = |x: &bf_sim::war::Formation| military.types[x.unit as usize].domain == Domain::Land;
     let (mut held, mut cost) = (0i64, 0.0);
-    for x in c.formations.iter().filter(|x| land(x) && !x.called_up) {
+    for x in c.formations.iter().filter(|x| in_peace_army(military, x)) {
         let m = men(military, x);
         held += m;
         if let Some(o) = offers
