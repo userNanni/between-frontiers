@@ -68,7 +68,7 @@ impl MediaState {
         let mut missed = Fixed::ONE;
         for (x, people) in per.iter().zip(&rules.people_per_unit) {
             let covered = (*x * *people / 1000).clamp(Fixed::ZERO, Fixed::ONE);
-            missed = missed * (Fixed::ONE - covered);
+            missed *= Fixed::ONE - covered;
         }
         ((Fixed::ONE - missed) * 1000).to_int_round() as i32
     }
