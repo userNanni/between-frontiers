@@ -137,8 +137,10 @@
             equipment: [("small_arms", 110), ("artillery", 10)],
             upkeep: [("processed_food", 5), ("clothes", 1), ("ammunition", 1)],
             generations: [
-                // Air assault by helicopter; `gas_turbine` stands in for `helicopter` (requested).
-                (requires: ["gas_turbine"],
+                // Air assault by helicopter: the turbine helicopter (the Alouette II of 1955-1956
+                // has no source with a page), so the helicopter and the gas turbine together.
+                // With the switch `helicopter` off, `gas_turbine` alone, as before.
+                (requires: ["helicopter", "gas_turbine"],
                     equipment: Some([("small_arms", 150), ("artillery", 20), ("military_aircraft", 60)]),
                     upkeep: Some([("processed_food", 5), ("fuel", 10), ("clothes", 1), ("ammunition", 2)])),
             ],
@@ -363,8 +365,9 @@
             ],
         ),
         (
-            // `gas_turbine` stands in for `helicopter` (requested).
-            key: "helicopter", domain: Air, mobility: Aircraft, requires: ["gas_turbine"], men: 8,
+            // `helicopter` (1936/1942); with the switch `helicopter` off the tree has no such
+            // technology and the type needs `gas_turbine`, as before (`war::load`).
+            key: "helicopter", domain: Air, mobility: Aircraft, requires: ["helicopter"], men: 8,
             cargo_t: 2, training_weeks: 40,
             equipment: [("military_aircraft", 150)],
             upkeep: [("fuel", 2), ("ammunition", "0.3")],

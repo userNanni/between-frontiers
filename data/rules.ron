@@ -59,6 +59,9 @@
     // cover rule, exits, contagion, returns and the loss of who holds a falling currency. Needs
     // `payments_settle`. Off: every currency floats.
     gold_standard: false,
+    // The technology `helicopter` (1936/1942): the helicopter units need it, air assault needs
+    // it with `gas_turbine`. Off: no such technology; the helicopter units need `gas_turbine`.
+    helicopter: false,
     // The household fuel the countryside gathered (`docs/trade.pt-BR.md`, the trade's sign): rural
     // households buy only the fuel they did not gather (firewood, dung, straw), each country's
     // 1925 share (`data/economy/biomass.ron`) falling as it grows richer. Acts on the week and when

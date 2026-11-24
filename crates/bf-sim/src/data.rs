@@ -632,6 +632,11 @@ impl GameData {
                 if !switches.radium {
                     file.technologies.retain(|t| t.key != "cobalt_teletherapy");
                 }
+                // Without the switch `helicopter` the tree is main's (`war::load` then gives the
+                // helicopter units `gas_turbine`).
+                if !switches.helicopter {
+                    file.technologies.retain(|t| t.key != "helicopter");
+                }
                 file
             })
             .map(|file| TechTree::build(&file, &catalogue).map(Arc::new))

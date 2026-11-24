@@ -1,7 +1,7 @@
 //! The technology tree loads against the economy catalogue, covers every method and good that
 //! did not exist in 1925, has names in every language, keeps its dates inside its eras and adds
 //! up to a century of plausible productivity growth. The data load with the switches read at
-//! load on (`radium`), so the tree checked is the whole one.
+//! load on (`radium`, `helicopter`), so the tree checked is the whole one.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
@@ -15,7 +15,7 @@ fn root() -> PathBuf {
 }
 
 fn load() -> (GameData, TechnologiesFile) {
-    let data = GameData::load_with(&root(), "radium").unwrap();
+    let data = GameData::load_with(&root(), "radium,helicopter").unwrap();
     let text = std::fs::read_to_string(root().join("data/research/technologies.ron")).unwrap();
     let file: TechnologiesFile = ron::from_str(&text).unwrap();
     (data, file)
@@ -32,7 +32,7 @@ fn era_end(era: u8) -> i32 {
 
 #[test]
 fn tree_builds_and_seeds_1925() {
-    let data = GameData::load_with(&root(), "radium").unwrap();
+    let data = GameData::load_with(&root(), "radium,helicopter").unwrap();
     let tree = tree(&data);
     assert!(!tree.techs.is_empty());
     let world = data.new_world();
@@ -52,7 +52,7 @@ fn tree_builds_and_seeds_1925() {
 
 #[test]
 fn every_method_newer_than_1925_has_a_technology() {
-    let data = GameData::load_with(&root(), "radium").unwrap();
+    let data = GameData::load_with(&root(), "radium,helicopter").unwrap();
     let tree = tree(&data);
     let mut missing = Vec::new();
     for (b, building) in data.catalogue.buildings.iter().enumerate() {
@@ -70,7 +70,7 @@ fn every_method_newer_than_1925_has_a_technology() {
 
 #[test]
 fn the_first_method_of_a_1925_building_stays_free() {
-    let data = GameData::load_with(&root(), "radium").unwrap();
+    let data = GameData::load_with(&root(), "radium,helicopter").unwrap();
     let tree = tree(&data);
     for (b, building) in data.catalogue.buildings.iter().enumerate() {
         let first = &building.methods[0];
@@ -87,7 +87,7 @@ fn the_first_method_of_a_1925_building_stays_free() {
 
 #[test]
 fn every_good_newer_than_1925_has_a_technology() {
-    let data = GameData::load_with(&root(), "radium").unwrap();
+    let data = GameData::load_with(&root(), "radium,helicopter").unwrap();
     let tree = tree(&data);
     let missing: Vec<_> = data
         .catalogue
@@ -105,7 +105,7 @@ fn every_good_newer_than_1925_has_a_technology() {
 
 #[test]
 fn every_field_and_era_has_technologies() {
-    let data = GameData::load_with(&root(), "radium").unwrap();
+    let data = GameData::load_with(&root(), "radium,helicopter").unwrap();
     let tree = tree(&data);
     for (f, field) in FIELDS.iter().enumerate() {
         assert!(
@@ -133,7 +133,7 @@ fn every_field_and_era_has_technologies() {
 
 #[test]
 fn every_technology_has_a_name_and_description_in_every_language() {
-    let data = GameData::load_with(&root(), "radium").unwrap();
+    let data = GameData::load_with(&root(), "radium,helicopter").unwrap();
     let tree = tree(&data);
     for lang in ["pt-BR", "en"] {
         let text = std::fs::read_to_string(root().join(format!("assets/i18n/{lang}/research.ftl")))
@@ -170,7 +170,7 @@ fn every_technology_has_a_name_and_description_in_every_language() {
 
 #[test]
 fn dates_fall_inside_the_era() {
-    let data = GameData::load_with(&root(), "radium").unwrap();
+    let data = GameData::load_with(&root(), "radium,helicopter").unwrap();
     let tree = tree(&data);
     // A breakthrough may be shown a few years before its era or reach industry a few years after.
     const SLACK: i32 = 5;
@@ -209,7 +209,7 @@ fn dates_fall_inside_the_era() {
 
 #[test]
 fn costs_grow_with_the_era() {
-    let data = GameData::load_with(&root(), "radium").unwrap();
+    let data = GameData::load_with(&root(), "radium,helicopter").unwrap();
     let tree = tree(&data);
     // In the research points of laboratories that cost (`tools/research/convert_tree.py`,
     // `docs/research.pt-BR.md`, "A árvore na unidade nova"): the head-count ranges times the
@@ -237,7 +237,7 @@ fn costs_grow_with_the_era() {
 
 #[test]
 fn requirements_come_from_the_same_era_or_before() {
-    let data = GameData::load_with(&root(), "radium").unwrap();
+    let data = GameData::load_with(&root(), "radium,helicopter").unwrap();
     let tree = tree(&data);
     for t in &tree.techs {
         for &r in &t.requires {
@@ -249,7 +249,7 @@ fn requirements_come_from_the_same_era_or_before() {
 
 #[test]
 fn every_technology_after_1925_grows_from_another() {
-    let data = GameData::load_with(&root(), "radium").unwrap();
+    let data = GameData::load_with(&root(), "radium,helicopter").unwrap();
     let tree = tree(&data);
     for t in &tree.techs {
         assert!(
@@ -262,7 +262,7 @@ fn every_technology_after_1925_grows_from_another() {
 
 #[test]
 fn research_cost_grows_along_every_requirement() {
-    let data = GameData::load_with(&root(), "radium").unwrap();
+    let data = GameData::load_with(&root(), "radium,helicopter").unwrap();
     let tree = tree(&data);
     for t in &tree.techs {
         for &r in &t.requires {
@@ -285,7 +285,7 @@ fn the_fields_feed_each_other() {
     // One tree, not twelve: much of what a field needs comes from another, and every field
     // passes something on (the military to civilian life, schooling to science, mining to
     // materials).
-    let data = GameData::load_with(&root(), "radium").unwrap();
+    let data = GameData::load_with(&root(), "radium,helicopter").unwrap();
     let tree = tree(&data);
     let mut edges = 0;
     let mut across = 0;
@@ -315,7 +315,7 @@ fn the_fields_feed_each_other() {
 
 #[test]
 fn levels_are_filled_and_ask_for_more_research() {
-    let data = GameData::load_with(&root(), "radium").unwrap();
+    let data = GameData::load_with(&root(), "radium,helicopter").unwrap();
     let tree = tree(&data);
     let levels = usize::from(tree.levels());
     assert!(
@@ -385,7 +385,7 @@ fn the_1925_start_is_consistent() {
 /// technologies of a group lands near 1.55 (x4.7). Services gain much less (Baumol).
 #[test]
 fn productivity_adds_up_to_a_century_of_growth() {
-    let data = GameData::load_with(&root(), "radium").unwrap();
+    let data = GameData::load_with(&root(), "radium,helicopter").unwrap();
     let tree = tree(&data);
     let mut sums: BTreeMap<&str, f64> = BUILDING_GROUPS.iter().map(|g| (*g, 0.0)).collect();
     for t in tree.techs.iter().filter(|t| t.era > 0) {
