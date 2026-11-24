@@ -127,6 +127,9 @@ pub struct OccupationRules {
     pub devastation_cap: i32,
     /// Civilians killed per week of full combat, per million people of each state.
     pub civilians_per_million: i64,
+    /// Scorched earth (`war::scorch`); `None` with the switch `scorched_earth` off.
+    #[serde(default)]
+    pub scorched: Option<super::scorch::ScorchRules>,
 }
 
 /// What a country's support was made of in a week, per mille: the screen shows it term by term.

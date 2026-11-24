@@ -2669,8 +2669,8 @@ na Segunda Guerra, e a Polônia mais de um terço da riqueza nacional (Harrison,
   com teto, e mata civis por idade, mais nas cidades; a fila de obras reconstrói. É gradual, como
   a frente que demora.
 - **Alternativa:** um golpe único quando o controle muda.
-- **A terra arrasada** (destruir ao recuar, como a União Soviética em 1941) fica para depois,
-  como ordem de postura.
+- **A terra arrasada** (destruir ao recuar, como a União Soviética em 1941): seção "Terra
+  arrasada", abaixo.
 
 **(c) Guarnição e polícia militar.** O ocupante precisa de tropa no território para manter o
 controle. A referência é Quinlivan (1995): cerca de 20 homens de segurança por mil habitantes para
@@ -2735,6 +2735,54 @@ at War*; Offer, A. (1989), *The First World War: An Agrarian Interpretation*; Mi
 Can a Victor Force the Vanquished to Pay?", *Journal of Economic History* 68(1); Harrison, M.
 (1998), *The Economics of World War II*; Quinlivan, J. (1995), "Force Requirements in Stability
 Operations", *Parameters* 25(4).
+
+#### Terra arrasada (atrás de `scorched_earth`, desligada; rascunho)
+
+Desenho do orquestrador (2026-11-24), save 47. As escolhas TE1 a TE5 estão com o dono; o rascunho
+usa as recomendadas, todas reversíveis, e o PR não sai do rascunho sem a resposta. Código em
+`war/scorch.rs` e no passo de conduta da guerra (`fight::conduct_week`); regra em
+`data/military/war.ron`, `occupation.scorched`.
+
+| Peça | Como é na vida real | No jogo | Muda a simulação? |
+|---|---|---|---|
+| A ordem | um governo manda destruir o que o inimigo vai tomar; ordem rara e sem volta | o jogador dá e retira nas Agendas (`SetScorchedEarth { tag, enemy, on }`), em dois passos e com ponto de restauração; vale contra o inimigo e todo o lado dele na guerra. A IA não dá (fase 6) | só com a regra ligada |
+| Quando queima (TE1 a) | nos últimos dias antes da retirada; o que cai de surpresa queima pouco | na semana em que a região passa ao outro lado, um golpe só, com a parcela pelas semanas em que a região esteve em luta: `cap` (500 por mil) vezes semanas / `full_weeks` (4). **Valores de desenho**, sem fonte | sim |
+| O que queima (TE2 a) | as fábricas, as minas e a energia primeiro (a represa do Dnieper em 1941) | os grupos `military_industry`, `heavy_industry`, `energy`, `extraction`, `light_industry`, `infrastructure`, nessa ordem, o maior edifício primeiro; depois o resto. **Dependência:** não há estoque de comida por região para queimar | sim |
+| Terra ocupada (TE4 a) | o ocupante também arrasa ao recuar (Alemanha, 1943) | a mesma ordem vale para a terra que o país ocupa e perde | sim |
+| Preço político (TE5 a) | — | nenhum nesta fatia; o custo é a terra devastada que volta | — |
+| Evacuar em vez de destruir (TE3 a) | a URSS levou fábricas ao interior em 1941, sem plano prévio, com custo enorme de transporte e construção, e elas reabriram sem operários, energia nem insumos (Harrison, 1992, pp. 7 e 16–17) | fatia separada, depois desta | — |
+
+**Medido** (`war_scorch::what_falls_burns_with_the_order`: a Hungria, jogada, declara à
+Tchecoslováquia e dá a ordem; regra de colapso desligada para a guerra seguir):
+- até junho de 1925 caem 7 regiões húngaras, a Tchecoslováquia e os aliados; queimam 524 níveis,
+  12,5 % a 25 % de cada região (uma a duas semanas de luta antes da queda);
+- em junho, as 7 regiões têm 2.874 níveis com a ordem e 3.139 sem ela (a regra desligada dá o
+  mesmo que sem a ordem);
+- a extração do ocupante é uma parcela do PIB do ano anterior: não muda em 1925 e cai um terço em
+  1926 (85 contra 126 milhões por semana em março).
+
+**Achado (não é desta fatia):** a construção não conhece o controle. O dono segue investindo e
+reconstruindo na terra que o inimigo ocupa: dos 524 níveis queimados, a diferença é de 265 em junho
+e de 128 em março de 1926. Vale também para a devastação do combate. Fica para quem tem a
+construção, com a pergunta de quem investe na terra ocupada.
+
+**Contexto, sem número no dado:** 1.523 empresas evacuadas na URSS em 1941–42 (ensaio da MSU,
+**sem página**; a fonte primária é Lieberman, *Soviet Studies* 35(1), 1983, não aberta); 28 mil
+vilarejos queimados no recuo alemão da Ucrânia em 1943 (**sem fonte com página**); o decreto Nero
+de 19 de março de 1945, cumprido em parte (texto no GHDI, **sem página verificada**).
+
+**Tela (esboço, para o thread da interface).** A ordem é rara e sem volta (regra do dono): quem dá
+e quem retira é a Agenda, não a janela da Guerra.
+- **Agendas → Decisões → "Terra arrasada contra {inimigo}…"**: as regiões do país em luta com o
+  inimigo, cada uma com os níveis de edifício, a parcela do PIB e as semanas de luta; a parcela que
+  queimaria se caísse esta semana; "Dar a ordem" em dois passos, com ponto de restauração (motivo
+  "terra arrasada"); com a ordem dada, "Retirar a ordem" pela mesma entrada.
+- **Janela "Guerra", na frente:** só leitura — "Terra arrasada: ordem dada / sem ordem", as
+  regiões em risco e o que já queimou (`ScorchState::burned`: região, níveis, parcela, para quem
+  caiu).
+- Campos: `world.war.scorch.orders` (país, inimigo), `threatened` (região, semanas),
+  `burned: Vec<Burn { region, by, to, levels, share, day }>`; regra em
+  `occupation.scorched` (`cap`, `full_weeks`, `first`).
 
 ## Mar e ar (fatia C2, desenho)
 

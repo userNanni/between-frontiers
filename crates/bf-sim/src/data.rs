@@ -934,6 +934,25 @@ impl GameData {
                     .war
                     .as_ref()
                     .and_then(|w| w.conduct.clone())
+                    .map(|mut c| {
+                        // Scorched earth only with its switch; its groups resolved to kinds.
+                        if !switches.scorched_earth {
+                            c.occupation.scorched = None;
+                        }
+                        if let Some(s) = c.occupation.scorched.as_mut() {
+                            s.ranks = self
+                                .catalogue
+                                .buildings
+                                .iter()
+                                .enumerate()
+                                .filter_map(|(k, b)| {
+                                    let r = s.first.iter().position(|g| *g == b.group)?;
+                                    Some((k as u16, r as u16))
+                                })
+                                .collect();
+                        }
+                        c
+                    })
                     .and_then(|c| {
                         crate::war::support::Conduct::resolve(c, self.politics.clone()).ok()
                     })

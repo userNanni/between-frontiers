@@ -230,6 +230,8 @@ pub struct FightWeek {
     /// Occupation money: (owner, occupier, amount).
     pub transfers: Vec<super::occupation::Transfer>,
     pub devastation: super::occupation::Devastation,
+    /// Scorched earth's state after the week, with its switch on.
+    pub scorch: Option<super::scorch::ScorchState>,
 }
 
 /// The land strength of a country: men, the fire and protection of what it holds, and its
@@ -647,7 +649,14 @@ pub fn fight_week(
                 })
             })
         });
-        conduct_week(setup, world, &mut out, held.as_ref(), player);
+        conduct_week(
+            setup,
+            world,
+            &mut out,
+            held.as_ref(),
+            player,
+            date.to_days(),
+        );
         return out;
     }
     // Each country's land strength, spread evenly over its segments. A metropole fighting its
@@ -1160,7 +1169,14 @@ pub fn fight_week(
     out.fighting.still.sort();
     out.fighting.still.dedup_by_key(|x| (x.0, x.1));
     out.fighting.last_week = out.segments.clone();
-    conduct_week(setup, world, &mut out, held.as_ref(), player);
+    conduct_week(
+        setup,
+        world,
+        &mut out,
+        held.as_ref(),
+        player,
+        date.to_days(),
+    );
     out.air_lost = air_lost
         .into_iter()
         .map(|((c, u, g), n)| (c, u, g, Fixed::from_int(n as i64)))
@@ -1269,6 +1285,7 @@ fn conduct_week(
     out: &mut FightWeek,
     held: Option<&BTreeMap<u16, (u64, u64)>>,
     player: Option<u16>,
+    day: i64,
 ) {
     let Some(k) = setup.conduct.as_ref() else {
         return;
@@ -1286,6 +1303,29 @@ fn conduct_week(
         &mut out.fighting,
         &out.segments,
     );
+    // Scorched earth: the regions taken in this week's combat, before any peace hands them back.
+    if let Some(rules) = k.rules.occupation.scorched.as_ref() {
+        let regions = &world.econ.regions;
+        let mut fought = Vec::new();
+        let mut taken = Vec::new();
+        for g in &out.segments {
+            let km = g.outcome.advance_km;
+            if km != Fixed::ZERO {
+                fought.push(if km.is_positive() { g.into } else { g.from });
+            }
+            for r in [g.from, g.into] {
+                let owner = regions[r as usize].market;
+                let before = world.war.fighting.controller(r, owner);
+                let after = out.fighting.controller(r, owner);
+                if before != after && !taken.iter().any(|(t, _, _)| *t == r) {
+                    taken.push((r, before, after));
+                }
+            }
+        }
+        let (state, burn) = super::scorch::week(rules, world, &fought, &taken, day);
+        out.devastation.scorched = burn;
+        out.scorch = Some(state);
+    }
     out.support = super::support::support_week(
         k,
         setup,

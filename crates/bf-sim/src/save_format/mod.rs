@@ -94,7 +94,7 @@ pub const WORLD_MAGIC: [u8; 4] = *b"BFWD";
 ///
 /// Versions 12 and 13 were held for the orders and the independence PRs; 14 landed first, so
 /// the orders came after it, and 12 and 13 were never written.
-pub const WORLD_VERSION: u32 = 46;
+pub const WORLD_VERSION: u32 = 47;
 
 /// Why a snapshot does not read.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -257,7 +257,8 @@ pub fn migrate(v: u32, body: &[u8]) -> Result<GameWorld, SaveError> {
         43 => return Ok(v43_to_v44(decode_snapshot(body)?)),
         44 => return Ok(v44_to_v45(decode_snapshot(body)?)),
         45 => return Ok(v45_to_v46(decode_snapshot(body)?)),
-        46 => return decode_snapshot(body),
+        46 => return Ok(v46_to_v47(decode_snapshot(body)?)),
+        47 => return decode_snapshot(body),
         _ => return Err(SaveError::Malformed(format!("unknown world version {v}"))),
     };
     Ok(v15_to_v16(v14_to_v15(v11_to_v14(v11))))

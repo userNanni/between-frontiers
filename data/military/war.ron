@@ -109,6 +109,21 @@
         devastation_full_losses: 5000,
         devastation_cap: 400,
         civilians_per_million: 20,
+        // Scorched earth (`war::scorch`; switch `scorched_earth`, off). The owner's TE1 to TE5
+        // are pending; the recommended ones are in place. The Soviet Union evacuated and
+        // destroyed as it fell back in 1941, without a plan made beforehand (Harrison,
+        // "Barbarossa: the Soviet Response, 1941", 1992, p. 7); the war destroyed about a
+        // quarter of its pre-war capital (Harrison, "war economy", Encyclopedia of Russian
+        // History, 2003, p. 2). No source gives the share a retreat destroyed:
+        // - cap: most of a region's plant levels burned, per mille. DESIGN VALUE.
+        // - full_weeks: weeks of fighting over the region for the whole cap. DESIGN VALUE.
+        // - first: groups burned first (TE2 a), in order; the rest after.
+        scorched: Some((
+            cap: 500,
+            full_weeks: 4,
+            first: ["military_industry", "heavy_industry", "energy", "extraction",
+                "light_industry", "infrastructure"],
+        )),
     ),
     // The colonial war (G6; docs/war.pt-BR.md, "Guerra colonial"). GC1 to GC5 are the owner's
     // questions, with the recommendation in place until answered.
