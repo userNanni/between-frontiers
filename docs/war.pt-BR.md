@@ -1369,6 +1369,27 @@ de leitura em `tools/war/SOURCES.md`). Contagem: 44 países, 187 linhas, das qua
 - O *Armaments Year-Book* de 1925-26 daria números de 1924-25 e a divisão por arma; não foi achado
   em scan aberto.
 
+### Helicóptero (atrás de `helicopter`, desligada)
+
+- **Tecnologia `helicopter`:** demonstrada em 1936 e industrial em 1942. O Focke-Achgelis Fw 61
+  voou em 1936 e "is considered to be the world's first practical helicopter"; o Flettner foi
+  "produced for military use between 1942 and 1945"; o Sikorsky R-4 foi o primeiro helicóptero de
+  série (ASME, "VS-300 Helicopter (1939)", National Historic Engineering Landmark 95, 1984, p. 2).
+  Custo 99, **valor de desenho** (dentro da faixa da era 1, sem a conversão por cabeça); sem
+  produtividade, para não mexer nas somas calibradas dos grupos.
+- **Quem pede:** o tipo `helicopter` pede `helicopter`; o assalto aéreo do `airborne` pede
+  `helicopter` e `gas_turbine` juntos, porque o assalto aéreo em massa veio com a turbina, e o
+  helicóptero a turbina (Alouette II, 1955–1956) não tem fonte com página.
+- **Desligada:** a árvore não tem `helicopter`, e os dois pedem `gas_turbine`, como antes
+  (`war::load`).
+- **Medido, com a regra ligada** (`helicopter::who_flies_helicopters_and_when`):
+  - o primeiro a industrializar é os EUA, em 1940 (a história: 1942); a Alemanha em 1942, o Reino
+    Unido em 1944, a China e a URSS em 1946, o Japão em 1947, a França e a Itália em 1948;
+  - 73 países são industriais no helicóptero em 1970; a turbina a gás chega a cada um 7 a 11 anos
+    depois, então o helicóptero voa de 1940 a 1949 onde antes só voava com a turbina;
+  - a série de 101 anos sai da faixa um pouco acima do acaso em algumas décadas (até 10 de 166
+    territórios, 6 %, contra 5 % por acaso): a tecnologia nova toma pesquisa de outras.
+
 ## Dependências de outros donos
 
 Funções que faltam e que a guerra lê, mas que pertencem a outro sistema (anotadas em 2026-11-19, na ordem do orquestrador):
@@ -1389,13 +1410,19 @@ Nada disto foi acrescentado aqui: muda o hash da economia ou da árvore e colide
 trabalhos.
 
 - **Bens (`goods.ron`):** `missiles` (míssil guiado e de cruzeiro, hoje coberto por `artillery` e
-  `electronic_components`), `nuclear_warheads` (hoje `nuclear_fuel` mais `explosives`),
+  `electronic_components`; **não feito**, decidido em 2026-11-24: um bem próprio com fábrica e
+  métodos mexe na economia e no hash de 1925, e as gerações com míssil já pedem os bens que o
+  míssil gasta), `nuclear_warheads` (hoje `nuclear_fuel` mais `explosives`),
   `military_trucks` (hoje `automobiles`), `military_electronics` (radar, sonar, guerra eletrônica;
   hoje `electronic_components`), `satellites` (hoje `electronic_components` e `machinery`).
-- **Tecnologias (`technologies.ron`):** `helicopter` (o tipo `helicopter` usa `gas_turbine` como
-  substituto), `sonar` (as gerações antissubmarino usam `radar`), `amphibious_warfare` (o
+- **Tecnologias (`technologies.ron`):** `helicopter`, **feito** atrás da chave `helicopter`
+  (seção "Helicóptero" abaixo), `sonar` (as gerações antissubmarino usam `radar`), `amphibious_warfare` (o
   `transport` não tem geração de desembarque), `airborne_forces` (o `airborne` usa
   `stressed_skin_aircraft`), `aerial_refueling`.
+- **Não feitos, decididos em 2026-11-24:** o míssil tático balístico (Scud, Lance): a artilharia
+  com `precision_guided_munitions` cobre o papel no combate de terra. O míssil de cruzeiro como
+  vetor nuclear próprio também não se faz: a sobrevivência que ele dá ao bombardeiro é dado da
+  geração `cruise_missile` do `strategic_bomber`.
 - **Mapa:** feito. Terreno por estado (`map-pipeline.pt-BR.md`, "Terreno") e zonas marítimas
   (decisão 3).
 - **Política:** grupo de leis de serviço militar com idade (hoje a idade fica em `rules.ron`);
