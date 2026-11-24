@@ -230,6 +230,94 @@ pub struct FightWeek {
     /// Occupation money: (owner, occupier, amount).
     pub transfers: Vec<super::occupation::Transfer>,
     pub devastation: super::occupation::Devastation,
+    /// The fronts under orders after the week, with their switch on.
+    pub fronts: Option<super::fronts::FrontsState>,
+}
+
+/// (enemy, the enemy's region, my region) of a segment, for a side.
+type SegmentSide = (u16, u32, u32);
+
+/// The men of a country with fronts under orders (G2) on each segment of its main theatre, in
+/// the order of `on` (enemy, their region, my region) and `segs`: each front gets its share of
+/// `men`, spread over its segments as before (evenly, the objective's weighing
+/// `objective_weight`; a third generation concentrates on its focus); the reserve's
+/// `reserve_step` joins the segment where the country lost the most ground last week. Returns the
+/// men, the theatre's focus (the largest front's) and the region the reserve reinforced.
+#[allow(clippy::too_many_arguments)]
+fn front_men(
+    rules: &super::catalogue::Rules,
+    r: &super::fronts::FrontRules,
+    cf: &super::fronts::CountryFronts,
+    men: u64,
+    generation: Generation,
+    on: &[(u16, u32, u32)],
+    segs: &[Segment],
+    last_week: &[SegmentWeek],
+    c: u16,
+) -> (Vec<u64>, Option<usize>, Option<u32>) {
+    let mut per: Vec<(u16, u64)> = Vec::new();
+    for (e, _, _) in on {
+        match per.iter_mut().find(|(x, _)| x == e) {
+            Some(x) => x.1 += 1,
+            None => per.push((*e, 1)),
+        }
+    }
+    per.sort();
+    let line = cf.on_line(&per);
+    let mut list = vec![0u64; on.len()];
+    let mut focus: Option<(u64, usize)> = None;
+    for &(e, share) in &line {
+        let idx: Vec<usize> = (0..on.len()).filter(|&i| on[i].0 == e).collect();
+        let here = men * u64::from(share) / 1000;
+        if generation == Generation::Third && idx.len() > 1 {
+            let mine: Vec<Segment> = idx.iter().map(|&i| segs[i]).collect();
+            let shares = super::doctrine::allocate_front(rules, here, &mine, Generation::Third);
+            for (k, x) in shares.iter().enumerate() {
+                list[idx[k]] = x.elements;
+                if x.focus && focus.is_none_or(|(m, _)| here > m) {
+                    focus = Some((here, idx[k]));
+                }
+            }
+        } else {
+            let weights: Vec<Fixed> = idx
+                .iter()
+                .map(|&i| {
+                    if segs[i].objective {
+                        Fixed::from_ratio(i64::from(r.objective_weight), 1000)
+                    } else {
+                        Fixed::ONE
+                    }
+                })
+                .collect();
+            for (k, m) in apportion(here, &weights).into_iter().enumerate() {
+                list[idx[k]] = m;
+            }
+        }
+    }
+    // The reserve: where the enemy advanced most into this country last week.
+    let lost = last_week
+        .iter()
+        .filter_map(|g| {
+            let km = g.outcome.advance_km;
+            let (mine, theirs, back) = if g.a == c {
+                (g.from, g.into, -km)
+            } else if g.b == c {
+                (g.into, g.from, km)
+            } else {
+                return None;
+            };
+            back.is_positive().then_some((back, mine, theirs))
+        })
+        .max_by(|x, y| x.0.cmp(&y.0).then(y.1.cmp(&x.1)));
+    let mut reinforced = None;
+    if let Some((_, mine, theirs)) = lost
+        && let Some(i) = on.iter().position(|&(_, t, m)| t == theirs && m == mine)
+    {
+        let reserve = men * u64::from(cf.reserve_now) / 1000;
+        list[i] += reserve * u64::from(r.reserve_step) / 1000;
+        reinforced = Some(mine);
+    }
+    (list, focus.map(|(_, i)| i), reinforced)
 }
 
 /// The land strength of a country: men, the fire and protection of what it holds, and its
@@ -570,6 +658,17 @@ pub fn fight_week(
         fighting: world.war.fighting.clone(),
         ..Default::default()
     };
+    // The fronts under orders (G2): the men move toward the shares set, a week at a time.
+    let front_rules = setup.conduct.as_ref().and_then(|k| k.rules.fronts.clone());
+    let mut fronts = front_rules.as_ref().map(|r| {
+        let mut f = world.war.fronts.clone();
+        for c in &mut f.countries {
+            c.step(r.transfer_per_week);
+            c.reinforced = None;
+        }
+        f
+    });
+    out.fronts = fronts.clone();
     // The generation of the armies, the first week of each month (step 4).
     if date.day <= 7 {
         doctrine_month(
@@ -758,6 +857,8 @@ pub fn fight_week(
     // Each theatre's segments in the order the loop below takes them: width and the enemy's
     // even share of fire, for the third generation's focus.
     let mut segs_of: BTreeMap<(u16, u16), Vec<Segment>> = BTreeMap::new();
+    // For each theatre's segments, in the same order: the enemy, and the region it holds there.
+    let mut enemy_on: BTreeMap<(u16, u16), Vec<SegmentSide>> = BTreeMap::new();
     for &(from, into, a, b) in &segments {
         let (sa, sb) = (regions[from as usize].state, regions[into as usize].state);
         let width = setup
@@ -772,14 +873,27 @@ pub fn fight_week(
                 .filter(|(k, _)| k.0 == enemy)
                 .map(|(_, n)| *n)
                 .sum();
+            let their = if me == a { into } else { from };
+            // A front aiming at a state: its segments into that state (G2).
+            let objective = fronts
+                .as_ref()
+                .and_then(|f| f.of(me))
+                .and_then(|f| f.fronts.iter().find(|o| o.enemy == enemy))
+                .and_then(|o| o.objective)
+                .is_some_and(|st| regions[their as usize].state == st);
             segs_of
                 .entry((me, theatre(me, enemy)))
                 .or_default()
                 .push(Segment {
                     length_km: width,
                     enemy_power: e.fire / Fixed::from_int(enemy_segments.max(1) as i64),
-                    objective: false,
+                    objective,
                 });
+            let mine = if me == a { from } else { into };
+            enemy_on
+                .entry((me, theatre(me, enemy)))
+                .or_default()
+                .push((enemy, their, mine));
         }
     }
     // The men of each theatre: a colonial one has its cap, the main army the rest.
@@ -802,6 +916,35 @@ pub fn fight_week(
         .iter()
         .map(|(&(c, t), &n)| {
             let men = pool(c, t);
+            // Fronts under orders (G2), in the main theatre: each front's share of the men,
+            // the reserve and those in transit off the lines.
+            if let (Some(r), Some(cf), true) = (
+                front_rules.as_ref(),
+                fronts.as_ref().and_then(|f| f.of(c)).cloned(),
+                t == u16::MAX,
+            ) {
+                let (list, focus, reinforced) = front_men(
+                    &mil.rules,
+                    r,
+                    &cf,
+                    men,
+                    generations[&c],
+                    &enemy_on[&(c, t)],
+                    &segs_of[&(c, t)],
+                    &world.war.fighting.last_week,
+                    c,
+                );
+                if let Some(i) = focus {
+                    focus_of.insert((c, t), i);
+                }
+                if let Some(x) = fronts
+                    .as_mut()
+                    .and_then(|f| f.countries.iter_mut().find(|x| x.country == c))
+                {
+                    x.reinforced = reinforced;
+                }
+                return ((c, t), list);
+            }
             if generations[&c] == Generation::Third && n > 1 {
                 let shares = super::doctrine::allocate_front(
                     &mil.rules,
@@ -818,6 +961,7 @@ pub fn fight_week(
             }
         })
         .collect();
+    out.fronts = fronts.clone();
     // Where a second-generation army puts its mobile class (item 12): the segment where the
     // enemy is weakest per km, as the third generation's focus, without the concentration of
     // its other men.

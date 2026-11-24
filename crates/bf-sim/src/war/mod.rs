@@ -25,6 +25,7 @@ pub mod crisis;
 pub mod doctrine;
 pub mod fight;
 pub mod forces;
+pub mod fronts;
 pub mod ledger;
 pub mod nuclear;
 pub mod nuclear_use;

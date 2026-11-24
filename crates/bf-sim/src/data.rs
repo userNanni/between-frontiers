@@ -934,6 +934,13 @@ impl GameData {
                     .war
                     .as_ref()
                     .and_then(|w| w.conduct.clone())
+                    .map(|mut c| {
+                        // Fronts under orders only with their switch.
+                        if !switches.fronts {
+                            c.fronts = None;
+                        }
+                        c
+                    })
                     .and_then(|c| {
                         crate::war::support::Conduct::resolve(c, self.politics.clone()).ok()
                     })
