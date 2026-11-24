@@ -377,10 +377,12 @@ impl PoliticsSystem {
                 }
             }
         }
-        if let (Some(rc), true) = (self.regime_change, hidden > 0) {
-            if let Some(st) = movements.get_mut(rc) {
-                st.support = (i32::from(st.support) + hidden).clamp(0, 1000) as u16;
-            }
+        if let Some(st) = self
+            .regime_change
+            .filter(|_| hidden > 0)
+            .and_then(|rc| movements.get_mut(rc))
+        {
+            st.support = (i32::from(st.support) + hidden).clamp(0, 1000) as u16;
         }
         let legitimacy = (1000 - mobilized_total * LEGITIMACY_LOSS).clamp(0, 1000);
         out.movements.push((c, movements, legitimacy as u16));
