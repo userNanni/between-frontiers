@@ -1036,6 +1036,8 @@ impl Forces {
         let needs = |c: &CountryWar| needs_of(mil, &self.peace, c, combat);
         let (first, _) = needs(&c);
         let mut spare = room - price(&first);
+        // The room over the needs: what goes to the depot when nothing else takes it.
+        let surplus = spare;
         let before: Vec<(Fixed, Fixed)> = c
             .queue
             .iter()
@@ -1116,10 +1118,11 @@ impl Forces {
             // twice what they make, leaving the money unspent. What a formation uses goes to its
             // equipment; ammunition bought this way is used up in training.
             let left = room - cost;
-            // Each January a country without a player turns a share of the year's leftover into
-            // new ships and aircraft (`war::ai_orders`), with the war switched on.
+            // Each January a country without a player turns a share of the room over its needs
+            // (what would go to the depot over the year) into new ships and aircraft
+            // (`war::ai_orders`), with the war switched on.
             if new_year
-                && left.is_positive()
+                && surplus.is_positive()
                 && !c.mobilized
                 && let (Some(fight), Some(rule)) = (self.fight.as_ref(), &self.peace.ai_orders)
             {
@@ -1136,7 +1139,8 @@ impl Forces {
                         .unwrap_or_default();
                     let coastal = fight.colonial.as_ref().map(|k| &k.coastal);
                     let w = super::ai_orders::weights(rule, world, ci, coastal);
-                    let budget = (left * 52).mul_ratio(i64::from(rule.share), 1000);
+                    let budget =
+                        (surplus.max(Fixed::ZERO) * 52).mul_ratio(i64::from(rule.share), 1000);
                     let caps = super::ai_orders::caps(world, &tag);
                     let new =
                         super::ai_orders::orders(mil, &c, budget, w, &caps, &m.price, &newest);

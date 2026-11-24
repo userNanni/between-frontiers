@@ -24,7 +24,7 @@ use crate::treaty::{ArmsCategory, ClauseKind};
 /// `data/military/peace.ron`, `ai_orders`. Per mille throughout.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AiOrderRule {
-    /// Share of the year's leftover (the room above the needs that went to the depot) ordered
+    /// Share of a year of the room above the needs (what would go to the depot) ordered
     /// as new formations.
     pub share: u32,
     /// The sea's weight: a base, plus this per mille of the metropole's states with a port, plus
