@@ -81,28 +81,31 @@ ascensão, em declínio, pequeno.
 ## Conferência (medida, não meta)
 
 Teste `relations::against_the_correlates_of_war`:
-- o CINC de 1925 do jogo contra o do NMC v7.0 (os 30 mais fortes);
+- o CINC de 1925 do jogo contra o do NMC v7.0 (os 30 mais fortes do NMC);
 - os pares com disputa militarizada em algum ano de 1925 a 1939 (Dyadic MID v4.03; Maoz e Miner,
   *Dyadic MID Codebook v4.02*, 2021, p. 1) contra os pares mais hostis do jogo no mesmo período.
 
+**Os dados do Correlates of War não estão no repositório.** Os termos do projeto ("Users agree
+not to distribute the dataset to any third party without written permission of the COW director
+and data host", correlatesofwar.org, "Data Sets") não deixam: o teste lê os arquivos baixados na
+hora de `BF_COW_DIR` (`NMC-70-abridged.csv` do `NMCv7.zip`, `dyadic_mid_4.03.csv` do
+`dyadic_mid_4.03_update.zip`) e fica fora do CI. Aqui entra só o resumo do resultado.
+
 **Medido** (a regra ligada, 1925 a 1939, a hostilidade mais alta de cada par no período):
 
-- **CINC de 1925, por mil, jogo contra NMC:** EUA 178 contra 254 (o primeiro nos dois), China 147
-  contra 138, Reino Unido 71 contra 96, França 69 contra 60, URSS 58 contra 102, Alemanha 57 contra
-  82, Japão 44 contra 40, Itália 32 contra 31, Polônia 20 contra 23. O erro maior é os Países
-  Baixos: 29 contra 6,6, porque o jogo junta as Índias Orientais à metrópole na população e no
-  gasto. A URSS e a Alemanha ficam abaixo pelo gasto e pelo pessoal militar (a Alemanha de
-  Versalhes: 18 por mil do pessoal).
-- **Grandes potências pelo limiar de 25 por mil:** as sete do COW e mais a China e os Países
-  Baixos (o jogo dá à China o pessoal e a população).
+- **CINC de 1925:** os EUA são o mais forte no jogo e no NMC, e a China o segundo nos dois. Depois o
+  jogo põe o Reino Unido e a França à frente da URSS e da Alemanha, que o NMC põe em terceiro e
+  quinto; Japão e Itália ficam no lugar. O pior erro é os Países Baixos: 29 por mil no jogo, perto
+  de 7 no NMC, porque o jogo junta as Índias Orientais à metrópole. URSS e Alemanha ficam abaixo pelo
+  gasto e pelo pessoal militar.
+- **Grandes potências pelo limiar de 25 por mil:** as sete do COW e mais a China e os Países Baixos.
 - **Disputas militarizadas:** dos 93 pares com disputa entre 1925 e 1939, **13** estão entre os 93
   mais hostis do jogo.
-- **Os piores erros, pares com mais anos de disputa e pouca hostilidade:** Bolívia e Paraguai
-  (12 anos, a Guerra do Chaco; hostilidade 28), Equador e Peru (7; 28), França e Turquia, Bélgica e
-  Alemanha, França e Alemanha, Bulgária e Grécia, Japão e Mongólia (0). A causa comum: a disputa
-  de fronteira entre vizinhos sem minoria nem terra perdida no jogo (o Chaco, a fronteira
-  amazônica) não tem termo, e o comércio e os acordos em vigor (Locarno) puxam França e Alemanha a
-  zero. China e Japão (17 anos) ficam em 159, e Japão e URSS em 142: medidos, mas abaixo do topo.
+- **Os piores erros, pares com mais anos de disputa e pouca hostilidade:** Bolívia e Paraguai (a
+  Guerra do Chaco; hostilidade 28), Equador e Peru (28), e França e Turquia, Bélgica e Alemanha,
+  França e Alemanha, Bulgária e Grécia, Japão e Mongólia (0). A causa comum: a disputa de fronteira
+  sem minoria nem terra perdida no jogo não tem termo, e o comércio e os acordos em vigor (Locarno)
+  puxam França e Alemanha a zero. China e Japão, o par com mais anos de disputa, fica em 159.
 - **Os falsos alarmes, os mais hostis sem disputa:** Andorra e Espanha (478), Albânia e Iugoslávia
   (473), Afeganistão e Índia (419), Suíça e França (393), Reino Unido e Irlanda (350): o termo de
   minoria domina nos países pequenos ao lado de um vizinho grande com a mesma cultura.

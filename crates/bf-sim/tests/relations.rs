@@ -1,7 +1,7 @@
 //! The relations' measures (`relations`, switch `relations`, off), read only, against the
 //! Correlates of War, measured and not tuned:
-//! - the CINC of 1925 of the National Material Capabilities v7.0 (`cinc`; the computation:
-//!   NMC Documentation v7.0, "CINC Score", p. 8);
+//! - the CINC of 1925 of the National Material Capabilities v7.0 (the computation: NMC
+//!   Documentation v7.0, "CINC Score", p. 8);
 //! - the pairs with a militarized interstate dispute in some year from 1925 to 1939, with the
 //!   number of dyad-years (Dyadic MID v4.03; Maoz and Miner, Dyadic MID Codebook v4.02, 2021,
 //!   p. 1: a record per directed dyad and year, here counted once per pair and year).
@@ -17,136 +17,101 @@ use bf_sim::game::{GameWorld, Session};
 use bf_sim::relations::{Relations, RelationsSetup, measure};
 use laplace_schelling::Date;
 
-/// The CINC of 1925, per mille (NMC v7.0, abridged), the 30 strongest.
-const NMC_1925: &[(&str, f64)] = &[
-    ("USA", 254.0),
-    ("CHN", 138.3),
-    ("SOV", 101.7),
-    ("GBR", 95.6),
-    ("GER", 81.6),
-    ("FRA", 60.2),
-    ("JAP", 39.7),
-    ("ITA", 31.1),
-    ("POL", 22.6),
-    ("ESP", 18.2),
-    ("CZE", 14.0),
-    ("BEL", 13.6),
-    ("BRA", 11.2),
-    ("ROM", 8.9),
-    ("CAN", 8.7),
-    ("YUG", 8.1),
-    ("AUS", 7.8),
-    ("ARG", 7.7),
-    ("MEX", 7.3),
-    ("TUR", 6.9),
-    ("NLD", 6.6),
-    ("AUT", 6.3),
-    ("SWE", 5.6),
-    ("HUN", 5.2),
-    ("ETH", 4.9),
-    ("GRE", 4.6),
-    ("LUX", 4.1),
-    ("PRS", 3.8),
-    ("SAF", 3.6),
-    ("POR", 3.6),
-];
+/// The Correlates of War's data is not in the repository: its terms ("Users agree not to
+/// distribute the dataset to any third party without written permission of the COW director and
+/// data host", correlatesofwar.org, "Data Sets") keep it out. The conference reads it from
+/// `BF_COW_DIR`, downloaded at the time from correlatesofwar.org: `NMC-70-abridged.csv` (in
+/// `NMCv7.zip`) and `dyadic_mid_4.03.csv` (in `dyadic_mid_4.03_update.zip`).
+fn cow_dir() -> Option<PathBuf> {
+    std::env::var_os("BF_COW_DIR").map(PathBuf::from)
+}
 
-/// (pair, dyad-years with a MID) from 1925 to 1939.
-const MID_1925_1939: &[(&str, &str, u32)] = &[
-    ("AFG", "PRS", 1),
-    ("AFG", "SOV", 3),
-    ("ALB", "ITA", 1),
-    ("ARG", "GER", 1),
-    ("AUS", "GER", 1),
-    ("AUT", "GER", 1),
-    ("AUT", "ITA", 1),
-    ("BEL", "GER", 3),
-    ("BOL", "PRY", 12),
-    ("BRA", "COL", 2),
-    ("BRA", "PER", 2),
-    ("BRA", "PRY", 1),
-    ("BUL", "GRE", 3),
-    ("BUL", "ROM", 1),
-    ("BUL", "TUR", 1),
-    ("BUL", "YUG", 1),
-    ("CAN", "GER", 1),
-    ("CAN", "SAL", 1),
-    ("CHE", "GER", 1),
-    ("CHN", "ESP", 1),
-    ("CHN", "FRA", 2),
-    ("CHN", "GBR", 2),
-    ("CHN", "GER", 1),
-    ("CHN", "ITA", 2),
-    ("CHN", "JAP", 17),
-    ("CHN", "POR", 1),
-    ("CHN", "SOV", 7),
-    ("CHN", "USA", 2),
-    ("COL", "PER", 3),
-    ("CUB", "USA", 2),
-    ("CZE", "GER", 2),
-    ("CZE", "HUN", 2),
-    ("CZE", "POL", 1),
-    ("DEN", "ITA", 1),
-    ("ECU", "PER", 7),
-    ("ESP", "GER", 4),
-    ("ESP", "ITA", 5),
-    ("ESP", "POR", 4),
-    ("EST", "GER", 1),
-    ("EST", "POL", 1),
-    ("EST", "SOV", 1),
-    ("ETH", "ITA", 4),
-    ("FIN", "GER", 1),
-    ("FIN", "SOV", 1),
-    ("FRA", "GER", 3),
-    ("FRA", "ITA", 7),
-    ("FRA", "JAP", 2),
-    ("FRA", "NEJ", 1),
-    ("FRA", "SOV", 1),
-    ("FRA", "TUR", 4),
-    ("GBR", "GER", 2),
-    ("GBR", "ITA", 6),
-    ("GBR", "JAP", 4),
-    ("GBR", "NEJ", 1),
-    ("GBR", "NLD", 1),
-    ("GBR", "SOV", 1),
-    ("GBR", "TUR", 3),
-    ("GBR", "URY", 1),
-    ("GBR", "USA", 1),
-    ("GER", "ITA", 2),
-    ("GER", "LAT", 1),
-    ("GER", "LTU", 1),
-    ("GER", "LUX", 1),
-    ("GER", "NLD", 1),
-    ("GER", "NOR", 1),
-    ("GER", "NZL", 1),
-    ("GER", "POL", 1),
-    ("GER", "SAF", 1),
-    ("GER", "SOV", 2),
-    ("GER", "SWE", 1),
-    ("GER", "URY", 1),
-    ("GER", "USA", 1),
-    ("GRE", "TUR", 1),
-    ("GUA", "HON", 2),
-    ("GUA", "SAL", 1),
-    ("HON", "NIC", 1),
-    ("HON", "USA", 1),
-    ("HUN", "ROM", 1),
-    ("HUN", "YUG", 1),
-    ("IRQ", "PRS", 2),
-    ("ITA", "NEJ", 1),
-    ("ITA", "PAN", 1),
-    ("ITA", "SOV", 1),
-    ("ITA", "YUG", 2),
-    ("JAP", "MGL", 3),
-    ("JAP", "SOV", 12),
-    ("JAP", "USA", 2),
-    ("LAT", "SOV", 1),
-    ("LTU", "POL", 1),
-    ("NEJ", "YEM", 5),
-    ("NIC", "USA", 1),
-    ("POL", "SOV", 2),
-    ("PRS", "SOV", 1),
-];
+/// The game's tag of a COW state abbreviation.
+fn game_tag(cow: &str) -> String {
+    match cow {
+        "AUL" => "AUS",
+        "AUS" => "AUT",
+        "COS" => "CRI",
+        "FRN" => "FRA",
+        "GMY" => "GER",
+        "GRC" => "GRE",
+        "IRE" => "IRL",
+        "IRN" => "PRS",
+        "JPN" => "JAP",
+        "LIT" => "LTU",
+        "MON" => "MGL",
+        "NEW" => "NZL",
+        "NTH" => "NLD",
+        "PAR" => "PRY",
+        "RUS" => "SOV",
+        "SAU" => "NEJ",
+        "SPN" => "ESP",
+        "SWD" => "SWE",
+        "SWZ" => "CHE",
+        "THI" => "SIA",
+        "UKG" => "GBR",
+        "URU" => "URY",
+        "YAR" => "YEM",
+        x => x,
+    }
+    .to_owned()
+}
+
+/// The columns of a CSV line (no quoted commas in these two files' columns read here).
+fn rows(path: &std::path::Path) -> Vec<BTreeMap<String, String>> {
+    let text = std::fs::read_to_string(path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
+    let mut lines = text.lines();
+    let head: Vec<String> = lines
+        .next()
+        .unwrap_or("")
+        .split(',')
+        .map(|h| h.trim_matches('"').to_owned())
+        .collect();
+    lines
+        .map(|l| {
+            head.iter()
+                .cloned()
+                .zip(l.split(',').map(|v| v.trim_matches('"').to_owned()))
+                .collect()
+        })
+        .collect()
+}
+
+/// The CINC of 1925 (per mille), the 30 strongest.
+fn nmc_1925(dir: &std::path::Path) -> Vec<(String, f64)> {
+    let mut out: Vec<(String, f64)> = rows(&dir.join("NMC-70-abridged.csv"))
+        .into_iter()
+        .filter(|r| r.get("year").map(String::as_str) == Some("1925"))
+        .filter_map(|r| {
+            let c: f64 = r.get("cinc")?.parse().ok()?;
+            Some((game_tag(r.get("stateabb")?), c * 1000.0))
+        })
+        .collect();
+    out.sort_by(|a, b| b.1.total_cmp(&a.1));
+    out.truncate(30);
+    out
+}
+
+/// (pair, dyad-years with a MID) from 1925 to 1939, each pair and year once.
+fn mid_1925_1939(dir: &std::path::Path) -> Vec<(String, String, u32)> {
+    let mut years: BTreeMap<(String, String), std::collections::BTreeSet<i32>> = BTreeMap::new();
+    for r in rows(&dir.join("dyadic_mid_4.03.csv")) {
+        let (Some(y), Some(a), Some(b)) = (r.get("year"), r.get("namea"), r.get("nameb")) else {
+            continue;
+        };
+        let Ok(y) = y.parse::<i32>() else { continue };
+        if !(1925..=1939).contains(&y) {
+            continue;
+        }
+        let (a, b) = (game_tag(a), game_tag(b));
+        let k = if a < b { (a, b) } else { (b, a) };
+        years.entry(k).or_default().insert(y);
+    }
+    years
+        .into_iter()
+        .map(|((a, b), y)| (a, b, y.len() as u32))
+        .collect()
+}
 
 fn root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
@@ -251,6 +216,12 @@ fn the_cost_of_a_measure() {
 #[test]
 #[ignore = "15 years; run in the slot"]
 fn against_the_correlates_of_war() {
+    let Some(dir) = cow_dir() else {
+        println!("BF_COW_DIR unset: the conference needs the Correlates of War's files");
+        return;
+    };
+    let nmc = nmc_1925(&dir);
+    let mids = mid_1925_1939(&dir);
     let (d, s) = load();
     let mut session = Session::new(
         d.new_world(),
@@ -263,7 +234,7 @@ fn against_the_correlates_of_war() {
     let w = session.world();
     let r = at(&d, &s, w, 1925);
     println!("CINC 1925, per mille: game against NMC v7.0");
-    for (t, nmc) in NMC_1925 {
+    for (t, nmc) in &nmc {
         let game = index(w, t).and_then(|c| r.countries.iter().find(|x| x.country == c));
         match game {
             Some(g) => println!(
@@ -302,7 +273,7 @@ fn against_the_correlates_of_war() {
     }
     let mut ranked: Vec<_> = most.iter().collect();
     ranked.sort_by(|x, y| y.1.cmp(x.1).then(x.0.cmp(y.0)));
-    let n = MID_1925_1939.len();
+    let n = mids.len();
     let top: Vec<&(String, String)> = ranked.iter().take(n).map(|x| x.0).collect();
     let key = |a: &str, b: &str| {
         if a < b {
@@ -311,16 +282,23 @@ fn against_the_correlates_of_war() {
             (b.to_owned(), a.to_owned())
         }
     };
-    let hits = MID_1925_1939
+    let hits = mids
         .iter()
         .filter(|(a, b, _)| top.contains(&&key(a, b)))
         .count();
     println!(
         "of the {n} pairs with a MID in 1925-1939, {hits} are among the game's {n} most hostile"
     );
-    let mut misses: Vec<_> = MID_1925_1939
+    let mut misses: Vec<_> = mids
         .iter()
-        .map(|(a, b, y)| (most.get(&key(a, b)).copied().unwrap_or(0), *a, *b, *y))
+        .map(|(a, b, y)| {
+            (
+                most.get(&key(a, b)).copied().unwrap_or(0),
+                a.as_str(),
+                b.as_str(),
+                *y,
+            )
+        })
         .collect();
     misses.sort_by(|x, y| y.3.cmp(&x.3).then(x.0.cmp(&y.0)));
     println!("the pairs with the most MID years and their game hostility:");
@@ -329,7 +307,7 @@ fn against_the_correlates_of_war() {
     }
     println!("the game's most hostile pairs without a MID:");
     for (k, h) in ranked.iter().take(40) {
-        if !MID_1925_1939.iter().any(|(a, b, _)| key(a, b) == **k) {
+        if !mids.iter().any(|(a, b, _)| key(a, b) == **k) {
             println!("  {} {}: {}", k.0, k.1, h);
         }
     }
