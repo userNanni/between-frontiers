@@ -38,7 +38,7 @@ for spec in -2:BF_PERTURB_PERMILLE=-2 2:BF_PERTURB_PERMILLE=2 -4:BF_PERTURB_PERM
     flock 9
     [ "$(cat "$out/status" 2>/dev/null)" = ok ] && exit 0
     cd "$dir/src"
-    env "$var" COMMIT=$sha BRANCH=band $slot "$dir/tools/run-long.sh" "$out" \
+    env "$var" BF_DATA_ROOT="$dir/src" COMMIT=$sha BRANCH=band $slot "$dir/tools/run-long.sh" "$out" \
       "$bench" --game --years 101 --threads 2
   ) 9>"$dir/band/p$n.lock" || fail=1
 done
