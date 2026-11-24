@@ -450,6 +450,11 @@ pub struct DoctrineRule {
     pub fuel_min: u32,
     /// Share of the front's free elements a third-generation front puts on its focus segment.
     pub focus_share: u32,
+    /// Item 12: a second-generation army's mobile class sets the pace of the segment where it
+    /// concentrates when its men are at least this share of the men there, per mille. DESIGN
+    /// VALUE: a third; the source is for the calibration.
+    #[serde(default = "default_mobile_share")]
+    pub mobile_share: u32,
     /// Power ratio (attacker over defender, defender's reserve included) that breaks a segment.
     pub breakthrough_ratio: Fixed,
     /// Speed of the exploitation after a breakthrough, over the base speed.
@@ -1199,4 +1204,8 @@ impl Rules {
             .find(|(k, _)| k == key)
             .map(|(_, t)| *t)
     }
+}
+
+fn default_mobile_share() -> u32 {
+    333
 }

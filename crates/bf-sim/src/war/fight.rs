@@ -203,6 +203,13 @@ pub struct SegmentWeek {
     pub a: u16,
     pub b: u16,
     pub outcome: super::calc::LandOutcome,
+    /// For the screen, sides A and B: the mobility each moved at on this segment, and the share
+    /// of its men here in its mobile class, per mille. Not saved: after a load they read the
+    /// next week's.
+    #[serde(skip)]
+    pub mobility: Option<[Mobility; 2]>,
+    #[serde(skip)]
+    pub mobile_share: [u16; 2],
 }
 
 /// What a week of fighting does, worked out in the forces system's compute.
@@ -236,6 +243,8 @@ struct Strength {
     /// The mobile class (horse, wheels, tracks) with the most men, if any: what a third
     /// generation puts on its focus segment.
     mobile: Option<Mobility>,
+    /// The land men of that class.
+    mobile_men: u64,
 }
 
 /// The mobile class (horse, wheels, tracks) that holds the most land men of the country, if
@@ -304,6 +313,35 @@ fn strength(mil: &Military, c: &CountryWar) -> Strength {
         training,
         mobility: majority_mobility(mil, &c.formations),
         mobile: mobile_mobility(mil, &c.formations),
+        mobile_men: {
+            let class = mobile_mobility(mil, &c.formations);
+            land.iter()
+                .filter(|f| Some(mil.spec(f.unit, f.generation as usize).mobility) == class)
+                .map(|f| men(mil, f))
+                .sum::<i64>()
+                .max(0) as u64
+        },
+    }
+}
+
+/// The mobility a segment moves at when a second-generation army concentrates its mobile class
+/// there (item 12): that class's when its men are at least `share` per mille of the men on the
+/// segment, else the army's majority. `mobile_here` of `men_here` are of the class.
+pub fn concentrated_mobility(
+    majority: Mobility,
+    mobile: Option<Mobility>,
+    mobile_here: u64,
+    men_here: u64,
+    share: u32,
+) -> Mobility {
+    match mobile {
+        Some(m)
+            if men_here > 0
+                && u128::from(mobile_here) * 1000 >= u128::from(men_here) * u128::from(share) =>
+        {
+            m
+        }
+        _ => majority,
     }
 }
 
@@ -742,6 +780,48 @@ pub fn fight_week(
             }
         })
         .collect();
+    // Where a second-generation army puts its mobile class (item 12): the segment where the
+    // enemy is weakest per km, as the third generation's focus, without the concentration of
+    // its other men.
+    let conc_of: BTreeMap<(u16, u16), usize> = count
+        .keys()
+        .filter(|(c, _)| generations[c] == Generation::Second)
+        .filter_map(|k| {
+            let segs = segs_of.get(k)?;
+            (!segs.is_empty()).then(|| (*k, super::doctrine::focus_segment(segs)))
+        })
+        .collect();
+    // The mobility a side moves at on segment `i` of theatre `key`, and the share of its men
+    // there in its mobile class, per mille.
+    let mobility_on = |c: u16, key: (u16, u16), i: usize, men_here: u64| -> (Mobility, u16) {
+        let s = &strengths[&c];
+        let focus = focus_of.get(&key) == Some(&i);
+        let conc = conc_of.get(&key) == Some(&i);
+        if !(focus || conc) || s.men == 0 {
+            return (s.mobility, 0);
+        }
+        let pool_mobile =
+            (u128::from(s.mobile_men) * u128::from(pool(c, key.1)) / u128::from(s.men)) as u64;
+        let here = pool_mobile.min(men_here);
+        let share = if men_here > 0 {
+            (u128::from(here) * 1000 / u128::from(men_here)) as u16
+        } else {
+            0
+        };
+        // The focus segment of a third-generation army gets its mobile troops, as before.
+        let m = if focus {
+            s.mobile.unwrap_or(s.mobility)
+        } else {
+            concentrated_mobility(
+                s.mobility,
+                s.mobile,
+                here,
+                men_here,
+                mil.rules.doctrine.mobile_share,
+            )
+        };
+        (m, share)
+    };
     let mut next: BTreeMap<(u16, u16), usize> = BTreeMap::new();
     let mut lost: BTreeMap<u16, u64> = BTreeMap::new();
     let winter_month = matches!(month, 12 | 1 | 2);
@@ -850,7 +930,7 @@ pub fn fight_week(
         )
     };
     let mut air_lost: BTreeMap<(u16, u16, u8), u64> = BTreeMap::new();
-    let side = |c: u16, men_here: u64, attack: bool, dug: Fixed, on_focus: bool| -> LandSide {
+    let side = |c: u16, men_here: u64, attack: bool, dug: Fixed, mobility: Mobility| -> LandSide {
         let s = &strengths[&c];
         let part = if s.men > 0 {
             Fixed::from_ratio(men_here as i64, s.men as i64)
@@ -871,12 +951,7 @@ pub fn fight_week(
             } else {
                 Posture::Defend
             },
-            // The focus segment of a third-generation army gets its mobile troops.
-            mobility: if on_focus {
-                s.mobile.unwrap_or(s.mobility)
-            } else {
-                s.mobility
-            },
+            mobility,
             fortification: dug,
             landing: false,
         }
@@ -909,9 +984,11 @@ pub fn fight_week(
             focus_of.get(&ka) == Some(&ia),
             focus_of.get(&kb) == Some(&ib),
         );
+        let ((mob_a, share_a), (mob_b, share_b)) =
+            (mobility_on(a, ka, ia, ma), mobility_on(b, kb, ib, mb));
         let (mut sa, mut sb) = (
-            side(a, ma, att_a, dug, fa_focus),
-            side(b, mb, att_b, dug, fb_focus),
+            side(a, ma, att_a, dug, mob_a),
+            side(b, mb, att_b, dug, mob_b),
         );
         // The air over this segment: neutral (one half each) when neither side flies.
         if wings.contains_key(&a) || wings.contains_key(&b) {
@@ -990,6 +1067,8 @@ pub fn fight_week(
             a,
             b,
             outcome: o,
+            mobility: Some([mob_a, mob_b]),
+            mobile_share: [share_a, share_b],
         });
     }
     // Advance and control.
@@ -1319,5 +1398,26 @@ impl HashState for Fighting {
             d.tradition.hash_state(h);
             h.write_i64(d.reform_until);
         }
+    }
+}
+
+#[cfg(test)]
+mod concentration_tests {
+    use super::*;
+
+    #[test]
+    fn the_mobile_class_sets_the_pace_from_a_third_of_the_men() {
+        let m = |here, all| {
+            concentrated_mobility(Mobility::Foot, Some(Mobility::Horse), here, all, 333)
+        };
+        assert_eq!(m(40_000, 100_000), Mobility::Horse);
+        assert_eq!(m(33_300, 100_000), Mobility::Horse);
+        assert_eq!(m(30_000, 100_000), Mobility::Foot);
+        assert_eq!(m(0, 0), Mobility::Foot);
+        // Without a mobile class the army's majority.
+        assert_eq!(
+            concentrated_mobility(Mobility::Foot, None, 50_000, 60_000, 333),
+            Mobility::Foot
+        );
     }
 }

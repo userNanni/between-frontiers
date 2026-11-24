@@ -194,6 +194,10 @@
         fuel_min: 500,
         // Six tenths of the free elements on the focus segment.
         focus_share: 600,
+        // Item 12: a second-generation army sets the pace of the segment where it puts its mobile
+        // class (horse, wheels, tracks) when those men are at least a third of the men there.
+        // DESIGN VALUE, without a source (for the calibration).
+        mobile_share: 333,
         // Three times the defender's power, its reserve included, breaks the segment.
         breakthrough_ratio: 3,
         exploitation_speed: 2,
