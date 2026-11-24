@@ -163,6 +163,22 @@ pub struct Occupied {
     pub extraction_cap: i32,
 }
 
+/// The garrison of one occupier over the regions it holds in this war (item 16): the men they
+/// need, the men kept there last week, how many of those its garrison formations give (the
+/// rest comes out of its field army, at most half of it), and its open garrison order.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Garrison {
+    pub by: String,
+    /// The player's side holds the regions.
+    pub ours: bool,
+    pub need: u64,
+    pub kept: u64,
+    pub posts: u64,
+    /// Garrison elements ordered and not yet delivered (a thousand men each); zero without an
+    /// open order.
+    pub ordered: f64,
+}
+
 /// A region the war wrecked.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Wreck {
@@ -210,6 +226,8 @@ pub struct WarLine {
     /// wrote it (or without the war's conduct data).
     pub support: [Option<SupportLine>; 2],
     pub occupied: Vec<Occupied>,
+    /// Each occupier's garrison, the player's side first.
+    pub garrisons: Vec<Garrison>,
     pub wrecks: Vec<Wreck>,
     /// N8: the fallout on either side's land, the worst first.
     pub fallout: Vec<Fallout>,
@@ -557,6 +575,56 @@ pub fn read(
                     })
                 })
                 .collect();
+            // Each occupier's garrison: the need over its regions here, the share kept, its
+            // garrison formations and its open order of them.
+            let mut garrisons: Vec<Garrison> = Vec::new();
+            if let Some(r) = occupation {
+                let unit_key = r.garrison_unit.as_deref();
+                let unit = unit_key.and_then(|k| mil.and_then(|m| m.unit(k)));
+                let mut by: Vec<u16> = Vec::new();
+                for o in &fighting.occupied {
+                    let Some((_, owner)) = state(o.region) else {
+                        continue;
+                    };
+                    let side = (ours.contains(&o.by) && theirs.contains(&owner))
+                        || (theirs.contains(&o.by) && ours.contains(&owner));
+                    if side && !by.contains(&o.by) {
+                        by.push(o.by);
+                    }
+                }
+                for c in by {
+                    let (mut need, mut kept) = (0u64, 0u64);
+                    for o in fighting.occupied.iter().filter(|o| o.by == c) {
+                        let people = regions.get(o.region as usize).map_or(0, |x| x.population());
+                        let n = bf_sim::war::occupation::garrison_need(r, people, o.resistance);
+                        need += n;
+                        kept += n * o.garrison.clamp(0, 1000) as u64 / 1000;
+                    }
+                    let country = world.war.countries.get(usize::from(c));
+                    let posts = match (mil, country) {
+                        (Some(m), Some(cw)) => bf_sim::war::fight::posts(m, cw, unit).0,
+                        _ => 0,
+                    };
+                    let ordered = match (unit_key, country) {
+                        (Some(k), Some(cw)) => cw
+                            .queue
+                            .iter()
+                            .filter(|q| q.unit == k)
+                            .map(|q| f(q.ordered - q.delivered))
+                            .sum(),
+                        _ => 0.0,
+                    };
+                    garrisons.push(Garrison {
+                        by: tag_of(c),
+                        ours: ours.contains(&c),
+                        need,
+                        kept,
+                        posts,
+                        ordered,
+                    });
+                }
+                garrisons.sort_by_key(|g| !g.ours);
+            }
             let wrecks = fighting
                 .wrecks
                 .iter()
@@ -642,6 +710,7 @@ pub fn read(
                 taken,
                 support,
                 occupied,
+                garrisons,
                 wrecks,
                 fallout,
                 nuclear: mil.and_then(|m| {

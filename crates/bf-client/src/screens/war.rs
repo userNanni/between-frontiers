@@ -297,6 +297,48 @@ fn war(
             }
         }
     }
+    // The garrison each occupier keeps: the men needed, the share kept, its garrison troops and
+    // its open order of them.
+    for g in &w.garrisons {
+        let share = if g.need > 0 {
+            g.kept as f64 / g.need as f64
+        } else {
+            1.0
+        };
+        let source = if g.kept == 0 {
+            i18n.tr("war-garrison-short")
+        } else if g.posts >= g.kept {
+            i18n.tr("war-garrison-posts")
+        } else if g.posts == 0 {
+            i18n.tr("war-garrison-field")
+        } else {
+            i18n.tr_args(
+                "war-garrison-mixed",
+                &[
+                    ("posts", arg(i18n.int(g.posts as i64))),
+                    ("field", arg(i18n.int((g.kept - g.posts) as i64))),
+                ],
+            )
+        };
+        let mut line = i18n.tr_args(
+            "war-garrison-line",
+            &[
+                ("by", arg(country_name(i18n, &g.by))),
+                ("need", arg(i18n.int(g.need as i64))),
+                ("kept", arg(super::budget::pct(i18n, share * 100.0, 1))),
+                ("source", arg(source)),
+            ],
+        );
+        if g.ordered > 0.0 {
+            line.push(' ');
+            line.push_str(&i18n.tr_args(
+                "war-garrison-ordered",
+                &[("n", arg(i18n.int((g.ordered * 1000.0).round() as i64)))],
+            ));
+        }
+        ui.add(egui::Label::new(RichText::new(line).font(sans(size::SMALL))).wrap())
+            .on_hover_text(bf_ui_kit::tooltip_text(&i18n.tr("war-garrison-tip")));
+    }
     // Devastation: each side's total, then the regions past a floor, the worst first, and how
     // many more lost less.
     let hit: Vec<&crate::war_view::Wreck> = w
