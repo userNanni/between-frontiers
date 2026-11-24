@@ -1,6 +1,6 @@
 # IA estratégica (fase 6): desenho
 
-Rascunho de desenho, sem código. O dono ainda não abriu thread para implementar. Este documento
+Desenho, sem código; a fatia 1 (as medidas) está autorizada, as outras esperam o dono. Este documento
 junta o que a fase 6 precisa: o que a IA lê, o que decide e com que frequência, o que já existe e
 ela só precisa chamar, a ordem das fatias e as decisões que são do dono.
 
@@ -134,17 +134,29 @@ Cada fatia atrás da sua chave, desligada, com a série de 101 anos contra a fai
 6. **Arma nuclear:** programa e teste pela ameaça, a escada nuclear com o risco semanal.
 7. **Economia de poder:** embargo, tarifa por parceiro como arma, ouro.
 
-## Decisões do dono
+## Decisões
+
+**Já decididas pelo dono** (`history-rails.pt-BR.md`):
+- **IA2, sem sorte:** pontuação determinística, empate pelo índice do país; nenhuma estratégia
+  sorteada.
+- **IA3, a agenda histórica:** soma ao valor das ações que servem a meta, só enquanto as condições
+  medidas dela valem; nunca escolhe a ação.
+
+**Decididas pelo orquestrador (2026-11-24),** por serem engenharia ou regra do dono já existente:
+- **IA1, frequência:** medidas mensais; exigir e propor, mensal; o que está em curso (crise e
+  guerra), semanal; orçamento e leis, anual.
+- **IA6, comandos:** a IA usa só os comandos do jogador, com as mesmas restrições.
+- **IA7, chaves:** uma por fatia, desligadas, ligadas uma a uma depois da faixa.
+
+**Abertas, com o dono:**
 
 | # | Pergunta | Recomendado | Alternativa |
 |---|---|---|---|
-| IA1 | Com que frequência a IA decide a paz e a guerra? | medidas mensais; exigir e propor mensal; o que está em curso (crise, guerra), semanal; orçamento e leis, anual | tudo anual (mais barato, reage tarde a uma crise) |
-| IA2 | A escolha tem sorte? | não: pontuação determinística, empate pelo índice do país, como `history-rails.pt-BR.md` já decidiu ("nenhuma estratégia sorteada") | sorteio semeado entre as ações perto da melhor (menos previsível) |
-| IA3 | O que a agenda histórica faz? | soma ao valor das ações que servem a meta, só enquanto as condições medidas dela valem (o decidido em `history-rails`) | nada antes de a IA sem agenda estar medida contra a faixa |
 | IA4 | Honrar a chamada: conta ou taxa? | a conta (preço de trair contra o custo de entrar); a taxa de cerca de 75 % de alianças honradas (Leeds, Long e Mitchell) mede, não fixa | uma probabilidade fixa de 75 % |
 | IA5 | Orçamento militar pela ameaça: como? | uma parcela do PIB que segue a razão entre o poder dos vizinhos hostis e o próprio, com teto e devagar (anos), e que cai na paz | a corrida simétrica de Richardson (cada um responde ao gasto do outro) |
-| IA6 | A IA usa só os comandos do jogador? | sim, com as mesmas restrições | atalhos internos quando um comando não existir (mais rápido, mas o jogador perde o que a IA pode) |
-| IA7 | Chaves | uma por fatia, desligadas, ligadas uma a uma depois da faixa | uma chave só para a IA inteira |
+
+**Fatia 1 autorizada** (o orquestrador, 2026-11-24), depois do helicóptero: as medidas, só leitura,
+atrás de chave desligada. As fatias 2 em diante esperam o dono.
 
 ## Dependências da fase 6 anotadas nas fases anteriores
 
