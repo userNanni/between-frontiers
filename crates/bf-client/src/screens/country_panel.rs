@@ -148,6 +148,48 @@ pub fn show(shared: &Shared, ui: &mut Ui, country: usize) {
         );
         bf_ui_kit::stat_row(ui, &i18n.tr("country-colonies"), &value);
     }
+    // The mass media (switch `media`): each medium per thousand people, the reach and the
+    // state's share.
+    if let Some(m) = world
+        .live
+        .as_ref()
+        .and_then(|l| l.media.get(country))
+        .and_then(Option::as_ref)
+    {
+        let medium = |k: usize, key: &str| match m.per_thousand[k] {
+            Some(v) => i18n.tr_args(
+                "media-per-thousand",
+                &[
+                    ("medium", Arg::String(i18n.tr(key))),
+                    ("n", Arg::String(i18n.int(v.round() as i64))),
+                ],
+            ),
+            None => i18n.tr_args("media-not-yet", &[("medium", Arg::String(i18n.tr(key)))]),
+        };
+        bf_ui_kit::caption(ui, &i18n.tr("media-title"));
+        bf_ui_kit::small(
+            ui,
+            &[
+                medium(0, "media-newspapers"),
+                medium(1, "media-radio"),
+                medium(2, "media-television"),
+                medium(3, "media-internet"),
+            ]
+            .join(" · "),
+        );
+        bf_ui_kit::stat_row(
+            ui,
+            &i18n.tr("media-reach"),
+            &crate::text::pct_text(i18n, i18n.decimal(m.reach * 100.0, 0)),
+        );
+        if let Some(st) = m.state {
+            bf_ui_kit::stat_row(
+                ui,
+                &i18n.tr("media-state"),
+                &crate::text::pct_text(i18n, i18n.decimal(st * 100.0, 0)),
+            );
+        }
+    }
     if !c.subjects.is_empty() {
         let names: Vec<String> = c
             .subjects
