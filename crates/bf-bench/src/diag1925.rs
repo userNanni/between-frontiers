@@ -1004,6 +1004,39 @@ pub fn main() -> Result<(), String> {
         }
         return Ok(());
     }
+    // The state's offices with computers (`BF_DIAG_ADMIN=TAG,TAG`, `econ::admin`, with
+    // `computer_efficiency` and `fiscal_capacity`): every ten years, a servant's worth, the
+    // computers ordered and found, and the taxes not collected over those collected.
+    if let Ok(spec) = std::env::var("BF_DIAG_ADMIN") {
+        let all: Vec<String> = data
+            .countries
+            .countries
+            .iter()
+            .map(|c| c.tag.clone())
+            .collect();
+        let idx: Vec<(String, usize)> = spec
+            .split(',')
+            .filter_map(|t| all.iter().position(|x| x == t).map(|i| (t.to_string(), i)))
+            .collect();
+        for y in (1935..=2025).step_by(10) {
+            s.sim.run_until(Date::new(y, 7, 2));
+            let e = &s.world().econ;
+            for (tag, mi) in &idx {
+                let m = &e.markets[*mi];
+                let (want, got) = m.admin_computers.unwrap_or_default();
+                let lost = m.uncollected.unwrap_or_default().to_f64_lossy();
+                let taken = m.budget.revenue.to_f64_lossy();
+                println!(
+                    "{y} {tag}: servant worth {:.2}, computers {:.1} ordered {:.1} found, uncollected {:.1} % of taxes",
+                    m.admin_efficiency.map_or(1.0, |x| x.to_f64_lossy()),
+                    want.to_f64_lossy(),
+                    got.to_f64_lossy(),
+                    lost / (lost + taken).max(1e-9) * 100.0
+                );
+            }
+        }
+        return Ok(());
+    }
     // The first year each method of a building runs in each country
     // (`BF_DIAG_ADOPTION=laboratory:USA,SOV,BRA,RAJ`): checked each January to 2025.
     if let Ok(spec) = std::env::var("BF_DIAG_ADOPTION") {

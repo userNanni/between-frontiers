@@ -305,9 +305,15 @@ mais por pessoa pagando computadores e eletricidade; não entra pesquisador nem 
   pequena do que o método rende a mais, e o lucro do método novo passa com folga dos 10 % de
   `SWITCH_MARGIN`. Quem não tem a tecnologia, ou não acha o bem, fica no método antigo, sem ser
   travado.
-- **A administração do Estado ainda não:** não é prédio, é a folha de servidores. A grandeza que o
-  computador melhoraria é a arrecadação por servidor (`levers::collection`), que só age com
-  `fiscal_capacity`; desenho em mensagem antes do código, numa fatia seguinte.
+- **A administração do Estado** (só com `computer_efficiency` e `fiscal_capacity` ligadas,
+  `econ::admin`, `data/economy/administration.ron`): não é prédio, é a folha de servidores. Cada
+  servidor arrecada como 1,3 servidores à mão com o computador central, 1,6 com o computador
+  pessoal e 2,0 com o aprendizado profundo, desde o estágio industrial da tecnologia no país
+  (`levers::collection_with`, teto de 1), na medida em que o Estado achou os computadores que
+  pediu na semana anterior (a cesta dele ganha `computers`: cerca de US$ 500, 3.000 e 6.000 por
+  servidor ao ano em cada época). A folha não muda: a mesma folha arrecada mais. **Fatores e
+  quantidades são valores de desenho**, marcados no dado (não achei medida de arrecadação por
+  servidor com e sem computador). Sem computador à venda, o servidor vale 1, sem travar nada.
 - **A universidade** só tem níveis com a chave `schooling`: com ela desligada, os métodos da
   universidade existem mas nenhum é usado.
 

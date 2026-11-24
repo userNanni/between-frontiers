@@ -83,6 +83,9 @@ pub struct GameData {
     /// The share of the rural households' fuel gathered in 1925 (`data/economy/biomass.ron`);
     /// read only with `Switches::household_biomass`.
     pub biomass: Option<Arc<crate::econ::biomass::BiomassRules>>,
+    /// The state's offices with computers (`data/economy/administration.ron`); read only with
+    /// `Switches::computer_efficiency` and `fiscal_capacity`.
+    pub admin: Option<Arc<crate::econ::admin::AdminRules>>,
 }
 
 /// Format of `data/economy/capital.ron`; shares, elasticities and points in thousandths.
@@ -277,6 +280,48 @@ fn switch_is_on(switches: &crate::game::Switches, name: &str) -> Option<bool> {
     match name {
         "computer_efficiency" => Some(switches.computer_efficiency),
         _ => None,
+    }
+}
+
+/// Format of `data/economy/administration.ron`.
+#[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct AdminFile {
+    /// The good the offices buy.
+    good: String,
+    /// (technology, a servant's worth in thousandths, units of the good a week for a thousand
+    /// servants), oldest first.
+    steps: Vec<(String, u32, f64)>,
+}
+
+impl AdminFile {
+    fn resolve(
+        &self,
+        cat: &Catalogue,
+        tree: &TechTree,
+    ) -> Result<crate::econ::admin::AdminRules, String> {
+        let good = cat
+            .good(&self.good)
+            .ok_or_else(|| format!("economy/administration.ron: unknown good {}", self.good))?;
+        let steps = self
+            .steps
+            .iter()
+            .map(|(key, worth, per_thousand)| {
+                let t = tree
+                    .techs
+                    .iter()
+                    .position(|t| &t.key == key)
+                    .ok_or_else(|| {
+                        format!("economy/administration.ron: unknown technology {key}")
+                    })?;
+                Ok((
+                    t as u16,
+                    Fixed::from_int(i64::from(*worth)) / 1000,
+                    Fixed::from_f64_lossy(*per_thousand),
+                ))
+            })
+            .collect::<Result<_, String>>()?;
+        Ok(crate::econ::admin::AdminRules { good, steps })
     }
 }
 
@@ -612,7 +657,15 @@ impl GameData {
         let biomass = optional::<BiomassFile>(&data.join("economy/biomass.ron"))?
             .map(|f| f.resolve(&countries).map(Arc::new))
             .transpose()?;
+        let admin = match (
+            optional::<AdminFile>(&data.join("economy/administration.ron"))?,
+            tree.as_deref(),
+        ) {
+            (Some(f), Some(t)) => Some(Arc::new(f.resolve(&catalogue, t)?)),
+            _ => None,
+        };
         let data = Self {
+            admin,
             settle,
             gold,
             capital,
@@ -1056,6 +1109,10 @@ impl GameData {
                 .clone()
                 .filter(|_| switches.capital_follows_rate && switches.payments_settle),
             biomass: self.biomass.clone().filter(|_| switches.household_biomass),
+            admin: self
+                .admin
+                .clone()
+                .filter(|_| switches.computer_efficiency && switches.fiscal_capacity),
         }
     }
 

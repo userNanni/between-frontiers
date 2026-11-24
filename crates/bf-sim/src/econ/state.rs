@@ -155,6 +155,13 @@ pub struct Market {
     /// on; `None` off. An output for the screen: not saved, not hashed.
     #[serde(skip)]
     pub uncollected: Option<Fixed>,
+    /// The state's offices with computers (`econ::admin`, with `computer_efficiency` and
+    /// `fiscal_capacity` on; `None` otherwise): what a servant was worth last week, and the
+    /// computers the state ordered and found. An output for the screen: not saved, not hashed.
+    #[serde(skip)]
+    pub admin_efficiency: Option<Fixed>,
+    #[serde(skip)]
+    pub admin_computers: Option<(Fixed, Fixed)>,
     /// Last week's new bonds with the issue split fixed (D9); `None` on the rule. An output for
     /// the screen: not saved, not hashed.
     #[serde(skip)]
@@ -313,6 +320,8 @@ impl Market {
             money: super::money::Money::default(),
             levers: Default::default(),
             uncollected: None,
+            admin_efficiency: None,
+            admin_computers: None,
             issue_last: None,
         }
     }

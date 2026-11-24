@@ -1041,7 +1041,12 @@ estar medida contra a faixa.
    como lucrativa e a URSS chega a 195 níveis de mina de urânio contra 26. Vale para todo bem sem
    mercado (os que ainda não existem ficam no preço-base). Regra nova de mercado atrás de chave:
    sem demanda o preço vai ao piso mesmo sem oferta, e sem nenhum dos dois fica onde estava.
-6. **Ligar, nesta ordem, cada uma contra a faixa:** `rail_by_line` e `household_biomass` juntas
+6. **A computação como método** (`computer_efficiency`, docs/research.pt-BR.md): com a chave
+   ligada a pesquisa mundial dobra em 2025 (+86σ), porque os fatores dos métodos (1,5 / 2 / 3) rendem
+   bem mais do que o efeito da árvore que sai; e o Reino Unido só põe computador no laboratório em
+   1972, contra 1951 nos EUA (a difusão de técnica). Calibrar os fatores contra o efeito que eles
+   substituem e a difusão entre países ricos antes de ligar.
+7. **Ligar, nesta ordem, cada uma contra a faixa:** `rail_by_line` e `household_biomass` juntas
    (depois de 1 e 2), a produção agrícola (3), o preço sem comprador (5), `payments_settle`,
    `gold_standard` e `capital_follows_rate` (depois de 4, com o sinal do comércio certo nos países
    do placar).

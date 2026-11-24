@@ -3,6 +3,7 @@
 //!
 //! See `docs/economy.pt-BR.md` ("Modelo") for the rules and their calibration.
 
+pub mod admin;
 pub mod biomass;
 pub mod capital;
 pub mod catalogue;
