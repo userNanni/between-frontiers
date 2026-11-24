@@ -86,6 +86,8 @@ pub struct GameData {
     /// The state's offices with computers (`data/economy/administration.ron`); read only with
     /// `Switches::computer_efficiency` and `fiscal_capacity`.
     pub admin: Option<Arc<crate::econ::admin::AdminRules>>,
+    /// The reach of the mass media (`data/politics/media.ron`); read only with `Switches::media`.
+    pub media: Option<Arc<crate::media::MediaRules>>,
 }
 
 /// Format of `data/economy/capital.ron`; shares, elasticities and points in thousandths.
@@ -322,6 +324,65 @@ impl AdminFile {
             })
             .collect::<Result<_, String>>()?;
         Ok(crate::econ::admin::AdminRules { good, steps })
+    }
+}
+
+/// Format of `data/politics/media.ron`.
+#[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct MediaFile {
+    electronics: String,
+    sets_share: f64,
+    /// (technology, units of the good a set or user costs, life in years), for radio, television
+    /// and internet.
+    sets: Vec<(String, f64, i64)>,
+    split: Vec<Vec<f64>>,
+    copies_per_literate: f64,
+    copies_half_income: f64,
+    news_pace: f64,
+    people_per_unit: Vec<f64>,
+}
+
+impl MediaFile {
+    fn resolve(
+        &self,
+        cat: &Catalogue,
+        tree: &TechTree,
+    ) -> Result<crate::media::MediaRules, String> {
+        let electronics = cat
+            .good(&self.electronics)
+            .ok_or_else(|| format!("politics/media.ron: unknown good {}", self.electronics))?;
+        let tech = |key: &str| {
+            tree.techs
+                .iter()
+                .position(|t| t.key == key)
+                .map(|t| t as u16)
+                .ok_or_else(|| format!("politics/media.ron: unknown technology {key}"))
+        };
+        let f = Fixed::from_f64_lossy;
+        if self.sets.len() != 3
+            || self.split.len() != 3
+            || self.split.iter().any(|r| r.len() != 3)
+            || self.people_per_unit.len() != 4
+        {
+            return Err(
+                "politics/media.ron: three sets, a 3 × 3 split and four people per unit".into(),
+            );
+        }
+        let set = |k: usize| -> Result<(u16, Fixed, i64), String> {
+            let (key, price, life) = &self.sets[k];
+            Ok((tech(key)?, f(*price), *life))
+        };
+        Ok(crate::media::MediaRules {
+            electronics,
+            sets_share: f(self.sets_share),
+            sets: [set(0)?, set(1)?, set(2)?],
+            split: [0, 1, 2].map(|i| [0, 1, 2].map(|k| f(self.split[i][k]))),
+            copies_per_literate: f(self.copies_per_literate),
+            copies_half_income: f(self.copies_half_income),
+            news_pace: f(self.news_pace),
+            people_per_unit: [0, 1, 2, 3].map(|k| f(self.people_per_unit[k])),
+        })
     }
 }
 
@@ -664,8 +725,16 @@ impl GameData {
             (Some(f), Some(t)) => Some(Arc::new(f.resolve(&catalogue, t)?)),
             _ => None,
         };
+        let media = match (
+            optional::<MediaFile>(&data.join("politics/media.ron"))?,
+            tree.as_deref(),
+        ) {
+            (Some(f), Some(t)) => Some(Arc::new(f.resolve(&catalogue, t)?)),
+            _ => None,
+        };
         let data = Self {
             admin,
+            media,
             settle,
             gold,
             capital,
@@ -1113,6 +1182,7 @@ impl GameData {
                 .admin
                 .clone()
                 .filter(|_| switches.computer_efficiency && switches.fiscal_capacity),
+            media: self.media.clone().filter(|_| switches.media),
         }
     }
 

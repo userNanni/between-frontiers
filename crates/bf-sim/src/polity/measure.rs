@@ -26,6 +26,7 @@ pub const LEGITIMACY: usize = 14;
 pub const FISCAL_STRESS: usize = 16;
 pub const GDP_GROWTH: usize = 17;
 pub const IMMIGRANT_SHARE: usize = 13;
+pub const MEDIA_REACH: usize = 12;
 
 /// Share of the people of `country` of foreign origin, per mille: the one place politics reads
 /// it. The demography's stock of migrants by origin (metropole and colonies, as of the last
@@ -61,6 +62,9 @@ pub struct Facts {
     pub gdp_growth: i32,
     /// `None` while the simulation does not measure it ([`immigrant_share`]).
     pub immigrant_share: Option<i32>,
+    /// The share of the people the media reach, per mille (`media::MediaState::reached`, with
+    /// `Switches::media`); `None` while it is off, so the indicator stays unmeasured.
+    pub media_reach: Option<i32>,
 }
 
 impl Facts {
@@ -144,6 +148,7 @@ impl Facts {
             FISCAL_STRESS => self.fiscal_stress,
             GDP_GROWTH => self.gdp_growth,
             IMMIGRANT_SHARE => self.immigrant_share?,
+            MEDIA_REACH => self.media_reach?,
             LANDOWNER_INCOME_SHARE => Self::ratio(
                 self.income[prof::LANDOWNER],
                 self.income[prof::LANDOWNER]
@@ -203,7 +208,9 @@ pub fn facts(
             0
         };
         let immigrants = immigrant_share(world, mi);
+        let reach = world.media.reached.get(mi).copied();
         for x in f.iter_mut() {
+            x.media_reach = reach;
             x.tax_burden = tax_burden;
             x.import_share = import_share;
             x.fiscal_stress = fiscal_stress;
@@ -236,6 +243,7 @@ mod tests {
             (FISCAL_STRESS, "fiscal_stress"),
             (GDP_GROWTH, "gdp_growth"),
             (IMMIGRANT_SHARE, "immigrant_share"),
+            (MEDIA_REACH, "media_reach"),
         ] {
             assert_eq!(indicator_index(key), Some(i), "{key}");
         }

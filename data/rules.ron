@@ -83,6 +83,10 @@
     // market's output, offered again with the next week's, its price held at a floor; the uranium
     // of the radium mines piles up. Off: what is not sold is lost.
     market_stock: false,
+    // The reach of the mass media (docs/politics.pt-BR.md, "Mídia", slice 1, owner's decision MD1):
+    // newspapers, radio and television sets and internet users per thousand as gradual stocks
+    // (`data/politics/media.ron`), and the share they reach (`media_reach`). Off: nothing measured.
+    media: false,
     // The negotiation table (`docs/treaties.pt-BR.md` section 13): proposals answered by the AI
     // in the first week by the account the player sees, counterproposals and denunciations.
     // Off: proposals wait on the table.
