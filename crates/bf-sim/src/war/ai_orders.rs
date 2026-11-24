@@ -160,7 +160,9 @@ pub fn orders(
             if !cost.is_positive() {
                 continue;
             }
-            let mut n = (money * value / total / cost).to_int_floor();
+            // The type's part of the money: its share of the service first (both sides are
+            // billions; their product would not fit).
+            let mut n = (money * (value / total) / cost).to_int_floor();
             // The treaty caps, by tonnage.
             if let Some(cat) = category(key)
                 && let Some(&(_, max)) = caps.iter().find(|(k, _)| *k == cat)
