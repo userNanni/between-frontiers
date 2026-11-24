@@ -73,13 +73,15 @@ pub fn extraction(r: &OccupationRules, weeks: u32) -> i32 {
         as i32
 }
 
-/// (occupier, men needed, men held) for every occupier: the garrison it keeps, out of its land
-/// men, at most `garrison_cap` of them. Read before the combat: the men held do not fight.
+/// (occupier, men needed, men held) for every occupier: the garrison it keeps. Its garrison
+/// formations stand first (item 16); what they miss comes out of its field land men, at most
+/// `garrison_cap` of them. `land_men(c)` gives (garrison men, field men). Read before the
+/// combat: the men held do not fight.
 pub fn garrisons(
     r: &OccupationRules,
     world: &GameWorld,
     f: &Fighting,
-    land_men: impl Fn(u16) -> u64,
+    land_men: impl Fn(u16) -> (u64, u64),
 ) -> BTreeMap<u16, (u64, u64)> {
     let mut need: BTreeMap<u16, u64> = BTreeMap::new();
     for &(region, by) in &f.control {
@@ -92,10 +94,56 @@ pub fn garrisons(
     }
     need.into_iter()
         .map(|(by, n)| {
-            let cap = land_men(by) * r.garrison_cap.max(0) as u64 / 1000;
-            (by, (n, n.min(cap)))
+            let (posts, field) = land_men(by);
+            let cap = field * r.garrison_cap.max(0) as u64 / 1000;
+            (by, (n, n.min(posts + cap)))
         })
         .collect()
+}
+
+/// The order of garrison formations of country `ci` (item 16): the men its garrison misses in
+/// the regions it has held for `garrison_order_weeks` or more (by last week's garrison share),
+/// one element of `garrison_unit` for each element's men missing; `None` without a shortfall,
+/// without the unit, or with an order of it already open. The caller leaves the player out.
+pub fn garrison_order(
+    r: &OccupationRules,
+    mil: &super::catalogue::Military,
+    world: &GameWorld,
+    ci: usize,
+    c: &super::state::CountryWar,
+) -> Option<super::state::ForceOrder> {
+    let unit = r.garrison_unit.as_deref()?;
+    let ty = mil.unit(unit)?;
+    if c.queue
+        .iter()
+        .any(|o| o.unit == unit && o.ordered > o.delivered)
+    {
+        return None;
+    }
+    let short: u64 = world
+        .war
+        .fighting
+        .occupied
+        .iter()
+        .filter(|o| usize::from(o.by) == ci && o.weeks >= r.garrison_order_weeks)
+        .map(|o| {
+            let people = world.econ.regions[o.region as usize].population();
+            let need = garrison_need(r, people, o.resistance);
+            need * (1000 - o.garrison.clamp(0, 1000)) as u64 / 1000
+        })
+        .sum();
+    let per = u64::from(mil.spec(ty, 0).men.max(1));
+    let n = short.div_ceil(per);
+    (n > 0).then(|| super::state::ForceOrder {
+        unit: unit.to_string(),
+        generation: None,
+        colonial: false,
+        ordered: Fixed::from_int(n as i64),
+        delivered: Fixed::ZERO,
+        built: Vec::new(),
+        buying: Vec::new(),
+        stalled: 0,
+    })
 }
 
 /// What a week of occupation moves: (from the owner, to the occupier, money).
@@ -318,6 +366,24 @@ mod tests {
     }
 
     /// Quinlivan: some 2 per thousand for a calm people, 20 for a hostile one.
+    #[test]
+    fn garrison_formations_stand_before_the_field_army() {
+        let r = rules();
+        // 40 million calm people need 80,000 men; the field cap is half the field men.
+        let need = garrison_need(&r, 40_000_000, 0);
+        let held = |posts: u64, field: u64| {
+            let cap = field * r.garrison_cap.max(0) as u64 / 1000;
+            need.min(posts + cap)
+        };
+        assert_eq!(need, 80_000);
+        // Without garrison formations, as before: half the field men at most.
+        assert_eq!(held(0, 100_000), 50_000);
+        // With 50,000 men in garrisons the field gives the other 30,000.
+        assert_eq!(held(50_000, 100_000), 80_000);
+        // Enough garrisons: the field gives nothing.
+        assert_eq!(held(100_000, 100_000), 80_000);
+    }
+
     #[test]
     fn the_garrison_grows_with_the_resistance() {
         let r = rules();

@@ -1015,6 +1015,19 @@ impl Forces {
                 }
             }
         }
+        // Item 16: an occupier without a player orders garrison formations to cover a garrison
+        // that has been short for some weeks (`occupation::garrison_order`).
+        if let Some(k) = self.fight.as_ref().and_then(|f| f.conduct.as_ref())
+            && world
+                .countries
+                .iter()
+                .position(|(id, _)| Some(id) == world.player)
+                != Some(ci)
+            && let Some(o) =
+                super::occupation::garrison_order(&k.rules.occupation, mil, world, ci, &c)
+        {
+            c.queue.push(o);
+        }
         // 5. This week's orders. The military budget is the part of the goods budget that is not
         // the civilian basket's, as before the forces. It pays first what the forces consume and
         // what makes good their equipment; with room left, part of the force moves to a newer
