@@ -33,6 +33,7 @@ pub mod nuclear;
 pub mod outliner;
 pub mod pick;
 pub mod population;
+pub mod relations;
 pub mod research;
 pub mod saves;
 pub mod sea_lens;
