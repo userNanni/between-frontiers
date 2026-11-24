@@ -1280,6 +1280,9 @@ pub struct Rules {
     pub capital: Option<Arc<crate::econ::capital::CapitalRules>>,
     /// The household fuel the countryside gathers (`Switches::household_biomass`).
     pub biomass: Option<Arc<crate::econ::biomass::BiomassRules>>,
+    /// The state's offices with computers (`Switches::computer_efficiency` with
+    /// `fiscal_capacity`).
+    pub admin: Option<Arc<crate::econ::admin::AdminRules>>,
 }
 
 /// Rules that can be switched on, all off by default: a rule enters the main switched off, with
@@ -1564,6 +1567,7 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
         gold,
         capital,
         biomass,
+        admin,
     }) = rules
     {
         if let Some(p) = &politics {
@@ -1603,6 +1607,7 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
             settle: settle.filter(|_| switches.payments_settle),
             stock: switches.market_stock,
             biomass,
+            admin,
         });
         s.add(crate::econ::monthly::Labour {
             cat: Arc::clone(&cat),

@@ -221,6 +221,7 @@ fn the_plants_profit_leaves_for_the_old_metropole_the_next_monday() {
         capital: None,
         stock: false,
         biomass: None,
+        admin: None,
     };
     let at = TickCtx {
         tick: 1,

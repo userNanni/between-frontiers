@@ -128,6 +128,8 @@ impl From<MarketBeforeResearch> for Market {
             money: m.money,
             levers: Default::default(),
             uncollected: None,
+            admin_efficiency: None,
+            admin_computers: None,
             issue_last: None,
         }
     }
