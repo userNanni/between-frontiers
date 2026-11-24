@@ -56,3 +56,5 @@ Toda decisão segue o mesmo molde:
 Números só aparecem com o link de onde vêm. Os outros jogos citados (Victoria 3, Europa
 Universalis, Civilization, o mod Cold War Era) foram referência de qualidade para o autor; nada
 deles é copiado, e a wiki não reproduz regra, texto ou número de nenhum.
+
+- [Referência dos dados](referencia/README.md): bens, prédios e métodos, tecnologias e chaves, gerados dos arquivos de `data/` (o CI confere que estão em dia).
