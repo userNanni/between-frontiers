@@ -1,0 +1,51 @@
+// The relations' measures (`crates/bf-sim/src/relations.rs`, docs/ai.pt-BR.md, slice 1 of the
+// strategic AI; switch `relations`, off). Read only: nothing in the tick reads them yet.
+//
+// Power: the Composite Index of National Capability (CINC) of the Correlates of War (Singer,
+// Bremer and Stuckey, 1972): the mean of the shares of the world's military spending, military
+// personnel, steel production, primary energy consumption, population and urban population
+// (National Material Capabilities Documentation v7.0, "CINC Score", p. 8). Primary energy in
+// coal-ton equivalents (NMC v7.0, pp. 63-65: crude petroleum x 1.429, Equation ENER 6; natural
+// gas 1 million m3 = 1.33 thousand tce, Formula ENER 9; electricity from water, the atom and the
+// earth left out here, as the game does not tell it from the fossil one).
+//
+// Everything else is a DESIGN VALUE, without a source: the calibration moves it later. The
+// hostility of a pair is the sum of its terms (each 0 to 1000) times their weights (per mille),
+// those that push up less those that pull down, from 0 to 1000; the measure shows each term.
+(
+    coal_tce: 1000,
+    crude_tce: 1429,
+    gas_tce: 1330,
+    weights: (
+        // Up: land of one held by the other; its people in the other's regions; laws unlike;
+        // causes from breaches; the higher military effort of the two; war between them.
+        territory: 400,
+        minority: 300,
+        regime: 200,
+        causes: 200,
+        arms_race: 150,
+        war: 1000,
+        // Down: trade between them; an agreement in force; a common enemy; both holding nuclear
+        // warheads.
+        trade: 200,
+        agreement: 200,
+        common_enemy: 150,
+        deterrence: 200,
+    ),
+    // Lost territory or people abroad, per mille of the own people, for a whole term.
+    people_full: 200,
+    // Military spending per mille of GDP from which the arms race counts, and for a whole term.
+    effort_from: 20,
+    effort_full: 80,
+    // The pair's trade over the smaller GDP, per mille, for a whole cooling term.
+    trade_full: 50,
+    // Hostility from which a third country counts as an enemy.
+    enemy_from: 400,
+    // Of the power of a country that is not a neighbour, the part that reaches.
+    reach_far: 300,
+    // A great power holds at least 25 per mille of the world's power.
+    great_power: 25,
+    // Rising or declining: the share of the world's GDP changed by 15 % in 10 years.
+    trend_years: 10,
+    rising: 150,
+)

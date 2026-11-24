@@ -1456,6 +1456,10 @@ e nenhuma chave liga antes de a anterior estar medida contra a faixa.
    contra 4,56 (falta a parcela de conscritos, com página); a conferência mede, não fixa.
 6. **O ritmo da frente:** a Polônia de 1939 a 210 km por semana, fora da faixa de 60 a 200 (teste
    ignorado com o motivo).
+7. **O helicóptero e a pesquisa** (`helicopter`, #375): com a tecnologia ligada, a série de 101
+   anos sai da faixa até 10 de 166 territórios (6 %) em algumas décadas, contra no máximo 3
+   desligada: a tecnologia nova toma pesquisa das outras. Medir de novo com o custo de pesquisa
+   calibrado da árvore.
 
 **As duas que seguram o PR de ligar a guerra** (o orquestrador, 2026-11-23):
 1. **O tamanho do orçamento militar em paz.** O teto dá 5 a 7% do PIB, contra 1 a 3% reais nos
