@@ -10,3 +10,4 @@ war-pace-tracked = no passo dos blindados
 war-pace-ship = no passo dos navios
 war-pace-aircraft = no passo dos aviões
 war-pace-share = { $pace } ({ $share } dos homens)
+war-segment-even = Os homens da frente se repartem por igual entre os segmentos; por isso segmentos de mesmo terreno repetem os números.

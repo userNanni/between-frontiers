@@ -860,7 +860,8 @@ fn segment(ui: &mut Ui, i18n: &I18n, world: Option<&World>, v: &WarView, s: &Seg
         ],
     );
     let tip = format!(
-        "{}\n{}\n\n{}\n{}",
+        "{}\n\n{}\n{}\n\n{}\n{}",
+        i18n.tr("war-segment-even"),
         i18n.tr("war-terms-ours"),
         terms(0),
         i18n.tr("war-terms-theirs"),

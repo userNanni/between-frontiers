@@ -10,3 +10,4 @@ war-pace-tracked = at the pace of the armour
 war-pace-ship = at the pace of the ships
 war-pace-aircraft = at the pace of the aircraft
 war-pace-share = { $pace } ({ $share } of the men)
+war-segment-even = The men at the front are shared out evenly among the segments, so segments of the same terrain repeat the numbers.

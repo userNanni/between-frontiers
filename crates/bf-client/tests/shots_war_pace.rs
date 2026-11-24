@@ -181,6 +181,14 @@ fn war_pace() {
             .scroll_to_me();
         settle(&mut h);
         shot(&mut h, THEME, &format!("323-war-pace-{tag}"));
+        // The tip of a segment's line: the men shared out evenly among the segments.
+        let line = if tag == "pt" { "Poder " } else { "Power " };
+        h.query_all(egui_kittest::kittest::by().label_contains(line))
+            .last()
+            .expect("a segment's line")
+            .hover();
+        settle(&mut h);
+        shot(&mut h, THEME, &format!("323b-war-segment-tip-{tag}"));
     }
     // SAFETY: as above.
     unsafe { std::env::remove_var("BF_RULES") };
