@@ -1403,6 +1403,17 @@ trabalhos.
 
 ## Calibração prevista
 
+**As duas que seguram o PR de ligar a guerra** (o orquestrador, 2026-11-23):
+1. **O tamanho do orçamento militar em paz.** O teto dá 5 a 7% do PIB, contra 1 a 3% reais nos
+   anos 1930 (Eloranta, 2017, p. 122, tabela 2). A encomenda da IA (item 11) fica em `share` 0
+   até ele ser recalibrado (seção "A IA encomenda navios e aviões").
+2. **A Alemanha não chega à terceira geração até 1940.** A prontidão fica em ~450 a 480, contra
+   650 (seção "Geração do exército").
+   - O rádio é lento: a troca de geração do equipamento leva a Alemanha a 0,13 em 1941.
+   - `armored_warfare` ainda está em Ciência em 1939; na história era industrial em 1936.
+   - Sem isso, a França de 1940 não rompe (`front_pace::france_1940_in_weeks` ignorado com esse
+     motivo).
+
 - Manter as forças de 1925 custa, por semana, uma parcela do produto da indústria bélica de 1925 e
   do orçamento militar da ordem dos anos 1920 (2 a 5 % do PIB nas potências): o teste confere a
   ordem de grandeza quando o orçamento militar existir.
@@ -2203,11 +2214,26 @@ densidade × (1 − defesa/ataque). O que decide o ritmo:
   quilômetros: a Polônia de 1920 do Berezina ao Vístula, a França de 1940 depois de Sedan. A
   primeira semana ainda é a linha empurrada; a perseguição vem da segunda em diante. Não há
   estado novo: o avanço da semana anterior é o que `Fighting::last_week` já guarda.
-- **Falta:** 4, a concentração das tropas móveis no segmento do esforço principal, com a ruptura e
-  o aproveitamento de `war::doctrine`. Pela maioria do país, os três exércitos dos casos abaixo
-  andam a pé. Com a mobilidade das tropas concentradas no segmento, a Polônia de 1920 a cavalo
-  daria 46 km por semana (faixa 40 a 150), e a de 1939 a cavalo 98, de caminhão ou lagarta 210
-  (faixa 60 a 200).
+- **Concentração das tropas móveis (item 12, feito).** Um exército de segunda geração põe a sua
+  classe móvel (cavalo, rodas ou lagarta, a que tem mais homens) no segmento onde o inimigo é mais
+  fraco por km, o mesmo que a terceira geração escolhe como foco, sem concentrar os outros homens.
+  - O segmento anda no ritmo dessa classe quando os homens dela ali são pelo menos `mobile_share`
+    dos homens do segmento (`fight::concentrated_mobility`). **Valor de desenho:** um terço; a
+    fonte fica para a calibração.
+  - A ruptura e o aproveitamento em profundidade continuam só da terceira geração: a segunda
+    concentra para empurrar e perseguir.
+  - A terceira geração segue como antes: o foco recebe a classe móvel.
+  - **Tela:** cada segmento da semana (`Fighting::last_week`) traz a mobilidade de cada lado ali e
+    a parcela dos homens dele na classe móvel. Não entram no save: depois de um load, voltam na
+    semana seguinte.
+  - **Casos de `front_pace`, medidos e não ajustados:** 
+    - Polônia de 1920, a cavalo: 45,9 km por semana (faixa de 40 a 150). Passa; antes, a pé, eram 26.
+    - Polônia de 1939: 210 km por semana sobre rodas e em lagartas (faixa de 60 a 200). Fica
+      acima, ignorado com o motivo: o caso põe todos os atacantes do segmento sobre rodas, e em
+      1939 as divisões móveis eram minoria dos homens de cada eixo, com a infantaria atrás.
+      Se um terço é a linha certa (`mobile_share`) fica para a calibração.
+    - França de 1940: segue ignorada. Precisa da ruptura da terceira geração, que a Alemanha do
+      jogo não alcança até 1940 (rádio lento e `armored_warfare`; ver "Calibração prevista").
 
 ### Geração do exército (passo 4, rascunho atrás de `war`)
 
