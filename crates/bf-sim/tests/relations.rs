@@ -146,6 +146,25 @@ fn at(d: &GameData, s: &RelationsSetup, w: &GameWorld, year: i32) -> Relations {
     measure(s, &d.catalogue, w, d.community_table.as_deref(), year)
 }
 
+/// Every claim names countries of the game, and its years are in order.
+#[test]
+fn every_claim_is_read() {
+    let (d, s) = load();
+    let file = d.claims.as_ref().expect("claims.ron with the switch on");
+    assert_eq!(
+        s.claims.len(),
+        file.claims.len(),
+        "a claim names a tag the game lacks"
+    );
+    for c in &file.claims {
+        assert!(
+            c.until.is_none_or(|u| c.from <= u),
+            "{}: ends before it starts",
+            c.territory
+        );
+    }
+}
+
 #[test]
 fn off_nothing_is_loaded() {
     let d = GameData::load(&root()).unwrap_or_else(|e| panic!("{e}"));
@@ -244,37 +263,50 @@ fn against_the_correlates_of_war() {
             None => println!("  {t}: not in the game, NMC {nmc}"),
         }
     }
-    // The highest hostility of each pair over the years.
-    let mut most: BTreeMap<(String, String), i32> = BTreeMap::new();
+    // The highest hostility of each pair over the years, for each way of weighing the minority.
+    // The measure as chosen, the other minority weight, and the measure without the claims.
+    let forms = ["HomeShare", "PopulationRatio", "HomeShare without claims"];
+    let setups: Vec<RelationsSetup> = forms
+        .iter()
+        .map(|f| {
+            let mut x = s.clone();
+            if *f == "PopulationRatio" {
+                x.rules.minority_by = bf_sim::relations::MinorityBy::PopulationRatio;
+            }
+            if f.ends_with("without claims") {
+                x.rules.weights.claim = 0;
+            }
+            x
+        })
+        .collect();
+    let mut most: Vec<BTreeMap<(String, String), i32>> = vec![BTreeMap::new(); forms.len()];
     for year in 1925..=1939 {
         session.sim.run_until(Date::new(year, 7, 1));
         let w = session.world();
-        let r = at(&d, &s, w, year);
-        for p in &r.pairs {
-            let (a, b) = (tag(w, p.a), tag(w, p.b));
-            let k = if a < b { (a, b) } else { (b, a) };
-            let e = most.entry(k).or_default();
-            *e = (*e).max(p.hostility);
-        }
-        if year == 1935 {
-            let mut c: Vec<_> = r.countries.iter().collect();
-            c.sort_by_key(|x| x.rank);
-            for x in c.iter().take(10) {
-                println!(
-                    "1935 {}: CINC {} {:?} threat {} lost {}",
-                    tag(w, x.country),
-                    x.cinc,
-                    x.role,
-                    x.threat,
-                    x.lost_territory
-                );
+        for (k, setup) in setups.iter().enumerate() {
+            let r = at(&d, setup, w, year);
+            for p in &r.pairs {
+                let (a, b) = (tag(w, p.a), tag(w, p.b));
+                let key = if a < b { (a, b) } else { (b, a) };
+                let e = most[k].entry(key).or_default();
+                *e = (*e).max(p.hostility);
+            }
+            if year == 1935 && k == 0 {
+                let mut c: Vec<_> = r.countries.iter().collect();
+                c.sort_by_key(|x| x.rank);
+                for x in c.iter().take(10) {
+                    println!(
+                        "1935 {}: CINC {} {:?} threat {} lost {}",
+                        tag(w, x.country),
+                        x.cinc,
+                        x.role,
+                        x.threat,
+                        x.lost_territory
+                    );
+                }
             }
         }
     }
-    let mut ranked: Vec<_> = most.iter().collect();
-    ranked.sort_by(|x, y| y.1.cmp(x.1).then(x.0.cmp(y.0)));
-    let n = mids.len();
-    let top: Vec<&(String, String)> = ranked.iter().take(n).map(|x| x.0).collect();
     let key = |a: &str, b: &str| {
         if a < b {
             (a.to_owned(), b.to_owned())
@@ -282,33 +314,102 @@ fn against_the_correlates_of_war() {
             (b.to_owned(), a.to_owned())
         }
     };
-    let hits = mids
-        .iter()
-        .filter(|(a, b, _)| top.contains(&&key(a, b)))
-        .count();
-    println!(
-        "of the {n} pairs with a MID in 1925-1939, {hits} are among the game's {n} most hostile"
-    );
-    let mut misses: Vec<_> = mids
-        .iter()
-        .map(|(a, b, y)| {
-            (
-                most.get(&key(a, b)).copied().unwrap_or(0),
-                a.as_str(),
-                b.as_str(),
-                *y,
-            )
-        })
-        .collect();
-    misses.sort_by(|x, y| y.3.cmp(&x.3).then(x.0.cmp(&y.0)));
-    println!("the pairs with the most MID years and their game hostility:");
-    for m in misses.iter().take(20) {
-        println!("  {} {}: {} MID years, hostility {}", m.1, m.2, m.3, m.0);
+    for (form, most) in forms.iter().zip(&most) {
+        let mut ranked: Vec<_> = most.iter().collect();
+        ranked.sort_by(|x, y| y.1.cmp(x.1).then(x.0.cmp(y.0)));
+        let n = mids.len();
+        let top: Vec<&(String, String)> = ranked.iter().take(n).map(|x| x.0).collect();
+        let hits = mids
+            .iter()
+            .filter(|(a, b, _)| top.contains(&&key(a, b)))
+            .count();
+        let alarms = top
+            .iter()
+            .filter(|k| !mids.iter().any(|(a, b, _)| key(a, b) == ***k))
+            .count();
+        println!(
+            "{form}: of the {n} pairs with a MID in 1925-1939, {hits} are among the game's {n} \
+             most hostile; of the game's {n} most hostile, {alarms} had no MID"
+        );
+        let mut misses: Vec<_> = mids
+            .iter()
+            .map(|(a, b, y)| {
+                (
+                    most.get(&key(a, b)).copied().unwrap_or(0),
+                    a.as_str(),
+                    b.as_str(),
+                    *y,
+                )
+            })
+            .collect();
+        misses.sort_by(|x, y| y.3.cmp(&x.3).then(x.0.cmp(&y.0)));
+        println!("{form}: the pairs with the most MID years and their game hostility:");
+        for m in misses.iter().take(20) {
+            println!("  {} {}: {} MID years, hostility {}", m.1, m.2, m.3, m.0);
+        }
+        println!("{form}: the game's most hostile pairs without a MID:");
+        for (k, h) in ranked.iter().take(40) {
+            if !mids.iter().any(|(a, b, _)| key(a, b) == **k) {
+                println!("  {} {}: {}", k.0, k.1, h);
+            }
+        }
     }
-    println!("the game's most hostile pairs without a MID:");
-    for (k, h) in ranked.iter().take(40) {
-        if !mids.iter().any(|(a, b, _)| key(a, b) == **k) {
-            println!("  {} {}: {}", k.0, k.1, h);
+}
+
+/// The ten most hostile pairs of 1925 and 1950, for each reach of the regime term.
+#[test]
+#[ignore = "25 years; run in the slot"]
+fn the_most_hostile_by_the_regime_reach() {
+    let (d, s) = load();
+    let forms = [
+        bf_sim::relations::RegimeReach::Powers,
+        bf_sim::relations::RegimeReach::Warheads,
+    ];
+    let mut session = Session::new(
+        d.new_world(),
+        1925,
+        Date::new(1925, 1, 1),
+        2,
+        Some(d.rules()),
+    );
+    for year in [1925, 1950] {
+        session.sim.run_until(Date::new(year, 7, 1));
+        let w = session.world();
+        for f in forms {
+            let mut x = s.clone();
+            x.rules.regime_reach = f;
+            let r = at(&d, &x, w, year);
+            let mut top: Vec<_> = r.pairs.iter().collect();
+            top.sort_by(|p, q| {
+                q.hostility
+                    .cmp(&p.hostility)
+                    .then((p.a, p.b).cmp(&(q.a, q.b)))
+            });
+            println!("{year} {f:?}:");
+            for p in top.iter().take(10) {
+                println!(
+                    "  {} {} {} {:?}",
+                    tag(w, p.a),
+                    tag(w, p.b),
+                    p.hostility,
+                    p.terms
+                );
+            }
+            for (x, y) in [
+                ("USA", "SOV"),
+                ("GER", "SIA"),
+                ("GER", "POL"),
+                ("GER", "FRA"),
+            ] {
+                if let (Some(i), Some(j)) = (index(w, x), index(w, y)) {
+                    let p = r.pair(i, j);
+                    println!(
+                        "  pair {x} {y}: {} {:?}",
+                        p.map_or(0, |p| p.hostility),
+                        p.map(|p| p.terms)
+                    );
+                }
+            }
         }
     }
 }
