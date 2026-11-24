@@ -72,9 +72,9 @@ fn a_small_payment_demanded_by_a_far_larger_army_is_paid() {
     let fra = index(&s, "FRA");
     let bel = index(&s, "BEL");
     let mil = &data().war.as_ref().unwrap().military;
-    let ratio = bf_sim::war::crisis::land_men(mil, &s.world().war, fra) * 1000
-        / bf_sim::war::crisis::land_men(mil, &s.world().war, bel);
-    assert!(ratio > 3000, "France's army is {ratio} ‰ of Belgium's");
+    let setup = data().rules().crisis.clone().unwrap();
+    let ratio = bf_sim::war::crisis::force_ratio(&setup, mil, s.world(), fra as u16, bel as u16);
+    assert!(ratio > 3000, "France's force is {ratio} ‰ of Belgium's");
     let amount = Fixed::from_int(10);
     let (fra_before, bel_before) = (treasury(&s, "FRA"), treasury(&s, "BEL"));
     s.submit(demand("FRA", "BEL", ClauseKind::Payment { amount }));
@@ -146,4 +146,55 @@ fn a_demand_left_unanswered_lapses_into_a_refusal() {
     // Lapsed, refused, and France (the AI) backed down.
     assert!(s.world().war.conflicts.crises.is_empty());
     assert!(s.world().war.conflicts.wars.is_empty());
+}
+
+/// W3 weighs combat power, not men: the cases before (men on land) and after (combat power, and
+/// across the sea the share of the two navies), for a peripheral demand of a tenth.
+#[test]
+fn the_target_weighs_combat_power_not_men() {
+    let mut s = session();
+    s.sim.run_until(Date::new(1925, 3, 2));
+    let mil = &data().war.as_ref().unwrap().military;
+    let setup = data().rules().crisis.clone().unwrap();
+    let w = s.world();
+    let mut lines = Vec::new();
+    for (a, b) in [
+        ("FRA", "BEL"),
+        ("CHN", "JAP"),
+        ("ITA", "ETH"),
+        ("GER", "POL"),
+        ("USA", "MEX"),
+    ] {
+        let (x, y) = (index(&s, a) as u16, index(&s, b) as u16);
+        let men = bf_sim::war::crisis::land_men(mil, &w.war, usize::from(x)) * 1000
+            / bf_sim::war::crisis::land_men(mil, &w.war, usize::from(y)).max(1);
+        let force = bf_sim::war::crisis::force_ratio(&setup, mil, w, x, y);
+        let yields = |r: i64| bf_sim::war::weigh(&setup.rules, r, 100, false).yields;
+        println!(
+            "{a} -> {b}: men {men} ‰ (yields {}), combat power {force} ‰ (yields {}), land border {}",
+            yields(men),
+            yields(force),
+            bf_sim::war::crisis::land_border(&setup, w, x, y)
+        );
+        lines.push((a, b, yields(force)));
+    }
+    assert!(lines.iter().any(|l| l.0 == "FRA" && l.2));
+    // The same men with half their equipment and half their training weigh a quarter: China
+    // with the arms and the drill of a warlord army no longer makes Japan yield.
+    let chn = index(&s, "CHN");
+    let jap = index(&s, "JAP") as u16;
+    let mut weak = w.clone();
+    for f in &mut weak.war.countries[chn].formations {
+        for (_, q) in &mut f.equipment {
+            *q /= Fixed::from_int(2);
+        }
+        f.training /= Fixed::from_int(2);
+    }
+    let before = bf_sim::war::crisis::force_ratio(&setup, mil, w, chn as u16, jap);
+    let after = bf_sim::war::crisis::force_ratio(&setup, mil, &weak, chn as u16, jap);
+    println!(
+        "CHN -> JAP with half the equipment and half the training: {after} ‰ (was {before} ‰)"
+    );
+    assert!(after * 3 < before, "{after} against {before}");
+    assert!(!bf_sim::war::weigh(&setup.rules, after, 100, false).yields);
 }

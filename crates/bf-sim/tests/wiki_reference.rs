@@ -137,6 +137,10 @@ const SWITCHES: &[(&str, &str)] = &[
         "A escola por turma e por nível, e a campanha de alfabetização de adultos.",
     ),
     (
+        "shadow_ai",
+        "A IA pesa, todo mês, que exigências faria, quem cederia e quem declararia guerra, e só anota: nada muda no mundo.",
+    ),
+    (
         "small_market_wage_floor",
         "Um país pequeno demais para ter salário próprio usa o menor salário dos outros.",
     ),

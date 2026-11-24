@@ -23,6 +23,7 @@ pub mod resources;
 pub mod save_format;
 pub mod scenario;
 pub mod sea;
+pub mod shadow;
 pub mod treaty;
 pub mod treaty_exec;
 pub mod treaty_system;
