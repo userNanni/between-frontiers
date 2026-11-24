@@ -143,6 +143,9 @@ pub struct FigureTable {
     pub countries: Vec<Figures>,
     /// Each country's closed years, in the map's order; empty outside a campaign.
     pub history: Vec<Vec<crate::live::YearPoint>>,
+    /// Each country's mass media, in the map's order; empty outside a campaign or with the
+    /// switch `media` off.
+    pub media: Vec<Option<crate::live::MediaLine>>,
     pub world_population: f64,
     pub world_gdp: f64,
 }
@@ -178,6 +181,7 @@ impl FigureTable {
             world_population: countries.iter().map(Figures::total_population).sum(),
             world_gdp: countries.iter().map(Figures::total_gdp).sum(),
             history: Vec::new(),
+            media: Vec::new(),
             countries,
         }
     }
@@ -253,6 +257,19 @@ impl FigureTable {
                     .unwrap_or_default()
             })
             .collect();
+        table.media = if live.media.is_empty() {
+            Vec::new()
+        } else {
+            countries
+                .iter()
+                .map(|c| {
+                    live.countries
+                        .iter()
+                        .position(|l| l.tag == c.def.tag)
+                        .and_then(|i| live.media.get(i).cloned().flatten())
+                })
+                .collect()
+        };
         table
     }
 }

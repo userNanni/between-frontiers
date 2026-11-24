@@ -39,6 +39,63 @@ pub struct LiveFigures {
     /// Each country's closed years (`econ.history`), oldest first, in the same order: the whole
     /// market, colonies included.
     pub history: Vec<Vec<YearPoint>>,
+    /// Each country's mass media (switch `media`), in the same order; empty with it off.
+    pub media: Vec<Option<MediaLine>>,
+}
+
+/// A country's mass media (`bf_sim::media`): each medium per thousand people (newspapers,
+/// radio sets, television sets, internet users), `None` for one its technology has not opened
+/// yet; the share of the people at least one reaches; and the state's share of the media by the
+/// laws in force (`state_media`).
+#[derive(Clone, Debug, PartialEq)]
+pub struct MediaLine {
+    pub per_thousand: [Option<f64>; 4],
+    pub reach: f64,
+    pub state: Option<f64>,
+}
+
+/// The media of every country, with the rule (switch `media`) and the politics for the state's
+/// share; empty without the rule.
+pub fn media(
+    world: &GameWorld,
+    rules: Option<&bf_sim::media::MediaRules>,
+    politics: Option<&bf_sim::politics::Politics>,
+) -> Vec<Option<MediaLine>> {
+    let Some(r) = rules else {
+        return Vec::new();
+    };
+    let state_media = bf_sim::politics::effect_index("state_media");
+    (0..world.countries.len())
+        .map(|c| {
+            let stocks = world.media.markets.get(c)?;
+            let open = |k: usize| {
+                k == 0
+                    || r.sets.get(k - 1).is_none_or(|(tech, _, _)| {
+                        world
+                            .research
+                            .stage
+                            .get(c)
+                            .and_then(|s| s.get(usize::from(*tech)))
+                            .is_some_and(|s| *s >= bf_sim::research::Stage::Industrial)
+                    })
+            };
+            let state = politics.zip(state_media).and_then(|(p, i)| {
+                bf_sim::polity::effects_in_force(
+                    p,
+                    &world.politics,
+                    c,
+                    bf_sim::politics::Scope::Metropole,
+                )
+                .get(i)
+                .map(|x| f64::from(*x) / 1000.0)
+            });
+            Some(MediaLine {
+                per_thousand: [0, 1, 2, 3].map(|k| open(k).then(|| stocks[k].to_f64_lossy())),
+                reach: f64::from(world.media.reached.get(c).copied().unwrap_or(0)) / 1000.0,
+                state,
+            })
+        })
+        .collect()
 }
 
 /// One closed year of a country, for the figures' charts.
@@ -191,6 +248,7 @@ pub fn read(world: &GameWorld, date: Date) -> Option<LiveFigures> {
         gdp_year,
         countries,
         history,
+        media: Vec::new(),
     })
 }
 
