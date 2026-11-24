@@ -65,6 +65,8 @@ pub struct GameData {
     /// The relations' measures (`data/diplomacy/relations.ron`), read with
     /// `Switches::relations`.
     pub relations: Option<crate::relations::RelationsRules>,
+    /// The territorial claims (`data/diplomacy/claims.ron`), read with `Switches::relations`.
+    pub claims: Option<crate::relations::ClaimsFile>,
     /// What the border operations read (map, communities, catalogue, the 1925 subjects).
     pub border_rules: Arc<crate::borders::BorderRules>,
     /// Who did not recognise whom on the start date, when `recognition.ron` exists.
@@ -780,6 +782,11 @@ impl GameData {
             } else {
                 None
             },
+            claims: if switches.relations {
+                optional(&data.join("diplomacy/claims.ron"))?
+            } else {
+                None
+            },
             recognition: optional(&scenario.join("recognition.ron"))?,
         };
         Ok(data)
@@ -1239,6 +1246,20 @@ impl GameData {
                 cat.good("natural_gas"),
                 cat.good("steel"),
             ],
+            claims: {
+                let index = |t: &str| {
+                    start
+                        .countries
+                        .iter()
+                        .position(|(_, c)| c.tag == t)
+                        .map(|i| i as u16)
+                };
+                self.claims
+                    .iter()
+                    .flat_map(|f| &f.claims)
+                    .filter_map(|c| Some((index(&c.claimant)?, index(&c.holder)?, c.from, c.until)))
+                    .collect()
+            },
             warhead: self.war.as_ref().and_then(|w| {
                 w.military
                     .types

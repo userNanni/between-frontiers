@@ -12,16 +12,18 @@ Código em `crates/bf-sim/src/relations.rs`; pesos em `data/diplomacy/relations.
 
 O Composite Index of National Capability do Correlates of War (Singer, Bremer e Stuckey, 1972) é a
 média das parcelas mundiais de seis componentes (National Material Capabilities Documentation v7.0,
-"CINC Score", p. 8). No jogo:
+"CINC Score", p. 8). O NMC mede o Estado, não o império: "Colonial troops (such as Indian troops
+under British command during India's colonial period) were usually not included in this total if
+they were a separately administered force" (NMC v7.0, p. 12). No jogo, da metrópole:
 
 | Componente | De onde sai |
 |---|---|
-| gasto militar | o teto militar do Estado (`econ::public::military_room`) |
-| pessoal militar | os soldados (a profissão `soldier` nos pops) |
-| aço | a oferta de `steel` no mercado |
-| energia primária | o consumo de carvão, petróleo cru e gás, em toneladas de carvão equivalente (NMC v7.0, pp. 63–65: petróleo cru × 1,429, Equation ENER 6; gás, 1 milhão de m³ = 1,33 mil tce, Formula ENER 9) |
-| população | os pops |
-| população urbana | as profissões urbanas (`migration::is_urban`) |
+| gasto militar | o teto militar do Estado (`econ::public::military_room`), o do país, como o NMC conta o orçamento |
+| pessoal militar | os soldados das regiões não coloniais |
+| aço | o que as usinas das regiões não coloniais fazem (`steel`, pela marcha de cada usina) |
+| energia primária | o carvão, o petróleo cru e o gás que as usinas da metrópole queimam, mais a parte das famílias no resto do consumo do país pela parcela da população metropolitana (**desenho**: o jogo não guarda o consumo das famílias por região), em toneladas de carvão equivalente (NMC v7.0, pp. 63–65: petróleo cru × 1,429, Equation ENER 6; gás, 1 milhão de m³ = 1,33 mil tce, Formula ENER 9) |
+| população | os pops das regiões não coloniais |
+| população urbana | as profissões urbanas (`migration::is_urban`) das regiões não coloniais |
 
 **Dependência:** a eletricidade hidráulica, nuclear e geotérmica, que o NMC soma, fica de fora,
 porque o jogo não a separa da fóssil.
@@ -48,8 +50,9 @@ De 0 a 1000, termo a termo, cada termo de 0 a 1000 vezes o seu peso (por mil). T
 | Termo | Medida | Peso |
 |---|---|---|
 | território | o maior dos dois: a terra de um que o outro tem, por mil da população, cheia em 200 por mil (`people_full`) | +400 |
-| minoria | o maior dos dois: a cultura de um na metrópole do outro, cheia em 200 por mil | +300 |
-| regime | a parte dos grupos de leis em que os dois diferem; só entre vizinhos ou com uma grande potência | +200 |
+| reivindicação | uma reivindicação territorial aberta entre os dois (`claims.ron`, abaixo), inteira enquanto aberta | +400 |
+| minoria | o maior dos dois: a cultura de um na metrópole do outro (até 1000 por mil da população de quem reivindica), vezes a parte da cultura que vive na metrópole de quem reivindica (`minority_by`), cheia em 200 por mil | +300 |
+| regime | a parte dos grupos de leis em que os dois diferem, vezes o alcance: inteiro entre vizinhos ou entre duas potências (`regime_reach`), `reach_far` nos outros pares | +200 |
 | causas | uma causa aberta (quebra de acordo) de um contra o outro | +200 |
 | corrida | o maior esforço militar dos dois (gasto sobre o PIB), de 20 a 80 por mil; só entre quem já tem território, minoria, causa ou guerra | +150 |
 | guerra | em guerra um com o outro | +1000 |
@@ -57,6 +60,35 @@ De 0 a 1000, termo a termo, cada termo de 0 a 1000 vezes o seu peso (por mil). T
 | acordo | um acordo em vigor entre os dois | −200 |
 | inimigo comum | um terceiro com hostilidade de 400 ou mais com os dois | −150 |
 | dissuasão | os dois com ogivas nucleares | −200 |
+
+**Reivindicações** (`data/diplomacy/claims.ron`): 26 reivindicações territoriais entre governos,
+codificadas por nós, cada linha com a sua fonte e o localizador (FRUS, por volume, documento e
+páginas; Hansard, por data, volume e coluna; artigos de tratado; RIAA). **A lista não foi escolhida
+pelo resultado:** o critério, escrito no cabeçalho do arquivo, é que um governo tenha contestado
+formalmente a soberania de outro sobre um território nomeado entre 1925 e 1939 (nota, protesto ou
+reserva; questão levada à Liga, à arbitragem ou à Corte; constituição ou declaração no
+parlamento), aplicado região por região, inclusive às que nunca viraram disputa armada. Nenhum dado
+de outro projeto é copiado: o ICOW (Issue Correlates of War) pede que os seus dados não sejam
+redistribuídos, e o repositório é público. A escala é inteira enquanto a reivindicação está aberta
+(**desenho**): o jogo não sabe quais estados cada reivindicação cobre, e uma escala pela população
+da terra reclamada deixaria de fora o Chaco, quase sem gente e o mais violento dos anos 1930.
+- **Fora pelo critério:** Alsácia-Lorena e Eupen-Malmedy (renunciadas em Locarno, outubro de
+  1925), o Schleswig do Norte, Gibraltar, a linha Durand, a Hungria contra a Romênia e a Iugoslávia
+  (agitação, sem nota do governo), a Macedônia, a saída da Bolívia ao mar (acesso, não território
+  nomeado), Costa Rica e Panamá; fechadas antes de 1925: Åland, a Carélia Oriental e a Isla de
+  Pinos.
+- **Fora por falta de fonte que se pudesse abrir:** Danzig (1939), o Shatt al-Arab, Aqaba e Maan,
+  o Tirol do Sul, o Burgenland, o Epiro do Norte, o Dodecaneso, as fronteiras da Albânia, a Galícia
+  Oriental, a Trácia Ocidental e a Guiana Essequiba.
+
+**Duas escolhas medidas lado a lado** (as duas estão em `relations.ron`; fica a de melhor
+justificativa, não a que acerta mais pares):
+- **Minoria (`minority_by`):** pela parte da cultura que vive na metrópole de quem reivindica
+  (`HomeShare`, escolhida: quem abriga 0,1 % dos catalães não fala por eles, quem abriga a maioria
+  dos albaneses ou dos húngaros fala) ou pela razão de população (`PopulationRatio`, que mexe duas
+  vezes no tamanho, porque a ameaça já multiplica pelo poder).
+- **Alcance do regime (`regime_reach`):** vizinhos ou duas potências (`Powers`, escolhida: EUA e
+  URSS de 1917 em diante, sem fronteira e sem bomba) ou vizinhos ou quem tem ogivas (`Warheads`).
 
 **Dependências:**
 - **Memória de guerra:** só conta a guerra em curso, porque o jogo não guarda por par as guerras
@@ -93,24 +125,46 @@ hora de `BF_COW_DIR` (`NMC-70-abridged.csv` do `NMCv7.zip`, `dyadic_mid_4.03.csv
 
 **Medido** (a regra ligada, 1925 a 1939, a hostilidade mais alta de cada par no período):
 
-- **CINC de 1925:** os EUA são o mais forte no jogo e no NMC, e a China o segundo nos dois. Depois o
-  jogo põe o Reino Unido e a França à frente da URSS e da Alemanha, que o NMC põe em terceiro e
-  quinto; Japão e Itália ficam no lugar. O pior erro é os Países Baixos: 29 por mil no jogo, perto
-  de 7 no NMC, porque o jogo junta as Índias Orientais à metrópole. URSS e Alemanha ficam abaixo pelo
-  gasto e pelo pessoal militar.
-- **Grandes potências pelo limiar de 25 por mil:** as sete do COW e mais a China e os Países Baixos.
-- **Disputas militarizadas:** dos 93 pares com disputa entre 1925 e 1939, **13** estão entre os 93
-  mais hostis do jogo.
-- **Os piores erros, pares com mais anos de disputa e pouca hostilidade:** Bolívia e Paraguai (a
-  Guerra do Chaco; hostilidade 28), Equador e Peru (28), e França e Turquia, Bélgica e Alemanha,
-  França e Alemanha, Bulgária e Grécia, Japão e Mongólia (0). A causa comum: a disputa de fronteira
-  sem minoria nem terra perdida no jogo não tem termo, e o comércio e os acordos em vigor (Locarno)
-  puxam França e Alemanha a zero. China e Japão, o par com mais anos de disputa, fica em 159.
-- **Os falsos alarmes, os mais hostis sem disputa:** Andorra e Espanha (478), Albânia e Iugoslávia
-  (473), Afeganistão e Índia (419), Suíça e França (393), Reino Unido e Irlanda (350): o termo de
-  minoria domina nos países pequenos ao lado de um vizinho grande com a mesma cultura.
-- **Ameaça em 1935** (por mil do próprio poder): URSS 757, Japão 727, Itália 562, França 375,
-  Reino Unido 273, China 250, Alemanha 122, EUA 29.
+- **CINC de 1925, da metrópole:** os EUA são o mais forte no jogo e no NMC, e a China o segundo
+  nos dois. URSS, Alemanha e Reino Unido vêm em seguida em ordem diferente do NMC, e Japão e Itália
+  ficam no lugar. Os Países Baixos, o pior erro, caem de 29 por mil (com as Índias) a 14 (o NMC dá
+  perto de 7): o que sobra é o gasto militar do Estado inteiro e o pessoal militar da metrópole, que
+  o jogo ainda conta alto.
+- **Disputas militarizadas, as duas contas** (dos 93 pares com disputa entre 1925 e 1939, quantos
+  estão entre os 93 mais hostis do jogo; e, dos 93 mais hostis, quantos não tiveram disputa):
+
+  | Medida | Pares com disputa no topo | Topo sem disputa |
+  |---|---|---|
+  | a primeira versão (#377) | 13 | 80 |
+  | a escolhida (minoria pela parte em casa, regime pelas potências, reivindicações) | 37 | 56 |
+  | a mesma com a minoria pela razão de população | 37 | 56 |
+  | a escolhida **sem** o termo de reivindicação | 33 | 60 |
+
+  O termo de reivindicação, com a lista pelo critério, acrescenta 4 pares; o resto do ganho sobre a
+  primeira versão vem das correções de definição e de fórmula (o CINC da metrópole, a minoria
+  pesada pela parte da cultura em casa e limitada à população de quem reivindica, o regime pelo
+  alcance). Uma primeira lista de reivindicações, montada a partir das faltas da conferência, dava
+  39; foi trocada pela do critério, porque escolhia os pares pelo resultado.
+- **Os piores erros que restam:** Japão e URSS (9 anos de disputa; hostilidade 142), China e URSS
+  (7; 144), Espanha e Itália (5; 0), Reino Unido e Itália (5; 76), Espanha e Alemanha (4; 2): as
+  disputas da Guerra Civil Espanhola, da Abissínia e das fronteiras do Extremo Oriente sem
+  reivindicação de governo com fonte.
+- **Os falsos alarmes, os mais hostis sem disputa:** Reino Unido e Irlanda (750), China e Tibete
+  (672), China e Mongólia (667), Romênia e URSS (603), Reino Unido e Guatemala (545), Chile e Peru
+  (533), Alemanha e Sarre (519), Iraque e Turquia (519): reivindicações formais que não viraram
+  disputa armada, como o critério pede que entrem.
+- **Os dez mais hostis**, iguais nas duas formas de alcance do regime (as reivindicações e as
+  minorias dominam o topo). Em 1925: URSS e Romênia, Peru e Chile, Alemanha e Sarre, Turquia e
+  Iraque, França e Libéria, Polônia e Lituânia, Iugoslávia e Albânia, Equador e Peru, Honduras e
+  Nicarágua, Bolívia e Paraguai. Em 1950: Reino Unido e Irlanda, China e Tibete, China e Mongólia,
+  China e Japão, Reino Unido e Guatemala, Reino Unido e Argentina, Iugoslávia e Albânia, Honduras e
+  Nicarágua, Afeganistão e Índia, Romênia e Bulgária.
+- **Onde as duas formas de alcance diferem:** EUA e URSS dão 139 em 1925 e 95 em 1950 pelas
+  potências, 25 e 0 pelas ogivas (sem jogador, ninguém faz ogivas no jogo); Alemanha e Sião dão 5 e
+  0 nas duas; Alemanha e Polônia, 253 em 1925 (o corredor, até 1934).
+- **Ameaça em 1935** (por mil do próprio poder): Japão 2.400 (a China reivindica a Manchúria, e a
+  China tem mais poder), URSS 630, Itália 441, França 440, Reino Unido 360, China 279, Alemanha
+  132, EUA 28.
 
 **O que a medida diz à calibração (não mexido aqui):**
 - falta um termo de disputa de fronteira entre vizinhos (território reclamado sem população: o
@@ -119,7 +173,8 @@ hora de `BF_COW_DIR` (`NMC-70-abridged.csv` do `NMCv7.zip`, `dyadic_mid_4.03.csv
   absoluta, para os microestados;
 - o comércio e os acordos pesam mais que o regime entre as grandes potências europeias.
 
-**Custo:** a medida inteira do mundo, os 83 países e os 3.403 pares, leva 4,0 ms (release,
+**Custo:** a medida inteira do mundo, os 83 países e os 3.403 pares, leva 9,0 ms (release, com a
+metrópole por região;
 `relations::the_cost_of_a_measure`); não roda no tick, a interface a pede quando mostra.
 
 

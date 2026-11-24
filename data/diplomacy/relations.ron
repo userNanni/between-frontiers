@@ -20,6 +20,8 @@
         // Up: land of one held by the other; its people in the other's regions; laws unlike;
         // causes from breaches; the higher military effort of the two; war between them.
         territory: 400,
+        // An open territorial claim between the two (claims.ron).
+        claim: 400,
         minority: 300,
         regime: 200,
         causes: 200,
@@ -34,6 +36,14 @@
     ),
     // Lost territory or people abroad, per mille of the own people, for a whole term.
     people_full: 200,
+    // How much a country speaks for its people in a neighbour, the minority term's weight:
+    // HomeShare (the share of the culture's people living in its metropole) or PopulationRatio
+    // (its people over the holder's). DESIGN choice; both measured.
+    minority_by: HomeShare,
+    // Which pairs, besides neighbours, the regime term reaches whole: Powers (two powers, each
+    // at great_power or more) or Warheads (either nuclear). The others at reach_far. DESIGN
+    // choice; both measured.
+    regime_reach: Powers,
     // Military spending per mille of GDP from which the arms race counts, and for a whole term.
     effort_from: 20,
     effort_full: 80,
