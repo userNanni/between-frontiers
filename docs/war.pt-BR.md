@@ -2736,6 +2736,49 @@ Can a Victor Force the Vanquished to Pay?", *Journal of Economic History* 68(1);
 (1998), *The Economics of World War II*; Quinlivan, J. (1995), "Force Requirements in Stability
 Operations", *Parameters* 25(4).
 
+#### Obras em terra ocupada (atrás de `occupied_works`, desligada)
+
+Achado da terra arrasada (#360): a construção não conhecia o controle. O dono seguia investindo e
+reconstruindo na região que o inimigo ocupa, e isso valia também para a devastação do combate. O
+orquestrador decidiu OC1 a OC4 nas recomendadas (2026-11-24), como padrão de correção; o dono foi
+informado. Código em `econ::construction` (`held`, `stopped`), no investimento mensal
+(`econ::monthly::Investment`), nas obras públicas (`econ::public::public_works`) e na entrega da
+fila (`econ::week`). Sem estado novo e sem save novo: tudo sai do controle da semana
+(`Fighting::controller`).
+
+| Peça | Como é na vida real | No jogo | Muda a simulação? |
+|---|---|---|---|
+| O dono (OC1) | não constrói na terra que perdeu; a obra fica embargada | nenhuma obra nova numa região que o dono não controla: privada, pública, firma do Estado, pedido do governo (D8) ou fundo de fora. As obras já na fila ficam paradas, sem pedir nem receber pontos, com o que já tinham, e voltam a andar quando a região volta | só com a regra |
+| O dinheiro (OC2) | o capital procura onde pode | o fundo escolhe entre as regiões que o dono controla, pela regra de sempre; o que não acha onde pôr fica no fundo | sim |
+| O ocupante (OC3) | constrói o que decide (obras de guerra) | nada nesta fatia; construir em terra ocupada fica como decisão futura do jogador (Agendas) e da IA (fase 6) | — |
+| Fechar (OC4) | a fábrica que perde fecha | pela regra de sempre, também na região ocupada | — |
+
+**Medido** (`war_occupied_works::the_owner_does_not_build_on_land_it_does_not_hold`, com a
+devastação do combate do `main`; a terra arrasada fica para quando o #360 entrar): a Polônia,
+jogada, declara à Tchecoslováquia e perde uma das 16 regiões (602) na primeira semana de combate.
+
+| | jun/1925 | set | dez | mar/1926 |
+|---|---|---|---|---|
+| níveis na região perdida, sem a regra | 239 | 247 | 247 | 251 |
+| níveis na região perdida, com a regra | 239 | 240 | 241 | 242 |
+| níveis nas regiões mantidas, sem / com | 9.362 / 9.362 | 9.470 / 9.471 | 9.489 / 9.491 | 9.521 / 9.523 |
+| obras na fila da região perdida, sem / com | 16 / 16 | 11 / 16 | 13 / 16 | 14 / 16 |
+| obras na fila das regiões mantidas, sem / com | 266 / 266 | 193 / 198 | 238 / 243 | 265 / 269 |
+| fundo de investimento (bi), sem / com | 9,99 / 10,03 | 9,67 / 9,78 | 9,67 / 9,79 | 9,69 / 9,82 |
+
+- Com a regra, as 16 obras da região perdida esperam inteiras. Os 3 níveis a mais na região são
+  autônomos urbanos (`informal_trade`, da mão de obra, não do investimento); uma fábrica de armas
+  com prejuízo fechou (OC4).
+- O total investido **não** é igual: com a regra, o fundo põe um pouco mais nas regiões mantidas
+  (2 níveis e 4 obras a mais) e guarda o resto. Em março de 1926 o fundo tem 1,3 % a mais: o
+  dinheiro não se perde, mas o fundo não acha nas outras regiões, dentro do teto de obras por mês e
+  do retorno mínimo, onde pôr tudo o que iria à região perdida.
+- Na Hungria ocupada inteira (HUN×CZE), não sobra região: o fundo só acumula (3,98 contra 2,89 bi
+  em dezembro de 1925).
+
+**Tela:** a obra da fila numa região que o dono não controla mostra "parada: território ocupado"
+(`econ::construction::held(world, região)` falso, com a regra ligada).
+
 ## Mar e ar (fatia C2, desenho)
 
 A fatia C2 traz para a guerra da fatia C o mar e o ar: `naval_step` e `air_step` (já escritos e
