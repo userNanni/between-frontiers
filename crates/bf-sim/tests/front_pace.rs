@@ -61,11 +61,25 @@ fn side(men: u64, quality: i64, posture: Posture, dug: Fixed) -> LandSide {
 /// `dug` (0 to 1), on `terrain`, across a river share `river`.
 fn week(
     width_km: i64,
+    attack: (u64, i64),
+    defend: (u64, i64),
+    dug: Fixed,
+    terrain: TerrainMix,
+    river: Fixed,
+) -> Fixed {
+    week_moving(width_km, attack, defend, dug, terrain, river, TICK_MOBILITY)
+}
+
+/// As [`week`], with the attacker moving at `mobility` on the segment: the mobile class a
+/// second-generation army concentrates there (item 12, `fight::concentrated_mobility`).
+fn week_moving(
+    width_km: i64,
     (attack, qa): (u64, i64),
     (defend, qd): (u64, i64),
     dug: Fixed,
     terrain: TerrainMix,
     river: Fixed,
+    mobility: Mobility,
 ) -> Fixed {
     let field = LandField {
         terrain,
@@ -73,7 +87,10 @@ fn week(
         river,
         width_km: Fixed::from_int(width_km),
     };
-    let a = side(attack, qa, Posture::Attack, Fixed::ZERO);
+    let a = LandSide {
+        mobility,
+        ..side(attack, qa, Posture::Attack, Fixed::ZERO)
+    };
     let d = side(defend, qd, Posture::Defend, dug);
     land_step(rules(), &field, [&a, &d]).advance_km
 }
@@ -132,16 +149,17 @@ fn the_same_front_before_the_trenches_moves_faster() {
 /// (mid-August), some 600 km in six weeks, with small armies on a front of hundreds of km and
 /// Budyonny's cavalry (Davies, *White Eagle, Red Star*, 1972). A segment of 200 km: 40,000
 /// against 25,000 of the same fire per man. 40 to 150 km a week.
+/// With the cavalry concentrated on the segment (item 12): the army's majority walked.
 #[test]
-#[ignore = "needs the cavalry concentrated on the segment (4): the majority walked, 26 km a week; on horses 46"]
 fn poland_1920_runs() {
-    let km = week(
+    let km = week_moving(
         200,
         (40_000, 10),
         (25_000, 10),
         Fixed::ZERO,
         TerrainMix::only(Terrain::Open),
         Fixed::ZERO,
+        Mobility::Horse,
     );
     within(km, 40, 150, "Poland 1920");
 }
@@ -150,18 +168,28 @@ fn poland_1920_runs() {
 /// armour and motorized divisions and twice the fire per man against a thin Polish line
 /// (Zaloga and Madej, *The Polish Campaign 1939*, 1985). A segment of 150 km: 100,000 against
 /// 40,000. 60 to 200 km a week.
+/// With the motorized divisions concentrated on the segment (item 12): measured, 210 km a week
+/// on wheels and on tracks alike, above the 60 to 200 of history. The case puts every attacker
+/// of the segment on wheels; in 1939 the mobile divisions were a minority of the men on each
+/// axis, with the infantry behind them. Whether a third of mobile men is the right line
+/// (`doctrine.mobile_share`) is for the calibration.
 #[test]
-#[ignore = "needs 4: the mobile divisions on the focus segment; the majority walked, 56 km a week"]
+#[ignore = "measured 210 km a week on wheels or tracks against 60 to 200: every attacker of the segment on wheels; the mobile share is for the calibration"]
 fn poland_1939_in_weeks() {
-    let km = week(
-        150,
-        (100_000, 20),
-        (40_000, 10),
-        Fixed::ZERO,
-        TerrainMix::only(Terrain::Open),
-        Fixed::ZERO,
-    );
-    within(km, 60, 200, "Poland 1939");
+    let run = |m| {
+        week_moving(
+            150,
+            (100_000, 20),
+            (40_000, 10),
+            Fixed::ZERO,
+            TerrainMix::only(Terrain::Open),
+            Fixed::ZERO,
+            m,
+        )
+    };
+    let tracks = run(Mobility::Tracked);
+    println!("Poland 1939 on tracks: {tracks:?} km a week (history 60 to 200)");
+    within(run(Mobility::Wheeled), 60, 200, "Poland 1939");
 }
 
 /// France, 1940: from the crossing of the Meuse at Sedan (13 May) to the Channel at Abbeville
@@ -170,7 +198,7 @@ fn poland_1939_in_weeks() {
 /// km, half forest, along the Meuse: 100,000 with one and a half times the fire per man against
 /// 40,000. 100 to 300 km a week.
 #[test]
-#[ignore = "needs 4: the panzer divisions on the focus segment, and the breakthrough and exploitation"]
+#[ignore = "needs the third generation's breakthrough: in the game Germany does not reach it by 1940 (slow radio and armored_warfare, for the calibration)"]
 fn france_1940_in_weeks() {
     let km = week(
         80,

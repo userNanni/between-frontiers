@@ -1200,6 +1200,7 @@ pub(crate) mod tests {
                 radio_min: 500,
                 fuel_min: 500,
                 focus_share: 600,
+                mobile_share: 333,
                 breakthrough_ratio: Fixed::from_int(3),
                 exploitation_speed: Fixed::from_int(2),
                 experience_full_weeks: 52,
