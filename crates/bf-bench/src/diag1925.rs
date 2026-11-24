@@ -1004,6 +1004,60 @@ pub fn main() -> Result<(), String> {
         }
         return Ok(());
     }
+    // The first year each method of a building runs in each country
+    // (`BF_DIAG_ADOPTION=laboratory:USA,SOV,BRA,RAJ`): checked each January to 2025.
+    if let Ok(spec) = std::env::var("BF_DIAG_ADOPTION") {
+        let (kind, tags) = spec
+            .split_once(':')
+            .ok_or("BF_DIAG_ADOPTION=building:TAG,TAG")?;
+        let k = cat.building(kind).ok_or("unknown building")?;
+        let all: Vec<String> = data
+            .countries
+            .countries
+            .iter()
+            .map(|c| c.tag.clone())
+            .collect();
+        let idx: Vec<(String, usize)> = tags
+            .split(',')
+            .filter_map(|t| all.iter().position(|x| x == t).map(|i| (t.to_string(), i)))
+            .collect();
+        let nm = cat.buildings[k].methods.len();
+        let mut first = vec![vec![0i32; nm]; idx.len()];
+        for y in 1926..=2025 {
+            s.sim.run_until(Date::new(y, 1, 2));
+            let e = &s.world().econ;
+            for (j, (_, mi)) in idx.iter().enumerate() {
+                for r in e.regions.iter().filter(|r| r.market as usize == *mi) {
+                    for p in r
+                        .plants
+                        .iter()
+                        .filter(|p| p.kind as usize == k && p.levels > 0)
+                    {
+                        let f = &mut first[j][p.method as usize];
+                        if *f == 0 {
+                            *f = y;
+                        }
+                    }
+                }
+            }
+        }
+        for (j, (tag, _)) in idx.iter().enumerate() {
+            let parts: Vec<String> = cat.buildings[k]
+                .methods
+                .iter()
+                .zip(&first[j])
+                .map(|(m, y)| {
+                    format!(
+                        "{} {}",
+                        m.key,
+                        if *y > 0 { y.to_string() } else { "-".into() }
+                    )
+                })
+                .collect();
+            println!("{tag} {kind}: {}", parts.join(", "));
+        }
+        return Ok(());
+    }
     // Levels by method of some buildings, every ten years (`BF_DIAG_METHODS=laboratory,university`):
     // whether a new method is taken up, and how fast.
     if let Ok(spec) = std::env::var("BF_DIAG_METHODS") {
