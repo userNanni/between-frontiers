@@ -599,7 +599,10 @@ fn front(
                             ("state", arg(state_name(i18n, world, b.state))),
                             ("to", arg(country_name(i18n, &b.to))),
                             ("levels", arg(i18n.int(b.levels))),
-                            ("share", arg(per_mille(i18n, b.share))),
+                            (
+                                "share",
+                                arg(super::budget::pct(i18n, f64::from(b.share) / 10.0, 1)),
+                            ),
                             (
                                 "date",
                                 arg(date_long(

@@ -37,7 +37,8 @@ fn settle(h: &mut egui_kittest::Harness<'_, bf_client::App>) {
 
 /// Poland at war with Czechoslovakia (the war's recipe), attacking, after two weeks of combat:
 /// the Agendas' decision of scorched earth against Czechoslovakia, before the order, with the
-/// Polish regions fought over; then, the order given, the front of the war window saying so.
+/// Polish regions fought over; then, the order given, the front of the war window saying so, with
+/// a region burned put in by hand.
 /// Portuguese at 1600 × 900, English at 1280 × 720.
 #[test]
 #[ignore = "needs a GPU (or software Vulkan) and the generated map; run with --ignored"]
@@ -158,6 +159,28 @@ fn scorched_earth() {
         on: true,
     });
     s.sim.step();
+    // What burned, put in by hand: in the client a region falling to Czechoslovakia ends the war
+    // by occupation (the data's `overrun`); the war's test turns it off
+    // (`war_scorch::what_falls_burns_with_the_order`).
+    {
+        let w = s.sim.world_mut();
+        let index = |t: &str| w.countries.iter().position(|(_, c)| c.tag == t).unwrap() as u16;
+        let (pol, cze) = (index("POL"), index("CZE"));
+        let region = w
+            .econ
+            .regions
+            .iter()
+            .position(|r| r.market == pol && !r.colony)
+            .unwrap() as u32;
+        w.war.scorch.burned.push(bf_sim::war::scorch::Burn {
+            region,
+            by: pol,
+            to: cze,
+            levels: 74,
+            share: 125,
+            day: Date::new(1925, 3, 31).to_days(),
+        });
+    }
     for (locale, size, tag, line, war) in [
         (
             "pt-BR",

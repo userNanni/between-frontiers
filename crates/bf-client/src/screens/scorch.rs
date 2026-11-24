@@ -113,7 +113,7 @@ pub fn show(
                     ui.label(i18n.int(r.levels));
                     ui.label(super::budget::pct(i18n, r.output * 100.0, 1));
                     ui.label(i18n.int(i64::from(r.weeks)));
-                    ui.label(super::budget::pct(i18n, f64::from(r.would_burn) / 10.0, 0));
+                    ui.label(super::budget::pct(i18n, f64::from(r.would_burn) / 10.0, 1));
                     ui.end_row();
                 }
             });
@@ -132,7 +132,7 @@ pub fn show(
                         ("levels", arg(i18n.int(b.levels))),
                         (
                             "share",
-                            arg(super::budget::pct(i18n, f64::from(b.share) / 10.0, 0)),
+                            arg(super::budget::pct(i18n, f64::from(b.share) / 10.0, 1)),
                         ),
                         (
                             "date",
