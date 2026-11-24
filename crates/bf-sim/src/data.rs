@@ -225,6 +225,61 @@ impl GoldFile {
     }
 }
 
+/// The methods that belong to a rule switch (`MethodDef::switch`): with the switch off they leave
+/// the catalogue and the technologies that list them, so the world is the same as without them;
+/// with it on they stay, and the technologies that unlock them lose their own effect on research
+/// (`computer_efficiency`: the computer's gain comes through the laboratory's and the
+/// university's methods, not twice).
+fn switched_methods(
+    buildings: &mut BuildingsFile,
+    technologies: Option<&mut TechnologiesFile>,
+    switches: &crate::game::Switches,
+) -> Result<(), String> {
+    let mut off: Vec<String> = Vec::new();
+    let mut on: Vec<String> = Vec::new();
+    for b in &mut buildings.buildings {
+        let mut kept = Vec::with_capacity(b.methods.len());
+        for m in b.methods.drain(..) {
+            let key = format!("{}.{}", b.key, m.key);
+            match &m.switch {
+                None => kept.push(m),
+                Some(name) => {
+                    let Some(is_on) = switch_is_on(switches, name) else {
+                        return Err(format!(
+                            "economy/buildings.ron: {key}: unknown switch {name}"
+                        ));
+                    };
+                    if is_on {
+                        on.push(key);
+                        kept.push(m);
+                    } else {
+                        off.push(key);
+                    }
+                }
+            }
+        }
+        b.methods = kept;
+    }
+    if let Some(t) = technologies {
+        for tech in &mut t.technologies {
+            let unlocks_on = tech.methods.iter().any(|k| on.contains(k));
+            tech.methods.retain(|k| !off.contains(k));
+            if unlocks_on {
+                tech.effects.retain(|(e, _)| e != "research");
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Whether switch `name` is on in `switches`; `None` for a switch no method may belong to.
+fn switch_is_on(switches: &crate::game::Switches, name: &str) -> Option<bool> {
+    match name {
+        "computer_efficiency" => Some(switches.computer_efficiency),
+        _ => None,
+    }
+}
+
 /// Format of `data/economy/biomass.ron`.
 #[derive(serde::Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -458,11 +513,14 @@ impl GameData {
                 }
             }
         }
+        let mut technologies =
+            optional::<TechnologiesFile>(&data.join("research/technologies.ron"))?;
+        switched_methods(&mut buildings, technologies.as_mut(), &switches)?;
         let needs: NeedsFile = read(&data.join("economy/needs.ron"))?;
         let purchases: PurchasesFile = read(&data.join("economy/purchases.ron"))?;
         let catalogue =
             Catalogue::build(&goods, &buildings, &needs, &purchases).map_err(|e| e.to_string())?;
-        let tree = optional::<TechnologiesFile>(&data.join("research/technologies.ron"))?
+        let tree = technologies
             .map(|mut file| {
                 // Without radium the tree is main's: the technology its use fades with leaves.
                 if !switches.radium {

@@ -950,6 +950,7 @@
             cost: 737,
             goods: ["computers"],
             productivity: [("services", 19)],
+            methods: ["laboratory.computerized_research", "university.computerized_campus"],
             effects: [("research", 80)],
             state_buyer: true,
         ),
@@ -1349,6 +1350,7 @@
             industrialized: 1981,
             cost: 2436,
             productivity: [("services", 47)],
+            methods: ["laboratory.networked_research", "university.networked_campus"],
             effects: [("research", 60)],
         ),
         (
@@ -1861,6 +1863,7 @@
             industrialized: 2016,
             cost: 4900,
             productivity: [("services", 19)],
+            methods: ["laboratory.ai_assisted_research", "university.ai_tutored_campus"],
             effects: [("research", 60)],
         ),
         (

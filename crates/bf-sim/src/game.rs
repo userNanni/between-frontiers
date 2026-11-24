@@ -1286,6 +1286,13 @@ pub struct Switches {
     /// tribute paid and tested, and the agreements whose fixed term ran out end in January.
     /// Off: agreements never end by their term and nothing is paid.
     pub clause_tests: bool,
+    /// The computer as a gain in efficiency (`MethodDef::switch`, docs/research.pt-BR.md): the
+    /// laboratory and the university get methods that use computers and make more research and
+    /// teaching per worker (with the electronic computer, the personal computer and deep
+    /// learning), and those technologies lose their own effect on research, so the gain comes
+    /// through the methods. A country without computers keeps researching with the old methods.
+    /// Acts when the data load. Off: the methods are not in the catalogue.
+    pub computer_efficiency: bool,
     pub crisis: bool,
     /// Customs duties (`econ::customs`, docs/trade.pt-BR.md, section 13): the tariff is
     /// collected by the treasury and makes imports dearer, and the 1925 rate of each country
@@ -1421,6 +1428,7 @@ impl Switches {
     pub const NAMES: &'static [&'static str] = &[
         "capital_follows_rate",
         "clause_tests",
+        "computer_efficiency",
         "crisis",
         "customs_duties",
         "fiscal_capacity",
@@ -1454,6 +1462,7 @@ impl Switches {
         match name {
             "capital_follows_rate" => self.capital_follows_rate = true,
             "clause_tests" => self.clause_tests = true,
+            "computer_efficiency" => self.computer_efficiency = true,
             "crisis" => self.crisis = true,
             "customs_duties" => self.customs_duties = true,
             "fiscal_capacity" => self.fiscal_capacity = true,

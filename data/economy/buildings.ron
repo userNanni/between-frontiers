@@ -461,6 +461,14 @@
         // pay plus instruments, so that the bill (output at the price of research) is the cost.
         (key: "laboratory", group: "services", resource: None, farm: None, public: true, methods: [
             (key: "research_institute", available_from: 1925, inputs: [("electrical_equipment", 2800), ("machinery", 1200), ("tools", 650), ("chemicals", 800), ("paper", 160), ("services", 1100)], outputs: [("research", 15000)], jobs: [("engineer", 450), ("professional", 350), ("clerk", 100), ("laborer", 100)]),
+            // The computer as a gain in efficiency (`Switches::computer_efficiency`): the same staff
+            // and instruments with computers make more research. Design values, not from a source:
+            // +50 % with the electronic computer, +100 % with the personal computer, +200 % with
+            // deep learning; the computers cost a small part of the gain, so the yearly switch of
+            // methods (`SWITCH_MARGIN`, 10 %) takes them as soon as the technology allows.
+            (key: "computerized_research", available_from: 1951, inputs: [("electrical_equipment", 2800), ("machinery", 1200), ("tools", 650), ("chemicals", 800), ("paper", 160), ("services", 1100), ("computers", 300), ("electricity", 2000)], outputs: [("research", 22500)], jobs: [("engineer", 450), ("professional", 350), ("clerk", 100), ("laborer", 100)], switch: Some("computer_efficiency")),
+            (key: "networked_research", available_from: 1981, inputs: [("electrical_equipment", 2800), ("machinery", 1200), ("tools", 650), ("chemicals", 800), ("paper", 160), ("services", 1100), ("computers", 600), ("electricity", 3000)], outputs: [("research", 30000)], jobs: [("engineer", 450), ("professional", 350), ("clerk", 100), ("laborer", 100)], switch: Some("computer_efficiency")),
+            (key: "ai_assisted_research", available_from: 2016, inputs: [("electrical_equipment", 2800), ("machinery", 1200), ("tools", 650), ("chemicals", 800), ("paper", 160), ("services", 1100), ("computers", 1200), ("electricity", 6000)], outputs: [("research", 45000)], jobs: [("engineer", 450), ("professional", 350), ("clerk", 100), ("laborer", 100)], switch: Some("computer_efficiency")),
         ]),
         // Urban self-employment: street trade, domestic service, small workshops. Nobody builds
         // it: each month it takes the town's labourers that no plant employs, and shrinks as plants
@@ -480,6 +488,11 @@
         ]),
         (key: "university", group: "services", resource: None, farm: None, public: true, methods: [
             (key: "lecture_halls", available_from: 1925, inputs: [("paper", 20), ("furniture", 20), ("services", 200)], outputs: [("higher_education", 6000)], jobs: [("professional", 500), ("clerk", 150), ("laborer", 150)]),
+            // With computers (`Switches::computer_efficiency`), design values: +20 % with the
+            // electronic computer, +50 % with the personal computer, +100 % with deep learning.
+            (key: "computerized_campus", available_from: 1951, inputs: [("paper", 20), ("furniture", 20), ("services", 200), ("computers", 50), ("electricity", 1000)], outputs: [("higher_education", 7200)], jobs: [("professional", 500), ("clerk", 150), ("laborer", 150)], switch: Some("computer_efficiency")),
+            (key: "networked_campus", available_from: 1981, inputs: [("paper", 20), ("furniture", 20), ("services", 200), ("computers", 150), ("electricity", 1500)], outputs: [("higher_education", 9000)], jobs: [("professional", 500), ("clerk", 150), ("laborer", 150)], switch: Some("computer_efficiency")),
+            (key: "ai_tutored_campus", available_from: 2016, inputs: [("paper", 20), ("furniture", 20), ("services", 200), ("computers", 300), ("electricity", 3000)], outputs: [("higher_education", 12000)], jobs: [("professional", 500), ("clerk", 150), ("laborer", 150)], switch: Some("computer_efficiency")),
         ]),
         // U2 (the owner, 2026-11-19): the weapon fissile, in cores, by two methods; a level is a
         // plant of the time.
