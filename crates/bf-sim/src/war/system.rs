@@ -1522,7 +1522,7 @@ impl System<GameWorld> for Forces {
         if let Some(c) = changes.conversions {
             world.war.composition.conversions = c;
         }
-        if let Some(week) = changes.fight {
+        if let Some(mut week) = changes.fight {
             // Aircraft lost over the fronts (slice C2).
             super::sea::sink(world, &week.air_lost);
             for (c, share) in &week.lost_share {
@@ -1552,6 +1552,20 @@ impl System<GameWorld> for Forces {
             }
             for (r, n) in &week.devastation.civilians {
                 super::occupation::kill_civilians(world, *r, *n);
+            }
+            // Scorched earth: what the side that lost a region burned as it left.
+            if let Some(rules) = self
+                .fight
+                .as_ref()
+                .and_then(|f| f.conduct.as_ref())
+                .and_then(|k| k.rules.occupation.scorched.as_ref())
+            {
+                for (r, levels) in &week.devastation.scorched {
+                    super::scorch::burn(rules, world, *r, *levels);
+                }
+            }
+            if let Some(s) = week.scorch.take() {
+                world.war.scorch = s;
             }
             // A government fallen at the end of a collapse (G4): a new form of government is a
             // change of regime, which the treaties read (owner's decision P3).
