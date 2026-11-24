@@ -1403,6 +1403,33 @@ trabalhos.
 
 ## Calibração prevista
 
+### Antes de ligar: o roteiro da rodada de calibração
+
+A ordem do dono é funcionalidade, otimização, calibração. As funções da guerra entram atrás das
+suas chaves, desligadas; nenhuma calibração começa antes da rodada própria. Ela segue esta ordem,
+e nenhuma chave liga antes de a anterior estar medida contra a faixa.
+
+**O que já está medido.** A rodada de 101 anos com `war` e `crisis` ligadas (main `abd15c5`):
+- nenhuma guerra começa: a IA não exige nem declara (fase 6);
+- o mundo fica dentro do ruído da faixa (população, PIB, alfabetização);
+- o gasto militar sobre o PIB sobe a 8 a 13 % em 2000, pelo teto do orçamento (item 1 abaixo).
+
+**A ordem:**
+1. **O orçamento militar em paz** (detalhe abaixo): o teto contra 1 a 3 % do PIB nos anos 1930.
+   Depois dele, a `share` da encomenda da IA (item 11) sai de 0.
+2. **A terceira geração alemã** (detalhe abaixo): rádio e `armored_warfare`; reabre
+   `front_pace::france_1940_in_weeks`.
+3. **Os dados das forças de 1925:** a reserva treinada dos países de conscrição (França, Itália,
+   Polônia, URSS, Japão sem linha de reserva; seção "Reserva por coorte") e a cavalaria, que não
+   existe nas forças de 1925 (o teste da Polônia contra a Tchecoslováquia a põe à mão).
+4. **`mobile_share`** (item 12), **valor de desenho**: medir a concentração contra 1939–1940 depois
+   da terceira geração.
+5. **A reserva por coorte** (`reserve_cohorts`): `training_loss` e `reserve_years` são valores de
+   desenho; a classe é o exército de terra sobre o prazo e dá a França em 7,07 milhões em 1939
+   contra 4,56 (falta a parcela de conscritos, com página); a conferência mede, não fixa.
+6. **O ritmo da frente:** a Polônia de 1939 a 210 km por semana, fora da faixa de 60 a 200 (teste
+   ignorado com o motivo).
+
 **As duas que seguram o PR de ligar a guerra** (o orquestrador, 2026-11-23):
 1. **O tamanho do orçamento militar em paz.** O teto dá 5 a 7% do PIB, contra 1 a 3% reais nos
    anos 1930 (Eloranta, 2017, p. 122, tabela 2). A encomenda da IA (item 11) fica em `share` 0
@@ -1549,6 +1576,80 @@ Rodada de 101 anos com as forças ligadas contra a faixa (base mais oito empurr�
 - **O PIB a mais de 1975** que a faixa de três amostras acusava some com a faixa de oito (−0,4 %
   contra ±4,0). A queda do fim do século (Holanda, Índia britânica) vinha do exército colonial
   escalado pelos homens da metrópole, corrigido no #195.
+
+## Reserva por coorte (item 9, atrás de `reserve_cohorts`, desligada)
+
+Desenho do orquestrador (2026-11-23), com save 46. Código em `war/reserve.rs` e no passo 3 e 4 do
+sistema `forces`; regra em `data/military/peace.ron`, `reserve_cohorts`. Desligada, a reserva é a
+de 1925, parada, como antes.
+
+| Peça | Como é na vida real | No jogo | Muda a simulação? |
+|---|---|---|---|
+| A classe que sai do serviço | todo ano a classe que cumpriu o prazo vai à reserva com o treino que tem, e outra entra | cada janeiro, os homens em serviço em terra na metrópole sobre os meses de serviço, vezes 12, entram na reserva como a coorte do ano anterior, com o treino médio das formações | sim: a reserva cresce onde há conscrição |
+| O treino do reservista | cai fora do serviço; os cursos de reciclagem das leis dos anos 1920 mostram a perda, não o tamanho (Tchecoslováquia: 14 semanas no total, Armaments Year-Book 1924, p. 346) | cada coorte perde `training_loss` = 50 por mil por ano. **Valor de desenho**, sem fonte | só na mobilização: o reservista chega com o treino da sua coorte, não com 70 % |
+| Quanto tempo na reserva | pela lei de cada país: França 28 anos, Polônia e URSS até os 40 | `countries` com página no Year-Book; sem número, `reserve_years` = 15 (**valor de desenho**); a coorte mais velha sai em janeiro | sim |
+| Quem a mobilização chama | as classes mais novas primeiro | a coorte mais nova primeiro, cada uma com o seu treino; a formação chamada fica com a média ponderada | sim, na guerra |
+| Desmobilizar | os homens voltam à reserva | voltam como a coorte do ano anterior, com o treino que têm | sim |
+| A reserva e a economia | o reservista trabalha até ser chamado | igual: a reserva é uma conta, não sai da força de trabalho; quem é chamado sai, como antes | não, até a mobilização |
+| O prazo do serviço | pela lei; a França passou de 1 para 2 anos em 1935 | `service_months` por país: o de 1925 com página, ou pelo efeito da lei (`law_months`: voluntário 0, seletivo 12, universal 24, **valores de desenho**). O jogador muda por `SetServiceMonths`, de 6 a 36 meses; a IA não muda (fase 6) | sim: o exército de paz cresce pela razão dos meses sobre os de 1925 |
+| Prazo maior, gradual | a classe que ia sair fica mais um ano; o exército cresce ao longo do prazo novo | os meses em efeito sobem 12 por ano até o novo prazo, e a parte da classe que fica não vai à reserva naquele janeiro; encurtar vale no janeiro seguinte | sim |
+
+**A reserva de 1925.** A reserva de `forces.ron` (onde há linha `reserve: true`) se divide em
+coortes iguais pelos anos de reserva do país, a mais nova de 1924, o treino de cada uma caindo pela
+perda por ano. A soma é a mesma (teste `the_reserve_is_the_sum_of_its_cohorts`). **Dependência:**
+a maioria dos países de conscrição (França, Itália, Polônia, URSS, Japão) não tem linha de reserva
+em 1925 e começa com a reserva vazia, que se enche classe a classe; o dado é da rodada de
+calibração (o Year-Book dá as classes, não o total treinado).
+
+**Conservação.** O que entra (a classe, a desmobilização) menos o que sai (a idade, a chamada) é a
+variação da reserva, país a país (`men_in_and_out_balance`); a reserva do país é a soma das
+coortes toda semana.
+
+**O comando do jogador.** `SetServiceMonths { tag, months }`: o sistema o mantém entre 6 e 36.
+A tela (Agendas, "Forças armadas em paz", "Prolongar o serviço…") vem do thread da interface no
+mesmo trem, em dois passos e com ponto de restauração, e diz antes de confirmar quanto o exército
+de paz cresce, em quantos anos (12 meses por ano) e quanto custa por ano. Até ela entrar, o comando
+fica na lista de exceções de `player_commands`.
+
+**Conferência de 1939 (medida, não meta).**
+- França: 4.564.000 mobilizados em setembro de 1939 (Souvenir Français, *Les 100 de 1939*,
+  pp. 2–3).
+- Alemanha: cerca de 4,5 milhões (Vogel e Lieb, "Die Wehrmacht: Struktur, Entwicklung, Einsatz",
+  bpb; **artigo sem página**).
+- Classes alemãs de 1935: Reserve I e II abaixo dos 35 anos, Landwehr de 35 a 45 (TM-E 30-451,
+  cap. I, seção VI, §2d: o manual americano, não a lei).
+
+**Medido com a chave ligada** (`war_reserve::france_by_cohort_1925_to_1939`, fevereiro de cada ano,
+sem a IA mudar o prazo):
+
+| | 1925 | 1935 | 1939 |
+|---|---|---|---|
+| França, reserva (coortes) | 0 (0) | 4.453.198 (10) | 6.348.228 (14) |
+| França, em terra na metrópole | 637.399 | 696.422 | 718.975 |
+| França, mobilizável | 637.399 | 5.149.620 | 7.067.203 |
+| Itália, mobilizável | 248.000 | 2.074.850 | 2.885.033 |
+| Polônia, mobilizável | 276.375 | 1.860.822 | 2.590.636 |
+| URSS, mobilizável | 530.000 | 3.561.674 | 4.972.114 |
+| Alemanha, mobilizável | 100.000 | 96.843 | 94.539 |
+
+França por coorte em 1939: de 479.316 homens (classe de 1938, treino 0,992) a 424.932 (classe de
+1925, treino 0,514), cerca de 3,3 % a menos de treino por ano a mais fora.
+
+**O que a medida mostra (para a calibração, não para corrigir aqui):**
+- **A França passa da conferência:** 7,07 milhões mobilizáveis contra 4,56 milhões mobilizados em
+  1939. A classe do jogo é todo o exército de terra sobre o prazo (465 mil por ano), e o exército
+  de 1925 tem oficiais e engajados que não saem a cada 18 meses; a classe francesa real era da
+  ordem da metade. Medida, não meta: entra no roteiro de calibração como a parcela de conscritos do
+  exército de paz (dado com página a buscar).
+- **A Alemanha fica em 95 mil:** a conscrição de 1935 é decisão de governo, e a IA não muda a lei
+  nem o prazo (fase 6). Contra os 4,5 milhões de 1939, é dependência da IA, não erro da reserva.
+- **A reserva de 1925 vazia** nos países de conscrição (dependência acima) faz 1925 subcontar.
+
+**Neutralidade.** Desligada: o hash de 10 anos é o da main
+(`71d55cda4ad2617e73f39398eeae582a5743f3a90ab85188ab7372f78657737b`) e a série de 101 anos é
+idêntica à da main `ca718bf`. Ligada: o hash muda (a reserva entra no estado), e a série de 101 anos
+continua idêntica à da main: em paz a reserva é uma conta e não tira ninguém do trabalho; só a
+mobilização e o comando do jogador mexem na economia. CPU igual (442 s contra 438 s, ruído).
 
 ## Encomenda de forças (fatia A2, rascunho)
 

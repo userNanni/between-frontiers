@@ -108,6 +108,11 @@
     // decisions P1–P3 of 2026-11-18): security and general, a tenth forgotten a year, halved by a
     // change of regime, read by the table. Off: breaches give causes, nothing more.
     reputation: false,
+    // The reserve by cohort (`docs/war.pt-BR.md`, item 9): each January the class that ends its
+    // service joins the reserve, the cohorts lose training and leave by age, the mobilization
+    // calls the youngest first, and the player sets the length of service. Off: the reserve of
+    // 1925. It changes the game of today (`forces` is on): on after the calibration.
+    reserve_cohorts: false,
     // Schooling by cohort and level, and the adult literacy campaign
     // (`docs/population.pt-BR.md`, "Ensino por coorte"). Off: literacy follows the economy's
     // yearly rule and mothers' schooling the 240-month lag.

@@ -582,6 +582,11 @@ pub enum GameCommand {
     /// exchange control). A no-op while the rule is off. Sim side only: the screen comes with
     /// slice 5.
     SetCapitalControls { tag: String, on: bool },
+    /// Lengthens or shortens the country's military service (`war::reserve`, switch
+    /// `reserve_cohorts`): months, within the rule's bounds. The army in peace follows from the
+    /// next January, and the class that leaves for the reserve with it. A no-op while the rule
+    /// is off.
+    SetServiceMonths { tag: String, months: u16 },
 }
 
 /// Changes the levers of the country `tag` (`econ::levers`); unknown tags are no-ops.
@@ -733,6 +738,21 @@ impl Command<GameWorld> for GameCommand {
                 };
                 if let Some(st) = world.gold.countries.get_mut(ci) {
                     st.posture = *posture;
+                }
+            }
+            GameCommand::SetServiceMonths { tag, months } => {
+                let Some(ci) = world.countries.iter().position(|(_, c)| c.tag == *tag) else {
+                    return;
+                };
+                let ci = ci as u16;
+                if let Ok(i) = world
+                    .war
+                    .reserve
+                    .countries
+                    .binary_search_by_key(&ci, |c| c.country)
+                {
+                    // The forces system keeps it within the rule's bounds; 0 is not a length.
+                    world.war.reserve.countries[i].service_months = (*months).max(1);
                 }
             }
             GameCommand::Mobilize { tag, on } => {
@@ -1371,6 +1391,12 @@ pub struct Switches {
     /// it is forgotten each year, a change of regime halves the security one, and the table
     /// discounts each promise by it. Off: breaches are recorded and give causes, nothing more.
     pub reputation: bool,
+    /// The reserve by cohort (`war::reserve`, docs/war.pt-BR.md, item 9): the class that ends
+    /// its service joins the reserve each January, the cohorts lose training and age out, the
+    /// mobilization calls the youngest first, and the player sets the length of service
+    /// (`SetServiceMonths`). Read at load (`GameData::war_rules`). Off: the reserve of 1925, as
+    /// before.
+    pub reserve_cohorts: bool,
     /// Schooling by cohort and level and the adult literacy campaign (`demography::education`,
     /// docs/population.pt-BR.md, "Ensino por coorte"). Off, literacy follows the economy's yearly
     /// rule; a world that already has schooling keeps it.
@@ -1448,6 +1474,7 @@ impl Switches {
         "radium",
         "rail_by_line",
         "reputation",
+        "reserve_cohorts",
         "schooling",
         "small_market_wage_floor",
         "trade_by_pair",
@@ -1482,6 +1509,7 @@ impl Switches {
             "radium" => self.radium = true,
             "rail_by_line" => self.rail_by_line = true,
             "reputation" => self.reputation = true,
+            "reserve_cohorts" => self.reserve_cohorts = true,
             "schooling" => self.schooling = true,
             "small_market_wage_floor" => self.small_market_wage_floor = true,
             "trade_by_pair" => self.trade_by_pair = true,
@@ -1871,6 +1899,30 @@ mod tests {
     /// before the communities (and both). The ledger and the border state empty, as they were.
     #[test]
     fn every_version_loads_with_its_hash() {
+        // `WarState` as the layouts before version 46 wrote it: without the reserves by cohort.
+        #[derive(Serialize)]
+        struct War45<'a> {
+            countries: &'a Vec<crate::war::state::CountryWar>,
+            soldiers: &'a Vec<i64>,
+            conflicts: &'a crate::war::crisis::Conflicts,
+            fighting: &'a crate::war::fight::Fighting,
+            composition: &'a crate::war::composition::CompositionState,
+            colonial: &'a Vec<crate::war::colonial::Colonial>,
+            sea: &'a crate::war::sea::SeaWar,
+            nuclear: &'a crate::war::programme::NuclearState,
+        }
+        fn war45(w: &crate::war::WarState) -> War45<'_> {
+            War45 {
+                countries: &w.countries,
+                soldiers: &w.soldiers,
+                conflicts: &w.conflicts,
+                fighting: &w.fighting,
+                composition: &w.composition,
+                colonial: &w.colonial,
+                sea: &w.sea,
+                nuclear: &w.nuclear,
+            }
+        }
         #[derive(Serialize)]
         struct OldEconomy<'a> {
             regions: &'a Vec<crate::econ::Region>,
@@ -2232,9 +2284,66 @@ mod tests {
             hash_of(&with_ledger)
         );
         assert_eq!(
-            hash_of(&headed(45, &encode_snapshot(&with_ledger).unwrap())),
+            hash_of(&headed(46, &encode_snapshot(&with_ledger).unwrap())),
             hash_of(&with_ledger)
         );
+        // Version 45, the yearly series, before the reserves by cohort: the war without them.
+        {
+            #[derive(Serialize)]
+            struct BeforeReserve45<'a> {
+                scenario: &'a String,
+                player: &'a Option<Id<Country>>,
+                countries: &'a Table<Country, CountryState>,
+                census: &'a Vec<CensusRecord>,
+                econ: &'a crate::econ::Economy,
+                research: &'a crate::research::ResearchState,
+                politics: &'a crate::polity::PoliticsState,
+                demography: &'a crate::demography::DemographyState,
+                borders: &'a crate::borders::BordersState,
+                foreign: &'a crate::foreign_stakes::ForeignState,
+                influence: &'a crate::influence::InfluenceState,
+                treaties: &'a crate::treaty::TreatyState,
+                war: War45<'a>,
+                education: &'a crate::demography::education::EducationState,
+                independence: &'a crate::borders::independence::IndependenceState,
+                levers: &'a crate::econ::levers::LeversState,
+                tariffs: &'a crate::econ::customs::TariffState,
+                payments: &'a crate::econ::payments::PaymentsState,
+                reserves: &'a crate::econ::payments::ReservesState,
+                gold: &'a crate::econ::gold::GoldState,
+                capital: &'a crate::econ::capital::CapitalState,
+                stocks: &'a crate::econ::stock::StockState,
+                series: &'a crate::econ::series::SeriesState,
+            }
+            let w = &with_ledger;
+            let v45 = encode_snapshot(&BeforeReserve45 {
+                scenario: &w.scenario,
+                player: &w.player,
+                countries: &w.countries,
+                census: &w.census,
+                econ: &w.econ,
+                research: &w.research,
+                politics: &w.politics,
+                demography: &w.demography,
+                borders: &w.borders,
+                foreign: &w.foreign,
+                influence: &w.influence,
+                treaties: &w.treaties,
+                war: war45(&w.war),
+                education: &w.education,
+                independence: &w.independence,
+                levers: &w.levers,
+                tariffs: &w.tariffs,
+                payments: &w.payments,
+                reserves: &w.reserves,
+                gold: &w.gold,
+                capital: &w.capital,
+                stocks: &w.stocks,
+                series: &w.series,
+            })
+            .unwrap();
+            assert_eq!(hash_of(&headed(45, &v45)), hash_of(&with_ledger));
+        }
         // Version 44, the monetary base, before the yearly series: the world without `series`.
         {
             #[derive(Serialize)]
@@ -2251,7 +2360,7 @@ mod tests {
                 foreign: &'a crate::foreign_stakes::ForeignState,
                 influence: &'a crate::influence::InfluenceState,
                 treaties: &'a crate::treaty::TreatyState,
-                war: &'a crate::war::WarState,
+                war: War45<'a>,
                 education: &'a crate::demography::education::EducationState,
                 independence: &'a crate::borders::independence::IndependenceState,
                 levers: &'a crate::econ::levers::LeversState,
@@ -2276,7 +2385,7 @@ mod tests {
                 foreign: &w.foreign,
                 influence: &w.influence,
                 treaties: &w.treaties,
-                war: &w.war,
+                war: war45(&w.war),
                 education: &w.education,
                 independence: &w.independence,
                 levers: &w.levers,
@@ -2308,7 +2417,7 @@ mod tests {
                 foreign: &'a crate::foreign_stakes::ForeignState,
                 influence: &'a crate::influence::InfluenceState,
                 treaties: &'a crate::treaty::TreatyState,
-                war: &'a crate::war::WarState,
+                war: War45<'a>,
                 education: &'a crate::demography::education::EducationState,
                 independence: &'a crate::borders::independence::IndependenceState,
                 levers: &'a crate::econ::levers::LeversState,
@@ -2332,7 +2441,7 @@ mod tests {
                 foreign: &w.foreign,
                 influence: &w.influence,
                 treaties: &w.treaties,
-                war: &w.war,
+                war: war45(&w.war),
                 education: &w.education,
                 independence: &w.independence,
                 levers: &w.levers,
@@ -2362,7 +2471,7 @@ mod tests {
                 foreign: &'a crate::foreign_stakes::ForeignState,
                 influence: &'a crate::influence::InfluenceState,
                 treaties: &'a crate::treaty::TreatyState,
-                war: &'a crate::war::WarState,
+                war: War45<'a>,
                 education: &'a crate::demography::education::EducationState,
                 independence: &'a crate::borders::independence::IndependenceState,
                 levers: &'a crate::econ::levers::LeversState,
@@ -2387,7 +2496,7 @@ mod tests {
                 foreign: &w.foreign,
                 influence: &w.influence,
                 treaties: &w.treaties,
-                war: &w.war,
+                war: war45(&w.war),
                 education: &w.education,
                 independence: &w.independence,
                 levers: &w.levers,
@@ -2420,7 +2529,7 @@ mod tests {
                 foreign: &'a crate::foreign_stakes::ForeignState,
                 influence: &'a crate::influence::InfluenceState,
                 treaties: &'a crate::treaty::TreatyState,
-                war: &'a crate::war::WarState,
+                war: War45<'a>,
                 education: &'a crate::demography::education::EducationState,
                 independence: &'a crate::borders::independence::IndependenceState,
                 levers: &'a crate::econ::levers::LeversState,
@@ -2443,7 +2552,7 @@ mod tests {
                 foreign: &w.foreign,
                 influence: &w.influence,
                 treaties: &w.treaties,
-                war: &w.war,
+                war: war45(&w.war),
                 education: &w.education,
                 independence: &w.independence,
                 levers: &w.levers,
@@ -2471,7 +2580,7 @@ mod tests {
                 foreign: &'a crate::foreign_stakes::ForeignState,
                 influence: &'a crate::influence::InfluenceState,
                 treaties: &'a crate::treaty::TreatyState,
-                war: &'a crate::war::WarState,
+                war: War45<'a>,
                 education: &'a crate::demography::education::EducationState,
                 independence: &'a crate::borders::independence::IndependenceState,
                 levers: &'a crate::econ::levers::LeversState,
@@ -2493,7 +2602,7 @@ mod tests {
                 foreign: &w.foreign,
                 influence: &w.influence,
                 treaties: &w.treaties,
-                war: &w.war,
+                war: war45(&w.war),
                 education: &w.education,
                 independence: &w.independence,
                 levers: &w.levers,
