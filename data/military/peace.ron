@@ -66,8 +66,11 @@
     // the depot) into orders, split between the sea and the air by one rule for everyone, each
     // service in the shape it has, within the treaty caps in force. DESIGN VALUES, without a
     // source: no page was found for the split of military spending by service.
+    // `share` is 0 (the orchestrator, 2026-11-23): the military ceiling gives 5 to 7 % of GDP in
+    // peace against 1 to 3 % in the 1930s, and at 500 the AI built fleets and air forces 50 to
+    // 400 times the real ones (docs/war.pt-BR.md). It rises once the ceiling is recalibrated.
     ai_orders: Some((
-        share: 500,
+        share: 0,
         sea_base: 300,
         sea_coast: 400,
         sea_colonies: 400,
