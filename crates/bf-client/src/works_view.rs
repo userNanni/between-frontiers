@@ -33,6 +33,9 @@ pub struct WorkRow {
     pub cost_left: f64,
     /// Placed by the government's order rather than by arrival.
     pub fixed: bool,
+    /// The region is held by an enemy (switch `occupied_works`): the work waits, taking no
+    /// points, until it comes back.
+    pub stopped: bool,
 }
 
 /// A private work of the queue: an investor's, shown and not touched.
@@ -42,6 +45,8 @@ pub struct PrivateRow {
     pub state: u16,
     pub progress: f64,
     pub weeks: i64,
+    /// As [`WorkRow::stopped`].
+    pub stopped: bool,
 }
 
 /// A building the state may ask for in one region.
@@ -85,7 +90,7 @@ pub struct WorksView {
     /// The government fixed the order (D8).
     pub ordered: bool,
     /// What the view was read from: queue length and order length.
-    pub signature: (usize, usize),
+    pub signature: (usize, usize, usize),
 }
 
 impl WorksView {
@@ -96,10 +101,11 @@ impl WorksView {
 }
 
 /// The queue and order lengths: a change reads the view again within the month.
-pub fn signature(world: &GameWorld, ci: usize) -> (usize, usize) {
+pub fn signature(world: &GameWorld, ci: usize) -> (usize, usize, usize) {
     (
         world.econ.markets.get(ci).map_or(0, |m| m.queue.len()),
         world.levers.order(ci).map_or(0, <[WorkKey]>::len),
+        world.war.fighting.control.len(),
     )
 }
 
@@ -120,7 +126,9 @@ pub fn read(
     cat: &Catalogue,
     tree: Option<&TechTree>,
     date: Date,
+    occupied_works: bool,
 ) -> Option<WorksView> {
+    let stopped = |region: u32| occupied_works && !bf_sim::econ::construction::held(world, region);
     let ci = world.countries.iter().position(|(_, c)| c.tag == tag)?;
     let m = world.econ.markets.get(ci)?;
     let order = world.levers.order(ci);
@@ -168,6 +176,7 @@ pub fn read(
             weeks_full: w.weeks_full,
             cost_left: left_of(&w.key).to_f64_lossy() * price,
             fixed: w.fixed,
+            stopped: stopped(w.key.region),
         })
         .collect();
     let private = m
@@ -187,6 +196,7 @@ pub fn read(
             } else {
                 0
             },
+            stopped: stopped(p.region),
         })
         .collect();
     let queued = |region: u32, kind: u16| {
