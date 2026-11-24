@@ -181,17 +181,32 @@ fn facts(cat: &Catalogue, world: &GameWorld) -> Vec<CountryFacts> {
         let people = r.population();
         // Only the metropole's laboratories count: a colony does not research.
         if let Some(lab) = cat.laboratory.filter(|_| !r.colony) {
-            let workers = cat.buildings[usize::from(lab)].methods[0].workers;
-            // A researcher without instruments researches less, by the share of R&D that is
-            // not pay; never nothing (`INSTRUMENT_SHARE`).
+            let b = &cat.buildings[usize::from(lab)];
+            let workers = b.methods[0].workers;
+            // A researcher counts for what his method makes against the first one: with a
+            // computer, more (`Switches::computer_efficiency`; with it off the first method is the
+            // only one, and the factor is one).
+            let first = b.methods[0].output_value;
             c.research += r
                 .plants
                 .iter()
                 .filter(|p| p.kind == lab)
                 .map(|p| {
+                    let made = b
+                        .methods
+                        .get(usize::from(p.method))
+                        .map_or(first, |m| m.output_value);
+                    let gain = if first > Fixed::ZERO && made > first {
+                        made / first
+                    } else {
+                        Fixed::ONE
+                    };
+                    // A researcher without instruments researches less, by the share of R&D
+                    // that is not pay; never nothing (`INSTRUMENT_SHARE`).
                     let missing = Fixed::ONE - p.input_ratio.clamp(Fixed::ZERO, Fixed::ONE);
                     (Fixed::from_int(p.levels * workers)
                         * p.staffing
+                        * gain
                         * (Fixed::ONE - INSTRUMENT_SHARE * missing))
                         .to_int_floor()
                 })
