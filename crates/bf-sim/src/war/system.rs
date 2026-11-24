@@ -44,6 +44,8 @@ pub struct ForcesChanges {
     sea: Option<super::sea::SeaWeek>,
     /// The nuclear programmes' week, and the plants they ask for (market, region, kind).
     programmes: Option<ProgrammesWeek>,
+    /// The reserves by cohort (`war::reserve`), with the switch `reserve_cohorts` on.
+    reserve: Option<super::reserve::ReserveState>,
 }
 
 /// [`join`], for the conversions of the composition.
@@ -824,16 +826,65 @@ impl Forces {
         world: &GameWorld,
         ci: usize,
         cw: &CountryWar,
-    ) -> (CountryWar, Vec<super::composition::Conversion>) {
+    ) -> (
+        CountryWar,
+        Vec<super::composition::Conversion>,
+        Option<super::reserve::CountryReserve>,
+    ) {
         let mil = &self.military;
         let rules = &mil.rules;
         let mut c = cw.clone();
         let mut conversions: Vec<super::composition::Conversion> =
             world.war.composition.of(ci as u16).cloned().collect();
         let Some(m) = world.econ.markets.get(ci) else {
-            return (c, conversions);
+            return (c, conversions, None);
         };
         let newest = |ty: u16| self.newest(world, ci, ty);
+        // The reserve by cohort (item 9), with the switch on: the country's, or made the first
+        // week from its reserve of 1925, the same men in all.
+        let tag = world
+            .countries
+            .iter()
+            .nth(ci)
+            .map(|(_, s)| s.tag.clone())
+            .unwrap_or_default();
+        // Made this week: its youngest cohort is already last year's class.
+        let fresh = world.war.reserve.of(ci as u16).is_none();
+        let mut res = self.peace.reserve_cohorts.as_ref().map(|r| {
+            let mut x = world.war.reserve.of(ci as u16).cloned().unwrap_or_else(|| {
+                let months = r.months_1925(&tag, self.conscription(world, ci));
+                super::reserve::CountryReserve {
+                    country: ci as u16,
+                    service_months: months,
+                    serving_months: months,
+                    cohorts: super::reserve::initial(
+                        c.reserve,
+                        r.years(&tag),
+                        ctx.date.year,
+                        Fixed::ONE,
+                        r.training_loss,
+                    ),
+                }
+            });
+            if x.service_months > 0 {
+                x.service_months = x.service_months.clamp(r.min_months, r.max_months);
+            }
+            x
+        });
+        if let Some(r) = &res {
+            c.reserve = r.men();
+        }
+        // January: a longer service reaches the army a year at a time; the months it grew keep
+        // that share of the class on.
+        let mut kept = 0u16;
+        if ctx.date.month == 1
+            && ctx.date.day <= 7
+            && !c.mobilized
+            && !fresh
+            && let Some(r) = res.as_mut()
+        {
+            kept = super::reserve::serving_moves(r);
+        }
         // 1. Last week's purchases make good the equipment, to each formation by what it lacks.
         for (g, q) in &cw.repair {
             let got = *q * m.buy_ratio.get(*g as usize).copied().unwrap_or(Fixed::ZERO);
@@ -925,11 +976,24 @@ impl Forces {
         if c.mobilized && c.reserve > 0 {
             if let Some(inf) = self.infantry {
                 let weeks = u64::from(rules.reserve.call_up_weeks.max(1));
-                let n = (c.reserve / weeks).max(1000).min(c.reserve);
+                let mut n = (c.reserve / weeks).max(1000).min(c.reserve);
+                // By cohort, the youngest first, each with its training; else the 1925 rule.
+                let mut training = Fixed::from_ratio(i64::from(rules.reserve.training), 1000);
+                if let Some(r) = res.as_mut() {
+                    let (got, t) = super::reserve::call(r, n);
+                    n = got;
+                    training = t;
+                }
                 c.reserve -= n;
                 let add_elements = Fixed::from_ratio(n as i64, 1000);
                 match c.formations.iter_mut().find(|f| f.called_up) {
-                    Some(f) => f.elements += add_elements,
+                    Some(f) => {
+                        let all = f.elements + add_elements;
+                        if all.is_positive() {
+                            f.training = (f.training * f.elements + training * add_elements) / all;
+                        }
+                        f.elements = all;
+                    }
                     None => c.formations.push(Formation {
                         unit: inf,
                         generation: 0,
@@ -937,7 +1001,7 @@ impl Forces {
                         colonial: false,
                         called_up: true,
                         equipment: Vec::new(),
-                        training: Fixed::from_ratio(i64::from(rules.reserve.training), 1000),
+                        training,
                         raised: false,
                     }),
                 }
@@ -950,6 +1014,20 @@ impl Forces {
                 .map(|f| men(mil, f))
                 .sum();
             c.reserve += back.max(0) as u64;
+            if let Some(r) = res.as_mut() {
+                let called: Vec<&Formation> = c.formations.iter().filter(|f| f.called_up).collect();
+                let elements: Fixed = called.iter().map(|f| f.elements).sum();
+                let training = if elements.is_positive() {
+                    called
+                        .iter()
+                        .map(|f| f.training * f.elements)
+                        .sum::<Fixed>()
+                        / elements
+                } else {
+                    Fixed::ZERO
+                };
+                super::reserve::back(r, back.max(0) as u64, ctx.date.year, training);
+            }
             c.formations.retain(|f| !f.called_up);
         }
         // 4. Once a year, the size in peace follows the men of service age and the law.
@@ -989,13 +1067,7 @@ impl Forces {
                 .sum();
             let law = self.conscription(world, ci);
             if of_age > 0 && c.peace_share == Fixed::ZERO {
-                let tag = &world
-                    .countries
-                    .iter()
-                    .nth(ci)
-                    .map(|(_, s)| s.tag.clone())
-                    .unwrap_or_default();
-                c.peace_share = match self.peace.share_override.iter().find(|(t, _)| t == tag) {
+                c.peace_share = match self.peace.share_override.iter().find(|(t, _)| *t == tag) {
                     Some((_, pm)) => Fixed::from_ratio(i64::from(*pm), 1000),
                     None => Fixed::from_ratio(land_men, of_age as i64),
                 };
@@ -1004,6 +1076,14 @@ impl Forces {
                 let mut target = c.peace_share * of_age as i64;
                 if self.peace.law_scaling && c.law_then > 0 && law > 0 {
                     target = target.mul_ratio(i64::from(law), i64::from(c.law_then));
+                }
+                // A longer service keeps more classes under arms at once: the peace army grows
+                // by the months over those of 1925 (item 9, `SetServiceMonths`).
+                if let (Some(rule), Some(r)) = (self.peace.reserve_cohorts.as_ref(), res.as_ref()) {
+                    let then = rule.months_1925(&tag, c.law_then);
+                    if then > 0 && r.serving_months > 0 {
+                        target = target.mul_ratio(i64::from(r.serving_months), i64::from(then));
+                    }
                 }
                 let factor = target / land_men;
                 for f in c.formations.iter_mut().filter(|f| land(f)) {
@@ -1027,6 +1107,42 @@ impl Forces {
                 super::occupation::garrison_order(&k.rules.occupation, mil, world, ci, &c)
         {
             c.queue.push(o);
+        }
+        // The class that ends its service joins the reserve each January with the training it
+        // had: the men under arms in peace over the months of service, a year's worth.
+        if new_year
+            && !c.mobilized
+            && !fresh
+            && let (Some(rule), Some(r)) = (self.peace.reserve_cohorts.as_ref(), res.as_mut())
+        {
+            let serving: Vec<&Formation> = c
+                .formations
+                .iter()
+                .filter(|f| {
+                    mil.types[f.unit as usize].domain == Domain::Land
+                        && !f.called_up
+                        && !f.raised
+                        && !f.colonial
+                })
+                .collect();
+            let under_arms: i64 = serving.iter().map(|f| men(mil, f)).sum();
+            let elements: Fixed = serving.iter().map(|f| f.elements).sum();
+            let training = if elements.is_positive() {
+                serving
+                    .iter()
+                    .map(|f| f.training * f.elements)
+                    .sum::<Fixed>()
+                    / elements
+            } else {
+                Fixed::ZERO
+            };
+            let class = if r.serving_months > 0 {
+                (under_arms.max(0) as u64) * u64::from(12u16.saturating_sub(kept))
+                    / u64::from(r.serving_months)
+            } else {
+                0
+            };
+            super::reserve::year_passes(r, rule, rule.years(&tag), ctx.date.year, class, training);
         }
         // 5. This week's orders. The military budget is the part of the goods budget that is not
         // the civilian basket's, as before the forces. It pays first what the forces consume and
@@ -1180,7 +1296,10 @@ impl Forces {
         c.upgrade = upgrade;
         c.orders = orders;
         c.repair = repair;
-        (c, conversions)
+        if let Some(r) = &res {
+            c.reserve = r.men();
+        }
+        (c, conversions, res)
     }
 }
 
@@ -1283,18 +1402,29 @@ impl System<GameWorld> for Forces {
                 conversions: None,
                 sea: None,
                 programmes: None,
+                reserve: None,
             };
         }
         // A country born since (a separation, a liberation, a revolt) gets its forces' entry,
         // empty: without it, it had no forces, no military budget and no war support.
         let empty = CountryWar::default();
-        let (mut countries, conversions): (Vec<CountryWar>, Vec<_>) =
-            (0..world.countries.len().max(world.war.countries.len()))
-                .map(|ci| {
-                    let cw = world.war.countries.get(ci).unwrap_or(&empty);
-                    self.country_week(ctx, world, ci, cw)
-                })
-                .unzip();
+        let mut countries: Vec<CountryWar> = Vec::new();
+        let mut conversions: Vec<Vec<super::composition::Conversion>> = Vec::new();
+        let mut reserves: Vec<super::reserve::CountryReserve> = Vec::new();
+        for ci in 0..world.countries.len().max(world.war.countries.len()) {
+            let cw = world.war.countries.get(ci).unwrap_or(&empty);
+            let (c, k, r) = self.country_week(ctx, world, ci, cw);
+            countries.push(c);
+            conversions.push(k);
+            reserves.extend(r);
+        }
+        let reserve = self
+            .peace
+            .reserve_cohorts
+            .as_ref()
+            .map(|_| super::reserve::ReserveState {
+                countries: reserves,
+            });
         let conversions = self
             .fight
             .is_some()
@@ -1335,6 +1465,7 @@ impl System<GameWorld> for Forces {
             conversions,
             sea,
             programmes,
+            reserve,
         }
     }
 
@@ -1343,6 +1474,9 @@ impl System<GameWorld> for Forces {
             return;
         }
         world.war.countries = changes.countries;
+        if let Some(r) = changes.reserve {
+            world.war.reserve = r;
+        }
         // The week at sea: ships sunk, and the fleets, control and blockades for the trade and
         // the screen; in peace, nothing.
         match changes.sea {

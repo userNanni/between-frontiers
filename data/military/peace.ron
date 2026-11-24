@@ -76,6 +76,37 @@
         sea_colonies: 400,
         air_base: 500,
     )),
+    // The reserve by cohort (`war::reserve`, item 9; switch `reserve_cohorts`, off).
+    // - training_loss: training a cohort loses a year out of service, per mille. DESIGN VALUE,
+    //   without a source (the 1920s laws had refresher courses: Czechoslovakia 14 weeks in all,
+    //   Armaments Year-Book 1924, p. 346).
+    // - reserve_years: years in the reserve where the country has no figure. DESIGN VALUE.
+    // - law_months: months of service by the conscription effect where the country has no
+    //   figure (volunteer 0, selective 12, universal 24). DESIGN VALUES.
+    // - min_months, max_months: the bounds of the player's command.
+    // - countries: (tag, months of service, years in the reserve; 0 = reserve_years), from the
+    //   League of Nations' Armaments Year-Book, 1st ed., A.37.1924.IX (Geneva, 1924): France 18
+    //   months and 28 years of reserve (p. 431); Italy 18 months (p. 520); Poland 24, reserve to
+    //   40 (p. 647); Czechoslovakia 14, reserve to 40 (pp. 345-346); Romania 24, 18 years of
+    //   reserve (p. 669); Soviet Union 24, reserve to 40 (p. 777); Japan 24, then 4 years 4
+    //   months and 10 years of reserve (p. 566); Spain 24, 18 years in all (p. 691); Belgium
+    //   12 (p. 45); Netherlands 5.5 months, to 40 (p. 590); Sweden 165 to 225 days (p. 718); Switzerland 65 days, liable from 20 to 48 (pp. 744, 748);
+    //   Germany: conscription abolished, 12-year volunteers (p. 476); the United Kingdom and the
+    //   United States: volunteers (pp. 83-100, 805). Years to 40 counted from leaving service
+    //   at 21 plus the service (my computation).
+    reserve_cohorts: Some((
+        training_loss: 50,
+        reserve_years: 15,
+        law_months: [(0, 0), (300, 12), (800, 24)],
+        min_months: 6,
+        max_months: 36,
+        countries: [
+            ("FRA", 18, 28), ("ITA", 18, 0), ("POL", 24, 17), ("CZE", 14, 18),
+            ("ROM", 24, 18), ("SOV", 24, 17), ("JAP", 24, 14), ("ESP", 24, 16),
+            ("BEL", 12, 0), ("NLD", 6, 19), ("SWE", 7, 0), ("CHE", 2, 28), ("GER", 0, 0), ("GBR", 0, 0),
+            ("USA", 0, 0),
+        ],
+    )),
     // The nuclear programme (docs/war.pt-BR.md, "Arma nuclear na escada de crise"; N1 and N2,
     // decided by the owner on 2026-11-19). The money buys a laboratory's goods until the bomb
     // can be built; each month what was delivered is credited to the first technology of the
