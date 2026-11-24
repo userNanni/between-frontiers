@@ -65,6 +65,9 @@ pub struct GameData {
     /// The relations' measures (`data/diplomacy/relations.ron`), read with
     /// `Switches::relations`.
     pub relations: Option<crate::relations::RelationsRules>,
+    /// The thresholds of the AI's shadow (`data/diplomacy/shadow.ron`), read with
+    /// `Switches::shadow_ai`.
+    pub shadow: Option<crate::shadow::ShadowRules>,
     /// The territorial claims (`data/diplomacy/claims.ron`), read with `Switches::relations`.
     pub claims: Option<crate::relations::ClaimsFile>,
     /// What the border operations read (map, communities, catalogue, the 1925 subjects).
@@ -777,12 +780,17 @@ impl GameData {
             clauses,
             independence: optional(&data.join("borders/independence.ron"))?,
             war_debts: optional(&scenario.join("war_debts.ron"))?,
-            relations: if switches.relations {
+            shadow: if switches.shadow_ai {
+                optional(&data.join("diplomacy/shadow.ron"))?
+            } else {
+                None
+            },
+            relations: if switches.relations || switches.shadow_ai {
                 optional(&data.join("diplomacy/relations.ron"))?
             } else {
                 None
             },
-            claims: if switches.relations {
+            claims: if switches.relations || switches.shadow_ai {
                 optional(&data.join("diplomacy/claims.ron"))?
             } else {
                 None
@@ -1204,7 +1212,33 @@ impl GameData {
                 .clone()
                 .filter(|_| switches.computer_efficiency && switches.fiscal_capacity),
             media: self.media.clone().filter(|_| switches.media),
+            shadow: if switches.shadow_ai {
+                self.shadow_setup()
+            } else {
+                None
+            },
         }
+    }
+
+    /// What the AI's shadow needs (`shadow::ShadowSetup`), with a fresh record.
+    fn shadow_setup(&self) -> Option<Arc<crate::shadow::ShadowSetup>> {
+        let rules = self.shadow.clone()?;
+        let war = self.war.as_ref()?;
+        Some(Arc::new(crate::shadow::ShadowSetup {
+            variants: crate::shadow::ShadowSetup::variants_of(&rules),
+            rules,
+            relations: self.relations_setup()?,
+            crisis: crate::war::CrisisSetup {
+                rules: war.crisis.clone()?,
+                clauses: None,
+                state_ids: self.border_rules.state_ids.clone(),
+                neighbours: Arc::new(self.border_rules.neighbours.clone()),
+            },
+            military: Arc::new(war.military.clone()),
+            cat: Arc::clone(&self.catalogue),
+            table: self.community_table.clone(),
+            log: Default::default(),
+        }))
     }
 
     /// The unit catalogue and the rules in peace, when the forces are on (the switch, or

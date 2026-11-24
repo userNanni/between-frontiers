@@ -1294,6 +1294,8 @@ pub struct Rules {
     pub admin: Option<Arc<crate::econ::admin::AdminRules>>,
     /// The reach of the mass media (`Switches::media`).
     pub media: Option<Arc<crate::media::MediaRules>>,
+    /// The strategic AI's crisis and war in shadow (`Switches::shadow_ai`): it only records.
+    pub shadow: Option<Arc<crate::shadow::ShadowSetup>>,
 }
 
 /// Rules that can be switched on, all off by default: a rule enters the main switched off, with
@@ -1434,6 +1436,11 @@ pub struct Switches {
     /// docs/population.pt-BR.md, "Ensino por coorte"). Off, literacy follows the economy's yearly
     /// rule; a world that already has schooling keeps it.
     pub schooling: bool,
+    /// The strategic AI's crisis and war in shadow (`shadow`, docs/ai.pt-BR.md, slice 4): every
+    /// month the countries without a player weigh demands, answers and declarations and only
+    /// record them, outside the save; the world is untouched. Read with the rules
+    /// (`GameData::rules_with`). Off: nothing runs.
+    pub shadow_ai: bool,
     /// The wage floor of a small market (`econ::monthly::MIN_HANDS_FOR_A_WAGE`): a market with
     /// too few plant workers to have a wage of its own reads the lowest of the others.
     pub small_market_wage_floor: bool,
@@ -1513,6 +1520,7 @@ impl Switches {
         "reputation",
         "reserve_cohorts",
         "schooling",
+        "shadow_ai",
         "small_market_wage_floor",
         "trade_by_pair",
         "trade_gross",
@@ -1552,6 +1560,7 @@ impl Switches {
             "reputation" => self.reputation = true,
             "reserve_cohorts" => self.reserve_cohorts = true,
             "schooling" => self.schooling = true,
+            "shadow_ai" => self.shadow_ai = true,
             "small_market_wage_floor" => self.small_market_wage_floor = true,
             "trade_by_pair" => self.trade_by_pair = true,
             "trade_gross" => self.trade_gross = true,
@@ -1607,8 +1616,13 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
         biomass,
         admin,
         media,
+        shadow,
     }) = rules
     {
+        // The AI's crisis and war in shadow: reads the world, writes only its record.
+        if let Some(setup) = shadow {
+            s.add(crate::shadow::ShadowMonth { setup });
+        }
         if let Some(p) = &politics {
             s.add(crate::polity::PoliticsSystem::new(
                 Arc::clone(p),

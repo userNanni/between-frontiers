@@ -130,6 +130,9 @@
     // (`docs/population.pt-BR.md`, "Ensino por coorte"). Off: literacy follows the economy's
     // yearly rule and mothers' schooling the 240-month lag.
     schooling: false,
+    // The strategic AI's crisis and war in shadow: every month the countries without a player
+    // weigh demands, answers and declarations and only record them; the world is untouched.
+    shadow_ai: false,
     // The wage floor of a small market (`econ::monthly::MIN_HANDS_FOR_A_WAGE`): a market with too
     // few plant workers to have a wage of its own reads the lowest of the others.
     small_market_wage_floor: false,

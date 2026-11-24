@@ -186,3 +186,78 @@ Minha conta, sem medida: 83 países dão 3.403 pares. Medir a hostilidade de cad
 mês, com leituras que já existem, é da ordem das medidas de influência, que já rodam mensais. As
 decisões de exigir e propor olham poucos pares por país (os vizinhos e os hostis). A fatia 1 mede o
 custo antes de qualquer decisão entrar.
+
+## Fatia 4 em sombra (rascunho; chave `shadow_ai`, desligada)
+
+Autorizada pelo orquestrador (2026-11-24) enquanto IA4 e IA5 esperam o dono: a lógica de crise e
+guerra roda todo mês e **só anota** o que a IA faria; nenhum comando sai, e o mundo fica idêntico
+(mesmo hash e mesma série de 101 anos com a chave ligada). Código em `crates/bf-sim/src/shadow.rs`;
+limiares em `data/diplomacy/shadow.ron`, todos **valores de desenho**; o registro vai para
+`target/shadow.csv`, fora do repositório.
+
+**A regra.** Cada país sem jogador, uma exigência por mês no máximo, contra o par em que o valor do
+que pede mais passa do custo esperado, se:
+- há o que pedir: uma reivindicação aberta (`claims.ron`), ou a sua gente na metrópole do outro, ou a
+  sua terra de 1925 com o outro, acima de `stake_min` (20 por mil da própria população);
+- a hostilidade do par passa de `hostility_min` (400);
+- o poder militar alcançável passa de `power_ratio` (1,5) vezes o do lado do alvo, somados os que
+  entrariam por ele (`who_would_join`): o poder de combate de cada um (o mesmo do W3, como a frente
+  lê), o de quem exige pelo alcance da ameaça (inteiro com vizinho ou entre duas potências,
+  `reach_far` nos outros);
+- a ameaça de terceiros fica abaixo de `threat_max`;
+- o valor (a parte da gente em jogo × `value_weight`) cobre o custo (o custo das forças por ano sobre
+  o PIB, vezes os anos esperados de guerra pela razão de poder).
+
+O alvo responde pela regra W3 (`crisis::weigh`), com o poder de combate do #390 (antes, os homens
+de terra); recusada, a IA declararia com a razão de poder em `war_ratio` (2,0) e sem o teto nuclear.
+Um par só abre outra crise depois de `cooldown_months` (60).
+
+**O que a sombra não cobre, por desenho:**
+- exigência que não é de território: esfera de influência, regime, colônia, pagamento;
+- a cadeia em que uma guerra muda as seguintes: nenhuma guerra acontece;
+- **depois de 1939**: a lista de reivindicações cobre 1925–1939 (as abertas depois só pelo que
+  continuava aberto), e o motivo de terra perdida nasce só de terra perdida no jogo, que na sombra
+  nunca acontece. **Os números de 1950 em diante dizem pouco.**
+
+**Medido** (101 anos, a regra do dado; a história, as guerras entre Estados que começaram em cada
+década pela lista do Correlates of War v4.0, lida na hora e fora do repositório, até 2007):
+
+| Década | Exigências | Cedidas | Guerras declaradas | Guerras na história |
+|---|---|---|---|---|
+| 1920 | 1 | 1 | 0 | 1 |
+| 1930 | 9 | 9 | 0 | 8 |
+| 1940 | 6 | 6 | 0 | 4 |
+| 1950 | 6 | 6 | 0 | 6 |
+| 1960 | 6 | 6 | 0 | 5 |
+| 1970 | 6 | 6 | 0 | 8 |
+| 1980 | 6 | 6 | 0 | 5 |
+| 1990 | 6 | 6 | 0 | 7 |
+| 2000 | 6 | 6 | 0 | 2 |
+
+- **A IA seria pacífica demais: nenhuma guerra em 101 anos.** Todas as 61 exigências foram cedidas,
+  então a escalada nunca chega à declaração.
+- **Quem exige:** quase só a China, contra o Japão (a Manchúria), a Mongólia e o Tibete, de cinco
+  em cinco anos pelo intervalo entre crises; a Alemanha, o Sarre três vezes e Memel uma. Todas por
+  reivindicação; nenhuma por minoria nem por terra perdida.
+- **A semelhança dos números por década com a história é coincidência:** seis por década são as três
+  reivindicações chinesas a cada cinco anos.
+- **Por que cedem:** a regra W3 pesa a força contra a parte pedida. Com os homens (a primeira
+  medida) e depois com o poder de combate do #390, o resultado é o mesmo: as forças de 1925 entram
+  todas plenamente equipadas e treinadas, na mesma geração, e o poder de combate sai igual aos
+  homens. A China, com o maior exército do mundo, faz o Japão ceder a Manchúria (os dois têm
+  fronteira terrestre pela Coreia e por Kwantung, então o mar não entra).
+- **Por que só a China:** pelo mesmo motivo, o poder alcançável da China passa o dos vizinhos; e a
+  hostilidade mínima de 400 deixa de fora pares como Alemanha e Polônia (253 em 1925, com Locarno e
+  o comércio pesando para baixo), o que é calibração, anotada e não mexida.
+- **Sensibilidade:** com a hostilidade mínima e a razão de poder 20 % acima ou abaixo, as contagens
+  não mudam. Os dois limiares não são o que segura a IA: o que segura são as forças de 1925 iguais
+  em equipamento e treino.
+
+**O que isso diz ao dono, antes de ligar qualquer coisa:**
+- a regra de quem cede e a exigência já usam o poder de combate (#390 e esta fatia); o que falta
+  é o dado: o equipamento e o treino de cada exército em 1925, com fonte, para a China dos senhores
+  da guerra não valer o mesmo por homem que o Japão;
+- sem exigências que não são de território (esfera, regime, colônia) e sem a cadeia de guerras, a
+  sombra não reproduz os anos 1930 nem a Guerra Fria; essas entram com as fatias seguintes.
+- **Custo:** a rodada de 101 anos com a sombra levou 541 s de CPU contra 548 s da base: dentro
+  do ruído.

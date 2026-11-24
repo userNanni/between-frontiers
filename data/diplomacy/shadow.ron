@@ -1,0 +1,26 @@
+// The strategic AI's crisis and war in shadow (`crates/bf-sim/src/shadow.rs`,
+// docs/relations.pt-BR.md, "A IA em sombra"; switch `shadow_ai`, off). Every value is a DESIGN
+// VALUE, without a source; the measure runs them 20 % above and below for `hostility_min` and
+// `power_ratio` (with `war_ratio`) in the same run.
+(
+    // A stake worth a demand: people of 1925 held by the other, or the own people in its
+    // metropole, per mille of the own people.
+    stake_min: 20,
+    // The share of the target's people an open claim is taken to ask.
+    claim_share: 100,
+    // The hostility from which a country would demand (relations.ron's scale, 0 to 1000).
+    hostility_min: 400,
+    // The reachable power over the target side's (the target and who would join it), per mille:
+    // to demand, the 1.5 with which the AI attacks a segment (G5); to declare, twice.
+    power_ratio: 1500,
+    war_ratio: 2000,
+    // The most threat from third countries, per mille of the own power, with a crisis opened.
+    threat_max: 500,
+    // Years a war is expected to last at an even power ratio, shorter as the ratio grows.
+    war_years: 3,
+    // Demand while the stake (per mille of the own people) × value_weight / 1000 covers the
+    // forces' cost over GDP (per mille) over the expected war.
+    value_weight: 2000,
+    // Months before the same pair opens another crisis.
+    cooldown_months: 60,
+)

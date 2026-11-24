@@ -227,6 +227,12 @@ pub struct Relations {
     pub countries: Vec<CountryMeasures>,
     /// Every pair with a term, sorted by (a, b).
     pub pairs: Vec<Pair>,
+    /// What one country has at stake in another, by direction (a, b): (its people of 1925 now
+    /// held by b, its people in b's metropole), per mille of its own people. Only pairs with
+    /// either.
+    pub stakes: BTreeMap<(u16, u16), (u32, u32)>,
+    /// Neighbouring pairs (a < b), by their regions' states.
+    pub near: BTreeSet<(u16, u16)>,
 }
 
 impl Relations {
@@ -548,12 +554,19 @@ pub fn measure(
             0
         }
     };
+    let mut stakes: BTreeMap<(u16, u16), (u32, u32)> = BTreeMap::new();
     // The pairs: first without the common enemy, then with it.
     let mut pairs: Vec<Pair> = Vec::new();
     for a in 0..n as u16 {
         for b in a + 1..n as u16 {
             let (ta, ma) = lost(a, b);
             let (tb, mb) = lost(b, a);
+            if ta + ma > 0 {
+                stakes.insert((a, b), (ta, ma));
+            }
+            if tb + mb > 0 {
+                stakes.insert((b, a), (tb, mb));
+            }
             let mut t = Terms {
                 territory: scaled(ta.max(tb), r.people_full),
                 // At most as many abroad as at home before the weight: 700 Catalans in Spain for
@@ -672,6 +685,8 @@ pub fn measure(
     let rel = Relations {
         countries: Vec::new(),
         pairs,
+        stakes: BTreeMap::new(),
+        near: BTreeSet::new(),
     };
     let countries = (0..n as u16)
         .map(|c| {
@@ -725,6 +740,8 @@ pub fn measure(
     Relations {
         countries,
         pairs: rel.pairs,
+        stakes,
+        near,
     }
 }
 
