@@ -61,6 +61,8 @@ pub struct ForcesView {
     pub army: Option<crate::army_view::ArmyView>,
     /// The nuclear programme (N1), while the war is switched on and the rule is in the data.
     pub programme: Option<ProgrammeView>,
+    /// The length of service and the reserve by cohort, with the switch `reserve_cohorts`.
+    pub service: Option<ServiceView>,
 }
 
 /// The nuclear programme as the forces tab shows it (`war::programme`).
@@ -725,6 +727,7 @@ pub fn read(
         rows,
         army: None,
         programme: None,
+        service: service_view(world, cat, military, peace, ci, wage_floor),
     })
 }
 
@@ -793,6 +796,7 @@ mod tests {
                 .collect(),
             prices: vec![0.0, 0.0, 0.0, 2.0],
             programme: None,
+            service: None,
             war,
         }
     }
@@ -841,4 +845,100 @@ mod tests {
         assert_eq!(v.disbandable(0), 0);
         assert!(v.disband(0, 3).is_none());
     }
+}
+
+/// The length of service and the reserve by cohort (`war::reserve`, switch `reserve_cohorts`):
+/// what the Forces tab shows and the Agendas' decision to lengthen or shorten the service reads.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ServiceView {
+    /// The length of service by law, and the one in effect now, months; 0, no conscription.
+    pub law_months: u16,
+    pub serving_months: u16,
+    /// The bounds of the decision.
+    pub min_months: u16,
+    pub max_months: u16,
+    /// Years a cohort stays in the reserve.
+    pub reserve_years: u32,
+    /// The land men in service in peace (reservists called up apart).
+    pub peace_men: i64,
+    /// A year of a land man in service: pay, upkeep and wear of his formation's equipment, real
+    /// dollars, weighted by the land formations held.
+    pub cost_per_man: f64,
+    /// (year it left service, men, training 0–1), youngest first.
+    pub cohorts: Vec<(i32, u64, f64)>,
+    /// The reserve at home, and what the country could put under arms: land men in service and
+    /// called up, and the reserve.
+    pub reserve: u64,
+    pub mobilizable: i64,
+}
+
+impl ServiceView {
+    /// The army in peace at `months` of service, against now: the men it gains (negative when
+    /// it shrinks), the years to get there (a longer service grows 12 months a year; a shorter
+    /// one applies next January, 0) and the cost a year of the change. `None` without
+    /// conscription in effect, where the army does not scale with the months.
+    pub fn change(&self, months: u16) -> Option<(i64, u32, f64)> {
+        if self.serving_months == 0 {
+            return None;
+        }
+        let men = self.peace_men * (i64::from(months) - i64::from(self.serving_months))
+            / i64::from(self.serving_months);
+        let years = if months > self.serving_months {
+            u32::from(months - self.serving_months).div_ceil(12)
+        } else {
+            0
+        };
+        Some((men, years, men as f64 * self.cost_per_man))
+    }
+}
+
+/// The service and reserve of country `ci`; `None` with the switch off or without a reserve.
+pub fn service_view(
+    world: &GameWorld,
+    cat: &Catalogue,
+    military: &Military,
+    peace: &PeaceRules,
+    ci: usize,
+    wage_floor: bool,
+) -> Option<ServiceView> {
+    let rule = peace.reserve_cohorts.as_ref()?;
+    let r = world.war.reserve.of(ci as u16)?;
+    let c = world.war.countries.get(ci)?;
+    let tag = &world.countries.iter().nth(ci)?.1.tag;
+    let offers = bf_sim::war::orders_view(world, cat, military, peace, ci, wage_floor);
+    let land = |x: &bf_sim::war::Formation| military.types[x.unit as usize].domain == Domain::Land;
+    let (mut held, mut cost) = (0i64, 0.0);
+    for x in c.formations.iter().filter(|x| land(x) && !x.called_up) {
+        let m = men(military, x);
+        held += m;
+        if let Some(o) = offers
+            .as_ref()
+            .and_then(|v| v.offers.iter().find(|o| o.unit == x.unit))
+            .filter(|o| o.men > 0)
+        {
+            cost += m as f64 * (f(o.upkeep_year) + f(o.pay_year)) / f64::from(o.men);
+        }
+    }
+    let called: i64 = c
+        .formations
+        .iter()
+        .filter(|x| land(x) && x.called_up)
+        .map(|x| men(military, x))
+        .sum();
+    Some(ServiceView {
+        law_months: r.service_months,
+        serving_months: r.serving_months,
+        min_months: rule.min_months,
+        max_months: rule.max_months,
+        reserve_years: rule.years(tag),
+        peace_men: held,
+        cost_per_man: if held > 0 { cost / held as f64 } else { 0.0 },
+        cohorts: r
+            .cohorts
+            .iter()
+            .map(|k| (k.year, k.men, f(k.training)))
+            .collect(),
+        reserve: c.reserve,
+        mobilizable: held + called + c.reserve as i64,
+    })
 }

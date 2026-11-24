@@ -273,6 +273,9 @@ pub struct Entry {
     /// What happens when it completes.
     pub completes: Option<Label>,
     pub screen: Screen,
+    /// The forces' entry: the length of service, for the decision to lengthen or shorten it
+    /// (switch `reserve_cohorts`).
+    pub service: Option<crate::forces_view::ServiceView>,
 }
 
 /// Works of one building, public or private, for the side panel: one line however many
@@ -348,6 +351,10 @@ pub struct Rules<'a> {
     pub programme: Option<&'a bf_sim::war::programme::ProgrammeSetup>,
     /// The gold standard's rule, with it switched on.
     pub gold: Option<&'a bf_sim::econ::gold::GoldRules>,
+    /// The forces in peace (the length of service and the reserve by cohort), and the rule
+    /// `small_market_wage_floor` for the pay of a soldier.
+    pub peace: Option<&'a bf_sim::war::PeaceRules>,
+    pub wage_floor: bool,
 }
 
 fn f(x: Fixed) -> f64 {
@@ -378,6 +385,21 @@ pub fn read_country(world: &GameWorld, c: usize, date: Date, rules: Rules<'_>) -
     }
     if let Some(mil) = rules.military {
         forces_entry(world, c, mil, &mut entries);
+        if let (Some(peace), Some(e)) = (
+            rules.peace,
+            entries
+                .iter_mut()
+                .find(|e| matches!(e.kind, Kind::Forces { .. })),
+        ) {
+            e.service = crate::forces_view::service_view(
+                world,
+                rules.catalogue,
+                mil,
+                peace,
+                c,
+                rules.wage_floor,
+            );
+        }
         revolt_entries(world, mil, &mut entries);
         if let (Some(ps), Some(tree)) = (rules.programme, rules.tree) {
             programme_entry(world, c, mil, ps, tree, rules.catalogue, &mut entries);
@@ -514,6 +536,7 @@ fn entry(kind: Kind, tone: Tone, title: Label, cause: Label, screen: Screen) -> 
         progress: None,
         completes: None,
         screen,
+        service: None,
     }
 }
 
