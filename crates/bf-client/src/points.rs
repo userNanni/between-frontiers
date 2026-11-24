@@ -44,6 +44,8 @@ pub enum Reason {
     Embargo,
     /// The exchange regime or capital controls changed (gold standard).
     Exchange,
+    /// The length of military service changed.
+    Service,
 }
 
 impl Reason {
@@ -60,6 +62,7 @@ impl Reason {
             Reason::Denounce => "points-reason-denounce",
             Reason::Embargo => "points-reason-embargo",
             Reason::Exchange => "points-reason-exchange",
+            Reason::Service => "points-reason-service",
         }
     }
 }

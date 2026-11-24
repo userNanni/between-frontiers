@@ -721,6 +721,8 @@ fn outliner_and_journal() {
         military: rules.war.as_ref().map(|(m, _)| m.as_ref()),
         programme: None,
         gold: None,
+        peace: None,
+        wage_floor: false,
     };
     let date = session.clock().date;
     let world = session.world();
