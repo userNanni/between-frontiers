@@ -93,6 +93,8 @@ pub struct Snapshot {
     pub trade: Option<Arc<crate::trade_view::TradeView>>,
     /// The player's tariffs, read when a week went by or the table changed.
     pub tariffs: Option<Arc<crate::tariff_view::TariffView>>,
+    /// The relations' measures (switch `relations`), read once a month.
+    pub relations: Option<Arc<RelationsView>>,
     /// The player's wars on land, read when the fighting changes; `None` without the war rule.
     pub war: Option<Arc<crate::war_view::WarView>>,
     /// Who holds what in every war, for the map's war lens; `None` with no war.
@@ -435,6 +437,7 @@ struct Monthly {
     agreements: Option<Arc<crate::agreements_view::AgreementsView>>,
     trade: Option<Arc<crate::trade_view::TradeView>>,
     tariffs: Option<Arc<crate::tariff_view::TariffView>>,
+    relations: Option<Arc<RelationsView>>,
     war: Option<Arc<crate::war_view::WarView>>,
     control: Option<Arc<crate::war_view::ControlView>>,
     treaty_table: Option<Arc<crate::treaty_view::TableView>>,
@@ -654,6 +657,68 @@ pub struct Extras {
     pub draft: Option<(String, bf_sim::treaty::Proposal)>,
     /// The proposal being drafted on the negotiation table: the other party and the proposal.
     pub treaty_draft: Option<(String, bf_sim::treaty::Proposal)>,
+    /// What the relations' measures need, with the switch `relations`: the setup and the
+    /// communities' table.
+    pub relations: Option<RelationsInput>,
+}
+
+/// The fixed inputs of `bf_sim::relations::measure`.
+pub type RelationsInput = Arc<(
+    bf_sim::relations::RelationsSetup,
+    Option<Arc<bf_sim::demography::communities::CommunityTable>>,
+)>;
+
+/// The relations' measures of a month (`bf_sim::relations`), with the weights of their terms.
+#[derive(Debug)]
+pub struct RelationsView {
+    pub month: (i32, u8),
+    pub measures: bf_sim::relations::Relations,
+    pub weights: bf_sim::relations::Weights,
+    /// The countries' tags, in the simulation's order (the measures' indices).
+    pub tags: Vec<String>,
+}
+
+impl PartialEq for RelationsView {
+    fn eq(&self, other: &Self) -> bool {
+        self.month == other.month
+            && self.measures.countries == other.measures.countries
+            && self.measures.pairs == other.measures.pairs
+    }
+}
+
+/// The relations' measures, read again on a new month.
+fn relations_of(
+    session: &Session,
+    rules: &Rules,
+    extras: &Extras,
+    last: &Option<Arc<RelationsView>>,
+) -> Option<Arc<RelationsView>> {
+    let date = session.clock().date;
+    match last {
+        Some(v) if v.month == (date.year, date.month) => Some(Arc::clone(v)),
+        _ => {
+            let r = rules.as_ref()?;
+            let input = extras.relations.as_deref()?;
+            let (setup, table) = input;
+            Some(Arc::new(RelationsView {
+                month: (date.year, date.month),
+                measures: bf_sim::relations::measure(
+                    setup,
+                    &r.catalogue,
+                    session.world(),
+                    table.as_deref(),
+                    date.year,
+                ),
+                weights: setup.rules.weights,
+                tags: session
+                    .world()
+                    .countries
+                    .iter()
+                    .map(|(_, c)| c.tag.clone())
+                    .collect(),
+            }))
+        }
+    }
 }
 
 /// The clause catalogue of the negotiation table, with the `negotiation` rule on.
@@ -855,6 +920,7 @@ impl Monthly {
             agreements: agreements_of(session, rules, &last.agreements),
             trade: trade_of(session, &last.trade),
             tariffs: tariffs_of(session, rules, &last.tariffs),
+            relations: relations_of(session, rules, extras, &last.relations),
             war: war_of(session, rules, &last.war),
             control: control_of(session, &last.control),
             figures: figures_of(session, rules, &last.figures),
@@ -908,6 +974,7 @@ fn snapshot_of(
         agreements: monthly.agreements,
         trade: monthly.trade,
         tariffs: monthly.tariffs,
+        relations: monthly.relations,
         war: monthly.war,
         control: monthly.control,
         treaty_table: monthly.treaty_table,

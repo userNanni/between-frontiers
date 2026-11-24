@@ -137,6 +137,11 @@ impl State {
             focus: None,
             draft: None,
             treaty_draft: None,
+            relations: rules
+                .as_ref()
+                .filter(|r| r.switches.relations)
+                .and_then(|_| data.relations_setup())
+                .map(|setup| std::sync::Arc::new((setup, data.community_table.clone()))),
         };
         let sim = SimHandle::start(session, rules.clone(), extras, move || {
             repaint.request_repaint()
@@ -800,6 +805,18 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
                     };
                     if !state_shown {
                         country_panel::show(shared, ui, country);
+                        // Its power, role and threat, and its hostility with the player
+                        // (switch `relations`).
+                        if let (Some(view), Some(world)) = (&snap.relations, &shared.world) {
+                            super::relations::show(
+                                ui,
+                                &shared.i18n,
+                                world,
+                                view,
+                                world.countries[country].tag(),
+                                snap.player.as_deref(),
+                            );
+                        }
                         // Its trade by partner, with trade by pair on.
                         if let (Some(view), Some(world)) = (&snap.trade, &shared.world) {
                             super::trade::show(ui, &shared.i18n, world, view, country);
