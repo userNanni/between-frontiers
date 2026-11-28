@@ -230,6 +230,8 @@ pub fn occupation_week(
 #[derive(Clone, Debug, Default)]
 pub struct Devastation {
     pub levels: Vec<(u32, i64)>,
+    /// (region, plant levels) burned by scorched earth (`war::scorch`).
+    pub scorched: Vec<(u32, i64)>,
     pub civilians: Vec<(u32, u64)>,
 }
 

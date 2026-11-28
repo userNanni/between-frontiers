@@ -98,7 +98,9 @@ jobs:
 
       - name: Run both (5 years, 1 thread)
         run: |
-          "$RUNNER_TEMP/bench-base" --game --years 5 --threads 1 --out cost-base.json
+          # The base reads its own data: since #383 the data root is found where the bench runs,
+          # and a branch's new switch in data/rules.ron would stop the base's binary.
+          BF_DATA_ROOT="$RUNNER_TEMP/base" "$RUNNER_TEMP/bench-base" --game --years 5 --threads 1 --out cost-base.json
           "$RUNNER_TEMP/bench-new" --game --years 5 --threads 1 --out cost-new.json
 
       - name: Compare

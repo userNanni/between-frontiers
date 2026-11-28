@@ -246,10 +246,17 @@ const PLAYER: &[Surface] = &[
 ];
 
 /// Variants the player does not give from a screen with a key, and why.
-const EXCEPTIONS: &[(&str, &str)] = &[(
-    "Borders",
-    "issued by treaties, peace, tests and tools; the player frees its land with Liberate",
-)];
+const EXCEPTIONS: &[(&str, &str)] = &[
+    (
+        "Borders",
+        "issued by treaties, peace, tests and tools; the player frees its land with Liberate",
+    ),
+    (
+        "SetScorchedEarth",
+        "behind the switch scorched_earth (off), draft; its order in the Agendas (two steps, \
+         restore point) comes from the interface in the same merge train, which moves it to PLAYER",
+    ),
+];
 
 fn variants() -> BTreeSet<String> {
     let mut tracer = Tracer::new(TracerConfig::default());
