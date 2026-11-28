@@ -137,3 +137,45 @@ detalhe está em [`economy.pt-BR.md`](../../economy.pt-BR.md) e em
   demais arrecada menos; a fila de obras do jogador mexe só no que o Estado paga; quem quer evitar
   o calote pode, pagando com austeridade.
 - **Estado:** desenho ([`state.pt-BR.md`, "Alavancas do orçamento e da dívida"](../../state.pt-BR.md#alavancas-do-orçamento-e-da-dívida-desenho)); o código entra em quatro fatias.
+
+### O governo fixa o método de produção e constrói indústria
+
+- **Decisão (2026-11-28):** o governo pode fixar o método de produção de um tipo de prédio e
+  mandar construir fábricas do Estado; as duas coisas nasceram do primeiro teste do autor jogando.
+  1. **M1, alcance:** o método fixado vale para toda planta do tipo no país, privada ou do Estado
+     (é regulação, não só gestão das estatais).
+  2. **M2, custo:** os donos perdem o lucro da diferença, e nada mais. O lado político (os
+     industriais contra a regulação) fica para a fase dos grupos de interesse.
+  3. **Laissez-faire não fixa:** sob a lei de propriedade `laissez_faire` (a única sem
+     propriedade do Estado) o governo não fixa método nenhum. Nas outras quatro (mercado
+     regulado, economia mista, capitalismo de Estado, economia planejada) pode. Um método fixado
+     antes de o país passar ao laissez-faire fica suspenso, e os donos voltam a escolher.
+  4. **E0, modelo da fábrica:** os níveis do Estado ficam dentro do prédio comum (uma siderúrgica
+     com níveis privados e níveis do Estado), não num tipo de prédio à parte.
+  5. **E1, método da fábrica nova:** usa o mesmo método das outras plantas do tipo e acompanha as
+     trocas, do governo ou do mercado; se o governo fixou o método do tipo, usa o fixado e não
+     troca; sob o laissez-faire, usa o que der mais lucro, como as privadas.
+  6. **E2, prejuízo:** o Tesouro cobre; os níveis do Estado não fecham sozinhos, e fechar é
+     comando do jogador.
+  7. **E3, privatizar:** depois, como decisão nas Agendas.
+  8. **E4, limite:** só o caixa do Tesouro.
+- **O que o autor pensou:** "a fábrica do Estado usa o que foi escolhido para as outras até o
+  governo ou o mercado atualizarem; se o governo fixar, daí não tem como mudar; se o governo for
+  laissez-faire, não pode fixar, e a fábrica usa o que der maior lucro". M1, M2 e E0, E2 a E4 são
+  as recomendações da coordenação, aceitas.
+- **Como o jogo funciona por causa disso:** em Economia → Métodos, cada prédio mostra "Regra
+  histórica (os donos)" ou "Fixado pelo governo". Fixado, as plantas trocam em janeiro, com o
+  fundo de investimento do país pagando o equipamento antes das obras novas (a troca é gradual: a
+  tela diz quantos estados já usam o método), e as plantas novas do tipo já nascem com ele. Um
+  país sob laissez-faire vê a escolha desligada, com a frase de que a lei de propriedade é que
+  decide. Exemplo: a Suíça de 1925 (mercado regulado) fixa o comércio tradicional no lugar das
+  grandes lojas, e em janeiro de 1926 os sete estados usam o comércio tradicional.
+- **Como é na vida real:** a regulação técnica de um setor inteiro por lei (a eletrificação
+  ferroviária obrigatória, o padrão de combustível) cabe na economia mista; a gestão das estatais
+  pelo governo, em qualquer regime que tenha estatais.
+- **Estado:** método fixado no jogo, regra desligada (`fixed_methods`, PR #NNN); fábrica do Estado
+  desenhada (próximo PR).
+- **Onde está o detalhe:** [`econ/industry.rs`](../../../crates/bf-sim/src/econ/industry.rs),
+  a troca anual em [`econ/yearly.rs`](../../../crates/bf-sim/src/econ/yearly.rs), o teste
+  [`tests/fixed_methods.rs`](../../../crates/bf-sim/tests/fixed_methods.rs); as leis em
+  [`data/politics/laws.ron`](../../../data/politics/laws.ron).

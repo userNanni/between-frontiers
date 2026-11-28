@@ -49,6 +49,10 @@ const SWITCHES: &[(&str, &str)] = &[
         "Um Estado com menos servidores do que precisa arrecada menos imposto.",
     ),
     (
+        "fixed_methods",
+        "O governo fixa o método de produção de um tipo de prédio no país, fora do laissez-faire.",
+    ),
+    (
         "forces",
         "Os soldados são os homens das formações de 1925 de cada país.",
     ),

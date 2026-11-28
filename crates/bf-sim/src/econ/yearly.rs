@@ -24,6 +24,8 @@ const CLOSE_WITH_SCHOOLING: Fixed = milli(500);
 
 /// A plant switches when another method earns this much more.
 const SWITCH_MARGIN: Fixed = milli(1100);
+/// The gain that marks a switch the government ordered (`econ::industry`): paid first.
+const MANDATED: Fixed = Fixed::MAX;
 /// Literacy speed with no schools, and the gain at full enrolment (the phase 1 speed is 1).
 /// Without a school, few learn to read (adult
 /// classes, a literate relative): India with a tenth of its children in school went from 10 to
@@ -46,6 +48,8 @@ pub struct Yearly {
     pub foreign_contract: bool,
     /// The reach of the mass media (`Switches::media`): its stocks move on 1 January.
     pub media: Option<Arc<crate::media::MediaRules>>,
+    /// `Switches::fixed_methods`: the plants move to the method the government fixed.
+    pub fixed_methods: bool,
 }
 
 pub struct YearlyChanges {
@@ -102,6 +106,25 @@ impl System<GameWorld> for Yearly {
                         let b = &cat.buildings[p.kind as usize];
                         let (tfp, wage) = (plant_tfp(r, m, b), wages[r.market as usize]);
                         let current = b.methods[p.method as usize].profit(&view.price, tfp, wage);
+                        // A method the government fixed (`econ::industry`, M1): the plant moves
+                        // to it whatever it earns, ahead of the market's switches, or keeps its
+                        // method while it cannot run the fixed one.
+                        if let Some(fixed) = super::monthly::fixed_method(
+                            cat,
+                            world,
+                            self.fixed_methods,
+                            p.kind as usize,
+                            &unlocks,
+                            r.market as usize,
+                            &view.price,
+                            &view.buy,
+                            tfp,
+                            wage,
+                        ) {
+                            return fixed
+                                .filter(|&(mi, _)| mi != p.method)
+                                .map(|(mi, _)| (mi, MANDATED));
+                        }
                         match best_method(
                             cat,
                             p.kind as usize,
@@ -388,6 +411,10 @@ fn paid_switches(
         .iter()
         .map(|m| m.pool - super::monthly::committed(cat, m))
         .collect();
+    // The switches the government ordered (`econ::industry`) come out of the fund ahead of the
+    // works it committed to: what they spend is taken from the market's switches and, through
+    // the orders, from the new works of the months after.
+    let mut ordered: Vec<Fixed> = econ.markets.iter().map(|m| m.pool).collect();
     // (gain per unit of cost, region, plant, cost)
     let mut offers: Vec<Vec<(Fixed, usize, usize, Fixed)>> = vec![Vec::new(); econ.markets.len()];
     for (ri, (r, (methods, gains))) in econ.regions.iter().zip(&wanted).enumerate() {
@@ -403,7 +430,9 @@ fn paid_switches(
             );
             let level_cost = switch_cost(cat, p.kind as usize, new, tfp);
             let cost = level_cost * p.levels;
-            let ratio = if level_cost > Fixed::ZERO {
+            let ratio = if gains[i] == MANDATED {
+                Fixed::MAX
+            } else if level_cost > Fixed::ZERO {
                 gains[i] / level_cost
             } else {
                 Fixed::MAX
@@ -420,11 +449,19 @@ fn paid_switches(
     for (mi, mut list) in offers.into_iter().enumerate() {
         list.sort_by(|a, b| b.0.cmp(&a.0).then(a.1.cmp(&b.1)).then(a.2.cmp(&b.2)));
         let m = &econ.markets[mi];
-        for (_, ri, i, cost) in list {
-            if cost > budget[mi] {
-                continue;
+        for (ratio, ri, i, cost) in list {
+            if ratio == Fixed::MAX && wanted[ri].1[i] == MANDATED {
+                if cost > ordered[mi] {
+                    continue;
+                }
+                ordered[mi] -= cost;
+                budget[mi] = budget[mi].min(ordered[mi]);
+            } else {
+                if cost > budget[mi] {
+                    continue;
+                }
+                budget[mi] -= cost;
             }
-            budget[mi] -= cost;
             let r = &econ.regions[ri];
             let p = &r.plants[i];
             let new = wanted[ri].0[i];

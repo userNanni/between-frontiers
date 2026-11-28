@@ -2,10 +2,12 @@
 //! methods, side by side. On the left the buildings; on the right the methods of the one picked,
 //! each with the technology it needs, what a level uses, makes and employs in a year, its owners'
 //! profit per level at this month's prices, how many levels run it, and which one the owners
-//! would pick now. Read only: today the market chooses ("historical rule"); fixing a method by
-//! the government is a decision still to come.
+//! would pick now. Who picks: the market ("historical rule") or the government, which may fix
+//! the method of the kind for the whole country (`SetMethod`, owner's decisions M1 and M2),
+//! outside laissez-faire.
 
 use bf_i18n::{Arg, I18n};
+use bf_sim::game::GameCommand;
 use bf_ui_kit::tokens::{color, size, space};
 use bf_ui_kit::{Button, ButtonSize, Tone};
 use egui::{RichText, Ui};
@@ -33,7 +35,25 @@ fn quantities(i18n: &I18n, items: &[(String, f64)], prefix: &str) -> String {
         .join(" · ")
 }
 
-pub fn show(ui: &mut Ui, i18n: &I18n, v: &MethodsView, picked: &mut Option<u16>) {
+/// Shows the tab; returns the command of a fixed method or of a hand-back to the market.
+pub fn show(
+    ui: &mut Ui,
+    i18n: &I18n,
+    v: &MethodsView,
+    picked: &mut Option<u16>,
+) -> Option<GameCommand> {
+    let mut out = None;
+    show_in(ui, i18n, v, picked, &mut out);
+    out
+}
+
+fn show_in(
+    ui: &mut Ui,
+    i18n: &I18n,
+    v: &MethodsView,
+    picked: &mut Option<u16>,
+    out: &mut Option<GameCommand>,
+) {
     bf_ui_kit::small(ui, &i18n.tr("methods-basis"));
     bf_ui_kit::gap(ui, space::SM);
     if v.kinds.is_empty() {
@@ -104,24 +124,62 @@ pub fn show(ui: &mut Ui, i18n: &I18n, v: &MethodsView, picked: &mut Option<u16>)
                     .show(ui, |ui| {
                         super::scroll_keys(ui);
                         bf_ui_kit::heading(ui, &i18n.tr(&format!("building-{}", k.key)));
-                        // Who picks the method: the market for now; the government's choice
-                        // stands here, off until it is in the game.
+                        // Who picks the method: the owners by the market, or the government.
+                        let can = v.rule_on && v.may_fix;
                         ui.horizontal_wrapped(|ui| {
                             ui.label(
                                 RichText::new(i18n.tr("methods-who"))
                                     .font(bf_ui_kit::theme::sans(size::SMALL))
                                     .color(color::TEXT_MUTED),
                             );
-                            ui.add_enabled_ui(false, |ui| {
-                                let mut fixed = false;
+                            ui.add_enabled_ui(can || k.fixed.is_some(), |ui| {
+                                let mut fixed = k.fixed.is_some();
                                 let options = [
                                     (false, i18n.tr("methods-rule")),
                                     (true, i18n.tr("methods-fixed")),
                                 ];
-                                bf_ui_kit::segmented_rects(ui, &mut fixed, &options);
+                                let tips = [
+                                    keys::Tip::Item('R', "methods.who.rule".into(), "1"),
+                                    keys::Tip::Item('R', "methods.who.fixed".into(), "2"),
+                                ];
+                                if keys::segmented(ui, &mut fixed, &options, &tips) {
+                                    // Fixing starts from the method most levels run now.
+                                    let method = fixed
+                                        .then(|| {
+                                            k.methods
+                                                .iter()
+                                                .filter(|m| m.available)
+                                                .max_by_key(|m| {
+                                                    (m.levels, std::cmp::Reverse(m.index))
+                                                })
+                                                .map(|m| m.index)
+                                        })
+                                        .flatten();
+                                    if !fixed || method.is_some() {
+                                        *out = Some(GameCommand::SetMethod {
+                                            tag: v.tag.clone(),
+                                            kind: k.kind,
+                                            method,
+                                        });
+                                    }
+                                }
                             });
                         });
-                        bf_ui_kit::small(ui, &i18n.tr("methods-fixed-later"));
+                        let note = match k.fixed.and_then(|f| k.methods.get(usize::from(f))) {
+                            _ if !v.rule_on => i18n.tr("methods-fixed-off"),
+                            Some(m) if v.may_fix => i18n.tr_args(
+                                "methods-fixed-now",
+                                &[
+                                    ("method", Arg::String(i18n.tr(&format!("method-{}", m.key)))),
+                                    ("on", Arg::Num(k.states_on_fixed as f64)),
+                                    ("states", Arg::Num(k.states as f64)),
+                                ],
+                            ),
+                            Some(_) => i18n.tr("methods-fixed-resting"),
+                            None if v.may_fix => i18n.tr("methods-fixed-can"),
+                            None => i18n.tr("methods-fixed-laissez"),
+                        };
+                        bf_ui_kit::small(ui, &note);
                         let best = k
                             .best
                             .and_then(|b| k.methods.get(usize::from(b)))
@@ -139,8 +197,35 @@ pub fn show(ui: &mut Ui, i18n: &I18n, v: &MethodsView, picked: &mut Option<u16>)
                             );
                         bf_ui_kit::small(ui, &best);
                         bf_ui_kit::gap(ui, space::SM);
-                        for m in &k.methods {
-                            method(ui, i18n, m, k.best == Some(m.index));
+                        for (i, m) in k.methods.iter().enumerate() {
+                            method(
+                                ui,
+                                i18n,
+                                m,
+                                k.best == Some(m.index),
+                                k.fixed == Some(m.index),
+                            );
+                            // With the method fixed, another known one can be fixed instead.
+                            if can && k.fixed.is_some_and(|f| f != m.index) && m.available {
+                                let b = Button::secondary(&i18n.tr("methods-fix-this"))
+                                    .size(ButtonSize::Small)
+                                    .show(ui);
+                                if b.clicked()
+                                    || keys::item(
+                                        ui,
+                                        'M',
+                                        format!("methods.fix.{}", m.key),
+                                        &(i + 1).to_string(),
+                                        b.rect,
+                                    )
+                                {
+                                    *out = Some(GameCommand::SetMethod {
+                                        tag: v.tag.clone(),
+                                        kind: k.kind,
+                                        method: Some(m.index),
+                                    });
+                                }
+                            }
                             bf_ui_kit::divider(ui);
                         }
                     });
@@ -149,7 +234,7 @@ pub fn show(ui: &mut Ui, i18n: &I18n, v: &MethodsView, picked: &mut Option<u16>)
     });
 }
 
-fn method(ui: &mut Ui, i18n: &I18n, m: &MethodRow, best: bool) {
+fn method(ui: &mut Ui, i18n: &I18n, m: &MethodRow, best: bool, fixed: bool) {
     ui.spacing_mut().item_spacing.y = space::XS;
     ui.horizontal_wrapped(|ui| {
         ui.label(
@@ -173,6 +258,9 @@ fn method(ui: &mut Ui, i18n: &I18n, m: &MethodRow, best: bool) {
                 ),
                 Tone::Accent,
             );
+        }
+        if fixed {
+            bf_ui_kit::badge(ui, &i18n.tr("methods-fixed-badge"), Tone::Accent);
         }
         if best {
             bf_ui_kit::badge(ui, &i18n.tr("methods-owners-pick"), Tone::Neutral);

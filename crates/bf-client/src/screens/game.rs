@@ -1042,6 +1042,9 @@ pub fn show(state: &mut State, shared: &mut Shared, ui: &mut Ui, rect: Rect) -> 
             &mut place,
         );
         keep_window_place(shared, "economy", place, res.place_done);
+        if let Some(c) = res.command {
+            state.sim.send(Command::Issue(c));
+        }
         if res.close {
             state.economy = None;
         }
