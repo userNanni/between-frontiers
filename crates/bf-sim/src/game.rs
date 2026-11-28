@@ -1681,6 +1681,12 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
                 .with_communities(communities)
                 .with_education(education),
         );
+        // The works the governments asked for enter the queue the next day (D8).
+        s.add(crate::econ::monthly::WorkRequests {
+            cat: Arc::clone(&cat),
+            tree: tree.clone(),
+            occupied_works: switches.occupied_works,
+        });
         s.add(crate::econ::monthly::Investment {
             cat: Arc::clone(&cat),
             tree: tree.clone(),
@@ -1848,6 +1854,12 @@ impl Session {
             _ => {}
         }
         self.sim.submit(issuer, command);
+        // A decision holds at once, even paused (`Simulation::apply_due`): the world after the
+        // next tick is the same, and the screens show it now. With more than one issuer the
+        // commands wait for their tick, so that each tick applies them in key order.
+        if self.players.keys().all(|&i| i == issuer) {
+            self.sim.apply_due();
+        }
     }
 
     /// The country the local player plays now.
@@ -1864,9 +1876,8 @@ impl Session {
         })
     }
 
-    /// Every command applied in this campaign, oldest first.
-    /// Every command of the campaign: applied before the last load, applied since, and queued
-    /// for the next tick.
+    /// Every command of the campaign: applied before the last load, applied since (those issued
+    /// since the last tick among them), and queued for the next tick.
     pub fn history(&self) -> CommandLog<GameCommand> {
         let mut log = CommandLog::new();
         for entry in self
@@ -1894,6 +1905,7 @@ impl Session {
             header,
             snapshot: crate::save_format::encode_world(self.sim.world(), self.catalog.as_ref())?,
             log: self.history(),
+            applied: self.sim.applied_now(),
         }
         .encode()
     }
@@ -1931,8 +1943,9 @@ impl Session {
             file.header.clock,
             schedule(threads, rules),
         );
-        // Commands stamped for ticks not yet run go back into the queue.
-        sim.replay(&file.log);
+        // Commands stamped for ticks not yet run go back into the queue, but for those the
+        // snapshot already holds (applied as issued, `Session::submit_as`).
+        sim.replay_applied(&file.log, &file.applied);
         let earlier = file
             .log
             .entries()
@@ -4759,6 +4772,66 @@ mod tests {
         loaded.sim.run_until(Date::new(1925, 3, 1));
         assert_eq!(loaded.world().player_tag(), Some("BRA"));
         assert_eq!(loaded.state_hash(), s.state_hash());
+    }
+
+    /// A session where taxes can be set by command (two empty markets).
+    fn taxed(threads: usize) -> Session {
+        let mut s = session(threads);
+        s.sim.run_until(Date::new(1925, 1, 2));
+        let mut world = s.world().clone();
+        world.econ.markets = vec![crate::econ::Market::empty(0), crate::econ::Market::empty(0)];
+        let mut s = Session::new(world, 42, Date::new(1925, 1, 2), threads, None);
+        s.submit(GameCommand::ChoosePlayer { tag: "BRA".into() });
+        s
+    }
+
+    fn rates(r: [u16; 3]) -> GameCommand {
+        GameCommand::SetTaxRates {
+            tag: "BRA".into(),
+            rates: Some(r),
+        }
+    }
+
+    /// A command holds as it is issued, even paused, and the world after the next tick is the
+    /// one it would be had the command waited for the tick.
+    #[test]
+    fn a_command_holds_at_once_and_the_next_tick_is_the_same() {
+        let mut now = taxed(1);
+        let mut waits = taxed(1);
+        now.submit(rates([30, 80, 900]));
+        assert!(
+            !now.world().econ.markets[0].budget.tax_auto,
+            "at once, paused"
+        );
+        waits.sim.submit(PLAYER, rates([30, 80, 900]));
+        assert!(waits.world().econ.markets[0].budget.tax_auto);
+        for s in [&mut now, &mut waits] {
+            s.sim.run_until(Date::new(1925, 2, 1));
+        }
+        assert_eq!(now.state_hash(), waits.state_hash());
+        assert_eq!(now.history(), waits.history());
+    }
+
+    /// A save made right after a command, with a second command of the same tick issued after
+    /// the save: the load holds the first without applying it twice, and both runs agree.
+    #[test]
+    fn a_save_right_after_a_command_loads_with_it_once() {
+        let mut s = taxed(1);
+        s.submit(rates([30, 80, 900]));
+        let bytes = s.save("test", "after a command").unwrap();
+        let mut loaded = Session::load(&bytes, 1, None).unwrap();
+        assert_eq!(loaded.state_hash(), s.state_hash());
+        assert_eq!(loaded.history(), s.history());
+        for x in [&mut s, &mut loaded] {
+            x.submit(rates([50, 100, 400]));
+            x.sim.run_until(Date::new(1925, 3, 1));
+        }
+        assert_eq!(loaded.state_hash(), s.state_hash());
+        assert_eq!(loaded.history(), s.history());
+        assert_eq!(
+            loaded.world().econ.markets[0].budget.tax_rates,
+            s.world().econ.markets[0].budget.tax_rates
+        );
     }
 
     #[test]

@@ -1199,16 +1199,12 @@ fn apply(session: &mut Session, ctl: &mut Control, command: Command) {
                 ctl.changed = true;
             }
         }
-        // Applies at the start of the next tick and enters the history then.
+        // Holds at once, even paused (`Session::submit_as`): every view is read again and a
+        // snapshot goes out now, so the screen shows the decision in the next frame.
         Command::Issue(c) => {
-            if matches!(
-                c,
-                GameCommand::SwitchCountry { .. } | GameCommand::ChoosePlayer { .. }
-            ) {
-                ctl.reread = true;
-                ctl.changed = true;
-            }
-            session.submit(c)
+            session.submit(c);
+            ctl.reread = true;
+            ctl.changed = true;
         }
         Command::Save {
             path,
@@ -1299,11 +1295,13 @@ fn run(
         }
         if ctl.changed {
             let tick = session.clock().tick;
-            if (ctl.paused || month_turned) && tick != hash_tick {
+            let reread = std::mem::take(&mut ctl.reread);
+            // A command changes the world without a tick: its hash too.
+            if (ctl.paused || month_turned) && (tick != hash_tick || reread) {
                 hash = short(&session.state_hash());
                 hash_tick = tick;
             }
-            if std::mem::take(&mut ctl.reread) {
+            if reread {
                 monthly = Monthly::default();
             }
             extras.focus.clone_from(&ctl.focus);
