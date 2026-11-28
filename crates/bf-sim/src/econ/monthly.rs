@@ -1571,72 +1571,80 @@ pub fn accept_requests(
     is_stopped: &dyn Fn(usize) -> bool,
     rule: &[super::state::Project],
 ) -> Vec<super::state::Project> {
-    // Works the governments asked for (D8, `GameCommand::AddWork`), each checked against what
-    // the state may build there; one it may not build is dropped.
-    let econ = &world.econ;
     let mut public: Vec<super::state::Project> = Vec::new();
-    for q in world
-        .levers
-        .requests
-        .iter()
-        .filter(|q| !is_stopped(q.region as usize))
-    {
-        let found = super::public::buildable_in(
-            cat,
-            econ,
-            unlocks,
-            usize::from(q.market),
-            q.region as usize,
-        )
-        .into_iter()
-        .find(|x| x.0 == usize::from(q.kind))
-        .or_else(|| {
-            // A productive building (a state firm, or a plant the state builds itself):
-            // wherever a method of it is known and the state's deposits or land leave room
-            // for another level, counting the levels already in the queue.
-            let b = cat.buildings.get(usize::from(q.kind))?;
-            if b.public || b.informal || b.traditional {
-                return None;
-            }
-            let r = econ.regions.get(q.region as usize)?;
-            let queued = econ
-                .markets
-                .get(usize::from(q.market))?
-                .queue
-                .iter()
-                .chain(rule)
-                .chain(&public)
-                .filter(|p| p.region == q.region && p.kind == q.kind)
-                .count() as i64;
-            let built = r
-                .plants
-                .iter()
-                .find(|p| p.kind == q.kind)
-                .map_or(0, |p| p.levels);
-            if built + queued >= super::public::level_ceiling(b, r, year) {
-                return None;
-            }
-            super::public::state_plant_in(
-                cat,
-                econ,
-                unlocks,
-                usize::from(q.market),
-                q.region as usize,
-                usize::from(q.kind),
-            )
-        });
-        if let Some((_, method, points)) = found {
-            public.push(super::state::Project {
-                region: q.region,
-                kind: q.kind,
-                method,
-                public: true,
-                points,
-                left: points,
-            });
+    for q in &world.levers.requests {
+        if let Some(p) = accept_one(cat, world, unlocks, year, is_stopped, rule, &public, q) {
+            public.push(p);
         }
     }
     public
+}
+
+/// One public work asked for (`accept_requests`): the work that joins the queue, or `None` when
+/// the state may not build it there. `rule` and `earlier` are works not in the queue yet that
+/// count against the state's ceiling.
+#[allow(clippy::too_many_arguments)]
+pub fn accept_one(
+    cat: &Catalogue,
+    world: &GameWorld,
+    unlocks: &Unlocks<'_>,
+    year: i32,
+    is_stopped: &dyn Fn(usize) -> bool,
+    rule: &[super::state::Project],
+    earlier: &[super::state::Project],
+    q: &super::levers::WorkRequest,
+) -> Option<super::state::Project> {
+    let econ = &world.econ;
+    if is_stopped(q.region as usize) {
+        return None;
+    }
+    let (_, method, points) =
+        super::public::buildable_in(cat, econ, unlocks, usize::from(q.market), q.region as usize)
+            .into_iter()
+            .find(|x| x.0 == usize::from(q.kind))
+            .or_else(|| {
+                // A productive building (a state firm, or a plant the state builds itself): wherever a
+                // method of it is known and the state's deposits or land leave room for another level,
+                // counting the levels already in the queue.
+                let b = cat.buildings.get(usize::from(q.kind))?;
+                if b.public || b.informal || b.traditional {
+                    return None;
+                }
+                let r = econ.regions.get(q.region as usize)?;
+                let queued = econ
+                    .markets
+                    .get(usize::from(q.market))?
+                    .queue
+                    .iter()
+                    .chain(rule)
+                    .chain(earlier)
+                    .filter(|p| p.region == q.region && p.kind == q.kind)
+                    .count() as i64;
+                let built = r
+                    .plants
+                    .iter()
+                    .find(|p| p.kind == q.kind)
+                    .map_or(0, |p| p.levels);
+                if built + queued >= super::public::level_ceiling(b, r, year) {
+                    return None;
+                }
+                super::public::state_plant_in(
+                    cat,
+                    econ,
+                    unlocks,
+                    usize::from(q.market),
+                    q.region as usize,
+                    usize::from(q.kind),
+                )
+            })?;
+    Some(super::state::Project {
+        region: q.region,
+        kind: q.kind,
+        method,
+        public: true,
+        points,
+        left: points,
+    })
 }
 
 /// The works the governments asked for enter the queue the day after they are asked

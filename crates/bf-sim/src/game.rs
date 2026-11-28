@@ -604,6 +604,13 @@ pub enum GameCommand {
         enemy: String,
         on: bool,
     },
+    /// A public work the session checked as the player asked for it (`AddWork` with the rules at
+    /// hand, `econ::monthly::accept_one`): it joins the country's queue as it is issued. The
+    /// screens issue `AddWork`; the session logs this in its place.
+    QueueWork {
+        tag: String,
+        work: crate::econ::state::Project,
+    },
 }
 
 /// Changes the levers of the country `tag` (`econ::levers`); unknown tags are no-ops.
@@ -1187,6 +1194,22 @@ impl Command<GameWorld> for GameCommand {
                     signatories: vec![by.clone()],
                     terms: Default::default(),
                 }),
+            GameCommand::QueueWork { tag, work } => {
+                let Some(ci) = world.countries.iter().position(|(_, c)| c.tag == *tag) else {
+                    return;
+                };
+                let theirs = world
+                    .econ
+                    .regions
+                    .get(work.region as usize)
+                    .is_some_and(|r| usize::from(r.market) == ci);
+                if theirs && let Some(m) = world.econ.markets.get_mut(ci) {
+                    m.queue.push(crate::econ::state::Project {
+                        public: true,
+                        ..work.clone()
+                    });
+                }
+            }
             GameCommand::SetPublicPriority { tag, weights } => {
                 let Some(ci) = world.countries.iter().position(|(_, c)| c.tag == *tag) else {
                     return;
@@ -1755,6 +1778,67 @@ pub struct Session {
     players: std::collections::BTreeMap<Issuer, String>,
     /// Keys of the catalogues the rules index by position, written with every save.
     catalog: Option<crate::save_format::CatalogKeys>,
+    /// What checks a work the player asks for (`AddWork` → `QueueWork`); without rules the
+    /// request waits for the daily `WorkRequests`.
+    works: Option<WorkRules>,
+}
+
+/// The catalogue, tree and switch a work asked for is checked with.
+struct WorkRules {
+    cat: Arc<Catalogue>,
+    tree: Option<Arc<crate::research::TechTree>>,
+    occupied_works: bool,
+}
+
+impl WorkRules {
+    fn of(rules: &Rules) -> Self {
+        Self {
+            cat: Arc::clone(&rules.catalogue),
+            tree: rules.tree.clone(),
+            occupied_works: rules.switches.occupied_works,
+        }
+    }
+
+    /// The work `tag` asks for in `region`, as the daily `WorkRequests` would queue it now.
+    fn check(
+        &self,
+        world: &GameWorld,
+        year: i32,
+        tag: &str,
+        region: u32,
+        kind: u16,
+    ) -> Option<crate::econ::state::Project> {
+        let ci = world.countries.iter().position(|(_, c)| c.tag == tag)?;
+        let theirs = world
+            .econ
+            .regions
+            .get(region as usize)
+            .is_some_and(|r| usize::from(r.market) == ci);
+        if !theirs {
+            return None;
+        }
+        let stopped = self
+            .occupied_works
+            .then(|| crate::econ::construction::stopped(world))
+            .flatten();
+        let is_stopped = |ri: usize| stopped.as_ref().is_some_and(|s| s[ri]);
+        let unlocks =
+            crate::econ::Unlocks::new(&self.cat, year, self.tree.as_deref(), &world.research);
+        crate::econ::monthly::accept_one(
+            &self.cat,
+            world,
+            &unlocks,
+            year,
+            &is_stopped,
+            &[],
+            &[],
+            &crate::econ::levers::WorkRequest {
+                market: ci as u16,
+                region,
+                kind,
+            },
+        )
+    }
 }
 
 #[derive(Debug)]
@@ -1812,11 +1896,13 @@ impl Session {
         rules: Option<Rules>,
     ) -> Self {
         let catalog = rules.as_ref().map(crate::save_format::CatalogKeys::of);
+        let works = rules.as_ref().map(WorkRules::of);
         Self {
             sim: Simulation::new(world, seed, start, schedule(threads, rules)),
             earlier: Vec::new(),
             players: Default::default(),
             catalog,
+            works,
         }
     }
 
@@ -1841,6 +1927,21 @@ impl Session {
 
     /// Issues `command` for `issuer` (a player slot of a multiplayer server).
     pub fn submit_as(&mut self, issuer: Issuer, command: GameCommand) {
+        // A work asked for is checked now and joins the queue at once, as a line the player can
+        // move or cancel; one the state may not build there is dropped, as the daily check would.
+        let command = match (&command, &self.works) {
+            (GameCommand::AddWork { tag, region, kind }, Some(w)) => {
+                let year = self.sim.clock().date.year;
+                match w.check(self.sim.world(), year, tag, *region, *kind) {
+                    Some(work) => GameCommand::QueueWork {
+                        tag: tag.clone(),
+                        work,
+                    },
+                    None => return,
+                }
+            }
+            _ => command,
+        };
         match &command {
             GameCommand::Liberate { by, .. } if self.player_of(issuer) != Some(by.as_str()) => {
                 return;
@@ -1937,6 +2038,7 @@ impl Session {
                 .map_err(LoadError::Catalog)?;
         }
         let catalog = rules.as_ref().map(crate::save_format::CatalogKeys::of);
+        let works = rules.as_ref().map(WorkRules::of);
         let mut sim = Simulation::resume(
             world,
             file.header.seed,
@@ -1966,6 +2068,7 @@ impl Session {
             earlier,
             players,
             catalog,
+            works,
         })
     }
 }

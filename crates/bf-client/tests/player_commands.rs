@@ -256,6 +256,10 @@ const EXCEPTIONS: &[(&str, &str)] = &[
         "behind the switch scorched_earth (off), draft; its order in the Agendas (two steps, \
          restore point) comes from the interface in the same merge train, which moves it to PLAYER",
     ),
+    (
+        "QueueWork",
+        "the session's form of AddWork, checked at the click; the screens issue AddWork",
+    ),
 ];
 
 fn variants() -> BTreeSet<String> {
