@@ -6,6 +6,7 @@ Cada regra nova entra desligada, com o jogo igual ao de antes; ligar é outra de
 
 | Chave | Estado | O que faz |
 |---|---|---|
+| `anti_war` | desligada | A guerra longa faz crescer um movimento contra ela: greve na indústria de guerra, motim no exército e um governo que cai mais cedo; censura e repressão o freiam. |
 | `capital_follows_rate` | desligada | O capital privado vai para onde o juro rende mais, e o país pode fechar a conta de capital (controle de capital). Precisa da liquidação em reservas. |
 | `clause_tests` | desligada | Os acordos em vigor são testados todo mês: o tributo é pago e cobrado, e o acordo com prazo acaba quando o prazo vence. |
 | `computer_efficiency` | desligada | O computador rende mais por pessoa: laboratórios e universidades ganham métodos com computador, e, com a capacidade fiscal, cada servidor arrecada mais. |

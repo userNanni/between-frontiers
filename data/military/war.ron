@@ -125,6 +125,27 @@
                 "light_industry", "infrastructure"],
         )),
     ),
+    // The movement against the war (`war::antiwar`; switch `anti_war`, off). The owner chose
+    // the recommended AW1 to AW6 (2026-11-28). DESIGN VALUES, without a source:
+    // - strike: of the workers who back the movement, those on strike at a time, per mille;
+    // - mutiny: of the soldiers who back it, those who refuse to fight, per mille;
+    // - collapse_mobilized: mobilization (per mille of the people) from which the countdown to
+    //   the fall runs below the peace threshold (the 4 % at which a movement moves a law);
+    // - memory: per mille of the movement left at the start of a war taken off the starting
+    //   support.
+    // - censorship_weight (AW6): the censorship's brake on the weekly growth, per mille of
+    //   the repression's; the repression brakes it whole, as on a push for a law no group
+    //   backs (the general rule).
+    anti_war: Some((
+        movement: "anti_war",
+        strike: 300,
+        mutiny: 200,
+        collapse_mobilized: 40,
+        memory: 300,
+        censorship_weight: 1000,
+        strikers: ["laborer", "skilled_worker"],
+        soldiers: ["soldier"],
+    )),
     // The colonial war (G6; docs/war.pt-BR.md, "Guerra colonial"). GC1 to GC5 are the owner's
     // questions, with the recommendation in place until answered.
     colonial: Some((

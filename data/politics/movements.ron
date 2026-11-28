@@ -285,6 +285,24 @@
             growth: 100,
             persistence: 15,
         ),
+        // Against the war (`war::antiwar`; switch `anti_war`, off: the movement leaves the
+        // catalogue). Those who make the war's weapons and those who fight it: the munitions
+        // strike of January 1918 began in Berlin's munitions and metal plants, some 400,000
+        // workers (GHDI, "The Strikes of January 1918", p. 1); the French mutinies of 1917
+        // touched 49 of 113 infantry divisions (Pedroncini, 1967, NO PAGE). Its cause is the
+        // weariness of its recruits, 1000 less their groups' war support, at war only; it moves
+        // every week of war. growth and persistence: DESIGN VALUES.
+        (
+            key: "anti_war",
+            goal: Peace,
+            professions: [
+                ("laborer", 1000), ("skilled_worker", 1000), ("peasant", 600),
+                ("farm_laborer", 600), ("soldier", 800), ("clerk", 300), ("professional", 300),
+            ],
+            cause: [("war_weariness", AtLeast(600))],
+            growth: 300,
+            persistence: 5,
+        ),
         // Revisionism: win back the land and the standing lost (in 1925, Versailles, Trianon,
         // Neuilly). Measured, never won, until borders and war exist (phases 4 and 5).
         (

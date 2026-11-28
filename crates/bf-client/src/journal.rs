@@ -1502,6 +1502,7 @@ fn politics_entries(world: &GameWorld, c: usize, p: &Politics, out: &mut Vec<Ent
             GoalRef::Law(l) => label("journal-goal-law").key("law", format!("law-{}", law_key(l))),
             GoalRef::Independence => label("journal-goal-independence"),
             GoalRef::Revision => label("journal-goal-revision"),
+            GoalRef::Peace => label("journal-goal-peace"),
         };
         let mut e = entry(
             Kind::Movement(kind),

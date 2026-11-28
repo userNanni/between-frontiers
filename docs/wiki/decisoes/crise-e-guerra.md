@@ -196,6 +196,28 @@ termo a termo.
 - **Estado:** decidido (2026-11-28); regra `scorched_earth`, desligada (#360).
 - **Onde está o detalhe:** [`war.pt-BR.md`, "Terra arrasada"](../../war.pt-BR.md#terra-arrasada-atrás-de-scorched_earth-desligada).
 
+### O cansaço da guerra vira movimento: greve e motim (AW1 a AW6)
+
+- **Decisão:** um movimento contra a guerra cresce em cada país em guerra.
+  - AW1: entram os que fabricam as armas e os que lutam.
+  - AW2: cresce toda semana de guerra e cai devagar na paz.
+  - AW3: pesa na legitimidade, para parte da indústria de guerra (greve) e tira parte do fogo do
+    exército (motim), sem tirar ninguém da população nem da frente.
+  - AW4: não faz lei nem força a paz por si; mobilizado o bastante, faz a contagem para a queda do
+    governo correr já abaixo do limiar de paz.
+  - AW5: o que sobrou de uma guerra diminui o apoio inicial da seguinte.
+  - AW6: censura e repressão freiam o crescimento.
+- **O que o autor pensou:** escolheu as recomendadas ("o que eu não citar faça o recomendado").
+- **Como o jogo funciona por causa disso:** a guerra longa cansa por dentro, antes da derrota: as
+  fábricas de munição param em parte, os soldados recusam o ataque, e o governo cai mais cedo. O
+  jogador responde com a paz, ou com censura e repressão, que freiam o movimento e custam o que
+  essas leis custam em paz.
+- **Como é na vida real:** a greve de janeiro de 1918 em Berlim, nas fábricas de munição e metal
+  (cerca de 400 mil operários); os motins franceses de 1917, em 49 das 113 divisões de infantaria
+  (Pedroncini, 1967). Os ritmos e as parcelas são valores de desenho.
+- **Estado:** decidido (2026-11-28); regra `anti_war`, desligada (#362).
+- **Onde está o detalhe:** [`war.pt-BR.md`, "Movimento contra a guerra"](../../war.pt-BR.md#movimento-contra-a-guerra-atrás-de-anti_war-desligada).
+
 ### A revolta colonial é guerra, e a colônia vencida é reconquistada
 
 - **Decisão:** a revolta é a proclamação do país novo seguida de guerra com a metrópole; se a

@@ -186,6 +186,8 @@ pub struct WarState {
     /// Scorched earth (`war::scorch`, switch `scorched_earth`): the orders and what they burned;
     /// empty without it.
     pub scorch: super::scorch::ScorchState,
+    /// The movement against the war (`war::antiwar`, switch `anti_war`); empty without it.
+    pub antiwar: super::antiwar::AntiWarState,
 }
 
 impl WarState {
@@ -245,6 +247,7 @@ impl WarState {
             nuclear: Default::default(),
             reserve: Default::default(),
             scorch: Default::default(),
+            antiwar: Default::default(),
         }
     }
 
@@ -384,6 +387,9 @@ impl HashState for WarState {
         if !self.scorch.is_empty() {
             self.scorch.hash_state(h);
         }
+        if !self.antiwar.is_empty() {
+            self.antiwar.hash_state(h);
+        }
     }
 }
 
@@ -411,6 +417,7 @@ impl From<WarStateBeforeSea> for WarState {
             nuclear: Default::default(),
             reserve: Default::default(),
             scorch: Default::default(),
+            antiwar: Default::default(),
         }
     }
 }
@@ -438,6 +445,7 @@ impl From<WarStateBeforeColonial> for WarState {
             nuclear: Default::default(),
             reserve: Default::default(),
             scorch: Default::default(),
+            antiwar: Default::default(),
         }
     }
 }
@@ -469,6 +477,7 @@ impl From<WarStateBeforeTests> for WarState {
             nuclear: w.nuclear.into(),
             reserve: Default::default(),
             scorch: Default::default(),
+            antiwar: Default::default(),
         }
     }
 }
@@ -499,6 +508,7 @@ impl From<WarStateBeforeFallout> for WarState {
             nuclear: w.nuclear.into(),
             reserve: Default::default(),
             scorch: Default::default(),
+            antiwar: Default::default(),
         }
     }
 }
@@ -529,6 +539,40 @@ impl From<WarStateBeforeUse> for WarState {
             nuclear: w.nuclear.into(),
             reserve: Default::default(),
             scorch: Default::default(),
+            antiwar: Default::default(),
+        }
+    }
+}
+
+/// [`WarState`] as version 47 of the world wrote it, before the movement against the war.
+#[derive(Default, Deserialize)]
+pub(crate) struct WarStateBeforeAntiWar {
+    countries: Vec<CountryWar>,
+    soldiers: Vec<i64>,
+    conflicts: super::crisis::Conflicts,
+    fighting: super::fight::Fighting,
+    composition: super::composition::CompositionState,
+    colonial: Vec<super::colonial::Colonial>,
+    sea: super::sea::SeaWar,
+    nuclear: super::programme::NuclearState,
+    reserve: super::reserve::ReserveState,
+    scorch: super::scorch::ScorchState,
+}
+
+impl From<WarStateBeforeAntiWar> for WarState {
+    fn from(w: WarStateBeforeAntiWar) -> Self {
+        Self {
+            countries: w.countries,
+            soldiers: w.soldiers,
+            conflicts: w.conflicts,
+            fighting: w.fighting,
+            composition: w.composition,
+            colonial: w.colonial,
+            sea: w.sea,
+            nuclear: w.nuclear,
+            reserve: w.reserve,
+            scorch: w.scorch,
+            antiwar: Default::default(),
         }
     }
 }
@@ -560,6 +604,7 @@ impl From<WarStateBeforeScorch> for WarState {
             nuclear: w.nuclear,
             reserve: w.reserve,
             scorch: Default::default(),
+            antiwar: Default::default(),
         }
     }
 }
@@ -590,6 +635,7 @@ impl From<WarStateBeforeReserve> for WarState {
             nuclear: w.nuclear,
             reserve: Default::default(),
             scorch: Default::default(),
+            antiwar: Default::default(),
         }
     }
 }
@@ -619,6 +665,7 @@ impl From<WarStateBeforeNuclear> for WarState {
             nuclear: Default::default(),
             reserve: Default::default(),
             scorch: Default::default(),
+            antiwar: Default::default(),
         }
     }
 }
@@ -645,6 +692,7 @@ impl From<WarStateBeforeComposition> for WarState {
             nuclear: Default::default(),
             reserve: Default::default(),
             scorch: Default::default(),
+            antiwar: Default::default(),
         }
     }
 }
@@ -671,6 +719,7 @@ impl From<WarStateBeforeStill> for WarState {
             nuclear: Default::default(),
             reserve: Default::default(),
             scorch: Default::default(),
+            antiwar: Default::default(),
         }
     }
 }
@@ -698,6 +747,7 @@ impl From<WarStateBeforeDoctrine> for WarState {
             nuclear: Default::default(),
             reserve: Default::default(),
             scorch: Default::default(),
+            antiwar: Default::default(),
         }
     }
 }
@@ -724,6 +774,7 @@ impl From<WarStateBeforeSupport> for WarState {
             nuclear: Default::default(),
             reserve: Default::default(),
             scorch: Default::default(),
+            antiwar: Default::default(),
         }
     }
 }
@@ -748,6 +799,7 @@ impl From<WarStateBeforeCrises> for WarState {
             nuclear: Default::default(),
             reserve: Default::default(),
             scorch: Default::default(),
+            antiwar: Default::default(),
         }
     }
 }
@@ -826,6 +878,7 @@ impl From<WarStateBeforeOrders> for WarState {
             nuclear: Default::default(),
             reserve: Default::default(),
             scorch: Default::default(),
+            antiwar: Default::default(),
         }
     }
 }
@@ -875,6 +928,7 @@ impl From<WarStateBeforeCalls> for WarState {
             nuclear: Default::default(),
             reserve: Default::default(),
             scorch: Default::default(),
+            antiwar: Default::default(),
         }
     }
 }
@@ -958,6 +1012,7 @@ impl From<WarStateBeforeFighting> for WarState {
             nuclear: Default::default(),
             reserve: Default::default(),
             scorch: Default::default(),
+            antiwar: Default::default(),
         }
     }
 }

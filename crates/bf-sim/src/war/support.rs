@@ -28,6 +28,9 @@ pub struct ConductFile {
     /// The colonial war (G6); none in older data.
     #[serde(default)]
     pub colonial: Option<super::colonial::ColonialRules>,
+    /// The movement against the war (`war::antiwar`); `None` with the switch `anti_war` off.
+    #[serde(default)]
+    pub anti_war: Option<super::antiwar::AntiWarRules>,
 }
 
 /// The rules of war support. Per mille unless named otherwise.
@@ -493,6 +496,13 @@ pub fn support_week(
         }) + world.war.nuclear.dead_of(m)
     };
     for (&m, &start) in &at_war {
+        // AW5: what was left of the movement against the war when this war began.
+        let start = match (c.rules.anti_war.as_ref(), world.war.antiwar.of(m)) {
+            (Some(a), Some(x)) => {
+                (start - i32::from(x.memory) * a.memory as i32 / 1000).clamp(0, 1000)
+            }
+            _ => start,
+        };
         let (size, basic, occupied) = people.get(&m).copied().unwrap_or_default();
         let basic = if size > 0 {
             Fixed::from_raw((basic / i128::from(size)) as i64)
@@ -614,8 +624,14 @@ pub fn support_week(
             s.asked = r.ask_weeks;
             out.falls.push((m, fall));
         }
+        // AW4: a movement against the war past `collapse_mobilized` brings the fall within the
+        // peace threshold.
+        let floor = match (c.rules.anti_war.as_ref(), world.war.antiwar.of(m)) {
+            (Some(a), Some(x)) if u32::from(x.mobilized) >= a.collapse_mobilized => r.peace,
+            _ => r.collapse,
+        };
         if s.fallen.is_none() {
-            if s.value < r.collapse && forced {
+            if s.value < floor && forced {
                 let left = s
                     .countdown
                     .map_or(r.revolution_weeks, |w| w.saturating_sub(1));

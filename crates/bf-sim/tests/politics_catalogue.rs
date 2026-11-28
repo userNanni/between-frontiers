@@ -420,7 +420,9 @@ fn no_movement_wants_a_law_that_keeps_its_cause() {
 
 #[test]
 fn every_name_exists_in_every_language() {
-    let data = GameData::load(&root()).unwrap();
+    // With every switch that adds to the catalogue: the movement against the war is in it only
+    // with `anti_war`.
+    let data = GameData::load_with(&root(), "anti_war").unwrap();
     let p = data.politics.as_ref().unwrap();
     let mut ids = BTreeSet::new();
     for c in CATEGORIES {
