@@ -2867,10 +2867,10 @@ e quem retira é a Agenda, não a janela da Guerra.
   `burned: Vec<Burn { region, by, to, levels, share, day }>`; regra em
   `occupation.scorched` (`cap`, `full_weeks`, `first`).
 
-#### Movimento contra a guerra (atrás de `anti_war`, desligada; rascunho)
+#### Movimento contra a guerra (atrás de `anti_war`, desligada)
 
-Desenho do orquestrador (2026-11-24), save 48. As escolhas AW1 a AW5 estão com o dono; o rascunho
-usa as recomendadas, e o PR não sai do rascunho sem a resposta. Código em `war/antiwar.rs`, no passo
+Desenho do orquestrador (2026-11-24), save 49. O dono decidiu AW1 a AW6 nas recomendadas
+(2026-11-28), cada uma como dado. Código em `war/antiwar.rs`, no passo
 da guerra (`fight::fight_week`), no apoio (`support::support_week`), na mão de obra
 (`econ::monthly::on_strike`) e no espelho da política (`polity::system`, meta `Peace`); dados em
 `data/politics/movements.ron` (`anti_war`) e `data/military/war.ron` (`anti_war`). Desligada, o
@@ -2884,7 +2884,7 @@ movimento sai do catálogo e o jogo é o da `main`.
 | Greve (AW3 a) | parar a indústria de guerra | `strike` (300 por mil, **valor de desenho**) dos operários que apoiam o movimento param: o staffing dos edifícios `military_industry` da metrópole cai nessa parte, na mão de obra mensal. **Conservação:** os grevistas ficam na população, empregados, e consomem (teste `a_strike_stops_the_war_industry_and_keeps_the_people`) | sim |
 | Motim (AW3 a) | recusar o ataque, como a França de 1917 | `mutiny` (200 por mil, **valor de desenho**) dos soldados que apoiam o movimento não combatem: o fogo do exército de terra cai nessa parte. **Conservação:** os homens ficam nas formações e na frente (teste `a_mutiny_keeps_the_men_and_cuts_the_fire`) | sim |
 | O que ganha (AW4 a) | não faz lei; derruba governos | não troca lei nem força a paz por si. Com a mobilização em `collapse_mobilized` (40 por mil, **valor de desenho**, os 4 % com que um movimento move uma lei) ou mais, a contagem para a queda do governo corre abaixo do limiar de paz (300), não só abaixo do colapso (100) | sim |
-| Censura e repressão (AW6, recomendada: sim) | o Estado prende os líderes e cala a imprensa: em 1918 o exército prendeu os líderes da greve e mandou muitos ao front (GHDI, p. 1) | o crescimento semanal cai pelo fator que a regra geral aplica ao empurrão de lei: a repressão inteira (nenhum grupo apoia a "lei" da paz), mais a censura vezes `censorship_weight` (1000 por mil da repressão, **valor de desenho**: a regra geral não tem lugar para a censura); com as duas somando 1000, o movimento não cresce | sim: é a resposta do jogador ao movimento além da paz |
+| Censura e repressão (AW6) | o Estado prende os líderes e cala a imprensa: em 1918 o exército prendeu os líderes da greve e mandou muitos ao front (GHDI, p. 1) | o crescimento semanal cai pelo fator que a regra geral aplica ao empurrão de lei: a repressão inteira (nenhum grupo apoia a "lei" da paz), mais a censura vezes `censorship_weight` (1000 por mil da repressão, **valor de desenho**: a regra geral não tem lugar para a censura); com as duas somando 1000, o movimento não cresce | sim: é a resposta do jogador ao movimento além da paz |
 | Memória (AW5 a) | o país que saiu cansado de uma guerra entra devagar na seguinte | o que sobrava do movimento quando a guerra começou tira `memory` (300 por mil, **valor de desenho**) dessa parte do apoio inicial | sim |
 
 **Medido** (`war_antiwar::hungary_tires_of_its_war`: a Hungria, jogada, declara à Tchecoslováquia
@@ -3057,8 +3057,8 @@ Iugoslávia):
 ### Funções que faltam à guerra (ordem do orquestrador, 2026-11-24)
 
 Só funcionalidade, desenho antes do código; a calibração fica no roteiro de "Calibração prevista".
-1. **Terra arrasada:** rascunho no #360 (chave `scorched_earth`), à espera de TE1 a TE5 do dono.
-2. **Movimento contra a guerra:** rascunho (chave `anti_war`), à espera de AW1 a AW5 do dono.
+1. **Terra arrasada:** #360 (chave `scorched_earth`), TE1 a TE5 decididas nas recomendadas.
+2. **Movimento contra a guerra:** #362 (chave `anti_war`), AW1 a AW6 decididas nas recomendadas.
 3. **Quem investe e quem constrói em terra ocupada** (ocupação): hoje a construção não conhece o
    controle, e o dono segue investindo e reconstruindo na região que o inimigo ocupa (medido na
    seção "Terra arrasada": 524 níveis queimados, a diferença cai a 128 em nove meses; vale também

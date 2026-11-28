@@ -125,8 +125,8 @@
                 "light_industry", "infrastructure"],
         )),
     ),
-    // The movement against the war (`war::antiwar`; switch `anti_war`, off). The owner's AW1
-    // to AW5 are pending; the recommended ones are in place. DESIGN VALUES, without a source:
+    // The movement against the war (`war::antiwar`; switch `anti_war`, off). The owner chose
+    // the recommended AW1 to AW6 (2026-11-28). DESIGN VALUES, without a source:
     // - strike: of the workers who back the movement, those on strike at a time, per mille;
     // - mutiny: of the soldiers who back it, those who refuse to fight, per mille;
     // - collapse_mobilized: mobilization (per mille of the people) from which the countdown to
