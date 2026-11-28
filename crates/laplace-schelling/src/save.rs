@@ -37,7 +37,7 @@ use crate::schedule::Clock;
 pub const MAGIC: [u8; 8] = *b"\x89LSV\r\n\x1a\n";
 
 /// Container format version written by this engine.
-pub const FORMAT_VERSION: u32 = 1;
+pub const FORMAT_VERSION: u32 = 2;
 
 const CHECKSUM_LEN: usize = 32;
 
@@ -90,6 +90,11 @@ pub struct SaveFile<C> {
     pub snapshot: Vec<u8>,
     /// Commands applied from the snapshot's tick on.
     pub log: CommandLog<C>,
+    /// Sequence numbers of the commands stamped for the snapshot's tick that the snapshot
+    /// already holds: applied as they were issued, between two ticks
+    /// ([`Simulation::apply_due`](crate::simulation::Simulation::apply_due)). A load logs them
+    /// without applying them again. Empty in format 1, where every command waited for its tick.
+    pub applied: Vec<u64>,
 }
 
 /// Why bytes are not a usable save.
@@ -193,6 +198,8 @@ impl<C: Serialize + DeserializeOwned> SaveFile<C> {
         let header =
             postcard::to_allocvec(&self.header).map_err(|e| SaveError::Encode(e.to_string()))?;
         let log = postcard::to_allocvec(&self.log).map_err(|e| SaveError::Encode(e.to_string()))?;
+        let applied =
+            postcard::to_allocvec(&self.applied).map_err(|e| SaveError::Encode(e.to_string()))?;
         let header_len = u32::try_from(header.len())
             .map_err(|_| SaveError::Encode("header too large".into()))?;
         let mut out = Vec::with_capacity(
@@ -206,6 +213,8 @@ impl<C: Serialize + DeserializeOwned> SaveFile<C> {
         out.extend_from_slice(&self.snapshot);
         out.extend_from_slice(&(log.len() as u64).to_le_bytes());
         out.extend_from_slice(&log);
+        out.extend_from_slice(&(applied.len() as u64).to_le_bytes());
+        out.extend_from_slice(&applied);
         let checksum = blake3::hash(&out);
         out.extend_from_slice(checksum.as_bytes());
         Ok(out)
@@ -220,7 +229,7 @@ impl<C: Serialize + DeserializeOwned> SaveFile<C> {
             bytes: &bytes[MAGIC.len()..],
         };
         let version = reader.u32()?;
-        if version != FORMAT_VERSION {
+        if version == 0 || version > FORMAT_VERSION {
             return Err(SaveError::UnsupportedVersion {
                 found: version,
                 supported: FORMAT_VERSION,
@@ -248,6 +257,12 @@ impl<C: Serialize + DeserializeOwned> SaveFile<C> {
         let snapshot = reader.section_u64()?.to_vec();
         let log = postcard::from_bytes(reader.section_u64()?)
             .map_err(|e| SaveError::Malformed(format!("command log: {e}")))?;
+        let applied = if version >= 2 {
+            postcard::from_bytes(reader.section_u64()?)
+                .map_err(|e| SaveError::Malformed(format!("applied commands: {e}")))?
+        } else {
+            Vec::new()
+        };
         if !reader.bytes.is_empty() {
             return Err(SaveError::Malformed(
                 "trailing bytes after the command log".into(),
@@ -257,6 +272,7 @@ impl<C: Serialize + DeserializeOwned> SaveFile<C> {
             header,
             snapshot,
             log,
+            applied,
         })
     }
 }
@@ -292,6 +308,7 @@ mod tests {
             header,
             snapshot: vec![1, 2, 3, 4, 5],
             log,
+            applied: vec![0],
         }
     }
 
@@ -368,5 +385,22 @@ mod tests {
             decode(&reseal(trailing)),
             Err(SaveError::Malformed(_))
         ));
+    }
+
+    /// A format 1 save (before the commands applied as issued) reads with none applied.
+    #[test]
+    fn format_one_reads_with_nothing_applied() {
+        let mut file = sample();
+        file.applied.clear();
+        let mut bytes = file.encode().unwrap();
+        // Format 1 is format 2 without the last section.
+        bytes.truncate(bytes.len() - 32 - 8 - 1);
+        bytes[8..12].copy_from_slice(&1u32.to_le_bytes());
+        bytes.extend_from_slice(&[0; 32]);
+        let read = SaveFile::<String>::decode(&reseal(bytes), "between-frontiers").unwrap();
+        assert_eq!(read, file);
+        let two = sample();
+        let back = SaveFile::<String>::decode(&two.encode().unwrap(), "between-frontiers").unwrap();
+        assert_eq!(back.applied, vec![0]);
     }
 }

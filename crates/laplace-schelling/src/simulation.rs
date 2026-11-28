@@ -114,8 +114,11 @@ impl<W: Send + Sync + 'static, C: Command<W>> Simulation<W, C> {
         }
     }
 
-    /// Runs one tick: due commands, then due systems, then the clock moves one day.
-    pub fn step(&mut self) -> TickStats {
+    /// Applies now the commands due at the next tick, as its start would: same tick, date and
+    /// stream. No system runs between the end of a tick and the start of the next, so the world
+    /// after the next tick is the same either way; the world shows the decisions at once, even
+    /// paused. A save made now records them ([`applied_now`](Simulation::applied_now)).
+    pub fn apply_due(&mut self) {
         let due = self.pending.partition_point(|p| p.tick <= self.clock.tick);
         for stamped in self.pending.drain(..due) {
             let ctx = TickCtx {
@@ -127,6 +130,36 @@ impl<W: Send + Sync + 'static, C: Command<W>> Simulation<W, C> {
             stamped.command.apply(&ctx, &mut self.world);
             self.log.push(stamped);
         }
+    }
+
+    /// Sequence numbers of the commands stamped for the next tick already applied
+    /// ([`apply_due`](Simulation::apply_due)): the save's [`SaveFile::applied`].
+    ///
+    /// [`SaveFile::applied`]: crate::save::SaveFile::applied
+    pub fn applied_now(&self) -> Vec<u64> {
+        self.log
+            .since(self.clock.tick)
+            .iter()
+            .map(|e| e.seq)
+            .collect()
+    }
+
+    /// [`replay`](Simulation::replay) for a snapshot that already holds the commands `applied`
+    /// of its tick: those are logged, not applied again.
+    pub fn replay_applied(&mut self, log: &CommandLog<C>, applied: &[u64]) {
+        for stamped in log.since(self.clock.tick) {
+            if stamped.tick == self.clock.tick && applied.contains(&stamped.seq) {
+                self.next_seq = self.next_seq.max(stamped.seq + 1);
+                self.log.push(stamped.clone());
+            } else {
+                self.enqueue(stamped.clone());
+            }
+        }
+    }
+
+    /// Runs one tick: due commands, then due systems, then the clock moves one day.
+    pub fn step(&mut self) -> TickStats {
+        self.apply_due();
         let stats = self.schedule.run(self.clock, self.seed, &mut self.world);
         self.clock = self.clock.advance();
         stats
@@ -284,6 +317,7 @@ mod tests {
             header,
             snapshot,
             log: log_since_snapshot,
+            applied: Vec::new(),
         };
         let bytes = save.encode().unwrap();
 

@@ -47,10 +47,6 @@ pub struct WorksUi {
     pub saved_priority: Option<[u8; PUBLIC_CATEGORIES]>,
     /// The private works' list is open.
     pub private_open: bool,
-    /// Works asked for this month (region, building): they join the queue next month.
-    pub asked: Vec<(u32, u16)>,
-    /// Month `asked` belongs to.
-    pub asked_month: (i32, u8),
 }
 
 fn state_name(i18n: &I18n, world: Option<&crate::world::World>, state: u16) -> String {
@@ -195,10 +191,6 @@ pub fn show(ui: &mut Ui, cx: &mut TabContext<'_>) {
     };
     let world = cx.world;
     let today = cx.snap.date;
-    if cx.works.asked_month != (today.year, today.month) {
-        cx.works.asked.clear();
-        cx.works.asked_month = (today.year, today.month);
-    }
     ui.spacing_mut().item_spacing.y = space::XS;
 
     // 1. How the queue goes.
@@ -257,6 +249,22 @@ pub fn show(ui: &mut Ui, cx: &mut TabContext<'_>) {
         &i18n.tr_args("works-queue", &[("n", arg(rows.len().to_string()))]),
     );
     bf_ui_kit::small(ui, &i18n.tr("works-basis"));
+    // Works just asked for: the decision shows at once, and the queue takes them the next day.
+    for a in &view.asked {
+        bf_ui_kit::small(
+            ui,
+            &i18n.tr_args(
+                "works-asked-row",
+                &[
+                    (
+                        "building",
+                        arg(i18n.tr(&format!("building-{}", a.building))),
+                    ),
+                    ("state", arg(state_name(i18n, world, a.state))),
+                ],
+            ),
+        );
+    }
     ui.horizontal_wrapped(|ui| {
         let ordered = draft.as_ref().map_or(view.ordered, Option::is_some);
         let mut mode = ordered;
@@ -739,10 +747,6 @@ pub fn show(ui: &mut Ui, cx: &mut TabContext<'_>) {
                 .max_rect(button)
                 .layout(Layout::right_to_left(Align::Center)),
             |ui| {
-                if cx.works.asked.contains(&(o.region, b.kind)) {
-                    bf_ui_kit::small(ui, &i18n.tr("works-asked"));
-                    return;
-                }
                 let btn = Button::secondary(&i18n.tr("works-order"))
                     .size(ButtonSize::Small)
                     .show(ui);
@@ -760,7 +764,6 @@ pub fn show(ui: &mut Ui, cx: &mut TabContext<'_>) {
                         region: o.region,
                         kind: b.kind,
                     });
-                    cx.works.asked.push((o.region, b.kind));
                 }
             },
         );
