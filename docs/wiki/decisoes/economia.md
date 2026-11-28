@@ -173,7 +173,7 @@ detalhe está em [`economy.pt-BR.md`](../../economy.pt-BR.md) e em
 - **Como é na vida real:** a regulação técnica de um setor inteiro por lei (a eletrificação
   ferroviária obrigatória, o padrão de combustível) cabe na economia mista; a gestão das estatais
   pelo governo, em qualquer regime que tenha estatais.
-- **Estado:** método fixado no jogo, regra desligada (`fixed_methods`, PR #NNN); fábrica do Estado
+- **Estado:** método fixado no jogo, regra desligada (`fixed_methods`, PR #391); fábrica do Estado
   desenhada (próximo PR).
 - **Onde está o detalhe:** [`econ/industry.rs`](../../../crates/bf-sim/src/econ/industry.rs),
   a troca anual em [`econ/yearly.rs`](../../../crates/bf-sim/src/econ/yearly.rs), o teste
