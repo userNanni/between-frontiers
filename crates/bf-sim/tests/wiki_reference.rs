@@ -25,6 +25,10 @@ const CATALOGUE_SWITCHES: &[&str] = &["radium", "helicopter", "computer_efficien
 /// What each switch does for the player, in Portuguese. A switch without a line fails the test.
 const SWITCHES: &[(&str, &str)] = &[
     (
+        "anti_war",
+        "A guerra longa faz crescer um movimento contra ela: greve na indústria de guerra, motim no exército e um governo que cai mais cedo; censura e repressão o freiam.",
+    ),
+    (
         "capital_follows_rate",
         "O capital privado vai para onde o juro rende mais, e o país pode fechar a conta de capital (controle de capital). Precisa da liquidação em reservas.",
     ),
@@ -584,6 +588,7 @@ fn movements_page(r: &Ref) -> String {
             GoalRef::Law(l) => r.name("law", &p.laws[usize::from(l)].key),
             GoalRef::Independence => "independência".to_string(),
             GoalRef::Revision => "revisão das fronteiras".to_string(),
+            GoalRef::Peace => "a paz".to_string(),
         };
         let among = match m.among {
             Among::Everyone => "metrópole",
