@@ -75,6 +75,9 @@ pub struct WorksView {
     /// Month read in.
     pub month: (i32, u8),
     pub rows: Vec<WorkRow>,
+    /// Works asked for (`AddWork`) that enter the queue at the next day's tick
+    /// (`monthly::WorkRequests`): shown at once, even paused.
+    pub asked: Vec<AskedRow>,
     pub private: Vec<PrivateRow>,
     /// What holds the whole queue back this week, how tight (0–1, `WorkLine::met`), and with
     /// `Cash` the money the treasury lacks to pay in full again.
@@ -90,7 +93,7 @@ pub struct WorksView {
     /// The government fixed the order (D8).
     pub ordered: bool,
     /// What the view was read from: queue length and order length.
-    pub signature: (usize, usize, usize),
+    pub signature: (usize, usize, usize, usize),
 }
 
 impl WorksView {
@@ -101,12 +104,20 @@ impl WorksView {
 }
 
 /// The queue and order lengths: a change reads the view again within the month.
-pub fn signature(world: &GameWorld, ci: usize) -> (usize, usize, usize) {
+pub fn signature(world: &GameWorld, ci: usize) -> (usize, usize, usize, usize) {
     (
         world.econ.markets.get(ci).map_or(0, |m| m.queue.len()),
         world.levers.order(ci).map_or(0, <[WorkKey]>::len),
         world.war.fighting.control.len(),
+        world.levers.requests.len(),
     )
+}
+
+/// A work asked for that has not entered the queue yet.
+#[derive(Clone, Debug, PartialEq)]
+pub struct AskedRow {
+    pub building: String,
+    pub state: u16,
 }
 
 /// Weeks to finish `left` of `points` at `pace` of the full weekly share.
@@ -199,11 +210,21 @@ pub fn read(
             stopped: stopped(p.region),
         })
         .collect();
+    let asks = || {
+        world
+            .levers
+            .requests
+            .iter()
+            .filter(|q| usize::from(q.market) == ci)
+    };
     let queued = |region: u32, kind: u16| {
-        m.queue
+        (m.queue
             .iter()
             .filter(|p| p.region == region && p.kind == kind)
-            .count() as i64
+            .count()
+            + asks()
+                .filter(|q| q.region == region && q.kind == kind)
+                .count()) as i64
     };
     let levels = |region: u32, kind: u16| {
         world
@@ -244,9 +265,16 @@ pub fn read(
         });
     }
     buildable.sort_by_key(|b| (b.category.unwrap_or(usize::MAX), b.kind));
+    let asked = asks()
+        .map(|q| AskedRow {
+            building: building(q.kind),
+            state: state_of(q.region),
+        })
+        .collect();
     Some(WorksView {
         month: (date.year, date.month),
         rows,
+        asked,
         private,
         bottleneck: first.map_or(Bottleneck::None, |w| w.bottleneck),
         met: first.map_or(1.0, |w| w.met),

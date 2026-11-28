@@ -1037,68 +1037,9 @@ impl System<GameWorld> for Investment {
             self.wage_floor,
             stopped,
         );
-        // Works the governments asked for (D8, `GameCommand::AddWork`), each checked against what
-        // the state may build there; one it may not build is dropped.
-        for q in world
-            .levers
-            .requests
-            .iter()
-            .filter(|q| !is_stopped(q.region as usize))
-        {
-            let found = super::public::buildable_in(
-                cat,
-                econ,
-                &unlocks,
-                usize::from(q.market),
-                q.region as usize,
-            )
-            .into_iter()
-            .find(|x| x.0 == usize::from(q.kind))
-            .or_else(|| {
-                // A productive building (a state firm, or a plant the state builds itself):
-                // wherever a method of it is known and the state's deposits or land leave room
-                // for another level, counting the levels already in the queue.
-                let b = cat.buildings.get(usize::from(q.kind))?;
-                if b.public || b.informal || b.traditional {
-                    return None;
-                }
-                let r = econ.regions.get(q.region as usize)?;
-                let queued = econ
-                    .markets
-                    .get(usize::from(q.market))?
-                    .queue
-                    .iter()
-                    .chain(&public)
-                    .filter(|p| p.region == q.region && p.kind == q.kind)
-                    .count() as i64;
-                let built = r
-                    .plants
-                    .iter()
-                    .find(|p| p.kind == q.kind)
-                    .map_or(0, |p| p.levels);
-                if built + queued >= super::public::level_ceiling(b, r, year) {
-                    return None;
-                }
-                super::public::state_plant_in(
-                    cat,
-                    econ,
-                    &unlocks,
-                    usize::from(q.market),
-                    q.region as usize,
-                    usize::from(q.kind),
-                )
-            });
-            if let Some((_, method, points)) = found {
-                public.push(super::state::Project {
-                    region: q.region,
-                    kind: q.kind,
-                    method,
-                    public: true,
-                    points,
-                    left: points,
-                });
-            }
-        }
+        // Works the governments asked for (D8) that the daily `WorkRequests` did not take yet.
+        let asked = accept_requests(cat, world, &unlocks, year, &is_stopped, &public);
+        public.extend(asked);
         InvestmentChanges {
             builds,
             leftover,
@@ -1617,6 +1558,137 @@ fn abroad(
         }
     }
     out
+}
+
+/// The public works the governments asked for (D8, `GameCommand::AddWork`), each checked
+/// against what the state may build there; one it may not build is dropped. `rule` holds the
+/// public works the rule queues this month, counted against the state's ceiling.
+pub fn accept_requests(
+    cat: &Catalogue,
+    world: &GameWorld,
+    unlocks: &Unlocks<'_>,
+    year: i32,
+    is_stopped: &dyn Fn(usize) -> bool,
+    rule: &[super::state::Project],
+) -> Vec<super::state::Project> {
+    // Works the governments asked for (D8, `GameCommand::AddWork`), each checked against what
+    // the state may build there; one it may not build is dropped.
+    let econ = &world.econ;
+    let mut public: Vec<super::state::Project> = Vec::new();
+    for q in world
+        .levers
+        .requests
+        .iter()
+        .filter(|q| !is_stopped(q.region as usize))
+    {
+        let found = super::public::buildable_in(
+            cat,
+            econ,
+            unlocks,
+            usize::from(q.market),
+            q.region as usize,
+        )
+        .into_iter()
+        .find(|x| x.0 == usize::from(q.kind))
+        .or_else(|| {
+            // A productive building (a state firm, or a plant the state builds itself):
+            // wherever a method of it is known and the state's deposits or land leave room
+            // for another level, counting the levels already in the queue.
+            let b = cat.buildings.get(usize::from(q.kind))?;
+            if b.public || b.informal || b.traditional {
+                return None;
+            }
+            let r = econ.regions.get(q.region as usize)?;
+            let queued = econ
+                .markets
+                .get(usize::from(q.market))?
+                .queue
+                .iter()
+                .chain(rule)
+                .chain(&public)
+                .filter(|p| p.region == q.region && p.kind == q.kind)
+                .count() as i64;
+            let built = r
+                .plants
+                .iter()
+                .find(|p| p.kind == q.kind)
+                .map_or(0, |p| p.levels);
+            if built + queued >= super::public::level_ceiling(b, r, year) {
+                return None;
+            }
+            super::public::state_plant_in(
+                cat,
+                econ,
+                unlocks,
+                usize::from(q.market),
+                q.region as usize,
+                usize::from(q.kind),
+            )
+        });
+        if let Some((_, method, points)) = found {
+            public.push(super::state::Project {
+                region: q.region,
+                kind: q.kind,
+                method,
+                public: true,
+                points,
+                left: points,
+            });
+        }
+    }
+    public
+}
+
+/// The works the governments asked for enter the queue the day after they are asked
+/// (`accept_requests`), not at the month's investment: a decision shows in the queue at once.
+pub struct WorkRequests {
+    pub cat: Arc<Catalogue>,
+    pub tree: Option<Arc<crate::research::TechTree>>,
+    /// `Switches::occupied_works`: no work starts in a region its owner does not hold.
+    pub occupied_works: bool,
+}
+
+impl System<GameWorld> for WorkRequests {
+    type Changes = Vec<super::state::Project>;
+    fn name(&self) -> &'static str {
+        "economy-work-requests"
+    }
+    fn cadence(&self) -> Cadence {
+        Cadence::Daily
+    }
+    fn access(&self) -> Access {
+        let a = Access::new().read(ECON).write(ECON);
+        if self.occupied_works {
+            a.read(crate::war::WAR)
+        } else {
+            a
+        }
+    }
+    fn compute(&self, ctx: &TickCtx, world: &GameWorld) -> Self::Changes {
+        if world.levers.requests.is_empty() {
+            return Vec::new();
+        }
+        let cat = &*self.cat;
+        let stopped = self
+            .occupied_works
+            .then(|| super::construction::stopped(world))
+            .flatten();
+        let stopped = stopped.as_deref();
+        let is_stopped = |ri: usize| stopped.is_some_and(|s| s[ri]);
+        let year = ctx.date.year;
+        let unlocks = Unlocks::new(cat, year, self.tree.as_deref(), &world.research);
+        accept_requests(cat, world, &unlocks, year, &is_stopped, &[])
+    }
+    fn apply(&self, _ctx: &TickCtx, changes: Self::Changes, world: &mut GameWorld) {
+        if world.levers.requests.is_empty() {
+            return;
+        }
+        for p in changes {
+            let market = world.econ.regions[p.region as usize].market as usize;
+            world.econ.markets[market].queue.push(p);
+        }
+        world.levers.requests.clear();
+    }
 }
 
 #[cfg(test)]
