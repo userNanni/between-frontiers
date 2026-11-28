@@ -130,6 +130,9 @@
     // (`docs/population.pt-BR.md`, "Ensino por coorte"). Off: literacy follows the economy's
     // yearly rule and mothers' schooling the 240-month lag.
     schooling: false,
+    // Scorched earth (`war::scorch`): a country that ordered it burns a share of each region
+    // that falls to the enemy, industry first. Off: the order is kept and does nothing.
+    scorched_earth: false,
     // The wage floor of a small market (`econ::monthly::MIN_HANDS_FOR_A_WAGE`): a market with too
     // few plant workers to have a wage of its own reads the lowest of the others.
     small_market_wage_floor: false,

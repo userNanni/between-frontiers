@@ -596,6 +596,14 @@ pub enum GameCommand {
     /// next January, and the class that leaves for the reserve with it. A no-op while the rule
     /// is off.
     SetServiceMonths { tag: String, months: u16 },
+    /// Gives (`on`) or withdraws the order of scorched earth of `tag` against `enemy`
+    /// (`war::scorch`, switch `scorched_earth`): what falls to the enemy's side burns. From the
+    /// Agendas, in two steps, with a restore point. Unknown tags are no-ops.
+    SetScorchedEarth {
+        tag: String,
+        enemy: String,
+        on: bool,
+    },
 }
 
 /// Changes the levers of the country `tag` (`econ::levers`); unknown tags are no-ops.
@@ -747,6 +755,14 @@ impl Command<GameWorld> for GameCommand {
                 };
                 if let Some(st) = world.gold.countries.get_mut(ci) {
                     st.posture = *posture;
+                }
+            }
+            GameCommand::SetScorchedEarth { tag, enemy, on } => {
+                let find = |t: &str| world.countries.iter().position(|(_, c)| c.tag == t);
+                if let (Some(c), Some(e)) = (find(tag), find(enemy))
+                    && c != e
+                {
+                    world.war.scorch.set(c as u16, e as u16, *on);
                 }
             }
             GameCommand::SetServiceMonths { tag, months } => {
@@ -1434,6 +1450,10 @@ pub struct Switches {
     /// docs/population.pt-BR.md, "Ensino por coorte"). Off, literacy follows the economy's yearly
     /// rule; a world that already has schooling keeps it.
     pub schooling: bool,
+    /// Scorched earth (`war::scorch`, docs/war.pt-BR.md): a country that ordered it burns a
+    /// share of each region that falls to the enemy, industry first (`SetScorchedEarth`). Read
+    /// with the rules (`GameData::rules_with`). Off: the order is kept and does nothing.
+    pub scorched_earth: bool,
     /// The wage floor of a small market (`econ::monthly::MIN_HANDS_FOR_A_WAGE`): a market with
     /// too few plant workers to have a wage of its own reads the lowest of the others.
     pub small_market_wage_floor: bool,
@@ -1513,6 +1533,7 @@ impl Switches {
         "reputation",
         "reserve_cohorts",
         "schooling",
+        "scorched_earth",
         "small_market_wage_floor",
         "trade_by_pair",
         "trade_gross",
@@ -1552,6 +1573,7 @@ impl Switches {
             "reputation" => self.reputation = true,
             "reserve_cohorts" => self.reserve_cohorts = true,
             "schooling" => self.schooling = true,
+            "scorched_earth" => self.scorched_earth = true,
             "small_market_wage_floor" => self.small_market_wage_floor = true,
             "trade_by_pair" => self.trade_by_pair = true,
             "trade_gross" => self.trade_gross = true,
@@ -1984,6 +2006,32 @@ mod tests {
                 nuclear: &w.nuclear,
             }
         }
+        // `WarState` as version 46 wrote it: without scorched earth.
+        #[derive(Serialize)]
+        struct War46<'a> {
+            countries: &'a Vec<crate::war::state::CountryWar>,
+            soldiers: &'a Vec<i64>,
+            conflicts: &'a crate::war::crisis::Conflicts,
+            fighting: &'a crate::war::fight::Fighting,
+            composition: &'a crate::war::composition::CompositionState,
+            colonial: &'a Vec<crate::war::colonial::Colonial>,
+            sea: &'a crate::war::sea::SeaWar,
+            nuclear: &'a crate::war::programme::NuclearState,
+            reserve: &'a crate::war::reserve::ReserveState,
+        }
+        fn war46(w: &crate::war::WarState) -> War46<'_> {
+            War46 {
+                countries: &w.countries,
+                soldiers: &w.soldiers,
+                conflicts: &w.conflicts,
+                fighting: &w.fighting,
+                composition: &w.composition,
+                colonial: &w.colonial,
+                sea: &w.sea,
+                nuclear: &w.nuclear,
+                reserve: &w.reserve,
+            }
+        }
         #[derive(Serialize)]
         struct OldEconomy<'a> {
             regions: &'a Vec<crate::econ::Region>,
@@ -2345,9 +2393,68 @@ mod tests {
             hash_of(&with_ledger)
         );
         assert_eq!(
-            hash_of(&headed(47, &encode_snapshot(&with_ledger).unwrap())),
+            hash_of(&headed(48, &encode_snapshot(&with_ledger).unwrap())),
             hash_of(&with_ledger)
         );
+        // Version 47, the media, before scorched earth: the war without it.
+        {
+            #[derive(Serialize)]
+            struct BeforeScorch47<'a> {
+                scenario: &'a String,
+                player: &'a Option<Id<Country>>,
+                countries: &'a Table<Country, CountryState>,
+                census: &'a Vec<CensusRecord>,
+                econ: &'a crate::econ::Economy,
+                research: &'a crate::research::ResearchState,
+                politics: &'a crate::polity::PoliticsState,
+                demography: &'a crate::demography::DemographyState,
+                borders: &'a crate::borders::BordersState,
+                foreign: &'a crate::foreign_stakes::ForeignState,
+                influence: &'a crate::influence::InfluenceState,
+                treaties: &'a crate::treaty::TreatyState,
+                war: War46<'a>,
+                education: &'a crate::demography::education::EducationState,
+                independence: &'a crate::borders::independence::IndependenceState,
+                levers: &'a crate::econ::levers::LeversState,
+                tariffs: &'a crate::econ::customs::TariffState,
+                payments: &'a crate::econ::payments::PaymentsState,
+                reserves: &'a crate::econ::payments::ReservesState,
+                gold: &'a crate::econ::gold::GoldState,
+                capital: &'a crate::econ::capital::CapitalState,
+                stocks: &'a crate::econ::stock::StockState,
+                series: &'a crate::econ::series::SeriesState,
+                media: &'a crate::media::MediaState,
+            }
+            let w = &with_ledger;
+            let v47 = encode_snapshot(&BeforeScorch47 {
+                scenario: &w.scenario,
+                player: &w.player,
+                countries: &w.countries,
+                census: &w.census,
+                econ: &w.econ,
+                research: &w.research,
+                politics: &w.politics,
+                demography: &w.demography,
+                borders: &w.borders,
+                foreign: &w.foreign,
+                influence: &w.influence,
+                treaties: &w.treaties,
+                war: war46(&w.war),
+                education: &w.education,
+                independence: &w.independence,
+                levers: &w.levers,
+                tariffs: &w.tariffs,
+                payments: &w.payments,
+                reserves: &w.reserves,
+                gold: &w.gold,
+                capital: &w.capital,
+                stocks: &w.stocks,
+                series: &w.series,
+                media: &w.media,
+            })
+            .unwrap();
+            assert_eq!(hash_of(&headed(47, &v47)), hash_of(&with_ledger));
+        }
         // Version 46, the reserves by cohort, before the media: the world without `media`.
         {
             #[derive(Serialize)]
@@ -2364,7 +2471,7 @@ mod tests {
                 foreign: &'a crate::foreign_stakes::ForeignState,
                 influence: &'a crate::influence::InfluenceState,
                 treaties: &'a crate::treaty::TreatyState,
-                war: &'a crate::war::WarState,
+                war: War46<'a>,
                 education: &'a crate::demography::education::EducationState,
                 independence: &'a crate::borders::independence::IndependenceState,
                 levers: &'a crate::econ::levers::LeversState,
@@ -2390,7 +2497,7 @@ mod tests {
                 foreign: &w.foreign,
                 influence: &w.influence,
                 treaties: &w.treaties,
-                war: &w.war,
+                war: war46(&w.war),
                 education: &w.education,
                 independence: &w.independence,
                 levers: &w.levers,

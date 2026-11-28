@@ -31,6 +31,7 @@ pub mod nuclear_use;
 pub mod occupation;
 pub mod programme;
 pub mod reserve;
+pub mod scorch;
 pub mod sea;
 pub mod state;
 pub mod support;

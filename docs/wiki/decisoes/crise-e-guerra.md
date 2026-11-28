@@ -176,6 +176,26 @@ termo a termo.
 - **Estado:** decidido (2026-11-18); regra proposta, a confirmar antes de codar.
 - **Onde está o detalhe:** [`war.pt-BR.md`, "Apoio à guerra"](../../war.pt-BR.md#apoio-à-guerra-g4-o-dono-decidiu-a1a3-na-recomendada-2026-11-18).
 
+### Terra arrasada: o jogador manda queimar o que vai perder (TE1 a TE5)
+
+- **Decisão:** o jogador pode dar e retirar a ordem de terra arrasada contra um inimigo, nas
+  Agendas, em dois passos e com ponto de restauração.
+  - TE1: queima na semana em que a região passa ao outro lado, mais quanto mais tempo ela esteve
+    em luta.
+  - TE2: queimam primeiro a indústria militar e a pesada, a energia e as minas.
+  - TE3: evacuar fábricas em vez de destruir fica para uma fatia depois.
+  - TE4: a ordem vale também para a terra que o país ocupa e perde.
+  - TE5: nesta fatia não há preço político; o custo é a terra devastada que volta.
+- **O que o autor pensou:** escolheu as recomendadas ("o que eu não citar faça o recomendado").
+- **Como o jogo funciona por causa disso:** a região que cai com a ordem dada perde até metade
+  dos níveis de edifício, na ordem de TE2, pela parcela das semanas em luta; quem a toma recebe
+  terra devastada, e o dono, se a reconquistar, também. A IA ainda não dá a ordem.
+- **Como é na vida real:** a União Soviética destruiu e evacuou ao recuar em 1941, sem plano
+  prévio (Harrison, 1992); a Alemanha arrasou ao recuar em 1943. Nenhuma fonte dá a parcela que um
+  recuo destrói: o teto e as semanas são valores de desenho.
+- **Estado:** decidido (2026-11-28); regra `scorched_earth`, desligada (#360).
+- **Onde está o detalhe:** [`war.pt-BR.md`, "Terra arrasada"](../../war.pt-BR.md#terra-arrasada-atrás-de-scorched_earth-desligada).
+
 ### A revolta colonial é guerra, e a colônia vencida é reconquistada
 
 - **Decisão:** a revolta é a proclamação do país novo seguida de guerra com a metrópole; se a
