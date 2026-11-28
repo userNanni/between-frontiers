@@ -42,6 +42,60 @@ pub struct MediaRules {
     pub news_pace: Fixed,
     /// People one unit of each medium reaches.
     pub people_per_unit: [Fixed; 4],
+    /// What the media do (slice 2, the owner's MD2, MD3 and MD6 at the recommended answer, in
+    /// draft until he answers).
+    pub effects: MediaEffects,
+}
+
+/// What the media do (slice 2). Design values, per mille.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct MediaEffects {
+    /// A movement grows this much faster at full free reach (MD2).
+    pub free_growth: i32,
+    /// And this much slower at full official reach; what it loses feeds the movement for a
+    /// change of regime (MD3: the pressure hidden comes out at the collapse).
+    pub official_damp: i32,
+    /// War support: the official media add this to the target at full official reach (MD3), and
+    /// the free media make the support move this much faster at full free reach (MD2).
+    pub propaganda: i32,
+    pub free_speed: i32,
+    /// Censorship loses this much of its force at full internet access (MD6).
+    pub internet_censorship: i32,
+}
+
+/// The media of a country as the politics and the war read them, per mille of the people.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Channels {
+    /// Reached by media the state does not own and does not censor.
+    pub free: i32,
+    /// Reached by the state's media.
+    pub official: i32,
+    /// The censorship of the laws after the internet's leak (MD6).
+    pub censorship: i32,
+}
+
+/// The channels of market `mi`, under the laws' `state_media` and `censorship` (per mille).
+pub fn channels(
+    rules: &MediaRules,
+    state: &MediaState,
+    mi: usize,
+    state_media: i32,
+    censorship: i32,
+) -> Channels {
+    let reach = i64::from(state.reached.get(mi).copied().unwrap_or(0).clamp(0, 1000));
+    let internet = state
+        .markets
+        .get(mi)
+        .map_or(0, |m| m[3].to_int_floor().clamp(0, 1000));
+    let cens = i64::from(censorship.clamp(0, 1000))
+        * (1000 - i64::from(rules.effects.internet_censorship) * internet / 1000)
+        / 1000;
+    let owned = i64::from(state_media.clamp(0, 1000));
+    Channels {
+        free: (reach * (1000 - owned) / 1000 * (1000 - cens) / 1000) as i32,
+        official: (reach * owned / 1000) as i32,
+        censorship: cens as i32,
+    }
 }
 
 /// `GameWorld::media`: by market, each medium per thousand people, and the consumer electronics
@@ -191,6 +245,13 @@ mod tests {
                 Fixed::from_int(4),
                 Fixed::ONE,
             ],
+            effects: MediaEffects {
+                free_growth: 500,
+                official_damp: 500,
+                propaganda: 100,
+                free_speed: 500,
+                internet_censorship: 800,
+            },
         }
     }
 
@@ -217,5 +278,21 @@ mod tests {
         assert_eq!(st.markets[0][1], Fixed::from_int(90));
         // 90 radios × 4 people and 125 copies × 2.5 reach most of the 1,000.
         assert!(st.reach(&r, 0) > 380);
+    }
+
+    #[test]
+    fn the_state_owns_part_censors_the_rest_and_the_internet_leaks() {
+        let r = rules();
+        let st = MediaState {
+            markets: vec![[Fixed::ZERO, Fixed::ZERO, Fixed::ZERO, Fixed::from_int(500)]],
+            bought: vec![Fixed::ZERO],
+            reached: vec![800],
+        };
+        // Half the media the state's, half the rest censored: 800 × 0.5 × 0.5 free, 400 official.
+        let c = channels(&r, &st, 0, 500, 500);
+        // Half the people online leak 0.8 × 0.5 of the censorship: 500 × 0.6 = 300.
+        assert_eq!(c.censorship, 300);
+        assert_eq!(c.official, 400);
+        assert_eq!(c.free, 800 * 500 / 1000 * 700 / 1000);
     }
 }

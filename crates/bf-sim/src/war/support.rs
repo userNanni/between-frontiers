@@ -236,9 +236,18 @@ pub struct Conduct {
     pub politics: Option<std::sync::Arc<crate::politics::Politics>>,
     franchise: Option<usize>,
     censorship: Option<usize>,
+    state_media: Option<usize>,
+    /// The mass media (`Switches::media`, slice 2); `None` off.
+    pub media: Option<std::sync::Arc<crate::media::MediaRules>>,
 }
 
 impl Conduct {
+    /// The same conduct with the mass media's rules.
+    pub fn with_media(mut self, media: Option<std::sync::Arc<crate::media::MediaRules>>) -> Self {
+        self.media = media;
+        self
+    }
+
     pub fn resolve(
         rules: ConductFile,
         politics: Option<std::sync::Arc<crate::politics::Politics>>,
@@ -276,6 +285,8 @@ impl Conduct {
             politics,
             franchise: crate::politics::effect_index("franchise"),
             censorship: crate::politics::effect_index("censorship"),
+            state_media: crate::politics::effect_index("state_media"),
+            media: None,
         })
     }
 
@@ -295,6 +306,36 @@ impl Conduct {
         );
         let at = |i: Option<usize>| i.and_then(|i| e.get(i)).copied().unwrap_or(0);
         (at(self.franchise), at(self.censorship))
+    }
+
+    /// The media of `c` (slice 2): the channels under its laws; `None` without the media.
+    fn media_of(
+        &self,
+        world: &GameWorld,
+        c: usize,
+        censorship: i32,
+    ) -> Option<crate::media::Channels> {
+        let rules = self.media.as_deref()?;
+        let p = self.politics.as_ref()?;
+        world.politics.laws.get(c)?;
+        let e = crate::polity::effects_in_force(
+            p,
+            &world.politics,
+            c,
+            crate::politics::Scope::Metropole,
+        );
+        let owned = self
+            .state_media
+            .and_then(|i| e.get(i))
+            .copied()
+            .unwrap_or(0);
+        Some(crate::media::channels(
+            rules,
+            &world.media,
+            c,
+            owned,
+            censorship,
+        ))
     }
 
     /// How the government of `c` falls: its form, if a war revolution changes it.
@@ -527,6 +568,10 @@ pub fn support_week(
             }
         };
         let (franchise, censorship) = c.regime(world, usize::from(m));
+        // The mass media (slice 2): the internet leaks the censorship (MD6), the state's media
+        // add to the target (MD3), the free media hasten the move (MD2).
+        let media = c.media_of(world, usize::from(m), censorship);
+        let censorship = media.map_or(censorship, |x| x.censorship);
         let s = &mut f.support[i];
         s.weeks += 1;
         s.asked = s.asked.saturating_add(1);
@@ -590,9 +635,17 @@ pub fn support_week(
             },
         );
         s.terms = t;
-        let v = speed(r, franchise, censorship);
+        let mut v = speed(r, franchise, censorship);
+        let mut propaganda = 0;
+        if let (Some(ch), Some(rules)) = (media, c.media.as_deref()) {
+            v = (v * (1000 + i64::from(rules.effects.free_speed) * i64::from(ch.free) / 1000)
+                / 1000)
+                .clamp(1, 1000);
+            propaganda = rules.effects.propaganda * ch.official / 1000;
+        }
         for (g, val) in s.groups.iter_mut().enumerate() {
-            let target = (t.target + c.groups.get(g).copied().unwrap_or(0)).clamp(0, 1000);
+            let target =
+                (t.target + propaganda + c.groups.get(g).copied().unwrap_or(0)).clamp(0, 1000);
             *val = toward(*val, target, v);
         }
         let clout = world

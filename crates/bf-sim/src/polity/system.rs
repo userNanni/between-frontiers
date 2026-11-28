@@ -63,6 +63,8 @@ struct Wired {
     church: usize,
     franchise: usize,
     repression: usize,
+    censorship: usize,
+    state_media: usize,
 }
 
 impl Wired {
@@ -89,6 +91,8 @@ impl Wired {
             church: e("church_privilege"),
             franchise: e("franchise"),
             repression: e("repression"),
+            censorship: e("censorship"),
+            state_media: e("state_media"),
         }
     }
 }
@@ -109,6 +113,10 @@ pub struct PoliticsSystem {
     wired: Wired,
     /// The law group of the forms of government.
     government: Option<usize>,
+    /// The mass media's effects (`Switches::media_effects`, slice 2); `None` off.
+    media: Option<Arc<crate::media::MediaRules>>,
+    /// The movement for a change of regime, where the pressure the state's media hide goes.
+    regime_change: Option<usize>,
 }
 
 impl PoliticsSystem {
@@ -156,9 +164,20 @@ impl PoliticsSystem {
             recruits,
             wired: Wired::new(),
             government: politics.group(crate::politics::GOVERNMENT_GROUP),
+            media: None,
+            regime_change: politics
+                .movements
+                .iter()
+                .position(|m| m.key == "regime_change"),
             politics,
             cat,
         }
+    }
+
+    /// The same system with the mass media's effects (`Switches::media_effects`).
+    pub fn with_media(mut self, media: Option<Arc<crate::media::MediaRules>>) -> Self {
+        self.media = media;
+        self
     }
 
     /// Clout of each interest group, per mille. Of the political weight, the franchise share
@@ -266,6 +285,23 @@ impl PoliticsSystem {
             p.effects(laws, Scope::Colonies),
         ];
         let mut movements = s.movements[c].clone();
+        // The mass media (slice 2, MD2 and MD3): a movement grows faster where free media reach,
+        // slower where the state's do; what the state's media hold back feeds the movement for a
+        // change of regime, which comes out at the collapse.
+        let media = self.media.as_deref().map(|rules| {
+            let ch = crate::media::channels(
+                rules,
+                &world.media,
+                c,
+                effects[0][self.wired.state_media],
+                effects[0][self.wired.censorship],
+            );
+            (
+                1000 + rules.effects.free_growth * ch.free / 1000,
+                rules.effects.official_damp * ch.official / 1000,
+            )
+        });
+        let mut hidden = 0i32;
         // (movement, law, mobilized per mille) of the movements whose goal is not in force.
         let mut unanswered: Vec<(usize, u16, i32)> = Vec::new();
         let mut mobilized_total = 0i32;
@@ -317,7 +353,15 @@ impl PoliticsSystem {
             let pressure = pressure.clamp(0, 1000);
             let mut support = i32::from(st.support);
             if pressure > 0 {
-                support += (i32::from(kind.growth) * pressure / 1000).max(1);
+                let mut growth = i32::from(kind.growth);
+                if let Some((faster, damp)) = media {
+                    let held = growth * damp / 1000;
+                    if Some(k) != self.regime_change {
+                        hidden += held * pressure / 1000;
+                    }
+                    growth = (growth * faster / 1000 - held).max(0);
+                }
+                support += (growth * pressure / 1000).max(1);
             } else if support > 0 {
                 // Halves every `persistence` years (ln 2 ≈ 0.693).
                 support -= (support * 693 / (1000 * i32::from(kind.persistence))).max(1);
@@ -332,6 +376,13 @@ impl PoliticsSystem {
                     unanswered.push((k, l, mob));
                 }
             }
+        }
+        if let Some(st) = self
+            .regime_change
+            .filter(|_| hidden > 0)
+            .and_then(|rc| movements.get_mut(rc))
+        {
+            st.support = (i32::from(st.support) + hidden).clamp(0, 1000) as u16;
         }
         let legitimacy = (1000 - mobilized_total * LEGITIMACY_LOSS).clamp(0, 1000);
         out.movements.push((c, movements, legitimacy as u16));

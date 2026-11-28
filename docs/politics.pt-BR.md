@@ -377,6 +377,24 @@ on Radio and Television 1950–1960*, *World Communications* 1975, WDI do Banco 
   só para todos.
 - Itens de calibração dessa chave, no roteiro de `state.pt-BR.md`.
 
+**Fatia 2: o que a mídia faz (chave `media_effects`, que precisa de `media`; em rascunho até a
+resposta do dono a MD2, MD3 e MD6, com as recomendadas).** `media::channels` separa o alcance em
+**livre** (mídia que o Estado não tem e não censura), **oficial** (a do Estado, pelo efeito
+`state_media`) e a **censura** que sobra depois do vazamento da internet (MD6: acesso total tira
+80 % da força da censura).
+- **Movimentos** (`polity::system`, MD2 e MD3): crescem até 50 % mais rápido com alcance livre
+  total e até 50 % mais devagar com alcance oficial total; o que a mídia do Estado segura vai para
+  o movimento de troca de regime (a pressão escondida que sai no colapso, como a A2).
+- **Apoio à guerra** (`war::support`, MD2 e MD3, só com `war`): a mídia oficial soma até 100 por
+  mil à meta; a livre faz o apoio mudar até 50 % mais rápido; a censura é a de depois da internet.
+- **Legitimidade:** segue a mobilização dos movimentos, sem regra nova.
+- **Valores de desenho** (`media.ron`, `effects`).
+- **Medida (101 anos, `media` contra `media` com `media_effects`, `BF_DIAG_POLITICS`):** as
+  mudanças de lei no mundo quase não mudam (437 e 437 até 2025); a legitimidade média também
+  (679 e 678). Onde a mídia é do Estado o movimento de troca de regime cresce escondido: URSS 0 →
+  94 (1965), 169 (1985), 407 (2025) por mil; Itália 21 e Brasil 27–29 no meio do século. O PIB
+  mundial fica dentro da faixa (−0,4 a +0,7 %).
+
 **Decisões ao dono (fatia 2 e 3):**
 - **MD2** Onde a mídia age: movimentos, apoio à guerra e legitimidade (recomendada) | só
   movimentos e guerra.
