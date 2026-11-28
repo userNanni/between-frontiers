@@ -34,6 +34,7 @@ Cada regra nova entra desligada, com o jogo igual ao de antes; ligar é outra de
 | `reputation` | desligada | Cada país guarda a reputação dos acordos que quebrou, que pesa na mesa de negociação. |
 | `reserve_cohorts` | desligada | A reserva militar por turma: quem termina o serviço entra na reserva, perde treino com o tempo e a mobilização chama os mais novos primeiro. |
 | `schooling` | desligada | A escola por turma e por nível, e a campanha de alfabetização de adultos. |
+| `scorched_earth` | desligada | O jogador pode mandar queimar, ao recuar, as fábricas, as minas e a energia da terra que vai perder; quem a toma recebe terra devastada. |
 | `small_market_wage_floor` | desligada | Um país pequeno demais para ter salário próprio usa o menor salário dos outros. |
 | `trade_by_pair` | ligada | Cada comprador escolhe de quem compra pelo custo de chegada. |
 | `trade_gross` | ligada | Cada país compra de fora uma parte do que também produz, não só o que falta. |

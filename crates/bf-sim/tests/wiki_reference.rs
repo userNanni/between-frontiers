@@ -133,6 +133,10 @@ const SWITCHES: &[(&str, &str)] = &[
         "A reserva militar por turma: quem termina o serviço entra na reserva, perde treino com o tempo e a mobilização chama os mais novos primeiro.",
     ),
     (
+        "scorched_earth",
+        "O jogador pode mandar queimar, ao recuar, as fábricas, as minas e a energia da terra que vai perder; quem a toma recebe terra devastada.",
+    ),
+    (
         "schooling",
         "A escola por turma e por nível, e a campanha de alfabetização de adultos.",
     ),
