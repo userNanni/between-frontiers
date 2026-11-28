@@ -16,6 +16,7 @@ Cada regra nova entra desligada, com o jogo igual ao de antes; ligar é outra de
 | `foreign_contract` | desligada | As fábricas de uma colônia continuam da antiga metrópole na independência, e o país que fecha o capital estrangeiro estatiza as de fora. |
 | `foreign_flow` | desligada | O dinheiro que sobra em casa constrói fábricas no exterior, e o lucro delas volta ao dono. |
 | `foreign_technique` | desligada | A técnica se espalha mais depressa onde há fábricas de donos estrangeiros. |
+| `fronts` | desligada | O jogador desenha as frentes no mapa e manda as divisões uma a uma; o trecho da linha que ele deixa sem frente fica vazio. A IA segue a regra de antes. |
 | `gold_standard` | desligada | O padrão-ouro: quem está no ouro segura a paridade com os juros e as reservas, e sai quando a cobertura não dá. |
 | `helicopter` | desligada | A tecnologia do helicóptero (1936/1942), de que as unidades de helicóptero e o assalto aéreo precisam. |
 | `household_biomass` | desligada | As famílias do campo colhem a própria lenha, esterco e palha e compram só o resto do combustível. |

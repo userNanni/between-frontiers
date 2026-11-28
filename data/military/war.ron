@@ -160,4 +160,17 @@
         // The player decides how many to send (`SetExpedition`).
         cover_target: 1000,
     )),
+    // Fronts drawn by the player and divisions sent one by one (`war::fronts`; switch `fronts`,
+    // off; the owner's FR1 to FR11, 2026-11-28).
+    fronts: Some((
+        // FR7: a division of 1925 was some 10,000 to 20,000 men; 15 elements of 1,000.
+        division_elements: 15,
+        // FR10: weeks in transit by the distance by rail, a week for each 1,000 km. DESIGN
+        // VALUE, without a source yet.
+        rail_km_per_week: 1000,
+        // FR4: half the reserve goes each week to the front that lost ground. DESIGN VALUE.
+        reserve_step: 500,
+        // FR3: a segment into the objective weighs twice another. DESIGN VALUE.
+        objective_weight: 2000,
+    )),
 )

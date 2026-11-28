@@ -348,6 +348,36 @@ pub enum GameCommand {
         enemy: String,
         attack: bool,
     },
+    /// Draws a front of the player's (switch `fronts`, FR1): `front` replaces that front's
+    /// states, `None` makes a new one against `enemy`. A state leaves the front it was in; a state
+    /// taken out of every front stands empty (FR8).
+    DrawFront {
+        tag: String,
+        front: Option<u32>,
+        enemy: String,
+        states: Vec<u16>,
+    },
+    /// Deletes a front: its stretch of the line stands empty and its divisions are sent nowhere.
+    DeleteFront { tag: String, front: u32 },
+    /// Sends divisions to a front, to the reserve or nowhere (FR2); they spend weeks in transit
+    /// by the distance by rail (FR10).
+    SendDivisions {
+        tag: String,
+        divisions: Vec<u32>,
+        to: crate::war::fronts::Place,
+    },
+    /// Sets the enemy state a front aims at (FR3), or none.
+    SetFrontObjective {
+        tag: String,
+        front: u32,
+        state: Option<u16>,
+    },
+    /// Sets the posture of a front: attack (`true`) or hold.
+    SetFrontPosture {
+        tag: String,
+        front: u32,
+        attack: bool,
+    },
     /// Disbands `elements` whole elements of the country's formation at `formation` (its index in
     /// `CountryWar::formations`, as the forces tab lists them): ships and aircraft leave service,
     /// land elements go home. Their equipment goes to the depot; the men of a raised land
@@ -878,6 +908,49 @@ impl Command<GameWorld> for GameCommand {
                     world.war.fighting.set_posture(me as u16, e as u16, *attack);
                 }
             }
+            GameCommand::DrawFront {
+                tag,
+                front,
+                enemy,
+                states,
+            } => {
+                let index = |t: &str| world.countries.iter().position(|(_, c)| c.tag == t);
+                if let (Some(me), Some(e)) = (index(tag), index(enemy))
+                    && let Some(cf) = world.war.fronts.of_mut(me as u16)
+                {
+                    cf.draw(*front, e as u16, states);
+                }
+            }
+            GameCommand::DeleteFront { tag, front } => {
+                if let Some(me) = world.countries.iter().position(|(_, c)| c.tag == *tag)
+                    && let Some(cf) = world.war.fronts.of_mut(me as u16)
+                {
+                    cf.delete(*front);
+                }
+            }
+            GameCommand::SendDivisions { tag, divisions, to } => {
+                if let Some(me) = world.countries.iter().position(|(_, c)| c.tag == *tag)
+                    && let Some(cf) = world.war.fronts.of_mut(me as u16)
+                {
+                    cf.order(divisions, *to);
+                }
+            }
+            GameCommand::SetFrontObjective { tag, front, state } => {
+                if let Some(me) = world.countries.iter().position(|(_, c)| c.tag == *tag)
+                    && let Some(cf) = world.war.fronts.of_mut(me as u16)
+                    && let Some(f) = cf.fronts.iter_mut().find(|f| f.id == *front)
+                {
+                    f.objective = *state;
+                }
+            }
+            GameCommand::SetFrontPosture { tag, front, attack } => {
+                if let Some(me) = world.countries.iter().position(|(_, c)| c.tag == *tag)
+                    && let Some(cf) = world.war.fronts.of_mut(me as u16)
+                    && let Some(f) = cf.fronts.iter_mut().find(|f| f.id == *front)
+                {
+                    f.attack = *attack;
+                }
+            }
             GameCommand::DisbandForces {
                 tag,
                 formation,
@@ -1350,6 +1423,10 @@ pub struct Switches {
     /// Technique through the foreign plant (`docs/foreign-capital.pt-BR.md`, C5): imitation and
     /// diffusion of a technology run faster where foreign owners hold the levels it serves.
     pub foreign_technique: bool,
+    /// Fronts drawn by the player and divisions sent one by one (`war::fronts`, docs/war.pt-BR.md,
+    /// "Frentes desenhadas", the owner's FR1 to FR11): only the player's country; the AI keeps the
+    /// rule of before.
+    pub fronts: bool,
     /// The gold standard's regimes and rule (`econ::gold`, docs/state.pt-BR.md, gold standard
     /// slice 3): who is on gold in 1925 and at what parity (`data/economy/gold.ron`), the cover
     /// rule that raises the rate and withdraws money, exits by the floor and by contagion,
@@ -1495,6 +1572,7 @@ impl Switches {
         "foreign_contract",
         "foreign_flow",
         "foreign_technique",
+        "fronts",
         "gold_standard",
         "helicopter",
         "household_biomass",
@@ -1534,6 +1612,7 @@ impl Switches {
             "foreign_contract" => self.foreign_contract = true,
             "foreign_flow" => self.foreign_flow = true,
             "foreign_technique" => self.foreign_technique = true,
+            "fronts" => self.fronts = true,
             "gold_standard" => self.gold_standard = true,
             "helicopter" => self.helicopter = true,
             "household_biomass" => self.household_biomass = true,
@@ -1971,6 +2050,32 @@ mod tests {
                 nuclear: &w.nuclear,
             }
         }
+        // `WarState` as versions 46 and 47 wrote it: without the fronts drawn by the player.
+        #[derive(Serialize)]
+        struct War46<'a> {
+            countries: &'a Vec<crate::war::state::CountryWar>,
+            soldiers: &'a Vec<i64>,
+            conflicts: &'a crate::war::crisis::Conflicts,
+            fighting: &'a crate::war::fight::Fighting,
+            composition: &'a crate::war::composition::CompositionState,
+            colonial: &'a Vec<crate::war::colonial::Colonial>,
+            sea: &'a crate::war::sea::SeaWar,
+            nuclear: &'a crate::war::programme::NuclearState,
+            reserve: &'a crate::war::reserve::ReserveState,
+        }
+        fn war46(w: &crate::war::WarState) -> War46<'_> {
+            War46 {
+                countries: &w.countries,
+                soldiers: &w.soldiers,
+                conflicts: &w.conflicts,
+                fighting: &w.fighting,
+                composition: &w.composition,
+                colonial: &w.colonial,
+                sea: &w.sea,
+                nuclear: &w.nuclear,
+                reserve: &w.reserve,
+            }
+        }
         #[derive(Serialize)]
         struct OldEconomy<'a> {
             regions: &'a Vec<crate::econ::Region>,
@@ -2332,9 +2437,68 @@ mod tests {
             hash_of(&with_ledger)
         );
         assert_eq!(
-            hash_of(&headed(47, &encode_snapshot(&with_ledger).unwrap())),
+            hash_of(&headed(48, &encode_snapshot(&with_ledger).unwrap())),
             hash_of(&with_ledger)
         );
+        // Version 47, the media, before the fronts drawn by the player: the war without them.
+        {
+            #[derive(Serialize)]
+            struct BeforeFronts47<'a> {
+                scenario: &'a String,
+                player: &'a Option<Id<Country>>,
+                countries: &'a Table<Country, CountryState>,
+                census: &'a Vec<CensusRecord>,
+                econ: &'a crate::econ::Economy,
+                research: &'a crate::research::ResearchState,
+                politics: &'a crate::polity::PoliticsState,
+                demography: &'a crate::demography::DemographyState,
+                borders: &'a crate::borders::BordersState,
+                foreign: &'a crate::foreign_stakes::ForeignState,
+                influence: &'a crate::influence::InfluenceState,
+                treaties: &'a crate::treaty::TreatyState,
+                war: War46<'a>,
+                education: &'a crate::demography::education::EducationState,
+                independence: &'a crate::borders::independence::IndependenceState,
+                levers: &'a crate::econ::levers::LeversState,
+                tariffs: &'a crate::econ::customs::TariffState,
+                payments: &'a crate::econ::payments::PaymentsState,
+                reserves: &'a crate::econ::payments::ReservesState,
+                gold: &'a crate::econ::gold::GoldState,
+                capital: &'a crate::econ::capital::CapitalState,
+                stocks: &'a crate::econ::stock::StockState,
+                series: &'a crate::econ::series::SeriesState,
+                media: &'a crate::media::MediaState,
+            }
+            let w = &with_ledger;
+            let v47 = encode_snapshot(&BeforeFronts47 {
+                scenario: &w.scenario,
+                player: &w.player,
+                countries: &w.countries,
+                census: &w.census,
+                econ: &w.econ,
+                research: &w.research,
+                politics: &w.politics,
+                demography: &w.demography,
+                borders: &w.borders,
+                foreign: &w.foreign,
+                influence: &w.influence,
+                treaties: &w.treaties,
+                war: war46(&w.war),
+                education: &w.education,
+                independence: &w.independence,
+                levers: &w.levers,
+                tariffs: &w.tariffs,
+                payments: &w.payments,
+                reserves: &w.reserves,
+                gold: &w.gold,
+                capital: &w.capital,
+                stocks: &w.stocks,
+                series: &w.series,
+                media: &w.media,
+            })
+            .unwrap();
+            assert_eq!(hash_of(&headed(47, &v47)), hash_of(&with_ledger));
+        }
         // Version 46, the reserves by cohort, before the media: the world without `media`.
         {
             #[derive(Serialize)]
@@ -2351,7 +2515,7 @@ mod tests {
                 foreign: &'a crate::foreign_stakes::ForeignState,
                 influence: &'a crate::influence::InfluenceState,
                 treaties: &'a crate::treaty::TreatyState,
-                war: &'a crate::war::WarState,
+                war: War46<'a>,
                 education: &'a crate::demography::education::EducationState,
                 independence: &'a crate::borders::independence::IndependenceState,
                 levers: &'a crate::econ::levers::LeversState,
@@ -2377,7 +2541,7 @@ mod tests {
                 foreign: &w.foreign,
                 influence: &w.influence,
                 treaties: &w.treaties,
-                war: &w.war,
+                war: war46(&w.war),
                 education: &w.education,
                 independence: &w.independence,
                 levers: &w.levers,

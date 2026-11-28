@@ -141,6 +141,35 @@ termo a termo.
 - **Estado:** decidido (2026-11-18); desenhado.
 - **Onde está o detalhe:** [`war.pt-BR.md`, "A guerra no tick"](../../war.pt-BR.md#a-guerra-no-tick-fatia-c-desenho).
 
+### O jogador desenha as frentes e manda as divisões uma a uma (FR1 a FR11)
+
+- **Decisão:**
+  - FR1, alternativa: o jogador desenha as frentes no mapa.
+  - FR2, alternativa: manda as formações uma a uma.
+  - FR7: a formação é uma divisão, de 10 a 20 mil homens.
+  - FR8, alternativa: o trecho da linha que o jogador não cobre com frente fica vazio, e o
+    inimigo entra se atacar.
+  - FR9: a frente segue a linha sozinha.
+  - FR10: o trânsito leva semanas pela distância por trem.
+  - FR11: a divisão nova vai para a reserva.
+  - FR3 a FR6, recomendadas: objetivo por frente, reserva que reforça onde se perde terreno,
+    semanas de trânsito, e a IA na regra de hoje.
+- **O que o autor pensou:** escolheu o comando fino nas frentes e nas formações, sabendo que é uma
+  refatoração grande; nas outras, "o que eu não citar faça o recomendado".
+- **Como o jogo funciona por causa disso:**
+  - Ao começar a guerra, o jogo cria uma frente por inimigo, cobrindo tudo, com todas as divisões
+    nelas; o jogador redesenha a partir daí.
+  - O vazio só nasce de um ato do jogador, com confirmação e aviso em vermelho com os km
+    descobertos.
+  - Uma divisão sem frente não luta; o reforço automático é só da reserva.
+  - A tela deixa selecionar várias divisões de uma vez e mandá-las juntas.
+  - A IA não desenha.
+- **Como é na vida real:** a divisão era a unidade que o comando movia (10 a 20 mil homens em
+  1925); a brecha na linha deixa o inimigo passar. As semanas por trem, a parte da reserva e o
+  peso do objetivo são valores de desenho.
+- **Estado:** decidido (2026-11-28); regra `fronts`, desligada.
+- **Onde está o detalhe:** [`war.pt-BR.md`, "Frentes desenhadas"](../../war.pt-BR.md#frentes-desenhadas-e-divisões-uma-a-uma-atrás-de-fronts-desligada).
+
 ### O ocupado paga ao ocupante, com devastação e guarnição
 
 - **Decisão:** o território ocupado produz e paga ao ocupante, numa parcela estudada na vida real;

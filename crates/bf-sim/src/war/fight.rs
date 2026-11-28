@@ -48,6 +48,10 @@ pub struct FightSetup {
     pub width_km: BTreeMap<(u16, u16), Fixed>,
     /// The state of each country's capital, by tag.
     pub capitals: BTreeMap<String, u16>,
+    /// Fronts drawn by the player (switch `fronts`); none with it off.
+    pub fronts: Option<Arc<super::fronts::FrontRules>>,
+    /// The centre of each map state, km east and north, for the weeks in transit.
+    pub centre_km: BTreeMap<u16, (i64, i64)>,
     /// War support and occupation (G3, G4), when `data/military/war.ron` exists.
     pub conduct: Option<Arc<super::support::Conduct>>,
     /// The laws, for the changes of the form of government (step 4).
@@ -230,6 +234,10 @@ pub struct FightWeek {
     /// Occupation money: (owner, occupier, amount).
     pub transfers: Vec<super::occupation::Transfer>,
     pub devastation: super::occupation::Devastation,
+    /// The player's fronts after this week (switch `fronts`), and the land men each lost.
+    pub fronts: Option<super::fronts::CountryFronts>,
+    /// By front: (land men lost this week, land men it had).
+    pub front_losses: BTreeMap<u32, (u64, u64)>,
 }
 
 /// The land strength of a country: men, the fire and protection of what it holds, and its
@@ -717,6 +725,77 @@ pub fn fight_week(
             })
         })
         .collect();
+    // The player's fronts and divisions (switch `fronts`, FR1 to FR11): the line followed, the
+    // divisions in step with the formations, transit and the reserve; then what stands on each
+    // front. The AI keeps the rule of before.
+    let mut fronts = setup.fronts.as_ref().zip(player).and_then(|(r, p)| {
+        if !count.contains_key(&(p, u16::MAX)) {
+            return None;
+        }
+        let cw = world.war.countries.get(p as usize)?;
+        let mut cf =
+            world
+                .war
+                .fronts
+                .of(p)
+                .cloned()
+                .unwrap_or_else(|| super::fronts::CountryFronts {
+                    country: p,
+                    ..Default::default()
+                });
+        let kinds = super::fronts::land_kinds(mil, cw);
+        super::fronts::sync_divisions(r, &mut cf, &kinds, |cf| {
+            if cf.started {
+                super::fronts::Place::Reserve
+            } else {
+                super::fronts::Place::Idle
+            }
+        });
+        let line = super::fronts::contact(world, &out.fighting, &setup.neighbours, p);
+        let lost = super::fronts::follow_line(
+            &mut cf,
+            &line,
+            &setup.neighbours,
+            &std::collections::BTreeSet::new(),
+        );
+        let capital = world
+            .countries
+            .iter()
+            .nth(p as usize)
+            .and_then(|(_, c)| setup.capitals.get(&c.tag))
+            .copied();
+        // Divisions just sent (by a command) have their weeks of transit worked out here.
+        let snap = cf.clone();
+        let weeks = |a, b| super::fronts::transit_weeks(r, &snap, &setup.centre_km, capital, a, b);
+        // The week's transit first; then the divisions just sent get their weeks, from next week.
+        super::fronts::move_week(r, &mut cf, &lost, weeks);
+        for d in &mut cf.divisions {
+            if d.transit == u16::MAX {
+                d.transit = weeks(
+                    d.from.take().unwrap_or(super::fronts::Place::Reserve),
+                    d.place,
+                );
+            }
+        }
+        Some((r.clone(), p, cf))
+    });
+    // Each front's force, cut to what the garrisons leave of the field army.
+    let front_force: BTreeMap<u32, super::fronts::FrontForce> = fronts
+        .as_ref()
+        .map(|(_, p, cf)| {
+            let cw = &world.war.countries[*p as usize];
+            let raw = strength(mil, cw).men.max(1);
+            let kept = strengths.get(p).map_or(0, |s| s.men);
+            super::fronts::forces(mil, cw, cf)
+                .into_iter()
+                .map(|(k, mut f)| {
+                    f.men = (u128::from(f.men) * u128::from(kept) / u128::from(raw)) as u64;
+                    f.fire *= Fixed::from_ratio(kept as i64, raw as i64);
+                    (k, f)
+                })
+                .collect()
+        })
+        .unwrap_or_default();
     // A week of war adds to the experience of every army on a front.
     for &c in &fighters {
         if let Ok(i) = out
@@ -818,6 +897,74 @@ pub fn fight_week(
             }
         })
         .collect();
+    // The player's fronts replace the spread of the main army: each segment of a front gets the
+    // front's men, evenly with the objective weighed (FR3); a segment no front covers gets none
+    // (FR8). (segment index, front) in the main theatre, in the loop's order.
+    let mut front_of_seg: BTreeMap<usize, u32> = BTreeMap::new();
+    let mut men_on = men_on;
+    if let Some((r, p, cf)) = fronts.as_mut() {
+        let key = (*p, u16::MAX);
+        let mut idx = 0usize;
+        let mut segs: Vec<(usize, Option<u32>, bool, u32, u16)> = Vec::new();
+        for &(from, into, a, b) in &segments {
+            let (own, enemy, other) = if a == *p {
+                (from, b, into)
+            } else if b == *p {
+                (into, a, from)
+            } else {
+                continue;
+            };
+            if theatre(*p, enemy) != u16::MAX {
+                continue;
+            }
+            let state = regions[own as usize].state;
+            let front = cf.front_of(state);
+            let aim = front
+                .and_then(|id| cf.front(id))
+                .and_then(|f| f.objective)
+                .is_some_and(|o| o == regions[other as usize].state);
+            let (sa, sb) = (regions[from as usize].state, regions[into as usize].state);
+            let km = setup
+                .width_km
+                .get(&(sa.min(sb), sa.max(sb)))
+                .map_or(0, |w| w.to_int_round().max(0) as u32);
+            segs.push((idx, front, aim, km, state));
+            idx += 1;
+        }
+        let mut v = vec![0u64; idx];
+        let mut by_front: BTreeMap<u32, Vec<(usize, bool)>> = BTreeMap::new();
+        for &(i, front, aim, _, _) in &segs {
+            if let Some(id) = front {
+                by_front.entry(id).or_default().push((i, aim));
+                front_of_seg.insert(i, id);
+            }
+        }
+        for (id, list) in &by_front {
+            let men = front_force.get(id).map_or(0, |f| f.men);
+            let w: Vec<Fixed> = list
+                .iter()
+                .map(|(_, aim)| {
+                    if *aim {
+                        Fixed::from_ratio(i64::from(r.objective_weight), 1000)
+                    } else {
+                        Fixed::ONE
+                    }
+                })
+                .collect();
+            for ((i, _), m) in list.iter().zip(apportion(men, &w)) {
+                v[*i] = m;
+            }
+        }
+        // The km of the line no front covers (FR8), by own state.
+        let mut open: BTreeMap<u16, u32> = BTreeMap::new();
+        for &(_, front, _, km, state) in &segs {
+            if front.is_none() {
+                *open.entry(state).or_default() += km;
+            }
+        }
+        cf.uncovered = open.into_iter().collect();
+        men_on.insert(key, v);
+    }
     // Where a second-generation army puts its mobile class (item 12): the segment where the
     // enemy is weakest per km, as the third generation's focus, without the concentration of
     // its other men.
@@ -1011,8 +1158,39 @@ pub fn fight_week(
                 Fixed::ZERO
             }
         };
-        let (fa, fb) = (local(a, ma), local(b, mb));
-        let (att_a, att_b) = (attacks(a, b, fa, fb), attacks(b, a, fb, fa));
+        // On the player's fronts the fire is the front's own (its divisions'), and the posture
+        // the front's.
+        let front_here = |k: (u16, u16), i: usize| -> Option<u32> {
+            let (_, p, _) = fronts.as_ref()?;
+            (k == (*p, u16::MAX))
+                .then(|| front_of_seg.get(&i).copied())
+                .flatten()
+        };
+        let front_fire = |k: (u16, u16), i: usize, m: u64| -> Option<Fixed> {
+            let (_, p, _) = fronts.as_ref()?;
+            if k != (*p, u16::MAX) {
+                return None;
+            }
+            Some(match front_here(k, i).and_then(|id| front_force.get(&id)) {
+                Some(f) if f.men > 0 => f.fire * Fixed::from_ratio(m as i64, f.men as i64),
+                _ => Fixed::ZERO,
+            })
+        };
+        let front_attack = |k: (u16, u16), i: usize| -> Option<bool> {
+            let (_, p, cf) = fronts.as_ref()?;
+            if k != (*p, u16::MAX) {
+                return None;
+            }
+            Some(
+                front_here(k, i)
+                    .and_then(|id| cf.front(id))
+                    .is_some_and(|f| f.attack),
+            )
+        };
+        let fa = front_fire(ka, ia, ma).unwrap_or_else(|| local(a, ma));
+        let fb = front_fire(kb, ib, mb).unwrap_or_else(|| local(b, mb));
+        let att_a = front_attack(ka, ia).unwrap_or_else(|| attacks(a, b, fa, fb));
+        let att_b = front_attack(kb, ib).unwrap_or_else(|| attacks(b, a, fb, fa));
         let dug = Fixed::from_ratio(
             i64::from(world.war.fighting.still_weeks(from, into)),
             i64::from(mil.rules.front.dig_weeks.max(1)),
@@ -1028,6 +1206,17 @@ pub fn fight_week(
             side(a, ma, att_a, dug, mob_a),
             side(b, mb, att_b, dug, mob_b),
         );
+        for (k, i, me, fire) in [(ka, ia, &mut sa, fa), (kb, ib, &mut sb, fb)] {
+            if let Some(id) = front_here(k, i) {
+                me.fire = fire;
+                if let Some(f) = front_force.get(&id) {
+                    me.mobility = f.mobility;
+                }
+            } else if front_fire(k, i, 0).is_some() {
+                // A stretch no front covers: no one stands there (FR8).
+                me.fire = Fixed::ZERO;
+            }
+        }
         // The air over this segment: neutral (one half each) when neither side flies.
         if wings.contains_key(&a) || wings.contains_key(&b) {
             let ((xa, a_keys), (xb, b_keys)) = (air_side(a), air_side(b));
@@ -1097,6 +1286,13 @@ pub fn fight_week(
                 }
             }
         }
+        for (k, i, l) in [(ka, ia, o.losses[0]), (kb, ib, o.losses[1])] {
+            if let Some(id) = front_here(k, i) {
+                let men = front_force.get(&id).map_or(0, |f| f.men);
+                let e = out.front_losses.entry(id).or_insert((0, men));
+                e.0 += l;
+            }
+        }
         *lost.entry(a).or_default() += o.losses[0];
         *lost.entry(b).or_default() += o.losses[1];
         out.segments.push(SegmentWeek {
@@ -1160,6 +1356,7 @@ pub fn fight_week(
     out.fighting.still.sort();
     out.fighting.still.dedup_by_key(|x| (x.0, x.1));
     out.fighting.last_week = out.segments.clone();
+    out.fronts = fronts.map(|(_, _, cf)| cf);
     conduct_week(setup, world, &mut out, held.as_ref(), player);
     out.air_lost = air_lost
         .into_iter()

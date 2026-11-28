@@ -65,6 +65,10 @@ const SWITCHES: &[(&str, &str)] = &[
         "A técnica se espalha mais depressa onde há fábricas de donos estrangeiros.",
     ),
     (
+        "fronts",
+        "O jogador desenha as frentes no mapa e manda as divisões uma a uma; o trecho da linha que ele deixa sem frente fica vazio. A IA segue a regra de antes.",
+    ),
+    (
         "gold_standard",
         "O padrão-ouro: quem está no ouro segura a paridade com os juros e as reservas, e sai quando a cobertura não dá.",
     ),

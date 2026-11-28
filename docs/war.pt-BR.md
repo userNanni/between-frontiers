@@ -2955,6 +2955,69 @@ Iugoslávia):
 - ficaram 7 frotas, 5 zonas controladas e 89 pares de comércio cortados;
 - a meta da decisão 6 é ficar abaixo de 15%.
 
+### Frentes desenhadas e divisões uma a uma (atrás de `fronts`, desligada)
+
+O dono decidiu FR1 a FR11 em 2026-11-28. FR1, FR2 e FR8 ficaram na alternativa: o jogador desenha
+as frentes no mapa, manda as divisões uma a uma, e o trecho da linha sem frente fica vazio. As
+demais ficaram nas recomendadas. Código em `war/fronts.rs` e no passo da guerra
+(`fight::fight_week`, `system::apply`); regra em `data/military/war.ron`, `fronts`.
+
+| Peça | Como é na vida real | No jogo | Muda a simulação? |
+|---|---|---|---|
+| A frente (FR1) | um setor da linha com o seu comando | um conjunto de estados do jogador na linha de contato, marcado no mapa; os segmentos dela são os pares (estado dela, estado inimigo vizinho) | só com a regra ligada e para o jogador |
+| A divisão (FR2, FR7) | a unidade que o comando move, de 10 a 20 mil homens em 1925 | o exército de terra da metrópole é cortado em divisões de `division_elements` (15 mil homens), com número; as formações seguem guardando homens, equipamento e treino, e as divisões de um tipo as repartem | sim |
+| Objetivo (FR3) | o eixo do esforço | um estado inimigo por frente; os segmentos que entram nele pesam `objective_weight` (2 vezes, **valor de desenho**) | sim |
+| Reserva (FR4) | o que fica atrás da linha para tapar o rombo | as divisões mandadas para a reserva não lutam; a cada semana `reserve_step` delas (metade, **valor de desenho**) vai à frente que perdeu terreno | sim |
+| Trânsito (FR5, FR10) | mover tropa por trem leva dias ou semanas | a divisão que muda de lugar leva semanas pela distância entre os centros das frentes, `rail_km_per_week` (1.000 km por semana, **valor de desenho**, sem fonte); a reserva fica na capital; em trânsito não luta | sim |
+| A IA (FR6) | — | sem frentes nem divisões: a regra de antes. O país que o jogador larga volta a ela | não |
+| Trecho sem frente (FR8) | uma brecha na linha | ninguém está lá; o inimigo entra se atacar. Só nasce de ato do jogador (tirar um estado de uma frente, apagar uma frente, mandar todas as divisões dela embora) ou de contato novo que a FR9 não cobre | sim |
+| A linha anda (FR9) | o setor segue o terreno | a frente segue sozinha: o estado perdido sai, o estado próprio que passa a tocar o inimigo entra na frente vizinha, o estado tomado entra na frente que o tomou; o trecho que o jogador deixou aberto não é preenchido de volta | sim |
+| Divisão nova (FR11) | a encomenda e a convocação chegam ao depósito | o que as formações ganham completa as divisões do tipo até o tamanho, e o resto vira divisão nova na reserva | sim |
+
+**Padrão ao começar a guerra:** o jogo cria uma frente por inimigo, cobrindo todo o contato, com
+todas as divisões repartidas entre elas pelos estados de cada uma. Ninguém começa com a linha
+vazia por não ter clicado. Um inimigo novo ganha uma frente para o contato novo, com a reserva.
+Uma divisão sem frente (apagada a frente) não luta nem reforça; o reforço automático é só de quem
+está na reserva.
+
+**Perdas:** saem das divisões de cada frente, pela parte da frente, e das formações do tipo de
+cada uma, com o equipamento; a reserva e as divisões em trânsito não perdem. O que o jogador
+perde fora das frentes (um teatro colonial) sai do exército inteiro, como antes.
+
+**Medido** (`tests/war_fronts.rs`; a União Soviética, jogada, declara à Polônia, e os aliados dela
+entram; colapso e queda por ocupação desligados para a guerra seguir):
+- a guerra começa com uma frente por inimigo e nenhuma divisão parada, e as divisões somam as
+  formações de cada tipo;
+- apagada a frente contra a Polônia, os km do trecho aberto aparecem, e a Polônia toma mais
+  estados soviéticos em duas semanas do que contra a frente;
+- uma divisão mandada à outra frente chega depois de semanas em trânsito;
+- uma formação nova vira divisões, e nenhuma fica parada;
+- sem jogador, a regra ligada não muda o hash.
+
+**CPU** (`war_fronts::the_cost_of_six_hundred_divisions`, ignorado, rodado no slot): o exército
+soviético de 1925 em 532 divisões de um elemento, meio ano de guerra. O sistema de forças gastou
+22,1 ms com a regra ligada e 24,1 ms desligada, dentro do ruído: as frentes não pesam.
+
+**Tela** (esboço, para o thread de interface): aba "Frentes" na janela Guerra, e uma lente no
+mapa.
+- **No mapa:** cada frente com a sua cor, e o objetivo marcado. O trecho sem frente aparece em
+  **vermelho**, com os km descobertos (`CountryFronts::uncovered`: estado e km). Desenhar é clicar
+  em cadeia nos estados próprios da linha (`DrawFront`).
+- **Por frente:** nome (o inimigo), estados, homens por km, postura (`SetFrontPosture`), objetivo
+  (`SetFrontObjective`), as divisões dela e as que estão a caminho, com as semanas que faltam.
+- **Divisões:** a lista com número, tipo, geração, homens, onde está e o trânsito.
+  - Seleção de várias de uma vez: clique com arrasto, por tipo, "todas da frente X".
+  - Depois, "mandar as selecionadas para a frente Y", para a reserva ou para nenhuma
+    (`SendDivisions`).
+- **Confirmação:** todo ato que abre um vazio pede confirmação, com o aviso em vermelho e os km:
+  - tirar um estado de uma frente;
+  - apagar uma frente (`DeleteFront`);
+  - mandar embora todas as divisões de uma frente.
+- **Reserva:** as divisões nela e a frente que ela reforçou na última semana
+  (`CountryFronts::reinforced`).
+- **Leitura:** `world.war.fronts.of(país)` → `CountryFronts { fronts, divisions, uncovered,
+  reinforced, left_open }`.
+
 ## O que falta para ligar ao tick
 
 O contrato, os dados e as funções estão prontos e testados. Nada roda ainda. Quando a fase 5

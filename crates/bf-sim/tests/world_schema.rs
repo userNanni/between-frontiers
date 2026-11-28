@@ -49,6 +49,7 @@ fn schema() -> String {
         bf_sim::econ::levers::SurplusUse,
         bf_sim::war::Stage,
         bf_sim::war::third::CallSide,
+        bf_sim::war::fronts::Place,
         bf_sim::war::support::Fall,
         bf_sim::war::nuclear_use::Mode,
         bf_sim::econ::gold::Regime,

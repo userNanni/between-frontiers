@@ -54,6 +54,10 @@
     // diffusion run faster where foreign owners hold the levels a technology serves. Off: the
     // foreign plants teach nothing.
     foreign_technique: false,
+    // Fronts drawn by the player and divisions sent one by one (`docs/war.pt-BR.md`, "Frentes
+    // desenhadas"; the owner's FR1 to FR11, 2026-11-28). Needs `war`. Off: the men spread over
+    // the segments by the rule of before, for the player too.
+    fronts: false,
     // The gold standard's regimes and rule (`docs/state.pt-BR.md`, "Padrão-ouro, reservas e
     // balanço de pagamentos", slice 3): who is on gold in 1925 (`data/economy/gold.ron`), the
     // cover rule, exits, contagion, returns and the loss of who holds a falling currency. Needs

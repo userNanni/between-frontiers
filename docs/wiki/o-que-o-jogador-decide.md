@@ -62,6 +62,13 @@ O caminho inteiro da crise à paz (exigir, declarar depois da recusa, atacar num
 Exceção: `Borders` (operação de fronteira) não é do jogador. Vem de tratados, da paz, de testes e
 de ferramentas; o jogador liberta a própria terra com `Liberate`.
 
+Exceção provisória: `DrawFront`, `DeleteFront`, `SendDivisions`, `SetFrontObjective` e
+`SetFrontPosture` (frentes desenhadas e divisões uma a uma, FR1 a FR11) chegam antes da tela,
+atrás da regra `fronts`, desligada. A tela vem do thread da interface pelo esboço em
+[`war.pt-BR.md`, "Frentes desenhadas"](../war.pt-BR.md#frentes-desenhadas-e-divisões-uma-a-uma-atrás-de-fronts-desligada):
+a aba "Frentes" na janela Guerra, o desenho no mapa, a seleção de várias divisões e o aviso em
+vermelho do trecho sem frente.
+
 ## Desenhadas, sem comando ainda
 
 | Decisão | Onde deve ficar | Depende de |

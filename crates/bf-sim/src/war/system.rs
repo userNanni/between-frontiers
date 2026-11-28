@@ -1525,10 +1525,52 @@ impl System<GameWorld> for Forces {
         if let Some(week) = changes.fight {
             // Aircraft lost over the fronts (slice C2).
             super::sea::sink(world, &week.air_lost);
+            // The player's fronts (switch `fronts`): its losses come off the divisions on each
+            // front; everyone else loses a share of its whole land army, as before.
+            let with_fronts = week.fronts.as_ref().map(|cf| cf.country);
             for (c, share) in &week.lost_share {
-                if let Some(cw) = world.war.countries.get_mut(*c as usize) {
-                    super::fight::take_losses(&self.military, cw, *share);
+                let mut share = *share;
+                if Some(*c) == with_fronts {
+                    // What it lost off its fronts (a colonial theatre) comes off the whole army.
+                    let all = week
+                        .lost_men
+                        .iter()
+                        .find(|(k, _)| k == c)
+                        .map_or(0, |(_, m)| *m);
+                    let on_fronts: u64 = week.front_losses.values().map(|(l, _)| *l).sum();
+                    let off = all.saturating_sub(on_fronts);
+                    if off == 0 || all == 0 {
+                        continue;
+                    }
+                    share *= Fixed::from_ratio(off as i64, all as i64);
                 }
+                if let Some(cw) = world.war.countries.get_mut(*c as usize) {
+                    super::fight::take_losses(&self.military, cw, share);
+                }
+            }
+            if let Some(mut cf) = week.fronts.clone() {
+                if let Some(cw) = world.war.countries.get_mut(cf.country as usize) {
+                    super::fronts::take_front_losses(
+                        &self.military,
+                        cw,
+                        &mut cf,
+                        &week.front_losses,
+                    );
+                }
+                world.war.fronts.countries = vec![cf];
+            } else if !world.war.fronts.is_empty() {
+                // A country left by the player goes back to the AI's rule (FR6); the player's own
+                // fronts stay while it is at war, even in a week with no line (all its land lost).
+                let player = world
+                    .countries
+                    .iter()
+                    .position(|(id, _)| Some(id) == world.player)
+                    .map(|i| i as u16);
+                world
+                    .war
+                    .fronts
+                    .countries
+                    .retain(|x| Some(x.country) == player);
             }
             for (c, men) in &week.lost_men {
                 let killed = (*men as i64 * super::fight::KILLED_PER_MILLE / 1000).max(0) as u64;
@@ -1633,6 +1675,11 @@ impl System<GameWorld> for Forces {
                 world.war.fighting.last_week.clear();
             }
             world.war.fighting.support.retain(|x| {
+                wars.iter()
+                    .any(|w| w.side_a.contains(&x.country) || w.side_b.contains(&x.country))
+            });
+            // Out of the war, out of the fronts: the next war lays them down anew.
+            world.war.fronts.countries.retain(|x| {
                 wars.iter()
                     .any(|w| w.side_a.contains(&x.country) || w.side_b.contains(&x.country))
             });

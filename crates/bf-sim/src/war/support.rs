@@ -28,6 +28,9 @@ pub struct ConductFile {
     /// The colonial war (G6); none in older data.
     #[serde(default)]
     pub colonial: Option<super::colonial::ColonialRules>,
+    /// Fronts drawn by the player (FR1 to FR11); none in older data.
+    #[serde(default)]
+    pub fronts: Option<super::fronts::FrontRules>,
 }
 
 /// The rules of war support. Per mille unless named otherwise.

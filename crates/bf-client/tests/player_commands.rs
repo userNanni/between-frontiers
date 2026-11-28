@@ -246,10 +246,32 @@ const PLAYER: &[Surface] = &[
 ];
 
 /// Variants the player does not give from a screen with a key, and why.
-const EXCEPTIONS: &[(&str, &str)] = &[(
-    "Borders",
-    "issued by treaties, peace, tests and tools; the player frees its land with Liberate",
-)];
+const EXCEPTIONS: &[(&str, &str)] = &[
+    (
+        "Borders",
+        "issued by treaties, peace, tests and tools; the player frees its land with Liberate",
+    ),
+    (
+        "DrawFront",
+        "fronts drawn on the map (switch fronts): the screen comes from the interface",
+    ),
+    (
+        "DeleteFront",
+        "fronts drawn on the map (switch fronts): the screen comes from the interface",
+    ),
+    (
+        "SendDivisions",
+        "fronts drawn on the map (switch fronts): the screen comes from the interface",
+    ),
+    (
+        "SetFrontObjective",
+        "fronts drawn on the map (switch fronts): the screen comes from the interface",
+    ),
+    (
+        "SetFrontPosture",
+        "fronts drawn on the map (switch fronts): the screen comes from the interface",
+    ),
+];
 
 fn variants() -> BTreeSet<String> {
     let mut tracer = Tracer::new(TracerConfig::default());

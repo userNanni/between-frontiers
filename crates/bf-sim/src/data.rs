@@ -848,6 +848,37 @@ impl GameData {
 
     /// The state of each country's capital on the start date: of its metropolitan states, the
     /// one whose centre lies nearest the capital (`capital_lon_lat`).
+    /// The centre of every map state, km east and north (longitude scaled by the cosine of the
+    /// state's own latitude): for the weeks by rail between two fronts (`war::fronts`).
+    fn state_centres_km(&self) -> BTreeMap<u16, (i64, i64)> {
+        let meta = &self.map.meta;
+        let miller = |lat: f64| {
+            1.25 * (std::f64::consts::FRAC_PI_4 + 0.4 * lat.to_radians())
+                .tan()
+                .ln()
+        };
+        let (top, bottom) = (miller(meta.lat_top), miller(meta.lat_bottom));
+        self.map
+            .states
+            .iter()
+            .map(|s| {
+                let lon = f64::from(s.center.0) / f64::from(meta.width.max(1)) * 360.0 - 180.0;
+                let y =
+                    top - f64::from(s.center.1) / f64::from(meta.height.max(1)) * (top - bottom);
+                let lat =
+                    (((y / 1.25).exp().atan() - std::f64::consts::FRAC_PI_4) / 0.4).to_degrees();
+                let km = 111.32;
+                (
+                    s.id,
+                    (
+                        (lon * km * lat.to_radians().cos()).round() as i64,
+                        (lat * km).round() as i64,
+                    ),
+                )
+            })
+            .collect()
+    }
+
     fn capital_states(&self) -> BTreeMap<String, u16> {
         let meta = &self.map.meta;
         let miller = |lat: f64| {
@@ -1073,6 +1104,18 @@ impl GameData {
                     })
                     .unwrap_or_default(),
                 capitals: self.capital_states(),
+                fronts: self
+                    .war
+                    .as_ref()
+                    .and_then(|w| w.conduct.as_ref())
+                    .and_then(|c| c.fronts.clone())
+                    .filter(|_| switches.fronts)
+                    .map(Arc::new),
+                centre_km: if switches.fronts {
+                    self.state_centres_km()
+                } else {
+                    BTreeMap::new()
+                },
                 conduct: self
                     .war
                     .as_ref()
