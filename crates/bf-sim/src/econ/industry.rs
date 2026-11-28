@@ -26,6 +26,10 @@ pub struct IndustryState {
     pub methods: Vec<Vec<(u16, u8)>>,
     /// E0: by region, the levels of each plant the state owns (kind, levels), sorted by kind.
     pub state_levels: Vec<Vec<(u16, i64)>>,
+    /// The productive works the government ordered and that are not done yet (region, kind,
+    /// works), sorted: a public work of the kind done in the region is the state's while one
+    /// is open. The rule's own public works (railways, roads, housing) stay out.
+    pub orders: Vec<(u32, u16, i64)>,
 }
 
 /// Whether the ownership law lets the government fix methods: every law but `laissez_faire`,
@@ -37,7 +41,9 @@ pub fn may_fix(laws: &LawEffects) -> bool {
 impl IndustryState {
     /// Nothing fixed and nothing owned anywhere: out of the hash.
     pub fn is_empty(&self) -> bool {
-        self.methods.iter().all(Vec::is_empty) && self.state_levels.iter().all(Vec::is_empty)
+        self.methods.iter().all(Vec::is_empty)
+            && self.state_levels.iter().all(Vec::is_empty)
+            && self.orders.is_empty()
     }
 
     /// The method market `mi` fixed for building `kind`, if any.
@@ -81,6 +87,12 @@ impl HashState for IndustryState {
                 h.write_u16(k);
                 h.write_u8(m);
             }
+        }
+        h.write_u64(self.orders.len() as u64);
+        for &(r, k, n) in &self.orders {
+            h.write_u32(r);
+            h.write_u16(k);
+            h.write_i64(n);
         }
         h.write_u64(self.state_levels.len() as u64);
         for list in &self.state_levels {
