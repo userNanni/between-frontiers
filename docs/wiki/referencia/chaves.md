@@ -12,6 +12,7 @@ Cada regra nova entra desligada, com o jogo igual ao de antes; ligar é outra de
 | `crisis` | desligada | Crises com prazo: um país exige, o outro aceita ou recusa pela força de cada lado, e a recusa pode virar guerra. |
 | `customs_duties` | desligada | O imposto de importação vai para o Tesouro e encarece o que vem de fora. |
 | `fiscal_capacity` | desligada | Um Estado com menos servidores do que precisa arrecada menos imposto. |
+| `fixed_methods` | desligada | O governo fixa o método de produção de um tipo de prédio no país, fora do laissez-faire. |
 | `forces` | ligada | Os soldados são os homens das formações de 1925 de cada país. |
 | `foreign_contract` | desligada | As fábricas de uma colônia continuam da antiga metrópole na independência, e o país que fecha o capital estrangeiro estatiza as de fora. |
 | `foreign_flow` | desligada | O dinheiro que sobra em casa constrói fábricas no exterior, e o lucro delas volta ao dono. |

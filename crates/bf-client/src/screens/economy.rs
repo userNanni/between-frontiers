@@ -123,6 +123,8 @@ pub enum Place {
 pub struct Response {
     pub close: bool,
     pub place_done: bool,
+    /// A method fixed or handed back to the market (the methods tab).
+    pub command: Option<bf_sim::game::GameCommand>,
 }
 
 fn pct(i18n: &I18n, x: f64) -> String {
@@ -285,7 +287,9 @@ pub fn show(
             Tab::Buildings => buildings(ui, i18n, world, v, window),
             Tab::States | Tab::Goods => {}
             Tab::Methods => match methods {
-                Some(m) => super::methods::show(ui, i18n, m, &mut window.methods_kind),
+                Some(m) => {
+                    out.command = super::methods::show(ui, i18n, m, &mut window.methods_kind);
+                }
                 None => {
                     bf_ui_kit::muted(ui, &i18n.tr("economy-waiting"));
                 }

@@ -92,6 +92,7 @@ fn capital_abroad_moves_money_between_funds_and_keeps_the_stakes_consistent() {
         wage_floor: false,
         foreign_flow: true,
         occupied_works: false,
+        fixed_methods: false,
     };
     let before = pools(&w);
     let waiting = w.foreign.building_count();

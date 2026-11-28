@@ -536,13 +536,26 @@ fn methods_of(
     last: &Option<Arc<crate::methods_view::MethodsView>>,
 ) -> Option<Arc<crate::methods_view::MethodsView>> {
     let date = session.clock().date;
+    let tag = session.player()?;
     match last {
-        Some(v) if v.month == (date.year, date.month) => Some(Arc::clone(v)),
+        Some(v)
+            if v.month == (date.year, date.month)
+                && v.tag == tag
+                && v.fixed == crate::methods_view::fixed_now(session.world(), tag) =>
+        {
+            Some(Arc::clone(v))
+        }
         _ => {
             let r = rules.as_ref()?;
-            let tag = session.player()?;
-            crate::methods_view::read(session.world(), tag, &r.catalogue, r.tree.as_deref(), date)
-                .map(Arc::new)
+            crate::methods_view::read(
+                session.world(),
+                tag,
+                &r.catalogue,
+                r.tree.as_deref(),
+                date,
+                r.switches.fixed_methods,
+            )
+            .map(Arc::new)
         }
     }
 }

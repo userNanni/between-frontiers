@@ -38,6 +38,9 @@
     // The servants' capacity to collect (`docs/state.pt-BR.md`, D1, owner's decision O1): a
     // region with fewer servants than the rule asks for collects that much less tax.
     fiscal_capacity: false,
+    // The method the government fixes for a building kind (`econ::industry`, owner's decisions
+    // M1 and M2 of 2026-11-28): every plant of the kind moves to it; never under laissez-faire.
+    fixed_methods: false,
     // Armed forces in peace (`docs/war.pt-BR.md`, "Forças em paz"): the soldiers are the men of
     // the formations of `data/scenario/1925/forces.ron`. Off: the old rule of
     // `data/military/peace.ron` (`soldiers`). On since the PR that switched it, judged by the

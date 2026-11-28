@@ -516,6 +516,7 @@ pub fn v15_to_v16(w: V15) -> GameWorld {
         stocks: Default::default(),
         series: Default::default(),
         media: Default::default(),
+        industry: Default::default(),
     }
 }
 
@@ -567,6 +568,7 @@ pub fn v16_to_v17(w: V16) -> GameWorld {
         stocks: Default::default(),
         series: Default::default(),
         media: Default::default(),
+        industry: Default::default(),
     }
 }
 
@@ -619,6 +621,7 @@ pub fn v17_to_v18(w: V17) -> GameWorld {
         stocks: Default::default(),
         series: Default::default(),
         media: Default::default(),
+        industry: Default::default(),
     }
 }
 
@@ -672,6 +675,7 @@ pub fn v18_to_v20(w: V18) -> GameWorld {
         stocks: Default::default(),
         series: Default::default(),
         media: Default::default(),
+        industry: Default::default(),
     }
 }
 
@@ -739,6 +743,7 @@ pub fn v20_to_v21(w: V20) -> GameWorld {
         stocks: Default::default(),
         series: Default::default(),
         media: Default::default(),
+        industry: Default::default(),
     }
 }
 
@@ -799,6 +804,7 @@ pub fn v21_to_v22(w: V21) -> GameWorld {
         stocks: Default::default(),
         series: Default::default(),
         media: Default::default(),
+        industry: Default::default(),
     }
 }
 
@@ -852,6 +858,7 @@ pub fn v22_to_v23(w: V22) -> GameWorld {
         stocks: Default::default(),
         series: Default::default(),
         media: Default::default(),
+        industry: Default::default(),
     }
 }
 
@@ -912,6 +919,7 @@ pub fn v23_to_v24(w: V23) -> GameWorld {
         stocks: Default::default(),
         series: Default::default(),
         media: Default::default(),
+        industry: Default::default(),
     }
 }
 
@@ -972,6 +980,7 @@ pub fn v24_to_v25(w: V24) -> GameWorld {
         stocks: Default::default(),
         series: Default::default(),
         media: Default::default(),
+        industry: Default::default(),
     }
 }
 
@@ -1023,6 +1032,7 @@ pub fn v25_to_v26(w: V25) -> GameWorld {
         stocks: Default::default(),
         series: Default::default(),
         media: Default::default(),
+        industry: Default::default(),
     }
 }
 
@@ -1074,6 +1084,7 @@ pub fn v26_to_v27(w: V26) -> GameWorld {
         stocks: Default::default(),
         series: Default::default(),
         media: Default::default(),
+        industry: Default::default(),
     }
 }
 
@@ -1125,6 +1136,7 @@ pub fn v27_to_v28(w: V27) -> GameWorld {
         stocks: Default::default(),
         series: Default::default(),
         media: Default::default(),
+        industry: Default::default(),
     }
 }
 
@@ -1176,6 +1188,7 @@ pub fn v28_to_v29(w: V28) -> GameWorld {
         stocks: Default::default(),
         series: Default::default(),
         media: Default::default(),
+        industry: Default::default(),
     }
 }
 
@@ -1227,6 +1240,7 @@ pub fn v29_to_v30(w: V29) -> GameWorld {
         stocks: Default::default(),
         series: Default::default(),
         media: Default::default(),
+        industry: Default::default(),
     }
 }
 
@@ -1279,6 +1293,7 @@ pub fn v30_to_v31(w: V30) -> GameWorld {
         stocks: Default::default(),
         series: Default::default(),
         media: Default::default(),
+        industry: Default::default(),
     }
 }
 
@@ -1331,6 +1346,7 @@ pub fn v31_to_v32(w: V31) -> GameWorld {
         stocks: Default::default(),
         series: Default::default(),
         media: Default::default(),
+        industry: Default::default(),
     }
 }
 
@@ -1384,6 +1400,7 @@ pub fn v32_to_v33(w: V32) -> GameWorld {
         stocks: Default::default(),
         series: Default::default(),
         media: Default::default(),
+        industry: Default::default(),
     }
 }
 
@@ -1437,6 +1454,7 @@ pub fn v35_to_v36(w: V35) -> GameWorld {
         stocks: Default::default(),
         series: Default::default(),
         media: Default::default(),
+        industry: Default::default(),
     }
 }
 
@@ -1490,6 +1508,7 @@ pub fn v33_to_v34(w: V33) -> GameWorld {
         stocks: Default::default(),
         series: Default::default(),
         media: Default::default(),
+        industry: Default::default(),
     }
 }
 
@@ -1544,6 +1563,7 @@ pub fn v40_to_v41(w: V40) -> GameWorld {
         stocks: Default::default(),
         series: Default::default(),
         media: Default::default(),
+        industry: Default::default(),
     }
 }
 
@@ -1597,6 +1617,7 @@ pub fn v34_to_v35(w: V34) -> GameWorld {
         stocks: Default::default(),
         series: Default::default(),
         media: Default::default(),
+        industry: Default::default(),
     }
 }
 
@@ -1655,6 +1676,7 @@ pub fn v41_to_v42(w: V41) -> GameWorld {
         stocks: Default::default(),
         series: Default::default(),
         media: Default::default(),
+        industry: Default::default(),
     }
 }
 
@@ -1712,6 +1734,7 @@ pub fn v42_to_v43(w: V42) -> GameWorld {
         stocks: Default::default(),
         series: Default::default(),
         media: Default::default(),
+        industry: Default::default(),
     }
 }
 
@@ -1771,6 +1794,7 @@ pub fn v43_to_v44(w: V43) -> GameWorld {
         stocks: w.stocks,
         series: Default::default(),
         media: Default::default(),
+        industry: Default::default(),
     }
 }
 /// Version 44: the gold standard's monetary base (#303), before the yearly series: the world
@@ -1857,6 +1881,7 @@ pub fn v45_to_v46(w: V45) -> GameWorld {
         stocks: w.stocks,
         series: w.series,
         media: Default::default(),
+        industry: Default::default(),
     }
 }
 /// Version 46: the reserves by cohort (#364), before the media: the world without `media`.
@@ -1914,6 +1939,7 @@ pub fn v46_to_v47(w: V46) -> GameWorld {
         stocks: w.stocks,
         series: w.series,
         media: Default::default(),
+        industry: Default::default(),
     }
 }
 
@@ -1944,6 +1970,7 @@ pub fn v44_to_v45(w: V44) -> GameWorld {
         stocks: w.stocks,
         series: Default::default(),
         media: Default::default(),
+        industry: Default::default(),
     }
 }
 
@@ -1998,6 +2025,7 @@ pub fn v36_to_v37(w: V36) -> GameWorld {
         stocks: Default::default(),
         series: Default::default(),
         media: Default::default(),
+        industry: Default::default(),
     }
 }
 
@@ -2052,6 +2080,7 @@ pub fn v37_to_v38(w: V37) -> GameWorld {
         stocks: Default::default(),
         series: Default::default(),
         media: Default::default(),
+        industry: Default::default(),
     }
 }
 
@@ -2106,6 +2135,7 @@ pub fn v38_to_v39(w: V38) -> GameWorld {
         stocks: Default::default(),
         series: Default::default(),
         media: Default::default(),
+        industry: Default::default(),
     }
 }
 
@@ -2160,5 +2190,68 @@ pub fn v39_to_v40(w: V39) -> GameWorld {
         stocks: Default::default(),
         series: Default::default(),
         media: Default::default(),
+        industry: Default::default(),
+    }
+}
+
+/// Version 47: the reach of the mass media (#378), before industry: the world without
+/// `industry`.
+#[derive(Deserialize)]
+pub struct V47 {
+    scenario: String,
+    player: Option<Id<Country>>,
+    countries: Table<Country, CountryState>,
+    census: Vec<CensusRecord>,
+    econ: crate::econ::Economy,
+    research: crate::research::ResearchState,
+    politics: crate::polity::PoliticsState,
+    demography: crate::demography::DemographyState,
+    borders: crate::borders::BordersState,
+    foreign: crate::foreign_stakes::ForeignState,
+    influence: crate::influence::InfluenceState,
+    treaties: crate::treaty::TreatyState,
+    war: crate::war::WarState,
+    education: crate::demography::education::EducationState,
+    independence: crate::borders::independence::IndependenceState,
+    levers: crate::econ::levers::LeversState,
+    tariffs: crate::econ::customs::TariffState,
+    payments: crate::econ::payments::PaymentsState,
+    reserves: crate::econ::payments::ReservesState,
+    gold: crate::econ::gold::GoldState,
+    capital: crate::econ::capital::CapitalState,
+    stocks: crate::econ::stock::StockState,
+    series: crate::econ::series::SeriesState,
+    media: crate::media::MediaState,
+}
+
+/// 47 → 48: the methods fixed and the state's levels (`GameWorld::industry`), empty: the market
+/// chose every method and the state owned no level of a common plant.
+pub fn v47_to_v48(w: V47) -> GameWorld {
+    GameWorld {
+        scenario: w.scenario,
+        player: w.player,
+        countries: w.countries,
+        census: w.census,
+        econ: w.econ,
+        research: w.research,
+        politics: w.politics,
+        demography: w.demography,
+        borders: w.borders,
+        foreign: w.foreign,
+        influence: w.influence,
+        treaties: w.treaties,
+        war: w.war,
+        education: w.education,
+        independence: w.independence,
+        levers: w.levers,
+        tariffs: w.tariffs,
+        payments: w.payments,
+        reserves: w.reserves,
+        gold: w.gold,
+        capital: w.capital,
+        stocks: w.stocks,
+        series: w.series,
+        media: w.media,
+        industry: Default::default(),
     }
 }

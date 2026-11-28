@@ -5,7 +5,9 @@
 //! (`monthly::best_method`, the rule of the yearly switch). Read only, once a month.
 //!
 //! The rule switches a plant once a year when another method earns 10 % more on its capital
-//! (`yearly::SWITCH_MARGIN`); the country's investment fund pays the new equipment.
+//! (`yearly::SWITCH_MARGIN`); the country's investment fund pays the new equipment. The
+//! government may fix the method of a kind instead (`econ::industry`, `SetMethod`, owner's
+//! decisions M1 and M2), outside laissez-faire and with `Switches::fixed_methods` on.
 
 use bf_sim::econ::Catalogue;
 use bf_sim::game::GameWorld;
@@ -44,11 +46,24 @@ pub struct KindMethods {
     pub methods: Vec<MethodRow>,
     /// The method the owners would pick now, if any can run.
     pub best: Option<u8>,
+    /// The method the government fixed for the kind, if any.
+    pub fixed: Option<u8>,
+    /// States with a plant of the kind, and of them those already on the fixed method.
+    pub states: usize,
+    pub states_on_fixed: usize,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct MethodsView {
     pub month: (i32, u8),
+    /// The country's tag, for the commands.
+    pub tag: String,
+    /// `Switches::fixed_methods` is on in this game.
+    pub rule_on: bool,
+    /// The ownership law lets the government fix methods (every law but laissez-faire).
+    pub may_fix: bool,
+    /// The methods the country fixed (kind, method): the view is read again when they change.
+    pub fixed: Vec<(u16, u8)>,
     /// The buildings the country has, most levels first.
     pub kinds: Vec<KindMethods>,
 }
@@ -59,6 +74,7 @@ pub fn read(
     cat: &Catalogue,
     tree: Option<&TechTree>,
     date: Date,
+    rule_on: bool,
 ) -> Option<MethodsView> {
     let ci = world.countries.iter().position(|(_, c)| c.tag == tag)?;
     let econ = &world.econ;
@@ -158,6 +174,17 @@ pub fn read(
             cat, k, &unlocks, ci, &m.price, &buy, mean_tfp, wage,
         )
         .map(|(mi, _)| mi);
+        let fixed = world.industry.fixed(ci, k as u16);
+        let states = econ
+            .regions
+            .iter()
+            .filter(|r| usize::from(r.market) == ci)
+            .filter(|r| {
+                r.plants
+                    .iter()
+                    .any(|p| usize::from(p.kind) == k && p.levels > 0)
+            })
+            .count();
         kinds.push(KindMethods {
             kind: k as u16,
             key: b.key.clone(),
@@ -165,11 +192,28 @@ pub fn read(
             levels: total,
             methods,
             best,
+            fixed,
+            states,
+            states_on_fixed: fixed.map_or(0, |f| levels[k].get(usize::from(f)).map_or(0, |x| x.1)),
         });
     }
     kinds.sort_by(|a, b| b.levels.cmp(&a.levels).then(a.kind.cmp(&b.kind)));
     Some(MethodsView {
         month: (date.year, date.month),
+        tag: tag.to_owned(),
+        rule_on,
+        may_fix: bf_sim::econ::industry::may_fix(&m.laws.effects[0]),
+        fixed: world.industry.methods.get(ci).cloned().unwrap_or_default(),
         kinds,
     })
+}
+
+/// The methods country `tag` fixed now: a view whose list differs is read again.
+pub fn fixed_now(world: &GameWorld, tag: &str) -> Vec<(u16, u8)> {
+    world
+        .countries
+        .iter()
+        .position(|(_, c)| c.tag == tag)
+        .and_then(|ci| world.industry.methods.get(ci).cloned())
+        .unwrap_or_default()
 }

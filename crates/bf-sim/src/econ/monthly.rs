@@ -496,6 +496,8 @@ pub struct Investment {
     pub foreign_flow: bool,
     /// `Switches::occupied_works`: no work starts in a region its owner does not hold.
     pub occupied_works: bool,
+    /// `Switches::fixed_methods`: new plants of a kind whose method is fixed run it.
+    pub fixed_methods: bool,
 }
 
 pub struct Build {
@@ -666,6 +668,60 @@ fn small_market_wage(own: Fixed, floor: Fixed, hands: i64) -> Fixed {
 /// (`market_wages`): about ten plant levels.
 pub const MIN_HANDS_FOR_A_WAGE: i64 = 10_000;
 
+/// Whether a plant of `kind` can run method `mi` here: the method is known and the market can
+/// supply its inputs.
+pub fn method_usable(
+    cat: &Catalogue,
+    kind: usize,
+    mi: usize,
+    unlocks: &Unlocks<'_>,
+    country: usize,
+    buy: &[Fixed],
+) -> bool {
+    let Some(m) = cat.buildings[kind].methods.get(mi) else {
+        return false;
+    };
+    unlocks.method(cat, country, kind, mi)
+        // A method whose inputs the market cannot supply is not an option.
+        && !m
+            .inputs
+            .iter()
+            .any(|(g, _)| buy[*g as usize] < milli(500) || !unlocks.goods[*g as usize])
+}
+
+/// The method the government fixed for `kind` in market `country` (`econ::industry`), when the
+/// rule is on and the ownership law allows it: `Some(None)` when it is fixed but a plant here
+/// cannot run it (not known, or its inputs out of reach), and `Some(Some((method, profit)))`
+/// with the weekly owners' profit per level when it can.
+#[allow(clippy::too_many_arguments)]
+pub fn fixed_method(
+    cat: &Catalogue,
+    world: &GameWorld,
+    on: bool,
+    kind: usize,
+    unlocks: &Unlocks<'_>,
+    country: usize,
+    price: &[Fixed],
+    buy: &[Fixed],
+    tfp: Fixed,
+    wage: Fixed,
+) -> Option<Option<(u8, Fixed)>> {
+    if !on || world.industry.methods.is_empty() {
+        return None;
+    }
+    let m = world.econ.markets.get(country)?;
+    if !super::industry::may_fix(&m.laws.effects[0]) {
+        return None;
+    }
+    let mi = world.industry.fixed(country, u16::try_from(kind).ok()?)?;
+    Some(
+        method_usable(cat, kind, usize::from(mi), unlocks, country, buy).then(|| {
+            let profit = cat.buildings[kind].methods[usize::from(mi)].profit(price, tfp, wage);
+            (mi, profit)
+        }),
+    )
+}
+
 /// Best method a building can use at market prices, with its weekly owners' profit per level:
 /// value added less the market wage of the workers it needs. Mechanizing pays where labour is
 /// dear and not where it is cheap.
@@ -683,14 +739,7 @@ pub fn best_method(
     let b = &cat.buildings[kind];
     let mut best: Option<(u8, Fixed, Fixed)> = None;
     for (mi, m) in b.methods.iter().enumerate() {
-        if !unlocks.method(cat, country, kind, mi) {
-            continue;
-        }
-        // A method whose inputs the market cannot supply is not an option.
-        if m.inputs
-            .iter()
-            .any(|(g, _)| buy[*g as usize] < milli(500) || !unlocks.goods[*g as usize])
-        {
+        if !method_usable(cat, kind, mi, unlocks, country, buy) {
             continue;
         }
         let profit = m.profit(price, tfp, wage);
@@ -911,16 +960,34 @@ impl System<GameWorld> for Investment {
                     if existing >= ceiling && clears.is_none() {
                         continue;
                     }
-                    let Some((method, profit)) = best_method(
+                    // A kind whose method the government fixed is built with it where it can
+                    // run (`econ::industry`, M1); elsewhere the market's best, until it can.
+                    let (tfp, wage) = (plant_tfp(r, m, b), wages[r.market as usize]);
+                    let fixed = fixed_method(
                         cat,
+                        world,
+                        self.fixed_methods,
                         kind,
                         &unlocks,
                         r.market as usize,
                         &view.price,
                         &view.buy,
-                        plant_tfp(r, m, b),
-                        wages[r.market as usize],
-                    ) else {
+                        tfp,
+                        wage,
+                    )
+                    .flatten();
+                    let Some((method, profit)) = fixed.or_else(|| {
+                        best_method(
+                            cat,
+                            kind,
+                            &unlocks,
+                            r.market as usize,
+                            &view.price,
+                            &view.buy,
+                            tfp,
+                            wage,
+                        )
+                    }) else {
                         continue;
                     };
                     if cat.buildings[kind].methods[method as usize].workers > idle {

@@ -168,6 +168,10 @@ pub struct GameWorld {
     /// The reach of the mass media (`media`, `Switches::media`); empty while it is off.
     #[serde(default)]
     pub media: crate::media::MediaState,
+    /// The methods the governments fixed and the levels the state owns (`econ::industry`);
+    /// empty while nobody fixed or built anything.
+    #[serde(default)]
+    pub industry: crate::econ::industry::IndustryState,
 }
 
 impl HashState for GameWorld {
@@ -270,6 +274,11 @@ impl HashState for GameWorld {
             h.section("stocks");
             self.stocks.hash_state(h);
         }
+        // Worlds where the market chooses every method keep their hash.
+        if !self.industry.is_empty() {
+            h.section("industry");
+            self.industry.hash_state(h);
+        }
     }
 }
 
@@ -300,6 +309,7 @@ impl GameWorld {
             stocks: Default::default(),
             series: Default::default(),
             media: Default::default(),
+            industry: Default::default(),
             demography: crate::demography::DemographyState::default(),
             treaties: Default::default(),
             war: crate::war::WarState::default(),
@@ -521,6 +531,14 @@ pub enum GameCommand {
     CancelWork {
         tag: String,
         work: crate::econ::levers::WorkKey,
+    },
+    /// Fixes the method every plant of building `kind` in the country runs (`econ::industry`,
+    /// owner's decisions M1 and M2), or with `None` hands it back to the market. Refused under
+    /// the `laissez_faire` ownership law; handing back is always allowed.
+    SetMethod {
+        tag: String,
+        kind: u16,
+        method: Option<u8>,
     },
     /// Puts a proposal on the negotiation table (`treaty_table`): `tag` is side A, `to` side B.
     /// Refused silently when an identical one was refused in the last six months.
@@ -1109,6 +1127,18 @@ impl Command<GameWorld> for GameCommand {
                     m.queue.remove(i);
                 }
             }
+            GameCommand::SetMethod { tag, kind, method } => {
+                let Some(ci) = world.countries.iter().position(|(_, c)| c.tag == *tag) else {
+                    return;
+                };
+                let Some(m) = world.econ.markets.get(ci) else {
+                    return;
+                };
+                if method.is_some() && !crate::econ::industry::may_fix(&m.laws.effects[0]) {
+                    return;
+                }
+                world.industry.set_method(ci, *kind, *method);
+            }
             GameCommand::LiteracyCampaign { tag, on } => {
                 // Without schooling (the rule off) there is nothing to teach with.
                 if world.education.regions.is_empty() {
@@ -1336,6 +1366,10 @@ pub struct Switches {
     /// The servants' capacity to collect (`econ::levers::collection`, owner's decision O1): a
     /// region with fewer servants than the rule asks for collects that much less tax.
     pub fiscal_capacity: bool,
+    /// The method the government fixes for a building kind (`econ::industry`, owner's decisions
+    /// M1 and M2): every plant of the kind in the country moves to it at the yearly switch and
+    /// new plants are built with it; never under `laissez_faire`. Off: the market chooses.
+    pub fixed_methods: bool,
     /// Armed forces in peace (`war`, docs/war.pt-BR.md, "Forças em paz"): the soldiers are the
     /// men of the formations. Off, the old rule of `data/military/peace.ron` (`soldiers`).
     pub forces: bool,
@@ -1491,6 +1525,7 @@ impl Switches {
         "crisis",
         "customs_duties",
         "fiscal_capacity",
+        "fixed_methods",
         "forces",
         "foreign_contract",
         "foreign_flow",
@@ -1530,6 +1565,7 @@ impl Switches {
             "crisis" => self.crisis = true,
             "customs_duties" => self.customs_duties = true,
             "fiscal_capacity" => self.fiscal_capacity = true,
+            "fixed_methods" => self.fixed_methods = true,
             "forces" => self.forces = true,
             "foreign_contract" => self.foreign_contract = true,
             "foreign_flow" => self.foreign_flow = true,
@@ -1665,6 +1701,7 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
             wage_floor: switches.small_market_wage_floor,
             foreign_flow: switches.foreign_flow,
             occupied_works: switches.occupied_works,
+            fixed_methods: switches.fixed_methods,
         });
         if let Some(tree) = &tree {
             s.add(crate::research_system::Research {
@@ -1688,6 +1725,7 @@ pub fn schedule(threads: usize, rules: Option<Rules>) -> Schedule<GameWorld> {
             wage_floor: switches.small_market_wage_floor,
             foreign_contract: switches.foreign_contract,
             media,
+            fixed_methods: switches.fixed_methods,
         });
         // The agreements in force: tribute paid and tested, terms run out (off by default).
         if let Some(setup) = treaties {
@@ -2332,9 +2370,68 @@ mod tests {
             hash_of(&with_ledger)
         );
         assert_eq!(
-            hash_of(&headed(47, &encode_snapshot(&with_ledger).unwrap())),
+            hash_of(&headed(48, &encode_snapshot(&with_ledger).unwrap())),
             hash_of(&with_ledger)
         );
+        // Version 47, the media, before industry: the world without `industry`.
+        {
+            #[derive(Serialize)]
+            struct BeforeIndustry47<'a> {
+                scenario: &'a String,
+                player: &'a Option<Id<Country>>,
+                countries: &'a Table<Country, CountryState>,
+                census: &'a Vec<CensusRecord>,
+                econ: &'a crate::econ::Economy,
+                research: &'a crate::research::ResearchState,
+                politics: &'a crate::polity::PoliticsState,
+                demography: &'a crate::demography::DemographyState,
+                borders: &'a crate::borders::BordersState,
+                foreign: &'a crate::foreign_stakes::ForeignState,
+                influence: &'a crate::influence::InfluenceState,
+                treaties: &'a crate::treaty::TreatyState,
+                war: &'a crate::war::WarState,
+                education: &'a crate::demography::education::EducationState,
+                independence: &'a crate::borders::independence::IndependenceState,
+                levers: &'a crate::econ::levers::LeversState,
+                tariffs: &'a crate::econ::customs::TariffState,
+                payments: &'a crate::econ::payments::PaymentsState,
+                reserves: &'a crate::econ::payments::ReservesState,
+                gold: &'a crate::econ::gold::GoldState,
+                capital: &'a crate::econ::capital::CapitalState,
+                stocks: &'a crate::econ::stock::StockState,
+                series: &'a crate::econ::series::SeriesState,
+                media: &'a crate::media::MediaState,
+            }
+            let w = &with_ledger;
+            let v47 = encode_snapshot(&BeforeIndustry47 {
+                scenario: &w.scenario,
+                player: &w.player,
+                countries: &w.countries,
+                census: &w.census,
+                econ: &w.econ,
+                research: &w.research,
+                politics: &w.politics,
+                demography: &w.demography,
+                borders: &w.borders,
+                foreign: &w.foreign,
+                influence: &w.influence,
+                treaties: &w.treaties,
+                war: &w.war,
+                education: &w.education,
+                independence: &w.independence,
+                levers: &w.levers,
+                tariffs: &w.tariffs,
+                payments: &w.payments,
+                reserves: &w.reserves,
+                gold: &w.gold,
+                capital: &w.capital,
+                stocks: &w.stocks,
+                series: &w.series,
+                media: &w.media,
+            })
+            .unwrap();
+            assert_eq!(hash_of(&headed(47, &v47)), hash_of(&with_ledger));
+        }
         // Version 46, the reserves by cohort, before the media: the world without `media`.
         {
             #[derive(Serialize)]

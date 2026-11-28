@@ -159,6 +159,11 @@ const PLAYER: &[Surface] = &[
         files: &["screens/works.rs"],
     },
     Surface {
+        variant: "SetMethod",
+        command: id::ECONOMY,
+        files: &["screens/methods.rs"],
+    },
+    Surface {
         variant: "SetStatePurchases",
         command: id::TAB_BUDGET,
         files: &["screens/levers.rs"],
